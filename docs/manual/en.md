@@ -1919,6 +1919,10 @@ unblocked. A badge on the bell counts the unread ones.
   opens the host). A budget alert opens Costs already filtered by its host and project, or by
   its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
   result, an unblocked card) opens the PR in your browser when the card is gone.
+- On Windows the unread count also shows on the app's taskbar button, as a red badge with the number
+  (`9+` past nine). It is the bell's count, row for row, so it falls as you read and goes when the
+  list is clear; a source you muted sends no entry and so adds nothing. It comes back with the
+  count the next time the app starts.
 - **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
   (the newest 500) and survives a restart. Esc closes the panel.
 - The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
@@ -2815,8 +2819,11 @@ combination and click **Save shortcut**.
 ### Design and navigation
 
 The app follows a single design, in the style of Linear: bundled Inter (no network), a 13 px
-base, layered surfaces, a single accent token and the session state as an 8 px dot (running in
-blue, needs you in amber, idle in gray, ended faded, error in red).
+base, layered surfaces, a single accent token and the session state as a glyph in a 12 px slot,
+a shape as well as a colour: running is a blue ring that turns (still, with its top open, when
+the system asks for reduced motion, and stopped while it is off screen), needs you an amber
+question mark in a bubble, error a red alert circle, idle a small gray dot and ended a faded ring.
+Hover one for its name.
 
 - **Sidebar:** logo, navigation (Sessions, Needs you with its counter, Board, Workflows, Costs,
   History), the hosts, the pinned sessions and, at the bottom, search (`Ctrl K`), Settings and

@@ -1,13 +1,6 @@
-import { resolve } from "node:path";
 import {
-  type AccountUpdated,
-  type Ack,
   ASSISTANT_FEATURE,
-  type AskpassRequest,
   type AutoUpdateStatus,
-  type BudgetUpdated,
-  type CardUpdated,
-  type ChangesUpdated,
   CLOSE_HEARTBEAT,
   CLOSE_UNAUTHORIZED,
   Command,
@@ -16,42 +9,21 @@ import {
   type CommandType,
   type DepsResult,
   type DoctorResult,
-  type EventEnvelope,
-  type ExternalPermissionFrame,
   type ExternalSession,
   type ExternalStatus,
-  type ExternalUpdated,
   FEATURE_HOLD_PROOF,
-  type HistoryChanged,
   type HostRuntime,
-  type IdleFiredFrame,
-  type MessagesRelayFrame,
-  type MessagesUpdatedFrame,
-  type MessagingAlertFrame,
   MIN_PROTOCOL_VERSION,
-  type Ping,
   Pong,
   PROTOCOL_VERSION,
   type ProjectLoad,
   type ProjectTrustState,
-  type QuotaUpdated,
-  type RunEnvUpdated,
-  type RunUpdated,
   type SessionLine,
   type SessionStatus,
   type SessionSummary,
-  type TeamsUpdatedFrame,
-  type TerminalData,
-  type TerminalExited,
-  type TerminalResync,
   type UiSettings,
-  type VaultAlertFrame,
-  type VaultRequestFrame,
-  type VaultUsed,
-  type WatchUpdatedFrame,
   WS_PATH,
 } from "@flightdeck/protocol";
-import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Account } from "./account/account.ts";
@@ -68,11 +40,10 @@ import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
-import { withTurnUuids } from "./checkpoints/turn-uuid.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
-import { coalesceDeltas, type DeltaCoalescer, drainAll } from "./delta-coalescer.ts";
+import { coalesceDeltas, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
 import { listDirs, listFiles } from "./fs-dirs.ts";
 import type { GithubService } from "./github/service.ts";
@@ -105,6 +76,11 @@ import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
+import { serverContext } from "./server/context.ts";
+import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
+import { need } from "./server/gates.ts";
+import { HANDLERS } from "./server/handlers/index.ts";
+import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
@@ -119,9 +95,8 @@ import type { Teams } from "./teams/teams.ts";
 import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
-import { startTemplate } from "./templates/start.ts";
 import type { TaskTracker } from "./templates/tasks.ts";
-import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
+import type { TerminalManager } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
@@ -130,7 +105,6 @@ import { requireVaultTransport, type Vault } from "./vault/vault.ts";
 import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
 import type { Worktrees } from "./worktrees/worktrees.ts";
-import { sendFrame } from "./ws-send.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
 
@@ -356,113 +330,7 @@ export interface RunningServer {
   stop(): Promise<void>;
 }
 
-interface Connection {
-  authed: boolean;
-  /** Where the connection came from (the address the origin filter looked at). */
-  origin: string;
-  subscriptions: Map<string, () => void>;
-  /** One per subscription: the text that waits for its window or for the socket to drain. */
-  coalescers: Set<DeltaCoalescer>;
-  /** A frame was dropped: the client was cut off and gets nothing more (`sendFrame`). */
-  dropped?: boolean;
-  /** Pings sent and not yet answered, by id → send time. */
-  pendingPings: Map<string, number>;
-  /** When the last frame of any kind arrived from this client (the heartbeat clock). */
-  lastFrameAt: number;
-  /** Stops the `sessions.watch` stream, when active. */
-  unwatch?: () => void;
-  /** Stops the `history.watch` stream, when active. */
-  unwatchHistory?: () => void;
-  /** Stops the `board.watch` stream, when active. */
-  unwatchBoard?: () => void;
-  /** Stops the `external.watch` stream, when active. */
-  unwatchExternal?: () => void;
-  /** Stops the `run.watch` stream, when active. */
-  unwatchRuns?: () => void;
-  unwatchRunEnv?: () => void;
-  /** Stops the `quota.watch` stream, when active. */
-  unwatchQuota?: () => void;
-  /** Stops the `account.watch` stream, when active. */
-  unwatchAccount?: () => void;
-  /** Stops the `askpass.watch` stream, when active. */
-  unwatchAskpass?: () => void;
-  /** Stops the `budget.watch` stream, when active. */
-  unwatchBudgets?: () => void;
-  /** Stops each `changes.watch`, by target. */
-  changeWatchers: Map<string, () => void>;
-  /** This connection's end of the terminals it is attached to. */
-  terminalSink?: TerminalSink;
-  /** Stops the `vault.watch` stream, when active. */
-  unwatchVault?: () => void;
-  /** Stops the `messages.watch` stream, when active. */
-  unwatchMessages?: () => void;
-  /** Stops the `teams.watch` stream, when active. */
-  unwatchTeams?: () => void;
-  /** Stops the `watch.watch` stream, when active. */
-  unwatchPrs?: () => void;
-  lastRttMs?: number;
-}
-
 export { tokenMatches };
-
-type Socket = ServerWebSocket<Connection>;
-
-type Outgoing =
-  | Ack
-  | EventEnvelope
-  | Ping
-  | HistoryChanged
-  | CardUpdated
-  | ExternalUpdated
-  | ExternalPermissionFrame
-  | RunUpdated
-  | AccountUpdated
-  | RunEnvUpdated
-  | QuotaUpdated
-  | BudgetUpdated
-  | ChangesUpdated
-  | TerminalData
-  | TerminalExited
-  | TerminalResync
-  | AskpassRequest
-  | VaultUsed
-  | VaultRequestFrame
-  | VaultAlertFrame
-  | MessagesUpdatedFrame
-  | MessagesRelayFrame
-  | MessagingAlertFrame
-  | IdleFiredFrame
-  | TeamsUpdatedFrame
-  | WatchUpdatedFrame;
-
-function send(ws: Socket, message: Outgoing): void {
-  sendFrame(ws, message);
-}
-
-function ackError(
-  ws: Socket,
-  id: string,
-  code: string,
-  message: string,
-  why: Pick<FlightdeckError, "reason" | "params" | "items"> = {},
-): void {
-  const { reason, params, items } = why;
-  send(ws, {
-    type: "ack",
-    id,
-    ok: false,
-    error: {
-      code,
-      message,
-      ...(reason ? { reason, params: params ?? {} } : {}),
-      ...(items ? { items: [...items] } : {}),
-    },
-  });
-}
-
-function decode(raw: string | Buffer): unknown {
-  return JSON.parse(typeof raw === "string" ? raw : raw.toString("utf8"));
-}
 
 /** Phase 8: the state of a session's line, from its live status. */
 const MANAGED_LINE: Record<SessionStatus, SessionLine["state"]> = {
@@ -550,16 +418,10 @@ export function startServer(opts: ServerOptions): RunningServer {
   const { manager } = opts;
 
   const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
-  /** A service the daemon was started with, or the `feature_off` refusal naming it. */
-  const need = <K extends keyof ServerOptions>(
-    key: K,
-    feature: string = key,
-  ): NonNullable<ServerOptions[K]> => {
-    const value = opts[key];
-    if (!value) throw featureOff(feature);
-    return value as NonNullable<ServerOptions[K]>;
-  };
   const authed = new Set<Socket>();
+  /** What every handler shares (issue #248), and one command's view of its socket. */
+  const context = serverContext(opts);
+  const call = (ws: Socket): Call => ({ ws, send: (frame) => send(ws, frame), server: context });
   let currentToken = opts.token;
   const startedAt = Date.now();
   const features = featuresOf(opts);
@@ -629,7 +491,9 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
-  const history = (): HistoryIndexer => need("history");
+  function history(): HistoryIndexer {
+    return need(opts, "history");
+  }
 
   /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
   async function foldersOf(index: HistoryIndexer, key: string): Promise<string[]> {
@@ -640,7 +504,9 @@ export function startServer(opts: ServerOptions): RunningServer {
     return cwds.filter((_, i) => keys[i] === key);
   }
 
-  const central = () => need("central");
+  function central() {
+    return need(opts, "central");
+  }
 
   /**
    * Phase 5: every session list carries its project group and meta (with the hub on). Phase 8:
@@ -662,11 +528,17 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
-  const roi = (): RoiSummarizer => need("roi");
+  function roi(): RoiSummarizer {
+    return need(opts, "roi");
+  }
 
-  const boardsync = (): BoardSyncService => need("boardsync");
+  function boardsync(): BoardSyncService {
+    return need(opts, "boardsync");
+  }
 
-  const github = (): GithubService => need("github");
+  function github(): GithubService {
+    return need(opts, "github");
+  }
 
   /**
    * Asks git for the project key of each folder without blocking, so the sync `listed` below reads
@@ -679,37 +551,21 @@ export function startServer(opts: ServerOptions): RunningServer {
     await Promise.all([...new Set(cwds)].map((cwd) => warm(cwd)));
   }
 
-  const vault = (): Vault => need("vault");
+  function names(): Names {
+    return need(opts, "names");
+  }
 
-  const names = (): Names => need("names");
+  function watching(): PrWatch {
+    return need(opts, "watch");
+  }
 
-  const watching = (): PrWatch => need("watch", "prWatch");
+  function idle(): Idle {
+    return need(opts, "idle");
+  }
 
-  const teams = (): Teams => need("teams");
-
-  const messaging = (): Messaging => need("messaging");
-
-  const idle = (): Idle => need("idle");
-
-  const actions = (): Actions => need("actions");
-
-  const automations = (): Automations => need("automations");
-
-  const issues = (): Issues => need("issues");
-
-  const autoApprove = (): AutoApprover => need("autoApprove");
-
-  const agentcfg = (): AgentConfig => need("agentcfg");
-
-  const mcp = (): McpConfig => need("mcp");
-
-  const projectPath = (projectId: string) => board().getProject(projectId).path;
-
-  const pluginsApi = (): Plugins => need("plugins");
-
-  const memory = (): ProjectMemory => need("memory");
-
-  const rewinder = (): Rewinder => need("rewinder");
+  function issues(): Issues {
+    return need(opts, "issues");
+  }
 
   /** `host.info.update` once the daemon has checked its manifest. */
   function updateStatus() {
@@ -742,75 +598,34 @@ export function startServer(opts: ServerOptions): RunningServer {
     return { ...s, ...(summary ? { summary } : {}), ...(meta ? { meta } : {}) };
   }
 
-  const maintenance = (): Maintenance => need("maintenance");
-
-  const worktrees = (): Worktrees => need("worktrees");
-
-  const usage = (): UsageLedger => need("usage");
-
-  const account = (): Account => need("account");
-
-  const quota = (): Quota => need("quota");
-
-  const costs = (): Costs => need("costs");
-
-  const telemetry = (): TelemetryStore => need("telemetry");
-
-  const bg = (): BgService => need("bg");
-
-  const webhook = (): WebhookSender => need("webhook");
-  const summary = (): SummaryService => need("summary");
-  const trace = (): TraceService => need("trace");
-
-  const optIn = (): TelemetryOptIn => need("telemetryOptIn", "telemetry");
-
-  const budgets = (): Budgets => need("budgets");
-
-  const quotaHistory = (): QuotaHistory => need("quotaHistory");
-
-  const changes = (): Changes => need("changes");
-
-  const ssh = (): SshTargets => need("ssh");
-
-  const snippets = (): Snippets => need("snippets");
-
-  const personaSessions = (): OpenSessionPersonas => need("personaSessions");
-
-  const personas = (): Personas => need("personas");
-
-  const snippetUse = (): SnippetUse => need("snippetUse");
-
-  const snippetHistory = (): HistoryImporter => need("snippetHistory");
-
-  const askpass = (): AskpassBroker => need("askpass");
-
-  const sshConnect = (): SshConnector => need("sshConnect");
-
-  const sshHostKeys = (): HostKeys => need("sshHostKeys");
-
-  const sshImport = (): SshImporter => need("sshImport");
-
-  const review = (): ReviewComments => need("review");
-
-  const files = (): ReviewFiles => need("files");
-
-  /** A project's folder, with the root of its repository looked up first without waiting for git. */
-  const sessionFiles = (): SessionFiles => need("sessionFiles");
-
-  const terminals = (): TerminalManager => need("terminals");
-
-  /** The connection's end of its terminals: frames out, and how full its socket is. */
-  function terminalSink(ws: Socket): TerminalSink {
-    ws.data.terminalSink ??= {
-      send: (frame) => send(ws, frame),
-      backlog: () => ws.getBufferedAmount(),
-    };
-    return ws.data.terminalSink;
+  function maintenance(): Maintenance {
+    return need(opts, "maintenance");
   }
 
-  const runenv = () => need("runenv", "runEnv");
+  function worktrees(): Worktrees {
+    return need(opts, "worktrees");
+  }
 
-  const board = (): Board => need("board");
+  function summary(): SummaryService {
+    return need(opts, "summary");
+  }
+
+  function personaSessions(): OpenSessionPersonas {
+    return need(opts, "personaSessions");
+  }
+
+  function files(): ReviewFiles {
+    return need(opts, "files");
+  }
+
+  /** A project's folder, with the root of its repository looked up first without waiting for git. */
+  function sessionFiles(): SessionFiles {
+    return need(opts, "sessionFiles");
+  }
+
+  function board(): Board {
+    return need(opts, "board");
+  }
 
   function assistant(): AssistantService {
     if (!opts.assistant) throw featureOff("assistant");
@@ -845,6 +660,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         ...(opts.central?.external.list() ?? []).flatMap((s) => (s.cwd ? [s.cwd] : [])),
       ]);
     }
+
+    // Issue #248: a command whose domain has moved runs its handler; the rest are still cases here.
+    const handler = HANDLERS[command.type] as Handler<CommandType> | undefined;
+    if (handler) return runHandler(handler, command as never, call(ws));
 
     switch (command.type) {
       case "hello":
@@ -959,46 +778,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await maintenance().backupNow());
       case "maintenance.prune":
         return ok(command.type, await maintenance().prune(command.payload.dryRun === true));
-      case "snapshots.list":
-        return ok(command.type, {
-          // A terminal turn's uuid is found in the indexed transcript, when it can be told.
-          snapshots: withTurnUuids(
-            opts.snapshots?.list(command.payload.claudeSessionId) ?? [],
-            opts.history?.userPrompts(command.payload.claudeSessionId) ?? [],
-          ),
-        });
-      case "snapshots.files": {
-        if (!opts.snapshots) throw featureOff("snapshots");
-        const { claudeSessionId, n } = command.payload;
-        return ok(command.type, await opts.snapshots.files(claudeSessionId, n));
-      }
-      case "mcp.list":
-        return ok(command.type, {
-          servers: await mcp().list(projectPath(command.payload.projectId)),
-        });
-      case "mcp.test": {
-        const { projectId, name, confirm } = command.payload;
-        return ok(command.type, await mcp().test(projectPath(projectId), name, confirm === true));
-      }
-      case "mcp.save": {
-        const path = projectPath(command.payload.projectId);
-        await mcp().save(path, command.payload.server, command.payload.confirm === true);
-        return ok(command.type, { servers: await mcp().list(path) });
-      }
-      case "mcp.remove": {
-        const path = projectPath(command.payload.projectId);
-        await mcp().remove(path, command.payload.name, command.payload.confirm === true);
-        return ok(command.type, { servers: await mcp().list(path) });
-      }
-      case "mcp.toggle": {
-        const { projectId, name, enabled, confirm, sessionId } = command.payload;
-        const path = projectPath(projectId);
-        await mcp().toggle(path, name, enabled, confirm === true);
-        if (sessionId) await manager.toggleMcpServer(sessionId, name, enabled);
-        return ok(command.type, { servers: await mcp().list(path) });
-      }
-      case "mcp.status":
-        return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
       case "card.startArena": {
         const { cardId, ...input } = command.payload;
         return ok(command.type, await board().startArena(cardId, input));
@@ -1008,74 +787,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "card.chooseVariant": {
         const { cardId, variantId, confirm } = command.payload;
         return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
-      }
-      case "vault.deliver":
-        // A request of the daemon that asks has to be approved before its secret is accepted.
-        opts.actions?.gate(command.payload.purpose);
-        return ok(command.type, vault().deliver(command.payload, ws.data.origin));
-      case "vault.use": {
-        const { secretId, purpose, action } = command.payload;
-        const used = vault().use(secretId, purpose, action);
-        // For the app's usage log: who, for what, when; never the value.
-        send(ws, {
-          type: "vault.used",
-          secretId,
-          purpose,
-          requester: used.requester,
-          action,
-          at: new Date().toISOString(),
-        });
-        return ok(command.type, { result: used.result });
-      }
-      case "actions.list":
-        return ok(command.type, await actions().list(command.payload.projectId));
-      case "actions.save":
-        return ok(command.type, await actions().save(command.payload));
-      case "actions.remove":
-        return ok(
-          command.type,
-          await actions().remove(command.payload.projectId, command.payload.name),
-        );
-      case "actions.trust": {
-        const { projectId, name, hash } = command.payload;
-        return ok(command.type, await actions().trust(projectId, name, hash));
-      }
-      case "actions.run":
-        return ok(command.type, await actions().run(command.payload));
-      case "actions.runFree":
-        return ok(command.type, await actions().runFree(command.payload));
-      case "actions.runs":
-        return ok(command.type, { runs: actions().runs(command.payload) });
-      case "vault.watch": {
-        const service = actions();
-        ws.data.unwatchVault?.();
-        ws.data.unwatchVault = service.watch((frame) => send(ws, frame));
-        return ok(command.type);
-      }
-      case "vault.deny":
-        actions().deny(command.payload.requestId);
-        return ok(command.type);
-      case "teams.list":
-        return ok(command.type, { teams: teams().list(command.payload.projectId) });
-      case "teams.create":
-        return ok(command.type, await teams().create(command.payload));
-      case "teams.update":
-        return ok(command.type, await teams().update(command.payload));
-      case "teams.pause":
-        return ok(command.type, teams().pause(command.payload.team));
-      case "teams.resume":
-        return ok(command.type, teams().resume(command.payload.team));
-      case "teams.close":
-        return ok(
-          command.type,
-          teams().close(command.payload.team, command.payload.confirm === true),
-        );
-      case "teams.message":
-        return ok(command.type, teams().message(command.payload.team, command.payload.text));
-      case "teams.status": {
-        const { team, as } = command.payload;
-        const asker = as ? messaging().whoIs(as).id : undefined;
-        return ok(command.type, teams().status(team, asker));
       }
       case "watch.settings":
         return ok(
@@ -1098,102 +809,14 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchPrs = service.watch((frame) => send(ws, frame));
         return ok(command.type);
       }
-      case "teams.watch": {
-        const service = teams();
-        ws.data.unwatchTeams?.();
-        ws.data.unwatchTeams = service.watch((frame) => send(ws, frame));
-        return ok(command.type);
-      }
-      case "messages.send":
-        return ok(command.type, messaging().send(command.payload));
-      case "messages.list":
-        return ok(command.type, { messages: messaging().list(command.payload) });
-      case "messages.sessions":
-        return ok(command.type, { sessions: messaging().sessions(command.payload.as) });
-      case "messages.read": {
-        const { as, session, last } = command.payload;
-        return ok(command.type, await messaging().read(as, session, last));
-      }
-      case "messages.relay":
-        return ok(command.type, messaging().relay(command.payload.message));
-      case "messages.relayed": {
-        const { id, ...result } = command.payload;
-        messaging().relayed(id, result);
-        return ok(command.type);
-      }
-      case "messages.directory":
-        return ok(command.type, { host: opts.hostName, sessions: messaging().directory() });
       case "names.list":
         return ok(command.type, {
           names: names()
             .list()
             .map(({ id, ...name }) => ({ sessionId: id, ...name })),
         });
-      case "messages.peers":
-        messaging().setPeers(command.payload.host, command.payload.sessions);
-        return ok(command.type);
-      case "messages.watch": {
-        const service = messaging();
-        const watched = idle();
-        ws.data.unwatchMessages?.();
-        const stopMessages = service.watch((frame) => send(ws, frame));
-        const stopIdle = watched.watch((frame) => send(ws, frame));
-        ws.data.unwatchMessages = () => {
-          stopMessages();
-          stopIdle();
-        };
-        return ok(command.type);
-      }
       case "idle.subscribe":
         return ok(command.type, idle().subscribe(command.payload));
-      case "messaging.rules.get":
-        return ok(command.type, {
-          policy: messaging().getPolicy() as unknown as Record<string, unknown>,
-          paused: messaging().pausedPairs(),
-        });
-      case "messaging.rules.set": {
-        const { policy, unpause } = command.payload;
-        const set = messaging().setPolicy(policy, unpause);
-        return ok(command.type, {
-          policy: set.policy as unknown as Record<string, unknown>,
-          paused: set.paused,
-        });
-      }
-      case "vault.rules.set": {
-        const { secretId, tags, rules } = command.payload;
-        return ok(command.type, { rules: actions().setRules(secretId, tags ?? [], rules) });
-      }
-      case "vault.rules.get": {
-        const { secretId } = command.payload;
-        return ok(command.type, { secretId, ...actions().getRules(secretId) });
-      }
-      case "vault.rules.preview":
-        return ok(command.type, actions().preview(command.payload));
-      case "vault.approve": {
-        const { requestId, ...approval } = command.payload;
-        actions().approve(requestId, approval);
-        return ok(command.type);
-      }
-      case "vault.decisions":
-        return ok(command.type, { decisions: actions().decisions(command.payload) });
-      case "vault.report":
-        return ok(command.type, actions().report(command.payload));
-      case "automation.list":
-        return ok(command.type, { automations: automations().list(command.payload.projectId) });
-      case "automation.save":
-        return ok(command.type, automations().save(command.payload));
-      case "automation.remove":
-        return ok(command.type, {
-          automations: automations().remove(command.payload.id, command.payload.confirm === true),
-        });
-      case "automation.toggle": {
-        const { id, enabled, confirm } = command.payload;
-        return ok(command.type, automations().toggle(id, enabled, confirm === true));
-      }
-      case "automation.runs":
-        return ok(command.type, {
-          runs: automations().runs(command.payload.id, command.payload.limit),
-        });
       case "issues.list": {
         const { projectId, query } = command.payload;
         return ok(command.type, { issues: await issues().list(projectId, query) });
@@ -1205,128 +828,9 @@ export function startServer(opts: ServerOptions): RunningServer {
           command.type,
           await issues().createCard(command.payload.projectId, command.payload.issueRef),
         );
-      case "autoapprove.list": {
-        const { projectId, sessionKey, limit } = command.payload;
-        return ok(command.type, {
-          decisions: autoApprove().list({
-            ...(projectId ? { projectId } : {}),
-            ...(sessionKey ? { sessionKey } : {}),
-            ...(limit ? { limit } : {}),
-          }),
-          suspended: autoApprove().suspended(),
-        });
-      }
-      case "autoapprove.resume": {
-        if (command.payload.confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "reativar a aprovação automática pede confirm: true",
-            "autoapprove_resume_confirm",
-          );
-        }
-        autoApprove().resume(command.payload.sessionKey);
-        return ok(command.type, { suspended: autoApprove().suspended() });
-      }
-      case "agentcfg.list": {
-        const { projectId, kind } = command.payload;
-        return ok(command.type, { items: await agentcfg().list(projectPath(projectId), kind) });
-      }
-      case "agentcfg.read": {
-        const { projectId, kind, path, origin } = command.payload;
-        return ok(command.type, await agentcfg().read(projectPath(projectId), kind, path, origin));
-      }
-      case "agentcfg.write": {
-        const { projectId, confirm, ...input } = command.payload;
-        const written = await agentcfg().write(projectPath(projectId), {
-          ...input,
-          confirm: confirm === true,
-        });
-        return ok(command.type, written);
-      }
-      case "plugins.list":
-        return ok(command.type, await pluginsApi().list());
-      case "plugins.detail":
-        return ok(command.type, await pluginsApi().detail(command.payload.plugin));
-      case "plugins.preview": {
-        const { plugin, dir } = command.payload;
-        return ok(
-          command.type,
-          await pluginsApi().preview(dir !== undefined ? { dir } : { plugin: plugin as string }),
-        );
-      }
-      case "plugins.previewUpdate":
-        return ok(command.type, await pluginsApi().previewUpdate(command.payload.plugin));
-      case "plugins.install":
-        return ok(command.type, await pluginsApi().install(command.payload));
-      case "plugins.update":
-        return ok(command.type, await pluginsApi().update(command.payload));
-      case "plugins.uninstall": {
-        const { confirm, ...input } = command.payload;
-        return ok(
-          command.type,
-          await pluginsApi().uninstall({ ...input, confirm: confirm === true }),
-        );
-      }
-      case "plugins.pin":
-        return ok(
-          command.type,
-          await pluginsApi().pin(command.payload.plugin, command.payload.pinned),
-        );
-      case "plugins.marketplaceAdd": {
-        const { confirm, ...input } = command.payload;
-        return ok(
-          command.type,
-          await pluginsApi().marketplaceAdd({ ...input, confirm: confirm === true }),
-        );
-      }
-      case "plugins.marketplaceRemove": {
-        const { confirm, ...input } = command.payload;
-        return ok(
-          command.type,
-          await pluginsApi().marketplaceRemove({ ...input, confirm: confirm === true }),
-        );
-      }
-      case "plugins.marketplaceUpdate":
-        return ok(command.type, await pluginsApi().marketplaceUpdate(command.payload.name));
-      case "memory.list":
-        return ok(command.type, await memory().list(projectPath(command.payload.projectId)));
-      case "memory.read": {
-        const { projectId, name } = command.payload;
-        return ok(command.type, await memory().read(projectPath(projectId), name));
-      }
-      case "memory.write": {
-        const { projectId, confirm, ...input } = command.payload;
-        return ok(
-          command.type,
-          await memory().write(projectPath(projectId), { ...input, confirm: confirm === true }),
-        );
-      }
-      case "memory.delete": {
-        const { projectId, confirm, ...input } = command.payload;
-        await memory().remove(projectPath(projectId), { ...input, confirm: confirm === true });
-        return ok(command.type, { name: input.name });
-      }
-      case "memory.budget":
-        return ok(command.type, await memory().budget(projectPath(command.payload.projectId)));
-      case "memory.suggest":
-        return ok(command.type, {
-          suggestions: await memory().suggest(projectPath(command.payload.projectId)),
-        });
       case "session.fork": {
         if (!opts.forker) throw featureOff("forker");
         return ok(command.type, await opts.forker.fork(command.payload));
-      }
-      case "rewind.preview": {
-        const { claudeSessionId, turn } = command.payload;
-        return ok(command.type, await rewinder().preview(claudeSessionId, turn));
-      }
-      case "rewind.apply": {
-        const { claudeSessionId, turn, confirm } = command.payload;
-        return ok(command.type, await rewinder().apply(claudeSessionId, turn, confirm === true));
-      }
-      case "rewind.undo": {
-        const { claudeSessionId, confirm } = command.payload;
-        return ok(command.type, await rewinder().undo(claudeSessionId, confirm === true));
       }
       case "daemon.update.apply": {
         if (!opts.updater) throw featureOff("updater");
@@ -1429,56 +933,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           listed(s, s.claudeSessionId, { state: "ended", since: s.lastTs }),
         );
         return ok(command.type, { ...page, sessions });
-      }
-      case "history.get": {
-        const { claudeSessionId, cursor, limit, tail } = command.payload;
-        return ok(command.type, await history().get(claudeSessionId, cursor, limit, tail));
-      }
-      case "history.search": {
-        const index = history();
-        const hits = index.search(command.payload).map((hit) => ({
-          ...hit,
-          cursor: index.cursorFor(hit.claudeSessionId, hit.uuid),
-        }));
-        return ok(command.type, { hits });
-      }
-      case "history.resume": {
-        const { claudeSessionId, force, name, permissionMode } = command.payload;
-        const session = history().session(claudeSessionId);
-        if (!session) {
-          throw new FlightdeckError(
-            "not_found",
-            `transcript ${claudeSessionId} not indexed`,
-            "transcript_not_indexed",
-            { id: claudeSessionId },
-          );
-        }
-        if (session.maybeActive && !force) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "session possibly in use elsewhere; send force: true to resume anyway",
-            "session_maybe_active",
-          );
-        }
-        const { agents } = await preparePersonas(opts.personas, undefined, session.cwd);
-        return ok(
-          command.type,
-          await manager.createResumed({
-            cwd: session.cwd,
-            claudeSessionId,
-            agents,
-            name: name ?? session.title,
-            ...(permissionMode ? { permissionMode } : {}),
-          }),
-        );
-      }
-      case "history.watch": {
-        const index = history();
-        ws.data.unwatchHistory?.();
-        ws.data.unwatchHistory = index.onChange((change) =>
-          send(ws, { type: "history.changed", ...change }),
-        );
-        return ok(command.type);
       }
       case "project.list":
         return ok(command.type, {
@@ -1588,95 +1042,14 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.get":
         return ok(command.type, board().getCard(command.payload.cardId));
-      case "workflow.list":
-        return ok(command.type, {
-          workflows: await board().listWorkflows(command.payload.projectId),
-        });
-      case "workflow.validate": {
-        const { projectId, name } = command.payload;
-        return ok(command.type, await board().validateWorkflow(projectId, name));
-      }
-      case "workflow.trust": {
-        const { projectId, name, hash } = command.payload;
-        return ok(command.type, await board().trustWorkflow(projectId, name, hash));
-      }
-      case "run.get":
-        return ok(command.type, board().workflows.getRun(command.payload.runId));
       case "gate.respond": {
         const { runId, stepId, attempt, decision, note } = command.payload;
         board().workflows.respond(runId, stepId, attempt, decision, note);
         return ok(command.type, board().workflows.getRun(runId));
       }
-      case "rules.list":
-        return ok(command.type, { rules: await board().listRules(command.payload.projectId) });
-      case "rules.remove": {
-        const { projectId, rule, confirm } = command.payload;
-        return ok(command.type, {
-          rules: await board().removeRule(projectId, rule, confirm === true),
-        });
-      }
-      case "costs.status":
-        return ok(command.type, costs().status());
-      case "costs.reprice":
-        return ok(command.type, await costs().reprice());
-      case "costs.summary":
-        return ok(command.type, costs().summary(command.payload));
-      case "telemetry.session":
-        return ok(command.type, telemetry().timeline(command.payload.claudeSessionId));
-      case "bg.list":
-        return ok(command.type, await bg().list());
-      case "bg.start":
-        return ok(command.type, await bg().start(command.payload));
-      case "bg.stop":
-        return ok(command.type, await bg().stop(command.payload.id));
-      case "bg.respawn":
-        return ok(command.type, await bg().respawn(command.payload.id));
-      case "bg.message":
-        return ok(command.type, await bg().message(command.payload.id, command.payload.text));
-      case "webhook.send":
-        return ok(command.type, await webhook().send(command.payload, ws.data.origin));
       case "session.summary": {
         const { claudeSessionId, question, state } = command.payload;
         return ok(command.type, await summary().get(claudeSessionId, { question, state }));
-      }
-      case "trace.get":
-        return ok(command.type, await trace().get(command.payload.claudeSessionId));
-      case "trace.export": {
-        const { claudeSessionId, includeContent } = command.payload;
-        return ok(command.type, await trace().export(claudeSessionId, includeContent === true));
-      }
-      case "telemetry.status":
-        return ok(command.type, await optIn().status());
-      case "telemetry.install":
-        return ok(command.type, await optIn().install(command.payload.confirm === true));
-      case "telemetry.uninstall":
-        return ok(command.type, await optIn().uninstall(command.payload.confirm === true));
-      case "telemetry.summary":
-        return ok(command.type, telemetry().summary());
-      case "costs.session":
-        return ok(command.type, costs().session(command.payload.claudeSessionId));
-      case "costs.sessions":
-        return ok(command.type, { costs: costs().sessions(command.payload.claudeSessionIds) });
-      case "costs.card":
-        return ok(command.type, { costUsd: costs().card(command.payload.cardId) });
-      case "costs.run":
-        return ok(command.type, { costUsd: costs().run(command.payload.runId) });
-      case "costs.export":
-        return ok(command.type, costs().export(command.payload));
-      case "budget.list":
-        return ok(command.type, { budgets: budgets().list() });
-      case "budget.set":
-        return ok(command.type, budgets().set(command.payload));
-      case "budget.remove":
-        budgets().remove(command.payload.id);
-        return ok(command.type);
-      case "budget.watch": {
-        const host = budgets();
-        ws.data.unwatchBudgets?.();
-        ws.data.unwatchBudgets = host.watch((update) =>
-          send(ws, { type: "budget.updated", ...update }),
-        );
-        return ok(command.type);
       }
       case "files.sessions":
         return ok(command.type, { sessions: sessionFiles().sessionsOf(command.payload.path) });
@@ -1775,87 +1148,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           }),
         );
       }
-      case "terminal.open": {
-        const { cwd, command: argv, claude, cols, rows } = command.payload;
-        return ok(
-          command.type,
-          await terminals().open({
-            cwd,
-            ...(argv ? { command: argv } : {}),
-            ...(claude ? { claude } : {}),
-            cols,
-            rows,
-          }),
-        );
-      }
-      case "terminal.write":
-        terminals().write(command.payload.terminalId, command.payload.data);
-        return ok(command.type);
-      case "terminal.resize":
-        terminals().resize(command.payload.terminalId, command.payload.cols, command.payload.rows);
-        return ok(command.type);
-      case "terminal.attach":
-        return ok(
-          command.type,
-          terminals().attach(
-            command.payload.terminalId,
-            terminalSink(ws),
-            command.payload.flow === true,
-          ),
-        );
-      case "terminal.ack":
-        terminals().ack(command.payload.terminalId, terminalSink(ws), command.payload.bytes);
-        return ok(command.type);
-      case "terminal.detach":
-        terminals().detach(command.payload.terminalId, terminalSink(ws));
-        return ok(command.type);
-      case "terminal.close":
-        terminals().close(command.payload.terminalId, command.payload.kill, terminalSink(ws));
-        return ok(command.type);
-      case "terminal.list":
-        return ok(command.type, { terminals: terminals().list() });
-      case "template.list": {
-        if (!opts.templates) throw featureOff("templates");
-        return ok(command.type, await opts.templates());
-      }
-      case "template.start": {
-        if (!opts.templates) throw featureOff("templates");
-        const { templateId, language, values, name } = command.payload;
-        const template = (await opts.templates()).templates.find((t) => t.id === templateId);
-        if (!template) {
-          throw new FlightdeckError(
-            "not_found",
-            `there is no template ${templateId}`,
-            "template_unknown",
-            { id: templateId },
-          );
-        }
-        return ok(
-          command.type,
-          await startTemplate(
-            template,
-            language,
-            values,
-            {
-              allowedRoots: opts.allowedRoots,
-              create: (payload) => manager.create(payload),
-              ...(opts.tasks ? { tasks: opts.tasks } : {}),
-            },
-            name,
-          ),
-        );
-      }
-      case "task.preview": {
-        if (!opts.tasks) throw featureOff("tasks");
-        return ok(
-          command.type,
-          await opts.tasks.preview(command.payload.sessionId, command.payload.path),
-        );
-      }
-      case "task.results": {
-        if (!opts.tasks) throw featureOff("tasks");
-        return ok(command.type, await opts.tasks.results(command.payload.sessionId));
-      }
       case "ui.set": {
         if (!opts.ui) throw featureOff("ui.mode");
         const { mode, locked, confirm } = command.payload;
@@ -1875,20 +1167,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         opts.ui.locked = next.locked;
         return ok(command.type, { ...next });
       }
-      case "terminal.settings": {
-        const { enabled, confirm } = command.payload;
-        const manager = terminals();
-        if (enabled && !manager.enabled && confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "ligar o terminal dá um shell completo neste host: confirme com confirm: true",
-            "terminal_enable_confirm",
-          );
-        }
-        manager.setEnabled(enabled);
-        await opts.onTerminalSettings?.(enabled);
-        return ok(command.type, manager.settings());
-      }
       case "pr.comments":
         return ok(command.type, { comments: await board().prComments(command.payload.cardId) });
       case "pr.comments.send": {
@@ -1901,68 +1179,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, mode, confirm, message } = command.payload;
         return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true, message));
       }
-      case "changes.get":
-        return ok(command.type, await changes().get(command.payload.target));
-      case "changes.watch": {
-        const { target } = command.payload;
-        const stop = await changes().watch(target, (result) =>
-          send(ws, { type: "changes.updated", ...result }),
-        );
-        ws.data.changeWatchers.get(target)?.();
-        ws.data.changeWatchers.set(target, stop);
-        return ok(command.type);
-      }
-      case "changes.unwatch":
-        ws.data.changeWatchers.get(command.payload.target)?.();
-        ws.data.changeWatchers.delete(command.payload.target);
-        return ok(command.type);
-      case "ssh.list":
-        return ok(command.type, { targets: ssh().list() });
-      case "ssh.save":
-        return ok(command.type, ssh().save(command.payload));
-      case "ssh.remove":
-        ssh().remove(command.payload.id, command.payload.confirm);
-        return ok(command.type);
-      case "snippets.list":
-        return ok(command.type, await snippets().list(command.payload));
-      case "snippets.save":
-        return ok(command.type, await snippets().save(command.payload));
-      case "snippets.get": {
-        const { id, name, projectPath } = command.payload;
-        return ok(
-          command.type,
-          id ? await snippets().get(id) : await snippets().find(name as string, projectPath),
-        );
-      }
-      case "snippets.remove":
-        await snippets().remove(command.payload.id);
-        return ok(command.type);
-      case "snippets.trust":
-        return ok(
-          command.type,
-          await snippets().trust(command.payload.projectPath, command.payload.hash),
-        );
-      case "snippets.favorite":
-        return ok(
-          command.type,
-          await snippets().favorite(command.payload.id, command.payload.favorite),
-        );
-      case "snippets.parse":
-        return ok(command.type, snippets().parse(command.payload.text));
-      case "snippets.importHistory": {
-        const { limit, reveal, select } = command.payload;
-        const importer = snippetHistory();
-        const done = select ? await importer.import(select) : { created: [], skipped: [] };
-        const preview = await importer.preview({
-          ...(limit ? { limit } : {}),
-          ...(reveal ? { reveal } : {}),
-        });
-        return ok(command.type, { ...preview, ...done });
-      }
-      case "personas.list":
-        return ok(command.type, await personas().list(command.payload));
-      case "personas.save":
-        return ok(command.type, await personas().save(command.payload));
       case "session.applyPersona": {
         const { sessionId, claudeSessionId, persona } = command.payload;
         return ok(
@@ -1972,183 +1188,11 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "session.clearPersona":
         return ok(command.type, await personaSessions().clear(command.payload));
-      case "personas.subagents": {
-        const { projectPath, language } = command.payload;
-        return ok(command.type, await personas().subagents({ projectPath, language }));
-      }
-      case "personas.publishAgent":
-        return ok(command.type, await personas().publishAgent(command.payload));
-      case "personas.resolve": {
-        const { ref, projectPath } = command.payload;
-        const store = personas();
-        try {
-          return ok(
-            command.type,
-            await store.resolve(ref, { projectPath, language: ref.language }),
-          );
-        } catch (error) {
-          // A folder the daemon does not allow has no personas of its own: the host's and the pack's apply.
-          if (projectPath && error instanceof FlightdeckError && error.code === "forbidden_cwd") {
-            return ok(command.type, await store.resolve(ref, { language: ref.language }));
-          }
-          throw error;
-        }
-      }
-      case "personas.reset":
-        return ok(
-          command.type,
-          personas().reset(command.payload.id, { language: command.payload.language }),
-        );
-      case "personas.remove":
-        await personas().remove(
-          command.payload.scope,
-          command.payload.id,
-          command.payload.projectPath,
-        );
-        return ok(command.type);
-      case "personas.trust":
-        return ok(
-          command.type,
-          await personas().trust(
-            command.payload.projectPath,
-            command.payload.id,
-            command.payload.hash,
-          ),
-        );
-      case "snippets.render":
-        return ok(command.type, await snippetUse().render(command.payload));
-      case "snippets.use":
-        return ok(command.type, await snippetUse().use(command.payload));
-      case "askpass.watch":
-        ws.data.unwatchAskpass?.();
-        ws.data.unwatchAskpass = askpass().watch((frame) => send(ws, frame));
-        return ok(command.type);
-      case "askpass.ask":
-        return ok(command.type, {
-          secret: await askpass().ask(command.payload.ticket, command.payload.prompt),
-        });
-      case "askpass.answer":
-        askpass().answer(command.payload.requestId, command.payload.secret);
-        return ok(command.type);
-      case "ssh.connect": {
-        const { targetId, cols, rows, privateKey } = command.payload;
-        // A key from the vault travels only where the vault delivers: loopback and Tailscale.
-        if (privateKey) requireVaultTransport(ws.data.origin, "ssh.connect com chave", opts.log);
-        const request = { targetId, cols, rows, ...(privateKey ? { privateKey } : {}) };
-        return ok(command.type, await sshConnect().connect(request));
-      }
-      case "ssh.test": {
-        const { targetId, privateKey } = command.payload;
-        if (privateKey) requireVaultTransport(ws.data.origin, "ssh.test com chave", opts.log);
-        return ok(
-          command.type,
-          await sshConnect().test({ targetId, ...(privateKey ? { privateKey } : {}) }),
-        );
-      }
-      case "ssh.hostkey.check":
-        return ok(command.type, await sshHostKeys().check(command.payload.targetId));
-      case "ssh.hostkey.confirm":
-        return ok(
-          command.type,
-          sshHostKeys().confirm(command.payload.targetId, command.payload.fingerprint),
-        );
-      case "ssh.hostkey.forget":
-        return ok(command.type, sshHostKeys().forget(command.payload.targetId));
-      case "ssh.import.preview":
-        return ok(command.type, await sshImport().preview());
-      case "ssh.import.apply":
-        return ok(command.type, await sshImport().apply(command.payload.aliases));
-      case "review.list":
-        return ok(command.type, { comments: await review().list(command.payload.target) });
-      case "review.add":
-        return ok(command.type, await review().add(command.payload));
-      case "review.update":
-        return ok(command.type, await review().update(command.payload.id, command.payload.body));
-      case "review.remove":
-        review().remove(command.payload.id);
-        return ok(command.type);
-      case "review.send":
-        return ok(command.type, await review().send(command.payload.target));
-      case "changes.revert": {
-        const { target, path, confirm } = command.payload;
-        return ok(command.type, await files().revert(target, path, confirm === true));
-      }
-      case "changes.undoRevert": {
-        const { target, path, confirm } = command.payload;
-        return ok(command.type, await files().undoRevert(target, path, confirm === true));
-      }
       case "file.read":
         return ok(command.type, await files().read(command.payload.target, command.payload.path));
       case "file.write": {
         const { target, path, text, expectedHash } = command.payload;
         return ok(command.type, await files().write(target, path, text, expectedHash));
-      }
-      case "quota.history":
-        return ok(
-          command.type,
-          quotaHistory().history(command.payload.window, command.payload.hours),
-        );
-      case "usage.summary":
-        return ok(command.type, usage().summary(command.payload.days));
-      case "quota.get":
-        return ok(command.type, quota().state());
-      case "quota.watch": {
-        const host = quota();
-        ws.data.unwatchQuota?.();
-        ws.data.unwatchQuota = host.watch((state) => send(ws, { type: "quota.updated", ...state }));
-        return ok(command.type);
-      }
-      case "account.get":
-        return ok(command.type, await account().get());
-      case "account.watch": {
-        const host = account();
-        ws.data.unwatchAccount?.();
-        ws.data.unwatchAccount = host.watch((state) =>
-          send(ws, { type: "account.updated", ...state }),
-        );
-        return ok(command.type);
-      }
-      case "account.unwatch":
-        account();
-        ws.data.unwatchAccount?.();
-        ws.data.unwatchAccount = undefined;
-        return ok(command.type);
-      case "account.refresh":
-        return ok(command.type, await account().refresh());
-      case "runenv.config":
-        return ok(
-          command.type,
-          await runenv().configs.info(board().getProject(command.payload.projectId)),
-        );
-      case "runenv.trust": {
-        const { projectId, hash } = command.payload;
-        return ok(command.type, await runenv().configs.trust(board().getProject(projectId), hash));
-      }
-      case "runenv.start":
-        return ok(command.type, await runenv().manager.start(command.payload.cardId));
-      case "runenv.stop":
-        return ok(command.type, await runenv().manager.stop(command.payload.cardId));
-      case "runenv.get":
-        return ok(command.type, runenv().manager.state(command.payload.cardId));
-      case "runenv.watch": {
-        // Ack, the runs going now, then every change.
-        const { manager } = runenv();
-        ws.data.unwatchRunEnv?.();
-        ws.data.unwatchRunEnv = manager.watch((state) =>
-          send(ws, { type: "runenv.updated", state }),
-        );
-        ok(command.type);
-        for (const state of manager.live()) send(ws, { type: "runenv.updated", state });
-        return;
-      }
-      case "run.watch": {
-        // Ack, the runs still going, then every change: the app sees open gates right away.
-        const runs = board().workflows;
-        ws.data.unwatchRuns?.();
-        ws.data.unwatchRuns = runs.watch((run) => send(ws, { type: "run.updated", run }));
-        ok(command.type);
-        for (const run of runs.activeRuns()) send(ws, { type: "run.updated", run });
-        return;
       }
       case "card.start": {
         const { cardId, workflow, inputs, persona } = command.payload;
