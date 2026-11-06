@@ -394,6 +394,29 @@ describe("terminal-ui: the terminal screen", () => {
     expect(x.finds.at(-1)).toBe("clear");
   });
 
+  test("the search has Diferenciar maiúsculas, Palavra inteira and Expressão regular, by click and by Alt+C/W/R (issue #476)", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => void x.chord("F"));
+    const box = screen.queryByRole("searchbox", { name: "Buscar no terminal" }) as HTMLElement;
+    const toggle = (name: string) => screen.queryByRole("button", { name });
+    expect(toggle("Diferenciar maiúsculas e minúsculas")?.getAttribute("aria-pressed")).toBe("false");
+    await click("Diferenciar maiúsculas e minúsculas");
+    await act(async () => {
+      fireEvent.keyDown(box, { key: "w", altKey: true });
+      fireEvent.change(box, { target: { value: "Er" } });
+    });
+    expect(x.findOptions.at(-1)).toMatchObject({ caseSensitive: true, wholeWord: true });
+    expect(toggle("Palavra inteira")?.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => {
+      fireEvent.keyDown(box, { key: "r", altKey: true });
+      fireEvent.change(box, { target: { value: "a(" } });
+    });
+    expect(toggle("Usar expressão regular")?.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText("Expressão regular inválida")).not.toBeNull();
+    expect(x.finds.at(-1)).toBe("clear");
+  });
+
   test("the search says where the current match is, or that there is none", async () => {
     const { x } = await setup();
     await settle(() => state("Ao vivo"));
