@@ -16,7 +16,7 @@ const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { defaultRule } = await import("../src/ui/AlwaysAllow.tsx");
+const { defaultRule, projectRule } = await import("../src/ui/AlwaysAllow.tsx");
 
 // Real git under the in-process daemon: more than the default 5 s.
 setDefaultTimeout(20_000);
@@ -129,6 +129,19 @@ describe("permitir-ui", () => {
     expect(defaultRule("Grep", { path: "/p/src", pattern: "x" }, "/p")).toBe("Grep(src)");
     expect(defaultRule("LS", { path: "/p" }, "/p")).toBe("LS(.)");
     expect(defaultRule("Edit", { file_path: "a.ts" }, "/p")).toBe("Edit(a.ts)");
+  });
+
+  test("a regra escrita vira uma regra do projeto: com parênteses é a ferramenta e o conteúdo, sem eles a ferramenta toda", () => {
+    const asRule = (rules: Array<{ toolName: string; ruleContent?: string }>) => ({
+      type: "addRules",
+      rules,
+      behavior: "allow",
+      destination: "localSettings",
+    });
+    expect(projectRule("Bash(npm test:*)")).toEqual(
+      asRule([{ toolName: "Bash", ruleContent: "npm test:*" }]),
+    );
+    expect(projectRule("  WebFetch ")).toEqual(asRule([{ toolName: "WebFetch" }]));
   });
 
   test("sem arquivo nem comando a regra padrão segue sendo o nome da ferramenta, e o Bash a linha exata", () => {

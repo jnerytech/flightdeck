@@ -365,6 +365,23 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     }
   });
 
+  test("an MCP tool's rule is what the classifier says of the tool: medium from a medium request, and a deleting tool's only from a held one", async () => {
+    const mcp = { query: "x" };
+    expect(await saved("mcp__db__read", mcp, rule("mcp__db__read"))).toBeNull();
+    const { b, ask } = broker();
+    const { id } = await ask("mcp__db__delete_rows", { table: "t" });
+    expect(
+      refusal(() =>
+        b.respond({
+          requestId: id,
+          decision: "allow",
+          held: true,
+          updatedPermissions: [rule("mcp__db__delete_rows")],
+        }),
+      ),
+    ).toBeNull();
+  });
+
   test("a network rule names a domain: the whole tool would reach any host", async () => {
     const fetch = { url: "https://example.com" };
     expect(await saved("WebFetch", fetch, rule("WebFetch"))).toEqual(TOO_BROAD);
