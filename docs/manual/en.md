@@ -2732,7 +2732,14 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
 
 - **Opening:** a normal click changes the current tab. `Ctrl+click`, the middle mouse button or
   **Open in new tab** (in the host's menu and in a session row's menu) opens a new one. The **+**
-  button at the end of the bar opens a new tab on the `Ctrl+K` palette.
+  button at the end of the bar opens a new tab on the `Ctrl+K` palette. A screen has one tab: a
+  link to a screen another tab already shows (a breadcrumb, a page link, reopening a running
+  terminal) goes to that tab instead of opening a second one.
+- **All tabs:** past eight tabs, the chevron at the end of the bar opens a list of all of them:
+  each row has the tab's icon, its title on one line (the whole title in its tooltip), its host,
+  and a close button on hover. The tab on screen has a bar at its left. Type to filter; the arrows,
+  `Home` and `End` move the highlight, `Enter` goes to the tab and `Delete` closes it. `Esc` or a
+  click outside closes the list.
 - **The bar:** each tab shows its type's icon and title, and a badge when a session in it needs
   you, is running, or answered while no tab showed it (**Unread**). **Pin** keeps the tab at the
   left with its icon only. The pin, move and close buttons after the tabs act on the active one;
