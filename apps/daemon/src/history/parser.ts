@@ -27,9 +27,10 @@ export interface TranscriptTitle {
   name: string;
 }
 
-/** Stub for the red test of issue #605. */
-export function lastTitle(_records: readonly HistoryRecord[]): TranscriptTitle | null {
-  return null;
+/** The title of a run of lines: the last `custom-title`, else the last `agent-name`. */
+export function lastTitle(records: readonly HistoryRecord[]): TranscriptTitle | null {
+  const titles = records.flatMap((record) => (record.title ? [record.title] : []));
+  return titles.filter((title) => title.kind === "custom").at(-1) ?? titles.at(-1) ?? null;
 }
 
 export interface ParseResult {
@@ -94,6 +95,16 @@ function contentText(content: unknown): { text: string; toolResults: number } | 
   return { text: parts.join("\n"), toolResults };
 }
 
+/** The name a `custom-title` or an `agent-name` line carries; none when it is blank or not text. */
+function titleLine(line: Line): TranscriptTitle | null {
+  const kind = { "custom-title": "custom", "agent-name": "agent" }[String(line.type)] as
+    | TranscriptTitle["kind"]
+    | undefined;
+  if (!kind) return null;
+  const name = str(kind === "custom" ? line.customTitle : line.agentName)?.trim();
+  return name ? { kind, name } : null;
+}
+
 function normalize(line: Line, raw: string): HistoryRecord {
   const base = {
     uuid: str(line.uuid) ?? `raw:${createHash("sha1").update(raw).digest("hex").slice(0, 16)}`,
@@ -103,6 +114,8 @@ function normalize(line: Line, raw: string): HistoryRecord {
   };
   const cut = (text: string) => truncateUtf8(text, MAX_TEXT_BYTES);
   const message = line.message as { content?: unknown } | undefined;
+  const title = titleLine(line);
+  if (title) return { ...base, role: null, kind: "raw", text: raw, title };
   switch (line.type) {
     case "user":
     case "assistant": {

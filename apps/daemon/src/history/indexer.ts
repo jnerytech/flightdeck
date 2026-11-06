@@ -6,7 +6,7 @@ import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol
 import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { promptText } from "../transcript-text.ts";
-import { type HistoryRecord, parseLines } from "./parser.ts";
+import { type HistoryRecord, lastTitle, parseLines } from "./parser.ts";
 import { lastTool, requestLine } from "./session-line.ts";
 
 export interface HistoryIndexerOptions {
@@ -728,6 +728,8 @@ export class HistoryIndexer {
         });
       if (!excluded) this.updateSession(claudeSessionId, path, cwd, records);
     })();
+    const title = excluded ? null : lastTitle(records);
+    if (title) this.opts.onTitle?.(claudeSessionId, title.name, title.kind);
     return {
       result: excluded ? null : { claudeSessionId, path, added: records.length, reset },
       more: offset + end < stat.size && end > 0,
