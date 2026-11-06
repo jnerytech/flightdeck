@@ -5,10 +5,12 @@
  * import them directly; `--tier`: only those tiers, classified from the code, without the coverage
  * gate; `--pr`: every unit and component test plus the related tests of the other tiers, the PR's
  * check on CI, #309), and checks the changed files' coverage. `--keep-coverage` writes the lcov
- * report into that folder and keeps it (SonarCloud reads it).
+ * report into that folder and keeps it (SonarCloud reads it). `--list <file>` writes the selected
+ * test files there, one per line (`*` for the whole suite), and runs nothing: the Windows shards
+ * of a PR run that list (#399).
  */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { checkChanged } from "./lib/related-coverage.ts";
@@ -65,6 +67,19 @@ const plan = planRelated({
   readFile: (path) => readFileSync(resolve(ROOT, path), "utf8"),
 });
 (plan.code === 0 ? console.log : console.error)(plan.output);
+const listFlag = args.indexOf("--list");
+if (listFlag >= 0) {
+  const list = args[listFlag + 1];
+  if (!keep) rmSync(coverageDir, { recursive: true, force: true });
+  if (!list || list.startsWith("--")) {
+    console.error("test:related: --list needs a file to write the selection to");
+    process.exit(2);
+  }
+  const files = plan.files === "all" ? ["*"] : (plan.files ?? []);
+  writeFileSync(resolve(ROOT, list), files.map((file) => `${file}\n`).join(""));
+  console.log(`test:related: ${files.length} line(s) written to ${list}`);
+  process.exit(plan.code);
+}
 if (!plan.command) {
   if (!keep) rmSync(coverageDir, { recursive: true, force: true });
   process.exit(plan.code);
