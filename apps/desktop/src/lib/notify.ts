@@ -33,6 +33,7 @@ export function summaryNotifications(
   const notifications: AboutNotification[] = next.pendingPermissions
     .filter((p) => !known.has(p.requestId))
     .map((p) => ({
+      event: "needs-you" as const,
       title: t("notify.waiting", { label }),
       body: t("notify.allow", { tool: p.toolName }),
       ...(linkFor ? { link: linkFor(p.requestId) } : {}),
@@ -49,8 +50,18 @@ export function summaryNotifications(
     }));
   if (IN_TURN.has(prev.status) && next.status === "idle") {
     notifications.push({
+      event: "turn-finished",
       title: t("notify.turnDone", { label }),
       body: t("notify.turnDoneBody"),
+      ...(names ? { about: { subject: names.subject, host: names.host } } : {}),
+    });
+  }
+  // A turn that ends in an error is news of its own.
+  if (IN_TURN.has(prev.status) && next.status === "error") {
+    notifications.push({
+      event: "session-failed",
+      title: t("notify.failed", { label }),
+      body: t("notify.failedBody"),
       ...(names ? { about: { subject: names.subject, host: names.host } } : {}),
     });
   }
@@ -71,6 +82,7 @@ export function externalRequestNotification(
   t: T,
 ): AboutNotification {
   return {
+    event: "needs-you",
     title: t("notify.externalTitle"),
     body: `${args.hostName} · ${args.toolName}`,
     link: args.link,

@@ -85,7 +85,7 @@ export function createWebPlatform(
           for (const handler of linkHandlers) handler(link);
         };
       }
-      return false;
+      return true;
     },
     isFocused: () => win.document.hasFocus(),
     openExternal(url) {
