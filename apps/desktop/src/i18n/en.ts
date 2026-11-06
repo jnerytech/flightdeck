@@ -2208,6 +2208,8 @@ export const en: Dictionary = {
     close: "Close",
     opening: "Opening…",
     showChanges: "Show changes",
+    openOutside: "Open in its app",
+    reveal: "Show in folder",
     showFile: "Show the file",
     jumpLatestOne: "Jump to latest ({n} new change)",
     jumpLatestMany: "Jump to latest ({n} new changes)",
