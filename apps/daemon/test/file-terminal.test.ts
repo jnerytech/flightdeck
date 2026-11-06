@@ -83,6 +83,19 @@ describe("file-terminal: a terminal's folder is a target of the Files viewer (#5
     ]);
   });
 
+  test("the terminal target only reads: a diff, a write or a revert through it are refused (review of #506)", async () => {
+    const { files, terminalId, store } = await setup();
+    const changes = new Changes({ db: store.db });
+    const target = `terminal:${terminalId}`;
+    expect(
+      await Promise.all([
+        reason(changes.get(target)),
+        reason(files.write(target, "a.ts", "changed\n", "h")),
+        reason(files.revert(target, "a.ts", true)),
+      ]),
+    ).toEqual(["review_target_invalid", "review_target_invalid", "review_target_invalid"]);
+  });
+
   test("a host with files and terminals announces file.terminal", async () => {
     const ctx = await setup();
     const server = startServer({
