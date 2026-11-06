@@ -3,6 +3,7 @@ import type { Command } from "@flightdeck/protocol";
 import { FlightdeckError } from "../src/errors.ts";
 import { type ServerContext, serverContext } from "../src/server/context.ts";
 import { afterAck, type Call, type Handler, runHandler } from "../src/server/dispatch.ts";
+import { HANDLERS } from "../src/server/handlers/index.ts";
 import type { Outgoing, Socket } from "../src/server/transport.ts";
 import type { ServerOptions } from "../src/server.ts";
 
@@ -82,5 +83,34 @@ describe("server-dispatch", () => {
       feature = error instanceof FlightdeckError ? error.params?.feature : String(error);
     }
     expect(feature).toBe("vault");
+  });
+
+  test("runenv.watch and run.watch answer first, then replay what is live (ack, replay, live)", async () => {
+    const live = { cardId: "c1" };
+    const server = {
+      need: (key: string) =>
+        key === "runenv"
+          ? { manager: { watch: () => () => {}, live: () => [live] } }
+          : { workflows: { watch: () => () => {}, activeRuns: () => [live] } },
+    } as unknown as ServerContext;
+    const frames: Record<string, unknown[]> = {};
+    for (const [type, id] of [
+      ["runenv.watch", "1"],
+      ["run.watch", "2"],
+    ] as const) {
+      const sent: unknown[] = [];
+      const c: Call = { ws: { data: {} } as Socket, send: (frame) => sent.push(frame), server };
+      const handler = HANDLERS[type] as Handler<typeof type>;
+      await runHandler(
+        handler,
+        { id, type, payload: {} } as Extract<Command, { type: typeof type }>,
+        c,
+      );
+      frames[type] = sent.map((frame) => (frame as { type: string }).type);
+    }
+    expect(frames).toEqual({
+      "runenv.watch": ["ack", "runenv.updated"],
+      "run.watch": ["ack", "run.updated"],
+    });
   });
 });
