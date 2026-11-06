@@ -781,6 +781,9 @@ export const en: Dictionary = {
     discardInstead: "Discard card",
   },
   shell: {
+    quotaLabel: "Plan quota {state}: {window} at {percent}% on {host}, resets in {remaining}",
+    quotaLabelNoReset: "Plan quota {state}: {window} at {percent}% on {host}",
+    quotaLevels: { ok: "fine", near: "near the limit", reached: "limit reached" },
     host: "Host: {host}",
     noHost: "No host yet",
     hostItem: "{host}, {state}",
@@ -3407,6 +3410,23 @@ export const en: Dictionary = {
       fix: "How to install it",
       dismiss: "Dismiss",
     },
+  resumeOffer: {
+    title: "Resume interrupted sessions",
+    intro:
+      "The daemon of {host} restarted while these were running. Resume reattaches each one and sends: {text} The original request is not sent again.",
+    rowRan: "ran {n} min",
+    resumeSelected: "Resume selected",
+    notNow: "Not now",
+    dismissAll: "Dismiss all",
+    resumed: "Resumed",
+    failed: "Could not resume: {reason}",
+    retry: "Retry {name}",
+    reopen: "Resume interrupted sessions ({n})",
+    auto: "Resume automatically after a restart",
+    autoHint:
+      "When this host's daemon restarts, the sessions it interrupted are resumed at once, with a notice, and no question.",
+    autoOne: "Resumed {n} session after the restart: {names}",
+    autoMany: "Resumed {n} sessions after the restart: {names}",
   },
   simple: {
     modeLabel: "Simple mode",

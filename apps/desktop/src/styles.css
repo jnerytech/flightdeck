@@ -1325,6 +1325,39 @@
   }
 }
 
+/* The plan quota in the top bar (issue #118): a small meter and its percent; near or at the limit
+   the mark and the bar take the status colours (the words are in the name and the tooltip). */
+@utility top-bar-quota {
+  gap: 0.375rem;
+  padding-inline: 0.5rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  &[data-level="near"] {
+    --quota-tone: var(--color-status-needs-you);
+  }
+  &[data-level="reached"] {
+    --quota-tone: var(--color-status-error);
+  }
+  & > svg[data-mark] {
+    color: var(--quota-tone);
+  }
+  /* Near the limit the shared meter takes the needs-you tone (at the limit it is hot). */
+  &[data-level="near"] meter::-webkit-meter-optimum-value {
+    background: var(--quota-tone);
+  }
+  &[data-level="near"] meter::-moz-meter-bar {
+    background: var(--quota-tone);
+  }
+}
+
+@utility top-bar-quota-window {
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+  @media (max-width: 959px) {
+    display: none;
+  }
+}
+
 /* The top bar's right side: search, theme, the bell and the version, never wrapping. */
 @utility top-bar-actions {
   display: flex;
