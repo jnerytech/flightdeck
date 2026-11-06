@@ -2188,6 +2188,16 @@ export const ptBR = {
     unifiedLabel: "Diff unificado",
     splitLabel: "Diff lado a lado",
   },
+  files: {
+    tab: "Arquivos",
+    region: "Arquivos do repositório",
+    filter: "Filtrar por nome",
+    hidden: "Oculto",
+    changedInside: "tem mudanças",
+    loading: "Carregando…",
+    noMatch: "Nada corresponde ao filtro.",
+    truncated: "Esta pasta tem mais entradas do que as mostradas aqui.",
+  },
   changes: {
     tab: "Mudanças",
     conversationTab: "Conversa",

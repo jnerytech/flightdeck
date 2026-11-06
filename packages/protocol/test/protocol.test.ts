@@ -521,6 +521,7 @@ const validCommands: Record<CommandType, unknown> = {
   "changes.revert": { target: "card:k", path: "a.ts", confirm: true },
   "changes.undoRevert": { target: "card:k", path: "a.ts", confirm: true },
   "file.read": { target: "session:s", path: "a.ts" },
+  "file.list": { target: "session:s", dir: "" },
   "file.write": { target: "session:s", path: "a.ts", text: "x", expectedHash: "h" },
 };
 

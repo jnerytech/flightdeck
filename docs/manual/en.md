@@ -1146,6 +1146,14 @@ conversation. It is where you check what the agent did and send it back what to 
     the repository is refused too;
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
+- **Files tab** (when the host lists files): the session's repository as a tree. Folders come
+  first, then files, in natural order (`file2` before `file10`); a folder opens on click and is
+  read once. A changed file carries its status (new, modified, deleted, renamed) from the same diff
+  as the Changes tab, live, and every folder above it says **has changes**. A file that may hold a
+  credential shows as **Hidden**. `.git` and links that lead out of the repository never show.
+  **Filter by name** keeps the names that match among the folders already open, with the folders
+  on their way. A folder with more than 500 entries shows the first ones and says so. A session
+  outside git has no tree: the tab says so.
 - **Inline comments:**
   - click a line number to comment on it, and shift+click another to extend the range. A removed
     line is commented on its old side;

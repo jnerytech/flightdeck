@@ -1142,6 +1142,14 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     para fora do repositório também é recusado;
   - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
     lê de novo.
+- **Aba Arquivos** (quando o host lista arquivos): o repositório da sessão como árvore. Pastas
+  primeiro, depois arquivos, em ordem natural (`file2` antes de `file10`); uma pasta abre com um
+  clique e é lida uma vez. Um arquivo alterado mostra o status (novo, modificado, apagado,
+  renomeado) do mesmo diff da aba Mudanças, ao vivo, e cada pasta acima dele diz **tem mudanças**.
+  Um arquivo que pode guardar uma credencial aparece como **Oculto**. O `.git` e links que levam
+  para fora do repositório nunca aparecem. **Filtrar por nome** mantém os nomes que batem entre as
+  pastas já abertas, com as pastas no caminho. Uma pasta com mais de 500 entradas mostra as
+  primeiras e avisa. Uma sessão fora do git não tem árvore: a aba diz isso.
 - **Comentários inline:**
   - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
     Uma linha apagada é comentada pelo lado antigo;

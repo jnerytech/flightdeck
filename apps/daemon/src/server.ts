@@ -396,6 +396,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...(opts.webhook ? ["webhook"] : []),
     ...(opts.bg ? ["bg"] : []),
     ...(opts.changes ? ["review"] : []),
+    // Issue #506: the file explorer lists the folders of a session's repository.
+    ...(opts.files ? ["file.list"] : []),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
     ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
     ...(opts.agentcfg && opts.mcp ? ["agentcfg"] : []),
@@ -1220,6 +1222,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "session.clearPersona":
         return ok(command.type, await personaSessions().clear(command.payload));
+      case "file.list":
+        return ok(command.type, await files().list(command.payload.target, command.payload.dir));
       case "file.read":
         return ok(command.type, await files().read(command.payload.target, command.payload.path));
       case "file.write": {
