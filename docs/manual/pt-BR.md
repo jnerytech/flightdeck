@@ -292,6 +292,38 @@ hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, *
 **falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
 O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
 terminal com `flightdeckd doctor`.
+### Confiar em um projeto
+
+Um projeto (um repositório) pode trazer configuração própria: hooks que rodam comandos sozinhos,
+servidores MCP que iniciam programas, configurações com ferramentas liberadas, um `CLAUDE.md`,
+agentes, skills e comandos. Em uma sessão que o Flightdeck inicia, essa configuração carrega
+**somente em uma pasta em que você confiou**. As pastas em que você já trabalhava quando isso
+chegou (os projetos do quadro e as pastas das suas sessões anteriores) têm confiança; um
+repositório que você clonar depois, ou uma pasta que você adicionar, começa sem confiança.
+
+- Em uma pasta sem confiança a sessão carrega as suas configurações, não as do projeto, e
+  **também não os seus servidores MCP nem os seus plugins** (o Claude Code é instruído a usar só o
+  servidor MCP que o Flightdeck dá). O `CLAUDE.md`, os agentes e as skills do projeto também não
+  carregam. Um aviso no alto da sessão diz isso, com **Revisar e confiar**.
+- A página do projeto tem **Configuração do projeto**: o que o projeto carregaria, lido sem rodar
+  nada (hooks por evento e servidores MCP com o comando inteiro, em um bloco com rolagem e um
+  aviso quando um comando é longo ou tem várias linhas; programas que as configurações executam,
+  como `apiKeyHelper` e `statusLine`; variáveis de ambiente que desviam tráfego ou código, com o
+  valor, e os nomes das outras, nunca os valores; plugins; toda outra chave de configuração
+  presente; ferramentas liberadas; agentes, skills e comandos, e os que trazem hooks, servidores
+  ou permissões de ferramentas no cabeçalho; `CLAUDE.md`; e arquivos que não puderam ser lidos), o custo de não confiar e
+  **Confiar neste projeto**. Ele pergunta antes, citando o projeto e o host, porque hooks e
+  servidores MCP com confiança rodam comandos naquele computador sem perguntar a você. **Revogar a
+  confiança** não pergunta. Confiar vale para as pastas dentro do projeto, não para as ao redor.
+- Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
+  projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
+  segundo plano seguem a mesma regra das sessões do app.
+- O worktree de um card sempre lê a configuração do projeto da pasta principal dele, então uma
+  branch nunca traz hooks próprios, com confiança ou sem.
+- Confiar só funciona a partir do próprio computador do host ou pela Tailscale (como liberar uma pasta ou sessões sem pedidos); revogar funciona de qualquer lugar.
+- A decisão fica no host (`project_trust` no banco dele), por host, e é registrada no log. Um host
+  que não anuncia `projectTrust` carrega tudo, como antes.
+
 ### Sessões sem pedidos de permissão
 
 Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem

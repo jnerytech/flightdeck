@@ -62,6 +62,10 @@ export interface SessionManagerOptions {
   allowBypass?: () => boolean;
   /** Folders being removed (issue #152): no session starts in one. */
   folderLocks?: { isHeld(cwd: string): boolean };
+  /** Whether a folder's own configuration may load in a session (issue #196); absent: it always does. */
+  trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
+  /** Looks at a folder's git boundaries before its run is decided (issue #196); awaited by every async entry. */
+  prepareTrust?: (cwd: string) => Promise<void>;
   baseEnv: Record<string, string | undefined>;
   /** Plan quota readings of any session go to the host's quota (phase 7). */
   onQuota?: (readings: QuotaReading[]) => void;
@@ -343,6 +347,7 @@ export class SessionManager {
     this.emit(id, { type: "session.status", status: "starting" });
     this.emitSummary(id);
     if (payload.effort) this.efforts.set(id, payload.effort);
+    await this.opts.prepareTrust?.(cwd);
     this.startRun(id);
     if (payload.prompt === undefined) this.setStatus(id, "idle", "no first prompt");
     else this.deliver(id, payload.prompt);
@@ -383,6 +388,7 @@ export class SessionManager {
       resumedFrom: opts.claudeSessionId,
     });
     this.emit(id, { type: "session.status", status: "starting" });
+    await this.opts.prepareTrust?.(cwd);
     this.startRun(id, opts.claudeSessionId);
     this.setStatus(id, "idle", "retomada do histórico");
     return { sessionId: id };
@@ -436,6 +442,8 @@ export class SessionManager {
   /** Reopens an `ended` or `error` session with the stored Claude session id. */
   resume(sessionId: string): Promise<void> {
     const session = this.get(sessionId);
+    // The refusal is thrown at once (callers and tests read it without awaiting), the rest waits
+    // for the folder's git boundaries.
     if (session.status !== "ended" && session.status !== "error") {
       throw new FlightdeckError(
         "invalid_state",
@@ -445,16 +453,15 @@ export class SessionManager {
     }
     // Not in a folder a removal is working on.
     if (this.opts.folderLocks?.isHeld(session.cwd)) throw folderRemoving(session.cwd);
-    const reopen = () => {
-      this.startRun(sessionId, session.claudeSessionId ?? undefined);
-      this.setStatus(sessionId, "idle", "retomada");
-    };
+    return this.reattach(sessionId, session);
+  }
+
+  private async reattach(sessionId: string, session: SessionSummary): Promise<void> {
+    await this.opts.prepareTrust?.(session.cwd);
     // Phase 39: an OpenCode session is checked again before it reopens; a refusal leaves it ended.
-    const preflight =
-      session.runtime === "opencode" ? this.runtimeOf(session).preflight : undefined;
-    if (preflight) return preflight.call(this.runtimeOf(session), session.cwd).then(reopen);
-    reopen();
-    return Promise.resolve();
+    if (session.runtime === "opencode") await this.runtimeOf(session).preflight?.(session.cwd);
+    this.startRun(sessionId, session.claudeSessionId ?? undefined);
+    this.setStatus(sessionId, "idle", "retomada");
   }
 
   /** Accepted `updatedPermissions` also go to these listeners (the board's project rules). */
@@ -660,6 +667,7 @@ export class SessionManager {
         FLIGHTDECK_SESSION: sessionId,
       },
       canUseTool: (toolName, input, ctx) => this.canUse(sessionId, persona, toolName, input, ctx),
+      ...(this.opts.trust ? { trust: this.opts.trust(session.cwd) } : {}),
       ...this.optionalRunOptions(sessionId, session.model, resume, persona, agents),
     });
     const live: LiveSession = { run, queue: [], closing: false };
