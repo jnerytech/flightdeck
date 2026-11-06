@@ -1801,6 +1801,10 @@ export const ptBR = {
     modeMenuTitle: "Modo",
     modeBypassOff: "Desligado neste host",
     modeBypassHow: "Ligue nas configurações do host",
+    modelChip: "Modelo: {model}",
+    modelMenuTitle: "Modelo",
+    modelMore: "Mais modelos",
+    effortMenu: "Esforço",
     modeLooser: "Mais solto que o modo em que a sessão começou",
     modelLabel: "Modelo",
     modelDefault: "Modelo padrão",
@@ -1907,6 +1911,22 @@ export const ptBR = {
     effortDefault: "Esforço padrão",
     create: "Criar sessão",
     needFolder: "Este host não tem pasta permitida: acrescente uma nas configurações dele",
+  },
+  /** What each model is for, in the Model menu and the tooltip of the chip. */
+  modelExplain: {
+    default: "O modelo que o Claude Code escolhe",
+    opus: "O mais capaz; o mais lento",
+    sonnet: "Equilibrado: capaz e rápido",
+    haiku: "O mais rápido e leve",
+    version: "Uma versão específica",
+  },
+  efforts: {
+    default: { name: "Esforço padrão", explain: "O nível do próprio modelo" },
+    low: { name: "Baixo", explain: "O mais rápido, pensa pouco" },
+    medium: { name: "Médio", explain: "Equilibrado" },
+    high: { name: "Alto", explain: "Pensa mais, mais lento" },
+    xhigh: { name: "Muito alto", explain: "Pensa bem mais" },
+    max: { name: "Máximo", explain: "Pensa ao máximo; para os problemas mais difíceis" },
   },
   modes: {
     option: "{name}: {description}",

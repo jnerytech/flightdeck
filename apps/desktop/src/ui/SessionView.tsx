@@ -1,4 +1,5 @@
 import {
+  type EffortLevel,
   type PermissionMode,
   type PermissionUpdate,
   SESSION_IMAGE_MAX_BYTES,
@@ -12,10 +13,10 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
-import { MODELS } from "@/components/personas/model-select";
 import { ActivityLine } from "@/components/session/activity-line";
 import { MessageActions } from "@/components/session/message-actions";
 import { ModeChip } from "@/components/session/mode-chip";
+import { ModelChip } from "@/components/session/model-chip";
 import {
   Composer,
   ComposerDock,
@@ -77,6 +78,8 @@ export interface SessionActions {
   /** Changes the permission mode / the model (null: the default) of the open session. */
   setMode?(mode: SettableMode): Promise<void>;
   setModel?(model: string | null): Promise<void>;
+  /** Changes the effort of the live session; null is the model's default. */
+  setEffort?(effort: EffortLevel | null): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
   resume(): Promise<void>;
@@ -307,6 +310,8 @@ interface SessionViewProps {
   fork?: () => void;
   /** Phase 39: the agent; an OpenCode session says so and offers no fork. */
   runtime?: "claude" | "opencode";
+  /** The host changes the effort of a live session (`session.effort`). */
+  effort?: boolean;
   /** Phase 39: OpenCode's models, for the live switch of an OpenCode session (none until known). */
   models?: readonly string[];
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
@@ -441,6 +446,7 @@ export function SessionView(props: SessionViewProps) {
     void actions.setMode?.(next);
   };
   const [model, setModel] = useState("");
+  const [effort, setEffort] = useState<EffortLevel | null>(null);
   const slash = session.slashCommands;
   const described = session.commands;
   // A daemon that describes the commands gives each its group and its description; an older one
@@ -530,7 +536,7 @@ export function SessionView(props: SessionViewProps) {
   const pickers = {
     ...(props.settings && actions.setModel && (!opencode || props.models)
       ? {
-          model: (
+          model: opencode ? (
             <NativeSelect
               compact
               inline
@@ -542,8 +548,24 @@ export function SessionView(props: SessionViewProps) {
               }}
             >
               <option value="">{t("session.modelDefault")}</option>
-              <ModelOptions models={opencode ? (props.models ?? []) : MODELS} />
+              <ModelOptions models={props.models ?? []} />
             </NativeSelect>
+          ) : (
+            <ModelChip
+              t={t}
+              model={model}
+              current={session.model}
+              effort={effort}
+              effortAvailable={Boolean(props.effort && actions.setEffort)}
+              onPickModel={(value) => {
+                setModel(value);
+                void actions.setModel?.(value || null);
+              }}
+              onPickEffort={(level) => {
+                setEffort(level);
+                void actions.setEffort?.(level);
+              }}
+            />
           ),
         }
       : {}),
