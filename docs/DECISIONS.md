@@ -4383,18 +4383,3 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
   journeys into independent tests, which is #292, not a one-line change.
 
-## The palette, more (issue #147)
-
-- **Selection.** The row the keyboard is on is `--palette-selection` with a 1 px inset ring `--palette-selection-ring`. The ring is
-  what carries the 3:1 against the unselected rows (WCAG 1.4.11); the surface only has to be seen (1.1:1) and keep AA text on it,
-  because a surface that is 3:1 against the popover would be a block of colour. `theme-contrast` guards both themes.
-- **Scope.** The issue seeds the chips from the header scope (#126). That scope is not in this branch, so the palette seeds them from
-  the open screen instead: a board or a card gives host and project, any other screen of a host gives the host. When #126 lands,
-  `paletteScope` is the one place to change. Chips are local to one opening of the palette.
-- **The create row appears whenever the text matches no card**, even when a session or a project matches it (the issue's rule). It
-  is always last, never selected first, and Enter with nothing selected still searches the history.
-- **`#123`** is turned into the issue's full reference by asking the host (`issues.get`), because the app does not know the
-  repository; a pasted GitHub issue link carries it, and the host refuses a link to another repository.
-- **Alt, not Ctrl**, for the recents: `Ctrl+1…9` are the tab shortcuts. The recents keep their state order (needs you, running, the
-  rest, each in the order they were used) and are frozen when the palette opens.
-- **The cap (eight rows) applies to every section**, so the ninth action is behind "1 more". Typing narrows the list as before.
