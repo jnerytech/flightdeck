@@ -7,7 +7,7 @@ import { UsageIndexer, type UsageIndexerOptions } from "../src/costs/usage-index
 import { startDaemon } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
-import { newManager, poll, tempDir, workspace } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, poll, tempDir, workspace } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { insertSession, usageEntries, writeUsageTranscript } from "./usage-helpers.ts";
 
@@ -86,7 +86,7 @@ describe("carga-inicial", () => {
     expect(during?.divergences).toEqual([]);
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toEqual(["costs"]);
     gate.release();
@@ -210,7 +210,7 @@ describe("carga-inicial", () => {
     expect(await models()).toEqual([]);
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("costs");
   });
