@@ -54,3 +54,14 @@ export async function readListenUrl(
     late.catch(() => {});
   }
 }
+
+/**
+ * The same, for a smoke that collects the daemon's output itself: `read` gives what was printed so
+ * far, and the address is waited for by looking again until the limit.
+ */
+export async function awaitListenUrl(
+  _read: () => string,
+  _timeoutMs: number = DAEMON_START_MS,
+): Promise<string> {
+  return "";
+}

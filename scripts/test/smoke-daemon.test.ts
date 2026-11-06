@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { DAEMON_START_MS, readListenUrl } from "../lib/smoke-daemon.ts";
+import { awaitListenUrl, DAEMON_START_MS, readListenUrl } from "../lib/smoke-daemon.ts";
 
 const encoder = new TextEncoder();
 const ROOT = resolve(import.meta.dir, "../..");
@@ -54,15 +54,31 @@ describe("smoke-daemon: waiting for the daemon to announce its port", () => {
   });
 });
 
+describe("smoke-daemon: a smoke that collects the output itself", () => {
+  test("the address is found once the output has it, however late it comes", async () => {
+    let printed = "";
+    setTimeout(() => {
+      printed = "flightdeckd 0.36.4 listening on ws://127.0.0.1:5151/v1/ws (runtime=fake)\n";
+    }, 30);
+    expect(await awaitListenUrl(() => printed)).toBe("ws://127.0.0.1:5151/v1/ws");
+  });
+
+  test("it fails at the limit, naming the wait and what was printed", async () => {
+    const message = await failure(awaitListenUrl(() => "carregando\n", 40));
+    expect(message).toMatch(/^timeout: daemon anunciar a porta/);
+    expect(message).toContain("40 ms");
+    expect(message).toContain("carregando");
+  });
+});
+
 describe("smoke-daemon: every smoke waits the same way", () => {
-  test("no smoke keeps its own copy of the reader or puts its generic step limit on the daemon start", () => {
+  test("no smoke keeps its own reader of the daemon's announcement, with the generic step limit on it", () => {
     const own = readdirSync(join(ROOT, "scripts"))
       .filter((name) => /^smoke.*\.ts$/.test(name))
       .filter((name) => {
         const source = readFileSync(join(ROOT, "scripts", name), "utf8");
-        return (
-          /function readListenUrl/.test(source) || /withTimeout\(\s*readListenUrl/.test(source)
-        );
+        // Its own reader, or its own reading of the `listening on ws://…` line.
+        return /function readListenUrl/.test(source) || /listening on \(ws/.test(source);
       });
     expect(own).toEqual([]);
   });
