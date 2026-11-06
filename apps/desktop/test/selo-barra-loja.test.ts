@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { AppStore } from "../src/lib/app-store.ts";
 import { tauriPlatform } from "../src/platform/tauri/index.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { settlePlain as settle } from "./wait.ts";
 
 const stores: Array<{ dispose(): void }> = [];
 afterEach(() => {
@@ -93,11 +94,15 @@ describe("selo-barra-loja: the badge follows the bell (issue #233)", () => {
 
   test("a platform that fails to set it does not break the notification", async () => {
     const w = world();
+    let tried = false;
     w.mem.platform.setBadge = async () => {
+      tried = true;
       throw new Error("no taskbar");
     };
     w.notify({ title: "a", body: "" });
-    await Bun.sleep(1);
+    // The refusal has been met (and swallowed) once the shell was asked: wait for that, not a time.
+    await settle(() => tried);
+    await Promise.resolve();
     expect(w.store.getState().inbox).toHaveLength(1);
   });
 });
