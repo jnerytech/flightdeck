@@ -34,9 +34,49 @@ const PATH_SYNTAX = /[[\]{}!]/;
 
 /** What a wildcard of a path rule may stand for: the names the classifier calls a credential. */
 const NAMES = ["x", ".env", "id_rsa", "x.pem", "x.key", ".ssh", ".aws", "credentials"];
+/**
+ * The paths a partial wildcard (`.cl*`, `.s?h`, `package.js*`, `.github/work*`) may stand for, as
+ * segments: the control files and directories and the credential ones (issue #435). A wildcard
+ * that shares a segment with other characters is matched against each, over every run of
+ * consecutive segments, so a path that is sensitive only as a pair (`.config/gh`) is found too.
+ */
+const SENSITIVE = [
+  [".claude"],
+  [".git"],
+  [".github"],
+  [".husky"],
+  [".vscode"],
+  [".ssh"],
+  [".aws"],
+  [".config"],
+  [".flightdeck"],
+  [".env"],
+  [".env.local"],
+  [".mcp.json"],
+  [".claude.json"],
+  ["package.json"],
+  ["id_rsa"],
+  ["credentials"],
+  [".config", "gh"],
+  [".flightdeck", "config.json"],
+  [".claude", ".credentials.json"],
+  [".github", "workflows"],
+  [".vscode", "tasks.json"],
+];
+/** A segment's glob as a regular expression (`*` and `?` stay inside the segment). */
+const segmentGlob = (segment: string) =>
+  new RegExp(
+    `^${segment
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*+/g, "[^/]*")
+      .replace(/\?/g, "[^/]")}$`,
+    "i",
+  );
 /** What a `?` may stand for, one character at a time. */
 const CHARS = [..."abcdefghijklmnopqrstuvwxyz0123456789._-"];
 const WILDCARD = /(\*\*\/|\*\*|\*|\?)/;
+/** Whether a pattern has a wildcard at all. */
+const WILD = /[*?]/;
 const MAX_WILDCARDS = 6;
 
 /**
@@ -84,6 +124,29 @@ function instances(pattern: string): string[] | null {
   for (const name of NAMES) {
     out.add(render((_, part) => (part === "?" ? "x" : part === "**/" ? `${name}/` : name)));
   }
+  // A wildcard that shares a segment with other characters may still be a sensitive path there.
+  const segments = pattern.split("/");
+  const globs = segments.map((segment) => (WILD.test(segment) ? segmentGlob(segment) : null));
+  const plainSegment = (segment: string) => segment.replace(/\*+|\?/g, "x");
+  for (const names of SENSITIVE) {
+    for (let at = 0; at + names.length <= segments.length; at++) {
+      const run = names.map(
+        (name, k) => [name, segments[at + k] as string, globs[at + k]] as const,
+      );
+      const partial = run.some(([, , glob]) => glob !== null);
+      const fits = run.every(([name, segment, glob]) =>
+        glob ? glob.test(name) : segment.toLowerCase() === name,
+      );
+      if (!partial || !fits) continue;
+      out.add(
+        segments
+          .map((segment, i) =>
+            i >= at && i < at + names.length ? names[i - at] : plainSegment(segment),
+          )
+          .join("/"),
+      );
+    }
+  }
   return [...out];
 }
 
@@ -120,15 +183,21 @@ function pathLevel(
   const call = (path: string) =>
     classify(toolName, Object.fromEntries(keys.map((key) => [key, path])));
   const pattern = readAs(content);
-  const wild = pattern.search(/[*?]/);
-  // Backslashes are an escape in a pattern: this check does not follow them.
-  if (wild !== -1 && pattern.includes("\\")) return "any";
-  const paths = wild === -1 ? [pattern] : instances(pattern);
-  if (paths === null) return "any";
-  if (WRITE_TOOLS.has(toolName) && paths.some(isControl)) return "any";
-  const levels = paths.map(call);
+  // A backslash is a separator on Windows and an escape for the CLI: read the rule both ways, and
+  // the broader reading decides (issue #431). A drive path is not refused for its separators.
+  const readings = pattern.includes("\\")
+    ? [pattern.replaceAll("\\", "/"), pattern.replaceAll("\\", "")]
+    : [pattern];
+  // Removing a backslash can make a parent step (`.\./`): each reading is checked for one.
+  if (readings.some((reading) => reading.includes(".."))) return "any";
+  const wild = readings.some((reading) => WILD.test(reading));
+  const reached = readings.map((reading) => (WILD.test(reading) ? instances(reading) : [reading]));
+  if (reached.includes(null)) return "any";
+  const named = (reached as string[][]).flat();
+  if (WRITE_TOOLS.has(toolName) && named.some(isControl)) return "any";
+  const levels = named.map(call);
   // A pattern that can stand for a credential covers a high-risk call: it is not narrow.
-  if (wild !== -1 && levels.includes("high")) return "any";
+  if (wild && levels.includes("high")) return "any";
   return highest(levels);
 }
 

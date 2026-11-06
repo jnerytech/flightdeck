@@ -132,8 +132,9 @@ describe("pagina-host", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Ver todas as sessões" }));
     });
-    expect(store.hubFilter().host).toBe("pc");
-    expect(store.router.current.name).toBe("hub");
+    // The hub looks at the host for this visit; the filter kept for the next one is untouched.
+    expect(store.hubFilter().host).toBe("");
+    expect(store.router.current).toEqual({ name: "hub", host: "pc" });
     await act(async () => {
       store.router.push({ name: "host", host: hostId });
     });

@@ -5,7 +5,33 @@
  */
 export const ptBR = {
   inFlight: { stillWorking: "Ainda trabalhando…" },
-  nav: { back: "Voltar", forward: "Avançar" },
+  nav: { back: "Voltar", forward: "Avançar", overview: "Início" },
+  home: {
+    title: "Início",
+    range: "Últimos 7 dias · todos os hosts",
+    spend: "Gasto",
+    noBudget: "Sem orçamento definido",
+    ofBudget: "{spent} de {limit} de orçamento no mês",
+    turns: "Turnos",
+    turnsOk: "{n} ok",
+    turnsFailed: "{n} com falha",
+    tokens: "Tokens",
+    cacheRead: "{n} lidos do cache",
+    average: "Custo médio / turno",
+    avgTime: "Tempo médio do turno",
+    successRate: "{rate} de sucesso",
+    unknown: "—",
+    openCard: "Abrir {card}",
+    chart: "{card}, últimos 7 dias: {values}",
+    noHosts: "Nenhum host conectado ainda.",
+    partial: "Alguns hosts não responderam: {hosts}.",
+    olderDaemon: "Turnos com falha e tempo do turno pedem um daemon com os contadores do Início.",
+    loading: "Lendo os hosts…",
+    connecting: "Conectando aos seus hosts…",
+    noCosts: "Sem dados de custo de {hosts}",
+    avgBasis: "Só sessões gerenciadas",
+    ready: "O Início está pronto.",
+  },
   hosts: {
     status: {
       online: "online",
@@ -3426,6 +3452,7 @@ export const ptBR = {
       failed: "Não foi possível ler a configuração deste projeto.",
       sessionNotice:
         "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
+      sessionNoticeShort: "Esta pasta não tem confiança.",
       review: "Revisar e confiar",
     },
     notHere: "Este projeto não está neste host.",

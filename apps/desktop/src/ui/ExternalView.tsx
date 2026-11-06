@@ -2,7 +2,7 @@ import { Radio } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { PersonaSwitch } from "@/components/personas/persona-switch";
-import { Composer, SessionHeader, SessionPane } from "@/components/session/parts";
+import { Composer, RecapSlot, SessionHeader, SessionPane } from "@/components/session/parts";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -118,14 +118,14 @@ export function ExternalView(
         }
       />
       <BgPanel store={store} hostId={hostId} claudeSessionId={id} />
-      <div className="recap-slot">
+      <RecapSlot>
         <RecapPanel
           store={store}
           hostId={hostId}
           claudeSessionId={id}
           {...(session?.lastEventAt ? { stamp: session.lastEventAt } : {})}
         />
-      </div>
+      </RecapSlot>
       {requests.length > 0 && (
         <div className="flex flex-col gap-3 border-b p-3">
           {requests.map((request) => (

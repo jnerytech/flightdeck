@@ -313,6 +313,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
     await c.page.getByRole("button", { name: c.t("terminalUi.detach"), exact: true }).click();
     const attach = c.t("hostTerminal.attach", { cwd: "" }).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Back on alfa's page, which opens on its Overview: the terminals are in the Settings tab.
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .last()
+      .click();
     // The newest live terminal is this run's: one left by a run that failed comes first.
     await c.page
       .getByRole("button", { name: new RegExp(`^${attach}`) })
