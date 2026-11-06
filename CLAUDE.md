@@ -39,7 +39,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   process group, never the holder. `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
   `--priority` (for the maintainer's full gate) also lowers the other bun test processes of the
-  user while it runs.
+  user while it runs. What the slot and the light lane start, and every test run (the preload),
+  runs at `oom_score_adj` 1000 on Linux, so the kernel kills a leaking test before any session.
 - Tests for what you changed: `bun run test:related [--base <ref>] [--fast]`. It takes the files
   changed since the merge-base with `main` (or `<ref>`), picks the changed test files plus every
   test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
