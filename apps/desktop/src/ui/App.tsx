@@ -164,6 +164,7 @@ const CHORD_ROUTES: Record<string, Route> = {
   "go-needs-you": { name: "needs-you" },
   "go-projects": { name: "all-projects" },
   "go-costs": { name: "costs" },
+  "go-activity": { name: "activity" },
   "go-settings": { name: "settings" },
 };
 

@@ -3,7 +3,7 @@
  * PreToolUse (Bash|Edit|Write), in the main checkout and in its worktrees. It blocks staging
  * everything at once (docs/TDD.md), hand edits of generated files, test edits that add
  * .only/.skip/test.todo/toMatchSnapshot, commits whose subject breaks the format or the TDD
- * order, heavy runs outside `bun run slot --`, a session's hand merge or tag of a PR, and pushes of anything but the session's own work
+ * order, heavy runs outside `bun run slot --`, a worker's full coverage run (#674), a session's hand merge or tag of a PR, and pushes of anything but the session's own work
  * branch. Exit 2 blocks the call and shows the reason to Claude. The rules live in
  * scripts/lib/claude-hooks.ts, with their tests.
  */
@@ -16,6 +16,8 @@ import {
   commitViolation,
   commitWaived,
   generatedViolation,
+  heavyRunViolation,
+  heavyRunWaived,
   prMergeViolation,
   pushViolation,
   slotViolation,
@@ -37,6 +39,7 @@ const { command, file_path: filePath } = input?.tool_input ?? {};
 if (typeof command === "string") {
   block("command", commandViolation(command));
   block("slot", slotViolation(command, process.env));
+  block("slot-heavy", heavyRunViolation(command, process.env));
   block("pr-merge", prMergeViolation(command, process.env));
   const cwd = typeof input.cwd === "string" ? input.cwd : ROOT;
   const repo = {
@@ -63,6 +66,8 @@ if (typeof filePath === "string") {
     }),
   );
 }
+if (typeof command === "string" && heavyRunWaived(command))
+  logHook("guard", "slot-heavy", "waived");
 if (typeof command === "string" && commitWaived(command)) logHook("guard", "commit", "waived");
 else logHook("guard", null);
 process.exit(0);

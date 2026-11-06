@@ -52,9 +52,10 @@ describe("host-tabs: the host a screen belongs to (#644)", () => {
       routeHost({ name: "costs", host: "A" }),
       routeHost({ name: "all-projects", host: "A" }),
       routeHost({ name: "teams", host: "A" }),
+      routeHost({ name: "activity" }),
       routeHost(settings),
       routeHost(home),
-    ]).toEqual(["A", "B", "A", "C", null, null, null, null, null, null]);
+    ]).toEqual(["A", "B", "A", "C", null, null, null, null, null, null, null]);
   });
 });
 
