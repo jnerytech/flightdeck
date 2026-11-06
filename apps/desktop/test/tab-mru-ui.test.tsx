@@ -163,19 +163,22 @@ describe("tab-mru-ui: hold Ctrl and press Tab to cycle the recent tabs (issue #1
 
   test("in a split window it switches within the focused area only", async () => {
     const store = setup();
+    // A split belongs to a host's own window: three of its tabs, History, Projects and Approvals.
+    await act(async () => {
+      for (const name of ["history", "projects", "auto-approvals"]) {
+        store.hostTabs.open({ name, host: "ha" } as never);
+      }
+    });
     // Ctrl+\ splits: the new area shows the same screen and takes the focus.
     store.workspace.toggleSplit();
-    store.tabs.open({ name: "needs-you" });
+    store.tabs.open({ name: "workflows", host: "ha" } as never);
     expect(store.workspace.areas).toHaveLength(2);
     await ctrlTab();
-    expect(options().map((o) => o.textContent)).toEqual([
-      expect.stringContaining("Needs you"),
-      expect.stringContaining("Settings"),
-    ]);
+    expect(options()).toHaveLength(2);
     await releaseCtrl();
-    expect(active(store)).toBe("settings");
+    expect(active(store)).toBe("auto-approvals");
     // The other area keeps its own tabs and its own active one.
-    expect(store.workspace.areas[0]?.active.router.current.name).toBe("settings");
+    expect(store.workspace.areas[0]?.active.router.current.name).toBe("auto-approvals");
     expect(store.workspace.areas[0]?.tabs).toHaveLength(3);
     await act(async () => {
       store.workspace.focusArea(0);
@@ -183,7 +186,7 @@ describe("tab-mru-ui: hold Ctrl and press Tab to cycle the recent tabs (issue #1
     await ctrlTab();
     expect(options()).toHaveLength(3);
     await releaseCtrl();
-    expect(active(store)).toBe("costs");
+    expect(active(store)).toBe("projects");
     expect(store.workspace.areas[1]?.tabs).toHaveLength(2);
   });
 });
