@@ -281,7 +281,9 @@ em vez de depender de cuidado.
 - `bun run pr -- next` lists the open PRs in merge order with what each still needs; a PR that
   conflicts with its base (GitHub's mergeable state) waits until `main` is merged into it and the
   conflicts resolved. `bun run pr -- update <n>` brings a PR up to date with its base when there is
-  no conflict. `bun run pr -- merge <n>` (the coordinator only; the guard hook refuses it in a
+  no conflict, and turns its auto-merge back on (#613). GitHub turns auto-merge off when a PR
+  conflicts: after merging `main` into it by hand and pushing, run `bun run pr -- auto <n>` again.
+  `bun run pr -- merge <n>` (the coordinator only; the guard hook refuses it in a
   session) merges by hand with a merge commit, under the same conditions; a PR behind `main` merges,
   with how far behind it is printed as a note.
 - A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
