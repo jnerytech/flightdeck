@@ -107,9 +107,9 @@ async function openDiff(language: "en" | "pt-BR", toggle: string) {
 describe("file-diff-ui: the file's changes against HEAD follow the session live (#506)", () => {
   test("the toggle shows the diff; at the bottom, each new edit brings the newest hunk into view", async () => {
     const { el, push } = await openDiff("en", "Show changes");
-    expect(screen.queryByText("edit number 1")).not.toBeNull();
+    expect(screen.queryByText(/edit number 1$/)).not.toBeNull();
     await push(2);
-    expect(screen.queryByText("edit number 2")).not.toBeNull();
+    expect(screen.queryByText(/edit number 2$/)).not.toBeNull();
     expect(el.scrollTop).toBe(1000);
     expect(screen.queryByRole("button", { name: /Jump to latest/ })).toBeNull();
   });
