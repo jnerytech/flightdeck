@@ -102,10 +102,7 @@ export function TerminalPage(
       if (!alive || !parent) return;
       const host = store.terminalHost(hostId);
       // The terminal's folder, for the relative paths of its output: known once the list answers.
-      let folderKnown: (cwd: string | null) => void = () => {};
-      const folder = new Promise<string | null>((resolve) => {
-        folderKnown = resolve;
-      });
+      let folder: Promise<string | null> = Promise.resolve(null);
       const xterm = createXtermScreen(deps, {
         theme: terminalTheme(store.theme.resolved),
         fontSize: store.terminalFont.value,
@@ -162,8 +159,9 @@ export function TerminalPage(
       );
       await current.start();
       // A "Claude aqui" terminal carries the launch its session in the central also carries.
-      const info = (await host.list().catch(() => [])).find((t) => t.terminalId === terminalId);
-      folderKnown(info?.cwd ?? null);
+      const listed = host.list().catch(() => []);
+      folder = listed.then((list) => list.find((t) => t.terminalId === terminalId)?.cwd ?? null);
+      const info = (await listed).find((t) => t.terminalId === terminalId);
       if (alive) setLaunchId(info?.launchId ?? null);
     })();
     return () => {
