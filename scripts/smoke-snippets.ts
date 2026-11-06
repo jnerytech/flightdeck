@@ -13,6 +13,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
 import { defaultHistorySources } from "../apps/daemon/src/snippets/history.ts";
+import { pollUntil } from "./lib/poll.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
@@ -70,14 +71,8 @@ const SNIPPETS_FILE = `- name: testes-rapidos
 let step = "preparar";
 const log = (msg: string) => console.log(`  · ${msg}`);
 
-async function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
-  const deadline = Date.now() + TIMEOUT_MS;
-  for (;;) {
-    const value = check();
-    if (value) return value;
-    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50);
-  }
+function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
+  return pollUntil(check, () => new Error(`timeout: ${what}`), TIMEOUT_MS, 50);
 }
 
 class Client {

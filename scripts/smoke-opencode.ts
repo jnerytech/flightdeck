@@ -13,6 +13,7 @@ import type { HostInfoResult } from "@flightdeck/protocol";
 import { startDaemon } from "../apps/daemon/src/main.ts";
 import { installFakeOpenCode } from "../apps/daemon/test/fake-opencode.ts";
 import { FrameClient } from "../apps/daemon/test/history-helpers.ts";
+import { pollUntil } from "./lib/poll.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -33,14 +34,8 @@ let step = "prepare";
 const log = (msg: string) => console.log(`  · ${msg}`);
 const quiet = { log: () => {}, error: () => {} };
 
-async function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
-  const deadline = Date.now() + TIMEOUT_MS;
-  for (;;) {
-    const value = check();
-    if (value) return value;
-    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20);
-  }
+function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
+  return pollUntil(check, () => new Error(`timeout: ${what}`), TIMEOUT_MS, 20);
 }
 
 interface Event {

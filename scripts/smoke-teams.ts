@@ -18,6 +18,7 @@ import {
   type ServerMessage,
   type TeamInfo,
 } from "@flightdeck/protocol";
+import { pollUntil } from "./lib/poll.ts";
 import { awaitListenUrl } from "./lib/smoke-daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
@@ -48,17 +49,8 @@ function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
 }
 
 /** Polls an async check until it holds. */
-async function until<T>(
-  check: () => Promise<T | null | undefined | false>,
-  what: string,
-): Promise<T> {
-  const deadline = Date.now() + TIMEOUT_MS;
-  for (;;) {
-    const found = await check();
-    if (found) return found;
-    if (Date.now() > deadline) throw new Error(`timeout esperando ${what}`);
-    await Bun.sleep(40);
-  }
+function until<T>(check: () => Promise<T | null | undefined | false>, what: string): Promise<T> {
+  return pollUntil(check, () => new Error(`timeout esperando ${what}`), TIMEOUT_MS, 40);
 }
 
 class Client {
