@@ -55,7 +55,7 @@ function FileDiff(props: {
   }
   if (file.tooLarge) {
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="row-wrap">
         <p className="text-muted-foreground text-xs">
           {file.bytes === undefined
             ? t("changes.tooLargeNoteNoSize")
