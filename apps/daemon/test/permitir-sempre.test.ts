@@ -263,4 +263,41 @@ describe("permitir-sempre", () => {
     expect(file).toMatchObject({ ok: true });
     expect((await result())?.content ?? "").toContain("notes.txt");
   });
+
+  test("over the wire, the file a Write is about to create gets its rule; another path not there yet does not (#395)", async () => {
+    const { manager, root, requestId, open, result } = await asking("[tool] x");
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [root],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const rule = (ruleContent: string) => ({
+      type: "addRules",
+      rules: [{ toolName: "Write", ruleContent }],
+      behavior: "allow",
+      destination: "localSettings",
+    });
+    const other = await client.request("permission.respond", {
+      requestId,
+      decision: "allow",
+      updatedPermissions: [rule("later.txt")],
+    });
+    expect(other).toMatchObject({ ok: false, error: { code: "invalid_permission_update" } });
+    expect(open()).toBe(1);
+    // The fake runtime's Write creates fake.txt, which is not on disk until it is allowed.
+    const own = await client.request("permission.respond", {
+      requestId,
+      decision: "allow",
+      updatedPermissions: [rule("fake.txt")],
+    });
+    expect(own).toMatchObject({ ok: true });
+    expect((await result())?.content ?? "").toContain("fake.txt");
+  });
 });

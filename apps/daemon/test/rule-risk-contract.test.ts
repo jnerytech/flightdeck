@@ -147,7 +147,9 @@ describe("rule-risk: a rule that names a folder covers what is inside it (issue 
       async () => "file",
     );
     expect([unc("//server/share/x"), unc("\\\\server\\share\\x")]).toEqual(["dir", "dir"]);
-    const hung = await pathKinds(["a.ts"], "/proj", "/home/me", () => new Promise(() => {}), 5);
+    const hung = await pathKinds(["a.ts"], "/proj", "/home/me", () => new Promise(() => {}), {
+      timeoutMs: 5,
+    });
     expect(hung("a.ts")).toBe("dir");
     const broken = await pathKinds(["a.ts"], "/proj", "/home/me", () =>
       Promise.reject(new Error("EIO")),
@@ -201,6 +203,23 @@ describe("rule-risk: the exact paths the server looks up, and the check without 
       { type: "setMode", mode: "acceptEdits", destination: "session" },
     ];
     expect(rulePaths(updates)).toEqual(["src/a.ts"]);
+  });
+
+  test("the file the request itself writes counts as a file before it exists; any other missing path does not", async () => {
+    const kind = await pathKinds(
+      ["new.ts", "other.ts"],
+      "/proj",
+      "/home/me",
+      async () => "missing",
+      {
+        target: "new.ts",
+      },
+    );
+    expect([kind("new.ts"), kind("other.ts")]).toEqual(["file", "missing"]);
+    const absolute = await pathKinds(["/proj/new.ts"], "/proj", "/home/me", async () => "missing", {
+      target: "/proj/new.ts",
+    });
+    expect(absolute("/proj/new.ts")).toBe("file");
   });
 
   test("checkUpdates reads a path it was not told about as a folder, so the rule is refused", () => {
