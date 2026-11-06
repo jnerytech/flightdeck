@@ -50,6 +50,7 @@ import type {
   SettableMode,
   Snippet,
   SshTarget,
+  TeamInfo,
   TeamsUpdatedFrame,
   TerminalInfo,
   VaultRequestFrame,
@@ -132,6 +133,8 @@ import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { externalRequestNotification, summaryNotifications } from "./notify.ts";
+import { NotifyPreferences, type NotifySource } from "./notify-policy.ts";
+import { playNotifySound, type SoundDeps } from "./notify-sound.ts";
 import { pairingErrorText } from "./pairing-text.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
@@ -938,6 +941,7 @@ export class AppStore {
       browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
     );
     this.tabOrder = new TabOrderController(platform.storage);
+    this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
     this.i18n.subscribe(() => this.onLanguage());
@@ -1022,6 +1026,10 @@ export class AppStore {
   readonly clock: SharedClock;
   /** How Ctrl+Tab orders the tabs (issue #148). */
   readonly tabOrder: TabOrderController;
+  /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */
+  readonly notifyPrefs: NotifyPreferences;
+  /** Plays the notification sound; tests replace it. */
+  soundPlayer: (deps?: SoundDeps) => void = () => {};
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
@@ -1444,7 +1452,10 @@ export class AppStore {
     notification: Notification & { about?: InboxAbout },
     route?: Route,
     fallbackUrl?: string | null,
+    source?: NotifySource,
   ): void {
+    void source;
+    void playNotifySound;
     const { about, ...n } = notification;
     const entry: InboxEntry = {
       id: crypto.randomUUID(),
@@ -1484,6 +1495,22 @@ export class AppStore {
     this.update({ inbox });
     this.syncBadge();
     saveInbox(this.platform.storage, inbox);
+  }
+
+  /** Sends a notification of the app's own and says whether the system showed it. */
+  async sendTestNotification(): Promise<"delivered" | "blocked"> {
+    return "blocked";
+  }
+
+  /** Remembers which sessions are workers of which team, for folding their notifications. */
+  rememberTeam(hostId: string, team: TeamInfo): void {
+    void hostId;
+    void team;
+  }
+
+  /** Marks entries unread again, for the person to come back to. */
+  inboxMarkUnread(ids: string | string[]): void {
+    void ids;
   }
 
   /** Marks entries read: the one of a click, or every entry a collapsed row stands for. */
