@@ -3414,6 +3414,7 @@ export const ptBR = {
       fix: "Como instalar",
       dismiss: "Dispensar",
     },
+  },
   resumeOffer: {
     title: "Retomar as sessões interrompidas",
     intro:

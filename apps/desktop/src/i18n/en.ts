@@ -3410,6 +3410,7 @@ export const en: Dictionary = {
       fix: "How to install it",
       dismiss: "Dismiss",
     },
+  },
   resumeOffer: {
     title: "Resume interrupted sessions",
     intro:
