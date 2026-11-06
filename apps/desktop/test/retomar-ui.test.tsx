@@ -9,6 +9,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { loadAutoResume, saveAutoResume } = await import("../src/lib/resume-offer.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -116,6 +117,53 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
     const failed = within(dialog() as HTMLElement);
     expect(failed.getByText(/Could not resume/)).toBeTruthy();
     expect(failed.getByRole("button", { name: /Retry Revisar o login/ })).toBeTruthy();
+  });
+
+  test("Retry resumes a session that failed once it can be resumed again", async () => {
+    const { d, ids } = await restarted();
+    await connect(d);
+    await settle(() => dialog() !== null);
+    await d.manager.resume(ids[0] as string);
+    await press("Resume selected");
+    await settle(() => within(dialog() as HTMLElement).queryAllByText("Resumed").length === 2);
+    await poll(() => d.manager.get(ids[0] as string).status === "idle");
+    interrupt(d, [ids[0] as string]);
+    await press(/Retry Revisar o login/);
+    await settle(() => within(dialog() as HTMLElement).queryAllByText("Resumed").length === 3);
+    expect(d.manager.get(ids[0] as string).status).not.toBe("error");
+  });
+
+  test("a row names the session's persona, and Escape closes the dialog as Not now does", async () => {
+    const { d, ids } = await restarted(["Revisar o login"]);
+    // As a session started with a persona keeps it: the snapshot in its row.
+    d.eventStore.db
+      .query("UPDATE sessions SET persona = ? WHERE id = ?")
+      .run(
+        JSON.stringify({ id: "reviewer", name: "Reviewer", icon: null, hash: null, append: "" }),
+        ids[0] as string,
+      );
+    await connect(d);
+    await settle(() => dialog() !== null);
+    expect(within(dialog() as HTMLElement).queryByText("Reviewer")).not.toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(dialog() as HTMLElement, { key: "Escape" });
+    });
+    await settle(() => dialog() === null);
+    expect(dialog()).toBeNull();
+  });
+
+  test("the automatic setting survives a damaged store and is forgotten when turned off", () => {
+    const kept = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => kept.get(key) ?? null,
+      setItem: (key: string, value: string) => kept.set(key, value),
+    };
+    expect(loadAutoResume({ getItem: () => "{not json" }, "h1")).toBe(false);
+    saveAutoResume(storage, "h1", true);
+    expect(loadAutoResume(storage, "h1")).toBe(true);
+    saveAutoResume(storage, "h1", false);
+    expect(loadAutoResume(storage, "h1")).toBe(false);
+    expect([...kept.values()]).toEqual(["{}"]);
   });
 
   test("Not now closes it and it does not come back on a reconnect; the host page can reopen it", async () => {
