@@ -92,6 +92,11 @@ every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard
 
 - it refuses a `git commit` whose subject is not `type(scope): text`, a `feat`/`fix` without a
   scope, and a `feat(x)`/`fix(x)` with no `test(x)` commit since that base;
+- it refuses a `feat`/`fix` that names no issue. The issue goes as `(#N)` in the subject's
+  parentheses, or as a line or `--trailer` `Refs: #N`, `Closes #N`, `Fixes #N` or `Resolves #N`
+  (#253). The `TDD-Waiver` does not waive it. Other types, merges, reverts, `fixup!` and `squash!`
+  need none. `Refs:` names the issue without closing it; `release:close` closes only what a merged
+  PR closes (#367);
 - it refuses an Edit or Write that adds `.only(`, `test.todo(` or `toMatchSnapshot(` to a test
   file (one that keeps or removes them passes).
 - it refuses an Edit or Write that adds a `.skip(`, a `skipIf(notLinux)` (or `skipIf(process.platform
