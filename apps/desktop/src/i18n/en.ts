@@ -2,7 +2,33 @@ import type { Dictionary } from "./index.ts";
 
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
-  nav: { back: "Back", forward: "Forward" },
+  nav: { back: "Back", forward: "Forward", overview: "Home" },
+  home: {
+    title: "Home",
+    range: "Last 7 days · all hosts",
+    spend: "Spend",
+    noBudget: "No budget set",
+    ofBudget: "{spent} of {limit} budget this month",
+    turns: "Turns",
+    turnsOk: "{n} ok",
+    turnsFailed: "{n} failed",
+    tokens: "Tokens",
+    cacheRead: "{n} cache read",
+    average: "Avg cost / turn",
+    avgTime: "Avg turn time",
+    successRate: "{rate} success rate",
+    unknown: "—",
+    openCard: "Open {card}",
+    chart: "{card}, last 7 days: {values}",
+    noHosts: "No host is connected yet.",
+    partial: "Some hosts did not answer: {hosts}.",
+    olderDaemon: "Failed turns and turn time need a daemon with the Home counters.",
+    loading: "Reading the hosts…",
+    connecting: "Connecting to your hosts…",
+    noCosts: "No cost data from {hosts}",
+    avgBasis: "Managed sessions only",
+    ready: "Home is ready.",
+  },
   hosts: {
     status: {
       online: "online",

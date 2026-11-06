@@ -836,7 +836,7 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
 
 ### A barra lateral, a barra de abas e as Configurações
 
-- A barra lateral agrupa os itens por finalidade, em cinco grupos que dobram: **Trabalho** (Sessões,
+- A barra lateral agrupa os itens por finalidade, em cinco grupos que dobram: **Trabalho** (Início, Sessões,
   Precisa de você, Projetos, Board), **Automação** (Workflows, Times, Conversas),
   **Observabilidade** (Custos, Histórico), **Biblioteca** (Personas, Snippets, Plugins, Cofre) e
   **Máquinas** (os hosts, cada um com o pontinho de estado, a marca de saúde e o menu, um **+** para
@@ -847,6 +847,23 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
   uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
+- O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
+  os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
+  há), **Turnos** (ok e com falha), **Tokens** (com o que veio do cache) e o **turno médio** (custo,
+  tempo e taxa de sucesso). Gasto, Tokens e o turno médio abrem Custos nos mesmos sete dias (em todos
+  os hosts quando vários têm custos); Turnos abre o Histórico do host, nos mesmos dias, quando há um
+  host online, e Custos em todos eles quando há vários (o Histórico é de um host). Um host que não
+  tem custos mostra "—" em Gasto e Tokens, não US$ 0, e o cartão o cita; o custo médio conta só
+  sessões gerenciadas, ao contrário do Gasto, que lê todas as transcrições, e o cartão diz isso.
+  Enquanto os hosts ainda estão conectando na abertura, o Início diz "Conectando aos seus hosts…"
+  numa região viva, e "O Início está pronto." é anunciado quando os números chegam. Os turnos com falha e o tempo do turno são contados pelo daemon a partir
+  desta versão: um host com daemon mais antigo mostra "—" em vez de um zero inventado, e os dias
+  anteriores à atualização são desconhecidos (o tempo médio e a taxa de sucesso usam só os turnos
+  que foram contados). O Início lê de novo a cada minuto e quando a janela volta ao foco; um host
+  que não responde é citado sob o título e os outros continuam contando. O app abre no Início
+  quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
+  barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
+  "N contas" quando diferem.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
   cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.

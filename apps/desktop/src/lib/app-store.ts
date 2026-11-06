@@ -490,6 +490,8 @@ export interface Settings {
 }
 
 export interface AppStoreOptions {
+  /** The screen of a fresh window; a window saved before keeps its tabs. Sessions when absent. */
+  startRoute?: Route;
   baseDelayMs?: number;
   maxDelayMs?: number;
   /** Least time between two wake-ups (focus, network back) that retry the offline hosts. */
@@ -798,7 +800,11 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.workspace = Workspace.restore(storedWorkspace(platform.storage));
+    this.workspace = Workspace.restore(
+      storedWorkspace(platform.storage),
+      undefined,
+      options.startRoute,
+    );
     this.router = this.workspace.router;
     this.workspace.subscribe(() => {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot()));

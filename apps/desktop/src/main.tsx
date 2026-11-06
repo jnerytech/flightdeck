@@ -6,5 +6,5 @@ import { App } from "./ui/App.tsx";
 import "./styles.css";
 
 createRoot(document.getElementById("root") as HTMLElement).render(
-  <App store={new AppStore(tauriPlatform())} />,
+  <App store={new AppStore(tauriPlatform(), { startRoute: { name: "overview" } })} />,
 );
