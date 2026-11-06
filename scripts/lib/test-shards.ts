@@ -210,6 +210,15 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   if (listed === null) return failed(deps);
   // A test no tier claims still runs, never silently dropped (the rule of test:related --tier).
   const tierOf = tiers ? deps.tiers() : {};
+  // A listed name that is no tracked test is a stale or mistyped list: fail rather than guess.
+  if (chosen instanceof Set) {
+    const known = new Set(listed);
+    const unknown = [...chosen].filter((file) => !known.has(file));
+    if (unknown.length > 0) {
+      deps.log(`test-shards: --files names no tracked test file: ${unknown.join(", ")}`);
+      return 1;
+    }
+  }
   const tracked = listed
     .filter((file) => !tiers || tierOf[file] === undefined || tiers.includes(tierOf[file]))
     .filter((file) => chosen === null || chosen === "all" || chosen.has(file));
@@ -222,6 +231,11 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   const seconds = Math.round(total(mine, weigh(tracked, timings)));
   const which = tiers ? ` (${tiers.join(",")})` : chosen instanceof Set ? " (selection)" : "";
   deps.log(`test-shards: shard ${arg}${which}: ${mine.length} files, about ${seconds} s`);
+  // `bun test` with no file runs everything: a shard the selection leaves empty runs nothing.
+  if (mine.length === 0) {
+    deps.log(`test-shards: shard ${arg} has no test files to run`);
+    return 0;
+  }
   const at = rest.indexOf("--junit");
   const junit = (at >= 0 ? rest[at + 1] : undefined) ?? `junit-${shard.index}.xml`;
   return await deps.bun([

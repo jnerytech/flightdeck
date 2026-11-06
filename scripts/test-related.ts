@@ -14,7 +14,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { checkChanged } from "./lib/related-coverage.ts";
-import { keepCoverageProblem, planRelated } from "./lib/test-related.ts";
+import { keepCoverageProblem, listSelection, planRelated } from "./lib/test-related.ts";
 import { testTiers } from "./lib/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -69,16 +69,12 @@ const plan = planRelated({
 (plan.code === 0 ? console.log : console.error)(plan.output);
 const listFlag = args.indexOf("--list");
 if (listFlag >= 0) {
-  const list = args[listFlag + 1];
   if (!keep) rmSync(coverageDir, { recursive: true, force: true });
-  if (!list || list.startsWith("--")) {
-    console.error("test:related: --list needs a file to write the selection to");
-    process.exit(2);
-  }
-  const files = plan.files === "all" ? ["*"] : (plan.files ?? []);
-  writeFileSync(resolve(ROOT, list), files.map((file) => `${file}\n`).join(""));
-  console.log(`test:related: ${files.length} line(s) written to ${list}`);
-  process.exit(plan.code);
+  const listed = listSelection(plan, args[listFlag + 1], (path, text) =>
+    writeFileSync(resolve(ROOT, path), text),
+  );
+  (listed.code === 0 ? console.log : console.error)(listed.line);
+  process.exit(listed.code);
 }
 if (!plan.command) {
   if (!keep) rmSync(coverageDir, { recursive: true, force: true });

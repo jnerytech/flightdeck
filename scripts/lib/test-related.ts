@@ -243,7 +243,12 @@ export function listSelection(
   list: string | undefined,
   write: (path: string, text: string) => void,
 ): { code: number; line: string } {
-  return { code: list ? 0 : plan.code, line: write.name };
+  if (!list || list.startsWith("--")) {
+    return { code: 2, line: "test:related: --list needs a file to write the selection to" };
+  }
+  const files = plan.files === "all" ? ["*"] : (plan.files ?? []);
+  write(list, files.map((file) => `${file}\n`).join(""));
+  return { code: plan.code, line: `test:related: ${files.length} line(s) written to ${list}` };
 }
 
 /** The tiers a PR runs whole (#309): the cheap base of the pyramid. */

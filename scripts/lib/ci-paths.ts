@@ -33,9 +33,13 @@ const DAEMON = /^apps\/daemon\/|^scripts\/smoke-[^/]+\.ts$/;
 const TAURI = /^apps\/desktop\/src-tauri\//;
 /** The scripts and their tests: the Windows shards run the tests related to them (#399). */
 const SCRIPTS = /^scripts\//;
-/** The journeys, their Playwright config and the demo they drive (#399). */
+/**
+ * The journeys, their Playwright config and the demo they drive (#399). The demo seed starts the
+ * real daemon and uses the scripts' test helpers (fake CLIs, temp folders), so those count too
+ * (#410 review); ci-paths.test.ts checks every file the seed imports.
+ */
 const E2E =
-  /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$)/;
+  /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
 
 export function ciPlan(event: string, changed: string[] | null): CiPlan {
   if (event !== "pull_request" || changed === null) return { ...FULL };
