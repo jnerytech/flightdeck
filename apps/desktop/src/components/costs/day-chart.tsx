@@ -51,17 +51,14 @@ export function DayChart(props: {
   const current = Math.min(at, Math.max(days.length - 1, 0));
   const walk = (e: KeyboardEvent<HTMLElement>) => {
     const last = days.length - 1;
-    const to =
-      e.key === "ArrowRight"
-        ? Math.min(current + 1, last)
-        : e.key === "ArrowLeft"
-          ? Math.max(current - 1, 0)
-          : e.key === "Home"
-            ? 0
-            : e.key === "End"
-              ? last
-              : null;
-    if (to === null) return;
+    const targets: Record<string, number> = {
+      ArrowRight: Math.min(current + 1, last),
+      ArrowLeft: Math.max(current - 1, 0),
+      Home: 0,
+      End: last,
+    };
+    const to = targets[e.key];
+    if (to === undefined) return;
     e.preventDefault();
     setAt(to);
     (e.currentTarget.parentElement?.children[to] as HTMLElement | undefined)?.focus();
