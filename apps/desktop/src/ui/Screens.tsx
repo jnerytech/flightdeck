@@ -6,6 +6,7 @@ import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { PersonaSwitch } from "@/components/personas/persona-switch";
+import { UntrustedNotice } from "@/components/projects/untrusted-notice";
 import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -143,6 +144,11 @@ function ManagedSession(
   const status = session.status;
   const pinned = claudeId ? state.meta[`${hostId}/${claudeId}`]?.pinned === true : false;
   const cwd = summary?.cwd ?? session.cwd ?? "";
+  // The project the folder belongs to, where the person can read what it would load and trust it.
+  const owner = state.projects[hostId]?.find((p) => {
+    const root = p.path.replace(/[\\/]+$/, "");
+    return cwd === root || cwd.startsWith(`${root}/`) || cwd.startsWith(`${root}\\`);
+  });
   const canFork = hasFeature(host?.hostInfo?.features, "checkpoints", false);
   // Stable between renders: the finished messages of a long conversation are not drawn again.
   const pin = useMemo(
@@ -232,9 +238,23 @@ function ManagedSession(
             }
           : {})}
         recap={
-          claudeId && (
-            <RecapPanel store={store} hostId={hostId} claudeSessionId={claudeId} stamp={status} />
-          )
+          <>
+            <UntrustedNotice
+              store={store}
+              hostId={hostId}
+              announced={hasFeature(host?.hostInfo?.features, "projectTrust", false)}
+              cwd={cwd}
+              {...(owner
+                ? {
+                    onReview: () =>
+                      store.router.push({ name: "project", host: hostId, projectId: owner.id }),
+                  }
+                : {})}
+            />
+            {claudeId && (
+              <RecapPanel store={store} hostId={hostId} claudeSessionId={claudeId} stamp={status} />
+            )}
+          </>
         }
         alwaysAllow={hasFeature(host?.hostInfo?.features, "rules", false)}
         terminal={
@@ -442,6 +462,7 @@ export function Screen(props: ScreenProps) {
           state={state}
           density={props.density}
           project={route.name === "hub" ? route.project : undefined}
+          host={route.name === "hub" ? route.host : undefined}
           onOpen={(row) => go(rowRoute(row))}
           isOpen={(row) =>
             (opened.id !== undefined && row.sessionId === opened.id) ||
@@ -627,6 +648,8 @@ function routeScreen(props: ScreenProps): ReactNode {
         <ProjectsOverview
           store={store}
           state={state}
+          {...(route.host ? { host: route.host } : {})}
+          onClearHost={() => go({ name: "all-projects" })}
           onOpen={(card) => go({ name: "project", host: card.hostId, projectId: card.projectId })}
         />
       );
@@ -744,6 +767,16 @@ function routeScreen(props: ScreenProps): ReactNode {
           onPairAgain={(input) => store.pairAgain(host.id, input)}
           onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
           onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
+          onOpenSession={(row) => go(rowRoute(row))}
+          onOpenProject={(card) =>
+            go({ name: "project", host: card.hostId, projectId: card.projectId })
+          }
+          onSeeAllSessions={() => {
+            store.saveHubFilter({ ...store.hubFilter(), host: host.name });
+            go({ name: "hub", host: host.name });
+          }}
+          onSeeAllProjects={() => go({ name: "all-projects", host: host.id })}
+          onNewSession={() => go({ name: "new-session", host: host.id })}
           onRemove={() => {
             go({ name: "hub" });
             void store.removeHost(host.id);

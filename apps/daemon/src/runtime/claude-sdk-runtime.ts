@@ -334,6 +334,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
         cwd: opts.cwd,
         maxTurns: 1,
         settingSources: [],
+        // settingSources does not cover .mcp.json, and this runs in the session's folder.
+        strictMcpConfig: true,
         persistSession: false,
         tools: [],
         env: { ...process.env, FLIGHTDECK_MANAGED: "1" },
@@ -483,7 +485,12 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       enableFileCheckpointing: true,
       // Hooks from the user's settings fire here too; the receptor ignores sessions marked so.
       env: { ...opts.env, FLIGHTDECK_MANAGED: "1" },
-      settingSources: ["user", "project", "local"],
+      // A folder the person has not trusted brings no hooks, servers, settings or CLAUDE.md of its own
+      // (issue #196); the user's own settings and the MCP server Flightdeck passes still load. A
+      // worktree reads its project configuration from the main checkout, never from the branch.
+      settingSources: opts.trust?.trusted === false ? ["user"] : ["user", "project", "local"],
+      ...(opts.trust?.trusted === false ? { strictMcpConfig: true } : {}),
+      ...(opts.trust?.configRoot ? { projectConfigRoot: opts.trust.configRoot } : {}),
       ...this.mcpOption(opts),
       ...personaOptions(opts),
       canUseTool: async (toolName, input, ctx): Promise<PermissionResult> => {
