@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
+import { CacheTimer } from "@/components/hub/cache-timer";
 import { CardGrid } from "@/components/hub/card-grid";
 import {
   CountChip,
@@ -295,6 +296,11 @@ export function SessionsHub(
     );
 
   /** A card's cost, when its host reported one. */
+  /** The prompt cache countdown: only an idle session that says since when it has been idle. */
+  const cacheOf = (row: HubRow) =>
+    row.state === "idle" && row.summary?.state === "idle" ? (
+      <CacheTimer store={store} since={row.summary.since} />
+    ) : null;
   const cardCost = (row: HubRow) => {
     const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
     return {
@@ -564,6 +570,7 @@ export function SessionsHub(
                       line={sessionLineText(row.summary, store.now(), t)}
                       {...cardCost(row)}
                       persona={row.persona?.name ?? null}
+                      cache={cacheOf(row)}
                       runtime={row.runtime ? t("session.runtimeOpenCode") : null}
                       current={props.isOpen(row)}
                       active={listed[cursor]?.key === row.key}
@@ -654,6 +661,7 @@ export function SessionsHub(
                             {usd(cost)}
                           </output>
                         )}
+                        {cacheOf(row)}
                         {row.lastActivity && (
                           <time
                             dateTime={new Date(row.lastActivity).toISOString()}

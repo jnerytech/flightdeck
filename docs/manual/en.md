@@ -2922,6 +2922,15 @@ Hover one for its name.
 - **Keyboard:** `J` and `K` move through the list, `Enter` opens, `Esc` closes the detail, `A`
   and `N` approve and deny, `Ctrl K` opens the palette, `Alt+←` and `Alt+→` go back and forward.
 - **Density:** compact rows (32 px, the default) or comfortable (40 px), in Settings.
+- **Prompt cache timer** (Settings, off by default): Claude Code keeps the start of a conversation
+  cached for 5 minutes (1 hour with extended caching, **Cache lifetime** in Settings), and replying
+  inside that window is cheaper. With the timer on, an idle session on the Sessions list (row and
+  card) and in its status line under the message box shows a small clock with the time left as
+  `m:ss`, in the warning colour for its last minute and as a clock alone once the cache is cold (the next message re-sends the whole context as
+  uncached tokens). Screen readers hear "Prompt cache expires in 2 minutes 10 seconds". The session's tab carries the
+  clock icon alone in its corner (the time is in its tooltip), so the tab gets no wider. The
+  countdown does not run for sessions that are running or ended, one 1-second clock serves them
+  all, and it stops while the window is hidden.
 - **Theme:** Light, Dark and System (the default), in Settings, in the sidebar and in the
   palette. The choice is remembered.
 - **Language:** the system's (`pt-BR` for any `pt-*`, `en` for the rest), switched in Settings or

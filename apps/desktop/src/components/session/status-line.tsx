@@ -15,6 +15,8 @@ export function SessionStatusLine(
     /** The pickers of what the session lets change; the rest shows as text. */
     pickers: { model?: ReactNode; mode?: ReactNode };
     working: boolean;
+    /** The prompt cache countdown of an idle session, next to the model. */
+    cache?: ReactNode;
   }>,
 ) {
   const { t } = props;
@@ -26,6 +28,7 @@ export function SessionStatusLine(
     >
       {props.pickers.model ?? <span>{props.model ?? t("session.modelDefault")}</span>}
       {props.pickers.mode ?? <span>{t(`modes.${props.mode}.name`)}</span>}
+      {props.cache}
       {props.working && (
         <Loader2
           data-slot="session-spinner"

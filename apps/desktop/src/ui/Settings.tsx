@@ -9,6 +9,7 @@ import { WatchSettingsSection } from "@/components/watch/watch-settings-section"
 import { useStoreSlice } from "@/lib/use-store";
 import { LANGS, type Lang, type T } from "../i18n/index.ts";
 import type { AppStore, AppUpdateState, Settings as SettingsState } from "../lib/app-store.ts";
+import type { CacheTtl } from "../lib/cache-timer.ts";
 import type { Density } from "../lib/density.ts";
 import type { TabOrder } from "../lib/tab-switcher.ts";
 import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../lib/terminal-view.ts";
@@ -73,6 +74,14 @@ export const Settings = memo(function Settings(props: {
     props.store.terminalFont.subscribe,
     () => props.store.terminalFont.value,
   );
+  const cacheOn = useSyncExternalStore(
+    props.store.cacheTimer.subscribe,
+    () => props.store.cacheTimer.enabled,
+  );
+  const cacheTtl = useSyncExternalStore(
+    props.store.cacheTimer.subscribe,
+    () => props.store.cacheTimer.ttl,
+  );
   const tabOrder = useSyncExternalStore(
     props.store.tabOrder.subscribe,
     () => props.store.tabOrder.value,
@@ -125,6 +134,27 @@ export const Settings = memo(function Settings(props: {
               >
                 <option value="compact">{t("settings.densities.compact")}</option>
                 <option value="comfortable">{t("settings.densities.comfortable")}</option>
+              </NativeSelect>
+            )}
+          </SettingRow>
+          <label className={check}>
+            <input
+              type="checkbox"
+              checked={cacheOn}
+              onChange={(e) => props.store.cacheTimer.setEnabled(e.target.checked)}
+            />
+            {t("settings.cacheTimer")}
+          </label>
+          <SettingRow label={t("settings.cacheTtl")}>
+            {(id) => (
+              <NativeSelect
+                id={id}
+                className="setting-select"
+                value={String(cacheTtl)}
+                onChange={(e) => props.store.cacheTimer.setTtl(Number(e.target.value) as CacheTtl)}
+              >
+                <option value="300000">{t("settings.cacheTtls.fiveMinutes")}</option>
+                <option value="3600000">{t("settings.cacheTtls.oneHour")}</option>
               </NativeSelect>
             )}
           </SettingRow>
