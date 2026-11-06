@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   type CheckRun,
   checksVerdict,
@@ -8,6 +10,7 @@ import {
   type Pr,
   type PrFlowDeps,
   prFlow,
+  VERSION_FILE,
 } from "../lib/pr-flow.ts";
 
 const R = "repos/{owner}/{repo}";
@@ -51,7 +54,7 @@ function fake(
     tags?: string[];
     /** The first-parent commits of origin/main, newest first. */
     history?: string[];
-    /** The version in package.json at a commit of main, by SHA. */
+    /** The version in apps/desktop/package.json at a commit of main, by SHA. */
     versions?: Record<string, string>;
     /** The message GitHub's GraphQL answers with when it refuses. */
     graphqlError?: string;
@@ -171,11 +174,15 @@ function fake(
       if (args[0] === "rev-list" && args.includes("--first-parent")) {
         return ok((opts.history ?? []).map((sha) => `${sha}\n`).join(""));
       }
+      // The root package.json has no version: the product's lives in apps/desktop (#559).
       if (args[0] === "show" && (args.at(-1) ?? "").endsWith(":package.json")) {
+        return ok(`${JSON.stringify({ name: "flightdeck", private: true })}\n`);
+      }
+      if (args[0] === "show" && (args.at(-1) ?? "").endsWith(":apps/desktop/package.json")) {
         const version = opts.versions?.[(args.at(-1) ?? "").split(":")[0] ?? ""];
         return version === undefined
           ? { code: 1, stdout: "" }
-          : ok(`${JSON.stringify({ name: "x", version })}\n`);
+          : ok(`${JSON.stringify({ name: "@flightdeck/desktop", version })}\n`);
       }
       if (args[0] === "rev-parse" && args.at(-1) === "origin/main") {
         return opts.mainHead ? ok(`${opts.mainHead}\n`) : { code: 1, stdout: "" };
@@ -1072,5 +1079,14 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
     expect(await prFlow(["tag", "v0.36.5"], tagRefused.deps)).toBe(1);
     expect(tagRefused.out()).toContain("git refused to make v0.36.5");
     expect(tagRefused.gitWrites).toEqual(["tag -a v0.36.5 -m v0.36.5 abc123"]);
+  });
+});
+
+describe("pr-flow: where the release tag reads the product version (#559)", () => {
+  test("the file greenWithBump reads holds a version in this repo", () => {
+    const root = join(import.meta.dir, "..", "..");
+    const version = (file: string) =>
+      (JSON.parse(readFileSync(join(root, file), "utf8")) as { version?: unknown }).version;
+    expect(typeof version(VERSION_FILE)).toBe("string");
   });
 });
