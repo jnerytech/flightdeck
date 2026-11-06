@@ -89,6 +89,13 @@ function setup(
   };
 }
 
+/** The panel is quiet for a while: asking nothing is the expectation, so there is nothing to wait on. */
+const quietFor = (ms: number) =>
+  act(async () => {
+    // timing: the absence of a request, at a tick of 20 ms, is only seen by letting ticks pass
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  });
+
 const reads = (asked: Array<[string, unknown]>) => asked.filter(([t]) => t === "resources.get");
 const panel = (name = "Resources") => screen.getByRole("region", { name });
 
@@ -143,15 +150,11 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
     );
     view.rerender(w.view(false));
     const before = reads(w.asked).length;
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 120));
-    });
+    await quietFor(120);
     expect(reads(w.asked).length).toBe(before);
     cleanup();
     const after = reads(w.asked).length;
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 120));
-    });
+    await quietFor(120);
     expect(reads(w.asked).length).toBe(after);
   });
 
@@ -166,9 +169,7 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
       });
     }) as never;
     render(w.view());
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 120));
-    });
+    await quietFor(120);
     expect(reads(w.asked)).toHaveLength(1);
     release(snapshot());
     await settle(() => document.querySelector("[data-slot='resources-memory']") !== null);
@@ -178,9 +179,7 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
   test("a panel that is not on screen never asks", async () => {
     const w = setup({ active: false });
     render(w.view());
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100));
-    });
+    await quietFor(100);
     expect(reads(w.asked)).toHaveLength(0);
   });
 
@@ -269,9 +268,7 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
         <HostResources store={w.store} host={offline} everyMs={20} />
       </TContext.Provider>,
     );
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 80));
-    });
+    await quietFor(80);
     expect(reads(w.asked)).toHaveLength(0);
   });
 

@@ -34,7 +34,7 @@ export interface ResourcesDeps {
   /** Where /proc is (tests give a temp folder shaped like it). */
   procRoot?: string;
   /** What the machine says of itself: `PAGESIZE` and `CLK_TCK` (tests give their own). */
-  sysconf?(name: "PAGESIZE" | "CLK_TCK"): number | null;
+  sysconf?(name: "PAGESIZE" | "CLK_TCK"): number | null | Promise<number | null>;
 }
 
 /** Statuses of a session that has no process any more. */
@@ -45,7 +45,7 @@ const GONE = new Set(["ended", "error"]);
  * for the host's numbers. Processes are measured through `/proc`, so only on Linux; macOS and
  * Windows get the host's memory, disk and (where there is one) load, and say the rest is not measured.
  */
-export function createResources(given: ResourcesDeps): Resources {
+export async function createResources(given: ResourcesDeps): Promise<Resources> {
   const deps = {
     platform: process.platform,
     ownPid: process.pid,
@@ -63,8 +63,8 @@ export function createResources(given: ResourcesDeps): Resources {
       ? (deps.proc ??
         procfsReader({
           root: deps.procRoot ?? "/proc",
-          pageSize: defaultSysconf(ask, "PAGESIZE"),
-          ticksPerSecond: defaultSysconf(ask, "CLK_TCK"),
+          pageSize: await defaultSysconf(ask, "PAGESIZE"),
+          ticksPerSecond: await defaultSysconf(ask, "CLK_TCK"),
         }))
       : null;
   return new Resources({
@@ -109,11 +109,11 @@ export function createResources(given: ResourcesDeps): Resources {
 }
 
 /** The machine's value of `name` (`getconf`), or the usual one when it cannot say. */
-export function defaultSysconf(
-  ask: (name: "PAGESIZE" | "CLK_TCK") => number | null,
+export async function defaultSysconf(
+  ask: (name: "PAGESIZE" | "CLK_TCK") => number | null | Promise<number | null>,
   name: "PAGESIZE" | "CLK_TCK",
-): number {
-  const value = ask(name);
+): Promise<number> {
+  const value = await ask(name);
   return value !== null && Number.isFinite(value) && value > 0
     ? value
     : name === "PAGESIZE"
@@ -122,11 +122,12 @@ export function defaultSysconf(
 }
 
 /** Asks `getconf`; null when it is not there or answers something else. */
-export function getconf(name: "PAGESIZE" | "CLK_TCK"): number | null {
+export async function getconf(name: "PAGESIZE" | "CLK_TCK"): Promise<number | null> {
   try {
-    const out = Bun.spawnSync(["getconf", name], { stdout: "pipe", stderr: "ignore" });
-    const value = Number.parseInt(out.stdout.toString().trim(), 10);
-    return out.exitCode === 0 && Number.isFinite(value) ? value : null;
+    const child = Bun.spawn(["getconf", name], { stdout: "pipe", stderr: "ignore" });
+    const [text, code] = await Promise.all([new Response(child.stdout).text(), child.exited]);
+    const value = Number.parseInt(text.trim(), 10);
+    return code === 0 && Number.isFinite(value) ? value : null;
   } catch {
     return null;
   }

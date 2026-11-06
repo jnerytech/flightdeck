@@ -277,6 +277,7 @@ describe("resources-security: a bounded read (F4)", () => {
       stat: async (pid) => {
         inFlight++;
         most = Math.max(most, inFlight);
+        // timing: a slow answer on purpose, so that the reads overlap
         await Bun.sleep(1);
         inFlight--;
         return { ...(procs.find((p) => p.pid === pid) as Proc) };

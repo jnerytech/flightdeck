@@ -1504,7 +1504,7 @@ export async function startDaemon(
     }),
     central,
     maintenance,
-    resources: createResources({
+    resources: await createResources({
       dataDir: config.dataDir,
       sessions: () => manager.list(),
       terminals: () => terminals.list(),

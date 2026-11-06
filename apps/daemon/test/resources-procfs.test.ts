@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { parseStat, procfsReader } from "../src/resources/procfs.ts";
 
 const dirs: string[] = [];
@@ -11,7 +11,7 @@ afterEach(() => {
 
 /** A directory shaped like /proc, in a temp folder: the machine's own is never read. */
 function fakeRoot() {
-  const root = mkdtempSync(join(tmpdir(), "fd-proc-"));
+  const root = realTempDir("fd-proc-");
   dirs.push(root);
   writeFileSync(join(root, "uptime"), "12345.67 9999.00\n");
   const add = (pid: number, stat: string, cwd?: string) => {
