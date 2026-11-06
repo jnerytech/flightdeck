@@ -3,8 +3,9 @@
  * HEAD has beyond its base on origin, and a WIP commit of the working tree (changed and untracked
  * files, never ignored ones) built in a temporary index: the person's index and stash are never
  * touched. `git bundle` takes only refs, so the WIP commit is named by a ref of Flightdeck's own
- * (`refs/flightdeck/teleport/<id>`) for the time of the bundle, then the ref goes. No hook of the
- * repository runs: every call sets `core.hooksPath` to nothing.
+ * (`refs/flightdeck/teleport/<id>`) for the time of the bundle, then the ref goes. No hook, fsmonitor
+ * or external diff of the repository runs: every call turns them off. The repository's clean
+ * filters do run on `add`, as they do on the person's own `git add` (Git LFS needs them).
  */
 import { copyFile, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
@@ -65,7 +66,14 @@ async function git(
 ): Promise<string | null> {
   // git-arg: a forwarder: every caller passes a checked revision (refArg/HEAD) or a value git gave
   const result = await runCommand(
-    [whichOnPath("git") ?? "git", "-c", "core.hooksPath=/dev/null", ...args],
+    [
+      whichOnPath("git") ?? "git",
+      "-c",
+      "core.hooksPath=/dev/null",
+      "-c",
+      "core.fsmonitor=false",
+      ...args,
+    ],
     cwd,
     undefined,
     TIMEOUT_MS,
@@ -143,9 +151,18 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
   }
   const bytes = await readFile(file);
   const ahead = Number(await must(top, ["rev-list", "--count", `${base}..${head}`]));
-  const names = await must(top, ["diff", "--name-only", head, wip]);
-  // Everything that moves: the commits past the base and the working tree. Only added lines.
-  const moved = await must(top, ["diff", "--no-color", base, wip]);
+  const names = await must(top, ["diff", "--no-ext-diff", "--name-only", head, wip]);
+  // Everything that moves, commit by commit: a secret one commit added and a later one removed
+  // still travels in the bundle. Only added lines.
+  const moved = await must(top, [
+    "log",
+    "-p",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--no-color",
+    "--format=",
+    `${base}..${wip}`,
+  ]);
   const added = moved
     .split("\n")
     .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
