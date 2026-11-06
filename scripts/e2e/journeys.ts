@@ -16,6 +16,7 @@ import {
   BARS,
   type Finding,
   findingKey,
+  GAPS,
   GUARD_SIZES,
   judge,
   KEY_REGIONS,
@@ -676,6 +677,22 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await card.getByRole("button", { name: c.t("update.cardUpdate"), exact: true }).waitFor({
       timeout: WAIT,
     });
+    // Issue #581: a toast that comes while the card shows sits above it, clear of it and of the
+    // status bar.
+    await c.page.evaluate(() => window.dispatchEvent(new Event("flightdeck:demo-toast")));
+    await c.page
+      .locator('[data-sonner-toast][data-mounted="true"]')
+      .first()
+      .waitFor({ timeout: WAIT });
+    await expect
+      .poll(
+        async () =>
+          (await c.page.evaluate(layoutFindings, { gaps: GAPS }))
+            .filter((finding) => finding.rule === "gap")
+            .map((finding) => `${finding.path}: ${finding.detail}`),
+        { timeout: WAIT },
+      )
+      .toEqual([]);
     await card.getByRole("button", { name: c.t("update.cardClose"), exact: true }).click();
     await card.waitFor({ state: "detached", timeout: WAIT });
   },
@@ -1401,6 +1418,7 @@ async function geometryGuards(c: Context, screens: Array<[string, Route]>, probl
         // The key regions are a contract at the usual window: the smallest one is #135's business.
         regions: size.width >= 1280 ? KEY_REGIONS : [],
         bars: BARS,
+        gaps: GAPS,
       });
       for (const finding of found) seen[findingKey(screen, finding)] = finding.detail;
       const verdict = judge(screen, found, baseline);

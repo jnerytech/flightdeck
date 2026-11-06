@@ -13,7 +13,7 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
-import { type Finding, KEY_REGIONS, layoutFindings } from "./lib/layout-guards.ts";
+import { type Finding, GAPS, KEY_REGIONS, layoutFindings } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
 import { pickVariants } from "./lib/shots-variants.ts";
@@ -35,8 +35,21 @@ interface Shot {
   roi?: boolean;
   /** Issue #137: notifications kept in the page's storage before it loads (read, unread, collapsed, gone). */
   inbox?: boolean;
+  /** Demo switches added to the address (`update=<version>`: the update card shows). */
+  query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
   prepare?(page: Page): Promise<void>;
+}
+
+/**
+ * Issue #581: the demo shows a toast when the page hears `flightdeck:demo-toast`, sent right before
+ * the shot (a toast lives 5 s); the print waits for it to be in place.
+ */
+async function showToast(page: Page): Promise<void> {
+  await page.evaluate(() => window.dispatchEvent(new Event("flightdeck:demo-toast")));
+  await page.locator('[data-sonner-toast][data-mounted="true"]').first().waitFor();
+  // timing: sonner's enter animation (400 ms) ends before the shot.
+  await page.waitForTimeout(500);
 }
 
 const ALFA = "demo-alfa";
@@ -183,6 +196,18 @@ async function openHostSettings(page: Page): Promise<void> {
 function shots(ids: DemoIds): Shot[] {
   return [
     { name: "hub", route: { name: "hub" } },
+    // Issue #581: a toast sits over the status bar, 0.75rem clear of it, like the update card.
+    { name: "aviso-barra", route: { name: "hub" }, prepare: showToast },
+    // ...and over the update card while it shows, never on it.
+    {
+      name: "aviso-atualizacao",
+      route: { name: "hub" },
+      query: { update: "9.9.9" },
+      async prepare(page) {
+        await page.locator('[data-slot="update-card"]').waitFor();
+        await showToast(page);
+      },
+    },
     {
       // Precisa de você with the Bash request chosen: its command, folder, age and buttons.
       name: "precisa-de-voce",
@@ -788,7 +813,12 @@ export async function takeShots(
             simple: shot.simple === true,
           },
         );
-        const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });
+        const query = new URLSearchParams({
+          theme,
+          lang,
+          route: JSON.stringify(shot.route),
+          ...shot.query,
+        });
         await page.goto(`${url}?${query}`);
         // The hosts connect and the screen loads its data.
         await page.waitForTimeout(1500);
@@ -821,10 +851,18 @@ export async function takeShots(
         );
         if (mismatch) problems.push(mismatch);
         // The window never scrolls sideways (issue #103) and the key regions have room (#192): the
-        // shared guards name the culprit by its data-slot path.
-        const layout: Finding[] = await page.evaluate(layoutFindings, { regions: KEY_REGIONS });
+        // shared guards name the culprit by its data-slot path. What floats in the corner keeps clear
+        // of the status bar and of each other (#581).
+        const layout: Finding[] = await page.evaluate(layoutFindings, {
+          regions: KEY_REGIONS,
+          gaps: GAPS,
+        });
         for (const finding of layout) {
-          if (finding.rule === "sideways" || finding.rule.startsWith("region-")) {
+          if (
+            finding.rule === "sideways" ||
+            finding.rule === "gap" ||
+            finding.rule.startsWith("region-")
+          ) {
             problems.push(
               `${theme} ${lang} ${shot.name}: ${finding.rule} ${finding.path} (${finding.detail})`,
             );

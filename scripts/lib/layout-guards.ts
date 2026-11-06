@@ -12,7 +12,8 @@ export type Rule =
   | "attention"
   | "growth"
   | "region-small"
-  | "region-missing";
+  | "region-missing"
+  | "gap";
 
 export interface Finding {
   rule: Rule;
@@ -30,17 +31,26 @@ export interface RegionRule {
   required?: boolean;
 }
 
+/** Two floating boxes that share columns: every `above` box ends at least `min` px over every `below` one (#581). */
+export interface GapRule {
+  above: string;
+  below: string;
+  min: number;
+}
+
 export interface GuardOptions {
   regions?: RegionRule[];
   /** Bars that must not grow: a selector and the most they may be tall, in px. */
   bars?: Array<{ selector: string; maxHeight: number }>;
+  gaps?: GapRule[];
 }
 
 /**
  * Runs inside the page (`page.evaluate(layoutFindings, options)`): it must stay self-contained.
  * Rules: the page scrolls sideways; an element is cut by an ancestor that clips on an axis no
  * ancestor scrolls; an element with content is under 8 px tall; text is cut to under 48 px with an
- * ellipsis; an alert is off screen; a bar grew; a key region is small or missing.
+ * ellipsis; an alert is off screen; a bar grew; a key region is small or missing; a floating box
+ * is too close to the one below it.
  */
 export function layoutFindings(options: GuardOptions = {}): Finding[] {
   const found: Finding[] = [];
@@ -203,6 +213,30 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     }
   };
 
+  // 8. A floating box ends at least `min` px over the one below it in the same columns (#581): a
+  // box that overlaps it is a finding too.
+  const checkGaps = () => {
+    for (const rule of options.gaps ?? []) {
+      const belows = [...document.querySelectorAll(rule.below)].filter((el) => !hidden(el));
+      for (const el of document.querySelectorAll(rule.above)) {
+        if (hidden(el)) continue;
+        const box = rectOf(el);
+        for (const below of belows) {
+          const under = rectOf(below);
+          if (box.right <= under.left || box.left >= under.right) continue;
+          const gap = under.top - box.bottom;
+          if (gap < rule.min) {
+            add(
+              "gap",
+              pathOf(el),
+              `${Math.round(gap)} px above ${pathOf(below)}, at least ${rule.min}`,
+            );
+          }
+        }
+      }
+    }
+  };
+
   checkSideways();
   for (const el of document.querySelectorAll("body *")) {
     if (hidden(el)) continue;
@@ -216,6 +250,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   checkAttention();
   checkBars();
   checkRegions();
+  checkGaps();
   return found;
 }
 
@@ -257,11 +292,18 @@ export const KEY_REGIONS: RegionRule[] = [
   { slot: "form-actions", minHeight: 28 },
 ];
 
+/** The floating boxes of the bottom-right corner keep clear of each other and of the status bar (#581). */
+export const GAPS: GapRule[] = [
+  { above: "[data-sonner-toast]", below: '[data-slot="status-bar"]', min: 8 },
+  { above: "[data-sonner-toast]", below: '[data-slot="update-card"]', min: 8 },
+  { above: '[data-slot="update-card"]', below: '[data-slot="status-bar"]', min: 8 },
+];
+
 /** Bars that never grow: the tab bar is one row. */
 export const BARS = [{ selector: ".tab-bar", maxHeight: 48 }];
 
 /** What fails with no baseline: the contract. The heuristic rules wait for a baseline file. */
-const CONTRACT: ReadonlySet<Rule> = new Set(["region-small", "region-missing"]);
+const CONTRACT: ReadonlySet<Rule> = new Set(["region-small", "region-missing", "gap"]);
 
 /**
  * What a screen's findings mean for the build. A key region that is small or missing always fails;
