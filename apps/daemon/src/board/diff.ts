@@ -1,3 +1,4 @@
+import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 import { readRegular } from "../read-regular.ts";
 import { git } from "./command.ts";
@@ -58,30 +59,38 @@ function readHeader(file: DiffFile, line: string): void {
 
 /**
  * A file git does not track yet, shown as entirely added. A link or a pipe is listed without
- * content, like a binary file: a link is never followed. So is a file over `max` bytes, when the
- * caller caps them (the assistant does; the Changes panel shows a large file whole).
+ * content, like a binary file: a link is never followed. A file over `max` bytes is listed with the
+ * `tooLarge` marker and its size, and is never read past `max` (issue #329).
  */
 async function untrackedFile(worktree: string, path: string, max: number): Promise<DiffFile> {
-  const content = await readRegular(join(worktree, path), max + 1);
-  const binary = !content || content.length > max || content.includes(0);
-  const lines = !content || binary ? [] : content.toString("utf8").replace(/\n$/, "").split("\n");
-  const hunks = binary
-    ? []
-    : [
-        {
-          header: `@@ -0,0 +1,${lines.length} @@`,
-          lines: lines.map((text) => ({ op: "+" as const, text })),
-        },
-      ];
-  return {
+  const full = join(worktree, path);
+  const content = await readRegular(full, max + 1);
+  const file = {
     path,
     oldPath: null,
-    status: "added",
-    additions: lines.length,
+    status: "added" as const,
+    additions: 0,
     deletions: 0,
     uncommitted: true,
-    binary,
-    hunks,
+    binary: !content,
+    hunks: [] as DiffHunk[],
+  };
+  if (!content) return file;
+  if (content.length > max) {
+    const size = (await lstat(full).catch(() => null))?.size ?? content.length;
+    return { ...file, tooLarge: true, bytes: size };
+  }
+  if (content.includes(0)) return { ...file, binary: true };
+  const lines = content.toString("utf8").replace(/\n$/, "").split("\n");
+  return {
+    ...file,
+    additions: lines.length,
+    hunks: [
+      {
+        header: `@@ -0,0 +1,${lines.length} @@`,
+        lines: lines.map((text) => ({ op: "+" as const, text })),
+      },
+    ],
   };
 }
 
@@ -95,10 +104,7 @@ export const DIFF_FILE_MAX = 512 * 1024;
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 /** Uncommitted tracked changes against `HEAD` (the empty tree before the first commit), then untracked files. */
-export async function workingDiff(
-  root: string,
-  maxUntracked = Number.MAX_SAFE_INTEGER - 1,
-): Promise<DiffFile[]> {
+export async function workingDiff(root: string, maxUntracked = DIFF_FILE_MAX): Promise<DiffFile[]> {
   const head = await git(root, "rev-parse", "--verify", "--quiet", "HEAD");
   const against = head.code === 0 ? "HEAD" : EMPTY_TREE;
   const pending = must(await git(root, ...DIFF, against), "git diff");
