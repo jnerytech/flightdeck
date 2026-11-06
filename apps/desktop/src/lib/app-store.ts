@@ -76,6 +76,7 @@ import type {
   WebhookRequest,
   WebhookResponse,
 } from "../platform/types.ts";
+import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
@@ -153,6 +154,7 @@ import {
   markGap,
   type SessionState,
 } from "./session-state.ts";
+import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
@@ -268,6 +270,8 @@ export interface AppState {
   account: Record<string, AccountState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
+  /** What hosts answered for the setup checklist (hooks, GitHub), by host id (issue #164). */
+  setupProbes: Record<string, SetupProbe>;
   /** What `deps.check` found on each host, by host id (hosts that announce `deps`). */
   deps: Record<string, DepsResult>;
   /** What `doctor.run` found on each host, by host id. */
@@ -711,16 +715,16 @@ export function needsYou(state: AppState): PendingItem[] {
 /** What goes with an answer to a request, besides allow or deny. */
 export interface Answer {
   /** "Allow in this session" and "always in this project" (phase 7). */
-  updatedPermissions?: PermissionUpdate[] | undefined;
+  updatedPermissions?: PermissionUpdate[];
   /** Why it was denied (phase 10: the card's reason). */
-  message?: string | undefined;
+  message?: string;
   /** The tool's input as the person changed it (the answers of AskUserQuestion). */
-  updatedInput?: Record<string, unknown> | undefined;
+  updatedInput?: Record<string, unknown>;
   /**
    * The Approve was held its full time (#245): a high-risk request is approved only with it, so a
    * screen that forgets the risk cannot approve one with a click.
    */
-  held?: boolean | undefined;
+  held?: boolean;
 }
 
 /** Filters of the per-host history list. */
@@ -866,8 +870,23 @@ export class AppStore {
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
+    this.assistant = new AssistantController({
+      storage: platform.storage,
+      api: platform.assistant,
+      hosts: () =>
+        this.state.hosts.map((host) => ({
+          id: host.id,
+          online: host.status === "online",
+          assistant: hasFeature(host.hostInfo?.features, "assistant", false),
+        })),
+      secrets: () => this.state.secrets.map((secret) => ({ id: secret.id, name: secret.name })),
+      language: () => this.i18n.lang,
+      request: (hostId, type, payload) =>
+        this.hostRequest(hostId, type as HostCommandType, payload as never) as Promise<HostAnswer>,
+    });
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
+    this.setup = new SetupSettings(platform.storage);
     this.cacheTimer = new CacheTimerSettings(platform.storage);
     this.clock = new SharedClock(
       browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
@@ -894,6 +913,7 @@ export class AppStore {
       healthAt: {},
       healthError: {},
       budgets: {},
+      setupProbes: {},
       ssh: {},
       snippets: {},
       snippetChoice: null,
@@ -941,8 +961,12 @@ export class AppStore {
 
   /** Light, dark or the system's (phase 10). */
   readonly theme: ThemeController;
+  /** Phase 40: the AI assistant's preferences, keys state and the wand's requests. */
+  readonly assistant: AssistantController;
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  /** The setup checklist: hidden or not, and whether a test notification ever showed. */
+  readonly setup: SetupSettings;
   /** The prompt cache countdown on idle sessions: off by default (issue #159). */
   readonly cacheTimer: CacheTimerSettings;
   /** One 1-second clock for every countdown on screen. */
@@ -1078,6 +1102,7 @@ export class AppStore {
     this.dispose();
     this.listenForWake();
     this.theme.start();
+    void this.assistant.refreshKeys();
     this.i18n.start();
     this.update({
       hosts: [],
@@ -1178,6 +1203,9 @@ export class AppStore {
       sessions,
       cards,
       selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
+      setupProbes: Object.fromEntries(
+        Object.entries(this.state.setupProbes).filter(([id]) => id !== hostId),
+      ),
     });
     this.persistHosts();
   }
@@ -2203,6 +2231,47 @@ export class AppStore {
     return host?.status === "online" && hasFeature(host.hostInfo?.features, "terminal", false);
   }
 
+  /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
+  /**
+   * Asks a host what the setup checklist reads: its hooks and its projects, at connect. GitHub runs
+   * `gh auth status` on the host, so it is asked only with `github` (the Setup screen, the GitHub
+   * panel); what it said last stays until then.
+   */
+  async refreshSetup(hostId: string, options: { github?: boolean } = {}): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (host?.status !== "online") return;
+    const features = host.hostInfo?.features;
+    const wantsHooks = hasFeature(features, "central", false);
+    const wantsGithub = options.github === true && hasFeature(features, "github", false);
+    // The projects are read for the checklist only: the list the screens use stays unopened, so a
+    // screen that reads a project's trust or branch does not change because Setup looked.
+    const wantsProjects =
+      hasFeature(features, "workflows", false) && this.state.projects[hostId] === undefined;
+    if (!wantsHooks && !wantsGithub && !wantsProjects) return;
+    const [hooks, github, projects] = await Promise.all([
+      wantsHooks ? this.hostRequest(hostId, "hooks.status", {}) : null,
+      wantsGithub ? this.hostRequest(hostId, "github.status", {}) : null,
+      wantsProjects ? this.hostRequest(hostId, "project.list", {}) : null,
+    ]);
+    // The host may have gone while it was asked.
+    if (!this.state.hosts.some((h) => h.id === hostId)) return;
+    const before = this.state.setupProbes[hostId];
+    const probe: SetupProbe = {
+      hooks: hooks?.ok ? hooks.data.status : null,
+      github: wantsGithub
+        ? github?.ok
+          ? github.data.installed && github.data.loggedIn
+          : null
+        : (before?.github ?? null),
+      ...(wantsProjects && projects?.ok
+        ? { projects: projects.data.projects }
+        : before?.projects
+          ? { projects: before.projects }
+          : {}),
+    };
+    this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
+  }
+
   /** Asks the host for its `host.info` again (after a change of its settings). */
   async reloadHostInfo(hostId: string): Promise<void> {
     const conn = this.connections.get(hostId);
@@ -2810,6 +2879,8 @@ export class AppStore {
       const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
       return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
     });
+    // The setup checklist reads what this host has: its hooks, GitHub, projects.
+    void this.refreshSetup(hostId);
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);

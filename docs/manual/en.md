@@ -1132,6 +1132,11 @@ conversation. It is where you check what the agent did and send it back what to 
     passes 4 MB of diff in total: the files after that are only listed. On a host of this machine,
     **Show in folder** opens the file manager on the file (the editor stays beside it, and refuses
     what is over 1 MB);
+  - a file that may hold a credential (`.env*`, `id_*`, `*.pem`, `*.key`, `.npmrc`, what is in
+    `.ssh` or `.aws`, and the rest of the list the permission rules use) is listed with the
+    **Hidden** mark and no content or counts. The host never reads a new one, and the editor
+    refuses to open or save it, even through a link with another name. A link that leads out of
+    the repository is refused too;
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
 - **Inline comments:**
@@ -1985,6 +1990,27 @@ unblocked. A badge on the bell counts the unread ones.
   (the newest 500) and survives a restart. Esc closes the panel.
 - The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
   (the window had focus) is not in it either.
+
+## Setup checklist
+
+A **Setup** row at the top of the sidebar's Work group shows a ring and a count (for example
+`1/4`) while the steps to get going are not all done. It opens the **Setup** screen: a list of
+steps, each with one sentence and one button that opens the screen where it is fixed. A step is
+done when the app can see that it is: it is read from your hosts and the app, never ticked by hand,
+so connecting a host moves the ring at once and removing it moves it back.
+
+- **To get going:** connect a host (one online); install the Claude Code hooks on it (the host page
+  says installed); add a project with a base branch; start a first session or card. The step the
+  screen marks as current (the first one not done) has the filled button.
+- **Worth doing:** sign in to GitHub on the host, check that notifications work (a test
+  notification reached the system once), set a budget, and add a `.worktreeinclude` to a project.
+  The row does not wait for these.
+- A step the host cannot do (it does not announce the feature) is left out, not left undone.
+- The row leaves by itself once the four steps to get going are done. **Hide** (the eye button that
+  shows beside the row, or on the Setup screen) removes it for good; Settings, Window, **Show the
+  setup checklist** brings it back. Simple mode shows none of this.
+- A tool a host lacks (the GitHub CLI, `claude`) gets a quiet card on the Start screen, not a red
+  banner, with a link to how to install it and **Dismiss**.
 
 ## Snippets
 
@@ -3027,7 +3053,9 @@ What keeps the app and the daemon light, and the numbers you can read yourself.
   this documentation). `flightdeckd --version` prints `flightdeckd <version> (protocolo 1)`.
 - **In the app:** the host page shows the daemon version, the app version and the `claude`
   version. A daemon of a different version gets the **≠** badge ("different version from the
-  app's") in the sidebar: it works, but update when you can.
+  app's") in the sidebar: it works, but update when you can. Hovering a host in the sidebar, or
+  moving the keyboard focus to it, shows its daemon's version in a tooltip (in the narrow rail,
+  after its name).
 - **Protocol:** the app sends its protocol version in `hello`. If the daemon does not accept it,
   the host becomes **incompatible: update the daemon**, with the command on the host page. It
   does not try to reconnect and drops out of the lists (sessions, search) until it is updated and

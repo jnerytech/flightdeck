@@ -847,19 +847,73 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
       expect(f.gitWrites).toEqual([]);
     });
 
-    test("a run that failed, or is still going, is not skipped over, and --commit asks for exactly that commit", async () => {
-      for (const [run, reason] of [
-        [{ status: "completed", conclusion: "failure" }, "did not pass"],
-        [{ status: "in_progress", conclusion: null }, "still running"],
-      ] as const) {
-        const f = fake({ ...stacked, mainRuns: { head3: [run], bump2: [released] } });
-        expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
-        expect(f.out()).toContain(reason);
-        expect(f.gitWrites).toEqual([]);
-      }
+    test("a run that failed is not skipped over, and --commit asks for exactly that commit", async () => {
+      const failed = { status: "completed", conclusion: "failure" };
+      const f = fake({ ...stacked, mainRuns: { head3: [failed], bump2: [released] } });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.out()).toContain("did not pass");
+      expect(f.gitWrites).toEqual([]);
       const pinned = fake({ ...stacked, mainRuns: { head3: [cancelled], bump2: [released] } });
       expect(await prFlow(["tag", "v0.37.0", "--commit", "head3"], pinned.deps)).toBe(2);
       expect(pinned.gitWrites).toEqual([]);
+    });
+
+    // On a busy main HEAD's push run is queued or going when the release is cut (#529).
+    for (const [state, run] of [
+      ["in progress", { status: "in_progress", conclusion: null }],
+      ["queued", { status: "queued", conclusion: null }],
+    ] as const) {
+      test(`a HEAD run that is ${state} has not failed: tag takes the newest commit with the bump and a full green run, and says which`, async () => {
+        const f = fake({
+          ...stacked,
+          mainRuns: { head3: [run], bump2: [released], old1: [released] },
+        });
+        expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(0);
+        expect(f.gitWrites).toEqual([
+          "tag -a v0.37.0 -m v0.37.0 bump2",
+          "push origin refs/tags/v0.37.0",
+        ]);
+        expect(f.out()).toContain("head3's CI run on main is still running: tagging bump2");
+        expect(f.writes).toEqual([]);
+      });
+    }
+
+    test("a HEAD run still going next to one that failed is a failure: nothing is skipped over", async () => {
+      const f = fake({
+        ...stacked,
+        mainRuns: {
+          head3: [
+            { status: "in_progress", conclusion: null },
+            { status: "completed", conclusion: "failure" },
+          ],
+          bump2: [released],
+        },
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.out()).toContain("did not pass");
+      expect(f.gitWrites).toEqual([]);
+    });
+
+    test("a HEAD run that is still going with no earlier green commit refuses, says it is running, and starts nothing", async () => {
+      const f = fake({
+        ...stacked,
+        history: ["head3", "bump2"],
+        mainRuns: { head3: [{ status: "queued", conclusion: null }], bump2: [pushGreen] },
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.out()).toContain("head3's CI run on main is still running");
+      expect(f.gitWrites).toEqual([]);
+      expect(f.writes).toEqual([]);
+    });
+
+    test("--commit pins a commit whose run is still going: it refuses, and falls back to nothing", async () => {
+      const f = fake({
+        ...stacked,
+        mainRuns: { head3: [{ status: "in_progress", conclusion: null }], bump2: [released] },
+      });
+      expect(await prFlow(["tag", "v0.37.0", "--commit", "head3"], f.deps)).toBe(2);
+      expect(f.out()).toContain("still running");
+      expect(f.gitWrites).toEqual([]);
     });
   });
 

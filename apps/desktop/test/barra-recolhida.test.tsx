@@ -10,6 +10,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { APP_VERSION } = await import("../src/lib/version.ts");
 
 setDefaultTimeout(20_000);
 
@@ -92,7 +93,7 @@ describe("barra-recolhida: the rail holds icons and nothing that overflows it", 
     expect(needs?.querySelector("[data-attention]")).not.toBeNull();
   });
 
-  test("collapsed, each host is its initial with its status dot, and the tooltip names it", async () => {
+  test("collapsed, each host is its initial with its status dot, and the tooltip names it and its version", async () => {
     await setup();
     await collapse();
     const host = inAside().getByRole("button", { name: "Open host alfa" });
@@ -102,7 +103,8 @@ describe("barra-recolhida: the rail holds icons and nothing that overflows it", 
       fireEvent.focus(host);
     });
     await settle(() => screen.queryByRole("tooltip") !== null);
-    expect(screen.queryByRole("tooltip")?.textContent).toBe("alfa");
+    // Issue #281: the name, then the daemon's version.
+    expect(screen.queryByRole("tooltip")?.textContent).toBe(`alfa · flightdeckd ${APP_VERSION}`);
     expect(host.querySelector("[data-slot='host-initial']")?.textContent).toBe("A");
     // The status stays a named dot beside the initial: the letter alone says nothing of the state.
     expect(within(host).getByRole("img", { name: /alfa: online/ })).not.toBeNull();

@@ -159,5 +159,23 @@ export const ASSISTANT_REASONS = [
   "assistant_no_changes",
   "assistant_not_a_repo",
   "assistant_request_id",
+  /** A key the shell refused to store; `params.why` says how (empty, control, whitespace, length, provider). */
+  "assistant_key_invalid",
+  /** The OS credential store failed to read, write or delete a provider key; no params, the keyring's error text never reaches the app. */
+  "assistant_key_store",
 ] as const;
 export type AssistantReason = (typeof ASSISTANT_REASONS)[number];
+
+/** A model a provider offers, as the pickers list it (the list comes from the provider through the shell). */
+export const ModelOption = z.object({
+  id: ModelId,
+  label: z.string().min(1),
+  /** Anthropic: the model line; OpenRouter: the vendor before the slash. */
+  group: z.string().min(1).optional(),
+  /** USD per million tokens (OpenRouter only). */
+  promptPerMTok: z.number().nonnegative().optional(),
+  completionPerMTok: z.number().nonnegative().optional(),
+  /** The model takes an `effort` setting. */
+  supportsEffort: z.boolean().optional(),
+});
+export type ModelOption = z.infer<typeof ModelOption>;

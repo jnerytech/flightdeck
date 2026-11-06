@@ -87,6 +87,18 @@ const MAX_WILDCARDS = 6;
 /** What a network rule must say: `domain:` and a host with at least two labels, one `*.` at most. */
 const DOMAIN = /^domain:(?:\*\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i;
 
+/** What one wildcard can stand for: a character, a run of directories (or none), or a name. */
+function wildcardOptions(part: string): string[] {
+  if (part === "?") return CHARS;
+  return part === "**/" ? ["", ...NAMES.map((name) => `${name}/`)] : NAMES;
+}
+
+// The wildcard as `name`: `?` is one plain character, a double star a directory of that name.
+function wildcardAsName(part: string, name: string): string {
+  if (part === "?") return "x";
+  return part === "**/" ? `${name}/` : name;
+}
+
 /**
  * The paths a rule's pattern could stand for: each wildcard in turn becomes each of the names a
  * credential has (the others stay `x`), then all of them the same name. `null` when there are too
@@ -101,16 +113,14 @@ function instances(pattern: string): string[] | null {
     let k = 0;
     return parts.map((part, i) => (i % 2 === 0 ? part : pick(k++, part))).join("");
   };
-  const options = (part: string) =>
-    part === "?" ? CHARS : part === "**/" ? ["", ...NAMES.map((name) => `${name}/`)] : NAMES;
   const out = new Set<string>([render((_, part) => plain(part))]);
   wildcards.forEach((part, at) => {
-    for (const option of options(part)) {
+    for (const option of wildcardOptions(part)) {
       out.add(render((k, p) => (k === at ? option : plain(p))));
     }
   });
   for (const name of NAMES) {
-    out.add(render((_, part) => (part === "?" ? "x" : part === "**/" ? `${name}/` : name)));
+    out.add(render((_, part) => wildcardAsName(part, name)));
   }
   // A wildcard that shares a segment with other characters may still be a sensitive path there.
   const segments = pattern.split("/");

@@ -37,8 +37,8 @@ export interface ApprovalRequest {
   createdAt: string | null;
   suggestions?: PermissionUpdate[];
   /** Phase 13: how risky the daemon judged the request; an older daemon sends none. */
-  risk?: RiskLevel | undefined;
-  riskReason?: string | undefined;
+  risk?: RiskLevel;
+  riskReason?: string;
 }
 
 /** How long the Aprovar of a high-risk request has to be held (phase 13): ApprovalActions holds it. */
@@ -60,7 +60,7 @@ function Body({
 }: Readonly<{
   view: ApprovalView;
   t: T;
-  onCopyPath?: ((path: string) => void) | undefined;
+  onCopyPath?: (path: string) => void;
 }>) {
   if (view.kind === "bash") {
     return (
@@ -125,11 +125,7 @@ const RISK_TONE: Record<RiskLevel, string> = {
   high: "border-status-error text-status-error",
 };
 
-function RiskSeal({
-  risk,
-  reason,
-  t,
-}: Readonly<{ risk: RiskLevel; reason?: string | undefined; t: T }>) {
+function RiskSeal({ risk, reason, t }: Readonly<{ risk: RiskLevel; reason?: string; t: T }>) {
   return (
     <span
       data-risk={risk}

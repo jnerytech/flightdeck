@@ -42,7 +42,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
   store: AppStore;
   go(route: Route): void;
   /** The id of a destino to connect to once the list is in (the palette's choice). */
-  connect?: string | undefined;
+  connect?: string;
 }) {
   const t = useT();
   const { store } = props;
