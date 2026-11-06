@@ -17,6 +17,11 @@ describe("sidebar-groups: the folded groups kept between runs", () => {
     ]);
   });
 
+  test("a group folded under its old name (infra) is read as Machines, once (SG-m3)", () => {
+    expect(loadFolded(storageWith('["infra"]'))).toEqual(["machines"]);
+    expect(loadFolded(storageWith('["infra","machines"]'))).toEqual(["machines"]);
+  });
+
   test("text that is not JSON is read as none folded", () => {
     expect(loadFolded(storageWith("{not json"))).toEqual([]);
   });
