@@ -65,12 +65,13 @@ function refuse(
   return new FlightdeckError("invalid_state", message, reason);
 }
 
-/** A file the model is not shown: binary, a lockfile, minified or generated, build output, a credential. */
+/** A file the model is not shown: binary, over the cap, a lockfile, minified or generated, build output, a credential. */
 function hidden(file: DiffFile): boolean {
   const path = file.path.replaceAll("\\", "/");
   const name = basename(path);
   return (
     file.binary ||
+    file.tooLarge === true ||
     LOCKFILES.has(name) ||
     /\.min\.(js|css)$|\.map$|\.generated\./.test(name) ||
     /(^|\/)(dist|build)\//.test(path) ||
