@@ -311,6 +311,15 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     expect(spacing()).toEqual(["chip-gap: chips > badge (2 px beside badge, at least 4)"]);
   });
 
+  test("spacing (#588): two boxes that overlap are a finding, by how far they run into each other", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="50,0,110,20">b</span>
+      </div>`);
+    expect(spacing()).toEqual(["chip-gap: chips > badge (-10 px over badge, at least 4)"]);
+  });
+
   test("spacing (#588): the rules are heuristic, judged against a baseline; with none they fail nothing", () => {
     const tight = { rule: "block-gap" as const, path: "page-body > config", detail: "3 px" };
     expect(judge("dark en projeto", [tight], null).failures).toEqual([]);
