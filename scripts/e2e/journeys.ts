@@ -41,9 +41,17 @@ export type Context = {
   t: ReturnType<typeof translator>;
 };
 
-/** Opens a screen of the demo; `prefs` stores the theme and language like the prints do. */
-export async function open(c: Context, route: Route, prefs = true) {
-  const query = new URLSearchParams({ route: JSON.stringify(route) });
+/**
+ * Opens a screen of the demo; `prefs` stores the theme and language like the prints do, and `extra`
+ * adds demo switches to the address (`update=<version>` makes the updater offer that version).
+ */
+export async function open(
+  c: Context,
+  route: Route,
+  prefs = true,
+  extra: Record<string, string> = {},
+) {
+  const query = new URLSearchParams({ route: JSON.stringify(route), ...extra });
   if (prefs) {
     query.set("lang", c.lang);
     query.set("theme", "light");
@@ -648,6 +656,27 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       async () => (await c.page.getByText(topic).count()) === 0,
       "o tópico não aparece na lista",
     );
+  },
+
+  // 21. The update card (issue #490): once a new version is downloaded, a card offers to update,
+  // says the sessions are not interrupted, links the release notes and goes away when closed.
+  "update-card": async (c) => {
+    await open(c, { name: "hub" }, true, { update: "9.9.9" });
+    const card = c.page.getByRole("region", { name: c.t("update.cardTitle"), exact: true });
+    await card.waitFor({ timeout: WAIT });
+    await card.getByText(c.t("update.cardReady", { version: "9.9.9" }), { exact: true }).waitFor({
+      timeout: WAIT,
+    });
+    await card.getByText(c.t("update.cardSafe"), { exact: true }).waitFor({ timeout: WAIT });
+    const notes = card.getByRole("link", { name: c.t("update.cardNotes"), exact: true });
+    expect(await notes.getAttribute("href")).toBe(
+      "https://github.com/jnerytech/flightdeck/releases/tag/v9.9.9",
+    );
+    await card.getByRole("button", { name: c.t("update.cardUpdate"), exact: true }).waitFor({
+      timeout: WAIT,
+    });
+    await card.getByRole("button", { name: c.t("update.cardClose"), exact: true }).click();
+    await card.waitFor({ state: "detached", timeout: WAIT });
   },
 };
 
