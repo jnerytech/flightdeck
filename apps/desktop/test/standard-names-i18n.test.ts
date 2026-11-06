@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionNameInfo } from "@flightdeck/protocol";
 import { translator } from "../src/i18n/index.ts";
+import type { AppState } from "../src/lib/app-store.ts";
+import { hubRowOrder, hubRows } from "../src/lib/hub.ts";
 import { sessionLabel } from "../src/lib/session-label.ts";
 
 /**
@@ -75,5 +77,36 @@ describe("standard-names-i18n: a standard name in the person's language (#668)",
       sessionLabel({ createdName: "named at start", names: info() }, t),
       sessionLabel({ names: info() }),
     ]).toEqual(["my session", "named at start", "app · geral · 2"]);
+  });
+});
+
+describe("standard-names-i18n: the sessions list sorts by the label it shows (#668)", () => {
+  test("in English, general sorts before Zeta, though the host's geral comes after aaa", () => {
+    const session = (id: string) => ({
+      id,
+      name: null,
+      cwd: "/p/app",
+      status: "idle",
+      pendingPermissions: [],
+    });
+    const state = {
+      hosts: [
+        { id: "h1", name: "alfa", status: "online", sessions: [session("s1"), session("s2")] },
+      ],
+      sessions: {},
+      hub: { h1: { managed: [session("s1"), session("s2")], history: [] } },
+      externals: {},
+      background: {},
+      meta: {},
+      personas: { h1: [{ id: "aaa", name: "Zeta" }] },
+      names: {
+        h1: [
+          info({ sessionId: "s1", display: "app · geral · 1", number: 1 }),
+          info({ sessionId: "s2", display: "app · aaa · 1", persona: "aaa", number: 1 }),
+        ],
+      },
+    } as unknown as AppState;
+    const rows = hubRows(state, translator("en")).sort(hubRowOrder);
+    expect(rows.map((row) => row.title)).toEqual(["app · general · 1", "app · Zeta · 1"]);
   });
 });
