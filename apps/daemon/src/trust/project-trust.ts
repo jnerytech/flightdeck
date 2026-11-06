@@ -58,6 +58,8 @@ interface Boundary {
 /** The person's decision, per folder, kept by the daemon: off until they say so. */
 export class ProjectTrust {
   private readonly boundaries = new Map<string, Boundary>();
+  /** The real paths of the roots (a root named by a symlink is one place under two names), read by `refreshRoots`. */
+  private realRoots: string[] = [];
 
   constructor(
     private readonly db: Database,
@@ -72,7 +74,7 @@ export class ProjectTrust {
   /** The record that makes `cwd` trusted (its own folder or the nearest one above), or null. */
   via(cwd: string): string | null {
     const here = resolve(cwd);
-    const roots = rootNames(this.opts.roots?.() ?? []);
+    const roots = [...(this.opts.roots?.() ?? []).map((root) => resolve(root)), ...this.realRoots];
     const granting = this.rows()
       .filter((row) => {
         if (row.scope === "exact") return resolve(row.path) === here;
@@ -117,12 +119,18 @@ export class ProjectTrust {
    * file is a worktree or a submodule, and a worktree is read from its main checkout.
    */
   async prepare(cwd: string): Promise<void> {
+    await this.refreshRoots();
     const here = resolve(cwd);
     await this.scan(here);
     // The main checkout a worktree area is read from has boundaries of its own: a clone nested in
     // a trusted project is not covered by it, and neither are the areas inside that clone.
     const main = this.opts.configRootOf?.(here) ?? repoOfWorktreeArea(here);
     if (main && resolve(main) !== here) await this.scan(resolve(main));
+  }
+
+  /** Reads the real paths of the roots, so `via` (synchronous) knows them. */
+  async refreshRoots(): Promise<void> {
+    this.realRoots = await rootNames(this.opts.roots?.() ?? []);
   }
 
   private async scan(here: string): Promise<void> {

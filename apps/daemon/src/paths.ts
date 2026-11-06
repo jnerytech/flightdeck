@@ -1,4 +1,3 @@
-import { realpathSync } from "node:fs";
 import { realpath, stat } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import { FlightdeckError } from "./errors.ts";
@@ -23,16 +22,14 @@ export function isInside(root: string, child: string): boolean {
 }
 
 /** The roots as written and, where they exist, as their real paths: a symlinked root is one place under two names. */
-export function rootNames(roots: readonly string[]): string[] {
-  const names = roots.flatMap((root) => {
-    const at = resolve(root);
-    try {
-      return [at, realpathSync(at)];
-    } catch {
-      return [at];
-    }
-  });
-  return [...new Set(names)];
+export async function rootNames(roots: readonly string[]): Promise<string[]> {
+  const names = await Promise.all(
+    roots.map(async (root) => {
+      const at = resolve(root);
+      return [at, await realpath(at).catch(() => at)];
+    }),
+  );
+  return [...new Set(names.flat())];
 }
 
 /** Whether two paths name the same place, case blind where the file system is. */

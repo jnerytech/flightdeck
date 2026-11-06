@@ -1250,6 +1250,7 @@ export async function startDaemon(
       },
     },
     projectTrust: {
+      refresh: () => projectTrust.refreshRoots(),
       state: (paths) =>
         paths.map((path) => {
           const via = projectTrust.via(path);

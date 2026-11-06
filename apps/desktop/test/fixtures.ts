@@ -684,6 +684,7 @@ export const SYSTEM_FOLDER = process.platform === "win32" ? "C:\\Windows" : "/et
 function projectTrustOver(db: EventStore["db"]) {
   const trust = new ProjectTrust(db);
   return {
+    refresh: () => trust.refreshRoots(),
     state: (paths: string[]) =>
       paths.map((path) => {
         const via = trust.via(path);

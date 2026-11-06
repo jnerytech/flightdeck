@@ -29,6 +29,7 @@ function serve(peer: string | null) {
     allowedNetworks: ["0.0.0.0/0", "::/0"],
     ...(peer ? { peerOf: () => peer } : {}),
     projectTrust: {
+      refresh: async () => undefined,
       state: (paths) => paths.map((p) => state(p, false)),
       inspect: async (path) => ({
         path,

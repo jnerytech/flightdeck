@@ -136,11 +136,12 @@ describe("project-trust: trust never reaches a folder the person did not mean (s
     expect(trust.isTrusted("/work/app/src")).toBe(true);
   });
 
-  test("an allowed root given as a symlink still grants nothing by prefix: the record is compared with its real path (review of #196)", () => {
+  test("an allowed root given as a symlink still grants nothing by prefix: the record is compared with its real path (review of #196)", async () => {
     const real = tempDir("fd-trust-real-");
     const link = join(tempDir("fd-trust-link-"), "code");
     symlinkSync(real, link);
     const { trust } = fresh({ roots: () => [link] });
+    await trust.refreshRoots();
     trust.trust(real);
     expect(trust.isTrusted(join(real, "new-clone"))).toBe(false);
     trust.trust(join(real, "app"));

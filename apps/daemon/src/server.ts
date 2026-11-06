@@ -175,6 +175,8 @@ export interface ServerOptions {
     server: { requestIP(req: Request): { address: string } | null },
   ) => string;
   projectTrust?: {
+    /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
+    refresh(): Promise<void>;
     state(paths: string[]): ProjectTrustState[];
     inspect(path: string): Promise<ProjectLoad>;
     set(path: string, trusted: boolean): ProjectTrustState;
@@ -1479,6 +1481,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const paths = await Promise.all(
           command.payload.paths.map((p) => resolveAllowedCwd(p, opts.allowedRoots)),
         );
+        await opts.projectTrust.refresh();
         return ok(command.type, { items: opts.projectTrust.state(paths) });
       }
       case "project.trust.inspect": {
@@ -1497,7 +1500,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         // A root, or a folder above one, holds many repos: trusting it would trust every clone inside.
         if (
           command.payload.trusted &&
-          rootNames(opts.allowedRoots).some((root) => isInside(path, root))
+          (await rootNames(opts.allowedRoots)).some((root) => isInside(path, root))
         ) {
           throw new FlightdeckError(
             "invalid_state",
@@ -1505,6 +1508,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             "trust_root_refused",
           );
         }
+        await opts.projectTrust.refresh();
         return ok(command.type, opts.projectTrust.set(path, command.payload.trusted));
       }
       case "host.bypass": {
