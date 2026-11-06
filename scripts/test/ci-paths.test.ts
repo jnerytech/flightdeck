@@ -75,7 +75,8 @@ describe("ci-paths: the rules", () => {
     // The demo the journeys drive starts the real daemon, so the daemon plans them too (#410 review).
     const daemon = { ...NONE, windows: true, smokes: true, e2e: true };
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"])).toEqual(daemon);
-    expect(ciPlan(PR, ["scripts/smoke-limits.ts"])).toEqual(daemon);
+    // A smoke is no part of the demo: Windows and the smokes, not the journeys.
+    expect(ciPlan(PR, ["scripts/smoke-limits.ts"])).toEqual({ ...daemon, e2e: false });
   });
 
   test("the app, the protocol, the dependencies or the workflow run everything but cargo", () => {
