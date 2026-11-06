@@ -4327,7 +4327,6 @@ export const en: Dictionary = {
     allPersonas: "All personas",
     shown: "{n} of {m} shown",
     showIdle: "Show idle sessions",
-    asking: "Asking to run {tool}",
     approve: "Approve",
     deny: "Deny",
     emptyAll: "Nothing here yet. Start a session and it shows on this board.",

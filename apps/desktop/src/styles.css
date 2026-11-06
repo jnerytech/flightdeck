@@ -2832,3 +2832,12 @@ html:not(:has([data-slot="status-bar"])) {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+@utility activity-card-ask {
+  overflow-wrap: anywhere;
+}
+@utility activity-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--muted-foreground);
+}

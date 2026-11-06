@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityCardView } from "@/components/activity/activity-card";
 import { ActivityColumnView } from "@/components/activity/activity-column";
 import { NativeSelect } from "@/components/layout/form";
@@ -20,6 +20,9 @@ import type { AppStore } from "../lib/app-store.ts";
 import type { HubRow } from "../lib/hub.ts";
 import type { Route } from "../lib/router.ts";
 
+/** How often the board reads the clock again. */
+const CLOCK_TICK_MS = 30_000;
+
 /**
  * Every live session of every host by state: Needs you, Working, Done and (when asked for) Idle.
  * The screen to leave open on a second monitor.
@@ -38,6 +41,12 @@ export function ActivityBoard(props: {
   const { t } = store.i18n;
   const [filter, setFilter] = useState<ActivityFilter>(NO_ACTIVITY_FILTER);
   const [showIdle, setShowIdle] = useState(() => store.activityIdle());
+  // The screen stays open for hours: the ages and the Done window follow the clock.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), props.tickMs ?? CLOCK_TICK_MS);
+    return () => clearInterval(id);
+  }, [props.tickMs]);
   const nowMs = store.now();
   const data = activityBoard(state, nowMs, filter, showIdle);
   const options = activityOptions(state);

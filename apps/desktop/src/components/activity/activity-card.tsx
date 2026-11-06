@@ -6,7 +6,9 @@ import { formatAgo } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { ActivityCard, ActivityColumn } from "../../lib/activity.ts";
 import type { PendingItem } from "../../lib/app-store.ts";
+import { HIGH_RISK_HOLD_MS } from "../../lib/hold.ts";
 import { sessionLineText } from "../../lib/hub.ts";
+import { pendingText } from "../../lib/pending-text.ts";
 
 const TONE: Record<ActivityColumn, StateTone> = {
   needs_you: "needs-you",
@@ -69,13 +71,17 @@ export function ActivityCardView(props: {
       {line && <p className="activity-card-line">{line}</p>}
       {pending && (
         <div className="activity-card-request">
-          <p>{t("activityBoard.asking", { tool: pending.toolName })}</p>
+          <p className="activity-card-ask">{pendingText(pending, t)}</p>
+          <p className="activity-card-meta">
+            {pending.risk && <span>{t(`approval.risk.${pending.risk}` as Key)}</span>}
+            {pending.cwd && <span>{pending.cwd}</span>}
+          </p>
           <div className="activity-card-actions">
             {pending.risk === "high" ? (
               <HoldButton
                 label={t("approval.hold")}
                 hint={t("approval.holdHint")}
-                holdMs={props.holdMs ?? 2000}
+                holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
                 onHeld={() => void props.onRespond(pending, "allow", true)}
               />
             ) : (

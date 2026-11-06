@@ -1019,14 +1019,20 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open(c, { name: "activity" });
     const column = (name: string) => c.page.getByRole("region", { name, exact: true });
     const needs = column(c.t("activityBoard.columns.needs_you"));
-    const cardsIn = (name: string) => column(name).locator("[data-slot='activity-card']");
-    // The request waits in Needs you with its own buttons.
+    // The request waits in Needs you with its own buttons. Newest change first: the card on top is
+    // the one just asked for, and its key names it, whatever else the demo has waiting.
     const approve = needs.getByRole("button", { name: c.t("activityBoard.approve"), exact: true });
     await approve.first().waitFor({ timeout: SESSION_WAIT });
-    const waiting = await cardsIn(c.t("activityBoard.columns.needs_you")).count();
-    await approve.first().click();
+    const top = needs.locator("[data-slot='activity-card']").first();
+    const key = await top.evaluate((el) => (el as HTMLElement).style.viewTransitionName);
+    if (!key) throw new Error("o card de cima não tem nome de transição");
+    const mine = needs.locator(`[data-slot='activity-card'][style*="${key}"]`);
+    await mine.getByRole("button", { name: c.t("activityBoard.approve"), exact: true }).click();
     await waitFor(
-      async () => (await cardsIn(c.t("activityBoard.columns.needs_you")).count()) < waiting,
+      async () =>
+        (await mine
+          .getByRole("button", { name: c.t("activityBoard.approve"), exact: true })
+          .count()) === 0,
       "o pedido aprovado saiu de Precisa de você",
       SESSION_WAIT,
     );
@@ -1037,6 +1043,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       exact: true,
     });
     const total = (await shown.textContent()) ?? "";
+    if (total === "" || total.startsWith("0 "))
+      throw new Error(`a linha de contagem diz "${total}"`);
     await search.fill("zz-no-such-session-zz");
     await waitFor(
       async () => ((await shown.textContent()) ?? "").startsWith("0 "),
@@ -1044,11 +1052,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     );
     await search.fill("");
     await waitFor(
-      async () =>
-        (await shown.textContent()) !== null && !(await shown.textContent())?.startsWith("0 "),
+      async () => !((await shown.textContent()) ?? "0 ").startsWith("0 "),
       "os cards de volta",
     );
-    if (total === "") throw new Error("a linha de contagem está vazia");
     // Idle waits for its switch, and a card opens its session.
     const idle = column(c.t("activityBoard.columns.idle"));
     if ((await idle.count()) !== 0) throw new Error("Ociosas apareceu sem o botão");
@@ -1057,7 +1063,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .check();
     await idle.waitFor({ timeout: WAIT });
     await idle
-      .locator("[data-slot='activity-card'] button")
+      .locator("[data-slot='activity-card'] .activity-card-title")
       .first()
       .click({ timeout: SESSION_WAIT });
     await c.page

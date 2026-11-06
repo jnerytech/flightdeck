@@ -4342,7 +4342,6 @@ export const ptBR = {
     allPersonas: "Todas as personas",
     shown: "{n} de {m} mostradas",
     showIdle: "Mostrar sessões ociosas",
-    asking: "Pedindo para rodar {tool}",
     approve: "Aprovar",
     deny: "Negar",
     emptyAll: "Nada por aqui ainda. Inicie uma sessão e ela aparece neste quadro.",

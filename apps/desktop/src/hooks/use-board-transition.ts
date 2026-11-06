@@ -31,5 +31,8 @@ export function useBoardTransition<T>(next: T, signature: string): T {
       flushSync(apply);
     });
   }, [signature]);
-  return arranged ? next : held.data;
+  // Without the transition API, or with reduced motion, nothing waits: a stale frame could show an
+  // answered request's buttons.
+  const direct = typeof document.startViewTransition !== "function" || reducedMotion();
+  return arranged || direct ? next : held.data;
 }
