@@ -673,8 +673,11 @@ export interface Ratchet {
 }
 
 /** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */
-export function ratchetScreen(_screen: string, _findings: Finding[], _ratchet: Ratchet): string[] {
-  return [];
+export function ratchetScreen(screen: string, findings: Finding[], ratchet: Ratchet): string[] {
+  for (const finding of findings) ratchet.seen[findingKey(screen, finding)] = finding.detail;
+  const verdict = judge(screen, findings, ratchet.baseline);
+  ratchet.gone.push(...verdict.fixed);
+  return verdict.failures;
 }
 
 /** The baseline file, or `null` when there is none yet. */
