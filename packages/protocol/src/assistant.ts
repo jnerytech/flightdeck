@@ -163,6 +163,8 @@ export const ASSISTANT_REASONS = [
   "assistant_key_invalid",
   /** The OS credential store failed to read, write or delete a provider key; no params, the keyring's error text never reaches the app. */
   "assistant_key_store",
+  /** A host provider other than the card's host: it cannot read the card's repo (issue #162). */
+  "assistant_repo_other_host",
 ] as const;
 export type AssistantReason = (typeof ASSISTANT_REASONS)[number];
 
