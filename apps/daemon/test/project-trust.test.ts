@@ -238,6 +238,34 @@ describe("project-trust: trust never reaches a folder the person did not mean (s
     expect(trust.sessionTrust(inNested)).toEqual({ trusted: true, configRoot: nested });
   });
 
+  test("a folder looked at again is never read as trusted while the scan runs (review of #196)", async () => {
+    const main = tempDir("fd-trust-main-");
+    const { trust } = fresh();
+    trust.trust(main);
+    const nested = join(main, "vendor", "evil");
+    mkdirSync(join(nested, ".git"), { recursive: true });
+    await trust.prepare(nested);
+    expect(trust.sessionTrust(nested).trusted).toBe(false);
+    const again = trust.prepare(nested);
+    expect(trust.sessionTrust(nested).trusted).toBe(false);
+    await again;
+    expect(trust.sessionTrust(nested).trusted).toBe(false);
+  });
+
+  test("an area whose main checkout is itself a worktree is read from the checkout that was judged (review of #196)", async () => {
+    const root = tempDir("fd-trust-main-");
+    const { trust } = fresh();
+    trust.trust(root);
+    mkdirSync(join(root, ".git", "worktrees", "w"), { recursive: true });
+    const checkout = join(root, "sub");
+    mkdirSync(checkout, { recursive: true });
+    writeFileSync(join(checkout, ".git"), `gitdir: ${join(root, ".git", "worktrees", "w")}\n`);
+    const area = join(checkout, ".claude", "worktrees", "x");
+    mkdirSync(area, { recursive: true });
+    await trust.prepare(area);
+    expect(trust.sessionTrust(area)).toEqual({ trusted: true, configRoot: root });
+  });
+
   test("a .git file that cannot be read closes the folder: it is its own boundary and not trusted", async () => {
     const main = tempDir("fd-trust-");
     const odd = join(main, "odd");
