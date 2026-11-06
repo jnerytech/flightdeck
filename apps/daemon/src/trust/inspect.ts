@@ -157,6 +157,8 @@ async function headers(
   unreadable: string[],
 ): Promise<Array<{ file: string; keys: string[] }>> {
   const files: string[] = [];
+  // Whatever the scan leaves unread is said, so a header past a cap cannot pass for a clean project.
+  const skipped = new Set<string>();
   const walk = async (at: string, depth: number): Promise<void> => {
     let entries: Dirent[];
     try {
@@ -165,10 +167,17 @@ async function headers(
       return;
     }
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (files.length >= MAX_ITEMS) return;
+      if (files.length >= MAX_ITEMS) {
+        skipped.add(`${dir} (more than ${MAX_ITEMS} files, the rest not scanned)`);
+        return;
+      }
       const full = join(at, entry.name);
+      const shown = relative(root, full).split(sep).join("/");
       if (entry.isDirectory()) {
         if (depth < 3) await walk(full, depth + 1);
+        else skipped.add(`${shown} (too deep, not scanned)`);
+      } else if (entry.isSymbolicLink() && !entry.name.endsWith(".md")) {
+        skipped.add(`${shown} (a link, not followed, not scanned)`);
       } else if (
         (entry.isFile() || entry.isSymbolicLink()) &&
         (skills ? entry.name === "SKILL.md" : entry.name.endsWith(".md"))
@@ -178,6 +187,7 @@ async function headers(
     }
   };
   await walk(join(root, dir), 0);
+  unreadable.push(...skipped);
   const out: Array<{ file: string; keys: string[] }> = [];
   for (const full of files) {
     const name = relative(root, full).split(sep).join("/");
