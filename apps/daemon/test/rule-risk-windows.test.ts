@@ -38,6 +38,12 @@ describe("rule-risk: a Windows path in a rule (issue #431)", () => {
     expect(level("C:\\Users\\me\\.ssh\\id\\*")).toBe("any");
   });
 
+  test("a backslash that makes a parent step once it is removed is refused like the step itself", () => {
+    expect(level("proj/.\\./app-*.txt", "Read")).toBe("any");
+    expect(level("proj/.\\./app.txt", "Read")).toBe("any");
+    expect(level("proj/../app-*.txt", "Read")).toBe("any");
+  });
+
   test("a path with no wildcard and a credential name stays high on a drive", () => {
     expect(level("C:\\Users\\me\\.ssh\\id_rsa", "Read")).toBe("high");
     expect(level("C:\\Users\\me\\proj\\app.txt")).toBe("low");

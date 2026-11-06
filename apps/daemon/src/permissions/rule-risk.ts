@@ -127,6 +127,8 @@ function pathLevel(
   const readings = pattern.includes("\\")
     ? [pattern.replaceAll("\\", "/"), pattern.replaceAll("\\", "")]
     : [pattern];
+  // Removing a backslash can make a parent step (`.\./`): each reading is checked for one.
+  if (readings.some((reading) => reading.includes(".."))) return "any";
   const wild = readings.some((reading) => WILD.test(reading));
   const reached = readings.map((reading) => (WILD.test(reading) ? instances(reading) : [reading]));
   if (reached.includes(null)) return "any";
