@@ -47,18 +47,16 @@ describe("tabela-larga: a wide table scrolls sideways inside its own frame", () 
       />,
     );
     await settle(() => screen.queryByRole("table", { name: ptBR.roiUi.tableTitle }) !== null);
-    const frame = screen.queryByRole("table", { name: ptBR.roiUi.tableTitle })?.parentElement;
+    const table = screen.queryByRole("table", { name: ptBR.roiUi.tableTitle });
+    // A region a screen reader names, holding the table, that the keyboard can reach.
+    const frame = screen.queryByRole("region", {
+      name: `${ptBR.roiUi.tableTitle}, rola para os lados`,
+    });
     expect({
       slot: frame?.getAttribute("data-slot") ?? null,
-      role: frame?.getAttribute("role") ?? null,
-      name: frame?.getAttribute("aria-label") ?? null,
+      holds: frame !== null && table !== null && table.parentElement === frame,
       focusable: frame?.getAttribute("tabindex") ?? null,
-    }).toEqual({
-      slot: "table-wide",
-      role: "region",
-      name: `${ptBR.roiUi.tableTitle}, rola para os lados`,
-      focusable: "0",
-    });
+    }).toEqual({ slot: "table-wide", holds: true, focusable: "0" });
     store.dispose();
   });
 
