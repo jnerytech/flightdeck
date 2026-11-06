@@ -1828,6 +1828,17 @@ export const ptBR = {
     cwd_outside_roots:
       "A pasta {cwd} está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
     session_not_found: "A sessão {id} não existe neste host.",
+    teleport_busy:
+      "Esta sessão está trabalhando ou espera uma resposta. Mova-a quando estiver parada.",
+    teleport_team:
+      "Uma sessão de time ainda não pode mudar de host: mova uma sessão de cada vez, fora de um time.",
+    teleport_runtime: "Só uma sessão do Claude Code pode mudar de host.",
+    teleport_no_transcript: "Este host não tem a transcrição da sessão para mover.",
+    teleport_unsafe_transcript:
+      "A transcrição da sessão não é um arquivo comum dentro do histórico do Claude Code, por isso não é lida.",
+    teleport_too_large: "A transcrição passa de {max} bytes, o máximo que uma mudança leva.",
+    teleport_not_found:
+      "Esta mudança não está mais no host: foi cancelada ou o tempo acabou. Comece de novo.",
     runtime_unavailable: "O OpenCode não está disponível neste host.",
     runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
     opencode_unsafe_global:
