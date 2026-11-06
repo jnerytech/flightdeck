@@ -84,6 +84,18 @@ describe("unstable-skip-ratchet: tests skipped off Linux name their issue, and t
     expect(skipIssues(source)).toEqual([484, 492, 288]);
   });
 
+  test("a skip on any receiver counts, as the audit's .skip( marker does, so none escapes the cap or the issue check (#494 review)", () => {
+    const source = [
+      `test.concurrent.${"skip"}("a", () => {}); // unstable: #484 late`,
+      `x.each(rows).${"skip"}("b", () => {});`,
+    ].join("\n");
+    expect(unstableSkips(source)).toEqual([
+      { line: 1, documented: true },
+      { line: 2, documented: false },
+    ]);
+    expect(skipIssues(source)).toEqual([484]);
+  });
+
   test("the repository's noted issues are read from every test file under the roots, each once, in order (#494)", () => {
     const root = realTempDir("fd-unstable-issues-");
     const put = (path: string, text: string) => {

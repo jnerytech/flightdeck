@@ -67,6 +67,8 @@ describe("hook-skip: a test skipped off Linux names the issue that owns its fix"
     expect(edit("", `${note}describe${SKIP}"x", () => {})`)).toBeNull();
     expect(edit("", `test${SKIP}"x", () => {}) // unstable: #492 the palette races`)).toBeNull();
     expect(edit("", `test${SKIP}"x", () => {})`) ?? "").toContain("// unstable: #<issue> <reason>");
+    // Any receiver: test.concurrent.skip and each(...).skip need the note too (#494 review).
+    expect(edit("", `test.concurrent${SKIP}"x", () => {})`) ?? "").toContain("is blocked");
   });
 
   test("the comment excuses nothing else: .only, test.todo and a snapshot stay blocked", () => {
