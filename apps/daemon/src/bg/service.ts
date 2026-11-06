@@ -16,6 +16,8 @@ export interface BgServiceOptions {
   card?: (cardId: string) => { cwd: string; prompt: string; name: string };
   /** What a folder's project setup may do (project trust): none to say means it is left alone. */
   trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
+  /** Looks at the folder's git boundaries first, so `trust` can answer from them (a nested clone is not covered). */
+  prepare?: (cwd: string) => Promise<void>;
 }
 
 /** The listing and the commands are quick; a `claude` that does not answer is as good as none. */
@@ -100,7 +102,8 @@ export class BgService {
   }
 
   /** The flags that keep a folder's project setup from running when it is not trusted (project trust). */
-  private trustFlags(cwd: string): string[] {
+  private async trustFlags(cwd: string): Promise<string[]> {
+    await this.opts.prepare?.(cwd);
     const trust = this.opts.trust?.(cwd);
     if (!trust) return [];
     return [
@@ -130,7 +133,17 @@ export class BgService {
 
   /** Restarts the session so it runs the current Claude Code (it resumes its saved conversation). */
   async respawn(id: string): Promise<BgList> {
-    await this.find(id);
+    const session = await this.find(id);
+    // `claude respawn` takes no flags, so it cannot be told to leave a project's own hooks and servers
+    // out: in a folder not trusted it is refused (the person trusts the project, or starts a new one).
+    await this.opts.prepare?.(session.cwd);
+    if (this.opts.trust && !this.opts.trust(session.cwd).trusted) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "this session's folder is not trusted: trust the project, or start a new session",
+        "bg_untrusted",
+      );
+    }
     await this.claudeDo(["respawn", id]);
     return this.list();
   }
@@ -156,7 +169,7 @@ export class BgService {
       "--resume",
       claudeSessionId,
       "--bg",
-      ...this.trustFlags(session.cwd),
+      ...(await this.trustFlags(session.cwd)),
       "--",
       text,
     ]);
@@ -199,7 +212,7 @@ export class BgService {
         "--bg",
         ...(input.persona ? ["--persona", input.persona] : []),
         ...(name ? ["--name", name] : []),
-        ...this.trustFlags(folder),
+        ...(await this.trustFlags(folder)),
         "--",
         prompt ?? "",
       ],
