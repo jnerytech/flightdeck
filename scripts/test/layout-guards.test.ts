@@ -74,6 +74,19 @@ beforeEach(() => {
       });
     }
   }
+  // The widths too (#588): the text-spill rule reads both on a block, where happy-dom answers 0.
+  for (const [name, read] of [
+    ["clientWidth", (el: Element) => num(el, "data-cw", 0)],
+    ["scrollWidth", (el: Element) => num(el, "data-sw", num(el, "data-cw", 0))],
+  ] as const) {
+    saved.set(`H:${name}`, Object.getOwnPropertyDescriptor(htmlProto, name));
+    Object.defineProperty(htmlProto, name, {
+      configurable: true,
+      get(this: Element) {
+        return read(this);
+      },
+    });
+  }
   window.innerWidth = 1000;
   window.innerHeight = 700;
 });
@@ -282,8 +295,8 @@ describe("layout-guards: what the page function finds, named by data-slot path",
         <pre data-slot="spill" data-rect="24,120,376,140" data-sw="600" data-cw="352">long line</pre>
       </div>`);
     expect(spacing()).toEqual([
-      "card-padding: card > hook-command (4 px from the card's left edge, at least 8)",
       "text-spill: card > spill (248 px past its box)",
+      "card-padding: card > hook-command (4 px from the card's left edge, at least 8)",
     ]);
   });
 
