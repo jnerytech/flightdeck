@@ -212,6 +212,16 @@ describe("setup-steps: what the person chose (issue #164)", () => {
     expect(new SetupSettings(kept.storage).hidden).toBe(false);
   });
 
+  test("a dismissed-tools list that is not readable is none", () => {
+    const kept = memory();
+    for (const bad of ["{not json", '{"a":1}']) {
+      kept.data.set(SETUP_TOOLS_KEY, bad);
+      expect(new SetupSettings(kept.storage).dismissedTools()).toEqual([]);
+    }
+    kept.data.set(SETUP_TOOLS_KEY, '["gh@h1", 3]');
+    expect(new SetupSettings(kept.storage).dismissedTools()).toEqual(["gh@h1"]);
+  });
+
   test("changing tells the listeners", () => {
     const s = new SetupSettings(memory().storage);
     let told = 0;

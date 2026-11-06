@@ -2202,7 +2202,7 @@ export class AppStore {
   }
 
   /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
-  async refreshSetup(hostId: string): Promise<void> {
+  async refreshSetup(hostId: string, _options: { github?: boolean } = {}): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
     if (!host || host.status !== "online") return;
     const features = host.hostInfo?.features;

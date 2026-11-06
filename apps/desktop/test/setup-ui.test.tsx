@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -165,6 +166,17 @@ function page(w: ReturnType<typeof make>) {
 }
 
 describe("setup-ui: the Setup screen (issue #164)", () => {
+  test("opening it asks every online host about GitHub, once", async () => {
+    const w = make({ hosts: [host("h1"), host("h2", { status: "offline" })] });
+    const asks: unknown[] = [];
+    w.store.refreshSetup = (async (id: string, options?: unknown) => {
+      asks.push([id, options]);
+    }) as never;
+    page(w);
+    await settle(() => asks.length > 0);
+    expect(asks).toEqual([["h1", { github: true }]]);
+  });
+
   test("a numbered list of steps: the first one to do is the current step", () => {
     page(make({ hosts: [host("h1")] }));
     const core = screen.getByRole("list", { name: "To get going" });
@@ -286,6 +298,10 @@ describe("setup-ui: a missing tool gets a quiet card on Start (issue #164)", () 
     expect(within(card).getByRole("link", { name: "Como instalar" }).getAttribute("href")).toBe(
       "https://cli.github.com",
     );
+    const opened: string[] = [];
+    w.store.openLink = ((url: string) => void opened.push(url)) as never;
+    await click(within(card).getByRole("link", { name: "Como instalar" }));
+    expect(opened).toEqual(["https://cli.github.com"]);
     await click(within(card).getByRole("button", { name: "Dispensar" }));
     expect(screen.queryByRole("note")).toBeNull();
     expect(w.store.setup.dismissedTools()).toEqual(["gh@h1"]);
@@ -325,7 +341,7 @@ describe("setup-ui: what the hosts answer (issue #164)", () => {
     return calls;
   }
 
-  test("a host with hooks and GitHub is asked for both, and its projects are loaded", async () => {
+  test("a host with hooks and GitHub is asked for the hooks and its projects at connect; GitHub only when asked for", async () => {
     const w = make({ hosts: [host("h1")] });
     const internals = w.store as unknown as { update(p: object): void };
     internals.update({ hosts: [host("h1")] });
@@ -334,7 +350,14 @@ describe("setup-ui: what the hosts answer (issue #164)", () => {
       "github.status": { installed: true, loggedIn: true },
     });
     await w.store.refreshSetup("h1");
-    expect(calls.sort()).toEqual(["github.status", "hooks.status", "loadProjects"]);
+    // `gh auth status` runs on the host: not at every connect, only when the person looks at GitHub.
+    expect(calls.sort()).toEqual(["hooks.status", "loadProjects"]);
+    expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "installed", github: null });
+    await w.store.refreshSetup("h1", { github: true });
+    expect(calls.sort()).toEqual(["github.status", "hooks.status", "hooks.status", "loadProjects"]);
+    expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "installed", github: true });
+    // The next connect keeps what GitHub said.
+    await w.store.refreshSetup("h1");
     expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "installed", github: true });
   });
 
@@ -345,10 +368,10 @@ describe("setup-ui: what the hosts answer (issue #164)", () => {
       "hooks.status": { status: "absent" },
       "github.status": { installed: true, loggedIn: false },
     });
-    await w.store.refreshSetup("h1");
+    await w.store.refreshSetup("h1", { github: true });
     expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "absent", github: false });
     asked(w, {});
-    await w.store.refreshSetup("h1");
+    await w.store.refreshSetup("h1", { github: true });
     expect(w.store.getState().setupProbes.h1).toEqual({ hooks: null, github: null });
   });
 
