@@ -194,10 +194,11 @@ function pathLevel(
   const keys = READ_TOOLS[toolName] ?? ["file_path"];
   const call = (path: string) =>
     classify(toolName, Object.fromEntries(keys.map((key) => [key, path])));
-  // The CLI matches a rule the gitignore way: a folder covers everything below it, so a folder on
-  // disk, or a path that ends with a slash, is read with its subtree too (issue #395).
+  // The CLI matches a rule the gitignore way: a folder covers everything below it. Only a file on
+  // disk is read as itself; a folder, a path ending with a slash, and a path not there yet (it can
+  // be made a folder once the rule is saved) are read with their subtree too (issue #395).
   const readings = read.flatMap((reading) =>
-    !WILD.test(reading) && (reading.endsWith("/") || kind(reading) === "dir")
+    !WILD.test(reading) && (reading.endsWith("/") || kind(reading) !== "file")
       ? [reading, `${reading.replace(/\/+$/, "")}/**`]
       : [reading],
   );
@@ -233,23 +234,38 @@ export function ruleLevel(
   return classify(toolName, {});
 }
 
+/** At most this many paths are looked up for one answer: the rest count as folders. */
+const MAX_LOOKUPS = 32;
+/** A look-up that takes longer (a hung network mount) counts as a folder. */
+const LOOKUP_MS = 2000;
+
 /**
  * The kind of each exact path a rule names, looked up once with `stat` (relative to the request's
- * folder, `~/` to the home): a path it did not look up counts as a folder.
+ * folder, `~/` to the home). A path it did not look up counts as a folder: past the cap, a network
+ * path (`//host/share`, which would reach another host), one with no folder to start from, and
+ * one whose look-up timed out.
  */
 export async function pathKinds(
   paths: string[],
   cwd: string,
   home: string,
   stat: (path: string) => Promise<"dir" | "file" | "missing">,
+  timeoutMs = LOOKUP_MS,
 ): Promise<PathKind> {
   const at = (path: string) =>
     path.startsWith("~/") ? join(home, path.slice(2)) : isAbsolute(path) ? path : join(cwd, path);
+  const network = (path: string) => /^(?:\/\/|\\\\)/.test(path);
+  const timed = (where: string) =>
+    new Promise<"dir" | "file" | "missing">((resolve) => {
+      const timer = setTimeout(() => resolve("dir"), timeoutMs);
+      timer.unref?.();
+      stat(where).then(resolve, () => resolve("dir"));
+    });
   const looked = await Promise.all(
-    [...new Set(paths)].map(async (path) => {
+    [...new Set(paths)].slice(0, MAX_LOOKUPS).map(async (path) => {
       const where = at(path);
-      // A relative path with no folder to start from is not looked up: it counts as a folder.
-      return [path, isAbsolute(where) ? await stat(where) : "dir"] as const;
+      const plain = isAbsolute(where) && !network(path) && !network(where);
+      return [path, plain ? await timed(where) : "dir"] as const;
     }),
   );
   const kinds = new Map<string, "dir" | "file" | "missing">(looked);

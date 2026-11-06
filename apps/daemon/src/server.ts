@@ -741,14 +741,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { requestId, decision, message, updatedPermissions, updatedInput, held } =
           command.payload;
         const external = opts.central?.permissions;
-        // A rule that names a folder covers all it holds (#395): look its paths up first.
+        // A rule that names a folder covers all it holds (#395): look its paths up first, only for
+        // an allow of a request that is open (an unknown one is refused below anyway).
         const cwd = external?.cwdOf(requestId) ?? manager.permissionCwd(requestId);
-        const kind = await pathKinds(
-          rulePaths(updatedPermissions ?? []),
-          cwd,
-          userHome(),
-          statKind,
-        );
+        const kind =
+          decision === "allow" && cwd
+            ? await pathKinds(rulePaths(updatedPermissions ?? []), cwd, userHome(), statKind)
+            : undefined;
         if (
           !external?.respond(
             requestId,
