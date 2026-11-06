@@ -153,7 +153,7 @@ export function ModelPicker(props: ModelPickerProps) {
         <label className="flex items-center gap-2 text-sm">
           {props.effort.label}
           <select
-            className="rounded-md border bg-background px-2 py-1"
+            className="rounded-md border border-input bg-background px-2 py-1"
             value={props.effort.value}
             onChange={(e) => props.effort?.onChange(e.target.value)}
           >
