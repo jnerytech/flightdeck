@@ -487,6 +487,7 @@ function makeSettingsActions(store: AppStore) {
     onGlobalShortcut: (text: string) => void store.setGlobalShortcut(text),
     onCheckUpdate: () => void store.checkAppUpdate(),
     onNotifyUpdates: (enabled: boolean) => store.setNotifyUpdates(enabled),
+    onAutoUpdate: (enabled: boolean) => store.setAutoUpdate(enabled),
     onTheme: (mode: ThemeMode) => store.theme.setMode(mode),
     onDensity: (density: Density) => store.density.set(density),
     onLang: (next: Lang) => store.i18n.setLang(next),
