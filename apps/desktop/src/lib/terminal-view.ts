@@ -176,3 +176,29 @@ export function pasteLines(text: string): number {
 export function pasteNeedsConfirm(text: string, bracketed: boolean): boolean {
   return !bracketed && pasteLines(text) > 1;
 }
+
+export const TERMINAL_READER_KEY = "flightdeck.terminal-reader";
+
+/**
+ * Whether the terminal speaks to screen readers (#476): xterm's screen reader mode, which keeps an
+ * accessible copy of the output. Off at first (long output draws more slowly), kept across starts.
+ */
+export class TerminalReaderSetting {
+  value: boolean;
+  private readonly listeners = new Set<() => void>();
+
+  constructor(private readonly storage: Platform["storage"]) {
+    this.value = storage.getItem(TERMINAL_READER_KEY) === "on";
+  }
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  set(on: boolean): void {
+    this.value = on;
+    this.storage.setItem(TERMINAL_READER_KEY, on ? "on" : "off");
+    for (const listener of this.listeners) listener();
+  }
+}

@@ -1007,6 +1007,9 @@ export const en: Dictionary = {
     densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
     terminalFont: "Terminal font size",
+    terminalReader: "Screen reader support in the terminal",
+    terminalReaderHint:
+      "Lets a screen reader read the terminal's output. Long output draws more slowly.",
     cacheTimer: "Prompt cache timer",
     cacheTtl: "Cache lifetime",
     cacheTtls: { fiveMinutes: "5 minutes", oneHour: "1 hour" },
@@ -2208,6 +2211,8 @@ export const en: Dictionary = {
     close: "Close",
     opening: "Opening…",
     showChanges: "Show changes",
+    openOutside: "Open in its app",
+    reveal: "Show in folder",
     showFile: "Show the file",
     jumpLatestOne: "Jump to latest ({n} new change)",
     jumpLatestMany: "Jump to latest ({n} new changes)",
@@ -2469,6 +2474,8 @@ export const en: Dictionary = {
   terminalUi: {
     sshBadge: "SSH · {name}",
     title: "Terminal",
+    readerHint:
+      "For a screen reader to read the output, turn on Screen reader support in the terminal in Settings.",
     copy: "Copy",
     paste: "Paste",
     state: {

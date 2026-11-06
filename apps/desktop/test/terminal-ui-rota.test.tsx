@@ -65,6 +65,21 @@ describe("terminal-ui: the route and the settings", () => {
     expect(store.terminalFont.value).toBe(17);
   });
 
+  test("Configurações has screen reader support for the terminal, off at first and kept in the store (issue #476)", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await chooseFromAccountMenu("Configurações");
+    await settle(() => screen.queryByLabelText("Tamanho da fonte do terminal") !== null);
+    const box = screen.queryByLabelText(
+      "Suporte a leitor de tela no terminal",
+    ) as HTMLInputElement | null;
+    expect(box?.checked).toBe(false);
+    await act(async () => {
+      if (box) fireEvent.click(box);
+    });
+    expect(store.terminalReader.value).toBe(true);
+  });
+
   test("the real xterm deps build a terminal with its addons", () => {
     const terminal = realXtermDeps.terminal({ cols: 80, rows: 24, allowProposedApi: true });
     for (const addon of [

@@ -1168,7 +1168,8 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   que não é texto ou uma credencial diz isso no lugar. Um arquivo alterado tem **Mostrar mudanças**:
   o diff dele contra o HEAD, ao vivo. Enquanto você está no fim, a mudança mais nova entra na tela
   conforme a sessão edita; role para cima e isso para, e **Ir para a mais recente** (com quantas
-  mudanças chegaram) ou uma rolagem de volta ao fim retoma.
+  mudanças chegaram) ou uma rolagem de volta ao fim retoma. Num host deste computador o visualizador
+  também tem **Abrir no app padrão** e **Mostrar na pasta**.
 - **Comentários inline:**
   - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
     Uma linha apagada é comentada pelo lado antigo;
@@ -2804,7 +2805,10 @@ numa aba, sem SSH.
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
   10 a 24). Na aba, `Ctrl+=` (ou `Ctrl++`) e `Ctrl+-`, ou `Ctrl` com a roda do mouse, aumentam ou
-  diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. A
+  diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. Para
+  um leitor de tela (NVDA, Narrador), ligue **Suporte a leitor de tela no terminal** nas
+  Configurações: o terminal passa a manter uma cópia da saída que o leitor acompanha (saída longa
+  demora mais para aparecer, por isso começa desligado). A
   aba guarda as últimas 10.000 linhas para rolar e buscar.
 - **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar
   de novo os mostra. Fechar a aba de um terminal pergunta: **Desanexar** (o padrão; o processo

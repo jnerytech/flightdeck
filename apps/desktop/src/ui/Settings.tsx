@@ -75,6 +75,11 @@ export const Settings = memo(function Settings(props: {
     props.store.terminalFont.subscribe,
     () => props.store.terminalFont.value,
   );
+  const terminalReader = useSyncExternalStore(
+    props.store.terminalReader.subscribe,
+    () => props.store.terminalReader.value,
+  );
+  const readerHint = useId();
   const setupHidden = useSyncExternalStore(
     props.store.setup.subscribe,
     () => props.store.setup.hidden,
@@ -189,6 +194,18 @@ export const Settings = memo(function Settings(props: {
               />
             )}
           </SettingRow>
+          <label className={check}>
+            <input
+              type="checkbox"
+              checked={terminalReader}
+              aria-describedby={readerHint}
+              onChange={(e) => props.store.terminalReader.set(e.target.checked)}
+            />
+            {t("settings.terminalReader")}
+          </label>
+          <small id={readerHint} className="text-muted-foreground text-xs">
+            {t("settings.terminalReaderHint")}
+          </small>
           <SettingRow label={t("settings.language")}>
             {(id) => (
               <NativeSelect

@@ -392,6 +392,15 @@ describe("terminal-ui: the xterm screen", () => {
     expect([asked.length, marked.log.includes("paste:a\nb")]).toEqual([2, true]);
   });
 
+  test("screen reader mode is given to xterm at the start and follows the setting (issue #476)", () => {
+    const s = setup();
+    expect(s.constructed().screenReaderMode).toBe(false);
+    s.screen.setScreenReader(true);
+    expect(s.terminal.options.screenReaderMode).toBe(true);
+    s.screen.setScreenReader(false);
+    expect(s.terminal.options.screenReaderMode).toBe(false);
+  });
+
   test("dispose releases the listeners and xterm", () => {
     const s = setup();
     s.screen.dispose();
