@@ -172,8 +172,11 @@ describe("assistant-run: a host the person never agreed to is sent nothing (issu
     expect(sent).toEqual([]);
   });
 
-  test("the refusal does not hold the one run of the app", async () => {
+  test("the refusal comes before the one run of the app is taken, and does not hold it", async () => {
     const { controller } = setup({ confirmed: false });
+    expect(controller.gate.acquire("other")).toBe(true);
+    expect((await refusal(() => controller.run(input())))?.reason).toBe("assistant_not_configured");
+    controller.gate.release("other");
     await refusal(() => controller.run(input()));
     expect(controller.gate.busy()).toBe(false);
   });
@@ -185,7 +188,7 @@ describe("assistant-run: a host the person never agreed to is sent nothing (issu
     });
     controller.confirmHost("h1");
     await controller.run(input());
-    expect(sent.map((call) => call[0])).toEqual(["h1"]);
+    expect(sent.map((call) => [call[0], call[1]])).toEqual([["h1", "assistant.run"]]);
     await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
     await controller.refreshKeys();
     controller.setPrefs({ provider: "anthropic", confirmedHosts: [] });
