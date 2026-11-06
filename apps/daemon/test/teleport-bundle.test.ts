@@ -195,6 +195,36 @@ describe("teleport-bundle: the code of a session as one git bundle (#100)", () =
     expect(refused).toBe("teleport_too_large");
   });
 
+  test("a file deleted from the working tree weighs nothing and still moves", async () => {
+    const { repo, folder } = await working();
+    await rm(join(repo, "f2.txt"));
+    const changed = await bundleCode({ cwd: repo, folder, id: "p", scan: () => [] }).then(
+      (code) => code.changed,
+      (error: unknown) => String(error),
+    );
+    expect(changed).toBe(3);
+  });
+
+  test("a package id that is not a plain name never reaches git", async () => {
+    const { repo, folder } = await working();
+    expect([
+      await reason(() => bundleCode({ cwd: repo, folder, id: "../x", scan: () => [] })),
+      await reason(() => bundleCode({ cwd: repo, folder, id: "a".repeat(65), scan: () => [] })),
+      git(repo, "for-each-ref", "refs/flightdeck"),
+    ]).toEqual(["request_invalid", "request_invalid", ""]);
+  });
+
+  test("commits whose bundle is past the limit are refused, and the bundle file goes", async () => {
+    const { repo, folder } = await working();
+    await writeFile(join(repo, "noise.bin"), crypto.getRandomValues(new Uint8Array(4096)));
+    git(repo, "add", "noise.bin");
+    git(repo, "commit", "-q", "-m", "chore(x): noise");
+    const refused = await reason(() =>
+      bundleCode({ cwd: repo, folder, id: "p", scan: () => [], maxBytes: 2048 }),
+    );
+    expect([refused, await readdir(folder)]).toEqual(["teleport_too_large", []]);
+  });
+
   test("a repository with no index yet still bundles its working tree", async () => {
     const { repo, folder } = await working();
     await rm(join(repo, ".git", "index"));
