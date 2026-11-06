@@ -13,7 +13,7 @@ interface Step {
 }
 const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8")) as {
   on: { schedule?: { cron: string }[] };
-  jobs: Record<string, { steps: Step[] }>;
+  jobs: Record<string, { if?: string; steps: Step[] }>;
 };
 const steps = ci.jobs["test-suite"]?.steps ?? [];
 const step = (name: string) => steps.find((s) => s.name === name);
@@ -37,5 +37,19 @@ describe("ci-pyramid (#309)", () => {
     const full = step("Testes (cobertura 100%)");
     expect(full?.if).toBe("github.event_name != 'pull_request'");
     expect(full?.run).toBe("bun run test");
+  });
+
+  test("the e2e journeys leave the PR path: they run on main, nightly and by hand (#309 c)", () => {
+    expect(ci.jobs["screenshots-e2e"]?.if).toBe(
+      "needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'",
+    );
+  });
+
+  test("the screenshots check accepts skipped journeys on a PR only; elsewhere they must pass (#309 c)", () => {
+    const check = (ci.jobs.screenshots?.steps ?? []).map((s) => s.run ?? "").join("\n");
+    expect(check).toContain('test "${{ needs.screenshots-prints.result }}" = success');
+    expect(check).toContain('if [ "${{ github.event_name }}" = pull_request ]; then');
+    expect(check).toContain('test "${{ needs.screenshots-e2e.result }}" = skipped');
+    expect(check).toContain('test "${{ needs.screenshots-e2e.result }}" = success');
   });
 });
