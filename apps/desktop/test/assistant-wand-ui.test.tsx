@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
-import { fakeAssistant, memoryPlatform } from "./fixtures.ts";
+import { fakeAssistant, memoryPlatform, seedHosts } from "./fixtures.ts";
 import { settle, stays } from "./wait.ts";
 
 registerDom();
@@ -409,6 +409,37 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(opened).toEqual(["settings"]);
     expect(store.assistant.wantsSetup()).toBe(true);
     expect(asked(fake)).toHaveLength(0);
+  });
+
+  test("a host the person never agreed to is not sent the text: the click opens Settings, where it asks once", async () => {
+    const { store, fake, opened } = await make({}, { configured: false });
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+      ok: true,
+      data: ANSWER,
+    } as never);
+    type("fix the totl");
+    await click("Improve with AI");
+    expect(opened).toEqual(["settings"]);
+    expect(store.assistant.wantsSetup()).toBe(true);
+    expect(toHost).not.toHaveBeenCalled();
+    expect(asked(fake)).toHaveLength(0);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  test("a host the person agreed to gets the click without a detour to Settings", async () => {
+    const { store, opened } = await make({}, { configured: false });
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    store.assistant.confirmHost("h1");
+    const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+      ok: true,
+      data: ANSWER,
+    } as never);
+    type("fix the totl");
+    await click("Improve with AI");
+    expect(opened).toEqual([]);
+    expect(store.assistant.wantsSetup()).toBe(false);
+    expect(toHost.mock.calls.map((call) => [call[0], call[1]])).toEqual([["h1", "assistant.run"]]);
   });
 
   test("a secret in the text is refused on the spot, naming what it looks like and never the text", async () => {
