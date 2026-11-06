@@ -89,7 +89,8 @@ describe("primeira execução", () => {
       });
     }
     expect(screen.queryByText("Saúde e dependências")).not.toBeNull();
-    expect(screen.queryByText("Pastas permitidas")).not.toBeNull();
+    // The panel of the allowed folders (its field), not the words of the Health row that name it too.
+    expect(screen.queryByLabelText("Pasta a permitir")).not.toBeNull();
     expect(store.getState().hosts).toHaveLength(1);
     store.dispose();
     for (const fn of cleanups.splice(0).reverse()) await fn();
