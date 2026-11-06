@@ -2272,7 +2272,8 @@ html:not(:has([data-slot="status-bar"])) {
 }
 @utility update-card-link {
   width: fit-content;
-  color: var(--color-primary);
+  /* The card's own text color, underlined: the brand color fails contrast on the dark card (#581, axe). */
+  color: var(--color-popover-foreground);
   text-decoration: underline;
   text-underline-offset: 2px;
   border-radius: 2px;
