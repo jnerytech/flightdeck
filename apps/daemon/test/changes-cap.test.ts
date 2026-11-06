@@ -238,3 +238,24 @@ describe("changes-cap: a cut diff still says what each file is", () => {
     expect(by("pic.bin")?.tooLarge).toBeUndefined();
   });
 });
+
+describe("changes-cap: what git wrote before it was cut is kept once", () => {
+  test("a small file read whole before the cut is shown with its lines, the cut one and the rest are listed, none twice", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "a-small.txt"), "um\n");
+    writeFileSync(join(repo, "b-huge.txt"), lines(10));
+    writeFileSync(join(repo, "c-after.txt"), "tres\n");
+    commit(repo, "three");
+    appendFileSync(join(repo, "a-small.txt"), "dois\n");
+    appendFileSync(join(repo, "b-huge.txt"), lines(30_000, "y"));
+    appendFileSync(join(repo, "c-after.txt"), "quatro\n");
+    const files = await workingDiff(repo, DIFF_FILE_MAX, 1e9, { ...big, rawBytes: 512 * 1024 });
+    expect(files.map((f) => f.path)).toEqual(["a-small.txt", "b-huge.txt", "c-after.txt"]);
+    expect(files[0]?.tooLarge).toBeUndefined();
+    expect(files[0]?.hunks[0]?.lines.map((l) => l.text)).toEqual(["um", "dois"]);
+    expect(files.slice(1).map((f) => [f.tooLarge, f.hunks.length])).toEqual([
+      [true, 0],
+      [true, 0],
+    ]);
+  });
+});
