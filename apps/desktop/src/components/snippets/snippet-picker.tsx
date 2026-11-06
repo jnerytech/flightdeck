@@ -12,12 +12,14 @@ interface Offer {
 }
 
 /** Phase 18: a terminal tab's Ctrl+Shift+Space: the command snippets of its host and of the app. */
-export function SnippetPicker(props: {
-  store: AppStore;
-  hostId: string;
-  onPick(choice: SnippetChoice): void;
-  onClose(): void;
-}) {
+export function SnippetPicker(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    onPick(choice: SnippetChoice): void;
+    onClose(): void;
+  }>,
+) {
   const t = useT();
   const { store, hostId } = props;
   const [offers, setOffers] = useState<Offer[]>([]);

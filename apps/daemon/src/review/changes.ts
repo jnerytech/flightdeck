@@ -6,6 +6,7 @@ import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { cardDiff, workingDiff } from "../board/diff.ts";
 import { aheadBehind } from "../board/merge.ts";
+import { refArg } from "../board/ref-arg.ts";
 import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
@@ -109,7 +110,7 @@ export class Changes {
           "card_no_worktree",
         );
       }
-      const base = this.opts.board.getProject(card.projectId).baseBranch;
+      const base = refArg(this.opts.board.getProject(card.projectId).baseBranch);
       return {
         target,
         root: card.worktreePath,

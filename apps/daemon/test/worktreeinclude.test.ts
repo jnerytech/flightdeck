@@ -82,6 +82,15 @@ describe("worktreeinclude", () => {
     expect(card?.notice ?? "").toContain("1 arquivo do .worktreeinclude não copiado");
   });
 
+  test("com mais de um arquivo de fora, o aviso do card diz quantos", async () => {
+    const ctx = boardWithSecrets("big/*\n", { worktreeIncludeLimit: 1000 });
+    write(join(ctx.repo, "big", "a.bin"), "a".repeat(600));
+    write(join(ctx.repo, "big", "b.bin"), "b".repeat(600));
+    write(join(ctx.repo, "big", "c.bin"), "c".repeat(600));
+    const { card } = await started(ctx);
+    expect(card?.notice ?? "").toContain("2 arquivos do .worktreeinclude não copiados");
+  });
+
   test("copyIncluded devolve o que copiou e o que deixou de fora", async () => {
     const { repo, root } = boardWithSecrets(".env\nbig/*\n");
     write(join(repo, "big", "a.bin"), "a".repeat(10));

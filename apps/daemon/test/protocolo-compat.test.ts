@@ -9,7 +9,7 @@ import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { newBoard } from "./board-helpers.ts";
-import { newManager } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "compat-token-0123456789abcdef";
@@ -100,7 +100,7 @@ describe("protocolo-compat", () => {
     await plain.request("hello", { token: TOKEN, client: "t" });
     expect(
       (await plain.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toEqual([]);
     const { board, manager } = newBoard();
@@ -111,7 +111,7 @@ describe("protocolo-compat", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toEqual(["workflows", "rules", "arena", "deps"]);
     const custom = new FrameClient(serve({ features: ["central", "maintenance"] }).url);
@@ -119,7 +119,7 @@ describe("protocolo-compat", () => {
     await custom.request("hello", { token: TOKEN, client: "t" });
     expect(
       (await custom.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toEqual(["central", "maintenance"]);
   });
@@ -136,7 +136,7 @@ describe("protocolo-compat", () => {
       cleanups.push(() => client.close());
       await client.request("hello", { token: TOKEN, client: "t" });
       return (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       );
     };
     expect(await featuresOf({ snapshots, rewinder, forker })).toEqual(["checkpoints"]);

@@ -23,14 +23,16 @@ export function projectRule(text: string): PermissionUpdate {
  * "Permitir nesta sessão" (only when the request has session suggestions) and "Sempre neste
  * projeto", which opens the rule for editing before sending it.
  */
-export function AlwaysAllow(props: {
-  toolName: string;
-  input: Record<string, unknown>;
-  suggestions: PermissionUpdate[] | undefined;
-  onAllow(updatedPermissions: PermissionUpdate[]): void;
-  /** An answer is on its way: nothing here can be pressed. */
-  disabled?: boolean;
-}) {
+export function AlwaysAllow(
+  props: Readonly<{
+    toolName: string;
+    input: Record<string, unknown>;
+    suggestions: PermissionUpdate[] | undefined;
+    onAllow(updatedPermissions: PermissionUpdate[]): void;
+    /** An answer is on its way: nothing here can be pressed. */
+    disabled?: boolean;
+  }>,
+) {
   const t = useT();
   const [rule, setRule] = useState<string | null>(null);
   const session = (props.suggestions ?? []).filter((s) => s.destination === "session");

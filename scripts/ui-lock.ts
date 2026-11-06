@@ -7,12 +7,13 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { byCodeUnit } from "@flightdeck/protocol";
 
 const desktop = resolve(import.meta.dir, "../apps/desktop");
 const dir = resolve(desktop, "src/components/ui");
 const files = Object.fromEntries(
   readdirSync(dir)
-    .sort()
+    .sort(byCodeUnit)
     .map((file) => [
       file,
       createHash("sha256")

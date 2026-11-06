@@ -13,7 +13,7 @@ import {
 import { UsageIndexer, type UsageTokens } from "../src/costs/usage-indexer.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
-import { newManager, tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { insertSession, SESSION, usageEntries, writeUsageTranscript } from "./usage-helpers.ts";
 
@@ -232,7 +232,7 @@ describe("precos", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toEqual(["costs"]);
     expect(await client.data("costs.reprice", {})).toEqual({ entries: 5 });

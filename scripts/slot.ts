@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 /**
  * `bun run slot -- <command...>`: runs the command once the full-gate slot is free, so the heavy
- * commands (full suite, e2e, shots, smokes, builds) never overlap. `--status` shows the holder,
+ * commands (full suite, e2e, shots, smokes, builds) never overlap. Waiters get the slot in the order
+ * they queued. `--status` shows the holder and the waiters with their ages,
  * `--nice` lowers the command's priority, `--priority` lowers the other
  * `bun test` processes of the user while the command runs. The logic is in `lib/slot.ts`; this file is the real
  * files, clock and processes.
@@ -79,8 +80,9 @@ const env: SlotEnv = {
   },
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  // NOSONAR: the slot logs its own queue status (holder label, pid, wait time), never secrets.
-  log: (line) => console.error(line), // NOSONAR
+  // The line names the holder's command: one line, whatever the command held, so it cannot forge
+  // another log line. NOSONAR: only the queue's own status (label, pid, wait, command) reaches it.
+  log: (line) => console.error(line.replace(/[\r\n]+/g, " ")), // NOSONAR
   terminate: (pid) => {
     try {
       process.kill(pid, "SIGTERM");
@@ -93,7 +95,16 @@ const env: SlotEnv = {
     // What runs under the lock is told whose it is, so a slot call inside it runs at once.
     const child = Bun.spawn(command, {
       stdio: ["inherit", "inherit", "inherit"],
-      ...(asHolder ? { env: { ...process.env, FLIGHTDECK_SLOT_HOLDER: String(process.pid) } } : {}),
+      // The lock too: a child with another temp folder would otherwise look for another file.
+      ...(asHolder
+        ? {
+            env: {
+              ...process.env,
+              FLIGHTDECK_SLOT_HOLDER: String(process.pid),
+              FLIGHTDECK_SLOT_LOCK: LOCK,
+            },
+          }
+        : {}),
     });
     if (nice) {
       try {

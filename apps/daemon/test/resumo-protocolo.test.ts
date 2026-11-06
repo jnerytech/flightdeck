@@ -5,7 +5,7 @@ import { Command, SecretScanner, SessionRecap } from "@flightdeck/protocol";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { SummaryService } from "../src/summary/service.ts";
-import { newManager, tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const SESSION = "cccccccc-0000-4000-8000-000000000030";
@@ -109,7 +109,7 @@ describe("resumo-protocolo: over the protocol", () => {
     const client = await served(true);
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("summary");
     const data = await client.data("session.summary", { claudeSessionId: SESSION });

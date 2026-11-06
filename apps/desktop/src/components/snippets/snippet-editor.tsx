@@ -21,20 +21,62 @@ const split = (text: string) =>
     .map((part) => part.trim())
     .filter(Boolean);
 
+/** The default and options a person typed for each field of the snippet; a field with neither is left out. */
+function varsOf(
+  names: string[],
+  defaults: Record<string, string>,
+  options: Record<string, string>,
+): Record<string, SnippetVar> {
+  const vars: Record<string, SnippetVar> = {};
+  for (const n of names) {
+    const def = defaults[n]?.trim() ?? "";
+    const opts = split(options[n] ?? "");
+    if (def || opts.length) {
+      vars[n] = { ...(def ? { default: def } : {}), ...(opts.length ? { options: opts } : {}) };
+    }
+  }
+  return vars;
+}
+
+/** Where a saved snippet lives on the host: where it already was, or where the person chose. */
+function whereOf(snippet: AppSnippet | null, place: Place, project: string) {
+  if (snippet) {
+    return {
+      scope: snippet.scope === "project" ? ("project" as const) : ("host" as const),
+      ...(snippet.projectPath ? { projectPath: snippet.projectPath } : {}),
+    };
+  }
+  if (place === "host" || !project) return { scope: "host" as const };
+  return {
+    scope: "project" as const,
+    projectPath: project,
+    target: place === "file" ? ("file" as const) : ("daemon" as const),
+  };
+}
+
+/** The error to show for a refused save: a secret gets its own words, the rest the refusal's. */
+function errorOf(code: string, message: string, t: ReturnType<typeof useT>, source: object) {
+  return code === "snippet_secret"
+    ? { secret: true, message: t("snippets.editor.secret") }
+    : { secret: false, message: refusalText(code, message, t, source) };
+}
+
 /** Creates or edits a snippet of the host or of the chosen project; it never holds a secret. */
-export function SnippetEditor(props: {
-  store: AppStore;
-  hostId: string;
-  /** The chosen project's path; "" for the host alone. */
-  project: string;
-  snippet: AppSnippet | null;
-  onSaved(): void;
-  onClose(): void;
-  /** The tags a new snippet starts with (the selected client's tag, phase 29). */
-  defaultTags?: string;
-  /** Offered when the daemon refuses a secret: phase 17's actions take secrets. */
-  onMakeAction?(snippet: { name: string; command: string }): void;
-}) {
+export function SnippetEditor(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    /** The chosen project's path; "" for the host alone. */
+    project: string;
+    snippet: AppSnippet | null;
+    onSaved(): void;
+    onClose(): void;
+    /** The tags a new snippet starts with (the selected client's tag, phase 29). */
+    defaultTags?: string;
+    /** Offered when the daemon refuses a secret: phase 17's actions take secrets. */
+    onMakeAction?(snippet: { name: string; command: string }): void;
+  }>,
+) {
   const t = useT();
   const id = useId();
   const saving = useBusy();
@@ -60,13 +102,7 @@ export function SnippetEditor(props: {
 
   const save = async () => {
     setError(null);
-    const vars: Record<string, SnippetVar> = {};
-    for (const n of own) {
-      const def = defaults[n]?.trim() ?? "";
-      const opts = split(options[n] ?? "");
-      if (def || opts.length)
-        vars[n] = { ...(def ? { default: def } : {}), ...(opts.length ? { options: opts } : {}) };
-    }
+    const vars = varsOf(own, defaults, options);
     const fields = {
       name: name.trim(),
       type,
@@ -80,36 +116,17 @@ export function SnippetEditor(props: {
         return props.onSaved();
       } catch (thrown) {
         if (!(thrown instanceof SnippetModelError)) throw thrown;
-        return setError(
-          thrown.code === "snippet_secret"
-            ? { secret: true, message: t("snippets.editor.secret") }
-            : { secret: false, message: refusalText(thrown.code, thrown.message, t, thrown) },
-        );
+        return setError(errorOf(thrown.code, thrown.message, t, thrown));
       }
     }
-    const where = snippet
-      ? {
-          scope: snippet.scope === "project" ? ("project" as const) : ("host" as const),
-          ...(snippet.projectPath ? { projectPath: snippet.projectPath } : {}),
-        }
-      : place === "host" || !project
-        ? { scope: "host" as const }
-        : {
-            scope: "project" as const,
-            projectPath: project,
-            target: place === "file" ? ("file" as const) : ("daemon" as const),
-          };
+    const where = whereOf(snippet, place, project);
     const result = await store.hostRequest(hostId, "snippets.save", {
       ...(snippet ? { id: snippet.id } : {}),
       ...where,
       ...fields,
     });
     if (result.ok) return props.onSaved();
-    setError(
-      result.code === "snippet_secret"
-        ? { secret: true, message: t("snippets.editor.secret") }
-        : { secret: false, message: refusalText(result.code, result.message, t, result) },
-    );
+    setError(errorOf(result.code, result.message, t, result));
   };
 
   const field = (key: string, label: string, control: (fid: string) => React.ReactNode) => (
