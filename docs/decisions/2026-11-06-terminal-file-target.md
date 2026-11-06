@@ -17,5 +17,5 @@ The last slice of #506: a `path:line` clicked in the terminal (link detection fr
 
 ## Consequences
 
-- `changes.get` takes a `terminal:` target too. In a folder that is not a repository it fails the way git does. The Files viewer the terminal opens does not ask for changes.
+- The target only reads: `Changes.resolve` takes `terminal:` from `file.read` and `file.list` alone. The diff, the watch, `file.write`, the revert and the comments refuse it with `review_target_invalid` (after the security review).
 - The shell's later `cd` does not move the root: a path printed after a `cd` resolves from the folder the terminal was opened in, and falls back to show or copy when it lands outside.
