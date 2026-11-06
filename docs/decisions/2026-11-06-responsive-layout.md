@@ -171,7 +171,8 @@ Taken together:
   - filters fold behind a "Filters" button that opens a sheet.
 
 **Page body**
-- The side gutter is 24 px wide, 16 px at medium and 12 px at compact.
+- The side gutter is 24 px wide, 16 px at medium and 12 px at compact, measured on the page's
+  area (its `@container`), not the window: a split pane is narrow in a wide window.
 - The vertical rhythm stays the spacing scale of `2026-11-06-spacing-scale.md`.
 - Forms and reading pages cap at 48 rem. Dashboards and boards use the full width.
 

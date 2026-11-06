@@ -20,8 +20,9 @@ export function Page(
   return (
     // The page's stable slot: a layout finding inside it names the region (docs/DESIGN.md).
     <section aria-labelledby={id} data-slot="page" className="flex h-full min-h-0 flex-col">
-      {/* The side gutter is 12 px compact, 16 px from 640 px and 24 px from 1024 px (#641). */}
-      <div className="flex flex-col gap-3 border-b px-3 py-4 sm:px-4 lg:px-6">
+      {/* The side gutter is 12 px, 16 px from a 640 px area and 24 px from a 1024 px one (#641):
+          the area, not the window, since a split pane is narrow in a wide window. */}
+      <div className="flex flex-col gap-3 border-b px-3 py-4 @min-[40rem]:px-4 @min-[64rem]:px-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             {/* Two lines, then an ellipsis; the full text stays in `title` (#641). */}
@@ -45,7 +46,7 @@ export function Page(
       {props.fill ? (
         <div
           data-slot="page-body"
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-4 lg:px-6"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 @min-[40rem]:px-4 @min-[64rem]:px-6"
         >
           {props.children}
         </div>
@@ -56,7 +57,7 @@ export function Page(
               inside it instead of stretching the screen into a second scrollbar (#640). */}
           <div
             data-slot="page-body"
-            className="relative flex flex-col gap-6 px-3 py-4 sm:px-4 lg:px-6"
+            className="relative flex flex-col gap-6 px-3 py-4 @min-[40rem]:px-4 @min-[64rem]:px-6"
           >
             {props.children}
           </div>
