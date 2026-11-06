@@ -162,6 +162,8 @@ export interface Platform {
     supported: boolean;
     /** The newer version on offer, or null when this one is the latest. */
     check(): Promise<AppUpdate | null>;
+    /** Downloads and verifies the update found by `check`, without installing it (issue #280). */
+    download(): Promise<void>;
     /** Downloads, verifies and installs the update found by `check`, then restarts the app. */
     install(): Promise<void>;
   };

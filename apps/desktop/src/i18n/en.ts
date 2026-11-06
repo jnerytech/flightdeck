@@ -2104,6 +2104,8 @@ export const en: Dictionary = {
     },
   },
   update: {
+    ready: "Flightdeck {version} is ready. Restart to update.",
+    restartNow: "Restart now",
     label: "App update",
     available: "Flightdeck {version} available",
     first: "Update the app first, then the hosts' daemons.",
@@ -3770,6 +3772,7 @@ export const en: Dictionary = {
     unavailable: "unavailable on this platform",
     updates: "Updates",
     notifyUpdates: "Notify about updates",
+    autoUpdate: "Update automatically",
     checkNow: "Check for updates now",
     upToDate: "You are on the latest version",
     shortcut: "Global shortcut",
@@ -4078,6 +4081,8 @@ export const en: Dictionary = {
       "The terminal did not open: {error}. Use Copy command and paste it into your terminal.",
     updateCheckFailed:
       "could not check for updates: {error}. Check the network and try again in Settings.",
+    updateDownloadFailed:
+      "The new version did not download: {error}. It is tried again at the next check, or install it from Settings.",
     updateInstallFailed:
       "The update was not installed: {error}. Try again; if it repeats, download the new version's installer.",
     daemonUpdateLate: "the daemon did not come back on version {version} in time",

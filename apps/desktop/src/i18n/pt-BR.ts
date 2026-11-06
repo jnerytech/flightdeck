@@ -2100,6 +2100,8 @@ export const ptBR = {
     },
   },
   update: {
+    ready: "O Flightdeck {version} está pronto. Reinicie para atualizar.",
+    restartNow: "Reiniciar agora",
     label: "Atualização do app",
     available: "Flightdeck {version} disponível",
     first: "Atualize primeiro o app e depois os daemons dos hosts.",
@@ -3771,6 +3773,7 @@ export const ptBR = {
     unavailable: "indisponível nesta plataforma",
     updates: "Atualizações",
     notifyUpdates: "Avisar sobre atualizações",
+    autoUpdate: "Atualizar automaticamente",
     checkNow: "Procurar atualização agora",
     upToDate: "Você está na versão mais recente",
     shortcut: "Atalho global",
@@ -4080,6 +4083,8 @@ export const ptBR = {
     terminalFailed: "Terminal não abriu: {error}. Use Copiar comando e cole no seu terminal.",
     updateCheckFailed:
       "não consegui procurar atualização: {error}. Confira a rede e tente de novo em Configurações.",
+    updateDownloadFailed:
+      "A versão nova não foi baixada: {error}. Ela é tentada de novo na próxima verificação, ou instale por Configurações.",
     updateInstallFailed:
       "A atualização não foi instalada: {error}. Tente de novo; se repetir, baixe o instalador da versão nova.",
     daemonUpdateLate: "o daemon não voltou na versão {version} a tempo",

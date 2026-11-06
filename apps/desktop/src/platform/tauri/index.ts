@@ -32,6 +32,8 @@ export function tauriPlatform(
 ): Platform {
   /** The update found by the last check, installed by `updater.install`. */
   let pending: Update | null = null;
+  /** The update `updater.download` fetched already (issue #280), installed without a second download. */
+  let downloaded: Update | null = null;
   return {
     storage: win.localStorage,
     secrets: {
@@ -114,9 +116,15 @@ export function tauriPlatform(
         return pending ? { version: pending.version, notes: pending.body ?? "" } : null;
       },
       // The plugin checks the signature against plugins.updater.pubkey before installing.
+      download: async () => {
+        if (!pending) throw new Error("no update found to download");
+        await pending.download();
+        downloaded = pending;
+      },
       install: async () => {
         if (!pending) throw new Error("no update found to install");
-        await pending.downloadAndInstall();
+        if (downloaded === pending) await pending.install();
+        else await pending.downloadAndInstall();
         await relaunch();
       },
     },
