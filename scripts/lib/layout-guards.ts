@@ -313,6 +313,22 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   // room in its card and inside its own box. A finding names the element and the px it has.
   const spacing = options.spacing;
   const nameOf = (el: Element) => pathOf(el, true).split(" > ").pop() ?? "";
+  /** Hidden for screen readers only (#641): it, or a box around it, is clipped away on purpose. */
+  const srOnly = (el: Element) => {
+    for (let at: Element | null = el; at && at !== document.body; at = at.parentElement) {
+      const style = getComputedStyle(at);
+      const clip = style.getPropertyValue("clip").replace(/px/g, "");
+      if (
+        style.getPropertyValue("clip-path") === "inset(50%)" ||
+        /^rect\(0[ ,]+0[ ,]+0[ ,]+0\)$/.test(clip)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+  /** On screen for a person: not hidden, and not hidden for screen readers only. */
+  const seenBy = (el: Element) => !hidden(el) && !srOnly(el);
   const ownText = (el: Element) =>
     [...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "");
   /** The room between two boxes that share columns (stacked) or rows (side by side), or how far they overlap. */
@@ -332,7 +348,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   };
   const checkPairs = (els: Element[], min: number, rule: Rule) => {
     const boxes = els
-      .filter((el) => !hidden(el))
+      .filter(seenBy)
       .map((el) => [el, rectOf(el)] as const)
       .filter(([, box]) => box.width > 0 && box.height > 0);
     boxes.forEach(([b, rb], j) => {
@@ -361,7 +377,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     if (hidden(card)) return;
     const edge = rectOf(card);
     for (const el of card.querySelectorAll("*")) {
-      if (hidden(el) || !ownText(el)) continue;
+      if (!seenBy(el) || !ownText(el)) continue;
       const box = rectOf(el);
       if (box.width <= 0 || box.height <= 0) continue;
       // The text starts inside the element's own border and padding: a padded header flush with the card is fine.
@@ -387,7 +403,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   };
   const checkSpill = (el: Element, style: CSSStyleDeclaration) => {
     // Only text left to spill: a box that clips (an ellipsis) or scrolls is the other rules' business.
-    if ((style.overflowX || "visible") !== "visible" || !ownText(el)) return;
+    if ((style.overflowX || "visible") !== "visible" || !ownText(el) || srOnly(el)) return;
     const past = el.scrollWidth - el.clientWidth;
     if (past > 1) add("text-spill", pathOf(el, true), `${past} px past its box`);
   };
@@ -520,7 +536,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   };
   const checkNarrow = () => {
     if (!narrow) return;
-    const shown = [...document.querySelectorAll("body *")].filter((el) => !hidden(el));
+    const shown = [...document.querySelectorAll("body *")].filter(seenBy);
     checkOverflowX(shown);
     checkNestedScroll(shown);
     checkHeader(narrow);

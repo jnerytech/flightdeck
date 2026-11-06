@@ -1,14 +1,6 @@
 {
-  "text-spill|dark en abas-divididas|tabs-content > host-resources > resources-table > th": 6,
-  "text-spill|dark en abas-divididas|tabs-content > host-resources > resources-table > th.resources-num": 4,
   "text-spill|dark en projeto-blocos|scroll-area-viewport > page-body > session-tile > span": 1,
-  "text-spill|dark pt-BR abas-divididas|tabs-content > host-resources > resources-table > th": 6,
-  "text-spill|dark pt-BR abas-divididas|tabs-content > host-resources > resources-table > th.resources-num": 4,
   "text-spill|dark pt-BR projeto-blocos|scroll-area-viewport > page-body > session-tile > span": 1,
-  "text-spill|light en abas-divididas|tabs-content > host-resources > resources-table > th": 6,
-  "text-spill|light en abas-divididas|tabs-content > host-resources > resources-table > th.resources-num": 4,
   "text-spill|light en projeto-blocos|scroll-area-viewport > page-body > session-tile > span": 1,
-  "text-spill|light pt-BR abas-divididas|tabs-content > host-resources > resources-table > th": 6,
-  "text-spill|light pt-BR abas-divididas|tabs-content > host-resources > resources-table > th.resources-num": 4,
   "text-spill|light pt-BR projeto-blocos|scroll-area-viewport > page-body > session-tile > span": 1
 }
