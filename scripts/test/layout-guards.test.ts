@@ -787,8 +787,8 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
       `${S}: overflow-x tab-strip > tab, 2 where the baseline has 1: tab-strip > tab[1] (16 px past the right of tab-strip); tab-strip > tab[2] (112 px past the right of tab-strip)`,
     ]);
     expect(ratchet.seen).toEqual({
-      [`overflow-x|${S}|tab-strip > tab`]: 2,
-      [`overflow-x|${S}|page > two`]: 1,
+      [`overflow-x|${S}|tab-strip > tab`]: { count: 2 },
+      [`overflow-x|${S}|page > two`]: { count: 1 },
     });
     expect(ratchet.occurrences).toEqual({
       [`overflow-x|${S}|tab-strip > tab[1]`]: "16 px past the right of tab-strip",
@@ -826,11 +826,89 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
   test("#677: a baseline of counts loads as counts; an entry that is not a count, or bad JSON, is refused by file name", () => {
     expect(loadCounts(() => null, "spacing-baseline.json")).toBeNull();
     expect(loadCounts(() => '{"a|s|p": 3}', "spacing-baseline.json")).toEqual({ "a|s|p": 3 });
+    // #637: a count with the worst px past the rule's limit.
+    const read = (text: string) => {
+      try {
+        return loadCounts(() => text, "responsive-baseline.json");
+      } catch (error) {
+        return String(error);
+      }
+    };
+    expect(read('{"a|s|p": {"count": 2, "worst": 76}}')).toEqual({
+      "a|s|p": { count: 2, worst: 76 },
+    });
+    expect(() =>
+      loadCounts(() => '{"a|s|p": {"count": 2, "worst": "far"}}', "responsive-baseline.json"),
+    ).toThrow("responsive-baseline.json: a|s|p is not a count of findings");
     expect(() =>
       loadCounts(() => '{"b|s|p": "1406 px past its box"}', "spacing-baseline.json"),
     ).toThrow("spacing-baseline.json: b|s|p is not a count of findings");
     expect(() => loadCounts(() => "{ nope", "responsive-baseline.json")).toThrow(
       "responsive-baseline.json is not valid JSON",
     );
+  });
+
+  test("#637: a key whose worst px past its limit grows by more than 2 fails, with both values", () => {
+    const over = (path: string, excess: number) => ({
+      rule: "overflow-x" as const,
+      path,
+      group: "card > table",
+      detail: `${excess} px past the right of card`,
+      excess,
+    });
+    const key = `overflow-x|${S}|card > table`;
+    const worse = fresh({ [key]: { count: 2, worst: 76 } } as unknown as Record<string, number>);
+    expect(
+      ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 79)], worse),
+    ).toEqual([
+      `${S}: overflow-x card > table, worst 79 px past its limit where the baseline has 76: card > table[2] (79 px past the right of card)`,
+    ]);
+    expect(worse.seen).toEqual({ [key]: { count: 2, worst: 79 } });
+    const close = fresh({ [key]: { count: 2, worst: 76 } } as unknown as Record<string, number>);
+    expect(
+      ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 78)], close),
+    ).toEqual([]);
+  });
+
+  test("#637: each spacing and narrow finding says how many px it is past its rule's limit", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,1000,800">
+        <div data-slot="links" data-rect="0,0,1000,100"></div>
+        <div data-slot="config" data-rect="0,103,1000,300"></div>
+      </div>
+      <div data-slot="card" data-rect="0,400,400,600">
+        <code data-slot="hook-command" data-rect="4,420,396,440">bun run a-very-long-command</code>
+        <pre data-slot="spill" data-rect="24,460,376,480" data-sw="600" data-cw="352">long line</pre>
+      </div>`);
+    const excess = (f: { rule: string; excess?: number }) => `${f.rule} ${f.excess}`;
+    expect(
+      layoutFindings({ spacing: SPACING })
+        .filter((f) => SPACING_RULES.includes(f.rule))
+        .map(excess),
+    ).toEqual(["text-spill 248", "block-gap 5", "card-padding 4"]);
+    page(`
+      <div class="tab-strip" role="tablist" data-rect="0,0,640,40"></div>
+      <section data-slot="page" data-rect="0,32,640,800">
+        <div data-slot="page-header" data-rect="0,32,640,100">
+          <h1 data-slot="page-title" data-rect="24,48,400,76" data-sw="520" data-cw="376">A long name</h1>
+        </div>
+        <div data-slot="card" data-rect="16,120,600,300">
+          <div data-slot="table" data-rect="16,140,676,280">a table</div>
+        </div>
+        <div data-slot="timeline" style="overflow-y: auto" data-rect="0,320,640,500" data-ch="180" data-sh="680">x</div>
+      </section>`);
+    // The page itself scrolls, so the timeline is a second scrollbar.
+    document.documentElement.setAttribute("data-sh", "1000");
+    document.documentElement.setAttribute("data-ch", "800");
+    try {
+      expect(
+        layoutFindings({ responsive: RESPONSIVE })
+          .filter((f) => RESPONSIVE_RULES.includes(f.rule))
+          .map(excess),
+      ).toEqual(["overflow-x 76", "nested-scroll 500", "header-clipped 8", "header-clipped 144"]);
+    } finally {
+      document.documentElement.removeAttribute("data-sh");
+      document.documentElement.removeAttribute("data-ch");
+    }
   });
 });
