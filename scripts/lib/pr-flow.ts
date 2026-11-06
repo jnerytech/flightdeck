@@ -528,7 +528,7 @@ async function fullGreen(runs: MainRun[], deps: PrFlowDeps): Promise<boolean> {
     if (run.event !== "workflow_dispatch" || run.id === undefined) continue;
     const jobs = await deps.gh([
       "api",
-      `${REPO}/actions/runs/${run.id}/jobs`,
+      `${REPO}/actions/runs/${run.id}/jobs?per_page=100`,
       "--jq",
       ".jobs[] | {name, conclusion}",
     ]);
