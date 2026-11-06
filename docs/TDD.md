@@ -142,7 +142,10 @@ runs in a spawned child counts as not called), and istanbul skips private `#meth
 hand-off on the files you changed, to close a function gap without bisecting. A worker session runs it over at most 20 test files (#674): the guard hook refuses a longer
 `--tests` list and the script refuses a longer selection, since such a run holds the shared slot for
 what the PR's CI does anyway. `FLIGHTDECK_SLOT_HEAVY="<reason>"` as an env prefix of the run itself
-(a reason of at least 8 characters, #687) lets a real need through.
+(a reason of at least 8 characters, #687) lets a real need through. The guard knows the other
+spellings (`bun test:related`, `bun run --silent ...`, `npm run ...`, `bun scripts/test-related.ts`),
+counts a glob or a command's output after `--tests` as more than 20 files, and refuses
+`FLIGHTDECK_COORDINATOR` set in the command: only the coordinator session's own environment counts.
 
 **Functional core, imperative shell.** Logic that decides is a function that takes its effects
 (git, fs, clock, spawn, network) as a deps object or an injected context, as `runAudit({ since,
