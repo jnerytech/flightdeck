@@ -25,8 +25,9 @@ export function wordDiff(
       ...(after ? [{ kind: "add" as const, text: after }] : []),
     ];
   }
-  return parts.map((part) => ({
-    kind: part.added ? "add" : part.removed ? "del" : "same",
-    text: part.value,
-  }));
+  const kindOf = (part: { added?: boolean; removed?: boolean }) => {
+    if (part.added) return "add" as const;
+    return part.removed ? ("del" as const) : ("same" as const);
+  };
+  return parts.map((part) => ({ kind: kindOf(part), text: part.value }));
 }

@@ -98,6 +98,11 @@ export function TrustPanel(
         [t("projectPage.trust.unreadable"), load.unreadable],
       ];
   const shown = groups.filter(([, items]) => items.length > 0);
+  // The line that stands in for the listing when there is none to show.
+  let listingNote: "projectPage.trust.listingUnavailable" | "projectPage.trust.nothing" | null =
+    null;
+  if (!load) listingNote = "projectPage.trust.listingUnavailable";
+  else if (shown.length === 0) listingNote = "projectPage.trust.nothing";
   // A command with several lines, or one that does not fit a short line, is shown in a block of
   // its own, whole; a short one stays a line. Either way all of it runs once trusted.
   const isLong = (item: string) => item.includes("\n") || item.length > LONG_LINE;
@@ -112,10 +117,8 @@ export function TrustPanel(
       )}
       <h3 className="font-medium text-sm">{t("projectPage.trust.listing")}</h3>
       {anyLong && <p className="text-sm">{t("projectPage.trust.longWarning")}</p>}
-      {!load ? (
-        <p className="text-sm">{t("projectPage.trust.listingUnavailable")}</p>
-      ) : shown.length === 0 ? (
-        <p className="text-sm">{t("projectPage.trust.nothing")}</p>
+      {listingNote ? (
+        <p className="text-sm">{t(listingNote)}</p>
       ) : (
         <dl className="stack-hair text-sm">
           {shown.map(([title, items]) => (

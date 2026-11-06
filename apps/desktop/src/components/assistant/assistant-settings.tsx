@@ -62,7 +62,7 @@ function useModels(store: AppStore, provider: AssistantProvider | null) {
 }
 
 /** Where the AI assistant is set up: the provider, its key, the models and the profile of each kind of text (issue #155). */
-export function AssistantSettings(props: { store: AppStore; t: T }) {
+export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   const { store, t } = props;
   const prefs = useSyncExternalStore(store.assistant.subscribe, () => store.assistant.prefs());
   const keys = useSyncExternalStore(store.assistant.subscribe, () => store.assistant.keys());

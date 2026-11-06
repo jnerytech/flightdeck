@@ -1,5 +1,5 @@
 /** A small ring filled by `done` of `total`: the share of the setup checklist that is done. */
-export function ProgressRing(props: { done: number; total: number; className?: string }) {
+export function ProgressRing(props: Readonly<{ done: number; total: number; className?: string }>) {
   const radius = 6;
   const circumference = 2 * Math.PI * radius;
   const share = props.total === 0 ? 0 : Math.min(1, props.done / props.total);

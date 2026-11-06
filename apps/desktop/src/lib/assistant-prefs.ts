@@ -61,17 +61,7 @@ export function readPrefs(storage: Storage): AssistantPrefs {
   if (Array.isArray(raw.confirmedHosts)) {
     prefs.confirmedHosts = raw.confirmedHosts.filter((id): id is string => typeof id === "string");
   }
-  if (isObject(raw.models)) {
-    for (const name of AssistantProvider.options) {
-      const stored = raw.models[name];
-      if (!isObject(stored)) continue;
-      for (const profile of AssistantProfile.options) {
-        const id = ModelId.safeParse(stored[profile]);
-        if (!id.success) continue;
-        prefs.models[name] = { ...prefs.models[name], [profile]: id.data };
-      }
-    }
-  }
+  if (isObject(raw.models)) readModels(raw.models, prefs);
   if (isObject(raw.profiles)) {
     for (const kind of AssistantKind.options) {
       const profile = AssistantProfile.safeParse(raw.profiles[kind]);
@@ -80,6 +70,19 @@ export function readPrefs(storage: Storage): AssistantPrefs {
   }
   if (typeof raw.openrouterPrivate === "boolean") prefs.openrouterPrivate = raw.openrouterPrivate;
   return prefs;
+}
+
+/** The stored model of each provider and profile; one that is not a model id is left at its default. */
+function readModels(models: Record<string, unknown>, prefs: AssistantPrefs): void {
+  for (const name of AssistantProvider.options) {
+    const stored = models[name];
+    if (!isObject(stored)) continue;
+    for (const profile of AssistantProfile.options) {
+      const id = ModelId.safeParse(stored[profile]);
+      if (!id.success) continue;
+      prefs.models[name] = { ...prefs.models[name], [profile]: id.data };
+    }
+  }
 }
 
 export function writePrefs(storage: Storage, prefs: AssistantPrefs): void {

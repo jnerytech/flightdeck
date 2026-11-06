@@ -84,7 +84,8 @@ export function useWand(
 
   const launch = (text: string) => {
     const provider = controller.resolve(binding.fieldHostId);
-    if (!provider) {
+    // A host the person never agreed to is asked in Settings, once; until then the text goes nowhere.
+    if (!provider || controller.needsHostConfirm(provider)) {
       controller.askForSetup();
       binding.openSettings();
       return;

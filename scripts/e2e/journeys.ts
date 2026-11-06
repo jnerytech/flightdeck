@@ -23,6 +23,8 @@ import {
   layoutFindings,
   loadBaseline,
   pinnedProblem,
+  SCROLL_SIZES,
+  SINGLE_SCROLL,
   waitForStable,
 } from "../lib/layout-guards.ts";
 
@@ -197,6 +199,16 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // 5. Open the palette, search the history and open the reader.
   "paleta-e-leitor": async (c) => {
     await open(c, { name: "hub" });
+    // The palette leaves on Esc and on a click outside (issue #566).
+    const palette = c.page.getByRole("dialog", { name: c.t("searchUi.label") });
+    await c.page.keyboard.press("Control+K");
+    await palette.waitFor({ timeout: WAIT });
+    await c.page.keyboard.press("Escape");
+    await palette.waitFor({ state: "hidden", timeout: WAIT });
+    await c.page.keyboard.press("Control+K");
+    await palette.waitFor({ timeout: WAIT });
+    await c.page.locator("body").click({ position: { x: 3, y: 3 } });
+    await palette.waitFor({ state: "hidden", timeout: WAIT });
     await c.page.keyboard.press("Control+K");
     const input = c.page.getByLabel(c.t("searchUi.input"), { exact: true });
     await input.fill("revisão do arquivo");
@@ -206,6 +218,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("button")
       .first();
     await hit.waitFor({ timeout: WAIT });
+    // Long rows end in an ellipsis: the window never scrolls sideways.
+    expect(await palette.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     await hit.click();
     await c.page.getByRole("log", { name: c.t("reader.transcript") }).waitFor({ timeout: WAIT });
   },
@@ -1301,6 +1315,16 @@ export async function layout(c: Context, problems: string[]) {
   // The geometry guards (issue #192), at three window sizes, on the longest labels (pt-BR). What
   // they find is named by data-slot path; the heuristic rules fail only when new against the baseline.
   if (c.lang === "pt-BR") await geometryGuards(c, screens, problems);
+  // Issue #567: the sidebar scrolls as one area between its fixed header and footer, at the
+  // usual window and at a short one, where it has to scroll at all.
+  for (const size of SCROLL_SIZES) {
+    await c.page.setViewportSize(size);
+    await open(c, { name: "hub" });
+    const found: Finding[] = await c.page.evaluate(layoutFindings, { single: SINGLE_SCROLL });
+    for (const split of found.filter((f) => f.rule === "scroll-split")) {
+      problems.push(`${c.lang} ${size.width}x${size.height}: ${split.path} ${split.detail}`);
+    }
+  }
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of screens) {

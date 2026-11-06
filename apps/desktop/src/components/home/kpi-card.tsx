@@ -5,16 +5,18 @@ import { Sparkline } from "./sparkline.tsx";
  * One card of Home: the title, the number first, what goes with it, and its seven days. The whole
  * card is the button that opens the screen it summarizes.
  */
-export function KpiCard(props: {
-  title: string;
-  /** The accessible name of the button ("Open Spend"). */
-  openLabel: string;
-  value: string;
-  details: ReactNode;
-  series: number[];
-  seriesLabel: string;
-  onOpen(): void;
-}) {
+export function KpiCard(
+  props: Readonly<{
+    title: string;
+    /** The accessible name of the button ("Open Spend"). */
+    openLabel: string;
+    value: string;
+    details: ReactNode;
+    series: number[];
+    seriesLabel: string;
+    onOpen(): void;
+  }>,
+) {
   const id = useId();
   return (
     // The name says what the button opens; the number and the details are its description, so they are heard.

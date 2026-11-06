@@ -9,7 +9,7 @@ import type { AppStore, HostView } from "@/lib/app-store";
  * person turns it off, with what it does, whether it holds right now and, when nothing can hold,
  * why. Hidden on a daemon that predates it.
  */
-export function KeepAwakePanel(props: { store: AppStore; host: HostView }) {
+export function KeepAwakePanel(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const status = host.hostInfo?.keepAwake;

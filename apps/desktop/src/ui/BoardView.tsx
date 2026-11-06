@@ -587,13 +587,15 @@ export const BoardView = memo(function BoardView(props: {
 });
 
 /** A column's head: its status icon and name, the count as a pill, and a + that adds a card to it. */
-function ColumnHeader(props: {
-  id: BoardColumn;
-  title: string;
-  count: number;
-  addLabel: string;
-  onAdd(): void;
-}) {
+function ColumnHeader(
+  props: Readonly<{
+    id: BoardColumn;
+    title: string;
+    count: number;
+    addLabel: string;
+    onAdd(): void;
+  }>,
+) {
   const Icon = COLUMN_ICONS[props.id];
   return (
     <Inline gap={2} className="column-head">

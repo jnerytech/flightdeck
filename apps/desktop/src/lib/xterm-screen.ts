@@ -1,3 +1,4 @@
+import { findPaths } from "./terminal-paths.ts";
 import {
   FIND_DECORATIONS,
   type FindDecorations,
@@ -37,8 +38,46 @@ export interface XtermTerminal {
   onData(listener: (data: string) => void): { dispose(): void };
   onResize(listener: (size: { cols: number; rows: number }) => void): { dispose(): void };
   attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean): void;
+  registerLinkProvider(provider: XtermLinkProvider): { dispose(): void };
+  buffer: {
+    active: { getLine(y: number): XtermBufferLine | undefined };
+  };
   attachCustomWheelEventHandler(handler: (event: WheelEvent) => boolean): void;
   dispose(): void;
+}
+
+/** A row of xterm's buffer: its text, and its cells (a wide character takes two, the second empty). */
+export interface XtermBufferLine {
+  length: number;
+  getCell(x: number): { getChars(): string; getWidth(): number } | undefined;
+  translateToString(trimRight?: boolean): string;
+}
+
+/**
+ * The cell each character of a row's text starts in: the text's indexes and the columns part ways
+ * after a wide character (a CJK letter, some emoji), where one character takes two cells.
+ */
+function cellColumns(line: XtermBufferLine): number[] {
+  const columns: number[] = [];
+  for (let x = 0; x < line.length; x++) {
+    const cell = line.getCell(x);
+    if (!cell || cell.getWidth() === 0) continue;
+    const chars = cell.getChars() || " ";
+    for (let unit = 0; unit < chars.length; unit++) columns.push(x);
+  }
+  return columns;
+}
+
+/** A link xterm draws over cells of one row; columns and rows count from 1, the end included. */
+export interface XtermLink {
+  range: { start: { x: number; y: number }; end: { x: number; y: number } };
+  text: string;
+  activate(event: MouseEvent, text: string): void;
+}
+
+/** Finds the links of a row when the pointer reaches it. */
+export interface XtermLinkProvider {
+  provideLinks(y: number, callback: (links: XtermLink[] | undefined) => void): void;
 }
 
 export interface XtermFindOptions extends FindFlags {
@@ -82,6 +121,11 @@ export interface XtermScreenOptions {
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;
+  /**
+   * A file path in the output was clicked (#476): the path as printed, and the line and column
+   * printed after it, when there were (for a viewer that opens at them, #506).
+   */
+  onPath?(path: string, at?: { line: number; col?: number }): void;
   /** A paste of several lines that would run as it lands: true to paste it anyway (#476). */
   confirmPaste?(text: string): Promise<boolean>;
   /** Ctrl+=, Ctrl+-, Ctrl+0 or Ctrl+wheel asked for a zoom step (#476). */
@@ -166,6 +210,32 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     options.onInput(data);
   });
   const size = terminal.onResize(({ cols, rows }) => options.onResize(cols, rows));
+  // File paths as links (#476): the row's text, as xterm keeps it, read when the pointer gets there.
+  const paths = terminal.registerLinkProvider({
+    provideLinks: (y, callback) => {
+      const line = terminal.buffer.active.getLine(y - 1);
+      const text = line?.translateToString(true) ?? "";
+      const columns = line ? cellColumns(line) : [];
+      const cell = (index: number) => (columns[index] ?? index) + 1;
+      const links = findPaths(text).map(
+        (found): XtermLink => ({
+          range: { start: { x: cell(found.start), y }, end: { x: cell(found.end - 1), y } },
+          text: found.text,
+          activate: () =>
+            options.onPath?.(
+              found.path,
+              found.line === undefined
+                ? undefined
+                : {
+                    line: found.line,
+                    ...(found.column === undefined ? {} : { col: found.column }),
+                  },
+            ),
+        }),
+      );
+      callback(links.length > 0 ? links : undefined);
+    },
+  });
   terminal.attachCustomKeyEventHandler((event) => {
     const action = terminalKeyAction(event, {
       windows: options.windows === true,
@@ -245,6 +315,7 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       results.dispose();
       input.dispose();
       size.dispose();
+      paths.dispose();
       terminal.dispose();
     },
   };

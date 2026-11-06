@@ -30,7 +30,7 @@ const matches = (option: ModelOption, query: string) =>
  * model line, the vendor), with a first row for "the provider's default". A filter field drives it
  * from the keyboard: arrows, Home, End, Enter, Esc.
  */
-export function ModelPicker(props: ModelPickerProps) {
+export function ModelPicker(props: Readonly<ModelPickerProps>) {
   const { t, options, value } = props;
   const base = useId();
   const [query, setQuery] = useState("");

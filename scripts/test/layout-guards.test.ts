@@ -219,6 +219,27 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     ]);
   });
 
+  test("a region that scrolls as one: a second scroller inside it is a finding, a single one is not (#567)", () => {
+    const split = () =>
+      layoutFindings({ single: ["sidebar"] })
+        .filter((f) => f.rule === "scroll-split")
+        .map((f) => `${f.path}: ${f.detail}`);
+    page(`
+      <aside data-slot="sidebar" data-rect="0,0,240,600" style="overflow-y: auto">
+        <nav data-slot="sidebar-nav" data-rect="0,40,240,300" style="overflow-y: auto"></nav>
+        <div data-slot="sidebar-hosts" data-rect="0,300,240,500" style="overflow-y: scroll"></div>
+        <div data-slot="sidebar-foot" data-rect="0,500,240,600" style="overflow-y: hidden"></div>
+      </aside>`);
+    expect(split()).toEqual([
+      "sidebar: 3 scroll areas (sidebar, sidebar > sidebar-nav, sidebar > sidebar-hosts)",
+    ]);
+    page(`
+      <aside data-slot="sidebar" data-rect="0,0,240,600" style="overflow-y: hidden">
+        <div data-slot="sidebar-body" data-rect="0,40,240,500" style="overflow-y: auto"></div>
+      </aside>`);
+    expect(split()).toEqual([]);
+  });
+
   test("an element with no slot is named by its tag and first class", () => {
     page(
       '<main data-slot="main"><div class="flex min-h-0" data-rect="0,0,100,0"><b>x</b></div></main>',
@@ -263,6 +284,13 @@ describe("layout-guards: what the findings mean for the build", () => {
     ]);
   });
 
+  test("a region split into several scroll areas fails with no baseline too: it is the contract (#567)", () => {
+    const split = { rule: "scroll-split" as const, path: "sidebar", detail: "2 scroll areas" };
+    expect(judge("home@1280x600", [split], null).failures).toEqual([
+      "home@1280x600: scroll-split sidebar (2 scroll areas)",
+    ]);
+  });
+
   test("a key region that is small fails with no baseline too: it is the contract", () => {
     expect(judge("needs-you@1280", [small], null).failures).toEqual([
       "needs-you@1280: region-small approval-card (400 x 20 px)",
@@ -295,7 +323,7 @@ describe("layout-guards: what the findings mean for the build", () => {
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { KEY_REGIONS } from "../lib/layout-guards.ts";
+import { KEY_REGIONS, SINGLE_SCROLL } from "../lib/layout-guards.ts";
 
 describe("layout-guards: the key regions carry the data-slot the guards look for (a cheap guard on the source)", () => {
   const sources = [
@@ -308,6 +336,16 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
   test("each key region is named in the page it belongs to", () => {
     for (const { slot } of KEY_REGIONS) {
       expect(sources.some((text) => text.includes(`data-slot="${slot}"`))).toBe(true);
+    }
+  });
+
+  test("each region that scrolls as one is named in the shell (#567)", () => {
+    const shell = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src/components/layout/app-shell.tsx"),
+      "utf8",
+    );
+    for (const slot of SINGLE_SCROLL) {
+      expect([slot, shell.includes(`data-slot="${slot}"`)]).toEqual([slot, true]);
     }
   });
 });

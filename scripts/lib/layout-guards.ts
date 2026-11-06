@@ -13,7 +13,8 @@ export type Rule =
   | "growth"
   | "region-small"
   | "region-missing"
-  | "gap";
+  | "gap"
+  | "scroll-split";
 
 export interface Finding {
   rule: Rule;
@@ -43,14 +44,16 @@ export interface GuardOptions {
   /** Bars that must not grow: a selector and the most they may be tall, in px. */
   bars?: Array<{ selector: string; maxHeight: number }>;
   gaps?: GapRule[];
+  /** Regions (by `data-slot`) that scroll as one area: at most one element in each may scroll vertically. */
+  single?: string[];
 }
 
 /**
  * Runs inside the page (`page.evaluate(layoutFindings, options)`): it must stay self-contained.
  * Rules: the page scrolls sideways; an element is cut by an ancestor that clips on an axis no
  * ancestor scrolls; an element with content is under 8 px tall; text is cut to under 48 px with an
- * ellipsis; an alert is off screen; a bar grew; a key region is small or missing; a floating box
- * is too close to the one below it.
+ * ellipsis; an alert is off screen; a bar grew; a key region is small or missing; a region that
+ * scrolls as one holds more than one scroller; a floating box is too close to the one below it.
  */
 export function layoutFindings(options: GuardOptions = {}): Finding[] {
   const found: Finding[] = [];
@@ -237,6 +240,22 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     }
   };
 
+  // 9. Regions that scroll as one (#567): two scrollers side by side in a narrow column read as
+  // broken, so at most one element in each such region scrolls vertically.
+  const checkSingleScroll = () => {
+    for (const slot of options.single ?? []) {
+      const region = document.querySelector(`[data-slot="${slot}"]`);
+      if (!region || hidden(region)) continue;
+      const scrollers = [region, ...region.querySelectorAll("*")].filter(
+        (el) => !hidden(el) && scrolls(getComputedStyle(el).overflowY),
+      );
+      if (scrollers.length > 1) {
+        const names = scrollers.map(pathOf).join(", ");
+        add("scroll-split", pathOf(region), `${scrollers.length} scroll areas (${names})`);
+      }
+    }
+  };
+
   checkSideways();
   for (const el of document.querySelectorAll("body *")) {
     if (hidden(el)) continue;
@@ -251,6 +270,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   checkBars();
   checkRegions();
   checkGaps();
+  checkSingleScroll();
   return found;
 }
 
@@ -299,11 +319,25 @@ export const GAPS: GapRule[] = [
   { above: '[data-slot="update-card"]', below: '[data-slot="status-bar"]', min: 8 },
 ];
 
+/** The sidebar scrolls as one area between its fixed header and footer (#567). */
+export const SINGLE_SCROLL = ["sidebar"];
+
+/** The windows the one-scroll rule is checked at: the usual one and a short one (#567). */
+export const SCROLL_SIZES: ReadonlyArray<{ width: number; height: number }> = [
+  { width: 1280, height: 800 },
+  { width: 1280, height: 600 },
+];
+
 /** Bars that never grow: the tab bar is one row. */
 export const BARS = [{ selector: ".tab-bar", maxHeight: 48 }];
 
 /** What fails with no baseline: the contract. The heuristic rules wait for a baseline file. */
-const CONTRACT: ReadonlySet<Rule> = new Set(["region-small", "region-missing", "gap"]);
+const CONTRACT: ReadonlySet<Rule> = new Set([
+  "region-small",
+  "region-missing",
+  "scroll-split",
+  "gap",
+]);
 
 /**
  * What a screen's findings mean for the build. A key region that is small or missing always fails;

@@ -13,13 +13,15 @@ import { failureOf, refusalText } from "./refusal-text.ts";
  * then "Key saved · …a1b2" with Replace, Test and Remove. The key is never read back: only its last
  * four characters come from the shell.
  */
-export function KeyField(props: {
-  store: AppStore;
-  t: T;
-  provider: AssistantKeyProvider;
-  /** The provider's name as it reads in a sentence ("Anthropic", "OpenRouter"). */
-  name: string;
-}) {
+export function KeyField(
+  props: Readonly<{
+    store: AppStore;
+    t: T;
+    provider: AssistantKeyProvider;
+    /** The provider's name as it reads in a sentence ("Anthropic", "OpenRouter"). */
+    name: string;
+  }>,
+) {
   const { store, t, provider } = props;
   const [saved, setSaved] = useState<{ last4?: string } | null | "unknown">("unknown");
   const [replacing, setReplacing] = useState(false);
