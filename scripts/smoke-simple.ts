@@ -21,7 +21,6 @@ import { BUILTIN_TEMPLATES } from "../apps/daemon/src/templates/builtin.ts";
 import { TaskTracker } from "../apps/daemon/src/templates/tasks.ts";
 import { newManager } from "../apps/daemon/test/helpers.ts";
 import { FrameClient } from "../apps/daemon/test/history-helpers.ts";
-import { pollUntil } from "./lib/poll.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
@@ -32,8 +31,14 @@ const TIMEOUT_MS = 20_000;
 let step = "prepare";
 const log = (msg: string) => console.log(`  · ${msg}`);
 
-function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
-  return pollUntil(check, () => new Error(`timeout: ${what}`), TIMEOUT_MS, 20);
+async function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
+  const deadline = Date.now() + TIMEOUT_MS;
+  for (;;) {
+    const value = check();
+    if (value) return value;
+    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
+    await Bun.sleep(20); // NOSONAR: poll interval: the wait between looks is the point of this loop
+  }
 }
 
 const both = (en: string) => ({ en, "pt-BR": `${en} (pt)` });

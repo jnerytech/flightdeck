@@ -11,7 +11,6 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type TerminalAttachResult } from "@flightdeck/protocol";
-import { pollUntil } from "./lib/poll.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
@@ -58,8 +57,14 @@ setInterval(() => {}, 1000);
 let step = "preparar";
 const log = (msg: string) => console.log(`  · ${msg}`);
 
-function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
-  return pollUntil(check, () => new Error(`timeout: ${what}`), TIMEOUT_MS, 50);
+async function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
+  const deadline = Date.now() + TIMEOUT_MS;
+  for (;;) {
+    const value = check();
+    if (value) return value;
+    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
+    await Bun.sleep(50);
+  }
 }
 
 class Client {

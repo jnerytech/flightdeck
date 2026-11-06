@@ -12,7 +12,6 @@ import {
   parseServerMessage,
   type SessionEventOf,
 } from "@flightdeck/protocol";
-import { pollUntil } from "./lib/poll.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
@@ -50,10 +49,12 @@ function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
   ]);
 }
 
-function until(check: () => boolean, what: string): Promise<void> {
-  return pollUntil(check, () => new Error(`timeout: ${what}`), TIMEOUT_MS, 10).then(
-    () => undefined,
-  );
+async function until(check: () => boolean, what: string): Promise<void> {
+  const deadline = Date.now() + TIMEOUT_MS;
+  while (!check()) {
+    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
+    await Bun.sleep(10);
+  }
 }
 
 class Client {
