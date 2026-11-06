@@ -3382,6 +3382,8 @@ export const en: Dictionary = {
   },
   projectPage: {
     notHere: "This project is not on this host.",
+    baseInvalid:
+      "The base branch {name} is not a valid branch name, so the board's git steps refuse it. Set a real one in Settings.",
     sessionsHint: "The sessions of every project",
     boardHint: "Cards by column, from backlog to done",
     workflowsHint: "The project's workflows and their runs",

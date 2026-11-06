@@ -3386,6 +3386,8 @@ export const ptBR = {
   },
   projectPage: {
     notHere: "Este projeto não está neste host.",
+    baseInvalid:
+      "O branch base {name} não é um nome de branch válido, e os passos de git do board o recusam. Defina um de verdade em Configurações.",
     sessionsHint: "As sessões de todos os projetos",
     boardHint: "Cards por coluna, do backlog ao concluído",
     workflowsHint: "Os workflows do projeto e suas execuções",

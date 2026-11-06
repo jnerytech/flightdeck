@@ -10,6 +10,7 @@ import {
   type EffortLevel,
   IssuesConfig,
   inSequence,
+  isBranchName,
   type PermissionUpdate,
   type PersonaRef,
   type PersonaSubagentsMode,
@@ -377,7 +378,15 @@ export class Board {
         () => false,
       ),
     ]);
-    return { ...project, worktreeInclude, ...(projectKey ? { projectKey } : {}) };
+    return {
+      ...project,
+      worktreeInclude,
+      ...(projectKey ? { projectKey } : {}),
+      // A base an older daemon stored without checking: the person is told to set a real one.
+      ...(project.baseBranch !== "HEAD" && !isBranchName(project.baseBranch)
+        ? { baseBranchInvalid: true }
+        : {}),
+    };
   }
 
   getProject(id: string): Project {

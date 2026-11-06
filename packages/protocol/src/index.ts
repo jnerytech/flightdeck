@@ -676,6 +676,11 @@ export const Project = z.object({
   path: z.string(),
   name: z.string(),
   baseBranch: z.string(),
+  /**
+   * The base branch is not a branch name (an older daemon stored it without checking): every git
+   * step of the board refuses it until the person sets a real one (issue #369).
+   */
+  baseBranchInvalid: z.boolean().optional(),
   prProvider: PrProviderKind,
   /** The only shell command Flightdeck runs on its own, and only when registered. */
   setupScript: z.string().nullable(),

@@ -1,5 +1,6 @@
 import { type LucideIcon, Settings } from "lucide-react";
 import { useEffect } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { NAV_ICONS } from "@/components/nav-icons";
@@ -103,6 +104,11 @@ export function ProjectPage(
       title={project.name}
       subtitle={`${host?.name ?? hostId} · ${project.baseBranch} · ${project.path}`}
     >
+      {project.baseBranchInvalid && (
+        <InlineNotice tone="warn">
+          {t("projectPage.baseInvalid", { name: project.baseBranch })}
+        </InlineNotice>
+      )}
       <ul aria-label={project.name} className="card-grid" data-slot="project-destinations">
         {destinations.map(({ key, labelKey, hint, icon: Icon, route }) => (
           <li key={key}>
