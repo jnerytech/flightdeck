@@ -26,7 +26,8 @@ const TEST_FILE = /\.test\.tsx?$/;
 
 /** The audit's markers plus a snapshot, which on its first run records whatever the stub returns. */
 const TEST_MARKERS = [
-  ...FORBIDDEN_MARKERS,
+  // A skip is judged by its note instead (#494): see undocumentedSkips below.
+  ...FORBIDDEN_MARKERS.filter(({ text }) => text !== ".skip("),
   { pattern: /\.toMatchSnapshot\(/g, text: "toMatchSnapshot(" },
 ];
 
@@ -161,9 +162,9 @@ export function testEditViolation(
   );
   if (!added) {
     if (undocumentedSkips(after) <= undocumentedSkips(before)) return null;
-    return `Adding a skipIf that skips off Linux to ${file} is blocked: it needs \`// unstable: #<issue> <reason>\` on the same line or the line above, and the fix goes to that issue (docs/TDD.md).`;
+    return `Adding a skip to ${file} is blocked: a flaky test is skipped only with \`// unstable: #<issue> <reason>\` on the same line or the line above, naming the open issue that owns its fix (docs/TDD.md).`;
   }
-  return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, .skip, test.todo or first-run toMatchSnapshot (docs/TDD.md). Write the assertion with a hand-written literal.`;
+  return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, test.todo or first-run toMatchSnapshot, and a .skip only with an \`// unstable: #<issue>\` note (docs/TDD.md). Write the assertion with a hand-written literal.`;
 }
 
 export interface CommitGateDeps {

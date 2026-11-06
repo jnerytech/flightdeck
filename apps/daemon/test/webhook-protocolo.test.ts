@@ -58,7 +58,10 @@ describe("webhook-protocolo", () => {
     ).toContain("webhook");
     const result = WebhookSendResult.parse(await client.data("webhook.send", payload));
     expect(result).toEqual({ status: 200, retryAfterMs: null, refused: null });
-    expect(posted).toEqual([{ url: URL_SECRET, body: '{"text":"hi"}' }]);
+    // To the address the check approved, the name kept in Host (#465).
+    expect(posted).toEqual([
+      { url: URL_SECRET.replace("hooks.slack.com", "93.184.216.34"), body: '{"text":"hi"}' },
+    ]);
   });
 
   test("a refusal comes back as a result with its reason, not as an error", async () => {

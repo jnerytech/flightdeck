@@ -16,7 +16,6 @@ describe("hook-test-markers", () => {
   test("an Edit that adds a forbidden marker to a test file is blocked and names it", () => {
     for (const [marker, line] of [
       [ONLY, `test${ONLY}"a", () => {})`],
-      [SKIP, `describe${SKIP}"b", () => {})`],
       [TODO, `${TODO}"later")`],
       [`${"toMatchSnapshot"}(`, SNAPSHOT],
     ] as const) {
@@ -25,6 +24,12 @@ describe("hook-test-markers", () => {
       expect(reason).toContain(marker);
       expect(reason).toContain("docs/TDD.md");
     }
+  });
+
+  test("a bare .skip is blocked too, and the reason says how to note it under its issue (#494)", () => {
+    const reason = edit("apps/daemon/test/a.test.ts", "", `describe${SKIP}"b", () => {})`) ?? "";
+    expect(reason).toContain("is blocked");
+    expect(reason).toContain("// unstable: #<issue> <reason>");
   });
 
   test("tsx files and Windows paths count as test files", () => {

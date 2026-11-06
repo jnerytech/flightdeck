@@ -45,6 +45,10 @@ jobs:
   quick:
     name: quick checks
     runs-on: ubuntu-latest
+    # Reading the issues of the unstable skips (#494) needs issues: read, in this job only.
+    permissions:
+      contents: read
+      issues: read
     timeout-minutes: 10
     outputs:
       windows: ${{ steps.plan.outputs.windows }}
@@ -91,6 +95,13 @@ jobs:
       # Every *-ratchet.test.ts and the protocol surface (scripts/lib/ci-quick.ts), in seconds.
       - name: Ratchets
         run: bun run scripts/ci-quick.ts
+
+      # A flaky test may be skipped under its open issue (#494); a closed issue fails the run, so
+      # the skip comes out with the fix.
+      - name: Unstable skips name open issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bun run scripts/unstable-issues.ts
 
   # Linux (#293): the suite, SonarCloud, and the smokes and cargo run as jobs of their own, the
   # suite and the checks in parallel. The suite stays whole: bun's lcov counts functions per file
