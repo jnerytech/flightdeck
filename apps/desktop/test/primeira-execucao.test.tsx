@@ -83,12 +83,12 @@ describe("primeira execução", () => {
       fireEvent.click(screen.getByRole("button", { name: "Testar e adicionar" }));
     });
     const deadline = Date.now() + 4000;
-    while (Date.now() < deadline && !screen.queryByText("Verificar este host")) {
+    while (Date.now() < deadline && !screen.queryByText("Saúde e dependências")) {
       await act(async () => {
         await new Promise((r) => setTimeout(r, 25));
       });
     }
-    expect(screen.queryByText("Verificar este host")).not.toBeNull();
+    expect(screen.queryByText("Saúde e dependências")).not.toBeNull();
     expect(screen.queryByText("Pastas permitidas")).not.toBeNull();
     expect(store.getState().hosts).toHaveLength(1);
     store.dispose();

@@ -178,4 +178,13 @@ describe("mode-switch-host-ui: simple mode follows the host whose page it was ch
       expect(screen.getByRole("alert").textContent).toContain("the task could not start"),
     );
   });
+
+  test("Given the host page, Then the lock switch is a 24 px target on its own, with no neighbor's space to borrow (axe target-size)", async () => {
+    await hostPage({ mode: "full", locked: false });
+    const lock = await waitFor(() =>
+      screen.getByRole("switch", { name: "Lock this host to its mode" }),
+    );
+    // Tailwind is not computed here: the class that sets the height is the contract.
+    expect(lock.className).toContain("data-[size=default]:h-6");
+  });
 });
