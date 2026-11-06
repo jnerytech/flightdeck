@@ -36,7 +36,8 @@ describe("projetos-nav-ui: the Projects item of the sidebar", () => {
     await act(async () => void fireEvent.click(item(/^Projects/)));
     // The screens load lazily.
     await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
-    expect(names()).toEqual(["all-projects"]);
+    // A shared screen gets its own pinned tab beside Home.
+    expect(names()).toEqual(["home", "all-projects"]);
     expect(screen.queryByRole("heading", { name: "Projects" })).not.toBeNull();
     expect(screen.queryByText("No projects yet.")).not.toBeNull();
     store.dispose();
@@ -61,7 +62,7 @@ describe("projetos-nav-ui: the Projects item of the sidebar", () => {
   test("in Portuguese it is Projetos", async () => {
     const { store, item, names } = await mount("pt-BR");
     await act(async () => void fireEvent.click(item(/^Projetos/)));
-    expect(names()).toEqual(["all-projects"]);
+    expect(names()).toEqual(["home", "all-projects"]);
     store.dispose();
   });
 });
