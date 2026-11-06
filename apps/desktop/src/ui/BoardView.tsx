@@ -28,7 +28,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { CardStartDialog } from "../components/board/card-start-dialog.tsx";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
-import type { Key } from "../i18n/index.ts";
+import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
 import { cardStartBlock } from "../lib/card-start-block.ts";
@@ -38,6 +38,12 @@ import { hasFeature } from "../lib/version.ts";
 import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
+
+/** Why "Iniciar card" is off (queued or running), else null. */
+function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
+  if (block === "queued") return t("board.startQueued");
+  return block === "running" ? t("board.startRunning") : null;
+}
 
 function CardTile(
   props: Readonly<{
@@ -423,13 +429,7 @@ export const BoardView = memo(function BoardView(props: {
                         edit: store.i18n.t("board.edit"),
                         delete: store.i18n.t("board.delete"),
                       }}
-                      startOff={
-                        cardStartBlock(card) === "queued"
-                          ? store.i18n.t("board.startQueued")
-                          : cardStartBlock(card) === "running"
-                            ? store.i18n.t("board.startRunning")
-                            : null
-                      }
+                      startOff={startOffText(cardStartBlock(card), store.i18n.t)}
                       deps={{
                         waiting: titlesOf(card.waitingOn),
                         holding: titlesOf(card.blocking),
