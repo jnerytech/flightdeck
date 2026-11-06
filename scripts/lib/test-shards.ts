@@ -267,7 +267,9 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
     return 0;
   }
   const seconds = Math.round(total(mine, weigh(tracked, timings)));
-  const which = tiers ? ` (${tiers.join(",")})` : chosen instanceof Set ? " (selection)" : "";
+  let which = "";
+  if (tiers) which = ` (${tiers.join(",")})`;
+  else if (chosen instanceof Set) which = " (selection)";
   deps.log(`test-shards: shard ${arg}${which}: ${mine.length} files, about ${seconds} s`);
   // `bun test` with no file runs everything: a shard the selection leaves empty runs nothing.
   if (mine.length === 0) {

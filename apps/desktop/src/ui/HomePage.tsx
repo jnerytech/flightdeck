@@ -99,14 +99,10 @@ export function HomePage(props: {
   // At start the hosts are still connecting: that is not "no host".
   const connecting = !state.hostsLoaded || state.hosts.some((host) => host.status === "connecting");
   const busy = online.length === 0 ? connecting : !kpis;
-  const message =
-    online.length === 0
-      ? connecting
-        ? t("home.connecting")
-        : t("home.noHosts")
-      : !kpis
-        ? t("home.loading")
-        : t("home.ready");
+  const message = (() => {
+    if (online.length === 0) return connecting ? t("home.connecting") : t("home.noHosts");
+    return kpis ? t("home.ready") : t("home.loading");
+  })();
   // Hosts that do not have costs at all: their spend is unknown, which is not the same as none.
   const withoutCosts = online
     .filter((host) => !hasFeature(host.hostInfo?.features, "costs", false))

@@ -61,14 +61,13 @@ export function AccountFooter(props: {
     props.many > 1
       ? t("sidebarAccount.many", { n: props.many })
       : (account?.name ?? t("sidebarAccount.none"));
-  const plan =
-    props.many > 1
-      ? t("sidebarAccount.manyHint")
-      : account?.plan
-        ? t("sidebarAccount.plan", { plan: capitalized(account.plan) })
-        : t("sidebarAccount.unread");
+  const knownPlan = account?.plan ? capitalized(account.plan) : null;
+  const plan = (() => {
+    if (props.many > 1) return t("sidebarAccount.manyHint");
+    return knownPlan ? t("sidebarAccount.plan", { plan: knownPlan }) : t("sidebarAccount.unread");
+  })();
   const label = t("sidebarAccount.menu", { name });
-  const planName = props.many > 1 ? null : account?.plan ? capitalized(account.plan) : null;
+  const planName = props.many > 1 ? null : knownPlan;
   const facts = [
     { key: "copyPlan", value: planName },
     { key: "copyAccount", value: props.many > 1 ? null : (account?.name ?? null) },
