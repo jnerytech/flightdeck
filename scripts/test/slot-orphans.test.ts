@@ -5,6 +5,7 @@ import {
   describeHolder,
   type ProcReader,
   parseArgs,
+  parseStat,
   run,
   type SlotEnv,
   type SlotHolder,
@@ -33,7 +34,8 @@ function fake(
     ppid: (pid) => (dead.has(pid) ? null : (parents[pid] ?? null)),
     pgid: (pid) => (dead.has(pid) ? null : pid),
     cwd: () => null,
-    cmdline: () => "bun /repos/flightdeck/scripts/slot.ts bun run test",
+    cmdline: () => ["bun", "run", "/repos/flightdeck/scripts/slot.ts", "bun", "run", "test"],
+    group: (pgid) => [pgid],
     ...extra,
   };
   const env: SlotEnv = {
@@ -164,7 +166,10 @@ describe("slot-orphans", () => {
       { 31: 1, 41: 1, 42: 1, 43: 1, 44: 1 },
       {
         pgid: (pid) => ({ 41: 0, 42: 77, 10: 77 })[pid] ?? pid,
-        cmdline: (pid) => (pid === 43 ? "tmux new-session -d" : "bun scripts/slot.ts bun run test"),
+        cmdline: (pid) =>
+          pid === 43
+            ? ["tmux", "new-session", "-d"]
+            : ["bun", "scripts/slot.ts", "bun", "run", "test"],
       },
     );
     expect(await run(f.env, ["--reap"])).toBe(0);
@@ -185,11 +190,89 @@ describe("slot-orphans", () => {
         // pid 50 answers its group once, then is gone; the reaper's own group is 10.
         pgid: (pid) => (pid === 50 ? (reads++ === 0 ? 50 : null) : pid),
         cmdline: (pid) =>
-          pid === 51 ? "vim notes-about-slot.ts" : "bun run scripts/slot.ts bun test",
+          pid === 51
+            ? ["vim", "scripts/slot.ts"]
+            : ["bun", "run", "scripts/slot.ts", "bun", "test"],
       },
     );
     expect(await run(f.env, ["--reap"])).toBe(0);
     expect(f.groups).toEqual([50]);
+  });
+
+  test("--reap leaves a group that holds the slot's holder, or any process that is not an orphan slot waiter (#388 review)", async () => {
+    const waiters = {
+      [`${PATH}.wait.60`]: holder(60, "with-holder", "bun run test"),
+      [`${PATH}.wait.62`]: holder(62, "with-shell", "bun run test"),
+      [`${PATH}.wait.64`]: holder(64, "with-nested", "bun run test"),
+      [`${PATH}.wait.66`]: holder(66, "pair", "bun run test"),
+      [`${PATH}.wait.67`]: holder(67, "pair", "bun run test"),
+    };
+    const f = fake(
+      // The holder, 61, shares group 60 with an orphan waiter.
+      { [PATH]: holder(61, "kiwi", "bun run e2e"), ...waiters },
+      { 60: 1, 61: 1, 62: 1, 63: 1, 64: 1, 65: 64, 66: 1, 67: 1 },
+      {
+        pgid: (pid) => ({ 61: 60, 63: 62, 65: 64, 67: 66 })[pid] ?? pid,
+        group: (pgid) =>
+          ({ 60: [60, 61], 62: [62, 63], 64: [64, 65], 66: [66, 67] })[pgid] ?? [pgid],
+        // 63 is a shell in 62's group; 65 is a slot process whose parent is alive (not orphaned).
+        cmdline: (pid) =>
+          pid === 63
+            ? ["bash", "-c", "sleep 600"]
+            : ["bun", "run", "scripts/slot.ts", "bun", "test"],
+      },
+    );
+    expect(await run(f.env, ["--reap"])).toBe(0);
+    // Only the group made of orphan slot waiters alone goes, once.
+    expect(f.groups).toEqual([66]);
+    for (const n of [60, 62, 64]) expect(f.store.has(`${PATH}.wait.${n}`)).toBe(true);
+  });
+
+  test("--reap knows a slot waiter by its arguments: bun or node running scripts/slot.ts, not a program that names the file (#388 review)", async () => {
+    const f = fake(
+      {
+        [`${PATH}.wait.70`]: holder(70, "less", "bun run test"),
+        [`${PATH}.wait.71`]: holder(71, "node", "bun run test"),
+      },
+      { 70: 1, 71: 1 },
+      {
+        cmdline: (pid) =>
+          pid === 70
+            ? ["less", "scripts/slot.ts"]
+            : ["/usr/bin/node", "/repo/scripts/slot.ts", "bun", "test"],
+      },
+    );
+    expect(await run(f.env, ["--reap"])).toBe(0);
+    expect(f.groups).toEqual([71]);
+  });
+
+  test("FLIGHTDECK_SLOT_DETACHED keeps a waiter whose shell is gone in the queue, for a launch that detaches on purpose (#388 review)", async () => {
+    const f = fake({ [PATH]: holder(20, "kiwi", "bun run e2e") }, { 10: 1 });
+    f.env.detached = true;
+    f.onSleep.push(() => f.store.delete(PATH));
+    expect(await run(f.env, ["bun", "run", "test"])).toBe(0);
+    expect(f.spawned).toEqual([["bun", "run", "test"]]);
+    expect(f.sleeps()).toBe(1);
+  });
+
+  test("a waiter re-parented while it waits gives up, though its old parent still lives (#388 review)", async () => {
+    const parents: Record<number, number> = { 10: 30, 30: 1 };
+    const f = fake({ [PATH]: holder(20, "kiwi", "bun run e2e") }, parents);
+    f.onSleep.push(() => {
+      parents[10] = 1;
+    });
+    expect(await run(f.env, ["bun", "run", "test"])).toBe(1);
+    expect(f.spawned).toEqual([]);
+    expect(f.logs.join("\n")).toContain("the shell that started this run is gone");
+  });
+
+  test("a /proc stat line reads to its parent and group, whatever the command name holds; anything else reads to null (#388 review)", () => {
+    expect(parseStat("123 (bun) S 1 77 77 0 -1")).toEqual({ ppid: 1, pgid: 77 });
+    expect(parseStat("123 (a) b (c) S 45 678 678 0 -1")).toEqual({ ppid: 45, pgid: 678 });
+    expect(parseStat("123 (x\ny) R 9 9 9")).toEqual({ ppid: 9, pgid: 9 });
+    for (const bad of ["", "garbage", "123 (bun) S x y", "123 bun S 1 2"]) {
+      expect(parseStat(bad)).toBeNull();
+    }
   });
 
   test("--status keeps each entry to one line: control characters in a label, a command or a folder become spaces (#236 review)", async () => {

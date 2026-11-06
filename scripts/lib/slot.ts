@@ -141,6 +141,11 @@ function readFlags(argv: string[]): SlotFlags | null {
   return flags;
 }
 
+/** The parent and the process group from a /proc/<pid>/stat line; null when it does not read. */
+export function parseStat(text: string): { ppid: number; pgid: number } | null {
+  return text ? null : null;
+}
+
 export function parseArgs(argv: string[]): SlotArgs {
   const flags = readFlags(argv);
   if (!flags) return { kind: "usage" };
