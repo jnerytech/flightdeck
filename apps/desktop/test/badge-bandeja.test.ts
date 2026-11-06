@@ -111,7 +111,8 @@ describe("badge-icon: the taskbar badge (issue #632)", () => {
       expect(drawn.length > 0).toBe(true);
       expect(across(drawn, "x") <= 26).toBe(true);
       expect(across(drawn, "y") <= 26).toBe(true);
-      expect(drawn.every((p) => fromMiddle(p) <= 13.5)).toBe(true);
+      // A pixel the disc only touches has its centre up to half a pixel diagonal outside it.
+      expect(drawn.every((p) => fromMiddle(p) <= 13.75)).toBe(true);
     }
   });
 
