@@ -895,13 +895,20 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // The first idle session of the demo: it answers again after it wakes, so it ends as it began.
     await open(c, { name: "hub" });
     await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
-    const idle = c.page
-      .getByRole("main")
-      .locator("li[aria-label]")
-      .filter({ has: c.page.getByRole("img", { name: c.t("hub.stateDots.idle"), exact: true }) });
+    const rows = c.page.getByRole("main").locator("li[aria-label]");
+    const idle = rows.filter({
+      has: c.page.getByRole("img", { name: c.t("hub.stateDots.idle"), exact: true }),
+    });
     await idle.first().waitFor({ timeout: SESSION_WAIT });
     const title = (await idle.first().getAttribute("aria-label")) ?? "";
-    const row = c.page.getByRole("listitem", { name: title, exact: true });
+    // Two sessions can share a standard name, so the row is kept by its place among the rows: its
+    // state, not its place, changes when it sleeps.
+    const place = await idle
+      .first()
+      .evaluate((el) =>
+        [...(el.closest("main")?.querySelectorAll("li[aria-label]") ?? [])].indexOf(el),
+      );
+    const row = rows.nth(place);
     const asleep = async () =>
       (await row.getByText(c.t("hub.asleep"), { exact: true }).count()) > 0;
     // A fresh page opens no session, so nobody has this one open and it may sleep.
