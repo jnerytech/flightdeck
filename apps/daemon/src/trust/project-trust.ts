@@ -126,26 +126,28 @@ export class ProjectTrust {
   }
 
   private async scan(here: string): Promise<void> {
-    this.boundaries.delete(here);
+    // Judged first, stored after: the answer a session was given stays until the new one replaces it.
+    const found = await this.boundaryOf(here);
+    if (found) this.boundaries.set(here, found);
+    else this.boundaries.delete(here);
+  }
+
+  private async boundaryOf(here: string): Promise<{ main: string | null } | null> {
     const via = this.via(here);
-    if (via === null) return;
+    if (via === null) return null;
     const top = resolve(via);
     for (let dir = here; dir !== top && isInside(top, dir); dir = dirname(dir)) {
       const git = join(dir, ".git");
       const info = await stat(git).catch(() => null);
       if (!info) continue;
-      if (info.isDirectory()) {
-        this.boundaries.set(here, { main: null });
-        return;
-      }
+      if (info.isDirectory()) return { main: null };
       const text = await (this.opts.readText ?? ((path) => readFile(path, "utf8")))(git).catch(
         () => "",
       );
       const gitdir = /^gitdir:\s*(.+)$/m.exec(text)?.[1]?.trim();
-      const main = gitdir ? this.mainOfGitdir(gitdir, dir) : null;
-      this.boundaries.set(here, { main });
-      return;
+      return { main: gitdir ? this.mainOfGitdir(gitdir, dir) : null };
     }
+    return null;
   }
 
   /** `<main>/.git/worktrees/<name>` names its main checkout; a submodule's gitdir does not. */
@@ -158,7 +160,10 @@ export class ProjectTrust {
 
   sessionTrust(cwd: string): SessionTrust {
     const main = this.opts.configRootOf?.(cwd) ?? repoOfWorktreeArea(cwd);
-    if (main) return { trusted: this.folderTrusted(main), configRoot: main };
+    if (main) {
+      const judged = this.judge(main);
+      return { trusted: judged.trusted, configRoot: judged.root };
+    }
     const boundary = this.boundaries.get(resolve(cwd));
     if (boundary?.main)
       return { trusted: this.isTrusted(boundary.main), configRoot: boundary.main };
@@ -166,12 +171,15 @@ export class ProjectTrust {
     return { trusted: this.isTrusted(cwd) };
   }
 
-  /** Whether a folder is trusted once its own git boundary is counted: a nested clone is not covered. */
-  private folderTrusted(folder: string): boolean {
+  /**
+   * Whether a folder is trusted once its own git boundary is counted (a nested clone is not covered)
+   * and the checkout its configuration is read from: a worktree is read from its main checkout.
+   */
+  private judge(folder: string): { trusted: boolean; root: string } {
     const boundary = this.boundaries.get(resolve(folder));
-    if (boundary?.main) return this.isTrusted(boundary.main);
-    if (boundary) return false;
-    return this.isTrusted(folder);
+    if (boundary?.main) return { trusted: this.isTrusted(boundary.main), root: boundary.main };
+    if (boundary) return { trusted: false, root: folder };
+    return { trusted: this.isTrusted(folder), root: folder };
   }
 
   private rows(): Row[] {
