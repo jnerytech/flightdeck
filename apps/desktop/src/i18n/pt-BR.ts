@@ -1283,6 +1283,7 @@ export const ptBR = {
     runEnv: "o ambiente de execução",
     templates: "as tarefas prontas",
     tasks: "os resultados das tarefas",
+    resources: "o painel de recursos do host",
     depsCheck: "a verificação das dependências",
     worktrees: "o painel de worktrees",
     history: "o histórico",
@@ -4081,6 +4082,34 @@ export const ptBR = {
     hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
     hintAddress:
       "Ou o daemon recusou o endereço desta máquina: no host, inclua a rede dela em allowedNetworks (o flightdeckd setup faz isso para o Tailscale).",
+  },
+  resources: {
+    title: "Recursos",
+    memory: "Memória",
+    disk: "Disco",
+    load: "Carga {n}%",
+    used: "{used} de {total} em uso",
+    high: "Alta",
+    critical: "Crítica",
+    kinds: { session: "Sessão", terminal: "Terminal" },
+    session: "Sessão",
+    project: "Projeto",
+    memoryCol: "Memória",
+    cpu: "CPU",
+    programs: "Programas",
+    list: "Sessões e terminais por memória",
+    empty: "Nenhuma sessão ou terminal em execução.",
+    notMeasured:
+      "Os números por sessão não são medidos aqui. Os processos só são medidos em hosts Linux.",
+    orphans: "Processos que sobraram",
+    orphansHelp:
+      "Iniciados pelo daemon deste host, mas sem sessão dona. Podem ser sobras de uma sessão que acabou.",
+    orphanLine: "{name} · pid {pid} · {age} · {memory}",
+    end: "Encerrar",
+    endTitle: "Encerrar processo",
+    endMessage:
+      "Encerrar o processo {pid} ({name})? O daemon do host o iniciou e nenhuma sessão é dona dele.",
+    endFailed: "Não foi possível encerrar esse processo.",
   },
   worktrees: {
     title: "Worktrees",
