@@ -18,5 +18,11 @@ export function viteCommands(options: {
   port: number;
   outDir: string;
 }): ViteCommands {
-  return { build: null, serve: [options.bun] };
+  const { bun, vite, outDir } = options;
+  const port = ["--port", String(options.port), "--strictPort"];
+  if (options.env.DEMO_BUILD !== "1") return { build: null, serve: [bun, vite, ...port] };
+  return {
+    build: [bun, vite, "build", "--outDir", outDir, "--emptyOutDir"],
+    serve: [bun, vite, "preview", "--outDir", outDir, ...port],
+  };
 }
