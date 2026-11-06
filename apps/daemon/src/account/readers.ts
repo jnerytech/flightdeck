@@ -17,6 +17,7 @@ export interface AuthStatus {
 export interface AccountInfoReading {
   email: string | null;
   organization: string | null;
+  /** The plan's display name from the server ("Claude Ultra"), normalized: `ultra`. */
   plan: string | null;
   tokenSource: string | null;
   apiKeySource: string | null;

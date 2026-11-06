@@ -506,12 +506,25 @@ describe("pr-flow: next", () => {
 });
 
 describe("pr-flow: update and merge", () => {
-  test("update brings a PR up to date with its base by REST", async () => {
+  test("update brings a PR up to date with its base by REST, then turns its auto-merge back on (#613)", async () => {
     const f = fake({ prs: [pr(13, "behind")] });
     expect(await prFlow(["update", "13"], f.deps)).toBe(0);
-    expect(f.writes).toEqual([`api -X PUT ${R}/pulls/13/update-branch`]);
+    // GitHub turns auto-merge off when a PR conflicts, and nothing turns it back on after the merge.
+    expect(f.writes).toHaveLength(2);
+    expect(f.writes[0]).toBe(`api -X PUT ${R}/pulls/13/update-branch`);
+    expect(f.writes[1]).toContain("enablePullRequestAutoMerge");
+    expect(f.writes[1]).toContain("-f id=PR_node13");
+    expect(f.out()).toContain("#13 merges by itself");
     const refused = fake({ prs: [pr(13, "behind")], fail: /update-branch/ });
     expect(await prFlow(["update", "13"], refused.deps)).toBe(1);
+    expect(refused.writes.filter((w) => w.includes("enablePullRequestAutoMerge"))).toEqual([]);
+  });
+
+  test("a draft is updated and left without auto-merge, and that is no failure (#613)", async () => {
+    const f = fake({ prs: [pr(14, "drafty", { draft: true })] });
+    expect(await prFlow(["update", "14"], f.deps)).toBe(0);
+    expect(f.writes).toEqual([`api -X PUT ${R}/pulls/14/update-branch`]);
+    expect(f.out()).toContain("#14: auto-merge not turned on: a draft");
   });
 
   const COORDINATOR = { FLIGHTDECK_COORDINATOR: "1" };

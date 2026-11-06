@@ -572,8 +572,9 @@ A session appears only once. The order of preference is managed, then terminal, 
 - **Group:** the project. What counts is the `remote.origin.url` of the repository of the
   session's folder, normalized, so SSH and HTTPS of the same repository land together. Worktrees
   count as the main repository. Without a remote, the repository root counts; without a
-  repository, the folder.
-- **Row:** shows host, origin, state (running, needs you, idle, ended), the "controllable" badge
+  repository, the folder. The folder is the one the session started in, where its transcript is
+  filed: a terminal session that later works in another folder stays in its own project.
+- **Row:** shows host, origin (a terminal session has a "terminal" chip), state (running, needs you, idle, ended), the "controllable" badge
   and the time.
 - **Summary:** below, a line taken from the transcript, with no AI: "Request: <first line of the
   last prompt, up to 80 characters>" and what the session is doing now ("running Bash", "waiting
@@ -732,6 +733,9 @@ Besides Approve and Deny, an approval, whether from a managed or a terminal sess
   - For Bash, the default is the exact command, which you can replace with a prefix such as
     `npm test:*`.
   - For other tools, the default is the tool name.
+  - A rule that names a folder, or a path that is not there yet, is refused: it would cover
+    everything below it. A search over a folder (Grep, Glob) does not offer this button; the message
+    says to name one file.
   - The rule goes to `<project>/.claude/settings.local.json`, Claude Code's local, unversioned
     file.
 
@@ -918,7 +922,10 @@ live; the list is the project's, so a session of another project never shows her
   host on an older daemon shows "—" instead of a made-up zero, and days before the update are
   unknown (the average time and the success rate use only the turns that were counted). Home reads
   again every minute and when the window gets focus; a host that does not answer is named under
-  the title and the others still count. The desktop app opens on Home when the window is new; a
+  the title and the others still count. Home keeps the last numbers of each set of hosts, in memory
+  and in the app's local storage (only numbers and the time they were read, no project or title),
+  and shows them at once with an "Updated … ago" line while it reads again in the background; a
+  host that does not answer keeps its last numbers, and the page says so. The desktop app opens on Home when the window is new; a
   window you already used comes back with its tabs. The account at the foot of the bar is the one
   of the host you are on; with no host open it is the shared account of the online hosts, or "N
   accounts" when they differ.
@@ -2732,7 +2739,14 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
 
 - **Opening:** a normal click changes the current tab. `Ctrl+click`, the middle mouse button or
   **Open in new tab** (in the host's menu and in a session row's menu) opens a new one. The **+**
-  button at the end of the bar opens a new tab on the `Ctrl+K` palette.
+  button at the end of the bar opens a new tab on the `Ctrl+K` palette. A screen has one tab: a
+  link to a screen another tab already shows (a breadcrumb, a page link, reopening a running
+  terminal) goes to that tab instead of opening a second one.
+- **All tabs:** past eight tabs, the chevron at the end of the bar opens a list of all of them:
+  each row has the tab's icon, its title on one line (the whole title in its tooltip), its host,
+  and a close button on hover. The tab on screen has a bar at its left. Type to filter; the arrows,
+  `Home` and `End` move the highlight, `Enter` goes to the tab and `Delete` closes it. `Esc` or a
+  click outside closes the list.
 - **The bar:** each tab shows its type's icon and title, and a badge when a session in it needs
   you, is running, or answered while no tab showed it (**Unread**). **Pin** keeps the tab at the
   left with its icon only. The pin, move and close buttons after the tabs act on the active one;
@@ -2808,8 +2822,10 @@ tab, with no SSH.
   matches empty text, says so instead of searching. Links in the output open in the browser (`http`
   and `https` only). File paths in the output are links too: absolute ones (`C:\repo\a.md`,
   `/home/ana/x.log`) and relative ones with a folder and an extension (`src/app.ts:12`), taken from
-  the terminal's folder. On a host of this computer a click shows the file in its folder (it never
-  opens or runs it); on another host it copies the path. The font is the
+  the terminal's folder. A file inside the terminal's folder opens under the terminal in the Files
+  viewer, read-only, at the line the path names (`src/app.ts:12` opens at line 12); **Close** puts
+  it away. A path outside that folder, or on a host whose daemon is too old to read it, is shown in its folder on a
+  host of this computer (never opened or run) and copied on another host. The font is the
   system monospace; its size is in Settings (**Terminal font size**, 10 to 24). In the tab,
   `Ctrl+=` (or `Ctrl++`) and `Ctrl+-`, or `Ctrl` with the mouse wheel, make it one point bigger or
   smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. For a screen
@@ -3087,6 +3103,35 @@ bun run e2e          # the five journeys in a real browser, in 2 languages, and 
 Nothing leaves the machine and no real data is used. The scripts use the installed Chrome (or
 Edge) through `playwright-core`; in CI, the `screenshots` job runs all three and publishes the
 screenshots.
+
+### Logs and diagnostics
+
+If something breaks, send the log. The desktop app keeps its own log file in the system's app log
+folder (on Windows `%LOCALAPPDATA%\dev.flightdeck.app\logs`, on Linux
+`~/.local/share/dev.flightdeck.app/logs`, on macOS `~/Library/Logs/dev.flightdeck.app`), rotated at
+5 MB across 5 files. It records what happens to hosts (connected, offline), what a host refused, the
+result of update checks, and the webview's own errors and console warnings. **Settings >
+Diagnostics** has **Open logs folder** and **Copy diagnostics**: the second copies the app's version
+and system, each host's name, state, version and features (never an address or a token), and the
+last 50 log lines, to paste in a message. Neither button exists in a browser.
+
+The daemon keeps its own log file too, `flightdeckd.log` in `~/.flightdeck/logs` (also rotated), and
+`host.info` says where. On a host page, **Copy the host's last log lines** copies up to 100 of them.
+
+Every line is redacted before it is written, by the same scanner that guards snippets and personas:
+a token (GitHub, Slack, AWS, `sk-`, npm, GitLab, Stripe and Google keys, JWTs), an `Authorization`
+or `Cookie` header, a name containing password, secret, token or key followed by `=` or `:` (also
+inside JSON, as in `{"apiKey":"…"}` or `DB_PASSWORD=…`), `--password`/`--token` options, `curl -u`,
+a whole private key block, a password or a token in a URL, a webhook URL, a signed link and a
+pairing link's token become `[redacted]`. Besides the patterns, the host never writes its own
+tokens (the protocol's, even after a rotation, and the hooks') or any value the vault holds at
+that moment, and the app never writes a host's token or a vault value of 6 characters or more.
+It is a pattern list, not a guarantee: a secret wrapped in base64, split over two log lines, or a
+short vault value (under 6 characters) is not caught. Your home folder (`/home/<name>`,
+`/Users/<name>`, `C:\Users\<name>`) is written as `~`. The log folder is private to you (0700, files
+0600) and a link planted in it is never followed. A host gives its log (`logs.tail`) and its path only
+to connections from loopback or Tailscale, like the vault, and never more than the last 256 KiB of
+each file. Read the lines before you post them in public.
 
 ### Performance
 

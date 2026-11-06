@@ -1,5 +1,5 @@
 import { WandSparkles } from "lucide-react";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { Spinner } from "@/components/feedback/busy";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { T } from "@/i18n/index";
 import { isMac } from "@/lib/shortcuts";
+import { wordDiff } from "@/lib/word-diff";
 import { refusalText } from "./refusal-text.ts";
 import type { Wand } from "./use-wand.ts";
 
@@ -31,6 +32,35 @@ export function WandButton(props: { wand: Wand; t: T }) {
     >
       <WandSparkles aria-hidden="true" />
     </IconActionButton>
+  );
+}
+
+/** What changed in a text of several lines: what stayed muted, what went struck, what came in marked. */
+function Changes(props: { before: string; after: string; t: T }) {
+  const { before, after, t } = props;
+  const parts = useMemo(() => {
+    let at = 0;
+    return wordDiff(before, after).map((part) => {
+      const key = at;
+      at += part.text.length;
+      return { ...part, key };
+    });
+  }, [before, after]);
+  return (
+    <fieldset
+      aria-label={t("assistantWand.changes")}
+      className="min-w-0 whitespace-pre-wrap text-sm"
+    >
+      {parts.map((part) => {
+        if (part.kind === "add") return <ins key={part.key}>{part.text}</ins>;
+        if (part.kind === "del") return <del key={part.key}>{part.text}</del>;
+        return (
+          <span key={part.key} className="text-muted-foreground">
+            {part.text}
+          </span>
+        );
+      })}
+    </fieldset>
   );
 }
 
@@ -61,6 +91,18 @@ export function WandPanel(props: { wand: Wand; t: T }) {
               ...(state.params ? { params: state.params } : {}),
             })}
           </span>
+          {wand.others.map(({ provider, hostName }) => (
+            <Button
+              key={provider.provider === "host" ? provider.hostId : provider.provider}
+              variant="outline"
+              size="sm"
+              onClick={() => wand.tryWith(provider)}
+            >
+              {t("assistantWand.tryWith", {
+                provider: hostName ?? t(`assistantSettings.${provider.provider}`),
+              })}
+            </Button>
+          ))}
           <Button variant="outline" size="sm" onClick={wand.discard}>
             {t("assistantWand.dismiss")}
           </Button>
@@ -93,22 +135,28 @@ export function WandPanel(props: { wand: Wand; t: T }) {
       }}
     >
       <Stack gap={2}>
-        <Stack gap={1}>
-          <span className="text-muted-foreground text-xs">{t("assistantWand.before")}</span>
-          <p className="whitespace-pre-wrap text-muted-foreground text-sm">{state.original}</p>
-        </Stack>
-        <Stack gap={1}>
-          <span className="text-muted-foreground text-xs">{t("assistantWand.after")}</span>
-          {state.editing ? (
-            <Textarea
-              aria-label={t("assistantWand.after")}
-              value={state.proposal}
-              onChange={(event) => wand.setProposal(event.target.value)}
-            />
-          ) : (
-            <p className="whitespace-pre-wrap text-sm">{state.proposal}</p>
-          )}
-        </Stack>
+        {!state.editing && (state.original.includes("\n") || state.proposal.includes("\n")) ? (
+          <Changes before={state.original} after={state.proposal} t={t} />
+        ) : (
+          <>
+            <Stack gap={1}>
+              <span className="text-muted-foreground text-xs">{t("assistantWand.before")}</span>
+              <p className="whitespace-pre-wrap text-muted-foreground text-sm">{state.original}</p>
+            </Stack>
+            <Stack gap={1}>
+              <span className="text-muted-foreground text-xs">{t("assistantWand.after")}</span>
+              {state.editing ? (
+                <Textarea
+                  aria-label={t("assistantWand.after")}
+                  value={state.proposal}
+                  onChange={(event) => wand.setProposal(event.target.value)}
+                />
+              ) : (
+                <p className="whitespace-pre-wrap text-sm">{state.proposal}</p>
+              )}
+            </Stack>
+          </>
+        )}
         {state.stale && <p className="text-sm">{t("assistantWand.stale")}</p>}
         <Inline>
           <Button size="sm" autoFocus onClick={wand.accept}>

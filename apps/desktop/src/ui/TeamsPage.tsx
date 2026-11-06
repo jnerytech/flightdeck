@@ -189,48 +189,56 @@ function Member(
   const { t } = store.i18n;
   const [persona, setPersona, savedPersona] = useDraft(member.persona ?? "");
   return (
-    <li className="flex flex-col gap-1 rounded-md border p-2 text-xs">
-      <div className="flex flex-wrap items-center gap-2">
-        <strong>{member.name}</strong>
-        <Badge variant="outline">
-          {t(member.role === "coordinator" ? "teamsUi.coordinator" : "teamsUi.worker")}
-        </Badge>
-        {member.persona && <Badge variant="outline">{member.persona}</Badge>}
-        {member.model && <Badge variant="outline">{member.model}</Badge>}
-        {member.sessionState && (
-          <span className="text-muted-foreground">
-            {t(`teamsUi.sessionStates.${member.sessionState}`)}
-          </span>
-        )}
-        {member.sessionId && (
-          <Button
-            variant="link"
-            size="sm"
-            aria-label={t("teamsUi.openSessionOf", { name: member.name })}
-            onClick={() =>
-              store.router.push({ name: "session", host: props.hostId, id: member.sessionId ?? "" })
-            }
-          >
-            {t("teamsUi.openSession")}
-          </Button>
-        )}
-        {member.cardId && (
-          <Button
-            variant="link"
-            size="sm"
-            aria-label={t("teamsUi.openCardOf", { name: member.name })}
-            onClick={() =>
-              store.router.push({
-                name: "card",
-                host: props.hostId,
-                projectId: props.projectId,
-                cardId: member.cardId ?? "",
-              })
-            }
-          >
-            {t("teamsUi.openCard")}
-          </Button>
-        )}
+    <li data-slot="team-member" className="stack-tight rounded-md border p-2 text-xs">
+      <div data-slot="member-head" className="member-head">
+        <div className="member-id">
+          <strong>{member.name}</strong>
+          <Badge variant="outline">
+            {t(member.role === "coordinator" ? "teamsUi.coordinator" : "teamsUi.worker")}
+          </Badge>
+          {member.persona && <Badge variant="outline">{member.persona}</Badge>}
+          {member.model && <Badge variant="outline">{member.model}</Badge>}
+        </div>
+        <div data-slot="member-end" className="member-end">
+          {member.sessionState && (
+            <span className="text-muted-foreground">
+              {t(`teamsUi.sessionStates.${member.sessionState}`)}
+            </span>
+          )}
+          {member.sessionId && (
+            <Button
+              variant="link"
+              size="sm"
+              aria-label={t("teamsUi.openSessionOf", { name: member.name })}
+              onClick={() =>
+                store.router.push({
+                  name: "session",
+                  host: props.hostId,
+                  id: member.sessionId ?? "",
+                })
+              }
+            >
+              {t("teamsUi.openSession")}
+            </Button>
+          )}
+          {member.cardId && (
+            <Button
+              variant="link"
+              size="sm"
+              aria-label={t("teamsUi.openCardOf", { name: member.name })}
+              onClick={() =>
+                store.router.push({
+                  name: "card",
+                  host: props.hostId,
+                  projectId: props.projectId,
+                  cardId: member.cardId ?? "",
+                })
+              }
+            >
+              {t("teamsUi.openCard")}
+            </Button>
+          )}
+        </div>
       </div>
       {props.report && (
         <p className="text-muted-foreground">
@@ -238,18 +246,19 @@ function Member(
         </p>
       )}
       {props.open && (
-        <div className="flex flex-wrap items-center gap-1">
-          <PersonaPicker
-            store={store}
-            hostId={props.hostId}
-            label={t("teamsUi.persona", { name: member.name })}
-            value={persona}
-            onChange={setPersona}
-            idsOnly
-          />
+        <div data-slot="member-persona" className="member-persona">
+          <div data-slot="persona-field" className="persona-field">
+            <PersonaPicker
+              store={store}
+              hostId={props.hostId}
+              label={t("teamsUi.persona", { name: member.name })}
+              value={persona}
+              onChange={setPersona}
+              idsOnly
+            />
+          </div>
           <Button
-            variant="ghost"
-            size="sm"
+            variant="outline"
             aria-label={t("teamsUi.setPersona", { name: member.name })}
             onClick={async () => {
               const sent = persona;
@@ -260,8 +269,7 @@ function Member(
           </Button>
           {member.role === "worker" && (
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
               aria-label={t("teamsUi.remove", { name: member.name })}
               onClick={props.onRemove}
             >
@@ -384,8 +392,8 @@ function Team(
         ))}
       </ul>
       {open && (
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap gap-1">
+        <div data-slot="team-footer" className="team-footer">
+          <div className="team-row">
             {team.state === "active" ? (
               <Button
                 variant="outline"
@@ -446,7 +454,7 @@ function Team(
               }}
             />
           )}
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="team-row">
             <Input
               aria-label={t("teamsUi.messageAll")}
               value={text}

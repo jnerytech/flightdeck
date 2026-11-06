@@ -115,6 +115,18 @@ describe("trust-ui: the project page says what a project would load and lets the
     ).not.toBeNull();
   });
 
+  test("the groups of the listing sit apart, and a long command sits in a padded block that wraps (#588)", async () => {
+    render(setup({ load: DEEP }).view);
+    await waitFor(() => expect(screen.queryByText("What this project would load")).not.toBeNull());
+    const panel = screen.getByRole("region", { name: "Project configuration" });
+    const groups = panel.querySelector("dl")?.className.split(" ") ?? [];
+    expect(groups).toContain("gap-3");
+    const block = panel.querySelector("pre")?.className.split(" ") ?? [];
+    expect(block).toEqual(
+      expect.arrayContaining(["p-2", "rounded-md", "bg-muted", "whitespace-pre-wrap"]),
+    );
+  });
+
   test("programs the settings run, variables that redirect, plugins, other keys and headers with hooks are listed", async () => {
     render(setup({ load: DEEP }).view);
     await waitFor(() => expect(screen.queryByText("What this project would load")).not.toBeNull());

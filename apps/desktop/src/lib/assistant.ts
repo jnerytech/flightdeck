@@ -153,7 +153,9 @@ export class AssistantController {
     }
     if (input.text.trim() === "" && !spec.generates) throw fail("assistant_empty_input");
     const provider = input.provider ?? this.resolve(input.fieldHostId);
-    if (!provider) throw fail("assistant_not_configured");
+    // A host the person never agreed to is asked in Settings, once: until then no text goes there,
+    // whoever calls (the wand checks too, to open Settings).
+    if (!provider || this.needsHostConfirm(provider)) throw fail("assistant_not_configured");
     const found = this.scanner.scan(input.text);
     if (found.length > 0) throw fail("assistant_secret_found", { labels: found.join(", ") });
     if (!this.gate.acquire(input.requestId)) throw fail("assistant_rate_limited");
@@ -206,6 +208,11 @@ export class AssistantController {
       }
     }
     return out;
+  }
+
+  /** What the person calls a host, for a button that names where the text would go. */
+  hostName(hostId: string): string {
+    return this.deps.hosts().find((host) => host.id === hostId)?.name ?? hostId;
   }
 
   needsHostConfirm(on: ResolvedProvider): boolean {

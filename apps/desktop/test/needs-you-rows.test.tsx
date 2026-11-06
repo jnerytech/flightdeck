@@ -127,6 +127,15 @@ for (const [lang, t] of [
       );
       expect(detail?.getAttribute("title")).toBe("Bash: npm test --silent");
     });
+
+    test("a row's detail starts under its title, past the status dot (#588)", async () => {
+      await withGate(lang);
+      const row = document.querySelector(`button[aria-label*="Backend tests"]`) as HTMLElement;
+      const detail = [...row.querySelectorAll("span")].find(
+        (span) => span.textContent === "Bash: npm test --silent",
+      );
+      expect(detail?.className.split(" ") ?? []).toContain("pl-5");
+    });
   });
 }
 

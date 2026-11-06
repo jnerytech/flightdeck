@@ -13,6 +13,7 @@ export type Rule =
   | "growth"
   | "region-small"
   | "region-missing"
+  | "gap"
   | "scroll-split";
 
 export interface Finding {
@@ -31,10 +32,18 @@ export interface RegionRule {
   required?: boolean;
 }
 
+/** Two floating boxes that share columns: every `above` box ends at least `min` px over every `below` one (#581). */
+export interface GapRule {
+  above: string;
+  below: string;
+  min: number;
+}
+
 export interface GuardOptions {
   regions?: RegionRule[];
   /** Bars that must not grow: a selector and the most they may be tall, in px. */
   bars?: Array<{ selector: string; maxHeight: number }>;
+  gaps?: GapRule[];
   /** Regions (by `data-slot`) that scroll as one area: at most one element in each may scroll vertically. */
   single?: string[];
 }
@@ -44,7 +53,7 @@ export interface GuardOptions {
  * Rules: the page scrolls sideways; an element is cut by an ancestor that clips on an axis no
  * ancestor scrolls; an element with content is under 8 px tall; text is cut to under 48 px with an
  * ellipsis; an alert is off screen; a bar grew; a key region is small or missing; a region that
- * scrolls as one holds more than one scroller.
+ * scrolls as one holds more than one scroller; a floating box is too close to the one below it.
  */
 export function layoutFindings(options: GuardOptions = {}): Finding[] {
   const found: Finding[] = [];
@@ -207,7 +216,31 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     }
   };
 
-  // 8. Regions that scroll as one (#567): two scrollers side by side in a narrow column read as
+  // 8. A floating box ends at least `min` px over the one below it in the same columns (#581): a
+  // box that overlaps it is a finding too.
+  const checkGaps = () => {
+    for (const rule of options.gaps ?? []) {
+      const belows = [...document.querySelectorAll(rule.below)].filter((el) => !hidden(el));
+      for (const el of document.querySelectorAll(rule.above)) {
+        if (hidden(el)) continue;
+        const box = rectOf(el);
+        for (const below of belows) {
+          const under = rectOf(below);
+          if (box.right <= under.left || box.left >= under.right) continue;
+          const gap = under.top - box.bottom;
+          if (gap < rule.min) {
+            add(
+              "gap",
+              pathOf(el),
+              `${Math.round(gap)} px above ${pathOf(below)}, at least ${rule.min}`,
+            );
+          }
+        }
+      }
+    }
+  };
+
+  // 9. Regions that scroll as one (#567): two scrollers side by side in a narrow column read as
   // broken, so at most one element in each such region scrolls vertically.
   const checkSingleScroll = () => {
     for (const slot of options.single ?? []) {
@@ -236,6 +269,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   checkAttention();
   checkBars();
   checkRegions();
+  checkGaps();
   checkSingleScroll();
   return found;
 }
@@ -278,6 +312,13 @@ export const KEY_REGIONS: RegionRule[] = [
   { slot: "form-actions", minHeight: 28 },
 ];
 
+/** The floating boxes of the bottom-right corner keep clear of each other and of the status bar (#581). */
+export const GAPS: GapRule[] = [
+  { above: "[data-sonner-toast]", below: '[data-slot="status-bar"]', min: 8 },
+  { above: "[data-sonner-toast]", below: '[data-slot="update-card"]', min: 8 },
+  { above: '[data-slot="update-card"]', below: '[data-slot="status-bar"]', min: 8 },
+];
+
 /** The sidebar scrolls as one area between its fixed header and footer (#567). */
 export const SINGLE_SCROLL = ["sidebar"];
 
@@ -291,7 +332,12 @@ export const SCROLL_SIZES: ReadonlyArray<{ width: number; height: number }> = [
 export const BARS = [{ selector: ".tab-bar", maxHeight: 48 }];
 
 /** What fails with no baseline: the contract. The heuristic rules wait for a baseline file. */
-const CONTRACT: ReadonlySet<Rule> = new Set(["region-small", "region-missing", "scroll-split"]);
+const CONTRACT: ReadonlySet<Rule> = new Set([
+  "region-small",
+  "region-missing",
+  "scroll-split",
+  "gap",
+]);
 
 /**
  * What a screen's findings mean for the build. A key region that is small or missing always fails;

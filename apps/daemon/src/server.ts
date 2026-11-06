@@ -53,13 +53,15 @@ import type { GithubService } from "./github/service.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
+import type { FileLog } from "./logs/file-log.ts";
+import { logPathFor, tailForOrigin } from "./logs/serve.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
-import { isInside, resolveAllowedCwd, rootNames } from "./paths.ts";
+import { resolveAllowedCwd, rootNames } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import { realPathOf, statKind } from "./permissions/path-kind.ts";
 import { rulePaths, ruleReadings } from "./permissions/permission-updates.ts";
@@ -106,6 +108,7 @@ import type { TaskTracker } from "./templates/tasks.ts";
 import type { TerminalManager } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
+import { trustsManyProjects } from "./trust/trust-root.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
@@ -211,6 +214,8 @@ export interface ServerOptions {
   central?: Central;
   /** Retention and backups behind the `maintenance.*` commands (phase 7). */
   maintenance?: Maintenance;
+  /** The daemon's own log file, behind `logs.tail` and `host.info.logPath` (issue #255). */
+  fileLog?: FileLog;
   /** What the host's sessions and terminals cost it, behind `resources.*` (issue #154). */
   resources?: Resources;
   /** What the cards' worktrees take on the disk, behind `worktree.*` (issue #152). */
@@ -363,6 +368,9 @@ const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
   ended: "ended",
 };
 
+/** The names a feature adds when the daemon has it. */
+const when = (has: unknown, ...names: string[]): string[] => (has ? names : []);
+
 /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
 function featuresOf(opts: ServerOptions): string[] {
   return [
@@ -371,65 +379,66 @@ function featuresOf(opts: ServerOptions): string[] {
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
     FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
-    ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
+    ...when(opts.fsDirs, "fs.dirs", "fs.files"),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
-    ...(opts.sessionSettings ? ["session.settings", "session.effort"] : []),
+    ...when(opts.sessionSettings, "session.settings", "session.effort"),
     // A message may carry images (`session.send` with `images`).
     "session.images",
-    ...(opts.doctor ? ["doctor.run"] : []),
-    ...(opts.keepAwake ? ["keepAwake"] : []),
-    ...(opts.deps ? ["depsCheck"] : []),
-    ...(opts.projectTrust ? ["projectTrust"] : []),
-    ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
-    ...(opts.github ? ["github"] : []),
-    ...(opts.boardsync ? ["boardsync"] : []),
-    ...(opts.roi ? ["roi"] : []),
-    ...(opts.central ? ["central"] : []),
-    ...(opts.board ? ["workflows"] : []),
+    ...when(opts.doctor, "doctor.run"),
+    ...when(opts.keepAwake, "keepAwake"),
+    ...when(opts.deps, "depsCheck"),
+    ...when(opts.projectTrust, "projectTrust"),
+    ...when(opts.findProjects, "projects.scan", "projects.clone"),
+    ...when(opts.github, "github"),
+    ...when(opts.boardsync, "boardsync"),
+    ...when(opts.roi, "roi"),
+    ...when(opts.central, "central"),
+    ...when(opts.board, "workflows"),
     // Phase 24: the run.yaml of a card and its processes.
-    ...(opts.runenv && opts.board ? ["runenv"] : []),
-    ...(opts.maintenance ? ["maintenance"] : []),
-    ...(opts.resources ? ["resources"] : []),
-    ...(opts.worktrees ? ["worktrees"] : []),
-    ...(opts.quota ? ["quota"] : []),
-    ...(opts.account ? ["account"] : []),
+    ...when(opts.runenv && opts.board, "runenv"),
+    ...when(opts.maintenance, "maintenance"),
+    ...when(opts.fileLog, "logs"),
+    ...when(opts.resources, "resources"),
+    ...when(opts.worktrees, "worktrees"),
+    ...when(opts.quota, "quota"),
+    ...when(opts.account, "account"),
     // Project rules live in the board's projects.
-    ...(opts.board ? ["rules"] : []),
-    ...(opts.costs ? ["costs"] : []),
-    ...(opts.telemetry ? ["telemetry"] : []),
-    ...(opts.trace ? ["trace"] : []),
-    ...(opts.summary ? ["summary"] : []),
-    ...(opts.webhook ? ["webhook"] : []),
-    ...(opts.bg ? ["bg"] : []),
-    ...(opts.changes ? ["review"] : []),
+    ...when(opts.board, "rules"),
+    ...when(opts.costs, "costs"),
+    ...when(opts.telemetry, "telemetry"),
+    ...when(opts.trace, "trace"),
+    ...when(opts.summary, "summary"),
+    ...when(opts.webhook, "webhook"),
+    ...when(opts.bg, "bg"),
+    ...when(opts.changes, "review"),
     // Issue #506: the file explorer lists the folders of a session's repository.
-    ...(opts.files ? ["file.list"] : []),
+    ...when(opts.files, "file.list"),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
-    ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
-    ...(opts.agentcfg && opts.mcp ? ["agentcfg"] : []),
-    ...(opts.memory ? ["memory"] : []),
-    ...(opts.plugins ? ["plugins"] : []),
+    ...when(opts.snapshots && opts.rewinder && opts.forker, "checkpoints"),
+    ...when(opts.agentcfg && opts.mcp, "agentcfg"),
+    ...when(opts.memory, "memory"),
+    ...when(opts.plugins, "plugins"),
     // Phase 13: the arena is the board's; issues and automations are services of their own.
-    ...(opts.board ? ["arena"] : []),
+    ...when(opts.board, "arena"),
     // Phase 31: card dependencies are the board's.
-    ...(opts.board ? ["deps"] : []),
-    ...(opts.issues ? ["issues"] : []),
-    ...(opts.automations ? ["automation"] : []),
-    ...(opts.autoApprove ? ["autoapprove"] : []),
+    ...when(opts.board, "deps"),
+    ...when(opts.issues, "issues"),
+    ...when(opts.automations, "automation"),
+    ...when(opts.autoApprove, "autoapprove"),
     // Phase 15: the app shows Conexões for hosts that keep ssh destinos.
-    ...(opts.ssh ? ["ssh"] : []),
+    ...when(opts.ssh, "ssh"),
     // Phase 17: the actions that use a vault secret without Claude seeing it.
-    ...(opts.actions ? ["actions"] : []),
+    ...when(opts.actions, "actions"),
     // Phase 18: saved commands and prompts of the host and its projects.
-    ...(opts.snippets ? ["snippets"] : []),
+    ...when(opts.snippets, "snippets"),
     // Phase 20: the engineering personas of the host and its projects.
-    ...(opts.personas ? ["personas"] : []),
+    ...when(opts.personas, "personas"),
     // Phase 21: messages between sessions, teams and the standard session names.
-    ...(opts.messaging ? ["messaging"] : []),
-    ...(opts.teams ? ["teams"] : []),
+    ...when(opts.messaging, "messaging"),
+    ...when(opts.teams, "teams"),
     // Phase 22: watching a card's PR and fixing it.
-    ...(opts.watch ? ["watch"] : []),
-    ...(opts.names ? ["names"] : []),
+    ...when(opts.watch, "watch"),
+    ...when(opts.names, "names"),
   ];
 }
 
@@ -619,6 +628,10 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   function maintenance(): Maintenance {
     return need(opts, "maintenance");
+  }
+
+  function fileLog(): FileLog {
+    return need(opts, "fileLog");
   }
 
   function resources(): Resources {
@@ -826,6 +839,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { claudeSessionId, ...meta });
       }
+      case "logs.tail":
+        return ok(
+          command.type,
+          await tailForOrigin(fileLog(), ws.data.origin, command.payload.lines ?? 100, opts.log),
+        );
       case "resources.get":
         return ok(command.type, await resources().snapshot());
       case "resources.endOrphan":
@@ -972,6 +990,8 @@ export function startServer(opts: ServerOptions): RunningServer {
           features: [
             ...(opts.features ?? features),
             ...(opts.terminals?.enabled ? ["terminal"] : []),
+            // Issue #506: a path a terminal printed opens in the Files viewer, from its folder.
+            ...(opts.terminals?.enabled && opts.files ? ["file.terminal"] : []),
             ...(opts.ui ? ["ui.mode"] : []),
             ...(opts.templates ? ["templates"] : []),
             ...(opts.tasks ? ["tasks"] : []),
@@ -982,6 +1002,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.fileLog ? logPathFor(opts.fileLog, ws.data.origin) : {}),
           ...(opts.sleep ? { sleepAfterMinutes: opts.sleep.minutes() } : {}),
           ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
@@ -1056,14 +1077,15 @@ export function startServer(opts: ServerOptions): RunningServer {
           requireVaultTransport(ws.data.origin, "project.trust.set", opts.log);
         }
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        // A root, or a folder above one, holds many repos: trusting it would trust every clone inside.
+        // A folder above a root, or a root that is not one repository, holds many projects:
+        // trusting it would trust every clone inside (#592).
         if (
           command.payload.trusted &&
-          (await rootNames(opts.allowedRoots)).some((root) => isInside(path, root))
+          (await trustsManyProjects(path, await rootNames(opts.allowedRoots)))
         ) {
           throw new FlightdeckError(
             "invalid_state",
-            "trusting an allowed root would trust every project inside it",
+            "trusting this folder would trust every project inside it",
             "trust_root_refused",
           );
         }

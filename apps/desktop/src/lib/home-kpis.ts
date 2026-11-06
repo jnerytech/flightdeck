@@ -1,13 +1,24 @@
-import type { Budget, CostsSummary, UsageSummary } from "@flightdeck/protocol";
+import type { Budget, CostsSummary, UsageRow } from "@flightdeck/protocol";
+
+/** The part of a host's costs that Home draws (a costs summary has it, and more). */
+export interface HomeCosts {
+  totals: { tokens: CostsSummary["totals"]["tokens"] };
+  byDay: Array<Pick<CostsSummary["byDay"][number], "day" | "costUsd" | "tokens">>;
+}
+
+/** The part of a host's usage that Home draws (a usage summary has it, and more). */
+export interface HomeUsage {
+  rows: Array<Pick<UsageRow, "day" | "costUsd" | "turns" | "failedTurns" | "durationMs">>;
+}
 
 /** What Home reads: the last days of every host, and the budgets that are set. */
 export interface HomeInput {
   /** `YYYY-MM-DD`, oldest first: the days the sparklines draw. */
   days: string[];
   /** One costs summary per host. */
-  costs: CostsSummary[];
+  costs: HomeCosts[];
   /** One usage summary per host. */
-  usage: UsageSummary[];
+  usage: HomeUsage[];
   budgets: Budget[];
 }
 

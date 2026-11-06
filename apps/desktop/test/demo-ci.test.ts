@@ -144,6 +144,7 @@ describe("demo-prints: axe e CI", () => {
       "update-card",
       "status-bar",
       "trust-revoke",
+      "files-viewer",
       "terminal-copy",
       "tab-row",
     ]);

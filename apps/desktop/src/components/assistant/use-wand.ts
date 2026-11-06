@@ -16,6 +16,12 @@ export interface WandBinding {
   openSettings(): void;
 }
 
+/** Another provider a failed run can be sent to; a host carries the name the person gave it. */
+export interface WandAlternative {
+  provider: ResolvedProvider;
+  hostName?: string;
+}
+
 export interface Wand {
   state: WandState;
   /** The field is empty and its kind cannot write from nothing. */
@@ -34,10 +40,21 @@ export interface Wand {
   setProposal(text: string): void;
   /** Sends the same text again. */
   retry(): void;
+  /** After a failure: the other providers that could run now and have the person's agreement. */
+  others: WandAlternative[];
+  /** After a failure: sends the text again, to this provider. */
+  tryWith(provider: ResolvedProvider): void;
   /** Puts back the text from before Accept, while the Undo chip is up. */
   undo(): void;
   /** Ctrl or Cmd+I (and Esc while there is something to close) in the field: true when the wand took the key. */
   onKeyDown(event: React.KeyboardEvent): boolean;
+}
+
+/** The provider is a host, and not the field's own. */
+function otherHost(provider: ResolvedProvider, fieldHostId: string | undefined): boolean {
+  return (
+    provider.provider === "host" && fieldHostId !== undefined && provider.hostId !== fieldHostId
+  );
 }
 
 const IDLE: WandState = { kind: "idle" };
@@ -51,7 +68,7 @@ export function useWand(
 ): Wand | null {
   const controller = binding?.controller;
   const [state, dispatch] = useReducer(wandReduce, IDLE);
-  const run = useRef<{ requestId: string; provider: ResolvedProvider } | null>(null);
+  const run = useRef<{ requestId: string; provider: ResolvedProvider; text: string } | null>(null);
   const enabled = useSyncExternalStore(
     controller?.subscribe ?? NOT_WATCHED,
     () => controller?.prefs().enabled ?? false,
@@ -82,8 +99,8 @@ export function useWand(
   const empty = value.trim() === "";
   const needsText = empty && !spec.generates;
 
-  const launch = (text: string) => {
-    const provider = controller.resolve(binding.fieldHostId);
+  const launch = (text: string, chosen?: ResolvedProvider) => {
+    const provider = chosen ?? controller.resolve(binding.fieldHostId);
     // A host the person never agreed to is asked in Settings, once; until then the text goes nowhere.
     if (!provider || controller.needsHostConfirm(provider)) {
       controller.askForSetup();
@@ -91,7 +108,7 @@ export function useWand(
       return;
     }
     const requestId = crypto.randomUUID();
-    run.current = { requestId, provider };
+    run.current = { requestId, provider, text };
     dispatch({ type: "start", requestId, text });
     controller
       .run({
@@ -99,7 +116,8 @@ export function useWand(
         kind: binding.kind,
         text,
         ...(binding.fieldHostId ? { fieldHostId: binding.fieldHostId } : {}),
-        ...(binding.cwd ? { cwd: binding.cwd } : {}),
+        // The folder is the field host's: another host never gets to see its path.
+        ...(binding.cwd && !otherHost(provider, binding.fieldHostId) ? { cwd: binding.cwd } : {}),
         provider,
       })
       .then(
@@ -120,6 +138,23 @@ export function useWand(
     if (state.kind !== "preview" || gateBusy) return;
     launch(state.original);
   };
+  const tryWith = (provider: ResolvedProvider) => {
+    // The text of the failed run, not what the field holds by now.
+    if (state.kind !== "failed" || !run.current || gateBusy) return;
+    launch(run.current.text, provider);
+  };
+  const others =
+    state.kind === "failed" && run.current
+      ? controller
+          .alternatives(run.current.provider)
+          .filter((provider) => !controller.needsHostConfirm(provider))
+          .map((provider) => ({
+            provider,
+            ...(provider.provider === "host"
+              ? { hostName: controller.hostName(provider.hostId) }
+              : {}),
+          }))
+      : [];
   const cancel = () => {
     if (state.kind !== "running" || !run.current) return;
     controller.cancel(run.current.requestId, run.current.provider).catch(() => {});
@@ -169,6 +204,8 @@ export function useWand(
     edit: () => dispatch({ type: "edit" }),
     setProposal: (text: string) => dispatch({ type: "proposal", text }),
     retry,
+    others,
+    tryWith,
     undo,
     onKeyDown,
   };

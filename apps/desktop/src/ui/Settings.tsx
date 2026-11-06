@@ -4,6 +4,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
+import { DiagnosticsPanel } from "@/components/settings/diagnostics-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WatchSettingsSection } from "@/components/watch/watch-settings-section";
@@ -24,7 +25,8 @@ import { WebhooksSection } from "./WebhooksSection.tsx";
 function SettingRow(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
   const id = useId();
   return (
-    <div className="flex items-center justify-between gap-4 text-sm">
+    // One label column for every row, so the controls start on one line whatever the label (#588).
+    <div className="setting-row">
       <label htmlFor={id}>{props.label}</label>
       {props.children(id)}
     </div>
@@ -203,7 +205,7 @@ export const Settings = memo(function Settings(props: {
             />
             {t("settings.terminalReader")}
           </label>
-          <small id={readerHint} className="text-muted-foreground text-xs">
+          <small id={readerHint} className="setting-hint">
             {t("settings.terminalReaderHint")}
           </small>
           <SettingRow label={t("settings.language")}>
@@ -263,6 +265,9 @@ export const Settings = memo(function Settings(props: {
             />
             {t("prefs.autostart")}
           </label>
+          {!settings.autostartSupported && (
+            <small className="setting-hint">{t("prefs.unavailable")}</small>
+          )}
           <label className={check}>
             <input
               type="checkbox"
@@ -271,9 +276,6 @@ export const Settings = memo(function Settings(props: {
             />
             {t("setup.restore")}
           </label>
-          {!settings.autostartSupported && (
-            <small className="text-muted-foreground text-xs">{t("prefs.unavailable")}</small>
-          )}
         </Panel>
       ),
     },
@@ -425,6 +427,17 @@ export const Settings = memo(function Settings(props: {
       words: t("settingsRail.words.webhooks"),
       node: <WebhooksSection store={props.store} />,
     },
+    // Only where the app has a log file: not in a browser.
+    ...(props.store.platformLogs()
+      ? [
+          {
+            id: "diagnostics",
+            label: t("diagnostics.title"),
+            words: t("diagnostics.words"),
+            node: <DiagnosticsPanel store={props.store} />,
+          },
+        ]
+      : []),
   ];
   const needle = query.trim().toLowerCase();
   const shown = needle

@@ -393,6 +393,7 @@ export function daemon(
           db: store.db,
           board,
           ...(options.changesWatch ? { watch: options.changesWatch } : {}),
+          ...(terminals ? { terminals } : {}),
         })
       : undefined;
   const review = changes

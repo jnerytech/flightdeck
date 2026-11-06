@@ -66,7 +66,7 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
                       size="sm"
                       aria-label={t("hostTerminal.attach", { cwd: terminal.cwd })}
                       onClick={() =>
-                        store.tabs.open({
+                        store.tabs.show({
                           name: "terminal",
                           host: host.id,
                           terminalId: terminal.terminalId,

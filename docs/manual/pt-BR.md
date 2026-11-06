@@ -560,8 +560,10 @@ histórico.
 
 - **Grupo:** é o projeto. Vale o `remote.origin.url` do repositório da pasta da sessão,
   normalizado, de modo que SSH e HTTPS do mesmo repositório caem juntos. Worktrees contam como o
-  repositório principal. Sem remoto, vale a raiz do repositório; sem repositório, a pasta.
-- **Linha:** mostra host, origem, estado (rodando, precisa de você, ociosa, encerrada), o selo
+  repositório principal. Sem remoto, vale a raiz do repositório; sem repositório, a pasta. A pasta
+  é aquela em que a sessão começou, onde fica o seu transcript: uma sessão de terminal que depois
+  trabalha em outra pasta continua no seu projeto.
+- **Linha:** mostra host, origem (uma sessão de terminal tem o selo "terminal"), estado (rodando, precisa de você, ociosa, encerrada), o selo
   "controlável" e a hora.
 - **Resumo:** abaixo, uma linha tirada do transcript, sem IA: "Pedido: <primeira linha do último
   prompt, até 80 caracteres>" e o que a sessão faz agora ("rodando Bash", "esperando aprovação de
@@ -721,6 +723,9 @@ Além de Aprovar e Negar, uma aprovação, de sessão gerenciada ou do terminal,
 - **Sempre neste projeto:** abre a regra para edição antes de mandar.
   - No Bash, o padrão é o comando exato, que você pode trocar por um prefixo como `npm test:*`.
   - Nas outras ferramentas, o padrão é o nome da ferramenta.
+  - Uma regra que nomeia uma pasta, ou um caminho que ainda não existe, é recusada: cobriria tudo
+    que há dentro. Uma busca numa pasta (Grep, Glob) não oferece este botão; a mensagem pede para
+    nomear um arquivo.
   - A regra vai para `<projeto>/.claude/settings.local.json`, o arquivo local, não versionado, do
     Claude Code.
 
@@ -914,7 +919,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   desta versão: um host com daemon mais antigo mostra "—" em vez de um zero inventado, e os dias
   anteriores à atualização são desconhecidos (o tempo médio e a taxa de sucesso usam só os turnos
   que foram contados). O Início lê de novo a cada minuto e quando a janela volta ao foco; um host
-  que não responde é citado sob o título e os outros continuam contando. O app abre no Início
+  que não responde é citado sob o título e os outros continuam contando. O Início guarda os últimos
+  números de cada conjunto de hosts, na memória e no armazenamento local do app (só números e a hora
+  da leitura, sem projeto nem título), e os mostra na hora com uma linha "Atualizado há …" enquanto
+  lê de novo em segundo plano; um host que não responde mantém os últimos números dele, e a página
+  avisa. O app abre no Início
   quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
   barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
   "N contas" quando diferem.
@@ -2735,7 +2744,14 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
 
 - **Abrir:** o clique normal troca a aba atual. `Ctrl+clique`, o botão do meio do mouse ou **Abrir
   em nova aba** (no menu do host e no menu de uma linha de sessão) abre uma nova. O botão **+** no
-  fim da barra abre uma aba nova na paleta `Ctrl+K`.
+  fim da barra abre uma aba nova na paleta `Ctrl+K`. Uma tela tem uma aba só: um link para uma
+  tela que outra aba já mostra (uma trilha, um link da página, reabrir um terminal rodando) vai
+  para essa aba em vez de abrir uma segunda.
+- **Todas as abas:** passando de oito abas, a seta no fim da barra abre a lista de todas: cada
+  linha tem o ícone da aba, o título numa linha só (o título inteiro na dica), o host e um botão
+  de fechar ao passar o mouse. A aba na tela tem uma barra à esquerda. Digite para filtrar; as
+  setas, `Home` e `End` movem o destaque, `Enter` vai para a aba e `Delete` a fecha. `Esc` ou um
+  clique fora fecha a lista.
 - **A barra:** cada aba mostra o ícone do tipo e o título, e um selo quando uma sessão nela
   precisa de você, está rodando ou respondeu sem nenhuma aba mostrando (**Não lida**). **Fixar**
   deixa a aba à esquerda, só com o ícone. Os botões de fixar, mover e fechar, depois das abas,
@@ -2809,8 +2825,10 @@ numa aba, sem SSH.
   não se lê, ou que casa com texto vazio, avisa em vez de buscar. Links na saída abrem no navegador
   (só `http` e `https`). Caminhos de arquivo na saída também são links: os absolutos
   (`C:\repo\a.md`, `/home/ana/x.log`) e os relativos com pasta e extensão (`src/app.ts:12`), lidos a
-  partir da pasta do terminal. Num host deste computador o clique mostra o arquivo na pasta (nunca o
-  abre nem o executa); em outro host copia o caminho. A fonte é a
+  partir da pasta do terminal. Um arquivo dentro da pasta do terminal abre embaixo dele no
+  visualizador de Arquivos, só leitura, na linha que o caminho diz (`src/app.ts:12` abre na linha
+  12); **Fechar** o guarda. Um caminho fora dessa pasta, ou num host com daemon antigo demais para lê-lo, é mostrado na
+  pasta num host deste computador (nunca aberto nem executado) e copiado em outro host. A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
   10 a 24). Na aba, `Ctrl+=` (ou `Ctrl++`) e `Ctrl+-`, ou `Ctrl` com a roda do mouse, aumentam ou
   diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. Para
@@ -3080,6 +3098,38 @@ bun run e2e          # as cinco jornadas num navegador de verdade, nos 2 idiomas
 
 Nada sai da máquina e nenhum dado real é usado. Os scripts usam o Chrome instalado (ou o Edge)
 pelo `playwright-core`; no CI, o job `screenshots` roda os três e publica os prints.
+
+### Logs e diagnóstico
+
+Se algo quebrar, envie o log. O app de desktop guarda o próprio arquivo de log na pasta de logs do
+sistema (no Windows `%LOCALAPPDATA%\dev.flightdeck.app\logs`, no Linux
+`~/.local/share/dev.flightdeck.app/logs`, no macOS `~/Library/Logs/dev.flightdeck.app`), girado aos
+5 MB em 5 arquivos. Ele registra o que acontece com os hosts (conectou, ficou offline), o que um
+host recusou, o resultado das verificações de atualização e os erros e avisos do console do próprio
+app. **Configurações > Diagnóstico** tem **Abrir a pasta de logs** e **Copiar diagnóstico**: o segundo
+copia a versão e o sistema do app, o nome, o estado, a versão e os recursos de cada host (nunca um
+endereço ou token) e as últimas 50 linhas do log, para colar numa mensagem. Nenhum dos dois botões
+existe no navegador.
+
+O daemon também guarda um log, `flightdeckd.log` em `~/.flightdeck/logs` (também girado), e o
+`host.info` diz onde fica. Na página de um host, **Copiar as últimas linhas de log do host** copia
+até 100 delas.
+
+Cada linha é editada antes de ser gravada, pelo mesmo verificador que protege snippets e personas:
+um token (GitHub, Slack, AWS, chaves `sk-`, npm, GitLab, Stripe e Google, JWTs), um cabeçalho
+`Authorization` ou `Cookie`, um nome que contém password, secret, token ou key seguido de `=` ou `:`
+(também dentro de JSON, como `{"apiKey":"…"}` ou `DB_PASSWORD=…`), opções `--password`/`--token`,
+`curl -u`, um bloco inteiro de chave privada, uma senha ou um token numa URL, uma URL de webhook,
+um link assinado e o token de um link de pareamento viram `[redacted]`. Além dos padrões, o host
+nunca grava os próprios tokens (o do protocolo, mesmo depois de um rodízio, e o dos hooks) nem
+qualquer valor que o cofre guarda naquele momento, e o app nunca grava o token de um host nem um
+valor do cofre com 6 caracteres ou mais. É uma lista de padrões, não uma garantia: um segredo
+embrulhado em base64, partido em duas linhas de log, ou um valor curto do cofre (menos de 6
+caracteres) não é pego. A sua pasta pessoal (`/home/<nome>`, `/Users/<nome>`, `C:\Users\<nome>`) é
+gravada como `~`. A pasta de logs é só sua (0700, arquivos 0600) e um link plantado nela nunca é
+seguido. Um host entrega o log (`logs.tail`) e o caminho dele só a conexões de loopback ou Tailscale,
+como o cofre, e nunca mais que os últimos 256 KiB de cada arquivo. Leia as linhas antes de postá-las
+em público.
 
 ### Desempenho
 

@@ -76,6 +76,7 @@ import type {
   WebhookRequest,
   WebhookResponse,
 } from "../platform/types.ts";
+import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
@@ -101,6 +102,7 @@ import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
+import { HomeCache } from "./home-cache.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
@@ -128,6 +130,7 @@ import {
 } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
+import { sameNotice } from "./notice-lifetime.ts";
 import { externalRequestNotification, summaryNotifications } from "./notify.ts";
 import { pairingErrorText } from "./pairing-text.ts";
 import { basename } from "./paths.ts";
@@ -380,6 +383,7 @@ export type HostCommandType = Extract<
   | "roots.add"
   | "history.get"
   | "host.bypass"
+  | "logs.tail"
   | "host.sleep"
   | "session.sleep"
   | "host.keepAwake"
@@ -854,6 +858,7 @@ export class AppStore {
     );
     this.vault = new Vault(platform);
     this.rules = new VaultRules(platform.storage);
+    this.homeCache = new HomeCache(platform.storage);
     this.globalSnippets = new GlobalSnippets(platform);
     this.globalPersonas = new GlobalPersonas(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
@@ -879,6 +884,7 @@ export class AppStore {
       hosts: () =>
         this.state.hosts.map((host) => ({
           id: host.id,
+          name: host.name,
           online: host.status === "online",
           assistant: hasFeature(host.hostInfo?.features, "assistant", false),
         })),
@@ -897,6 +903,7 @@ export class AppStore {
     );
     this.tabOrder = new TabOrderController(platform.storage);
     this.i18n = new I18n(platform);
+    this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
       hosts: [],
@@ -980,6 +987,8 @@ export class AppStore {
   readonly tabOrder: TabOrderController;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
+  /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
+  readonly appLog: AppLog;
   /** The screen in use and its history (phase 10). */
   readonly workspace: Workspace;
   readonly router: Navigation;
@@ -1188,6 +1197,7 @@ export class AppStore {
     url: string;
     token: string;
   }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
+    this.hostTokens.add(input.token);
     const probe = await probeHost(input.url, input.token, this.i18n.t);
     if (!probe.ok) return probe;
     return { ok: true, hostId: await this.addHost(input) };
@@ -2361,6 +2371,11 @@ export class AppStore {
     }
   }
 
+  /** The shell's log file, when the app has one (not in a browser). */
+  platformLogs(): Platform["logs"] {
+    return this.platform.logs;
+  }
+
   async copyText(text: string): Promise<boolean> {
     try {
       await this.platform.copyText(text);
@@ -2417,6 +2432,7 @@ export class AppStore {
   private fail(error: unknown, text?: string, retry?: () => void): void {
     const code = error instanceof RequestError ? error.code : "";
     const message = error instanceof Error ? error.message : String(error);
+    this.appLog.log("error", "refusal", `${code ? `${code}: ` : ""}${text ?? message}`);
     const notice: Notice = { id: ++this.noticeSeq, kind: "error", code, text: text ?? message };
     if (error instanceof RequestError && error.reason) {
       notice.reason = error.reason;
@@ -2424,9 +2440,10 @@ export class AppStore {
     }
     if (error instanceof RequestError && error.hostId) notice.hostId = error.hostId;
     if (retry) notice.retry = retry;
+    // The same error again takes the old one's place (#581): one toast, the newest, with a fresh timer.
     this.update({
       error: text ?? describeError(error),
-      notices: [...this.state.notices, notice],
+      notices: [...this.state.notices.filter((n) => !sameNotice(n, notice)), notice],
     });
   }
 
@@ -2627,9 +2644,19 @@ export class AppStore {
   async checkAppUpdate(): Promise<void> {
     try {
       const offer = await this.platform.updater.check();
+      this.appLog.log(
+        "info",
+        "update",
+        offer === null ? "up to date" : `version ${offer.version} is available`,
+      );
       this.setAppUpdate({ offer, upToDate: offer === null, error: null });
       if (offer && this.state.settings.autoUpdate) await this.downloadAppUpdate(offer.version);
     } catch (error) {
+      this.appLog.log(
+        "error",
+        "update",
+        `the check failed: ${(error as Error).message ?? String(error)}`,
+      );
       this.setAppUpdate({
         error: this.i18n.t("messages.updateCheckFailed", {
           error: (error as Error).message ?? String(error),
@@ -2720,6 +2747,7 @@ export class AppStore {
   }
 
   private connect(config: HostConfig, token: string): void {
+    this.hostTokens.add(token);
     const conn = new HostConnection({
       url: config.url,
       token,
@@ -2823,6 +2851,8 @@ export class AppStore {
   }
 
   private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
+    const name = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
+    this.appLog.log(status === "online" ? "info" : "warn", "host", `${name}: ${status}`);
     this.updateHost(hostId, (h) => ({
       ...h,
       status,
@@ -3411,6 +3441,8 @@ export class AppStore {
 
   /** Phase 19: each secret's usage rules, kept with the vault. */
   private readonly rules: VaultRules;
+  /** Home's last numbers per host set and period (issue #607). */
+  readonly homeCache: HomeCache;
   /** Phase 18: the global snippets, kept by the app. */
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */
@@ -3723,6 +3755,25 @@ export class AppStore {
    * apart from ordinary text (6+ characters), for a scan that runs in the app: they are compared
    * by the caller, never sent and never kept here (phase 18's history import).
    */
+  /**
+   * What the app's log must never write, read at each line: every host's token and the vault's
+   * values (a copy kept in memory only, refreshed when the vault changes, never saved or sent).
+   */
+  scanValues(): string[] {
+    return [...this.hostTokens, ...this.vaultPieces];
+  }
+
+  private readonly hostTokens = new Set<string>();
+  private vaultPieces: string[] = [];
+
+  private async rememberVaultValues(): Promise<void> {
+    try {
+      this.vaultPieces = await this.vaultValuesForScan();
+    } catch {
+      // The log's cache is a convenience: a vault that cannot be read leaves the last one.
+    }
+  }
+
   async vaultValuesForScan(): Promise<string[]> {
     const pieces: string[] = [];
     await inSequence(this.vault.list(), async (secret) => {
@@ -4402,6 +4453,7 @@ export class AppStore {
 
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
+    if (patch.secrets) void this.rememberVaultValues();
     if (patch.hosts) this.syncTray();
     if (patch.hosts) this.watchClientBudgetHosts();
     if (patch.hub || patch.projects) this.scheduleVaultScope();
