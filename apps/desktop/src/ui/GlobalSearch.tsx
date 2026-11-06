@@ -1,10 +1,7 @@
-import { SquareKanban, X } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { Keycap } from "@/components/shortcuts/keycap";
-import { type StateTone, StatusDot } from "@/components/status/status-dot";
-import { Button } from "@/components/ui/button";
+import { PaletteScopeChips, PaletteSectionView } from "@/components/palette/palette-section";
 import { Input } from "@/components/ui/input";
-import type { Key, T } from "../i18n/index.ts";
+import type { T } from "../i18n/index.ts";
 import {
   type AppState,
   type AppStore,
@@ -50,14 +47,6 @@ export function Snippet({ text }: Readonly<{ text: string }>) {
 /** Rows a section shows before its "more" button, and how many each press adds. */
 const SECTION_CAP = 8;
 const SECTION_MORE = 20;
-/** How many recent entries take Alt+1… */
-const ALT_KEYS = 6;
-
-const STATE_TONE: Record<NonNullable<PaletteItem["stateKey"]>, StateTone> = {
-  running: "running",
-  needs_you: "needs-you",
-  idle: "idle",
-};
 
 /**
  * The Ctrl+K palette: live sessions, cards, projects, hosts and actions filtered as you type, then
@@ -222,91 +211,28 @@ export function GlobalSearch(
           }}
         />
       </form>
-      {chips.length > 0 && (
-        <fieldset
-          aria-label={t("palette.filters")}
-          className="m-0 flex min-w-0 flex-wrap items-center gap-1 border-0 p-0"
-        >
-          {chips.map((chip) => (
-            <Button
-              key={chip.key}
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-6 gap-1 rounded-full px-2 text-xs"
-              aria-label={t("palette.removeFilter", { what: `${chip.kind} ${chip.name}` })}
-              onClick={() => removeChip(chip.key)}
-            >
-              {chip.name}
-              <X aria-hidden="true" className="size-3" />
-            </Button>
-          ))}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={() => setScope({ hostId: null, projectId: null })}
-          >
-            {t("palette.clearFilters")}
-          </Button>
-        </fieldset>
-      )}
+      <PaletteScopeChips
+        chips={chips}
+        t={t}
+        onRemove={removeChip}
+        onClear={() => setScope({ hostId: null, projectId: null })}
+      />
       {sections.map((section) => (
-        <section key={section.title} className="flex flex-col gap-1">
-          <h3 className="px-2 font-medium text-muted-foreground text-xs">{section.title}</h3>
-          <div role="listbox" aria-label={section.title} className="flex flex-col">
-            {shown(section).map((item, i) => (
-              <button
-                key={item.id}
-                type="button"
-                role="option"
-                aria-label={item.label}
-                aria-selected={visible.indexOf(item) === cursor}
-                className="palette-row flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                onClick={() => choose(item)}
-              >
-                {item.stateKey && (
-                  <StatusDot
-                    tone={STATE_TONE[item.stateKey]}
-                    label={t(`hub.stateDots.${item.stateKey}` as Key)}
-                  />
-                )}
-                {item.id.startsWith("card:") && (
-                  <SquareKanban
-                    aria-hidden="true"
-                    className="size-3.5 shrink-0 text-muted-foreground"
-                  />
-                )}
-                <span className="shrink-0 whitespace-nowrap">{item.label}</span>{" "}
-                <span className="min-w-0 truncate text-muted-foreground text-xs">
-                  {item.detail}
-                </span>
-                {section.recent && i < ALT_KEYS ? (
-                  <Keycap className="ml-auto shrink-0">{`Alt+${i + 1}`}</Keycap>
-                ) : (
-                  item.shortcut && <Keycap className="ml-auto shrink-0">{item.shortcut}</Keycap>
-                )}
-              </button>
-            ))}
-            {!actionsOf && section.items.length > capOf(section) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 justify-start px-2 text-muted-foreground text-xs"
-                onClick={() =>
-                  setLimits((before) => ({
-                    ...before,
-                    [section.title]: capOf(section) + SECTION_MORE,
-                  }))
-                }
-              >
-                {t("palette.more", { n: section.items.length - capOf(section) })}
-              </Button>
-            )}
-          </div>
-        </section>
+        <PaletteSectionView
+          key={section.title}
+          section={section}
+          rows={shown(section)}
+          selected={(item) => visible.indexOf(item) === cursor}
+          hidden={actionsOf ? 0 : Math.max(0, section.items.length - capOf(section))}
+          t={t}
+          onChoose={choose}
+          onMore={() =>
+            setLimits((before) => ({
+              ...before,
+              [section.title]: capOf(section) + SECTION_MORE,
+            }))
+          }
+        />
       ))}
       {search && (
         <section className="flex flex-col gap-1">
