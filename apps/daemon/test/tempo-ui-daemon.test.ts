@@ -3,7 +3,7 @@ import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import type { OtlpEvent } from "../src/telemetry/otlp.ts";
 import { TelemetryStore } from "../src/telemetry/store.ts";
-import { newManager } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const T0 = Date.UTC(2026, 10, 1, 12, 0, 0);
@@ -195,7 +195,7 @@ describe("tempo-ui: over the protocol", () => {
     const client = await served(true);
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("telemetry");
     const session = await client.data<{ prompts: unknown[] }>("telemetry.session", {
@@ -209,7 +209,7 @@ describe("tempo-ui: over the protocol", () => {
     const client = await served(false);
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).not.toContain("telemetry");
     const ack = await client.request("telemetry.session", { claudeSessionId: "s-1" });

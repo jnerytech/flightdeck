@@ -1,4 +1,6 @@
 import {
+  ASSISTANT_FEATURE,
+  type AutoUpdateStatus,
   CLOSE_HEARTBEAT,
   CLOSE_UNAUTHORIZED,
   Command,
@@ -8,6 +10,8 @@ import {
   type DoctorResult,
   type ExternalSession,
   type ExternalStatus,
+  FEATURE_HOLD_PROOF,
+  type HostRuntime,
   MIN_PROTOCOL_VERSION,
   Pong,
   PROTOCOL_VERSION,
@@ -23,6 +27,7 @@ import type { Account } from "./account/account.ts";
 import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig } from "./agentcfg/files.ts";
 import type { McpConfig } from "./agentcfg/mcp.ts";
+import type { AssistantService } from "./assistant/service.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
@@ -67,6 +72,7 @@ import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
+import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import { serverContext } from "./server/context.ts";
 import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
 import { need } from "./server/gates.ts";
@@ -106,8 +112,25 @@ export const DAEMON_VERSION: string = pkg.version;
 export const PING_INTERVAL_MS = 15_000;
 const MAX_MISSED_PINGS = 4;
 
+/** What `host.info` says about OpenCode: no executable fingerprint, no finding paths. */
+function hostRuntime(info: OpenCodeInfo): HostRuntime {
+  return {
+    kind: "opencode",
+    available: info.available,
+    ...(info.path ? { path: info.path } : {}),
+    ...(info.version ? { version: info.version } : {}),
+    ...(info.verified !== undefined ? { verified: info.verified } : {}),
+    ...(info.reason ? { reason: info.reason } : {}),
+  };
+}
+
 export interface ServerOptions {
   manager: SessionManager;
+  /** Phase 39: whether OpenCode runs on this host, and its models. */
+  opencode?: {
+    info: () => OpenCodeInfo;
+    models: () => Promise<Array<{ id: string; name: string }>>;
+  };
   /** Looks up the project of a folder before a session is created in it (without blocking). */
   warmProjectKey?: (cwd: string) => Promise<unknown>;
   /** The project key of a folder, asked without blocking: `history.list` filters by it. */
@@ -142,10 +165,16 @@ export interface ServerOptions {
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;
+  /** The clock behind the heartbeat (`performance.now()` when absent); a test gives its own. */
+  now?: () => number;
+  /** Runs `tick` every `everyMs` and returns the function that stops it (a `setInterval` when absent); a test fires it by hand. */
+  pingTicker?: (tick: () => void, everyMs: number) => () => void;
   /** Transcript index behind the `history.*` commands. */
   history?: HistoryIndexer;
   /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */
   board?: Board;
+  /** Phase 40: the AI assistant on this host's `claude`; announced in `host.info` when present. */
+  assistant?: AssistantService;
   /** The run environment of the cards: the run.yaml and the processes (phase 24). */
   runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */
@@ -192,6 +221,11 @@ export interface ServerOptions {
   updater?: DaemonUpdater;
   /** Phase 9: the release manifest check behind `host.info.update`. */
   updates?: UpdateChecker;
+  /** Issue #280: the automatic update (`host.info.autoUpdate`, `host.updates.set`). */
+  autoUpdate?: {
+    status(): AutoUpdateStatus;
+    set(auto: boolean): Promise<AutoUpdateStatus>;
+  };
   /** Called after acking `daemon.shutdown`; without it the command is refused. */
   onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */
@@ -295,22 +329,15 @@ const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
   ended: "ended",
 };
 
-export function startServer(opts: ServerOptions): RunningServer {
-  const { manager } = opts;
-
-  const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
-  const authed = new Set<Socket>();
-  /** What every handler shares (issue #248), and one command's view of its socket. */
-  const context = serverContext(opts);
-  const call = (ws: Socket): Call => ({ ws, send: (frame) => send(ws, frame), server: context });
-  let currentToken = opts.token;
-  const startedAt = Date.now();
-  /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
-  const features = [
+/** What this daemon has, as `host.info` announces it; the app hides what is missing. */
+function featuresOf(opts: ServerOptions): string[] {
+  return [
+    // A high-risk permission allow needs `held: true` (issue #251).
+    FEATURE_HOLD_PROOF,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
-    ...(opts.sessionSettings ? ["session.settings"] : []),
+    ...(opts.sessionSettings ? ["session.settings", "session.effort"] : []),
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
@@ -361,12 +388,32 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.watch ? ["watch"] : []),
     ...(opts.names ? ["names"] : []),
   ];
+}
+
+export function startServer(opts: ServerOptions): RunningServer {
+  const { manager } = opts;
+
+  const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
+  const authed = new Set<Socket>();
+  /** What every handler shares (issue #248), and one command's view of its socket. */
+  const context = serverContext(opts);
+  const call = (ws: Socket): Call => ({ ws, send: (frame) => send(ws, frame), server: context });
+  let currentToken = opts.token;
+  const startedAt = Date.now();
+  const features = featuresOf(opts);
   let pingSeq = 0;
 
   const pingEveryMs = opts.pingIntervalMs ?? PING_INTERVAL_MS;
-  const heartbeat = setInterval(() => {
+  const now = opts.now ?? (() => performance.now());
+  const pingTicker =
+    opts.pingTicker ??
+    ((tick: () => void, everyMs: number) => {
+      const timer = setInterval(tick, everyMs);
+      return () => clearInterval(timer);
+    });
+  const stopHeartbeat = pingTicker(() => {
     for (const ws of authed) {
-      const silentMs = performance.now() - ws.data.lastFrameAt;
+      const silentMs = now() - ws.data.lastFrameAt;
       if (
         ws.data.pendingPings.size >= MAX_MISSED_PINGS &&
         silentMs >= MAX_MISSED_PINGS * pingEveryMs
@@ -375,7 +422,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         continue;
       }
       const id = String(++pingSeq);
-      ws.data.pendingPings.set(id, performance.now());
+      ws.data.pendingPings.set(id, now());
       const { lastRttMs } = ws.data;
       send(ws, { type: "ping", id, ...(lastRttMs !== undefined ? { lastRttMs } : {}) });
     }
@@ -386,7 +433,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     const pong = Pong.safeParse(frame);
     const sentAt = pong.success ? ws.data.pendingPings.get(pong.data.id) : undefined;
     if (sentAt === undefined) return;
-    ws.data.lastRttMs = Math.round(performance.now() - sentAt);
+    ws.data.lastRttMs = Math.round(now() - sentAt);
     ws.data.pendingPings.clear();
   }
 
@@ -426,7 +473,8 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
   async function foldersOf(index: HistoryIndexer, key: string): Promise<string[]> {
-    const keyOf = opts.projectKeyOf ?? (async (cwd: string) => `host:${opts.hostName}:${cwd}`);
+    const keyOf =
+      opts.projectKeyOf ?? ((cwd: string) => Promise.resolve(`host:${opts.hostName}:${cwd}`));
     const cwds = index.distinctCwds();
     const keys = await Promise.all(cwds.map((cwd) => keyOf(cwd)));
     return cwds.filter((_, i) => keys[i] === key);
@@ -551,6 +599,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "board");
   }
 
+  function assistant(): AssistantService {
+    if (!opts.assistant) throw featureOff("assistant");
+    return opts.assistant;
+  }
+
   function subscribe(ws: Socket, sessionId: string, sinceSeq: number) {
     ws.data.subscriptions.get(sessionId)?.();
     // The text of a stream goes out a few frames at a time; every other event flushes it first.
@@ -622,6 +675,9 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.setModel":
         await manager.setModel(command.payload.sessionId, command.payload.model);
         return ok(command.type);
+      case "session.setEffort":
+        await manager.setEffort(command.payload.sessionId, command.payload.effort);
+        return ok(command.type);
       case "session.close":
         await manager.close(command.payload.sessionId);
         return ok(command.type);
@@ -641,9 +697,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "permission.respond": {
         // External requests (ids `ext-…`) are held hooks; anything else is a managed session's.
-        const { requestId, decision, message, updatedPermissions, updatedInput } = command.payload;
+        const { requestId, decision, message, updatedPermissions, updatedInput, held } =
+          command.payload;
         const external = opts.central?.permissions;
-        if (!external?.respond(requestId, decision, message, updatedPermissions, updatedInput)) {
+        if (
+          !external?.respond(requestId, decision, message, updatedPermissions, updatedInput, held)
+        ) {
           manager.respondPermission(command.payload);
         }
         return ok(command.type);
@@ -745,6 +804,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.updater) throw featureOff("updater");
         return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
       }
+      case "host.updates.set": {
+        // It lets the host download and run a new binary by itself: only from a near connection,
+        // like host.bypass. Turning it off only lowers risk, but it is the same switch.
+        requireVaultTransport(ws.data.origin, "host.updates.set", opts.log);
+        if (!opts.autoUpdate) throw featureOff("autoUpdate");
+        return ok(command.type, await opts.autoUpdate.set(command.payload.auto));
+      }
       case "daemon.update.check": {
         if (!opts.updates) throw featureOff("updater");
         return ok(command.type, await opts.updates.checkNow());
@@ -812,11 +878,16 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.ui ? ["ui.mode"] : []),
             ...(opts.templates ? ["templates"] : []),
             ...(opts.tasks ? ["tasks"] : []),
+            ...(opts.opencode?.info().available ? ["opencode"] : []),
+            ...(opts.assistant ? [ASSISTANT_FEATURE] : []),
+            ...(opts.autoUpdate ? ["autoUpdate"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
+          ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
           ...(opts.terminal ?? {}),
         });
       case "history.list": {
@@ -929,6 +1000,16 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "roi.summary":
         return ok(command.type, await roi().summaryWithSignals(roiPeriod(command.payload)));
+      case "runtime.models": {
+        if (!opts.opencode?.info().available) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "OpenCode is not available on this host",
+            "runtime_unavailable",
+          );
+        }
+        return ok(command.type, { models: await opts.opencode.models() });
+      }
       case "boardsync.boards":
         return ok(command.type, { boards: await boardsync().boards() });
       case "boardsync.link":
@@ -1025,8 +1106,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "card.updateFromBase":
         return ok(command.type, await board().updateFromBase(command.payload.cardId));
       case "card.mergeLocal": {
-        const { cardId, mode, confirm } = command.payload;
-        return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true));
+        const { cardId, mode, confirm, message } = command.payload;
+        return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true, message));
       }
       case "session.applyPersona": {
         const { sessionId, claudeSessionId, persona } = command.payload;
@@ -1049,6 +1130,16 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.stop":
         return ok(command.type, await board().stopCard(command.payload.cardId));
+      case "assistant.run":
+        return ok(command.type, await assistant().run(command.payload));
+      case "assistant.cancel":
+        assistant().cancel(command.payload.requestId);
+        return ok(command.type);
+      case "assistant.context":
+        return ok(command.type, await assistant().context(command.payload));
+      case "assistant.record":
+        assistant().record(command.payload);
+        return ok(command.type);
       case "card.diff":
         return ok(command.type, await board().diff(command.payload.cardId));
       case "card.message":
@@ -1060,6 +1151,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(command.payload.description === undefined
               ? {}
               : { description: command.payload.description }),
+            ...(command.payload.title === undefined ? {} : { title: command.payload.title }),
           }),
         );
       case "card.manage":
@@ -1147,7 +1239,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             subscriptions: new Map(),
             coalescers: new Set(),
             pendingPings: new Map(),
-            lastFrameAt: performance.now(),
+            lastFrameAt: now(),
             changeWatchers: new Map(),
           },
         });
@@ -1160,7 +1252,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     websocket: {
       drain: drainAll,
       message(ws, raw) {
-        ws.data.lastFrameAt = performance.now();
+        ws.data.lastFrameAt = now();
         let frame: unknown;
         try {
           frame = decode(raw);
@@ -1210,7 +1302,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       for (const ws of authed) ws.close(CLOSE_UNAUTHORIZED, "token rotacionado");
     },
     stop: () => {
-      clearInterval(heartbeat);
+      stopHeartbeat();
       opts.plugins?.close();
       return server.stop(true);
     },

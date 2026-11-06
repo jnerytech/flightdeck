@@ -79,15 +79,17 @@ function actionOf(draft: Draft, workflow: string): AutomationAction {
  * The guided creation of an automation (and the editing of one): the trigger, the action that
  * fits it, then the limit and whether outside authors count. It is always saved off.
  */
-export function AutomationForm(props: {
-  store: AppStore;
-  hostId: string;
-  projectId: string;
-  workflows: WorkflowInfo[];
-  initial: Automation | null;
-  onClose(): void;
-  onSaved(automation: Automation): void;
-}) {
+export function AutomationForm(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    projectId: string;
+    workflows: WorkflowInfo[];
+    initial: Automation | null;
+    onClose(): void;
+    onSaved(automation: Automation): void;
+  }>,
+) {
   const { store, initial } = props;
   const { t } = store.i18n;
   const [step, setStep] = useState(0);

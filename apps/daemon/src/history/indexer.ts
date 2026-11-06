@@ -3,6 +3,7 @@ import { watch } from "node:fs";
 import { stat as fileStat, open, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { promptText } from "../transcript-text.ts";
 import { type HistoryRecord, parseLines } from "./parser.ts";
@@ -105,8 +106,7 @@ export const MAYBE_ACTIVE_MS = 2 * 60_000;
 const READABLE = "'message', 'summary', 'system'";
 
 /** The session's folder, or anything below it (never a look-alike prefix). */
-const CWD_CONDITION =
-  "(s.cwd = $cwd OR substr(s.cwd, 1, length($cwd) + 1) IN ($cwd || '/', $cwd || '\\'))";
+const CWD_CONDITION = String.raw`(s.cwd = $cwd OR substr(s.cwd, 1, length($cwd) + 1) IN ($cwd || '/', $cwd || '\'))`;
 
 /**
  * A run nobody typed: print-mode (an sdk entrypoint), or in a temp folder (a folder called temp or
@@ -152,7 +152,7 @@ function snippet(text: string, terms: string[]): string {
   const first = found.length > 0 ? Math.min(...found) : 0;
   const start = Math.max(0, first - SNIPPET_RADIUS);
   const end = Math.min(text.length, first + SNIPPET_RADIUS * 2);
-  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`));
   const pattern = new RegExp(escaped.join("|"), "gi");
   const excerpt = text.slice(start, end).replace(/\s+/g, " ").replace(pattern, "«$&»");
   return `${start > 0 ? "…" : ""}${excerpt}${end < text.length ? "…" : ""}`;
@@ -484,8 +484,8 @@ export class HistoryIndexer {
       params.match = terms.map((t) => `"${t.replaceAll('"', '""')}"*`).join(" ");
     } else {
       terms.forEach((term, i) => {
-        where.push(`m.text LIKE $t${i} ESCAPE '\\'`);
-        params[`t${i}`] = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
+        where.push(String.raw`m.text LIKE $t${i} ESCAPE '\'`);
+        params[`t${i}`] = "%" + term.replace(/[\\%_]/g, String.raw`\$&`) + "%";
       });
     }
     if (query.cwd) {
@@ -553,23 +553,23 @@ export class HistoryIndexer {
     const pause = this.opts.pause ?? zeroTimer;
     const sliceBytes = this.opts.sliceBytes ?? SLICE_BYTES;
     const results: IndexResult[] = [];
-    for (const path of await this.files()) {
+    await inSequence(await this.files(), async (path) => {
       let merged = null as IndexResult | null;
       for (;;) {
-        const { result, more } = await this.indexSlice(path, sliceBytes);
+        const { result, more } = await this.indexSlice(path, sliceBytes); // NOSONAR: sequential by design: each pass needs the answer of the one before
         if (result) {
           merged = merged
             ? { ...merged, added: merged.added + result.added, reset: merged.reset || result.reset }
             : result;
         }
-        await pause();
+        await pause(); // NOSONAR: poll interval: the wait between looks is the point of this loop
         if (!more) break;
       }
       if (merged) {
         results.push(merged);
         this.notify(merged.claudeSessionId);
       }
-    }
+    });
     return results;
   }
 
@@ -583,7 +583,7 @@ export class HistoryIndexer {
       do {
         this.again = false;
         try {
-          await this.scanAsync();
+          await this.scanAsync(); // NOSONAR: sequential by design: each pass needs the answer of the one before
         } catch (error) {
           this.opts.log?.(`histórico: falha na varredura (${describe(error)})`);
         }
@@ -601,10 +601,10 @@ export class HistoryIndexer {
   async scan(): Promise<IndexResult[]> {
     this.claimManaged();
     const results: IndexResult[] = [];
-    for (const path of await this.files()) {
+    await inSequence(await this.files(), async (path) => {
       const result = await this.indexFile(path);
       if (result) results.push(result);
-    }
+    });
     for (const { claudeSessionId } of results) this.notify(claudeSessionId);
     return results;
   }
@@ -624,16 +624,16 @@ export class HistoryIndexer {
 
   private async files(): Promise<string[]> {
     const files: string[] = [];
-    for (const root of this.opts.roots) {
-      for (const dir of await entries(root)) {
-        if (!dir.isDirectory()) continue;
+    await inSequence(this.opts.roots, async (root) => {
+      await inSequence(await entries(root), async (dir) => {
+        if (!dir.isDirectory()) return;
         for (const file of await entries(join(root, dir.name))) {
           if (file.isFile() && file.name.endsWith(".jsonl")) {
             files.push(join(root, dir.name, file.name));
           }
         }
-      }
-    }
+      });
+    });
     return files;
   }
 
@@ -666,11 +666,11 @@ export class HistoryIndexer {
     let chunk = Buffer.alloc(Math.min(stat.size - offset, maxBytes));
     let end = 0;
     for (;;) {
-      const handle = await open(path, "r");
+      const handle = await open(path, "r"); // NOSONAR: sequential by design: each pass needs the answer of the one before
       try {
-        await handle.read(chunk, 0, chunk.length, offset);
+        await handle.read(chunk, 0, chunk.length, offset); // NOSONAR: sequential by design: each pass needs the answer of the one before
       } finally {
-        await handle.close();
+        await handle.close(); // NOSONAR: sequential by design: each pass needs the answer of the one before
       }
       // Only complete lines: a last line without its newline is left for the next pass.
       end = chunk.lastIndexOf(0x0a) + 1;

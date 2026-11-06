@@ -2,6 +2,7 @@ import type { PersonaSwitchResult, SessionPersona } from "@flightdeck/protocol";
 import { type Central, messageExternal } from "../central/central.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
+import { settled } from "../settled.ts";
 import type { PersonaContext, PersonaRef, ResolvedPersona } from "./store.ts";
 
 export interface OpenSessionPersonasOptions {
@@ -83,7 +84,11 @@ export class OpenSessionPersonas {
     return { persona: badge, text, delivery };
   }
 
-  async clear(request: SwitchTarget & { language?: Language }): Promise<PersonaSwitchResult> {
+  clear(request: SwitchTarget & { language?: Language }): Promise<PersonaSwitchResult> {
+    return settled(() => this.clearNow(request));
+  }
+
+  private clearNow(request: SwitchTarget & { language?: Language }): PersonaSwitchResult {
     const target = this.target(request);
     const applied = target.managed
       ? this.opts.manager.appliedPersona(target.id)

@@ -69,7 +69,7 @@ describe("projetos-pagina-ui: the project page", () => {
       { name: "board", host: "h1", projectId: "p1" },
       { name: "hub", project: { hostId: "h1", projectKey: "host:h1:/work/api", name: "api" } },
       { name: "workflows", host: "h1", projectId: "p1", projectName: "api" },
-      { name: "costs" },
+      { name: "costs", host: "h1", projectKey: "host:h1:/work/api" },
       { name: "projects", host: "h1" },
     ]);
   });

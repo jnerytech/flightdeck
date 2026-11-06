@@ -178,7 +178,9 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
     void connect(wanted);
   }, [targets, props.connect]);
 
-  const tags = [...new Set(targets.flatMap((target) => target.tags))].sort();
+  const tags = [...new Set(targets.flatMap((target) => target.tags))].sort((a, b) =>
+    a.localeCompare(b, "en"),
+  );
   const vias = [...new Set(targets.flatMap((target) => (target.viaHost ? [target.viaHost] : [])))];
   const viaName = (id: string) => state.hosts.find((h) => h.id === id)?.name ?? id;
   const shown = targets.filter(
@@ -286,7 +288,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{target.name}</span>
                 <span className="font-mono text-muted-foreground text-sm">
-                  {`${target.user}@${target.host}${target.port === 22 ? "" : `:${target.port}`}`}
+                  {target.user + "@" + target.host + (target.port === 22 ? "" : ":" + target.port)}
                 </span>
                 {target.tags.map((name) => (
                   <span key={name} className="rounded bg-muted px-1.5 text-xs">

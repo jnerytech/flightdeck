@@ -12,16 +12,18 @@ import { ConfirmDialog } from "@/ui/ConfirmDialog";
 let instances = 0;
 
 /** A host's error: its translated title, the daemon's message behind Detalhes, and Fechar. */
-function ErrorToast(props: {
-  store: AppStore;
-  noticeId: number;
-  title: string;
-  detail: string;
-  action: NoticeAction | null;
-  retry?: () => void;
-  t: T;
-  onClose(): void;
-}) {
+function ErrorToast(
+  props: Readonly<{
+    store: AppStore;
+    noticeId: number;
+    title: string;
+    detail: string;
+    action: NoticeAction | null;
+    retry?: () => void;
+    t: T;
+    onClose(): void;
+  }>,
+) {
   const [open, setOpen] = useState(false);
   const [asking, setAsking] = useState(false);
   const { t, store, noticeId } = props;
@@ -102,6 +104,9 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
         toast.success(notice.text, {
           id: `${prefix}s${notice.id}`,
           duration: noticeLifetime(notice),
+          ...(notice.link
+            ? { action: { label: notice.link.label, onClick: notice.link.run } }
+            : {}),
         });
         store.dismissNotice(notice.id);
         continue;

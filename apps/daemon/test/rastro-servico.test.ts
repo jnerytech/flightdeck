@@ -7,7 +7,7 @@ import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { TelemetryStore } from "../src/telemetry/store.ts";
 import { TraceService } from "../src/trace/service.ts";
-import { newManager, tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const SESSION = "bbbbbbbb-0000-4000-8000-000000000025";
@@ -148,7 +148,7 @@ describe("rastro-modelo: over the protocol", () => {
     const client = await served(true);
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("trace");
     const trace = await client.data<{ turns: unknown[] }>("trace.get", {

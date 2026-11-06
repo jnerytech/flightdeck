@@ -17,6 +17,7 @@ export function noticeAction(notice: Notice): NoticeAction | null {
 
 /** Milliseconds until a toast closes itself; `Infinity` for one that waits to be acted on. */
 export function noticeLifetime(notice: Notice): number {
-  if (notice.kind === "success") return SUCCESS_TOAST_MS;
+  // A button needs time to be reached (keyboard, screen reader): as long as an error toast.
+  if (notice.kind === "success") return notice.link ? ERROR_TOAST_MS : SUCCESS_TOAST_MS;
   return noticeAction(notice) ? Number.POSITIVE_INFINITY : ERROR_TOAST_MS;
 }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
+import { waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -12,6 +13,8 @@ const { EmptyState, ErrorState, LoadingState } = await import(
   "../src/components/layout/states.tsx"
 );
 
+const settle = waiter(4000);
+
 /** happy-dom evaluates media queries against its viewport and fires `change` on resize. */
 async function viewport(width: number) {
   await act(async () => {
@@ -19,8 +22,11 @@ async function viewport(width: number) {
       width,
       height: 800,
     });
-    await Bun.sleep(5);
   });
+  // The change event reaches the shell on happy-dom's own timer: wait for the query to say so and for
+  // React to flush, not for a fixed few milliseconds, which a loaded suite outlasts.
+  await settle(() => window.matchMedia("(max-width: 959px)").matches === width < 960);
+  await act(async () => {});
 }
 
 afterEach(async () => {

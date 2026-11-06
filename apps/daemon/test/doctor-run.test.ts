@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import * as protocol from "@flightdeck/protocol";
 import { type RunningServer, startServer } from "../src/server.ts";
-import { newManager, poll } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, poll } from "./helpers.ts";
 
 const TOKEN = "doctor-run-token-0123456789";
 const stops: Array<() => Promise<void>> = [];
@@ -79,7 +79,9 @@ describe("doctor-run: the doctor.run command", () => {
     );
     expect(info?.ok && (info.data as { features: string[] }).features).toContain("doctor.run");
     const bare = await ask(server(), "host.info", {});
-    expect(bare?.ok && (bare.data as { features: string[] }).features).toEqual(["session.images"]);
+    expect(bare?.ok && (bare.data as { features: string[] }).features).toEqual([
+      ...BASELINE_FEATURES,
+    ]);
     const refused = await ask(server(), "doctor.run", {});
     expect(refused && !refused.ok && refused.error.reason).toBe("feature_off");
   });

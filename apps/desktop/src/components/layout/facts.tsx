@@ -9,7 +9,7 @@ export interface Fact {
 }
 
 /** A key/value list: the labels share one column and the values line up in the next. */
-export function Facts(props: { items: Fact[] }) {
+export function Facts(props: Readonly<{ items: Fact[] }>) {
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
       {props.items.map((item) => (

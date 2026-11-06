@@ -1,7 +1,9 @@
 import type { Database } from "bun:sqlite";
 import { readFile } from "node:fs/promises";
+import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
+import { refArg } from "../board/ref-arg.ts";
 import { type Central, messageExternal } from "../central/central.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
@@ -138,8 +140,8 @@ export class ReviewComments {
   private async content(resolved: ResolvedTarget, path: string, side: "new" | "old") {
     const full = fileInRoot(resolved.root, path);
     if (side === "new") return readFile(full, "utf8").then(linesOf, () => null);
-    const rev = `${resolved.base ?? "HEAD"}:${path.replaceAll("\\", "/")}`;
-    const shown = await git(resolved.root, "show", rev);
+    const object = `${refArg(resolved.base ?? "HEAD")}:${path.replaceAll("\\", "/")}`;
+    const shown = await git(resolved.root, "show", "--end-of-options", object);
     return shown.code === 0 ? linesOf(shown.stdout) : null;
   }
 
@@ -153,7 +155,7 @@ export class ReviewComments {
     // A card done or a repository gone: the comments stay, as history, outdated.
     const resolved = await this.opts.changes.resolve(target).catch(() => null);
     const comments: ReviewComment[] = [];
-    for (const row of rows) {
+    await inSequence(rows, async (row) => {
       const lines = resolved ? await this.content(resolved, row.path, row.side) : null;
       const quote = linesOf(row.quote);
       const start = lines ? anchor(lines, quote, row.line_start) : null;
@@ -165,7 +167,7 @@ export class ReviewComments {
           .run(row.line_start, row.line_end, row.id);
       }
       comments.push(toComment(row, start === null));
-    }
+    });
     return comments;
   }
 

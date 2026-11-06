@@ -92,6 +92,8 @@ export interface AgentRun {
   setPermissionMode?(mode: PermissionMode): Promise<void>;
   /** Changes the model of the live run; undefined is the default. */
   setModel?(model: string | undefined): Promise<void>;
+  /** Changes the effort of the live run; undefined is the model's default. */
+  setEffort?(effort: EffortLevel | undefined): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
 }
@@ -119,10 +121,39 @@ export interface JudgeResult {
   tokens?: UsageTokens;
 }
 
+/** Phase 40: one short isolated call of the AI assistant: a system prompt, a text, an answer. */
+export interface CompleteOptions {
+  model: string;
+  system: string;
+  prompt: string;
+  /** A folder of its own, excluded from the history. */
+  cwd: string;
+  effort?: "low" | "medium" | "high";
+  /** `off` is honored only for a model known to take it; otherwise adaptive. */
+  thinking?: "off" | "adaptive";
+  /** Let `ANTHROPIC_API_KEY` through (the daemon's `allowApiKey`); the plan pays otherwise. */
+  allowApiKey?: boolean;
+  signal?: AbortSignal;
+}
+
+export interface CompleteResult {
+  text: string;
+  subtype: string;
+  /** What the call used, for the costs; absent when the runtime does not know. */
+  tokens?: UsageTokens;
+}
+
 export interface AgentRuntime {
   start(opts: StartOptions): AgentRun;
+  /**
+   * Phase 39: checks a folder before a start or a resume; throws a typed refusal. The session
+   * manager awaits it on create and resume, so a refused session is never created.
+   */
+  preflight?(cwd: string): Promise<void>;
   /** Phase 13: the AI of the automatic approval. */
   judgePermission?(opts: JudgeOptions): Promise<JudgeResult>;
+  /** Phase 40: the AI assistant's one-shot call on the host's plan. */
+  complete?(opts: CompleteOptions): Promise<CompleteResult>;
   /** Phase 12: copies a transcript (up to a message) into a new session, resumable by its id. */
   forkSession?(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }>;
 }

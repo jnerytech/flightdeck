@@ -48,7 +48,7 @@ export interface Connection {
   dropped?: boolean;
   /** Pings sent and not yet answered, by id → send time. */
   pendingPings: Map<string, number>;
-  /** When the last frame of any kind arrived from this client (`performance.now()`). */
+  /** When the last frame of any kind arrived from this client (the heartbeat clock). */
   lastFrameAt: number;
   /** Stops the `sessions.watch` stream, when active. */
   unwatch?: () => void;

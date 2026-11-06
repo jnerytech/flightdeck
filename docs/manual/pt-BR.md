@@ -4,7 +4,7 @@
 
 Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.19.0. O roadmap
 está em [`docs/SPEC.md`](../SPEC.md), as divergências em relação às specs em
-[`docs/DECISIONS.md`](../DECISIONS.md) e o vocabulário da interface em
+[`docs/decisions/`](../decisions/) (as mais antigas em [`docs/DECISIONS.md`](../DECISIONS.md)) e o vocabulário da interface em
 [`docs/GLOSSARY.md`](../GLOSSARY.md). O manual supõe `flightdeckd` no `PATH`; o binário instalado
 fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
@@ -32,6 +32,14 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Como funciona](#como-funciona)
   - [Por que a extensão do VS Code fica de fora](#por-que-a-extensão-do-vs-code-fica-de-fora)
 - [Aprovações e permitir sempre](#aprovações-e-permitir-sempre)
+- [Sessões do OpenCode](#sessões-do-opencode)
+  - [Ligar](#ligar)
+  - [Abrir uma sessão](#abrir-uma-sessão)
+  - [O que uma sessão do OpenCode pergunta](#o-que-uma-sessão-do-opencode-pergunta)
+  - [O que uma sessão do OpenCode ainda não tem](#o-que-uma-sessão-do-opencode-ainda-não-tem)
+  - [Por que o opencode.json do projeto é ignorado](#por-que-o-opencodejson-do-projeto-é-ignorado)
+  - [Remover regras salvas](#remover-regras-salvas)
+  - [Conferir uma versão nova do OpenCode](#conferir-uma-versão-nova-do-opencode)
 - [Projetos](#projetos)
 - [Board](#board)
   - [Cadastrar um projeto](#cadastrar-um-projeto)
@@ -452,6 +460,26 @@ confirma.
 A tela **Sessões** é a principal do app: todas as sessões do Claude Code dos hosts online, num
 lugar só, agrupadas por projeto e ordenadas pela última atividade.
 
+- **Projeto primeiro.** Cada projeto é um grupo com um título em negrito (uma pasta, o nome, um chip
+  **ao vivo/total** e um chip por host, que abre a página do host). **Todo projeto começa
+  recolhido**, mostrando só o cabeçalho e as sessões que precisam de você; abra um pela seta, e a
+  escolha é lembrada por projeto. **Expandir tudo** e **Recolher tudo**, no topo, fazem isso com
+  todos. Aberto, o projeto mostra primeiro as sessões ao vivo (as que precisam de você no topo). As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
+  nova para a mais antiga. Digitar no filtro também casa com o nome do projeto, e qualquer filtro (texto, origem,
+  estado, persona, fixadas) abre tudo o que ele mantém. Um chip de **Hosts** só restringe a lista a
+  esse host: os projetos ficam abertos ou dobrados como você os deixou. A dobra de um projeto é
+  lembrada sob uma chave que não muda quando um host fica offline ou pastas se juntam. Uma sessão fixada fica sempre com as ao
+  vivo. **O mesmo projeto em dois hosts é um só grupo**, com os dois chips de host, e cada linha
+  mantém o seu chip de host. Um projeto sem remote git é reconhecido pelo nome da pasta entre
+  hosts, mas nunca quando um host tem duas pastas com esse nome: essas ficam em grupos separados em
+  todo lugar. Grupos que repetem o nome mostram uma **dica de caminho** curta (a pasta acima do
+  projeto, por exemplo `work`) ao lado do título e no nome dele para leitores de tela. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host
+  (aperte de novo para limpar).
+- **Títulos.** A sessão se chama pelo nome, senão pelo título que o host dá a ela (o resumo que o
+  Claude Code escreveu, ou o primeiro prompt), senão pela persona com a tarefa, senão pela pasta. Os invólucros do
+  sistema (`<task-notification>`, "Another Claude session sent a message:", saída de comando
+  local) nunca aparecem num título.
+
 ### O que aparece na lista
 
 | Origem | De onde vem |
@@ -501,8 +529,19 @@ histórico.
   teclado: **Copiar mensagem**, **Bifurcar a partir daqui** (na última mensagem: leva a conversa
   inteira até ali), **Fixar sessão** e há quanto tempo a mensagem foi escrita.
 - A caixa flutua no fim da tela como um cartão arredondado. O **+** anexa imagens (quando o host
-  suporta). Sob o cartão, uma linha de estado mostra o modelo e o modo de permissão, cada um um
-  seletor quando a sessão deixa mudar, e um indicador girando enquanto um turno roda. Durante o
+  suporta). Sob o cartão, uma linha de estado mostra o modelo e o modo de permissão, e um
+  indicador girando enquanto um turno roda. Quando a sessão deixa mudar, o modo é um **chip** (por
+  exemplo "Padrão"): clique nele, ou foque e tecle Enter, para abrir o menu **Modo** com todos os
+  modos, o que cada um faz e seu número (tecle 1 a 4 para escolher). **Shift+Tab** na caixa
+  alterna entre Padrão, Aceitar edições e Planejar. **Ignorar permissões** também está no menu,
+  mas o ciclo nunca cai nele: ele pergunta antes, citando o host e a sessão, e o chip fica
+  vermelho enquanto está ligado. Em um host com a chave desligada (ou para um modo mais solto que
+  o da partida da sessão) a linha fica esmaecida, diz por quê e leva às configurações do host. O
+  modelo também é um chip ("Opus 5.5 · Médio"): o menu **Modelo** lista Padrão, Opus, Sonnet e
+  Haiku com para que serve cada um e seu número (tecle 1 a 4), **Mais modelos** traz as versões
+  específicas, e **Esforço** (num host que suporta) define Baixo, Médio, Alto, Muito alto ou Máximo
+  para os próximos turnos, ou volta ao nível do próprio modelo. Uma sessão do OpenCode mantém uma
+  lista simples dos seus modelos. Durante o
   turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
   arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
   menos movimento.
@@ -630,6 +669,101 @@ Cards rodam em worktrees, e cada worktree tem o próprio `.claude`:
 
 Na tela Projetos, **Editar** mostra a seção **Regras** do projeto, com o botão de remover, que
 pede confirmação e preserva o resto do arquivo.
+
+## Sessões do OpenCode
+
+Um host também pode rodar sessões do [OpenCode](https://opencode.ai/v2/docs/), abertas pelo app, ao
+lado das do Claude Code. O Flightdeck conversa com o OpenCode pelo Agent Client Protocol
+(`opencode acp`), um processo por sessão ativa. Precisa do OpenCode 2 e foi verificado com o 2.2.5;
+uma versão mais nova roda, mas aparece como não verificada. O OpenCode fica desligado em todo host
+até você ligá-lo.
+
+### Ligar
+
+1. Instale o OpenCode no host (o script de instalação dele o põe em `~/.opencode/bin`) e entre num
+   provedor com o próprio `opencode auth login` do OpenCode. O Flightdeck nunca lê as credenciais do
+   OpenCode.
+2. Na config do host, acrescente `"opencode": { "enabled": true }`. Se o `opencode` não estiver no
+   PATH do daemon nem em `~/.opencode/bin`, informe o caminho: `"opencode": { "enabled": true, "executablePath": "/caminho/do/opencode" }`.
+3. Reinicie o daemon.
+
+Ao subir, o daemon roda `opencode --version` e um canário: um `opencode.json` inofensivo numa pasta
+do próprio Flightdeck não pode ser lido, o que prova que a config de projeto está desligada naquela
+versão. Se algo falhar, o host lista o OpenCode como indisponível com o motivo, e o
+`flightdeckd doctor` mostra isso na linha do OpenCode. Essa linha nunca reprova o doctor. No Windows e
+no macOS ela acrescenta "unverified on this OS" (o doctor fala em inglês): os caminhos da config global ali ainda não
+foram conferidos numa máquina real.
+
+### Abrir uma sessão
+
+**Nova sessão** mostra **Agente** só num host com o OpenCode ligado. Escolha **OpenCode**: a lista de
+modelos vem do host (`opencode models`), **Esforço** escolhe o quanto o modelo trabalha, e os modos de
+permissão são **Padrão** e **Planejar** (e **Ignorar permissões** quando o host permite). Não há
+persona. Os modelos vêm agrupados por provedor. A página da sessão e a linha dela na lista de
+sessões mostram um selo **OpenCode**. A linha do tempo diz quando o `AGENTS.md` do projeto foi com a
+primeira mensagem, ou por que não foi.
+
+### O que uma sessão do OpenCode pergunta
+
+- Toda chamada de ferramenta pergunta antes, como uma sessão do Claude Code no modo Padrão. Ler,
+  listar e buscar arquivos dentro da pasta da sessão é permitido sem perguntar, exceto arquivos de
+  credenciais; um caminho que sai da pasta (inclusive por um link) pergunta.
+- Nada é aprovado automaticamente, e o app nunca responde "sempre" ao OpenCode: cada resposta vale
+  para um pedido.
+- A ferramenta de perguntas do OpenCode e os subagentes dele ficam desligados.
+- Uma mensagem que começa com `/` vai como texto comum, então os comandos do OpenCode (os dele e os
+  de um projeto) não rodam.
+- Se algo fora do Flightdeck mudar as regras ou o modo do OpenCode durante a sessão (a TUI do próprio
+  OpenCode, um arquivo de config editado no meio), a sessão para com uma mensagem dizendo o que mudou.
+
+### O que uma sessão do OpenCode ainda não tem
+
+Isto fica com as sessões do Claude Code por enquanto: personas, times e mensagens entre sessões,
+cards do quadro e variantes da arena, começar em segundo plano, bifurcar, "Abrir no terminal", o
+resumo da sessão, as abas Mudanças, Tempo e Rastro (elas leem a transcrição do Claude Code), os
+modos Aceitar edições e Automático, a aprovação automática, a página de Custos com orçamentos e
+cota, importar as sessões antigas do OpenCode para o Histórico, e a tela de MCP. A linha do tempo
+continua: os snapshots git são feitos a cada turno, então voltar arquivos funciona, e o modelo pode
+ser trocado com a sessão em andamento, pela lista do OpenCode. A linha de resultado de cada turno ainda mostra o custo da sessão até ali, como o OpenCode
+informa.
+
+### Por que o opencode.json do projeto é ignorado
+
+O `opencode.json` e a pasta `.opencode/` de um projeto podem liberar todas as ferramentas, carregar
+plugins (código que roda quando o OpenCode sobe), iniciar servidores MCP e definir comandos. Por isso
+o Flightdeck sobe o OpenCode com a config de projeto desligada e com dois agentes próprios
+(`flightdeck` e `flightdeck-plan`), com os agentes embutidos do OpenCode desativados. O `AGENTS.md` do
+projeto continua valendo: o Flightdeck o lê e o envia no começo de uma sessão nova, rotulado
+"project instructions (AGENTS.md)", até 64 KB, sem seguir os `@` imports dele.
+
+A sua config global do OpenCode (`~/.config/opencode`, ou `$XDG_CONFIG_HOME/opencode`) é mantida, então
+seus provedores e seu modelo padrão continuam valendo, mas o daemon a examina antes de rodar o
+OpenCode: um plugin (em `plugins` ou nas pastas `plugins/`, `plugin/`, `tool/` ou `tools/`), um
+servidor MCP ativo, ou qualquer config de sistema ou gerenciada deixa o OpenCode indisponível naquele
+host, com o achado nomeado. Antes de cada início e retomada, uma checagem prévia pergunta ao OpenCode
+como ele resolveu a config para aquela pasta e recusa a sessão se algo passaria por cima das
+perguntas do Flightdeck.
+
+### Remover regras salvas
+
+Responder "Always allow" na TUI do próprio OpenCode salva uma regra para o projeto daquela pasta, e
+uma regra salva pula a pergunta. O Flightdeck então se recusa a abrir uma sessão do OpenCode ali, e a
+mensagem lista as regras e os comandos que as removem. O Flightdeck nunca as remove sozinho. Naquela
+pasta, no host:
+
+```sh
+opencode api GET /api/permission/saved --standalone              # lista as regras salvas
+opencode api DELETE /api/permission/saved/<id> --standalone      # remove uma pelo id
+```
+
+### Conferir uma versão nova do OpenCode
+
+`bun run smoke:opencode-real [--model <id>]` (num checkout do código, num host com o OpenCode
+autenticado) roda o OpenCode de verdade contra um projeto hostil de rascunho: nenhum plugin, servidor
+MCP ou comando `/` do projeto roda, o primeiro comando de shell pergunta, e uma regra salva faz a
+checagem prévia recusar até ser removida. Ele apaga as sessões do OpenCode e as regras salvas que
+criou. Rode depois de cada atualização do OpenCode; ele nunca faz parte dos testes nem da CI.
+`bun run smoke:opencode` confere o mesmo caminho com um OpenCode falso.
 
 ## Projetos
 
@@ -880,6 +1014,11 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   - num card, o diff contra a base, com quantos commits ele está à frente e atrás dela;
   - os arquivos com status e contagens, e o diff unificado ou lado a lado, com as linhas
     numeradas. Um arquivo binário aparece na lista, sem diff;
+  - um arquivo grande demais (mais de 512 KB de diff ou de arquivo novo) aparece na lista com a
+    marca **Grande demais** e o tamanho, sem conteúdo, para o painel não travar. O mesmo vale
+    para o que passa de 4 MB de diff no total: os arquivos seguintes entram só na lista. Num host
+    desta máquina, **Mostrar na pasta** abre o gerenciador de arquivos no arquivo (o editor
+    segue ao lado, e recusa o que passa de 1 MB);
   - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
     lê de novo.
 - **Comentários inline:**
@@ -1392,8 +1531,10 @@ credencial). Você pode acrescentar padrões na configuração do host (`risk.ex
 podem ser rebaixados.
 
 - Um pedido de **Risco alto** fica vermelho e **Aprovar** vira **Segurar para aprovar**: segure o botão por
-  2 segundos. A tecla A não o aprova; N continua negando.
-- A bandeja nunca aprova um pedido de risco alto: só oferece **Abrir**.
+  2 segundos. O motivo fica escrito sob o botão (não só numa dica). A tecla A não o aprova; N continua negando. O host também confere a espera: recusa a
+  aprovação de um pedido de risco alto que não a traga ("Um pedido de risco alto só é aprovado
+  segurando o botão."), então nenhum outro cliente consegue pulá-la.
+- A bandeja nunca aprova um pedido de risco alto: oferece **Negar** e **Abrir**.
 - Com a aprovação automática ligada, o que ninguém aprovou à mão aparece na linha do tempo da sessão como
   "Aprovado automaticamente", com quem decidiu e o motivo. Um pedido de risco alto ou que acessa a rede
   sempre vem para você.
@@ -1646,8 +1787,8 @@ aparece em **Precisa de você** com uma notificação: quem pediu, a ação e os
 comando, os segredos e o host). **Aprovar** entrega o segredo só para aquela execução; **Negar**
 faz a execução falhar na hora. Uma ação com `approval: never` roda sem pergunta, `first-per-session`
 pergunta uma vez e fica lembrada até o app reiniciar, e `always` pergunta todas as vezes. Um
-`run_with_secret` é de risco alto: segure o botão por 2 segundos para aprovar, e a bandeja só o
-abre.
+`run_with_secret` é de risco alto: segure o botão por 2 segundos para aprovar; a bandeja só
+oferece Negar e Abrir.
 
 ### Regras de uso por segredo
 
@@ -1706,9 +1847,16 @@ O sino à direita da barra superior guarda toda notificação que o app envia: u
 precisa de você, uma sessão que terminou, um alerta de orçamento ou de cota, o resultado de um
 PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
 
-- Clique no sino para abrir o painel: mais recentes primeiro, agrupadas por dia (Hoje, Ontem e
-  depois a data).
-- Clique numa entrada para marcá-la como lida e abrir a tela dela (um pedido abre no card dele;
+- Clique no sino para abrir o painel: as não lidas primeiro, depois as mais recentes, em dois
+  grupos (Hoje e Antes). Abrir o painel não marca nada como lido.
+- Uma linha não lida tem um ponto, o título em negrito e a palavra "não lida" para o leitor de
+  tela; uma lida não tem nada disso. O selo conta os pontos. Cada linha diz a sessão, o card ou o
+  time e o host, e diz o que pede em palavras ("Pergunta: qual banco usar?"), não o nome da
+  ferramenta. Os pedidos repetidos de uma sessão viram uma linha só com a contagem ("3 vezes").
+  Uma linha cujo card ou pedido não existe mais avisa e tem **Descartar**.
+- Passe o mouse numa linha (ou foque nela) para ver o controle **Marcar como lida**: ele marca
+  aquela linha e não abre nada.
+- Clique numa entrada para marcar só ela como lida e abrir a tela dela (um pedido abre no card dele;
   um alerta de cota abre o host). Um alerta de orçamento abre os Custos já filtrados pelo host e
   pelo projeto dele, ou pelo cliente; um alerta de time abre Times com esse time em primeiro e
   destacado. A entrada de um card (resultado de um PR vigiado, card desbloqueado) abre o PR no
@@ -1769,8 +1917,12 @@ modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções 
   uma guarda a sua versão no host (**Pacote, editada**); **Restaurar original** traz a do pacote.
 - **Host**, **Projeto** (escolha um: as dele e as versionadas em `.flightdeck/personas/*.md`, que
   você **Confia** antes) e **Globais (deste app)**, guardadas no app.
-- **Nova persona** e **Editar** abrem o editor com uma **Prévia** do que a sessão recebe. Uma
-  persona nunca guarda segredo: a que tiver é recusada com o motivo.
+- **Nova persona** e **Editar** abrem o editor com uma **Prévia** do que a sessão recebe. **Editar**
+  abre o formulário dentro do cartão da própria persona, com o primeiro campo em foco e o cartão
+  trazido para a tela; **Nova persona** abre no topo. **Cancelar** e **Salvar** devolvem a rolagem
+  e o foco ao botão Editar. **Modelo** é uma escolha (**Outro…** para texto livre) e
+  **Ferramentas** uma seleção múltipla. Uma persona nunca guarda segredo: a que tiver é recusada
+  com o motivo.
 - **Publicar como agente** grava a persona em `.claude/agents/persona-<id>.md` pelo
   editor de agentes, com confirmação, e ela vale também para o `claude` puro.
 
@@ -1990,10 +2142,13 @@ terceiros.
 
 #### Qual conta este host está usando?
 
-- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Team, Enterprise) e duas
+- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Ultra, Team, Enterprise) e duas
   barras, **5 horas** e **7 dias**, com a porcentagem usada e quando cada uma reinicia (passe o
   mouse para ver a hora exata). As barras de 7 dias do Opus e do Sonnet só aparecem quando o host
   as informa.
+- O plano vem do login do `claude` no host, que o guarda desde que você entrou: depois de mudar de
+  plano, saia e entre de novo lá e toque em **Atualizar**. As barras são lidas ao vivo e estão sempre
+  em dia.
 - Ele é lido ao abrir a página e de novo a cada 5 minutos enquanto ela fica aberta, e na hora em
   que uma sessão gerenciada termina um turno. "Última leitura há 2 min" diz o quanto está
   fresco. **Atualizar** lê agora; há 30 segundos de espera entre leituras.
@@ -2020,8 +2175,8 @@ Cada turno de uma sessão gerenciada traz a cota do plano do Claude. Todas as se
 usam o mesmo login, então a cota é do host. O daemon guarda a última leitura de cada janela (5
 horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janela reinicia.
 
-- **No app:** o topo da tela Sessões mostra, para cada host online, as barras de 5 horas e de 7
-  dias, com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
+- **No app:** o topo da tela Sessões mostra, para cada conta do Claude, as barras de 5 horas e de 7
+  dias (hosts com a mesma conta compartilham um cartão, com o nome de todos), com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
   - A barra fica vermelha a partir de `quota.pauseAt`.
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
@@ -2080,7 +2235,9 @@ do app, dos cards e dos workflows, subagentes incluídos.
 - **O que aparece:**
   - o custo estimado, os tokens e a economia do cache (quanto o cache read custou a menos do que
     o mesmo volume como input normal);
-  - um gráfico por dia, empilhado por projeto, e as quebras por projeto, modelo e origem;
+  - um gráfico por dia, empilhado por projeto (Tab chega ao gráfico, as setas andam pelos dias e
+    cada dia diz o total numa dica ao passar o mouse ou ao receber o foco), e as quebras por
+    projeto, modelo e origem;
   - as sessões mais caras, e clicar numa abre a sessão;
   - o custo estimado também aparece na lista de sessões, na sessão aberta, no card e na execução
     de workflow.
@@ -2452,7 +2609,12 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 
 - **Precisa de você:** na barra lateral, com o contador de pedidos abertos em todos os hosts. A
   tela lista os pedidos, do mais antigo ao mais novo, e o cartão do pedido escolhido fica ao
-  lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
+  lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa. O
+  cartão recebe o foco, então A e N funcionam sem um clique antes, e quando um pedido é
+  respondido o próximo é escolhido, com quantos restam. Um pedido de risco alto continua sendo
+  aprovado só segurando o botão.
+- **De uma notificação:** o clique abre a sessão com o cartão do pedido em foco: uma tecla
+  responde. No sino, a entrada de um pedido já respondido abre a sessão naquele pedido.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
@@ -2482,7 +2644,8 @@ pedidos abertos, de sessões gerenciadas e do terminal, do mais antigo ao mais n
 
 - Cada pedido abre um submenu com **Aprovar**, **Negar** e **Abrir**. Aprovar e Negar respondem no
   host do pedido, sem abrir a janela; Abrir traz o app na sessão, com o card de aprovação.
-- Gates de workflow aparecem só com **Abrir**: eles pedem leitura, e a resposta fica no card.
+- Gates de workflow aparecem só com **Abrir**: eles pedem leitura, e a resposta fica no card. Um
+  pedido de risco alto e um pedido de segredo têm **Negar** e **Abrir**: aprovar pede a janela.
 - Acima de 10, a última linha é **e mais N…**, que abre o app.
 - O submenu é refeito meio segundo depois de a lista parar de mudar.
 - **Notificação de pedido:** leva o link `flightdeck://request?host=…&request=…`, que abre o app
@@ -2866,11 +3029,18 @@ editar a pasta escolhida. Os resultados vão para uma pasta *Flightdeck results*
 arquivos. O modo simples esconde, não protege: quem está no modo completo faz tudo o que o host
 permite.
 
-**Trocar de modo.** No modo completo, abra a página de um host e use o painel *Modo simples*:
-*Usar o modo simples neste host* é uma escolha sua, guardada neste app. *Tornar o modo simples o
-padrão deste host* define o que a próxima pessoa vê. *Travar este host no modo atual* tira a troca
-para todos: um host travado fica no modo dele e *Mostrar tudo* não aparece. Destrave pelo mesmo
-painel.
+**Trocar de modo.** No modo completo, abra a página de um host e use o painel *Modo simples*. As
+primeiras linhas dizem em que modo o host abre e se está travado. *Modo padrão* (*App completo* ou
+*Modo simples*) define o que a próxima pessoa vê; *Usar o modo simples neste host* é uma escolha
+sua, guardada neste app. A chave *Travar este host no modo atual* tira a escolha de todos (ela
+pergunta antes); um host travado fica no modo dele. Cada mudança mostra uma mensagem, e a linha do
+host na barra lateral ganha uma etiqueta *Simples* quando ele abre no modo simples e um cadeado
+quando está travado.
+
+**Sair do modo simples.** Toda tela simples termina o menu com *App completo* (pergunta uma vez). Num
+host travado, o menu diz para pedir a quem administra que libere. **Ctrl+Shift+M**, a paleta
+(*Mudar para o app completo*) e, no app completo, *Modo simples* no rodapé da barra lateral também
+trocam o modo, mantendo as suas abas.
 
 **Suas próprias tarefas.** Um host pode ter tarefas como arquivos Markdown na pasta `templates/` dos
 dados do daemon: um cabeçalho com título, ícone, campos, predefinição e se começa planejando, e uma
