@@ -11,7 +11,7 @@ export type WebhookKind =
   | "budget_alert"
   | "pr_watch";
 
-export type WebhookType = "slack" | "discord" | "generic";
+export type WebhookType = "slack" | "discord" | "generic" | "ntfy";
 
 /** One thing that happened, neutral of the target it goes to. */
 export interface NotifyEvent {
@@ -29,13 +29,17 @@ export interface NotifyEvent {
 }
 
 export interface FormattedWebhook {
+  /** Where to post, when not the target's own URL (ntfy posts to its server's root). */
+  url?: string;
   headers: Record<string, string>;
   body: string;
 }
 
 export interface FormatOptions {
-  /** The generic target's signing secret. */
+  /** The generic target's signing secret, or the ntfy target's access token. */
   signingSecret?: string;
+  /** The target's URL (ntfy: its topic URL). */
+  url?: string;
   /** Milliseconds now, for the signature timestamp. */
   now?: () => number;
 }
@@ -137,6 +141,11 @@ async function generic(event: NotifyEvent, options: FormatOptions): Promise<Form
       "sha256=" + (await hmacHex(options.signingSecret, timestamp + "." + body));
   }
   return { headers, body };
+}
+
+/** An ntfy topic URL as its server's root and its topic. */
+export function ntfyTopic(topicUrl: string): { server: string; topic: string } | null {
+  return null;
 }
 
 export async function formatWebhook(

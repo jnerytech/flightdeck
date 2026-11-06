@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { createHmac } from "node:crypto";
-import { formatWebhook, type NotifyEvent, type WebhookKind } from "../src/lib/webhook-format.ts";
+import {
+  formatWebhook,
+  type NotifyEvent,
+  ntfyTopic,
+  type WebhookKind,
+} from "../src/lib/webhook-format.ts";
 
 const event = (over: Partial<NotifyEvent> = {}): NotifyEvent => ({
   id: "01JEVENT0000000000000000AA",
@@ -146,5 +151,75 @@ describe("webhook-formatar: generic", () => {
     const out = await formatWebhook("generic", event());
     expect(out.headers["X-Flightdeck-Signature"]).toBeUndefined();
     expect(out.headers["X-Flightdeck-Timestamp"]).toBeDefined();
+  });
+});
+
+describe("webhook-formatar: ntfy, one-way phone notices (#263)", () => {
+  const url = "https://ntfy.example.com/fd-alerts";
+
+  test("ntfy gets its JSON publish at the server's root: the topic, the headline, the lines and the priority", async () => {
+    const out = await formatWebhook("ntfy", event(), { url });
+    expect(out.url).toBe("https://ntfy.example.com/");
+    expect(out.headers).toEqual({ "Content-Type": "application/json" });
+    expect(JSON.parse(out.body)).toEqual({
+      topic: "fd-alerts",
+      title: "needs you: Fix the build (pi)",
+      message: [
+        "Asked: Fix the build",
+        "Done: Patched the config.",
+        "Files: /r/a.ts, /r/b.ts and 3 more",
+        "Cost: $1.50",
+        "Question: Run `rm -rf build`?",
+      ].join("\n"),
+      priority: 4,
+      tags: ["bell"],
+    });
+  });
+
+  test("only needs you is high; every other kind is the default priority, and a tap opens nothing", async () => {
+    for (const kind of KINDS) {
+      const body = JSON.parse((await formatWebhook("ntfy", event({ kind }), { url })).body);
+      expect(body.priority, kind).toBe(kind === "needs_you" ? 4 : 3);
+      expect([body.click, body.actions, body.attach], kind).toEqual([
+        undefined,
+        undefined,
+        undefined,
+      ]);
+    }
+    const bare = JSON.parse(
+      (await formatWebhook("ntfy", event({ summary: null, detail: null }), { url })).body,
+    );
+    expect(bare.message).toBe("Fix the build");
+  });
+
+  test("an access token goes as Authorization: Bearer, and a self-hosted server keeps its port", async () => {
+    const out = await formatWebhook("ntfy", event(), {
+      url: "https://push.home.example:8443/flightdeck_1",
+      signingSecret: "tk_abc123",
+    });
+    expect(out.url).toBe("https://push.home.example:8443/");
+    expect(out.headers).toEqual({
+      "Content-Type": "application/json",
+      Authorization: "Bearer tk_abc123",
+    });
+    expect(JSON.parse(out.body).topic).toBe("flightdeck_1");
+  });
+
+  test("ntfyTopic splits a topic URL; anything but one plain topic segment is null", () => {
+    expect(ntfyTopic("https://ntfy.sh/my-topic")).toEqual({
+      server: "https://ntfy.sh/",
+      topic: "my-topic",
+    });
+    for (const bad of [
+      "https://ntfy.sh/",
+      "https://ntfy.sh/a/b",
+      "https://ntfy.sh/a?x=1",
+      "https://ntfy.sh/a#x",
+      "https://ntfy.sh/a.b",
+      `https://ntfy.sh/${"t".repeat(65)}`,
+      "not a url",
+    ]) {
+      expect(ntfyTopic(bad), bad).toBeNull();
+    }
   });
 });
