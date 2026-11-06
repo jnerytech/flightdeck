@@ -363,6 +363,27 @@ describe("planRelated", () => {
     expect(plan(["bun.lock"]).files).toBe("all");
   });
 
+  test("--pr never selects a mod's test: bun ignores mods/ (they run under claude plugin test), and the Windows shards refuse names they cannot run (#410)", () => {
+    const repo: Record<string, string> = {
+      "apps/daemon/src/a.ts": "export const a = 1;",
+      "apps/daemon/test/u1.test.ts": "export {};",
+      "mods/flightdeck/hooks/register.test.tsx": "export {};",
+    };
+    const tiers: Record<string, string> = {
+      "apps/daemon/test/u1.test.ts": "unit",
+      "mods/flightdeck/hooks/register.test.tsx": "unit",
+    };
+    const plan = planRelated({
+      platform: "win32",
+      git: fakeGit(["apps/daemon/src/a.ts"], Object.keys(repo)),
+      readFile: (path) => repo[path] ?? "",
+      pyramid: true,
+      slot: false,
+      tierOf: (path) => tiers[path],
+    });
+    expect(plan.files).toEqual(["apps/daemon/test/u1.test.ts"]);
+  });
+
   test("listSelection writes one test file per line, or '*' for the whole suite, and needs a file name (#410 review)", () => {
     const written: Record<string, string> = {};
     const write = (path: string, text: string) => {
