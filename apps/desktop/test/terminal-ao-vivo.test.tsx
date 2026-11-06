@@ -38,6 +38,7 @@ const external = (claudeSessionId: string, status: ExternalStatus): ExternalSess
 async function setup(language: "en" | "pt-BR", status: ExternalStatus | null) {
   const d = makeDaemon(cleanups, { terminals: true });
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
+  store.i18n.start();
   cleanups.push(() => store.dispose());
   const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
@@ -79,7 +80,7 @@ describe("terminal-ao-vivo: a session already live in another terminal (#502)", 
   test("resuming it here asks first, starts nothing, and View it live here opens the session's live view", async () => {
     const { store, hostId, ptys } = await setup("en", "running");
     await click("Continue in the terminal");
-    expect(screen.queryByText(/open in another terminal/)).not.toBeNull();
+    expect(screen.queryByText("Already open in another terminal")).not.toBeNull();
     expect(ptys.spawned).toHaveLength(0);
     await click("View it live here");
     expect(store.router.current).toEqual({ name: "external", host: hostId, claudeSessionId: "abc-123" });
@@ -89,7 +90,7 @@ describe("terminal-ao-vivo: a session already live in another terminal (#502)", 
   test("Abrir outra cópia mesmo assim starts the second copy, with --resume (pt-BR)", async () => {
     const { ptys } = await setup("pt-BR", "awaiting_permission");
     await click("Continuar no terminal");
-    expect(screen.queryByText(/aberta em outro terminal/)).not.toBeNull();
+    expect(screen.queryByText("Já aberta em outro terminal")).not.toBeNull();
     await click("Abrir outra cópia mesmo assim");
     await settle(() => ptys.spawned.length === 1);
     expect(ptys.spawned[0]?.argv).toContain("--resume");
@@ -99,7 +100,7 @@ describe("terminal-ao-vivo: a session already live in another terminal (#502)", 
   test("the outside terminal asks the same before it opens or copies anything", async () => {
     await setup("pt-BR", "idle");
     await click(/Copiar comando|Abrir no terminal/);
-    expect(screen.queryByText(/aberta em outro terminal/)).not.toBeNull();
+    expect(screen.queryByText("Já aberta em outro terminal")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Ver ao vivo aqui" })).not.toBeNull();
   });
 
@@ -107,7 +108,7 @@ describe("terminal-ao-vivo: a session already live in another terminal (#502)", 
     for (const status of ["ended", null] as const) {
       const { ptys } = await setup("pt-BR", status);
       await click("Continuar no terminal");
-      expect(screen.queryByText(/aberta em outro terminal/)).toBeNull();
+      expect(screen.queryByText("Já aberta em outro terminal")).toBeNull();
       await settle(() => ptys.spawned.length === 1);
       cleanup();
     }
