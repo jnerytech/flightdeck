@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 /**
  * `bun run demo` (phase 10): seeds two fake-runtime daemons (scripts/demo-seed.ts) and serves the
- * app's web entry with Vite, already paired with them, at http://localhost:1420. Ctrl+C stops it.
+ * app's web entry with Vite, already paired with them, at http://localhost:1420 (`DEMO_PORT` picks
+ * another; the e2e run and the prints take a free one, so no session's demo blocks another's run).
+ * Ctrl+C stops it.
  * `--shots` takes the prints (scripts/demo-shots.ts) into apps/desktop/screenshots/ and exits.
  */
 import { renameSync, writeFileSync } from "node:fs";
@@ -9,11 +11,12 @@ import { join, resolve } from "node:path";
 import { seedDemo } from "./demo-seed.ts";
 import { SHOTS_DIR, takeShots } from "./demo-shots.ts";
 import { runVisual } from "./demo-visual.ts";
+import { demoPort, freePort } from "./lib/demo-port.ts";
 import { stateFile } from "./lib/e2e-demo.ts";
 import { visualMode } from "./lib/visual.ts";
 
 const DESKTOP = resolve(import.meta.dir, "../apps/desktop");
-const PORT = 1420;
+const PORT = await demoPort(process.env, process.argv, freePort);
 const log = (msg: string) => console.log(`  · ${msg}`);
 
 // The seed points HOME at a temporary folder; the browser of the prints needs the real one to

@@ -1,9 +1,19 @@
+import { createServer } from "node:net";
+
 /** The port of the demo's Vite: `DEMO_PORT`, a free one for the runs of a machine, 1420 for a person. */
 export const DEFAULT_DEMO_PORT = 1420;
 
 /** A port nobody listens on right now (the OS picks it). */
-export async function freePort(): Promise<number> {
-  return 0;
+export function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      server.close(() => resolve(port));
+    });
+  });
 }
 
 /**
@@ -16,8 +26,13 @@ export async function demoPort(
   argv: readonly string[],
   free: () => Promise<number>,
 ): Promise<number> {
-  void env;
-  void argv;
-  void free;
-  return 0;
+  const set = env.DEMO_PORT;
+  if (set !== undefined && set !== "") {
+    const port = Number(set);
+    if (!/^\d+$/.test(set) || port < 1 || port > 65_535) {
+      throw new Error(`DEMO_PORT=${set} is not a port (1 to 65535)`);
+    }
+    return port;
+  }
+  return argv.includes("--serve") || argv.includes("--shots") ? await free() : DEFAULT_DEMO_PORT;
 }
