@@ -6,8 +6,8 @@ import { type ClassifyCall, type PathKind, ruleLevel } from "../src/permissions/
 const HOME = resolve("/casa/u");
 const CWD = resolve("/trabalho/proj");
 const risk = new RiskClassifier({ allowedRoots: [], home: HOME });
-// Each path is read as itself, never as a folder (#395).
-const notThere: PathKind = () => "missing";
+// Each path is read as a file on disk (#395).
+const notThere: PathKind = () => "file";
 const level = (tool: string, input: Record<string, unknown>) =>
   risk.classify(tool, input, CWD).level;
 

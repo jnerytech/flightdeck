@@ -164,13 +164,13 @@ describe("permitir-sempre", () => {
     expect(refusal(() => respond([rule({})]))).toBe(
       "invalid_permission_update: a regra permitiria mais risco do que este pedido",
     );
-    // Without the server's lookup an exact path counts as a folder (#395): here it is not there.
+    // Without the server's lookup an exact path counts as a folder (#395): here it is a file.
     respond(
       [
         rule({ rules: [{ toolName: "Write", ruleContent: `${project}/app-*.txt` }] }),
         rule({ rules: [{ toolName: "Write", ruleContent: "x".repeat(500) }] }),
       ],
-      () => "missing",
+      () => "file",
     );
     expect((await result())?.content ?? "").toStartWith("arquivo criado: fake.txt; permissões:");
   });

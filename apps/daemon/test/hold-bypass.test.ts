@@ -172,12 +172,12 @@ describe("hold-bypass: an approval is for the exact input that was asked (issue 
 
 describe("hold-bypass: a saved rule never covers more risk than the request it came from (issue #384)", () => {
   /** What a request of this tool and input is allowed to save, from a request that is not held. */
-  // The server looks a rule's exact paths up first (#395); none of these is on disk.
+  // The server looks a rule's exact paths up first (#395): here each is a file on disk.
   const saved = async (
     tool: string,
     input: Record<string, unknown>,
     update: PermissionUpdate,
-    kind: PathKind | null = () => "missing",
+    kind: PathKind | null = () => "file",
   ) => {
     const { b, ask } = broker();
     const { id } = await ask(tool, input);
@@ -434,7 +434,7 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     }
     expect(
       refusal(() =>
-        // The server's look-up: .env is a file, or not there yet (#395).
+        // The server's look-up: .env is a file on disk (#395).
         b.respond(
           {
             requestId: id,
@@ -442,7 +442,7 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
             held: true,
             updatedPermissions: [rule("Write", ".env")],
           },
-          () => "missing",
+          () => "file",
         ),
       ),
     ).toBeNull();

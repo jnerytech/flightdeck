@@ -113,19 +113,39 @@ describe("rule-risk: a rule that names a folder covers what is inside it (issue 
   const folder: PathKind = () => "dir";
   const file: PathKind = () => "file";
 
-  test("a folder on disk, or a path that ends with a slash, is refused: a credential can be inside", () => {
+  test("a folder on disk, a path not there yet, or a path that ends with a slash, is refused: a credential can be inside, now or once it is made", () => {
+    expect(ruleLevel("Write", "//proj/new", classify, missing)).toBe("any");
+    expect(ruleLevel("Read", "//proj/new.ts", classify, missing)).toBe("any");
     expect(ruleLevel("Read", "//proj/src", classify, folder)).toBe("any");
     expect(ruleLevel("Edit", "src", classify, folder)).toBe("any");
     expect(ruleLevel("Grep", "src", classify, folder)).toBe("any");
     expect(ruleLevel("Read", "//proj/src/", classify, missing)).toBe("any");
   });
 
-  test("an exact file, or a path not there yet, keeps the level of the path itself", () => {
+  test("only a file on disk keeps the level of the path itself", () => {
     expect(ruleLevel("Read", "//proj/src/a.ts", classify, file)).toBe("low");
     expect(ruleLevel("Read", "//proj/src/a.ts", classify, onDisk)).toBe("low");
-    expect(ruleLevel("Write", "//proj/new.ts", classify, missing)).toBe(
-      ruleLevel("Write", "//proj/new.ts", classify, file),
+    expect(ruleLevel("Read", "//proj/README.md", classify, onDisk)).toBe("low");
+  });
+
+  test("pathKinds looks up at most 32 paths, never a network path, and a look-up that hangs counts as a folder", async () => {
+    let asked = 0;
+    const many = Array.from({ length: 33 }, (_, i) => `f${i}.ts`);
+    const counted = await pathKinds(many, "/proj", "/home/me", async () => {
+      asked++;
+      return "file";
+    });
+    expect(asked).toBe(32);
+    expect([counted("f0.ts"), counted("f32.ts")]).toEqual(["file", "dir"]);
+    const unc = await pathKinds(
+      ["//server/share/x", "\\\\server\\share\\x"],
+      "/proj",
+      "/home/me",
+      async () => "file",
     );
+    expect([unc("//server/share/x"), unc("\\\\server\\share\\x")]).toEqual(["dir", "dir"]);
+    const hung = await pathKinds(["a.ts"], "/proj", "/home/me", () => new Promise(() => {}), 5);
+    expect(hung("a.ts")).toBe("dir");
   });
 
   test("pathKinds looks each path up from the request's folder and the home, and a path it did not look up counts as a folder", async () => {

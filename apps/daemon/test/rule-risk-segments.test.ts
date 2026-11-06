@@ -6,8 +6,8 @@ import { type ClassifyCall, type PathKind, ruleLevel } from "../src/permissions/
 const classify: ClassifyCall = (_tool, input) =>
   Object.values(input).some((v) => typeof v === "string" && credential(v)) ? "high" : "low";
 
-// What is on disk does not matter here: each path is read as itself, never as a folder (#395).
-const notThere: PathKind = () => "missing";
+// What is on disk does not matter here: each path is read as a file on disk (#395).
+const notThere: PathKind = () => "file";
 const level = (content: string, tool = "Write") => ruleLevel(tool, content, classify, notThere);
 
 describe("rule-risk: a wildcard inside a directory or file name (issue #435)", () => {
