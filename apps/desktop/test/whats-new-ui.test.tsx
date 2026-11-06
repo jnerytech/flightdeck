@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ReleaseNote } from "@flightdeck/protocol";
+import { seedDemoHosts } from "../src/demo/boot.ts";
 import { chooseFromAccountMenu } from "./account-menu.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -9,6 +10,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { WHATS_NEW_KEY } = await import("../src/lib/whats-new.ts");
+const { App } = await import("../src/ui/App.tsx");
 const { Sidebar } = await import("../src/ui/Sidebar.tsx");
 const { WhatsNewDialog } = await import("../src/components/whatsnew/whats-new-dialog.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
@@ -202,5 +204,24 @@ describe("whats-new-ui: the account menu entry and its dot (issue #125)", () => 
     expect(trigger()?.getAttribute("aria-label") ?? "").not.toContain("new release notes");
     await chooseFromAccountMenu("What's new");
     expect(opened()).toBe(1);
+  });
+});
+
+describe("whats-new-ui: in the app (issue #125)", () => {
+  test("What's new in the account menu opens the notes over the app, and Close returns to it", async () => {
+    // One host that never answers: with no host at all the app shows the add-host form instead.
+    const mem = memoryPlatform(false, "en");
+    seedDemoHosts(mem.win.localStorage, mem.tokens, [
+      { id: "h1", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+    ]);
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    store.releaseNotes = (async () => ({ kind: "ready", releases: [note("v1")] })) as never;
+    render(<App store={store} />);
+    await act(async () => {});
+    expect(screen.queryByRole("dialog", { name: "What's new" })).toBeNull();
+    await chooseFromAccountMenu("What's new");
+    expect(screen.queryByRole("dialog", { name: "What's new" })).not.toBeNull();
+    await press("Close");
+    expect(screen.queryByRole("dialog", { name: "What's new" })).toBeNull();
   });
 });
