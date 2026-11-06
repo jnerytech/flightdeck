@@ -920,6 +920,18 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
       );
     });
 
+    test("when GitHub refuses to start the full run, it says how to start one by hand", async () => {
+      const f = fake({
+        ...stacked,
+        history: ["head3", "bump2"],
+        mainRuns: { head3: [pushGreen], bump2: [pushGreen] },
+        fail: /^workflow run/,
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.gitWrites).toEqual([]);
+      expect(f.out()).toContain("start one (gh workflow run ci.yml --ref main -f only=all)");
+    });
+
     test("a failed partial run on HEAD is never skipped over, and nothing is started", async () => {
       const failed = { id: 3, event: "push", status: "completed", conclusion: "failure" };
       const f = fake({ ...stacked, mainRuns: { head3: [failed], bump2: [released] } });

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { ciPlan, FULL, planOutputs, selectionBase } from "../lib/ci-paths.ts";
+import { ciPlan, FULL, planOutputs, selectionBase, WINDOWS_SPLIT_ABOVE } from "../lib/ci-paths.ts";
 
 /**
  * #264: a pull request runs only the jobs its paths need; main, a run by hand and a diff that
@@ -170,6 +170,15 @@ describe("ci-paths: the rules", () => {
       1,
     );
     expect(ciPlan("schedule", ["docs/TDD.md"]).windowsShards).toBe(3);
+  });
+
+  test("a selection above 300 test files takes the three Windows shards, so a PR on a widely imported file never runs ~1000 files in one job (#483, #444)", () => {
+    expect(WINDOWS_SPLIT_ABOVE).toBe(300);
+    const hub = ["apps/desktop/src/lib/app-store.ts"];
+    expect(ciPlan(PR, hub, [], 1021).windowsShards).toBe(3);
+    expect(ciPlan(PR, hub, [], 301).windowsShards).toBe(3);
+    expect(ciPlan(PR, hub, [], 300).windowsShards).toBe(1);
+    expect(ciPlan(PR, hub).windowsShards).toBe(1);
   });
 
   test("the plan becomes one GitHub output per job group", () => {

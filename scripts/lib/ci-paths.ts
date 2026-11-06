@@ -49,7 +49,15 @@ const SCRIPTS = /^scripts\//;
 const E2E =
   /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
 
-export function ciPlan(event: string, changed: string[] | null, removed: string[] = []): CiPlan {
+/** Above this many selected test files a PR's Windows tests take three shards (#444): stub. */
+export const WINDOWS_SPLIT_ABOVE = 0;
+
+export function ciPlan(
+  event: string,
+  changed: string[] | null,
+  removed: string[] = [],
+  selected = 0,
+): CiPlan {
   // A PR and a push to main plan by their paths (#444); the schedule and a run by hand run all.
   if ((event !== "pull_request" && event !== "push") || changed === null) return { ...FULL };
   const any = (re: RegExp) => changed.some((path) => re.test(path));
