@@ -887,7 +887,6 @@ export const en: Dictionary = {
     hostSimple: "Simple",
     hostLocked: "{host}: locked to its mode",
     versionDiffers: "{host}: different version",
-    versionTitle: "flightdeckd {daemon}, app {app}",
   },
   needsYou: {
     title: "Needs you",

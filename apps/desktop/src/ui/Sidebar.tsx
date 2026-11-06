@@ -17,6 +17,7 @@ import {
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { IconTip } from "@/components/feedback/icon-tip";
+import { HostVersionTip, hostVersionText } from "@/components/hosts/host-version";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
@@ -338,10 +339,15 @@ export function Sidebar(
   );
   /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
   const hereHost = props.route?.name === "host" ? props.route.host : null;
+  const versionOf = (host: HostView) =>
+    hostVersionText(t, host.hostInfo?.daemonVersion, APP_VERSION);
   const hostsList = collapsed ? (
     <div className="rail-hosts">
       {state.hosts.map((host) => (
-        <IconTip key={host.id} label={host.name}>
+        <IconTip
+          key={host.id}
+          label={[host.name, versionOf(host)].filter((part) => part !== null).join(" · ")}
+        >
           <button
             type="button"
             aria-label={t("sidebar.openHost", { host: host.name })}
@@ -363,21 +369,23 @@ export function Sidebar(
     <ul className="host-list">
       {state.hosts.map((host) => (
         <li key={host.id} className="group host-row">
-          <button
-            type="button"
-            className={cn(
-              ITEM,
-              "min-w-0 flex-1",
-              hereHost === host.id &&
-                "nav-active bg-sidebar-accent font-medium text-sidebar-foreground",
-            )}
-            aria-current={hereHost === host.id ? "page" : undefined}
-            aria-label={t("sidebar.openHost", { host: host.name })}
-            onClick={() => go({ name: "host", host: host.id })}
-          >
-            <HostDot host={host} t={t} />
-            <span className="min-w-0 flex-1 truncate">{host.name}</span>
-          </button>
+          <HostVersionTip text={versionOf(host)}>
+            <button
+              type="button"
+              className={cn(
+                ITEM,
+                "min-w-0 flex-1",
+                hereHost === host.id &&
+                  "nav-active bg-sidebar-accent font-medium text-sidebar-foreground",
+              )}
+              aria-current={hereHost === host.id ? "page" : undefined}
+              aria-label={t("sidebar.openHost", { host: host.name })}
+              onClick={() => go({ name: "host", host: host.id })}
+            >
+              <HostDot host={host} t={t} />
+              <span className="min-w-0 flex-1 truncate">{host.name}</span>
+            </button>
+          </HostVersionTip>
           {host.hostInfo?.ui?.mode === "simple" && (
             <span data-slot="host-mode-badge" className="host-mode-badge">
               {t("sidebar.hostSimple")}
@@ -409,14 +417,7 @@ export function Sidebar(
               role="img"
               aria-label={t("sidebar.versionDiffers", { host: host.name })}
               className="size-3.5 shrink-0 text-status-needs-you"
-            >
-              <title>
-                {t("sidebar.versionTitle", {
-                  daemon: host.hostInfo.daemonVersion,
-                  app: APP_VERSION,
-                })}
-              </title>
-            </CircleAlert>
+            />
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

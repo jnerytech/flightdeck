@@ -884,7 +884,6 @@ export const ptBR = {
     hostSimple: "Simples",
     hostLocked: "{host}: travado no seu modo",
     versionDiffers: "{host}: versão diferente",
-    versionTitle: "flightdeckd {daemon}, app {app}",
   },
   needsYou: {
     title: "Precisa de você",
