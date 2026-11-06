@@ -15,8 +15,8 @@ import {
   opencodeEnv,
   type PermissionRule,
 } from "./opencode-config.ts";
-import type { RunResult } from "./opencode-discovery.ts";
 import { CONFIG_FILES, findingText, globalConfigDir, type ScopeResult } from "./opencode-scope.ts";
+import { type PrivateServer, ServeFailed } from "./opencode-serve.ts";
 
 export const PREFLIGHT_CACHE_MS = 10 * 60_000;
 
@@ -25,10 +25,12 @@ export interface PreflightDeps {
   version: string;
   /** The session's environment, before the OpenCode variables. */
   env: Record<string, string>;
-  run: (
-    argv: string[],
-    opts: { cwd: string; env: Record<string, string>; timeoutMs: number },
-  ) => Promise<RunResult>;
+  /** Starts the one private server of a preflight (issue #243). */
+  serve: (opts: {
+    cwd: string;
+    env: Record<string, string>;
+    timeoutMs: number;
+  }) => Promise<Pick<PrivateServer, "get" | "stop">>;
   scan: () => Promise<ScopeResult>;
   now?: () => number;
   /** The executable as discovery saw it, and how it is now. */
@@ -36,9 +38,6 @@ export interface PreflightDeps {
   /** Why a preflight failed: the route and its exit code, never what OpenCode printed. */
   log?: (message: string) => void;
 }
-
-/** A check that did not answer: its route and why, with nothing of what OpenCode printed. */
-class CheckFailed extends Error {}
 
 /** OpenCode's own internal agents, which stay visible as hidden ones. */
 const INTERNAL_AGENTS = new Set(["compaction", "title", "summary"]);
@@ -128,7 +127,7 @@ export class OpenCodePreflight {
       .catch((error: unknown) => {
         if (error instanceof FlightdeckError) throw error;
         const why =
-          error instanceof CheckFailed
+          error instanceof ServeFailed
             ? error.message
             : "a check could not run, or its answer had an unexpected shape";
         this.deps.log?.(`opencode preflight failed in ${cwd}: ${why}`);
@@ -141,11 +140,14 @@ export class OpenCodePreflight {
 
   private async checks(cwd: string): Promise<string> {
     let content = JSON.stringify(opencodeConfig());
-    const [sources, agents, saved] = await Promise.all([
-      this.get(cwd, "/api/config", content),
-      this.get(cwd, "/api/agent", content),
-      this.get(cwd, "/api/permission/saved", content),
-    ]);
+    // One private server answers the three checks (issue #243), and is stopped whatever they find.
+    const [sources, agents, saved] = await this.withServer(cwd, content, (server) =>
+      Promise.all([
+        server.get("/api/config"),
+        server.get("/api/agent"),
+        server.get("/api/permission/saved"),
+      ]),
+    );
     const unexpected = unexpectedSource(list(sources), globalConfigDir(this.deps.env));
     if (unexpected) throw this.refuse("opencode_config_outranks", { what: unexpected });
     const rules = list<{ id: string; action: string; resource: string }>(saved);
@@ -162,7 +164,9 @@ export class OpenCodePreflight {
     const extra = this.extraAgents(list<AgentInfo>(agents));
     if (extra.length === 0) return content;
     content = JSON.stringify(opencodeConfig(extra));
-    const still = this.extraAgents(list<AgentInfo>(await this.get(cwd, "/api/agent", content)));
+    // The document changed, so the first server cannot answer for it: one more, for this one check.
+    const again = await this.withServer(cwd, content, (server) => server.get("/api/agent"));
+    const still = this.extraAgents(list<AgentInfo>(again));
     if (still.length > 0)
       throw this.refuse("opencode_config_outranks", { what: still[0] as string });
     return content;
@@ -186,18 +190,21 @@ export class OpenCodePreflight {
       );
   }
 
-  private async get(cwd: string, route: string, content: string): Promise<unknown> {
-    const result = await this.deps.run([this.deps.path, "api", "GET", route, "--standalone"], {
+  /** Runs `use` against a private server started with `content`, and stops it after. */
+  private async withServer<T>(
+    cwd: string,
+    content: string,
+    use: (server: Pick<PrivateServer, "get">) => Promise<T>,
+  ): Promise<T> {
+    const server = await this.deps.serve({
       cwd,
       env: opencodeEnv(this.deps.env, content),
       timeoutMs: OPENCODE_API_TIMEOUT_MS,
     });
-    if (result.exitCode !== 0) throw new CheckFailed(`${route} exited ${result.exitCode}`);
     try {
-      return JSON.parse(result.stdout) as unknown;
-    } catch {
-      // The parser's message quotes the output, which is not for logs.
-      throw new CheckFailed(`${route} answered something that is not JSON`);
+      return await use(server);
+    } finally {
+      await server.stop();
     }
   }
 

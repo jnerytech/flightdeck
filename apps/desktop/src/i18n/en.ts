@@ -2,7 +2,33 @@ import type { Dictionary } from "./index.ts";
 
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
-  nav: { back: "Back", forward: "Forward" },
+  nav: { back: "Back", forward: "Forward", overview: "Home" },
+  home: {
+    title: "Home",
+    range: "Last 7 days · all hosts",
+    spend: "Spend",
+    noBudget: "No budget set",
+    ofBudget: "{spent} of {limit} budget this month",
+    turns: "Turns",
+    turnsOk: "{n} ok",
+    turnsFailed: "{n} failed",
+    tokens: "Tokens",
+    cacheRead: "{n} cache read",
+    average: "Avg cost / turn",
+    avgTime: "Avg turn time",
+    successRate: "{rate} success rate",
+    unknown: "—",
+    openCard: "Open {card}",
+    chart: "{card}, last 7 days: {values}",
+    noHosts: "No host is connected yet.",
+    partial: "Some hosts did not answer: {hosts}.",
+    olderDaemon: "Failed turns and turn time need a daemon with the Home counters.",
+    loading: "Reading the hosts…",
+    connecting: "Connecting to your hosts…",
+    noCosts: "No cost data from {hosts}",
+    avgBasis: "Managed sessions only",
+    ready: "Home is ready.",
+  },
   hosts: {
     status: {
       online: "online",
@@ -3078,12 +3104,16 @@ export const en: Dictionary = {
     satisfied: "done",
   },
   kanban: {
+    /** An empty column's box: the word it shows, then what pressing it does (WCAG 2.5.3). */
+    emptyName: "{empty}, {action}",
     needTitle: "Give the card a title",
     card: "Card {title}",
     queued: "queued",
     waitingQuotaUntil: "waiting for the quota until {time}",
     waitingQuota: "waiting for the quota",
     addCard: "Add card",
+    addCardTo: "Add card to {column}",
+    empty: "Empty",
     boardOf: "Board of {project}",
     filter: "Filter cards",
     titleLabel: "Card title",
@@ -3421,6 +3451,7 @@ export const en: Dictionary = {
       failed: "Could not read this project's configuration.",
       sessionNotice:
         "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
+      sessionNoticeShort: "This folder is not trusted.",
       review: "Review and trust",
     },
     sessionsHint: "The sessions of every project",

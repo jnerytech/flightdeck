@@ -190,3 +190,33 @@ describe("projetos-lista-ui: the Projects overview", () => {
     expect(screen.queryByText("Nenhum projeto corresponde à busca.")).not.toBeNull();
   });
 });
+
+describe("projetos-lista-ui: the week's cost on the cards (issue #207)", () => {
+  test("the week ends on the store's today, not on the machine's clock", async () => {
+    const { store, view, asked } = setup({ costs: { h1: week("host:alfa:/work/api", 1) } });
+    store.today = () => "2026-01-10";
+    render(view());
+    await waitFor(() => expect(asked.some((a) => a.startsWith("h1:costs.summary"))).toBe(true));
+    const asking = asked.find((a) => a.startsWith("h1:costs.summary"));
+    expect(JSON.parse(asking?.split("costs.summary:")[1] ?? "{}")).toEqual({
+      from: "2026-01-04",
+      to: "2026-01-10",
+    });
+  });
+
+  test("a host that went offline and came back does not show its old cost while the new one is asked", async () => {
+    const { store, state, view } = setup({ costs: { h1: week("host:alfa:/work/api", 4.25) } });
+    const view2 = render(view());
+    await waitFor(() => expect(card("api").textContent).toContain("US$ 4.25"));
+    const offline = {
+      ...state,
+      hosts: state.hosts.map((h) => (h.id === "h1" ? { ...h, status: "offline" } : h)),
+    } as never as typeof state;
+    view2.rerender(view(offline));
+    // The next answer never arrives: the old figure must not stand in for it.
+    store.hostCommand = (() => new Promise(() => {})) as never;
+    view2.rerender(view(state));
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
+    expect(card("api").textContent).not.toContain("US$ 4.25");
+  });
+});
