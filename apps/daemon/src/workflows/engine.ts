@@ -12,6 +12,7 @@ import type {
 } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { BoardEvent } from "../board/columns.ts";
+import { refArg } from "../board/ref-arg.ts";
 import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
@@ -155,7 +156,7 @@ export class WorkflowEngine {
   }
 
   async list(project: Project): Promise<WorkflowInfo[]> {
-    const sources = await workflowSources(project.path, project.baseBranch);
+    const sources = await workflowSources(project.path, refArg(project.baseBranch));
     return sources.map((source) => this.info(project.id, source));
   }
 
@@ -947,7 +948,7 @@ export class WorkflowEngine {
   // -- catalog --------------------------------------------------------------
 
   private async source(project: Project, name: string): Promise<WorkflowSource> {
-    const sources = await workflowSources(project.path, project.baseBranch);
+    const sources = await workflowSources(project.path, refArg(project.baseBranch));
     const source = sources.find((s) => s.name === name);
     if (!source) {
       throw new FlightdeckError(

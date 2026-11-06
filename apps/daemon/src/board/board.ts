@@ -1311,7 +1311,7 @@ export class Board {
       // A card that waited for blockers starts from the base as it is after they merged.
       const from =
         card.blockedBy.length > 0
-          ? await freshBase(project.path, project.baseBranch)
+          ? await freshBase(project.path, refArg(project.baseBranch))
           : { ref: project.baseBranch, notice: null };
       const added = await addWorktree(project.path, card.title, from.ref, limit);
       worktree = added.path;
@@ -1501,7 +1501,7 @@ export class Board {
         "the card has no worktree yet",
         "card_no_worktree",
       );
-    return cardDiff(card.worktreePath, this.getProject(card.projectId).baseBranch);
+    return cardDiff(card.worktreePath, refArg(this.getProject(card.projectId).baseBranch));
   }
 
   /**
@@ -1619,7 +1619,7 @@ export class Board {
   /** Rebases the card's branch on its base; a conflict aborts and leaves the worktree as it was. */
   async updateFromBase(id: string): Promise<Card> {
     const { card, worktree } = this.idleWorktree(id);
-    await rebaseOnto(worktree, this.getProject(card.projectId).baseBranch);
+    await rebaseOnto(worktree, refArg(this.getProject(card.projectId).baseBranch));
     return this.changed(id);
   }
 
@@ -1653,7 +1653,7 @@ export class Board {
       );
     }
     const project = this.getProject(card.projectId);
-    const base = project.baseBranch;
+    const base = refArg(project.baseBranch);
     await assertLocalBranch(project.path, base);
     const { ahead } = await aheadBehind(worktree, base);
     if (ahead === 0)
@@ -1661,7 +1661,7 @@ export class Board {
         base,
       });
     const text = message ?? (mode === "squash" ? card.title : `Merge ${branch}: ${card.title}`);
-    await mergeIntoBase(project.path, base, branch, mode, text);
+    await mergeIntoBase(project.path, base, refArg(branch), mode, text);
     // The merge is in the base now and cannot be undone: nothing below may leave the card out of
     // Concluído. What could not be cleaned up stays on the card as a notice.
     await this.closeRuns(id);
