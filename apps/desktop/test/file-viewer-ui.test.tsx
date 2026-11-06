@@ -112,6 +112,10 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     await press("Open in its app");
     await press("Show in folder");
     expect(local.opened).toEqual(["open /r/README.md", "reveal /r/README.md"]);
+    // A file the host refused to read offers neither.
+    await press("logo.png");
+    expect(screen.queryByText("The file logo.png is not text.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Open in its app" }) === null).toBe(true);
     cleanup();
     const remote = host(false);
     await show(remote.store);
