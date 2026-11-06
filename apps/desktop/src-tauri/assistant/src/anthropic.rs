@@ -120,11 +120,11 @@ pub fn answer(reply: &Reply, key: &Secret, model: &str) -> Result<Answer, Refusa
 /// What an error reply means, with its request id and its message (the key taken out).
 pub fn refusal(reply: &Reply, key: &Secret) -> Refusal {
     let value: Value = serde_json::from_str(&reply.body).unwrap_or(Value::Null);
-    let detail = value["error"]["message"].as_str().map(|message| crate::scrub(message, key));
+    let detail = value["error"]["message"].as_str().map(|message| crate::detail(message, key));
     let request_id = reply
         .header("request-id")
         .or_else(|| value["request_id"].as_str())
-        .map(|id| crate::scrub(id, key));
+        .and_then(|id| crate::token(&crate::scrub(id, key)));
     let retry_after = reply.header("retry-after");
     let spend = detail.as_deref().is_some_and(|d| d.to_ascii_lowercase().contains("spend limit"));
     let reason = match (reply.status, retry_after) {
@@ -144,8 +144,11 @@ pub fn refusal(reply: &Reply, key: &Secret) -> Refusal {
     if let Some(detail) = detail {
         refused = refused.with("detail", detail);
     }
-    if let (429, Some(after)) = (reply.status, retry_after) {
-        refused = refused.with("retryAfter", crate::scrub(after, key));
+    if reply.status == 413 {
+        refused = refused.with("max", guard::MAX_INPUT_CHARS.to_string());
+    }
+    if let (429, Some(after)) = (reply.status, retry_after.and_then(|after| crate::token(&crate::scrub(after, key)))) {
+        refused = refused.with("retryAfter", after);
     }
     refused
 }
@@ -198,6 +201,9 @@ pub async fn run(
     call: &Call<'_>,
     lookup: Lookup<'_>,
 ) -> Result<Answer, Refusal> {
+    guard::check_model(call.model)?;
+    guard::check_input(call.system)?;
+    guard::check_input(call.user)?;
     let reply =
         guard::send(client, endpoint, "/v1/messages", Method::Post(body(call, lookup)), key, &headers()).await?;
     answer(&reply, key, call.model)
