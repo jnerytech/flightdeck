@@ -877,6 +877,11 @@ export const DiffFile = z.object({
   tooLarge: z.boolean().optional(),
   /** With `tooLarge`: the size of the file (a new one) or of its diff text, in bytes. */
   bytes: z.number().int().nonnegative().optional(),
+  /**
+   * The file may hold a credential (the daemon's list, issue #449): it is listed with no lines and
+   * no counts, and the daemon never reads a new one (issue #509). Absent from an older daemon.
+   */
+  secret: z.boolean().optional(),
   hunks: z.array(DiffHunk),
 });
 export type DiffFile = z.infer<typeof DiffFile>;

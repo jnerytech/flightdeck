@@ -1584,6 +1584,8 @@ export const en: Dictionary = {
     review_undo_nothing:
       "There is nothing to undo in {path}: the revert can be undone for 30 seconds only.",
     review_path_link: "The path {path} points outside the repository.",
+    review_file_secret:
+      "The file {path} may hold a credential: Flightdeck does not show or change it.",
     review_comment_empty: "The comment is empty: write something.",
     review_side_missing: "The file {path} does not exist on that side of the diff.",
     review_lines_outside: "The lines {start}–{end} are outside {path}.",
@@ -2127,6 +2129,8 @@ export const en: Dictionary = {
     },
     binary: "Binary",
     binaryNote: "Binary file: no diff.",
+    secret: "Hidden",
+    secretNote: "Hidden: this file may hold a credential, so Flightdeck does not show its content.",
     tooLarge: "Too large",
     tooLargeNote:
       "Too large to show here ({size}). Open it in the editor or show it in its folder.",
