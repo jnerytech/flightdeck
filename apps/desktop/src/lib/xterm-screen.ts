@@ -20,6 +20,7 @@ export interface XtermTerminal {
   selectAll(): void;
   hasSelection(): boolean;
   getSelection(): string;
+  onSelectionChange(listener: () => void): { dispose(): void };
   onData(listener: (data: string) => void): { dispose(): void };
   onResize(listener: (size: { cols: number; rows: number }) => void): { dispose(): void };
   attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean): void;
@@ -60,6 +61,8 @@ export interface XtermScreenOptions {
   fontSize: number;
   fontFamily: string;
   clipboard: { copy(text: string): Promise<void>; read(): Promise<string> };
+  /** The host is Windows: Ctrl+C copies when there is a selection (stub: not read yet). */
+  windows?: boolean;
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;

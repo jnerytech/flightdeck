@@ -14,7 +14,9 @@ const THEME = {
   selectionBackground: "#333333",
 };
 
-function setup(selection = "", clipboardFails = false) {
+function setup(initial = "", clipboardFails = false, windows = false) {
+  let selection = initial;
+  let onSelection: () => void = () => {};
   const log: string[] = [];
   const clip: string[] = [];
   const inputs: string[] = [];
@@ -45,6 +47,10 @@ function setup(selection = "", clipboardFails = false) {
     paste: (text) => void log.push(`paste:${text}`),
     hasSelection: () => selection !== "",
     getSelection: () => selection,
+    onSelectionChange: (listener) => {
+      onSelection = listener;
+      return { dispose: () => void log.push("off-selection") };
+    },
     onData: (listener) => {
       onData = listener;
       return { dispose: () => void log.push("off-data") };
@@ -107,6 +113,7 @@ function setup(selection = "", clipboardFails = false) {
         return "pasted";
       },
     },
+    windows,
     onInput: (data) => void inputs.push(data),
     onResize: (cols, rows) => void resizes.push([cols, rows]),
     onSearch: () => void searches++,
@@ -142,6 +149,16 @@ function setup(selection = "", clipboardFails = false) {
     announce: (resultIndex: number, resultCount: number) => announce({ resultIndex, resultCount }),
     searchOff,
     typed: (data: string) => onData(data),
+    /** The person selects: xterm has the text and says it changed. */
+    select: (text: string) => {
+      selection = text;
+      onSelection();
+    },
+    /** The program redraws the selected rows: xterm drops the selection and says it changed. */
+    lose: () => {
+      selection = "";
+      onSelection();
+    },
     resized: (cols: number, rows: number) => onResize({ cols, rows }),
   };
 }
@@ -197,6 +214,57 @@ describe("terminal-ui: the xterm screen", () => {
     expect(without.clip).toEqual([]);
   });
 
+  test("a selection the program's redraw took away can still be copied: the last one is kept until the person types", async () => {
+    const s = setup();
+    s.select("abc");
+    s.lose();
+    expect(s.screen.hasSelection()).toBe(true);
+    s.screen.copy();
+    await Promise.resolve();
+    expect(s.clip).toEqual(["copy:abc"]);
+    expect(s.press("C")).toBe(false);
+    await Promise.resolve();
+    expect(s.clip).toEqual(["copy:abc", "copy:abc"]);
+    s.typed("l");
+    expect(s.screen.hasSelection()).toBe(false);
+    s.screen.copy();
+    await Promise.resolve();
+    expect(s.clip).toHaveLength(2);
+    expect(s.inputs).toEqual(["l"]);
+  });
+
+  test("a new selection replaces the kept one, and the live one wins over it", async () => {
+    const s = setup();
+    s.select("old");
+    s.select("new");
+    s.lose();
+    s.screen.copy();
+    await Promise.resolve();
+    expect(s.clip).toEqual(["copy:new"]);
+    s.select("live");
+    s.screen.copy();
+    await Promise.resolve();
+    expect(s.clip).toEqual(["copy:new", "copy:live"]);
+  });
+
+  test("on Windows Ctrl+C copies when there is a selection and goes to the process (SIGINT) when there is none", async () => {
+    const withSelection = setup("abc", false, true);
+    expect(withSelection.press("c", true, false)).toBe(false);
+    await Promise.resolve();
+    expect(withSelection.clip).toEqual(["copy:abc"]);
+    const without = setup("", false, true);
+    expect(without.press("c", true, false)).toBe(true);
+    await Promise.resolve();
+    expect(without.clip).toEqual([]);
+  });
+
+  test("off Windows Ctrl+C always goes to the process, even over a selection", async () => {
+    const s = setup("abc", false, false);
+    expect(s.press("c", true, false)).toBe(true);
+    await Promise.resolve();
+    expect(s.clip).toEqual([]);
+  });
+
   test("Ctrl+Shift+V pastes the clipboard through xterm; Ctrl+Shift+F asks for the search; the rest passes", async () => {
     const s = setup();
     expect(s.press("V")).toBe(false);
@@ -226,7 +294,7 @@ describe("terminal-ui: the xterm screen", () => {
   test("dispose releases the listeners and xterm", () => {
     const s = setup();
     s.screen.dispose();
-    expect(s.log).toEqual(["off-data", "off-resize", "dispose"]);
+    expect(s.log).toEqual(["off-selection", "off-data", "off-resize", "dispose"]);
   });
 
   test("a clipboard that refuses to copy or to be read leaves the terminal as it was", async () => {
