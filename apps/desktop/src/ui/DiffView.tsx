@@ -1,7 +1,7 @@
 import type { DiffFile, ReviewComment } from "@flightdeck/protocol";
 import type { ReactNode } from "react";
-import { useT } from "@/i18n/context";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "../lib/format-bytes.ts";
 import { type DiffRow, diffRows, type Selection, selected } from "../lib/review.ts";

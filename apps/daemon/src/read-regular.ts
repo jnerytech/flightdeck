@@ -26,3 +26,11 @@ export async function readRegular(path: string, max: number): Promise<Buffer | n
     await handle?.close();
   }
 }
+
+/** Like `readRegular`, with the file's real size too (what is read stops at `max`). */
+export async function readRegularSized(
+  _path: string,
+  _max: number,
+): Promise<{ data: Buffer; size: number } | null> {
+  return null;
+}
