@@ -34,6 +34,8 @@ const SHARD = /^([1-9]\d*)\/([1-9]\d*)$/;
 const USAGE =
   "usage: bun run test:shards -- plan|run <i>/<n> [--tier <tier>,...] [--files <list>] [--junit <file>] | record <junit.xml>...";
 const BUN_TEST = ["--config=bunfig.area.toml", "test", "--timeout=15000"];
+/** The most characters of file arguments one bun test gets (#483): stub. */
+export const ARG_BUDGET = 8000;
 
 /** The test files `bun test` runs: `*.test.*`, `*_test.*`, `*.spec.*` and `*_spec.*`, never the mods'. */
 export function testFiles(tracked: string[]): string[] {
