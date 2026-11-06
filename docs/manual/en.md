@@ -2727,7 +2727,9 @@ tab, with no SSH.
   can drop a selection before you reach **Copy**: the last selection stays copyable until you
   type. When the program takes the mouse for itself, hold `Shift` while you drag to select.
   `Shift+Enter` adds a new line in a Claude Code prompt instead of sending it (the same as
-  `Alt+Enter`). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  `Alt+Enter`). If grey blocks of an old screen stay behind in Claude Code's side panel, that is
+  Claude Code leaving cells uncleared (the same happens in other terminals): `Ctrl+L` or resizing
+  the pane makes it repaint. Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
   in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
   the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
   closes. Links in the output open in the browser (`http` and `https` only). The font is the

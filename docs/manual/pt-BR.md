@@ -2725,7 +2725,9 @@ numa aba, sem SSH.
   Claude Code) pode soltar uma seleção antes de você chegar em **Copiar**: a última seleção
   continua copiável até você digitar. Quando o programa toma o mouse para si, segure `Shift` ao
   arrastar para selecionar. `Shift+Enter` adiciona uma nova linha no prompt do Claude Code em vez
-  de enviá-lo (o mesmo que `Alt+Enter`). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  de enviá-lo (o mesmo que `Alt+Enter`). Se blocos cinza de uma tela antiga ficarem no painel
+  lateral do Claude Code, é o Claude Code deixando células sem limpar (acontece também em outros
+  terminais): `Ctrl+L` ou redimensionar o painel faz ele redesenhar. Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
