@@ -1230,6 +1230,7 @@ export const ptBR = {
     central_confirm: "Mexer no ~/.claude/settings.json do host pede a sua confirmação.",
     permission_request_closed: "O pedido de permissão {id} não está aberto.",
     hold_required: "Um pedido de risco alto só é aprovado segurando o botão.",
+    input_changed: "Um pedido é aprovado como foi feito: a resposta muda o que ele executa.",
     update_needs_service:
       "O daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>.",
     update_signature_failed: "Não foi possível verificar a atualização: {why}",
@@ -1298,6 +1299,8 @@ export const ptBR = {
       "O daemon ainda não verificou se há atualização: tente de novo daqui a pouco.",
     update_manifest_no_binary: "A versão {version} não tem binário para {key}.",
     perm_rule_other_tool: "Essa regra é de outra ferramenta ({tool}).",
+    perm_rule_too_broad:
+      "Essa regra também permitiria usos de {tool} de risco {level}, mais do que este pedido: estreite-a.",
     perm_rule_content_invalid: "O conteúdo da regra não vale: uma linha, até 500 caracteres.",
     perm_destination_denied: "O destino {destination} não é permitido para uma regra.",
     perm_mode_denied: "O modo {mode} não pode ser definido por uma resposta.",
