@@ -72,6 +72,13 @@ describe("git-ref: a branch name is the one git accepts, and never an option", (
     expect(isBranchName("@{-1}")).toBe(false);
   });
 
+  test("a name that begins with @ is refused although git accepts it: az reads @file as a file", () => {
+    for (const name of ["@/tmp/x", "@x", "@{x", "@@"]) expect(isBranchName(name)).toBe(false);
+    // An @ later in the name is an ordinary character.
+    expect(isBranchName("wip@home")).toBe(true);
+    expect(isBranchName("a/@b")).toBe(true);
+  });
+
   test("a name that begins with a dash is refused whatever follows it", () => {
     for (const name of ["-x", "--x", "-", "--output=/tmp/x", "-O/tmp/o", "-é"]) {
       expect(isBranchName(name)).toBe(false);

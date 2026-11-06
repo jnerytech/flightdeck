@@ -57,6 +57,52 @@ describe("git-args-ratchet: no git call gives a base or a branch to git unguarde
     expect(calls('await git(repo, "log", "--format=%s (%h)", ref);')).toHaveLength(1);
   });
 
+  test("a base under another name, in a ternary, a cast or a concatenation is flagged too", () => {
+    for (const arg of [
+      "targetBranch",
+      "baseRef",
+      "against",
+      "startPoint",
+      "upstream",
+      "ok ? base : main",
+      "(base as string)",
+      "base + suffix",
+      "x ?? base",
+    ]) {
+      expect(calls(`await git(repo, "rebase", ${arg});`)).toHaveLength(1);
+    }
+    expect(calls('await git(repo, "rebase", "origin/" + base);')).toEqual([]);
+  });
+
+  test("an array of arguments is read element by element, and a spread of something not constant is flagged", () => {
+    expect(calls('await git(cwd, ["rebase", base]);')).toHaveLength(1);
+    expect(calls('await git(cwd, ["update-ref", "-d", row.ref]);')).toHaveLength(1);
+    expect(calls('await git(cwd, ["rebase", refArg(base)]);')).toEqual([]);
+    expect(calls("await git(repo, ...args);")).toHaveLength(1);
+    expect(calls("await git(repo, ...baseArgs);")).toHaveLength(1);
+    expect(calls('await git(repo, ...RAW_PATHS, "diff");')).toEqual([]);
+  });
+
+  test("a url or a glob inside a template, or a parenthesis inside a string, does not hide the call after it", () => {
+    expect(calls('const u = `https://x/${a}`; await git(r, "rebase", base);')).toHaveLength(1);
+    expect(
+      calls('const g = `src/*`;\nawait git(r, "rebase", base);\nconst h = `*/`;'),
+    ).toHaveLength(1);
+    expect(calls('await git(r, "log", "--grep=)", base);')).toHaveLength(1);
+    expect(calls('await git(r, "log", "--grep=(", base);')).toHaveLength(1);
+  });
+
+  test("a comma or a name inside a string is not an argument", () => {
+    expect(calls('await git(r, "log", "--format=a, base");')).toEqual([]);
+    expect(calls('await git(r, "log", "--author=branch");')).toEqual([]);
+  });
+
+  test("a call it cannot read is an error, not a pass", () => {
+    expect(() => unguardedGitCalls('await git(repo, "rebase", base', "broken.ts")).toThrow(
+      "broken.ts:1",
+    );
+  });
+
   test("the daemon's sources hold no unguarded call", () => {
     expect(
       unguardedInTree(join(ROOT, "apps/daemon/src")).map((f) => `${f.file}:${f.line}`),

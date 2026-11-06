@@ -54,6 +54,17 @@ describe("git-arg-guard: a base branch that looks like an option never reaches g
     });
   }
 
+  test("a base stored before the upgrade that git would read as a refspec is refused by freshBase", async () => {
+    const origin = gitRepoWithOrigin();
+    for (const base of ["+x:refs/heads/victim", "a:b", "a..b"]) {
+      await expect(freshBase(origin.repo, base)).rejects.toMatchObject({
+        reason: "branch_invalid",
+      });
+    }
+    // The detached default and a real branch still go through.
+    expect((await freshBase(origin.repo, "main")).ref).toBe("main");
+  });
+
   test("a real base still works: ahead and behind of main against itself is 0 and 0", async () => {
     const { repo } = gitRepo();
     expect(await aheadBehind(repo, "main")).toEqual({ ahead: 0, behind: 0 });
