@@ -47,27 +47,7 @@
         },
         {
           "action": "read",
-          "resource": "*.env",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.ssh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.aws/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.config/gh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.claude/.credentials.json",
+          "resource": "*/id_*",
           "effect": "ask"
         },
         {
@@ -77,7 +57,142 @@
         },
         {
           "action": "read",
-          "resource": "*/.flightdeck/config.json",
+          "resource": "*/.npmrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/_netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pypirc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.git-credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pgpass",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.vault-token",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.boto",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.s3cfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.my.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mylogin.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.htpasswd",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraformrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.dockercfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/auth.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/wallet.dat",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/authorized_keys",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.bash_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.zsh_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.psql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mysql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.python_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.node_repl_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.rediscli_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.sqlite_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/fish_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/consolehost_history.txt",
           "effect": "ask"
         },
         {
@@ -92,7 +207,267 @@
         },
         {
           "action": "read",
-          "resource": "*/id_*",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pfx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.p12",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ppk",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ovpn",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keystore",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.jks",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.kdbx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keytab",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate.backup",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gnupg/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.kube/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.azure/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.oci/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml/*",
           "effect": "ask"
         },
         {
@@ -122,27 +497,7 @@
         },
         {
           "action": "read",
-          "resource": "*.env",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.ssh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.aws/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.config/gh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.claude/.credentials.json",
+          "resource": "*/id_*",
           "effect": "ask"
         },
         {
@@ -152,7 +507,142 @@
         },
         {
           "action": "read",
-          "resource": "*/.flightdeck/config.json",
+          "resource": "*/.npmrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/_netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pypirc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.git-credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pgpass",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.vault-token",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.boto",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.s3cfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.my.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mylogin.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.htpasswd",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraformrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.dockercfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/auth.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/wallet.dat",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/authorized_keys",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.bash_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.zsh_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.psql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mysql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.python_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.node_repl_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.rediscli_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.sqlite_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/fish_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/consolehost_history.txt",
           "effect": "ask"
         },
         {
@@ -167,7 +657,267 @@
         },
         {
           "action": "read",
-          "resource": "*/id_*",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pfx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.p12",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ppk",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ovpn",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keystore",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.jks",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.kdbx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keytab",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate.backup",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gnupg/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.kube/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.azure/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.oci/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml/*",
           "effect": "ask"
         },
         {
@@ -240,27 +990,7 @@
         },
         {
           "action": "read",
-          "resource": "*.env",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.ssh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.aws/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.config/gh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.claude/.credentials.json",
+          "resource": "*/id_*",
           "effect": "ask"
         },
         {
@@ -270,7 +1000,142 @@
         },
         {
           "action": "read",
-          "resource": "*/.flightdeck/config.json",
+          "resource": "*/.npmrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/_netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pypirc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.git-credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pgpass",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.vault-token",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.boto",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.s3cfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.my.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mylogin.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.htpasswd",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraformrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.dockercfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/auth.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/wallet.dat",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/authorized_keys",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.bash_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.zsh_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.psql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mysql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.python_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.node_repl_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.rediscli_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.sqlite_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/fish_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/consolehost_history.txt",
           "effect": "ask"
         },
         {
@@ -285,7 +1150,267 @@
         },
         {
           "action": "read",
-          "resource": "*/id_*",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pfx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.p12",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ppk",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ovpn",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keystore",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.jks",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.kdbx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keytab",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate.backup",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gnupg/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.kube/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.azure/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.oci/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml/*",
           "effect": "ask"
         },
         {
@@ -359,27 +1484,7 @@
         },
         {
           "action": "read",
-          "resource": "*.env",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.ssh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.aws/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.config/gh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.claude/.credentials.json",
+          "resource": "*/id_*",
           "effect": "ask"
         },
         {
@@ -389,7 +1494,142 @@
         },
         {
           "action": "read",
-          "resource": "*/.flightdeck/config.json",
+          "resource": "*/.npmrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/_netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pypirc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.git-credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pgpass",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.vault-token",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.boto",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.s3cfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.my.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mylogin.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.htpasswd",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraformrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.dockercfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/auth.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/wallet.dat",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/authorized_keys",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.bash_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.zsh_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.psql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mysql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.python_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.node_repl_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.rediscli_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.sqlite_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/fish_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/consolehost_history.txt",
           "effect": "ask"
         },
         {
@@ -404,7 +1644,267 @@
         },
         {
           "action": "read",
-          "resource": "*/id_*",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pfx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.p12",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ppk",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ovpn",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keystore",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.jks",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.kdbx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keytab",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate.backup",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gnupg/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.kube/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.azure/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.oci/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml/*",
           "effect": "ask"
         },
         {
@@ -434,27 +1934,7 @@
         },
         {
           "action": "read",
-          "resource": "*.env",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.ssh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.aws/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.config/gh/*",
-          "effect": "ask"
-        },
-        {
-          "action": "read",
-          "resource": "*/.claude/.credentials.json",
+          "resource": "*/id_*",
           "effect": "ask"
         },
         {
@@ -464,7 +1944,142 @@
         },
         {
           "action": "read",
-          "resource": "*/.flightdeck/config.json",
+          "resource": "*/.npmrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/_netrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pypirc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.git-credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.pgpass",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.vault-token",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.boto",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.s3cfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.my.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mylogin.cnf",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.htpasswd",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraformrc",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.dockercfg",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/auth.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/wallet.dat",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/authorized_keys",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.bash_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.zsh_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.psql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.mysql_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.python_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.node_repl_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.rediscli_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.sqlite_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/fish_history",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/consolehost_history.txt",
           "effect": "ask"
         },
         {
@@ -479,7 +2094,267 @@
         },
         {
           "action": "read",
-          "resource": "*/id_*",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pfx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.p12",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ppk",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.ovpn",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keystore",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.jks",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.kdbx",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.keytab",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.tfstate.backup",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gnupg/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.kube/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.azure/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.oci/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.docker/config.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gcloud/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/rclone/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/helm/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/doctl/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/glab-cli/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/containers/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.cargo/credentials.toml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.m2/settings-security.xml/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gradle/gradle.properties/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.terraform.d/credentials.tfrc.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.gem/credentials/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/github cli/hosts.yml/*",
           "effect": "ask"
         },
         {

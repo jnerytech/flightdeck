@@ -880,10 +880,15 @@ live; the list is the project's, so a session of another project never shows her
   its state dot, health mark and menu, a **+** to add one, then **SSH**, the saved SSH destinations).
   The open page has a filled row and a bar at its left edge, items with sub-pages end in a chevron,
   recent features carry a **Beta** or **New** badge that goes away by itself from the version the
-  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38), and **Manual** at the foot opens this manual in
-  the browser (its icon says it leaves the app). A group with nothing to offer is not drawn, the
+  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
   folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
+- At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
+  account (its email and plan, read from the host's account card; the rail shows only its initial)
+  opens a menu with **Settings**, **Toggle theme**, **Manual** and, for each host whose `gh` is signed
+  in to GitHub with a login the app can remove, **Sign out of GitHub** (after a confirmation; a login
+  that comes from the daemon's environment is removed there). With several hosts the account of the
+  open host is shown, and how many accounts there are when they differ; an offline host shows none.
 - **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
   each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
   failed), **Tokens** (with what came from the cache) and the **average turn** (cost, time and
@@ -2642,14 +2647,19 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   | `Ctrl+T` | new tab, on the palette |
   | `Ctrl+W` | close the tab |
   | `Ctrl+Shift+T` | reopen the last closed tab (the last 20 are kept) |
-  | `Ctrl+Tab` / `Ctrl+Shift+Tab` | next and previous tab |
+  | `Ctrl+Tab` (hold `Ctrl`, press `Tab` again to go down) / `Ctrl+Shift+Tab` (up) | opens the switcher on the most recently used tabs of the focused area, on the previous one; release `Ctrl` to go to the one selected, `Esc` or leaving the window to cancel. A quick tap goes to the previous tab, and another tap comes back |
   | `Ctrl+1`…`Ctrl+9` | go to that tab (`Ctrl+9` is the last one) |
   | `Ctrl+Shift+PageUp` / `PageDown` | move the active tab left or right |
   | `Ctrl+Shift+←` / `→` (on a focused tab) | move that tab left or right; a screen reader is told its new place |
   | `Ctrl+\` | split the window or join the areas |
 
-  In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself: use
-  the buttons there.
+  Settings, Appearance, **Ctrl+Tab order** chooses **Most recently used** (the default) or
+  **Tab order**, where `Ctrl+Tab` and `Ctrl+Shift+Tab` step to the next and previous tab as before.
+  The switcher is a list for screen readers (the selected tab is announced); the list is not kept
+  between starts.
+
+  In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W`, `Ctrl+Shift+T` and `Ctrl+Tab` for
+  itself: use the buttons there.
 - **Kept between starts:** the tabs, which ones are pinned, the active tab, the split and the
   divider come back when the app opens again. Each tab comes back on its screen, without its
   history. The host form is never kept, since it can hold a token. A tab of a host that is not

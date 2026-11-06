@@ -874,10 +874,15 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   adicionar, e depois **SSH**, os destinos SSH salvos). A página aberta tem a linha preenchida e uma
   barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
   **Beta** ou **Novo** que some sozinho na versão em que foi marcado para acabar (o Beta de
-  Equipes acaba na 0.39, o Novo de Conversas na 0.38), e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
-  app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
+  Equipes acaba na 0.39, o Novo de Conversas na 0.38). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
   uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
+- No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
+  abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
+  a inicial) abre um menu com **Configurações**, **Alternar tema**, **Manual** e, para cada host cujo
+  `gh` está conectado ao GitHub com um login que o app pode remover, **Sair do GitHub** (após uma
+  confirmação; um login que vem do ambiente do daemon é removido lá). Com vários hosts aparece a
+  conta do host aberto, e quantas contas há quando diferem; um host offline não mostra nenhuma.
 - O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
   os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
   há), **Turnos** (ok e com falha), **Tokens** (com o que veio do cache) e o **turno médio** (custo,
@@ -2640,14 +2645,19 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
   | `Ctrl+T` | aba nova, na paleta |
   | `Ctrl+W` | fecha a aba |
   | `Ctrl+Shift+T` | reabre a última fechada (guarda as últimas 20) |
-  | `Ctrl+Tab` / `Ctrl+Shift+Tab` | próxima e anterior |
+  | `Ctrl+Tab` (segure `Ctrl` e aperte `Tab` de novo para descer) / `Ctrl+Shift+Tab` (subir) | abre o seletor com as abas mais recentes da área com o foco, na anterior; solte o `Ctrl` para ir à selecionada, `Esc` ou sair da janela cancela. Um toque rápido vai à aba anterior, e outro toque volta |
   | `Ctrl+1`…`Ctrl+9` | vai para aquela aba (`Ctrl+9` é a última) |
   | `Ctrl+Shift+PageUp` / `PageDown` | move a aba ativa para a esquerda ou a direita |
   | `Ctrl+Shift+←` / `→` (numa aba com o foco) | move essa aba para a esquerda ou a direita; o leitor de tela ouve a nova posição |
   | `Ctrl+\` | divide a tela ou junta as áreas |
 
-  Na entrada web do demo, o Chromium fica com `Ctrl+T`, `Ctrl+W` e `Ctrl+Shift+T`: lá, use os
-  botões.
+  Em Configurações, Aparência, **Ordem do Ctrl+Tab** escolhe **Mais recente primeiro** (o padrão)
+  ou **Ordem das abas**, em que `Ctrl+Tab` e `Ctrl+Shift+Tab` vão para a próxima e a anterior como
+  antes. O seletor é uma lista para leitores de tela (a aba selecionada é anunciada); a lista não é
+  guardada entre execuções.
+
+  Na entrada web do demo, o Chromium fica com `Ctrl+T`, `Ctrl+W`, `Ctrl+Shift+T` e `Ctrl+Tab`:
+  lá, use os botões.
 - **Guardadas entre aberturas:** as abas, quais estão fixas, a aba ativa, a divisão e o divisor
   voltam quando o app abre de novo. Cada aba volta na sua tela, sem o histórico. O formulário de
   host nunca é guardado, porque pode ter um token. A aba de um host que ainda não conectou mostra

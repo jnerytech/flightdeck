@@ -147,6 +147,7 @@ import {
   type UiMode,
 } from "./simple-mode.ts";
 import { savePayload } from "./ssh.ts";
+import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
   isLocalUrl,
@@ -852,6 +853,7 @@ export class AppStore {
         return () => document.removeEventListener("visibilitychange", fn);
       },
     });
+    this.tabOrder = new TabOrderController(platform.storage);
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
@@ -925,6 +927,8 @@ export class AppStore {
   readonly cacheTimer: CacheTimerSettings;
   /** One 1-second clock for every countdown on screen. */
   readonly clock: SharedClock;
+  /** How Ctrl+Tab orders the tabs (issue #148). */
+  readonly tabOrder: TabOrderController;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */

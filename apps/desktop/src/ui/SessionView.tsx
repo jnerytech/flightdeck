@@ -389,6 +389,11 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   };
   const pin = (box: HTMLElement) => {
     box.scrollTop = box.scrollHeight;
+    // Issue #456: the end, but never past a pending request's top. When the conversation is about
+    // as tall as the card (a short window, a long header), the card's question comes first.
+    const card = box.querySelector("[data-request-id]");
+    const cut = card ? box.getBoundingClientRect().top - card.getBoundingClientRect().top : 0;
+    if (cut > 0) box.scrollTop -= cut;
     pinnedTop.current = box.scrollTop;
   };
   const lastFirst = useRef(firstSeq);

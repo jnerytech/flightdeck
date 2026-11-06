@@ -1207,6 +1207,11 @@
   padding: 0.125rem;
 }
 
+/* A select in a Settings row: one width for all of them, so the rows line up. */
+@utility setting-select {
+  width: 11rem;
+}
+
 @utility header-crumbs {
   display: flex;
   min-width: 0;

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -260,14 +261,11 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(slot("Teams")).toBeNull();
   });
 
-  test("the manual is an external link, with its icon, and it opens the manual of the app's language", async () => {
+  test("the manual is in the account menu, and it opens the manual of the app's language", async () => {
     const { view, opened } = setup();
     render(view());
-    const manual = screen.getByRole("button", { name: "Manual" });
-    expect(manual.querySelector("[data-slot='nav-external']")).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(manual);
-    });
+    expect(screen.queryByRole("button", { name: "Manual" })).toBeNull();
+    await chooseFromAccountMenu("Manual");
     expect(opened).toHaveLength(1);
     expect(opened[0]).toMatch(/docs\/manual\/en\.md$/);
   });

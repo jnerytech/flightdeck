@@ -5,7 +5,6 @@ import {
   ChevronRight,
   CircleAlert,
   CircleX,
-  ExternalLink,
   Lock,
   type LucideProps,
   MoreHorizontal,
@@ -20,6 +19,7 @@ import { Children, type ReactNode, useId, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
+import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,8 @@ import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { requiredMissing } from "../lib/deps-summary.ts";
+import { footAccount } from "../lib/foot-account.ts";
+import { type GithubHost, githubSignedIn } from "../lib/github-session.ts";
 import type { HostNameError } from "../lib/host-name.ts";
 import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
@@ -83,11 +85,11 @@ function NavButton(
     chevron?: boolean;
     /** A recent feature: a small badge after the label, already translated ("Beta", "New"). */
     badge?: string;
-    /** The item leaves the app (the manual): its icon says so. */
-    external?: boolean;
   }>,
 ) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
+  // A badge is announced with the name, so the label alone would read without it.
+  const badgeLabel = props.badge ? props.label : undefined;
   const badgeId = useId();
   return (
     <IconTip label={props.collapsed ? railName : undefined}>
@@ -102,9 +104,7 @@ function NavButton(
           (props.active || props.strong) && "text-sidebar-foreground",
           props.active && "nav-active bg-sidebar-accent font-medium",
         )}
-        aria-label={
-          props.name ?? (props.collapsed ? railName : props.badge ? props.label : undefined)
-        }
+        aria-label={props.name ?? (props.collapsed ? railName : badgeLabel)}
         disabled={props.disabled ?? false}
         onClick={props.onClick}
       >
@@ -134,13 +134,6 @@ function NavButton(
         {!props.collapsed && props.chevron && (
           <ChevronRight
             data-slot="nav-chevron"
-            aria-hidden="true"
-            className="size-3.5 shrink-0 text-sidebar-foreground/50"
-          />
-        )}
-        {!props.collapsed && props.external && (
-          <ExternalLink
-            data-slot="nav-external"
             aria-hidden="true"
             className="size-3.5 shrink-0 text-sidebar-foreground/50"
           />
@@ -282,6 +275,9 @@ export function Sidebar(
     state.loopAlerts.length +
     watchAlerts(state).length;
   const pinned = hubRows(state).filter((row) => row.pinned && !row.archived);
+  // Who is signed in to GitHub is asked when the account menu opens, not on every render.
+  const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);
+  const [signingOut, setSigningOut] = useState<GithubHost | null>(null);
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.sidebarFolded());
   const toggle = (group: SidebarGroup) => {
@@ -297,6 +293,8 @@ export function Sidebar(
     if (navHost) go(build(navHost.id));
   };
 
+  /** The Claude account the foot shows: the open host's, how many differ, none from an offline host. */
+  const foot = footAccount(state, props.route);
   /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
   const hereHost = props.route?.name === "host" ? props.route.host : null;
   const hostsList = collapsed ? (
@@ -693,22 +691,23 @@ export function Sidebar(
           chevron
           onClick={() => go({ name: "settings" })}
         />
-        <NavButton
+        <AccountFooter
+          account={foot.account}
+          many={foot.many}
+          githubHosts={githubHosts}
+          onOpen={() => void githubSignedIn(props.store, state.hosts).then(setGithubHosts)}
+          onSignOutGithub={(hostId) =>
+            setSigningOut(githubHosts.find((host) => host.id === hostId) ?? null)
+          }
           collapsed={collapsed}
-          icon={<BookOpen aria-hidden="true" className={icon} />}
-          label={t("sidebar.manual")}
-          external
-          onClick={() =>
+          t={t}
+          go={go}
+          onToggleTheme={props.onToggleTheme}
+          onOpenManual={() =>
             void props.store.openLink(
               `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${t.lang === "pt-BR" ? "pt-BR" : "en"}.md`,
             )
           }
-        />
-        <NavButton
-          collapsed={collapsed}
-          icon={<SunMoon aria-hidden="true" className={icon} />}
-          label={t("sidebar.theme")}
-          onClick={props.onToggleTheme}
         />
         {props.onSimpleMode && (
           <NavButton
@@ -724,6 +723,20 @@ export function Sidebar(
           name={renaming.name}
           onRename={(name) => props.onRenameHost(renaming.id, name)}
           onClose={() => setRenaming(null)}
+        />
+      )}
+      {signingOut && (
+        <ConfirmDialog
+          message={t("sidebarAccount.signOutGithubConfirm", { host: signingOut.name })}
+          confirmLabel={t("sidebarAccount.signOutGithub")}
+          destructive
+          onConfirm={() => {
+            const host = signingOut;
+            setSigningOut(null);
+            setGithubHosts((hosts) => hosts.filter((h) => h.id !== host.id));
+            void props.store.hostCommand(host.id, "github.logout", {});
+          }}
+          onCancel={() => setSigningOut(null)}
         />
       )}
       {removing && (

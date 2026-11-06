@@ -6,6 +6,18 @@
 export const ptBR = {
   inFlight: { stillWorking: "Ainda trabalhando…" },
   nav: { back: "Voltar", forward: "Avançar", overview: "Início" },
+  sidebarAccount: {
+    menu: "Menu da conta de {name}",
+    none: "Conta Claude",
+    unread: "Ainda não lida",
+    many: "{n} contas",
+    manyHint: "Uma por host",
+    plan: "Plano {plan}",
+    signOutGithub: "Sair do GitHub",
+    signOutGithubHost: "Sair do GitHub ({host})",
+    signOutGithubConfirm:
+      "Sair do GitHub em {host}? As sessões de lá perdem o acesso aos seus repositórios até você entrar de novo.",
+  },
   home: {
     title: "Início",
     range: "Últimos 7 dias · todos os hosts",
@@ -958,6 +970,8 @@ export const ptBR = {
     cacheTimer: "Contador do cache do prompt",
     cacheTtl: "Duração do cache",
     cacheTtls: { fiveMinutes: "5 minutos", oneHour: "1 hora" },
+    tabOrder: "Ordem do Ctrl+Tab",
+    tabOrders: { mru: "Mais recente primeiro", sequential: "Ordem das abas" },
   },
   cacheTimer: {
     expires: "Cache do prompt expira em {time}",
@@ -2282,6 +2296,7 @@ export const ptBR = {
     preview: "prévia",
     newTab: "Nova aba",
     badge: { "needs-you": "Precisa de você", running: "Rodando", unread: "Não lida" },
+    switcher: { title: "Trocar de aba", position: "{title}, {n} de {total}" },
     all: "Todas as abas",
     scrollLeft: "Rolar as abas para a esquerda",
     scrollRight: "Rolar as abas para a direita",
@@ -3285,7 +3300,7 @@ export const ptBR = {
     goSettings: "Ir para Configurações",
     tabNew: "Nova aba",
     tabClose: "Fechar a aba",
-    tabNext: "Próxima aba",
+    tabRecent: "Ir para a aba anterior (segure Ctrl e aperte Tab para percorrer)",
     tabNumber: "Ir para a aba 1 a 9",
     listNext: "Próxima linha",
     listPrevious: "Linha anterior",
