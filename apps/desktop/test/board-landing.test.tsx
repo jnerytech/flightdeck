@@ -80,6 +80,7 @@ describe("board-landing: the Board screen of a host is a grid of project cards",
       api: [
         "Backlog 4, In progress 2, Needs you 1, Done 9.",
         "2 live sessions, 1 session needs you.",
+        "No activity yet, Cost this week: —.",
       ].filter((part) => !described(api).includes(part)),
       docs: [described(docs).includes("No cards yet."), described(docs).includes("need you")],
       opened,
