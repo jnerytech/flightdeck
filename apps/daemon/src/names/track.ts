@@ -32,6 +32,17 @@ export interface TrackOptions {
   personaOf?: (sessionId: string) => string | null;
 }
 
+/**
+ * What the history indexer calls with the name Claude Code gave a session (issue #605). Stub for
+ * the red test.
+ */
+export function adoptTitles(
+  _names: Names,
+  _manager: Pick<TrackOptions["manager"], "list">,
+): (claudeSessionId: string, title: string, kind: "custom" | "agent") => void {
+  return () => {};
+}
+
 /** Naming is auxiliary: a failure must not break the event of the session; the next one tries again. */
 function safely(name: () => void): void {
   try {

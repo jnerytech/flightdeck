@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Names } from "../src/names/names.ts";
+import { adoptTitles } from "../src/names/track.ts";
 import { EventStore } from "../src/store/event-store.ts";
 
 const setup = () => {
@@ -89,5 +90,23 @@ describe("nomes-sessao-titulo: the name a session has in Claude Code (issue #605
     expect(names.get("s2")?.display).toBe("fd-qa");
     expect(names.resolve("fd-qa")).toBe("s1");
     expect(names.get("s2")?.aliases).toEqual(["flightdeck-geral-2"]);
+  });
+});
+
+describe("nomes-sessao-titulo: what the history indexer hands to Names (issue #605)", () => {
+  const sessions = [{ id: "fd-1", claudeSessionId: "claude-1" }];
+
+  test("a terminal session is named by its Claude id", () => {
+    const { names } = setup();
+    adoptTitles(names, { list: () => [] as never })("s1", "fd-qa", "custom");
+    expect(names.get("s1")?.display).toBe("fd-qa");
+  });
+
+  test("a session Flightdeck started is named by its own id, not by the Claude one", () => {
+    const { names } = setup();
+    names.assign("fd-1", { project: "flightdeck" });
+    adoptTitles(names, { list: () => sessions as never })("claude-1", "fd-qa", "custom");
+    expect(names.get("fd-1")?.display).toBe("fd-qa");
+    expect(names.get("claude-1")).toBeNull();
   });
 });
