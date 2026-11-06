@@ -46,17 +46,19 @@ function rows(recap: SessionRecap, question: string | undefined, t: T): Array<[s
  * Phase 30: the short summary of a session (what was asked and done, the files, the cost and the
  * open question), built by the host from the transcript. Nothing from a host that cannot give one.
  */
-export function RecapPanel(props: {
-  store: AppStore;
-  hostId: string;
-  claudeSessionId: string;
-  /** The pending request, when the session waits for you. */
-  question?: string;
-  /** Changes when the session moves on, so the summary is read again. */
-  stamp?: string;
-  /** How long to wait before asking again while the host has no summary yet. */
-  retryMs?: number;
-}) {
+export function RecapPanel(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    claudeSessionId: string;
+    /** The pending request, when the session waits for you. */
+    question?: string;
+    /** Changes when the session moves on, so the summary is read again. */
+    stamp?: string;
+    /** How long to wait before asking again while the host has no summary yet. */
+    retryMs?: number;
+  }>,
+) {
   const t = useT();
   const { store, hostId, claudeSessionId, question, stamp, retryMs = RETRY_MS } = props;
   const host = useStoreSlice(store, HOSTS).hosts.find((h) => h.id === hostId);
@@ -123,9 +125,10 @@ export function RecapPanel(props: {
           </span>
         )}
       </div>
-      {!open ? null : lines.length === 0 ? (
+      {open && lines.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("recap.empty")}</p>
-      ) : (
+      )}
+      {open && lines.length > 0 && (
         <Stack gap={1} className="rows-scroll">
           {lines.map(([label, text]) => (
             <p key={label} className="break-words text-sm">

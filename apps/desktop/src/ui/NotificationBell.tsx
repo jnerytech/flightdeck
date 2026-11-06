@@ -16,12 +16,14 @@ import { parseRequestLink } from "../lib/request-link.ts";
 import type { Route } from "../lib/router.ts";
 
 /** The bell in the top bar: the unread rows and the notification center. */
-export function NotificationBell(props: {
-  store: AppStore;
-  inbox: InboxEntry[];
-  t: T;
-  go(route: Route): void;
-}) {
+export function NotificationBell(
+  props: Readonly<{
+    store: AppStore;
+    inbox: InboxEntry[];
+    t: T;
+    go(route: Route): void;
+  }>,
+) {
   const { store, inbox, t } = props;
   const [open, setOpen] = useState(false);
   const unread = unreadRows(inbox, new Date());

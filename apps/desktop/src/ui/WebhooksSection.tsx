@@ -42,7 +42,7 @@ const EMPTY: Draft = { name: "", type: "slack", url: "", signing: "", hostScope:
  * Phase 30: where the app sends a message when something needs you. A target's address is a vault
  * secret: the list shows only the host it sends to, and an empty address field on edit keeps it.
  */
-export function WebhooksSection(props: { store: AppStore }) {
+export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   const t = useT();
   const { store } = props;
   const hosts = useStoreSlice(store, HOSTS).hosts;

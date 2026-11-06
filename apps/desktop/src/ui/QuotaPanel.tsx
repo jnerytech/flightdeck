@@ -16,12 +16,14 @@ const METER_HOT =
   "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-error [&::-moz-meter-bar]:bg-status-error";
 
 /** One host's card: its name and the two windows with a bar; with costs (phase 8) each window has the projection in its tooltip. */
-function HostQuota(props: {
-  store: AppStore;
-  quota: AppState["quota"];
-  /** The hosts that share the account: the card shows the reading of the first one that has it. */
-  hosts: HostView[];
-}) {
+function HostQuota(
+  props: Readonly<{
+    store: AppStore;
+    quota: AppState["quota"];
+    /** The hosts that share the account: the card shows the reading of the first one that has it. */
+    hosts: HostView[];
+  }>,
+) {
   const { store } = props;
   const { t } = store.i18n;
   const host = props.hosts.find((h) => props.quota[h.id]) ?? (props.hosts[0] as HostView);
