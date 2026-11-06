@@ -18,3 +18,13 @@
   `bun test`.
 - **Cost.** A skipped test proves nothing while it is skipped. The cap and the open-issue check keep
   that a short, visible state, not a place to leave a test.
+- **Security review.** It found no high or medium. Two lows were fixed:
+  - A skip on any receiver (`test.concurrent.skip`, `each(...).skip`) now counts and needs the note.
+    It is the same `.skip(` the audit marks, so none escapes the cap or the issue check.
+  - The gh read retries once.
+
+  Lows kept as they are:
+  - A note inside a string still counts.
+  - Any open issue satisfies the check, so a human reviews which issue is cited.
+  - `skipIf(<other condition>)` is not counted, as before.
+  - Closing a noted issue turns CI red until the skip comes out, and that is the point.
