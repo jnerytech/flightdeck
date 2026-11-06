@@ -4972,6 +4972,7 @@ export * from "./activity.ts";
 export * from "./assistant.ts";
 export * from "./assistant-prompts.ts";
 export * from "./compare.ts";
+export * from "./git-ref.ts";
 export * from "./pairing.ts";
 export * from "./personas.ts";
 export * from "./question.ts";
