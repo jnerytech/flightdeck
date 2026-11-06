@@ -137,10 +137,8 @@ describe("sleep-main: the config and what the host keeps awake", () => {
         }>("session.list", {})
       )?.sessions.find((s) => s.id === id);
     let status = "";
-    for (let i = 0; i < 200 && status !== "idle"; i++) {
-      status = (await listed())?.status ?? "";
-      if (status !== "idle") await Bun.sleep(10);
-    }
+    // Each round asks the daemon over the wire, which paces the loop: no guessed time.
+    for (let i = 0; i < 2000 && status !== "idle"; i++) status = (await listed())?.status ?? "";
     expect(status).toBe("idle");
     await h.client.data("session.meta.set", {
       claudeSessionId: (await listed())?.claudeSessionId,
