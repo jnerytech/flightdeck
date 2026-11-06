@@ -1856,6 +1856,8 @@ export const ptBR = {
     accept: "Aceitar",
     acceptAnyway: "Aceitar mesmo assim",
     discard: "Descartar",
+    edit: "Editar",
+    retry: "Tentar de novo",
     dismiss: "Dispensar",
     stale: "O texto mudou enquanto isto era escrito.",
   },

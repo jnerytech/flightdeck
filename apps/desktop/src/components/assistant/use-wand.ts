@@ -28,6 +28,12 @@ export interface Wand {
   cancel(): void;
   accept(): void;
   discard(): void;
+  /** Makes the proposal a text the person edits before Accept. */
+  edit(): void;
+  /** What the person typed into the edited proposal. */
+  setProposal(text: string): void;
+  /** Sends the same text again. */
+  retry(): void;
   /** Ctrl or Cmd+I (and Esc while there is something to close) in the field: true when the wand took the key. */
   onKeyDown(event: React.KeyboardEvent): boolean;
 }
@@ -63,8 +69,7 @@ export function useWand(
   const empty = value.trim() === "";
   const needsText = empty && !spec.generates;
 
-  const start = () => {
-    if (state.kind === "running" || state.kind === "preview" || needsText || gateBusy) return;
+  const launch = (text: string) => {
     const provider = controller.resolve(binding.fieldHostId);
     if (!provider) {
       controller.askForSetup();
@@ -73,12 +78,12 @@ export function useWand(
     }
     const requestId = crypto.randomUUID();
     run.current = { requestId, provider };
-    dispatch({ type: "start", requestId, text: value });
+    dispatch({ type: "start", requestId, text });
     controller
       .run({
         requestId,
         kind: binding.kind,
-        text: value,
+        text,
         ...(binding.fieldHostId ? { fieldHostId: binding.fieldHostId } : {}),
         ...(binding.cwd ? { cwd: binding.cwd } : {}),
         provider,
@@ -91,6 +96,15 @@ export function useWand(
           dispatch({ type: "fail", requestId, reason, ...(params ? { params } : {}) });
         },
       );
+  };
+  const start = () => {
+    if (state.kind === "running" || state.kind === "preview" || needsText || gateBusy) return;
+    launch(value);
+  };
+  /** The same text again, from the preview: the answer replaces the one shown. */
+  const retry = () => {
+    if (state.kind !== "preview" || gateBusy) return;
+    launch(state.original);
   };
   const cancel = () => {
     if (state.kind !== "running" || !run.current) return;
@@ -125,6 +139,9 @@ export function useWand(
     cancel,
     accept,
     discard,
+    edit: () => dispatch({ type: "edit" }),
+    setProposal: (text: string) => dispatch({ type: "proposal", text }),
+    retry,
     onKeyDown,
   };
 }
