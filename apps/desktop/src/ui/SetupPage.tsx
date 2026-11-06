@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Page, Section } from "@/components/layout/page";
 import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,16 @@ export function SetupPage(props: {
   const t = useT();
   const { store, state } = props;
   const notified = useSyncExternalStore(store.setup.subscribe, () => store.setup.notified);
+  // GitHub runs `gh auth status` on the host: it is asked about when the person opens this screen.
+  const onlineIds = state.hosts
+    .filter((host) => host.status === "online")
+    .map((host) => host.id)
+    .join(",");
+  useEffect(() => {
+    for (const id of onlineIds === "" ? [] : onlineIds.split(",")) {
+      void store.refreshSetup(id, { github: true });
+    }
+  }, [store, onlineIds]);
   const steps = setupSteps({
     hosts: state.hosts,
     projects: state.projects,

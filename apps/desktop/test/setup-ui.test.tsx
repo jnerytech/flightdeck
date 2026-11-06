@@ -354,7 +354,13 @@ describe("setup-ui: what the hosts answer (issue #164)", () => {
     expect(calls.sort()).toEqual(["hooks.status", "loadProjects"]);
     expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "installed", github: null });
     await w.store.refreshSetup("h1", { github: true });
-    expect(calls.sort()).toEqual(["github.status", "hooks.status", "hooks.status", "loadProjects"]);
+    expect(calls.sort()).toEqual([
+      "github.status",
+      "hooks.status",
+      "hooks.status",
+      "loadProjects",
+      "loadProjects",
+    ]);
     expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "installed", github: true });
     // The next connect keeps what GitHub said.
     await w.store.refreshSetup("h1");

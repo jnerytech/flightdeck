@@ -33,7 +33,7 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
       void refresh().then((next) => {
         if (next?.loggedIn) {
           setDevice(null);
-          void store.refreshSetup(host.id);
+          void store.refreshSetup(host.id, { github: true });
         }
       });
     });
@@ -51,7 +51,7 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
   const signOut = async () => {
     await store.hostCommand(host.id, "github.logout", {});
     await refresh();
-    void store.refreshSetup(host.id);
+    void store.refreshSetup(host.id, { github: true });
   };
 
   return (

@@ -2202,12 +2202,17 @@ export class AppStore {
   }
 
   /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
-  async refreshSetup(hostId: string, _options: { github?: boolean } = {}): Promise<void> {
+  /**
+   * Asks a host what the setup checklist reads: its hooks and its projects, at connect. GitHub runs
+   * `gh auth status` on the host, so it is asked only with `github` (the Setup screen, the GitHub
+   * panel); what it said last stays until then.
+   */
+  async refreshSetup(hostId: string, options: { github?: boolean } = {}): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
     if (!host || host.status !== "online") return;
     const features = host.hostInfo?.features;
     const wantsHooks = hasFeature(features, "central", false);
-    const wantsGithub = hasFeature(features, "github", false);
+    const wantsGithub = options.github === true && hasFeature(features, "github", false);
     if (hasFeature(features, "workflows", false) && this.state.projects[hostId] === undefined) {
       void this.loadProjects(hostId);
     }
@@ -2218,9 +2223,14 @@ export class AppStore {
     ]);
     // The host may have gone while it was asked.
     if (!this.state.hosts.some((h) => h.id === hostId)) return;
+    const before = this.state.setupProbes[hostId];
     const probe: SetupProbe = {
       hooks: hooks?.ok ? hooks.data.status : null,
-      github: github?.ok ? github.data.installed && github.data.loggedIn : null,
+      github: wantsGithub
+        ? github?.ok
+          ? github.data.installed && github.data.loggedIn
+          : null
+        : (before?.github ?? null),
     };
     this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
   }
