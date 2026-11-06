@@ -8,6 +8,7 @@ import {
   TeleportPackages,
   type TeleportSession,
 } from "../src/teleport/package.ts";
+import { secretLines } from "../src/teleport/secrets.ts";
 import { tempDir } from "./helpers.ts";
 
 /**
@@ -55,7 +56,9 @@ async function setup(
   const history = join(base, "projects");
   const project = join(history, "-work-app");
   await mkdir(project, { recursive: true });
-  const outside = join(base, "outside.json");
+  // Named like a transcript, so only the history-root check can refuse it.
+  await mkdir(join(base, "elsewhere"), { recursive: true });
+  const outside = join(base, "elsewhere", `${ID}.jsonl`);
   await writeFile(outside, '{"secret":"credentials"}\n');
   const file = join(project, `${ID}.jsonl`);
   const kind = options.transcript ?? "file";
@@ -66,8 +69,10 @@ async function setup(
   let ids = 0;
   const deps: TeleportDeps = {
     session: (id) => {
-      if (id !== "s1") throw new FlightdeckError("not_found", "no session", "session_not_found");
-      return { ...SESSION, ...options.session };
+      if (id !== "s1" && id !== "s2") {
+        throw new FlightdeckError("not_found", "no session", "session_not_found");
+      }
+      return { ...SESSION, id, ...options.session };
     },
     inTeam: () => options.team ?? false,
     transcriptOf: () => {
@@ -245,12 +250,20 @@ describe("teleport-package: the package is read in chunks and does not outlive i
       await reason(() => packages.read(manifest.id, "transcript", size + 1)),
       await reason(() => packages.read(manifest.id, "transcript", -1)),
     ]).toEqual(["teleport_not_found", "teleport_not_found", "request_invalid", "request_invalid"]);
+    // The refusal names what was wrong, as the app's text for it reads.
+    const params = await packages.read(manifest.id, "transcript", -1).then(
+      () => null,
+      (e: FlightdeckError) => e.params ?? null,
+    );
+    expect(params).toEqual({ field: "offset", command: "teleport.read" });
   });
 
   test("the package goes when its time is up, when it is cancelled and when the daemon starts", async () => {
     const { packages, deps, timers } = await setup();
+    // Two sessions: one package each, so the first is still there when its time runs out.
     const first = await packages.prepare("s1");
-    const second = await packages.prepare("s1");
+    const second = await packages.prepare("s2");
+    const before = (await packages.read(first.id, "transcript", 0)).eof;
     const timer = timers[0];
     timer?.fn();
     await packages.idle();
@@ -262,12 +275,13 @@ describe("teleport-package: the package is read in chunks and does not outlive i
     await writeFile(join(deps.dir, "stale", "transcript"), "old");
     await new TeleportPackages(deps).start();
     expect([
+      before,
       timer?.ms,
       expired,
       timers[1]?.live,
       left,
       await readdir(deps.dir).catch(() => ["no folder"]),
-    ]).toEqual([1_800_000, "teleport_not_found", false, [], []]);
+    ]).toEqual([true, 1_800_000, "teleport_not_found", false, [], []]);
   });
 });
 
@@ -407,5 +421,22 @@ describe("teleport-package: the code travels in the same package (#100)", () => 
       await readdir(deps.dir).catch(() => ["no folder"]),
       await reason(() => packages.read("pkg-1", "transcript", 0)),
     ]).toEqual(["teleport_stopped", ["no folder"], "teleport_not_found"]);
+  });
+});
+
+describe("teleport-package: a big transcript does not hold the daemon (#100)", () => {
+  test("the secret scan gives the event loop back between slices, and counts the same", async () => {
+    const lines = Array.from({ length: 50 }, (_, n) =>
+      n % 10 === 0 ? `key ${TOKEN}` : `line ${n}`,
+    );
+    const scan = (text: string) => (text.includes("ghp_") ? ["token"] : []);
+    let pauses = 0;
+    const paced = await secretLines(lines.join("\n"), scan, {
+      every: 64,
+      pause: async () => {
+        pauses++;
+      },
+    });
+    expect([paced, pauses > 5]).toEqual([{ lines: 5, labels: ["token"] }, true]);
   });
 });
