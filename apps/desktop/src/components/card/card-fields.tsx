@@ -1,4 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
+import { AssistField } from "@/components/assistant/assist-field";
+import type { WandBinding } from "@/components/assistant/use-wand";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
@@ -25,6 +27,8 @@ function CardTextField(
     source: string;
     multiline?: boolean;
     autoFocus?: boolean;
+    /** The wand of the field: what it writes (issue #160). */
+    assist: WandBinding;
     /** What the host keeps of a sent text (the title is trimmed). */
     stored(text: string): string;
     /** Whether the text is worth saving, besides being an edit. */
@@ -42,22 +46,34 @@ function CardTextField(
     <Field label={props.label}>
       {(control) => (
         <div className="field-with-action">
-          {props.multiline ? (
-            <Textarea
-              {...control}
-              value={value}
-              className="min-h-20 flex-1"
-              onChange={(e) => edit(e.target.value)}
-            />
-          ) : (
-            <Input
-              {...control}
-              className="flex-1"
-              value={value}
-              autoFocus={props.autoFocus === true}
-              onChange={(e) => edit(e.target.value)}
-            />
-          )}
+          <AssistField
+            binding={props.assist}
+            value={value}
+            onChange={edit}
+            t={t}
+            className="min-w-0 flex-1"
+          >
+            {(assist) =>
+              props.multiline ? (
+                <Textarea
+                  {...control}
+                  {...assist}
+                  value={value}
+                  className="min-h-20 w-full"
+                  onChange={(e) => edit(e.target.value)}
+                />
+              ) : (
+                <Input
+                  {...control}
+                  {...assist}
+                  className="w-full"
+                  value={value}
+                  autoFocus={props.autoFocus === true}
+                  onChange={(e) => edit(e.target.value)}
+                />
+              )
+            }
+          </AssistField>
           <ActionButton
             variant="outline"
             disabled={!props.savable(value) || stale || saving}
@@ -92,6 +108,8 @@ export function CardFields(
     /** Opened from the menu's Edit…: the title field takes focus. */
     edit?: boolean;
     withRoi: boolean;
+    /** Opens Settings, section Assistant (the wand found no provider). */
+    onOpenSettings(): void;
   }>,
 ) {
   const t = useT();
@@ -104,6 +122,13 @@ export function CardFields(
         label={t("cardUi.title")}
         saveLabel={t("cardUi.saveTitle")}
         source={card.title}
+        assist={{
+          controller: store.assistant,
+          kind: "card.title",
+          fieldHostId: hostId,
+          ...(card.description.trim() ? { context: { description: card.description } } : {}),
+          openSettings: props.onOpenSettings,
+        }}
         // The menu's Edit… opens the card to change it: the title is where the cursor goes.
         autoFocus={props.edit === true}
         stored={(text) => text.trim()}
@@ -114,6 +139,13 @@ export function CardFields(
         label={t("cardUi.description")}
         saveLabel={t("cardUi.saveDescription")}
         source={card.description}
+        assist={{
+          controller: store.assistant,
+          kind: "card.description",
+          fieldHostId: hostId,
+          ...(card.title.trim() ? { context: { title: card.title } } : {}),
+          openSettings: props.onOpenSettings,
+        }}
         multiline
         stored={(text) => text}
         savable={(text) => text !== card.description}
