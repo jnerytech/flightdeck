@@ -1,6 +1,8 @@
 import {
   FIND_DECORATIONS,
   type FindDecorations,
+  type FindFlags,
+  findPatternProblem,
   NEWLINE_SEQUENCE,
   type TerminalColors,
   type TerminalZoom,
@@ -36,7 +38,7 @@ export interface XtermTerminal {
   dispose(): void;
 }
 
-export interface XtermFindOptions {
+export interface XtermFindOptions extends FindFlags {
   /** Keep the current match while the text grows, as typing in a find bar does. */
   incremental?: boolean;
   /** Highlights every match and marks the current one. */
@@ -95,7 +97,12 @@ export interface XtermScreen {
   setTheme(theme: TerminalColors): void;
   setFontSize(size: number): void;
   setScreenReader(on: boolean): void;
-  find(text: string, direction: "next" | "previous", incremental?: boolean): boolean;
+  find(
+    text: string,
+    direction: "next" | "previous",
+    incremental?: boolean,
+    flags?: FindFlags,
+  ): boolean;
   clearFind(): void;
   focus(): void;
   /** The selection to the clipboard, as Ctrl+Shift+C does. */
@@ -209,8 +216,13 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       terminal.options.fontSize = fontSize;
       fit.fit();
     },
-    find: (text, direction, incremental = false) => {
-      const found = { incremental, decorations: FIND_DECORATIONS };
+    find: (text, direction, incremental = false, flags = {}) => {
+      // xterm builds the RegExp unguarded: a pattern that does not read would throw.
+      if (findPatternProblem(text, flags)) {
+        search.clearDecorations();
+        return false;
+      }
+      const found = { incremental, decorations: FIND_DECORATIONS, ...flags };
       return direction === "next" ? search.findNext(text, found) : search.findPrevious(text, found);
     },
     clearFind: () => search.clearDecorations(),
