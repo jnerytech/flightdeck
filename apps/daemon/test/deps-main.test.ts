@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
@@ -21,6 +21,19 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
     }
     const dir = tempDir("fd-deps-main-");
     const file = join(dir, "config.json");
+    // Its own home, for the daemon that reads the hooks from `~/.claude/settings.json`: the shared test
+    // home holds whatever an earlier test installed there.
+    const home = join(dir, "home");
+    mkdirSync(home);
+    const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    cleanups.push(() => {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    });
     writeFileSync(
       file,
       JSON.stringify({
@@ -33,8 +46,7 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
     );
     const daemon = await startDaemon(
       { command: "start", config: file, runtime: "fake" },
-      // Its own home: the hooks of the shared test home are whatever an earlier test left there.
-      { HOME: dir, USERPROFILE: dir },
+      {},
       { log: () => {}, error: () => {} },
       // The service manager is the real one's stand-in: no systemctl is asked.
       { serviceInstalled: async () => true, linger: async () => "on" },
