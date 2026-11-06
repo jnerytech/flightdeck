@@ -203,6 +203,60 @@ describe("sessao-rolagem-fim: coming back to a tab", () => {
     expect(screen.queryByRole("button", { name: "Ir para a última" })).not.toBeNull();
   });
 
+  test("a place restored while the content is still short survives: the browser's clamp is not the reader going to the end (#515)", async () => {
+    const first = render(view(items(20), "h/s515"));
+    const s = scroller({ scroll: 2000, client: 400, top: 300 });
+    await act(async () => void personScrolls(s.el));
+    first.unmount();
+    // A layout the browser has at mount: the content is only 500 px tall (the images and code blocks
+    // have not laid out), so it clamps any scrollTop to 100. It is there before the view mounts.
+    const layout = { scroll: 500, client: 400, top: 0 };
+    const proto = HTMLElement.prototype;
+    const saved = ["scrollHeight", "clientHeight", "scrollTop"].map(
+      (name) => [name, Object.getOwnPropertyDescriptor(proto, name)] as const,
+    );
+    const mine = (el: unknown) =>
+      (el as HTMLElement).matches?.("[tabindex='0'].overflow-y-auto") === true;
+    Object.defineProperty(proto, "scrollHeight", {
+      get() {
+        return mine(this) ? layout.scroll : 0;
+      },
+      configurable: true,
+    });
+    Object.defineProperty(proto, "clientHeight", {
+      get() {
+        return mine(this) ? layout.client : 0;
+      },
+      configurable: true,
+    });
+    Object.defineProperty(proto, "scrollTop", {
+      get() {
+        return mine(this) ? layout.top : 0;
+      },
+      set(value: number) {
+        if (mine(this)) layout.top = Math.max(0, Math.min(value, layout.scroll - layout.client));
+      },
+      configurable: true,
+    });
+    try {
+      render(view(items(20), "h/s515"));
+      const box = document.querySelector<HTMLElement>("[tabindex='0'].overflow-y-auto");
+      expect(box).not.toBeNull();
+      // The restore asked for 300 and the clamp gave 100; the browser tells the view so.
+      await act(async () => void fireEvent.scroll(box as HTMLElement));
+      // The code blocks lay out: the content is tall now.
+      layout.scroll = 2000;
+      await grow();
+      expect(layout.top).toBe(300);
+      expect(screen.queryByRole("button", { name: "Ir para a última" })).not.toBeNull();
+    } finally {
+      for (const [name, descriptor] of saved) {
+        if (descriptor) Object.defineProperty(proto, name, descriptor);
+        else delete (proto as unknown as Record<string, unknown>)[name];
+      }
+    }
+  });
+
   test("a reader who was at the end comes back to the end, even if the content grew meanwhile", async () => {
     const first = render(view(items(20), "h/s2"));
     const s = scroller({ scroll: 1000, client: 400, top: 600 });
