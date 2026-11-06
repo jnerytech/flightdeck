@@ -90,9 +90,10 @@ export function lintSpec(text: string): string[] {
   let at = 0;
   SECTIONS.forEach((name, i) => {
     const index = found.findIndex((s, k) => k >= at && s.name === name);
-    if (index < 0)
-      problems.push(`missing section: ## ${name}${i > 0 ? ` (after ## ${SECTIONS[i - 1]})` : ""}`);
-    else at = index + 1;
+    if (index < 0) {
+      const after = i > 0 ? ` (after ## ${SECTIONS[i - 1]})` : "";
+      problems.push(`missing section: ## ${name}${after}`);
+    } else at = index + 1;
   });
   const tests = found.find((s) => s.name === "Tests and criteria");
   if (tests && !tests.lines.some(({ line }) => line.trim() === HEADER)) {

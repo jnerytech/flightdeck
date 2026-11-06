@@ -42,30 +42,42 @@ export function lanePlaces(meminfo: string | null, override: string | undefined)
   return Math.min(2, Math.max(1, Math.floor(kb / (1024 * 1024) / 2.5)));
 }
 
+interface PlaceTry {
+  /** The place taken, if one was free. */
+  place: SlotEnv | undefined;
+  /** How many places the lane has open right now. */
+  open: number;
+  /** Who holds the places that were not free. */
+  holders: { holder: SlotHolder; lock: SlotEnv }[];
+}
+
+/** One pass over the lane's places: takes the first free one and names who holds the others. */
+function tryPlaces(deps: LaneDeps, text: string): PlaceTry {
+  const open = deps.places ? Math.max(1, deps.places()) : deps.locks.length;
+  const holders: PlaceTry["holders"] = [];
+  for (const lock of deps.locks.slice(0, open)) {
+    const attempt = tryAcquire(lock, text);
+    if (attempt.acquired) return { place: lock, open, holders };
+    if (attempt.holder) holders.push({ holder: attempt.holder, lock });
+  }
+  return { place: undefined, open, holders };
+}
+
 /** Runs the command once a place in the lane is free, and gives the place back after. */
 export async function runInLane(command: string[], deps: LaneDeps): Promise<number> {
   if (deps.nested) return await deps.spawn(command).wait();
   const text = command.join(" ");
   let named = false;
   for (;;) {
-    let place: SlotEnv | undefined;
-    let open = deps.locks.length;
-    const holders: { holder: SlotHolder; lock: SlotEnv }[] = [];
+    let tried: PlaceTry;
     try {
-      open = deps.places ? Math.max(1, deps.places()) : deps.locks.length;
-      for (const lock of deps.locks.slice(0, open)) {
-        const attempt = tryAcquire(lock, text);
-        if (attempt.acquired) {
-          place = lock;
-          break;
-        }
-        if (attempt.holder) holders.push({ holder: attempt.holder, lock });
-      }
+      tried = tryPlaces(deps, text);
     } catch (error) {
       // A lane that cannot be used must not stop the work: run without it.
       deps.log(`light lane: the lock cannot be used (${String(error)}); running without it`);
       return await deps.spawn(command).wait();
     }
+    const { place, open, holders } = tried;
     if (place) {
       try {
         return await deps.spawn(command).wait();

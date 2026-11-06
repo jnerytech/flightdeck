@@ -281,6 +281,49 @@ interface SessionViewProps {
   pickPath?: (done: (path: string | null) => void) => ReactNode;
 }
 
+/**
+ * The modes a session can switch to: as strict as the start mode or stricter (a start mode outside
+ * the list, bypass or auto, gets all); a host that allows bypass lets the person pick any mode.
+ */
+function modesOffered(start: string, bypassAllowed: boolean) {
+  if (bypassAllowed) return ALL_MODES;
+  const at = MODES.indexOf(start as (typeof MODES)[number]);
+  return MODES.slice(0, at < 0 ? MODES.length : at + 1);
+}
+
+/** How many messages came after the one the reader had seen (none while they are at the end). */
+function missedAfter(items: SessionViewProps["session"]["items"], awaySeq: number | null): number {
+  return awaySeq === null ? 0 : items.filter((i) => i.seq > awaySeq).length;
+}
+
+/** The slash commands as menu items: with group and description when the daemon describes them. */
+function commandItemsOf(
+  described: SessionViewProps["session"]["commands"],
+  names: SessionViewProps["session"]["slashCommands"],
+): MenuItem[] {
+  if (!described) return (names ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` }));
+  return described.map((command) => ({
+    key: `slash:${command.name}`,
+    name: `/${command.name}`,
+    ...(command.description ? { description: command.description } : {}),
+    group: GROUP_OF_KIND[command.kind],
+  }));
+}
+
+/** The snippets of the host and the commands of the session behind one `/` menu. */
+function offeredPrompts(
+  prompts: PromptSnippets | undefined,
+  slash: SessionViewProps["session"]["slashCommands"],
+  commandItems: MenuItem[],
+): PromptSnippets | undefined {
+  if (!prompts && !slash) return undefined;
+  return {
+    list: async () => [...((await prompts?.list()) ?? []), ...commandItems],
+    fill: async (key) =>
+      key.startsWith("slash:") ? `/${key.slice(6)} ` : (prompts?.fill(key) ?? ""),
+  };
+}
+
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
 export function SessionView(props: SessionViewProps) {
   const ctx = useT();
@@ -350,46 +393,25 @@ export function SessionView(props: SessionViewProps) {
     const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
     card?.scrollIntoView?.({ block: "center" });
   }, [focusRequestId, cards]);
-  const missed = awaySeq === null ? 0 : props.session.items.filter((i) => i.seq > awaySeq).length;
+  const missed = missedAfter(props.session.items, awaySeq);
+  const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
   const { session, actions } = props;
   const [text, setText] = useState("");
   const [closing, setClosing] = useState(false);
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
   const [mode, setMode] = useState<PermissionMode>(start);
-  // As strict as the start mode or stricter; a start mode outside the list (bypass, auto) gets all.
-  const at = MODES.indexOf(start as (typeof MODES)[number]);
-  const limit = at < 0 ? MODES.length : at + 1;
-  // A host that allows bypass lets the person pick any mode, looser than the start included.
-  const offeredModes = props.bypass ? ALL_MODES : MODES.slice(0, limit);
+  const offeredModes = modesOffered(start, Boolean(props.bypass));
   const [bypassAsk, setBypassAsk] = useState(false);
   const [model, setModel] = useState("");
   const slash = session.slashCommands;
   const described = session.commands;
   // A daemon that describes the commands gives each its group and its description; an older one
   // gives the names only, and the menu groups them by the shape of the name.
-  const commandItems: MenuItem[] = useMemo(
-    () =>
-      described
-        ? described.map((command) => ({
-            key: `slash:${command.name}`,
-            name: `/${command.name}`,
-            ...(command.description ? { description: command.description } : {}),
-            group: GROUP_OF_KIND[command.kind],
-          }))
-        : (slash ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` })),
-    [described, slash],
-  );
+  const commandItems = useMemo(() => commandItemsOf(described, slash), [described, slash]);
   // Typing `/` offers the snippets and the commands of the session together.
-  const offered: PromptSnippets | undefined = useMemo(
-    () =>
-      props.prompts || slash
-        ? {
-            list: async () => [...((await props.prompts?.list()) ?? []), ...commandItems],
-            fill: async (key) =>
-              key.startsWith("slash:") ? `/${key.slice(6)} ` : (props.prompts?.fill(key) ?? ""),
-          }
-        : undefined,
+  const offered = useMemo(
+    () => offeredPrompts(props.prompts, slash, commandItems),
     [props.prompts, slash, commandItems],
   );
   const latestAssistant = [...session.items]
@@ -646,9 +668,7 @@ export function SessionView(props: SessionViewProps) {
             }}
           >
             <ArrowDown aria-hidden="true" />
-            {missed === 0
-              ? t("session.jumpLatest")
-              : t(missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany", { n: missed })}
+            {missed === 0 ? t("session.jumpLatest") : t(jumpKey, { n: missed })}
           </Button>
         )}
       </div>

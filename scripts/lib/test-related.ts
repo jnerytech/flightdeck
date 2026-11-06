@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import { testArgs } from "../test/timeout.ts";
 import { coverageTargets } from "./related-coverage.ts";
+import { auditBase } from "./tdd-audit.ts";
 
 export interface Related {
   path: string;
@@ -31,13 +32,8 @@ export function resolveImport(from: string, spec: string, known: Set<string>): s
   return candidates.find((path) => known.has(path)) ?? null;
 }
 
-/** The test files to run for these changed files: themselves, plus every test that reaches one. */
-export function selectRelated(
-  changed: string[],
-  sources: Map<string, string>,
-  { direct = false }: { direct?: boolean } = {},
-): Related[] {
-  const known = new Set(sources.keys());
+/** For each tracked file, the files that import it. */
+function importersOf(sources: Map<string, string>, known: Set<string>): Map<string, string[]> {
   const importers = new Map<string, string[]>();
   for (const [path, source] of sources) {
     for (const spec of importsOf(source)) {
@@ -45,6 +41,17 @@ export function selectRelated(
       if (target) importers.set(target, [...(importers.get(target) ?? []), path]);
     }
   }
+  return importers;
+}
+
+/** The test files to run for these changed files: themselves, plus every test that reaches one. */
+export function selectRelated(
+  changed: string[],
+  sources: Map<string, string>,
+  { direct = false }: { direct?: boolean } = {},
+): Related[] {
+  const known = new Set(sources.keys());
+  const importers = importersOf(sources, known);
   // Walks the reverse graph from every changed file, remembering which one led to each file.
   const origin = new Map<string, string>();
   const queue: string[] = [];
@@ -78,6 +85,10 @@ export interface PlanDeps {
   coverageDir?: string;
   /** `--fast`: only the tests that import a changed file directly (the transitive set runs in CI). */
   fast?: boolean;
+  /** `--tier unit,component`: only the tests of these tiers (#261); the 100% gate stays in CI. */
+  tiers?: string[];
+  /** A test file's tier (lib/test-tiers.ts); undefined for a file it does not classify. */
+  tierOf?: (path: string) => string | undefined;
 }
 
 export interface Plan {
@@ -89,8 +100,20 @@ export interface Plan {
   targets?: string[];
 }
 
-export function planRelated({ base, platform, git, readFile, coverageDir, fast }: PlanDeps): Plan {
-  const ref = base ?? git(["merge-base", "HEAD", "main"])?.trim();
+export function planRelated({
+  base,
+  platform,
+  git,
+  readFile,
+  coverageDir: asked,
+  fast,
+  tiers,
+  tierOf = () => undefined,
+}: PlanDeps): Plan {
+  // A run of some tiers covers only part of a file: the 100% gate is the full run's (CI).
+  const coverageDir = tiers ? undefined : asked;
+  // The same base as tdd:audit (origin/main first); the local main only when that gives none.
+  const ref = base ?? auditBase(git) ?? git(["merge-base", "HEAD", "main"])?.trim();
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
   const label = base ?? ref.slice(0, 7);
   const changed = (git(["diff", "--name-only", `${ref}...HEAD`]) ?? "").split("\n").filter(Boolean);
@@ -101,10 +124,27 @@ export function planRelated({ base, platform, git, readFile, coverageDir, fast }
     .map((path) => `warning: ${path} affects every test, run the full suite`);
   const byImport = selectRelated(changed, sources, { direct: fast });
   const imported = new Set(byImport.map((r) => r.path));
-  const related = [
+  const selected = [
     ...byImport,
     ...selectByPath(changed, sources).filter((r) => !imported.has(r.path)),
   ].sort((a, b) => (a.path < b.path ? -1 : 1));
+  // --tier: a test with no tier still runs, never silently dropped.
+  const kept = (path: string) => {
+    const tier = tierOf(path);
+    return !tiers || tier === undefined || tiers.includes(tier);
+  };
+  const related = selected.filter((r) => kept(r.path));
+  const out = new Map<string, number>();
+  for (const r of selected.filter((r) => !kept(r.path))) {
+    const tier = tierOf(r.path) as string;
+    out.set(tier, (out.get(tier) ?? 0) + 1);
+  }
+  if (tiers && out.size > 0) {
+    const counts = [...out].map(([tier, n]) => `${tier} ${n}`).join(", ");
+    warnings.push(
+      `--tier ${tiers.join(",")}: ${selected.length - related.length} test file(s) left out (${counts}); CI runs every tier and the coverage gate`,
+    );
+  }
   const targets = coverageDir
     ? coverageTargets(changed, (path) => (sources.has(path) ? (sources.get(path) ?? null) : null))
     : undefined;

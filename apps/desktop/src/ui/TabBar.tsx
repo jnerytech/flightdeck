@@ -182,6 +182,8 @@ export function TabBar(props: {
             const Icon = ICONS[kind];
             const selected = tab.id === tabs.activeId;
             const badge = tabBadge(tab.router.current, state);
+            const badgeWords = badge ? t(`tabs.badge.${badge}`) : "";
+            const pinnedLabel = badge ? `${label}, ${badgeWords}` : label;
             const ssh = sshOf(tab, store);
             // A production server is easy to mistake for another: its tab gets a red border.
             const prod = ssh ? isProd(ssh.tags) : undefined;
@@ -212,9 +214,7 @@ export function TabBar(props: {
                   title={label}
                   aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
                   // A pinned tab shows no title, so its name is set here, with the badge's words.
-                  {...(tab.pinned
-                    ? { "aria-label": badge ? `${label}, ${t(`tabs.badge.${badge}`)}` : label }
-                    : {})}
+                  {...(tab.pinned ? { "aria-label": pinnedLabel } : {})}
                   className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60"
                   onClick={() => tabs.activate(tab.id)}
                   onDoubleClick={() => tabs.commit(tab.id)}

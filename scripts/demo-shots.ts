@@ -15,6 +15,7 @@ import { launchFirst } from "./lib/browser.ts";
 import { type Finding, KEY_REGIONS, layoutFindings } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
+import { pickVariants } from "./lib/shots-variants.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
@@ -686,142 +687,139 @@ export async function takeShots(
   log: (msg: string) => void,
   visual: VisualMode = "off",
 ): Promise<string> {
+  // All four pairs, or the one a CI job prints (SHOTS_THEME, SHOTS_LANG; #291), refused before
+  // Chrome starts when the filter keeps none.
+  const variants = pickVariants(process.env);
   const browser = await launchFirst((attempt) =>
     chromium.launch({ ...attempt, headless: true, env }),
   );
   const problems: string[] = [];
   try {
-    for (const theme of ["light", "dark"] as const) {
-      for (const lang of ["pt-BR", "en"] as const) {
-        const dir = join(SHOTS_DIR, `${theme}-${lang}`);
-        mkdirSync(dir, { recursive: true });
-        // For the comparison: the same locale, zone and scale on every machine.
-        const context = await browser.newContext({
-          viewport: { width: 1280, height: 800 },
-          ...(visual === "off"
-            ? {}
-            : {
-                reducedMotion: "reduce" as const,
-                deviceScaleFactor: 1,
-                timezoneId: "UTC",
-                locale: lang,
-              }),
-        });
-        for (const shot of shots(ids).filter((s) =>
-          s.name.includes(process.env.DEMO_SHOTS ?? ""),
-        )) {
-          const page = await context.newPage();
-          page.on("pageerror", (error) =>
-            log(`erro na página ${shot.name} ${page.url()}: ${error.stack}`),
-          );
-          // The storage is the context's: a print with no clients clears what an earlier one kept.
-          await page.addInitScript(
-            (seed) => {
-              try {
-                const keys = ["flightdeck.clients", "flightdeck.clientFilter"];
-                for (const key of [
-                  ...keys,
-                  "flightdeck.clientBudgetAlerts",
-                  "flightdeck.roi",
-                  "flightdeck.uiMode",
-                  "flightdeck.inbox",
-                ]) {
-                  localStorage.removeItem(key);
-                }
-                if (seed.simple) {
-                  localStorage.setItem(
-                    "flightdeck.uiMode",
-                    JSON.stringify({ "demo-alfa": "simple" }),
-                  );
-                }
-                if (seed.clients) {
-                  localStorage.setItem(keys[0] as string, seed.clients.clients);
-                  if (seed.clients.selected) {
-                    localStorage.setItem(keys[1] as string, seed.clients.selected);
-                  }
-                }
-                if (seed.roi) localStorage.setItem("flightdeck.roi", seed.roi);
-                if (seed.inbox) localStorage.setItem("flightdeck.inbox", seed.inbox);
-              } catch {
-                // No storage, no clients.
+    for (const { theme, lang } of variants) {
+      const dir = join(SHOTS_DIR, `${theme}-${lang}`);
+      mkdirSync(dir, { recursive: true });
+      // For the comparison: the same locale, zone and scale on every machine.
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 800 },
+        ...(visual === "off"
+          ? {}
+          : {
+              reducedMotion: "reduce" as const,
+              deviceScaleFactor: 1,
+              timezoneId: "UTC",
+              locale: lang,
+            }),
+      });
+      for (const shot of shots(ids).filter((s) => s.name.includes(process.env.DEMO_SHOTS ?? ""))) {
+        const page = await context.newPage();
+        page.on("pageerror", (error) =>
+          log(`erro na página ${shot.name} ${page.url()}: ${error.stack}`),
+        );
+        // The storage is the context's: a print with no clients clears what an earlier one kept.
+        await page.addInitScript(
+          (seed) => {
+            try {
+              const keys = ["flightdeck.clients", "flightdeck.clientFilter"];
+              for (const key of [
+                ...keys,
+                "flightdeck.clientBudgetAlerts",
+                "flightdeck.roi",
+                "flightdeck.uiMode",
+                "flightdeck.inbox",
+              ]) {
+                localStorage.removeItem(key);
               }
-            },
-            {
-              clients: shot.clients
-                ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
-                : null,
-              roi: shot.roi ? DEMO_ROI : null,
-              inbox: shot.inbox ? demoInbox(lang) : null,
-              simple: shot.simple === true,
-            },
-          );
-          const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });
-          await page.goto(`${url}?${query}`);
-          // The hosts connect and the screen loads its data.
-          await page.waitForTimeout(1500);
-          // The host nothing listens on shows as offline (hollow gray), not still connecting.
-          await page
-            .getByRole("img", { name: /^notebook: offline$/ })
-            .first()
-            .waitFor({ timeout: 8000 })
-            .catch(() => undefined);
-          await shot.prepare?.(page).catch(async (error) => {
-            await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
-            throw error;
-          });
-          // A skeleton or a busy region is a screen still loading: the print waits for the real one.
-          await page.waitForFunction(
-            (selector) => document.querySelector(selector) === null,
-            PENDING_SELECTOR,
-            { timeout: 15_000 },
-          );
-          if (visual !== "off") await stabilize(page);
-          await page.screenshot({
-            path: join(dir, `${shot.name}.png`),
-            ...(visual === "off"
-              ? {}
-              : { animations: "disabled" as const, caret: "hide" as const }),
-          });
-          // A dark print that came out light is a broken print, not a pretty one.
-          const mismatch = themeProblem(
-            theme,
-            `${theme} ${lang} ${shot.name}`,
-            await page.evaluate(pageBackground),
-          );
-          if (mismatch) problems.push(mismatch);
-          // The window never scrolls sideways (issue #103) and the key regions have room (#192): the
-          // shared guards name the culprit by its data-slot path.
-          const layout: Finding[] = await page.evaluate(layoutFindings, { regions: KEY_REGIONS });
-          for (const finding of layout) {
-            if (finding.rule === "sideways" || finding.rule.startsWith("region-")) {
-              problems.push(
-                `${theme} ${lang} ${shot.name}: ${finding.rule} ${finding.path} (${finding.detail})`,
-              );
-            }
-          }
-          // The same screen, checked for accessibility: serious and critical violations fail.
-          await page.addScriptTag({ path: AXE });
-          const found = await page.evaluate(
-            (options) =>
-              (
-                globalThis as unknown as {
-                  axe: {
-                    run(options: unknown): Promise<{ violations: AxeViolation[] }>;
-                  };
+              if (seed.simple) {
+                localStorage.setItem(
+                  "flightdeck.uiMode",
+                  JSON.stringify({ "demo-alfa": "simple" }),
+                );
+              }
+              if (seed.clients) {
+                localStorage.setItem(keys[0] as string, seed.clients.clients);
+                if (seed.clients.selected) {
+                  localStorage.setItem(keys[1] as string, seed.clients.selected);
                 }
-              ).axe
-                .run(options)
-                .then((result) => result.violations),
-            AXE_RUN_OPTIONS,
-          );
-          for (const violation of blocking(found)) {
-            problems.push(describeViolation(`${theme} ${lang} ${shot.name}`, violation));
+              }
+              if (seed.roi) localStorage.setItem("flightdeck.roi", seed.roi);
+              if (seed.inbox) localStorage.setItem("flightdeck.inbox", seed.inbox);
+            } catch {
+              // No storage, no clients.
+            }
+          },
+          {
+            clients: shot.clients
+              ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
+              : null,
+            roi: shot.roi ? DEMO_ROI : null,
+            inbox: shot.inbox ? demoInbox(lang) : null,
+            simple: shot.simple === true,
+          },
+        );
+        const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });
+        await page.goto(`${url}?${query}`);
+        // The hosts connect and the screen loads its data.
+        await page.waitForTimeout(1500);
+        // The host nothing listens on shows as offline (hollow gray), not still connecting.
+        await page
+          .getByRole("img", { name: /^notebook: offline$/ })
+          .first()
+          .waitFor({ timeout: 8000 })
+          .catch(() => undefined);
+        await shot.prepare?.(page).catch(async (error) => {
+          await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
+          throw error;
+        });
+        // A skeleton or a busy region is a screen still loading: the print waits for the real one.
+        await page.waitForFunction(
+          (selector) => document.querySelector(selector) === null,
+          PENDING_SELECTOR,
+          { timeout: 15_000 },
+        );
+        if (visual !== "off") await stabilize(page);
+        await page.screenshot({
+          path: join(dir, `${shot.name}.png`),
+          ...(visual === "off" ? {} : { animations: "disabled" as const, caret: "hide" as const }),
+        });
+        // A dark print that came out light is a broken print, not a pretty one.
+        const mismatch = themeProblem(
+          theme,
+          `${theme} ${lang} ${shot.name}`,
+          await page.evaluate(pageBackground),
+        );
+        if (mismatch) problems.push(mismatch);
+        // The window never scrolls sideways (issue #103) and the key regions have room (#192): the
+        // shared guards name the culprit by its data-slot path.
+        const layout: Finding[] = await page.evaluate(layoutFindings, { regions: KEY_REGIONS });
+        for (const finding of layout) {
+          if (finding.rule === "sideways" || finding.rule.startsWith("region-")) {
+            problems.push(
+              `${theme} ${lang} ${shot.name}: ${finding.rule} ${finding.path} (${finding.detail})`,
+            );
           }
-          await page.close();
         }
-        await context.close();
-        log(`prints ${theme} ${lang}`);
+        // The same screen, checked for accessibility: serious and critical violations fail.
+        await page.addScriptTag({ path: AXE });
+        const found = await page.evaluate(
+          (options) =>
+            (
+              globalThis as unknown as {
+                axe: {
+                  run(options: unknown): Promise<{ violations: AxeViolation[] }>;
+                };
+              }
+            ).axe
+              .run(options)
+              .then((result) => result.violations),
+          AXE_RUN_OPTIONS,
+        );
+        for (const violation of blocking(found)) {
+          problems.push(describeViolation(`${theme} ${lang} ${shot.name}`, violation));
+        }
+        await page.close();
       }
+      await context.close();
+      log(`prints ${theme} ${lang}`);
     }
   } finally {
     await browser.close();

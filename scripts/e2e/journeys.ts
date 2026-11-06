@@ -384,7 +384,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
     // Every session of the demo, then only the client's (the demo's sessions are in other projects).
     await open(c, { name: "hub" });
-    const sessions = c.page.getByRole("list").locator("li[aria-label]");
+    // The Sessions page starts with every project folded (issue #241): open them, so the rows are
+    // there to count, and count only the page's own rows (the sidebar has list items too).
+    await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
+    const sessions = c.page.getByRole("main").locator("li[aria-label]");
     await sessions.first().waitFor({ timeout: WAIT });
     const before = await sessions.count();
     const switcher = (current: string) =>
