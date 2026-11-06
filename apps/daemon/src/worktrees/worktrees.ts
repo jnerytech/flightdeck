@@ -117,6 +117,7 @@ export class Worktrees {
     const base = project.baseBranch;
     if (!base || base.startsWith("-")) return null;
     for (const ref of [`refs/heads/${base}`, `refs/remotes/${base}`]) {
+      // git-arg: both refs start with "refs/", and the base was checked not to start with "-" above
       const out = await this.opts.git(
         project.path,
         "rev-parse",
@@ -229,7 +230,8 @@ export class Worktrees {
           // The tag of each tracked file: what `assume-unchanged` or `skip-worktree` hides from status.
           git(entry.path, "ls-files", "-v", "-z"),
           baseUsable && (entry.branch === null || tipSha !== null)
-            ? git(entry.path, "rev-list", "--count", tipSha ?? "HEAD", "--not", "--remotes", base)
+            ? // git-arg: tipSha and base are commit ids git printed (baseSha resolves the project base to one)
+              git(entry.path, "rev-list", "--count", tipSha ?? "HEAD", "--not", "--remotes", base)
             : Promise.resolve(null),
           git(entry.path, "log", "-1", "--format=%ct"),
           withSize ? this.opts.size(entry.path) : Promise.resolve(null),
@@ -383,6 +385,7 @@ export class Worktrees {
       let branchKept = false;
       if (branch && last.branchSha) {
         // Deletes the ref only if it still points where it was checked; a late commit keeps it.
+        // git-arg: the ref is prefixed with "refs/heads/", and branchSha is a commit id git printed
         const deleted = await this.opts.git(
           project.path,
           "update-ref",
