@@ -45,6 +45,7 @@ const LOST = {
 function setup(
   channel?: (id: string, text: string) => boolean,
   trust?: (cwd: string) => { trusted: boolean; configRoot?: string },
+  prepare?: (cwd: string) => Promise<void>,
 ) {
   const fake = installFakeClaude([]);
   cleanups.push(fake.restore);
@@ -54,6 +55,7 @@ function setup(
     claude: () => whichOnPath("claude"),
     ...(channel ? { channel } : {}),
     ...(trust ? { trust } : {}),
+    ...(prepare ? { prepare } : {}),
   });
   return { fake, service };
 }
@@ -103,6 +105,27 @@ describe("bg-controlar: stop and restart", () => {
     const failed = await refused(() => service.respawn("7c5dcf5d"));
     expect(failed.reason).toBe("bg_cli_failed");
     expect(String(failed.params?.message)).toContain("no such session");
+  });
+});
+
+describe("bg-controlar: respawn in a folder not trusted (review of #196)", () => {
+  test("is refused: claude respawn takes no flags, so it cannot be told to leave the project's hooks and servers out", async () => {
+    const { fake, service } = setup(undefined, () => ({ trusted: false }));
+    const error = await refused(() => service.respawn("7c5dcf5d"));
+    expect(error.reason).toBe("bg_untrusted");
+    expect(cli(fake)).toEqual([]);
+  });
+
+  test("runs in a trusted folder, after the folder's boundaries were looked at", async () => {
+    const order: string[] = [];
+    const { fake, service } = setup(
+      undefined,
+      () => ({ trusted: true }),
+      async (cwd) => void order.push(`prepare ${cwd}`),
+    );
+    await service.respawn("7c5dcf5d");
+    expect(order).toEqual(["prepare /work/app"]);
+    expect(cli(fake)).toEqual([["respawn", "7c5dcf5d"]]);
   });
 });
 
@@ -167,6 +190,23 @@ describe("bg-controlar: a message", () => {
         "continue",
       ],
     ]);
+  });
+
+  test("the folder's git boundaries are looked at before a continued session is told whether it is trusted (review of #196)", async () => {
+    const order: string[] = [];
+    const { service } = setup(
+      undefined,
+      (cwd) => {
+        order.push(`decide ${cwd}`);
+        return { trusted: true };
+      },
+      async (cwd) => {
+        await Bun.sleep(5);
+        order.push(`prepare ${cwd}`);
+      },
+    );
+    await service.message("a1b2c3d4", "continue");
+    expect(order).toEqual(["prepare /work/app", "decide /work/app"]);
   });
 
   test("one with no Claude session id cannot be continued, and a claude that refuses is reported", async () => {

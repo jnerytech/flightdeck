@@ -143,6 +143,27 @@ process.exit(${code});
     expect(run.config).toBe(h.configFile);
   });
 
+  test("the folder's git boundaries are looked at before a background session is told whether it is trusted (review of #196)", async () => {
+    const order: string[] = [];
+    const { self } = stub();
+    const h = host();
+    const bg = new BgService({
+      db: new EventStore(":memory:").db,
+      claude: () => "claude",
+      start: { self, configFile: h.configFile, allowedRoots: [h.work] },
+      trust: () => {
+        order.push("decide");
+        return { trusted: true };
+      },
+      prepare: async () => {
+        await Bun.sleep(5);
+        order.push("prepare");
+      },
+    });
+    await bg.start({ cwd: h.work, prompt: "p", name: "n" });
+    expect(order).toEqual(["prepare", "decide"]);
+  });
+
   test("a folder not trusted starts without the project's hooks and servers; a worktree of a card reads the project's setup; a trusted one is left alone", async () => {
     const asked: string[] = [];
     const run = async (trust: { trusted: boolean; configRoot?: string }) => {
