@@ -86,12 +86,12 @@ describe("regras-projeto", () => {
   test("sem arquivo na raiz, a regra o cria; sessão que não é de card não escreve nada", async () => {
     const { repo, manager, store, asking, allow } = await setup();
     const { requestId } = await asking("Novo");
-    await allow(requestId, [rule("ls:*")]);
-    expect(readJson(join(repo, SETTINGS))).toEqual({ permissions: { allow: ["Bash(ls:*)"] } });
+    await allow(requestId, [rule("git status:*")]);
+    expect(readJson(join(repo, SETTINGS))).toEqual({ permissions: { allow: ["Bash(git status:*)"] } });
     const { sessionId } = await manager.create({ cwd: repo, prompt: "[bash] fora" });
     await poll(() => store.pendingPermissions(sessionId).length > 0, 3000);
-    await allow(store.pendingPermissions(sessionId)[0]?.id ?? "", [rule("pwd:*")]);
-    expect(readJson(join(repo, SETTINGS)).permissions.allow).toEqual(["Bash(ls:*)"]);
+    await allow(store.pendingPermissions(sessionId)[0]?.id ?? "", [rule("git diff:*")]);
+    expect(readJson(join(repo, SETTINGS)).permissions.allow).toEqual(["Bash(git status:*)"]);
   });
 
   test("regra aceita numa etapa agent de workflow também vai para a raiz", async () => {
@@ -105,13 +105,13 @@ describe("regras-projeto", () => {
     ctx.manager.respondPermission({
       requestId,
       decision: "allow",
-      updatedPermissions: [rule("make:*")],
+      updatedPermissions: [rule("npm run build:*")],
     });
     await ctx.board.rulesWritten();
     expect(
       existsSync(join(ctx.repo, SETTINGS)) ? readJson(join(ctx.repo, SETTINGS)) : null,
     ).toEqual({
-      permissions: { allow: ["Bash(make:*)"] },
+      permissions: { allow: ["Bash(npm run build:*)"] },
     });
   });
 
@@ -158,10 +158,10 @@ describe("regras-projeto", () => {
     expect(excluded()).toBe(true);
     strip();
     const requestId = store.pendingPermissions(again?.sessionId ?? "")[0]?.id ?? "";
-    await allow(requestId, [rule("ls:*")]);
+    await allow(requestId, [rule("git status:*")]);
     expect(excluded()).toBe(true);
     writeSettings(must(again?.worktreePath, "worktreePath"), {
-      permissions: { allow: ["Bash(ls:*)"] },
+      permissions: { allow: ["Bash(git status:*)"] },
     });
     const diff = await board.diff(first.card.id);
     expect(diff.files.map((f) => f.path)).not.toContain(SETTINGS);
@@ -183,7 +183,7 @@ describe("regras-projeto", () => {
     const { repo, board, asking, allow } = await setup();
     writeSettings(repo, "{ quebrado");
     const { card, requestId } = await asking("Quebrado");
-    await allow(requestId, [rule("ls:*")]);
+    await allow(requestId, [rule("git status:*")]);
     expect(readFileSync(join(repo, SETTINGS), "utf8")).toBe("{ quebrado");
     const notice = (await cardWhen(board, card.id, (c) => c.notice !== null))?.notice ?? "";
     expect(notice).toStartWith("regra não gravada no .claude/settings.local.json:");
