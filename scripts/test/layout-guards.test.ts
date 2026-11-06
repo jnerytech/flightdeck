@@ -905,7 +905,13 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
         layoutFindings({ responsive: RESPONSIVE })
           .filter((f) => RESPONSIVE_RULES.includes(f.rule))
           .map(excess),
-      ).toEqual(["overflow-x 76", "nested-scroll 500", "header-clipped 8", "header-clipped 144"]);
+        // #703 review: what a nested scroll hides grows with the demo's data, so it is counted only.
+      ).toEqual([
+        "overflow-x 76",
+        "nested-scroll undefined",
+        "header-clipped 8",
+        "header-clipped 144",
+      ]);
     } finally {
       document.documentElement.removeAttribute("data-sh");
       document.documentElement.removeAttribute("data-ch");
