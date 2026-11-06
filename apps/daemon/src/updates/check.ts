@@ -17,6 +17,8 @@ export interface UpdateCheckerOptions {
   now?: () => number;
   timers?: Timers;
   fetch?: (url: string) => Promise<Response>;
+  /** Called after every check, a failed one too (issue #280: the automatic update looks at the host then). */
+  onChecked?: () => unknown;
 }
 
 export class UpdateChecker {

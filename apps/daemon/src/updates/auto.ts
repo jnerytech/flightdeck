@@ -4,19 +4,9 @@
  * and only when the person left `updates.auto` on. Applying is `DaemonUpdater.apply`, so the sha256 and
  * the minisign signature are checked as ever; this class only decides when to start it.
  */
-import type { DaemonManifest } from "@flightdeck/protocol";
+import type { AutoUpdateStatus, DaemonManifest } from "@flightdeck/protocol";
 import type { Timers } from "../quota/quota.ts";
 import { compareVersions } from "../update.ts";
-
-/** What the host page shows about the automatic update. */
-export interface AutoUpdateStatus {
-  enabled: boolean;
-  /** `off`, `current` (nothing newer), `waiting` (busy), `started` (the update runs) or `failed`. */
-  state: "off" | "current" | "waiting" | "started" | "failed";
-  version?: string;
-  reason?: string;
-  at?: string;
-}
 
 export interface AutoUpdaterOptions {
   enabled(): boolean;

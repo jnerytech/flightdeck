@@ -3,6 +3,7 @@ import {
   type Ack,
   ASSISTANT_FEATURE,
   type AskpassRequest,
+  type AutoUpdateStatus,
   type BudgetUpdated,
   type CardUpdated,
   type ChangesUpdated,
@@ -245,6 +246,11 @@ export interface ServerOptions {
   updater?: DaemonUpdater;
   /** Phase 9: the release manifest check behind `host.info.update`. */
   updates?: UpdateChecker;
+  /** Issue #280: the automatic update (`host.info.autoUpdate`, `host.updates.set`). */
+  autoUpdate?: {
+    status(): AutoUpdateStatus;
+    set(auto: boolean): Promise<AutoUpdateStatus>;
+  };
   /** Called after acking `daemon.shutdown`; without it the command is refused. */
   onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */
