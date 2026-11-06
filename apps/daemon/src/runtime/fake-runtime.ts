@@ -144,10 +144,9 @@ export class FakeRuntime implements AgentRuntime {
   /** Forks asked so far (phase 12). */
   readonly forks: Array<{ claudeSessionId: string } & ForkOptions> = [];
 
-  async forkSession(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  forkSession(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }> {
     this.forks.push({ claudeSessionId, ...options });
-    return { sessionId: `fake-fork-${ulid().toLowerCase()}` };
+    return Promise.resolve({ sessionId: `fake-fork-${ulid().toLowerCase()}` });
   }
 
   start(opts: StartOptions): AgentRun {
@@ -191,41 +190,42 @@ class FakeRun implements AgentRun {
     this.claudeSessionId = opts.resume ?? `fake-${ulid().toLowerCase()}`;
   }
 
-  async setPermissionMode(mode: string): Promise<void> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  setPermissionMode(mode: string): Promise<void> {
     this.modes.push(mode);
+    return Promise.resolve();
   }
 
-  async setModel(model: string | undefined): Promise<void> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  setModel(model: string | undefined): Promise<void> {
     this.models.push(model);
+    return Promise.resolve();
   }
 
-  async setEffort(effort: EffortLevel | undefined): Promise<void> {
+  setEffort(effort: EffortLevel | undefined): Promise<void> {
     this.efforts.push(effort);
+    return Promise.resolve();
   }
 
-  async toggleMcpServer(name: string, enabled: boolean): Promise<void> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  toggleMcpServer(name: string, enabled: boolean): Promise<void> {
     this.toggles.push({ name, enabled });
+    return Promise.resolve();
   }
 
   /** Connected, unless the last toggle of the server turned it off. */
-  async mcpServerStatus(): Promise<McpLiveStatus[]> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
-    return this.mcpServers.map((name) => ({
-      name,
-      status:
-        this.toggles.filter((t) => t.name === name).at(-1)?.enabled === false
-          ? "disabled"
-          : "connected",
-    }));
+  mcpServerStatus(): Promise<McpLiveStatus[]> {
+    return Promise.resolve(
+      this.mcpServers.map((name) => ({
+        name,
+        status:
+          this.toggles.filter((t) => t.name === name).at(-1)?.enabled === false
+            ? "disabled"
+            : "connected",
+      })),
+    );
   }
 
-  async rewindFiles(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
-    return (
-      this.rewind?.(userMessageId, opts.dryRun) ?? { canRewind: false, error: "sem checkpoint" }
+  rewindFiles(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult> {
+    return Promise.resolve(
+      this.rewind?.(userMessageId, opts.dryRun) ?? { canRewind: false, error: "sem checkpoint" },
     );
   }
 
@@ -235,16 +235,16 @@ class FakeRun implements AgentRun {
     void this.pump();
   }
 
-  async interrupt(): Promise<void> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  interrupt(): Promise<void> {
     this.turnAbort?.abort();
+    return Promise.resolve();
   }
 
-  async close(): Promise<void> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  close(): Promise<void> {
     this.turnAbort?.abort();
     this.inbox.length = 0;
     this.events.end();
+    return Promise.resolve();
   }
 
   private async pump(): Promise<void> {
