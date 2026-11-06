@@ -9,7 +9,6 @@
   "text-spill|dark en abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[1]": "54 px past its box",
   "text-spill|dark en abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[2]": "49 px past its box",
   "text-spill|dark en abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[3]": "66 px past its box",
-  "text-spill|dark en projeto-blocos|scroll-area-viewport > page-body > session-tile[5] > span": "1406 px past its box",
   "text-spill|dark pt-BR abas-divididas|tabs-content[1] > host-resources[1] > resources-table[1] > th.resources-num[1]": "60 px past its box",
   "text-spill|dark pt-BR abas-divididas|tabs-content[1] > host-resources[1] > resources-table[1] > th.resources-num[2]": "30 px past its box",
   "text-spill|dark pt-BR abas-divididas|tabs-content[1] > host-resources[1] > resources-table[1] > th[1]": "50 px past its box",
@@ -20,7 +19,6 @@
   "text-spill|dark pt-BR abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[1]": "50 px past its box",
   "text-spill|dark pt-BR abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[2]": "49 px past its box",
   "text-spill|dark pt-BR abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[3]": "74 px past its box",
-  "text-spill|dark pt-BR projeto-blocos|scroll-area-viewport > page-body > session-tile[5] > span": "1406 px past its box",
   "text-spill|light en abas-divididas|tabs-content[1] > host-resources[1] > resources-table[1] > th.resources-num[1]": "57 px past its box",
   "text-spill|light en abas-divididas|tabs-content[1] > host-resources[1] > resources-table[1] > th.resources-num[2]": "30 px past its box",
   "text-spill|light en abas-divididas|tabs-content[1] > host-resources[1] > resources-table[1] > th[1]": "54 px past its box",
@@ -31,7 +29,6 @@
   "text-spill|light en abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[1]": "54 px past its box",
   "text-spill|light en abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[2]": "49 px past its box",
   "text-spill|light en abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[3]": "66 px past its box",
-  "text-spill|light en projeto-blocos|scroll-area-viewport > page-body > session-tile[5] > span": "1406 px past its box",
   "text-spill|light pt-BR abas-divididas|tabs-content[1] > host-resources[1] > resources-table[1] > th.resources-num[1]": "60 px past its box",
   "text-spill|light pt-BR abas-divididas|tabs-content[1] > host-resources[1] > resources-table[1] > th.resources-num[2]": "30 px past its box",
   "text-spill|light pt-BR abas-divididas|tabs-content[1] > host-resources[1] > resources-table[1] > th[1]": "50 px past its box",
@@ -41,6 +38,5 @@
   "text-spill|light pt-BR abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th.resources-num[2]": "30 px past its box",
   "text-spill|light pt-BR abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[1]": "50 px past its box",
   "text-spill|light pt-BR abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[2]": "49 px past its box",
-  "text-spill|light pt-BR abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[3]": "74 px past its box",
-  "text-spill|light pt-BR projeto-blocos|scroll-area-viewport > page-body > session-tile[5] > span": "1406 px past its box"
+  "text-spill|light pt-BR abas-divididas|tabs-content[4] > host-resources[2] > resources-table[2] > th[3]": "74 px past its box"
 }

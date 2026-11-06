@@ -1057,6 +1057,10 @@ html:not(:has([data-slot="status-bar"])) {
   overflow: hidden;
   font-size: 0.8125rem;
   line-height: 1.4;
+  /* A line with no spaces (a long path) breaks at the edge instead of being cut there (#588). */
+  & > span {
+    overflow-wrap: anywhere;
+  }
 }
 @utility session-tile-request {
   display: flex;
