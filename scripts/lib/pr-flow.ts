@@ -633,9 +633,10 @@ async function tagRelease(args: string[], deps: PrFlowDeps): Promise<number> {
         }`,
       );
     }
-    deps.log(
-      `${running ? `${sha}'s CI run on ${MAIN} is still running` : `${sha} has no full green run on ${MAIN}`}: tagging ${earlier}, the newest commit with the ${tag} bump that has one`,
-    );
+    const why = running
+      ? `${sha}'s CI run on ${MAIN} is still running`
+      : `${sha} has no full green run on ${MAIN}`;
+    deps.log(`${why}: tagging ${earlier}, the newest commit with the ${tag} bump that has one`);
     target = earlier;
   }
   if ((await deps.git(["tag", "-a", tag, "-m", tag, target])).code !== 0) {
