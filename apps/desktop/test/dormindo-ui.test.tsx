@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { hubRows } from "../src/lib/hub.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -113,6 +114,7 @@ describe("dormindo-ui: asleep sessions in the hub (issue #157)", () => {
   test("an asleep row says Asleep in words and in its state's name; an awake one does not", async () => {
     const w = setup();
     render(w.view());
+    await unfoldAll(act);
     await settle(() => screen.queryByRole("listitem", { name: "sleeper" }) !== null);
     expect(rowOf("sleeper").textContent).toContain("Asleep");
     expect(within(rowOf("sleeper")).getByRole("img", { name: "asleep" })).toBeTruthy();
@@ -123,17 +125,20 @@ describe("dormindo-ui: asleep sessions in the hub (issue #157)", () => {
   test("Sleep now is in the menu of an awake idle session only, and asks the host", async () => {
     const w = setup();
     render(w.view());
+    await unfoldAll(act);
     await settle(() => screen.queryByRole("listitem", { name: "awake" }) !== null);
     await openMenu("sleeper");
     expect(screen.queryByRole("menuitem", { name: "Sleep now" })).toBeNull();
     cleanup();
     const again = setup();
     render(again.view());
+    await unfoldAll(act);
     await openMenu("busy");
     expect(screen.queryByRole("menuitem", { name: "Sleep now" })).toBeNull();
     cleanup();
     const third = setup();
     render(third.view());
+    await unfoldAll(act);
     await openMenu("awake");
     await act(async () => {
       fireEvent.click(screen.getByRole("menuitem", { name: "Sleep now" }));
@@ -175,6 +180,7 @@ describe("dormindo-ui: asleep sessions in the hub (issue #157)", () => {
         />
       </TooltipProvider>,
     );
+    await unfoldAll(act);
     await settle(() => screen.queryByRole("listitem", { name: "sleeper" }) !== null);
     expect(rowOf("sleeper").textContent).toContain("Dormindo");
   });
