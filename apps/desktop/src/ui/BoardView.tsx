@@ -599,7 +599,7 @@ function ColumnHeader(props: {
     <Inline gap={2} className="column-head">
       <Icon data-slot="column-icon" aria-hidden="true" />
       <h3 className="column-title">{props.title}</h3>
-      <Badge variant="secondary" data-testid="column-count" className="column-count">
+      <Badge variant="secondary" className="column-count">
         {props.count}
       </Badge>
       <Button
