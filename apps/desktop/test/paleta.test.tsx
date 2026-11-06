@@ -152,11 +152,10 @@ describe("paleta", () => {
       "Mudar para o modo simples",
       "Trocar idioma",
       "Ir para Configurações",
-      "Adicionar um host",
-      "Mostrar os atalhos de teclado",
     ]);
-    // A section shows eight rows (issue #147): the ninth action is behind "mais 1".
-    expect(screen.queryByRole("button", { name: "mais 1" })).not.toBeNull();
+    // A section shows eight rows (issue #147): Adicionar um host, the shortcuts and the clients
+    // are behind "mais 3" now that the simple mode has its own action.
+    expect(screen.queryByRole("button", { name: "mais 3" })).not.toBeNull();
     // No screen for it on this host: no "Ir para Custos".
     expect(options()).not.toContain("Ir para Custos");
 
@@ -171,7 +170,10 @@ describe("paleta", () => {
     await openPalette();
     await settle(() => sections().length === 5);
     const row = inPalette("option")[0] as HTMLElement;
-    const [title, detail] = [...row.querySelectorAll("span")] as HTMLElement[];
+    // The row's state glyph (issue #147) comes first; the title and the path are its text.
+    const [title, detail] = [...row.querySelectorAll("span")].filter(
+      (span) => span.getAttribute("role") !== "img",
+    ) as HTMLElement[];
     expect(title?.className).toContain("shrink-0");
     expect(title?.className).toContain("whitespace-nowrap");
     expect(detail?.className).toContain("min-w-0");
