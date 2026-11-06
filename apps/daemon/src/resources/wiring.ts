@@ -124,10 +124,10 @@ export async function defaultSysconf(
 /** Asks `getconf`; null when it is not there or answers something else. */
 export async function getconf(
   name: "PAGESIZE" | "CLK_TCK",
-  _spawn: typeof Bun.spawn = Bun.spawn,
+  spawn: typeof Bun.spawn = Bun.spawn,
 ): Promise<number | null> {
   try {
-    const child = Bun.spawn(["getconf", name], { stdout: "pipe", stderr: "ignore" });
+    const child = spawn(["getconf", name], { stdout: "pipe", stderr: "ignore" });
     const [text, code] = await Promise.all([new Response(child.stdout).text(), child.exited]);
     const value = Number.parseInt(text.trim(), 10);
     return code === 0 && Number.isFinite(value) ? value : null;

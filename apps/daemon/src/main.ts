@@ -1508,9 +1508,9 @@ export async function startDaemon(
     maintenance,
     resources: await createResources({
       dataDir: config.dataDir,
-      sessions: () => manager.list(),
-      terminals: () => terminals.list(),
-      pidOf: (id) => terminals.pidOf(id),
+      sessions: manager.list.bind(manager),
+      terminals: terminals.list.bind(terminals),
+      pidOf: terminals.pidOf.bind(terminals),
       ...(options.resourcesProc ? { proc: options.resourcesProc } : {}),
     }),
     worktrees: createWorktrees({
