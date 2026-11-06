@@ -178,6 +178,44 @@ describe("direcao-visual: ajustes finos", () => {
     expect(store2.router.current.name).toBe("board");
   });
 
+  test("Board opens the board last opened on the host, and the board of the worktree picked in the tree (#669)", async () => {
+    const { store } = await setup({ projects: 2 });
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    const here = () => store.router.current;
+    const boardOf = () => {
+      const route = here();
+      return route.name === "board" ? route.projectId : null;
+    };
+    const openBoardItem = async () => {
+      await sidebar.openHub();
+      await click(screen.queryByRole("button", { name: "Board" }));
+      await settle(() => here().name === "board" || here().name === "projects");
+    };
+    await openBoardItem();
+    await settle(() => screen.queryAllByRole("button", { name: /^Abrir board de/ }).length === 2);
+    await click(screen.queryAllByRole("button", { name: /^Abrir board de/ })[1] ?? null);
+    await settle(() => here().name === "board");
+    const opened = boardOf();
+    await openBoardItem();
+    const remembered = boardOf();
+    const other = (store.getState().projects[hostId] ?? []).find((p) => p.id !== opened);
+    await act(async () => {
+      if (other)
+        store.setWorktreeFilter({
+          hostId,
+          projectId: other.id,
+          kind: "primary",
+          path: other.path,
+          branch: other.baseBranch,
+        });
+    });
+    await openBoardItem();
+    expect({
+      remembered: opened !== null && remembered === opened,
+      picked: other !== undefined && boardOf() === other.id,
+    }).toEqual({ remembered: true, picked: true });
+  });
+
   test("em inglês, a lista inteira fala inglês: filtros, estados, menu e títulos", async () => {
     await setup({ language: "en" });
     const list = main();

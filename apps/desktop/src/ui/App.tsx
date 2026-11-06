@@ -15,10 +15,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
 import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
+import { boardShortcut } from "../lib/board-shortcut.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import { typing } from "../lib/keys.ts";
 import { pairingErrorText } from "../lib/pairing-text.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
+import { activeWorktreeFilter } from "../lib/project-tree.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
 import { firstTerminalTab, hostsRoute, terminalTabCount } from "../lib/status-bar.ts";
@@ -458,14 +460,28 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   /** Board or Workflows from the sidebar: the only project opens directly, several ask which. */
   const openProjectScreen = (hostId: string, kind: "board" | "workflows") => {
     void store.hostCommand(hostId, "project.list", {}).then((list) => {
-      const only = list?.projects.length === 1 ? list.projects[0] : undefined;
-      if (only) {
+      const projects = list?.projects ?? [];
+      if (kind === "board") {
+        // The worktree picked in the tree, the only project or the last board opened (#669).
+        const projectId = boardShortcut({
+          hostId,
+          projectIds: projects.map((p) => p.id),
+          worktree: activeWorktreeFilter(store.getState()),
+          remembered: store.lastBoard(hostId),
+        });
         go(
-          kind === "board"
-            ? { name: "board", host: hostId, projectId: only.id }
-            : { name: "workflows", host: hostId, projectId: only.id, projectName: only.name },
+          projectId
+            ? { name: "board", host: hostId, projectId }
+            : { name: "projects", host: hostId, focus: kind },
         );
-      } else go({ name: "projects", host: hostId, focus: kind });
+        return;
+      }
+      const only = projects.length === 1 ? projects[0] : undefined;
+      go(
+        only
+          ? { name: "workflows", host: hostId, projectId: only.id, projectName: only.name }
+          : { name: "projects", host: hostId, focus: kind },
+      );
     });
   };
 
