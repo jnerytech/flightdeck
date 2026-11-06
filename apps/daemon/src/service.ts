@@ -21,8 +21,11 @@ function requireAbsolute(command: string[]): void {
 }
 
 /** systemd quoting: arguments with spaces or quotes go inside double quotes. */
-const systemdQuote = (arg: string) =>
-  /[\s"\\]/.test(arg) ? `"${arg.replace(/(["\\])/g, String.raw`\$1`)}"` : arg;
+const systemdQuote = (arg: string) => {
+  if (!/[\s"\\]/.test(arg)) return arg;
+  const escaped = arg.replace(/(["\\])/g, String.raw`\$1`);
+  return `"${escaped}"`;
+};
 
 /** What the service passes after the daemon command: `start`, plus `--config` when given. */
 const startArgs = (config?: string | null) => ["start", ...(config ? ["--config", config] : [])];

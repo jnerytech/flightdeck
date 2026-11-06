@@ -43,6 +43,12 @@ export function isChild(item: {
 }
 
 /** The text blocks of a tool's content; a diff alone becomes `[diff <path>]`. */
+/** How a turn ended: success, a cancel as an execution error, or the stop reason as it came. */
+function turnSubtype(success: boolean, stopReason: string): string {
+  if (success) return "success";
+  return stopReason === "cancelled" ? "error_during_execution" : stopReason;
+}
+
 function resultText(content: unknown): string {
   const blocks = Array.isArray(content) ? (content as Array<Record<string, unknown>>) : [];
   const texts = blocks.flatMap((block) => {
@@ -151,11 +157,7 @@ export class OpenCodeEvents {
       ...this.flush(),
       {
         type: "turn.result",
-        subtype: success
-          ? "success"
-          : result.stopReason === "cancelled"
-            ? "error_during_execution"
-            : result.stopReason,
+        subtype: turnSubtype(success, result.stopReason),
         isError: !success,
         durationMs,
         ...(this.costUsd !== undefined ? { costUsd: this.costUsd } : {}),

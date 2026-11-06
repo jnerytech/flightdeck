@@ -127,12 +127,12 @@ const SECRET_PATTERNS: Array<[string, RegExp]> = [
   [
     "senha na linha",
     new RegExp(
-      `(?:\\b${anyCase("pass")}|(?<![A-Za-z0-9])[A-Za-z0-9_.-]*?${SECRET_WORD}${NAME_TAIL})\\\\?["']?\\s*[=:]\\s*\\\\?["']?[^\\s"'\\\\&;,}]{3,}`,
+      String.raw`(?:\b${anyCase("pass")}|(?<![A-Za-z0-9])[A-Za-z0-9_.-]*?${SECRET_WORD}${NAME_TAIL})\\?["']?\s*[=:]\s*\\?["']?[^\s"'\\&;,}]{3,}`,
       "g",
     ),
   ],
   ["credencial em URL", /:\/\/[^\s/:@]+:[^\s/@]+@/g],
-  ["senha em opção", new RegExp(`--(?:${SECRET_WORDS})(?:=|\\s+)[^\\s]+`, "gi")],
+  ["senha em opção", new RegExp(String.raw`--(?:${SECRET_WORDS})(?:=|\s+)[^\s]+`, "gi")],
   ["senha do curl", /(?<=\bcurl\b[^\n|;&]*\s(?:-u|--user)\s+)[^\s:]+:\S+/g],
   [
     "cabeçalho de autorização",
