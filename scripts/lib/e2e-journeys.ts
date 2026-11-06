@@ -21,6 +21,7 @@ export const JOURNEYS: readonly string[] = [
   "nova-sessao-host",
   "finalizar-card",
   "webhook-ntfy",
+  "trust-revoke",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

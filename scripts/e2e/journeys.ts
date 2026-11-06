@@ -649,6 +649,57 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       "o tópico não aparece na lista",
     );
   },
+
+  // 21. Revoking a project's trust (issue #463): a session that started while the project was
+  // trusted keeps the hooks and MCP servers it loaded, says so and offers to restart; the restart
+  // clears the notice. The journey ends with the project untrusted again, as the demo seeds it.
+  "trust-revoke": async (c) => {
+    const project = { name: "project", host: ALFA, projectId: c.ids.project } as const;
+    await open(c, project);
+    const revoke = c.page.getByRole("button", {
+      name: c.t("projectPage.trust.revoke"),
+      exact: true,
+    });
+    const trust = c.page.getByRole("button", {
+      name: c.t("projectPage.trust.action"),
+      exact: true,
+    });
+    // A run that stopped half way left the project trusted: start from the same place anyway.
+    await trust.or(revoke).first().waitFor({ timeout: WAIT });
+    if ((await revoke.count()) === 0) {
+      await trust.click();
+      await c.page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: c.t("projectPage.trust.action"), exact: true })
+        .click();
+      await revoke.waitFor({ timeout: WAIT });
+    }
+    // A session started inside the trusted folder loads the project's setup. It waits for an
+    // answer, so the run is still alive when the trust is removed.
+    const name = `e2e-revoga-${c.lang}-${Date.now()}`;
+    await open(c, { name: "new-session", host: ALFA });
+    await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).fill("flightdeck-web");
+    await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+    await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill("[bash] ls");
+    await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
+    const row = c.page.locator("main ul li button", { hasText: name });
+    await open(c, { name: "needs-you" });
+    await row.first().waitFor({ timeout: SESSION_WAIT });
+    // Removing the trust leaves that session as it is, and tells the person to restart it.
+    await open(c, project);
+    await revoke.waitFor({ timeout: WAIT });
+    await revoke.click();
+    await trust.waitFor({ timeout: WAIT });
+    await open(c, { name: "needs-you" });
+    await row.first().click({ timeout: SESSION_WAIT });
+    await c.page.getByRole("button", { name: c.t("approval.openSession"), exact: true }).click();
+    const notice = c.page.getByText(c.t("projectPage.trust.revokedNotice"));
+    await notice.waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("projectPage.trust.restart"), exact: true })
+      .click();
+    await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
