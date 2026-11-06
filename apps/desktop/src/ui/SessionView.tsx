@@ -628,7 +628,8 @@ export function SessionView(props: SessionViewProps) {
         }
         extra={opencode ? undefined : props.persona}
       />
-      {!opencode && props.recap}
+      {/* The summary lines up with the header and the conversation (issue #177). */}
+      {!opencode && props.recap && <div className="recap-slot">{props.recap}</div>}
       <div className="pane-fill">
         <Timeline
           ref={timeline}

@@ -238,6 +238,17 @@
   bottom: 0.75rem;
 }
 
+/* The summary card under a session's header: the same 16 px from each side as the conversation. */
+@utility recap-slot {
+  flex-shrink: 0;
+  padding-inline: 1rem;
+  padding-top: 0.75rem;
+  /* No summary to show (an older daemon, a session with none): no empty band either. */
+  &:empty {
+    display: none;
+  }
+}
+
 /* The summary's folded line: the toggle, then a one-line preview that is cut, never wrapped. */
 @utility recap-head {
   display: flex;
@@ -513,6 +524,14 @@
   width: 100%;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* The popover that asks for a terminal's persona before it opens (issue #177). */
+@utility terminal-ask {
+  display: flex;
+  width: 18rem;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 /* The terminal's find bar: the box, where the match is, and the buttons in one row. */
