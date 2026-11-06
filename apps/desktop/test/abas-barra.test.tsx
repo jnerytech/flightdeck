@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { seedDemoHosts } from "../src/demo/boot.ts";
+import type { Route } from "../src/lib/router.ts";
 import { tabMenu } from "./aba-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -15,6 +17,17 @@ afterEach(cleanup);
 
 function setup() {
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+  render(<App store={store} />);
+  return store;
+}
+
+/** One host, "alfa", whose own screens open in its set; Sessões (Home) is the shared one. */
+function setupHost() {
+  const mem = memoryPlatform(false, "pt-BR");
+  seedDemoHosts(mem.win.localStorage, mem.tokens, [
+    { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+  ]);
+  const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   render(<App store={store} />);
   return store;
 }
@@ -60,44 +73,49 @@ describe("abas: a barra de abas", () => {
     expect(names()).toEqual(["Precisa de você"]);
   });
 
-  test("the active tab's button pins it (icon only, on the left), its × closes it; the middle button closes any tab", async () => {
-    const store = setup();
+  test("the active tab's button pins it (icon only, on the left of its host's tabs), its × closes it; the middle button closes any tab", async () => {
+    const store = setupHost();
+    const open = (route: Route) =>
+      act(async () => {
+        store.hostTabs.open(route);
+      });
+    await open({ name: "history", host: "ha" });
+    await open({ name: "projects", host: "ha" });
+    // The shared Sessões sits first; the host's tabs follow.
+    expect(names()).toEqual(["Sessões", "alfa", "Projetos"]);
+    await menu.choose("Projetos", "Fixar aba Projetos");
+    expect(names()).toEqual(["Sessões", "Projetos", "alfa"]);
+    await menu.open("Projetos");
+    expect(menu.item("Desafixar aba Projetos")).not.toBeNull();
     await act(async () => {
-      store.tabs.open({ name: "needs-you" });
-    });
-    await menu.choose("Precisa de você", "Fixar aba Precisa de você");
-    expect(names()).toEqual(["Precisa de você", "Sessões"]);
-    await menu.open("Precisa de você");
-    expect(menu.item("Desafixar aba Precisa de você")).not.toBeNull();
-    await act(async () => {
-      fireEvent.keyDown(menu.item("Desafixar aba Precisa de você") as HTMLElement, {
+      fireEvent.keyDown(menu.item("Desafixar aba Projetos") as HTMLElement, {
         key: "Escape",
       });
     });
-    expect(screen.queryByText("Precisa de você", { selector: "[role=tab] span" })).toBeNull();
+    expect(screen.queryByText("Projetos", { selector: "[role=tab] span" })).toBeNull();
     await act(async () => {
-      fireEvent.click(tabs()[1] as HTMLElement);
+      fireEvent.click(tabs()[2] as HTMLElement);
     });
-    // The menu is the active tab's: Sessões now.
-    expect(screen.queryByRole("button", { name: "Ações da aba Precisa de você" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Ações da aba Sessões" })).not.toBeNull();
+    // The menu is the active tab's: alfa now.
+    expect(screen.queryByRole("button", { name: "Ações da aba Projetos" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ações da aba alfa" })).not.toBeNull();
     await act(async () => {
-      const close = screen.queryByLabelText("Fechar aba Sessões");
+      const close = screen.queryByLabelText("Fechar aba alfa");
       expect(close).not.toBeNull();
       fireEvent.click(close as HTMLElement);
     });
-    expect(names()).toEqual(["Precisa de você"]);
+    expect(names()).toEqual(["Sessões", "Projetos"]);
+    await open({ name: "history", host: "ha" });
     await act(async () => {
-      store.tabs.open({ name: "costs" });
-      store.tabs.activate(store.tabs.tabs[0]?.id as string);
+      store.hostTabs.activate(tabs()[1]?.getAttribute("data-tab-id") as string);
     });
     await act(async () => {
       fireEvent(
-        tabs()[1] as HTMLElement,
+        tabs()[2] as HTMLElement,
         new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
       );
     });
-    expect(names()).toEqual(["Precisa de você"]);
+    expect(names()).toEqual(["Sessões", "Projetos"]);
   });
 
   test("Ctrl+T opens a new tab on the palette; Ctrl+W closes the tab; Ctrl+Shift+T brings it back", async () => {
@@ -128,15 +146,16 @@ describe("abas: a barra de abas", () => {
     expect(index()).toBe(1);
   });
 
-  test("Ctrl+Shift+PageDown and PageUp move the tab", async () => {
-    const store = setup();
+  test("Ctrl+Shift+PageDown and PageUp move the tab, within its host's tabs", async () => {
+    const store = setupHost();
     await act(async () => {
-      store.tabs.open({ name: "needs-you" });
+      store.hostTabs.open({ name: "history", host: "ha" });
+      store.hostTabs.open({ name: "projects", host: "ha" });
     });
     await key("PageUp", { shift: true });
-    expect(names()).toEqual(["Precisa de você", "Sessões"]);
+    expect(names()).toEqual(["Sessões", "Projetos", "alfa"]);
     await key("PageDown", { shift: true });
-    expect(names()).toEqual(["Sessões", "Precisa de você"]);
+    expect(names()).toEqual(["Sessões", "alfa", "Projetos"]);
   });
 
   test("a Ctrl+click or a middle click on an item opens it in a new tab", async () => {
@@ -158,11 +177,17 @@ describe("abas: a barra de abas", () => {
     expect(store.tabs.tabs).toHaveLength(3);
   });
 
-  test("a normal click changes the current tab only", async () => {
+  test("a normal click shows a shared screen in its own pinned tab, once", async () => {
     const store = setup();
     await press("Precisa de você");
-    expect(store.tabs.tabs).toHaveLength(1);
+    // Home keeps its tab; Needs you gets one, and a second click finds it instead of adding another.
+    expect(store.hostTabs.shared.tabs.map((tab) => tab.router.current.name)).toEqual([
+      "home",
+      "needs-you",
+    ]);
     expect(store.router.current).toEqual({ name: "needs-you" });
+    await press("Precisa de você");
+    expect(store.hostTabs.shared.tabs).toHaveLength(2);
   });
 
   test("the strip keeps three tools: the active tab's menu, a new tab and the split", async () => {
