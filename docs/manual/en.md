@@ -2808,8 +2808,10 @@ tab, with no SSH.
   matches empty text, says so instead of searching. Links in the output open in the browser (`http`
   and `https` only). File paths in the output are links too: absolute ones (`C:\repo\a.md`,
   `/home/ana/x.log`) and relative ones with a folder and an extension (`src/app.ts:12`), taken from
-  the terminal's folder. On a host of this computer a click shows the file in its folder (it never
-  opens or runs it); on another host it copies the path. The font is the
+  the terminal's folder. A file inside the terminal's folder opens under the terminal in the Files
+  viewer, read-only, at the line the path names (`src/app.ts:12` opens at line 12); **Close** puts
+  it away. A path outside that folder, or on a host whose daemon is too old to read it, is shown in its folder on a
+  host of this computer (never opened or run) and copied on another host. The font is the
   system monospace; its size is in Settings (**Terminal font size**, 10 to 24). In the tab,
   `Ctrl+=` (or `Ctrl++`) and `Ctrl+-`, or `Ctrl` with the mouse wheel, make it one point bigger or
   smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. For a screen

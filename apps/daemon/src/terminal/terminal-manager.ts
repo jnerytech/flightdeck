@@ -134,6 +134,8 @@ interface Client {
 interface Entry {
   id: string;
   cwd: string;
+  /** Opened by daemon code in its own folder, outside the allowed roots. */
+  internal: boolean;
   program: string;
   startedAt: string;
   cols: number;
@@ -226,6 +228,15 @@ export class TerminalManager {
         { id: terminalId },
       );
     return entry;
+  }
+
+  /**
+   * The folder a terminal was opened in, which `allowedRoots` checked then; `null` for an unknown
+   * terminal or a daemon-internal one, whose folder is the daemon's own (#506).
+   */
+  cwdOf(terminalId: string): string | null {
+    const entry = this.entries.get(terminalId);
+    return entry && !entry.internal ? entry.cwd : null;
   }
 
   private running(terminalId: string): Entry {
@@ -342,6 +353,7 @@ export class TerminalManager {
     const entry: Entry = {
       id,
       cwd,
+      internal: req.internal === true,
       program: programOf(argv),
       startedAt: new Date(this.now()).toISOString(),
       cols: req.cols,

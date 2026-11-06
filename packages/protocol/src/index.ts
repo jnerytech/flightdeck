@@ -910,10 +910,10 @@ export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) })
 export type CardDiff = z.infer<typeof CardDiff>;
 
 // Phase 11: review of the changes of any session or card.
-/** `session:<claudeSessionId>` or `card:<id>`. */
+/** `session:<claudeSessionId>`, `card:<id>` or `terminal:<terminalId>` (its folder, #506). */
 export const ReviewTarget = z
   .string()
-  .regex(/^(session|card):.+$/, "alvo session:<id> ou card:<id>");
+  .regex(/^(session|card|terminal):.+$/, "alvo session:<id>, card:<id> ou terminal:<id>");
 
 export const ChangesResult = z.object({
   target: z.string(),

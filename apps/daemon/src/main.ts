@@ -943,7 +943,27 @@ export async function startDaemon(
   // find it cached when the first card starts.
   void board.warmProjectKeys();
   // The diff of every session and card, for the review (phase 11).
-  const changes = new Changes({ db: store.db, board, log: logger.log.bind(logger) });
+  // Real shells behind a PTY, kept across connections; none outlives the daemon.
+  const terminals = new TerminalManager({
+    folderLocks,
+    pty: options.pty ?? bunPty(),
+    enabled: terminalEnabled(config.bind, config.terminal.enabled),
+    allowedRoots: config.allowedRoots,
+    max: config.terminal.max,
+    idleMinutes: config.terminal.idleMinutes,
+    allowApiKey: config.allowApiKey,
+    // "Claude aqui" runs this very daemon's `claude`, with this config.
+    claude: { self: daemonCommand(process.execPath, Bun.main), configFile },
+    claudeEnv: () => claudeSettingsEnv(claudeSettingsPath()),
+    log: (message) => logger.log(message),
+  });
+  const changes = new Changes({
+    db: store.db,
+    board,
+    log: logger.log.bind(logger),
+    // A terminal's folder is a target of the Files viewer (#506).
+    terminals,
+  });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
   const boardSyncStore = new BoardSyncStore(store.db);
@@ -1008,20 +1028,6 @@ export async function startDaemon(
     });
   }
   void updates?.start();
-  // Real shells behind a PTY, kept across connections; none outlives the daemon.
-  const terminals = new TerminalManager({
-    folderLocks,
-    pty: options.pty ?? bunPty(),
-    enabled: terminalEnabled(config.bind, config.terminal.enabled),
-    allowedRoots: config.allowedRoots,
-    max: config.terminal.max,
-    idleMinutes: config.terminal.idleMinutes,
-    allowApiKey: config.allowApiKey,
-    // "Claude aqui" runs this very daemon's `claude`, with this config.
-    claude: { self: daemonCommand(process.execPath, Bun.main), configFile },
-    claudeEnv: () => claudeSettingsEnv(claudeSettingsPath()),
-    log: (message) => logger.log(message),
-  });
   // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.
   const telemetryStore = new TelemetryStore(store.db);
   const telemetry = await startTelemetry({

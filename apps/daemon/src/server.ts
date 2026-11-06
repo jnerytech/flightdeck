@@ -972,6 +972,8 @@ export function startServer(opts: ServerOptions): RunningServer {
           features: [
             ...(opts.features ?? features),
             ...(opts.terminals?.enabled ? ["terminal"] : []),
+            // Issue #506: a path a terminal printed opens in the Files viewer, from its folder.
+            ...(opts.terminals?.enabled && opts.files ? ["file.terminal"] : []),
             ...(opts.ui ? ["ui.mode"] : []),
             ...(opts.templates ? ["templates"] : []),
             ...(opts.tasks ? ["tasks"] : []),
