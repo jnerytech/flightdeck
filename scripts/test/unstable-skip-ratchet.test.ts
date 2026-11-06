@@ -7,7 +7,7 @@ import { realTempDir } from "./temp-dir.ts";
 const ROOT = resolve(import.meta.dir, "../..");
 
 /** The most unstable skips the repository may hold: lower it when one comes off, never raise it. */
-const UNSTABLE_SKIP_MAX = 1;
+const UNSTABLE_SKIP_MAX = 0;
 
 // Built by concatenation so this very file holds none of the skips it counts.
 const skipOff = (head: string) => `${head}.${"skip"}${"If"}(notLinux)("x", () => {});`;
@@ -56,11 +56,7 @@ describe("unstable-skip-ratchet: tests skipped off Linux name their issue, and t
     expect(total).toBeLessThanOrEqual(UNSTABLE_SKIP_MAX);
   });
 
-  test("only the heartbeat test is still skipped: it needs a ticker and a clock injected into the server (issue #288)", () => {
-    expect(
-      Object.entries(counts)
-        .map(([file, c]) => `${file}: ${c.total}`)
-        .sort(),
-    ).toEqual(["apps/daemon/test/heartbeat.test.ts: 1"]);
+  test("no test is skipped off Linux any more: the five of the first run are fixed (issue #288)", () => {
+    expect(Object.keys(counts)).toEqual([]);
   });
 });

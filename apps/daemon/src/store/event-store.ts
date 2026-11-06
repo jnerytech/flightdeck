@@ -8,6 +8,7 @@ import {
   type PersonaAgent,
   SessionEvent,
   type SessionPersona,
+  type SessionRuntime,
   type SessionStatus,
   type SessionSummary,
   type ToolInput,
@@ -37,6 +38,8 @@ export interface NewSession {
   model: string | null;
   /** The persona it opens in (phase 20). */
   persona?: PersonaSnapshot | null;
+  /** Phase 39: `claude` when absent. */
+  runtime?: SessionRuntime;
   /** The subagents it opened with; later runs of the session reuse them. */
   agents?: Record<string, PersonaAgent>;
 }
@@ -49,6 +52,7 @@ interface SessionRow {
   status: SessionStatus;
   permission_mode: PermissionMode;
   model: string | null;
+  runtime: SessionRuntime;
   persona: string | null;
   applied_persona: string | null;
   last_seq: number;
@@ -92,6 +96,7 @@ function toSummary(row: SessionRow): SessionSummary {
     permissionMode: row.permission_mode,
     model: row.model,
     claudeSessionId: row.claude_session_id,
+    runtime: row.runtime,
     lastSeq: row.last_seq,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -167,8 +172,8 @@ export class EventStore {
     const ts = now();
     this.db
       .query(
-        `INSERT INTO sessions (id, name, cwd, status, permission_mode, model, last_seq, created_at, updated_at)
-         VALUES ($id, $name, $cwd, $status, $permissionMode, $model, 0, $ts, $ts)`,
+        `INSERT INTO sessions (id, name, cwd, status, permission_mode, model, runtime, last_seq, created_at, updated_at)
+         VALUES ($id, $name, $cwd, $status, $permissionMode, $model, $runtime, 0, $ts, $ts)`,
       )
       .run({
         id: session.id,
@@ -177,6 +182,7 @@ export class EventStore {
         status: session.status,
         permissionMode: session.permissionMode,
         model: session.model,
+        runtime: session.runtime ?? "claude",
         ts,
       });
     if (session.persona) {

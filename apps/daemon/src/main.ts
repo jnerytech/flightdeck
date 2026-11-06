@@ -53,12 +53,14 @@ import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
-import { runDoctor } from "./doctor.ts";
+import { type OpenCodeState, runDoctor } from "./doctor.ts";
+import { buildChildEnv } from "./env.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
+import { linesOf } from "./lines.ts";
 import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
@@ -97,6 +99,17 @@ import { RunManager } from "./runenv/manager.ts";
 import { CardPorts } from "./runenv/ports.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
+import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
+import {
+  discoverOpenCode,
+  fileExists,
+  fileStamp,
+  type OpenCodeInfo,
+} from "./runtime/opencode-discovery.ts";
+import { OpenCodePreflight } from "./runtime/opencode-preflight.ts";
+import { OpenCodeModels, runCommand } from "./runtime/opencode-process.ts";
+import { OpenCodeRuntime, REAL_KILL_DEPS, treeKiller } from "./runtime/opencode-runtime.ts";
+import { scanOpenCodeScope } from "./runtime/opencode-scope.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
 import {
@@ -552,6 +565,105 @@ async function createRuntime(
   };
 }
 
+/** Phase 39: what the host offers of OpenCode: whether it runs here, its runtime and its models. */
+interface CreatedOpenCode {
+  info: OpenCodeInfo;
+  runtime?: AgentRuntime;
+  models?: () => Promise<Array<{ id: string; name: string }>>;
+}
+
+/** Phase 39: the fake host's OpenCode, for the demo and the journeys. */
+function fakeOpenCode(): CreatedOpenCode {
+  const models = [
+    "anthropic/claude-sonnet-5-5",
+    "openai/gpt-6.1-sol",
+    "opencode/crouton-alpha-free",
+  ];
+  return {
+    info: { available: true, path: "fake", version: VERIFIED_OPENCODE_VERSION, verified: true },
+    runtime: new FakeRuntime(),
+    models: async () => models.map((id) => ({ id, name: id })),
+  };
+}
+
+/** Phase 39: OpenCode as discovery finds it on this host (it runs the binary: only when turned on). */
+function discoverHost(config: Config, childEnv: Record<string, string>): Promise<OpenCodeInfo> {
+  return discoverOpenCode(config.opencode, {
+    env: childEnv,
+    platform: process.platform,
+    dataDir: config.dataDir,
+    which: (bin) => Bun.which(bin, { PATH: childEnv.PATH ?? "" }),
+    exists: fileExists,
+    run: runCommand,
+    scan: () => scanOpenCodeScope({ env: childEnv }),
+    statFile: fileStamp,
+  });
+}
+
+/** Phase 39: the doctor's OpenCode row: looked up without running it, discovered only when on. */
+async function openCodeState(
+  config: Config,
+  env: Record<string, string | undefined>,
+  known?: OpenCodeInfo,
+): Promise<OpenCodeState> {
+  const childEnv = buildChildEnv(env, config.allowApiKey);
+  const enabled = config.opencode.enabled;
+  return {
+    enabled,
+    found: Bun.which("opencode", { PATH: childEnv.PATH ?? "" }),
+    info: enabled ? (known ?? (await discoverHost(config, childEnv))) : null,
+    platform: process.platform,
+  };
+}
+
+/**
+ * Phase 39: finds and checks OpenCode when the host turned it on (it runs the binary), then builds
+ * its preflight, its runtime and its model list.
+ */
+async function createOpenCode(
+  config: Config,
+  kind: RuntimeKind,
+  env: Record<string, string | undefined>,
+  mcpServer: FlightdeckMcpServer,
+  /** Why a preflight failed (the route and its exit code). */
+  log: (message: string) => void,
+): Promise<CreatedOpenCode> {
+  // The demo and the journeys show the picker with a fake OpenCode, which runs nothing.
+  if (kind === "fake") return fakeOpenCode();
+  if (!config.opencode.enabled) return { info: { available: false, reason: "opencode_disabled" } };
+  const childEnv = buildChildEnv(env, config.allowApiKey);
+  const scan = () => scanOpenCodeScope({ env: childEnv });
+  const info = await discoverHost(config, childEnv);
+  const { path, version } = info;
+  if (!info.available || !path || !version) return { info };
+  const preflight = new OpenCodePreflight({
+    path,
+    version,
+    env: childEnv,
+    run: runCommand,
+    scan,
+    log,
+    // An executable discovery could not stamp is never trusted: the preflight refuses opencode_changed.
+    exe: { fingerprint: info.fingerprint ?? "", current: () => fileStamp(path) },
+  });
+  const runtime = new OpenCodeRuntime({
+    path,
+    version,
+    preflight,
+    scan,
+    kill: treeKiller(process.platform, REAL_KILL_DEPS),
+    mcpServer,
+  });
+  const models = new OpenCodeModels({
+    path,
+    env: childEnv,
+    dataDir: config.dataDir,
+    run: runCommand,
+    scan,
+  });
+  return { info, runtime, models: () => models.list() };
+}
+
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
 async function terminalInfo(env: Record<string, string | undefined>) {
   const stable = stableBinPath(userHome(env), process.platform);
@@ -600,14 +712,19 @@ export async function startDaemon(
   if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
+  const mcpServer = flightdeckMcpServer(daemonCommand(process.execPath, Bun.main), configFile);
   const {
     runtime,
     claude,
     accountReaders: readers,
-  } = await createRuntime(
+  } = await createRuntime(runtimeKind, claudePath, mcpServer);
+  // Phase 39: OpenCode, when this host turned it on.
+  const opencode = await createOpenCode(
+    config,
     runtimeKind,
-    claudePath,
-    flightdeckMcpServer(daemonCommand(process.execPath, Bun.main), configFile),
+    env,
+    mcpServer,
+    logger.log.bind(logger),
   );
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
@@ -663,13 +780,15 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     allowBypass: () => config.allowBypassPermissions,
     baseEnv: env,
+    ...(opencode.runtime ? { opencode: opencode.runtime } : {}),
     onQuota: (readings) => {
       quota.record(readings);
       quotaHistory.sample(readings);
     },
-    onTurn: (sessionId, cwd, turn) => {
+    onTurn: (sessionId, cwd, turn, runtime) => {
       usage.record(sessionId, cwd, turn);
-      account?.turnEnded();
+      // The account card reads the Claude plan; an OpenCode turn spends none of it.
+      if (runtime === "claude") account?.turnEnded();
     },
     onTurnEdge: (edge) =>
       snapshots.enqueue({
@@ -1065,6 +1184,10 @@ export async function startDaemon(
   });
   const server = startServer({
     manager,
+    opencode: {
+      info: () => opencode.info,
+      models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
+    },
     ...(assistant ? { assistant } : {}),
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),
@@ -1112,6 +1235,7 @@ export async function startDaemon(
             (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
         healthy: async () => true,
         mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
+        opencode: () => openCodeState(config, env, opencode.info),
 
         linger:
           options.linger ??
@@ -1359,20 +1483,6 @@ async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
   }
 }
 
-/** Lines of `stream`, as a `createPrompt` input. */
-async function* linesOf(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
-  let pending = "";
-  const decoder = new TextDecoder();
-  for await (const chunk of stream) {
-    pending += decoder.decode(chunk, { stream: true });
-    for (let end = pending.indexOf("\n"); end >= 0; end = pending.indexOf("\n")) {
-      yield pending.slice(0, end).replace(/\r$/, "");
-      pending = pending.slice(end + 1);
-    }
-  }
-  if (pending) yield pending;
-}
-
 /** The command managed sessions run for the Flightdeck MCP server, and whether its program is still there. */
 async function mcpReachable(self: string[]): Promise<{ command: string; exists: boolean }> {
   const command = self[0] ?? "";
@@ -1406,6 +1516,7 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     claudePath: () => whichOnPath("claude"),
     mcp: () => mcpReachable(self),
+    opencode: async () => openCodeState(await load(), process.env),
 
     linger: () => lingerState(ctx),
     templateProblems: async () =>

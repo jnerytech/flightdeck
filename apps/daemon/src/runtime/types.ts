@@ -143,6 +143,11 @@ export interface CompleteResult {
 
 export interface AgentRuntime {
   start(opts: StartOptions): AgentRun;
+  /**
+   * Phase 39: checks a folder before a start or a resume; throws a typed refusal. The session
+   * manager awaits it on create and resume, so a refused session is never created.
+   */
+  preflight?(cwd: string): Promise<void>;
   /** Phase 13: the AI of the automatic approval. */
   judgePermission?(opts: JudgeOptions): Promise<JudgeResult>;
   /** Phase 40: the AI assistant's one-shot call on the host's plan. */

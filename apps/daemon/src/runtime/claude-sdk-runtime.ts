@@ -18,6 +18,7 @@ import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
 import { describeCommands, type SdkSlashCommand } from "./commands.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
+import { truncateToolResult } from "./tool-result.ts";
 import type {
   AgentRun,
   AgentRuntime,
@@ -60,8 +61,6 @@ export interface ClaudeSdkRuntimeOptions {
   /** How long the init event waits for the SDK to describe the slash commands (3 s). */
   commandsTimeoutMs?: number;
 }
-
-const MAX_TOOL_RESULT = 4000;
 
 /** What the automatic approval's query must answer (phase 13). */
 const JUDGE_SCHEMA = {
@@ -145,12 +144,6 @@ export function resolveClaudePath(
   return compiled ? (which("claude") ?? undefined) : undefined;
 }
 
-function truncate(text: string): string {
-  return text.length > MAX_TOOL_RESULT
-    ? `${text.slice(0, MAX_TOOL_RESULT)}… [${text.length - MAX_TOOL_RESULT} caracteres omitidos]`
-    : text;
-}
-
 function toolResultText(content: unknown): string {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
@@ -231,7 +224,7 @@ export function normalizeSdkMessage(message: SDKMessage): RuntimeEvent[] {
         events.push({
           type: "tool.result",
           toolUseId: block.tool_use_id,
-          content: truncate(toolResultText(block.content)),
+          content: truncateToolResult(toolResultText(block.content)),
           isError: block.is_error === true,
         });
       }
