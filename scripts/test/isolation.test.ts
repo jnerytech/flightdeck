@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { registerDom } from "../../apps/desktop/test/dom.ts";
-import { captureGlobals, restoreGlobals, type Scope } from "./isolation.ts";
+import { captureGlobals, reportLeak, restoreGlobals, type Scope } from "./isolation.ts";
 
 registerDom();
 
@@ -101,5 +101,27 @@ describe("isolation: what a file leaves in the globals is put back before the ne
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
     expect(document.body.innerHTML).toBe("");
+  });
+});
+
+describe("isolation: a leak fails the run unless the mode is warn (#301)", () => {
+  test("it throws the line, and in warn mode only prints it", () => {
+    const before = process.env.FLIGHTDECK_ISOLATION;
+    const printed: unknown[] = [];
+    const realError = console.error;
+    try {
+      delete process.env.FLIGHTDECK_ISOLATION;
+      expect(() => reportLeak("isolation: a.test.ts left env.X changed")).toThrow(
+        "isolation: a.test.ts left env.X changed",
+      );
+      process.env.FLIGHTDECK_ISOLATION = "warn";
+      console.error = (line: unknown) => void printed.push(line);
+      reportLeak("isolation: b.test.ts left env.Y changed");
+    } finally {
+      console.error = realError;
+      if (before === undefined) delete process.env.FLIGHTDECK_ISOLATION;
+      else process.env.FLIGHTDECK_ISOLATION = before;
+    }
+    expect(printed).toEqual(["isolation: b.test.ts left env.Y changed"]);
   });
 });
