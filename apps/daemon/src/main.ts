@@ -961,7 +961,8 @@ export async function startDaemon(
     db: store.db,
     manager,
     quota,
-    scanner: snippetScanner,
+    // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
+    scanner: new SecretScanner(() => heldValues()),
     allowedRoots: config.allowedRoots,
     maxParallelRuns: config.maxParallelRuns,
     budgets,
