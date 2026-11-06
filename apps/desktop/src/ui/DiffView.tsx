@@ -15,6 +15,9 @@ const TONE = {
   " ": "",
 } as const;
 
+/** How a line's number looks, as a button or as plain text. */
+const NUMBER = "w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums";
+
 /** The number of a line, a button that starts (or, with shift, extends) a comment on it. */
 function LineNumber(
   props: Readonly<{
@@ -30,18 +33,14 @@ function LineNumber(
   const key = props.side === "old" ? "changes.commentOldLine" : "changes.commentLine";
   const pick = props.onPick;
   if (!pick) {
-    return (
-      <span className="w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums">
-        {props.line}
-      </span>
-    );
+    return <span className={NUMBER}>{props.line}</span>;
   }
   return (
     <button
       type="button"
       aria-label={t(key, { line: props.line, path: props.path })}
       aria-pressed={props.picked}
-      className="hit-24 w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums hover:text-foreground aria-pressed:text-foreground"
+      className={cn(NUMBER, "hit-24 hover:text-foreground aria-pressed:text-foreground")}
       onClick={(e) => pick(props.path, props.side, props.line, e.shiftKey)}
     >
       {props.line}

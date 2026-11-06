@@ -96,12 +96,7 @@ export function FileViewer(
           </Button>
         </Inline>
         {diff && (
-          <div
-            data-follow=""
-            ref={follow.box}
-            onScroll={follow.onScroll}
-            className="max-h-96 overflow-y-auto"
-          >
+          <div data-follow="" ref={follow.box} onScroll={follow.onScroll} className="diff-follow">
             <DiffView files={[diff]} mode="unified" selection={null} composer={null} />
           </div>
         )}

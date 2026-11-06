@@ -301,6 +301,12 @@
 }
 
 /* A short list that scrolls inside its panel instead of pushing the screen. */
+/* The file viewer's diff (issue #506): a bounded box that scrolls, so it can follow the newest hunk. */
+@utility diff-follow {
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
 @utility rows-scroll {
   max-height: 10rem;
   overflow-y: auto;
