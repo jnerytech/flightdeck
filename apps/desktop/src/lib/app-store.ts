@@ -2812,8 +2812,9 @@ export class AppStore {
     // Phase 19: the daemon decides a request with the rules the app hands it.
     if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
     void this.checkHealth(hostId);
+    // Not awaited, as the health check: a reload of the host's info never waits on the offer.
     if (hasFeature(hostInfo?.features, FEATURE_RESUME_OFFER, false))
-      await this.offerResume(hostId, conn);
+      void this.offerResume(hostId, conn);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
