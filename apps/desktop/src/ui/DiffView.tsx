@@ -113,7 +113,7 @@ function FileDiff(props: {
   };
   return (
     <table className="w-full table-fixed overflow-hidden rounded-md border font-mono text-xs">
-      <tbody>{rows.map(renderRow)}</tbody>
+      <tbody>{rows.map((row, i) => renderRow(row, i))}</tbody>
     </table>
   );
 }

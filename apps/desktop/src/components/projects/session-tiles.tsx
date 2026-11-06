@@ -1,11 +1,12 @@
 import { CornerDownLeft } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { ApprovalActions } from "@/components/approval/approval-actions";
 import { ActionButton } from "@/components/feedback/action-button";
 import { StatusText } from "@/components/status/status-text";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { Key } from "../../i18n/index.ts";
-import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
+import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { type HubRow, type HubRowState, hubRows } from "../../lib/hub.ts";
 import { statusTone } from "../../lib/status.ts";
 import {
@@ -97,19 +98,13 @@ function SessionTile(props: { store: AppStore; hostId: string; row: HubRow; onOp
       {pending && (
         <fieldset aria-label={t("tiles.request")} className="session-tile-request">
           <span>{t("tiles.asks", { tool: pending.toolName })}</span>
-          <ActionButton
+          {/* Issue #182: the same Approve and Deny as every screen, held when the risk is high. */}
+          <ApprovalActions
             size="sm"
-            onClick={() => store.respondTo(hostId, pending.requestId, "allow")}
-          >
-            {t("tiles.allow")}
-          </ActionButton>
-          <ActionButton
-            size="sm"
-            variant="outline"
-            onClick={() => store.respondTo(hostId, pending.requestId, "deny")}
-          >
-            {t("tiles.deny")}
-          </ActionButton>
+            risk={pending.risk}
+            onApprove={() => store.respondTo(hostId, pending.requestId, "allow")}
+            onDeny={() => store.respondTo(hostId, pending.requestId, "deny")}
+          />
         </fieldset>
       )}
       <div data-slot="composer-card" className="composer-card">

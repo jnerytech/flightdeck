@@ -4,10 +4,10 @@
  * PATH folder holding a real one taken off (see guard-path.ts). A test that needs one installs
  * its own fake in front.
  */
-import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { guardPath } from "./guard-path.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 export const GUARDED_CLIS = ["gh", "az"] as const;
 
@@ -25,7 +25,7 @@ export function installCliGuard(
   names: readonly string[] = GUARDED_CLIS,
   env: Record<string, string | undefined> = process.env,
 ): CliGuard {
-  const dir = mkdtempSync(join(tmpdir(), "fd-cli-guard-"));
+  const dir = realTempDir("fd-cli-guard-");
   const log = join(dir, "calls.log");
   for (const name of names) {
     writeFileSync(join(dir, name), `#!/bin/sh\necho "${name} $*" >> "${log}"\nexit 99\n`);

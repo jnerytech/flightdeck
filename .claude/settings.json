@@ -17,7 +17,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.ts\"; [ -f \"$f\" ] || exit 0; bun \"$f\""
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.ts\"; [ -f \"$f\" ] || exit 0; bun \"$f\"",
+            "timeout": 10,
+            "onFailure": "continue"
           }
         ]
       }
@@ -28,7 +30,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/biome-on-edit.ts\"; [ -f \"$f\" ] || exit 0; bun \"$f\""
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/biome-on-edit.ts\"; [ -f \"$f\" ] || exit 0; bun \"$f\"",
+            "timeout": 30,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.ts\"; [ -f \"$f\" ] || exit 0; bun \"$f\"",
+            "timeout": 10,
+            "onFailure": "continue"
           }
         ]
       }

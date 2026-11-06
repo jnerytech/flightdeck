@@ -22,8 +22,8 @@ import { budgetAlerts } from "../lib/budgets.ts";
 import { sessionProjectKeys } from "../lib/client-scope.ts";
 import { hubRows } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
+import { pendingText } from "../lib/pending-text.ts";
 import type { Route } from "../lib/router.ts";
-import { inputSummary } from "../lib/tool-input.ts";
 import { type WatchAlert, watchAlerts } from "../lib/watch-alerts.ts";
 
 /** A line of the list: a budget alert (opens Settings), a paused loop or a request (shows its card). */
@@ -33,8 +33,10 @@ type Entry =
   | { kind: "watch"; key: string; alert: WatchAlert }
   | { kind: "request"; key: string; item: PendingItem };
 
+// items-stretch: a button's own style is align-items: flex-start, which leaves a line no width
+// to cut at (issue #175).
 const ROW =
-  "flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[active=true]:bg-accent aria-pressed:bg-accent";
+  "flex w-full min-w-0 flex-col items-stretch gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[active=true]:bg-accent aria-pressed:bg-accent";
 
 /** The first line of a row: a dot, then the text. A span, since a row is a button. */
 function RowHead(props: { children: ReactNode }) {
@@ -197,13 +199,14 @@ export function NeedsYou(props: {
             );
           }
           const { item } = entry;
-          const summary = inputSummary(item.input);
           const chip = chipOf(item.sessionId);
+          // A workflow gate is not a tool: its line says which step waits (issue #175).
+          const what = pendingText(item, t);
           return (
             <li key={entry.key}>
               <button
                 type="button"
-                aria-label={`${item.hostName} · ${item.sessionName}: ${item.toolName}`}
+                aria-label={`${item.hostName} · ${item.sessionName}: ${what}`}
                 aria-pressed={selected === entry.key}
                 data-active={cursor === i}
                 className={ROW}
@@ -223,8 +226,8 @@ export function NeedsYou(props: {
                     {formatAgo(store.now() - Date.parse(item.createdAt), t)}
                   </time>
                 </RowHead>
-                <span className="truncate pl-4 text-muted-foreground text-xs">
-                  {summary ? `${item.toolName}: ${summary}` : item.toolName}
+                <span className="truncate pl-4 text-muted-foreground text-xs" title={what}>
+                  {what}
                 </span>
               </button>
             </li>
@@ -287,7 +290,9 @@ export function NeedsYou(props: {
         <ApprovalCard
           request={{
             requestId: item.requestId,
-            toolName: item.toolName,
+            toolName: item.gate
+              ? t("needsYou.gateTool", { step: item.gate.stepId })
+              : item.toolName,
             input: item.input ?? {},
             cwd: item.cwd ?? null,
             createdAt: item.createdAt,

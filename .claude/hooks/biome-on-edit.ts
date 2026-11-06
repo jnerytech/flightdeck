@@ -5,6 +5,7 @@
  */
 import { relative, resolve } from "node:path";
 import { checkoutRoot } from "../../scripts/lib/claude-hooks.ts";
+import { logHook } from "./log.ts";
 
 const CHECKED = /\.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|css)$/i;
 const ROOT = resolve(process.env.CLAUDE_PROJECT_DIR ?? resolve(import.meta.dir, "../.."));
@@ -30,7 +31,11 @@ const proc = Bun.spawnSync(
   ],
   { cwd: root, stdout: "pipe", stderr: "pipe" },
 );
-if (proc.exitCode === 0) process.exit(0);
+if (proc.exitCode === 0) {
+  logHook("biome-on-edit", null);
+  process.exit(0);
+}
+logHook("biome-on-edit", "biome");
 
 const output = `${proc.stdout.toString()}${proc.stderr.toString()}`.trim();
 console.error(`biome check ${rel} still reports problems:\n${output.slice(0, 4000)}`);

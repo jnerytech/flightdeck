@@ -57,7 +57,7 @@ describe("acoes-ui-aprovacao: the policy for the daemon's requests", () => {
     // Another action, or another requester, is a new question.
     await policy(context(frame({ action: "logs" })));
     await policy(context(frame({ requester: "automation" })));
-    expect(asked.length).toBe(3);
+    expect(asked).toHaveLength(3);
   });
 
   test("always asks at every run", async () => {
@@ -101,7 +101,7 @@ describe("acoes-ui-aprovacao: the policy for the daemon's requests", () => {
     const first = await policy(context(frame()));
     expect(first.kind).toBe("deny");
     expect(await policy(context(frame()))).toEqual({ kind: "deliver" });
-    expect(asked.length).toBe(2);
+    expect(asked).toHaveLength(2);
   });
 
   test("two secrets asked at once for the same run share one question", async () => {

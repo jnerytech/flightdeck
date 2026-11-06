@@ -6,6 +6,7 @@
  */
 import { appendFile, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
+import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { whichOnPath } from "../which.ts";
@@ -710,7 +711,7 @@ export function filePins(path: string): PinStore {
   const change = (apply: (pins: Record<string, Pin>) => Record<string, Pin>): Promise<void> => {
     const done = turn.then(async () => {
       await mkdir(dirname(path), { recursive: true });
-      await writeFile(path, JSON.stringify(apply(await read()), null, 2));
+      await writeFileAtomic(path, JSON.stringify(apply(await read()), null, 2));
     });
     turn = done.catch(() => {});
     return done;

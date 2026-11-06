@@ -71,6 +71,8 @@ export interface VisualCheck {
   io: VisualIO;
   /** Every screen was printed (no `DEMO_SHOTS` filter): a baseline with no print is a problem. */
   complete: boolean;
+  /** The `<theme>-<lang>` folders the run printed (#291); the missing-baseline check stays inside them. */
+  pairs?: readonly string[];
   options?: CompareOptions;
 }
 
@@ -133,7 +135,10 @@ export function checkShots(check: VisualCheck): {
   }
   if (check.complete) {
     const printed = new Set(shots);
-    for (const rel of io.list(baselineDir).filter((r) => !printed.has(r))) {
+    // A run that printed some pairs (a CI leg, #291) looks for missing baselines in those only.
+    const inScope = (rel: string) =>
+      check.pairs === undefined || check.pairs.some((pair) => rel.startsWith(`${pair}/`));
+    for (const rel of io.list(baselineDir).filter((r) => !printed.has(r) && inScope(r))) {
       problems.push(
         `${rel}: a baseline with no print (a screen that went away? run with --update)`,
       );
