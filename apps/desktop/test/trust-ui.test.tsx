@@ -302,6 +302,18 @@ describe("trust-ui: the project page says what a project would load and lets the
     await waitFor(() => expect(sent.some(([type]) => type === "project.trust.set")).toBe(true));
   });
 
+  test("with no listing there is nothing to read, so there is no way to trust the project (issue #415)", async () => {
+    render(setup({ noListing: true }).view);
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          "The list of what this project would load is shown on the computer this host runs on, or from your Tailscale network.",
+        ),
+      ).not.toBeNull(),
+    );
+    expect(screen.queryByRole("button", { name: "Trust this project" })).toBeNull();
+  });
+
   test("in Portuguese too", async () => {
     render(setup({ language: "pt-BR" }).view);
     await waitFor(() => expect(screen.queryByText("O que este projeto carregaria")).not.toBeNull());
