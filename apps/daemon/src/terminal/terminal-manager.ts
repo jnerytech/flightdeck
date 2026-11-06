@@ -305,6 +305,10 @@ export class TerminalManager {
         argv,
         cwd,
         env: {
+          // Issue #486: in Claude Code's fullscreen mode each wheel notch reaches it as one report;
+          // 3 lines a notch is how Windows Terminal and VS Code feel. A value the host already
+          // has, or one the client asks for, wins.
+          CLAUDE_CODE_SCROLL_SPEED: "3",
           ...buildChildEnv(env, this.opts.allowApiKey ?? false),
           // What is attached is xterm.js. A service has no TERM (or "dumb"), and readline then
           // scrolls a long line sideways instead of wrapping it.
