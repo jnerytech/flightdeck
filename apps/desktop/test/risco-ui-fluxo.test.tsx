@@ -5,7 +5,7 @@ import type { TrayAction, TrayMenu } from "../src/platform/types.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -107,20 +107,55 @@ describe("risco-ui: do daemon à tela", () => {
     });
   });
 
+  // Issue #245 (M2): the hold is checked below the screens too, so a caller that forgets the risk
+  // cannot approve with one click.
+  test("the store refuses to approve a high-risk request without the proof of the hold, and says why", async () => {
+    const { d, store, sessionId } = await waitingHigh();
+    const [item] = needsYou(store.getState());
+    const hostId = item?.hostId ?? "";
+    const requestId = item?.requestId ?? "";
+    await store.respondTo(hostId, requestId, "allow");
+    await stays(() => d.manager.get(sessionId).status === "awaiting_permission", 150);
+    expect(d.manager.get(sessionId).status).toBe("awaiting_permission");
+    expect(store.getState().notices.at(-1)?.text).toBe(
+      "Um pedido de risco alto só é aprovado segurando o botão.",
+    );
+    // The open session's own answer is held to the same rule.
+    store.select(hostId, sessionId);
+    await settle(() => store.getState().sessions[`${hostId}/${sessionId}`]?.items.length !== 0);
+    await settle(() =>
+      (store.getState().sessions[`${hostId}/${sessionId}`]?.items ?? []).some(
+        (i) => i.kind === "permission" && i.risk === "high",
+      ),
+    );
+    await store.respond(requestId, "allow");
+    await stays(() => d.manager.get(sessionId).status === "awaiting_permission", 150);
+    expect(d.manager.get(sessionId).status).toBe("awaiting_permission");
+    await store.respond(requestId, "allow", { held: true });
+    await settle(() => d.manager.get(sessionId).status !== "awaiting_permission", 3000);
+    expect(d.manager.get(sessionId).status).not.toBe("awaiting_permission");
+  });
+
   test("a fila traz o risco do pedido, a bandeja só oferece Abrir e aprovar por ela apenas abre o pedido", async () => {
     const { d, store, tray, sessionId } = await waitingHigh();
     const [item] = needsYou(store.getState());
     expect(item).toMatchObject({ risk: "high", toolName: "Bash" });
     expect(typeof item?.riskReason).toBe("string");
     await settle(() => (tray.menus.at(-1)?.items.length ?? 0) === 1, 3000);
-    expect(tray.menus.at(-1)?.items[0]?.actions).toEqual(["open"]);
+    // Issue #245 (L1): Deny needs no hold, so the tray offers it; only Approve takes the window.
+    expect(tray.menus.at(-1)?.items[0]?.actions).toEqual(["deny", "open"]);
 
     const opened: unknown[] = [];
     store.onOpenRequest((i) => opened.push(i));
     tray.act({ key: `${item?.hostId}/${item?.requestId}`, action: "approve" });
-    await Bun.sleep(150);
+    await settle(() => opened.length === 1);
+    await stays(() => d.manager.get(sessionId).status === "awaiting_permission", 150);
     expect(opened).toHaveLength(1);
     expect(d.manager.get(sessionId).status).toBe("awaiting_permission");
+    // Deny from the tray answers it there.
+    tray.act({ key: `${item?.hostId}/${item?.requestId}`, action: "deny" });
+    await settle(() => d.manager.get(sessionId).status !== "awaiting_permission", 3000);
+    expect(d.manager.get(sessionId).status).not.toBe("awaiting_permission");
   });
 
   test("na fila e na conversa o pedido alto mostra o selo e pede para segurar; segurar na conversa aprova", async () => {

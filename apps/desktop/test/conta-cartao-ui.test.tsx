@@ -97,6 +97,28 @@ describe("conta-cartao-ui: signed in", () => {
     expect(inCard().queryByText("Max")).not.toBeNull();
   });
 
+  test("names the Ultra plan, and says under the plan where it comes from and what to do after a change (issue #256)", () => {
+    show({ state: state({ plan: "ultra" }) });
+    expect(inCard().queryByText("Ultra")).not.toBeNull();
+    expect(
+      inCard().queryByText(
+        "From the sign-in of claude on this host. Changed your plan? Sign out and in again there, then Refresh.",
+      ),
+    ).not.toBeNull();
+  });
+
+  test("the plan hint reads in Portuguese in the Portuguese app, and is absent without a plan", () => {
+    show({ state: state({ plan: "ultra" }) }, "pt-BR");
+    expect(
+      inCard().queryByText(
+        "Vem do login do claude neste host. Mudou de plano? Saia e entre de novo lá, depois toque em Atualizar.",
+      ),
+    ).not.toBeNull();
+    cleanup();
+    show({ state: state({ plan: null }) });
+    expect(inCard().queryByText(/From the sign-in of claude/)).toBeNull();
+  });
+
   test("two bars with percentage, reset time (exact on hover) and the age of the reading", () => {
     show({ state: state() });
     expect(inBar("five_hour").queryByText("5 hours")).not.toBeNull();
@@ -117,7 +139,7 @@ describe("conta-cartao-ui: signed in", () => {
     expect(meter?.getAttribute("value")).toBe("0.42");
     expect(meter?.getAttribute("max")).toBe("1");
     expect(meter?.getAttribute("aria-valuetext")).toBe("42%, resets in 3 h");
-    expect(inCard().queryAllByRole("meter").length).toBe(2);
+    expect(inCard().queryAllByRole("meter")).toHaveLength(2);
   });
 
   test("a window with no reset time reads as just its percentage, and shows no reset line", () => {
@@ -138,7 +160,7 @@ describe("conta-cartao-ui: signed in", () => {
         ],
       }),
     });
-    expect(inCard().queryAllByRole("meter").length).toBe(4);
+    expect(inCard().queryAllByRole("meter")).toHaveLength(4);
     expect(bar("seven_day_opus")).not.toBeNull();
     expect(inBar("seven_day_sonnet").queryByText("7 days · Sonnet")).not.toBeNull();
   });
@@ -169,14 +191,14 @@ describe("conta-cartao-ui: signed in", () => {
 
   test("with no windows it says so, instead of empty bars", () => {
     show({ state: state({ windows: [] }) });
-    expect(inCard().queryAllByRole("meter").length).toBe(0);
+    expect(inCard().queryAllByRole("meter")).toHaveLength(0);
     expect(inCard().queryByText("The host reported no plan windows.")).not.toBeNull();
   });
 
   test("a stale reading keeps the data and says the refresh failed", () => {
     show({ state: state({ stale: true, error: "account_unavailable" }) });
     expect(inCard().queryByText("demo@example.com")).not.toBeNull();
-    expect(inCard().queryAllByRole("meter").length).toBe(2);
+    expect(inCard().queryAllByRole("meter")).toHaveLength(2);
     expect(inCard().queryByText("Could not refresh: this is the last reading.")).not.toBeNull();
   });
 });
@@ -196,9 +218,9 @@ describe("conta-cartao-ui: the other states", () => {
     expect(inCard().queryByText("claude auth login")).not.toBeNull();
     expect(inCard().queryByRole("button", { name: "Copy command" })).not.toBeNull();
     expect(inCard().queryByRole("button", { name: "Open terminal" })).not.toBeNull();
-    expect(inCard().queryAllByRole("textbox").length).toBe(0);
+    expect(inCard().queryAllByRole("textbox")).toHaveLength(0);
     expect(card()?.querySelector("input, textarea, a")).toBeNull();
-    expect(inCard().queryAllByRole("meter").length).toBe(0);
+    expect(inCard().queryAllByRole("meter")).toHaveLength(0);
   });
 
   test("after copying the button says so", () => {
@@ -211,7 +233,7 @@ describe("conta-cartao-ui: the other states", () => {
     expect(
       inCard().queryByText("This host uses an API key. Plan limits do not apply."),
     ).not.toBeNull();
-    expect(inCard().queryAllByRole("meter").length).toBe(0);
+    expect(inCard().queryAllByRole("meter")).toHaveLength(0);
   });
 
   test("a cloud provider host names its provider", () => {
@@ -259,7 +281,7 @@ describe("conta-cartao-ui: the other states", () => {
       inCard().queryByText("alfa is offline: the account shows again when it is back."),
     ).not.toBeNull();
     expect(inCard().queryByText("demo@example.com")).toBeNull();
-    expect(inCard().queryAllByRole("meter").length).toBe(0);
+    expect(inCard().queryAllByRole("meter")).toHaveLength(0);
   });
 });
 

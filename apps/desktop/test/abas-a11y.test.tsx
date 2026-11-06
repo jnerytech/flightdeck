@@ -14,12 +14,27 @@ const axe = (await import("axe-core")).default;
 const { contrastRatio } = await import("../src/lib/contrast.ts");
 
 /** `--name: value;` declarations of the first `selector { … }` block of styles.css. */
-function tokens(selector: string): Record<string, string> {
-  const css = readFileSync(resolve(import.meta.dir, "../src/styles.css"), "utf8");
+function declarations(css: string, selector: string): Record<string, string> {
   const start = css.indexOf(`${selector} {`);
   const body = css.slice(start, css.indexOf("}", start));
   return Object.fromEntries(
     [...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [m[1] as string, m[2] as string]),
+  );
+}
+
+/**
+ * The tokens of a theme with every `var(--other)` resolved (a token may point at another, as
+ * `--card` does at `--surface-1`), looking in the theme first and in `:root` after it.
+ */
+function tokens(selector: string): Record<string, string> {
+  const css = readFileSync(resolve(import.meta.dir, "../src/styles.css"), "utf8");
+  const all = { ...declarations(css, ":root"), ...declarations(css, selector) };
+  const resolved = (value: string, depth = 0): string => {
+    const ref = /^var\((--[\w-]+)\)$/.exec(value.trim());
+    return ref && depth < 5 ? resolved(all[ref[1] as string] ?? value, depth + 1) : value;
+  };
+  return Object.fromEntries(
+    Object.entries(declarations(css, selector)).map(([name, value]) => [name, resolved(value)]),
   );
 }
 
@@ -67,7 +82,7 @@ describe("abas: acessibilidade da barra de abas", () => {
     expect(await violations()).toEqual([]);
   });
 
-  test("the badges read at 4.5:1 or more in both themes: needs-you is the background's color on its own", async () => {
+  test("the badge glyphs read at 4.5:1 or more in both themes: needs-you is drawn in its status color", async () => {
     for (const selector of [":root", ".dark"]) {
       const t = tokens(selector);
       expect(
@@ -102,8 +117,7 @@ describe("abas: acessibilidade da barra de abas", () => {
       });
     });
     const badge = document.querySelector('[data-badge="needs-you"]');
-    expect(badge?.className).toContain("bg-status-needs-you");
-    expect(badge?.className).toContain("text-background");
+    expect(badge?.className).toContain("text-status-needs-you");
     expect(badge?.className).not.toContain("text-white");
   });
 });

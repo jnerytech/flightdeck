@@ -5,7 +5,7 @@ import { Changes, type ChangesOptions } from "../src/review/changes.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { cardWhen, git, gitRepo, newBoard } from "./board-helpers.ts";
-import { must, newManager, poll, tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, must, newManager, poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { manualTime } from "./time-helpers.ts";
 import { insertSession } from "./usage-helpers.ts";
@@ -206,7 +206,7 @@ describe("mudancas", () => {
     // The app shows the Mudanças tab for hosts that announce it.
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toEqual(["review"]);
     const got = await client.data<{ files: unknown[] }>("changes.get", { target: "session:h-1" });

@@ -25,12 +25,20 @@ const mine: SlotHolder = { pid: 10, label: "sonar", command: "bun run test", sta
 const theirs: SlotHolder = { pid: 20, label: "kiwi", command: "bun run e2e", startedAt: 1000 };
 
 /** An in-memory slot: one lock "file", a fake clock that only moves when somebody sleeps. */
-function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: SlotChild } = {}) {
+function fake(
+  opts: {
+    files?: Record<string, string>;
+    dead?: number[];
+    child?: SlotChild;
+    holder?: number;
+  } = {},
+) {
   const files = new Map(Object.entries(opts.files ?? {}));
   const logs: string[] = [];
   const sleeps: number[] = [];
   const terminated: number[] = [];
   const spawned: { command: string[]; nice: boolean }[] = [];
+  const spawnedAsHolder: Array<boolean | undefined> = [];
   let time = 5000;
   let handler: ((code: number) => void) | null = null;
   const listeners = { off: 0 };
@@ -61,8 +69,10 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
     log: (line) => {
       logs.push(line);
     },
-    spawn: (command, nice) => {
+    ...(opts.holder !== undefined ? { holder: opts.holder } : {}),
+    spawn: (command, nice, asHolder) => {
       spawned.push({ command, nice });
+      spawnedAsHolder.push(asHolder);
       return opts.child ?? { wait: async () => 0, kill: () => {} };
     },
     terminate: (pid) => {
@@ -82,6 +92,7 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
     logs,
     sleeps,
     spawned,
+    spawnedAsHolder,
     terminated,
     listeners,
     onSleep,
@@ -285,7 +296,7 @@ describe("slot: waiting in the queue", () => {
       if (n === 2) f.files.delete(PATH);
     });
     expect(await acquire(f.env, "x", () => false)).toBe(true);
-    expect(f.logs.length).toBe(2);
+    expect(f.logs).toHaveLength(2);
     expect(f.logs[1]).toContain("tbug");
   });
 
@@ -329,6 +340,80 @@ describe("slot: status", () => {
   });
 });
 
+const queued = (pid: number, label: string, startedAt: number, command = "bun run test") =>
+  JSON.stringify({ pid, label, command, startedAt } satisfies SlotHolder);
+
+describe("slot: first come, first served (#372)", () => {
+  test("a free slot waits for a live waiter that queued earlier, and is taken once it is gone", async () => {
+    const f = fake({ files: { [`${PATH}.wait.30`]: queued(30, "userhome", 2000) } });
+    const lockDuringWait: boolean[] = [];
+    f.onSleep.push((n) => {
+      lockDuringWait.push(f.files.has(PATH));
+      if (n === 2) f.files.delete(`${PATH}.wait.30`);
+    });
+    expect(await acquire(f.env, "bun run e2e", () => false)).toBe(true);
+    expect(lockDuringWait).toEqual([false, false]);
+    expect(f.sleeps).toEqual([POLL_MS, POLL_MS]);
+    expect(f.logs).toEqual([
+      "slot queue: 1 waiting before you (first: userhome: bun run test (pid 30, 3s)); waiting",
+    ]);
+    expect(parseHolder(f.files.get(PATH) ?? null)?.pid).toBe(10);
+  });
+
+  test("an equal queue time goes to the lower pid", async () => {
+    const before = fake({ files: { [`${PATH}.wait.5`]: queued(5, "top-bar", 5000) } });
+    let stop = false;
+    before.onSleep.push(() => {
+      stop = true;
+    });
+    expect(await acquire(before.env, "x", () => stop)).toBe(false);
+    expect(before.files.has(PATH)).toBe(false);
+
+    const after = fake({ files: { [`${PATH}.wait.15`]: queued(15, "top-bar", 5000) } });
+    expect(await acquire(after.env, "x", () => false)).toBe(true);
+    expect(after.sleeps).toEqual([]);
+  });
+
+  test("a dead or unreadable waiter, and one that queued later, hold nobody back", async () => {
+    const f = fake({
+      files: {
+        [`${PATH}.wait.31`]: queued(31, "gone", 1000),
+        [`${PATH}.wait.32`]: "garbage",
+        [`${PATH}.wait.33`]: queued(33, "later", 9000),
+      },
+      dead: [31],
+    });
+    expect(await acquire(f.env, "x", () => false)).toBe(true);
+    expect(f.sleeps).toEqual([]);
+    expect(f.logs).toEqual([]);
+  });
+
+  test("--status lists the live waiters in queue order with their ages, each once", () => {
+    const long = `bun test ${"./apps/daemon/test/a.test.ts ".repeat(10)}`.trim();
+    const files = {
+      [`${PATH}.wait.40`]: queued(40, "top-bar", 3000),
+      [`${PATH}.wait.30`]: queued(30, "userhome", 2000, long),
+      [`${PATH}.wait.30.30`]: queued(30, "userhome", 2000, long),
+      [`${PATH}.wait.31`]: queued(31, "gone", 1000),
+    };
+    const clipped = `${long.slice(0, 80)}…`;
+    expect(status(fake({ files: { ...files, [PATH]: held(theirs) }, dead: [31] }).env)).toBe(
+      [
+        "held by kiwi: bun run e2e (pid 20, 4s)",
+        `waiting 1: userhome: ${clipped} (pid 30, 3s)`,
+        "waiting 2: top-bar: bun run test (pid 40, 2s)",
+      ].join("\n"),
+    );
+    expect(status(fake({ files, dead: [31] }).env)).toBe(
+      [
+        "free",
+        `waiting 1: userhome: ${clipped} (pid 30, 3s)`,
+        "waiting 2: top-bar: bun run test (pid 40, 2s)",
+      ].join("\n"),
+    );
+  });
+});
+
 describe("slot: running a command", () => {
   test("the command runs under the lock and its exit code comes back", async () => {
     const f = fake({ child: { wait: async () => 7, kill: () => {} } });
@@ -358,6 +443,25 @@ describe("slot: running a command", () => {
     expect(await run(f.env, ["--status"])).toBe(0);
     expect(f.logs).toEqual(["held by kiwi: bun run e2e (pid 20, 4s)"]);
     expect(f.spawned).toEqual([]);
+  });
+
+  test("--status logs the holder and each waiter as lines of their own, since a log line is kept to one line (#372)", async () => {
+    const f = fake({
+      files: {
+        [PATH]: held(theirs),
+        [`${PATH}.wait.30`]: JSON.stringify({
+          ...theirs,
+          pid: 30,
+          label: "userhome",
+          startedAt: 2000,
+        }),
+      },
+    });
+    expect(await run(f.env, ["--status"])).toBe(0);
+    expect(f.logs).toEqual([
+      "held by kiwi: bun run e2e (pid 20, 4s)",
+      "waiting 1: userhome: bun run e2e (pid 30, 3s)",
+    ]);
   });
 
   test("no command prints the usage and exits with 2", async () => {
@@ -621,5 +725,46 @@ describe("slot: --priority", () => {
     expect(await run(f.env, ["bun", "run", "test"])).toBe(0);
     expect(f.listed()).toBe(0);
     expect(f.calls).toEqual([]);
+  });
+});
+
+describe("slot: a command that runs under the slot may call the slot again", () => {
+  test("the command is started as the holder, so what it starts itself can tell", async () => {
+    const f = fake();
+    await run(f.env, ["bun", "run", "test:related"]);
+    expect(f.spawnedAsHolder).toEqual([true]);
+  });
+
+  test("under its holder's lock, a nested call runs the command at once and leaves the lock alone", async () => {
+    const f = fake({
+      files: { [PATH]: held(theirs) },
+      holder: theirs.pid,
+      child: { wait: async () => 3, kill: () => {} },
+    });
+    // Without the rule this would wait for a lock its own parent holds: end that wait, so it fails.
+    f.onSleep.push(() => f.signal(143));
+    expect(await run(f.env, ["--nice", "bun", "test", "x"])).toBe(3);
+    expect(f.spawned).toEqual([{ command: ["bun", "test", "x"], nice: true }]);
+    // It is not a holder of its own, and it queued and waited for nothing.
+    expect(f.spawnedAsHolder).toEqual([false]);
+    expect(f.files.get(PATH)).toBe(held(theirs));
+    expect([...f.files.keys()]).toEqual([PATH]);
+    expect(f.sleeps).toEqual([]);
+    expect(f.logs).toEqual([]);
+  });
+
+  test("a holder variable left over from an old run does not skip the queue: the lock must name that pid", async () => {
+    const other: SlotHolder = { ...theirs, pid: 30 };
+    const f = fake({ files: { [PATH]: held(other) }, holder: theirs.pid });
+    f.onSleep.push(() => f.signal(143));
+    expect(await run(f.env, ["bun", "test", "x"])).toBe(143);
+    expect(f.spawned).toEqual([]);
+  });
+
+  test("nor does the variable of a holder that is gone", async () => {
+    const f = fake({ files: { [PATH]: held(theirs) }, holder: theirs.pid, dead: [theirs.pid] });
+    expect(await run(f.env, ["bun", "test", "x"])).toBe(0);
+    // The dead lock was stale: the slot was taken in the ordinary way.
+    expect(f.spawnedAsHolder).toEqual([true]);
   });
 });

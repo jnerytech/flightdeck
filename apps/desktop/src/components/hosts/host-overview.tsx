@@ -22,16 +22,18 @@ import type { ProjectCard } from "../../lib/project-cards.ts";
  * What a host page leads with: that host's own sessions (the rows and cards of the Sessions list)
  * and its projects (the cards of the Projects list), each with "See all" and an empty state.
  */
-export function HostOverview(props: {
-  store: AppStore;
-  state: Pick<AppState, "projects" | "cards"> & HubRowState;
-  host: { id: string; name: string };
-  onOpenSession(row: HubRow): void;
-  onOpenProject(card: ProjectCard): void;
-  onSeeAllSessions(): void;
-  onSeeAllProjects(): void;
-  onNewSession(): void;
-}) {
+export function HostOverview(
+  props: Readonly<{
+    store: AppStore;
+    state: Pick<AppState, "projects" | "cards"> & HubRowState;
+    host: { id: string; name: string };
+    onOpenSession(row: HubRow): void;
+    onOpenProject(card: ProjectCard): void;
+    onSeeAllSessions(): void;
+    onSeeAllProjects(): void;
+    onNewSession(): void;
+  }>,
+) {
   const { store, state, host } = props;
   const { t } = store.i18n;
   useEffect(() => {

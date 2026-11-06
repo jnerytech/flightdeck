@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -84,14 +85,16 @@ describe("direcao-visual", () => {
   test("superfícies em camadas: o fundo um tom abaixo dos painéis, nunca preto puro, borda com alfa", () => {
     const light = block(":root");
     const dark = block(".dark");
-    expect(lightness(light["--background"])).toBeLessThan(lightness(light["--card"]));
+    expect(lightness(light["--background"])).toBeLessThan(lightness(light["--surface-1"]));
     expect(lightness(light["--background"])).toBeGreaterThan(0.96);
-    expect(lightness(dark["--background"])).toBeLessThan(lightness(dark["--card"]) - 0.02);
+    expect(lightness(dark["--background"])).toBeLessThan(lightness(dark["--surface-1"]) - 0.02);
     // A deep gray: not pure black, not mid gray.
     expect(lightness(dark["--background"])).toBeGreaterThan(0.14);
     expect(lightness(dark["--background"])).toBeLessThan(0.22);
     expect(light["--border"]).toMatch(/\/\s*\d+%/);
-    expect(dark["--border"]).toMatch(/\/\s*\d+%/);
+    // Issue #98: the dark lines are opaque, so their 3:1 contrast against the surfaces can be
+    // checked (scripts/test/theme-contrast.test.ts); the light ones stay translucent.
+    expect(dark["--border"]).toMatch(/^oklch\(/);
   });
 
   test("uma cor de destaque só: o token brand alimenta o botão primário, o foco e o item ativo", () => {
@@ -116,7 +119,7 @@ describe("direcao-visual", () => {
     );
   });
 
-  test("o status é um pontinho de 8 px: azul com pulso, âmbar, cinza, esmaecido e vermelho", () => {
+  test("o status é um glifo num espaço de 12 px, com nome para leitores de tela (issue #146: forma e cor)", () => {
     const tones = ["running", "needs-you", "idle", "ended", "error"] as const;
     render(
       <div>
@@ -125,20 +128,11 @@ describe("direcao-visual", () => {
         ))}
       </div>,
     );
-    const dot = (tone: string) => screen.queryByRole("img", { name: `estado ${tone}` });
     for (const tone of tones) {
-      expect(dot(tone)?.className ?? "").toContain("size-2");
-      expect(dot(tone)?.className ?? "").toContain("rounded-full");
-      expect(dot(tone)?.className ?? "").toContain(`bg-status-${tone}`);
-      expect(dot(tone)?.getAttribute("title")).toBe(`estado ${tone}`);
+      const dot = screen.getByRole("img", { name: `estado ${tone}` });
+      expect(dot.className).toContain("size-3");
+      expect(dot.getAttribute("title")).toBeNull();
     }
-    // Only the running one pulses (and only when motion is allowed); the ended one fades.
-    expect(dot("running")?.className ?? "").toContain("motion-safe:animate-pulse");
-    for (const tone of ["needs-you", "idle", "ended", "error"]) {
-      expect(dot(tone)?.className ?? "").not.toContain("animate-pulse");
-    }
-    expect(dot("ended")?.className ?? "").toContain("opacity-50");
-    expect(dot("idle")?.className ?? "").not.toContain("opacity-50");
   });
 
   test("na lista, a linha tem o pontinho (sem pílula de estado) e a hora em números tabulares; só o rótulo é pílula", async () => {
@@ -154,10 +148,11 @@ describe("direcao-visual", () => {
     await act(async () => {
       await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
+    await unfoldAll(act);
     await settle(() => screen.queryByRole("listitem", { name: "Gerenciada" }) !== null);
     const row = screen.queryByRole("listitem", { name: "Gerenciada" }) as HTMLElement;
     const dot = within(row).queryByRole("img", { name: "ociosa" });
-    expect(dot?.className ?? "").toContain("bg-status-idle");
+    expect(dot?.innerHTML ?? "").toContain("bg-status-idle");
     // No pill carries the state any more.
     expect(
       [...row.querySelectorAll("[data-slot='badge']")].some(

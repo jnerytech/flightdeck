@@ -2,7 +2,9 @@ import type { FsDirsResult, FsFilesResult } from "@flightdeck/protocol";
 import { ArrowUp, ChevronRight, File, Folder } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
+import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,19 +19,32 @@ import type { AppStore, HostView } from "../lib/app-store.ts";
 import { breadcrumbSteps, isInside } from "../lib/paths.ts";
 import { isLocalUrl } from "../lib/terminal.ts";
 
+/** Arrow keys move through the folder buttons, Enter opens the focused one; false for any other key. */
+function moveByKey(event: React.KeyboardEvent<HTMLUListElement>): boolean {
+  const entries = [...event.currentTarget.querySelectorAll<HTMLElement>("button")];
+  const at = entries.indexOf(document.activeElement as HTMLElement);
+  if (event.key === "ArrowDown") entries[Math.min(at + 1, entries.length - 1)]?.focus();
+  else if (event.key === "ArrowUp") entries[Math.max(at - 1, 0)]?.focus();
+  else if (event.key === "Enter") entries[at]?.click();
+  else return false;
+  return true;
+}
+
 /**
  * A folder of a host, chosen by browsing the folders it allows (`fs.dirs`): the roots, then
  * subfolders, a breadcrumb, the arrow keys. On this machine the system dialog is offered too; what
  * it gives is checked by the host like everything else.
  */
-export function FolderPicker(props: {
-  store: AppStore;
-  host: HostView;
-  /** Also list the files of the open folder, and let one be picked. */
-  files?: boolean;
-  onPick(path: string): void;
-  onClose(): void;
-}) {
+export function FolderPicker(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView;
+    /** Also list the files of the open folder, and let one be picked. */
+    files?: boolean;
+    onPick(path: string): void;
+    onClose(): void;
+  }>,
+) {
   const { store, host } = props;
   const t = useT();
   const [listing, setListing] = useState<FsDirsResult | null>(null);
@@ -51,6 +66,15 @@ export function FolderPicker(props: {
   const describe = (code: string, message: string) =>
     code === "forbidden_cwd" ? t("folderPicker.outside", { roots: allowed.join(", ") }) : message;
 
+  /** The files of a folder, or none when the host cannot list them. */
+  const filesOf = async (path: string) => {
+    const found = await store.hostRequest(host.id, "fs.files", {
+      path,
+      ...(hiddenNow.current ? { hidden: true } : {}),
+    });
+    return found.ok && found.data ? (found.data as FsFilesResult).files : [];
+  };
+
   const opening = useRef(0);
   const rootCount = allowed.length;
 
@@ -68,12 +92,8 @@ export function FolderPicker(props: {
     shown.current = result.data.path ?? undefined;
     setListing(result.data);
     if (props.files && result.data.path) {
-      const found = await store.hostRequest(host.id, "fs.files", {
-        path: result.data.path,
-        ...(hiddenNow.current ? { hidden: true } : {}),
-      });
-      if (ticket === opening.current)
-        setFiles(found.ok && found.data ? (found.data as FsFilesResult).files : []);
+      const list = await filesOf(result.data.path);
+      if (ticket === opening.current) setFiles(list);
     } else setFiles([]);
     if (path === undefined) setRoots(result.data.dirs.map((dir) => dir.path));
   };
@@ -102,13 +122,9 @@ export function FolderPicker(props: {
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLUListElement>) => {
-    const entries = [...event.currentTarget.querySelectorAll<HTMLElement>("button")];
-    const at = entries.indexOf(document.activeElement as HTMLElement);
-    if (event.key === "ArrowDown") entries[Math.min(at + 1, entries.length - 1)]?.focus();
-    else if (event.key === "ArrowUp") entries[Math.max(at - 1, 0)]?.focus();
-    else if (event.key === "Enter") entries[at]?.click();
-    else if (event.key === "Backspace") void open(listing?.parent ?? undefined);
-    else return;
+    const moved = moveByKey(event);
+    if (!moved && event.key !== "Backspace") return;
+    if (!moved) void open(listing?.parent ?? undefined);
     event.preventDefault();
   };
 
@@ -130,18 +146,23 @@ export function FolderPicker(props: {
             <span key={step.path} className="flex items-center gap-1">
               <ChevronRight className="size-3" aria-hidden />
               {index === crumbs.length - 1 ? (
-                <span aria-current="location" className="font-medium">
-                  {step.name}
-                </span>
+                <IconTip label={step.name}>
+                  <span aria-current="location" className="crumb-name font-medium">
+                    {step.name}
+                  </span>
+                </IconTip>
               ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => void open(step.path)}
-                >
-                  {step.name}
-                </Button>
+                <IconTip label={step.name}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    className="crumb-name"
+                    onClick={() => void open(step.path)}
+                  >
+                    {step.name}
+                  </Button>
+                </IconTip>
               )}
             </span>
           ))}
@@ -174,35 +195,39 @@ export function FolderPicker(props: {
             <ul
               aria-label={t("folderPicker.list")}
               aria-busy={loading}
-              className="flex max-h-72 flex-col overflow-y-auto aria-busy:opacity-60"
+              className="flex max-h-72 min-w-0 flex-col overflow-y-auto aria-busy:opacity-60"
               onKeyDown={onKeyDown}
             >
               {listing.dirs.map((dir) => (
                 <li key={dir.path}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => void open(dir.path)}
-                  >
-                    <Folder aria-hidden />
-                    {dir.name}
-                  </Button>
+                  <IconTip label={dir.name}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => void open(dir.path)}
+                    >
+                      <Folder aria-hidden />
+                      <span className="min-w-0 truncate">{dir.name}</span>
+                    </Button>
+                  </IconTip>
                 </li>
               ))}
               {files.map((file) => (
                 <li key={file.path}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => props.onPick(file.path)}
-                  >
-                    <File aria-hidden />
-                    {file.name}
-                  </Button>
+                  <IconTip label={file.name}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => props.onPick(file.path)}
+                    >
+                      <File aria-hidden />
+                      <span className="min-w-0 truncate">{file.name}</span>
+                    </Button>
+                  </IconTip>
                 </li>
               ))}
             </ul>
@@ -218,33 +243,37 @@ export function FolderPicker(props: {
           {t("folderPicker.hidden")}
         </label>
         <DialogFooter>
-          {!loading && listing?.parent !== undefined && listing?.path && (
-            <Button
+          {/* The buttons wrap onto a second line in a narrow window; the reason a button is
+              disabled is the row's help line (issue #99). */}
+          <FieldRow className="w-full justify-end">
+            {!loading && listing?.parent !== undefined && listing?.path && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="mr-auto"
+                aria-label={t("folderPicker.up")}
+                onClick={() => void open(listing.parent ?? undefined)}
+              >
+                <ArrowUp aria-hidden />
+              </Button>
+            )}
+            {nativeDialog && (
+              <Button type="button" variant="outline" onClick={() => void chooseWithSystem()}>
+                {t("folderPicker.system")}
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={props.onClose}>
+              {t("common.cancel")}
+            </Button>
+            <ActionButton
               type="button"
-              variant="ghost"
-              className="mr-auto"
-              aria-label={t("folderPicker.up")}
-              onClick={() => void open(listing.parent ?? undefined)}
+              disabled={!current}
+              disabledReason={t("folderPicker.openFirst")}
+              onClick={() => current && props.onPick(current)}
             >
-              <ArrowUp aria-hidden />
-            </Button>
-          )}
-          {nativeDialog && (
-            <Button type="button" variant="outline" onClick={() => void chooseWithSystem()}>
-              {t("folderPicker.system")}
-            </Button>
-          )}
-          <Button type="button" variant="outline" onClick={props.onClose}>
-            {t("common.cancel")}
-          </Button>
-          <ActionButton
-            type="button"
-            disabled={!current}
-            disabledReason={t("folderPicker.openFirst")}
-            onClick={() => current && props.onPick(current)}
-          >
-            {t("folderPicker.choose")}
-          </ActionButton>
+              {t("folderPicker.choose")}
+            </ActionButton>
+          </FieldRow>
         </DialogFooter>
       </DialogContent>
     </Dialog>

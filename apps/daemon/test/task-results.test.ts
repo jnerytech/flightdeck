@@ -161,7 +161,7 @@ describe("task-results: a preview of what a task made", () => {
     put(join(output, "big.txt"), "x".repeat(100_000), 0);
     const preview = await tracker.preview("s1", join(output, "big.txt"));
     expect(preview.truncated).toBe(true);
-    expect(preview.text.length).toBe(65_536);
+    expect(preview.text).toHaveLength(65_536);
   });
 
   test("Given a file outside the task's folders, a link out, or a kind that is not text, Then it is refused", async () => {

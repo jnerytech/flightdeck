@@ -119,9 +119,7 @@ describe("clients-budgets: the month limit on the Clients screen", () => {
       }) as HTMLButtonElement;
     await typeLimit("Acme", "0");
     expect(button().disabled).toBe(true);
-    expect(within(itemOf("Acme")).queryByText("Informe um limite maior que zero.") !== null).toBe(
-      true,
-    );
+    expect(within(itemOf("Acme")).queryByText("Informe um limite maior que zero.")).not.toBeNull();
     await typeLimit("Acme", "");
     expect(button().disabled).toBe(true);
   });
@@ -136,7 +134,7 @@ describe("clients-budgets: the month limit on the Clients screen", () => {
 
   test("the screen says the limit only warns, and a limit is removed", async () => {
     const { store } = await setup({ acme: 4 });
-    expect(within(itemOf("Acme")).queryByText(/Não segura cards/) !== null).toBe(true);
+    expect(within(itemOf("Acme")).queryByText(/Não segura cards/)).not.toBeNull();
     await click(
       within(itemOf("Acme")).queryByRole("button", { name: "Remover orçamento de Acme" }),
     );

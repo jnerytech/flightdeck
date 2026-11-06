@@ -25,12 +25,14 @@ export interface ArenaVariantInput {
 }
 
 /** "Iniciar em arena": 2 to 4 variants of the card's request, each with its own model and effort. */
-export function ArenaStartForm(props: {
-  onStart(variants: ArenaVariantInput[]): void;
-  onClose(): void;
-  /** Phase 20: the persona picker of variant `n`, when the host keeps personas. */
-  persona?(n: number, value: string, onChange: (value: string) => void): ReactNode;
-}) {
+export function ArenaStartForm(
+  props: Readonly<{
+    onStart(variants: ArenaVariantInput[]): void;
+    onClose(): void;
+    /** Phase 20: the persona picker of variant `n`, when the host keeps personas. */
+    persona?(n: number, value: string, onChange: (value: string) => void): ReactNode;
+  }>,
+) {
   const t = useT();
   const [drafts, setDrafts] = useState<Draft[]>(() =>
     Array.from({ length: MIN }, () => ({ model: "", effort: "", persona: "" })),

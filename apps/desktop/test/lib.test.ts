@@ -24,6 +24,16 @@ describe("desktop: backoff", () => {
 });
 
 describe("desktop: estado da sessão", () => {
+  test("a sessão retomada guarda de qual conversa vem; uma comum não tem isso (issue #108)", () => {
+    const created = { type: "session.created", cwd: "/p", name: null, permissionMode: "default" };
+    const resumed = applyEnvelope(
+      emptySession(),
+      env(1, { ...created, resumedFrom: "abc" } as never),
+    );
+    expect(resumed.resumedFrom).toBe("abc");
+    expect(applyEnvelope(emptySession(), env(1, created as never)).resumedFrom).toBeUndefined();
+  });
+
   test("monta a conversa, junta deltas e descarta duplicados", () => {
     let s = emptySession();
     s = applyEnvelope(
@@ -72,6 +82,23 @@ describe("desktop: estado da sessão", () => {
       { kind: "persona", seq: 2, applied: false, name: "Segurança" },
     ]);
     expect(s.lastSeq).toBe(2);
+  });
+
+  test("session.init keeps the described commands next to the names", () => {
+    const commands = [{ name: "deploy", description: "Deploy the app", kind: "skill" as const }];
+    const s = applyEnvelope(
+      emptySession(),
+      env(1, {
+        type: "session.init",
+        claudeSessionId: "c",
+        model: "opus",
+        tools: [],
+        slashCommands: ["deploy"],
+        commands,
+      }),
+    );
+    expect(s.slashCommands).toEqual(["deploy"]);
+    expect(s.commands).toEqual(commands);
   });
 
   test("pedido de permissão vira card, é resolvido e o resultado da ferramenta é indexado", () => {

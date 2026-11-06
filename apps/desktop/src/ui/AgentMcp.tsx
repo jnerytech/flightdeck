@@ -36,7 +36,7 @@ interface TestResult {
 }
 
 /** The MCP servers that apply to a project: the .mcp.json (editable) and the user's (read-only). */
-export function AgentMcp(props: { store: AppStore; hostId: string; projectId: string }) {
+export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; projectId: string }>) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
   const [servers, setServers] = useState<McpServerView[] | null>(null);

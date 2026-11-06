@@ -40,7 +40,7 @@ describe("deps-guard: a plain daemon asked for its dependencies runs no real pro
       true,
     );
     const before = sentinelCalls();
-    const probesBefore = sentinelProbes().length;
+    const probesBefore = sentinelProbes();
     // Nothing real is run for the other programs either: stand-ins that record what they are asked.
     const others = ["git", "ssh", "tailscale", "pwsh"].map((name) => {
       const fake = installFakeCli(name, [{ args: ["--version"], stdout: `${name} 9.9.9` }]);
@@ -75,6 +75,9 @@ describe("deps-guard: a plain daemon asked for its dependencies runs no real pro
     });
     await new Promise((r) => ws.addEventListener("open", r));
     ws.send(JSON.stringify({ id: "1", type: "hello", payload: { token: TOKEN, client: "t" } }));
+    await poll(() => acks.find((x) => x.id === "1"), 8000);
+    // What the daemon itself asks these programs while it starts is not the dependency check's.
+    const asked = new Map(others.map(({ name, fake }) => [name, fake.calls().length]));
     ws.send(JSON.stringify({ id: "2", type: "deps.check", payload: {} }));
     const ack = await poll(() => acks.find((a) => a.id === "2"), 8000);
     ws.close();
@@ -84,13 +87,19 @@ describe("deps-guard: a plain daemon asked for its dependencies runs no real pro
     expect(items.find((i) => i.id === "claude")?.path).toContain("fd-claude-guard-");
     expect(sentinelCalls()).toEqual(before);
     // The guard still sees the probes: claude, gh and az were each asked for their version, and only that.
-    const probes = sentinelProbes().slice(probesBefore);
+    // What was added since: the logs of several sentinel folders are joined, so an index would drift.
+    const probes = [...sentinelProbes()];
+    for (const old of probesBefore) {
+      const at = probes.indexOf(old);
+      if (at >= 0) probes.splice(at, 1);
+    }
     for (const name of ["claude", "gh", "az"]) expect(probes).toContain(`${name} --version`);
     // The other programs found on the PATH are the stand-ins, asked for nothing but a version.
     for (const { name, fake } of others) {
       if (name === "pwsh" && process.platform !== "win32") continue;
-      expect(fake.calls().length).toBeGreaterThan(0);
-      for (const call of fake.calls()) expect(call).toHaveLength(1);
+      const calls = fake.calls().slice(asked.get(name) ?? 0);
+      expect(calls.length).toBeGreaterThan(0);
+      for (const call of calls) expect(call).toHaveLength(1);
     }
   });
 });

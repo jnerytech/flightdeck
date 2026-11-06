@@ -236,6 +236,8 @@ describe("auto-aprovacao", () => {
       cwd: dir,
       maxTurns: 1,
       settingSources: [],
+      // settingSources does not cover .mcp.json: the session's folder may be one nobody trusted.
+      strictMcpConfig: true,
       persistSession: false,
       tools: [],
       env: expect.objectContaining({ FLIGHTDECK_MANAGED: "1" }),
@@ -311,7 +313,7 @@ describe("auto-aprovacao", () => {
       historyExcludes({ dataDir: "/d", history: { excludeCwds: ["/x"] } }).map((p) =>
         p.replaceAll("\\", "/"),
       ),
-    ).toEqual(["/x", "/d/auto-approve"]);
+    ).toEqual(["/x", "/d/auto-approve", "/d/assistant"]);
   });
 
   test("suspensa numa sessão (conteúdo de terceiro): medium vai para você até reativar; sobrevive ao reinício", async () => {

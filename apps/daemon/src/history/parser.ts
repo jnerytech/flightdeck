@@ -64,7 +64,7 @@ function toolLine(block: Block): string {
         .trim()
     : "";
   const cut = flat.length > INPUT_CHARS ? `${flat.slice(0, INPUT_CHARS)}…` : flat;
-  return `[tool ${String(block.name)}]${cut ? ` ${cut}` : ""}`;
+  return `[tool ${String(block.name)}]` + (cut ? " " + cut : "");
 }
 
 /** Text of a message's content: text blocks as is, one `[tool Name] input` line per tool call. */

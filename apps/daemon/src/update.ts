@@ -60,6 +60,17 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
+/** The address the daemon says it refused (403 `forbidden: <ip>` from the origin filter), or null. */
+export async function refusedAddress(url: string, timeoutMs: number): Promise<string | null> {
+  try {
+    const answer = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (answer.status !== 403) return null;
+    return /^forbidden: (\S+)$/.exec((await answer.text()).trim())?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Polls `url` until it answers 2xx or `timeoutMs` passes. */
 export async function waitHealthy(url: string, timeoutMs: number, intervalMs: number) {
   const deadline = Date.now() + timeoutMs;
@@ -70,7 +81,7 @@ export async function waitHealthy(url: string, timeoutMs: number, intervalMs: nu
       // Not listening yet.
     }
     if (Date.now() >= deadline) return false;
-    await Bun.sleep(intervalMs);
+    await Bun.sleep(intervalMs); // NOSONAR: polling: each look follows the wait before it
   }
 }
 
@@ -121,11 +132,11 @@ async function resolved(path: string): Promise<string> {
 
 async function waitStopped(deps: StopDeps, config: Config): Promise<boolean> {
   const deadline = Date.now() + (deps.stopTimeoutMs ?? 10_000);
-  while (await deps.daemonRunning(config)) {
+  for (;;) {
+    if (!(await deps.daemonRunning(config))) return true; // NOSONAR: polling: each look follows the wait before it
     if (Date.now() >= deadline) return false;
-    await Bun.sleep(100);
+    await Bun.sleep(100); // NOSONAR: polling: each look follows the wait before it
   }
-  return true;
 }
 
 /**

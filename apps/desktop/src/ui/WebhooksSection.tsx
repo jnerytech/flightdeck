@@ -42,18 +42,17 @@ const EMPTY: Draft = { name: "", type: "slack", url: "", signing: "", hostScope:
  * Phase 30: where the app sends a message when something needs you. A target's address is a vault
  * secret: the list shows only the host it sends to, and an empty address field on edit keeps it.
  */
-export function WebhooksSection(props: { store: AppStore }) {
+export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   const t = useT();
   const { store } = props;
   const hosts = useStoreSlice(store, HOSTS).hosts;
-  const [version, setVersion] = useState(0);
+  const [, setVersion] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
   const [removing, setRemoving] = useState<WebhookTarget | null>(null);
   const saving = useBusy();
   const testing = useBusy();
-  void version;
   const targets = store.webhooks.targets.list();
   const canPost = hosts.some(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "webhook", false),

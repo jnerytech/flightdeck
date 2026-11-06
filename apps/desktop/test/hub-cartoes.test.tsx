@@ -6,6 +6,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { HUB_VIEW_KEY, loadHubView, saveHubView } from "../src/lib/hub.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -135,6 +136,7 @@ describe("hub-cartoes: the hub as a grid", () => {
     }
     await settle(() => store.getState().hosts[0]?.status === "online");
     await act(async () => store.router.push({ name: "hub" }));
+    await unfoldAll(act);
     await settle(() => !!screen.queryByRole("listitem", { name: "Gerenciada" }));
     return { platform, store, d };
   }

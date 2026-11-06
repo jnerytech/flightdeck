@@ -2,29 +2,46 @@
 // `az`, nor a real shell command from a workflow `check`, nor read the real `~/.claude`, nor reach
 // the Tauri shell (the terminal opened by "Abrir no terminal").
 import { afterAll, setDefaultTimeout } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { assertBinaryUntouched, installBinaryGuard } from "./binary-guard.ts";
 import { assertCheckGuardActive, assertNoRefusedChecks, installCheckGuard } from "./check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./cli-guard.ts";
+import { reapFakes } from "./fake-cli.ts";
 import { installGitEnvGuard } from "./git-env.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
+import { captureGlobals, installBetweenFiles } from "./isolation.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
+import { scrubOpenCodeEnv } from "./opencode-env-guard.ts";
 import { assertPathUntouched, assertRepoUntouched, installRepoGuard } from "./repo-guard.ts";
 import { assertNoTauriCalls, installTauriGuard } from "./tauri-guard.ts";
+import { realTempDir } from "./temp-dir.ts";
+import { installTempRun, removeTempRun } from "./temp-run.ts";
 import { defaultTestTimeoutMs } from "./timeout.ts";
 
 // Area runs (`bun --config=bunfig.area.toml test <file>`) have no --timeout flag, and a preload
 // default reaches the first file only: enough for one file. The full suite passes the flag.
 setDefaultTimeout(defaultTestTimeoutMs(process.platform));
 
+// First of all: every temp folder below (the guards', the tests', their children's) lands in this
+// run's own, removed at the end even when a test or a guard fails (temp-run.ts). `exit` covers a run
+// that ends without reaching afterAll.
+const tempRun = installTempRun();
+process.on("exit", () => {
+  // The fake CLIs this run started and something left waiting die with it (#254), before their
+  // state folders go.
+  reapFakes(tempRun.dir);
+  removeTempRun(tempRun);
+});
+
 // A run started from a git command or hook inherits GIT_DIR and friends; a test's `git init --bare`
 // would then re-initialise the real repository. A session that has Claude Code's telemetry on sets
 // CLAUDE_CODE_ENABLE_TELEMETRY and OTEL_*, which would leak into what tests launch. Before every
 // guard, so they see a clean env.
 installGitEnvGuard();
+// Phase 39: no OpenCode switch, and no XDG folder that would lead OpenCode to a real config.
+scrubOpenCodeEnv(process.env);
 
 // CLI sentinels first, so the claude one ends up first on PATH (tests rely on that).
 const clis = installCliGuard();
@@ -33,7 +50,7 @@ const home = installHomeGuard();
 // The installed daemon of the real home (`update` swaps it); the guard above hides that home.
 const binary = installBinaryGuard(dirname(home.realClaude));
 // The real service controller (systemctl, schtasks, loginctl) only records attempts here.
-const serviceGuard = join(mkdtempSync(join(tmpdir(), "fd-service-guard-")), "calls.log");
+const serviceGuard = join(realTempDir("fd-service-guard-"), "calls.log");
 process.env.FLIGHTDECK_SERVICE_GUARD = serviceGuard;
 const checks = installCheckGuard();
 // No test reaches the internet: only 127.0.0.1 and localhost (phase 9).
@@ -43,6 +60,9 @@ const tauri = installTauriGuard();
 // first or leaves a fake on the second fails the run.
 const repo = installRepoGuard(join(import.meta.dir, "../.."));
 const pathBefore = process.env.PATH;
+// Everything above is in place: this is the state each test file starts from. A file that leaves a
+// timer, Date, fetch or env variable changed does not hand that to the next one (issue #274).
+installBetweenFiles(captureGlobals());
 
 // `Bun.which(name)` without options keeps the PATH the process started with; code must pass the
 // current one. Make sure that lookup now lands on the sentinel, or stop before any test runs.
@@ -54,6 +74,16 @@ assertCliGuardActive(clis);
 assertCheckGuardActive(checks);
 
 afterAll(() => {
+  try {
+    assertGuards();
+  } finally {
+    if (!removeTempRun(tempRun)) {
+      console.error(`temp-run: ${tempRun.dir} is still held; the next run sweeps it`);
+    }
+  }
+});
+
+function assertGuards(): void {
   assertNoClaudeCalls(guard);
   // A fake `gh`/`az` installed by a test sits in front of the sentinel; reaching the sentinel
   // means some code ran the CLI without one.
@@ -71,4 +101,4 @@ afterAll(() => {
   if (existsSync(serviceGuard)) {
     throw new Error(`controlador de serviço real chamado: ${readFileSync(serviceGuard, "utf8")}`);
   }
-});
+}

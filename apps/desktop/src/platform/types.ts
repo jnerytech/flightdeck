@@ -122,10 +122,19 @@ export interface Platform {
   /** Delivers `flightdeck://` links, including the one the app was opened with. */
   onDeepLink(handler: (url: string) => void): () => void;
   setTrayStatus(status: TrayStatus): Promise<void>;
+  /**
+   * The count of unread notifications as a badge on the app's taskbar button (Windows); 0 clears it.
+   * Absent where the platform has no such badge (a browser).
+   */
+  setBadge?(count: number): Promise<void>;
   /** Rebuilds the "Precisa de você" submenu (phase 8). */
   setTrayMenu(menu: TrayMenu): Promise<void>;
   /** Clicks in that submenu: approve and deny answer without opening the window. */
   onTrayAction(handler: (action: TrayAction) => void): () => void;
+  /** Issue #402: the tray's Quit, asked of the app before the shell exits (it exits anyway later). */
+  onQuitRequested(handler: () => void): () => void;
+  /** Issue #402: the app is done with what Quit asked; the shell exits now. */
+  quitNow(): Promise<void>;
   autostart: {
     supported: boolean;
     isEnabled(): Promise<boolean>;
@@ -162,6 +171,10 @@ export interface Platform {
     supported: boolean;
     /** The newer version on offer, or null when this one is the latest. */
     check(): Promise<AppUpdate | null>;
+    /** Downloads and verifies the update found by `check`, without installing it (issue #280). */
+    download(): Promise<void>;
+    /** Issue #402: installs an update `download` already fetched, with no restart; nothing otherwise. */
+    installDownloaded(): Promise<void>;
     /** Downloads, verifies and installs the update found by `check`, then restarts the app. */
     install(): Promise<void>;
   };

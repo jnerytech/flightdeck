@@ -45,12 +45,14 @@ const EMPTY: Draft = {
 };
 
 /** A host's budgets with what each one spent in its period, and a form to create or edit one. */
-export function BudgetsSection(props: {
-  store: AppStore;
-  hostId: string;
-  hostName: string;
-  budgets: Budget[];
-}) {
+export function BudgetsSection(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    hostName: string;
+    budgets: Budget[];
+  }>,
+) {
   const t = useT();
   const { store, hostId } = props;
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -99,11 +101,12 @@ export function BudgetsSection(props: {
     await store.setBudget(hostId, input);
     setDraft(EMPTY);
   };
-  const needs = !(Number(draft.limitUsd) > 0)
-    ? t("budgetsUi.limitNeeded")
-    : draft.scope === "project" && draft.projectKey.trim() === ""
-      ? t("budgetsUi.projectNeeded")
-      : null;
+  const limit = Number(draft.limitUsd);
+  let needs: string | null = null;
+  if (Number.isNaN(limit) || limit <= 0) needs = t("budgetsUi.limitNeeded");
+  else if (draft.scope === "project" && draft.projectKey.trim() === "") {
+    needs = t("budgetsUi.projectNeeded");
+  }
   const title = t("budgetsUi.title", { host: props.hostName });
   return (
     <section aria-label={title}>

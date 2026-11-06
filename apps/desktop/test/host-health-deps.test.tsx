@@ -66,6 +66,7 @@ function setup(deps: DepsResult | null) {
         checkedAt={null}
         onCheck={async () => void checks++}
         onAddFolder={() => {}}
+        onHooksChanged={() => {}}
       />
     </TooltipProvider>
   );

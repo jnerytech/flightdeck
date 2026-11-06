@@ -14,6 +14,7 @@ import { EventStore } from "../src/store/event-store.ts";
 import { PrFixer } from "../src/watch/fix.ts";
 import { PrWatcher, type WatchSettings, type WatchTrigger } from "../src/watch/watch.ts";
 import { cardWhen, git, gitRepo } from "./board-helpers.ts";
+import { must } from "./helpers.ts";
 import { manualTime } from "./time-helpers.ts";
 
 /**
@@ -122,8 +123,8 @@ export async function fixture(options: FixtureOptions = {}) {
   const card = board.createCard(project.id, { title: "Login", description: "faça o login" });
   await board.startCard(card.id);
   const started = await cardWhen(board, card.id, (c) => c.column === "review");
-  const worktree = started?.worktreePath ?? repo;
-  const branch = started?.branch ?? "";
+  const worktree = must(started?.worktreePath, "the started card's worktree");
+  const branch = must(started?.branch, "the started card's branch");
   git(worktree, "config", "commit.gpgsign", "false");
   git(worktree, "commit", "-q", "--allow-empty", "-m", "trabalho do card");
   git(worktree, "push", "-q", "-u", "origin", branch);

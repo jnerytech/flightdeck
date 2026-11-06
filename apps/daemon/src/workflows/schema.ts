@@ -164,48 +164,69 @@ export function parseWorkflow(source: string): ParsedWorkflow {
 const actionsOf = (step: RawStep | RawInner, keys: readonly string[]) =>
   keys.filter((key) => (step as Record<string, unknown>)[key] !== undefined);
 
+type Earlier = Map<string, string | undefined>;
+type Fail = (code: string, params?: Record<string, string>) => void;
+
+/** The nested steps of a loop or a parallel step, each with its path (`loop.do`, `parallel.0`...). */
+function innerSteps(step: RawStep): Array<[string, RawInner]> {
+  return [
+    ...(step.loop ? ([["loop.do", step.loop.do]] as Array<[string, RawInner]>) : []),
+    ...(step.parallel ?? []).map((item, j): [string, RawInner] => [`parallel.${j}`, item]),
+  ];
+}
+
+/** `continue` must name an earlier agent step, and cannot come with a persona. */
+function checkAgents(
+  step: RawStep,
+  inner: Array<[string, RawInner]>,
+  earlier: Earlier,
+  fail: Fail,
+) {
+  for (const agent of [step.agent, ...inner.map(([, item]) => item.agent)]) {
+    if (agent?.continue && earlier.get(agent.continue) !== "agent") {
+      fail("continue_unknown", { step: agent.continue });
+    }
+    if (agent?.continue && agent.persona) {
+      fail("persona_with_continue");
+    }
+  }
+}
+
+/** Every text a step can put `{{…}}` references in, and whether it runs inside a loop. */
+function templatesOf(step: RawStep, inner: Array<[string, RawInner]>): Array<[string, boolean]> {
+  return [
+    ...[step.agent?.prompt, step.gate?.message, step.gate?.show].map((t): [string, boolean] => [
+      t ?? "",
+      false,
+    ]),
+    ...inner.map(([path, item]): [string, boolean] => [
+      item.agent?.prompt ?? "",
+      path === "loop.do",
+    ]),
+  ];
+}
+
 /** What the schema cannot see: one action per step, ids, `continue` and `{{…}}` references. */
 function validate(inputs: string[], steps: RawStep[]): RuleIssue[] {
   const issues: RuleIssue[] = [];
   /** Earlier steps: id → action. */
-  const earlier = new Map<string, string | undefined>();
+  const earlier: Earlier = new Map();
   steps.forEach((step, i) => {
-    const fail = (code: string, params?: Record<string, string>) =>
+    const fail: Fail = (code, params) =>
       issues.push(issue(`steps.${i} (${step.id})`, code, params));
     const actions = actionsOf(step, ACTIONS);
     if (actions.length !== 1) {
       fail("step_one_action");
     }
     if (earlier.has(step.id)) fail("step_id_duplicate");
-    const inner: Array<[string, RawInner]> = [
-      ...(step.loop ? ([["loop.do", step.loop.do]] as Array<[string, RawInner]>) : []),
-      ...(step.parallel ?? []).map((item, j): [string, RawInner] => [`parallel.${j}`, item]),
-    ];
+    const inner = innerSteps(step);
     for (const [path, item] of inner) {
       if (actionsOf(item, INNER_ACTIONS).length !== 1) {
         fail("inner_one_action", { where: path });
       }
     }
-    const agents = [step.agent, ...inner.map(([, item]) => item.agent)];
-    for (const agent of agents) {
-      if (agent?.continue && earlier.get(agent.continue) !== "agent") {
-        fail("continue_unknown", { step: agent.continue });
-      }
-      if (agent?.continue && agent.persona) {
-        fail("persona_with_continue");
-      }
-    }
-    const templates: Array<[string, boolean]> = [
-      ...[step.agent?.prompt, step.gate?.message, step.gate?.show].map((t): [string, boolean] => [
-        t ?? "",
-        false,
-      ]),
-      ...inner.map(([path, item]): [string, boolean] => [
-        item.agent?.prompt ?? "",
-        path === "loop.do",
-      ]),
-    ];
-    for (const [template, inLoop] of templates) {
+    checkAgents(step, inner, earlier, fail);
+    for (const [template, inLoop] of templatesOf(step, inner)) {
       for (const [raw, expression] of template.matchAll(REFERENCE)) {
         if (!known(expression ?? "", { inputs, earlier, inLoop })) {
           fail("reference_unknown", { ref: raw });

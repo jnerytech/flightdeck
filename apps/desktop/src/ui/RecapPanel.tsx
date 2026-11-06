@@ -1,21 +1,23 @@
 import type { SessionRecap } from "@flightdeck/protocol";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
+import { ShortArea } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
+import { recapPreview } from "../lib/recap-preview.ts";
 import { hasFeature } from "../lib/version.ts";
 
 const HOSTS = ["hosts"] as const;
 /** How long to wait before asking again while the host has no summary for the session. */
 const RETRY_MS = 8000;
 
-/** The sessions whose summary was shown: it opens the first time and starts collapsed after. */
+/** The sessions whose summary was shown: the card opens the first time and is one line after. */
 const SEEN = new Set<string>();
 
 /** The rows of a summary as label and text, in the order a person reads them. */
@@ -44,17 +46,19 @@ function rows(recap: SessionRecap, question: string | undefined, t: T): Array<[s
  * Phase 30: the short summary of a session (what was asked and done, the files, the cost and the
  * open question), built by the host from the transcript. Nothing from a host that cannot give one.
  */
-export function RecapPanel(props: {
-  store: AppStore;
-  hostId: string;
-  claudeSessionId: string;
-  /** The pending request, when the session waits for you. */
-  question?: string;
-  /** Changes when the session moves on, so the summary is read again. */
-  stamp?: string;
-  /** How long to wait before asking again while the host has no summary yet. */
-  retryMs?: number;
-}) {
+export function RecapPanel(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    claudeSessionId: string;
+    /** The pending request, when the session waits for you. */
+    question?: string;
+    /** Changes when the session moves on, so the summary is read again. */
+    stamp?: string;
+    /** How long to wait before asking again while the host has no summary yet. */
+    retryMs?: number;
+  }>,
+) {
   const t = useT();
   const { store, hostId, claudeSessionId, question, stamp, retryMs = RETRY_MS } = props;
   const host = useStoreSlice(store, HOSTS).hosts.find((h) => h.id === hostId);
@@ -79,28 +83,52 @@ export function RecapPanel(props: {
     };
   }, [store, hostId, claudeSessionId, question, supported, stamp, attempt, retryMs]);
 
+  // Open the first time a session is seen, one line after: it is a card of the header, and the
+  // conversation comes first.
   const seenKey = `${hostId}/${claudeSessionId}`;
-  const [open, setOpen] = useState(() => !SEEN.has(seenKey));
+  const [firstSeen] = useState(() => !SEEN.has(seenKey));
+  // In a short area (a 720x480 window) it starts folded even then: the conversation needs the
+  // room (#232). Once the person opens or folds it, their choice holds.
+  const short = useContext(ShortArea);
+  const [chosen, setOpen] = useState<boolean | null>(null);
+  const open = chosen ?? (firstSeen && !short);
   useEffect(() => {
     SEEN.add(seenKey);
   }, [seenKey]);
   if (!supported || recap === undefined) return null;
   const lines = recap ? rows(recap, question, t) : [];
   return (
-    <Panel size="sm" label={t("recap.region")} className="shrink-0">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="toggle-start"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-        {t("recap.region")}
-      </Button>
-      {!open ? null : lines.length === 0 ? (
+    <Panel
+      // Folded in a short area it is one thin line, about 38 px (#232).
+      size={short && !open ? "line" : "sm"}
+      label={t("recap.region")}
+      className="shrink-0"
+      slot="recap"
+    >
+      <div className="recap-head">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="toggle-start shrink-0"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+          {t("recap.region")}
+        </Button>
+        {!open && (
+          <span
+            data-slot="recap-preview"
+            className="min-w-0 truncate text-muted-foreground text-sm"
+          >
+            {recap ? recapPreview(recap) : t("recap.empty")}
+          </span>
+        )}
+      </div>
+      {open && lines.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("recap.empty")}</p>
-      ) : (
+      )}
+      {open && lines.length > 0 && (
         <Stack gap={1} className="rows-scroll">
           {lines.map(([label, text]) => (
             <p key={label} className="break-words text-sm">

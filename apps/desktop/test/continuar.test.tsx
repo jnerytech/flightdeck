@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { utimesSync } from "node:fs";
-import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import { assistantLine, userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { stays, waiter } from "./wait.ts";
@@ -30,6 +30,7 @@ async function setup(opts: { stale: boolean; cwd?: string }) {
   const d = makeDaemon(cleanups);
   const path = writeTranscript(d.historyRoot, "-p", ID, [
     userLine({ uuid: "u1", text: "falando da girafa", cwd: opts.cwd ?? d.project }),
+    assistantLine({ uuid: "a1", text: "a girafa é alta", cwd: opts.cwd ?? d.project }),
   ]);
   if (opts.stale) {
     const old = new Date(Date.now() - 3_600_000);
@@ -91,6 +92,35 @@ describe("continuar", () => {
     expect(screen.queryByLabelText("Mensagem")).not.toBeNull();
     expect(screen.queryByRole("log", { name: "Transcript" })).toBeNull();
     expect(store.getState().selected?.sessionId).toBeString();
+  });
+
+  test("a conversa retomada mostra os turnos do histórico, acima da caixa de mensagem (issue #108)", async () => {
+    await setup({ stale: true });
+    await click("Continuar no Flightdeck");
+    await settle(() => screen.queryByLabelText("Mensagem") !== null);
+    const earlier = () => screen.queryByRole("region", { name: "Antes de retomar" });
+    await settle(() => earlier() !== null);
+    expect(within(earlier() as HTMLElement).queryByText("falando da girafa")).not.toBeNull();
+    expect(within(earlier() as HTMLElement).queryByText("a girafa é alta")).not.toBeNull();
+  });
+
+  test("se o histórico não pode ser lido, a conversa diz isso e por quê, nunca um painel em branco (issue #108)", async () => {
+    const { store } = await setup({ stale: true });
+    const request = store.hostRequest.bind(store);
+    store.hostRequest = (async (hostId: string, type: string, payload: never) =>
+      type === "history.get"
+        ? {
+            ok: false,
+            code: "not_found",
+            message: "transcript sumiu",
+            reason: "transcript_not_indexed",
+            params: {},
+          }
+        : request(hostId, type as never, payload)) as typeof store.hostRequest;
+    await click("Continuar no Flightdeck");
+    await settle(() => screen.queryByLabelText("Mensagem") !== null);
+    await settle(() => screen.queryByText(/Não foi possível ler os turnos anteriores/) !== null);
+    expect(screen.queryByText(/transcript sumiu/)).not.toBeNull();
   });
 
   test("sessão possivelmente em uso pede confirmação antes de mandar force: true", async () => {
