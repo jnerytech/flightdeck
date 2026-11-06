@@ -44,7 +44,12 @@ describe("doctor-app: the check of a host, in its page", () => {
   test("the host is asked by itself with the app version, and each check shows an icon and a word, with a plain fix for the ones that failed", async () => {
     const { d } = await hostPage("pt-BR", true);
     const section = await sectionReady();
-    await settle(() => (section.textContent ?? "").includes("Pastas permitidas"));
+    // Read: a folded row's name, or the fold's button once it is one (#670).
+    await settle(
+      () =>
+        (section.textContent ?? "").includes("Pastas permitidas") ||
+        within(section).queryByRole("button", { name: /sem nada a fazer/ }) !== null,
+    );
     expect(d.doctorAsked).toEqual([APP_VERSION]);
     // The group lists the check that needs the person; the ones that pass are folded (#640).
     const items = within(within(section).getByRole("list", { name: "Verificações" })).getAllByRole(
@@ -75,7 +80,12 @@ describe("doctor-app: the check of a host, in its page", () => {
   test("Verificar de novo asks again, and the same section in English", async () => {
     const { d } = await hostPage("en", true);
     const section = await sectionReady("Health & dependencies");
-    await settle(() => (section.textContent ?? "").includes("Allowed folders"));
+    // Read: a folded row's name, or the fold's button once it is one (#670).
+    await settle(
+      () =>
+        (section.textContent ?? "").includes("Allowed folders") ||
+        within(section).queryByRole("button", { name: /with nothing to do/ }) !== null,
+    );
     await act(async () => {
       fireEvent.click(within(section).getByRole("button", { name: "Check again" }));
     });

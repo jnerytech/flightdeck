@@ -112,7 +112,12 @@ function setup(
 }
 
 const section = () => screen.getByRole("region", { name: "Health & dependencies" });
-const row = (name: string) => within(section()).getByRole("listitem", { name });
+/** A row by name; a folded one is reached by opening the fold first (#670). */
+const row = (name: string) => {
+  const fold = within(section()).queryByRole("button", { name: /with nothing to do/ });
+  if (fold?.getAttribute("aria-expanded") === "false") fireEvent.click(fold);
+  return within(section()).getByRole("listitem", { name });
+};
 
 describe("host-health-ui: one section for the dependencies and the doctor", () => {
   test("Required, Optional and Checks in one section, with when it was read", () => {
