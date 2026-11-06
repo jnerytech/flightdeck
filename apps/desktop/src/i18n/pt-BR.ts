@@ -1305,6 +1305,7 @@ export const ptBR = {
   },
   daemonFeature: {
     assistant: "o assistente de IA",
+    teleport: "mudar uma sessão de host",
     github: "o login do GitHub",
     boardsync: "a sincronização do quadro",
     roi: "a visão de retorno",
