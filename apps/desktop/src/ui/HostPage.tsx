@@ -99,7 +99,6 @@ export function HostPage(
   const now = useNow();
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
   // Opening the page reads the health again when the last read is older than a few minutes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only the host and its being online matter
   useEffect(() => {
     if (host.status === "online") void store.ensureHealth(host.id);
   }, [store, host.id, host.status]);
