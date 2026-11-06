@@ -8,6 +8,8 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { KeepAwakePanel } = await import("../src/components/hosts/keep-awake-panel.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];
@@ -123,5 +125,29 @@ describe("keep-awake-ui: the host page's switch (#163)", () => {
           "Este host roda dentro do WSL e não consegue manter o Windows acordado. Ligue no host do Windows.",
         ) !== null,
     );
+  });
+
+  test("a page opened before the host's info arrived reads it again once it does (#484)", async () => {
+    // On a slow machine the page can open while the connect's first host.info is on its way, and
+    // that answer may be older than what the host holds now.
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const reloads: string[] = [];
+    store.reloadHostInfo = async (hostId: string) => {
+      reloads.push(hostId);
+    };
+    const status = { enabled: true, held: false, method: null, reason: null };
+    const host = (hostInfo: unknown) => ({ id: "h1", sessions: [], hostInfo }) as never;
+    const page = (hostInfo: unknown) => (
+      <TContext.Provider value={store.i18n.t}>
+        <KeepAwakePanel store={store} host={host(hostInfo)} />
+      </TContext.Provider>
+    );
+    const view = render(page(null));
+    expect(reloads).toEqual([]);
+    await act(async () => {
+      view.rerender(page({ keepAwake: status }));
+    });
+    expect(reloads).toEqual(["h1"]);
   });
 });
