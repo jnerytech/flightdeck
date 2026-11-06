@@ -25,6 +25,15 @@ The file viewer of #506 reads through the same calls, so this is fixed first.
 - The diff marks such a file `secret: true` (a new optional `DiffFile` field), with no hunks and no
   counts. A new one is never read. A tracked one is marked when its path or its old path (a rename)
   is on the list; git still computes its diff, which is dropped before the budget counts it.
+- Review comments (`ReviewComments.add`, which quotes the lines it comments on) run the same two
+  checks on either side of the diff. A comment saved on a credential file before this fix lists
+  without its quote, as outdated.
+- `file.read` opens the resolved path without following a link (`readRegularSized`: `O_NOFOLLOW`,
+  regular files only), so a link swapped in after the check is refused. A folder swapped higher up
+  the path in that window is still possible, as it already was for `file.write`.
+- `parseUnifiedDiff` reads git's quoted names (a name with a quote, a backslash or a control
+  character is written in C quotes even with `core.quotePath=false`). Before, such a header was
+  missed and its lines went to the file before it, past the secret mark.
 - The app shows the **Hidden** mark and a note in place of the diff, and offers no editor. The note
   also replaces any lines a daemon sends with the mark.
 - Reverting a credential file stays allowed: it sends no content to the app.
