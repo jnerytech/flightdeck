@@ -50,6 +50,13 @@ export interface Wand {
   onKeyDown(event: React.KeyboardEvent): boolean;
 }
 
+/** The provider is a host, and not the field's own. */
+function otherHost(provider: ResolvedProvider, fieldHostId: string | undefined): boolean {
+  return (
+    provider.provider === "host" && fieldHostId !== undefined && provider.hostId !== fieldHostId
+  );
+}
+
 const IDLE: WandState = { kind: "idle" };
 const NOT_WATCHED = () => () => {};
 
@@ -61,7 +68,7 @@ export function useWand(
 ): Wand | null {
   const controller = binding?.controller;
   const [state, dispatch] = useReducer(wandReduce, IDLE);
-  const run = useRef<{ requestId: string; provider: ResolvedProvider } | null>(null);
+  const run = useRef<{ requestId: string; provider: ResolvedProvider; text: string } | null>(null);
   const enabled = useSyncExternalStore(
     controller?.subscribe ?? NOT_WATCHED,
     () => controller?.prefs().enabled ?? false,
@@ -101,7 +108,7 @@ export function useWand(
       return;
     }
     const requestId = crypto.randomUUID();
-    run.current = { requestId, provider };
+    run.current = { requestId, provider, text };
     dispatch({ type: "start", requestId, text });
     controller
       .run({
@@ -109,7 +116,8 @@ export function useWand(
         kind: binding.kind,
         text,
         ...(binding.fieldHostId ? { fieldHostId: binding.fieldHostId } : {}),
-        ...(binding.cwd ? { cwd: binding.cwd } : {}),
+        // The folder is the field host's: another host never gets to see its path.
+        ...(binding.cwd && !otherHost(provider, binding.fieldHostId) ? { cwd: binding.cwd } : {}),
         provider,
       })
       .then(
@@ -131,8 +139,9 @@ export function useWand(
     launch(state.original);
   };
   const tryWith = (provider: ResolvedProvider) => {
-    if (state.kind !== "failed" || needsText || gateBusy) return;
-    launch(value, provider);
+    // The text of the failed run, not what the field holds by now.
+    if (state.kind !== "failed" || !run.current || gateBusy) return;
+    launch(run.current.text, provider);
   };
   const others =
     state.kind === "failed" && run.current
