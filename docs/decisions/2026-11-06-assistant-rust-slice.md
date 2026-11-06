@@ -52,3 +52,39 @@ ADR 40-3 and the earlier phase 40 entries, frozen. These cover the crate `flight
 - **Accepted risk: a key in memory is not zeroed** when its `Secret` is dropped. A process that
   can read the app's memory can also read the keyring as the same user, so `zeroize` would add a
   dependency without closing a path.
+- **OpenRouter, where the spec is silent.** `finish_reason: "length"` is `assistant_truncated` even
+  with some text, as Anthropic's `max_tokens` is: a cut-off commit message is not an answer.
+  `content_filter` is `assistant_refused`. A 403 without `limit_source` (a permission or a
+  guardrail) is `assistant_auth` with its detail; 500 is `assistant_overloaded`, like 502; 413 is
+  `assistant_too_long` with `max`. `retryAfter` is passed for a 429 and for
+  `openrouter_in_flight_budget`, whatever the status. A mandatory-reasoning model that does not
+  take `low` gets the lowest effort it lists. A price that does not parse, or is negative (a
+  router's variable price), shows no price; a price is rounded to the millionth of a dollar per
+  million tokens. No request id is passed: OpenRouter's answers carry none the person can quote.
+- **The commands' contract** (agreed with the UI branch, 2026-11-06). `assistant_run` takes
+  `{ provider, request, vaultIds, denyDataCollection }`: `AssistantRequest` names neither the
+  provider nor the OpenRouter switch, so `Platform.assistant.run` becomes
+  `run(request, vaultIds, { provider, denyDataCollection })` instead of the spec's
+  `run(request, vaultIds)`. Every assistant command, and `vault_hits`, rejects with the refusal
+  object `{ reason, params }`, never a string. A request id must be a short token (a UUID fits).
+  A vault check reads at most 200 ids; a store failure while reading them is `assistant_key_store`.
+  The key test and a model list count against the same in-flight limit and bucket as a call; a
+  list is kept 10 minutes, and a model it does not have is sent with neither thinking nor
+  reasoning. A prompt (the system or the user part) may be twice the text's cap, since the user
+  part wraps the text with its context; the refusal still names the text's cap of 100 000.
+  `REASONS` in the crate's `lib.rs` lists every reason the crate refuses with, and the UI branch
+  checks each against `ASSISTANT_REASONS`.
+- **What the commands' guards are for (review of 2026-11-06).** The vault check takes its ids from
+  the webview, so it guards against a person's accident (a secret pasted into the text), not a
+  compromised webview, which can already read a vault value through `vault_get`. The same holds
+  for `denyDataCollection` (on by default in the app) and for `vault_hits`, which answers only
+  whether a text holds a value. A request id, in `assistant_run` and `assistant_cancel` alike,
+  must be 1 to 64 characters of `[A-Za-z0-9._:-]`. More than 200 vault ids is
+  `assistant_bad_output`. The limits are taken after the key and the vault check, so a refusal
+  that sends nothing spends no call of the bucket. A saved or deleted key drops that provider's
+  model list. Tauri itself refuses a malformed argument with a plain string before a command
+  runs, so the platform layer maps any rejection that is not an object to
+  `assistant_bad_output`. In a release build (`panic = "abort"`) a panic in a call ends the app;
+  `assistant_bad_output` for a panicking task holds only in tests and debug builds, so the code
+  of a call keeps to the no-`unwrap` rule, and `tauri-release` now scans every Rust file of the
+  app and of the crate.

@@ -174,6 +174,8 @@ describe("cobertura-main-0330: the running daemon", () => {
       { command: "start", config: config(dir), runtime: "fake" },
       {},
       { log: () => {}, error: () => {} },
+      // The service manager is stood in for: the doctor's service check asks it, and nothing real may.
+      { serviceInstalled: async () => true, linger: async () => "on" },
     );
     stops.push(() => daemon.stop());
     const ack = await ask(daemon.url, "doctor.run", {});
