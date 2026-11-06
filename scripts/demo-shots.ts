@@ -935,11 +935,12 @@ export async function takeShots(
     });
   } finally {
     await browser.close();
+    // What the run saw, for the baseline (the screenshots folder is the CI job's artifact), even
+    // when a print crashed or timed out.
+    mkdirSync(SHOTS_DIR, { recursive: true });
+    writeFileSync(join(SHOTS_DIR, "spacing-findings.json"), JSON.stringify(spacingSeen, null, 2));
+    log(`spacing guard: ${Object.keys(spacingSeen).length} findings`);
   }
-  // What the run saw, for the baseline (the screenshots folder is the CI job's artifact).
-  mkdirSync(SHOTS_DIR, { recursive: true });
-  writeFileSync(join(SHOTS_DIR, "spacing-findings.json"), JSON.stringify(spacingSeen, null, 2));
-  log(`spacing guard: ${Object.keys(spacingSeen).length} findings`);
   if (spacingGone.length > 0) {
     problems.push(
       `spacing-baseline.json holds findings that are gone: remove\n${spacingGone.join("\n")}`,

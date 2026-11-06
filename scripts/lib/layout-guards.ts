@@ -85,17 +85,38 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     found.push({ rule, path, detail });
   };
   const slotOf = (el: Element) => el.getAttribute("data-slot");
-  /** The data-slot names from the outside in (at most the last four), and the element's own name. */
-  const pathOf = (el: Element): string => {
+  /** An element with no data-slot: its tag and first class. */
+  const plainName = (el: Element) => {
+    const first = String(el.getAttribute("class") ?? "")
+      .split(/\s+/)
+      .find(Boolean);
+    return first ? `${el.tagName.toLowerCase()}.${first}` : el.tagName.toLowerCase();
+  };
+  /** `name[n]` when there is more than one: in page order for a slot, among its siblings otherwise. */
+  const numbered = (name: string, at: Element, peers: Element[]) =>
+    peers.length > 1 ? `${name}[${peers.indexOf(at) + 1}]` : name;
+  /**
+   * The data-slot names from the outside in (at most the last four), and the element's own name.
+   * `withNumbers` (the spacing rules, #588) numbers a name the page holds more than once, so two
+   * findings under the same names stay two: `grid > card[2]`, `session-tile[1] > span[2]`.
+   */
+  const pathOf = (el: Element, withNumbers = false): string => {
     const names: string[] = [];
     for (let at: Element | null = el; at && at !== document.body; at = at.parentElement) {
       const slot = slotOf(at);
-      if (slot) names.unshift(slot);
-      else if (at === el) {
-        const first = String(at.getAttribute("class") ?? "")
-          .split(/\s+/)
-          .find(Boolean);
-        names.unshift(first ? `${at.tagName.toLowerCase()}.${first}` : at.tagName.toLowerCase());
+      if (slot) {
+        const peers = withNumbers
+          ? [...document.querySelectorAll("[data-slot]")].filter((x) => slotOf(x) === slot)
+          : [];
+        names.unshift(numbered(slot, at, peers));
+      } else if (at === el) {
+        const name = plainName(at);
+        const peers = withNumbers
+          ? [...(at.parentElement?.children ?? [])].filter(
+              (x) => !slotOf(x) && plainName(x) === name,
+            )
+          : [];
+        names.unshift(numbered(name, at, peers));
       }
     }
     return names.slice(-4).join(" > ") || el.tagName.toLowerCase();
@@ -270,7 +291,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
         (el) => !hidden(el) && scrolls(getComputedStyle(el).overflowY),
       );
       if (scrollers.length > 1) {
-        const names = scrollers.map(pathOf).join(", ");
+        const names = scrollers.map((el) => pathOf(el)).join(", ");
         add("scroll-split", pathOf(region), `${scrollers.length} scroll areas (${names})`);
       }
     }
@@ -279,7 +300,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   // 10. Spacing (#588), heuristic: blocks, cards and chips keep room between them, and text keeps
   // room in its card and inside its own box. A finding names the element and the px it has.
   const spacing = options.spacing;
-  const nameOf = (el: Element) => pathOf(el).split(" > ").pop() ?? "";
+  const nameOf = (el: Element) => pathOf(el, true).split(" > ").pop() ?? "";
   const ownText = (el: Element) =>
     [...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "");
   /** The room between two boxes that share columns (stacked) or rows (side by side), or how far they overlap. */
@@ -308,7 +329,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
         if (room && room.px < min) {
           add(
             rule,
-            pathOf(b),
+            pathOf(b, true),
             `${Math.round(room.px)} px ${room.how} ${nameOf(a)}, at least ${min}`,
           );
         }
@@ -331,17 +352,22 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       if (hidden(el) || !ownText(el)) continue;
       const box = rectOf(el);
       if (box.width <= 0 || box.height <= 0) continue;
+      // The text starts inside the element's own border and padding: a padded header flush with the card is fine.
+      const style = getComputedStyle(el);
+      const inner = (side: string) =>
+        (Number.parseFloat(style.getPropertyValue(`padding-${side}`)) || 0) +
+        (Number.parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0);
       const insets: Array<[string, number]> = [
-        ["left", box.left - edge.left],
-        ["right", edge.right - box.right],
-        ["top", box.top - edge.top],
-        ["bottom", edge.bottom - box.bottom],
+        ["left", box.left - edge.left + inner("left")],
+        ["right", edge.right - box.right + inner("right")],
+        ["top", box.top - edge.top + inner("top")],
+        ["bottom", edge.bottom - box.bottom + inner("bottom")],
       ];
       const [side, px] = insets.reduce((low, next) => (next[1] < low[1] ? next : low));
       if (px < min) {
         add(
           "card-padding",
-          pathOf(el),
+          pathOf(el, true),
           `${Math.round(px)} px from the card's ${side} edge, at least ${min}`,
         );
       }
@@ -351,7 +377,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     // Only text left to spill: a box that clips (an ellipsis) or scrolls is the other rules' business.
     if ((style.overflowX || "visible") !== "visible" || !ownText(el)) return;
     const past = el.scrollWidth - el.clientWidth;
-    if (past > 1) add("text-spill", pathOf(el), `${past} px past its box`);
+    if (past > 1) add("text-spill", pathOf(el, true), `${past} px past its box`);
   };
   const checkSpacing = () => {
     if (!spacing) return;
