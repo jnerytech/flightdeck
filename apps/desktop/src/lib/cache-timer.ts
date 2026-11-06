@@ -54,16 +54,28 @@ export interface ClockDeps {
   onVisibility(fn: () => void): () => void;
 }
 
-/** What the clock reads of the page: whether it is hidden and when that changes (stub: a page that is never hidden). */
+/** What the clock reads of the page: whether it is hidden and when that changes. */
 export interface ClockDocument {
   hidden: boolean;
   addEventListener(type: "visibilitychange", fn: () => void): void;
   removeEventListener(type: "visibilitychange", fn: () => void): void;
 }
 
-/** The clock's dependencies in a browser: real timers and the page's visibility; `doc` is undefined where there is no page (stub: nothing real). */
-export function browserClockDeps(now: () => number, _doc: ClockDocument | undefined): ClockDeps {
-  return { now, every: () => () => {}, hidden: () => false, onVisibility: () => () => {} };
+/** The clock's dependencies in a browser: real timers and the page's visibility; `doc` is undefined where there is no page. */
+export function browserClockDeps(now: () => number, doc: ClockDocument | undefined): ClockDeps {
+  return {
+    now,
+    every: (fn, ms) => {
+      const id = setInterval(fn, ms);
+      return () => clearInterval(id);
+    },
+    hidden: () => doc?.hidden === true,
+    onVisibility: (fn) => {
+      if (!doc) return () => {};
+      doc.addEventListener("visibilitychange", fn);
+      return () => doc.removeEventListener("visibilitychange", fn);
+    },
+  };
 }
 
 /** One 1-second clock for every timer on screen, stopped while nobody listens or the window is hidden. */

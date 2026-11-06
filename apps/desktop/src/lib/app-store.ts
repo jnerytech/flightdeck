@@ -78,7 +78,7 @@ import type {
 } from "../platform/types.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
-import { CacheTimerSettings, SharedClock } from "./cache-timer.ts";
+import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,
@@ -866,19 +866,9 @@ export class AppStore {
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
     this.cacheTimer = new CacheTimerSettings(platform.storage);
-    this.clock = new SharedClock({
-      now: () => this.now(),
-      every: (fn, ms) => {
-        const id = setInterval(fn, ms);
-        return () => clearInterval(id);
-      },
-      hidden: () => typeof document !== "undefined" && document.hidden,
-      onVisibility: (fn) => {
-        if (typeof document === "undefined") return () => {};
-        document.addEventListener("visibilitychange", fn);
-        return () => document.removeEventListener("visibilitychange", fn);
-      },
-    });
+    this.clock = new SharedClock(
+      browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
+    );
     this.tabOrder = new TabOrderController(platform.storage);
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());

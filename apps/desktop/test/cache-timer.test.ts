@@ -250,10 +250,12 @@ describe("cache-timer: the settings (issue #159)", () => {
     const deps = browserClockDeps(() => 0, undefined);
     const real = globalThis.clearInterval;
     const cleared: unknown[] = [];
-    const spy = spyOn(globalThis, "clearInterval").mockImplementation((id) => {
+    const spy = spyOn(globalThis, "clearInterval").mockImplementation(((
+      id: Parameters<typeof clearInterval>[0],
+    ) => {
       cleared.push(id);
       real(id);
-    });
+    }) as typeof clearInterval);
     try {
       let ticks = 0;
       const { every: repeat } = deps;
