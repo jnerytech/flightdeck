@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { resolve } from "node:path";
 import type { BgList, BgSession } from "@flightdeck/protocol";
 import { runCommand } from "../board/command.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -137,11 +138,21 @@ export class BgService {
     // `claude respawn` takes no flags, so it cannot be told to leave a project's own hooks and servers
     // out: in a folder not trusted it is refused (the person trusts the project, or starts a new one).
     await this.opts.prepare?.(session.cwd);
-    if (this.opts.trust && !this.opts.trust(session.cwd).trusted) {
+    const trust = this.opts.trust?.(session.cwd);
+    if (trust && !trust.trusted) {
       throw new FlightdeckError(
         "invalid_state",
         "this session's folder is not trusted: trust the project, or start a new session",
         "bg_untrusted",
+      );
+    }
+    // A worktree is read from its main checkout, which a respawn cannot be told about: a branch's own
+    // hooks would load, even in a trusted project.
+    if (trust?.configRoot && resolve(trust.configRoot) !== resolve(session.cwd)) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "this session runs in a worktree, which cannot be restarted from here: start a new session",
+        "bg_worktree_respawn",
       );
     }
     await this.claudeDo(["respawn", id]);
