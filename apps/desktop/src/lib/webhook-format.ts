@@ -143,9 +143,44 @@ async function generic(event: NotifyEvent, options: FormatOptions): Promise<Form
   return { headers, body };
 }
 
-/** An ntfy topic URL as its server's root and its topic. */
+/** An ntfy topic URL as its server's root and its topic: one plain path segment, nothing after. */
 export function ntfyTopic(topicUrl: string): { server: string; topic: string } | null {
-  return null;
+  let url: URL;
+  try {
+    url = new URL(topicUrl);
+  } catch {
+    return null;
+  }
+  const topic = url.pathname.slice(1);
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(topic) || url.search || url.hash) return null;
+  return { server: `${url.origin}/`, topic };
+}
+
+/** The ntfy tag (an emoji name) shown beside each kind. */
+const NTFY_TAG: Record<WebhookKind, string> = {
+  needs_you: "bell",
+  session_ended: "white_check_mark",
+  session_failed: "x",
+  budget_alert: "moneybag",
+  pr_watch: "eyes",
+};
+
+/**
+ * ntfy's JSON publish (#263): one-way, so no `click` and no `actions`; only "needs you" is high
+ * priority. The access token, when there is one, goes as a Bearer.
+ */
+function ntfy(event: NotifyEvent, options: FormatOptions): FormattedWebhook {
+  const target = ntfyTopic(options.url ?? "");
+  const headers: Record<string, string> = { ...JSON_HEADERS };
+  if (options.signingSecret) headers.Authorization = `Bearer ${options.signingSecret}`;
+  const body = {
+    topic: target?.topic ?? "",
+    title: cut(headline(event), 250),
+    message: cut(summaryLines(event).join("\n") || event.title, 4000),
+    priority: event.kind === "needs_you" ? 4 : 3,
+    tags: [NTFY_TAG[event.kind]],
+  };
+  return { ...(target ? { url: target.server } : {}), headers, body: JSON.stringify(body) };
 }
 
 export async function formatWebhook(
@@ -155,5 +190,6 @@ export async function formatWebhook(
 ): Promise<FormattedWebhook> {
   if (type === "slack") return slack(event);
   if (type === "discord") return discord(event);
+  if (type === "ntfy") return ntfy(event, options);
   return generic(event, options);
 }
