@@ -446,18 +446,22 @@ function prefixOverride(segment: string): string | undefined {
 }
 
 /**
- * The full coverage run a command starts, through the slot or not, and the override in front of
- * that run's own segment (#687: an override elsewhere in the command does not count), or null.
+ * Every full coverage run a command starts, through the slot or not, each with the override in
+ * front of its own segment (#687: an override elsewhere in the command, or in front of another
+ * heavy run, does not count).
  */
-function heavyRun(command: string): { what: string; override: string | undefined } | null {
+function heavyRuns(command: string): Array<{ what: string; override: string | undefined }> {
+  const runs: Array<{ what: string; override: string | undefined }> = [];
   for (const segment of rawSegments(command)) {
     const words = commandWords(segment).trim().split(/\s+/);
-    for (let i = 0; i < words.length; i++) {
-      const what = words[i] === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null;
-      if (what) return { what, override: prefixOverride(segment) };
-    }
+    const what = words
+      .map((word, i) =>
+        word === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null,
+      )
+      .find((found) => found !== null);
+    if (what) runs.push({ what, override: prefixOverride(segment) });
   }
-  return null;
+  return runs;
 }
 
 /** Whether the script at `at` (with the words after it as its arguments) is a full coverage run. */
@@ -491,17 +495,16 @@ export function heavyRunViolation(
   env: Record<string, string | undefined>,
 ): string | null {
   if (env.FLIGHTDECK_COORDINATOR) return null;
-  const heavy = heavyRun(command);
+  const heavy = heavyRuns(command).find((run) => !heavyReasonGiven(run.override));
   if (!heavy) return null;
   if (heavy.override === undefined) return heavyRunMessage(heavy.what);
-  if (heavyReasonGiven(heavy.override)) return null;
   return `FLIGHTDECK_SLOT_HEAVY needs a reason: give the reason as the value. ${heavyRunMessage(heavy.what)}`;
 }
 
 /** Whether a refused heavy run goes ahead on an override that gives its reason (#674). */
 export function heavyRunWaived(command: string): boolean {
-  const heavy = heavyRun(command);
-  return heavy !== null && heavy.override !== undefined && heavyReasonGiven(heavy.override);
+  const runs = heavyRuns(command);
+  return runs.length > 0 && runs.every((run) => heavyReasonGiven(run.override));
 }
 
 /** The package scripts that run only through the slot (CLAUDE.md). */
