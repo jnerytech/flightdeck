@@ -4,13 +4,21 @@ import type { AskPick, AskQuestion } from "@/lib/ask-question";
 import { Inline, Stack } from "../layout/stack.tsx";
 
 /** Claude's questions (AskUserQuestion): each with its header, options and an "Other" text. */
-export function QuestionForm(props: {
-  questions: AskQuestion[];
-  picks: Record<string, AskPick>;
-  t: T;
-  disabled?: boolean;
-  onChange(question: string, pick: AskPick): void;
-}) {
+/** The labels picked after one is toggled: several can be on in a multi-select, else only that one. */
+function nextLabels(multiSelect: boolean, labels: string[], label: string, on: boolean): string[] {
+  if (!multiSelect) return [label];
+  return on ? [...labels, label] : labels.filter((l) => l !== label);
+}
+
+export function QuestionForm(
+  props: Readonly<{
+    questions: AskQuestion[];
+    picks: Record<string, AskPick>;
+    t: T;
+    disabled?: boolean;
+    onChange(question: string, pick: AskPick): void;
+  }>,
+) {
   const { questions, picks, t } = props;
   return (
     <Stack gap={4}>
@@ -19,11 +27,7 @@ export function QuestionForm(props: {
         const toggle = (label: string, on: boolean) =>
           props.onChange(q.question, {
             ...pick,
-            labels: q.multiSelect
-              ? on
-                ? [...pick.labels, label]
-                : pick.labels.filter((l) => l !== label)
-              : [label],
+            labels: nextLabels(q.multiSelect, pick.labels, label, on),
           });
         return (
           <Stack key={q.question} gap={2}>

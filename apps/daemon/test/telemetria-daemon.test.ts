@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { startDaemon } from "../src/main.ts";
-import { tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { jsonLogs } from "./otlp-helpers.ts";
 
@@ -82,7 +82,7 @@ describe("telemetria-dados: the daemon", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("telemetry");
     const timeline = await client.data<{ prompts: Array<{ promptId: string }> }>(

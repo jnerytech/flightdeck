@@ -8,6 +8,7 @@ import { ALL_CLIENTS } from "../src/lib/client-scope.ts";
 import { CLIENTS_KEY, UNASSIGNED } from "../src/lib/clients.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -82,6 +83,7 @@ async function setup(stored: unknown = CLIENTS) {
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   await act(async () => store.router.push({ name: "hub" }));
+  await unfoldAll(act);
   await settle(() => shown().length === 3);
   return { d, store, platform, repos };
 }

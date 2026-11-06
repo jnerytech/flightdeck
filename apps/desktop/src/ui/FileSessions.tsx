@@ -7,12 +7,14 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 
 /** "Sessões que mexeram aqui": which sessions wrote a file, from the transcripts the host indexed. */
-export function FileSessions(props: {
-  store: AppStore;
-  hostId: string;
-  root: string;
-  path: string;
-}) {
+export function FileSessions(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    root: string;
+    path: string;
+  }>,
+) {
   const t = useT();
   const { store } = props;
   const [sessions, setSessions] = useState<FileSession[] | null>(null);

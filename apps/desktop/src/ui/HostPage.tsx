@@ -1,14 +1,19 @@
 import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
-import { HostDoctor } from "@/components/hosts/host-doctor";
+import { HostAutoUpdate } from "@/components/hosts/host-auto-update";
+import { hostDownReason } from "@/components/hosts/host-down-reason";
+import { HostHealth } from "@/components/hosts/host-health";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { HostOverview } from "@/components/hosts/host-overview";
+import { HostVersionLine } from "@/components/hosts/host-version";
+import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
-import { Field } from "@/components/layout/form";
+import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
@@ -44,6 +49,10 @@ const OVERVIEW_KEYS = [
   "background",
   "projects",
   "cards",
+  "deps",
+  "doctor",
+  "healthAt",
+  "healthError",
 ] as const;
 
 /**
@@ -62,20 +71,23 @@ const HOOK_LABELS = {
  * One host: what `host.info` reports, heartbeat latency, the Claude Code hooks, and rename /
  * reconnect / remove.
  */
-export function HostPage(props: {
-  store: AppStore;
-  host: HostView;
-  onRename(name: string): HostNameError | null;
-  onReconnect(): void;
-  onOpenAutoApprovals(): void;
-  onOpenHistory(filter: UsageHistoryTarget): void;
-  onOpenSession(row: HubRow): void;
-  onOpenProject(card: ProjectCard): void;
-  onSeeAllSessions(): void;
-  onSeeAllProjects(): void;
-  onNewSession(): void;
-  onRemove(): void;
-}) {
+export function HostPage(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView;
+    onRename(name: string): HostNameError | null;
+    onReconnect(): void;
+    onPairAgain?(input: string): Promise<string | null>;
+    onOpenAutoApprovals(): void;
+    onOpenHistory(filter: UsageHistoryTarget): void;
+    onOpenSession(row: HubRow): void;
+    onOpenProject(card: ProjectCard): void;
+    onSeeAllSessions(): void;
+    onSeeAllProjects(): void;
+    onNewSession(): void;
+    onRemove(): void;
+  }>,
+) {
   const t = useT();
   const { host } = props;
   const [renaming, setRenaming] = useState(false);
@@ -84,13 +96,30 @@ export function HostPage(props: {
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [tab, setTab] = useState("overview");
   const now = useNow();
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
+  // Opening the page reads the health again when the last read is older than a few minutes.
+  useEffect(() => {
+    if (host.status === "online") void store.ensureHealth(host.id);
+  }, [store, host.id, host.status]);
   const offline = host.status !== "online" && host.status !== "incompatible";
+  const hooksKey = hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking";
   useEffect(() => {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
   }, [store, host.id, host.status]);
+  // The Health section can install the hooks too: the status shown in Settings is read again.
+  const refreshHooks = () => void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
+  // "Add folder" in the Health section opens Settings: once that panel shows, the field takes focus.
+  const [folderAsk, setFolderAsk] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new ask moves the focus
+  useEffect(() => {
+    if (folderAsk === 0 || tab !== "settings") return;
+    const field = document.querySelector<HTMLElement>("[data-folder-field]");
+    field?.focus();
+    field?.scrollIntoView?.({ block: "center" });
+  }, [folderAsk]);
   // A daemon older than the app may not have looked for its update since the release: ask it once
   // (the store keeps this to once per 10 minutes per host).
   const checkable = host.status === "online" && info?.update !== undefined;
@@ -114,7 +143,14 @@ export function HostPage(props: {
   return (
     <Page
       title={host.name}
-      subtitle={host.url}
+      subtitle={
+        <HostVersionLine
+          url={host.url}
+          daemon={info?.daemonVersion ?? null}
+          app={APP_VERSION}
+          t={t}
+        />
+      }
       actions={
         <Button variant="outline" onClick={() => setRenaming(true)}>
           {t("hostPage.rename")}
@@ -122,12 +158,24 @@ export function HostPage(props: {
       }
     >
       <div className="flex max-w-3xl flex-col gap-5">
-        {offline && <HostOfflineBanner host={host} onReconnect={props.onReconnect} />}
+        {offline && (
+          <HostOfflineBanner
+            host={host}
+            onReconnect={props.onReconnect}
+            {...(props.onPairAgain ? { onPairAgain: props.onPairAgain } : {})}
+          />
+        )}
         {host.status === "incompatible" && (
           <InlineNotice>
             <span className="flex flex-col gap-1">
-              <span>{t("hostPage.incompatible")}</span>
-              <span>{host.incompatibility}</span>
+              {/* Issue #181: one sentence of the catalog; the daemon's own words stay under Details. */}
+              <span>{t("errors.protocol_incompatible")}</span>
+              {host.incompatibility && (
+                <details>
+                  <summary>{t("toast.details")}</summary>
+                  {host.incompatibility}
+                </details>
+              )}
               <span>
                 {t("hostPage.incompatibleFix", { version: APP_VERSION })}{" "}
                 <code className="rounded bg-muted px-1 font-mono text-xs">
@@ -140,7 +188,7 @@ export function HostPage(props: {
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
         )}
-        <Tabs defaultValue="overview">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList aria-label={t("hostHome.tabs")}>
             <TabsTrigger value="overview">{t("hostHome.overview")}</TabsTrigger>
             <TabsTrigger value="usage">{t("hostHome.usage")}</TabsTrigger>
@@ -158,6 +206,23 @@ export function HostPage(props: {
                 onSeeAllProjects={props.onSeeAllProjects}
                 onNewSession={props.onNewSession}
               />
+              {(hasFeature(info?.features, "depsCheck", false) ||
+                hasFeature(info?.features, "doctor.run", false)) && (
+                <HostHealth
+                  store={store}
+                  host={host}
+                  deps={overviewState.deps[host.id] ?? null}
+                  doctor={overviewState.doctor[host.id] ?? null}
+                  checkedAt={overviewState.healthAt[host.id] ?? null}
+                  error={overviewState.healthError[host.id] ?? null}
+                  onCheck={() => store.checkHealth(host.id)}
+                  onAddFolder={() => {
+                    setTab("settings");
+                    setFolderAsk((n) => n + 1);
+                  }}
+                  onHooksChanged={refreshHooks}
+                />
+              )}
               {hasFeature(info?.features, "account", false) && (
                 <HostAccount store={store} host={host} />
               )}
@@ -208,33 +273,37 @@ export function HostPage(props: {
               <AllowedFolders store={store} host={host} />
               <BypassSwitch store={store} host={host} />
               <SimpleModePanel store={store} host={host} />
-              {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
-                <HostDoctor store={store} host={host} />
-              )}
               {host.status === "online" && hasFeature(info?.features, "github", false) && (
                 <GithubPanel store={store} host={host} />
               )}
+              <HostWorktrees store={store} host={host} />
+              <HostAutoUpdate store={store} host={host} />
               <DaemonUpdate store={store} host={host} />
               {showHooks && (
                 <section aria-label={t("hostPage.hooks")}>
                   <Panel title={t("hostPage.hooks")}>
-                    <p className="text-sm">
-                      {offline
-                        ? t("hostOffline.title")
-                        : t(hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking")}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setConfirming("install")}>
-                        {t("hostPage.install")}
-                      </Button>
-                      <Button
+                    <p className="text-sm">{offline ? t("hostOffline.title") : t(hooksKey)}</p>
+                    {/* Issue #181: nothing to install on a host that does not answer; the row says why. */}
+                    <FieldRow>
+                      <ActionButton
                         variant="outline"
                         size="sm"
+                        disabled={offline}
+                        disabledReason={hostDownReason(host.status, host.name, t)}
+                        onClick={() => setConfirming("install")}
+                      >
+                        {t("hostPage.install")}
+                      </ActionButton>
+                      <ActionButton
+                        variant="outline"
+                        size="sm"
+                        disabled={offline}
+                        disabledReason={hostDownReason(host.status, host.name, t)}
                         onClick={() => setConfirming("uninstall")}
                       >
                         {t("hostPage.uninstall")}
-                      </Button>
-                    </div>
+                      </ActionButton>
+                    </FieldRow>
                   </Panel>
                 </section>
               )}
@@ -307,7 +376,7 @@ export function HostPage(props: {
 }
 
 /** The heartbeat latency line: the only part of the page that renders on a ping. */
-function HostLatency(props: { store: AppStore; hostId: string }) {
+function HostLatency(props: Readonly<{ store: AppStore; hostId: string }>) {
   const t = useT();
   const latency = useHostLatency(props.store, props.hostId);
   return <li>{t("hostPage.latency", { value: latency === null ? "—" : `${latency} ms` })}</li>;

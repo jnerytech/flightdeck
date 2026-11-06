@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /** The cards of a group: as many columns as the width allows, none narrower than 16 rem. */
-export function CardGrid(props: { label?: string; children: ReactNode }) {
+export function CardGrid(props: Readonly<{ label?: string; children: ReactNode }>) {
   return (
     <ul
       aria-label={props.label}

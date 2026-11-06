@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 
 /** A command to type on the host, with its own copy button. */
-function Command(props: { command: string; onCopy(text: string): void }) {
+function Command(props: Readonly<{ command: string; onCopy(text: string): void }>) {
   const t = useT();
   return (
     <span className="mt-1 flex items-center gap-2">
@@ -15,7 +15,7 @@ function Command(props: { command: string; onCopy(text: string): void }) {
 }
 
 /** What to do on the host before the app has one: install the daemon, copy the link, paste it. */
-export function FirstRun(props: { onCopy(text: string): void }) {
+export function FirstRun(props: Readonly<{ onCopy(text: string): void }>) {
   const t = useT();
   return (
     <div className="flex w-full max-w-md flex-col gap-3 text-sm">

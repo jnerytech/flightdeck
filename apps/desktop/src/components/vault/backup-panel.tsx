@@ -8,7 +8,7 @@ import type { ConflictChoice, ImportPreview } from "@/lib/vault-backup";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 /** Phase 16: the encrypted backup (`.fdvault`): export, and import with a preview. */
-export function BackupPanel(props: { store: AppStore }) {
+export function BackupPanel(props: Readonly<{ store: AppStore }>) {
   const t = useT();
   const id = useId();
   const { store } = props;

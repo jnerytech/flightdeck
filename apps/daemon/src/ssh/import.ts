@@ -1,11 +1,29 @@
 import { readFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import type { SshImportEntry, SshImportResult } from "@flightdeck/protocol";
+import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import type { FlightdeckError } from "../errors.ts";
 import type { SshTargets } from "./targets.ts";
 
 /** Why one alias was not imported: the English text, and a key with values for the app. */
 type Skip = Omit<SshImportResult["skipped"][number], "alias">;
+
+/** The skip a refused `targets.save` turns into: its message and, when it has them, reason and params. */
+function skipOf(error: unknown): Skip {
+  const refusal = error as Partial<FlightdeckError> & Error;
+  return {
+    reason: refusal.message,
+    ...(refusal.reason ? { why: refusal.reason } : {}),
+    ...(refusal.params ? { params: refusal.params } : {}),
+  };
+}
+
+/** `Key value` or `Key=value` as a lowercase key and an unquoted value; null for a line with no key. */
+function splitDirective(line: string): { key: string; value: string } | null {
+  const match = /^(\S+?)(?:\s*=\s*|\s+)(.*)$/.exec(line);
+  if (!match) return null;
+  return { key: (match[1] as string).toLowerCase(), value: unquote((match[2] as string).trim()) };
+}
 
 export interface SshImporterOptions {
   targets: SshTargets;
@@ -34,7 +52,7 @@ const WILDCARD = /[*?]/;
 /** An OpenSSH pattern (`*` and `?`) as a regular expression. */
 function patternRegex(pattern: string): RegExp {
   const body = pattern
-    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/[.+^${}()|[\]\\]/g, String.raw`\$&`)
     .replace(/\*/g, ".*")
     .replace(/\?/g, ".");
   return new RegExp(`^${body}$`);
@@ -96,6 +114,40 @@ export class SshImporter {
     return { entries };
   }
 
+  /** The destination a ProxyJump goes through (created first when chosen), or why it cannot be. */
+  private jumpOf(
+    via: string,
+    chosen: Set<string>,
+    make: (alias: string) => { id: string } | Skip,
+  ): { id: string } | Skip {
+    if (via.includes(",")) {
+      return {
+        reason: `several jumps (ProxyJump ${via}) are not supported`,
+        why: "ssh_import_multi_jump",
+        params: { jump: via },
+      };
+    }
+    const registered = this.opts.targets.list().find((t) => t.name === via);
+    let made: { id: string } | Skip | null = null;
+    if (registered) made = { id: registered.id };
+    else if (chosen.has(via)) made = make(via);
+    if (!made) {
+      return {
+        reason: `ProxyJump ${via} is not a destination: import it first`,
+        why: "ssh_import_jump_unknown",
+        params: { jump: via },
+      };
+    }
+    if ("reason" in made) {
+      return {
+        reason: `jump "${via}" was not created: ${made.reason}`,
+        why: "ssh_import_jump_failed",
+        params: { jump: via },
+      };
+    }
+    return made;
+  }
+
   /** Creates the chosen destinos, a jump before whoever goes through it. */
   async apply(aliases: string[]): Promise<SshImportResult> {
     const entries = new Map((await this.preview()).entries.map((entry) => [entry.alias, entry]));
@@ -120,33 +172,12 @@ export class SshImporter {
       }
       if (entry.exists) return fail(alias, { reason: "already exists", why: "ssh_import_exists" });
       inProgress.add(alias);
-      let jump: string | null = null;
       const via = entry.proxyJump;
-      if (via?.includes(",")) {
-        return fail(alias, {
-          reason: `several jumps (ProxyJump ${via}) are not supported`,
-          why: "ssh_import_multi_jump",
-          params: { jump: via },
-        });
-      }
+      let jump: string | null = null;
       if (via) {
-        const registered = this.opts.targets.list().find((t) => t.name === via);
-        const made = registered ? { id: registered.id } : chosen.has(via) ? make(via) : null;
-        if (!made) {
-          return fail(alias, {
-            reason: `ProxyJump ${via} is not a destination: import it first`,
-            why: "ssh_import_jump_unknown",
-            params: { jump: via },
-          });
-        }
-        if ("reason" in made) {
-          return fail(alias, {
-            reason: `jump "${via}" was not created: ${made.reason}`,
-            why: "ssh_import_jump_failed",
-            params: { jump: via },
-          });
-        }
-        jump = made.id;
+        const resolved = this.jumpOf(via, chosen, make);
+        if ("reason" in resolved) return fail(alias, resolved);
+        jump = resolved.id;
       }
       try {
         const target = this.opts.targets.save({
@@ -162,12 +193,7 @@ export class SshImporter {
         created.push(target);
         return { id: target.id };
       } catch (error) {
-        const refusal = error as Partial<FlightdeckError> & Error;
-        return fail(alias, {
-          reason: refusal.message,
-          ...(refusal.reason ? { why: refusal.reason } : {}),
-          ...(refusal.params ? { params: refusal.params } : {}),
-        });
+        return fail(alias, skipOf(error));
       } finally {
         inProgress.delete(alias);
       }
@@ -196,6 +222,21 @@ export class SshImporter {
     return blocks;
   }
 
+  /** The directives of every file an `Include` names, except the file itself and the ones above it. */
+  private async includedDirectives(
+    value: string,
+    path: string,
+    stack: string[],
+  ): Promise<Directive[]> {
+    const out: Directive[] = [];
+    await inSequence(await this.included(value), async (file) => {
+      if (file !== path && !stack.includes(file)) {
+        out.push(...(await this.directives(file, [...stack, path])));
+      }
+    });
+    return out;
+  }
+
   /** The directives of a file, with each `Include` expanded in place. */
   private async directives(path: string, stack: string[]): Promise<Directive[]> {
     let text: string;
@@ -205,23 +246,21 @@ export class SshImporter {
       return [];
     }
     const out: Directive[] = [];
+    // A plain loop: only an Include awaits, so the other lines of a file are parsed in one pass.
     for (const raw of text.split(/\r?\n/)) {
       const line = raw.trim();
       if (line === "" || line.startsWith("#")) continue;
-      const match = /^(\S+?)(?:\s*=\s*|\s+)(.*)$/.exec(line);
-      if (!match) continue;
-      const key = (match[1] as string).toLowerCase();
-      const value = unquote((match[2] as string).trim());
+      const parsed = splitDirective(line);
+      if (!parsed) continue;
+      const { key, value } = parsed;
       if (key === "host") {
         out.push({ kind: "host", patterns: value.split(/\s+/).map(unquote) });
       } else if (key === "match") {
         out.push({ kind: "match" });
       } else if (key === "include") {
-        if (stack.length >= MAX_INCLUDE_DEPTH) continue;
-        for (const file of await this.included(value)) {
-          if (file !== path && !stack.includes(file)) {
-            out.push(...(await this.directives(file, [...stack, path])));
-          }
+        if (stack.length < MAX_INCLUDE_DEPTH) {
+          const included = await this.includedDirectives(value, path, stack); // NOSONAR: lines are read in order, each Include expanded in place
+          out.push(...included);
         }
       } else {
         out.push({ kind: "param", key, value });
@@ -242,10 +281,12 @@ export class SshImporter {
       }
       const glob = new Bun.Glob(basename(absolute));
       const names: string[] = [];
-      for await (const name of glob.scan({ cwd: dirname(absolute), onlyFiles: true })) {
+      for await (/* NOSONAR: the files of each Include are listed in the order they are written */ const name of glob.scan(
+        { cwd: dirname(absolute), onlyFiles: true },
+      )) {
         names.push(name);
       }
-      names.sort();
+      names.sort(byCodeUnit);
       files.push(...names.map((name) => join(dirname(absolute), name)));
     }
     return files;

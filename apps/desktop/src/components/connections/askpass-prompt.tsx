@@ -15,7 +15,7 @@ import type { AppState, AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 
 /** One request: the secret lives only in this field, and goes to the daemon only in the answer. */
-function Prompt(props: { store: AppStore; item: AppState["askpass"][number] }) {
+function Prompt(props: Readonly<{ store: AppStore; item: AppState["askpass"][number] }>) {
   const t = useT();
   const { store, item } = props;
   const { request } = item;

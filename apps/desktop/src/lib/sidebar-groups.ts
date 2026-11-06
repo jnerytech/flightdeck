@@ -1,5 +1,11 @@
 /** The collapsible groups of the sidebar, in the order they show. */
-export const SIDEBAR_GROUPS = ["work", "library", "infra"] as const;
+export const SIDEBAR_GROUPS = [
+  "work",
+  "automation",
+  "observability",
+  "library",
+  "machines",
+] as const;
 export type SidebarGroup = (typeof SIDEBAR_GROUPS)[number];
 
 export const SIDEBAR_FOLDED_KEY = "flightdeck.sidebarFolded";

@@ -2,14 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { listDirs, listFiles } from "../src/fs-dirs.ts";
-import { resolveAllowedCwd } from "../src/paths.ts";
+import { resolveAllowedCwd, rootNames } from "../src/paths.ts";
 import { isSystemFolder } from "../src/roots.ts";
 import { resolveSshPath } from "../src/ssh/connect.ts";
 import { tempDir } from "./helpers.ts";
 
 /** The path and folder checks do their file system work without blocking: each one answers with a promise. */
 describe("path checks answer asynchronously", () => {
-  const root = realpathSync(tempDir("fd-async-paths-"));
+  const root = realpathSync.native(tempDir("fd-async-paths-"));
   mkdirSync(join(root, "code"), { recursive: true });
   writeFileSync(join(root, "code", "a.txt"), "x");
 
@@ -49,5 +49,11 @@ describe("path checks answer asynchronously", () => {
     });
     expect(ssh).toBeInstanceOf(Promise);
     expect(await ssh).toContain("OpenSSH");
+  });
+
+  test("rootNames gives a root as written and as its real path, and a root that does not exist as written only", async () => {
+    const real = join(root, "code");
+    const gone = join(root, "gone");
+    expect(await rootNames([real, gone, real])).toEqual([real, gone]);
   });
 });

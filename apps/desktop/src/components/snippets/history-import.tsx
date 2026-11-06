@@ -30,9 +30,28 @@ function freeName(command: string, taken: Set<string>): string {
       .replace(/[^\p{L}\p{N}._-]/gu, "")
       .slice(0, 40) || "comando";
   let name = base;
-  for (let n = 2; taken.has(name); n++) name = `${base}-${n}`;
+  let n = 2;
+  while (taken.has(name)) name = `${base}-${n++}`;
   taken.add(name);
   return name;
+}
+
+/** A history line that cannot be picked: its command in gray, or which kinds of secret hid it. */
+function HiddenLine(
+  props: Readonly<{
+    command: string | null;
+    kinds: string[];
+    t: ReturnType<typeof useT>;
+  }>,
+) {
+  if (props.command !== null) {
+    return <span className="font-mono text-muted-foreground">{props.command}</span>;
+  }
+  return (
+    <span className="text-muted-foreground">
+      {props.t("snippets.history.hidden", { kinds: props.kinds.join(", ") })}
+    </span>
+  );
 }
 
 /**
@@ -40,7 +59,9 @@ function freeName(command: string, taken: Set<string>): string {
  * secret, by the daemon's patterns or by a value of this app's vault, is hidden and locked; the
  * vault's values are compared here and never sent anywhere.
  */
-export function HistoryImport(props: { store: AppStore; hostId: string; onImported(): void }) {
+export function HistoryImport(
+  props: Readonly<{ store: AppStore; hostId: string; onImported(): void }>,
+) {
   const t = useT();
   const id = useId();
   const { store, hostId } = props;
@@ -116,12 +137,8 @@ export function HistoryImport(props: { store: AppStore; hostId: string; onImport
                   />
                   {line.command}
                 </label>
-              ) : line.command !== null ? (
-                <span className="font-mono text-muted-foreground">{line.command}</span>
               ) : (
-                <span className="text-muted-foreground">
-                  {t("snippets.history.hidden", { kinds: line.kinds.join(", ") })}
-                </span>
+                <HiddenLine command={line.command} kinds={line.kinds} t={t} />
               )}
               <span className="text-muted-foreground text-xs">
                 {t("snippets.history.count", { n: line.count })}

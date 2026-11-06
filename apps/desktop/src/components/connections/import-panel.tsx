@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 
 /** The names of the host's `~/.ssh/config` that could become destinos; the registered ones are marked. */
-export function ImportPanel(props: {
-  entries: SshImportEntry[];
-  onApply(aliases: string[]): void;
-  onClose(): void;
-}) {
+export function ImportPanel(
+  props: Readonly<{
+    entries: SshImportEntry[];
+    onApply(aliases: string[]): void;
+    onClose(): void;
+  }>,
+) {
   const t = useT();
   const [picked, setPicked] = useState(
     () => new Set(props.entries.filter((entry) => !entry.exists).map((entry) => entry.alias)),
@@ -41,7 +43,7 @@ export function ImportPanel(props: {
                 {entry.alias}
               </label>
               <span className="font-mono text-muted-foreground">
-                {`${entry.user}@${entry.host}${entry.port === 22 ? "" : `:${entry.port}`}`}
+                {entry.user + "@" + entry.host + (entry.port === 22 ? "" : ":" + entry.port)}
               </span>
               {entry.exists && <span>{t("connections.import.exists")}</span>}
             </li>

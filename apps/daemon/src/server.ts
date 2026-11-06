@@ -1,7 +1,10 @@
+import { resolve } from "node:path";
 import {
   type AccountUpdated,
   type Ack,
+  ASSISTANT_FEATURE,
   type AskpassRequest,
+  type AutoUpdateStatus,
   type BudgetUpdated,
   type CardUpdated,
   type ChangesUpdated,
@@ -11,13 +14,16 @@ import {
   CommandHeader,
   type CommandResults,
   type CommandType,
+  type DepsResult,
   type DoctorResult,
   type EventEnvelope,
   type ExternalPermissionFrame,
   type ExternalSession,
   type ExternalStatus,
   type ExternalUpdated,
+  FEATURE_HOLD_PROOF,
   type HistoryChanged,
+  type HostRuntime,
   type IdleFiredFrame,
   type MessagesRelayFrame,
   type MessagesUpdatedFrame,
@@ -26,6 +32,8 @@ import {
   type Ping,
   Pong,
   PROTOCOL_VERSION,
+  type ProjectLoad,
+  type ProjectTrustState,
   type QuotaUpdated,
   type RunEnvUpdated,
   type RunUpdated,
@@ -50,6 +58,7 @@ import type { Account } from "./account/account.ts";
 import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig } from "./agentcfg/files.ts";
 import type { McpConfig } from "./agentcfg/mcp.ts";
+import type { AssistantService } from "./assistant/service.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
@@ -76,7 +85,7 @@ import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
-import { resolveAllowedCwd } from "./paths.ts";
+import { isInside, resolveAllowedCwd, rootNames } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import { preparePersonas } from "./personas/prepare.ts";
@@ -95,6 +104,7 @@ import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
+import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
@@ -119,6 +129,7 @@ import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
 import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
+import type { Worktrees } from "./worktrees/worktrees.ts";
 import { sendFrame } from "./ws-send.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
@@ -131,8 +142,25 @@ export const DAEMON_VERSION: string = pkg.version;
 export const PING_INTERVAL_MS = 15_000;
 const MAX_MISSED_PINGS = 4;
 
+/** What `host.info` says about OpenCode: no executable fingerprint, no finding paths. */
+function hostRuntime(info: OpenCodeInfo): HostRuntime {
+  return {
+    kind: "opencode",
+    available: info.available,
+    ...(info.path ? { path: info.path } : {}),
+    ...(info.version ? { version: info.version } : {}),
+    ...(info.verified !== undefined ? { verified: info.verified } : {}),
+    ...(info.reason ? { reason: info.reason } : {}),
+  };
+}
+
 export interface ServerOptions {
   manager: SessionManager;
+  /** Phase 39: whether OpenCode runs on this host, and its models. */
+  opencode?: {
+    info: () => OpenCodeInfo;
+    models: () => Promise<Array<{ id: string; name: string }>>;
+  };
   /** Looks up the project of a folder before a session is created in it (without blocking). */
   warmProjectKey?: (cwd: string) => Promise<unknown>;
   /** The project key of a folder, asked without blocking: `history.list` filters by it. */
@@ -144,6 +172,19 @@ export interface ServerOptions {
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
   bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
+  /** Who the peer is, for the origin rules; the socket's own address when absent (tests give theirs). */
+  peerOf?: (
+    req: Request,
+    server: { requestIP(req: Request): { address: string } | null },
+  ) => string;
+  projectTrust?: {
+    /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
+    refresh(): Promise<void>;
+    state(paths: string[]): ProjectTrustState[];
+    inspect(path: string): Promise<ProjectLoad>;
+    set(path: string, trusted: boolean): ProjectTrustState;
+  };
   /** Keeps the allowed folders in the config file after `roots.add`. */
   persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
@@ -152,6 +193,8 @@ export interface ServerOptions {
   fsDirs?: boolean;
   /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
+  /** Checks the host's dependencies for `deps.check`; absent, the command is refused and not announced. */
+  deps?: () => Promise<DepsResult>;
   /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
   github?: GithubService;
   /** What the agents cost and delivered, per project (phase 36): `roi.summary`. */
@@ -167,16 +210,24 @@ export interface ServerOptions {
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;
+  /** The clock behind the heartbeat (`performance.now()` when absent); a test gives its own. */
+  now?: () => number;
+  /** Runs `tick` every `everyMs` and returns the function that stops it (a `setInterval` when absent); a test fires it by hand. */
+  pingTicker?: (tick: () => void, everyMs: number) => () => void;
   /** Transcript index behind the `history.*` commands. */
   history?: HistoryIndexer;
   /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */
   board?: Board;
+  /** Phase 40: the AI assistant on this host's `claude`; announced in `host.info` when present. */
+  assistant?: AssistantService;
   /** The run environment of the cards: the run.yaml and the processes (phase 24). */
   runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */
   central?: Central;
   /** Retention and backups behind the `maintenance.*` commands (phase 7). */
   maintenance?: Maintenance;
+  /** What the cards' worktrees take on the disk, behind `worktree.*` (issue #152). */
+  worktrees?: Worktrees;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
   /** Phase 16: secrets the app hands over for one use (`vault.*`). */
@@ -217,6 +268,11 @@ export interface ServerOptions {
   updater?: DaemonUpdater;
   /** Phase 9: the release manifest check behind `host.info.update`. */
   updates?: UpdateChecker;
+  /** Issue #280: the automatic update (`host.info.autoUpdate`, `host.updates.set`). */
+  autoUpdate?: {
+    status(): AutoUpdateStatus;
+    set(auto: boolean): Promise<AutoUpdateStatus>;
+  };
   /** Called after acking `daemon.shutdown`; without it the command is refused. */
   onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */
@@ -311,7 +367,7 @@ interface Connection {
   dropped?: boolean;
   /** Pings sent and not yet answered, by id → send time. */
   pendingPings: Map<string, number>;
-  /** When the last frame of any kind arrived from this client (`performance.now()`). */
+  /** When the last frame of any kind arrived from this client (the heartbeat clock). */
   lastFrameAt: number;
   /** Stops the `sessions.watch` stream, when active. */
   unwatch?: () => void;
@@ -426,22 +482,20 @@ const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
   ended: "ended",
 };
 
-export function startServer(opts: ServerOptions): RunningServer {
-  const { manager } = opts;
-
-  const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
-  const authed = new Set<Socket>();
-  let currentToken = opts.token;
-  const startedAt = Date.now();
-  /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
-  const features = [
+/** What this daemon has, as `host.info` announces it; the app hides what is missing. */
+function featuresOf(opts: ServerOptions): string[] {
+  return [
+    // A high-risk permission allow needs `held: true` (issue #251).
+    FEATURE_HOLD_PROOF,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
-    ...(opts.sessionSettings ? ["session.settings"] : []),
+    ...(opts.sessionSettings ? ["session.settings", "session.effort"] : []),
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
+    ...(opts.deps ? ["depsCheck"] : []),
+    ...(opts.projectTrust ? ["projectTrust"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
     ...(opts.boardsync ? ["boardsync"] : []),
@@ -451,6 +505,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // Phase 24: the run.yaml of a card and its processes.
     ...(opts.runenv && opts.board ? ["runenv"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
+    ...(opts.worktrees ? ["worktrees"] : []),
     ...(opts.quota ? ["quota"] : []),
     ...(opts.account ? ["account"] : []),
     // Project rules live in the board's projects.
@@ -489,12 +544,38 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.watch ? ["watch"] : []),
     ...(opts.names ? ["names"] : []),
   ];
+}
+
+export function startServer(opts: ServerOptions): RunningServer {
+  const { manager } = opts;
+
+  const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
+  /** A service the daemon was started with, or the `feature_off` refusal naming it. */
+  const need = <K extends keyof ServerOptions>(
+    key: K,
+    feature: string = key,
+  ): NonNullable<ServerOptions[K]> => {
+    const value = opts[key];
+    if (!value) throw featureOff(feature);
+    return value as NonNullable<ServerOptions[K]>;
+  };
+  const authed = new Set<Socket>();
+  let currentToken = opts.token;
+  const startedAt = Date.now();
+  const features = featuresOf(opts);
   let pingSeq = 0;
 
   const pingEveryMs = opts.pingIntervalMs ?? PING_INTERVAL_MS;
-  const heartbeat = setInterval(() => {
+  const now = opts.now ?? (() => performance.now());
+  const pingTicker =
+    opts.pingTicker ??
+    ((tick: () => void, everyMs: number) => {
+      const timer = setInterval(tick, everyMs);
+      return () => clearInterval(timer);
+    });
+  const stopHeartbeat = pingTicker(() => {
     for (const ws of authed) {
-      const silentMs = performance.now() - ws.data.lastFrameAt;
+      const silentMs = now() - ws.data.lastFrameAt;
       if (
         ws.data.pendingPings.size >= MAX_MISSED_PINGS &&
         silentMs >= MAX_MISSED_PINGS * pingEveryMs
@@ -503,7 +584,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         continue;
       }
       const id = String(++pingSeq);
-      ws.data.pendingPings.set(id, performance.now());
+      ws.data.pendingPings.set(id, now());
       const { lastRttMs } = ws.data;
       send(ws, { type: "ping", id, ...(lastRttMs !== undefined ? { lastRttMs } : {}) });
     }
@@ -514,7 +595,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     const pong = Pong.safeParse(frame);
     const sentAt = pong.success ? ws.data.pendingPings.get(pong.data.id) : undefined;
     if (sentAt === undefined) return;
-    ws.data.lastRttMs = Math.round(performance.now() - sentAt);
+    ws.data.lastRttMs = Math.round(now() - sentAt);
     ws.data.pendingPings.clear();
   }
 
@@ -548,23 +629,18 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
-  function history(): HistoryIndexer {
-    if (!opts.history) throw featureOff("history");
-    return opts.history;
-  }
+  const history = (): HistoryIndexer => need("history");
 
   /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
   async function foldersOf(index: HistoryIndexer, key: string): Promise<string[]> {
-    const keyOf = opts.projectKeyOf ?? (async (cwd: string) => `host:${opts.hostName}:${cwd}`);
+    const keyOf =
+      opts.projectKeyOf ?? ((cwd: string) => Promise.resolve(`host:${opts.hostName}:${cwd}`));
     const cwds = index.distinctCwds();
     const keys = await Promise.all(cwds.map((cwd) => keyOf(cwd)));
     return cwds.filter((_, i) => keys[i] === key);
   }
 
-  function central() {
-    if (!opts.central) throw featureOff("central");
-    return opts.central;
-  }
+  const central = () => need("central");
 
   /**
    * Phase 5: every session list carries its project group and meta (with the hub on). Phase 8:
@@ -586,20 +662,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
-  function roi(): RoiSummarizer {
-    if (!opts.roi) throw featureOff("roi");
-    return opts.roi;
-  }
+  const roi = (): RoiSummarizer => need("roi");
 
-  function boardsync(): BoardSyncService {
-    if (!opts.boardsync) throw featureOff("boardsync");
-    return opts.boardsync;
-  }
+  const boardsync = (): BoardSyncService => need("boardsync");
 
-  function github(): GithubService {
-    if (!opts.github) throw featureOff("github");
-    return opts.github;
-  }
+  const github = (): GithubService => need("github");
 
   /**
    * Asks git for the project key of each folder without blocking, so the sync `listed` below reads
@@ -612,82 +679,37 @@ export function startServer(opts: ServerOptions): RunningServer {
     await Promise.all([...new Set(cwds)].map((cwd) => warm(cwd)));
   }
 
-  function vault(): Vault {
-    if (!opts.vault) throw featureOff("vault");
-    return opts.vault;
-  }
+  const vault = (): Vault => need("vault");
 
-  function names(): Names {
-    if (!opts.names) throw featureOff("names");
-    return opts.names;
-  }
+  const names = (): Names => need("names");
 
-  function watching(): PrWatch {
-    if (!opts.watch) throw featureOff("prWatch");
-    return opts.watch;
-  }
+  const watching = (): PrWatch => need("watch", "prWatch");
 
-  function teams(): Teams {
-    if (!opts.teams) throw featureOff("teams");
-    return opts.teams;
-  }
+  const teams = (): Teams => need("teams");
 
-  function messaging(): Messaging {
-    if (!opts.messaging) throw featureOff("messaging");
-    return opts.messaging;
-  }
+  const messaging = (): Messaging => need("messaging");
 
-  function idle(): Idle {
-    if (!opts.idle) throw featureOff("idle");
-    return opts.idle;
-  }
+  const idle = (): Idle => need("idle");
 
-  function actions(): Actions {
-    if (!opts.actions) throw featureOff("actions");
-    return opts.actions;
-  }
+  const actions = (): Actions => need("actions");
 
-  function automations(): Automations {
-    if (!opts.automations) throw featureOff("automations");
-    return opts.automations;
-  }
+  const automations = (): Automations => need("automations");
 
-  function issues(): Issues {
-    if (!opts.issues) throw featureOff("issues");
-    return opts.issues;
-  }
+  const issues = (): Issues => need("issues");
 
-  function autoApprove(): AutoApprover {
-    if (!opts.autoApprove) throw featureOff("autoApprove");
-    return opts.autoApprove;
-  }
+  const autoApprove = (): AutoApprover => need("autoApprove");
 
-  function agentcfg(): AgentConfig {
-    if (!opts.agentcfg) throw featureOff("agentcfg");
-    return opts.agentcfg;
-  }
+  const agentcfg = (): AgentConfig => need("agentcfg");
 
-  function mcp(): McpConfig {
-    if (!opts.mcp) throw featureOff("mcp");
-    return opts.mcp;
-  }
+  const mcp = (): McpConfig => need("mcp");
 
   const projectPath = (projectId: string) => board().getProject(projectId).path;
 
-  function pluginsApi(): Plugins {
-    if (!opts.plugins) throw featureOff("plugins");
-    return opts.plugins;
-  }
+  const pluginsApi = (): Plugins => need("plugins");
 
-  function memory(): ProjectMemory {
-    if (!opts.memory) throw featureOff("memory");
-    return opts.memory;
-  }
+  const memory = (): ProjectMemory => need("memory");
 
-  function rewinder(): Rewinder {
-    if (!opts.rewinder) throw featureOff("rewinder");
-    return opts.rewinder;
-  }
+  const rewinder = (): Rewinder => need("rewinder");
 
   /** `host.info.update` once the daemon has checked its manifest. */
   function updateStatus() {
@@ -720,144 +742,62 @@ export function startServer(opts: ServerOptions): RunningServer {
     return { ...s, ...(summary ? { summary } : {}), ...(meta ? { meta } : {}) };
   }
 
-  function maintenance(): Maintenance {
-    if (!opts.maintenance) throw featureOff("maintenance");
-    return opts.maintenance;
-  }
+  const maintenance = (): Maintenance => need("maintenance");
 
-  function usage(): UsageLedger {
-    if (!opts.usage) throw featureOff("usage");
-    return opts.usage;
-  }
+  const worktrees = (): Worktrees => need("worktrees");
 
-  function account(): Account {
-    if (!opts.account) throw featureOff("account");
-    return opts.account;
-  }
+  const usage = (): UsageLedger => need("usage");
 
-  function quota(): Quota {
-    if (!opts.quota) throw featureOff("quota");
-    return opts.quota;
-  }
+  const account = (): Account => need("account");
 
-  function costs(): Costs {
-    if (!opts.costs) throw featureOff("costs");
-    return opts.costs;
-  }
+  const quota = (): Quota => need("quota");
 
-  function telemetry(): TelemetryStore {
-    if (!opts.telemetry) throw featureOff("telemetry");
-    return opts.telemetry;
-  }
+  const costs = (): Costs => need("costs");
 
-  function bg(): BgService {
-    if (!opts.bg) throw featureOff("bg");
-    return opts.bg;
-  }
+  const telemetry = (): TelemetryStore => need("telemetry");
 
-  function webhook(): WebhookSender {
-    if (!opts.webhook) throw featureOff("webhook");
-    return opts.webhook;
-  }
-  function summary(): SummaryService {
-    if (!opts.summary) throw featureOff("summary");
-    return opts.summary;
-  }
-  function trace(): TraceService {
-    if (!opts.trace) throw featureOff("trace");
-    return opts.trace;
-  }
+  const bg = (): BgService => need("bg");
 
-  function optIn(): TelemetryOptIn {
-    if (!opts.telemetryOptIn) throw featureOff("telemetry");
-    return opts.telemetryOptIn;
-  }
+  const webhook = (): WebhookSender => need("webhook");
+  const summary = (): SummaryService => need("summary");
+  const trace = (): TraceService => need("trace");
 
-  function budgets(): Budgets {
-    if (!opts.budgets) throw featureOff("budgets");
-    return opts.budgets;
-  }
+  const optIn = (): TelemetryOptIn => need("telemetryOptIn", "telemetry");
 
-  function quotaHistory(): QuotaHistory {
-    if (!opts.quotaHistory) throw featureOff("quotaHistory");
-    return opts.quotaHistory;
-  }
+  const budgets = (): Budgets => need("budgets");
 
-  function changes(): Changes {
-    if (!opts.changes) throw featureOff("changes");
-    return opts.changes;
-  }
+  const quotaHistory = (): QuotaHistory => need("quotaHistory");
 
-  function ssh(): SshTargets {
-    if (!opts.ssh) throw featureOff("ssh");
-    return opts.ssh;
-  }
+  const changes = (): Changes => need("changes");
 
-  function snippets(): Snippets {
-    if (!opts.snippets) throw featureOff("snippets");
-    return opts.snippets;
-  }
+  const ssh = (): SshTargets => need("ssh");
 
-  function personaSessions(): OpenSessionPersonas {
-    if (!opts.personaSessions) throw featureOff("personaSessions");
-    return opts.personaSessions;
-  }
+  const snippets = (): Snippets => need("snippets");
 
-  function personas(): Personas {
-    if (!opts.personas) throw featureOff("personas");
-    return opts.personas;
-  }
+  const personaSessions = (): OpenSessionPersonas => need("personaSessions");
 
-  function snippetUse(): SnippetUse {
-    if (!opts.snippetUse) throw featureOff("snippetUse");
-    return opts.snippetUse;
-  }
+  const personas = (): Personas => need("personas");
 
-  function snippetHistory(): HistoryImporter {
-    if (!opts.snippetHistory) throw featureOff("snippetHistory");
-    return opts.snippetHistory;
-  }
+  const snippetUse = (): SnippetUse => need("snippetUse");
 
-  function askpass(): AskpassBroker {
-    if (!opts.askpass) throw featureOff("askpass");
-    return opts.askpass;
-  }
+  const snippetHistory = (): HistoryImporter => need("snippetHistory");
 
-  function sshConnect(): SshConnector {
-    if (!opts.sshConnect) throw featureOff("sshConnect");
-    return opts.sshConnect;
-  }
+  const askpass = (): AskpassBroker => need("askpass");
 
-  function sshHostKeys(): HostKeys {
-    if (!opts.sshHostKeys) throw featureOff("sshHostKeys");
-    return opts.sshHostKeys;
-  }
+  const sshConnect = (): SshConnector => need("sshConnect");
 
-  function sshImport(): SshImporter {
-    if (!opts.sshImport) throw featureOff("sshImport");
-    return opts.sshImport;
-  }
+  const sshHostKeys = (): HostKeys => need("sshHostKeys");
 
-  function review(): ReviewComments {
-    if (!opts.review) throw featureOff("review");
-    return opts.review;
-  }
+  const sshImport = (): SshImporter => need("sshImport");
 
-  function files(): ReviewFiles {
-    if (!opts.files) throw featureOff("files");
-    return opts.files;
-  }
+  const review = (): ReviewComments => need("review");
+
+  const files = (): ReviewFiles => need("files");
 
   /** A project's folder, with the root of its repository looked up first without waiting for git. */
-  function sessionFiles(): SessionFiles {
-    if (!opts.sessionFiles) throw featureOff("sessionFiles");
-    return opts.sessionFiles;
-  }
+  const sessionFiles = (): SessionFiles => need("sessionFiles");
 
-  function terminals(): TerminalManager {
-    if (!opts.terminals) throw featureOff("terminals");
-    return opts.terminals;
-  }
+  const terminals = (): TerminalManager => need("terminals");
 
   /** The connection's end of its terminals: frames out, and how full its socket is. */
   function terminalSink(ws: Socket): TerminalSink {
@@ -868,14 +808,13 @@ export function startServer(opts: ServerOptions): RunningServer {
     return ws.data.terminalSink;
   }
 
-  function runenv() {
-    if (!opts.runenv) throw featureOff("runEnv");
-    return opts.runenv;
-  }
+  const runenv = () => need("runenv", "runEnv");
 
-  function board(): Board {
-    if (!opts.board) throw featureOff("board");
-    return opts.board;
+  const board = (): Board => need("board");
+
+  function assistant(): AssistantService {
+    if (!opts.assistant) throw featureOff("assistant");
+    return opts.assistant;
   }
 
   function subscribe(ws: Socket, sessionId: string, sinceSeq: number) {
@@ -945,6 +884,9 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.setModel":
         await manager.setModel(command.payload.sessionId, command.payload.model);
         return ok(command.type);
+      case "session.setEffort":
+        await manager.setEffort(command.payload.sessionId, command.payload.effort);
+        return ok(command.type);
       case "session.close":
         await manager.close(command.payload.sessionId);
         return ok(command.type);
@@ -964,9 +906,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "permission.respond": {
         // External requests (ids `ext-…`) are held hooks; anything else is a managed session's.
-        const { requestId, decision, message, updatedPermissions, updatedInput } = command.payload;
+        const { requestId, decision, message, updatedPermissions, updatedInput, held } =
+          command.payload;
         const external = opts.central?.permissions;
-        if (!external?.respond(requestId, decision, message, updatedPermissions, updatedInput)) {
+        if (
+          !external?.respond(requestId, decision, message, updatedPermissions, updatedInput, held)
+        ) {
           manager.respondPermission(command.payload);
         }
         return ok(command.type);
@@ -1004,6 +949,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { claudeSessionId, ...meta });
       }
+      case "worktree.list":
+        return ok(command.type, await worktrees().list(command.payload.projectId));
+      case "worktree.remove":
+        return ok(command.type, await worktrees().remove(command.payload.items));
       case "maintenance.status":
         return ok(command.type, await maintenance().status());
       case "maintenance.backup":
@@ -1383,6 +1332,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.updater) throw featureOff("updater");
         return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
       }
+      case "host.updates.set": {
+        // It lets the host download and run a new binary by itself: only from a near connection,
+        // like host.bypass. Turning it off only lowers risk, but it is the same switch.
+        requireVaultTransport(ws.data.origin, "host.updates.set", opts.log);
+        if (!opts.autoUpdate) throw featureOff("autoUpdate");
+        return ok(command.type, await opts.autoUpdate.set(command.payload.auto));
+      }
       case "daemon.update.check": {
         if (!opts.updates) throw featureOff("updater");
         return ok(command.type, await opts.updates.checkNow());
@@ -1450,11 +1406,16 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.ui ? ["ui.mode"] : []),
             ...(opts.templates ? ["templates"] : []),
             ...(opts.tasks ? ["tasks"] : []),
+            ...(opts.opencode?.info().available ? ["opencode"] : []),
+            ...(opts.assistant ? [ASSISTANT_FEATURE] : []),
+            ...(opts.autoUpdate ? ["autoUpdate"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
+          ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
           ...(opts.terminal ?? {}),
         });
       case "history.list": {
@@ -1550,6 +1511,41 @@ export function startServer(opts: ServerOptions): RunningServer {
             opts.rootsPlatform,
           ),
         });
+      }
+      case "project.trust.state": {
+        if (!opts.projectTrust) throw featureOff("projectTrust");
+        const paths = await Promise.all(
+          command.payload.paths.map((p) => resolveAllowedCwd(p, opts.allowedRoots)),
+        );
+        await opts.projectTrust.refresh();
+        return ok(command.type, { items: opts.projectTrust.state(paths) });
+      }
+      case "project.trust.inspect": {
+        if (!opts.projectTrust) throw featureOff("projectTrust");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.projectTrust.inspect(path));
+      }
+      case "project.trust.set": {
+        if (!opts.projectTrust) throw featureOff("projectTrust");
+        // Trusting lets the project's own hooks and MCP servers run without a prompt: only from a near
+        // connection, like roots.add and host.bypass. Revoking only lowers risk.
+        if (command.payload.trusted) {
+          requireVaultTransport(ws.data.origin, "project.trust.set", opts.log);
+        }
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        // A root, or a folder above one, holds many repos: trusting it would trust every clone inside.
+        if (
+          command.payload.trusted &&
+          (await rootNames(opts.allowedRoots)).some((root) => isInside(path, root))
+        ) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "trusting an allowed root would trust every project inside it",
+            "trust_root_refused",
+          );
+        }
+        await opts.projectTrust.refresh();
+        return ok(command.type, opts.projectTrust.set(path, command.payload.trusted));
       }
       case "host.bypass": {
         requireVaultTransport(ws.data.origin, "host.bypass", opts.log);
@@ -1698,6 +1694,16 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "roi.summary":
         return ok(command.type, await roi().summaryWithSignals(roiPeriod(command.payload)));
+      case "runtime.models": {
+        if (!opts.opencode?.info().available) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "OpenCode is not available on this host",
+            "runtime_unavailable",
+          );
+        }
+        return ok(command.type, { models: await opts.opencode.models() });
+      }
       case "boardsync.boards":
         return ok(command.type, { boards: await boardsync().boards() });
       case "boardsync.link":
@@ -1742,6 +1748,9 @@ export function startServer(opts: ServerOptions): RunningServer {
           command.type,
           await cloneRepo(command.payload, opts.allowedRoots, opts.git ?? spawnGit),
         );
+      case "deps.check":
+        if (!opts.deps) throw featureOff("depsCheck");
+        return ok(command.type, await opts.deps());
       case "doctor.run":
         if (!opts.doctor) throw featureOff("doctor.run");
         return ok(command.type, await opts.doctor(command.payload.appVersion));
@@ -1889,8 +1898,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "card.updateFromBase":
         return ok(command.type, await board().updateFromBase(command.payload.cardId));
       case "card.mergeLocal": {
-        const { cardId, mode, confirm } = command.payload;
-        return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true));
+        const { cardId, mode, confirm, message } = command.payload;
+        return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true, message));
       }
       case "changes.get":
         return ok(command.type, await changes().get(command.payload.target));
@@ -2147,6 +2156,16 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.stop":
         return ok(command.type, await board().stopCard(command.payload.cardId));
+      case "assistant.run":
+        return ok(command.type, await assistant().run(command.payload));
+      case "assistant.cancel":
+        assistant().cancel(command.payload.requestId);
+        return ok(command.type);
+      case "assistant.context":
+        return ok(command.type, await assistant().context(command.payload));
+      case "assistant.record":
+        assistant().record(command.payload);
+        return ok(command.type);
       case "card.diff":
         return ok(command.type, await board().diff(command.payload.cardId));
       case "card.message":
@@ -2158,6 +2177,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(command.payload.description === undefined
               ? {}
               : { description: command.payload.description }),
+            ...(command.payload.title === undefined ? {} : { title: command.payload.title }),
           }),
         );
       case "card.manage":
@@ -2231,7 +2251,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     port: opts.port,
     fetch(req, srv) {
       // Origin filter before anything else, on every route, before any upgrade.
-      const origin = srv.requestIP(req)?.address ?? "";
+      const origin = opts.peerOf ? opts.peerOf(req, srv) : (srv.requestIP(req)?.address ?? "");
       if (!ipInNetworks(origin, opts.allowedNetworks ?? DEFAULT_ALLOWED_NETWORKS)) {
         // Its own address, so a person told "refused" can add the right network (the doctor reads it).
         return new Response(`forbidden: ${origin}`, { status: 403 });
@@ -2245,7 +2265,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             subscriptions: new Map(),
             coalescers: new Set(),
             pendingPings: new Map(),
-            lastFrameAt: performance.now(),
+            lastFrameAt: now(),
             changeWatchers: new Map(),
           },
         });
@@ -2258,7 +2278,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     websocket: {
       drain: drainAll,
       message(ws, raw) {
-        ws.data.lastFrameAt = performance.now();
+        ws.data.lastFrameAt = now();
         let frame: unknown;
         try {
           frame = decode(raw);
@@ -2308,7 +2328,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       for (const ws of authed) ws.close(CLOSE_UNAUTHORIZED, "token rotacionado");
     },
     stop: () => {
-      clearInterval(heartbeat);
+      stopHeartbeat();
       opts.plugins?.close();
       return server.stop(true);
     },

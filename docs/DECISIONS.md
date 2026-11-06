@@ -1,3 +1,6 @@
+> **Frozen (#304).** New decisions go to a file of their own under `docs/decisions/`, named
+> `<yyyy-mm-dd>-<topic>.md` (see `docs/decisions/README.md`). This file keeps the entries up to then.
+
 # Decisões e divergências da Fase 1
 
 Cada item registra onde a implementação diverge de `docs/SPEC.md` ou completa um ponto que a
@@ -1762,7 +1765,6 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Version:** 0.13.0 in the protocol, the daemon and the desktop (`tauri.conf.json` reads the desktop's `package.json`).
 - **`scripts/demo-seed.ts` is out of the coverage count:** the `demo-issue-risco` test is the first unit test to load the seed, which put its ping reply and its old-daemon stub (only used by `demo` and `demo:shots`) into the totals. The seed is demo scaffolding, covered by the e2e and the screenshots, so `bunfig.toml` ignores it like the vendored UI.
 
-
 # Phase 14 decisions: the daemon (embedded terminal)
 
 ## Terminal embutido (daemon)
@@ -2467,7 +2469,6 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 
 - **`smoke:run`:** a real daemon over a real repository whose committed run.yaml runs an echo server that also starts a child that ignores SIGHUP and SIGTERM. Two cards run at once on different blocks, both answer over HTTP, and Stop leaves no server, child or answering port. Its block starts at a random base. Red on the base commit, where `runenv.config` does not exist.
 
-
 # Phase 28 decisions: performance and stack best practices
 
 ## Baseline
@@ -2882,8 +2883,6 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
-
-
 ## Phase 37: GitHub sign-in and start from a GitHub project
 
 - **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
@@ -3054,7 +3053,6 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   opens a new one; duplicates in an older snapshot fold into one.
 - `session.create` takes no first prompt: the session starts idle and the first message begins
   its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
-
 
 ## Phase 38: board sync with external boards (GitHub Projects first)
 
@@ -3431,7 +3429,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
   renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
 
-
 ## Team sessions get the flightdeck MCP (v0.36.1, issue #95)
 
 - **Where it is injected.** `ClaudeSdkRuntime.start` is the single place every managed session passes through (coordinator,
@@ -3487,20 +3484,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   backoff from the first delay and connects at once; a connection that is online or already trying is left alone. A wake-up
   within 2 s of the last one that acted is ignored, so focus spam cannot storm a host. The listeners are set in `init()` (it
   begins with `dispose()`), not in the constructor, which would be undone by it.
-
-## The host page leads with sessions and projects (issue #110)
-
-- **No second implementation.** The sessions are the Sessions list's own rows (`hubRows`) in its own `SessionCard`, in the list's
-  own order (`hubRowOrder`, now a function of its own); the projects are the Projects list's own `ProjectCardTile` over the same
-  `useProjectCards` data. The host page only filters them to the host and caps them at six; archived sessions stay out.
-- **"See all" carries the host.** Sessions: the hub's host filter is set to the host's name (and saved, like any filter of that
-  list), through a `host` on the `hub` route that the list applies once. Projects: the `all-projects` route takes a host id and
-  shows a chip, with a clear button, instead of a new screen.
-- **Tabs: Overview, Usage, Settings.** Overview has the sessions, the projects, the Claude account and the host information; Usage
-  the quota and the usage table; Settings the allowed folders, bypass, simple mode, doctor, GitHub, daemon update, hooks,
-  telemetry, terminal, maintenance and the host actions. The offline banner, the incompatibility notice and the API-key warning
-  stay above the tabs: they apply whichever tab is open. The usage table was not made collapsible: it has its own tab now.
-- **Tests that used the old single page** now open the Settings tab first where they touch what moved there.
 
 ## The rc/0361 gate: three leaks of the machine into the tests
 
@@ -3574,12 +3557,829 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
 
-## Host page: See all sessions leaves the saved filter alone; the host cards' cost (issue #207)
+## The light lane for typecheck and lint
 
-- **See all sessions** used to save `{...hubFilter(), host}`, overwriting the person's own Sessions filter with a host name. The route
-  now carries the host and the hub applies it to the filter of that visit only. While it comes from the route, saving another filter
-  (a toggle, a persona) keeps the saved host as it was; picking a host in the filters is the person's choice and is saved as before.
-- **The host cards' week** ends on `store.today()` (the injected clock) instead of `localDay(Date.now())`, and a host that is not
-  online keeps no figure: the cost is asked again when it comes back, instead of showing the old one meanwhile.
-- **Also on `host-deps`.** That branch carries the same two lines (`Screens.tsx`, `use-project-cards.ts`), so the second branch to
-  merge takes the other's version of them.
+- **Why.** On 2026-11-05 the Pi ran out of memory (148 MB free, load 49) with five or six
+  typechecks running at once outside the slot. One run of `bun run typecheck` was itself three
+  tsc processes at once (`bun run --filter '*'` runs the workspaces in parallel) and then a
+  fourth: measured on the Pi, protocol 0.29 GB, daemon 0.95 GB, desktop 1.46 GB, scripts 1.05 GB.
+- **A lane with two places** (`scripts/lane.ts`, logic in `scripts/lib/lane.ts`). Each place is
+  one of the slot's lock files (`tryAcquire`/`release`), in the temp folder. A third run waits and
+  names the two holders once. It is separate from the heavy slot: a typecheck never waits for a
+  full suite, nor a full suite for a typecheck.
+- **Fail-open and nesting.** A lock that cannot be used runs the command anyway and says so. A
+  call made inside the lane or the heavy slot (`FLIGHTDECK_LANE_HOLDER`, `FLIGHTDECK_SLOT_HOLDER`
+  from #141) runs at once, so a script that runs typecheck inside a slot run never waits for itself.
+- **One project at a time, incremental.** `scripts/typecheck.ts` runs one tsc per project in
+  sequence (protocol, daemon, desktop, scripts), each with `--incremental` and its build info in
+  `node_modules/.cache/tsc/` (ignored, one per checkout). A cold run peaks at 1.48 GB (the desktop
+  project) and took 46 s on the loaded Pi; a run with nothing changed takes 8 s and 0.46 GB. A type
+  error added after a warm run is still reported. One shared tsc for all projects was not tried:
+  it would hold every project's program at once, the opposite of what the lane needs.
+- **The workspaces' own `typecheck` scripts stay** for a run inside one package; a test checks
+  that `PROJECTS` lists every workspace that has one.
+
+## Sonar rules before a push (issue #194)
+
+- **Biome stays the linter; `lint:sonar` only mirrors SonarCloud.** `bun run lint:sonar` runs `eslint-plugin-sonarjs` (Sonar's
+  own JS/TS rules) with no other ESLint rule. The rule list is not hand-written: `scripts/lib/sonar-lint.ts` keeps the plugin
+  rules whose Sonar key (`S1234`, from the rule's documentation URL) is active in the project's SonarCloud profile, "Sonar way
+  comprehensive" for TypeScript, snapshotted in `scripts/sonar-profile.json`. Refresh it with
+  `curl 'https://sonarcloud.io/api/rules/search?organization=jnerytech&qprofile=<key>&activation=true&ps=500&repositories=typescript'`
+  when the profile changes (the API is public for a public project; no token).
+- **Coverage of the profile (2026-11-05).** 211 of its 418 TypeScript rules have an ESLint rule: 160 run on syntax alone and 51
+  need the TypeScript program (`--no-types` skips those). The other 207, and the `tssecurity` taint rules (47) and
+  `tsarchitecture` rules (7), have no local equivalent and are reported only by SonarCloud.
+- **New code only.** SonarCloud's gate judges new code, and `main` has far more old findings than a change can fix, so
+  `lint:sonar` keeps the findings on the lines the branch added or changed (`git diff -U0` against the merge-base). `--all` and
+  `--files` check whole files.
+- **NOSONAR works the same on both sides, with one addition.** A `NOSONAR` comment silences the findings of its line, as in
+  SonarCloud. Locally a `NOSONAR` with no reason after it is itself a finding (`nosonar-reason`): a suppression says why.
+- **A workspace of its own.** `typescript-eslint` refuses TypeScript 7 (`typescript-eslint does not support TS 7.0`, tracking issue
+  typescript-eslint#10940), which the repository uses. The linter lives in the `tools/sonar-lint` workspace with its own
+  `typescript@5.9.3`; the app and the daemon keep TypeScript 7. Drop the pin when typescript-eslint supports TS 7.
+- **Not chosen:** a local SonarQube server (too heavy for the Pi) and scanner runs from the machine (they need the token).
+- **CI.** A fast `lint:sonar` job runs on pull requests only, against the merge-base with the target branch.
+
+## Sonar reads the tests and the same coverage as the gate (issue #205)
+
+- **Tests are test code in Sonar.** `sonar.exclusions` no longer lists the tests; `sonar.test.inclusions` (`**/test/**`, `*.test.ts(x)`,
+  `scripts/e2e/**`) marks them, so Sonar runs its test-scope rules on them. In the SonarCloud TypeScript profile 381 rules are
+  main-scope and 37 test-scope; `lint:sonar` runs each set on its kind of file (`testRules` in `scripts/sonar-profile.json`).
+  The first local run found 120 test findings (116 generic assertions); they are fixed, and 4 profile rules still have no ESLint twin.
+- **One list for coverage.** Sonar read 99.4% while the gate says 100% because the two exclusion lists differed (the build config, type
+  declarations and `scripts/e2e` were counted by Sonar only). `scripts/test/sonar-coverage.test.ts` now checks every tracked file:
+  Sonar counts it for coverage exactly when `isCoverageSource` (the gate's rule) does, so the lists cannot drift. The properties file
+  cannot call code, so it keeps its own glob list and the test is what ties it to `scripts/lib/coverage-check.ts`.
+- **Not verified here:** the scanner itself needs the token, so the overlap of `sonar.sources` and `sonar.tests` (with
+  `sonar.test.inclusions` deciding) is proven by the next SonarCloud run on the PR, not locally.
+- **`explicit-test-skip`.** The two tests that returned early on Windows use `test.skipIf(...)`.
+
+## Sonar bugs and vulnerabilities (issue #198)
+
+- **CSS S8776 and S8767 are ignored for `apps/desktop/src/styles.css`, nothing else.** All 31 findings sit inside Tailwind v4
+  `@utility` blocks (checked one by one): `&:hover`, `&[data-columns]` and declarations inside a nested `@media` are valid CSS
+  nesting there, but Sonar's CSS parser treats `@utility` as an unknown at-rule and reports "Missing scoping root" and "Invalid
+  position for declaration". Rewriting them as plain classes would drop the `@utility` variant support (`hover:`, `md:`) the app
+  uses, so the file is exempt through `sonar.issue.ignore.multicriteria` in `sonar-project.properties`, for these two rules only.
+- **Rust S7493 (3) and S4036 / S2245 / S5443 are NOSONAR with a reason.** The Rust calls already run inside `spawn_blocking_result`
+  (the rule cannot see through the helper); the `git` and `bun` scripts take the executable from the developer's `PATH` on purpose;
+  `Math.random()` only picks a spare port; and the "publicly writable directory" is a list of folder names to hide.
+- **Sorts (S2871, 16 sites): code-unit order unless a person reads the order.** A bare `.sort()` orders by UTF-16 code unit; a
+  locale order differs for mixed case and accents, which would change any key built from a sorted list (persisted state, a dedupe
+  key, a fingerprint) after an upgrade. `byCodeUnit` (`packages/protocol/src/compare.ts`) is the explicit, byte-identical
+  comparator and a test pins that a key joined from a mixed-case list is the same as before. `localeCompare(b, "en")` is used only
+  for the three lists a person reads:
+  - `byCodeUnit`: `ssh/import.ts` (import order), `agentcfg/files.ts` (item order), `lib/tabs.ts` (`routeKey`), `smoke-webhook.ts`
+    (keys compared), `lib/client-scope.ts` (project keys), `lib/app-store.ts` x2 (alert key, online-host key), `telemetry/otlp-env.ts`
+    (managed keys compared), `telemetry/store.ts` (project keys), `personas/store.ts` (untrusted ids), `smoke-rules-vault.ts` and
+    `smoke-automation.ts` (outcomes compared), `actions/schema.ts` (secret ids).
+  - `localeCompare(b, "en")`: `roi/summary.ts` (project rows), `lib/trace.ts` (tool names), `ui/ConnectionsPage.tsx` (tag list).
+- **Also fixed in code:** `reduce` has an initial value, `map` callbacks that take an index say so, a float is compared within a tolerance, and the import
+  pattern of `scripts/lib/bundle-reach.ts` no longer backtracks quadratically (30,000 spaces: 1.2 s to milliseconds).
+
+## Harness D1: the commit gate, the test-edit guard and the audit in CI (issue #169)
+
+- **A Claude Code hook, not a git `commit-msg` hook.** A git hook reads the message reliably, but it
+  needs `core.hooksPath`, which is unset; setting it would change all open worktrees and the
+  maintainer's commits at once. The PreToolUse guard is already versioned in `.claude/` and runs
+  in every checkout. It reads the subject from `-m`, `--message`, a `$(cat <<EOF)` heredoc or
+  `-F -` with a heredoc, and finds the commit's directory from each `cd` before it and from
+  `git -C`. Anything else (an editor, `-F file`, a quoted directory, git failing) passes, since
+  the audit and CI still check it.
+- **One base everywhere.** `auditBase` (the merge-base with `origin/main`, then `main`; the last
+  release tag, `v*` and never `fase-N`, when `HEAD` is on `main`, pushed or not) is used by the
+  hook, by `tdd:audit --since auto` and by CI. Measured before turning CI on: all 21 open branches
+  on `origin`, `rc/0363` included, pass it. Without
+  `--since`, `tdd:audit` now means `auto`; before, the bare command that CLAUDE.md suggested
+  exited 2 with a usage line. In a pull request, CI's merge commit has no conventional type, so the
+  audit ignores it.
+- **The waiver is a trailer.** A waiver in `scripts/tdd-audit-waivers.json` is keyed by the full
+  commit hash, which does not exist before the commit. A `TDD-Waiver: <why>` trailer in the
+  message is read by the hook and by `tdd:audit` (`%(trailers:key=TDD-Waiver)`), needs no hash
+  and survives a rebase. The hook logs such a commit as `waived`, so `harness:stats` shows how
+  often the gate is bypassed. The JSON file keeps the waivers made before.
+- **Only the commit's own message is read.** The command is masked (heredoc bodies and quoted
+  text blanked, offsets kept): `git commit` and its `-m`, `--message`, `--trailer` and `-F -` are
+  found only as words of their own segment, and their values are read from the original at the
+  same offsets. A first version read the first `-m` or heredoc anywhere, so a `cat >> f <<EOF`
+  before the commit, a `grep -m 1` or a `-m` in the body became the subject, and a quote inside a
+  `$(cat <<EOF)` body ended the message early.
+- **Not enforced: "the test commit holds only the test".** docs/TDD.md says the stub stays out of
+  the test commit. In practice it goes in: 404 of the last 1,500 `test(...)` commits also change a
+  file under `apps/*/src`, `packages/*/src`, `scripts/lib` or `src-tauri/src` (for example
+  `test(setup-linger)` adds `linger.ts` answering `null`). Blocking it would refuse about one test
+  commit in four. The rule stays as written until the maintainer decides between the text and the
+  practice.
+- **`toMatchSnapshot(` only in the hook.** A new snapshot records its first run, which is the
+  stub's output. The audit does not scan for it, because a snapshot that already exists is allowed;
+  the hook only refuses one being added.
+- **Measured on the Orange Pi** (load around 6): the guard takes 0.04 to 0.1 s on a `git commit` (one
+  `rev-parse`, one `merge-base` and one `log`) and 0.01 to 0.03 s on anything else. `biome-on-edit`
+  takes about 1.9 s per edit, 1.7 s of it in the type-aware `noFloatingPromises` scan.
+- **The decision log** is `<common .git>/flightdeck-hooks.jsonl`: never tracked, one file for the
+  main checkout and its worktrees, rotated to `.jsonl.1` past 1 MB. `bun run harness:stats` gives
+  the calls, blocks and p50/p95 per hook, and the blocks per rule. The `biome-on-edit` numbers
+  decide whether `noFloatingPromises` moves out of the edit hook into the commit gate and CI.
+- **Heavy runs outside the slot are refused.** The guard refuses `bun run test|coverage|e2e|
+  demo:shots|smoke*|build:daemon|build:desktop` and a bare `bun test` unless the segment is
+  `bun run slot -- ...`. A session that runs under a slot holder (`FLIGHTDECK_SLOT_HOLDER` in the
+  hook's environment, #141) passes, since its run is already in the slot. The slot's own child is
+  started by the slot, not by Claude's Bash tool, so the hook never sees it.
+- **Timeouts and fail-open are explicit.** `guard` has `timeout: 10`, `biome-on-edit` 30, both
+  `onFailure: "continue"` (without it, a failing shell-form hook blocks on Windows without Git
+  Bash), and the gate's git calls stop after 2 s. `onFailure: "block"` is never used: the guard
+  imports `scripts/lib`, so a broken edit there would block the edit that repairs it.
+- **Only this project's commits.** The gate checks a commit only when its directory belongs to the
+  main checkout or one of its worktrees (`checkoutRoot`), so `git commit -m init` in a scratch
+  repository passes. The slot guard has no such scope yet: `bun run test` in another project, run
+  from a Flightdeck session, is refused (rare; known limit).
+- **The instructions follow the guard.** CLAUDE.md, TDD.md, `new-phase`, `spec-verifier` and
+  `tauri-rust-reviewer` showed the full suite, the builds, `demo:shots` and `e2e` bare; they now
+  show `bun run slot -- <command>`, and `tdd-area`'s green step runs `test:related`. A
+  `harness-config` case keeps any instruction from showing a command the guard refuses.
+- **Minimum Claude Code version: 2.1.295,** for `onFailure`. Checked on 2.1.318 with `claude -p
+  --debug` in the worktree: the settings load without a validation warning and the guard fires.
+- **The setup is tested.** `harness-config.test.ts` checks that each hook in `settings.json` runs
+  a file that exists, with a timeout and `onFailure`; that the deny list keeps the credentials;
+  that the real `guard.ts` blocks with exit 2 and passes bad input; and that every agent and skill
+  frontmatter parses as YAML. It found two that did not (`tauri-rust-reviewer`, `new-phase`: an
+  unquoted `: ` in the description); Claude Code read them anyway, but a rule's `paths` that does
+  not parse is silently dropped, so the check stays.
+- **`test:related` sees data files.** A test that names a changed path, or one of its folders, as
+  a string literal is related to it (`names .claude/settings.json`). Names with no slash (a root
+  file, a top-level folder) do not count, because tests use `.claude`, `docs` or `CLAUDE.md` as
+  product words; a `*-baseline.json` also counts by its file name, as the ratchets name it.
+- **The hook files stay thin.** `.claude/hooks/*.ts` only read stdin, call `scripts/lib` and exit.
+  They are not under coverage; the rules they apply are, at 100%.
+
+## Harness: decisions on the independent review of the #169 proposal
+
+The review (OpenCode, 2026-11-04) ranked 20 findings. Each one is accepted, deferred to its
+delivery, or rejected:
+
+| Finding | Decision |
+| --- | --- |
+| S2-1 "a test commit holds only tests" | Accepted: never enforced (see D1 above). TDD.md's text against the practice is for the maintainer. |
+| S2-2 D7 under the slot deadlocks | Accepted: D4 and D7 come after #141 (`slot-reentrant`, v0.36.3); the eval's model phase runs outside the slot, `handoff:check` never under it. |
+| S2-3 no waiver path, missing types | Accepted: the `TDD-Waiver:` trailer; `style`, `revert`, `Merge`, `Revert`, `fixup!` and `squash!` pass; a commit with no readable message passes. |
+| S2-4 hook timeouts, onFailure | Accepted: see D1 above. |
+| S2-5 D4 sender-side keyword gate | Accepted: D4 becomes receiver-side. `handoff:check` prints one stamp line (HEAD, four exit codes, time) that the session pastes; the orchestrator or `spec-verifier` checks it for HEAD. A sender hook, if any, comes after S1-1 and only advises. |
+| S2-6 `test:related` misses non-TS changes | Accepted: see D1 above. |
+| S2-9 log volume and rotation | Rejected in part: the log already rotates by `rename`, never truncates, and a lost line is acceptable. Every call is kept: `biome-on-edit`'s latency is what decides S3-6. |
+| S2-10 the gate is a guardrail | Accepted: TDD.md says so; the audit in CI is the wall. |
+| S2-11 `fase-N` tags | Accepted: `--match 'v[0-9]*'`. |
+| S3-1 heavy runs outside the slot | Accepted: see D1 above, with the slot-holder exception. |
+| S3-2 `merge=union` on DECISIONS.md | Rejected: union keeps both sides of a conflict without order, so two branches appending near the same heading can interleave silently. D2b's one file per unit of work removes the conflicts at the root. |
+| S3-3 the setup itself is untested | Accepted: `harness-config.test.ts`. |
+| S3-4 branch-aware push guard | Rejected for now: the orchestrator pushes feature branches from the same checkout, so a rule by branch would block it. It needs a session identity, not a branch. |
+| S1-2 rules lost after `/compact` | Accepted for D5: every rule that guards a non-negotiable stays in the root CLAUDE.md, path-scoped rules are a bonus, and a `SessionStart` hook with `matcher: "compact"` restates the essentials (S3-5). |
+| S1-3 unquoted `paths:` globs | Accepted for D5: list form with quoted patterns; `harness-config` parses every frontmatter. |
+| S1-4 `claude -w` | Accepted: dropped. A dev session starts with `cd ../flightdeck-x && claude`, or moves with `/cd`. |
+| S1-1, S2-7, S2-8, S3-5..S3-9, S4-1..S4-7 | Deferred to their deliveries (D2, D4, D5, D6, D7), where each is decided before the code. |
+
+## Sessions push their own work branches (issue #218, part of #216)
+
+- **The rule moves from "sessions never push" to "sessions push only their own work branches".**
+  The guard (`pushViolation` in `scripts/lib/claude-hooks.ts`) blocks a push to `main` or
+  `rc/*`, a tag (a `refs/tags/` refspec or the name of a local tag), `--tags`, `--all`,
+  `--mirror` and `--follow-tags`. A push with no refspec, or of `HEAD`, means the current branch.
+- **"Own branch" is the branch checked out in that checkout.** Who created a branch is not
+  recorded anywhere; the branch a session works on is. A `--force-with-lease` passes only to it.
+  A bare `--force` (or a `+` refspec) is blocked even there, which is stricter than #218's text:
+  `--force-with-lease` does the same job without overwriting a push someone else made.
+- **The coordinator is exempt through its environment.** `FLIGHTDECK_COORDINATOR=1` in the hook's
+  own environment lets every push through. The coordinator's launch must set it
+  (`start-flightdeck.sh`). A session cannot fake it: a `FLIGHTDECK_COORDINATOR=1 git push`
+  prefix changes the command's environment, not the hook's.
+- **Other repositories are not checked**, the same as the commit gate (`checkoutRoot`).
+- **Limits.** Like the other guard rules, it reads the command's words: `sh -c "git push ..."`, a
+  subshell or `gh` calls that push are not seen. It is a guardrail; branch protection on `main`
+  is the wall.
+- **`findCommit` and `pushViolation` share one parse** (`gitCalls`): the masked segments, each
+  `cd`, `git -C`, and the subcommand's words with their offsets.
+
+## `test:related --fast` for hand-offs (issue #219, part of #216)
+
+- **What `--fast` keeps:** the changed test files, the tests that import a changed file
+  themselves (one step of the import walk), and the tests that name a changed path as a string
+  (`selectByPath`, direct by nature). The changed source files must still be at 100% lines and
+  functions, so a gap the direct tests leave is caught on the Pi.
+- **What it drops:** the tests that reach a changed file only through another module. They run
+  in CI on the pushed branch (#217) and at the coordinator's gate.
+- **Measured** on this tree (tests selected for one changed file, transitive then direct):
+  `packages/protocol/src/index.ts` 688 and 141, `apps/daemon/src/server.ts` 417 and 121,
+  `apps/desktop/src/i18n/en.ts` 359 and 19, `apps/desktop/src/lib/app-store.ts` 345 and 274. A
+  direct set over 60 files still goes through the slot.
+- **The hand-off default** in CLAUDE.md, TDD.md and `tdd-area` is now `bun run test:related --
+  --fast`; the transitive run stays available without the flag.
+
+## Harness D3: the SPEC template, spec:lint and tdd:audit --spec (issue #169)
+
+- **The template keeps the shape the specs settled on** (Goal, Proof of concept first, Design,
+  Tests and criteria since phase 28) and adds what was missing or ad hoc: Non-goals; Protocol,
+  migration and rollback; Acceptance scenarios with the `.feature` each Feature runs as (#131
+  keeps the BDD work itself); Risks; Acceptance criteria and Real checks as their own headings;
+  and a Test file column in the area table. It lives in `docs/templates/SPEC.md`; the specs stay
+  in `docs/` (review S4-7).
+- **The lint reads the sections as an ordered subsequence.** Recent specs put extra headings
+  between them (phase 36's answers and addendum, phase 33's decisions), so extra headings pass and
+  "None." is a valid body (review finding on `spec-lint`). A row's area is kebab-case; its test
+  file is in `apps/*/test`, `packages/*/test` or `scripts/test`, named after the area as
+  docs/TDD.md asks, or is a smoke or a `.feature`; a `-ui` area is tested in `apps/desktop/test`.
+- **From phase 40 on.** The 38 older specs, many in Portuguese and none with the Test file
+  column, are not held to it; a spec can opt in with `<!-- spec-lint -->`. The suite lints every
+  held spec, so CI enforces it without a new step; `bun run spec:lint <spec>` is for the author.
+- **The table and the commits check each other.** `tdd:audit -- --spec <spec>` fails on an area
+  with no `test(<area>)` commit in the range. `new-phase` and `spec-verifier` call it; an older
+  table (no Test file column) yields no areas, so their audits run as before.
+
+## The bell says which notification is unread and what it is about (issue #137)
+
+- **Opening the panel already marked nothing**; the bug was that every row looked the same. An unread row now has a dot (the accent color), a bold title and an "unread" word for assistive technology: icon and weight, not color alone. The badge counts the unread rows, so it always equals the dots.
+- **Rows are named by what they are about.** A notification keeps `subject` (the session, card or team), `host`, `ask` (the request in words: the first question of AskUserQuestion, the command of Bash, the file of an edit, else "Wants to use <tool>") and `group`. Entries saved before this keep their old title and body.
+- **A session's repeated requests collapse** into one row with a count when they share a `group` and the same read state on the same side of midnight; reading one never hides an unread one, and clicking a collapsed row reads every entry it stands for. Today and Earlier replace Today, Yesterday and dates.
+- **A target that is gone** (a card with no pull request to fall back on, or a request no longer open) says so in its row and offers Dismiss, which removes the entries of the row; clicking the row only marks it read.
+
+## Harness D5: rules per area and the SessionStart hook (issue #169)
+
+- **Rules close to the code are a bonus, not the guard.** A session started in the main checkout
+  that edits a sibling worktree loads neither `.claude/rules` nor a nested CLAUDE.md (proof of
+  concept in the proposal), and after `/compact` a path-scoped rule is gone until a matching file
+  is touched again (review S1-2). So every non-negotiable stays in the root CLAUDE.md, which is
+  always loaded; the rules restate the area's own conventions where the code is.
+- **Five rules, quoted list globs.** `ui` (apps/desktop/src), `protocol`, `daemon`, `tests`
+  (`**/test/**`, `**/*.test.ts`, `**/*.test.tsx`) and `scripts`. An unquoted `**` is a YAML alias,
+  and a frontmatter that does not parse makes Claude Code load the rule everywhere (review S1-3);
+  `harness-config.test.ts` parses each frontmatter and checks that every glob matches a tracked
+  file. Checked live with `claude -p` in the worktree and an `InstructionsLoaded` hook: a
+  `scripts/test` file loads `tests` and `scripts`, a daemon file loads `daemon`, nothing else.
+- **No per-package CLAUDE.md.** One mechanism, in one folder, with globs that cut across
+  packages (`tests` covers three).
+- **The SessionStart hook** (`startup|resume|compact`) adds a few lines: the branch, the commits
+  past main, the scopes with a `test(...)` commit so far, the slot's holder (a lock of a dead
+  process counts as free), and after a compact the note about the rules. On the main checkout it
+  points dev work to a worktree. About 0.2 to 0.3 s; any error adds nothing.
+- **Sessions start in their worktree** (`cd ../flightdeck-x && claude`, or `/cd`), not with
+  `claude -w`, which creates its own worktree layout (review S1-4).
+- **Not done, on purpose.** The TDD.md translation (an active file that open branches still
+  touch) and the `lib-purity` ratchet (it would baseline the ratchets themselves, which scan files
+  by design; review S2-12). Functional core, imperative shell is a paragraph in TDD.md and a line
+  in the `scripts` and `daemon` rules.
+
+## Persona editor in place (#134)
+
+- **In place, not a side sheet.** Edit expands the persona's own card into its form where the person is; the first field takes the
+  focus and the form scrolls into view (`block: "nearest"`). A new persona still opens at the top, where the + is. Cancel and Save put
+  the scroll back and focus the Edit button; a saved pack persona changes scope (it becomes the host's copy), so its card is a new
+  one and the button is looked for again by the persona's id after the list reloads.
+- **Model and tools as choices.** The host announces no list of models, so the select offers the aliases (opus, sonnet, haiku) and the
+  ids the pack uses, with "Other…" for free text (a persona whose model is not in the list opens on it). Tools are a multi-select of
+  the tools Claude Code names plus `mcp__flightdeck`, keeping any tool a persona already had that is not in the list.
+
+- **The capacity follows the memory (#216 follow-up).** With 8 Claude sessions (about 3.4 GB)
+  and the bun tests, two tsc runs still pushed the Pi to 1.5 GB free and a memory pressure of
+  14%. The lane now opens one place per 2.5 GB of `MemAvailable`, between 1 and 2, read from
+  `/proc/meminfo` on every try (`lanePlaces`); off Linux it keeps 2, and
+  `FLIGHTDECK_LANE_PLACES` overrides the count. A run already in a place the lane no longer opens
+  finishes normally; only new runs see the smaller lane.
+
+## v0.36.3 review minors (#222): test infrastructure
+
+- **m4, temp-run.** The sweep never throws (the whole of it is guarded, and each pid file is read on its own), sweeps at most one dead folder per process start (the 3 s budget is spent once, and the next start takes the next folder), and clears the read-only attribute before it removes a file (git's objects on Windows). Not done: a CI step that counts the `fd-run-*` folders left after the Windows run (it needs a Windows runner to check), and the `pidAlive` fix for containers that share a TEMP across PID namespaces (the test runs here are not containerised with a shared TEMP; revisit if one appears).
+- **m8, slot.** The nested test starts `process.execPath -e` instead of `echo`, a child under the slot is told `FLIGHTDECK_SLOT_LOCK` (it would otherwise derive another lock from its own temp folder and queue behind its own parent), and the log line is cut to one line instead of carrying a `NOSONAR`.
+- **m10, PR runner: rejected, already covered.** `apps/daemon/test/pr.test.ts` still drives `new GithubCli()` and `new AzureDevOpsCli()` through the default `runCommand` and the fakes' real `.cmd` shim in the status and create tests (the other flow tests use the in-process `fake.run` on purpose, for speed on Windows). The `input` argument is not used by any PR call of the two providers today, so passing it through `run` would test nothing.
+- **m1, ci-branch.** A failed list of the earlier runs stops the script (exit 2, nothing dispatched) instead of reading as "none"; a list that fails while waiting for the new run is one look that failed; a refused dispatch shows gh's stderr (the wrapper keeps it; `spawnExec` drops it); a failed or unreadable look at the run is tried three times and then ends in exit 2 with the reason; a cancelled run exits 2 and says it says nothing about the branch. Not done: two `ci:branch` calls on one branch at the same moment can still pick the same run id (rare, and `gh workflow run` does not print the id on the `gh` versions in use).
+- **m2, ci.yml.** The concurrency key holds `inputs.only`, so a screenshots-only dispatch no longer cancels a full one.
+- **m3, required check names.** Not provable from here (the ruleset's treatment of a skipped duplicate next to a real check of the same name is GitHub's), so the risk is removed instead: a dispatched run's `test` jobs are named `test (<os>) (dispatch)`, which no ruleset requires. Push and pull request runs keep `test (<os>)` exactly.
+- **m11.** The misplaced doc comment of `END_SLACK` is back on it. The restore-at-mount point (a saved `top` clamped by a conversation that has not laid out its images and code yet, which then reads as "at the end") is not reproduced and not changed; it needs a late-growing code block in a browser to show.
+
+## BDD: one English feature per behaviour (issue #131)
+
+The `*.pt.feature` twins are gone. Each behaviour has one English `.feature` (the repo's text is English), and `playwright.config.ts` runs the same features in two projects, `bdd-en` and `bdd-pt` (the app in pt-BR), so a report names the language of each run. The steps are registered once, in English, and look for elements by role and by dictionary key in the language of the run (`c.t(key)`, or the dictionary object); `scripts/test/bdd-guard.test.ts` fails on a new Portuguese twin, a language in a feature's name, a step registered per language, literal UI text in a step (`getByText`, `getByLabel`, `getByRole(..., { name: "…" })`) or an accented letter in a step or feature. Seed data a scenario names uses one name for both languages: the demo's `Write a summary` template has the same title in en and pt-BR, and the approval scenario's session is "BDD approval". The scenarios under `scripts/e2e/bdd/roi/` (parsed only, outside the glob) lost their pt twins too; their parser test still reads Portuguese gherkin, as a parser check. Checked before deleting: each pt feature had the same scenarios and the same step kinds as its English file.
+
+## Harness D6: the reviewer agents and the protocol-surface ratchet (issue #169)
+
+- **Protocol compatibility is a check, not an agent.** `scripts/lib/protocol-surface.ts` reads
+  every exported schema of `packages/protocol` through its JSON Schema (`toJSONSchema`, input
+  side) into one line per command, field (`?` when optional), constant and enum value;
+  discriminated unions are named by their `type`, so reordering members changes nothing. A line of
+  `packages/protocol/surface-baseline.txt` that the code lost fails `protocol-surface.test.ts`: a
+  removed command or field, an optional field made required, a dropped enum value. Additions are
+  free. Checked: making `HelloPayload.protocolVersion` required is reported.
+- **The baseline moves at release only.** It holds main's surface (7,533 lines). The coordinator
+  refreshes it with `bun run scripts/protocol-surface.ts --write` when cutting a release, so a
+  branch that adds to the protocol never touches the file, and a removal between two releases is
+  caught against what the last release shipped.
+- **Two read-only agents, static.** `test-quality-reviewer` reads each `test(x)` and `feat(x)`
+  pair, the red evidence in the message and the stub's tree through `git show`, and looks for tests
+  that cannot fail (passing on the stub, red by error, weakened in the implementation commit,
+  mock-only, hidden waits, vacuous loops); it runs only area tests and never checks out a commit
+  (review S2-7: a fresh worktree has no dependencies). `security-reviewer` follows inputs from
+  their protocol schema to spawns, paths, logs, refusals and the network, and complements the
+  built-in `/security-review`. Both list `Read, Bash` (listing Bash drops Grep and Glob on Linux)
+  and run on sonnet; `harness-config.test.ts` checks it.
+- **No UX reviewer.** `demo:shots` already runs axe in both themes and languages, and the UX
+  sessions read the prints.
+
+## A per-rule open-count ratchet for Sonar (issue #204)
+
+- **`sonar-baseline.json` holds how many findings each rule may still have** across the whole repository, as `lint:sonar --ratchet`
+  counts them (every tracked file, the rules that need no type information, NOSONAR respected). A rule above its number fails;
+  `--ratchet --write` lowers the numbers to today's counts and never raises one; `--ratchet --init` writes them once. It reuses the
+  helpers of the layout ratchet (`overBaseline`, `tightened`, `initialised`).
+- **Typed rules are not in the count.** They need the TypeScript program, which takes minutes over the whole repo on the Pi; they are
+  still checked on the changed lines of every pull request, and SonarCloud counts them all.
+- **CI runs it on pull requests**, after the changed-lines check, so a change that adds a finding of any rule fails there while the
+  old ones are burned down in the batches of #197.
+
+## Layout guards in one module (issue #192)
+
+`scripts/lib/layout-guards.ts` is the one browser function (`layoutFindings`, run in the page) that the e2e `layout` journey and `demo:shots` share, replacing the ad hoc `overflow()` (nearly blind: it skipped everything under an `overflow-hidden` ancestor) and the sideways check each fix had added. Its rules are the precise ones of the UX review: the page scrolls sideways; a box is cut by an ancestor that clips on an axis no ancestor scrolls; content is squeezed under 8 px tall; text is cut with an ellipsis to under 48 px; an alert is off screen; a bar grew; a key region (`sidebar-hosts`, `approval-card`, `board-columns`, `form-actions`, each now carrying its `data-slot`) is smaller than its minimum at 1280 px. Each finding names its culprit by `data-slot` path (`sidebar > sidebar-hosts`), not by class soup. "One word per line", unnamed controls and small targets are not rebuilt: axe covers the last two. The geometry runs on the pt-BR layout journey at 720x480, 1280x800 and 1920x1080 (geometry only, no prints).
+
+Noise: the key-region rules are a contract and always fail. The heuristic rules fail only when new against `scripts/layout-findings-baseline.json`, keyed by rule, screen and path (no text, no pixels), and a baseline entry whose finding is gone fails too, so the file only goes down. **There is no baseline file yet**: until it is committed the heuristic findings fail nothing and the run writes what it saw to `playwright-report/layout-findings.json` (the CI e2e artifact); that file, copied to `scripts/layout-findings-baseline.json`, is the first baseline. Not done: the `?gallery` page of the audit's G5 (the prints folder and visual diff already review; a static index from `demo:shots` is cheaper), and a settle that waits for fonts and equal `scrollHeight` instead of the fixed waits of `open()`.
+
+## Harness D4: the hand-off stamp, checked by the receiver (issue #169)
+
+- **Receiver-side, no hook** (review S2-5, S1-1). The proposal's sender-side gate (a `PreToolUse`
+  hook on `SendMessage` matching "hand-off") depended on an undocumented tool input, matched the
+  repo's own names (`flightdeck-handoff/`) and could be skipped by resending. Instead
+  `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit` and `test:related` in order (all
+  of them, so one run shows every failure), prints one stamp line
+  (`HANDOFF <branch> <head> typecheck=0 lint=0 audit=0 related=0 <time>`) and keeps it in the
+  worktree's git folder. The session pastes the line in its hand-off; the receiver (the
+  coordinator, or `spec-verifier`) runs `bun run handoff:check -- --verify` in the worktree, which
+  refuses a missing stamp, one for another HEAD, or any check that was not 0.
+- **Never under the slot** (review S2-2): `test:related` takes the slot by itself above 60 files.
+
+## Approve or deny the oldest request from the palette (issue #187)
+
+- **Nothing is answered unseen.** The two palette commands name the request they answer, for
+  example "Approve the oldest request: alfa · Backend tests: Bash: npm test". The line is the same
+  one the Needs you row and the tray show (`pendingText`). So the person reads what they approve
+  before pressing Enter, or A and N.
+- **Some requests open instead.** A workflow gate, a vault request and a high-risk request offer
+  only "Open the oldest request: …", and the command opens it where it is answered:
+  - a gate opens on its card, since a gate is not a permission and the host refuses its id;
+  - a vault request opens to show the secret, and it is never logged as a tray grant;
+  - a high-risk request opens to be held.
+- The tray keeps its own rule: Open only, for gates and high-risk requests. The shared
+  `onTrayAction` also opens a gate if one ever reaches it.
+
+## `git stash` is refused (issue #234)
+
+- **Why.** `refs/stash` belongs to the repository, not to a worktree: every worktree of the main
+  checkout shares one stash list. A `git stash pop` in `rc/0364` applied a stash another session
+  had made in its own worktree.
+- **The rule.** The guard (`commandViolation`) refuses `git stash` with no subcommand or with any
+  but `list` and `show` (push, save, pop, apply, drop, clear, branch), also through `cd` or
+  `git -C`. The reason names the ways out: `git diff > /tmp/<name>.patch` and `git apply`, or a WIP
+  commit on the branch.
+- **In CLAUDE.md, not in `.claude/rules`.** A path-scoped rule loads only when a matching file is
+  touched, and a stash is not about any path; the root CLAUDE.md is always loaded.
+
+## Sessions hub folding minors (issue #241)
+
+- **The cap keeps folded headers.** `capGroups` used to stop at the first group after the cap was spent, so projects folded to nothing
+  after it lost their headers. A project with no rows to draw costs no row: its header stays; one with rows that comes after the cap is
+  left out and counted in "show more", as before.
+- **A Hosts chip does not unfold.** It chooses whose sessions the list is about, not what to look for, so `isSearching` leaves it out
+  (text, origin, state, persona and pinned still open what they keep, and still show the earlier sessions).
+- **The fold key is the project's merged identity** (`foldKey`: the daemon's key for a resolved project, `folder:<name>` for a folder seen
+  on several hosts, the host's folder key when two folders of one host share a name), not the smallest project key among the rows
+  present, which changed when a host went offline. `group.key` still names a real project for the client scope. A fold saved under the
+  old key still counts until the person chooses again; no migration of storage.
+
+## Test tiers by content (issue #261)
+
+- **Why.** The owner asked which tests are unit and which integration. Renaming 800 files into
+  folders would conflict with every open branch, so the tier comes from what a test does, computed
+  on every call (about 100 ms for the tree). No manifest is committed: every PR that adds a test
+  would have to update it, and two such PRs would conflict in it.
+- **The rules** (scripts/lib/test-tiers.ts): a test that starts a process (`Bun.spawn`, `spawnSync`,
+  a fake CLI), a server or a socket (`startServer`, `startDaemon`, `Bun.serve`, a WebSocket,
+  `FrameClient`) is `integration`; one that draws the DOM (`registerDom`, Testing Library) is
+  `component`; the rest is `unit`; `scripts/e2e/*.e2e.ts` and the smokes are `e2e`. Integration
+  wins over component: a screen test against an in-process daemon is heavy. Helpers count function
+  by function, comments stripped: a test that takes only `waitFor` from apps/desktop/test/fixtures.ts
+  is not integration because `daemon()` sits in the same file.
+- **Measured** on the last green main run (Linux, 550 s of test files): unit 249 files 24 s (4%),
+  component 167 files 97 s (18%), integration 386 files 428 s (78%). Today: unit 281,
+  component 180, integration 394, e2e 32 (`bun run test:tiers`).
+- **Use.** `bun run test:related -- --fast --tier unit,component` for a session on the Pi: a test
+  with no tier still runs, the left-out ones are named, and there is no coverage gate (a part of
+  the tiers covers part of a file). CI runs every tier and keeps the one combined 100% gate on
+  Linux. A test checks that every test file of the tree gets a tier.
+
+## GitHub Flow: one PR per branch, a release is a tag on a green main (issue #260)
+
+- **Why.** The owner wants small releases: a batch of 30 branches assembled into an rc conflicted
+  in a dozen places and gated everything on the slowest branch. Each branch now reaches main
+  through its own PR and merges alone when it is green.
+- **One CI trigger per kind of branch.** `push` only on main (what a release tags), `pull_request`
+  for a branch with an open PR (never filtered, so the required checks always report), and
+  `workflow_dispatch` for a branch with no PR yet (`bun run ci:branch` sends it). A work branch no
+  longer runs twice for one commit (on its push and on its PR). A push to main skips only
+  `docs/images/**` (#235).
+- **`bun run pr`** (scripts/lib/pr-flow.ts, through `gh api` only): `open` titles the PR after the
+  issue the branch's subjects name most (or `--issue`) and writes `Closes #N` with the subjects;
+  it opens no second PR for a branch. `next` lists the open PRs in merge order (onto main by number,
+  a stacked PR right after its parent) with what each needs: its parent, a draft, failing, running
+  or missing checks, or the commits it is behind. `update` is GitHub's update-branch. `merge` is the
+  coordinator's (`FLIGHTDECK_COORDINATOR=1`) and merges with a merge commit, pinned to the HEAD it
+  checked, only when the required checks are green there and the PR is not behind main.
+- **The required checks come from the ruleset**, read by REST (`rules/branches/main`), not from a
+  list in the code: the ruleset stays the only place that names them. A check counts as green the
+  way GitHub counts it for a required check: success, skipped or neutral, on the newest run of its
+  name, or a commit status of that name.
+- **Not changed here:** handoff-ci (#221) checks for a push trigger on the branch; with this, a
+  branch with a PR proves itself on its PR run instead, and handoff-ci has to read that run.
+
+## CI in shards, with the required names kept (issue #220, part of #216)
+
+- **Measured first.** On a green run (41960871352) `test (windows-latest)` took 33 minutes (25 of
+  tests, 5 of cargo), `screenshots` 24 and `test (ubuntu-latest)` 15.
+- **Linux stays whole.** Bun's lcov has per-line records but only a per-file function total, so
+  shards cannot be merged for the 100% function gate without weakening it (an inline callback that
+  never runs) or failing hub files every shard imports. `test (ubuntu-latest)` keeps the whole
+  suite, the exact gate and SonarCloud.
+- **Windows in three shards, without its own coverage gate** (the coordinator's choice). Each
+  shard runs `bun test --shard=i/3`; the smokes, cargo, the bundle budget and the performance
+  baseline run in `checks-windows`; Windows no longer repeats typecheck and lint, which are the
+  same code on both systems. What is given up is only Windows' own guarantee that every line runs
+  there (code behind a `skipIf(win32)`); Linux still requires 100%.
+- **The ruleset's names are aggregates.** The main ruleset requires `test (ubuntu-latest)`,
+  `test (windows-latest)`, `screenshots (prints, axe e e2e)` and `SonarCloud Code Analysis`. The
+  Windows and screenshots checks are now small jobs with exactly those names that need their parts
+  and fail unless each succeeded (`if: always()`, so a failed or cancelled part fails them rather
+  than leaving them skipped).
+- **Prints and e2e apart.** `screenshots-prints` and `screenshots-e2e` run side by side; a failed
+  journey's trace and print are now their own `e2e-failures` artifact.
+- **No timings file yet.** `bun test --timings` balances shards by duration, but a committed
+  timings file would be one more file every branch touches; the shard count is tuned from the
+  first runs instead.
+- **`build:desktop` on Windows, found by `checks (windows-latest)`.** `vite.config.ts` imported
+  `entryHtml` from `demo/boot.ts`, whose imports reach `lib/tabs.ts`, which imports the protocol
+  since #198. On Windows Vite does not bundle that workspace package into the config (bun links it
+  through a junction), so Node imports `packages/protocol/src` itself, and its type stripping stops
+  at the parameter property of `PersonaModelError`. `entryHtml` moved to `demo/entry-html.ts`,
+  which imports nothing, and a test keeps every workspace package out of what the config reaches.
+  The `smoke:limits` failure of the first run did not come back on the rerun.
+
+## CI by changed paths (issue #264)
+
+- **Why.** Every PR ran the whole matrix (Windows in three shards, prints, e2e, cargo), so a
+  docs or scripts change waited half an hour for checks that read none of it.
+- **The plan** (scripts/lib/ci-paths.ts, run by the `changes` job against the merge-base with the
+  PR's target): docs and scripts alone run the Linux job (the whole suite with the 100% gate,
+  typecheck, lint, the audit, SonarCloud); `apps/daemon/**` or a smoke adds the Windows shards, the
+  Windows checks and the smokes; `apps/desktop/**`, `packages/**`, `package.json`, `bun.lock`, a
+  bunfig, a tsconfig or `.github/workflows/**` add the prints and e2e; `apps/desktop/src-tauri/**`
+  adds cargo. A push to main, a run by hand, or a diff the job cannot read plans everything, so
+  every commit on main has a full run, and a tag goes only on a commit whose full run is green.
+- **The required names still report.** `test (windows-latest)` and `screenshots (prints, axe e
+  e2e)` are aggregates: they pass when their jobs were skipped by path, but only after checking
+  that the `changes` job itself succeeded, since a failed plan has no outputs and would otherwise
+  read as "skipped".
+- **cargo** (check and test of the shell) runs only when the plan says so, after
+  `Swatinem/rust-cache` (pinned to the v2.9.3 commit). On Windows the app build and the bundle
+  budget run whenever the app or the shell changed, apart from cargo.
+- **e2e in three Playwright shards** (`bun run e2e -- --shard=i/3`), each with its own report and
+  failures artifact; the aggregate fails if any shard failed.
+- **lint:sonar on a PR is the ratchet only** (`lint:sonar (ratchet)`): the changed-lines run was
+  red on every large diff for code smells and is not a required check, so its red X said nothing.
+  The ratchet is green unless a rule's open count goes up. The changed-lines run stays local.
+
+## CI fails fast: a quick first job the heavy jobs need (issue #272)
+
+- **Why.** On 2026-11-05 ratchets (Sonar, layout, no-sync, protocol surface) failed only after
+  the 20-minute jobs. A count that went up now fails the run in minutes.
+- **The `quick` job** (`quick checks`, Linux, 10 minutes at most) runs typecheck, lint, the TDD
+  audit (full history) and `bun run scripts/ci-quick.ts`: every `*-ratchet.test.ts(x)` and
+  `protocol-surface.test.ts`, by name (scripts/lib/ci-quick.ts), in seconds with no coverage. The
+  Linux suite no longer runs typecheck, lint and the audit itself.
+- **Every heavy job needs it:** the Linux suite, the Windows shards and checks, the prints and the
+  e2e shards.
+- **No local Sonar in it** (#283): the `lint:sonar (ratchet)` step it first carried failed once main
+  grew past the baseline, and the user chose SonarCloud's own check on the PR as the only Sonar
+  check. #283 removes the local Sonar from the repository.
+- **A failed quick job fails the required checks, never skips them.** GitHub counts a skipped
+  required check as passed. So `test (ubuntu-latest)` runs on `!cancelled()` and its first step
+  fails unless `changes` and `quick` succeeded. The two aggregates check `quick` before they pass a
+  job group skipped by path. SonarCloud never reports when the suite did not run, so its required
+  check stays missing.
+- **The ruleset is unchanged:** `quick checks` is not a required check, and the four required
+  names stay as they were.
+- **Not in the quick job:** a guard checked inside a heavier test (`layout-guards.test.ts`) stays in
+  the suite. Only a file named `-ratchet` is quick, so a slow test never slips in by itself.
+
+## The hand-off stamp vouches for CI, and a tag needs a green full run (issue #266)
+
+- **What survived of #221.** Its push-trigger requirement and the `gh run list --commit` check
+  died with GitHub Flow (#260). Kept: `test:related` compares with the audit base (origin/main
+  first, the local main only as a fallback), and `handoff:check --base <ref>` for a branch stacked
+  on another.
+- **`ci=` in the stamp.** After the four local checks, `handoff:check` reads the main ruleset's
+  required checks on HEAD (`headCi` in scripts/lib/pr-flow.ts, the same verdict `bun run pr`
+  uses), whatever event ran them: a PR's run or main's push. `0` when green; otherwise `failed`,
+  `pending`, `none` (never run: push the branch, or open its PR) or `unknown` (the ruleset could not
+  be read). `--verify` needs `ci=0` like every other field; `--no-ci` writes `ci=skip`, which
+  vouches for nothing. The stamp's pattern takes word values and still splits its pairs one way
+  only (the #232 ReDoS test keeps it linear).
+- **`bun run pr -- tag vX [--commit <sha>]`** (the coordinator's): a commit on main (main's HEAD by
+  default) is tagged only after its full CI run on main (its push run, which plans everything,
+  #264) completed with success. It refuses a tag that exists, a commit not on main, no run, a run
+  still going or a failed one, and writes nothing then. The tag is pushed alone as `refs/tags/vX`:
+  a push of several tags at once starts no workflow.
+
+## Sessions open their own PRs and turn on auto-merge (issue #271)
+
+- **Why.** The owner decided (2026-11-05) that a session delivers its own work: it pushes its
+  branch, opens the PR and turns on auto-merge, so a green PR no longer waits for the coordinator.
+  The coordinator keeps main, hand merges, tags, releases and the repository settings.
+- **`bun run pr -- auto <n>`** calls GraphQL's `enablePullRequestAutoMerge` with `MERGE` (REST has
+  no auto-merge endpoint). The ruleset's required checks gate the merge, as for `pr merge`. It
+  refuses a draft (GitHub would too). The main ruleset is strict
+  (`strict_required_status_checks_policy`), so GitHub also waits until the PR is up to date, as
+  `pr merge` checks; auto-merge never updates the branch itself (`pr update <n>` does). GitHub
+  refuses auto-merge for a PR that can merge already ("clean status"); `auto` then says the
+  coordinator merges it, since a session does not merge by hand.
+- **Stacked PRs.** Auto-merge onto a branch with no ruleset would merge at once, into the parent.
+  So `auto` refuses a PR onto a branch that `main` does not have yet. The repository does not
+  delete a branch on merge, so GitHub never retargets the child by itself: once `main` has the
+  parent (`compare` says `ahead_by` 0), `auto` moves the PR onto `main` and turns auto-merge on.
+  A compare that fails refuses; it never counts as merged.
+- **The guard** (`prMergeViolation`) blocks `bun run pr -- merge|tag`, `gh pr merge` and a REST
+  `pulls/N/merge` in a session. It reads `FLIGHTDECK_COORDINATOR` from the hook's own environment,
+  so setting it in the command does not pass. `pr merge` refuses without the variable too. Like the
+  other command rules, it reads words outside quotes: a quoted `'…/pulls/12/merge'` path passes.
+  The hook is a guard against slips, not a security boundary.
+- **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
+  not enforced in code.
+
+## Test isolation (#274)
+
+- **Between files, not between tests.** Bun's preload `beforeAll`/`afterAll` run once for the whole
+  run and `expect.getState().testPath` does not exist in 1.4.4, so the preload has no hook at a file
+  boundary. It registers a `Bun.plugin` `onLoad` for `*.test.ts(x)`: Bun loads a file, runs it, then
+  loads the next, so the load of file N is the end of file N-1. There the preload (`scripts/test/
+  isolation.ts`) restores what a file can leave changed for the next one: `setTimeout`,
+  `clearTimeout`, `setInterval`, `clearInterval`, `setImmediate`, `clearImmediate`, `Date`, `fetch`,
+  the environment, and (once happy-dom is registered) the window size, `localStorage`,
+  `sessionStorage` and `document.body`. The first snapshot is taken at the end of the preload, after
+  the guards, so their PATH, HOME and fetch wrapper are part of the baseline.
+- **The baseline is taken after each file has loaded, not before.** The plugin appends a call to
+  the file's source, so it runs once the file's top-level code has. A helper that sets an env
+  variable (`board-helpers.ts` sets `GIT_AUTHOR_*`) or registers happy-dom (which swaps the timers
+  for its own) when it loads runs once, because Bun caches the module; restoring the state from
+  before the first file would have taken that away from every later file (the first version did:
+  1132 tests failed with `Author identity unknown` in the full run, each green alone). So only what
+  a file's tests and hooks change is put back; what its top-level code set stays.
+- **Named, not silent.** A leak other than the routine browser state (size, storage, body: nearly
+  every UI file leaves some) prints `isolation: <file> left … changed; put back before <next>` on
+  stderr, so the culprit is one line away. The reset is a net, not a licence: fix the file.
+- **Not reset:** location, `matchMedia` (follows the viewport), `process.cwd()`, other globals a file
+  defines, module state and `mock.module` (a file restores its own mocks, see the tests rules).
+- **Sleep ratchet.** `sleep-baseline.json` counts `Bun.sleep`, `Bun.sleepSync`, a promise resolved
+  from a timer and calls of a `sleep`/`delay` helper per test file (the four test folders, test
+  files only: a fake binary sleeps on purpose). A `// timing:` comment on the line above allows a
+  sleep where the clock is under test. It only goes down: a file may not exceed its entry.
+  Baseline when added: 113 files, 251 sleeps.
+
+## One command per release (issue #275)
+
+- **`bun run release vX.Y.Z`** (the coordinator's, `FLIGHTDECK_COORDINATOR=1`; it refuses without
+  it and touches nothing) is a state machine over `origin/main`, so running it again carries on.
+  Main behind the tag: a branch `release-vX` gets `test(versao)` (the version test moves first and
+  must be red), `chore(versao)` (the three packages and `bun.lock`; the test must be green), the
+  protocol-surface check (a lost baseline line stops the release) and, when `--write` changes the
+  baseline, `chore(release)`; then the branch is pushed, a PR is opened (not through `pr open`,
+  which would close the issue of its first commit) and `pr auto` turns on auto-merge. Main at the
+  version: the surface check, `pr tag vX` (so the CI gate of #264 still decides) and
+  `release:close -- vX --apply`. A tag that exists is not made again; the close still runs.
+- **Why a state machine, not one blocking run.** The PR merges when its checks are green, which
+  takes longer than a session should wait; the second run is the "after merge" half of the
+  issue. Logic in `scripts/lib/release-cmd.ts`, effects injected, no test pushes or tags.
+- **The hook guard knows `bun run release`** (#275, from the security review): the command pushes and
+  tags through child processes the hook never sees, and its own check is the same environment flag,
+  which a command can set inline. `prMergeViolation` now blocks `bun run release` and
+  `bun scripts/release-cmd.ts` in a session, like `pr tag`.
+
+## `release:close` closes what a tag shipped (issue #252)
+
+- **What it reads.** The commits of `<previous v* tag>..<tag>` (`--since` names another start). An
+  issue counts when a subject names it (`(#170)`, the repository's habit) or a body line starts with
+  `Closes`, `Fixes` or `Resolves #N`. A number mentioned anywhere else in a body ("the overlay of
+  #233 is deferred") is listed and never touched, and a pull request's number is skipped.
+- **Dry run first.** Without `--apply` it only reads (the issue, its comments, the milestones) and
+  prints what it would do. With `--apply`, each open issue gets "Shipped in <tag>." (once: an
+  existing comment with that text is not repeated), is closed as completed, and goes to Done on the
+  board; an issue already closed only goes to Done. A second run changes nothing.
+- **The milestone** named after the tag is closed when it has no open issue left and no step of the
+  run failed, so a run that failed halfway leaves it open for the retry. One with issues the tag
+  did not ship stays open and says how many.
+- **REST only.** Every call is `gh api` with `-f` fields (no GraphQL), and the board goes through
+  `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
+  whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
+  coordinator tooling stays outside the repository; the script only knows the command's contract.
+- **Hardening (issue #287, from the security review of #275).** The tag and `--since` must be
+  `vX.Y.Z` (exit 2 otherwise), so neither can reach git as an option or a range. An issue title is
+  printed with its control characters turned into spaces (no escape sequence in a dry run). A
+  session's `bun run release:close ... --apply` (or `bun scripts/release-close.ts ... --apply`) is
+  blocked by the hook guard like `bun run release`: it closes issues on GitHub, so it is the
+  coordinator's; the dry run stays open. `bun run release` takes a tag as already made only when
+  `git ls-remote` lists exactly `refs/tags/<tag>` on origin (a local tag is anyone's, `pr tag` is
+  what gates a tag, and ls-remote matches a suffix, so `x/refs/tags/<tag>` is not it); an origin it
+  cannot ask is an error, not "absent". It reads a version from main only when it is `x.y.z`.
+
+## Risky changes get a security review before the hand-off (issue #273)
+
+- **Why.** On 2026-11-05 six reviews found high findings after the hand-off (keep-awake,
+  worktrees, resources, logs, trust, assistant). The review now comes before it.
+- **The gate** (scripts/lib/security-gate.ts, run by `handoff:check`) reads the added lines of the
+  changed code files (never a test, a fixture or a document) since the audit base or `--base`. A
+  file is risky when they spawn or kill a process (any `spawn…(`, `exec…(`, `.kill(`), delete
+  (`rm(`, `unlink(`, `rm -rf`), name a secret (token, secret, password, credential, API key) or a
+  permission (`chmod`, `chown`, permission, `allowedNetworks`), or when its path is in the vault or
+  pairing code, or when they open a listener or an outbound call (`Bun.serve`, `fetch(`, a
+  WebSocket, `.listen(`). A spawn is also `cp.exec(`, `child_process`, `Bun.$`, `fork(`, `execa(`
+  or `new Worker`, and in Rust and Python `Command::new`, `std::process`, `subprocess.`,
+  `os.system`; deletes and listeners have their Rust and Python forms too. A line that is only a
+  comment and nothing else does not count; a line is never cut, so one with any code is read whole
+  (a glob's `*/` or comment marks in a string cannot hide what it does; `#` is a comment only in
+  `.sh`, `.py` and `.ps1`, since in TypeScript it is a private field). Code is `.[cm]?[jt]sx?`,
+  `.rs`, `.sh`, `.ps1` and `.py`. A mode change counts as a permission change. Some paths are risky
+  whatever they add: the vault and pairing code, the Tauri shell's capabilities and
+  `tauri*.conf.json` (CSP, scopes), `.github/workflows/`, and the files whose contents run as code
+  (`package.json`, `Cargo.toml`, `build.rs`, `bunfig*.toml`, `.claude/settings*.json`,
+  `.claude/hooks/`), and the guards themselves (the gate, the hook rules, the TDD audit, the
+  hand-off check, the hook runner, `bun run pr`, the security-reviewer agent, `.github/actions/`); a pure rename into one counts too. Left as known limits: a
+  risky file moved by rename from a test folder is read by its edited lines only, a mode change on
+  a file with no code extension is not seen, and every `package.json` change asks for a review. Patterns, not a parser: they err toward asking for a review.
+- **It fails closed** (the OpenCode review on #279): a `git diff` or `git log` that fails (an error,
+  an output past 64 MB), or a `--base` that is not a commit, stamps `security=unknown`, never `0`.
+  The diff forces `--src-prefix=a/ --dst-prefix=b/` (a user's `diff.noprefix` or
+  `diff.mnemonicPrefix` would change the headers) with no external diff or text conversion. The
+  diff's file headers are read only before a file's first hunk (an added line can look like one),
+  names come unquoted, and a merge counts by the files it edited itself. The log is in topological
+  order, so "after" follows the history, not the dates, a folded trailer reads as one line, and a
+  user's `log.showSignature` adds nothing to it (`--no-show-signature`).
+  Risky files that no commit of the log touches need a review all the same. `--verify` refuses a
+  stamp with no `security=` or no `ci=`, so a stamp from before the gate does not pass. It is a guard against slips,
+  not a security boundary: the trailer is the session's own word that the review ran. A name git
+  still quotes (one with a quote, a backslash or a control character) is skipped.
+- **The verdict is a commit trailer,** `Security-Reviewed: <summary>`, on a commit at or after the
+  last commit that touched a risky file (an empty `chore(security)` commit is enough). A later
+  risky commit needs a new review. A trailer lives with the branch, so `--verify` and any receiver
+  see it; a line in a message would not. The stamp says `security=0`, `unreviewed` or `unknown`
+  (no base), and only `0` vouches.
+- **The OpenCode review on `pr open`** is the coordinator's tooling: `open` runs the command in
+  `FLIGHTDECK_PR_OPENED` with the PR's number, branch and base. The command comes from the
+  session's own environment, never from the repository: words split on spaces, or a JSON array of
+  strings for a path with spaces (Windows), with no shell. It runs bounded
+  (scripts/lib/bounded-run.ts): its output ignored, since it inherits the environment and what it
+  prints may hold a token, so the failure line says only the exit code (124 past the deadline, 127
+  when it could not start). Past two minutes its whole process group is killed (its tree, with
+  `taskkill /T`, on Windows; an orphan whose parent already died escapes that walk). A hook that
+  fails, cannot start or times out only prints that line: the PR is open either way. On Windows a
+  bare program name may resolve in the current folder first: give the hook an absolute path. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
+  PATH with it, are the session's own. The number, branch and base come last, as positional
+  arguments: a hook script must not read them as options.
+
+
+## DECISIONS.md merges with the union driver (issue #290)
+
+- **Why.** Every parallel PR appends a section at the end of this file, so two PRs added at the same
+  place and conflicted on it (#285 and others, 2026-11-05) although nothing was in dispute.
+  `.gitattributes` now says `docs/DECISIONS.md merge=union`: a merge keeps the lines of both sides.
+  `scripts/test/decisions-union.test.ts` proves it on a temporary repository (two branches that each
+  append a section merge cleanly with both kept; without the rule they conflict) and checks that the
+  rule is in the file.
+- **Only this file.** The recent edits of `docs/DECISIONS.md` all land in its last 130 lines. Those
+  of `docs/GLOSSARY.md` and of both manuals land all over the file (a table row, a feature's
+  section), where a union merge would keep two versions of one edited line side by side with no
+  warning. They keep the normal merge and its conflict.
+- **What union does not do.** Two PRs that edit the *same existing line* of DECISIONS.md both keep
+  their version of it, one after the other: read the merged section once before the hand-off. Add a
+  section, do not rewrite an old one.
+## SonarCloud on the PR is the only Sonar check (issue #283)
+
+- **Why.** The local copy (`bun run lint:sonar`, eslint-plugin-sonarjs in `tools/sonar-lint` with
+  `scripts/sonar-profile.json`, and the per-rule ratchet of `sonar-baseline.json`) missed rules
+  SonarCloud flags: its typed rules were skipped under `--no-types`, and several Sonar rules have
+  no ESLint version at all. Its ratchet also failed a PR once main grew past the baseline. The user
+  chose to remove it rather than strengthen it.
+- **What is gone:** `tools/sonar-lint` (and the `tools/*` workspace), `scripts/lib/sonar-lint.ts`,
+  the profile, the baseline, their tests, the `lint:sonar` script, and the CI steps (the quick
+  job's ratchet went in #278). The earlier entries above that describe them are history.
+- **What stays:** every `// NOSONAR: <reason>` comment, since SonarCloud honours them; and
+  `sonar-coverage.test.ts`, which guards SonarCloud's own configuration (its coverage is read on
+  exactly the files of the 100% gate, and every test file is analysed as test code). Its helpers
+  moved, unchanged, to `scripts/lib/sonar-project.ts`.
+- **For sessions:** no Sonar run before a push. A SonarCloud finding on a PR is fixed in that PR.
+
+## Security gate follow-ups (issue #284)
+
+- **Why.** OpenCode's second review of #279 found four mediums, with no high left.
+- **A deleted file keeps its path, and a rename keeps both.** Deleting a guard file (the hook rules,
+  the gate), or moving the CI out of `.github/workflows/`, is risky by path, like editing one.
+- **Removed lines count.** A removed line that touches a risk area makes its file risky ("removes
+  spawn"). A source file that loses any line and still holds risky code at HEAD (`git show
+  HEAD:<path>`) is risky too ("edits spawn code"): taking a check out in front of a spawn or a
+  delete needs a review as much as adding one. A removal of comments or blank lines only reads
+  nothing, except a lone `/*`: without it the lines after it run, so the file's code is read. A
+  file moved from a test folder into the code is risky ("moved from tests"), even unchanged. Known
+  limits, all needing a deliberate edit: an added lone `*/` can un-comment code that stays as
+  context; a content line that reads `-- "…"` or `++ "…"` looks like a quoted header and blocks the
+  gate (it never lets anything through); the trailer is the session's own word. Removed lines are keyed by the file's old path (`--- a/`), so a file renamed into a test
+  folder or to a non-code extension still counts the checks it lost; the code that stays is read at
+  its new path. A deleted file is not read at HEAD, and a file whose HEAD cannot be read (an error,
+  an output past the buffer) is risky, never taken as empty.
+- **Renames in the log** (the OpenCode review of #286): `git log` detects renames by itself and
+  lists only the new path, so a review after a move away from a risky path could never vouch. The
+  log runs with `--no-renames`, which lists both sides.
+- **Quoted names fail closed.** A name git still quotes with `core.quotepath=off` (a quote, a
+  backslash, a control character) defeats the header parsing, so the gate stamps `unknown`. A path
+  with " b/" inside it is read exactly from `diff --git a/<p> b/<p>` when both halves match (every
+  change but a rename, whose own lines name its paths).
+- **A mode change is a permission change on any file,** with or without a code extension (a script
+  in `bin/` made executable).
+- **runBounded takes its process, timers and kill as deps.** Its tests use a fake process and timer:
+  the deadline, the group kill, the exit before it and a child with no pid run with no real wait.
+  The real calls left (a program that exits, one that does not exist, the system's kill calls) start
+  and end at once.
+
+## The Linux leg in parallel jobs, the suite still whole (issue #293)
+
+- **Why.** `test (ubuntu-latest)` took 12-18 minutes: the coverage suite (8 minutes, one process),
+  then SonarCloud (4), then the smokes and cargo (3 on main), one after another in one job.
+- **The split.** `test-suite` runs `bun run test` (the exact 100% line and function gate) and uploads
+  `coverage/lcov.info`; `sonar` downloads it and runs the scan; `checks-linux` runs the smokes and
+  cargo in parallel with the suite, only when the path plan asks for them. The required check
+  `test (ubuntu-latest)` is an aggregate over the five (the plan, quick, the suite, SonarCloud, the
+  checks), so the ruleset is unchanged; it checks the plan and quick first, since GitHub counts a
+  skipped required check as passed. SonarCloud may be skipped (a dispatch); the checks only when the
+  plan needs no smoke and no cargo.
+- **Why the suite is not sharded** (measured 2026-11-05, three coverage shards on the Pi): lines
+  merge exactly (every file has the same lcov line set in each shard), but bun's lcov counts
+  functions per file without naming them, and even the count varies by process (it counts the
+  functions a process compiled: 271 files differed). 111 of 595 files could not be settled from the
+  counts. Sharding with the exact function gate needs named function data (#296, istanbul maps);
+  the merge logic for that stays on the ci-ubuntu-shards branch.
+
+## Unstable tests are skipped off Ubuntu, in the code (issue #288)
+
+- **The user's call (2026-11-05):** "pode skipar todos, exceto os testes do ubuntu", and "skip tests in
+  the code" when asked how. Windows failed on every PR and on main, and `test (windows-latest)` is a
+  required check, so five tests that bet on the machine blocked every merge. A first version put them
+  on a quarantine list that the required jobs left out by name, with a non-blocking job; it was
+  dropped before it merged, because the skip in the code is simpler (no list, no runner scripts, no
+  job, `ci.yml` unchanged) and keeps the test where its author reads it.
+- **The form:** `test.skipIf(notLinux)(…)` with `// unstable: #<issue> <reason>` on the line or the
+  line above (`scripts/lib/unstable-skip.ts`). The tests are untouched otherwise and still run on
+  Ubuntu under the 100% gate. A skip for a platform *capability* is a different thing and needs no
+  note.
+- **What `skipIf` was before:** the hook never blocked `skipIf` (its markers are `.only(`, `.skip(`,
+  `test.todo(` and `toMatchSnapshot(`), and ten capability skips exist. So nothing was loosened:
+  the new rule *adds* a check for the off-Linux form (an Edit or Write that adds one without the
+  note is blocked), and `.skip`, `.only`, `test.todo` and snapshots stay blocked whatever comment
+  is next to them.
+- **The ratchet** (`unstable-skip-ratchet.test.ts`): every skip off Linux has the note with an issue
+  number and a reason, and there are at most 5 (the five below), the number only lowered. Whether
+  the issue is still open is not checked (the tests touch no network): close #288 only when the
+  last skip is gone.
+- **The five:** hub-list "the render time at 9,090 rows is within 2x…" (a ratio of two wall-clock
+  render times); heartbeat "qualquer quadro do cliente conta como vivo…" (10 ms and 25 ms timers
+  against a 75 ms silence limit); platform "lint barra @tauri-apps/*…" (spawns biome; over 15 s on a
+  loaded Windows runner in three runs); proto-restore "two files that patch HTMLElement.prototype…"
+  (a child `bun test` with the whole preload; over 15 s on Windows); wait "it returns once the window
+  ended…" (counts polls in an 80 ms window). The fixes (counts instead of a ratio, an injected ticker
+  and clock for the heartbeat, a longer hang limit for the two child processes) are parked on the
+  branch `timing-fixes-288` for #288.
+- **Known limits (security-reviewer pass, nothing high):** the hook is a guard against slips, not a
+  boundary. It recognises `notLinux` and `process.platform !== "linux"` (also `'linux'`) on one line;
+  it does not see `!=`, a backtick string, an alias of `notLinux`, `skipIf(true)`, a skip in a helper
+  that is not a `*.test.ts`, or `scripts/test/not-linux.ts` changed to `true`, and it takes any
+  `// unstable: #<n> <word>` on the line (not a lookup of the issue, which needs the network). The
+  ratchet bounds the first kind: it is exactly saturated (at most 5 and the five files named), and
+  it runs in CI over the whole checkout. The hook matcher also covers only Edit, Write and Bash, as
+  before. All of it is how the guard already worked for `skipIf`, which it never blocked.
+
+## Prints and axe in four jobs, one per theme and language (issue #291)
+
+- **Why.** After #293 the one prints and axe job (13-15 minutes) was the longest of a PR, and every
+  merge waits for the screenshots check.
+- **The split.** `screenshots-prints` is a matrix of the two themes and the two languages, with
+  `fail-fast: false`. Each job runs `bun run demo:shots` with `SHOTS_THEME` and `SHOTS_LANG`
+  (`scripts/lib/shots-variants.ts`: all four pairs when unset, so a local run prints them all) and
+  uploads its own `prints-<theme>-<lang>` artifact. A filter that names no known pair refuses the
+  run instead of printing nothing. The required `screenshots (prints, axe e e2e)` aggregate is
+  unchanged: the matrix job's result is every pair's. The filter is checked before Chrome starts. For the visual
+  check a leg is still a complete run of its pair: a baseline with no print is reported inside the
+  folders the leg printed (`pairs`), so no leg turns the check off once it moves to `compare`; only
+  `DEMO_SHOTS` (some screens) does.
+- **Not here: the e2e shards.** Shard 1 takes 7-11 minutes and the others seconds because the
+  journeys are one file whose tests share the seeded demo, the second language relying on the
+  first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
+  journeys into independent tests, which is #292, not a one-line change.
+

@@ -237,7 +237,7 @@ describe("board-graphql: what goes to gh and how its answers are read", () => {
     for (const id of ["", "x; drop", "a b", "$(x)", "-f query=x"]) {
       expect((await reasonOf(h.provider.pull(id)))?.reason).toBe("board_not_found");
     }
-    expect(h.gh.calls().length).toBe(before);
+    expect(h.gh.calls()).toHaveLength(before);
   });
 
   test("a board past the page cap is read up to the cap and says it was truncated", async () => {
