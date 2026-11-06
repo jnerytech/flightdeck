@@ -205,7 +205,10 @@ describe("assistant-fields: the New card dialog (issue #160)", () => {
 
 describe("assistant-fields: the detail of a card (issue #160)", () => {
   test("the title is improved with the description as context; Accept fills the field and saves nothing", async () => {
-    const { store, fake, t } = await cardDetail();
+    const { store, fake, t } = await cardDetail(
+      {},
+      { title: "Cart", description: "Sum the items." },
+    );
     const sent: string[] = [];
     const real = store.hostCommand.bind(store);
     store.hostCommand = (async (hostId, type, payload) => {
