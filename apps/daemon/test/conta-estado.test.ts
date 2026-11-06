@@ -193,7 +193,8 @@ describe("conta-estado: status for each fixture", () => {
     const state = await account.readNow();
     expect(state.name).toBe("status@example.com");
     expect(state.organization).toBe("From SDK");
-    expect(state.plan).toBe("pro");
+    // The plan is the exception: the live usage report's wins (issue #256).
+    expect(state.plan).toBe("team");
   });
 
   test("the plan falls back to the usage report's", async () => {
