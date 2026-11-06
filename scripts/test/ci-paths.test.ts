@@ -130,8 +130,15 @@ describe("ci-paths: the workflow", () => {
       at("System libraries of the Tauri shell (Linux)"),
     );
     expect(cache?.with?.path).toBe("~/.cache/tauri-debs");
+    // Keyed on the runner image too: an image update must not get older packages over newer ones.
+    const image = step("checks-linux", "Runner image of the Tauri package cache");
+    expect(image?.if).toBe(apt?.if);
+    expect(image?.run ?? "").toContain('"version=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"');
+    expect(at("Runner image of the Tauri package cache")).toBeLessThan(
+      at("Cache of the Tauri system packages"),
+    );
     expect(cache?.with?.key).toBe(
-      "tauri-debs-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/tauri-apt-packages.txt') }}",
+      "tauri-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.tauri-image.outputs.version }}-${{ hashFiles('.github/tauri-apt-packages.txt') }}",
     );
     // A hit installs the saved packages with no mirror; anything else falls back to apt, which
     // downloads into the cached folder.
@@ -139,6 +146,8 @@ describe("ci-paths: the workflow", () => {
     expect(script).toContain('sudo dpkg -i "$debs"/*.deb');
     expect(script.indexOf("dpkg -i")).toBeLessThan(script.indexOf("install_libs || install_libs"));
     expect(script).toContain('-o Dir::Cache::archives="$debs"');
+    // apt writes the files as root: the cache's save, which runs as the runner user, must read them.
+    expect(script).toContain('sudo chown -R "$(id -u):$(id -g)" "$debs"');
     expect(script).toContain(".github/tauri-apt-packages.txt");
     // The list is one file, read by both the key and the install.
     const list = readFileSync(join(ROOT, ".github/tauri-apt-packages.txt"), "utf8");
