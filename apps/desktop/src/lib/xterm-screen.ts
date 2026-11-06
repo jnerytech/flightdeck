@@ -1,6 +1,7 @@
 import {
   FIND_DECORATIONS,
   type FindDecorations,
+  NEWLINE_SEQUENCE,
   type TerminalColors,
   terminalKeyAction,
 } from "./terminal-view.ts";
@@ -20,6 +21,7 @@ export interface XtermTerminal {
   selectAll(): void;
   hasSelection(): boolean;
   getSelection(): string;
+  onSelectionChange(listener: () => void): { dispose(): void };
   onData(listener: (data: string) => void): { dispose(): void };
   onResize(listener: (size: { cols: number; rows: number }) => void): { dispose(): void };
   attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean): void;
@@ -60,6 +62,8 @@ export interface XtermScreenOptions {
   fontSize: number;
   fontFamily: string;
   clipboard: { copy(text: string): Promise<void>; read(): Promise<string> };
+  /** The host is Windows: Ctrl+C copies when there is a selection, and interrupts when there is none. */
+  windows?: boolean;
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;
@@ -109,8 +113,16 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     terminal.loadAddon(addon);
   terminal.unicode.activeVersion = "11";
 
+  // A program that redraws its screen (a TUI) drops xterm's selection when the selected rows change,
+  // often before the person reaches Copy: the last selection stays until they type.
+  let kept = "";
+  const selected = terminal.onSelectionChange(() => {
+    if (terminal.hasSelection()) kept = terminal.getSelection();
+  });
+  const current = () => (terminal.hasSelection() ? terminal.getSelection() : kept);
   const copy = () => {
-    if (terminal.hasSelection()) options.clipboard.copy(terminal.getSelection()).catch(() => {});
+    const text = current();
+    if (text !== "") options.clipboard.copy(text).catch(() => {});
   };
   const paste = () => {
     options.clipboard.read().then(
@@ -119,10 +131,21 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     );
   };
   const results = search.onDidChangeResults((found) => options.onFindResults?.(found));
-  const input = terminal.onData(options.onInput);
+  const input = terminal.onData((data) => {
+    kept = "";
+    options.onInput(data);
+  });
   const size = terminal.onResize(({ cols, rows }) => options.onResize(cols, rows));
   terminal.attachCustomKeyEventHandler((event) => {
-    switch (terminalKeyAction(event)) {
+    const action = terminalKeyAction(event, {
+      windows: options.windows === true,
+      selected: current() !== "",
+    });
+    switch (action) {
+      case "newline":
+        // xterm asks for keydown, keypress and keyup: one newline, and none of them gets xterm's own CR.
+        if (event.type === "keydown") options.onInput(NEWLINE_SEQUENCE);
+        return false;
       case "copy":
         copy();
         return false;
@@ -164,8 +187,9 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     copy,
     paste,
     selectAll: () => terminal.selectAll(),
-    hasSelection: () => terminal.hasSelection(),
+    hasSelection: () => current() !== "",
     dispose: () => {
+      selected.dispose();
       results.dispose();
       input.dispose();
       size.dispose();
