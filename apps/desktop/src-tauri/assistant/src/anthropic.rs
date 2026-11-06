@@ -474,7 +474,8 @@ mod tests {
     fn a_run_checks_the_model_and_the_input_before_any_request() {
         // A port nobody listens on: a request would come back `assistant_offline`.
         let port = TcpListener::bind("127.0.0.1:0").and_then(|l| l.local_addr()).map(|a| a.port()).unwrap_or(1);
-        let long = "x".repeat(guard::MAX_INPUT_CHARS + 1);
+        let long = "x".repeat(guard::MAX_PROMPT_CHARS + 1);
+        let wrapped = "x".repeat(guard::MAX_INPUT_CHARS + 50_000);
         let outcome = |call: Call<'_>| {
             tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|_| "rt").and_then(|rt| {
                 rt.block_on(async {
@@ -488,5 +489,10 @@ mod tests {
         assert_eq!(outcome(Call { user: &long, ..call("claude-haiku-5-5") }), Err("assistant_too_long"));
         assert_eq!(outcome(Call { system: &long, ..call("claude-haiku-5-5") }), Err("assistant_too_long"));
         assert_eq!(outcome(call("claude-haiku-5-5")), Err("assistant_offline"), "the checks pass, the request goes");
+        assert_eq!(
+            outcome(Call { user: &wrapped, ..call("claude-haiku-5-5") }),
+            Err("assistant_offline"),
+            "a text at the cap, wrapped with its context, still goes"
+        );
     }
 }
