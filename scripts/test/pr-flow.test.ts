@@ -582,16 +582,79 @@ describe("pr-flow: update and merge", () => {
   });
 
   test("auto that GitHub refuses fails with its reason; an unreadable PR fails too (#271)", async () => {
-    const refused = fake({ prs: [pr(12, "a")], graphqlError: "Pull request is in clean status" });
+    const refused = fake({
+      prs: [pr(12, "a")],
+      graphqlError: "Pull request Auto merge is not allowed for this repository",
+      runs: { sha12: green() },
+    });
     expect(await prFlow(["auto", "12"], refused.deps)).toBe(1);
-    expect(refused.out()).toContain("Pull request is in clean status");
-    expect(refused.out()).toContain(
-      "already mergeable: the coordinator merges it (bun run pr -- merge 12)",
-    );
+    expect(refused.out()).toContain("Auto merge is not allowed");
+    expect(refused.writes.filter((w) => w.includes("/merge"))).toEqual([]);
     const silent = fake({ prs: [pr(12, "a")], fail: /graphql/ });
     expect(await prFlow(["auto", "12"], silent.deps)).toBe(1);
     expect(silent.out()).toContain("GitHub refused auto-merge for #12");
     expect(await prFlow(["auto", "99"], fake().deps)).toBe(1);
+  });
+
+  const CLEAN = "Pull request is in clean status";
+
+  test("auto merges a PR GitHub calls clean, with every required check green, pinned to its head, as auto-merge would (#374)", async () => {
+    const f = fake({ prs: [pr(12, "a")], graphqlError: CLEAN, runs: { sha12: green() } });
+    expect(await prFlow(["auto", "12"], f.deps)).toBe(0);
+    expect(f.writes).toHaveLength(2);
+    expect(f.writes[0]).toContain("enablePullRequestAutoMerge");
+    expect(f.writes[1]).toBe(`api -X PUT ${R}/pulls/12/merge -f merge_method=merge -f sha=sha12`);
+    expect(f.out()).toContain("#12 is already mergeable: merging it as auto-merge would");
+    expect(f.out()).toContain("#12 merged into main");
+  });
+
+  test("auto merges nothing after a clean refusal unless every required check is green on the head (#374)", async () => {
+    const failing = green().map((r, i) => (i === 0 ? { ...r, conclusion: "failure" } : r));
+    const running = green().map((r, i) => (i === 1 ? { ...r, status: "in_progress" } : r));
+    for (const [runs, reason] of [
+      [failing, "failing: test (ubuntu-latest)"],
+      [running, "running: test (windows-latest)"],
+      [[], "missing: test (ubuntu-latest)"],
+    ] as const) {
+      const f = fake({ prs: [pr(12, "a")], graphqlError: CLEAN, runs: { sha12: [...runs] } });
+      expect(await prFlow(["auto", "12"], f.deps)).toBe(2);
+      expect(f.writes.filter((w) => w.includes("/merge"))).toEqual([]);
+      expect(f.out()).toContain(`#12 not merged: ${reason}`);
+    }
+  });
+
+  test("auto merges nothing after a clean refusal when GitHub's state is no longer clean (#374)", async () => {
+    for (const state of ["unknown", "unstable", "blocked", "behind", "dirty"]) {
+      const f = fake({
+        prs: [pr(12, "a", { mergeableState: state })],
+        graphqlError: CLEAN,
+        runs: { sha12: green() },
+      });
+      expect(await prFlow(["auto", "12"], f.deps)).toBe(2);
+      expect(f.writes.filter((w) => w.includes("/merge"))).toEqual([]);
+      expect(f.out()).toContain(`#12 not merged: GitHub says ${state}, not clean`);
+    }
+  });
+
+  test("auto merges nothing after a clean refusal when the ruleset cannot be read, and reports a refused merge (#374)", async () => {
+    const rules = fake({
+      prs: [pr(12, "a")],
+      graphqlError: CLEAN,
+      runs: { sha12: green() },
+      fail: /rules\/branches/,
+    });
+    expect(await prFlow(["auto", "12"], rules.deps)).toBe(1);
+    expect(rules.writes.filter((w) => w.includes("/merge"))).toEqual([]);
+    expect(rules.out()).toContain("required checks cannot be read");
+
+    const refused = fake({
+      prs: [pr(12, "a")],
+      graphqlError: CLEAN,
+      runs: { sha12: green() },
+      fail: /pulls\/12\/merge/,
+    });
+    expect(await prFlow(["auto", "12"], refused.deps)).toBe(1);
+    expect(refused.out()).toContain("GitHub refused to merge #12");
   });
 
   test("an unknown command or a missing argument is the usage, exit 2", async () => {
