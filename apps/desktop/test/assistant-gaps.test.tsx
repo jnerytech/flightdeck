@@ -53,6 +53,9 @@ describe("assistant-gaps: small paths of the assistant's app side that no screen
     const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
     store.i18n.start();
     seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    (store as unknown as { state: { secrets: unknown[] } }).state.secrets = [
+      { id: "s1", name: "DEPLOY_TOKEN" },
+    ];
     // An API provider: the vault names and the language are read when the request is built.
     await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
     store.assistant.setPrefs({ provider: "anthropic" });
@@ -63,7 +66,8 @@ describe("assistant-gaps: small paths of the assistant's app side that no screen
       text: "fix the totl",
     });
     expect(result.text).toBe("Fixed");
-    expect(fake.calls.some((c) => c[0] === "run")).toBe(true);
+    // The vault's ids go with the request, so the shell can look for their values in the text.
+    expect(fake.calls.find((c) => c[0] === "run")?.[2]).toEqual(["s1"]);
     // The host provider: the answer of the host's own command comes back through the store.
     const asked: string[] = [];
     store.hostRequest = (async (hostId: string, type: string) => {
@@ -120,6 +124,8 @@ describe("assistant-gaps: the model picker from the keyboard", () => {
     expect(box.value).toBe("");
     fireEvent.keyDown(box, { key: "End" });
     fireEvent.keyDown(box, { key: "Enter" });
+    // A letter is the filter's own: the picker leaves it alone and chooses nothing.
+    fireEvent.keyDown(box, { key: "x" });
     expect(changes).toEqual(["b"]);
   });
 

@@ -171,4 +171,14 @@ describe("assistant-wand-state: one run at a time in the app", () => {
     expect(gate.acquire("b")).toBe(true);
     expect(seen).toEqual(["a", null, "b"]);
   });
+
+  test("a listener that unsubscribed hears nothing more", () => {
+    const gate = new RunGate();
+    const seen: Array<string | null> = [];
+    const off = gate.subscribe((id) => void seen.push(id));
+    gate.acquire("a");
+    off();
+    gate.release("a");
+    expect(seen).toEqual(["a"]);
+  });
 });

@@ -209,6 +209,21 @@ describe("assistant-settings-ui: the keys", () => {
     expect(document.body.innerHTML).not.toContain("sk-ant-aaaabbbb");
   });
 
+  test("a Test that fails with no reason of ours says the key was refused", async () => {
+    const mem = memoryPlatform(false, "en");
+    const fake = fakeAssistant({ test: async () => ({ ok: false, detail: "HTTP 401" }) as never });
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    mem.platform.assistant = fake.assistant;
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
+    seedHosts(store, HOSTS);
+    render(<AssistantSettings store={store} t={store.i18n.t} />);
+    await settle(() => button("Test") !== null);
+    await click(button("Test"));
+    await settle(() => (screen.queryByRole("status")?.textContent ?? "") !== "");
+    expect(screen.queryByRole("status")?.textContent).toBe("The key was refused.");
+  });
+
   test("a Test the shell rejects is said in words too", async () => {
     const mem = memoryPlatform(false, "en");
     const fake = fakeAssistant({
