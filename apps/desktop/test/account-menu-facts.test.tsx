@@ -23,6 +23,9 @@ const account = (over: Partial<AccountState> = {}): AccountState => ({
   windows: [],
   readAt: "2026-11-06T12:00:00Z",
   stale: false,
+  error: null,
+  source: "sdk",
+  loginCommand: "claude auth login",
   ...over,
 });
 
