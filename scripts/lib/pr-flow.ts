@@ -501,6 +501,9 @@ export async function headCi(sha: string, deps: PrFlowDeps): Promise<string> {
   return v.missing.length === required.length ? "none" : "pending";
 }
 
+/** The file that holds the product version: the root package.json has none (the apps and the protocol share it, a test checks). */
+export const VERSION_FILE = "apps/desktop/package.json";
+
 const TAG = /^v\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 
 type MainRun = { id?: number; event?: string; status: string; conclusion: string | null };
@@ -582,7 +585,7 @@ async function startFullRun(runs: MainRun[], deps: PrFlowDeps): Promise<string> 
 async function greenWithBump(tag: string, deps: PrFlowDeps): Promise<string | null> {
   const listed = await deps.git(["rev-list", "--first-parent", "-n", "30", `origin/${MAIN}`]);
   for (const sha of listed.stdout.split("\n").filter(Boolean)) {
-    const shown = await deps.git(["show", `${sha}:package.json`]);
+    const shown = await deps.git(["show", `${sha}:${VERSION_FILE}`]);
     let version: unknown;
     try {
       version = (JSON.parse(shown.stdout) as { version?: unknown }).version;
