@@ -6,6 +6,8 @@ import {
   GAPS,
   layoutFindings,
   pinnedProblem,
+  SPACING,
+  SPACING_RULES,
 } from "../lib/layout-guards.ts";
 
 registerDom();
@@ -238,6 +240,86 @@ describe("layout-guards: what the page function finds, named by data-slot path",
         <div data-slot="sidebar-body" data-rect="0,40,240,500" style="overflow-y: auto"></div>
       </aside>`);
     expect(split()).toEqual([]);
+  });
+
+  const spacing = () =>
+    layoutFindings({ spacing: SPACING })
+      .filter((f) => SPACING_RULES.includes(f.rule))
+      .map((f) => `${f.rule}: ${f.path} (${f.detail})`);
+
+  test("spacing (#588): the page body's blocks sit at least 8 px apart, stacked or side by side", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,1000,800">
+        <div data-slot="links" data-rect="0,0,1000,100"></div>
+        <div data-slot="config" data-rect="0,103,1000,300"></div>
+        <div data-slot="left" data-rect="0,320,495,500"></div>
+        <div data-slot="right" data-rect="500,320,1000,500"></div>
+        <div data-slot="after" data-rect="0,524,1000,600"></div>
+        <div data-slot="gone" style="display: none" data-rect="0,600,1000,601"></div>
+      </div>`);
+    expect(spacing()).toEqual([
+      "block-gap: page-body > config (3 px under links, at least 8)",
+      "block-gap: page-body > right (5 px beside left, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): sibling cards keep 8 px between them; a card and its own content are not siblings", () => {
+    page(`
+      <div data-slot="grid" data-rect="0,0,1000,400">
+        <div data-slot="card" data-rect="0,0,330,100"><div data-slot="card-content" data-rect="16,16,314,84"></div></div>
+        <div data-slot="card" data-rect="334,0,664,100"></div>
+        <div data-slot="card" data-rect="0,112,330,200"></div>
+      </div>`);
+    expect(spacing()).toEqual(["card-gap: grid > card (4 px beside card, at least 8)"]);
+  });
+
+  test("spacing (#588): text in a card keeps 8 px of padding, and text that spills its own box is a finding", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,400,200">
+        <p data-slot="title" data-rect="24,24,376,44">Hooks</p>
+        <code data-slot="hook-command" data-rect="4,60,396,80">bun run a-very-long-command</code>
+        <span data-slot="cut" style="overflow-x: hidden" data-rect="24,90,376,110" data-sw="500" data-cw="352">x</span>
+        <pre data-slot="spill" data-rect="24,120,376,140" data-sw="600" data-cw="352">long line</pre>
+      </div>`);
+    expect(spacing()).toEqual([
+      "card-padding: card > hook-command (4 px from the card's left edge, at least 8)",
+      "text-spill: card > spill (248 px past its box)",
+    ]);
+  });
+
+  test("spacing (#588): chips in a row keep 4 px between them, and a row under another its own gap", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,60">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+        <span data-slot="badge" data-rect="128,0,200,20">c</span>
+        <span data-slot="badge" data-rect="0,30,60,50">d</span>
+      </div>`);
+    expect(spacing()).toEqual(["chip-gap: chips > badge (2 px beside badge, at least 4)"]);
+  });
+
+  test("spacing (#588): the rules are heuristic, judged against a baseline; with none they fail nothing", () => {
+    const tight = { rule: "block-gap" as const, path: "page-body > config", detail: "3 px" };
+    expect(judge("dark en projeto", [tight], null).failures).toEqual([]);
+    expect(judge("dark en projeto", [tight], {}).failures).toEqual([
+      "dark en projeto: block-gap page-body > config (3 px)",
+    ]);
+    expect(SPACING_RULES).toEqual([
+      "block-gap",
+      "card-gap",
+      "card-padding",
+      "text-spill",
+      "chip-gap",
+    ]);
+    expect(SPACING).toEqual({
+      blocks: '[data-slot="page-body"]',
+      blockMin: 8,
+      card: '[data-slot="card"]',
+      cardMin: 8,
+      padMin: 8,
+      chip: '[data-slot="badge"]',
+      chipMin: 4,
+    });
   });
 
   test("an element with no slot is named by its tag and first class", () => {
