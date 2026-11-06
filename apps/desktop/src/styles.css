@@ -1121,6 +1121,9 @@ html:not(:has([data-slot="status-bar"])) {
   border-radius: 0.5rem;
   padding: 0.5rem;
   font-size: 0.8125rem;
+  /* A fieldset will not shrink below its content by default: this one shrinks with its tile (#641). */
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
 }
 @utility tile-count {
   display: flex;
