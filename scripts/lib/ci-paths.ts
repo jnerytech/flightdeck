@@ -5,6 +5,8 @@
  * a run by hand, or a diff that cannot be read runs everything.
  */
 
+import { GLOBAL_FILE, TEST_FILE } from "./test-related.ts";
+
 export interface CiPlan {
   /** The three Windows test shards and the Windows checks. */
   windows: boolean;
@@ -16,6 +18,11 @@ export interface CiPlan {
   cargo: boolean;
   /** The e2e journeys (#399): what the screens read, the journeys themselves, their config, the demo. */
   e2e: boolean;
+  /**
+   * How many Windows test shards (#444): one on a PR, three when the whole suite runs there (a file
+   * every test reads changed, or a test went away: the rule of `test:related --pr`) and off a PR.
+   */
+  windowsShards: number;
 }
 
 export const FULL: CiPlan = {
@@ -24,6 +31,7 @@ export const FULL: CiPlan = {
   screenshots: true,
   cargo: true,
   e2e: true,
+  windowsShards: 3,
 };
 
 /** What every job reads: the app, the protocol, the dependencies, the configs and CI itself. */
@@ -41,7 +49,7 @@ const SCRIPTS = /^scripts\//;
 const E2E =
   /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
 
-export function ciPlan(event: string, changed: string[] | null): CiPlan {
+export function ciPlan(event: string, changed: string[] | null, removed: string[] = []): CiPlan {
   if (event !== "pull_request" || changed === null) return { ...FULL };
   const any = (re: RegExp) => changed.some((path) => re.test(path));
   const everything = any(EVERYTHING);
@@ -52,10 +60,15 @@ export function ciPlan(event: string, changed: string[] | null): CiPlan {
     screenshots: everything,
     cargo: any(TAURI),
     e2e: everything || any(E2E),
+    windowsShards: any(GLOBAL_FILE) || removed.some((path) => TEST_FILE.test(path)) ? 3 : 1,
   };
 }
 
 /** The plan as GitHub step outputs, one `name=value` per line. */
 export function planOutputs(plan: CiPlan): string {
-  return (Object.keys(FULL) as (keyof CiPlan)[]).map((key) => `${key}=${plan[key]}\n`).join("");
+  const value = (key: keyof CiPlan) =>
+    key === "windowsShards"
+      ? `windows_shards=${JSON.stringify(Array.from({ length: plan.windowsShards }, (_, i) => i + 1))}`
+      : `${key}=${plan[key]}`;
+  return (Object.keys(FULL) as (keyof CiPlan)[]).map((key) => `${value(key)}\n`).join("");
 }
