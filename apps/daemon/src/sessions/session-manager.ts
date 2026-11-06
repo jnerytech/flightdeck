@@ -39,6 +39,7 @@ import type {
 } from "../runtime/types.ts";
 import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
+import { folderRemoving } from "../worktrees/locks.ts";
 
 export const RESTART_REASON = "daemon reiniciado";
 
@@ -59,6 +60,8 @@ export interface SessionManagerOptions {
   allowApiKey: boolean;
   /** Whether a session may start in `bypassPermissions` (the host switch); refused when absent. */
   allowBypass?: () => boolean;
+  /** Folders being removed (issue #152): no session starts in one. */
+  folderLocks?: { isHeld(cwd: string): boolean };
   /** Whether a folder's own configuration may load in a session (issue #196); absent: it always does. */
   trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
   /** Looks at a folder's git boundaries before its run is decided (issue #196); awaited by every async entry. */
@@ -296,6 +299,7 @@ export class SessionManager {
     extra: { unattended?: boolean; prepared?: PreparedPersonas } = {},
   ): Promise<{ sessionId: string }> {
     const cwd = await resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const runtime = payload.runtime ?? "claude";
     if (runtime === "opencode") await this.checkOpenCode(payload, cwd);
     const id = ulid();
@@ -363,6 +367,7 @@ export class SessionManager {
     agents?: PreparedPersonas["agents"];
   }): Promise<{ sessionId: string }> {
     const cwd = await resolveAllowedCwd(opts.cwd, this.opts.allowedRoots);
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const id = ulid();
     const permissionMode = opts.permissionMode ?? this.opts.defaultPermissionMode;
     this.store.createSession({
@@ -446,6 +451,8 @@ export class SessionManager {
         "session_not_ended",
       );
     }
+    // Not in a folder a removal is working on.
+    if (this.opts.folderLocks?.isHeld(session.cwd)) throw folderRemoving(session.cwd);
     return this.reattach(sessionId, session);
   }
 

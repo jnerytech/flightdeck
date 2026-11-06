@@ -2657,6 +2657,26 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
+- **Worktrees:** a host page panel (hosts that announce `worktrees`) lists the cards' worktrees
+  under `.flightdeck/worktrees` with their size on disk (**unknown** when measuring ran out of
+  time, never 0), how long they have been idle, and their card. **Suggested** marks a clean worktree
+  with no unpushed commits and no live session, idle for over 7 days, whose card is Done or whose
+  PR merged, or that has no card. A worktree with uncommitted changes, commits that exist nowhere
+  else, a running session, terminal or run, an unknown base branch (it must be a real branch, not
+  a tag or `HEAD`), a branch that is not one of Flightdeck's `fd/…`, ignored files a build does not
+  recreate (only `node_modules`, `dist`, `build`, `target`, `coverage`, `.cache`, `.next` and `out`
+  as a folder at the root of the worktree do not count, and an ignored credential file such as `.env`
+  or `*.pem` always does), edits that git hides from `git status` (`assume-unchanged` or
+  `skip-worktree`), or anything git could not answer about is **kept**: the row says why and cannot
+  be ticked. The confirmation says the rebuildable folders go with the worktree. Filter by Suggested, Protected or No card, sort by age or size, **Select
+  suggested** or **Select all that can go**, then **Remove**: the confirmation names every branch
+  with its card and column, and the space it frees. Only the rows on screen can be ticked or
+  removed. The host holds each folder (nothing can start in it) and checks it again before removing
+  it (without force), so one that changed meanwhile is kept; the branch is deleted only if it is
+  still at the commit that was checked, otherwise the folder goes and the branch stays, and the
+  result says so. The card, if any, stays on the board without its
+  worktree. A disk under 10% free is warned about. Deleting something that is kept still goes through
+  the card's **Discard**.
 - **A host that is offline** shows a banner at the top of its page: the state, what failed in plain
   words (nothing answered, no answer in time, the link dropped, the token refused), the time of the
   last try, a countdown to the next automatic try and **Reconnect now**, which shows its progress
