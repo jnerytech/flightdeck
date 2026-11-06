@@ -61,6 +61,14 @@ mock.module("@tauri-apps/plugin-updater", () => ({
       downloadAndInstall: async () => {
         updaterCalls.push("downloadAndInstall");
       },
+      download: async () => {
+        updaterCalls.push("download");
+      },
+      install: async (options?: { restartAfterInstall?: boolean }) => {
+        updaterCalls.push(
+          options?.restartAfterInstall === false ? "install without restart" : "install",
+        );
+      },
     },
 }));
 mock.module("@tauri-apps/plugin-process", () => ({
@@ -127,22 +135,32 @@ function fakeWindow(hash = "") {
  * Lints `code` as if it lived at `path` (repo-relative). Biome's stdin mode does not report
  * diagnostics through the exit code, so a real file is written and removed afterwards.
  */
-async function lint(path: string, code: string) {
+async function lint(paths: string[], code: string) {
   const root = resolve(import.meta.dir, "../../..");
-  const file = resolve(root, path);
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, code);
+  const files = paths.map((path) => resolve(root, path));
+  for (const file of files) {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, code);
+  }
   try {
-    const proc = Bun.spawn([process.execPath, "x", "biome", "lint", path], {
+    // One run for every probe: a spawn of biome takes seconds on a loaded Windows runner.
+    const proc = Bun.spawn([process.execPath, "x", "biome", "lint", ...paths], {
       cwd: root,
       stdout: "pipe",
       stderr: "pipe",
     });
-    const output =
-      (await new Response(proc.stdout).text()) + (await new Response(proc.stderr).text());
-    return { code: await proc.exited, output };
+    const [out, err, exit] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    const lines = (out + err).replaceAll("\\", "/").split("\n");
+    // Whether biome reported the rule on this probe (each diagnostic starts with its path).
+    const flagged = (path: string) =>
+      lines.some((line) => line.startsWith(`${path}:`) && line.includes("noRestrictedImports"));
+    return { code: exit, flagged };
   } finally {
-    rmSync(file, { force: true });
+    for (const file of files) rmSync(file, { force: true });
   }
 }
 
@@ -340,14 +358,44 @@ describe("platform", () => {
     expect(await platform.updater.check()).toEqual({ version: "0.9.2", notes: "" });
   });
 
+  test("tauri: on quit a downloaded update installs without a relaunch; nothing downloaded installs nothing (#402)", async () => {
+    const platform = tauriPlatform(fakeWindow().win);
+    updateOffer = { version: "0.9.4" };
+    await platform.updater.check();
+    updaterCalls.length = 0;
+    await platform.updater.installDownloaded();
+    expect(updaterCalls).toEqual([]);
+    await platform.updater.download();
+    await platform.updater.installDownloaded();
+    // Windows' installer starts the app again unless told not to: Quit means quit.
+    expect(updaterCalls).toEqual(["download", "install without restart"]);
+  });
+
+  test("tauri: a version downloaded in the background installs without a second download (#280)", async () => {
+    const platform = tauriPlatform(fakeWindow().win);
+    updateOffer = null;
+    await platform.updater.check();
+    const early = await platform.updater.download().catch((e: Error) => e.message);
+    expect(early).toBe("no update found to download");
+    updateOffer = { version: "0.9.3" };
+    await platform.updater.check();
+    updaterCalls.length = 0;
+    await platform.updater.download();
+    await platform.updater.install();
+    expect(updaterCalls).toEqual(["download", "install", "relaunch"]);
+  });
+
   test("lint barra @tauri-apps/* fora de src/platform/tauri", async () => {
     const code = 'import { invoke } from "@tauri-apps/api/core";\nexport const x = invoke;\n';
-    const inUi = await lint("apps/desktop/src/ui/__lint_probe__.tsx", code);
-    expect(inUi.code).not.toBe(0);
-    expect(inUi.output).toContain("noRestrictedImports");
-    const inLib = await lint("apps/desktop/src/lib/__lint_probe__.ts", code);
-    expect(inLib.code).not.toBe(0);
-    const inPlatform = await lint("apps/desktop/src/platform/tauri/__lint_probe__.ts", code);
-    expect(inPlatform.code).toBe(0);
-  });
+    const ui = "apps/desktop/src/ui/__lint_probe__.tsx";
+    const lib = "apps/desktop/src/lib/__lint_probe__.ts";
+    const platform = "apps/desktop/src/platform/tauri/__lint_probe__.ts";
+    const result = await lint([ui, lib, platform], code);
+    expect(result.code).not.toBe(0);
+    expect(result.flagged(ui)).toBe(true);
+    expect(result.flagged(lib)).toBe(true);
+    expect(result.flagged(platform)).toBe(false);
+    // A child process: its start is what takes time on a loaded Windows runner (15 s was not enough
+    // in three runs in a row). The limit only bounds a hang; nothing here asserts speed.
+  }, 90_000);
 });

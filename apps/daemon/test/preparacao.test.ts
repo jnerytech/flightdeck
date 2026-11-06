@@ -110,7 +110,9 @@ describe("preparacao: shell", () => {
         "bun install",
       ]);
     } finally {
-      process.env.ComSpec = comspec;
+      // Unset (Linux) goes back to unset: assigning undefined would leave the text "undefined".
+      if (comspec === undefined) delete process.env.ComSpec;
+      else process.env.ComSpec = comspec;
     }
     expect(shellCommand("bun install", "linux")).toEqual(["sh", "-c", "bun install"]);
     expect(shellCommand("bun install", "darwin")).toEqual(["sh", "-c", "bun install"]);

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { open, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Snippet, SnippetHistoryCandidate } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { hasControl, type SecretScanner } from "./model.ts";
 import type { Snippets } from "./store.ts";
 
@@ -93,12 +94,15 @@ async function readHistory(path: string): Promise<string | null> {
   return text.replace(/^﻿/, "");
 }
 
+/** The character that ends a line that goes on in the next one, by shell. */
+const CONTINUATION: Partial<Record<Shell, string>> = { zsh: "\\", powershell: "`" };
+
 /**
  * The commands of a history, one entry each. `continuation` is the character that ends a line
  * that goes on in the next one: such an entry is more than one line and is left out.
  */
 function parseHistory(shell: Shell, text: string): string[] {
-  const continuation = shell === "zsh" ? "\\" : shell === "powershell" ? "`" : null;
+  const continuation = CONTINUATION[shell] ?? null;
   const commands: string[] = [];
   let skipping = false;
   for (const raw of text.split(/\r?\n/)) {
@@ -146,7 +150,8 @@ interface Entry {
 function freeName(taken: Snippet[], base: string): string {
   const names = new Set(taken.map((s) => s.name));
   let name = base;
-  for (let n = 2; names.has(name); n++) name = `${base.slice(0, 60)}-${n}`;
+  let n = 2;
+  while (names.has(name)) name = `${base.slice(0, 60)}-${n++}`;
   return name;
 }
 
@@ -189,7 +194,7 @@ export class HistoryImporter {
     const byId = new Map(entries.map((entry) => [idOf(entry.command), entry]));
     const created: Snippet[] = [];
     const skipped: Array<{ id: string; reason: string }> = [];
-    for (const id of new Set(ids)) {
+    await inSequence(new Set(ids), async (id) => {
       const entry = byId.get(id);
       const skip = (reason: string) => skipped.push({ id, reason });
       if (!entry) {
@@ -210,7 +215,7 @@ export class HistoryImporter {
         created.push(saved);
         taken.push(saved);
       }
-    }
+    });
     return { created, skipped };
   }
 
@@ -225,9 +230,9 @@ export class HistoryImporter {
   }> {
     const counts = new Map<string, Entry>();
     const sources: Array<{ shell: string; found: boolean }> = [];
-    for (const { key, shell } of SOURCES) {
+    await inSequence(SOURCES, async ({ key, shell }) => {
       const path = this.opts.sources[key];
-      if (path === undefined) continue;
+      if (path === undefined) return;
       const text = await readHistory(path);
       sources.push({ shell, found: text !== null });
       for (const command of parseHistory(shell, text ?? "").filter(eligible)) {
@@ -236,7 +241,7 @@ export class HistoryImporter {
         if (!entry.shells.includes(shell)) entry.shells.push(shell);
         counts.set(command, entry);
       }
-    }
+    });
     const entries = [...counts.values()].sort(
       (a, b) => b.count - a.count || (a.command < b.command ? -1 : 1),
     );

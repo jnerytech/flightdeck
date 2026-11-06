@@ -1,4 +1,4 @@
-import { memo, type ReactNode, useId, useState, useSyncExternalStore } from "react";
+import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -19,7 +19,7 @@ import { MessagingRulesSection } from "./MessagingRulesSection.tsx";
 import { WebhooksSection } from "./WebhooksSection.tsx";
 
 /** A setting: its label on the left and its control on the right; the label focuses the control. */
-function SettingRow(props: { label: string; children: (id: string) => ReactNode }) {
+function SettingRow(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
   const id = useId();
   return (
     <div className="flex items-center justify-between gap-4 text-sm">
@@ -46,12 +46,15 @@ const SETTINGS_KEYS = ["hosts", "budgets", "projects"] as const;
 export const Settings = memo(function Settings(props: {
   store: AppStore;
   settings: SettingsState;
+  /** The part to open on, by id. */
+  section?: string | undefined;
   onCloseToTray(enabled: boolean): void;
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;
   appUpdate: AppUpdateState;
   onCheckUpdate(): void;
   onNotifyUpdates(enabled: boolean): void;
+  onAutoUpdate(enabled: boolean): void;
   /** Light, dark or the system's (phase 10). */
   theme: ThemeMode;
   onTheme(mode: ThemeMode): void;
@@ -243,6 +246,15 @@ export const Settings = memo(function Settings(props: {
                   />
                   {t("prefs.notifyUpdates")}
                 </label>
+                <label className={check}>
+                  <input
+                    type="checkbox"
+                    aria-label={t("prefs.autoUpdate")}
+                    checked={settings.autoUpdate}
+                    onChange={(e) => props.onAutoUpdate(e.target.checked)}
+                  />
+                  {t("prefs.autoUpdate")}
+                </label>
                 <Button variant="outline" className="self-start" onClick={props.onCheckUpdate}>
                   {t("prefs.checkNow")}
                 </Button>
@@ -372,6 +384,12 @@ export const Settings = memo(function Settings(props: {
     target?.scrollIntoView?.({ block: "start" });
     target?.focus({ preventScroll: true });
   };
+  // Opened on a part (a budget alert): scroll to it and focus it.
+  const wanted = props.section;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request moves the view
+  useEffect(() => {
+    if (wanted) go(wanted);
+  }, [wanted]);
 
   return (
     <Page title={t("prefs.title")}>

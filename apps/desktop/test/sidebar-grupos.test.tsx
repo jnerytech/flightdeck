@@ -12,7 +12,12 @@ afterEach(cleanup);
 
 const ALL = ["costs", "messaging", "teams", "plugins", "personas", "snippets", "ssh"];
 
-function setup(features: string[] = ALL, platform = memoryPlatform(false, "en").platform) {
+function setup(
+  features: string[] = ALL,
+  platform = memoryPlatform(false, "en").platform,
+  route?: import("../src/lib/router.ts").Route,
+  appVersion?: string,
+) {
   const store = new AppStore(platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const state = {
@@ -27,13 +32,15 @@ function setup(features: string[] = ALL, platform = memoryPlatform(false, "en").
       },
     ],
   } as never as ReturnType<typeof store.getState>;
-  const view = (collapsed = false) => (
+  const view = (collapsed = false, go: (route: unknown) => void = () => {}) => (
     <Sidebar
       store={store}
       state={state}
       collapsed={collapsed}
       t={store.i18n.t}
-      go={() => {}}
+      go={go}
+      {...(route ? { route } : {})}
+      {...(appVersion ? { appVersion } : {})}
       onOpenProjectScreen={() => {}}
       onNewSession={() => {}}
       onRemoveHost={() => {}}
@@ -43,7 +50,11 @@ function setup(features: string[] = ALL, platform = memoryPlatform(false, "en").
       onToggleTheme={() => {}}
     />
   );
-  return { store, view, platform };
+  const opened: string[] = [];
+  store.openLink = ((url: string) => {
+    opened.push(url);
+  }) as never;
+  return { store, view, platform, opened };
 }
 
 const names = (root: HTMLElement) =>
@@ -51,35 +62,76 @@ const names = (root: HTMLElement) =>
     .getAllByRole("button")
     .map((b) => b.getAttribute("aria-label") ?? b.textContent ?? "");
 
-describe("sidebar-grupos: the bar in groups", () => {
-  test("Sessions, Needs you, Projects and Board stay on top, outside any group", () => {
+describe("sidebar-grupos: the bar in groups by purpose", () => {
+  test("Work, Automation, Observability, Library and Machines, in that order, each with its items", () => {
     const { view } = setup();
     render(view());
-    const top = screen.getByRole("navigation", { name: "Main" });
-    expect(names(top).slice(0, 4)).toEqual(["Open Sessions", "Needs you", "Projects", "Board"]);
-  });
-
-  test("Work, Library and Infra group the rest, each with its items", () => {
-    const { view } = setup();
-    render(view());
-    const groups = ["Work", "Library", "Infra"].map(
-      (name) => screen.getByRole("group", { name }) as HTMLElement,
-    );
-    expect(groups.map((g) => names(g).slice(1))).toEqual([
-      ["Workflows", "Costs", "Conversations", "Teams"],
+    const titles = ["Work", "Automation", "Observability", "Library", "Machines"];
+    const groups = titles.map((name) => screen.getByRole("group", { name }) as HTMLElement);
+    // In the page's order.
+    for (let i = 1; i < groups.length; i++) {
+      expect(
+        (groups[i - 1] as HTMLElement).compareDocumentPosition(groups[i] as HTMLElement) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    expect(groups.slice(0, 4).map((g) => names(g).slice(1))).toEqual([
+      ["Home", "Open Sessions", "Needs you", "Projects", "Board"],
+      ["Workflows", "Teams", "Conversations"],
+      ["Costs", "History"],
       ["Personas", "Snippets", "Plugins", "Vault"],
-      ["Connections", "History"],
     ]);
-    for (const name of ["Work", "Library", "Infra"]) {
+    for (const name of titles) {
       expect(screen.getByRole("button", { name }).getAttribute("aria-expanded")).toBe("true");
     }
+    // The old groups are gone: no Infra, and no separate Hosts heading.
+    expect(screen.queryByRole("group", { name: "Infra" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Hosts" })).toBeNull();
+  });
+
+  test("Machines holds the hosts with their dots and a +, then SSH (once Connections)", () => {
+    const { view } = setup();
+    render(view());
+    const machines = screen.getByRole("group", { name: "Machines" }) as HTMLElement;
+    const listed = names(machines);
+    expect(listed).toContain("Add another host");
+    expect(listed).toContain("Open host alfa");
+    expect(listed.indexOf("Open host alfa")).toBeLessThan(listed.indexOf("SSH"));
+    expect(listed.at(-1)).toBe("SSH");
+    expect(screen.queryByRole("button", { name: "Connections" })).toBeNull();
+    expect(within(machines).getByLabelText("alfa: online")).toBeTruthy();
+  });
+
+  test("Home is the first item of Work: it opens Home and is marked while Home is open", () => {
+    const routes: unknown[] = [];
+    const { view } = setup(ALL, undefined, { name: "overview" });
+    const { unmount } = render(view(false, (route) => void routes.push(route)));
+    const home = screen.getByRole("button", { name: "Home" });
+    expect(home.getAttribute("aria-current")).toBe("page");
+    expect(
+      screen.getByRole("button", { name: "Open Sessions" }).getAttribute("aria-current"),
+    ).toBeNull();
+    fireEvent.click(home);
+    expect(routes).toEqual([{ name: "overview" }]);
+    unmount();
+    const other = setup(ALL, undefined, { name: "hub" });
+    render(other.view());
+    expect(screen.getByRole("button", { name: "Home" }).getAttribute("aria-current")).toBeNull();
   });
 
   test("an item the host cannot offer is not listed", () => {
     const { view } = setup([]);
     render(view());
     const work = screen.getByRole("group", { name: "Work" }) as HTMLElement;
-    expect(names(work).slice(1)).toEqual(["Workflows"]);
+    expect(names(work).slice(1)).toEqual([
+      "Home",
+      "Open Sessions",
+      "Needs you",
+      "Projects",
+      "Board",
+    ]);
+    const automation = screen.getByRole("group", { name: "Automation" }) as HTMLElement;
+    expect(names(automation).slice(1)).toEqual(["Workflows"]);
     expect(screen.queryByRole("button", { name: "Teams" })).toBeNull();
   });
 
@@ -107,13 +159,15 @@ describe("sidebar-grupos: the bar in groups", () => {
     expect(screen.getByRole("button", { name: "Vault" })).toBeTruthy();
   });
 
-  test("folding Work and Infra hides their items and leaves the other groups alone", async () => {
+  test("folding Work, Automation, Observability and Machines hides their items and leaves the other groups alone", async () => {
     const { view } = setup();
     render(view());
     const heading = (name: string) => screen.getByRole("button", { name });
     for (const [name, item] of [
-      ["Work", "Costs"],
-      ["Infra", "Connections"],
+      ["Work", "Board"],
+      ["Automation", "Workflows"],
+      ["Observability", "Costs"],
+      ["Machines", "SSH"],
     ] as const) {
       await act(async () => {
         fireEvent.click(heading(name));
@@ -127,12 +181,20 @@ describe("sidebar-grupos: the bar in groups", () => {
       fireEvent.click(heading("Work"));
     });
     await act(async () => {
-      fireEvent.click(heading("Infra"));
+      fireEvent.click(heading("Automation"));
     });
-    expect(heading("Work").getAttribute("aria-expanded")).toBe("true");
-    expect(heading("Infra").getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Board" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Workflows" })).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(heading("Observability"));
+    });
+    await act(async () => {
+      fireEvent.click(heading("Machines"));
+    });
+    expect(heading("Observability").getAttribute("aria-expanded")).toBe("true");
+    expect(heading("Machines").getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("button", { name: "Costs" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Connections" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "SSH" })).toBeTruthy();
   });
 
   test("the icon rail has no headings and lists every item", () => {
@@ -141,5 +203,72 @@ describe("sidebar-grupos: the bar in groups", () => {
     expect(screen.queryByRole("button", { name: "Library" })).toBeNull();
     expect(screen.getByRole("button", { name: "Vault" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "History" })).toBeTruthy();
+  });
+
+  test("the open page is marked: full contrast, aria-current, and a bar at the left", () => {
+    const { view } = setup(ALL, undefined, { name: "costs" });
+    render(view());
+    const costs = screen.getByRole("button", { name: "Costs" });
+    expect(costs.getAttribute("aria-current")).toBe("page");
+    expect(costs.className).toContain("nav-active");
+    expect(screen.getByRole("button", { name: "Vault" }).className).not.toContain("nav-active");
+    expect(screen.getByRole("button", { name: "Vault" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  test("on a host's page its row under Machines is marked like the page items, in the rail too", () => {
+    const { view } = setup(ALL, undefined, { name: "host", host: "h1" });
+    const { unmount } = render(view());
+    const host = screen.getByRole("button", { name: "Open host alfa" });
+    expect(host.getAttribute("aria-current")).toBe("page");
+    expect(host.className).toContain("nav-active");
+    unmount();
+    render(view(true));
+    expect(
+      screen.getByRole("button", { name: "Open host alfa" }).getAttribute("aria-current"),
+    ).toBe("page");
+    cleanup();
+    // On another page no host row is marked.
+    const other = setup(ALL, undefined, { name: "costs" });
+    render(other.view());
+    expect(
+      screen.getByRole("button", { name: "Open host alfa" }).getAttribute("aria-current"),
+    ).toBeNull();
+  });
+
+  test("a chevron on what has sub-pages, Beta and New on recent features, and the Needs you count stays", () => {
+    const { view } = setup();
+    render(view());
+    const slot = (name: string, what: string) =>
+      screen.getByRole("button", { name }).querySelector(`[data-slot='${what}']`);
+    expect(slot("Vault", "nav-chevron")).not.toBeNull();
+    expect(slot("Settings", "nav-chevron")).not.toBeNull();
+    expect(slot("Costs", "nav-chevron")).toBeNull();
+    expect(slot("Teams", "nav-badge")?.textContent).toBe("Beta");
+    expect(slot("Conversations", "nav-badge")?.textContent).toBe("New");
+    expect(slot("Board", "nav-badge")).toBeNull();
+  });
+
+  test("the badges expire with the version: Beta and New are gone once the app reaches their version", () => {
+    const slot = (name: string) =>
+      screen.getByRole("button", { name }).querySelector("[data-slot='nav-badge']");
+    // Past New's version, still before Beta's.
+    render(setup(ALL, undefined, undefined, "0.38.2").view());
+    expect(slot("Conversations")).toBeNull();
+    expect(slot("Teams")?.textContent).toBe("Beta");
+    cleanup();
+    render(setup(ALL, undefined, undefined, "0.40.0").view());
+    expect(slot("Teams")).toBeNull();
+  });
+
+  test("the manual is an external link, with its icon, and it opens the manual of the app's language", async () => {
+    const { view, opened } = setup();
+    render(view());
+    const manual = screen.getByRole("button", { name: "Manual" });
+    expect(manual.querySelector("[data-slot='nav-external']")).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(manual);
+    });
+    expect(opened).toHaveLength(1);
+    expect(opened[0]).toMatch(/docs\/manual\/en\.md$/);
   });
 });

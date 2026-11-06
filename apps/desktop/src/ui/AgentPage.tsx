@@ -9,12 +9,14 @@ import { AgentMcp } from "./AgentMcp.tsx";
 import { AgentMemory } from "./AgentMemory.tsx";
 
 /** A project's agent (phase 12): its MCP servers, CLAUDE.md files, agents and skills. */
-export function AgentPage(props: {
-  store: AppStore;
-  hostId: string;
-  projectId: string;
-  projectName: string;
-}) {
+export function AgentPage(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    projectId: string;
+    projectName: string;
+  }>,
+) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
   const host = store.getState().hosts.find((h) => h.id === hostId);

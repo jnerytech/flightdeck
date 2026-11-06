@@ -116,7 +116,8 @@ describe("lado-a-lado: what a tile shows", () => {
       pending: ["r2"],
       items: [asked("r1", true), asked("r2")],
     };
-    expect(pendingOf(session)).toEqual({ requestId: "r2", toolName: "Write" });
+    // The input goes with it, for the tile's line of what it would do (#245, M5).
+    expect(pendingOf(session)).toEqual({ requestId: "r2", toolName: "Write", input: {} });
     expect(pendingOf({ ...session, pending: [] })).toBeNull();
     expect(pendingOf(base)).toBeNull();
   });

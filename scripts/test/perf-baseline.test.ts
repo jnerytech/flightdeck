@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import {
@@ -13,6 +12,7 @@ import {
   machineTag,
   runSteps,
 } from "../lib/perf-baseline.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 const machine: Machine = {
   tag: "Pi",
@@ -37,7 +37,7 @@ describe("perf-baseline: the machine a number is from", () => {
 
 describe("perf-baseline: question 1, the bundle", () => {
   function dist() {
-    const dir = mkdtempSync(join(tmpdir(), "fd-dist-"));
+    const dir = realTempDir("fd-dist-");
     mkdirSync(join(dir, "assets"));
     const big = "a".repeat(5000);
     writeFileSync(join(dir, "assets", "index-abc.js"), "x".repeat(100));
@@ -91,7 +91,7 @@ describe("perf-baseline: question 1, the bundle", () => {
 
 describe("perf-baseline: question 9, persisted events", () => {
   test("a store with the given synchronous writes the events and reports their rate and commit latency", () => {
-    const dir = mkdtempSync(join(tmpdir(), "fd-store-"));
+    const dir = realTempDir("fd-store-");
     const measures = eventStoreMeasures(dir, "FULL", 50);
     expect(measures.map((m) => [m.question, m.name, m.unit])).toEqual([
       [9, "events/s (synchronous=FULL)", "events/s"],

@@ -1,6 +1,7 @@
 /** The end-to-end journeys, the languages they run in and the window sizes they are checked at. */
 export const JOURNEYS: readonly string[] = [
   "aprovar-bash-com-a",
+  "responder-sem-clique",
   "sessao-e-mensagem",
   "card-diff",
   "revisao-comentar-e-enviar",
@@ -14,6 +15,11 @@ export const JOURNEYS: readonly string[] = [
   "mensagens",
   "clientes",
   "dependencias",
+  "rolagem-fim",
+  "primeira-vez",
+  "segundo-host",
+  "nova-sessao-host",
+  "finalizar-card",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
@@ -42,6 +48,14 @@ export function acoesActions(): string[] {
 export const VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
   { width: 1280, height: 800 },
   { width: 800, height: 600 },
+];
+
+/** The widths the page must never scroll sideways at (issue #103), with 12 tabs and long ids. */
+export const OVERFLOW_VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
+  // 760 is just above the smallest window the app allows (720).
+  { width: 760, height: 600 },
+  { width: 1024, height: 768 },
+  { width: 1919, height: 1080 },
 ];
 
 /** The name of the demo session that holds the high-risk request (the issue-e-risco journey). */

@@ -82,7 +82,7 @@ describe("abas: acessibilidade da barra de abas", () => {
     expect(await violations()).toEqual([]);
   });
 
-  test("the badges read at 4.5:1 or more in both themes: needs-you is the background's color on its own", async () => {
+  test("the badge glyphs read at 4.5:1 or more in both themes: needs-you is drawn in its status color", async () => {
     for (const selector of [":root", ".dark"]) {
       const t = tokens(selector);
       expect(
@@ -117,8 +117,7 @@ describe("abas: acessibilidade da barra de abas", () => {
       });
     });
     const badge = document.querySelector('[data-badge="needs-you"]');
-    expect(badge?.className).toContain("bg-status-needs-you");
-    expect(badge?.className).toContain("text-background");
+    expect(badge?.className).toContain("text-status-needs-you");
     expect(badge?.className).not.toContain("text-white");
   });
 });

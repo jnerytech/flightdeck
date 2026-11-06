@@ -73,6 +73,13 @@ function hub(store: Store, state: ReturnType<Store["getState"]>) {
 }
 
 const newStore = () => new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
+/** History-only projects start folded (issue #111): a search matching every title opens them all. */
+async function openAll() {
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText("Filtrar sessões"), { target: { value: "session" } });
+  });
+  await uiIdle();
+}
 const rowsDrawn = () => document.querySelectorAll("li[aria-label]").length;
 
 describe("hub-list: the sessions hub does its work once per change of its inputs", () => {
@@ -95,6 +102,7 @@ describe("hub-list: the sessions hub does its work once per change of its inputs
     const store = newStore();
     const { state } = bigState(store, 9090);
     render(hub(store, state));
+    await openAll();
     await settle(() => rowsDrawn() > 0);
     expect(rowsDrawn()).toBe(CAP);
     fireEvent.click(screen.getByRole("button", { name: /Mostrar mais/ }));
@@ -105,24 +113,29 @@ describe("hub-list: the sessions hub does its work once per change of its inputs
     const store = newStore();
     const { state } = bigState(store, 50);
     render(hub(store, state));
+    await openAll();
     await settle(() => rowsDrawn() > 0);
     expect(rowsDrawn()).toBe(50);
     expect(screen.queryByRole("button", { name: /Mostrar mais/ })).toBeNull();
   });
 
-  test("the render time at 9,090 rows is within 2x of the time at 690 rows", async () => {
+  test("the work at 9,090 rows is the work at 690 rows: the same rows drawn, the same commits, the rows read once", async () => {
+    // Milliseconds of a render are a bet on the machine (a loaded runner failed a 2x ratio twice);
+    // the cost is what gets drawn and how often, and those are counts.
     const mount = async (n: number) => {
       const store = newStore();
-      const { state } = bigState(store, n);
+      const { state, reads } = bigState(store, n);
       const probe = renderProbe();
       render(probe.wrap(hub(store, state)));
-      await uiIdle();
+      await openAll();
+      const work = { drawn: rowsDrawn(), commits: probe.stats.commits, reads: reads.rows };
       cleanup();
-      return probe.stats.ms;
+      return work;
     };
     await mount(690); // warm up: the first mount pays for loading the components
     const small = await mount(690);
     const big = await mount(9090);
-    expect(big).toBeLessThanOrEqual(small * 2);
+    expect(small.drawn).toBe(CAP);
+    expect(big).toEqual(small);
   });
 });

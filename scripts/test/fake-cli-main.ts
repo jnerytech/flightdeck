@@ -1,44 +1,61 @@
-// Body of every fake CLI (see fake-cli.ts): `bun fake-cli-main.ts <stateDir> ...args`. Records
-// the arguments and answers with the first rule whose `args` all appear in them (and whose
-// `call`, when set, is the number of this call).
-import { appendFileSync, readFileSync } from "node:fs";
+// Body of every fake CLI (see fake-cli.ts): `bun fake-cli-main.ts <stateDir> ...args`. Answers
+// through answerFake, the same as the fake's in-process `run`, then acts out the rule's holds.
+//
+// A fake never outlives its caller (issue #254: 83 orphans once held 11.6 GB). It records its pid
+// under <stateDir>/pids (the run's preload kills what is left, reapFakes), stops as soon as the
+// process that started it is gone, and never lives past FAKE_MAX_MS.
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { FakeRule } from "./fake-cli.ts";
+import { answerFake, fakeCaller } from "./fake-cli.ts";
+import { pidAlive } from "./temp-run.ts";
+
+/** The longest a fake lives, its holds included (FLIGHTDECK_FAKE_MAX_MS overrides it). */
+const FAKE_MAX_MS = Number(process.env.FLIGHTDECK_FAKE_MAX_MS) || 60_000;
+/** How often a waiting fake looks at its caller. */
+const WATCH_MS = 100;
 
 const [stateDir = "", ...args] = process.argv.slice(2);
-// What Bun refuses for a Windows .cmd shim: the call never happens, so nothing is recorded.
-const { rejectCmdChars } = JSON.parse(readFileSync(join(stateDir, "options.json"), "utf8")) as {
-  rejectCmdChars: boolean;
+// The shell shim passes its own parent (exec keeps the shim's pid, so ours is that parent too);
+// started some other way, or on Windows (an MSYS $PPID is no Windows pid, #392), the caller is our
+// parent as we found it.
+const startPpid = process.ppid;
+const caller = fakeCaller(process.env, process.platform, startPpid);
+const pids = join(stateDir, "pids");
+
+const record = (pid: number) => {
+  try {
+    mkdirSync(pids, { recursive: true });
+    writeFileSync(join(pids, String(pid)), "");
+  } catch {
+    // A fake that cannot record still answers; its deadline and watch still end it.
+  }
 };
-if (rejectCmdChars && args.some((a) => /[\r\n<>&|^"%]/.test(a))) {
-  process.stderr.write(
-    "fake: argumento com caractere especial do cmd.exe, recusado como o Bun faz\n",
-  );
-  process.exit(1);
-}
-appendFileSync(join(stateDir, "calls.jsonl"), `${JSON.stringify(args)}\n`);
-appendFileSync(join(stateDir, "cwds.jsonl"), `${JSON.stringify(process.cwd())}\n`);
-const call = readFileSync(join(stateDir, "calls.jsonl"), "utf8").trim().split(/\r?\n/).length;
-const rules = JSON.parse(readFileSync(join(stateDir, "rules.json"), "utf8")) as FakeRule[];
-const rule = rules.find(
-  (r) =>
-    (r.call === undefined || r.call === call) &&
-    r.args.every((a) => args.includes(a)) &&
-    (r.contains ?? []).every((text) => args.some((a) => a.includes(text))),
-);
-if (!rule) {
-  process.stderr.write(`fake: sem resposta para ${JSON.stringify(args)}\n`);
-  process.exit(1);
-}
-if (rule.stdout) process.stdout.write(rule.stdout);
-if (rule.stderr) process.stderr.write(rule.stderr);
-if (rule.holdPipesMs) {
-  const hold = `setTimeout(() => {}, ${Number(rule.holdPipesMs)})`;
-  Bun.spawn([process.execPath, "-e", hold], {
+/** Gone: re-parented (to init or a subreaper), or the caller's pid no longer exists. */
+const orphaned = () => process.ppid === 1 || process.ppid !== startPpid || !pidAlive(caller);
+
+record(process.pid);
+process.on("exit", () => rmSync(join(pids, String(process.pid)), { force: true }));
+setTimeout(() => process.exit(124), FAKE_MAX_MS).unref();
+setInterval(() => {
+  if (orphaned()) process.exit(1);
+}, WATCH_MS).unref();
+if (orphaned()) process.exit(1);
+
+const { code, stdout, stderr, rule } = answerFake(stateDir, args, process.cwd());
+if (stdout) process.stdout.write(stdout);
+if (stderr) process.stderr.write(stderr);
+if (rule?.holdPipesMs) {
+  // The holder outlives this process on purpose (a Windows shim's child keeps the pipes open), so it
+  // watches the caller, not us. Its first comment names it for reapFakes' command-line check.
+  const holdMs = Math.min(Number(rule.holdPipesMs), FAKE_MAX_MS);
+  const hold = `/* fake-cli-main hold */ const c = ${caller}; const alive = () => { try { process.kill(c, 0); return true; } catch (e) { return e.code === "EPERM"; } }; setInterval(() => { if (!alive()) process.exit(0); }, ${WATCH_MS}); setTimeout(() => process.exit(0), ${holdMs});`;
+  const holder = Bun.spawn([process.execPath, "-e", hold], {
     stdout: "inherit",
     stderr: "inherit",
     stdin: "ignore",
-  }).unref();
+  });
+  record(holder.pid);
+  holder.unref();
 }
-if (rule.delayMs) await Bun.sleep(rule.delayMs);
-process.exit(rule.code ?? 0);
+if (rule?.delayMs) await Bun.sleep(rule.delayMs);
+process.exit(code);

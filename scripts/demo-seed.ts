@@ -13,7 +13,7 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";
-import { type Ack, parseServerMessage } from "@flightdeck/protocol";
+import { type Ack, inSequence, parseServerMessage } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
 import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
@@ -102,6 +102,12 @@ export interface DemoIds {
   traceSession: string;
   /** A folder of the first host that simple mode's tasks may work in (phase 33). */
   notesFolder: string;
+  /** A long conversation with a code block and a summary: where it opens and what keeps it still (issue #112). */
+  scrollSession: string;
+  /** A session in a folder with a long path, whose first message holds a long unbroken id (issue #103). */
+  longSession: string;
+  /** A session with a very long title: its crumb is cut with an ellipsis (issue #133). */
+  longTitleSession: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -131,7 +137,7 @@ export interface DemoSeed {
 }
 
 function git(cwd: string, ...args: string[]): void {
-  execFileSync("git", args, { cwd, stdio: "ignore" });
+  execFileSync("git", args, { cwd, stdio: "ignore" }); // NOSONAR: git from the PATH of the developer running the script
 }
 
 function repo(path: string, files: Record<string, string>): string {
@@ -198,10 +204,10 @@ async function until<T>(
 ): Promise<T> {
   const deadline = Date.now() + 20_000;
   for (;;) {
-    const value = await check();
+    const value = await check(); // NOSONAR: sequential by design: each pass needs the answer of the one before
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`demo: tempo esgotado em ${what}`);
-    await Bun.sleep(50);
+    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
@@ -339,7 +345,10 @@ function writeCostsHistory(dir: string, cwd: string): void {
       );
       writeFileSync(
         join(dir, `${id}.jsonl`),
-        `${[userLine(`${id}-u`, `Tarefa ${n} em ${basename(project)}`, project, at(12)), ...turns].join("\n")}\n`,
+        [
+          userLine(`${id}-u`, `Tarefa ${n} em ${basename(project)}`, project, at(12)),
+          ...turns,
+        ].join("\n") + "\n",
       );
     }
   }
@@ -351,6 +360,8 @@ interface HostRun {
   client: Client;
   config: string;
   projects: string;
+  /** Where the host's Claude transcripts are indexed from. */
+  claudeProjects: string;
   /** The daemon's data folder: where it publishes its OTLP receiver (phase 23). */
   dataDir: string;
   stop(): Promise<void>;
@@ -387,7 +398,8 @@ async function host(work: string, name: string): Promise<HostRun> {
     join(base, "data", "templates", "demo-summary.md"),
     serializeTemplate({
       id: "demo-summary",
-      title: { en: "Write a summary", "pt-BR": "Escrever um resumo" },
+      // One name for both languages: the BDD scenario finds the card by it in the language of its run.
+      title: { en: "Write a summary", "pt-BR": "Write a summary" },
       description: {
         en: "Reads a folder of notes and writes a short summary.",
         "pt-BR": "Lê uma pasta de notas e escreve um resumo curto.",
@@ -432,6 +444,7 @@ async function host(work: string, name: string): Promise<HostRun> {
     client,
     config,
     projects,
+    claudeProjects: history,
     dataDir: join(base, "data"),
     stop: async () => {
       client.close();
@@ -460,12 +473,10 @@ async function sendTelemetry(
   };
   const token = (JSON.parse(readFileSync(host.config, "utf8")) as { telemetry: { token: string } })
     .telemetry.token;
-  const value = (v: string | number) =>
-    typeof v === "number"
-      ? Number.isInteger(v)
-        ? { intValue: String(v) }
-        : { doubleValue: v }
-      : { stringValue: v };
+  const value = (v: string | number) => {
+    if (typeof v !== "number") return { stringValue: v };
+    return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v };
+  };
   const body = {
     resourceLogs: [
       {
@@ -559,6 +570,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // Before any daemon: hooks, settings and the history never touch the real home.
   const home = join(work, "home");
   mkdirSync(home, { recursive: true });
+  // What the seed changes in the environment, to be put back by stop() (issue #301): unset stays unset.
+  const envBefore = new Map(["HOME", "USERPROFILE", "SHELL"].map((n) => [n, process.env[n]]));
   process.env.HOME = home;
   process.env.USERPROFILE = home;
   writeUserConfig(home);
@@ -704,16 +717,16 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // cards done (two planned, two unplanned; two as merged PRs); the period before it: two.
   await client.call("project.update", { projectId: project.id, defaultHours: 2 });
   const finished: string[] = [done.id];
-  for (const title of ["Ajustar o rodapé", "Revisar os textos", "Trocar o ícone"]) {
+  await inSequence(["Ajustar o rodapé", "Revisar os textos", "Trocar o ícone"], async (title) => {
     const extra = await card(title, "Entregue na demo.");
     await client.call("card.move", { cardId: extra.id, column: "done" });
     finished.push(extra.id);
-  }
-  for (const title of ["Corrigir o menu", "Limpar o cache"]) {
+  });
+  await inSequence(["Corrigir o menu", "Limpar o cache"], async (title) => {
     const old = await card(title, "Entregue antes.");
     await client.call("card.move", { cardId: old.id, column: "done" });
     finished.push(old.id);
-  }
+  });
   const marks = new Database(join(alfa.dataDir, "flightdeck.db"));
   const nowIso = new Date().toISOString();
   const longAgo = new Date(Date.now() - 40 * 86_400_000).toISOString();
@@ -786,7 +799,20 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     "Revisão do PR 128",
     `Revise o PR. [ratelimit:five_hour=0.62@${later(2)}] [ratelimit:seven_day=0.35@${later(100)}]`,
   );
-  await session(LONG_TITLE, "Planeje os passos.");
+  const longTitle = await session(LONG_TITLE, "Planeje os passos.");
+  // A worker's worktree path is long, and its messages quote ids that never break.
+  const deep = join(
+    web,
+    ".flightdeck",
+    "worktrees",
+    "md-server-executora-1-com-um-nome-muito-comprido",
+  );
+  mkdirSync(deep, { recursive: true });
+  const longSession = await client.call<{ sessionId: string }>("session.create", {
+    cwd: deep,
+    name: "md-server · executora 1",
+    prompt: `Espere a tarefa de pc-nery/01M6K3MD573NETWEABH2YXKCHG01M6K3MD573NETWEABH2YXKCHG01M6K3MD573NETWEABH2YXKCHG e não comece nada por conta própria. ${"x".repeat(240)}`,
+  });
   const ended = await session("Sessão antiga", "Liste os arquivos.");
   const statusOf = async (sessionId: string) => {
     const list = await client.call<{ sessions: Array<{ id: string; status: string }> }>(
@@ -798,6 +824,51 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await until(async () => (await statusOf(bash.sessionId)) === "awaiting_permission", "Bash");
   await until(async () => (await statusOf(ended.sessionId)) === "idle", "sessão antiga");
   await client.call("session.close", { sessionId: ended.sessionId });
+
+  // A long conversation (a code block in the first message, then twenty-four turns) whose summary
+  // the host can build: the scroll journey needs a conversation taller than the window.
+  const long = await session(
+    "Conversa longa",
+    "Mostre o código:\n```ts\nexport const total = (a: number, b: number) => a + b;\n```",
+  );
+  for (let turn = 1; turn <= 24; turn++) {
+    await until(async () => (await statusOf(long.sessionId)) === "idle", `turno ${turn}`); // NOSONAR: the turns of one conversation, each after the last
+    await /* NOSONAR: the turns of one conversation, each after the last */ client.call(
+      "session.send",
+      {
+        sessionId: long.sessionId,
+        text: `Passo ${turn}: explique o ponto ${turn} da revisão com detalhes suficientes para passar de uma linha na tela.`,
+      },
+    );
+  }
+  await until(async () => (await statusOf(long.sessionId)) === "idle", "última resposta");
+  const longClaude = (await until(async () => {
+    const list = await client.call<{
+      sessions: Array<{ id: string; claudeSessionId: string | null }>;
+    }>("session.list", {});
+    return list.sessions.find((s) => s.id === long.sessionId)?.claudeSessionId;
+  }, "id da conversa longa")) as string;
+  const longTs = new Date().toISOString();
+  writeFileSync(
+    join(alfa.claudeProjects, "-demo", `${longClaude}.jsonl`),
+    `${[
+      userLine("long-u", "Revise o carrinho e explique cada ponto", web, longTs),
+      assistantLine(
+        "long-a",
+        "Revisei o carrinho: a soma do total estava errada e foi corrigida.",
+        web,
+        longTs,
+      ),
+    ].join("\n")}\n`,
+  );
+  await until(
+    async () =>
+      client.call("session.summary", { claudeSessionId: longClaude }).then(
+        () => true,
+        () => false,
+      ),
+    "resumo da conversa longa",
+  );
 
   // Two turns that change files: each waits for a permission (the snapshot before it is taken by
   // then), the seed edits the files as the agent would, and approving ends the turn.
@@ -811,10 +882,10 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // Timing for the Tempo tab (the idle session) and for Custos (the session with usage).
   const telemetrySession = (await until(() => claudeOf(idle.sessionId), "id da revisão")) as string;
   const when = Date.now() - 10 * 60_000;
-  for (const id of [telemetrySession, "aaaaaaaa-0000-4000-8000-000000000001"]) {
+  await inSequence([telemetrySession, "aaaaaaaa-0000-4000-8000-000000000001"], async (id) => {
     await sendTelemetry(alfa, id, "demo-prompt-1", when, PROMPT_ONE);
     await sendTelemetry(alfa, id, "demo-prompt-2", when + 60_000, PROMPT_TWO);
-  }
+  });
   // Custos groups the timing by the project of the usage: a reader that comes right after the seed
   // (the tests, the first print) must find the transcripts already read.
   await waitUsageLoaded(async () => {
@@ -878,15 +949,18 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       req.on("error", () => done());
       req.end(JSON.stringify({ session_id: sessionId, hook_event_name: event, cwd: web, ...body }));
     });
-  for (const [id, prompt] of [
-    ["ext-rodando", "suba o servidor de desenvolvimento"],
-    ["ext-edit", "corrija o import quebrado"],
-    ["ext-mcp", "abra uma issue para o bug do login"],
-    ["ext-rm", "limpe os artefatos de build"],
-  ] as const) {
-    await hook(id, "SessionStart", { source: "startup" });
-    await hook(id, "UserPromptSubmit", { prompt });
-  }
+  await inSequence(
+    [
+      ["ext-rodando", "suba o servidor de desenvolvimento"],
+      ["ext-edit", "corrija o import quebrado"],
+      ["ext-mcp", "abra uma issue para o bug do login"],
+      ["ext-rm", "limpe os artefatos de build"],
+    ] as const,
+    async ([id, prompt]) => {
+      await hook(id, "SessionStart", { source: "startup" });
+      await hook(id, "UserPromptSubmit", { prompt });
+    },
+  );
   // Names, so the list tells the terminal sessions apart.
   await client.call("session.meta.set", {
     claudeSessionId: "ext-rodando",
@@ -982,6 +1056,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       telemetrySession,
       traceSession: TRACE_SESSION,
       notesFolder: join(alfa.projects, "notes"),
+      scrollSession: long.sessionId,
+      longSession: longSession.sessionId,
+      longTitleSession: longTitle.sessionId,
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.
@@ -991,6 +1068,10 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       slow.stop(true);
       await alfa.stop();
       await beta.stop();
+      for (const [name, value] of envBefore) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
     },
   };
 }

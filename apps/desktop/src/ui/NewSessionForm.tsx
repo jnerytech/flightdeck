@@ -1,4 +1,4 @@
-import type { CommandPayload, PermissionMode } from "@flightdeck/protocol";
+import type { CommandPayload, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { isInside, trimTrailingSeparators } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
+import { ModelOptions } from "./ModelOptions.tsx";
 
 const MODES: PermissionMode[] = [
   "default",
@@ -23,6 +24,11 @@ const MODES: PermissionMode[] = [
 
 const MODELS = ["opus", "sonnet", "haiku"];
 
+/** Phase 39: what an OpenCode session can start in (Flightdeck's own two agents, and bypass). */
+const OPENCODE_MODES: PermissionMode[] = ["default", "plan", "bypassPermissions"];
+const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
+type Runtime = "claude" | "opencode";
+
 export function joinPath(root: string, sub: string): string {
   const sep = root.includes("\\") ? "\\" : "/";
   const clean = sub.trim().replace(/^[\\/]+/, "");
@@ -30,18 +36,25 @@ export function joinPath(root: string, sub: string): string {
 }
 
 /** New session on a host: folder inside one of its allowedRoots, name, permission mode, prompt. */
-export function NewSessionForm(props: {
-  host: HostView;
-  /** Lets the folder be browsed on the host; without it the folder is typed. */
-  store?: AppStore;
-  onCreate(payload: CommandPayload<"session.create">): void | Promise<unknown>;
-  /** The first prompt, filled in (a snippet, phase 18). */
-  prompt?: string;
-  /** More fields above Criar sessão: the persona picker (phase 20). */
-  extra?: React.ReactNode;
-  /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
-  onFolder?(cwd: string): void;
-}) {
+export function NewSessionForm(
+  props: Readonly<{
+    host: HostView;
+    /** Lets the folder be browsed on the host; without it the folder is typed. */
+    store?: AppStore;
+    onCreate(payload: CommandPayload<"session.create">): void | Promise<unknown>;
+    /** The first prompt, filled in (a snippet, phase 18). */
+    prompt?: string;
+    /** More fields above Criar sessão: the persona picker (phase 20). */
+    extra?: React.ReactNode;
+    /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
+    onFolder?(cwd: string): void;
+    /** The hosts a session can start on (online); the form offers a choice when there are two or more. */
+    hosts?: Array<{ id: string; name: string }>;
+    onHost?(hostId: string): void;
+    /** Opens the host's page, where its folders are added. */
+    onAddFolder?(): void;
+  }>,
+) {
   const t = useT();
   const roots = props.host.info?.allowedRoots ?? [];
   // The folder picked, else the host's first: its folders may arrive after the form opened.
@@ -74,13 +87,40 @@ export function NewSessionForm(props: {
   const [name, setName] = useState("");
   const [mode, setMode] = useState<PermissionMode>("default");
   const [model, setModel] = useState("");
+  /** Phase 39: the agent, offered when the host has OpenCode on; its models come from the host. */
+  const [runtime, setRuntime] = useState<Runtime>("claude");
+  const opencode = runtime === "opencode";
+  const hasOpenCode =
+    props.host.hostInfo?.runtimes?.some((r) => r.kind === "opencode" && r.available) === true;
+  const [openCodeModels, setOpenCodeModels] = useState<string[]>([]);
+  const [effort, setEffort] = useState<EffortLevel | "">("");
+  const { store } = props;
+  const hostId = props.host.id;
+  useEffect(() => {
+    if (!opencode || !store) return;
+    let live = true;
+    void store.hostRequest(hostId, "runtime.models", { runtime: "opencode" }).then((result) => {
+      if (live) setOpenCodeModels(result.ok ? result.data.models.map((m) => m.id) : []);
+    });
+    return () => {
+      live = false;
+    };
+  }, [opencode, store, hostId]);
+  const chooseRuntime = (next: Runtime) => {
+    setRuntime(next);
+    setModel("");
+    setMode("default");
+  };
   const [prompt, setPrompt] = useState(props.prompt ?? "");
   /** The session is being created: the button is busy and a second press does nothing. */
   const [creating, setCreating] = useState(false);
   /** Bypass asks again each time the session is created. */
   const [asking, setAsking] = useState(false);
   const allowBypass = props.host.hostInfo?.allowBypassPermissions === true;
-  const modes = MODES.filter((m) => allowBypass || m !== "bypassPermissions");
+  const modes = (opencode ? OPENCODE_MODES : MODES).filter(
+    (m) => allowBypass || m !== "bypassPermissions",
+  );
+  const models = opencode ? openCodeModels : MODELS;
   const submit = (confirmed = false) => {
     if (!root || creating) return;
     if (mode === "bypassPermissions" && !confirmed) {
@@ -94,6 +134,7 @@ export function NewSessionForm(props: {
       permissionMode: mode,
       ...(model ? { model } : {}),
       ...(name.trim() ? { name: name.trim() } : {}),
+      ...(opencode ? { runtime: "opencode" as const, ...(effort ? { effort } : {}) } : {}),
     });
     if (typeof (done as PromiseLike<unknown> | undefined)?.then === "function") {
       setCreating(true);
@@ -104,6 +145,37 @@ export function NewSessionForm(props: {
   return (
     <Form onSubmit={() => submit()} className="mx-auto p-6">
       <h2 className="font-semibold text-xl">{t("newSession.title", { host: props.host.name })}</h2>
+      {props.hosts && props.hosts.length > 1 && props.onHost && (
+        <Field label={t("newSession.host")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={props.host.id}
+              onChange={(e) => props.onHost?.(e.target.value)}
+            >
+              {props.hosts?.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      )}
+      {hasOpenCode && (
+        <Field label={t("newSession.agent")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={runtime}
+              onChange={(e) => chooseRuntime(e.target.value as Runtime)}
+            >
+              <option value="claude">{t("newSession.agentClaude")}</option>
+              <option value="opencode">{t("newSession.agentOpenCode")}</option>
+            </NativeSelect>
+          )}
+        </Field>
+      )}
       <Field label={t("newSession.folder")}>
         {(control) => (
           <NativeSelect {...control} value={root} onChange={(e) => setRoot(e.target.value)}>
@@ -182,14 +254,28 @@ export function NewSessionForm(props: {
         {(control) => (
           <NativeSelect {...control} value={model} onChange={(e) => setModel(e.target.value)}>
             <option value="">{t("session.modelDefault")}</option>
-            {MODELS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
+            <ModelOptions models={models} />
           </NativeSelect>
         )}
       </Field>
+      {opencode && (
+        <Field label={t("newSession.effort")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={effort}
+              onChange={(e) => setEffort(e.target.value as EffortLevel | "")}
+            >
+              <option value="">{t("newSession.effortDefault")}</option>
+              {EFFORTS.map((level) => (
+                <option key={level} value={level}>
+                  {level}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      )}
       <Field label={t("newSession.prompt")}>
         {(control) => (
           <Textarea
@@ -201,7 +287,7 @@ export function NewSessionForm(props: {
           />
         )}
       </Field>
-      {props.extra}
+      {!opencode && props.extra}
       {asking && (
         <ConfirmDialog
           destructive
@@ -215,7 +301,16 @@ export function NewSessionForm(props: {
         submit={t("newSession.create")}
         busy={creating}
         disabled={!root}
-        disabledReason={t("newSession.needFolder")}
+        disabledReason={
+          <span>
+            {t("newSession.needFolder")}{" "}
+            {props.onAddFolder && (
+              <Button type="button" variant="link" onClick={props.onAddFolder}>
+                {t("newSession.addFolder", { host: props.host.name })}
+              </Button>
+            )}
+          </span>
+        }
       />
     </Form>
   );

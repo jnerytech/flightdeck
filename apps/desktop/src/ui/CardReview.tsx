@@ -23,13 +23,15 @@ type Mode = "merge" | "squash";
  * base" and, for a card without a PR, "Merge e arquivar". A refusal (a conflict, a busy card)
  * stays on screen with the host's words, because it lists the files.
  */
-export function CardReview(props: {
-  store: AppStore;
-  hostId: string;
-  card: Card;
-  changes: ChangesResult;
-  refresh(): Promise<void>;
-}) {
+export function CardReview(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    changes: ChangesResult;
+    refresh(): Promise<void>;
+  }>,
+) {
   const t = useT();
   const { store, hostId, card, changes } = props;
   const [refusal, setRefusal] = useState<string | null>(null);

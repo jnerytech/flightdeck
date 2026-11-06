@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
+import { InstantClock } from "./in-flight-clock.tsx";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -51,7 +52,11 @@ describe("botao-clique: the shared button answers a click", () => {
   });
 
   test("pending: busy at once, disabled, with a spinner, and it keeps its label", async () => {
-    render(<Button pending>Salvar</Button>);
+    render(
+      <InstantClock>
+        <Button pending>Salvar</Button>
+      </InstantClock>,
+    );
     const button = screen.queryByRole("button", { name: /Salvar/ }) as HTMLButtonElement | null;
     expect(button).not.toBeNull();
     expect(button?.getAttribute("aria-busy")).toBe("true");

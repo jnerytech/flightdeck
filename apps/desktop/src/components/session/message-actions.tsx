@@ -8,7 +8,7 @@ import type { T } from "../../i18n/index.ts";
 const TICK_MS = 30_000;
 
 /** "há 3 min", kept current while the message is on screen. */
-function Age(props: { at: string; t: T }) {
+function Age(props: Readonly<{ at: string; t: T }>) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), TICK_MS);
@@ -24,14 +24,16 @@ function Age(props: { at: string; t: T }) {
  * whole conversation so far), Pin, and how long ago it was written. Hidden until the message is
  * hovered or something in the row has focus, but always in the keyboard's reach.
  */
-export function MessageActions(props: {
-  text: string;
-  at: string | undefined;
-  t: T;
-  copyText: ((text: string) => Promise<boolean>) | undefined;
-  fork: (() => void) | undefined;
-  pin: { pinned: boolean; toggle(): void } | undefined;
-}) {
+export function MessageActions(
+  props: Readonly<{
+    text: string;
+    at: string | undefined;
+    t: T;
+    copyText: ((text: string) => Promise<boolean>) | undefined;
+    fork: (() => void) | undefined;
+    pin: { pinned: boolean; toggle(): void } | undefined;
+  }>,
+) {
   const { t } = props;
   const [copied, setCopied] = useState(false);
   return (

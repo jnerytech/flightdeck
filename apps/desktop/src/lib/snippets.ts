@@ -46,11 +46,12 @@ function words(command: string): string[] {
 
 /** An env name for a secret: the assignment's own name, a flag's, or SECRET (made unique). */
 function envNameOf(word: string, taken: Set<string>): string {
-  const assigned = word.match(/^([A-Za-z_][A-Za-z0-9_]*)=/)?.[1];
-  const flag = word.match(/^--?([A-Za-z][A-Za-z0-9-]*)=/)?.[1];
+  const assigned = /^([A-Za-z_][A-Za-z0-9_]*)=/.exec(word)?.[1];
+  const flag = /^--?([A-Za-z][A-Za-z0-9-]*)=/.exec(word)?.[1];
   const base = (assigned ?? flag?.replaceAll("-", "_") ?? "SECRET").toUpperCase();
   let name = base;
-  for (let n = 2; taken.has(name); n++) name = `${base}_${n}`;
+  let n = 2;
+  while (taken.has(name)) name = `${base}_${n++}`;
   taken.add(name);
   return name;
 }

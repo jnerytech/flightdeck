@@ -45,7 +45,13 @@ export interface SlotEnv {
   now(): number;
   sleep(ms: number): Promise<void>;
   log(line: string): void;
-  spawn(command: string[], nice: boolean): SlotChild;
+  /**
+   * Starts the command. `asHolder` marks the child as running under this process's lock, so a slot
+   * call it makes itself runs at once (see `holder`).
+   */
+  spawn(command: string[], nice: boolean, asHolder?: boolean): SlotChild;
+  /** The pid named by `FLIGHTDECK_SLOT_HOLDER` in this process's environment, if any. */
+  holder?: number;
   /** Asks a process to stop (SIGTERM). */
   terminate(pid: number): void;
   /** The user's processes; absent where the platform cannot list them (no renicing then). */
@@ -54,12 +60,51 @@ export interface SlotEnv {
   renice?(pid: number, nice: number): void;
   /** Calls the handler with the exit code of SIGINT or SIGTERM; returns the way to stop listening. */
   onSignal(handler: (code: number) => void): () => void;
+  /** Reads the process table (/proc on Linux); absent elsewhere, where ancestry and orphans are not checked. */
+  proc?: ProcReader;
+  /** Stops a whole process group (SIGTERM to -pgid), for `--reap`. */
+  terminateGroup?(pgid: number): void;
+  /**
+   * FLIGHTDECK_SLOT_DETACHED=1: the run was detached on purpose (nohup, setsid, a launcher that
+   * exits at once), so a gone parent does not make it give up its place (#236).
+   */
+  detached?: boolean;
+}
+
+export interface ProcReader {
+  /** The parent of a process, or null when it is gone. */
+  ppid(pid: number): number | null;
+  /** The process group of a process, or null when it is gone. */
+  pgid(pid: number): number | null;
+  /** The working folder of a process, or null when it cannot be read. */
+  cwd(pid: number): string | null;
+  /** The arguments of a process, program first; empty when they cannot be read. */
+  cmdline(pid: number): string[];
+  /** Every live process of a process group. */
+  group(pgid: number): number[];
+}
+
+/** A slot process: bun or node running scripts/slot.ts, not a program that only names the file. */
+function isSlotProcess(argv: string[]): boolean {
+  const program = (argv[0] ?? "")
+    .split(/[\\/]/)
+    .pop()
+    ?.replace(/\.exe$/, "");
+  if (program !== "bun" && program !== "node") return false;
+  return argv.slice(1, 3).some((arg) => /(?:^|[\\/])scripts[\\/]slot\.ts$/.test(arg));
+}
+
+/** Text from a lock or waiter file, or from /proc, kept to one plain line: control characters become spaces. */
+function oneLine(text: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
+  return text.replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, " ");
 }
 
 export type SlotArgs =
   | { kind: "status"; maxAgeMs: number }
   | { kind: "run"; nice: boolean; priority?: true; maxAgeMs: number; command: string[] }
   | { kind: "cancel" }
+  | { kind: "reap" }
   | { kind: "usage" };
 
 export type Attempt = { acquired: boolean; holder: SlotHolder | null };
@@ -72,28 +117,68 @@ export const NICE_OTHERS = 15;
 /** A holder older than this is reported as suspicious (never taken over). */
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 export const USAGE =
-  "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel";
+  "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel | bun run slot -- --reap";
+
+interface SlotFlags {
+  nice: boolean;
+  priority: boolean;
+  asStatus: boolean;
+  asCancel: boolean;
+  asReap: boolean;
+  maxAgeMs: number;
+  rest: string[];
+}
+
+/** The leading `--flags` of the command line and what follows them; null when `--max-age` is bad. */
+function readFlags(argv: string[]): SlotFlags | null {
+  const flags: SlotFlags = {
+    nice: false,
+    priority: false,
+    asStatus: false,
+    asCancel: false,
+    asReap: false,
+    maxAgeMs: DEFAULT_MAX_AGE_MS,
+    rest: argv[0] === "--" ? argv.slice(1) : argv,
+  };
+  for (;;) {
+    const flag = flags.rest[0];
+    if (flag === "--nice") flags.nice = true;
+    else if (flag === "--priority") flags.priority = true;
+    else if (flag === "--status") flags.asStatus = true;
+    else if (flag === "--cancel") flags.asCancel = true;
+    else if (flag === "--reap") flags.asReap = true;
+    else if (flag === "--max-age") {
+      const minutes = Number(flags.rest[1]);
+      if (!flags.rest[1] || Number.isNaN(minutes) || minutes <= 0) return null;
+      flags.maxAgeMs = minutes * 60_000;
+      flags.rest = flags.rest.slice(1);
+    } else break;
+    flags.rest = flags.rest.slice(1);
+  }
+  return flags;
+}
+
+/**
+ * The parent and the process group from a /proc/<pid>/stat line; null when it does not read. The
+ * command name sits in parentheses and may hold spaces or parentheses itself, so the fields start
+ * after the last ")".
+ */
+export function parseStat(text: string): { ppid: number; pgid: number } | null {
+  const close = text.lastIndexOf(")");
+  if (close < 0) return null;
+  const [, ppid = "", pgid = ""] = text.slice(close + 2).split(" ");
+  if (!/^\d+$/.test(ppid) || !/^\d+$/.test(pgid)) return null;
+  return { ppid: Number(ppid), pgid: Number(pgid) };
+}
 
 export function parseArgs(argv: string[]): SlotArgs {
-  let rest = argv[0] === "--" ? argv.slice(1) : argv;
-  let nice = false;
-  let priority = false;
-  let asStatus = false;
-  let asCancel = false;
-  let maxAgeMs = DEFAULT_MAX_AGE_MS;
-  for (;;) {
-    const flag = rest[0];
-    if (flag === "--nice") nice = true;
-    else if (flag === "--priority") priority = true;
-    else if (flag === "--status") asStatus = true;
-    else if (flag === "--cancel") asCancel = true;
-    else if (flag === "--max-age") {
-      const minutes = Number(rest[1]);
-      if (!rest[1] || !(minutes > 0)) return { kind: "usage" };
-      maxAgeMs = minutes * 60_000;
-      rest = rest.slice(1);
-    } else break;
-    rest = rest.slice(1);
+  const flags = readFlags(argv);
+  if (!flags) return { kind: "usage" };
+  const { nice, priority, asStatus, asCancel, asReap, maxAgeMs, rest } = flags;
+  if (asReap) {
+    return rest.length === 0 && !asStatus && !asCancel && !nice
+      ? { kind: "reap" }
+      : { kind: "usage" };
   }
   if (asCancel)
     return rest.length === 0 && !asStatus && !nice ? { kind: "cancel" } : { kind: "usage" };
@@ -129,7 +214,9 @@ export function describeHolder(holder: SlotHolder, now: number): string {
   let held = `${seconds}s`;
   if (minutes >= 60) held = `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
   else if (minutes > 0) held = `${minutes}m ${seconds % 60}s`;
-  return `${holder.label}: ${holder.command} (pid ${holder.pid}, ${held})`;
+  // A holder or waiter of hundreds of test files stays one line (#236).
+  const command = holder.command.length > 80 ? `${holder.command.slice(0, 80)}…` : holder.command;
+  return `${oneLine(holder.label)}: ${oneLine(command)} (pid ${holder.pid}, ${held})`;
 }
 
 /**
@@ -160,6 +247,27 @@ function waiterPath(env: SlotEnv, pid: number): string {
 }
 
 /**
+ * The live waiters, first come first: by the time they queued, then by pid (#372). Dead or
+ * unreadable waiter files count for nothing, and a pid shows once (a waiter file being written
+ * has a staging copy under the same prefix).
+ */
+export function waiters(env: SlotEnv): SlotHolder[] {
+  const byPid = new Map<number, SlotHolder>();
+  for (const path of env.fs.list(`${env.path}.wait.`)) {
+    const waiter = parseHolder(env.fs.read(path));
+    if (waiter && env.alive(waiter.pid)) byPid.set(waiter.pid, waiter);
+  }
+  return [...byPid.values()].sort((a, b) => a.startedAt - b.startedAt || a.pid - b.pid);
+}
+
+/** The live waiters that queued before `me`; the slot is only tried when there are none. */
+function ahead(env: SlotEnv, me: { pid: number; startedAt: number }): SlotHolder[] {
+  return waiters(env).filter(
+    (w) => w.startedAt < me.startedAt || (w.startedAt === me.startedAt && w.pid < me.pid),
+  );
+}
+
+/**
  * Waits for the slot while a waiter file says who is waiting (so `--cancel` can find it); false
  * when `stopped` ended the wait.
  */
@@ -170,6 +278,7 @@ export async function acquire(
   maxAgeMs = DEFAULT_MAX_AGE_MS,
 ): Promise<boolean> {
   const waiting = waiterPath(env, env.pid);
+  const queuedAt = env.now();
   env.fs.remove(waiting);
   env.fs.create(
     waiting,
@@ -177,25 +286,42 @@ export async function acquire(
       pid: env.pid,
       label: env.label,
       command,
-      startedAt: env.now(),
+      startedAt: queuedAt,
     } satisfies SlotHolder),
   );
   try {
-    return await waitForSlot(env, command, stopped, maxAgeMs);
+    return await waitForSlot(env, command, stopped, maxAgeMs, queuedAt);
   } finally {
     env.fs.remove(waiting);
   }
 }
 
-/** Waits for the slot, naming each new holder once. */
+/**
+ * Waits for the slot, naming each new holder once. Only the first live waiter tries the lock, so
+ * the slot goes in queue order, not to whichever poll lands first after a release (#372).
+ */
 async function waitForSlot(
   env: SlotEnv,
   command: string,
   stopped: () => boolean,
   maxAgeMs: number,
+  queuedAt: number,
 ): Promise<boolean> {
   let named = "";
+  let queue = "";
   while (!stopped()) {
+    const before = ahead(env, { pid: env.pid, startedAt: queuedAt });
+    const [first] = before;
+    if (first) {
+      if (`${before.length}@${first.pid}` !== queue) {
+        queue = `${before.length}@${first.pid}`;
+        env.log(
+          `slot queue: ${before.length} waiting before you (first: ${describeHolder(first, env.now())}); waiting`,
+        );
+      }
+      await env.sleep(POLL_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
+      continue;
+    }
     const attempt = tryAcquire(env, command);
     if (attempt.acquired) return true;
     const { holder } = attempt;
@@ -208,7 +334,7 @@ async function waitForSlot(
         );
       }
     }
-    await env.sleep(POLL_MS);
+    await env.sleep(POLL_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
   return false;
 }
@@ -218,7 +344,19 @@ export function release(env: SlotEnv): void {
   if (parseHolder(env.fs.read(env.path))?.pid === env.pid) env.fs.remove(env.path);
 }
 
+/** Who holds the slot, then each live waiter in queue order with how long it has waited. */
 export function status(env: SlotEnv, maxAgeMs = DEFAULT_MAX_AGE_MS): string {
+  const lines = [holderStatus(env, maxAgeMs)];
+  waiters(env).forEach((waiter, index) => {
+    // Where the process table can be read: the waiter's folder, and whether its shell is gone (#236).
+    const where = env.proc ? ` in ${oneLine(env.proc.cwd(waiter.pid) ?? "?")}` : "";
+    const orphan = env.proc?.ppid(waiter.pid) === 1 ? " ORPHAN" : "";
+    lines.push(`waiting ${index + 1}: ${describeHolder(waiter, env.now())}${where}${orphan}`);
+  });
+  return lines.join("\n");
+}
+
+function holderStatus(env: SlotEnv, maxAgeMs: number): string {
   const text = env.fs.read(env.path);
   if (text === null) return "free";
   const holder = parseHolder(text);
@@ -252,6 +390,85 @@ export function cancel(env: SlotEnv): number {
   return 0;
 }
 
+/**
+ * Stops the waiters whose shell is gone (their parent is pid 1), by process group, and forgets
+ * them; waiter files of dead processes are cleaned up. The holder is never touched (#236).
+ */
+export function reap(env: SlotEnv): number {
+  let reaped = 0;
+  // Two orphan waiters of one group are stopped by one signal to it.
+  const stopped = new Set<number>();
+  for (const path of env.fs.list(`${env.path}.wait.`)) {
+    const waiter = parseHolder(env.fs.read(path));
+    if (!waiter || !env.alive(waiter.pid)) {
+      env.fs.remove(path);
+      continue;
+    }
+    const group = env.proc ? reapableGroup(env, env.proc, path, waiter.pid) : null;
+    if (group === null) continue;
+    if (!stopped.has(group)) {
+      stopped.add(group);
+      if (env.terminateGroup) env.terminateGroup(group);
+      else env.terminate(waiter.pid);
+    }
+    env.fs.remove(path);
+    env.log(`reaped ${describeHolder(waiter, env.now())}`);
+    reaped += 1;
+  }
+  if (reaped === 0) env.log("nothing to reap");
+  return 0;
+}
+
+/**
+ * The process group to stop for a waiter file, or null when it names no slot waiter that may be
+ * stopped: the file's name carries its pid, the pid is above 1, its group, read once right before
+ * the kill, is above 1 and not the reaper's own, and every member of that group is an orphan slot
+ * process (parent pid 1, bun or node running scripts/slot.ts) other than the holder. So a group
+ * shared with the holder, a shell or a live run is never stopped (#388 review).
+ */
+function reapableGroup(env: SlotEnv, proc: ProcReader, path: string, pid: number): number | null {
+  if (!Number.isInteger(pid) || pid <= 1 || path !== waiterPath(env, pid)) return null;
+  const group = proc.pgid(pid);
+  if (group === null || group <= 1 || group === proc.pgid(env.pid)) return null;
+  const holder = parseHolder(env.fs.read(env.path))?.pid;
+  const members = proc.group(group);
+  if (!members.includes(pid)) return null;
+  const orphanWaiter = (member: number) =>
+    member !== holder && proc.ppid(member) === 1 && isSlotProcess(proc.cmdline(member));
+  return members.every(orphanWaiter) ? group : null;
+}
+
+/**
+ * Whether a live process that holds the slot is an ancestor of this one: a nested call from a
+ * holder whose children lost FLIGHTDECK_SLOT_HOLDER, or an older slot.ts that never set it (#236).
+ * At most 64 steps, so a parent table that loops ends.
+ */
+function underAncestor(env: SlotEnv): boolean {
+  const holder = parseHolder(env.fs.read(env.path));
+  if (!holder || !env.alive(holder.pid) || !env.proc) return false;
+  let pid = env.pid;
+  for (let step = 0; step < 64; step++) {
+    const parent = env.proc.ppid(pid);
+    if (parent === null || parent <= 1) return false;
+    if (parent === holder.pid) return true;
+    pid = parent;
+  }
+  return false;
+}
+
+const ORPHANED =
+  "slot: the shell that started this run is gone; giving up so the queue moves (rerun it if you still need it)";
+
+/**
+ * Whether this process was started by the process that holds the slot now: the variable names a
+ * live pid, and the lock names the same one (a name left over from an old run is not enough).
+ */
+function underHolder(env: SlotEnv): boolean {
+  const { holder } = env;
+  if (holder === undefined || !env.alive(holder)) return false;
+  return parseHolder(env.fs.read(env.path))?.pid === holder;
+}
+
 /** Runs the command under the slot and returns its exit code (a signal's code when one stopped it). */
 export async function run(env: SlotEnv, argv: string[]): Promise<number> {
   const args = parseArgs(argv);
@@ -260,8 +477,10 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     return 2;
   }
   if (args.kind === "cancel") return cancel(env);
+  if (args.kind === "reap") return reap(env);
   if (args.kind === "status") {
-    env.log(status(env, args.maxAgeMs));
+    // One log call per line: the real log keeps each call to one line (#372).
+    for (const line of status(env, args.maxAgeMs).split("\n")) env.log(line);
     return 0;
   }
   const state: { signal: number | null; child: SlotChild | null } = { signal: null, child: null };
@@ -270,11 +489,30 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     state.child?.kill();
   });
   try {
-    if (!(await acquire(env, args.command.join(" "), () => state.signal !== null, args.maxAgeMs))) {
+    // A command the slot started that asks for the slot again (the test runner does above 60
+    // files) would wait for the lock its own parent holds, forever: it runs at once instead.
+    if (underHolder(env) || underAncestor(env)) {
+      state.child = env.spawn(args.command, args.nice, false);
+      const code = await state.child.wait();
+      return state.signal ?? code;
+    }
+    // A waiter whose launching shell is gone would hold its place for nobody: it gives up (#236).
+    const parent = env.proc?.ppid(env.pid) ?? null;
+    const orphaned = () =>
+      !env.detached &&
+      parent !== null &&
+      (parent === 1 || !env.alive(parent) || env.proc?.ppid(env.pid) !== parent);
+    if (orphaned()) {
+      env.log(ORPHANED);
+      return 1;
+    }
+    const stopped = () => state.signal !== null || orphaned();
+    if (!(await acquire(env, args.command.join(" "), stopped, args.maxAgeMs))) {
+      if (state.signal === null) env.log(ORPHANED);
       return state.signal ?? 1;
     }
     try {
-      state.child = env.spawn(args.command, args.nice);
+      state.child = env.spawn(args.command, args.nice, true);
       const finished = { done: false };
       const lowering = args.priority ? lowerWhile(env, finished) : Promise.resolve();
       const code = await state.child.wait();
@@ -335,10 +573,10 @@ function isBunTest(command: string): boolean {
 async function lowerWhile(env: SlotEnv, finished: { done: boolean }): Promise<void> {
   while (!finished.done) {
     try {
-      await lowerOthers(env);
+      await lowerOthers(env); // NOSONAR: sequential by design: each pass needs the answer of the one before
     } catch {
       // Listing or renicing is best effort: the run itself is not affected.
     }
-    await env.sleep(RENICE_MS);
+    await env.sleep(RENICE_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }

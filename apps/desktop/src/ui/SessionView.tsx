@@ -1,6 +1,7 @@
 import {
+  type EffortLevel,
+  inSequence,
   type PermissionMode,
-  type PermissionUpdate,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
   type SessionImage,
@@ -12,17 +13,20 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
-import { MODELS } from "@/components/personas/model-select";
 import { ActivityLine } from "@/components/session/activity-line";
 import { MessageActions } from "@/components/session/message-actions";
+import { ModeChip } from "@/components/session/mode-chip";
+import { ModelChip } from "@/components/session/model-chip";
 import {
   Composer,
   ComposerDock,
   Message,
+  RecapSlot,
   SessionHeader,
   SessionPane,
   Timeline,
 } from "@/components/session/parts";
+import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { SessionStatusLine } from "@/components/session/status-line";
 import { WorkingRow } from "@/components/session/working-row";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
@@ -30,23 +34,46 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
+import type { Answer } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
+import { modeRows, nextMode } from "../lib/mode-menu.ts";
+import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
+import { ModelOptions } from "./ModelOptions.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
-/** The permission modes a live session can switch between. */
-const MODES = ["plan", "default", "acceptEdits"] as const;
-const ALL_MODES = [...MODES, "bypassPermissions"] as const;
+/** The menu group of each kind of command the daemon names. */
+const GROUP_OF_KIND: Record<"builtin" | "skill" | "mcp", MenuGroup> = {
+  builtin: "commands",
+  skill: "skills",
+  mcp: "mcp",
+};
+
+/** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
+const positions = new Map<string, { top: number; atEnd: boolean; seq: number }>();
+const MAX_POSITIONS = 200;
+function rememberPosition(key: string, top: number, atEnd: boolean, seq: number): void {
+  positions.delete(key);
+  positions.set(key, { top, atEnd, seq });
+  // The oldest go first: the map keeps insertion order.
+  for (const old of positions.keys()) {
+    if (positions.size <= MAX_POSITIONS) break;
+    positions.delete(old);
+  }
+}
 
 /** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
+/** How long after the wheel, a key, a touch or a press on the scrollbar a scroll is the person's. */
+const PERSON_SCROLL_MS = 600;
 
 export interface SessionActions {
   /** Copies a text (the approval's folder); the app's store does. */
@@ -55,29 +82,27 @@ export interface SessionActions {
   /** Changes the permission mode / the model (null: the default) of the open session. */
   setMode?(mode: SettableMode): Promise<void>;
   setModel?(model: string | null): Promise<void>;
+  /** Changes the effort of the live session; null is the model's default. */
+  setEffort?(effort: EffortLevel | null): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
   resume(): Promise<void>;
-  respond(
-    requestId: string,
-    decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions?: PermissionUpdate[],
-    updatedInput?: Record<string, unknown>,
-  ): Promise<void>;
+  respond(requestId: string, decision: "allow" | "deny", answer?: Answer): Promise<void>;
 }
 
 type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
 
-function AssistantMessage(props: {
-  item: Item<"assistant">;
-  toolResults: SessionState["toolResults"];
-  t: T;
-  actions: SessionActions;
-  pin: SessionViewProps["pin"];
-  /** Only the latest message offers Fork. */
-  fork: SessionViewProps["fork"];
-}) {
+function AssistantMessage(
+  props: Readonly<{
+    item: Item<"assistant">;
+    toolResults: SessionState["toolResults"];
+    t: T;
+    actions: SessionActions;
+    pin: SessionViewProps["pin"];
+    /** Only the latest message offers Fork. */
+    fork: SessionViewProps["fork"];
+  }>,
+) {
   const text = props.item.blocks
     .flatMap((block) => (block.type === "text" ? [block.text] : []))
     .join("\n\n");
@@ -110,14 +135,16 @@ function AssistantMessage(props: {
   );
 }
 
-function PermissionItem(props: {
-  item: Item<"permission">;
-  cwd: string | null;
-  actions: SessionActions;
-  alwaysAllow: boolean;
-  t: T;
-  nowMs: number;
-}) {
+function PermissionItem(
+  props: Readonly<{
+    item: Item<"permission">;
+    cwd: string | null;
+    actions: SessionActions;
+    alwaysAllow: boolean;
+    t: T;
+    nowMs: number;
+  }>,
+) {
   const { item, actions } = props;
   return (
     <ApprovalCard
@@ -136,14 +163,19 @@ function PermissionItem(props: {
       {...(actions.copyText ? { onCopyPath: (path: string) => void actions.copyText?.(path) } : {})}
       alwaysAllow={props.alwaysAllow}
       {...(item.resolution ? { resolution: item.resolution } : {})}
-      onRespond={(decision, message, updates, updatedInput) =>
-        actions.respond(item.requestId, decision, message, updates, updatedInput)
+      onRespond={(decision, message, updates, updatedInput, held) =>
+        actions.respond(item.requestId, decision, {
+          message,
+          updatedPermissions: updates,
+          updatedInput,
+          held,
+        })
       }
     />
   );
 }
 
-function TurnResult(props: { item: Item<"result">; t: T }) {
+function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const { item } = props;
   const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
   const key = item.isError ? "session.turnFailed" : "session.turnDone";
@@ -175,6 +207,8 @@ const TimelineItem = memo(function TimelineItem(props: {
   pin: SessionViewProps["pin"];
   /** Set on the latest assistant message only. */
   fork: SessionViewProps["fork"];
+  /** Phase 39: an OpenCode session's timeline. */
+  opencode: boolean;
 }) {
   const { item } = props;
   switch (item.kind) {
@@ -201,7 +235,21 @@ const TimelineItem = memo(function TimelineItem(props: {
         />
       );
     case "permission":
-      return <PermissionItem {...props} item={item} />;
+      return (
+        <>
+          <PermissionItem {...props} item={item} />
+          {/* OpenCode ends the turn on a reject (ACP's reject carries no message). */}
+          {props.opencode && item.resolution?.decision === "deny" && (
+            <div className="text-muted-foreground text-xs">{props.t("session.openCodeDenied")}</div>
+          )}
+        </>
+      );
+    case "context":
+      return (
+        <div className="text-muted-foreground text-xs">
+          {props.t(item.sent ? "session.contextSent" : "session.contextSkipped")}
+        </div>
+      );
     case "result":
       return <TurnResult item={item} t={props.t} />;
     case "persona":
@@ -216,16 +264,26 @@ const TimelineItem = memo(function TimelineItem(props: {
       return <div className="text-muted-foreground text-xs">{props.t("session.historyGap")}</div>;
     case "error":
       return (
-        <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">{`${item.code}: ${item.message}`}</div>
+        <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">
+          {errorText(item, props.t)}
+        </div>
       );
   }
 });
+
+/** Phase 39: a session error, as the app's own sentence when it carries a reason the app knows. */
+export function errorText(item: Extract<ChatItem, { kind: "error" }>, t: T): string {
+  const { title, detail } = translateError(item.code, item.message, t, item);
+  return item.reason && !detail ? title : `${item.code}: ${item.message}`;
+}
 
 interface SessionViewProps {
   title: string;
   session: SessionState;
   actions: SessionActions;
   focusRequestId?: string | null;
+  /** Names this conversation so its scroll position is kept when the person comes back to the tab. */
+  scrollKey?: string;
   /** The host announces `rules` (phase 7): approvals offer "permitir sempre". */
   alwaysAllow?: boolean;
   /** "Abrir no terminal" (phase 8), when the view belongs to a session of its own. */
@@ -249,6 +307,8 @@ interface SessionViewProps {
   images?: boolean;
   /** The host announces `session.settings` and the session is a managed one. */
   settings?: boolean;
+  /** Opens the host's page, where the bypass switch is (the mode menu links to it). */
+  onOpenHostSettings?: () => void;
   /** The host lets the session switch to bypassPermissions: its name, for the confirmation. */
   bypass?: { host: string };
   /** Pins or unpins the session; its button sits in each assistant message's action row. */
@@ -257,59 +317,171 @@ interface SessionViewProps {
   cache?: ReactNode;
   /** Forks the conversation at its latest message; offered on that message only. */
   fork?: () => void;
+  /** Phase 39: the agent; an OpenCode session says so and offers no fork. */
+  runtime?: "claude" | "opencode";
+  /** The host changes the effort of a live session (`session.effort`). */
+  effort?: boolean;
+  /** Phase 39: OpenCode's models, for the live switch of an OpenCode session (none until known). */
+  models?: readonly string[];
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
 }
 
+/** How many messages came after the one the reader had seen (none while they are at the end). */
+function missedAfter(items: SessionViewProps["session"]["items"], awaySeq: number | null): number {
+  return awaySeq === null ? 0 : items.filter((i) => i.seq > awaySeq).length;
+}
+
+/** The slash commands as menu items: with group and description when the daemon describes them. */
+function commandItemsOf(
+  described: SessionViewProps["session"]["commands"],
+  names: SessionViewProps["session"]["slashCommands"],
+): MenuItem[] {
+  if (!described) return (names ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` }));
+  return described.map((command) => ({
+    key: `slash:${command.name}`,
+    name: `/${command.name}`,
+    ...(command.description ? { description: command.description } : {}),
+    group: GROUP_OF_KIND[command.kind],
+  }));
+}
+
+/** The snippets of the host and the commands of the session behind one `/` menu. */
+function offeredPrompts(
+  prompts: PromptSnippets | undefined,
+  slash: SessionViewProps["session"]["slashCommands"],
+  commandItems: MenuItem[],
+): PromptSnippets | undefined {
+  if (!prompts && !slash) return undefined;
+  return {
+    list: async () => [...((await prompts?.list()) ?? []), ...commandItems],
+    fill: async (key) =>
+      key.startsWith("slash:") ? `/${key.slice(6)} ` : (prompts?.fill(key) ?? ""),
+  };
+}
+
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
-export function SessionView(props: SessionViewProps) {
+export function SessionView(props: Readonly<SessionViewProps>) {
   const ctx = useT();
   const t = props.t ?? ctx;
   const { focusRequestId } = props;
   const timeline = useRef<HTMLDivElement>(null);
   const cards = props.session.items.length;
-  // Whether the reader is at the end: only then does a new message pull the view down.
+  // Whether the reader is at the end: only then does a new message, or the layout settling, pull the view down.
   const following = useRef(!focusRequestId);
-  const [away, setAway] = useState(false);
+  // The last message the reader had seen when they left the end: what came after is "new".
+  const [awaySeq, setAwaySeq] = useState<number | null>(null);
+  const away = awaySeq !== null;
   const streaming = props.session.streaming;
+  const lastSeq = props.session.items.at(-1)?.seq ?? 0;
+  const firstSeq = props.session.items[0]?.seq ?? 0;
+  const lastHeight = useRef(0);
+  // Where the view itself last put the scroll: the scroll event of that move says nothing about the
+  // reader, and by the time it is delivered the layout may have grown (a panel, a code block).
+  const pinnedTop = useRef<number | null>(null);
+  // Until when a scroll is the person's: their wheel, keys, touch or a press on the scrollbar. The
+  // browser also scrolls by itself (it pulls the position back when the content shrinks), and the
+  // event for that can reach the handler after a panel changed the layout: read then, the view
+  // would look away from the end and stop following it (issue #315).
+  const personUntil = useRef(0);
+  const person = () => {
+    personUntil.current = Date.now() + PERSON_SCROLL_MS;
+  };
+  const pin = (box: HTMLElement) => {
+    box.scrollTop = box.scrollHeight;
+    pinnedTop.current = box.scrollTop;
+  };
+  const lastFirst = useRef(firstSeq);
+  const scrollKey = props.scrollKey;
+  const lastSeqRef = useRef(lastSeq);
+  lastSeqRef.current = lastSeq;
+  // Coming back to a conversation: a reader who was up in it gets their place back, one who was at
+  // the end gets the end (which the observer below keeps while the layout settles).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only on the first render of this conversation
+  useLayoutEffect(() => {
+    const box = timeline.current;
+    const saved = scrollKey ? positions.get(scrollKey) : undefined;
+    if (!box || !saved || saved.atEnd) return;
+    following.current = false;
+    box.scrollTop = saved.top;
+    setAwaySeq(saved.seq);
+  }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new message or token is when the end moves
   useLayoutEffect(() => {
     const box = timeline.current;
-    if (box && following.current) box.scrollTop = box.scrollHeight;
+    if (!box) return;
+    if (following.current) pin(box);
+    else if (firstSeq < lastFirst.current) {
+      // Older messages came in above what is being read: the view stays on the same message.
+      box.scrollTop += box.scrollHeight - lastHeight.current;
+    }
+    lastFirst.current = firstSeq;
+    lastHeight.current = box.scrollHeight;
   }, [cards, streaming]);
+  // Images, code blocks and panels settle after the first paint and push the end down: while the
+  // reader is at the end, the view follows it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: new messages add elements to observe
+  useLayoutEffect(() => {
+    const box = timeline.current;
+    if (!box || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (following.current) pin(box);
+      lastHeight.current = box.scrollHeight;
+    });
+    observer.observe(box);
+    for (const child of Array.from(box.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [cards]);
+  // The request the screen was opened for: in view, and once found, focused, so A and N answer it
+  // with no click first (#187). Only once: a card arriving later never takes the focus from the box.
+  const focusedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!focusRequestId || cards === 0) return;
-    const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
-    card?.scrollIntoView?.({ block: "center" });
+    const card = timeline.current?.querySelector<HTMLElement>(
+      `[data-request-id="${focusRequestId}"]`,
+    );
+    // The whole card, as little scroll as needed: centered, a tall card near the end was cut.
+    card?.scrollIntoView?.({ block: "nearest" });
+    if (card && focusedFor.current !== focusRequestId) {
+      focusedFor.current = focusRequestId;
+      card.focus({ preventScroll: true });
+    }
   }, [focusRequestId, cards]);
+  const missed = missedAfter(props.session.items, awaySeq);
+  const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
   const { session, actions } = props;
   const [text, setText] = useState("");
   const [closing, setClosing] = useState(false);
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
   const [mode, setMode] = useState<PermissionMode>(start);
-  // As strict as the start mode or stricter; a start mode outside the list (bypass, auto) gets all.
-  const at = MODES.indexOf(start as (typeof MODES)[number]);
-  const limit = at < 0 ? MODES.length : at + 1;
-  // A host that allows bypass lets the person pick any mode, looser than the start included.
-  const offeredModes = props.bypass ? ALL_MODES : MODES.slice(0, limit);
   const [bypassAsk, setBypassAsk] = useState(false);
+  const opencode = props.runtime === "opencode";
+  const fork = opencode ? undefined : props.fork;
+  // OpenCode has no accept-edits mode: the menu lists the others and the numbers follow.
+  const modeMenu = modeRows({ current: mode, start, bypassAllowed: Boolean(props.bypass) }).filter(
+    (row) => !opencode || row.mode !== "acceptEdits",
+  );
+  /** A mode from the menu or Shift+Tab: bypass asks first, any other changes at once. */
+  const chooseMode = (next: SettableMode) => {
+    if (next === "bypassPermissions") {
+      setBypassAsk(true);
+      return;
+    }
+    setMode(next);
+    void actions.setMode?.(next);
+  };
   const [model, setModel] = useState("");
+  const [effort, setEffort] = useState<EffortLevel | null>(null);
   const slash = session.slashCommands;
+  const described = session.commands;
+  // A daemon that describes the commands gives each its group and its description; an older one
+  // gives the names only, and the menu groups them by the shape of the name.
+  const commandItems = useMemo(() => commandItemsOf(described, slash), [described, slash]);
   // Typing `/` offers the snippets and the commands of the session together.
-  const offered: PromptSnippets | undefined = useMemo(
-    () =>
-      props.prompts || slash
-        ? {
-            list: async () => [
-              ...((await props.prompts?.list()) ?? []),
-              ...(slash ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` })),
-            ],
-            fill: async (key) =>
-              key.startsWith("slash:") ? `/${key.slice(6)} ` : (props.prompts?.fill(key) ?? ""),
-          }
-        : undefined,
-    [props.prompts, slash],
+  const offered = useMemo(
+    () => offeredPrompts(props.prompts, slash, commandItems),
+    [props.prompts, slash, commandItems],
   );
   const latestAssistant = [...session.items]
     .reverse()
@@ -339,14 +511,14 @@ export function SessionView(props: SessionViewProps) {
     let have = attached.length;
     const taken: SessionImage[] = [];
     let turned: ImageRefusal | null = null;
-    for (const file of images) {
+    await inSequence(images, async (file) => {
       const why = refuseImage(file, have);
       if (why) turned = why;
       else {
         taken.push(await readImage(file));
         have++;
       }
-    }
+    });
     setRefusal(turned);
     if (taken.length > 0) setAttached((before) => [...before, ...taken]);
   };
@@ -388,9 +560,9 @@ export function SessionView(props: SessionViewProps) {
   };
 
   const pickers = {
-    ...(props.settings && actions.setModel
+    ...(props.settings && actions.setModel && (!opencode || props.models)
       ? {
-          model: (
+          model: opencode ? (
             <NativeSelect
               compact
               inline
@@ -402,39 +574,37 @@ export function SessionView(props: SessionViewProps) {
               }}
             >
               <option value="">{t("session.modelDefault")}</option>
-              {MODELS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
+              <ModelOptions models={props.models ?? []} />
             </NativeSelect>
+          ) : (
+            <ModelChip
+              t={t}
+              model={model}
+              current={session.model}
+              effort={effort}
+              effortAvailable={Boolean(props.effort && actions.setEffort)}
+              onPickModel={(value) => {
+                setModel(value);
+                void actions.setModel?.(value || null);
+              }}
+              onPickEffort={(level) => {
+                setEffort(level);
+                void actions.setEffort?.(level);
+              }}
+            />
           ),
         }
       : {}),
     ...(props.settings && actions.setMode
       ? {
           mode: (
-            <NativeSelect
-              compact
-              inline
-              aria-label={t("session.modeLabel")}
-              value={mode}
-              onChange={(e) => {
-                const next = e.target.value as SettableMode;
-                if (next === "bypassPermissions") {
-                  setBypassAsk(true);
-                  return;
-                }
-                setMode(next);
-                void actions.setMode?.(next);
-              }}
-            >
-              {offeredModes.map((value) => (
-                <option key={value} value={value}>
-                  {t(`modes.${value}.name`)}
-                </option>
-              ))}
-            </NativeSelect>
+            <ModeChip
+              t={t}
+              mode={mode}
+              rows={modeMenu}
+              onPick={chooseMode}
+              onOpenHostSettings={props.onOpenHostSettings}
+            />
           ),
         }
       : {}),
@@ -455,56 +625,81 @@ export function SessionView(props: SessionViewProps) {
             )}
           </>
         }
+        hint={[session.cwd, typeof props.costUsd === "number" ? usd(props.costUsd) : null]
+          .filter(Boolean)
+          .join(" · ")}
         controls={
           <>
+            {opencode && (
+              <RuntimeBadge label={t("session.runtimeOpenCode")} slot="session-runtime" />
+            )}
             {session.status && <StatusBadge status={session.status} />}
             {session.statusReason && (
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
             )}
+          </>
+        }
+        actions={
+          <>
             {props.timeline}
-            {props.terminal}
+            {!opencode && props.terminal}
             {closed ? (
               <ActionButton variant="outline" size="sm" onClick={() => actions.resume()}>
                 {t("session.resume")}
               </ActionButton>
             ) : (
-              <>
-                <ActionButton
-                  variant="outline"
-                  size="sm"
-                  pending={ending}
-                  onClick={() => setClosing(true)}
-                >
-                  {t("session.end")}
-                </ActionButton>
-                {closing && (
-                  <ConfirmDialog
-                    message={t("session.endMessage")}
-                    confirmLabel={t("session.endConfirm")}
-                    destructive
-                    onConfirm={() => {
-                      setClosing(false);
-                      setEnding(true);
-                      void actions.close().finally(() => setEnding(false));
-                    }}
-                    onCancel={() => setClosing(false)}
-                  />
-                )}
-              </>
+              <ActionButton
+                variant="outline"
+                size="sm"
+                pending={ending}
+                onClick={() => setClosing(true)}
+              >
+                {t("session.end")}
+              </ActionButton>
             )}
           </>
         }
-        extra={props.persona}
+        dialogs={
+          closing && (
+            <ConfirmDialog
+              message={t("session.endMessage")}
+              confirmLabel={t("session.endConfirm")}
+              destructive
+              onConfirm={() => {
+                setClosing(false);
+                setEnding(true);
+                void actions.close().finally(() => setEnding(false));
+              }}
+              onCancel={() => setClosing(false)}
+            />
+          )
+        }
+        extra={opencode ? undefined : props.persona}
       />
-      {props.recap}
+      {/* The summary lines up with the header and the conversation (issue #177). */}
+      {!opencode && props.recap && <RecapSlot>{props.recap}</RecapSlot>}
       <div className="pane-fill">
         <Timeline
           ref={timeline}
+          onWheel={person}
+          onTouchStart={person}
+          onTouchMove={person}
+          onKeyDown={person}
+          onPointerDown={person}
           onScroll={(e) => {
             const box = e.currentTarget;
+            const own = pinnedTop.current === box.scrollTop;
+            pinnedTop.current = null;
+            if (own && following.current) return;
             const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight <= END_SLACK;
+            // Following and not at the end, with no hand on it: the layout moved, not the person.
+            // The observer pins the end again.
+            if (following.current && !atEnd && Date.now() >= personUntil.current) return;
             following.current = atEnd;
-            setAway(!atEnd);
+            lastHeight.current = box.scrollHeight;
+            // Leaving the end remembers the last message seen; returning to it forgets that.
+            setAwaySeq((seen) => (atEnd ? null : (seen ?? lastSeqRef.current)));
+            if (scrollKey) rememberPosition(scrollKey, box.scrollTop, atEnd, lastSeqRef.current);
           }}
         >
           {props.earlier}
@@ -522,7 +717,8 @@ export function SessionView(props: SessionViewProps) {
               t={t}
               nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
               pin={props.pin}
-              fork={item.seq === latestAssistant ? props.fork : undefined}
+              fork={item.seq === latestAssistant ? fork : undefined}
+              opencode={opencode}
             />
           ))}
           {session.streaming && (
@@ -547,16 +743,23 @@ export function SessionView(props: SessionViewProps) {
               const box = timeline.current;
               if (box) box.scrollTop = box.scrollHeight;
               following.current = true;
-              setAway(false);
+              setAwaySeq(null);
+              if (scrollKey) positions.delete(scrollKey);
             }}
           >
             <ArrowDown aria-hidden="true" />
-            {t("session.jumpLatest")}
+            {missed === 0 ? t("session.jumpLatest") : t(jumpKey, { n: missed })}
           </Button>
         )}
       </div>
       <ComposerDock>
-        <PromptMenu prompts={offered} text={text} label={t("session.snippets")} onFill={setText} />
+        <PromptMenu
+          prompts={offered}
+          text={text}
+          label={t("session.snippets")}
+          onFill={setText}
+          input={box}
+        />
         {queued.length > 0 && (
           <ul aria-label={t("session.queue")} className="composer-images">
             {queued.map((item, at) => (
@@ -687,6 +890,15 @@ export function SessionView(props: SessionViewProps) {
             }}
             onKeyDown={(e) => {
               if (e.key === "Escape" && working) void actions.interrupt();
+              if (e.key === "Tab" && e.shiftKey && props.settings && actions.setMode) {
+                // Shift+Tab cycles the permission mode, as in Claude Code; with none to go to, focus moves on.
+                const next = nextMode(modeMenu, mode);
+                if (next) {
+                  e.preventDefault();
+                  chooseMode(next);
+                }
+                return;
+              }
               if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
               if (e.ctrlKey || e.metaKey) {
                 // Ctrl+Enter breaks the line where the cursor is (a textarea only does it for Shift).
