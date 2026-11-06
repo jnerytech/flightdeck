@@ -46,6 +46,8 @@ export function FileViewer(
     path: string;
     /** The file's changes against HEAD, live from the Changes tab's diff; absent when unchanged. */
     diff?: DiffFile | undefined;
+    /** The file's whole path on the host, once known: a host of this computer opens it here. */
+    full?: string | null;
     onClose(): void;
   }>,
 ) {
@@ -57,6 +59,10 @@ export function FileViewer(
   // The newest hunk stays in view while the session edits, until the person scrolls up (#315).
   const follow = useFollow(props.diff?.hunks.length ?? 0);
   const diff = showDiff ? props.diff : undefined;
+  // Only where the host's files are this computer's own (the store checks the path again).
+  // and only for a file the host could read.
+  const full =
+    phase.name === "ready" && props.full && store.canOpenPaths(hostId) ? props.full : null;
 
   useEffect(() => {
     let alive = true;
@@ -126,6 +132,26 @@ export function FileViewer(
             >
               {showDiff ? t("files.showFile") : t("files.showChanges")}
             </Button>
+          )}
+          {full && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void store.openPath(hostId, full)}
+              >
+                {t("files.openOutside")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void store.revealPath(hostId, full)}
+              >
+                {t("files.reveal")}
+              </Button>
+            </>
           )}
           <Button type="button" variant="outline" size="sm" onClick={props.onClose}>
             {t("files.close")}

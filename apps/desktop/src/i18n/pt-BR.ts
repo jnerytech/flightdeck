@@ -2205,6 +2205,8 @@ export const ptBR = {
     close: "Fechar",
     opening: "Abrindo…",
     showChanges: "Mostrar mudanças",
+    openOutside: "Abrir no app padrão",
+    reveal: "Mostrar na pasta",
     showFile: "Mostrar o arquivo",
     jumpLatestOne: "Ir para a mais recente ({n} mudança nova)",
     jumpLatestMany: "Ir para a mais recente ({n} mudanças novas)",
