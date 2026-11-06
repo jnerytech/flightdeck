@@ -42,6 +42,28 @@ async function many() {
   return { store, scroller };
 }
 
+/** Many tabs, one with a long title, and the list of all of them open. */
+async function openList() {
+  const { store } = await many();
+  await act(async () => {
+    store.tabs.open(
+      {
+        name: "preview",
+        url: "https://example.com/a/very/long/path/of/a/deploy/report",
+        title: "Relatório do deploy de ontem à noite, com todos os passos e a saída inteira",
+      },
+      { background: true },
+    );
+  });
+  const button = screen.queryByRole("button", { name: "Todas as abas" }) as HTMLElement;
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.pointerDown(button, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    fireEvent.click(button);
+  });
+  return { store };
+}
+
 describe("abas-muitas: with many tabs the strip stays readable", () => {
   test("the tabs sit in a scroller and keep their width; a badge is a glyph, still named", async () => {
     const { scroller } = await many();
@@ -102,20 +124,71 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     expect(seen.at(-1)?.getAttribute("aria-selected")).toBe("true");
   });
 
-  test("a menu lists every tab and a click takes you to it", async () => {
-    const { store } = await many();
-    const button = screen.queryByRole("button", { name: "Todas as abas" }) as HTMLElement;
-    expect(button).not.toBeNull();
+  test("the list of all tabs is a filterable list, not a menu: icon, title, host, the active one marked (#576)", async () => {
+    const { store } = await openList();
+    expect(screen.queryAllByRole("menuitem")).toHaveLength(0);
+    const field = screen.queryByRole("combobox", { name: "Filtrar abas" });
+    expect(field).not.toBeNull();
+    const rows = screen.queryAllByRole("option");
+    expect(rows).toHaveLength(N + 1);
+    expect(rows.every((row) => row.querySelector("svg[data-icon]") !== null)).toBe(true);
+    // The tab on screen is marked for a screen reader, and only it.
+    const current = rows.filter((row) => row.getAttribute("aria-current") === "true");
+    expect(current).toHaveLength(1);
+    expect(current[0]?.id).toContain(store.tabs.activeId);
+    // A session row names its host in muted text; the full title is the row's tooltip.
+    const first = rows[1] as HTMLElement;
+    expect(first.querySelector("[data-slot='tab-host']")?.textContent).toBe("pc");
+    const label = first.querySelector("[data-slot='tab-title']");
+    expect(label?.getAttribute("title")).toBe(label?.textContent ?? "");
+  });
+
+  test("typing filters the tabs and Enter goes to the first one left (#576)", async () => {
+    const { store } = await openList();
+    const field = screen.queryByRole("combobox", { name: "Filtrar abas" }) as HTMLElement;
+    expect(field).not.toBeNull();
     await act(async () => {
-      fireEvent.pointerDown(button, { button: 0, ctrlKey: false, pointerType: "mouse" });
-      fireEvent.click(button);
+      fireEvent.change(field, { target: { value: "deploy" } });
     });
-    const items = screen.queryAllByRole("menuitem");
-    expect(items).toHaveLength(N);
+    const rows = screen.queryAllByRole("option");
+    expect(rows).toHaveLength(1);
     await act(async () => {
-      fireEvent.click(items[5] as HTMLElement);
+      fireEvent.keyDown(field, { key: "Enter" });
     });
-    expect(store.tabs.activeId).toBe(store.tabs.tabs[5]?.id as string);
+    expect(store.tabs.active.router.current.name).toBe("preview");
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  test("a row's close button and Delete on the highlighted row close that tab; the list stays (#576)", async () => {
+    const { store } = await openList();
+    const rows = screen.queryAllByRole("option");
+    const close = rows[2]?.querySelector<HTMLElement>("button[data-slot='tab-close']") ?? null;
+    expect(close).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(close as HTMLElement);
+    });
+    expect(store.tabs.tabs).toHaveLength(N);
+    expect(screen.queryAllByRole("option")).toHaveLength(N);
+    const field = screen.queryByRole("combobox", { name: "Filtrar abas" }) as HTMLElement;
+    expect(field).not.toBeNull();
+    const before = store.tabs.tabs.length;
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Home" });
+      fireEvent.keyDown(field, { key: "ArrowDown" });
+      fireEvent.keyDown(field, { key: "Delete" });
+    });
+    expect(store.tabs.tabs).toHaveLength(before - 1);
+    expect(screen.queryByRole("listbox")).not.toBeNull();
+  });
+
+  test("Esc closes the list (#576)", async () => {
+    await openList();
+    const field = screen.queryByRole("combobox", { name: "Filtrar abas" }) as HTMLElement;
+    expect(field).not.toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Escape" });
+    });
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 
   test("a working session's badge is named and spins (only where motion is allowed)", async () => {
