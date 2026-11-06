@@ -16,6 +16,7 @@ const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { defaultRule } = await import("../src/ui/AlwaysAllow.tsx");
 
 // Real git under the in-process daemon: more than the default 5 s.
 setDefaultTimeout(20_000);
@@ -100,15 +101,29 @@ describe("permitir-ui", () => {
     ]);
   });
 
-  test("nas outras ferramentas a regra padrão é o nome da ferramenta; Cancelar fecha a edição", async () => {
+  test("numa ferramenta de arquivo a regra padrão é a ferramenta e o arquivo, não a ferramenta toda; Cancelar fecha a edição", async () => {
     const { result } = await asking("[tool] z");
     await click("Sempre neste projeto");
-    expect((screen.queryByLabelText("Regra") as HTMLInputElement | null)?.value).toBe("Write");
+    // A rule for the whole tool would cover a credential file: the daemon refuses it (#384).
+    expect((screen.queryByLabelText("Regra") as HTMLInputElement | null)?.value ?? "").toMatch(
+      /^Write\(.+fake\.txt\)$/,
+    );
     await click("Cancelar");
     expect(screen.queryByLabelText("Regra")).toBeNull();
     await click("Sempre neste projeto");
     await click("Salvar regra");
-    expect((await result()) ?? "").toContain('"rules":[{"toolName":"Write"}]');
+    expect((await result()) ?? "").toMatch(
+      /"rules":\[\{"toolName":"Write","ruleContent":".+fake\.txt"\}\]/,
+    );
+  });
+
+  test("numa ferramenta sem arquivo a regra padrão segue sendo o nome da ferramenta", () => {
+    expect(defaultRule("WebFetch", { url: "https://example.com" })).toBe("WebFetch");
+    expect(defaultRule("Bash", { command: "ls" })).toBe("Bash(ls)");
+    expect(defaultRule("Edit", { file_path: "/p/a.ts" })).toBe("Edit(/p/a.ts)");
+    expect(defaultRule("NotebookEdit", { notebook_path: "/p/n.ipynb" })).toBe(
+      "NotebookEdit(/p/n.ipynb)",
+    );
   });
 
   test("regra recusada pelo daemon mostra o erro e o pedido segue aberto", async () => {
