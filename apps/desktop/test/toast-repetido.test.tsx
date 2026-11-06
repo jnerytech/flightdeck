@@ -58,7 +58,10 @@ describe("toast-repetido: the same error again replaces its toast instead of sta
       await act(async () => {
         await store.createSession("no-such-host", { cwd: "/", prompt: "again" });
       });
-      const one = await stays(() => screen.queryAllByRole("alert").length <= 1).then(
+      // Exactly one: the old toast leaves (sonner keeps it ~200 ms while it animates out), then none
+      // comes back beside the new one.
+      await settle(() => screen.queryAllByRole("alert").length === 1);
+      const one = await stays(() => screen.queryAllByRole("alert").length === 1).then(
         () => true,
         () => false,
       );
