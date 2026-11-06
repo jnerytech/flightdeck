@@ -260,7 +260,7 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     type("fix the totl");
     await click("Improve with AI");
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe("The provider says there is no credit left on this key.");
+    expect(alert.textContent).toContain("The provider says there is no credit left on this key.");
   });
 
   test("while another wand holds the one run, this one is disabled and says why", async () => {

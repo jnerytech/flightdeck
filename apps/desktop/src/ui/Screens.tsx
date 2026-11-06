@@ -237,6 +237,13 @@ function ManagedSession(
           )
         }
         focusRequestId={props.focus}
+        assist={{
+          controller: store.assistant,
+          kind: "prompt",
+          fieldHostId: hostId,
+          ...(cwd ? { cwd } : {}),
+          openSettings: () => props.go({ name: "settings", section: "assistant" }),
+        }}
         {...(session.resumedFrom
           ? {
               earlier: (
