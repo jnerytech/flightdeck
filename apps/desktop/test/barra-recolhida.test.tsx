@@ -57,7 +57,7 @@ describe("barra-recolhida: the rail holds icons and nothing that overflows it", 
   test("expanded, the search entry keeps its Ctrl K chip and Needs you its count", async () => {
     await setup();
     expect(aside().getAttribute("data-collapsed")).toBe("false");
-    expect(aside().querySelector("kbd")?.textContent).toBe("Ctrl K");
+    expect(aside().querySelector("kbd")?.textContent).toBe("Ctrl+K");
     expect(aside().querySelector("[data-slot='badge']")?.textContent).toBe("1");
   });
 
@@ -74,7 +74,12 @@ describe("barra-recolhida: the rail holds icons and nothing that overflows it", 
     await collapse();
     const search = inAside().queryByRole("button", { name: /^Search/ });
     expect(search).not.toBeNull();
-    expect(search?.getAttribute("title")).toBe("Search (Ctrl K)");
+    // Named by the button and shown as a real tooltip, not a native title (issue #165).
+    expect(search?.getAttribute("title")).toBeNull();
+    await act(async () => {
+      fireEvent.focus(search as HTMLElement);
+    });
+    expect((await screen.findByRole("tooltip")).textContent).toBe("Search (Ctrl K)");
     expect(search?.getAttribute("aria-keyshortcuts")).toBe("Control+K");
   });
 
@@ -83,7 +88,7 @@ describe("barra-recolhida: the rail holds icons and nothing that overflows it", 
     await collapse();
     const needs = inAside().queryByRole("button", { name: "Needs you (1)" });
     expect(needs).not.toBeNull();
-    expect(needs?.getAttribute("title")).toBe("Needs you (1)");
+    expect(needs?.getAttribute("title")).toBeNull();
     expect(needs?.querySelector("[data-attention]")).not.toBeNull();
   });
 
@@ -91,7 +96,13 @@ describe("barra-recolhida: the rail holds icons and nothing that overflows it", 
     await setup();
     await collapse();
     const host = inAside().getByRole("button", { name: "Open host alfa" });
-    expect(host.getAttribute("title")).toBe("alfa");
+    // Issue #239: a real tooltip on focus and hover, never a native title.
+    expect(host.getAttribute("title")).toBeNull();
+    await act(async () => {
+      fireEvent.focus(host);
+    });
+    await settle(() => screen.queryByRole("tooltip") !== null);
+    expect(screen.queryByRole("tooltip")?.textContent).toBe("alfa");
     expect(host.querySelector("[data-slot='host-initial']")?.textContent).toBe("A");
     // The status stays a named dot beside the initial: the letter alone says nothing of the state.
     expect(within(host).getByRole("img", { name: /alfa: online/ })).not.toBeNull();
