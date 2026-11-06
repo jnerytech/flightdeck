@@ -50,7 +50,7 @@
   "src/ui/SessionsHub.tsx": 25,
   "src/ui/SessionTabs.tsx": 9,
   "src/ui/SessionView.tsx": 3,
-  "src/ui/Settings.tsx": 9,
+  "src/ui/Settings.tsx": 5,
   "src/ui/Sidebar.tsx": 34,
   "src/ui/SnippetsPage.tsx": 19,
   "src/ui/TabBar.tsx": 11,
