@@ -168,6 +168,153 @@ async function ship(deps: ReleaseCloseDeps, item: Planned, comment: string): Pro
   return 0;
 }
 
+/** The numbers `gh pr view --jq` printed, one per line; anything else is left out. */
+function closingNumbers(stdout: string): number[] {
+  return stdout
+    .split("\n")
+    .filter((line) => /^\d+$/.test(line.trim()))
+    .map(Number);
+}
+
+/**
+ * Adds to `closes` the issues each merged pull request of the range closes, even when no commit
+ * says so; the number of pull requests whose closing issues could not be read.
+ */
+async function addPullCloses(
+  deps: ReleaseCloseDeps,
+  range: string,
+  closes: Set<number>,
+): Promise<number> {
+  let failures = 0;
+  const merges = await deps.git(["log", "--first-parent", "--merges", "--format=%s", range]);
+  await inSequence(mergedPulls(merges.stdout), async (pull) => {
+    const closing = await deps.gh([
+      "pr",
+      "view",
+      String(pull),
+      "--json",
+      "closingIssuesReferences",
+      "--jq",
+      ".closingIssuesReferences[].number",
+    ]);
+    if (closing.code !== 0) {
+      deps.log(`#${pull}: its closing issues cannot be read`);
+      failures++;
+      return;
+    }
+    for (const n of closingNumbers(closing.stdout)) closes.add(n);
+  });
+  return failures;
+}
+
+/** The steps said for an issue: comment and close while it is open, then the board. */
+function stepsOf(item: Planned): string[] {
+  const steps = item.open ? [...(item.commented ? [] : ["comment"]), "close"] : [];
+  return [...steps, "board Done"];
+}
+
+/** Reads each issue to close, says what it will do, and gathers the ones to ship. */
+async function planIssues(
+  deps: ReleaseCloseDeps,
+  closes: Set<number>,
+  comment: string,
+): Promise<{ planned: Planned[]; failures: number }> {
+  const planned: Planned[] = [];
+  let failures = 0;
+  await inSequence(sorted(closes), async (issue) => {
+    const item = await read(deps, issue, comment);
+    if (item === "unreadable") {
+      deps.log(`#${issue}: cannot be read`);
+      failures++;
+      return;
+    }
+    if (item === "skip") {
+      deps.log(`#${issue}: a pull request, skipped`);
+      return;
+    }
+    planned.push(item);
+    deps.log(
+      `#${issue} ${item.open ? "open" : "closed"}: ${plain(item.title)} → ${stepsOf(item).join(", ")}`,
+    );
+  });
+  return { planned, failures };
+}
+
+/** What a dry run says about the tag's milestone. */
+function sayMilestone(
+  deps: ReleaseCloseDeps,
+  tag: string,
+  milestone: Milestone | undefined,
+  planned: Planned[],
+) {
+  if (!milestone) return deps.log(`no milestone named ${tag}`);
+  if (milestone.state !== "open") return deps.log(`milestone ${tag}: already closed`);
+  const closing = planned.filter((p) => p.open && p.milestone === milestone.number).length;
+  const left = Math.max(0, milestone.open_issues - closing);
+  deps.log(
+    left === 0
+      ? `milestone ${tag}: closes once its last open issue is closed`
+      : `milestone ${tag}: ${left} open issue(s) left, not closed`,
+  );
+}
+
+/** Why the milestone stays as it is, or null when it can be closed. */
+function milestoneStays(
+  tag: string,
+  after: Milestone | undefined,
+  failures: number,
+): string | null {
+  if (!after) return `no milestone named ${tag}`;
+  if (after.state !== "open") return `milestone ${tag}: already closed`;
+  if (failures > 0) return `milestone ${tag}: left open, a step above failed`;
+  if (after.open_issues > 0) {
+    return `milestone ${tag}: ${after.open_issues} open issue(s) left, not closed`;
+  }
+  return null;
+}
+
+/** Closes the milestone when nothing is open and no step failed; the failures it adds (0 or 1). */
+async function closeMilestone(
+  deps: ReleaseCloseDeps,
+  tag: string,
+  after: Milestone | undefined,
+  failures: number,
+): Promise<number> {
+  const stays = milestoneStays(tag, after, failures);
+  if (stays !== null) {
+    deps.log(stays);
+    return 0;
+  }
+  const closed = await deps.gh([
+    "api",
+    "-X",
+    "PATCH",
+    `${REPO}/milestones/${(after as Milestone).number}`,
+    "-f",
+    "state=closed",
+  ]);
+  if (closed.code !== 0) {
+    deps.log(`milestone ${tag}: closing failed`);
+    return 1;
+  }
+  deps.log(`milestone ${tag}: closed`);
+  return 0;
+}
+
+/** The start of the range: `--since`, or the tag before this one. */
+async function rangeStart(deps: ReleaseCloseDeps, tag: string, since?: string): Promise<string> {
+  if (since !== undefined) return since;
+  const described = await deps.git([
+    "describe",
+    "--tags",
+    "--abbrev=0",
+    "--match",
+    "v*",
+    `${tag}^`,
+  ]);
+  return described.stdout.trim();
+}
+
 /** Closes what the tag shipped (with `apply`), or says what it would do; the exit code. */
 export async function releaseClose(
   tag: string,
@@ -182,59 +329,17 @@ export async function releaseClose(
     deps.log(`release:close: no tag ${tag} here (fetch the tags first)`);
     return 2;
   }
-  const since =
-    opts.since ??
-    (
-      await deps.git(["describe", "--tags", "--abbrev=0", "--match", "v*", `${tag}^`])
-    ).stdout.trim();
+  const since = await rangeStart(deps, tag, opts.since);
   const log = await deps.git(["log", "--format=%s%x1f%b%x1e", `${since}..${tag}`]);
   const refs = issueRefs(log.stdout);
   const comment = `Shipped in ${tag}.`;
-  let failures = 0;
   // The issues a merged pull request closes ship with it, even when no commit says so.
   const closes = new Set(refs.closes);
-  const merges = await deps.git([
-    "log",
-    "--first-parent",
-    "--merges",
-    "--format=%s",
-    `${since}..${tag}`,
-  ]);
-  await inSequence(mergedPulls(merges.stdout), async (pull) => {
-    const closing = await deps.gh([
-      "pr",
-      "view",
-      String(pull),
-      "--json",
-      "closingIssuesReferences",
-      "--jq",
-      ".closingIssuesReferences[].number",
-    ]);
-    if (closing.code !== 0) {
-      deps.log(`#${pull}: its closing issues cannot be read`);
-      failures++;
-    } else
-      for (const line of closing.stdout.split("\n"))
-        if (/^\d+$/.test(line.trim())) closes.add(Number(line));
-  });
+  let failures = await addPullCloses(deps, `${since}..${tag}`, closes);
   deps.log(`release:close ${tag} (${since}..${tag}): ${closes.size} issue(s) to close`);
 
-  const planned: Planned[] = [];
-  await inSequence(sorted(closes), async (issue) => {
-    const item = await read(deps, issue, comment);
-    if (item === "unreadable") {
-      deps.log(`#${issue}: cannot be read`);
-      failures++;
-    } else if (item === "skip") {
-      deps.log(`#${issue}: a pull request, skipped`);
-    } else {
-      planned.push(item);
-      const steps = item.open ? [...(item.commented ? [] : ["comment"]), "close"] : [];
-      deps.log(
-        `#${issue} ${item.open ? "open" : "closed"}: ${plain(item.title)} → ${[...steps, "board Done"].join(", ")}`,
-      );
-    }
-  });
+  const { planned, failures: unreadable } = await planIssues(deps, closes, comment);
+  failures += unreadable;
   const only = refs.mentioned.filter((n) => !closes.has(n));
   if (only.length > 0) {
     const left = only.map((n) => `#${n}`).join(", ");
@@ -243,17 +348,7 @@ export async function releaseClose(
 
   const milestone = await milestoneOf(deps, tag);
   if (!opts.apply) {
-    if (!milestone) deps.log(`no milestone named ${tag}`);
-    else if (milestone.state !== "open") deps.log(`milestone ${tag}: already closed`);
-    else {
-      const closing = planned.filter((p) => p.open && p.milestone === milestone.number).length;
-      const left = Math.max(0, milestone.open_issues - closing);
-      deps.log(
-        left === 0
-          ? `milestone ${tag}: closes once its last open issue is closed`
-          : `milestone ${tag}: ${left} open issue(s) left, not closed`,
-      );
-    }
+    sayMilestone(deps, tag, milestone, planned);
     deps.log("dry run: nothing changed (--apply to do it)");
     return failures > 0 ? 1 : 0;
   }
@@ -264,24 +359,6 @@ export async function releaseClose(
   });
 
   const after = milestone ? await milestoneOf(deps, tag) : undefined;
-  if (!after) deps.log(`no milestone named ${tag}`);
-  else if (after.state !== "open") deps.log(`milestone ${tag}: already closed`);
-  else if (failures > 0) deps.log(`milestone ${tag}: left open, a step above failed`);
-  else if (after.open_issues > 0) {
-    deps.log(`milestone ${tag}: ${after.open_issues} open issue(s) left, not closed`);
-  } else {
-    const closed = await deps.gh([
-      "api",
-      "-X",
-      "PATCH",
-      `${REPO}/milestones/${after.number}`,
-      "-f",
-      "state=closed",
-    ]);
-    if (closed.code !== 0) {
-      deps.log(`milestone ${tag}: closing failed`);
-      failures++;
-    } else deps.log(`milestone ${tag}: closed`);
-  }
+  failures += await closeMilestone(deps, tag, after, failures);
   return failures > 0 ? 1 : 0;
 }
