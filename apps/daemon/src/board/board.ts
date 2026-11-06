@@ -1492,7 +1492,10 @@ export class Board {
    * Pushes the card's branch to `origin` and opens the PR with the card's title and description;
    * `description` (phase 22) is the text the person confirmed, instead of the card's own.
    */
-  async createPr(id: string, options: { description?: string } = {}): Promise<Card> {
+  async createPr(
+    id: string,
+    options: { description?: string; title?: string } = {},
+  ): Promise<Card> {
     const found = options.description ? (this.opts.scanner?.scan(options.description) ?? []) : [];
     if (found.length > 0) {
       throw new FlightdeckError(
@@ -1523,7 +1526,8 @@ export class Board {
       cwd,
       base: project.baseBranch,
       head: branch,
-      title: card.title,
+      // Phase 40: the title the person confirmed, else the card's.
+      title: options.title ?? card.title,
       // The provider links the PR to the issue and closes it on merge (`Fixes #n`, `AB#id`).
       body:
         options.description ??
@@ -1607,7 +1611,13 @@ export class Board {
    * "Merge e arquivar" for a card without a PR: into the base where it is checked out (clean), or
    * through a temporary worktree; then the card's worktree and branch go and it is Concluído.
    */
-  async mergeLocal(id: string, mode: "merge" | "squash", confirm: boolean): Promise<Card> {
+  async mergeLocal(
+    id: string,
+    mode: "merge" | "squash",
+    confirm: boolean,
+    /** Phase 40: the message the person confirmed, else the default of the mode. */
+    message?: string,
+  ): Promise<Card> {
     if (!confirm) throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
     const { card, worktree, branch } = this.idleWorktree(id);
     if (card.prUrl) {
@@ -1634,8 +1644,8 @@ export class Board {
       throw new FlightdeckError("invalid_state", `nothing ahead of ${base}`, "nothing_ahead", {
         base,
       });
-    const message = mode === "squash" ? card.title : `Merge ${branch}: ${card.title}`;
-    await mergeIntoBase(project.path, base, branch, mode, message);
+    const text = message ?? (mode === "squash" ? card.title : `Merge ${branch}: ${card.title}`);
+    await mergeIntoBase(project.path, base, branch, mode, text);
     // The merge is in the base now and cannot be undone: nothing below may leave the card out of
     // Concluído. What could not be cleaned up stays on the card as a notice.
     await this.closeRuns(id);

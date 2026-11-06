@@ -1,6 +1,7 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
+import { ApprovalActions } from "@/components/approval/approval-actions";
+import { GateText } from "@/components/approval/gate-text";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
@@ -44,12 +45,7 @@ function GateCard(props: {
       aria-label={t("runUi.gate", { step: step.stepId })}
       className="mt-2 flex flex-col gap-2 rounded-lg border border-status-needs-you/50 p-3 text-sm"
     >
-      <p>{step.message}</p>
-      {step.output && (
-        <pre className="overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
-          {step.output}
-        </pre>
-      )}
+      <GateText message={step.message ?? ""} output={step.output} />
       <Textarea
         aria-label={t("runUi.gateNote")}
         placeholder={t("runUi.notePlaceholder")}
@@ -57,21 +53,15 @@ function GateCard(props: {
         onChange={(e) => setNote(e.target.value)}
       />
       <div className="flex gap-2">
-        <ActionButton
+        {/* Issue #182: a gate is answered with the same Approve and Deny as a request. */}
+        <ApprovalActions
           size="sm"
+          // A gate has no risk: it is the workflow's own question, answered on its card.
+          risk={undefined}
           pending={busy}
-          onClick={() => run(() => props.onRespond(step, "approve", note))}
-        >
-          {t("runUi.approve")}
-        </ActionButton>
-        <ActionButton
-          variant="outline"
-          size="sm"
-          pending={busy}
-          onClick={() => run(() => props.onRespond(step, "reject", note))}
-        >
-          {t("runUi.reject")}
-        </ActionButton>
+          onApprove={() => run(() => props.onRespond(step, "approve", note))}
+          onDeny={() => run(() => props.onRespond(step, "reject", note))}
+        />
       </div>
     </section>
   );

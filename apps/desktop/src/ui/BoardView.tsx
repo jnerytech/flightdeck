@@ -298,20 +298,19 @@ export const BoardView = memo(function BoardView(props: {
       ?.focus();
   });
 
-  const create = () => {
-    const made = store.hostCommand(hostId, "card.create", {
+  const create = async () => {
+    const made = await store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
     });
+    // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
+    // (the banner says why). A made card says so, with a way to open it (issue #188).
+    if (!made) return made;
     close();
-    void made.then((card) => {
-      if (card) {
-        store.success(t("kanban.created", { title: card.title }), {
-          label: t("kanban.openCard"),
-          run: () => props.onOpenCard(card.id),
-        });
-      }
+    store.success(t("kanban.created", { title: made.title }), {
+      label: t("kanban.openCard"),
+      run: () => props.onOpenCard(made.id),
     });
     return made;
   };
@@ -377,6 +376,7 @@ export const BoardView = memo(function BoardView(props: {
         )}
         <div
           ref={boardRef}
+          data-slot="board-columns"
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
           className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"

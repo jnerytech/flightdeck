@@ -143,7 +143,7 @@ describe("navegacao", () => {
     await settle(() => heading("Configurações"));
     expect(heading("Configurações")).toBe(true);
     // The queue shows the request; "Abrir sessão" opens it (and leaves Settings).
-    await sidebar.queueItem("alfa · Pedinte: Bash");
+    await sidebar.queueItem(/^alfa · Pedinte: Bash/);
     await click("Abrir sessão");
     expect(heading("Configurações")).toBe(false);
     expect(heading("Pedinte")).toBe(true);

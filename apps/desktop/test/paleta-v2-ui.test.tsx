@@ -142,8 +142,8 @@ describe("paleta-v2-ui: approve and deny the oldest request", () => {
       request({ requestId: "r1" }),
       request({ requestId: "r2", createdAt: "2026-11-02T11:00:00Z" }),
     ]);
-    store.decideOldest("approve");
-    store.decideOldest("deny");
+    store.decideOldest("approve", "h1/r1");
+    store.decideOldest("deny", "h1/r1");
     expect(answered).toEqual([
       ["h1", "r1", "allow"],
       ["h1", "r1", "deny"],
@@ -152,16 +152,26 @@ describe("paleta-v2-ui: approve and deny the oldest request", () => {
 
   test("a high-risk request is opened to be held, never approved from here", () => {
     const { store, answered, opened } = storeWith([request({ requestId: "r1", risk: "high" })]);
-    store.decideOldest("approve");
+    store.decideOldest("approve", "h1/r1");
     expect(answered).toEqual([]);
     expect(opened).toEqual(["r1"]);
-    store.decideOldest("deny");
+    store.decideOldest("deny", "h1/r1");
     expect(answered).toEqual([["h1", "r1", "deny"]]);
   });
 
   test("with nothing waiting it does nothing", () => {
     const { store, answered, opened } = storeWith([]);
-    store.decideOldest("approve");
+    store.decideOldest("approve", "h1/r1");
     expect([answered, opened]).toEqual([[], []]);
+  });
+
+  // Issue #245 (L4): the command named one request; if that one went, the next is not answered unseen.
+  test("when the request the command named is gone, the one now oldest is opened, not answered", () => {
+    const { store, answered, opened } = storeWith([
+      request({ requestId: "r2", createdAt: "2026-11-02T11:00:00Z" }),
+    ]);
+    store.decideOldest("approve", "h1/r1");
+    store.decideOldest("deny", "h1/r1");
+    expect([answered, opened]).toEqual([[], ["r2", "r2"]]);
   });
 });

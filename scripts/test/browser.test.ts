@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   type BrowserAttempt,
@@ -9,6 +8,7 @@ import {
   launchFirst,
   whichOnNodePath,
 } from "../lib/browser.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 const realPath = process.env.PATH;
 afterEach(() => {
@@ -23,7 +23,7 @@ const EXT = process.platform === "win32" ? ".cmd" : "";
  * returns the path each one is found at.
  */
 function onlyOnPath(...names: string[]): (name: string) => string {
-  const dir = mkdtempSync(join(tmpdir(), "fd-browser-"));
+  const dir = realTempDir("fd-browser-");
   for (const name of names) {
     writeFileSync(
       join(dir, name + EXT),

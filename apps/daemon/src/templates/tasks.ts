@@ -1,6 +1,7 @@
 import { lstat, mkdir, open, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type { TaskFile, TaskPreviewResult, TaskResultsResult } from "@flightdeck/protocol";
+import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 
@@ -78,7 +79,7 @@ export class TaskTracker {
   async keep(sessionId: string, folders: readonly string[], before: Snapshot): Promise<void> {
     await mkdir(this.opts.dir, { recursive: true });
     const kept: Kept = { folders: [...folders], before };
-    await writeFile(this.file(sessionId), JSON.stringify(kept));
+    await writeFileAtomic(this.file(sessionId), JSON.stringify(kept));
   }
 
   /** The start of a text file inside the task's folders (text, Markdown or CSV), for a preview. */

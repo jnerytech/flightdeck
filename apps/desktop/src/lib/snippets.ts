@@ -50,7 +50,8 @@ function envNameOf(word: string, taken: Set<string>): string {
   const flag = word.match(/^--?([A-Za-z][A-Za-z0-9-]*)=/)?.[1];
   const base = (assigned ?? flag?.replaceAll("-", "_") ?? "SECRET").toUpperCase();
   let name = base;
-  for (let n = 2; taken.has(name); n++) name = `${base}_${n}`;
+  let n = 2;
+  while (taken.has(name)) name = `${base}_${n++}`;
   taken.add(name);
   return name;
 }

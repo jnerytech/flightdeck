@@ -7,6 +7,11 @@ import { mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+/** The OS temp folder as the OS names it (8.3 short on a Windows runner): for a test that checks the code names it. */
+export function osTempDir(): string {
+  return tmpdir();
+}
+
 export function realTempDir(prefix: string): string {
   return realpathSync.native(mkdtempSync(join(tmpdir(), prefix)));
 }

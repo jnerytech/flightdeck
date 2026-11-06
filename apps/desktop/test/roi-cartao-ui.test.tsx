@@ -47,6 +47,8 @@ async function roiPage(
   mkdirSync(repo, { recursive: true });
   await Bun.spawn(["git", "init", "-q", repo]).exited;
   const mem = memoryPlatform(false, lang);
+  // The card opens folded (issue #178); these tests read its details, so it starts open.
+  mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
   const store = new AppStore(mem.platform, {
     baseDelayMs: 60_000,
     now: () => Date.parse(`${TODAY}T12:00:00Z`),
@@ -343,6 +345,9 @@ for (const [lang, t] of [
     test("no blocking accessibility violation", async () => {
       await roiPage(lang, { usage: USAGE, done: SHOP });
       await settle(() => screen.queryByText(plural(t.roiUi.cardsDone, 3)) !== null);
+      expect(screen.queryByText(plural(t.roiUi.cardsDone, 3))).not.toBeNull();
+      expect(screen.queryByText(plural(t.roiUi.cardsDone, 3))).not.toBeNull();
+      expect(screen.queryByText(plural(t.roiUi.cardsDone, 3))).not.toBeNull();
       const result = await axe.run(document.body, {
         rules: { "color-contrast": { enabled: false } },
       });
