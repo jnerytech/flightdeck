@@ -31,4 +31,7 @@
   - A link among the files a wildcard matches, inside a real folder: `src/app-*.ts` with
     `src/app-evil.ts` linked outside. Only the folders before the wildcard are resolved.
   - A caller other than the server that gives no `real` lookup rates the rule as written (the
-    default). The server always passes one on an allow.
+    default). The server passes one on every allow of an open request with a folder. A request
+    open with no session folder (`permissionPlace` gives `""`) skips both lookups. Its exact paths
+    then count as folders, but its real paths are not read. That needs an open request whose
+    session row is gone, and none is known.
