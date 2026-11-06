@@ -1,14 +1,15 @@
 /**
  * Which CI jobs a pull request needs, from the paths it changes (issue #264). Docs or scripts only
- * run the Linux tests and lint; the daemon adds Windows and the smokes; the app, the protocol, the
- * dependencies or the workflow itself run everything; the Tauri shell adds cargo. A push to main,
- * a run by hand, or a diff that cannot be read runs everything.
+ * run the Linux tests and lint; the daemon adds the smokes; the app, the protocol, the
+ * dependencies or the workflow itself run everything; the Tauri shell adds cargo. Windows is not
+ * planned for a PR or a push to main (#534); the schedule and a run by hand run everything,
+ * Windows included, as a signal that gates nothing.
  */
 
 import { GLOBAL_FILE, TEST_FILE } from "./test-related.ts";
 
 export interface CiPlan {
-  /** The three Windows test shards and the Windows checks. */
+  /** The Windows test shards and the Windows checks: the schedule's and a run by hand's only (#534). */
   windows: boolean;
   /** The smokes (Linux and Windows). */
   smokes: boolean;
@@ -39,8 +40,6 @@ const EVERYTHING =
   /^(?:apps\/desktop\/|packages\/|\.github\/workflows\/)|^(?:package\.json|bun\.lock|bunfig[^/]*\.toml|tsconfig[^/]*\.json)$/;
 const DAEMON = /^apps\/daemon\/|^scripts\/smoke-[^/]+\.ts$/;
 const TAURI = /^apps\/desktop\/src-tauri\//;
-/** The scripts and their tests: the Windows shards run the tests related to them (#399). */
-const SCRIPTS = /^scripts\//;
 /**
  * The journeys, their Playwright config and the demo they drive (#399). The demo seed starts the
  * real daemon and uses the scripts' test helpers (fake CLIs, temp folders), so those count too
@@ -63,12 +62,16 @@ export function ciPlan(
   selected = 0,
 ): CiPlan {
   // A PR and a push to main plan by their paths (#444); the schedule and a run by hand run all.
-  if ((event !== "pull_request" && event !== "push") || changed === null) return { ...FULL };
+  const partial = event === "pull_request" || event === "push";
+  if (!partial) return { ...FULL };
+  // Windows is off the PR path and main's push (#534): the person tests it by hand, and delivery
+  // does not wait for a slow runner. Only the schedule and a run by hand keep it, as a signal.
+  if (changed === null) return { ...FULL, windows: false };
   const any = (re: RegExp) => changed.some((path) => re.test(path));
   const everything = any(EVERYTHING);
   const daemon = everything || any(DAEMON);
   return {
-    windows: daemon || any(SCRIPTS),
+    windows: false,
     smokes: daemon,
     screenshots: everything,
     cargo: any(TAURI),

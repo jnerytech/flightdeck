@@ -20,6 +20,7 @@ interface Job {
   name?: string;
   if?: string;
   needs?: string[];
+  "continue-on-error"?: boolean;
   "runs-on"?: string;
   strategy?: { matrix?: Record<string, unknown> };
   steps: Step[];
@@ -100,6 +101,19 @@ describe("ci-shards", () => {
     const check = runs("test-windows");
     expect(check).toContain('test "${{ needs.test-windows-shard.result }}" = success');
     expect(check).toContain('test "${{ needs.checks-windows.result }}" = success');
+  });
+
+  test("the Windows jobs are a signal in the full runs, never a gate (#534): a red one leaves the run green", () => {
+    for (const key of ["test-windows-shard", "checks-windows", "test-windows"]) {
+      expect(`${key}: ${job(key)["continue-on-error"]}`).toBe(`${key}: true`);
+    }
+    // Nothing that gates a release or a merge waits for them.
+    for (const key of Object.keys(ci.jobs)) {
+      if (key.includes("windows")) continue;
+      expect(`${key}: ${(job(key).needs ?? []).filter((n) => n.includes("windows"))}`).toBe(
+        `${key}: `,
+      );
+    }
   });
 
   test("screenshots (prints, axe e e2e) is one aggregate over the prints and the e2e jobs", () => {

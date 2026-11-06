@@ -4,7 +4,9 @@ import {
   type FindDecorations,
   NEWLINE_SEQUENCE,
   type TerminalColors,
+  type TerminalZoom,
   terminalKeyAction,
+  terminalWheelAction,
 } from "./terminal-view.ts";
 
 /** The slice of xterm's Terminal the app uses; a fake stands in for it in the tests. */
@@ -30,6 +32,7 @@ export interface XtermTerminal {
   buffer: {
     active: { getLine(y: number): XtermBufferLine | undefined };
   };
+  attachCustomWheelEventHandler(handler: (event: WheelEvent) => boolean): void;
   dispose(): void;
 }
 
@@ -108,6 +111,8 @@ export interface XtermScreenOptions {
   onSearch(): void;
   /** A file path in the output was clicked: the path as printed, without its line (#476). */
   onPath?(path: string): void;
+  /** Ctrl+=, Ctrl+-, Ctrl+0 or Ctrl+wheel asked for a zoom step (#476). */
+  onZoom?(step: TerminalZoom): void;
   /** The matches of the find bar changed (typing, next, previous). */
   onFindResults?(results: FindResults): void;
   /** A link in the output was clicked. */
@@ -216,9 +221,23 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       case "snippets":
         options.onSnippets?.();
         return false;
+      case "zoomIn":
+      case "zoomOut":
+      case "zoomReset":
+        // Kept from the page too: WebView2 would zoom the whole app on the same keys.
+        event.preventDefault();
+        if (event.type === "keydown") options.onZoom?.(action);
+        return false;
       default:
         return true;
     }
+  });
+  terminal.attachCustomWheelEventHandler((event) => {
+    const step = terminalWheelAction(event);
+    if (!step) return true;
+    event.preventDefault();
+    options.onZoom?.(step);
+    return false;
   });
 
   return {

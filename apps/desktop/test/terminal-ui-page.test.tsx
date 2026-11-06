@@ -177,6 +177,17 @@ describe("terminal-ui: the terminal screen", () => {
     expect(x.terminal.options.fontSize).toBe(18);
   });
 
+  test("Ctrl+= and Ctrl+wheel zoom the terminal through the font setting that Settings shows (issue #476)", async () => {
+    const { x, store } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => void x.ctrlKey("="));
+    await settle(() => x.terminal.options.fontSize === 14);
+    expect(x.terminal.options.fontSize).toBe(14);
+    act(() => void x.ctrlWheel(100));
+    await settle(() => x.terminal.options.fontSize === 13);
+    expect([store.terminalFont.value, x.terminal.options.fontSize]).toEqual([13, 13]);
+  });
+
   test("Ctrl+Shift+C copies the selection through the app and Ctrl+Shift+V pastes the clipboard", async () => {
     const { x, copied } = await setup();
     await settle(() => state("Ao vivo"));

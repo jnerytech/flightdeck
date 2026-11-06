@@ -1146,6 +1146,14 @@ conversation. It is where you check what the agent did and send it back what to 
     the repository is refused too;
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
+- **Files tab** (when the host lists files): the session's repository as a tree. Folders come
+  first, then files, in natural order (`file2` before `file10`); a folder opens on click and is
+  read once. A changed file carries its status (new, modified, deleted, renamed) from the same diff
+  as the Changes tab, live, and every folder above it says **has changes**. A file that may hold a
+  credential shows as **Hidden**. `.git` and links that lead out of the repository never show.
+  **Filter by name** keeps the names that match among the folders already open, with the folders
+  on their way. A folder with more than 500 entries shows the first ones and says so. A session
+  outside git has no tree: the tab says so.
 - **Inline comments:**
   - click a line number to comment on it, and shift+click another to extend the range. A removed
     line is commented on its old side;
@@ -2775,7 +2783,9 @@ tab, with no SSH.
   folder and an extension (`src/app.ts:12`), taken from the terminal's folder. On a host of this
   computer a click shows the file in its folder (it never opens or runs it); on another host it
   copies the path. The font is the
-  system monospace; its size is in Settings (**Terminal font size**, 10 to 24). The tab keeps
+  system monospace; its size is in Settings (**Terminal font size**, 10 to 24). In the tab,
+  `Ctrl+=` (or `Ctrl++`) and `Ctrl+-`, or `Ctrl` with the mouse wheel, make it one point bigger or
+  smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. The tab keeps
   the last 10,000 lines to scroll back to and to search.
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
@@ -2845,6 +2855,24 @@ second copy anyway** opens it here all the same.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
+- **Resources:** a host page panel (hosts that announce `resources`) shows the host's memory and
+  disk as bars, its load, and a table of its sessions and terminals with the biggest memory first:
+  project, memory, CPU and the programs running (names only; never a command line or an
+  environment). Memory or disk at 80% reads **High** and at 90% **Critical**, in words as well as
+  colour. **Leftover processes** lists a `claude` that the host's daemon started for a session that is
+  over (older than a minute, in that session's folder, started while that session lived), with its
+  pid, age and memory; a `claude` the daemon starts for something else (a plugin install, the account
+  query, an action) or a live session's process whose folder was moved is never listed; **End** asks first and ends only that
+  process (the daemon checks again, right before the signal, that it is the same process, by pid and
+  start time, still its own child and still without an owner). A `claude` whose folder cannot be read,
+  or that runs in a folder where a live session is, is never listed: which one is whose cannot be told.
+  A daemon running as pid 1 (a container) lists none. Ending needs a connection from loopback or
+  Tailscale, like the other commands that change the host, and sends SIGTERM to that process only. The
+  panel reads every 5 s while the page is open and the host is online, and the daemon keeps no
+  timer for it. Per-process numbers come from `/proc`, so only Linux hosts have them; macOS and
+  Windows hosts show the memory and disk (and the load, on macOS) and say the processes are not
+  measured. A session is matched to its `claude` by folder and start order, so two sessions in one
+  folder can swap numbers.
 - **Worktrees:** a host page panel (hosts that announce `worktrees`) lists the cards' worktrees
   under `.flightdeck/worktrees` with their size on disk (**unknown** when measuring ran out of
   time, never 0), how long they have been idle, and their card. **Suggested** marks a clean worktree

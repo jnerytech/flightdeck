@@ -1142,6 +1142,14 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     para fora do repositório também é recusado;
   - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
     lê de novo.
+- **Aba Arquivos** (quando o host lista arquivos): o repositório da sessão como árvore. Pastas
+  primeiro, depois arquivos, em ordem natural (`file2` antes de `file10`); uma pasta abre com um
+  clique e é lida uma vez. Um arquivo alterado mostra o status (novo, modificado, apagado,
+  renomeado) do mesmo diff da aba Mudanças, ao vivo, e cada pasta acima dele diz **tem mudanças**.
+  Um arquivo que pode guardar uma credencial aparece como **Oculto**. O `.git` e links que levam
+  para fora do repositório nunca aparecem. **Filtrar por nome** mantém os nomes que batem entre as
+  pastas já abertas, com as pastas no caminho. Uma pasta com mais de 500 entradas mostra as
+  primeiras e avisa. Uma sessão fora do git não tem árvore: a aba diz isso.
 - **Comentários inline:**
   - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
     Uma linha apagada é comentada pelo lado antigo;
@@ -2774,7 +2782,9 @@ numa aba, sem SSH.
   e extensão (`src/app.ts:12`), lidos a partir da pasta do terminal. Num host deste computador o
   clique mostra o arquivo na pasta (nunca o abre nem o executa); em outro host copia o caminho. A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
-  10 a 24). A aba guarda as últimas 10.000 linhas para rolar e buscar.
+  10 a 24). Na aba, `Ctrl+=` (ou `Ctrl++`) e `Ctrl+-`, ou `Ctrl` com a roda do mouse, aumentam ou
+  diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. A
+  aba guarda as últimas 10.000 linhas para rolar e buscar.
 - **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar
   de novo os mostra. Fechar a aba de um terminal pergunta: **Desanexar** (o padrão; o processo
   continua no host) ou **Encerrar processo**. Um terminal desanexado ou encerrado tem **Reabrir**.
@@ -2842,6 +2852,24 @@ terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Recursos:** um painel da página do host (hosts que anunciam `resources`) mostra a memória e o
+  disco do host em barras, a carga, e uma tabela das sessões e terminais com a maior memória
+  primeiro: projeto, memória, CPU e os programas rodando (só os nomes; nunca uma linha de comando
+  nem o ambiente). Memória ou disco a 80% diz **Alta** e a 90% **Crítica**, em palavras e em cor.
+  **Processos que sobraram** lista um `claude` que o daemon do host iniciou para uma sessão que
+  já acabou (com mais de um minuto, na pasta dessa sessão, iniciado enquanto ela vivia), com pid,
+  idade e memória; um `claude` que o daemon inicia para outra coisa (instalação de plugin, consulta
+  da conta, uma ação) ou o processo de uma sessão viva cuja pasta foi movida nunca é listado; **Encerrar** pergunta antes e encerra só
+  esse processo (o daemon confere de novo, logo antes do sinal, que é o mesmo processo, por pid e
+  hora de início, ainda filho dele e sem dono). Um `claude` cuja pasta não pode ser lida, ou que roda
+  numa pasta onde há uma sessão viva, nunca é listado: não dá para saber de quem é cada um. Um daemon
+  rodando como pid 1 (um contêiner) não lista nenhum. Encerrar exige conexão por loopback ou
+  Tailscale, como os outros comandos que mudam o host, e manda SIGTERM só àquele processo. O painel lê a cada
+  5 s enquanto a página está aberta e o host está online, e o daemon não mantém timer para isso. Os
+  números por processo vêm de `/proc`, então só hosts Linux os têm; hosts macOS e Windows mostram a
+  memória e o disco (e a carga, no macOS) e dizem que os processos não são medidos. Uma sessão é
+  ligada ao seu `claude` pela pasta e pela ordem de início, então duas sessões na mesma pasta podem
+  trocar os números.
 - **Worktrees:** um painel da página do host (hosts que anunciam `worktrees`) lista as worktrees
   dos cards em `.flightdeck/worktrees` com o tamanho em disco (**desconhecido** quando a medição
   estourou o tempo, nunca 0), há quanto tempo estão paradas e o card de cada uma. **Sugerida** marca

@@ -401,6 +401,7 @@ export type HostCommandType = Extract<
   | `run.${string}`
   | `gate.${string}`
   | `maintenance.${string}`
+  | `resources.${string}`
   | `worktree.${string}`
   | `quota.${string}`
   | `account.${string}`

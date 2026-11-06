@@ -199,6 +199,7 @@ function ManagedSession(
       }
       telemetry={!opencode && hasFeature(host?.hostInfo?.features, "telemetry", false)}
       trace={!opencode && hasFeature(host?.hostInfo?.features, "trace", false)}
+      files={!opencode && hasFeature(host?.hostInfo?.features, "file.list", false)}
     >
       <SessionView
         t={store.i18n.t}
@@ -647,6 +648,7 @@ function externalScreen(
       messagingId={has("messaging") ? route.claudeSessionId : null}
       telemetry={has("telemetry")}
       trace={has("trace")}
+      files={has("file.list")}
     >
       <ExternalView
         store={store}

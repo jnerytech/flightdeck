@@ -389,10 +389,12 @@ jobs:
         run: bun run fast-coverage
 
   # Windows, the slowest leg (#220: 33 minutes, 25 of them tests), runs the suite in three shards
-  # with no coverage: the 100% gate is Linux's. The required check `test (windows-latest)` is the
-  # aggregate below.
+  # with no coverage: the 100% gate is Linux's. Since #534 it runs only in the schedule's and a
+  # run by hand's full runs, as a signal: a PR and a push to main plan no Windows, and a red
+  # Windows job (continue-on-error) leaves the run green, so nothing that gates waits for it.
   test-windows-shard:
     name: test shard ${{ matrix.shard }}/${{ strategy.job-total }} (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    continue-on-error: true
     needs: [quick]
     if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.quick.outputs.windows == 'true'
     strategy:
@@ -464,6 +466,7 @@ jobs:
   # performance baseline.
   checks-windows:
     name: checks (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    continue-on-error: true
     needs: [quick]
     if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.quick.outputs.windows == 'true'
     runs-on: windows-latest
@@ -574,10 +577,13 @@ jobs:
           path: perf-baseline
           if-no-files-found: ignore
 
-  # The check the main ruleset requires: it passes only when every shard and the checks passed.
+  # The Windows verdict in one job: it is red unless every shard and the checks passed. Since #534
+  # the main ruleset no longer requires it and continue-on-error keeps it from failing the run;
+  # on a PR, where no Windows job runs, it passes at once so the name still reports.
   # always(), so a failed or cancelled shard makes it fail rather than skip.
   test-windows:
     name: test (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    continue-on-error: true
     needs: [quick, test-windows-shard, checks-windows]
     if: always() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
     runs-on: ubuntu-latest

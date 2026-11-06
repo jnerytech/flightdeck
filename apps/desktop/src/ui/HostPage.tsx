@@ -10,6 +10,7 @@ import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostHealth } from "@/components/hosts/host-health";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { HostOverview } from "@/components/hosts/host-overview";
+import { HostResources } from "@/components/hosts/host-resources";
 import { HostVersionLine } from "@/components/hosts/host-version";
 import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { KeepAwakePanel } from "@/components/hosts/keep-awake-panel";
@@ -227,6 +228,7 @@ export function HostPage(
                   onHooksChanged={refreshHooks}
                 />
               )}
+              <HostResources store={store} host={host} />
               {hasFeature(info?.features, "account", false) && (
                 <HostAccount store={store} host={host} />
               )}
