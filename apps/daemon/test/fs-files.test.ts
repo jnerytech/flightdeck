@@ -8,7 +8,7 @@ import { newManager, poll, tempDir } from "./helpers.ts";
 
 /** A root with `code/{app/, b.ts, A.ts, .env, link -> ../secret.txt}`, `.git/HEAD` and an outside file. */
 function tree() {
-  const base = realpathSync(tempDir("fd-fsfiles-"));
+  const base = realpathSync.native(tempDir("fd-fsfiles-"));
   const root = join(base, "root");
   for (const dir of ["code/app", "code/.git", "code/node_modules"]) {
     mkdirSync(join(root, dir), { recursive: true });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "./temp-dir.ts";
 import { installTempRun, removeTempRun } from "./temp-run.ts";
@@ -24,6 +24,30 @@ describe("temp-run: each test run has a temp folder of its own, removed at the e
     expect(removeTempRun(run)).toBe(true);
     expect(readdirSync(base)).toEqual([]);
   });
+
+  test.skipIf(process.platform === "win32")(
+    "removing it never changes what a link inside points at: the link goes, the file outside keeps its mode (#232)",
+    () => {
+      // The PATH guard links every program of ~/.local/bin into the run's folder; a chmod that
+      // followed those links left the user's programs at 0666, not executable.
+      const outside = realTempDir("fd-temp-run-outside-");
+      const program = join(outside, "tool");
+      writeFileSync(program, "#!/bin/sh\n");
+      chmodSync(program, 0o755);
+      const base = realTempDir("fd-temp-run-base-");
+      const run = installTempRun({}, base);
+      mkdirSync(join(run.dir, "fd-path-guard-x"));
+      symlinkSync(program, join(run.dir, "fd-path-guard-x", "tool"));
+      symlinkSync(outside, join(run.dir, "linked-folder"));
+      const folderMode = statSync(outside).mode & 0o777;
+      expect(removeTempRun(run)).toBe(true);
+      expect(readdirSync(base)).toEqual([]);
+      // The folder first: a folder that lost its x bit hides what it holds.
+      expect(statSync(outside).mode & 0o777).toBe(folderMode);
+      expect(statSync(program).mode & 0o777).toBe(0o755);
+      expect(readdirSync(outside)).toEqual(["tool"]);
+    },
+  );
 
   test("a run sweeps the folders of earlier runs whose process is gone, and only those", () => {
     const base = realTempDir("fd-temp-run-base-");
