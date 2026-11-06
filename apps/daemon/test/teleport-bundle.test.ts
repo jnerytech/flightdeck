@@ -125,7 +125,7 @@ describe("teleport-bundle: the code of a session as one git bundle (#100)", () =
     ]);
   });
 
-  test("the repository's fsmonitor and external diff never run", async () => {
+  test("the repository's fsmonitor, external diff and gpg program never run", async () => {
     const { repo, folder } = await working();
     const marks = tempDir("fd-teleport-marks-");
     const script = async (name: string) => {
@@ -135,9 +135,19 @@ describe("teleport-bundle: the code of a session as one git bundle (#100)", () =
     };
     git(repo, "config", "core.fsmonitor", await script("fsmonitor"));
     git(repo, "config", "diff.external", await script("external"));
+    // A commit with a signature header makes `git log` run gpg.program when showSignature is on.
+    git(repo, "config", "log.showSignature", "true");
+    git(repo, "config", "gpg.program", await script("gpg"));
+    const signed = git(repo, "cat-file", "commit", "HEAD").replace(
+      /^(committer .*)$/m,
+      "$1\ngpgsig -----BEGIN PGP SIGNATURE-----\n x\n -----END PGP SIGNATURE-----",
+    );
+    const object = join(marks, "commit.txt");
+    await writeFile(object, signed);
+    git(repo, "update-ref", "HEAD", git(repo, "hash-object", "-t", "commit", "-w", object).trim());
     await bundleCode({ cwd: repo, folder, id: "p", scan: () => [] });
     const ran = await readdir(marks);
-    expect(ran.filter((name) => !name.endsWith(".sh"))).toEqual([]);
+    expect(ran.filter((name) => !name.includes("."))).toEqual([]);
   });
 
   test("a secret a commit added and a later one removed is still counted: the bundle carries both", async () => {
