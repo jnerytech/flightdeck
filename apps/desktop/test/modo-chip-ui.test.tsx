@@ -17,10 +17,17 @@ interface Setup {
   bypass?: boolean;
   lang?: "en" | "pt-BR";
   noSettings?: boolean;
+  runtime?: "claude" | "opencode";
 }
 
 /** The open session with the mode chip: what it was asked to change, and where the host settings link went. */
-function view({ start = "default", bypass = false, lang = "en", noSettings = false }: Setup = {}) {
+function view({
+  start = "default",
+  bypass = false,
+  lang = "en",
+  noSettings = false,
+  runtime = "claude",
+}: Setup = {}) {
   const calls: string[] = [];
   const opened: string[] = [];
   const t = translator(lang);
@@ -39,6 +46,7 @@ function view({ start = "default", bypass = false, lang = "en", noSettings = fal
           setMode: async (mode) => void calls.push(mode),
         }}
         settings={!noSettings}
+        runtime={runtime}
         {...(bypass ? { bypass: { host: "pc" } } : {})}
         onOpenHostSettings={() => void opened.push("host")}
       />
@@ -142,6 +150,20 @@ describe("modo-chip: the mode menu", () => {
     expect(calls).toEqual(["plan"]);
   });
 
+  test("an OpenCode session has no accept-edits mode: the menu lists the others, renumbered", async () => {
+    const { calls } = view({ start: "default", bypass: true, runtime: "opencode" });
+    await open();
+    expect(rows().map((r) => r.textContent)).toEqual([
+      "DefaultAsks before it edits files or runs commands1",
+      "PlanOnly reads and proposes a plan; changes nothing2",
+      "Bypass permissionsRuns everything without asking. Only in a folder you can throw away3",
+    ]);
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("menu"), { key: "2" });
+    });
+    expect(calls).toEqual(["plan"]);
+  });
+
   test("the key 4 asks before bypass, and changes nothing until it is confirmed", async () => {
     const { calls } = view({ start: "default", bypass: true });
     await open();
@@ -212,6 +234,14 @@ describe("modo-chip: bypass asks first", () => {
 });
 
 describe("modo-chip: Shift+Tab", () => {
+  test("on an OpenCode session it goes from default to plan, never to accept edits", async () => {
+    const { calls } = view({ start: "default", bypass: true, runtime: "opencode" });
+    await act(async () => {
+      fireEvent.keyDown(box(), { key: "Tab", shiftKey: true });
+    });
+    expect(calls).toEqual(["plan"]);
+  });
+
   const box = () => screen.getByRole("textbox", { name: "Message" });
   const shiftTab = async () => {
     await act(async () => {
