@@ -10,6 +10,7 @@ import { AsyncQueue } from "../async-queue.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { credential } from "../permissions/risk.ts";
+import { settled } from "../settled.ts";
 import {
   ACP_CLOSED,
   AcpClient,
@@ -356,7 +357,11 @@ class OpenCodeRun implements AgentRun {
       .catch((error) => this.fatal(error));
   }
 
-  async interrupt(): Promise<void> {
+  interrupt(): Promise<void> {
+    return settled(() => this.interruptNow());
+  }
+
+  private interruptNow(): void {
     for (const controller of this.asking.values()) controller.abort();
     const conn = this.conn;
     if (!this.turnActive || !conn) {

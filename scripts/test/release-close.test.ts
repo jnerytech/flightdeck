@@ -6,6 +6,9 @@ const R = "repos/{owner}/{repo}";
 /** One commit of `git log --format=%s%x1f%b%x1e`. */
 const commit = (subject: string, body = "") => `${subject}\x1f${body}\x1e`;
 
+/** A commit whose body closes an issue. */
+const closing = (n: number) => commit("fix(x): y", `Closes #${n}`);
+
 const LOG = [
   commit("fix(card-fields): a save never drops an edit (#170)"),
   commit("test(card-fields): a save never drops an edit (#170)"),
@@ -37,8 +40,15 @@ function fake(
     garbage?: RegExp;
     board?: (n: number) => boolean;
     log?: string;
+    /** The merge commits of the range, as `git log --first-parent --merges --format=%s` prints them. */
+    merges?: string;
+    /** The issues each merged pull request closes (its closingIssuesReferences). */
+    prCloses?: Record<number, number[]>;
   } = {},
 ) {
+  // Without a log of its own, the range is the default LOG, whose one merged pull request closes 170 and 171.
+  const standard = opts.log === undefined;
+  const prCloses = opts.prCloses ?? (standard ? { 166: [170, 171] } : {});
   const calls: string[] = [];
   const gitCalls: string[] = [];
   const lines: string[] = [];
@@ -56,6 +66,10 @@ function fake(
       calls.push(line);
       if (opts.garbage?.test(line)) return { code: 0, stdout: "<html>rate limited</html>" };
       if (opts.fail?.test(line)) return { code: 1, stdout: "" };
+      if (args[0] === "pr" && args[1] === "view") {
+        const closes = prCloses[Number(args[2])];
+        return closes ? { code: 0, stdout: closes.join("\n") } : { code: 1, stdout: "" };
+      }
       const path = args.find((a) => a.startsWith("repos/")) ?? "";
       const method = args.includes("-X") ? args[args.indexOf("-X") + 1] : "GET";
       const m = /issues\/(\d+)(\/comments)?$/.exec(path);
@@ -97,6 +111,12 @@ function fake(
       if (args[0] === "rev-parse")
         return { code: args.includes("v9.9.9^{commit}") ? 1 : 0, stdout: "" };
       if (args[0] === "describe") return { code: 0, stdout: "v0.36.3\n" };
+      if (args[0] === "log" && args.includes("--merges"))
+        return {
+          code: 0,
+          stdout:
+            opts.merges ?? (standard ? "Merge pull request #166 from jnerytech/rc/0364\n" : ""),
+        };
       if (args[0] === "log") return { code: 0, stdout: opts.log ?? LOG };
       return { code: 1, stdout: "" };
     },
@@ -125,19 +145,19 @@ const open = (title: string, milestone = V364): Issue => ({
 });
 
 describe("release-close", () => {
-  test("a subject's #N and a Closes/Fixes/Resolves body line count; other body mentions do not", () => {
-    expect(issueRefs(LOG)).toEqual({ closes: [166, 170, 171, 237], mentioned: [233] });
+  test("only a Closes/Fixes/Resolves line, in a subject or a body, closes; every other number is only referenced", () => {
+    expect(issueRefs(LOG)).toEqual({ closes: [237], mentioned: [170, 171, 233] });
     expect(issueRefs(commit("chore: x", "fixes #12\nResolves #13\nsee #14 and #12"))).toEqual({
       closes: [12, 13],
       mentioned: [14],
     });
+    expect(issueRefs(commit("fix(x): y, closes #5 (#6)"))).toEqual({ closes: [5], mentioned: [6] });
   });
 
   test("the dry run reads, says what it would do, and changes nothing", async () => {
     const f = fake({
       170: open("Card data loss"),
       171: { ...open("Hosts 0 px"), state: "closed" },
-      166: { ...open("v0.36.3"), pull: true },
       237: open("Review fixes"),
       233: open("Taskbar badge"),
     });
@@ -148,18 +168,67 @@ describe("release-close", () => {
     expect(out).toContain("v0.36.3..v0.36.4");
     expect(out).toContain("#170 open: Card data loss → comment, close, board Done");
     expect(out).toContain("#171 closed: Hosts 0 px → board Done");
-    expect(out).toContain("#166: a pull request, skipped");
-    expect(out).toContain("mentioned only in commit bodies, not touched: #233");
+    expect(out).toContain("referenced only, left open: #233");
     expect(out).toContain("milestone v0.36.4: closes once its last open issue is closed");
     expect(out).toContain("dry run: nothing changed (--apply to do it)");
     expect(f.calls.some((c) => c.includes("issues/233"))).toBe(false);
+  });
+
+  test("an issue only referenced (a docs mention, a partial commit, a PR that said Refs) is named and left open, never read or touched (#367)", async () => {
+    const f = fake(
+      { 151: open("Activity board"), 196: open("Project trust") },
+      {
+        log:
+          commit("docs(release): the activity board (#151)") + commit("feat(trust): part (#196)"),
+        merges: "Merge pull request #362 from jnerytech/security-parity\n",
+        prCloses: { 362: [] },
+      },
+    );
+    expect(await releaseClose("v0.36.4", { apply: true }, f.deps)).toBe(0);
+    expect(f.lines.join("\n")).toContain("referenced only, left open: #151, #196");
+    expect(f.writes().filter((c) => c.includes("issues/"))).toEqual([]);
+    expect(f.calls.some((c) => c.includes("issues/151") || c.includes("issues/196"))).toBe(false);
+    expect(f.boarded).toEqual([]);
+  });
+
+  test("an issue a merged pull request closes is closed even when no commit names it (#367)", async () => {
+    const issues = { 88: open("Pairing") };
+    const f = fake(issues, {
+      log: commit("feat(pairing): y"),
+      merges: "Merge pull request #350 from jnerytech/pairing\n",
+      prCloses: { 350: [88] },
+      milestoneOpen: 2,
+    });
+    expect(await releaseClose("v0.36.4", { apply: true }, f.deps)).toBe(0);
+    expect(issues[88].state).toBe("closed");
+    expect(f.gitCalls).toContain("log --first-parent --merges --format=%s v0.36.3..v0.36.4");
+    expect(f.calls).toContain(
+      "pr view 350 --json closingIssuesReferences --jq .closingIssuesReferences[].number",
+    );
+  });
+
+  test("a merged pull request whose closing issues cannot be read is named and fails the run, the others still close (#367)", async () => {
+    const issues = { 88: open("Pairing") };
+    const f = fake(issues, {
+      log: closing(88),
+      merges: "Merge pull request #351 from jnerytech/x\n",
+      prCloses: {},
+    });
+    expect(await releaseClose("v0.36.4", { apply: true }, f.deps)).toBe(1);
+    expect(f.lines.join("\n")).toContain("#351: its closing issues cannot be read");
+    expect(issues[88].state).toBe("closed");
+  });
+
+  test("an issue number that is a pull request is said and skipped (#367)", async () => {
+    const f = fake({ 166: { ...open("v0.36.3"), pull: true } }, { log: closing(166) });
+    expect(await releaseClose("v0.36.4", { apply: false }, f.deps)).toBe(0);
+    expect(f.lines.join("\n")).toContain("#166: a pull request, skipped");
   });
 
   test("--apply comments, closes and boards each open issue, boards the closed one, and closes the empty milestone", async () => {
     const issues = {
       170: open("Card data loss"),
       171: { ...open("Hosts 0 px"), state: "closed" as const },
-      166: { ...open("v0.36.3"), pull: true },
       237: open("Review fixes"),
       233: open("Taskbar badge"),
     };
@@ -183,7 +252,7 @@ describe("release-close", () => {
       { 170: open("Card data loss"), 171: open("Hosts"), 237: open("Fixes") },
       {
         milestoneOpen: 5,
-        log: commit("fix(x): y (#170)"),
+        log: closing(170),
       },
     );
     expect(await releaseClose("v0.36.4", { apply: true }, f.deps)).toBe(0);
@@ -197,7 +266,7 @@ describe("release-close", () => {
       170: { ...open("Card"), state: "closed" as const, comments: ["Shipped in v0.36.4."] },
     };
     // The first run closed the issue and the milestone.
-    const f = fake(issues, { log: commit("fix(x): y (#170)"), milestoneState: "closed" });
+    const f = fake(issues, { log: closing(170), milestoneState: "closed" });
     expect(await releaseClose("v0.36.4", { apply: true }, f.deps)).toBe(0);
     expect(f.writes()).toEqual([]);
     expect(f.boarded).toEqual([170]);
@@ -205,7 +274,7 @@ describe("release-close", () => {
 
   test("an open issue already commented is closed without a second comment", async () => {
     const issues = { 170: { ...open("Card"), comments: ["Shipped in v0.36.4."] } };
-    const f = fake(issues, { log: commit("fix(x): y (#170)"), milestoneOpen: 2 });
+    const f = fake(issues, { log: closing(170), milestoneOpen: 2 });
     await releaseClose("v0.36.4", { apply: true }, f.deps);
     // One open issue is left in the milestone, so the only write is the close.
     expect(f.writes()).toEqual([
@@ -225,30 +294,27 @@ describe("release-close", () => {
   });
 
   test("an issue that cannot be read is named and fails the run, the rest still read", async () => {
-    const f = fake(
-      { 170: open("Card") },
-      { log: commit("fix(x): y (#170)") + commit("fix(z): w (#404)") },
-    );
+    const f = fake({ 170: open("Card") }, { log: closing(170) + closing(404) });
     expect(await releaseClose("v0.36.4", { apply: false }, f.deps)).toBe(1);
     expect(f.lines.join("\n")).toContain("#404: cannot be read");
   });
 
   test("without a board command the board is skipped, and said once", async () => {
-    const f = fake({ 170: open("Card") }, { log: commit("fix(x): y (#170)") });
+    const f = fake({ 170: open("Card") }, { log: closing(170) });
     const { board: _board, ...noBoard } = f.deps;
     expect(await releaseClose("v0.36.4", { apply: true }, noBoard)).toBe(0);
     expect(f.lines.filter((l) => l.includes("board skipped"))).toHaveLength(1);
   });
 
   test("--since names the earlier tag; an unknown tag is the usage, exit 2", async () => {
-    const f = fake({ 170: open("Card") }, { log: commit("fix(x): y (#170)") });
+    const f = fake({ 170: open("Card") }, { log: closing(170) });
     await releaseClose("v0.36.4", { apply: false, since: "v0.36.1" }, f.deps);
     expect(f.lines.join("\n")).toContain("v0.36.1..v0.36.4");
     expect(await releaseClose("v9.9.9", { apply: false }, f.deps)).toBe(2);
   });
 
   test("a tag that is not vX.Y.Z, or a --since that is not one, is the usage and reaches no git or gh (#287)", async () => {
-    const f = fake({ 170: open("Card") }, { log: commit("fix(x): y (#170)") });
+    const f = fake({ 170: open("Card") }, { log: closing(170) });
     for (const tag of ["main", "-x", "--output=/tmp/x", "v1.2", "v1.2.3 --all", "v1.2.3\n"]) {
       expect(await releaseClose(tag, { apply: true }, f.deps)).toBe(2);
     }
@@ -260,33 +326,27 @@ describe("release-close", () => {
   });
 
   test("an issue title is printed without control characters (#287)", async () => {
-    const f = fake(
-      { 170: open("Card\x1b[2J\r\nINJECTED\x07 line") },
-      { log: commit("fix(x): y (#170)") },
-    );
+    const f = fake({ 170: open("Card\x1b[2J\r\nINJECTED\x07 line") }, { log: closing(170) });
     await releaseClose("v0.36.4", { apply: false }, f.deps);
     expect(f.lines.some((l) => l.includes("Card"))).toBe(true);
     for (const line of f.lines) expect(/\p{Cc}/u.test(line)).toBe(false);
   });
 
   test("a tag with no milestone of its name says so and closes nothing else", async () => {
-    const f = fake({ 170: open("Card") }, { log: commit("fix(x): y (#170)") });
+    const f = fake({ 170: open("Card") }, { log: closing(170) });
     expect(await releaseClose("v0.40.0", { apply: true }, f.deps)).toBe(0);
     expect(f.lines.join("\n")).toContain("no milestone named v0.40.0");
   });
 
   test("an answer that is not JSON is an issue that cannot be read", async () => {
-    const f = fake(
-      { 170: open("Card") },
-      { log: commit("fix(x): y (#170)"), garbage: /issues\/170$/ },
-    );
+    const f = fake({ 170: open("Card") }, { log: closing(170), garbage: /issues\/170$/ });
     expect(await releaseClose("v0.36.4", { apply: false }, f.deps)).toBe(1);
     expect(f.lines.join("\n")).toContain("#170: cannot be read");
   });
 
   test("a comment that fails leaves the issue open and off the board", async () => {
     const issues = { 170: open("Card") };
-    const f = fake(issues, { log: commit("fix(x): y (#170)"), fail: /POST/ });
+    const f = fake(issues, { log: closing(170), fail: /POST/ });
     expect(await releaseClose("v0.36.4", { apply: true }, f.deps)).toBe(1);
     expect(f.lines.join("\n")).toContain("#170: commenting failed");
     expect(issues[170].state).toBe("open");
@@ -294,7 +354,7 @@ describe("release-close", () => {
   });
 
   test("the dry run counts the milestone's issues the tag does not ship", async () => {
-    const f = fake({ 170: open("Card") }, { log: commit("fix(x): y (#170)"), milestoneOpen: 4 });
+    const f = fake({ 170: open("Card") }, { log: closing(170), milestoneOpen: 4 });
     await releaseClose("v0.36.4", { apply: false }, f.deps);
     expect(f.lines.join("\n")).toContain("milestone v0.36.4: 3 open issue(s) left, not closed");
   });
@@ -303,7 +363,7 @@ describe("release-close", () => {
     const f = fake(
       { 170: open("Card") },
       {
-        log: commit("fix(x): y (#170)"),
+        log: closing(170),
         milestoneOpen: 1,
         fail: /milestones\/9/,
       },
@@ -313,7 +373,7 @@ describe("release-close", () => {
   });
 
   test("a milestone closed already is said so, in the dry run and with --apply", async () => {
-    const closed = { log: commit("fix(x): y (#170)"), milestoneState: "closed" as const };
+    const closed = { log: closing(170), milestoneState: "closed" as const };
     const dry = fake({ 170: open("Card") }, closed);
     await releaseClose("v0.36.4", { apply: false }, dry.deps);
     expect(dry.lines.join("\n")).toContain("milestone v0.36.4: already closed");

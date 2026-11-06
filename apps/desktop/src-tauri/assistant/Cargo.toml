@@ -12,7 +12,6 @@ serde_json = "1"
 # Mirrors the updater: one TLS provider (ring), no native-tls, no aws-lc-rs.
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider", "system-proxy"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
-
-[dev-dependencies]
-# The version already in the lock through Tauri; no macros (tokio-macros is not in the lock).
-tokio = { version = "1", features = ["rt", "time"] }
+# The version already in the lock through Tauri; no macros (tokio-macros is not in the lock), so a
+# call is cancelled and timed out through its task's abort handle, not `select!`.
+tokio = { version = "1", features = ["rt", "time", "sync"] }

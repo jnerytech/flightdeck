@@ -153,7 +153,7 @@ export class AskpassBroker {
 }
 
 /** A word for `sh`: in single quotes, with the quotes inside closed and escaped. */
-const quoteForSh = (word: string) => "'" + word.replaceAll("'", "'\\''") + "'";
+const quoteForSh = (word: string) => "'" + word.replaceAll("'", String.raw`'\''`) + "'";
 
 /**
  * The program `SSH_ASKPASS` points to: ssh runs it with the prompt as its only argument, and it

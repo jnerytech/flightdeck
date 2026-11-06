@@ -55,7 +55,7 @@ Left out on purpose, so nobody builds it by accident. Each one is a candidate fo
 - Any change to phase 13's `judgePermission` (open question 9), to the host tokens' or the vault's storage, or to the CSP.
 - A key, text or diff leaving the machine in any way but the one call to the chosen provider.
 
-## Decisions (record any divergence in DECISIONS)
+## Decisions (record any divergence in `docs/decisions/<yyyy-mm-dd>-<topic>.md`)
 
 - **Three providers, two places.** `host` runs in the daemon; `anthropic` and `openrouter` run in the Rust shell. A key lives
   only in the OS credential store of the machine the person sits at. It never goes to a daemon, a file, a log, an error string
@@ -77,7 +77,7 @@ Left out on purpose, so nobody builds it by accident. Each one is a candidate fo
 
 ## Proof of concept first
 
-Needs real keys, a real host `claude` and real webviews: manual checks by the maintainer, recorded in DECISIONS, not tests. The
+Needs real keys, a real host `claude` and real webviews: manual checks by the maintainer, recorded in `docs/decisions/`, not tests. The
 areas below run on fakes and do not wait for this. The scrubbed answers recorded here become the hand-copied fixtures of
 `assistant-anthropic` and `assistant-openrouter`.
 
@@ -400,7 +400,7 @@ under `flightdeck.assistant.pending` (id, time, provider, model, token counts, c
 ### Docs
 
 Both manuals get a section "AI assistant": setup per provider, what is sent where, the key's storage (and the Linux limit), the
-wand, Undo, the shortcut, commit and PR messages, costs, what never gets a wand. `docs/DECISIONS.md` gets "Phase 40" with
+wand, Undo, the shortcut, commit and PR messages, costs, what never gets a wand. `docs/decisions/` gets a file per decision with
 ADR 40-1 (keys and where calls run), ADR 40-2 (costs), the proof of concept results and any divergence. `docs/GLOSSARY.md`: assistant,
 wand, profile.
 
@@ -647,7 +647,7 @@ The usual ones:
 - 100% coverage on the full suite (`bun run slot -- bun run test`); `bun run typecheck` and `bun run lint` clean; `cargo test`
   green on both OSes in CI; the Rust modules went through the `tauri-rust-reviewer` agent.
 - The smokes: `smoke:assistant` prints `SMOKE ASSISTANT OK`, and the existing smokes still pass.
-- Both manuals have the section "AI assistant" (and the GLOSSARY its three words); `docs/DECISIONS.md` has "Phase 40" with
+- Both manuals have the section "AI assistant" (and the GLOSSARY its three words); `docs/decisions/` has
   ADR 40-1, ADR 40-2, the proof of concept results and every divergence from this spec.
 - The spec-verifier's verdict is accept.
 
@@ -683,7 +683,7 @@ Run once, by the maintainer, at the end of all phases of the release (not per ar
 real provider, a real key or a real `claude` is used. Each prompt is short and the whole set costs a few cents. The key is typed
 only in Settings, Assistant: never in an environment variable, a file, a shell command or a chat, and no step prints it or
 reads it back. After each check the app and daemon logs are searched for the key's prefix (`sk-ant-`, `sk-or-`): no hit.
-Results go to `docs/DECISIONS.md`, "Phase 40"; a failure blocks the release.
+Results go to `docs/decisions/<yyyy-mm-dd>-assistant-proof.md`; a failure blocks the release.
 
 1. **Anthropic, a real key.** Save the key; **Test** says the key works (the free `GET /v1/models?limit=1`). With the quick
    profile (`claude-haiku-5-5`), improve a card title of under twenty words: a preview appears, Accept and Undo work. Costs

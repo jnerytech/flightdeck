@@ -134,12 +134,19 @@ function findingsOf(path: string, text: string): ScopeFinding[] {
   return findings;
 }
 
+/** A finding as one line: its kind, the detail when there is one, and the path. */
+export function findingText(f: ScopeFinding): string {
+  const detail = f.detail ? ` ${f.detail}` : "";
+  return `${f.kind}${detail} (${f.path})`;
+}
+
 export async function scanOpenCodeScope(opts: ScopeOptions): Promise<ScopeResult> {
   const findings: ScopeFinding[] = [];
   const hash = createHash("sha256");
   const fingerprint = async (path: string) => {
     const info = await stat(path).catch(absent);
-    hash.update(`${path}\0${info ? `${info.size}:${info.mtimeMs}` : "-"}\n`);
+    const state = info ? `${info.size}:${info.mtimeMs}` : "-";
+    hash.update(`${path}\0${state}\n`);
   };
 
   const global = globalConfigDir(opts.env);
