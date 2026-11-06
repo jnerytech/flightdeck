@@ -68,18 +68,18 @@ export function PaletteSectionView(
             )}
           </button>
         ))}
-        {props.hidden > 0 && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 justify-start px-2 text-muted-foreground text-xs"
-            onClick={props.onMore}
-          >
-            {t("palette.more", { n: props.hidden })}
-          </Button>
-        )}
       </div>
+      {props.hidden > 0 && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 justify-start px-2 text-muted-foreground text-xs"
+          onClick={props.onMore}
+        >
+          {t("palette.more", { n: props.hidden })}
+        </Button>
+      )}
     </section>
   );
 }
