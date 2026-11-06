@@ -122,15 +122,21 @@ describe("log-segredos: a booted daemon never writes its own tokens (issue #255)
     const { file, logDir, daemon } = await boot();
     const config = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
     writeFileSync(file, JSON.stringify({ ...config, token: ROTATED }));
-    // The scanner follows the file on its own schedule: log a probe each round until it is hidden.
-    const hidden = await poll(() => {
-      daemon.logger.log(`probe ${ROTATED}`);
-      const last = readFileSync(join(logDir, "flightdeckd.log"), "utf8")
+    // The scanner follows the file on its own schedule: log one probe per round and wait until the
+    // file has it (the writes queue up), so the last line seen is never one from before the change.
+    const probes = () =>
+      readFileSync(join(logDir, "flightdeckd.log"), "utf8")
         .split("\n")
-        .filter((line) => line.includes("probe"))
-        .at(-1);
-      return last !== undefined && !last.includes(ROTATED);
-    }, 5_000);
+        .filter((line) => line.includes("probe"));
+    const deadline = Date.now() + 15_000;
+    let sent = 0;
+    let hidden = false;
+    while (!hidden && Date.now() < deadline) {
+      sent += 1;
+      daemon.logger.log(`probe ${ROTATED}`);
+      await poll(() => probes().length >= sent, 5_000);
+      hidden = probes().at(-1)?.includes(ROTATED) === false;
+    }
     expect(hidden).toBe(true);
   });
 
