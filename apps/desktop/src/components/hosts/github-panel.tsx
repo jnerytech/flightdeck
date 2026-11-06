@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 
-const POLL_MS = 1500;
-
 /**
  * The host's GitHub sign-in (phase 37): the host's gh does the device flow and keeps the token, so
  * this panel only shows the one-time code and the page, and then who is signed in. No token here.
@@ -31,13 +29,12 @@ export function GithubPanel(props: { store: AppStore; host: HostView }) {
   // While the person confirms on GitHub, ask the host now and then whether gh is signed in.
   useEffect(() => {
     if (!device) return;
-    const timer = setInterval(() => {
+    return store.githubTicker(() => {
       void refresh().then((next) => {
         if (next?.loggedIn) setDevice(null);
       });
-    }, POLL_MS);
-    return () => clearInterval(timer);
-  }, [device, refresh]);
+    });
+  }, [device, refresh, store]);
 
   const signIn = async () => {
     const started = await store.hostCommand(host.id, "github.login.start", {});
