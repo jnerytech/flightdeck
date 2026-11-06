@@ -21,7 +21,7 @@ import { credential } from "../permissions/sensitive-paths.ts";
 import { readRegularSized } from "../read-regular.ts";
 import { ulid } from "../ulid.ts";
 import type { Changes } from "./changes.ts";
-import { type Located, located, refuseCredential } from "./paths.ts";
+import { firstStep, isGitDir, type Located, located, refuseCredential } from "./paths.ts";
 
 /** The most entries one folder sends to the explorer; it says the rest were cut. */
 const LIST_CAP = 500;
@@ -48,7 +48,10 @@ async function entryTarget(
     return entry.isFile() ? { path, kind: "file" } : null;
   }
   const real = await realpath(path).catch(() => null);
-  if (!real || !isInside(realRoot, real)) return null;
+  // Out of the repository, or into its `.git`: not an entry of the explorer.
+  if (!real || !isInside(realRoot, real) || isGitDir(firstStep(relative(realRoot, real)))) {
+    return null;
+  }
   const info = await stat(real);
   if (info.isDirectory()) return { path: real, kind: "dir" };
   return info.isFile() ? { path: real, kind: "file" } : null;
@@ -150,7 +153,7 @@ export class ReviewFiles {
     }
     const entries: FileEntry[] = [];
     await inSequence(await readdir(folder, { withFileTypes: true }), async (entry) => {
-      if (entry.name === ".git") return;
+      if (isGitDir(entry.name)) return;
       const real = await entryTarget(realRoot, join(folder, entry.name), entry);
       if (!real) return;
       const asked = dir === "" ? entry.name : `${dir}/${entry.name}`;
