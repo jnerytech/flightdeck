@@ -47,6 +47,7 @@ export function TabOverflow(
         align="end"
         className="flex max-h-[min(24rem,70vh)] w-[min(24rem,calc(100vw-2rem))] flex-col gap-1 p-1"
         data-slot="tab-overflow"
+        aria-label={props.t("tabs.all")}
       >
         <TabList
           {...props}
@@ -130,38 +131,45 @@ function TabList(
           {shown.map((row, index) => {
             const Icon = row.icon;
             return (
+              // The wrapper is invisible to the listbox: the option and its × are siblings in it,
+              // as on the strip, so no control sits inside an option (axe's nested-interactive).
               <div
                 key={row.id}
-                id={idOf(row)}
-                role="option"
-                aria-selected={index === at}
-                {...(row.current ? { "aria-current": "true" } : {})}
-                tabIndex={-1}
+                role="presentation"
                 className={cn(
-                  "group relative flex h-7 cursor-pointer items-center gap-2 rounded px-2 text-sm hover:bg-accent",
+                  "group relative flex h-7 items-center rounded hover:bg-accent",
                   index === at && "bg-accent text-accent-foreground",
                   // The tab on screen: a bar at its start and a heavier title, not a color alone.
                   row.current &&
                     "font-medium before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-primary",
                 )}
-                onClick={() => props.onPick(row.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") props.onPick(row.id);
-                }}
-                onMouseMove={() => index !== at && setActive(index)}
               >
-                <Icon data-icon={row.kind} aria-hidden="true" className="size-3.5 shrink-0" />
-                <span data-slot="tab-title" title={row.title} className="min-w-0 flex-1 truncate">
-                  {row.title}
-                </span>
-                {row.host && (
-                  <span
-                    data-slot="tab-host"
-                    className="max-w-[40%] shrink-0 truncate text-muted-foreground text-xs"
-                  >
-                    {row.host}
+                <div
+                  id={idOf(row)}
+                  role="option"
+                  aria-selected={index === at}
+                  {...(row.current ? { "aria-current": "true" } : {})}
+                  tabIndex={-1}
+                  className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 text-sm"
+                  onClick={() => props.onPick(row.id)}
+                  onMouseMove={() => index !== at && setActive(index)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") props.onPick(row.id);
+                  }}
+                >
+                  <Icon data-icon={row.kind} aria-hidden="true" className="size-3.5 shrink-0" />
+                  <span data-slot="tab-title" title={row.title} className="min-w-0 flex-1 truncate">
+                    {row.title}
                   </span>
-                )}
+                  {row.host && (
+                    <span
+                      data-slot="tab-host"
+                      className="max-w-[40%] shrink-0 truncate text-muted-foreground text-xs"
+                    >
+                      {row.host}
+                    </span>
+                  )}
+                </div>
                 {!row.pinned && (
                   // Out of the tab order and hidden from a screen reader, as on the strip: Delete
                   // in the field closes the highlighted row.
@@ -172,13 +180,10 @@ function TabList(
                     tabIndex={-1}
                     aria-label={t("tabs.close", { title: row.title })}
                     className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded hover:bg-background",
+                      "mr-1 flex size-5 shrink-0 items-center justify-center rounded hover:bg-background",
                       index !== at && "opacity-0 group-hover:opacity-100",
                     )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      props.onClose(row.id);
-                    }}
+                    onClick={() => props.onClose(row.id)}
                   >
                     <X className="size-3" aria-hidden="true" />
                   </button>
