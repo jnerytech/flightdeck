@@ -160,6 +160,12 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.terminal.unicode.activeVersion).toBe("11");
   });
 
+  // Issue #476: xterm's default of 1,000 lines lost the start of a long Claude turn from the view
+  // and from find, though the daemon still had it. Windows Terminal keeps 9,001.
+  test("the view keeps 10,000 lines of scrollback", () => {
+    expect(setup().constructed().scrollback).toBe(10_000);
+  });
+
   test("output and resets go to xterm; opening fits it and gives it the focus", () => {
     const s = setup();
     s.screen.write(new TextEncoder().encode("hi"));
