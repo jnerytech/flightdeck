@@ -41,6 +41,11 @@ describe("terminal-ui: keys, colors and font", () => {
     expect(terminalKeyAction(key("V", { ctrl: true, shift: true }))).toBe("paste");
     expect(terminalKeyAction(key("F", { ctrl: true, shift: true }))).toBe("search");
     expect(terminalKeyAction(key("c", { ctrl: true }))).toBe("pass");
+    // Shift+Enter alone is a new line; with another modifier, or Enter alone, it is not.
+    expect(terminalKeyAction(key("Enter", { shift: true }))).toBe("newline");
+    expect(terminalKeyAction(key("Enter", {}))).toBe("pass");
+    expect(terminalKeyAction(key("Enter", { shift: true, ctrl: true }))).toBe("pass");
+    expect(terminalKeyAction(key("Enter", { shift: true, alt: true }))).toBe("pass");
     // Ctrl+C is the interrupt; on Windows it copies only while something is selected.
     expect(terminalKeyAction(key("c", { ctrl: true }), { windows: true, selected: true })).toBe(
       "copy",

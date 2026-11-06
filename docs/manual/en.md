@@ -2709,7 +2709,9 @@ tab, with no SSH.
   also copies while something is selected, and goes to the process (the interrupt) when nothing is;
   elsewhere `Ctrl+C` always goes to the process. A program that redraws its screen (Claude Code)
   can drop a selection before you reach **Copy**: the last selection stays copyable until you
-  type. When the program takes the mouse for itself, hold `Shift` while you drag to select. Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  type. When the program takes the mouse for itself, hold `Shift` while you drag to select.
+  `Shift+Enter` adds a new line in a Claude Code prompt instead of sending it (the same as
+  `Alt+Enter`). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
   in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
   the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
   closes. Links in the output open in the browser (`http` and `https` only). The font is the

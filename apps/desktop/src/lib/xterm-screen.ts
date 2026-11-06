@@ -1,6 +1,7 @@
 import {
   FIND_DECORATIONS,
   type FindDecorations,
+  NEWLINE_SEQUENCE,
   type TerminalColors,
   terminalKeyAction,
 } from "./terminal-view.ts";
@@ -136,6 +137,10 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       selected: current() !== "",
     });
     switch (action) {
+      case "newline":
+        // xterm asks for keydown, keypress and keyup: one newline, and none of them gets xterm's own CR.
+        if (event.type === "keydown") options.onInput(NEWLINE_SEQUENCE);
+        return false;
       case "copy":
         copy();
         return false;
