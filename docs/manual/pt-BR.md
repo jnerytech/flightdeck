@@ -721,6 +721,9 @@ Além de Aprovar e Negar, uma aprovação, de sessão gerenciada ou do terminal,
 - **Sempre neste projeto:** abre a regra para edição antes de mandar.
   - No Bash, o padrão é o comando exato, que você pode trocar por um prefixo como `npm test:*`.
   - Nas outras ferramentas, o padrão é o nome da ferramenta.
+  - Uma regra que nomeia uma pasta, ou um caminho que ainda não existe, é recusada: cobriria tudo
+    que há dentro. Uma busca numa pasta (Grep, Glob) não oferece este botão; a mensagem pede para
+    nomear um arquivo.
   - A regra vai para `<projeto>/.claude/settings.local.json`, o arquivo local, não versionado, do
     Claude Code.
 

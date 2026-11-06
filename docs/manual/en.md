@@ -732,6 +732,9 @@ Besides Approve and Deny, an approval, whether from a managed or a terminal sess
   - For Bash, the default is the exact command, which you can replace with a prefix such as
     `npm test:*`.
   - For other tools, the default is the tool name.
+  - A rule that names a folder, or a path that is not there yet, is refused: it would cover
+    everything below it. A search over a folder (Grep, Glob) does not offer this button; the message
+    says to name one file.
   - The rule goes to `<project>/.claude/settings.local.json`, Claude Code's local, unversioned
     file.
 
