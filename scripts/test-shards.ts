@@ -7,6 +7,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { shards, type Timings } from "./lib/test-shards.ts";
+import { testTiers } from "./lib/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const TIMINGS = resolve(import.meta.dir, "test-timings.json");
@@ -31,7 +32,14 @@ process.exit(
         return await run.exited;
       },
       log: (line) => console.log(line),
-      tiers: () => ({}),
+      // Every tracked source, not only the tests: a test's tier also follows the helpers it imports.
+      tiers: () => {
+        const listed = Bun.spawnSync(["git", "ls-files", "*.ts", "*.tsx"], { cwd: ROOT }); // NOSONAR: git comes from the PATH of the developer or the CI runner running the script
+        const paths = listed.stdout.toString().split("\n").filter(Boolean);
+        return testTiers(
+          new Map(paths.map((path) => [path, readFileSync(resolve(ROOT, path), "utf8")])),
+        );
+      },
     },
   ),
 );

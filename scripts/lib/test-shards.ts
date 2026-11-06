@@ -5,6 +5,8 @@
  * `bun run test:shards -- record <junit.xml>...` refreshes it from the JUnit files a CI run keeps.
  */
 
+import { TIERS } from "./test-tiers.ts";
+
 /** Seconds per test file, keyed by repository-relative path. */
 export type Timings = Record<string, number>;
 
@@ -17,8 +19,8 @@ export interface ShardDeps {
   /** Runs `bun <args>` with the terminal; its exit code. */
   bun(args: string[]): Promise<number>;
   log(line: string): void;
-  /** The tier of each of these test files (lib/test-tiers.ts); a file no tier claims is absent. */
-  tiers(files: string[]): Record<string, string>;
+  /** The tier of every tracked test file (lib/test-tiers.ts); a file no tier claims is absent. */
+  tiers(): Record<string, string>;
 }
 
 /** Names in code-unit order, whatever the locale: the same split on every runner (and what a bare sort() does, said out loud). */
@@ -27,7 +29,7 @@ const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const TEST_FILE = /(\.|_)(test|spec)\.[cm]?[jt]sx?$/;
 const SHARD = /^([1-9]\d*)\/([1-9]\d*)$/;
 const USAGE =
-  "usage: bun run test:shards -- plan|run <i>/<n> [--junit <file>] | record <junit.xml>...";
+  "usage: bun run test:shards -- plan|run <i>/<n> [--tier <tier>,...] [--junit <file>] | record <junit.xml>...";
 const BUN_TEST = ["--config=bunfig.area.toml", "test", "--timeout=15000"];
 
 /** The test files `bun test` runs: `*.test.*`, `*_test.*`, `*.spec.*` and `*_spec.*`, never the mods'. */
@@ -141,6 +143,19 @@ const parseTimes = (text: string) =>
 const total = (shard: string[], weight: Map<string, number>) =>
   shard.reduce((sum, file) => sum + (weight.get(file) ?? 0), 0);
 
+/**
+ * `--tier unit,component` (#309): the tiers to keep, `null` without the flag, `undefined` when the
+ * list is missing or names a tier that does not exist.
+ */
+function tierOption(rest: string[]): string[] | null | undefined {
+  const at = rest.indexOf("--tier");
+  if (at < 0) return null;
+  const asked = (rest[at + 1] ?? "").split(",").filter(Boolean);
+  return asked.length > 0 && asked.every((tier) => (TIERS as string[]).includes(tier))
+    ? asked
+    : undefined;
+}
+
 /** `plan`, `run` or `record`; the exit code. */
 export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   const [command, arg, ...rest] = argv;
@@ -162,12 +177,18 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
     );
     return 0;
   }
-  if ((command !== "plan" && command !== "run") || !shard) {
+  const tiers = tierOption(rest);
+  if ((command !== "plan" && command !== "run") || !shard || tiers === undefined) {
     deps.log(USAGE);
     return 2;
   }
-  const tracked = files();
-  if (tracked === null) return failed(deps);
+  const listed = files();
+  if (listed === null) return failed(deps);
+  // A test no tier claims still runs, never silently dropped (the rule of test:related --tier).
+  const tierOf = tiers ? deps.tiers() : {};
+  const tracked = tiers
+    ? listed.filter((file) => tierOf[file] === undefined || tiers.includes(tierOf[file]))
+    : listed;
   const timings = deps.readTimings();
   const mine = splitShards(tracked, timings, shard.count)[shard.index - 1] ?? [];
   if (command === "plan") {
@@ -175,7 +196,8 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
     return 0;
   }
   const seconds = Math.round(total(mine, weigh(tracked, timings)));
-  deps.log(`test-shards: shard ${arg}: ${mine.length} files, about ${seconds} s`);
+  const which = tiers ? ` (${tiers.join(",")})` : "";
+  deps.log(`test-shards: shard ${arg}${which}: ${mine.length} files, about ${seconds} s`);
   const at = rest.indexOf("--junit");
   const junit = (at >= 0 ? rest[at + 1] : undefined) ?? `junit-${shard.index}.xml`;
   return await deps.bun([

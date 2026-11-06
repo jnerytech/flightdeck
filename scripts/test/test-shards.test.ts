@@ -217,11 +217,9 @@ function fake(
       return opts.code ?? 0;
     },
     log: (line) => logs.push(line),
-    tiers: (files) => {
+    tiers: () => {
       tierReads++;
-      return Object.fromEntries(
-        files.flatMap((file) => (opts.tiers?.[file] ? [[file, opts.tiers[file]]] : [])),
-      );
+      return opts.tiers ?? {};
     },
   };
   return { deps, logs, runs, written: () => written, tierReads: () => tierReads };

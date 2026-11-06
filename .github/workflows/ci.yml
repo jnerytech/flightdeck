@@ -401,7 +401,15 @@ jobs:
       # The shards are split by the seconds each test file took (scripts/test-timings.json, #292),
       # not by file count. The JUnit report keeps this run's times: `bun run test:shards -- record`
       # refreshes the timing file from the reports of the three shards.
+      # On a PR, the base of the test pyramid (#309): the unit and component tiers, about 70 s a
+      # shard against 400 s. The integration and e2e tiers run on Windows on main, nightly and by
+      # hand; Linux runs the related tests of every tier on the PR.
+      - name: Testes do PR (shard ${{ matrix.shard }}/3, unit e component)
+        if: github.event_name == 'pull_request'
+        run: bun run test:shards -- run ${{ matrix.shard }}/3 --tier unit,component --junit junit-${{ matrix.shard }}.xml
+
       - name: Testes (shard ${{ matrix.shard }}/3)
+        if: github.event_name != 'pull_request'
         run: bun run test:shards -- run ${{ matrix.shard }}/3 --junit junit-${{ matrix.shard }}.xml
 
       - name: Publicar os tempos dos testes
