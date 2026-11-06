@@ -16,6 +16,23 @@ const THEME = {
   selectionBackground: "#333333",
 };
 
+/** Characters a terminal draws two cells wide, as xterm does: the second cell is empty, width 0. */
+const WIDE = new Set(["⏺", "界"]);
+
+/** A row as xterm keeps it: one cell per narrow character, two for a wide one. */
+function cellsOf(text: string) {
+  const cells: Array<{ getChars(): string; getWidth(): number }> = [];
+  for (const char of text) {
+    cells.push({ getChars: () => char, getWidth: () => (WIDE.has(char) ? 2 : 1) });
+    if (WIDE.has(char)) cells.push({ getChars: () => "", getWidth: () => 0 });
+  }
+  return {
+    length: cells.length,
+    getCell: (x: number) => cells[x],
+    translateToString: () => text,
+  };
+}
+
 function setup(initial = "", clipboardFails = false, windows = false) {
   let selection = initial;
   let onSelection: () => void = () => {};
@@ -75,7 +92,7 @@ function setup(initial = "", clipboardFails = false, windows = false) {
       active: {
         getLine: (y) => {
           const text = lines[y];
-          return text === undefined ? undefined : { translateToString: () => text };
+          return text === undefined ? undefined : cellsOf(text);
         },
       },
     },
@@ -360,6 +377,15 @@ describe("terminal-ui: the xterm screen", () => {
     ]);
     links?.[0]?.activate({} as MouseEvent, "src/a.ts:3");
     expect(s.paths).toEqual(["src/a.ts"]);
+  });
+
+  test("on a row with wide characters the link still sits over the path's own cells (issue #476)", async () => {
+    const s = setup();
+    s.showLines("⏺ src/a.ts");
+    const links = await s.linksOn(1);
+    expect(links?.map((link) => link.range)).toEqual([
+      { start: { x: 4, y: 1 }, end: { x: 11, y: 1 } },
+    ]);
   });
 
   test("dispose releases the listeners and xterm", () => {

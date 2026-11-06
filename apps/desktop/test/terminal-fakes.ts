@@ -59,7 +59,16 @@ export function fakeXterm() {
       active: {
         getLine: (y) => {
           const text = lines[y];
-          return text === undefined ? undefined : { translateToString: () => text };
+          if (text === undefined) return undefined;
+          const chars = [...text];
+          return {
+            length: chars.length,
+            getCell: (x: number) => {
+              const char = chars[x];
+              return char === undefined ? undefined : { getChars: () => char, getWidth: () => 1 };
+            },
+            translateToString: () => text,
+          };
         },
       },
     },
