@@ -37,17 +37,25 @@ jobs:
   # Which job groups this run needs (#264): on a pull request, from the paths it changes
   # (scripts/lib/ci-paths.ts); a push to main and a run by hand need everything. A job skipped by
   # path still reports under the ruleset's name through its aggregate.
-  changes:
-    name: changes
+  # The checks that take minutes, first (#272): typecheck, Biome, the TDD order and every ratchet
+  # test. Sonar is SonarCloud's own check on the PR only (#283). The heavy jobs need it, so a count that went up fails the run
+  # in minutes instead of after the 20-minute suites.
+  # It also computes the path plan first (#264), the jobs this run needs: one job less than a
+  # plan job of its own (#444), and the heavy jobs wait for this one anyway.
+  quick:
+    name: quick checks
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
       windows: ${{ steps.plan.outputs.windows }}
       smokes: ${{ steps.plan.outputs.smokes }}
       screenshots: ${{ steps.plan.outputs.screenshots }}
       cargo: ${{ steps.plan.outputs.cargo }}
+      e2e: ${{ steps.plan.outputs.e2e }}
+      windows_shards: ${{ steps.plan.outputs.windows_shards }}
     steps:
-      # Full history: the changed paths are taken against the merge-base with the target branch.
+      # Full history: the changed paths are taken against the merge-base with the target branch,
+      # and the TDD audit counts from the merge-base with main or from the last tag.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
@@ -59,23 +67,6 @@ jobs:
       - name: The jobs this run needs
         id: plan
         run: bun run scripts/ci-paths.ts
-
-  # The checks that take minutes, first (#272): typecheck, Biome, the TDD order and every ratchet
-  # test. Sonar is SonarCloud's own check on the PR only (#283). The heavy jobs need it, so a count that went up fails the run
-  # in minutes instead of after the 20-minute suites.
-  quick:
-    name: quick checks
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      # Full history: the TDD audit counts from the merge-base with main or from the last tag.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          fetch-depth: 0
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: 1.4.4
 
       - name: Instalar dependências
         run: bun install --frozen-lockfile
@@ -107,7 +98,7 @@ jobs:
   # check `test (ubuntu-latest)` is the aggregate below.
   test-suite:
     name: test suite (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [changes, quick]
+    needs: [quick]
     if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -206,8 +197,8 @@ jobs:
   # when the path plan asks for it (#264).
   checks-linux:
     name: checks (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [changes, quick]
-    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && (needs.changes.outputs.smokes == 'true' || needs.changes.outputs.cargo == 'true')
+    needs: [quick]
+    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && (needs.quick.outputs.smokes == 'true' || needs.quick.outputs.cargo == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -231,7 +222,7 @@ jobs:
 
       # Only when the daemon, a smoke or what everything reads changed (#264).
       - name: Smokes
-        if: needs.changes.outputs.smokes == 'true'
+        if: needs.quick.outputs.smokes == 'true'
         run: |
           bun run smoke
           bun run smoke:multi
@@ -273,11 +264,11 @@ jobs:
       # packages over the newer ones the image ships.
       - name: Runner image of the Tauri package cache
         id: tauri-image
-        if: needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.cargo == 'true'
         run: echo "version=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
 
       - name: Cache of the Tauri system packages
-        if: needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.cargo == 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/tauri-debs
@@ -288,7 +279,7 @@ jobs:
       # retried once with a fresh apt-get update, inside the step's 10. apt downloads into the
       # cached folder, so the next run hits.
       - name: System libraries of the Tauri shell (Linux)
-        if: needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.cargo == 'true'
         timeout-minutes: 10
         run: |
           debs="$HOME/.cache/tauri-debs"
@@ -310,14 +301,14 @@ jobs:
           sudo chown -R "$(id -u):$(id -g)" "$debs"
 
       - name: Rust cache
-        if: needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.cargo == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: apps/desktop/src-tauri
 
       # The Tauri context needs the built frontend (frontendDist) to exist.
       - name: cargo check do app
-        if: needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.cargo == 'true'
         run: |
           bun run build:desktop
           cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
@@ -331,14 +322,13 @@ jobs:
   # of their own, so a skipped copy never stands in for the real check.
   test:
     name: test (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [changes, quick, test-suite, sonar, fast-coverage, checks-linux]
+    needs: [quick, test-suite, sonar, fast-coverage, checks-linux]
     if: "!cancelled() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: The suite, SonarCloud, the fast-coverage ratchet and the checks passed
         run: |
-          test "${{ needs.changes.result }}" = success
           test "${{ needs.quick.result }}" = success
           echo "suite: ${{ needs.test-suite.result }}, sonar: ${{ needs.sonar.result }}, fast coverage: ${{ needs.fast-coverage.result }}, checks: ${{ needs.checks-linux.result }}"
           test "${{ needs.test-suite.result }}" = success
@@ -346,7 +336,7 @@ jobs:
           # SonarCloud skips on a dispatch.
           case "${{ needs.sonar.result }}" in success|skipped) ;; *) exit 1 ;; esac
           # The checks skip when the plan asks for no smoke and no cargo.
-          if [ "${{ needs.changes.outputs.smokes }}" = true ] || [ "${{ needs.changes.outputs.cargo }}" = true ]; then
+          if [ "${{ needs.quick.outputs.smokes }}" = true ] || [ "${{ needs.quick.outputs.cargo }}" = true ]; then
             test "${{ needs.checks-linux.result }}" = success
           fi
 
@@ -355,7 +345,7 @@ jobs:
   # the required test (ubuntu-latest) check, instead of turning main red after the merge.
   fast-coverage:
     name: fast coverage (ubuntu-latest)
-    needs: [changes, quick]
+    needs: [quick]
     if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -385,13 +375,14 @@ jobs:
   # with no coverage: the 100% gate is Linux's. The required check `test (windows-latest)` is the
   # aggregate below.
   test-windows-shard:
-    name: test shard ${{ matrix.shard }}/3 (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [changes, quick]
-    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.changes.outputs.windows == 'true'
+    name: test shard ${{ matrix.shard }}/${{ strategy.job-total }} (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: [quick]
+    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.quick.outputs.windows == 'true'
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        # One shard on a PR, three when the whole suite runs (#444): the plan says how many.
+        shard: ${{ fromJSON(needs.quick.outputs.windows_shards) }}
     runs-on: windows-latest
     timeout-minutes: 30
     defaults:
@@ -429,31 +420,35 @@ jobs:
       # The shards are split by the seconds each test file took (scripts/test-timings.json, #292),
       # not by file count. The JUnit report keeps this run's times: `bun run test:shards -- record`
       # refreshes the timing file from the reports of the three shards.
-      # On a PR, the base of the test pyramid (#309): the unit and component tiers, about 70 s a
-      # shard against 400 s. The integration and e2e tiers run on Windows on main, nightly and by
-      # hand; Linux runs the related tests of every tier on the PR.
-      - name: Testes do PR (shard ${{ matrix.shard }}/3, unit e component)
+      # On a PR, the selection the Linux suite runs (#309, #399): every unit and component test plus
+      # the integration and e2e tests related to the changed files, or the whole suite when a file
+      # every test reads changed. No coverage gate on Windows: Linux holds the 100% gate.
+      - name: Testes do PR (shard ${{ matrix.shard }}/${{ strategy.job-total }}, seleção do test:related)
         if: github.event_name == 'pull_request'
-        run: bun run test:shards -- run ${{ matrix.shard }}/3 --tier unit,component --junit junit-${{ matrix.shard }}.xml
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          bun run test:related -- --pr --base "origin/$BASE_REF" --list selection.txt
+          bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --files selection.txt --junit junit-${{ matrix.shard }}.xml
 
-      - name: Testes (shard ${{ matrix.shard }}/3)
+      - name: Testes (shard ${{ matrix.shard }}/${{ strategy.job-total }})
         if: github.event_name != 'pull_request'
-        run: bun run test:shards -- run ${{ matrix.shard }}/3 --junit junit-${{ matrix.shard }}.xml
+        run: bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --junit junit-${{ matrix.shard }}.xml
 
       - name: Publicar os tempos dos testes
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-timings-windows-${{ matrix.shard }}
-          path: junit-${{ matrix.shard }}.xml
+          path: junit-${{ matrix.shard }}*.xml
           if-no-files-found: ignore
 
   # The rest of the Windows leg: the smokes, the Rust shell, the bundle budget and the
   # performance baseline.
   checks-windows:
     name: checks (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [changes, quick]
-    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.changes.outputs.windows == 'true'
+    needs: [quick]
+    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.quick.outputs.windows == 'true'
     runs-on: windows-latest
     timeout-minutes: 30
     defaults:
@@ -527,24 +522,24 @@ jobs:
       # The built frontend: the bundle budget reads it, and the Tauri context needs it (frontendDist).
       # Only when the app or the shell changed, or on main (#264).
       - name: Build do app
-        if: needs.changes.outputs.screenshots == 'true' || needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.screenshots == 'true' || needs.quick.outputs.cargo == 'true'
         run: bun run build:desktop
 
       - name: Rust cache
-        if: needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.cargo == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: apps/desktop/src-tauri
 
       - name: cargo check do app
-        if: needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.cargo == 'true'
         run: |
           cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
       # Phase 28: the entry chunk of the build above stays under its gzip budget (bundle-lazy).
       - name: Bundle budget
-        if: needs.changes.outputs.screenshots == 'true' || needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.screenshots == 'true' || needs.quick.outputs.cargo == 'true'
         run: bun run bundle:budget
 
       # Phase 28: the numbers of the performance baseline on this runner, kept as an artifact. It
@@ -566,7 +561,7 @@ jobs:
   # always(), so a failed or cancelled shard makes it fail rather than skip.
   test-windows:
     name: test (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [changes, quick, test-windows-shard, checks-windows]
+    needs: [quick, test-windows-shard, checks-windows]
     if: always() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -574,9 +569,8 @@ jobs:
       # A pull request whose paths need no Windows run passes here, so the check still reports.
       - name: Every Windows shard and check passed
         run: |
-          test "${{ needs.changes.result }}" = success
           test "${{ needs.quick.result }}" = success
-          if [ "${{ needs.changes.outputs.windows }}" != true ]; then
+          if [ "${{ needs.quick.outputs.windows }}" != true ]; then
             echo "Windows skipped by path (scripts/lib/ci-paths.ts)"; exit 0
           fi
           echo "shards: ${{ needs.test-windows-shard.result }}, checks: ${{ needs.checks-windows.result }}"
@@ -588,8 +582,8 @@ jobs:
   # in a job of its own (the one job took 13-15 minutes).
   screenshots-prints:
     name: prints and axe ${{ matrix.theme }} ${{ matrix.lang }}
-    needs: [changes, quick]
-    if: needs.changes.outputs.screenshots == 'true'
+    needs: [quick]
+    if: needs.quick.outputs.screenshots == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -644,10 +638,11 @@ jobs:
   # and shard 3 the BDD scenarios, instead of every journey on shard 1.
   screenshots-e2e:
     name: e2e journeys ${{ matrix.shard }}/3
-    needs: [changes, quick]
-    # Off the PR path (#309): the journeys run on main, nightly and by hand; a PR gates on the
-    # unit and component tiers and the prints.
-    if: needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'
+    needs: [quick]
+    # On main, nightly and by hand always; on a PR when it changes what the journeys read (#399:
+    # the screens, the journeys, their config, the demo). A failing journey gets Playwright's one
+    # CI retry (scripts/lib/e2e-config.ts) and nothing more.
+    if: needs.quick.outputs.e2e == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -705,7 +700,7 @@ jobs:
   # The check the main ruleset requires: it passes only when the prints and the journeys passed.
   screenshots:
     name: screenshots (prints, axe e e2e)
-    needs: [changes, quick, screenshots-prints, screenshots-e2e]
+    needs: [quick, screenshots-prints, screenshots-e2e]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -714,16 +709,17 @@ jobs:
       # e2e result is every shard's: one failed shard fails it.
       - name: The prints and the e2e journeys passed
         run: |
-          test "${{ needs.changes.result }}" = success
           test "${{ needs.quick.result }}" = success
-          if [ "${{ needs.changes.outputs.screenshots }}" != true ]; then
-            echo "Screens skipped by path (scripts/lib/ci-paths.ts)"; exit 0
-          fi
           echo "prints: ${{ needs.screenshots-prints.result }}, e2e: ${{ needs.screenshots-e2e.result }}"
-          test "${{ needs.screenshots-prints.result }}" = success
-          # The journeys skip a PR (#309); everywhere else they must pass.
-          if [ "${{ github.event_name }}" = pull_request ]; then
-            test "${{ needs.screenshots-e2e.result }}" = skipped
+          if [ "${{ needs.quick.outputs.screenshots }}" != true ]; then
+            echo "Prints skipped by path (scripts/lib/ci-paths.ts)"
           else
+            test "${{ needs.screenshots-prints.result }}" = success
+          fi
+          # The journeys run when the plan asks for them (#399), and then they must pass.
+          if [ "${{ needs.quick.outputs.e2e }}" = true ]; then
             test "${{ needs.screenshots-e2e.result }}" = success
+          else
+            echo "Journeys skipped by path (scripts/lib/ci-paths.ts)"
+            test "${{ needs.screenshots-e2e.result }}" = skipped
           fi

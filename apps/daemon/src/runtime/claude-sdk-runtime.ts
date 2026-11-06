@@ -119,6 +119,32 @@ function completeResult(
   return { text: message.result || blocks.join("\n"), subtype: message.subtype, tokens };
 }
 
+/** Reads the one-shot's messages up to its result; null when the stream ends without one. */
+async function readAnswer(
+  handle: AsyncIterable<SDKMessage>,
+  model: string,
+): Promise<CompleteResult | null> {
+  const blocks: string[] = [];
+  for await (const message of handle) {
+    if (message.type === "assistant") {
+      for (const block of message.message.content) {
+        if (block.type === "text") blocks.push(block.text);
+      }
+    } else if (message.type === "result") {
+      return completeResult(model, message, blocks);
+    }
+  }
+  return null;
+}
+
+/** What a failed one-shot stands for: our own refusals pass, a cancel is a cancel, the rest is the host. */
+function completeFailure(error: unknown, signal: AbortSignal | undefined): FlightdeckError {
+  if (error instanceof FlightdeckError) return error;
+  if (signal?.aborted)
+    return new FlightdeckError("invalid_state", "cancelled", "assistant_cancelled");
+  return hostUnavailable(error instanceof Error ? error.message : String(error));
+}
+
 function abortFrom(signal: AbortSignal): AbortController {
   const controller = new AbortController();
   signal.addEventListener("abort", () => controller.abort(), { once: true });
@@ -379,49 +405,39 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       message: { role: "user", content: opts.prompt },
     });
     prompt.end();
-    const off = opts.thinking === "off" && THINKING_OFF_MODELS.has(opts.model);
-    const blocks: string[] = [];
     try {
-      const handle = this.query({
-        prompt,
-        options: {
-          model: opts.model,
-          cwd: opts.cwd,
-          maxTurns: 1,
-          settingSources: [],
-          persistSession: false,
-          tools: [],
-          systemPrompt: opts.system,
-          strictMcpConfig: true,
-          maxBudgetUsd: COMPLETE_BUDGET_USD,
-          ...(opts.effort ? { effort: opts.effort } : {}),
-          thinking: off ? { type: "disabled" } : { type: "adaptive" },
-          env: {
-            ...buildChildEnv(process.env, opts.allowApiKey === true),
-            FLIGHTDECK_MANAGED: "1",
-            CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1",
-          },
-          ...(opts.signal ? { abortController: abortFrom(opts.signal) } : {}),
-          ...(this.claudePath ? { pathToClaudeCodeExecutable: this.claudePath } : {}),
-        },
-      });
-      for await (const message of handle) {
-        if (message.type === "assistant") {
-          for (const block of message.message.content) {
-            if (block.type === "text") blocks.push(block.text);
-          }
-        } else if (message.type === "result") {
-          return completeResult(opts.model, message, blocks);
-        }
-      }
+      const handle = this.query({ prompt, options: this.completeOptions(opts) });
+      const answer = await readAnswer(handle, opts.model);
+      if (answer) return answer;
     } catch (error) {
-      if (error instanceof FlightdeckError) throw error;
-      if (opts.signal?.aborted) {
-        throw new FlightdeckError("invalid_state", "cancelled", "assistant_cancelled");
-      }
-      throw hostUnavailable(error instanceof Error ? error.message : String(error));
+      throw completeFailure(error, opts.signal);
     }
     throw hostUnavailable("no answer");
+  }
+
+  /** The options of the one-shot call: one turn, nothing from the folder, a budget, adaptive thinking. */
+  private completeOptions(opts: CompleteOptions): Options {
+    const off = opts.thinking === "off" && THINKING_OFF_MODELS.has(opts.model);
+    return {
+      model: opts.model,
+      cwd: opts.cwd,
+      maxTurns: 1,
+      settingSources: [],
+      persistSession: false,
+      tools: [],
+      systemPrompt: opts.system,
+      strictMcpConfig: true,
+      maxBudgetUsd: COMPLETE_BUDGET_USD,
+      ...(opts.effort ? { effort: opts.effort } : {}),
+      thinking: off ? { type: "disabled" } : { type: "adaptive" },
+      env: {
+        ...buildChildEnv(process.env, opts.allowApiKey === true),
+        FLIGHTDECK_MANAGED: "1",
+        CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1",
+      },
+      ...(opts.signal ? { abortController: abortFrom(opts.signal) } : {}),
+      ...(this.claudePath ? { pathToClaudeCodeExecutable: this.claudePath } : {}),
+    };
   }
 
   /** Phase 12: the SDK's forkSession; it writes the new transcript itself. */

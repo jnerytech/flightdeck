@@ -32,8 +32,37 @@ const byName = (a: string, b: string) => {
 const TEST_FILE = /(\.|_)(test|spec)\.[cm]?[jt]sx?$/;
 const SHARD = /^([1-9]\d*)\/([1-9]\d*)$/;
 const USAGE =
-  "usage: bun run test:shards -- plan|run <i>/<n> [--tier <tier>,...] [--junit <file>] | record <junit.xml>...";
+  "usage: bun run test:shards -- plan|run <i>/<n> [--tier <tier>,...] [--files <list>] [--junit <file>] | record <junit.xml>...";
 const BUN_TEST = ["--config=bunfig.area.toml", "test", "--timeout=15000"];
+/**
+ * The most characters of file arguments one bun test gets (#483). Windows caps a command line at
+ * 32767 characters, and 8191 through a .cmd shim: 1021 files once died with ENAMETOOLONG.
+ */
+export const ARG_BUDGET = 8000;
+
+/** The files in order, cut into batches whose arguments stay within `ARG_BUDGET` characters. */
+export function batches(files: string[], budget = ARG_BUDGET): string[][] {
+  const out: string[][] = [];
+  let batch: string[] = [];
+  let length = 0;
+  for (const file of files) {
+    const cost = file.length + (batch.length > 0 ? 1 : 0);
+    if (batch.length > 0 && length + cost > budget) {
+      out.push(batch);
+      batch = [];
+      length = 0;
+    }
+    length += file.length + (batch.length > 0 ? 1 : 0);
+    batch.push(file);
+  }
+  if (batch.length > 0) out.push(batch);
+  return out;
+}
+
+/** The JUnit file of a batch: the given name for the first, `<name>.<n>.xml` for the next ones. */
+function batchReport(junit: string, index: number): string {
+  return index === 0 ? junit : junit.replace(/(\.xml)?$/, `.${index + 1}$1`);
+}
 
 /** The test files `bun test` runs: `*.test.*`, `*_test.*`, `*.spec.*` and `*_spec.*`, never the mods'. */
 export function testFiles(tracked: string[]): string[] {
@@ -159,6 +188,24 @@ function tierOption(rest: string[]): string[] | null | undefined {
     : undefined;
 }
 
+/**
+ * `--files <list>` (#399): the test files to keep, one per line, as `test:related --list` writes
+ * them; a `*` line keeps every file (the whole suite). `null` without the flag, `undefined` when
+ * the list is missing.
+ */
+function filesOption(rest: string[], deps: ShardDeps): Set<string> | "all" | null | undefined {
+  const at = rest.indexOf("--files");
+  if (at < 0) return null;
+  const path = rest[at + 1];
+  if (!path || path.startsWith("--")) return undefined;
+  const lines = deps
+    .readFile(path)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.includes("*") ? "all" : new Set(lines);
+}
+
 /** `plan`, `run` or `record`; the exit code. */
 export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   const [command, arg, ...rest] = argv;
@@ -181,7 +228,13 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
     return 0;
   }
   const tiers = tierOption(rest);
-  if ((command !== "plan" && command !== "run") || !shard || tiers === undefined) {
+  const chosen = filesOption(rest, deps);
+  if (
+    (command !== "plan" && command !== "run") ||
+    !shard ||
+    tiers === undefined ||
+    chosen === undefined
+  ) {
     deps.log(USAGE);
     return 2;
   }
@@ -189,9 +242,18 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   if (listed === null) return failed(deps);
   // A test no tier claims still runs, never silently dropped (the rule of test:related --tier).
   const tierOf = tiers ? deps.tiers() : {};
-  const tracked = tiers
-    ? listed.filter((file) => tierOf[file] === undefined || tiers.includes(tierOf[file]))
-    : listed;
+  // A listed name that is no tracked test is a stale or mistyped list: fail rather than guess.
+  if (chosen instanceof Set) {
+    const known = new Set(listed);
+    const unknown = [...chosen].filter((file) => !known.has(file));
+    if (unknown.length > 0) {
+      deps.log(`test-shards: --files names no tracked test file: ${unknown.join(", ")}`);
+      return 1;
+    }
+  }
+  const tracked = listed
+    .filter((file) => !tiers || tierOf[file] === undefined || tiers.includes(tierOf[file]))
+    .filter((file) => chosen === null || chosen === "all" || chosen.has(file));
   const timings = deps.readTimings();
   const mine = splitShards(tracked, timings, shard.count)[shard.index - 1] ?? [];
   if (command === "plan") {
@@ -199,16 +261,29 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
     return 0;
   }
   const seconds = Math.round(total(mine, weigh(tracked, timings)));
-  const which = tiers ? ` (${tiers.join(",")})` : "";
+  const which = tiers ? ` (${tiers.join(",")})` : chosen instanceof Set ? " (selection)" : "";
   deps.log(`test-shards: shard ${arg}${which}: ${mine.length} files, about ${seconds} s`);
+  // `bun test` with no file runs everything: a shard the selection leaves empty runs nothing.
+  if (mine.length === 0) {
+    deps.log(`test-shards: shard ${arg} has no test files to run`);
+    return 0;
+  }
   const at = rest.indexOf("--junit");
   const junit = (at >= 0 ? rest[at + 1] : undefined) ?? `junit-${shard.index}.xml`;
-  return await deps.bun([
-    ...BUN_TEST,
-    "--reporter=junit",
-    `--reporter-outfile=${junit}`,
-    ...mine.map((file) => `./${file}`),
-  ]);
+  const parts = batches(mine.map((file) => `./${file}`));
+  if (parts.length > 1) deps.log(`test-shards: shard ${arg} runs in ${parts.length} batches`);
+  // Every batch runs, so one failure never hides another; the worst exit code is the run's.
+  let worst = 0;
+  for (const [index, part] of parts.entries()) {
+    const code = await deps.bun([
+      ...BUN_TEST,
+      "--reporter=junit",
+      `--reporter-outfile=${batchReport(junit, index)}`,
+      ...part,
+    ]); // NOSONAR: sequential by design: one bun test at a time on the runner
+    worst = Math.max(worst, code);
+  }
+  return worst;
 }
 
 function failed(deps: ShardDeps): number {
