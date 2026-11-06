@@ -143,7 +143,7 @@ function tabAction(store: AppStore, key: string, shift: boolean): (() => void) |
   if (key === "t" && shift) return () => tabs.reopen();
   if (key === "t") {
     return () => {
-      store.hostTabs.open(store.newTabRoute());
+      store.openNewTab();
       store.openSearch();
     };
   }

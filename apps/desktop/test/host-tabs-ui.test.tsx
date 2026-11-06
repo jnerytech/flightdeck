@@ -103,17 +103,49 @@ describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
     expect(names()).toEqual(["Sessões", "beta"]);
   });
 
-  test("a new tab is the active host's Overview, or Home with no host", async () => {
+  test("a new tab is the active host's Overview, one more each time", async () => {
     const store = await mount();
+    const newTab = () =>
+      act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: "Nova aba" }) as HTMLElement);
+      });
+    await newTab();
+    expect(store.router.current).toEqual({ name: "host", host: "ha" });
+    const before = store.tabs.tabs.length;
+    await newTab();
+    expect(store.tabs.tabs.length).toBe(before + 1);
+  });
+
+  test("with no host chosen yet, a new tab is the Overview of the first host, which becomes the active one", async () => {
+    const mem = memoryPlatform(false, "pt-BR");
+    seedDemoHosts(mem.win.localStorage, mem.tokens, [
+      { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+      { id: "hb", name: "beta", url: "ws://127.0.0.1:1", token: "t" },
+    ]);
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    render(<App store={store} />);
+    await act(async () => {});
+    expect(store.activeHostId()).toBeNull();
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Nova aba" }) as HTMLElement);
     });
+    expect(store.activeHostId()).toBe("ha");
     expect(store.router.current).toEqual({ name: "host", host: "ha" });
-    expect(store.newTabRoute()).toEqual({ name: "host", host: "ha" });
-    await act(async () => {
-      store.hostTabs.removeHost("ha");
-      store.hostTabs.removeHost("hb");
-    });
-    expect(store.newTabRoute()).toEqual({ name: "home" });
+    // Home keeps its one tab: a shared screen exists once.
+    expect(store.hostTabs.shared.tabs.map((tab) => tab.router.current.name)).toEqual(["home"]);
+  });
+
+  test("with no host at all, a new tab focuses the one Home tab instead of adding another", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 600_000 });
+    render(<App store={store} />);
+    await act(async () => {});
+    const newTab = () =>
+      act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: "Nova aba" }) as HTMLElement);
+      });
+    await newTab();
+    await newTab();
+    expect(store.hostTabs.shared.tabs.map((tab) => tab.router.current.name)).toEqual(["home"]);
+    expect(store.router.current).toEqual({ name: "home" });
   });
 });

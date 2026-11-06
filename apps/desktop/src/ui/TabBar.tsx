@@ -407,7 +407,7 @@ export function TabBar(
         className="mb-0.5 size-7"
         aria-label={t("tabs.newTab")}
         onClick={() => {
-          store.hostTabs.open(store.newTabRoute());
+          store.openNewTab();
           store.openSearch();
         }}
       >

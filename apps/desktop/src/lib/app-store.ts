@@ -1776,11 +1776,8 @@ export class AppStore {
     return this.hostTabs.hostId;
   }
 
-  /** What a new tab opens: the active host's Overview, or Home with no host. */
-  newTabRoute(): Route {
-    const host = this.hostTabs.hostId;
-    return host === null ? { name: "home" } : { name: "host", host };
-  }
+  /** A new tab: the Overview of a host; with no host at all, the one Home tab is brought forward. */
+  openNewTab(): void {}
 
   /** The switcher picked a host: its tabs replace the row. */
   pickHost(hostId: string): void {
