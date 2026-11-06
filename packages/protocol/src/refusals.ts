@@ -368,6 +368,23 @@ export const DAEMON_REASONS = [
   "run_exclusive",
   "run_ports_exhausted",
   "plugin_too_big",
+  // Phase 39: OpenCode sessions and the host's OpenCode.
+  "runtime_unavailable",
+  "runtime_unsupported",
+  "opencode_unsafe_global",
+  "opencode_config_outranks",
+  "opencode_saved_rules",
+  "opencode_preflight_failed",
+  "opencode_changed",
+  "opencode_permissions_overridden",
+  "opencode_auth_required",
+  "opencode_disabled",
+  "opencode_missing",
+  "opencode_version_failed",
+  "opencode_v1",
+  "opencode_project_config_not_disabled",
+  "opencode_canary_failed",
+  "opencode_scope_mismatch",
 ] as const;
 export type DaemonReason = (typeof DAEMON_REASONS)[number];
 

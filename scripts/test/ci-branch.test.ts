@@ -274,8 +274,9 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     expect(workflow.jobs["screenshots-prints"]?.if).toBe(
       "needs.changes.outputs.screenshots == 'true'",
     );
+    // The journeys leave the PR path (#309): main, nightly and dispatch only.
     expect(workflow.jobs["screenshots-e2e"]?.if).toBe(
-      "needs.changes.outputs.screenshots == 'true'",
+      "needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'",
     );
   });
 
