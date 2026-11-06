@@ -125,6 +125,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { settled } from "./settled.ts";
 import { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
@@ -610,7 +611,7 @@ function fakeOpenCode(): CreatedOpenCode {
   return {
     info: { available: true, path: "fake", version: VERIFIED_OPENCODE_VERSION, verified: true },
     runtime: new FakeRuntime(),
-    models: async () => models.map((id) => ({ id, name: id })),
+    models: () => Promise.resolve(models.map((id) => ({ id, name: id }))),
   };
 }
 
@@ -1249,7 +1250,7 @@ export async function startDaemon(
       roots: config.allowedRoots,
       board,
       issues,
-      startSession: async ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
+      startSession: ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
     }),
     // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
     // folders checked without blocking, and the app's version to compare with its own.
@@ -1261,7 +1262,7 @@ export async function startDaemon(
           options.serviceInstalled ??
           (async () =>
             (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
-        healthy: async () => true,
+        healthy: () => Promise.resolve(true),
         mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
         opencode: () => openCodeState(config, env, opencode.info),
 
@@ -2027,20 +2028,22 @@ const done =
   };
 
 /** Prints what a client command returned, as JSON, and exits 0. */
-const printed = async (deps: CliDeps, result: unknown): Promise<number> => {
-  deps.log.log(JSON.stringify(result, null, 2));
-  return 0;
-};
+const printed = (deps: CliDeps, result: unknown): Promise<number> =>
+  settled(() => {
+    deps.log.log(JSON.stringify(result, null, 2));
+    return 0;
+  });
 
 const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   backup: done(runBackup),
   restore: done(runRestore),
   update: (args, deps) => runUpdateCommand(args, deps),
   db: done(runPrune),
-  version: async (_args, deps) => {
-    deps.log.log(`flightdeckd ${DAEMON_VERSION} (protocolo ${PROTOCOL_VERSION})`);
-    return 0;
-  },
+  version: (_args, deps) =>
+    settled(() => {
+      deps.log.log(`flightdeckd ${DAEMON_VERSION} (protocolo ${PROTOCOL_VERSION})`);
+      return 0;
+    }),
   hook: async (args, deps) => {
     await sendSessionStart({
       url: args.url ?? "",

@@ -12,27 +12,27 @@ export function demoAccountReaders(now: () => number = Date.now): AccountReaders
         organization: "Demo Org",
         plan: "max",
       }),
-    sdk: async () => ({
-      // NOSONAR: async by contract: a throw must reach the caller as a rejection
-      info: null,
-      usage: {
-        plan: "max",
-        available: true,
-        windows: [
-          {
-            window: "five_hour",
-            utilization: 0.42,
-            status: "allowed",
-            resetsAt: now() + 3 * 3_600_000,
-          },
-          {
-            window: "seven_day",
-            utilization: 0.18,
-            status: "allowed",
-            resetsAt: now() + 4 * 86_400_000,
-          },
-        ],
-      },
-    }),
+    sdk: () =>
+      Promise.resolve({
+        info: null,
+        usage: {
+          plan: "max",
+          available: true,
+          windows: [
+            {
+              window: "five_hour",
+              utilization: 0.42,
+              status: "allowed",
+              resetsAt: now() + 3 * 3_600_000,
+            },
+            {
+              window: "seven_day",
+              utilization: 0.18,
+              status: "allowed",
+              resetsAt: now() + 4 * 86_400_000,
+            },
+          ],
+        },
+      }),
   };
 }
