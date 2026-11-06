@@ -1853,6 +1853,7 @@ export const ptBR = {
     preview: "Sugestão da IA",
     before: "Antes",
     after: "Depois",
+    changes: "Alterações",
     accept: "Aceitar",
     acceptAnyway: "Aceitar mesmo assim",
     discard: "Descartar",
