@@ -46,6 +46,14 @@ function refusal(reason: string, params?: Record<string, string | number>): Flig
   return new FlightdeckError("invalid_state", reason, reason, params);
 }
 
+/**
+ * Everything of the repo that goes into a prompt, not only the diff: a subject, a file name or the
+ * stat can hold a secret as well (issue #646).
+ */
+function repoTexts(repo: AssistantContextBundle): string[] {
+  return [repo.diff, repo.rules, repo.stat, ...repo.notShown, ...repo.recent];
+}
+
 export class AssistantService {
   /** Settles when the last call taken (or waiting) has finished: one call at a time on a host. */
   private tail: Promise<void> = Promise.resolve();
@@ -75,14 +83,7 @@ export class AssistantService {
       throw refusal("assistant_empty_input");
     }
     const repo = payload.source ? await this.opts.context(payload.source) : undefined;
-    // Everything of the repo that goes into the prompt, not only the diff: a subject, a file name or
-    // the stat can hold a secret as well (issue #646).
-    const scanned = [
-      payload.text,
-      ...(repo ? [repo.diff, repo.rules, repo.stat, ...repo.notShown, ...repo.recent] : []),
-    ];
-    const found = [...new Set(scanned.flatMap((text) => this.opts.scanner.scan(text)))];
-    if (found.length > 0) throw refusal("assistant_secret_found", { labels: found.join(", ") });
+    this.refuseSecrets([payload.text, ...(repo ? repoTexts(repo) : [])]);
     const blocked = this.opts.quota?.blocked();
     if (blocked) {
       const until = blocked.until === null ? "" : new Date(blocked.until).toISOString();
@@ -196,12 +197,20 @@ export class AssistantService {
     this.running.get(requestId)?.abort();
   }
 
-  /** The redacted repo bundle, for a provider the app calls itself. */
-  context(payload: {
+  /** The redacted repo bundle, for a provider the app calls itself; refused when a secret is in it. */
+  async context(payload: {
     kind: "commit" | "pr";
     source: CommitSource;
   }): Promise<AssistantContextBundle> {
-    return this.opts.context(payload.source);
+    const repo = await this.opts.context(payload.source);
+    this.refuseSecrets(repoTexts(repo));
+    return repo;
+  }
+
+  /** Refuses with the kinds of secret found, never their values. */
+  private refuseSecrets(texts: readonly string[]): void {
+    const found = [...new Set(texts.flatMap((text) => this.opts.scanner.scan(text)))];
+    if (found.length > 0) throw refusal("assistant_secret_found", { labels: found.join(", ") });
   }
 
   /** The usage of a call the app made itself; idempotent by its id. */
