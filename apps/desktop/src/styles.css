@@ -437,8 +437,8 @@
 }
 @utility tab-strip {
   display: flex;
-  align-items: flex-end;
-  gap: 0.125rem;
+  align-items: stretch;
+  height: 100%;
   /* As wide as its tabs, never wider than its box: past the tabs' minimum the box scrolls. */
   width: max-content;
   max-width: 100%;
@@ -446,7 +446,7 @@
 @utility tab-tool {
   width: 1.5rem;
   height: 1.5rem;
-  margin-bottom: 0.125rem;
+  align-self: center;
 }
 /* A tab's badge: a glyph that keeps its size beside the title (issue #172). */
 @utility tab-badge {
@@ -454,10 +454,49 @@
   flex-shrink: 0;
 }
 
+/* Issue #488: flat tabs that share the bar, as in VS Code. A tab is as wide as its title (6 to 13
+   rem, then the title is cut and the tooltip has it whole); thin lines part them; the inactive
+   ones are dimmer; the active one has the content's background, full-contrast text and an accent
+   line on top, so it reads as joined to the screen below. */
 @utility tab-item {
-  /* One basis for every tab: they share the strip equally and shrink together, like a browser's. */
-  flex: 0 1 14rem;
-  min-width: 5rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 6rem;
+  max-width: 13rem;
+  border-right: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
+  &:hover {
+    background: color-mix(in oklch, var(--color-accent) 55%, transparent);
+  }
+  &[data-pinned="true"] {
+    min-width: 0;
+  }
+  &:has([role="tab"][aria-selected="true"]) {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 2px;
+      background: var(--color-primary);
+    }
+  }
+  & svg[data-icon] {
+    opacity: 0.8;
+  }
+}
+@utility tab-button {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.5rem 0 0.75rem;
+  outline: none;
 }
 
 /* The card's conversation: it takes the rest of the pane, and scrolls inside itself only. */
@@ -1251,10 +1290,8 @@
   flex: 1 1 0;
   align-self: stretch;
   align-items: flex-end;
-  /* In the header's row the one bar takes the width left by the crumbs. */
-  & > .tab-bar {
-    flex: 1 1 auto;
-  }
+  /* Issue #488: the tabs left the header for a row of their own; this box only keeps the top bar's
+     actions on the right. */
 }
 
 /* The top bar's host switcher (issue #282): a fixed share of the crumbs' box, the name cut with a tooltip. */
@@ -1413,10 +1450,11 @@
   height: 2.25rem;
   min-width: 0;
   flex: none;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 0.25rem;
   border-bottom: 1px solid var(--color-border);
-  padding: 0 0.5rem;
+  background: color-mix(in oklch, var(--color-muted) 60%, var(--color-background));
+  padding: 0 0.5rem 0 0;
 }
 
 @utility field-row-end {
