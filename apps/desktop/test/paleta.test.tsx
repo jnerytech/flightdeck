@@ -180,7 +180,7 @@ describe("paleta", () => {
     const row = inPalette("option")[0] as HTMLElement;
     // The row's state glyph (issue #147) comes first; the title and the path are its text.
     const [title, detail] = [...row.querySelectorAll("span")].filter(
-      (span) => span.getAttribute("role") !== "img",
+      (span) => span.closest("[role='img']") === null,
     ) as HTMLElement[];
     expect(title?.className).toContain("shrink-0");
     expect(title?.className).toContain("whitespace-nowrap");
