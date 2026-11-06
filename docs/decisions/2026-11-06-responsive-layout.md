@@ -214,6 +214,10 @@ Taken together:
   - the body scrolls;
   - the footer buttons stay at the bottom, stacked, primary last.
 - Focus handling does not change.
+- A confirmation (an alert dialog: a short question and two buttons) stays a centered box at
+  every size; it does not need the whole screen.
+- The vendored dialog keeps its classes; the sheet is a rule in `styles.css`, next to the one
+  that centers it. A form that holds the fields and the footer fills the sheet too.
 
 **Popovers and menus**
 - They never exceed `calc(100vw - 2rem)` and flip to stay inside the window.
