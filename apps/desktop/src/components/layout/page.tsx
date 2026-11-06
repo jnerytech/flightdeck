@@ -43,7 +43,10 @@ export function Page(
         {props.toolbar}
       </div>
       {props.fill ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-4 lg:px-6">
+        <div
+          data-slot="page-body"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-4 lg:px-6"
+        >
           {props.children}
         </div>
       ) : (
@@ -51,7 +54,10 @@ export function Page(
           {/* The body's blocks sit 24 px apart, the scale's step between blocks of a page (#588).
               It is positioned, so what it holds absolutely (an sr-only caption) scrolls and clips
               inside it instead of stretching the screen into a second scrollbar (#640). */}
-          <div className="relative flex flex-col gap-6 px-3 py-4 sm:px-4 lg:px-6">
+          <div
+            data-slot="page-body"
+            className="relative flex flex-col gap-6 px-3 py-4 sm:px-4 lg:px-6"
+          >
             {props.children}
           </div>
         </ScrollArea>

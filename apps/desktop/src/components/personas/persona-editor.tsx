@@ -1,5 +1,6 @@
 import { type PersonaInput, PersonaModelError } from "@flightdeck/protocol";
 import { useEffect, useId, useState } from "react";
+import { AssistField } from "@/components/assistant/assist-field";
 import { Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,6 +61,8 @@ export function PersonaEditor(
     persona: AppPersona | null;
     onSaved(): void;
     onClose(): void;
+    /** Opens Settings, section Assistant (the wand found no provider). */
+    onOpenSettings(): void;
   }>,
 ) {
   const t = useT();
@@ -154,7 +157,27 @@ export function PersonaEditor(
         <Input id={fid} value={name} onChange={(e) => setName(e.target.value)} />
       ))}
       {field("description", t("personas.editor.description"), (fid) => (
-        <Input id={fid} value={description} onChange={(e) => setDescription(e.target.value)} />
+        <AssistField
+          binding={{
+            controller: store.assistant,
+            kind: "persona.description",
+            fieldHostId: hostId,
+            ...(name.trim() ? { context: { name } } : {}),
+            openSettings: props.onOpenSettings,
+          }}
+          value={description}
+          onChange={setDescription}
+          t={t}
+        >
+          {(assist) => (
+            <Input
+              id={fid}
+              {...assist}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          )}
+        </AssistField>
       ))}
       {field("icon", t("personas.editor.icon"), (fid) => (
         <Input id={fid} value={icon} onChange={(e) => setIcon(e.target.value)} />
@@ -233,7 +256,31 @@ export function PersonaEditor(
         </select>
       ))}
       {field("body", t("personas.editor.body"), (fid) => (
-        <Textarea id={fid} rows={6} value={body} onChange={(e) => setBody(e.target.value)} />
+        <AssistField
+          binding={{
+            controller: store.assistant,
+            kind: "persona.instructions",
+            fieldHostId: hostId,
+            context: {
+              ...(name.trim() ? { name } : {}),
+              ...(description.trim() ? { description } : {}),
+            },
+            openSettings: props.onOpenSettings,
+          }}
+          value={body}
+          onChange={setBody}
+          t={t}
+        >
+          {(assist) => (
+            <Textarea
+              id={fid}
+              {...assist}
+              rows={6}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+            />
+          )}
+        </AssistField>
       ))}
       {persona === null &&
         field("place", t("personas.editor.place"), (fid) => (
