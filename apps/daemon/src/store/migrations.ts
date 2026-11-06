@@ -879,4 +879,8 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE usage_daily ADD COLUMN failed_turns INTEGER;
   ALTER TABLE usage_daily ADD COLUMN duration_ms INTEGER;
   `,
+  // Issue #150: the resume offer reads the sessions in `error` without scanning them all.
+  `
+  CREATE INDEX IF NOT EXISTS sessions_status ON sessions (status, updated_at);
+  `,
 ];

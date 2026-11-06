@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
+import { ResumeOfferDialog } from "@/components/hosts/resume-offer-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { TopBarActions, TopBarHost, TopBarQuotaSlot } from "@/components/shell/top-bar";
@@ -570,6 +571,19 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             />
           </div>
           <Notices store={store} />
+          {Object.entries(state.resumeOffers).map(([hostId, offer]) => {
+            const host = state.hosts.find((h) => h.id === hostId);
+            return offer.open && host ? (
+              <ResumeOfferDialog
+                key={hostId}
+                store={store}
+                hostId={hostId}
+                hostName={host.name}
+                sessions={offer.sessions}
+                resumed={offer.resumed}
+              />
+            ) : null;
+          })}
           <TabSwitcherHost store={store} />
           {state.closingTerminal && (
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
