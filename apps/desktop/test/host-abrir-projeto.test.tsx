@@ -48,7 +48,7 @@ async function setup() {
     await store.hostCommand(hostId, "project.add", { path: repo });
     await store.loadPalette();
   });
-  return { store, hostId };
+  return { store, hostId, d, repo };
 }
 
 describe("host-abrir-projeto: a project on the host page opens (issue #207)", () => {
@@ -61,5 +61,38 @@ describe("host-abrir-projeto: a project on the host page opens (issue #207)", ()
       fireEvent.click(screen.getByRole("button", { name: /^Abrir (o projeto )?repo/ }));
     });
     expect(store.router.current).toMatchObject({ name: "project", host: hostId });
+  });
+
+  test("an empty host's New session opens the new-session form for that host", async () => {
+    const { store, hostId } = await setup();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Nova sessão" }));
+    });
+    expect(store.router.current).toMatchObject({ name: "new-session", host: hostId });
+  });
+
+  test("a session of the host opens from its card on the host page", async () => {
+    const { store, d, repo } = await setup();
+    await act(async () => {
+      await d.start({ cwd: repo, prompt: "ola" });
+      await store.refreshHub();
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "repo" })).not.toBeNull());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "repo" }));
+    });
+    expect(store.router.current.name).toBe("session");
+  });
+
+  test("See all projects filters by the host, and its chip clears the filter", async () => {
+    const { store, hostId } = await setup();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Ver todos os projetos" }));
+    });
+    expect(store.router.current).toMatchObject({ name: "all-projects", host: hostId });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Limpar o filtro de host: pc" }));
+    });
+    expect(store.router.current).toEqual({ name: "all-projects" });
   });
 });

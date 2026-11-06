@@ -49,14 +49,17 @@ const host = {
   sessions: [],
 };
 
-function setup() {
+function setup(
+  options: { hostInfo?: Record<string, unknown>; doctor?: { ok: boolean; checks: unknown[] } } = {},
+) {
+  const shown = { ...host, hostInfo: { ...host.hostInfo, ...options.hostInfo } };
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const internals = store as unknown as { update(p: object): void };
   internals.update({
-    hosts: [host],
+    hosts: [shown],
     deps: { h1: DEPS },
-    doctor: { h1: { ok: true, checks: [] } },
+    doctor: { h1: options.doctor ?? { ok: true, checks: [] } },
     healthAt: { h1: Date.now() },
   });
   store.loadPalette = async () => {};
@@ -80,7 +83,7 @@ function setup() {
     <TContext.Provider value={store.i18n.t}>
       <HostPage
         store={store}
-        host={host as never}
+        host={shown as never}
         onRename={() => null}
         onReconnect={() => {}}
         onOpenAutoApprovals={() => {}}
@@ -136,5 +139,33 @@ describe("host-saude-foco: the one-click fixes of the Health section (issue #206
     );
     await settle(() => (settings().textContent ?? "").includes("installed"));
     expect(settings().textContent).not.toContain("absent");
+  });
+
+  test("Cancel on the Install hooks confirmation closes it and installs nothing", async () => {
+    const { asked } = setup();
+    await click(
+      within(healthRow("Claude Code hooks")).getByRole("button", { name: "Install hooks" }),
+    );
+    await click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(asked).not.toContain("hooks.install");
+  });
+
+  test("Cancel on the daemon update confirmation closes it and updates nothing", async () => {
+    const { store } = setup({
+      hostInfo: { update: { available: true, version: "0.37.0" } },
+      doctor: {
+        ok: false,
+        checks: [{ id: "version", status: "warn", detail: "0.36.0 is behind" }],
+      },
+    });
+    let updated = false;
+    store.updateDaemon = (async () => {
+      updated = true;
+    }) as never;
+    await click(within(health()).getByRole("button", { name: /0\.37\.0/ }));
+    await click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(updated).toBe(false);
   });
 });

@@ -285,3 +285,19 @@ describe("deps-check: over the protocol", () => {
     expect(items).toHaveLength(11);
   });
 });
+
+describe("deps-check: a probe that cannot run", () => {
+  test("a PowerShell whose version cannot be read is still found, without a version", async () => {
+    const base = machine({ platform: "win32" });
+    const { items } = await checkDeps({
+      ...base,
+      version: async (path) => {
+        if (path.includes("pwsh")) throw new Error("spawn failed");
+        return base.version(path);
+      },
+    });
+    const pwsh = find(items, "pwsh");
+    expect(pwsh.state).toBe("ok");
+    expect(pwsh.version).toBeUndefined();
+  });
+});

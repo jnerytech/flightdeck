@@ -136,11 +136,13 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(screen.getByRole("button", { name: "Vault" })).toBeTruthy();
   });
 
-  test("folding Observability and Machines hides their items and leaves the other groups alone", async () => {
+  test("folding Work, Automation, Observability and Machines hides their items and leaves the other groups alone", async () => {
     const { view } = setup();
     render(view());
     const heading = (name: string) => screen.getByRole("button", { name });
     for (const [name, item] of [
+      ["Work", "Board"],
+      ["Automation", "Workflows"],
       ["Observability", "Costs"],
       ["Machines", "SSH"],
     ] as const) {
@@ -152,6 +154,14 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     }
     expect(heading("Library").getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("button", { name: "Vault" })).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(heading("Work"));
+    });
+    await act(async () => {
+      fireEvent.click(heading("Automation"));
+    });
+    expect(screen.getByRole("button", { name: "Board" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Workflows" })).toBeTruthy();
     await act(async () => {
       fireEvent.click(heading("Observability"));
     });
