@@ -2,6 +2,7 @@ import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { appendFileSync, existsSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { cardDiff, DIFF_FILE_MAX, DIFF_LIMITS, workingDiff } from "../src/board/diff.ts";
+import { type Rev, refArg } from "../src/board/ref-arg.ts";
 import { git, gitRepo } from "./board-helpers.ts";
 
 // Real git in temp repositories.
@@ -130,7 +131,7 @@ describe("changes-cap: a tracked change whose diff is over the cap is listed wit
     git(repo, "checkout", "-q", "-b", "work");
     writeFileSync(join(repo, "gen.txt"), lines(6000));
     commit(repo, "generated");
-    const { files } = await cardDiff(repo, "main");
+    const { files } = await cardDiff(repo, refArg("main"));
     expect(files.find((f) => f.path === "gen.txt")).toMatchObject({
       status: "added",
       uncommitted: false,
@@ -264,7 +265,7 @@ describe("changes-cap: a base branch is a revision, never an option of git", () 
   test("a base that looks like git's --output option writes nothing and is refused", async () => {
     const { repo, root } = gitRepo();
     const out = join(root, "stolen");
-    await expect(cardDiff(repo, `--output=${out}`)).rejects.toThrow();
+    await expect(cardDiff(repo, `--output=${out}` as Rev)).rejects.toThrow();
     expect(existsSync(`${out}...HEAD`)).toBe(false);
   });
 });

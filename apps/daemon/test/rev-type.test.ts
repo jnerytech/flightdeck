@@ -52,10 +52,10 @@ export const typeTest = () => {
 
 describe("rev-type: a revision is checked once, where it comes in, and the type says so (issue #369)", () => {
   test("refArg and assertBranchName hand back the name they checked", () => {
-    expect(refArg("main")).toBe("main");
-    expect(refArg("origin/main")).toBe("origin/main");
-    expect(refArg("HEAD")).toBe("HEAD");
-    expect(assertBranchName("release/1.2")).toBe("release/1.2");
+    expect(String(refArg("main"))).toBe("main");
+    expect(String(refArg("origin/main"))).toBe("origin/main");
+    expect(String(refArg("HEAD"))).toBe("HEAD");
+    expect(String(assertBranchName("release/1.2"))).toBe("release/1.2");
   });
 
   test("an option, an empty name and a name git refuses never become a Rev", () => {
