@@ -126,6 +126,10 @@ export interface Platform {
   setTrayMenu(menu: TrayMenu): Promise<void>;
   /** Clicks in that submenu: approve and deny answer without opening the window. */
   onTrayAction(handler: (action: TrayAction) => void): () => void;
+  /** Issue #402: the tray's Quit, asked of the app before the shell exits (it exits anyway later). */
+  onQuitRequested(handler: () => void): () => void;
+  /** Issue #402: the app is done with what Quit asked; the shell exits now. */
+  quitNow(): Promise<void>;
   autostart: {
     supported: boolean;
     isEnabled(): Promise<boolean>;
@@ -164,6 +168,8 @@ export interface Platform {
     check(): Promise<AppUpdate | null>;
     /** Downloads and verifies the update found by `check`, without installing it (issue #280). */
     download(): Promise<void>;
+    /** Issue #402: installs an update `download` already fetched, with no restart; nothing otherwise. */
+    installDownloaded(): Promise<void>;
     /** Downloads, verifies and installs the update found by `check`, then restarts the app. */
     install(): Promise<void>;
   };

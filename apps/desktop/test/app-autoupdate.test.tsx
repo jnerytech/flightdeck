@@ -27,7 +27,12 @@ afterEach(async () => {
 /** A platform whose updater finds `available` and records what it was asked to do. */
 function setup(
   lang: "en" | "pt-BR",
-  opts: { available?: string | null; downloadError?: string; auto?: "false" } = {},
+  opts: {
+    available?: string | null;
+    downloadError?: string;
+    installError?: string;
+    auto?: "false";
+  } = {},
 ) {
   const mem = memoryPlatform(false, lang);
   if (opts.auto) mem.items.set(AUTO_UPDATE_KEY, opts.auto);
@@ -45,8 +50,23 @@ function setup(
     install: async () => {
       calls.push("install");
     },
+    installDownloaded: async () => {
+      calls.push("installDownloaded");
+      if (opts.installError) throw new Error(opts.installError);
+    },
   };
-  return { ...mem, calls };
+  // Issue #402: the tray's Quit, heard by the app, and the exit it then asks for.
+  const quit: { ask: (() => void) | null } = { ask: null };
+  mem.platform.onQuitRequested = (handler) => {
+    quit.ask = handler;
+    return () => {
+      quit.ask = null;
+    };
+  };
+  mem.platform.quitNow = async () => {
+    calls.push("quitNow");
+  };
+  return { ...mem, calls, quit };
 }
 
 async function start(mem: ReturnType<typeof setup>) {
@@ -97,6 +117,47 @@ for (const [lang, dict] of [
         fireEvent.click(later as HTMLElement);
       });
       expect(banner()).toBeNull();
+    });
+
+    test("Quit with a downloaded update installs it on the way out, then exits (#402)", async () => {
+      const mem = setup(lang, { available: "9.9.0" });
+      await start(mem);
+      expect(await seen(() => mem.calls.includes("download"))).toBe(true);
+      await act(async () => {
+        mem.quit.ask?.();
+      });
+      expect(await seen(() => mem.calls.includes("quitNow"))).toBe(true);
+      expect(mem.calls).toEqual(["check", "download", "installDownloaded", "quitNow"]);
+    });
+
+    test("a second Quit while the first installs does not install twice (#402)", async () => {
+      const mem = setup(lang, { available: "9.9.0" });
+      await start(mem);
+      expect(await seen(() => mem.calls.includes("download"))).toBe(true);
+      await act(async () => {
+        mem.quit.ask?.();
+        mem.quit.ask?.();
+      });
+      expect(await seen(() => mem.calls.includes("quitNow"))).toBe(true);
+      expect(mem.calls.filter((c) => c === "installDownloaded")).toEqual(["installDownloaded"]);
+    });
+
+    test("Quit with nothing downloaded exits at once, and a failed install still exits (#402)", async () => {
+      const none = setup(lang, { available: null });
+      await start(none);
+      await act(async () => {
+        none.quit.ask?.();
+      });
+      expect(await seen(() => none.calls.includes("quitNow"))).toBe(true);
+      expect(none.calls).toEqual(["check", "quitNow"]);
+      cleanup();
+      const broken = setup(lang, { available: "9.9.0", installError: "locked" });
+      await start(broken);
+      expect(await seen(() => broken.calls.includes("download"))).toBe(true);
+      await act(async () => {
+        broken.quit.ask?.();
+      });
+      expect(await seen(() => broken.calls.includes("quitNow"))).toBe(true);
     });
 
     test("a check that finds the same version again does not download it twice", async () => {
