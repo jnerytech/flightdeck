@@ -36,8 +36,9 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     down, so a new test waits on the condition, and a `// timing:` comment on the line above allows
     a sleep where the clock itself is under test.
     The preload puts the timers, `Date`, `fetch`, the environment, the window size, the browser
-    storage and the page body back between two test files, and names on stderr the file that
-    left one changed (`isolation: <file> left … changed`): fix that file, the reset is a net.
+    storage and the page body back between two test files, and fails the run naming the file that
+    left one changed (`isolation: <file> left … changed`, #301): fix that file, the reset is a net.
+    `FLIGHTDECK_ISOLATION=warn` only prints it.
    - Nada de `toMatchSnapshot` na primeira rodada: ele grava o resultado do stub. Use literais
      escritos à mão (`toBe`, `toMatchInlineSnapshot` com o texto).
    - `toContain` sobre algo que pode ser `undefined`: use `?? ""`.
