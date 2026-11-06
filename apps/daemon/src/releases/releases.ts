@@ -67,11 +67,9 @@ export class ReleaseFeed {
   private kept: { at: number; releases: ReleaseNote[] } | null = null;
   /** The read going now: calls that come while it runs wait for it instead of asking GitHub again. */
   private reading: Promise<ReleaseNote[]> | null = null;
-  private readonly fetchIt: NonNullable<ReleaseFeedOptions["fetch"]>;
   private readonly now: () => number;
 
   constructor(private readonly opts: ReleaseFeedOptions) {
-    this.fetchIt = opts.fetch ?? ((url, init) => fetch(url, init));
     this.now = opts.now ?? Date.now;
   }
 
@@ -93,7 +91,7 @@ export class ReleaseFeed {
   private async read(): Promise<ReleaseNote[]> {
     let response: Response;
     try {
-      response = await this.fetchIt(`${this.opts.url}?per_page=${PER_PAGE}`, {
+      response = await (this.opts.fetch ?? fetch)(`${this.opts.url}?per_page=${PER_PAGE}`, {
         headers: { Accept: "application/vnd.github+json", "User-Agent": "flightdeckd" },
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
