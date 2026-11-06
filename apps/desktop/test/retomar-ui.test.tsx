@@ -193,7 +193,9 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
       });
     });
     await settle(() => store.getState().hosts[0]?.hostInfo !== null);
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Nothing may come: no dialog and no offer within the time an offer takes to arrive.
+    const offered = () => dialog() ?? Object.keys(store.getState().resumeOffers).length > 0;
+    expect(await poll(offered, 300)).toBeNull();
     expect(dialog()).toBeNull();
     expect(store.getState().resumeOffers).toEqual({});
   });
