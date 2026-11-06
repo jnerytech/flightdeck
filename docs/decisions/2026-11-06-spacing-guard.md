@@ -22,14 +22,19 @@
   the numbers, two tight pairs under the same names were one finding and one baseline key: fixing
   one left the key, and a new one under the same names did not fail.
 - **Ratchet.** The rules are heuristic. The run judges them against
-  `apps/desktop/spacing-baseline.json`, whose keys are the rule, `theme lang print` and the path:
-  - a finding not in the baseline fails the run;
-  - a key in the baseline that is gone also fails the run, with a message to remove it. A fix
-    therefore makes the file shorter.
+  `apps/desktop/spacing-baseline.json`. Since #641, each key is the rule, `theme lang print` and the
+  path with no numbers, and its value is how many findings share that key:
+  - more findings than the count fails the run, naming each one by its numbered path and px;
+  - fewer fails too, with a message to lower the count (or remove the key at 0). A fix therefore
+    makes the file smaller.
 
-  Without the file, the run fails nothing and only writes the findings down. Each run writes
-  what it saw to `apps/desktop/screenshots/spacing-findings.json`, which is in the CI artifact.
-  The baseline is built from those files.
+  The numbers stay out of the key. shadcn names every button, input and label by data-slot, so a
+  numbered key such as `button[34]` would change when a button is added above it, and the PR
+  would fail on keys it never touched.
+
+  Without the file, the run fails nothing and only writes the findings down. Each run writes the
+  counts to `apps/desktop/screenshots/spacing-findings.json` (the baseline's format) and each
+  finding by its numbered path to `spacing-findings-occurrences.json`, both in the CI artifact.
 - **Not yet.** The baseline holds no px, so a finding already in it that gets worse (7 px to
   0 px) does not fail. Follow-up: #637.
 - **Rejected.** Making them contract rules, which fail with no baseline. Today's pages would fail

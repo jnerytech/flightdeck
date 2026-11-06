@@ -167,9 +167,9 @@ describe("paleta", () => {
       "Ir para Configurações",
       "Gerenciar clientes",
     ]);
-    // A section shows eight rows (issue #147): Adicionar um host and the shortcuts are behind
-    // "mais 2"; the clients have a section of their own, shown whole.
-    expect(screen.queryByRole("button", { name: "mais 2" })).not.toBeNull();
+    // A section shows eight rows (issue #147): Adicionar um host, the shortcuts and Ir para Atividade are behind
+    // "mais 3"; the clients have a section of their own, shown whole.
+    expect(screen.queryByRole("button", { name: "mais 3" })).not.toBeNull();
     // No screen for it on this host: no "Ir para Custos".
     expect(options()).not.toContain("Ir para Custos");
 

@@ -662,6 +662,13 @@ export function Sidebar(
             )}
             <NavButton
               collapsed={collapsed}
+              icon={<NavIcon name="activity" aria-hidden="true" className={icon} />}
+              active={here === "activity"}
+              label={t("sidebar.activity")}
+              onClick={() => go({ name: "activity" })}
+            />
+            <NavButton
+              collapsed={collapsed}
               icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
               active={here === "history"}
               label={t("sidebar.history")}

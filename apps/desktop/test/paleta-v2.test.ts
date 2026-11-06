@@ -52,6 +52,10 @@ describe("paleta-v2: commands with their shortcut", () => {
       target: { kind: "go", to: "all-projects" },
       shortcut: "g p",
     });
+    expect(item(s, "Go to Activity")).toMatchObject({
+      target: { kind: "go", to: "activity" },
+      shortcut: "g a",
+    });
   });
 
   test("Costs and Settings, which were already there, now show their keys", () => {

@@ -30,6 +30,7 @@ export const JOURNEYS: readonly string[] = [
   "tab-row",
   "wand-composer",
   "notify-prefs",
+  "activity",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

@@ -1,6 +1,6 @@
 import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { UsersRound } from "lucide-react";
+import { Copy, UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -14,9 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
+import { sessionLabel } from "../lib/session-label.ts";
 import { useDraft } from "../lib/use-draft.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -198,8 +200,11 @@ function NewTeam(
   );
 }
 
+/** What a member's row reads: the names and personas of its host (issue #101). */
+const MEMBER_KEYS = ["names", "personas"] as const;
+
 /** One member: its role, persona, state, card and last report, and the persona to switch to. */
-function Member(
+export function TeamMemberRow(
   props: Readonly<{
     store: AppStore;
     hostId: string;
@@ -214,16 +219,41 @@ function Member(
 ) {
   const { store, member } = props;
   const { t } = store.i18n;
+  const { names, personas } = useStoreSlice(store, MEMBER_KEYS);
   const [persona, setPersona, savedPersona] = useDraft(member.persona ?? "");
+  const listed = personas[props.hostId];
+  // Issue #101: the member's name in the person's language, by its persona, as everywhere else.
+  const label =
+    sessionLabel(
+      {
+        names: names[props.hostId]?.find((name) => name.sessionId === member.sessionId),
+        createdName: member.name,
+        personas: listed,
+      },
+      t,
+    ) ?? member.name;
+  const sessionId = member.sessionId;
+  const openSession = () =>
+    store.router.push({ name: "session", host: props.hostId, id: sessionId ?? "" });
   return (
     <li data-slot="team-member" className="stack-tight rounded-md border p-2 text-xs">
       <div data-slot="member-head" className="member-head">
         <div className="member-id">
-          <strong>{member.name}</strong>
+          {sessionId ? (
+            <Button variant="link" size="sm" onClick={openSession}>
+              {label}
+            </Button>
+          ) : (
+            <strong>{label}</strong>
+          )}
           <Badge variant="outline">
             {t(member.role === "coordinator" ? "teamsUi.coordinator" : "teamsUi.worker")}
           </Badge>
-          {member.persona && <Badge variant="outline">{member.persona}</Badge>}
+          {member.persona && (
+            <Badge variant="outline">
+              {listed?.find((p) => p.id === member.persona)?.name ?? member.persona}
+            </Badge>
+          )}
           {member.model && <Badge variant="outline">{member.model}</Badge>}
         </div>
         <div data-slot="member-end" className="member-end">
@@ -232,18 +262,30 @@ function Member(
               {t(`teamsUi.sessionStates.${member.sessionState}`)}
             </span>
           )}
-          {member.sessionId && (
+          {sessionId && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("teamsUi.copyId", { name: label })}
+                  onClick={() => {
+                    void store.copyText(sessionId);
+                    store.success(t("teamsUi.idCopied"));
+                  }}
+                >
+                  <Copy aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{sessionId}</TooltipContent>
+            </Tooltip>
+          )}
+          {sessionId && (
             <Button
               variant="link"
               size="sm"
-              aria-label={t("teamsUi.openSessionOf", { name: member.name })}
-              onClick={() =>
-                store.router.push({
-                  name: "session",
-                  host: props.hostId,
-                  id: member.sessionId ?? "",
-                })
-              }
+              aria-label={t("teamsUi.openSessionOf", { name: label })}
+              onClick={openSession}
             >
               {t("teamsUi.openSession")}
             </Button>
@@ -252,7 +294,7 @@ function Member(
             <Button
               variant="link"
               size="sm"
-              aria-label={t("teamsUi.openCardOf", { name: member.name })}
+              aria-label={t("teamsUi.openCardOf", { name: label })}
               onClick={() =>
                 store.router.push({
                   name: "card",
@@ -273,12 +315,12 @@ function Member(
         </p>
       )}
       {props.open && (
-        <div data-slot="member-persona" className="member-persona">
+        <FieldRow align="end" slot="member-persona">
           <div data-slot="persona-field" className="persona-field">
             <PersonaPicker
               store={store}
               hostId={props.hostId}
-              label={t("teamsUi.persona", { name: member.name })}
+              label={t("teamsUi.persona", { name: label })}
               value={persona}
               onChange={setPersona}
               idsOnly
@@ -286,7 +328,7 @@ function Member(
           </div>
           <Button
             variant="outline"
-            aria-label={t("teamsUi.setPersona", { name: member.name })}
+            aria-label={t("teamsUi.setPersona", { name: label })}
             onClick={async () => {
               const sent = persona;
               if (await props.onPersona(sent)) savedPersona(sent);
@@ -297,13 +339,13 @@ function Member(
           {member.role === "worker" && (
             <Button
               variant="outline"
-              aria-label={t("teamsUi.remove", { name: member.name })}
+              aria-label={t("teamsUi.remove", { name: label })}
               onClick={props.onRemove}
             >
               {t("teamsUi.removeButton")}
             </Button>
           )}
-        </div>
+        </FieldRow>
       )}
     </li>
   );
@@ -398,7 +440,7 @@ function Team(
       <p className="text-muted-foreground whitespace-pre-wrap">{team.goal}</p>
       <ul className="flex flex-col gap-1">
         {team.members.map((member) => (
-          <Member
+          <TeamMemberRow
             key={member.name}
             store={store}
             hostId={hostId}

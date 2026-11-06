@@ -124,7 +124,10 @@ files. On a hub file the set shrinks a lot (`packages/protocol/src/index.ts`: 68
 transitively, 141 directly; `apps/desktop/src/i18n/en.ts`: 359 and 19). The transitive set runs
 in CI on the pushed branch. A suíte completa
 (`bun run slot -- bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador
-e no CI.
+e no CI. A worker session never runs the full form itself (#674): the guard hook refuses a plain,
+`--base` or `--pr` `test:related`, which holds the slot 12 to 25 minutes for what the PR's CI runs
+anyway, and names the allowed forms (`--fast --tier unit,component`, the touched test files with
+`bunfig.area.toml`, `coverage:funcs <file> --tests <a few tests>`).
 
 **Which function is not covered.** Bun's coverage (the full suite) counts functions per file but
 does not name them, so a file at 94% function coverage does not say which function is missing.
@@ -136,7 +139,10 @@ source line). The files are instrumented in memory by `istanbul-lib-instrument`,
 `Bun.plugin` in a preload that only this command passes: the sources on disk are never written, and
 only the files listed are instrumented. Limits: it follows the test process only (a function that
 runs in a spawned child counts as not called), and istanbul skips private `#methods`. Use it before
-hand-off on the files you changed, to close a function gap without bisecting.
+hand-off on the files you changed, to close a function gap without bisecting. A worker session runs it over at most 20 test files (#674): the guard hook refuses a longer
+`--tests` list and the script refuses a longer selection, since such a run holds the shared slot for
+what the PR's CI does anyway. `FLIGHTDECK_SLOT_HEAVY="<reason>"` in front of the command lets a real
+need through.
 
 **Functional core, imperative shell.** Logic that decides is a function that takes its effects
 (git, fs, clock, spawn, network) as a deps object or an injected context, as `runAudit({ since,
