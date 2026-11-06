@@ -2316,6 +2316,7 @@ reinício e um botão de atualizar. À direita, cada item abre a sua página:
 
 Cada item é um botão com as palavras como nome e uma dica, nunca só a cor, e as duas contagens são
 regiões vivas, então o leitor de tela ouve quando mudam.
+Em uma janela com menos de 600 px de altura a barra fica escondida, para deixar a altura para a conversa.
 
 ### Fila por cota
 

@@ -1329,6 +1329,13 @@
 
 /* The status bar (issue #491): one slim line at the bottom, 24 px, its items each a button. The
    height is a variable so what floats over the window (the update card) can sit above it. */
+/* Under 600 px of window height the conversation has no height to spare (the 720x480 floors of
+   #422 and #437): the bar steps aside, and its items stay on their pages. */
+@utility shell-status {
+  @media (max-height: 599px) {
+    display: none;
+  }
+}
 @utility status-bar {
   display: flex;
   height: var(--status-bar-height);

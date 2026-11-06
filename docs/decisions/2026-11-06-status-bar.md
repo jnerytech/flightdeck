@@ -23,4 +23,9 @@ The user asked for a slim bar at the bottom like Orca's. It re-opens what #118 l
   counts are `<output>` (role status), so a change is announced. What no host reports (no quota, no
   keep-awake, no update) is not drawn. The refresh turns only when the person has not asked for less
   motion, and is disabled and `aria-busy` while it asks.
+- **It steps aside in a short window.** Under 600 px of window height the bar is hidden (`shell-status`,
+  a `max-height` media query): at 720x480 the conversation measures about 160 px (the floor is 150),
+  so 24 px more would break the floors of #422 and #437. Its items stay on their pages (the host page
+  has keep-awake, terminals and the account card; Settings has the update). Agreed with
+  fd-ux-designer, who measures it again with the 36 px tab row of #488.
 - **Not done:** a ports count (Orca has one; Flightdeck has no list of ports today).

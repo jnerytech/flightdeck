@@ -73,7 +73,11 @@ export function AppShell(
           <HeaderSlot.Provider value={slot}>{props.children}</HeaderSlot.Provider>
         </main>
       </div>
-      {props.status && <div data-slot="shell-status">{props.status}</div>}
+      {props.status && (
+        <div data-slot="shell-status" className="shell-status">
+          {props.status}
+        </div>
+      )}
     </div>
   );
 }

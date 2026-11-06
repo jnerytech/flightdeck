@@ -2320,6 +2320,7 @@ reset time and a refresh. On the right, each item opens its page:
 
 Every item is a button with its words as the name and a tooltip, never colour alone, and the two
 counts are live regions, so a screen reader hears them change.
+In a window under 600 px tall the bar is hidden, to leave the height to the conversation.
 
 ### Quota queue
 
