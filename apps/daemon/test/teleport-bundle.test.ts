@@ -167,6 +167,34 @@ describe("teleport-bundle: the code of a session as one git bundle (#100)", () =
     expect(code.secrets).toEqual({ lines: 1, labels: ["GitHub token"] });
   });
 
+  test("the bundle names its base by commit too: the target checks it has that commit", async () => {
+    const { repo, folder } = await working();
+    const code = await bundleCode({ cwd: repo, folder, id: "p", scan: () => [] });
+    expect(code.baseSha).toBe(git(repo, "rev-parse", "origin/main").trim());
+  });
+
+  test("a working tree over the limit is refused before git writes anything into the repository", async () => {
+    const { repo, folder } = await working();
+    await writeFile(join(repo, "big.bin"), Buffer.alloc(4096, 1));
+    const objects = () => git(repo, "count-objects").trim();
+    const before = objects();
+    const refused = await reason(() =>
+      bundleCode({ cwd: repo, folder, id: "p", scan: () => [], maxBytes: 2048 }),
+    );
+    expect([refused, objects()]).toEqual(["teleport_too_large", before]);
+  });
+
+  test("history whose text is past the limit is refused, never scanned in part", async () => {
+    const { repo, folder } = await working();
+    await writeFile(join(repo, "log.txt"), "a line that repeats\n".repeat(20_000));
+    git(repo, "add", "log.txt");
+    git(repo, "commit", "-q", "-m", "chore(x): a long file");
+    const refused = await reason(() =>
+      bundleCode({ cwd: repo, folder, id: "p", scan: () => [], maxBytes: 100_000 }),
+    );
+    expect(refused).toBe("teleport_too_large");
+  });
+
   test("a repository with no index yet still bundles its working tree", async () => {
     const { repo, folder } = await working();
     await rm(join(repo, ".git", "index"));
