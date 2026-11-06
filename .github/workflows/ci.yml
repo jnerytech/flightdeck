@@ -28,7 +28,10 @@ permissions:
 concurrency:
   # The job choice is in the key: a screenshots-only dispatch must not cancel a full one.
   group: ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}
-  cancel-in-progress: true
+  # A run on main always finishes (#326): a merge cancelling main's run in progress left 14 main runs
+  # cancelled in a row and no main result to release from. GitHub then keeps the run in progress and
+  # only the newest pending one. Branch and PR runs still cancel their previous push.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   # Which job groups this run needs (#264): on a pull request, from the paths it changes
@@ -318,6 +321,37 @@ jobs:
           if [ "${{ needs.changes.outputs.smokes }}" = true ] || [ "${{ needs.changes.outputs.cargo }}" = true ]; then
             test "${{ needs.checks-linux.result }}" = success
           fi
+
+  # The base of the test pyramid holds (#309): every source fast-coverage-baseline.json lists stays
+  # at 100% from the unit and component tiers alone. On main, nightly and by hand; not a required
+  # check, but a red main blocks `pr tag`.
+  fast-coverage:
+    name: fast coverage (ubuntu-latest)
+    needs: [changes, quick]
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      - name: Cobertura das camadas rápidas
+        run: bun run fast-coverage
 
   # Windows, the slowest leg (#220: 33 minutes, 25 of them tests), runs the suite in three shards
   # with no coverage: the 100% gate is Linux's. The required check `test (windows-latest)` is the
