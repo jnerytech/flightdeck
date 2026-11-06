@@ -99,6 +99,8 @@ async function setup(options: { checkpoints?: boolean; git?: boolean } = {}) {
 
 /** The timeline's sheet, open. */
 async function openTimeline() {
+  // While a request waits the header takes one line and its actions sit under Mais ações (#488).
+  if (screen.queryByRole("button", { name: "Linha do tempo" }) === null) await click("Mais ações");
   await click("Linha do tempo");
   await settle(() => screen.queryByRole("dialog", { name: "Linha do tempo" }) !== null);
   await settle(() => sheet().queryByText("arrume o README") !== null);
