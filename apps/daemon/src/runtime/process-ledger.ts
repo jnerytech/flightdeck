@@ -98,8 +98,9 @@ export class ProcessLedger {
 
   /** Runs `work` after every change asked before it. */
   private serial<T>(work: () => Promise<T>): Promise<T> {
+    // `then(work, work)`: a change that failed does not stop the next one.
     const run = this.queue.then(work, work);
-    this.queue = run.catch(() => undefined);
+    this.queue = run;
     return run;
   }
 
@@ -197,25 +198,28 @@ export class ProcessLedger {
 
 /** /proc on Linux, read without blocking; on any other system nothing is known, so nothing is
  * recorded or reaped. */
-export function procSource(platform: NodeJS.Platform = process.platform): ProcSource {
+export function procSource(
+  platform: NodeJS.Platform = process.platform,
+  root = "/proc",
+): ProcSource {
   if (platform !== "linux") return { identity: () => null, members: () => [], bootId: () => null };
   const text = (path: string) => readFile(path, "utf8").catch(() => null);
   const stat = async (pid: number) => {
-    const raw = await text(`/proc/${pid}/stat`);
+    const raw = await text(`${root}/${pid}/stat`);
     return raw === null ? null : parseStat(raw);
   };
   return {
     async bootId() {
-      return (await text("/proc/sys/kernel/random/boot_id"))?.trim() || null;
+      return (await text(`${root}/sys/kernel/random/boot_id`))?.trim() || null;
     },
     async identity(pid) {
       const parsed = await stat(pid);
-      const raw = parsed ? await text(`/proc/${pid}/cmdline`) : null;
+      const raw = parsed ? await text(`${root}/${pid}/cmdline`) : null;
       if (!parsed || raw === null) return null;
       return { ...parsed, cmdline: raw.replaceAll("\0", " ").trim() };
     },
     async members(pgid) {
-      const names = await readdir("/proc").catch(() => [] as string[]);
+      const names = await readdir(root).catch(() => [] as string[]);
       const pids = names.filter((n) => /^\d+$/.test(n)).map(Number);
       const stats = await Promise.all(pids.map(async (pid) => ({ pid, parsed: await stat(pid) })));
       return stats.flatMap(({ pid, parsed }) =>
