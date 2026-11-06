@@ -8,23 +8,38 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 
+/** Index of the closing quote of the string opened at `open` (past the end when it never closes). */
+function stringEnd(src: string, open: number): number {
+  const quote = src[open];
+  let i = open + 1;
+  for (; i < src.length && src[i] !== quote; i++) if (src[i] === "\\") i++;
+  return i;
+}
+
+/** Index of the last char of the comment that starts at `i`; -1 when none starts there. */
+function commentEnd(src: string, i: number): number {
+  if (src[i] !== "/") return -1;
+  if (src[i + 1] === "/") {
+    const end = src.indexOf("\n", i);
+    return end < 0 ? src.length : end;
+  }
+  if (src[i + 1] === "*") {
+    const end = src.indexOf("*/", i + 2);
+    return end < 0 ? src.length : end + 1;
+  }
+  return -1;
+}
+
 /** Index just past the bracket that closes the one at `open`, skipping strings and comments. */
 function closing(src: string, open: number): number {
   let depth = 0;
   for (let i = open; i < src.length; i++) {
-    const c = src[i];
-    if (c === '"' || c === "'" || c === "`") {
-      for (i++; i < src.length && src[i] !== c; i++) if (src[i] === "\\") i++;
-    } else if (c === "/" && src[i + 1] === "/") {
-      const end = src.indexOf("\n", i);
-      if (end < 0) return src.length;
-      i = end;
-    } else if (c === "/" && src[i + 1] === "*") {
-      const end = src.indexOf("*/", i + 2);
-      if (end < 0) return src.length;
-      i = end + 1;
-    } else if (c === "(" || c === "[" || c === "{") depth++;
-    else if (c === ")" || c === "]" || c === "}") {
+    const c = src[i] as string;
+    const comment = commentEnd(src, i);
+    if (c === '"' || c === "'" || c === "`") i = stringEnd(src, i);
+    else if (comment >= 0) i = comment;
+    else if ("([{".includes(c)) depth++;
+    else if (")]}".includes(c)) {
       depth--;
       if (depth === 0) return i + 1;
     }
