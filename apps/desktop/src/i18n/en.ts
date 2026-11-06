@@ -3447,6 +3447,8 @@ export const en: Dictionary = {
     changedElsewhere: "Changed elsewhere while you edited: Use theirs to see it, then edit again.",
     useTheirs: "Use theirs",
     detailsTitle: "Details",
+    /** The card's details as a pane of their own once its conversation shows (#641). */
+    infoPane: "The card, above its conversation",
     runTitle: "Run",
     saveDescription: "Save description",
     title: "Title",

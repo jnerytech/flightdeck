@@ -147,93 +147,105 @@ export const CardDetail = memo(function CardDetail(props: {
       }
     >
       <div className={cn("flex flex-col gap-5", chatShown ? "pane-fill" : "max-w-4xl")}>
-        {card.notice && (
-          <InlineNotice>
-            {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
-          </InlineNotice>
-        )}
-        {/* Issue #227: a gate waiting for the person is the first thing on the card, not under the form. */}
-        {run?.steps
-          .filter((step) => step.type === "gate" && step.status === "waiting")
-          .map((step) => (
-            <GateCard
-              key={`${step.stepId}/${step.attempt}`}
-              step={step}
-              onRespond={(gate, decision, note) =>
-                store.respondGate(hostId, { runId: run.id, ...gate }, decision, note)
-              }
-            />
-          ))}
-        <CardFields
-          store={store}
-          hostId={hostId}
-          card={card}
-          {...(props.edit !== undefined ? { edit: props.edit } : {})}
-          withRoi={withRoi}
-          onOpenSettings={props.onOpenSettings}
-        />
-        {/* Details, then what the card waits for, then how it runs (issue #174). */}
-        {withDeps && (
-          <CardDeps
+        {/* Once the conversation shows, everything above it is a pane of its own that scrolls by
+            itself, so the page body never scrolls around the conversation's timeline (#641). The
+            same element either way: what was typed in it stays (#249). */}
+        <section
+          data-slot="card-info"
+          data-split={chatShown}
+          aria-label={chatShown ? t("cardUi.infoPane") : undefined}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a pane that scrolls takes focus, so the keyboard reaches it
+          tabIndex={chatShown ? 0 : undefined}
+          className="card-info"
+        >
+          {card.notice && (
+            <InlineNotice>
+              {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
+            </InlineNotice>
+          )}
+          {/* Issue #227: a gate waiting for the person is the first thing on the card, not under the form. */}
+          {run?.steps
+            .filter((step) => step.type === "gate" && step.status === "waiting")
+            .map((step) => (
+              <GateCard
+                key={`${step.stepId}/${step.attempt}`}
+                step={step}
+                onRespond={(gate, decision, note) =>
+                  store.respondGate(hostId, { runId: run.id, ...gate }, decision, note)
+                }
+              />
+            ))}
+          <CardFields
             store={store}
             hostId={hostId}
             card={card}
-            cards={projectCards(state, hostId, card.projectId)}
-            workflows={workflows}
+            {...(props.edit !== undefined ? { edit: props.edit } : {})}
+            withRoi={withRoi}
+            onOpenSettings={props.onOpenSettings}
           />
-        )}
-        <CardArena
-          store={store}
-          hostId={hostId}
-          card={card}
-          enabled={withArena}
-          personas={withPersonas}
-          moment={cardMoment}
-          personaName={(id) =>
-            state.personas[hostId]?.find((p) => p.id === id)?.name ??
-            store.globalPersonas.list().find((p) => p.id === id)?.name ??
-            id
-          }
-        >
-          {(arena) => (
-            <>
-              <CardRunForm
-                store={store}
-                hostId={hostId}
-                card={card}
-                workflows={workflows}
-                features={{
-                  personas: withPersonas,
-                  bg: has("bg"),
-                  watch: withWatch,
-                }}
-                arenaStart={arena.start}
-                onDiscarded={props.onBack}
-                onShowDiff={() => setTab("diff")}
-              />
-              {withWatch && card.prUrl && (
-                <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />
-              )}
-              {card.worktreePath && has("runenv") && (
-                <RunPanel store={store} hostId={hostId} card={card} />
-              )}
-              {arena.view}
-            </>
+          {/* Details, then what the card waits for, then how it runs (issue #174). */}
+          {withDeps && (
+            <CardDeps
+              store={store}
+              hostId={hostId}
+              card={card}
+              cards={projectCards(state, hostId, card.projectId)}
+              workflows={workflows}
+            />
           )}
-        </CardArena>
-        <CardAdjustment store={store} hostId={hostId} cardId={cardId} />
-        <CardRuns runs={card.runs} formatDateTime={(iso) => store.formatDateTime(iso)} />
-        {run && (
-          <RunTimeline
-            run={run}
-            formatTime={(iso) => store.formatTime(iso)}
-            costUsd={runCost}
-            onOpenStep={openStep}
-          />
-        )}
-        {withSync && card.externalUrl && (
-          <CardSyncLog store={store} hostId={hostId} cardId={cardId} />
-        )}
+          <CardArena
+            store={store}
+            hostId={hostId}
+            card={card}
+            enabled={withArena}
+            personas={withPersonas}
+            moment={cardMoment}
+            personaName={(id) =>
+              state.personas[hostId]?.find((p) => p.id === id)?.name ??
+              store.globalPersonas.list().find((p) => p.id === id)?.name ??
+              id
+            }
+          >
+            {(arena) => (
+              <>
+                <CardRunForm
+                  store={store}
+                  hostId={hostId}
+                  card={card}
+                  workflows={workflows}
+                  features={{
+                    personas: withPersonas,
+                    bg: has("bg"),
+                    watch: withWatch,
+                  }}
+                  arenaStart={arena.start}
+                  onDiscarded={props.onBack}
+                  onShowDiff={() => setTab("diff")}
+                />
+                {withWatch && card.prUrl && (
+                  <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />
+                )}
+                {card.worktreePath && has("runenv") && (
+                  <RunPanel store={store} hostId={hostId} card={card} />
+                )}
+                {arena.view}
+              </>
+            )}
+          </CardArena>
+          <CardAdjustment store={store} hostId={hostId} cardId={cardId} />
+          <CardRuns runs={card.runs} formatDateTime={(iso) => store.formatDateTime(iso)} />
+          {run && (
+            <RunTimeline
+              run={run}
+              formatTime={(iso) => store.formatTime(iso)}
+              costUsd={runCost}
+              onOpenStep={openStep}
+            />
+          )}
+          {withSync && card.externalUrl && (
+            <CardSyncLog store={store} hostId={hostId} cardId={cardId} />
+          )}
+        </section>
         <CardWork
           store={store}
           hostId={hostId}
