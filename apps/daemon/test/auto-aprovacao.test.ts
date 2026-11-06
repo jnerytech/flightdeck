@@ -236,6 +236,8 @@ describe("auto-aprovacao", () => {
       cwd: dir,
       maxTurns: 1,
       settingSources: [],
+      // settingSources does not cover .mcp.json: the session's folder may be one nobody trusted.
+      strictMcpConfig: true,
       persistSession: false,
       tools: [],
       env: expect.objectContaining({ FLIGHTDECK_MANAGED: "1" }),

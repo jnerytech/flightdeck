@@ -303,6 +303,37 @@ hooks, Tailscale and the daemon's version against the app's. Every item is **ok*
 **failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
 The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
 with `flightdeckd doctor`.
+### Trusting a project
+
+A project (a repository) can carry its own configuration: hooks that run commands by themselves,
+MCP servers that start programs, settings with allowed tools, a `CLAUDE.md`, agents, skills and
+commands. In a session Flightdeck starts, that configuration loads **only in a folder you trusted**.
+Folders you were already working in when this arrived (your board projects and the folders of your
+earlier sessions) are trusted; a repository you clone later, or a folder you add, starts untrusted.
+
+- In an untrusted folder the session loads your own settings, not the project's, and **neither your
+  own MCP servers nor your plugins** (Claude Code is told to use only the MCP server Flightdeck
+  gives it). The project's `CLAUDE.md`, agents and skills do not load either. A notice at the top
+  of the session says so, with **Review and trust**.
+- The project page has **Project configuration**: what the project would load, read without
+  running anything (hooks by event and MCP servers with their whole command, in a scrollable block
+  with a warning when a command is long or has several lines; programs the settings run, such as
+  `apiKeyHelper` and `statusLine`; environment variables that redirect traffic or code, with their
+  value, and the names of the others, never their values; plugins; every other settings key
+  present; allowed tools; agents, skills and commands, and the ones whose header carries hooks,
+  servers or tool grants; `CLAUDE.md`; and files that could not be read), the cost of not
+  trusting, and **Trust this project**. It asks first, naming the project and the host, because
+  trusted hooks and MCP servers run commands on that computer without asking you. **Revoke trust**
+  asks nothing. Trusting covers the folders inside the project, not the ones around it.
+- Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
+  project, and a folder that holds your allowed roots cannot be trusted at all. Background
+  sessions follow the same rule as the sessions in the app.
+- A card's worktree always reads its project configuration from the project's main folder, so a
+  branch never brings hooks of its own, trusted or not.
+- Trusting works only from the host's own computer or over Tailscale (like allowing a folder or sessions without prompts); revoking works from anywhere.
+- The decision lives on the host (`project_trust` in its database), per host, and is logged. A
+  host that does not announce `projectTrust` loads everything, as before.
+
 ### Sessions without permission prompts
 
 By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
