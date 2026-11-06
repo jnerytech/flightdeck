@@ -2475,8 +2475,11 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   PR merged, or that has no card. A worktree with uncommitted changes, commits that exist nowhere
   else, a running session, terminal or run, an unknown base branch (it must be a real branch, not
   a tag or `HEAD`), a branch that is not one of Flightdeck's `fd/…`, ignored files a build does not
-  recreate (`node_modules` and build output do not count), or anything git could not answer about
-  is **kept**: the row says why and cannot be ticked. Filter by Suggested, Protected or No card, sort by age or size, **Select
+  recreate (only `node_modules`, `dist`, `build`, `target`, `coverage`, `.cache`, `.next` and `out`
+  as a folder at the root of the worktree do not count, and an ignored credential file such as `.env`
+  or `*.pem` always does), edits that git hides from `git status` (`assume-unchanged` or
+  `skip-worktree`), or anything git could not answer about is **kept**: the row says why and cannot
+  be ticked. The confirmation says the rebuildable folders go with the worktree. Filter by Suggested, Protected or No card, sort by age or size, **Select
   suggested** or **Select all that can go**, then **Remove**: the confirmation names every branch
   with its card and column, and the space it frees. Only the rows on screen can be ticked or
   removed. The host holds each folder (nothing can start in it) and checks it again before removing

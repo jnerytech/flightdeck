@@ -68,23 +68,24 @@ function parseList(out: string): Array<{ path: string; branch: string | null }> 
 /** The branches Flightdeck makes; a worktree on any other branch is somebody else's work. */
 const OWN_BRANCH = /^fd\//;
 
-/** Ignored things that a build or an install rebuilds: losing them costs time, not work. */
+/**
+ * What a build or an install recreates, and only as a folder at the root of the worktree: losing
+ * these costs time, not work. The same name deeper is somebody's data (`data/out/results.db`).
+ */
 const REBUILDABLE = new Set([
   "node_modules",
   "dist",
   "build",
-  "out",
   "target",
   "coverage",
-  "__pycache__",
-  ".next",
-  ".nuxt",
-  ".turbo",
   ".cache",
-  ".parcel-cache",
-  ".pytest_cache",
-  ".gradle",
+  ".next",
+  "out",
 ]);
+
+/** A name that looks like it holds a credential: such a file is never a loss to shrug at. */
+const CREDENTIAL_NAME =
+  /^(?:\.env(?:\..*)?|\.netrc|\.npmrc|\.pypirc|id_(?:rsa|dsa|ecdsa|ed25519)(?:\.pub)?|.*\.(?:pem|key|p12|pfx|jks|keystore|kdbx|ovpn)|.*(?:credential|secret|token|passw(?:or)?d|api[_-]?key).*)$/i;
 
 /** The size an ignored file may have to be compared with the project's copy of it. */
 const COMPARE_LIMIT = 1024 * 1024;
@@ -146,7 +147,7 @@ export class Worktrees {
     }
   }
 
-  /** The ignored paths in `status` output that are not rebuildable and not a copy of the project's. */
+  /** Whether `status` lists an ignored path that goes with the folder and cannot be shrugged at. */
   private async keepsIgnored(
     project: WorktreeProject,
     worktree: string,
@@ -154,11 +155,17 @@ export class Worktrees {
   ): Promise<boolean> {
     for (const line of status.split("\n")) {
       if (!line.startsWith("!! ")) continue;
-      const rel = line.slice(3).replace(/\/$/, "");
-      const parts = rel.split("/");
-      if (parts.some((part) => REBUILDABLE.has(part))) continue;
-      if (rel === LOCAL_SETTINGS || rel.endsWith(".tsbuildinfo") || rel === ".DS_Store") continue;
-      if (!line.endsWith("/") && (await this.sameAsProject(project, worktree, rel))) continue;
+      const listed = line.slice(3);
+      const folder = listed.endsWith("/");
+      const rel = folder ? listed.slice(0, -1) : listed;
+      // A credential-looking name at any depth: never.
+      if (rel.split("/").some((part) => CREDENTIAL_NAME.test(part))) return true;
+      // Flightdeck's own file, written into every worktree.
+      if (rel === LOCAL_SETTINGS) continue;
+      // A rebuildable folder, at the root.
+      if (folder && !rel.includes("/") && REBUILDABLE.has(rel)) continue;
+      // A copy of the project's own ignored file (what `.worktreeinclude` puts there), unedited.
+      if (!folder && (await this.sameAsProject(project, worktree, rel))) continue;
       return true;
     }
     return false;
@@ -196,7 +203,19 @@ export class Worktrees {
         const card = cards.find((c) => c.worktreePath && samePath(c.worktreePath, entry.path));
         // The base is the branch itself: "not on the base" would be empty by construction.
         const baseUsable = base !== null && entry.branch !== project.baseBranch;
-        const [status, ahead, last, tip, sizeBytes] = await Promise.all([
+        // The branch tip first: the commits are counted on it, so the count and the sha that the
+        // branch is deleted against are one snapshot.
+        const tip = entry.branch
+          ? await git(
+              project.path,
+              "rev-parse",
+              "--verify",
+              "--quiet",
+              `refs/heads/${entry.branch}^{commit}`,
+            )
+          : null;
+        const tipSha = tip && tip.code === 0 ? tip.stdout.trim() : null;
+        const [status, hiddenList, ahead, last, sizeBytes] = await Promise.all([
           // Untracked files shown whatever the user's config says; ignored ones listed as well.
           git(
             entry.path,
@@ -207,19 +226,12 @@ export class Worktrees {
             "--untracked-files=all",
             "--ignored=matching",
           ),
-          baseUsable
-            ? git(entry.path, "rev-list", "--count", "HEAD", "--not", "--remotes", base)
+          // The tag of each tracked file: what `assume-unchanged` or `skip-worktree` hides from status.
+          git(entry.path, "ls-files", "-v", "-z"),
+          baseUsable && (entry.branch === null || tipSha !== null)
+            ? git(entry.path, "rev-list", "--count", tipSha ?? "HEAD", "--not", "--remotes", base)
             : Promise.resolve(null),
           git(entry.path, "log", "-1", "--format=%ct"),
-          entry.branch
-            ? git(
-                project.path,
-                "rev-parse",
-                "--verify",
-                "--quiet",
-                `refs/heads/${entry.branch}^{commit}`,
-              )
-            : Promise.resolve(null),
           withSize ? this.opts.size(entry.path) : Promise.resolve(null),
         ]);
         // A status that fails is treated as dirty: when git cannot say, nothing is removed.
@@ -229,13 +241,18 @@ export class Worktrees {
           status.code === 0 && (await this.keepsIgnored(project, entry.path, status.stdout));
         const count = ahead && ahead.code === 0 ? ahead.stdout.trim() : null;
         const stamp = last.code === 0 ? last.stdout.trim() : null;
-        const tipSha = tip && tip.code === 0 ? tip.stdout.trim() : null;
         // Any answer that is not a plain number (or a failed command) is "git cannot say".
         const unknownState =
           (baseUsable && (count === null || !COUNT.test(count))) ||
+          hiddenList.code !== 0 ||
           stamp === null ||
           !COUNT.test(stamp) ||
           (entry.branch !== null && !/^[0-9a-f]{40,64}$/.test(tipSha ?? ""));
+        const hidden =
+          hiddenList.code === 0 &&
+          hiddenList.stdout
+            .split("\0")
+            .some((entry) => entry !== "" && (/[a-z]/.test(entry[0] ?? "") || entry[0] === "S"));
         const unpushed = count !== null && COUNT.test(count) ? Number(count) : 0;
         const commitMs = stamp !== null && COUNT.test(stamp) ? Number(stamp) * 1000 : 0;
         const lastMs = Math.max(
@@ -253,6 +270,7 @@ export class Worktrees {
         const blockers: WorktreeBlocker[] = [
           ...(busy ? [busy] : []),
           ...(dirty ? (["dirty"] as const) : []),
+          ...(hidden ? (["hidden_changes"] as const) : []),
           ...(ignoredFiles ? (["ignored_files"] as const) : []),
           ...(unpushed > 0 ? (["unpushed"] as const) : []),
           ...(baseUsable ? [] : (["unknown_base"] as const)),

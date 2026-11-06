@@ -53,9 +53,12 @@ export async function gitWithin(
   return out.timedOut ? { ...out, code: out.code === 0 ? 124 : out.code } : out;
 }
 
-/** How long a git command may take: the remove has its own deadline (stub). */
-export function gitDeadlineFor(_args: string[], deadlineMs: number): number {
-  return deadlineMs;
+/** The remove may take much longer than a status on a big folder, and killed halfway it leaves half a folder. */
+const REMOVE_DEADLINE_MS = 10 * 60_000;
+
+/** How long a git command may take: the remove has its own, longer deadline. */
+export function gitDeadlineFor(args: string[], deadlineMs: number): number {
+  return args.includes("remove") ? Math.max(deadlineMs, REMOVE_DEADLINE_MS) : deadlineMs;
 }
 
 /** The panel over the board's projects and cards, the live sessions, the runs and the machine's disk. */
@@ -81,7 +84,8 @@ export function createWorktrees(deps: WorktreesDeps): Worktrees {
     detach: (cardId, path, clearBranch) => {
       if (cardId !== null) deps.board.releaseWorktree(cardId, path, clearBranch);
     },
-    git: (cwd, ...args) => gitWithin(cwd, args, deps.gitDeadlineMs ?? GIT_DEADLINE_MS),
+    git: (cwd, ...args) =>
+      gitWithin(cwd, args, gitDeadlineFor(args, deps.gitDeadlineMs ?? GIT_DEADLINE_MS)),
     size: (path) =>
       duSize(path, SIZE_DEADLINE_MS, (cmd, cwd, timeoutMs) =>
         runCommand(cmd, cwd, undefined, timeoutMs),

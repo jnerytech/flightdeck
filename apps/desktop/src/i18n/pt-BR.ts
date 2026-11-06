@@ -3457,6 +3457,8 @@ export const ptBR = {
       unknown_state: "o git não soube dizer o estado dela",
       other_branch: "ela não é um branch do Flightdeck (fd/…)",
       ignored_files: "tem arquivos ignorados que um build ou uma instalação não recria",
+      hidden_changes:
+        "o git foi mandado esconder mudanças nela (assume-unchanged ou skip-worktree)",
       not_listed: "ela não é mais uma worktree do projeto",
       failed: "o git não conseguiu removê-la",
     },
@@ -3466,7 +3468,7 @@ export const ptBR = {
     removeConfirm: "Remover worktrees",
     removeNeeds: "Marque as worktrees a remover.",
     confirm:
-      "Remover {names} e os branches delas? Cerca de {size} serão liberados. Nada com alterações não commitadas ou commits não enviados é removido.",
+      "Remover {names} e os branches delas? Cerca de {size} serão liberados. Nada com alterações não commitadas ou commits não enviados é removido; pastas recriáveis na raiz (node_modules, saída de build, caches) vão junto.",
     confirmItem: '{name} (cartão "{card}", {column})',
     branchKept: "{branch}: pasta removida, branch mantido (tem trabalho mais novo)",
     noAnswer:

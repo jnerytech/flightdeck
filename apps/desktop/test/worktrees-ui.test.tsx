@@ -416,14 +416,28 @@ describe("worktrees-seguranca-ui: what is removed is what is on the screen (F7)"
         item("odd", { blockers: ["unknown_state"], suggested: false }),
         item("feat", { branch: "feature/x", blockers: ["other_branch"], suggested: false }),
         item("notes", { blockers: ["ignored_files"], suggested: false }),
+        item("hid", { blockers: ["hidden_changes"], suggested: false }),
       ],
       disks: [],
     };
     for (const [language, words] of [
-      ["en", ["git could not tell its state", "Flightdeck's branches", "ignored files"]],
+      [
+        "en",
+        [
+          "git could not tell its state",
+          "Flightdeck's branches",
+          "ignored files",
+          "assume-unchanged",
+        ],
+      ],
       [
         "pt-BR",
-        ["o git não soube dizer o estado", "não é um branch do Flightdeck", "arquivos ignorados"],
+        [
+          "o git não soube dizer o estado",
+          "não é um branch do Flightdeck",
+          "arquivos ignorados",
+          "assume-unchanged",
+        ],
       ],
     ] as const) {
       const w = setup({ list, language });

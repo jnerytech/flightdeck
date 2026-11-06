@@ -389,6 +389,8 @@ export class SessionManager {
         "session_not_ended",
       );
     }
+    // Not in a folder a removal is working on.
+    if (this.opts.folderLocks?.isHeld(session.cwd)) throw folderRemoving(session.cwd);
     this.startRun(sessionId, session.claudeSessionId ?? undefined);
     this.setStatus(sessionId, "idle", "retomada");
     return Promise.resolve();

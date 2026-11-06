@@ -3454,6 +3454,7 @@ export const en: Dictionary = {
       unknown_state: "git could not tell its state",
       other_branch: "it is not on one of Flightdeck's branches (fd/…)",
       ignored_files: "it has ignored files that are not rebuilt by a build or an install",
+      hidden_changes: "git is told to hide changes in it (assume-unchanged or skip-worktree)",
       not_listed: "it is no longer one of the project's worktrees",
       failed: "git could not remove it",
     },
@@ -3463,7 +3464,7 @@ export const en: Dictionary = {
     removeConfirm: "Remove worktrees",
     removeNeeds: "Tick the worktrees to remove.",
     confirm:
-      "Remove {names} and their branches? About {size} will be freed. Nothing with uncommitted changes or unpushed commits is removed.",
+      "Remove {names} and their branches? About {size} will be freed. Nothing with uncommitted changes or unpushed commits is removed; rebuildable folders at the root (node_modules, build output, caches) go with it.",
     confirmItem: '{name} (card "{card}", {column})',
     branchKept: "{branch}: folder removed, branch kept (it has newer work)",
     noAnswer:

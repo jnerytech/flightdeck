@@ -2463,9 +2463,12 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   card está Concluído ou cujo PR foi mesclado, ou que não tem card. Uma worktree com alterações não
   commitadas, commits que não existem em outro lugar, sessão, terminal ou execução rodando, branch base
   desconhecido (precisa ser um branch de verdade, não uma tag nem `HEAD`), um branch que não é um
-  `fd/…` do Flightdeck, arquivos ignorados que um build não recria (`node_modules` e saída de build
-  não contam), ou algo que o git não soube responder fica **mantida**: a linha diz por quê e não
-  pode ser marcada. Filtre por Sugeridas,
+  `fd/…` do Flightdeck, arquivos ignorados que um build não recria (só `node_modules`, `dist`,
+  `build`, `target`, `coverage`, `.cache`, `.next` e `out`, como pasta na raiz da worktree, não
+  contam, e um arquivo de credencial ignorado, como `.env` ou `*.pem`, sempre conta), alterações que
+  o git esconde do `git status` (`assume-unchanged` ou `skip-worktree`), ou algo que o git não soube
+  responder fica **mantida**: a linha diz por quê e não pode ser marcada. A confirmação diz que as
+  pastas recriáveis saem junto com a worktree. Filtre por Sugeridas,
   Protegidas ou Sem card, ordene por idade ou tamanho, **Selecionar sugeridas** ou **Selecionar
   todas que podem sair**, e então **Remover**: a confirmação cita cada branch com o card e a coluna, e o espaço
   liberado. Só as linhas na tela podem ser marcadas ou removidas. O host trava cada pasta (nada

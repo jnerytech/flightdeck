@@ -580,7 +580,7 @@ describe("worktrees-seguranca: only what a build recreates, at the root, goes un
     const where = gitRepo();
     writeFileSync(
       join(where.repo, ".gitignore"),
-      "node_modules/\nout/\nbuild/\n.cache/\nnotes.local\n.env\n*.pem\ncredentials.json\nlocal.json\n",
+      "node_modules/\nout\nbuild/\n.cache/\nnotes.local\n.env\n*.pem\ncredentials.json\nlocal.json\n",
     );
     git(where.repo, "add", ".gitignore");
     git(where.repo, ...ID, "commit", "-q", "-m", "ignore");

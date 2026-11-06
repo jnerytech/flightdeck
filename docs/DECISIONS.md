@@ -3575,7 +3575,7 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   asks. This keeps the bulk path free of data loss. Dismissing ("keep") with a fingerprint and the notification-center notice for low disk
   were not built; the panel warns on the host page when a disk has under 10% free.
 - **Removal looks again.** `worktree.remove` re-reads the project's worktrees and refuses a path that is not one of them, then re-checks
-  its blockers, runs `git worktree remove` without `--force`, then `git branch -D` (safe: nothing exists only on it) and frees the card
+  its blockers, runs `git worktree remove` without `--force`, then deletes the branch only if it is still at the checked commit (`update-ref -d`, see the safety review below) and frees the card
   (`worktree_path` NULL, the watchers told). One failure does not stop the rest; the result lists what was removed (with bytes freed) and
   what was kept and why.
 - **Size.** `du -sk` with a 15 s deadline per folder, run in parallel; a timeout, a failure or a host without `du` (Windows) is
@@ -3614,3 +3614,25 @@ The first version could delete work. What changed, each with a test that fails w
   request runs, and a branch kept or a host that did not answer is said.
 - **Not done:** `git worktree list -z` (a path with a newline is skipped today because its `lstat` fails), and scanning once per project
   instead of once per item.
+
+### Worktrees panel: second safety review (OpenCode re-review, issue #152)
+
+- **N1: edits git hides.** `assume-unchanged` and `skip-worktree` keep an edited tracked file out of `git status`, and `git worktree remove`
+  (without `--force`) then deletes it. `scan` also reads `git ls-files -v -z`; any lowercase tag or `S` is the blocker `hidden_changes`, and a
+  failing `ls-files` is `unknown_state`. A sparse checkout's files outside the cone carry `S`, so such a worktree is kept too (conservative).
+- **N2 (the coordinator's decision): rebuildable is a folder at the root.** Only `node_modules`, `dist`, `build`, `target`, `coverage`,
+  `.cache`, `.next` and `out`, listed as a folder directly under the worktree, are shrugged at. The same name deeper, a file with that name,
+  `.tsbuildinfo` and `.DS_Store` are not. An ignored file whose name looks like a credential (`.env*`, `*.pem`, `*.key`, `id_rsa`,
+  anything with credential, secret, token, password or api key in it) at any depth always blocks, even as an unedited copy of the
+  project's. An unedited copy of the project's own ignored file (what `.worktreeinclude` puts there) and Flightdeck's
+  `.claude/settings.local.json` are the only other exceptions. The confirmation says that rebuildable folders go with the worktree. A
+  credential file inside a rebuildable folder is not seen (the folder is listed whole).
+- **N3** `SessionManager.resume` refuses a folder being removed, like `create` and `createResumed`. **N6** the remove has a 10 minute
+  deadline (a kill halfway leaves half a folder); the other git commands keep 60 s. **N7** the commits are counted on the branch tip that was
+  read, so the count and the commit the branch is deleted against are one snapshot.
+- **Tests added for guards the review found removable:** a live session of every state, a queued card, `createResumed`, a second removal of
+  the same folder (the lock is a set, not a counter, so that refusal is what keeps the first release from freeing the second),
+  an unreadable tip, and `detach` told to keep the branch only when the ref stayed.
+- **Not done:** N4 (a workflow waiting at a gate, board operations outside a run, a worktree being made have no blocker; processes outside
+  Flightdeck cannot be seen), N7's second race (an outside `git checkout --detach` plus a commit after the last look), F8 (case-insensitive
+  `samePath` for the worktrees folder), `-z` for the list, and scanning once per project.
