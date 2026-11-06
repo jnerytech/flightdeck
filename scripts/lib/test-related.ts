@@ -109,6 +109,11 @@ export interface Plan {
   command: string[] | null;
   /** The changed source files the run must cover at 100%; only when coverage was asked for. */
   targets?: string[];
+  /**
+   * The test files the run holds, or "all" when the whole suite runs: what `--list` writes for the
+   * Windows shards of a PR (#399).
+   */
+  files?: string[] | "all";
 }
 
 export function planRelated({
@@ -154,6 +159,7 @@ export function planRelated({
         code: 0,
         output: `test:related --pr: the whole suite runs (${why})`,
         command: slot ? ["bun", "run", "slot", "--", ...whole] : whole,
+        files: "all",
       };
     }
   }
@@ -223,6 +229,7 @@ export function planRelated({
     code: 0,
     output,
     command: slot && related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
+    files: related.map((r) => r.path),
     ...(targets ? { targets } : {}),
   };
 }

@@ -29,7 +29,7 @@ const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const TEST_FILE = /(\.|_)(test|spec)\.[cm]?[jt]sx?$/;
 const SHARD = /^([1-9]\d*)\/([1-9]\d*)$/;
 const USAGE =
-  "usage: bun run test:shards -- plan|run <i>/<n> [--tier <tier>,...] [--junit <file>] | record <junit.xml>...";
+  "usage: bun run test:shards -- plan|run <i>/<n> [--tier <tier>,...] [--files <list>] [--junit <file>] | record <junit.xml>...";
 const BUN_TEST = ["--config=bunfig.area.toml", "test", "--timeout=15000"];
 
 /** The test files `bun test` runs: `*.test.*`, `*_test.*`, `*.spec.*` and `*_spec.*`, never the mods'. */
@@ -156,6 +156,24 @@ function tierOption(rest: string[]): string[] | null | undefined {
     : undefined;
 }
 
+/**
+ * `--files <list>` (#399): the test files to keep, one per line, as `test:related --list` writes
+ * them; a `*` line keeps every file (the whole suite). `null` without the flag, `undefined` when
+ * the list is missing.
+ */
+function filesOption(rest: string[], deps: ShardDeps): Set<string> | "all" | null | undefined {
+  const at = rest.indexOf("--files");
+  if (at < 0) return null;
+  const path = rest[at + 1];
+  if (!path || path.startsWith("--")) return undefined;
+  const lines = deps
+    .readFile(path)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.includes("*") ? "all" : new Set(lines);
+}
+
 /** `plan`, `run` or `record`; the exit code. */
 export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   const [command, arg, ...rest] = argv;
@@ -178,7 +196,13 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
     return 0;
   }
   const tiers = tierOption(rest);
-  if ((command !== "plan" && command !== "run") || !shard || tiers === undefined) {
+  const chosen = filesOption(rest, deps);
+  if (
+    (command !== "plan" && command !== "run") ||
+    !shard ||
+    tiers === undefined ||
+    chosen === undefined
+  ) {
     deps.log(USAGE);
     return 2;
   }
@@ -186,9 +210,9 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   if (listed === null) return failed(deps);
   // A test no tier claims still runs, never silently dropped (the rule of test:related --tier).
   const tierOf = tiers ? deps.tiers() : {};
-  const tracked = tiers
-    ? listed.filter((file) => tierOf[file] === undefined || tiers.includes(tierOf[file]))
-    : listed;
+  const tracked = listed
+    .filter((file) => !tiers || tierOf[file] === undefined || tiers.includes(tierOf[file]))
+    .filter((file) => chosen === null || chosen === "all" || chosen.has(file));
   const timings = deps.readTimings();
   const mine = splitShards(tracked, timings, shard.count)[shard.index - 1] ?? [];
   if (command === "plan") {
@@ -196,7 +220,7 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
     return 0;
   }
   const seconds = Math.round(total(mine, weigh(tracked, timings)));
-  const which = tiers ? ` (${tiers.join(",")})` : "";
+  const which = tiers ? ` (${tiers.join(",")})` : chosen instanceof Set ? " (selection)" : "";
   deps.log(`test-shards: shard ${arg}${which}: ${mine.length} files, about ${seconds} s`);
   const at = rest.indexOf("--junit");
   const junit = (at >= 0 ? rest[at + 1] : undefined) ?? `junit-${shard.index}.xml`;

@@ -14,22 +14,41 @@ export interface CiPlan {
   screenshots: boolean;
   /** cargo check and cargo test of the Tauri shell. */
   cargo: boolean;
+  /** The e2e journeys (#399): what the screens read, the journeys themselves, their config, the demo. */
+  e2e: boolean;
 }
 
-export const FULL: CiPlan = { windows: true, smokes: true, screenshots: true, cargo: true };
+export const FULL: CiPlan = {
+  windows: true,
+  smokes: true,
+  screenshots: true,
+  cargo: true,
+  e2e: true,
+};
 
 /** What every job reads: the app, the protocol, the dependencies, the configs and CI itself. */
 const EVERYTHING =
   /^(?:apps\/desktop\/|packages\/|\.github\/workflows\/)|^(?:package\.json|bun\.lock|bunfig[^/]*\.toml|tsconfig[^/]*\.json)$/;
 const DAEMON = /^apps\/daemon\/|^scripts\/smoke-[^/]+\.ts$/;
 const TAURI = /^apps\/desktop\/src-tauri\//;
+/** The scripts and their tests: the Windows shards run the tests related to them (#399). */
+const SCRIPTS = /^scripts\//;
+/** The journeys, their Playwright config and the demo they drive (#399). */
+const E2E =
+  /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$)/;
 
 export function ciPlan(event: string, changed: string[] | null): CiPlan {
   if (event !== "pull_request" || changed === null) return { ...FULL };
   const any = (re: RegExp) => changed.some((path) => re.test(path));
   const everything = any(EVERYTHING);
   const daemon = everything || any(DAEMON);
-  return { windows: daemon, smokes: daemon, screenshots: everything, cargo: any(TAURI) };
+  return {
+    windows: daemon || any(SCRIPTS),
+    smokes: daemon,
+    screenshots: everything,
+    cargo: any(TAURI),
+    e2e: everything || any(E2E),
+  };
 }
 
 /** The plan as GitHub step outputs, one `name=value` per line. */
