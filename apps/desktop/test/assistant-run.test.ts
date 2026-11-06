@@ -25,6 +25,8 @@ function setup(
     supported?: boolean;
     secrets?: Array<{ id: string; name: string }>;
     answer?: (type: string, payload: unknown) => unknown;
+    /** The person agreed to the hosts (the default); false: nobody did yet. */
+    confirmed?: boolean;
     api?: Parameters<typeof fakeAssistant>[0];
   } = {},
 ) {
@@ -49,7 +51,11 @@ function setup(
     },
   };
   const controller = new AssistantController(deps);
-  controller.setPrefs({ ...options.prefs });
+  // The hosts these tests use have been agreed to, unless a test says otherwise.
+  controller.setPrefs({
+    ...(options.confirmed === false ? {} : { confirmedHosts: ["h1", "h2"] }),
+    ...options.prefs,
+  });
   return { controller, sent, fake, items };
 }
 const input = (over: Record<string, unknown> = {}) => ({
@@ -150,6 +156,44 @@ describe("assistant-run: a wand's request goes to the provider the person chose"
     });
     expect(sent).toEqual([]);
     expect(fake.calls.filter((c) => c[0] === "run")).toEqual([]);
+  });
+});
+
+describe("assistant-run: a host the person never agreed to is sent nothing (issue #579)", () => {
+  test("run refuses a host that is not confirmed, whoever asks, and the host sees no request", async () => {
+    const { controller, sent } = setup({ confirmed: false });
+    expect(await refusal(() => controller.run(input()))).toEqual({
+      reason: "assistant_not_configured",
+      params: undefined,
+    });
+    expect(
+      await refusal(() => controller.run(input({ provider: { provider: "host", hostId: "h1" } }))),
+    ).toEqual({ reason: "assistant_not_configured", params: undefined });
+    expect(sent).toEqual([]);
+  });
+
+  test("the refusal comes before the one run of the app is taken, and does not hold it", async () => {
+    const { controller } = setup({ confirmed: false });
+    expect(controller.gate.acquire("other")).toBe(true);
+    expect((await refusal(() => controller.run(input())))?.reason).toBe("assistant_not_configured");
+    controller.gate.release("other");
+    await refusal(() => controller.run(input()));
+    expect(controller.gate.busy()).toBe(false);
+  });
+
+  test("once the person agrees, the same call goes through; an API provider never needed it", async () => {
+    const { controller, sent, fake } = setup({
+      confirmed: false,
+      api: { run: () => ({ ...RESULT, provider: "anthropic" }) },
+    });
+    controller.confirmHost("h1");
+    await controller.run(input());
+    expect(sent.map((call) => [call[0], call[1]])).toEqual([["h1", "assistant.run"]]);
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await controller.refreshKeys();
+    controller.setPrefs({ provider: "anthropic", confirmedHosts: [] });
+    await controller.run(input({ requestId: "r2" }));
+    expect(fake.calls.filter((call) => call[0] === "run")).toHaveLength(1);
   });
 });
 
@@ -279,7 +323,7 @@ describe("assistant-run: one call at a time, and a call can be cancelled", () =>
 
 describe("assistant-run: the preferences and the keys", () => {
   test("setPrefs merges, keeps the shape and tells the listeners; keys read as present or not", async () => {
-    const { controller, fake, items } = setup();
+    const { controller, fake, items } = setup({ confirmed: false });
     const seen: number[] = [];
     controller.subscribe(() => void seen.push(1));
     controller.setPrefs({ enabled: false });
@@ -364,7 +408,7 @@ describe("assistant-run: another provider is a click, never a fallback", () => {
   });
 
   test("the host provider asks once per host, before the first text leaves", () => {
-    const { controller } = setup();
+    const { controller } = setup({ confirmed: false });
     expect(controller.needsHostConfirm({ provider: "host", hostId: "h1" })).toBe(true);
     expect(controller.needsHostConfirm({ provider: "anthropic" })).toBe(false);
     controller.confirmHost("h1");

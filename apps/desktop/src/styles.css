@@ -89,6 +89,10 @@
 :root {
   /* The status bar's height (issue #491): what floats over the window sits above it. */
   --status-bar-height: 1.5rem;
+  /* Issue #581: what floats in the bottom-right corner (the update card, the toasts) sits 0.75rem
+     over the status bar; the toasts also over the update card while it shows (it sets the lift). */
+  --corner-bottom: calc(var(--status-bar-height) + 0.75rem);
+  --toast-bottom: calc(var(--corner-bottom) + var(--update-card-lift, 0px));
   /* The weight scale: strong for titles and primary actions, label for filters and pills, text for the rest. */
   --weight-strong: 600;
   --weight-label: 500;
@@ -164,6 +168,11 @@
   --chart-3: oklch(0.52 0.15 50);
   --chart-4: oklch(0.52 0.17 10);
   --chart-5: oklch(0.52 0.06 220);
+}
+
+/* No status bar on the page: the corner keeps sonner's own 24px (#581). */
+html:not(:has([data-slot="status-bar"])) {
+  --corner-bottom: 24px;
 }
 
 .dark {
@@ -305,6 +314,13 @@
 
 /* A short list that scrolls inside its panel instead of pushing the screen. */
 /* The file viewer's diff (issue #506): a bounded box that scrolls, so it can follow the newest hunk. */
+/* A file a terminal printed, open in the Files viewer under the terminal (#506). */
+@utility terminal-file {
+  max-height: 45vh;
+  overflow-y: auto;
+  border-top-width: 1px;
+  padding-top: 0.5rem;
+}
 @utility diff-follow {
   max-height: 24rem;
   overflow-y: auto;
@@ -1036,6 +1052,51 @@
   gap: 0.5rem;
 }
 @utility row-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+/* A team member's row (#594): the name and its chips, then a column of one width on every row
+   for the session's state and the links, so they line up from row to row. */
+@utility member-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility member-id {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+@utility member-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+/* The persona picker and its two buttons on one baseline: the select keeps one width. */
+@utility member-persona {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+@utility persona-field {
+  width: 14rem;
+}
+/* A team's actions and its message to everyone, under the members on the same 8 px step. */
+@utility team-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+}
+@utility team-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -2234,7 +2295,7 @@
 @utility update-card {
   position: fixed;
   right: 0.75rem;
-  bottom: calc(var(--status-bar-height, 0rem) + 0.75rem);
+  bottom: var(--corner-bottom);
   z-index: 40;
   display: flex;
   width: min(20rem, calc(100vw - 1.5rem));
@@ -2263,7 +2324,8 @@
 }
 @utility update-card-link {
   width: fit-content;
-  color: var(--color-primary);
+  /* The card's own text color, underlined: the brand color fails contrast on the dark card (#581, axe). */
+  color: var(--color-popover-foreground);
   text-decoration: underline;
   text-underline-offset: 2px;
   border-radius: 2px;

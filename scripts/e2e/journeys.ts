@@ -16,6 +16,7 @@ import {
   BARS,
   type Finding,
   findingKey,
+  GAPS,
   GUARD_SIZES,
   judge,
   KEY_REGIONS,
@@ -690,6 +691,22 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await card.getByRole("button", { name: c.t("update.cardUpdate"), exact: true }).waitFor({
       timeout: WAIT,
     });
+    // Issue #581: a toast that comes while the card shows sits above it, clear of it and of the
+    // status bar.
+    await c.page.evaluate(() => window.dispatchEvent(new Event("flightdeck:demo-toast")));
+    await c.page
+      .locator('[data-sonner-toast][data-mounted="true"]')
+      .first()
+      .waitFor({ timeout: WAIT });
+    await expect
+      .poll(
+        async () =>
+          (await c.page.evaluate(layoutFindings, { gaps: GAPS }))
+            .filter((finding) => finding.rule === "gap")
+            .map((finding) => `${finding.path}: ${finding.detail}`),
+        { timeout: WAIT },
+      )
+      .toEqual([]);
     await card.getByRole("button", { name: c.t("update.cardClose"), exact: true }).click();
     await card.waitFor({ state: "detached", timeout: WAIT });
   },
@@ -772,6 +789,46 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("button", { name: c.t("projectPage.trust.restart"), exact: true })
       .click();
     await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
+  },
+
+  // 25. The Files tab of a session opens a file read only; when the session rewrites it (a second
+  // window sends the message) the open file offers its diff, live, and the diff toggles back (#506).
+  // The demo keeps its state: after the first run README.md is already changed, so only a fresh
+  // demo proves that the button arrives by itself.
+  "files-viewer": async (c) => {
+    const route: Route = { name: "session", host: ALFA, id: c.ids.idleSession };
+    await open(c, route);
+    await c.page.getByRole("button", { name: c.t("files.tab"), exact: true }).click();
+    const tree = c.page.getByRole("region", { name: c.t("files.region"), exact: true });
+    await tree.getByRole("button", { name: "README.md", exact: true }).click();
+    const viewer = c.page.getByRole("region", { name: c.t("files.viewer", { path: "README.md" }) });
+    // The demo keeps what an earlier run rewrote: any line of the file shows it opened.
+    await viewer.locator(".cm-line").first().waitFor({ timeout: WAIT });
+    const other = await c.page.context().newPage();
+    try {
+      await open({ ...c, page: other }, route);
+      // The tab the first window picked is remembered by the browser: this one starts on the conversation.
+      await other
+        .getByRole("button", { name: c.t("changes.conversationTab"), exact: true })
+        .click();
+      const box = other.getByLabel(c.t("session.message"), { exact: true });
+      await box.fill("[result:README.md] reescreva o arquivo");
+      await box.press("Enter");
+      // The sent message is on screen: the daemon has it, and the first window learns the rest by itself.
+      await other
+        .getByText("[result:README.md]", { exact: false })
+        .first()
+        .waitFor({ timeout: WAIT });
+    } finally {
+      await other.close();
+    }
+    const changes = viewer.getByRole("button", { name: c.t("files.showChanges"), exact: true });
+    await changes.click({ timeout: WAIT * 2 });
+    await c.page.getByRole("region", { name: c.t("diff.unifiedLabel") }).waitFor({ timeout: WAIT });
+    await viewer.getByRole("button", { name: c.t("files.showFile"), exact: true }).click();
+    await viewer.locator(".cm-content").waitFor({ timeout: WAIT });
+    await viewer.getByRole("button", { name: c.t("files.close"), exact: true }).click();
+    await viewer.waitFor({ state: "detached", timeout: WAIT });
   },
 
   // 24. In the host terminal: a selection can be copied from the menu (#475), and Shift+Enter alone
@@ -881,6 +938,36 @@ async function tabWidthsProblem(page: Page, minimum: number): Promise<string | n
   if (Math.max(...widths) > 208 + 1) return `a tab is ${Math.max(...widths)}px, past 13rem`;
   if (Math.min(...widths) < minimum) return `a tab is ${Math.min(...widths)}px, under ${minimum}px`;
   return null;
+}
+
+/**
+ * The list of all tabs behind the chevron (#576): never wider than 24rem nor the window less 2rem,
+ * no row on two lines, nothing scrolling sideways, and Esc closes it.
+ */
+async function tabListProblem(page: Page): Promise<string | null> {
+  const name = /^(Todas as abas|All tabs)$/;
+  await page.getByRole("button", { name }).click();
+  await page.getByRole("listbox", { name }).waitFor({ timeout: 5000 });
+  const problem = await page.evaluate(() => {
+    const box = document.querySelector<HTMLElement>("[data-slot='tab-overflow']");
+    if (!box) return "the list did not open";
+    const width = box.getBoundingClientRect().width;
+    const most = Math.min(384, window.innerWidth - 32);
+    if (width > most + 1) return `the list is ${Math.round(width)}px, past ${most}px`;
+    const list = box.querySelector<HTMLElement>("[role='listbox']");
+    if (list && list.scrollWidth > list.clientWidth + 1) return "the list scrolls sideways";
+    for (const title of box.querySelectorAll<HTMLElement>("[data-slot='tab-title']")) {
+      if (title.getBoundingClientRect().height > 24) return `"${title.title}" takes two lines`;
+    }
+    return null;
+  });
+  await page.keyboard.press("Escape");
+  const closed = await page
+    .getByRole("listbox", { name })
+    .waitFor({ state: "detached", timeout: 2000 })
+    .then(() => true)
+    .catch(() => false);
+  return problem ?? (closed ? null : "Esc did not close the list");
 }
 
 /**
@@ -1278,6 +1365,11 @@ export async function layout(c: Context, problems: string[]) {
     await openCrowded(c, { name: "hub" }, 2);
     const fewTabs = await tabWidthsProblem(c.page, 80);
     if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
+    // The list of all tabs, with a long session title among them (#576).
+    await openCrowded(c, { name: "session", host: ALFA, id: c.ids.longTitleSession });
+    const tabList = await tabListProblem(c.page);
+    if (tabList)
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} lista de abas: ${tabList}`);
   }
   // Which tab is open shows at a glance (#488), checked with two tabs at 1280x800.
   await c.page.setViewportSize({ width: 1280, height: 800 });
@@ -1425,6 +1517,7 @@ async function geometryGuards(c: Context, screens: Array<[string, Route]>, probl
         // The key regions are a contract at the usual window: the smallest one is #135's business.
         regions: size.width >= 1280 ? KEY_REGIONS : [],
         bars: BARS,
+        gaps: GAPS,
       });
       for (const finding of found) seen[findingKey(screen, finding)] = finding.detail;
       const verdict = judge(screen, found, baseline);

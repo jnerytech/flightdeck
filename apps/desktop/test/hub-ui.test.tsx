@@ -185,15 +185,16 @@ describe("hub-ui: o que se repete vai para o cabeçalho do grupo", () => {
       const meta = (item(title) as HTMLElement).querySelector("[data-slot='row-meta']");
       expect(meta?.textContent ?? "").not.toContain("alfa");
     }
-    const runMeta = (item("repo-run") as HTMLElement).querySelector("[data-slot='row-meta']");
-    expect(runMeta?.textContent).toBe("terminal");
+    // A terminal session says so with a chip on its row, not in the row's meta text (#583).
+    const run = item("repo-run") as HTMLElement;
+    expect(run.querySelector("[data-slot='row-meta']") === null).toBe(true);
+    expect(run.querySelector("[data-slot='origin-chip']")?.textContent).toBe("terminal");
+    const managedMeta = (item("Gerenciada") as HTMLElement).querySelector("[data-slot='row-meta']");
+    expect(managedMeta?.textContent).toBe("Flightdeck");
     // The row's own meta shrinks first and hides below 320 px of list.
     for (const cls of ["shrink-[3]", "hidden", "@[20rem]:inline"]) {
-      expect(runMeta?.className ?? "").toContain(cls);
+      expect(managedMeta?.className ?? "").toContain(cls);
     }
-    expect(
-      (item("Gerenciada") as HTMLElement).querySelector("[data-slot='row-meta']")?.textContent,
-    ).toBe("Flightdeck");
   });
 
   test("a group whose rows all come from the same host and origin has no per-row meta at all", () => {

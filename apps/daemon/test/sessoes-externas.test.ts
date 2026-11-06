@@ -68,6 +68,14 @@ describe("sessoes-externas", () => {
     expect(registry.list().map((s) => s.claudeSessionId)).toEqual(["s1"]);
   });
 
+  test("the project stays the launch folder's when the session later works in another folder (#583)", () => {
+    const { registry, start, dir } = setup();
+    start("s1");
+    // Claude Code's hook cwd is the session's current folder: here it moved to a sibling project.
+    const moved = registry.apply("PreToolUse", { session_id: "s1", cwd: "/elsewhere/alpha" });
+    expect([moved?.cwd, moved?.projectKey]).toEqual(["/elsewhere/alpha", `chave:${dir}`]);
+  });
+
   test("cada evento da tabela leva ao estado certo", () => {
     const { registry, start } = setup();
     start();

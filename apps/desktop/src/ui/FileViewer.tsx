@@ -1,6 +1,6 @@
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
 import { Compartment, EditorState } from "@codemirror/state";
-import { EditorView, lineNumbers } from "@codemirror/view";
+import { EditorView, highlightActiveLine, lineNumbers } from "@codemirror/view";
 import type { DiffFile } from "@flightdeck/protocol";
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef, useState } from "react";
@@ -48,6 +48,9 @@ export function FileViewer(
     diff?: DiffFile | undefined;
     /** The file's whole path on the host, once known: a host of this computer opens it here. */
     full?: string | null;
+    /** Opens at this line (1-based) and column, selected and in view: a `path:line` from a terminal (#506). */
+    line?: number | undefined;
+    col?: number | undefined;
     onClose(): void;
   }>,
 ) {
@@ -81,6 +84,7 @@ export function FileViewer(
   }, [store, hostId, target, path, t]);
 
   const text = phase.name === "ready" && !diff ? phase.text : null;
+  const { line, col } = props;
   useEffect(() => {
     if (text === null || !parent.current) return;
     const language = new Compartment();
@@ -94,9 +98,19 @@ export function FileViewer(
           EditorState.readOnly.of(true),
           EditorView.editable.of(false),
           EditorView.lineWrapping,
+          ...(line ? [highlightActiveLine()] : []),
         ],
       }),
     });
+    if (line) {
+      const doc = view.state.doc;
+      const at = doc.line(Math.min(Math.max(line, 1), doc.lines));
+      const anchor = at.from + Math.min(Math.max((col ?? 1) - 1, 0), at.length);
+      view.dispatch({
+        selection: { anchor },
+        effects: EditorView.scrollIntoView(anchor, { y: "center" }),
+      });
+    }
     // The language's parser loads on demand; the text shows plain until it arrives.
     let alive = true;
     const key = languageFor(path);
@@ -115,7 +129,7 @@ export function FileViewer(
       alive = false;
       view.destroy();
     };
-  }, [text, path]);
+  }, [text, path, line, col]);
 
   return (
     <section aria-label={t("files.viewer", { path })}>

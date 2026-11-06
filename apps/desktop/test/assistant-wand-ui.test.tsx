@@ -21,11 +21,11 @@ afterEach(() => {
   globalThis.setTimeout = realSetTimeout;
 });
 
-/** Holds back the long timers (the Undo window) so a test runs them by hand; short ones run as they are. */
+/** Holds back the Undo window (a timer of just under 15 s) so a test runs it by hand; every other timer runs as it is. */
 function watchTimers() {
   const held: { run: () => void; delay: number }[] = [];
   globalThis.setTimeout = ((run: () => void, delay?: number, ...rest: unknown[]) => {
-    if ((delay ?? 0) < 10_000) return realSetTimeout(run, delay, ...rest);
+    if ((delay ?? 0) <= 14_000 || (delay ?? 0) > 15_000) return realSetTimeout(run, delay, ...rest);
     held.push({ run, delay: delay as number });
     return held.length as unknown as ReturnType<typeof setTimeout>;
   }) as unknown as typeof setTimeout;
@@ -72,6 +72,8 @@ async function make(
     configured?: boolean;
     assist?: boolean;
     short?: boolean;
+    /** The host of the field and the folder it works in. */
+    field?: { hostId: string; cwd: string };
   } = {},
 ) {
   const language = options.language ?? "en";
@@ -103,12 +105,30 @@ async function make(
             assist: {
               controller: store.assistant,
               kind: "prompt" as const,
+              ...(options.field
+                ? { fieldHostId: options.field.hostId, cwd: options.field.cwd }
+                : {}),
               openSettings: () => void opened.push("settings"),
             },
           })}
     />,
   );
   return { store, fake, opened, t, ui };
+}
+
+/** A field on host `fieldHost` working in /work, an API provider that fails, and a confirmed host "alfa" (h1). */
+async function makeScoped(fieldHost: string) {
+  const made = await make(
+    {
+      run: () => {
+        throw { reason: "assistant_credits" };
+      },
+    },
+    { field: { hostId: fieldHost, cwd: "/work" } },
+  );
+  seedHosts(made.store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+  made.store.assistant.confirmHost("h1");
+  return { store: made.store, unmount: made.ui.unmount };
 }
 
 const box = () =>
@@ -182,6 +202,40 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(within(dialog).getByText("Fix the total.")).not.toBeNull();
     // Nothing changes before Accept.
     expect(box().value).toBe("fix the totl");
+  });
+
+  test("a text of several lines is shown as one set of changes: what stayed is muted, what was added and removed is marked", async () => {
+    await make({ run: () => ({ ...ANSWER, text: "Fix the total.\nAnd the cart." }) });
+    type("fix the totl\nand the cart");
+    await click("Improve with AI");
+    const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
+    const changes = within(dialog).queryByRole("group", { name: "Changes" });
+    expect(changes).not.toBeNull();
+    const marks = (tag: string) =>
+      Array.from((changes as HTMLElement).querySelectorAll(tag)).map((node) => node.textContent);
+    expect(marks("del")).toContain("totl");
+    expect(marks("ins")).toContain("total.");
+    expect(marks("ins")).toContain("And");
+    const kept = Array.from((changes as HTMLElement).querySelectorAll("span.text-muted-foreground"))
+      .map((node) => node.textContent)
+      .join("");
+    expect(kept).toContain("the");
+    expect(kept).not.toContain("total.");
+    expect(within(dialog).queryByText("Before")).toBeNull();
+    expect(box().value).toBe("fix the totl\nand the cart");
+  });
+
+  test("editing a text of several lines goes back to Before and After, with the After to change", async () => {
+    await make({ run: () => ({ ...ANSWER, text: "Fix the total.\nAnd the cart." }) });
+    type("fix the totl\nand the cart");
+    await click("Improve with AI");
+    const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Edit" }));
+    });
+    expect(within(dialog).queryByRole("group", { name: "Changes" })).toBeNull();
+    expect(within(dialog).queryByText("Before")).not.toBeNull();
+    expect(within(dialog).queryByRole("textbox", { name: "After" })).not.toBeNull();
   });
 
   test("Accept puts the proposal in the box once and closes the preview", async () => {
@@ -328,6 +382,8 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     await make();
     type("fix the totl");
     const timers = watchTimers();
+    // Other code sets long timers too (a reconnect, a toast): only the chip's own is held and fired.
+    const other = setTimeout(() => {}, 600_000);
     const acceptedAt = Date.now();
     await accepted();
     expect(timers.delays()).toHaveLength(1);
@@ -337,6 +393,7 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     const spy = spyOn(Date, "now").mockReturnValue(acceptedAt + 16_000);
     await act(async () => timers.fire());
     spy.mockRestore();
+    clearTimeout(other);
     expect(screen.queryByText("Text replaced by AI.")).toBeNull();
     expect(box().value).toBe("Fix the total.");
   });
@@ -464,6 +521,149 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     await click("Improve with AI");
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("The provider says there is no credit left on this key.");
+  });
+
+  test("a failure offers each other provider that could run, by name, and a click sends the same text there", async () => {
+    let failing = true;
+    const { store, fake } = await make({
+      run: () => {
+        if (failing) throw { reason: "assistant_credits" };
+        return { ...ANSWER, text: "Fix the total." };
+      },
+    });
+    await fake.assistant.setKey("openrouter", "sk-or-ccccdddd");
+    await store.assistant.refreshKeys();
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    store.assistant.confirmHost("h1");
+    const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+      ok: true,
+      data: { ...ANSWER, text: "Fix the total, from alfa." },
+    } as never);
+    type("fix the totl");
+    await click("Improve with AI");
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).queryByRole("button", { name: "Try with alfa" })).not.toBeNull();
+    expect(
+      within(alert).queryByRole("button", { name: "Try with OpenRouter (API key)" }),
+    ).not.toBeNull();
+    expect(within(alert).queryByRole("button", { name: /Try with Anthropic/ })).toBeNull();
+    failing = false;
+    await act(async () => {
+      fireEvent.click(within(alert).getByRole("button", { name: "Try with OpenRouter (API key)" }));
+    });
+    await screen.findByRole("dialog", { name: "AI suggestion" });
+    const last = asked(fake).at(-1);
+    expect(last?.[3]).toMatchObject({ provider: "openrouter" });
+    expect(JSON.stringify(last?.[1])).toContain("fix the totl");
+    expect(toHost).not.toHaveBeenCalled();
+    expect(box().value).toBe("fix the totl");
+  });
+
+  test("Try with a host sends the same text to that host, and nowhere else", async () => {
+    const { store, fake } = await make({
+      run: () => {
+        throw { reason: "assistant_credits" };
+      },
+    });
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    store.assistant.confirmHost("h1");
+    const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+      ok: true,
+      data: { ...ANSWER, text: "Fix the total, from alfa." },
+    } as never);
+    type("fix the totl");
+    await click("Improve with AI");
+    const alert = await screen.findByRole("alert");
+    const tryAlfa = within(alert).queryByRole("button", { name: "Try with alfa" });
+    expect(tryAlfa).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(tryAlfa as HTMLElement);
+    });
+    const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
+    expect(dialog.textContent).toContain("Fix the total, from alfa.");
+    expect(toHost.mock.calls.map((call) => [call[0], call[1]])).toEqual([["h1", "assistant.run"]]);
+    expect(asked(fake)).toHaveLength(1);
+  });
+
+  test("Try with sends the text the failed run had, not what the box holds by now", async () => {
+    let first = true;
+    const { store, fake } = await make({
+      run: () => {
+        if (first) {
+          first = false;
+          throw { reason: "assistant_credits" };
+        }
+        return { ...ANSWER, text: "Fixed." };
+      },
+    });
+    await fake.assistant.setKey("openrouter", "sk-or-ccccdddd");
+    await store.assistant.refreshKeys();
+    type("fix the totl");
+    await click("Improve with AI");
+    const alert = await screen.findByRole("alert");
+    type("a different text");
+    await act(async () => {
+      fireEvent.click(within(alert).getByRole("button", { name: "Try with OpenRouter (API key)" }));
+    });
+    await screen.findByRole("dialog", { name: "AI suggestion" });
+    expect(JSON.stringify(asked(fake).at(-1)?.[1])).toContain("fix the totl");
+    expect(JSON.stringify(asked(fake).at(-1)?.[1])).not.toContain("a different text");
+  });
+
+  test("the folder of the field goes only to the host of the field, never to another host", async () => {
+    for (const [fieldHost, cwd] of [
+      ["h0", undefined],
+      ["h1", "/work"],
+    ] as const) {
+      const { store, unmount } = await makeScoped(fieldHost);
+      const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+        ok: true,
+        data: { ...ANSWER, text: "Fixed." },
+      } as never);
+      type("fix the totl");
+      await click("Improve with AI");
+      const alert = await screen.findByRole("alert");
+      await act(async () => {
+        fireEvent.click(within(alert).getByRole("button", { name: "Try with alfa" }));
+      });
+      await screen.findByRole("dialog", { name: "AI suggestion" });
+      const payload = toHost.mock.calls[0]?.[2] as { cwd?: string };
+      expect(payload.cwd).toBe(cwd);
+      unmount();
+    }
+  });
+
+  test("a host the person never agreed to, or no other provider at all, offers no Try with", async () => {
+    const { store } = await make({
+      run: () => {
+        throw { reason: "assistant_credits" };
+      },
+    });
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    type("fix the totl");
+    await click("Improve with AI");
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).queryByRole("button", { name: /Try with/ })).toBeNull();
+    expect(within(alert).queryByRole("button", { name: "Dismiss" })).not.toBeNull();
+  });
+
+  test("Try with reads in Portuguese", async () => {
+    const { store, fake } = await make(
+      {
+        run: () => {
+          throw { reason: "assistant_credits" };
+        },
+      },
+      { language: "pt-BR" },
+    );
+    await fake.assistant.setKey("openrouter", "sk-or-ccccdddd");
+    await store.assistant.refreshKeys();
+    type("corrige o totl");
+    await click("Melhorar com IA");
+    const alert = await screen.findByRole("alert");
+    expect(
+      within(alert).queryByRole("button", { name: "Tentar com OpenRouter (chave de API)" }),
+    ).not.toBeNull();
   });
 
   test("Esc in the box cancels a run, closes a preview and dismisses a failure", async () => {

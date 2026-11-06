@@ -22,6 +22,7 @@ export const GATES = {
   changes: "changes",
   costs: "costs",
   files: "files",
+  fileLog: "logs",
   github: "github",
   history: "history",
   idle: "idle",

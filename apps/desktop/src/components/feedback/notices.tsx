@@ -77,6 +77,13 @@ function ErrorToast(
 const NOTICES_KEYS = ["notices"] as const;
 
 /**
+ * Issue #581: the toasts sit over the status bar, and over the update card while it shows, with the
+ * card's 0.75rem gap: styles.css's --toast-bottom, on a phone too. Their right edge lines up with
+ * the card's.
+ */
+const TOAST_OFFSET = { bottom: "var(--toast-bottom)", right: "0.75rem" };
+
+/**
  * The app's toasts (sonner): each error of a host, translated by its code with the daemon's
  * message behind "Detalhes", stays about ten seconds (paused while hovered or focused; one with an action waits until it is acted on) and always has Close; successes are short.
  */
@@ -87,6 +94,8 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
   const { t } = store.i18n;
   /** Notices already handed to sonner. */
   const shown = useRef(new Set<number>());
+  /** The error toasts on screen, by notice: one whose notice left the list goes too (#581). */
+  const errors = useRef(new Map<number, string>());
   // sonner keeps its toasts per module: ids carry this instance's prefix, so another store's
   // notices (numbered from 1 too) never take over these, and leaving clears them.
   const [prefix] = useState(() => `n${++instances}-`);
@@ -97,6 +106,12 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
     [],
   );
   useEffect(() => {
+    const listed = new Set(state.notices.map((notice) => notice.id));
+    for (const [noticeId, toastId] of errors.current) {
+      if (listed.has(noticeId)) continue;
+      toast.dismiss(toastId);
+      errors.current.delete(noticeId);
+    }
     for (const notice of state.notices) {
       if (shown.current.has(notice.id)) continue;
       shown.current.add(notice.id);
@@ -113,6 +128,7 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
       }
       const { title, detail } = translateError(notice.code, notice.text, t, notice);
       const id = `${prefix}e${notice.id}`;
+      errors.current.set(notice.id, id);
       toast.custom(
         () => (
           <ErrorToast
@@ -138,5 +154,13 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
       );
     }
   }, [state.notices, store, t, prefix]);
-  return <Toaster theme={theme} position="bottom-right" visibleToasts={6} />;
+  return (
+    <Toaster
+      theme={theme}
+      position="bottom-right"
+      visibleToasts={6}
+      offset={TOAST_OFFSET}
+      mobileOffset={TOAST_OFFSET}
+    />
+  );
 });

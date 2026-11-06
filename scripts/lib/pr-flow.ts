@@ -347,10 +347,16 @@ async function nextPrs(deps: PrFlowDeps): Promise<number> {
   return 0;
 }
 
+/**
+ * Brings a PR up to date with its base, then turns its auto-merge back on (#613): GitHub turns it
+ * off when the PR conflicts, and nothing turned it back on after the merge. A draft, or a PR onto a
+ * parent main does not have yet, stays updated without it, which is no failure.
+ */
 async function updatePr(n: number, deps: PrFlowDeps): Promise<number> {
   const { code } = await deps.gh(["api", "-X", "PUT", `${REPO}/pulls/${n}/update-branch`]);
   deps.log(code === 0 ? `#${n} updated with its base` : `GitHub refused to update #${n}`);
-  return code === 0 ? 0 : 1;
+  if (code !== 0) return 1;
+  return (await autoPr(n, deps)) === 1 ? 1 : 0;
 }
 
 /** Turns on GitHub's auto-merge for a PR onto main: it merges by itself once its checks are green. */

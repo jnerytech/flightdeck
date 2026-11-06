@@ -64,20 +64,20 @@ function setup(readers: Partial<AccountReaders>) {
 }
 
 describe("conta-estado: status for each fixture", () => {
-  // Issue #256: claude's sign-in keeps the plan it had then; the usage report reads it live from
-  // the server, so a plan changed since (Max to Ultra) shows at once and never falls back.
-  test("the plan comes from the live usage report first, over the one cached at sign-in", async () => {
+  // Issue #582: the SDK's account info carries the server's display name; claude's sign-in and the
+  // usage report keep the plan stored at sign-in, so a plan changed since (Max to Ultra) shows at once.
+  test("the plan comes from the SDK's account info first, over the usage report and the sign-in", async () => {
     const { account } = setup({
       status: async () => auth({ plan: "max" }),
-      sdk: async () => ({ info: info({ plan: "max" }), usage: { ...usage, plan: "ultra" } }),
+      sdk: async () => ({ info: info({ plan: "ultra" }), usage: { ...usage, plan: "max" } }),
     });
     expect((await account.readNow()).plan).toBe("ultra");
   });
 
-  test("without a usage report the plan is the sign-in's, as before", async () => {
+  test("without a plan from the SDK or the usage report the plan is the sign-in's", async () => {
     const { account } = setup({
       status: async () => auth({ plan: "max" }),
-      sdk: async () => ({ info: info({ plan: "pro" }), usage: noUsage }),
+      sdk: async () => ({ info: info({ plan: null }), usage: noUsage }),
     });
     expect((await account.readNow()).plan).toBe("max");
   });
@@ -193,8 +193,8 @@ describe("conta-estado: status for each fixture", () => {
     const state = await account.readNow();
     expect(state.name).toBe("status@example.com");
     expect(state.organization).toBe("From SDK");
-    // The plan is the exception: the live usage report's wins (issue #256).
-    expect(state.plan).toBe("team");
+    // The plan is the exception: the SDK's account info wins over the usage report (issue #582).
+    expect(state.plan).toBe("pro");
   });
 
   test("the plan falls back to the usage report's", async () => {

@@ -89,11 +89,23 @@ function checkRisk(
     request.real,
   );
   // `any`: not shown to be narrow, so no request, held or not, may save it.
-  if (level === "any" || RANK[level] > RANK[request.risk])
+  if (level === "any" || RANK[level] > RANK[request.risk]) {
+    // With every path read as a file the rule would have been saved: the folder it names (or a path
+    // not there yet, which can become one) is the reason, and the app says so (#524).
+    const asFile = ruleLevel(
+      rule.toolName,
+      rule.ruleContent,
+      request.classify,
+      () => "file",
+      request.real,
+    );
+    const folder = asFile !== "any" && RANK[asFile] <= RANK[request.risk];
     refuse("a regra permitiria mais risco do que este pedido", "perm_rule_too_broad", {
       tool: rule.toolName,
       level: level === "any" ? "high" : level,
+      ...(folder ? { names: "folder" } : {}),
     });
+  }
 }
 
 /** The destination and the mode of an update must be ones an answer may use. */

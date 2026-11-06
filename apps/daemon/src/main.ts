@@ -66,6 +66,8 @@ import { Issues } from "./issues/issues.ts";
 import { linesOf } from "./lines.ts";
 import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
+import { FileLog } from "./logs/file-log.ts";
+import { createLogScanner } from "./logs/scanner.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
@@ -575,6 +577,8 @@ export interface Daemon {
   url: string;
   runtime: AgentRuntime;
   stop(): Promise<void>;
+  /** What the daemon says: the console and, redacted, the log file. */
+  logger: Logger;
 }
 
 interface CreatedRuntime {
@@ -739,9 +743,11 @@ async function terminalInfo(env: Record<string, string | undefined>) {
 export async function startDaemon(
   args: CliArgs,
   env: Record<string, string | undefined>,
-  logger: Logger,
+  console_: Logger,
   options: {
     configWatchMs?: number;
+    /** Where the daemon writes its log; `~/.flightdeck/logs` when absent (tests give a temp folder). */
+    logDir?: string;
     /** What decides the system folders `roots.add` refuses (tests give their own). */
     rootsPlatform?: PlatformInfo;
     wslCommand?: (item: WslItem) => string[];
@@ -767,6 +773,29 @@ export async function startDaemon(
 ): Promise<Daemon> {
   const configFile = configPath(args);
   const config = await loadConfig(configFile);
+  // Everything the daemon says goes to the console and, redacted, to a rotated file.
+  // What the log must never write: the daemon's tokens (the protocol's rotates) and what the vault
+  // holds. The vault is made further down; until then there is nothing held.
+  let currentToken = config.token;
+  let heldValues: () => string[] = () => [];
+  const fileLog = new FileLog({
+    dir: options.logDir ?? join(userHome(env), ".flightdeck", "logs"),
+    home: userHome(env),
+    scanner: createLogScanner({
+      tokens: () => [config.token, currentToken, config.hooks.token ?? ""].filter(Boolean),
+      vaultValues: () => heldValues(),
+    }),
+  });
+  const logger: Logger = {
+    log: (message) => {
+      console_.log(message);
+      fileLog.write("info", message);
+    },
+    error: (message) => {
+      console_.error(message);
+      fileLog.write("error", message);
+    },
+  };
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
   const lock = await acquireLock(config.dataDir);
@@ -943,7 +972,27 @@ export async function startDaemon(
   // find it cached when the first card starts.
   void board.warmProjectKeys();
   // The diff of every session and card, for the review (phase 11).
-  const changes = new Changes({ db: store.db, board, log: logger.log.bind(logger) });
+  // Real shells behind a PTY, kept across connections; none outlives the daemon.
+  const terminals = new TerminalManager({
+    folderLocks,
+    pty: options.pty ?? bunPty(),
+    enabled: terminalEnabled(config.bind, config.terminal.enabled),
+    allowedRoots: config.allowedRoots,
+    max: config.terminal.max,
+    idleMinutes: config.terminal.idleMinutes,
+    allowApiKey: config.allowApiKey,
+    // "Claude aqui" runs this very daemon's `claude`, with this config.
+    claude: { self: daemonCommand(process.execPath, Bun.main), configFile },
+    claudeEnv: () => claudeSettingsEnv(claudeSettingsPath()),
+    log: (message) => logger.log(message),
+  });
+  const changes = new Changes({
+    db: store.db,
+    board,
+    log: logger.log.bind(logger),
+    // A terminal's folder is a target of the Files viewer (#506).
+    terminals,
+  });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
   const boardSyncStore = new BoardSyncStore(store.db);
@@ -1008,20 +1057,6 @@ export async function startDaemon(
     });
   }
   void updates?.start();
-  // Real shells behind a PTY, kept across connections; none outlives the daemon.
-  const terminals = new TerminalManager({
-    folderLocks,
-    pty: options.pty ?? bunPty(),
-    enabled: terminalEnabled(config.bind, config.terminal.enabled),
-    allowedRoots: config.allowedRoots,
-    max: config.terminal.max,
-    idleMinutes: config.terminal.idleMinutes,
-    allowApiKey: config.allowApiKey,
-    // "Claude aqui" runs this very daemon's `claude`, with this config.
-    claude: { self: daemonCommand(process.execPath, Bun.main), configFile },
-    claudeEnv: () => claudeSettingsEnv(claudeSettingsPath()),
-    log: (message) => logger.log(message),
-  });
   // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.
   const telemetryStore = new TelemetryStore(store.db);
   const telemetry = await startTelemetry({
@@ -1092,6 +1127,7 @@ export async function startDaemon(
     log: logger.log.bind(logger),
     actions: vaultActions(runtimeKind),
   });
+  heldValues = () => vault.heldValues();
   // Phase 17: the actions that use a secret from the vault without Claude seeing it.
   const actions = new Actions({
     db: store.db,
@@ -1534,6 +1570,7 @@ export async function startDaemon(
     }),
     central,
     maintenance,
+    fileLog,
     resources: await createResources({
       dataDir: config.dataDir,
       sessions: manager.list.bind(manager),
@@ -1593,7 +1630,10 @@ export async function startDaemon(
   // `pair --rotate` runs in another process: follow the token in the config file.
   const onConfigChange = async () => {
     const token = await readToken(configFile);
-    if (token) server.setToken(token);
+    if (token) {
+      currentToken = token;
+      server.setToken(token);
+    }
   };
   watchFile(configFile, { interval: options.configWatchMs ?? 2000 }, onConfigChange);
 
@@ -1612,6 +1652,7 @@ export async function startDaemon(
   return {
     url: server.url,
     runtime,
+    logger,
     stop: () => {
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
@@ -1647,6 +1688,8 @@ export async function startDaemon(
         quota.stop();
         store.close();
         await lock.release();
+        // The last lines (shutting down…) reach the file before the process can exit.
+        await fileLog.flush();
       })();
       return stopped;
     },
