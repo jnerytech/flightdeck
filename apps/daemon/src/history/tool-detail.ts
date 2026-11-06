@@ -54,6 +54,42 @@ function capped(text: string): [string, boolean] {
   return [cut, cut.length < text.length];
 }
 
+/** A tool call found in the message: its input is already cut to the cap. */
+interface Call {
+  id: unknown;
+  name: string;
+  input: unknown;
+  truncated: boolean;
+}
+
+/** The `index`-th tool call of a message's content; null when it has fewer. */
+function callAt(content: Block[], index: number): Call | null {
+  const use = content.filter((b) => b?.type === "tool_use")[index];
+  if (!use) return null;
+  const whole = JSON.stringify(use.input ?? null, null, 2);
+  const [cut, truncated] = capped(whole);
+  return {
+    id: use.id,
+    name: String(use.name),
+    input: truncated ? cut : (use.input ?? null),
+    truncated,
+  };
+}
+
+/** The call with the result that answers it, cut to the cap; `null` for a call with no result yet. */
+function withResult(call: Call, result: Block | null): ToolDetail {
+  if (!result) {
+    return { name: call.name, input: call.input, result: null, truncated: call.truncated };
+  }
+  const [text, cut] = capped(resultText(result.content));
+  return {
+    name: call.name,
+    input: call.input,
+    result: { content: text, isError: result.is_error === true },
+    truncated: call.truncated || cut,
+  };
+}
+
 /**
  * The `index`-th tool call of the message `uuid` in `lines`, paired with the result that names its
  * id in the lines after it. It reads no further than it needs to.
@@ -63,7 +99,7 @@ export async function toolDetail(
   uuid: string,
   index: number,
 ): Promise<ToolDetail | null> {
-  let found: { id: unknown; name: string; input: unknown; truncated: boolean } | null = null;
+  let found: Call | null = null;
   for await (const line of lines) {
     // A line that cannot name the message or the call is not parsed at all: most of a long
     // transcript is skipped with a substring check.
@@ -71,31 +107,14 @@ export async function toolDetail(
     const { uuid: own, content } = blocks(line);
     if (!found) {
       if (own !== uuid) continue;
-      const use = content.filter((b) => b?.type === "tool_use")[index];
-      if (!use) return null;
-      const whole = JSON.stringify(use.input ?? null, null, 2);
-      const [cut, truncated] = capped(whole);
-      found = {
-        id: use.id,
-        name: String(use.name),
-        input: truncated ? cut : (use.input ?? null),
-        truncated,
-      };
+      found = callAt(content, index);
+      if (!found) return null;
       continue;
     }
     const result = content.find((b) => b?.type === "tool_result" && b.tool_use_id === found?.id);
-    if (!result) continue;
-    const [text, cut] = capped(resultText(result.content));
-    return {
-      name: found.name,
-      input: found.input,
-      result: { content: text, isError: result.is_error === true },
-      truncated: found.truncated || cut,
-    };
+    if (result) return withResult(found, result);
   }
-  return found
-    ? { name: found.name, input: found.input, result: null, truncated: found.truncated }
-    : null;
+  return found ? withResult(found, null) : null;
 }
 
 /** The lines of a file, read as they are asked for: a caller that stops early closes the file. */
