@@ -1023,7 +1023,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // followed by its key (what the view transition names it), whatever else the demo has waiting.
     const approve = needs.getByRole("button", { name: c.t("activityBoard.approve"), exact: true });
     await approve.first().waitFor({ timeout: SESSION_WAIT });
-    const top = needs.locator("[data-slot='activity-card']").filter({ has: approve }).first();
+    const approveButton = c.page.getByRole("button", {
+      name: c.t("activityBoard.approve"),
+      exact: true,
+    });
+    const top = needs.locator("[data-slot='activity-card']").filter({ has: approveButton }).first();
     const key = await top.evaluate((el) => (el as HTMLElement).style.viewTransitionName);
     if (!key) throw new Error("o card do pedido não tem nome de transição");
     const mine = needs.locator(`[data-slot='activity-card'][style*="${key}"]`);

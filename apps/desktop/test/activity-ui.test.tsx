@@ -303,6 +303,22 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     expect(has(within(column("Needs you")).queryByText("None"))).toBe(true);
   });
 
+  test("the Project and Persona lists narrow the cards too", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.change(labelled("Project"), { target: { value: "web" } });
+    });
+    expect(has(screen.queryByText("1 of 3 shown"))).toBe(true);
+    expect(cardsOf("Working")).toEqual(["Write docs"]);
+    await act(async () => {
+      fireEvent.change(labelled("Project"), { target: { value: "" } });
+      fireEvent.change(labelled("Persona"), { target: { value: "p" } });
+    });
+    expect(has(screen.queryByText("1 of 3 shown"))).toBe(true);
+    expect(cardsOf("Needs you")).toEqual([]);
+  });
+
   test("with hosts but no live session it says so, and with sessions it does not", () => {
     const none: Specs = [];
     const w = setup(none);
