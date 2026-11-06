@@ -159,7 +159,7 @@ describe("permitir-sempre", () => {
       "invalid_permission_update: a regra permitiria mais risco do que este pedido",
     );
     respond([
-      rule({ rules: [{ toolName: "Write", ruleContent: `${project}/*.txt` }] }),
+      rule({ rules: [{ toolName: "Write", ruleContent: `${project}/app-*.txt` }] }),
       rule({ rules: [{ toolName: "Write", ruleContent: "x".repeat(500) }] }),
     ]);
     expect((await result())?.content ?? "").toStartWith("arquivo criado: fake.txt; permissões:");

@@ -233,6 +233,17 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
       "git p*",
       "git * origin",
       "git * --force",
+      // git forms that can write a file (--output), read a committed credential or run a configured program
+      "git diff:*",
+      "git log:*",
+      "git show:*",
+      "git difftool:*",
+      // a "script" that is an option or a file
+      "npm run --prefix:*",
+      "yarn run --cwd:*",
+      "bun run evil.ts:*",
+      "npm run .x:*",
+      "bun run ./x.js:*",
       // an open rule with shell syntax in its prefix
       "git status; rm -rf x:*",
       "git status && x:*",
@@ -257,9 +268,6 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
       "ls",
       "git log --oneline",
       "git status:*",
-      "git diff:*",
-      "git log:*",
-      "git show:*",
       "npm test:*",
       "bun test:*",
       "pnpm test *",
@@ -291,6 +299,31 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
       "/etc/**",
       "//etc/*.conf",
       "~/**",
+      // a wildcard in a folder of the path, and the names a credential may take under any of them
+      "packages/*/.env",
+      "src/*/.env",
+      "*/.env",
+      "src/?/.env",
+      "src/*/x.pem",
+      "apps/*/.env.local",
+      "//home/*/.ssh/id_rsa",
+      "src/**/.env",
+      // an extension still matches `.env.<ext>` and `id_<x>.<ext>`, whatever the case
+      "src/*.ts",
+      "src/**/*.ts",
+      "src/*.PEM",
+      "src/**/.ENV",
+      "src/*.envrc",
+      "src/id_*.ts",
+      // the files that decide what the session may do or run: a standing rule on them ends every hold
+      ".claude/settings.local.json",
+      ".claude/**/*.json",
+      "package.json",
+      ".git/hooks/pre-commit",
+      ".github/workflows/ci.yml",
+      ".mcp.json",
+      ".husky/pre-commit",
+      ".vscode/tasks.json",
     ];
     for (const content of writes) {
       const update = content === "" ? rule("Write") : rule("Write", content);
@@ -307,6 +340,9 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
       "src/*key",
       "/home/u/.aws/**",
       "**",
+      "*/.ssh/*",
+      "*/.aws/credentials",
+      "apps/*/.env.local",
     ];
     for (const content of reads) {
       const update = content === "" ? rule("Read") : rule("Read", content);
@@ -319,15 +355,23 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     for (const content of [
       `${CWD}/a.txt`,
       "src/a.ts",
-      "src/*.ts",
-      "src/**/*.ts",
-      `${CWD}/src/**/*.ts`,
-      "/src/*.ts", // project-root relative, as the CLI reads a leading slash
+      "src/app-*.ts",
+      "src/**/app-*.ts",
+      "/src/app-*.ts", // project-root relative, as the CLI reads a leading slash
     ]) {
       expect(await saved("Write", write, rule("Write", content)), content).toBeNull();
     }
-    for (const content of ["docs/**/*.md", "src/*.md"]) {
-      expect(await saved("Read", { file_path: `${CWD}/a.txt` }, rule("Read", content))).toBeNull();
+    // Reading a control file is fine; only a standing permission to write one is refused.
+    for (const content of [
+      "docs/guide-*.md",
+      "src/app-?.md",
+      "package.json",
+      ".claude/settings.json",
+    ]) {
+      expect(
+        await saved("Read", { file_path: `${CWD}/a.txt` }, rule("Read", content)),
+        content,
+      ).toBeNull();
     }
   });
 
@@ -336,6 +380,18 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     expect(await saved("WebFetch", fetch, rule("WebFetch"))).toEqual(TOO_BROAD);
     expect(await saved("WebSearch", { query: "x" }, rule("WebSearch"))).toEqual(TOO_BROAD);
     expect(await saved("WebFetch", fetch, rule("WebFetch", "domain:example.com"))).toBeNull();
+    expect(await saved("WebFetch", fetch, rule("WebFetch", "domain:*.example.com"))).toBeNull();
+    // Content that is no host: a wildcard, a top-level domain, a pattern in the middle.
+    for (const content of [
+      "domain:*",
+      "*",
+      "domain:com",
+      "domain:*.com",
+      "domain:a.*.com",
+      "example.com",
+    ]) {
+      expect(await saved("WebFetch", fetch, rule("WebFetch", content)), content).toEqual(TOO_BROAD);
+    }
   });
 
   test("a held high-risk request is held to the same shapes: an open rule of any program is still refused", async () => {
