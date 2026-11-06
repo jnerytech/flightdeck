@@ -19,24 +19,31 @@ const steps = ci.jobs["test-suite"]?.steps ?? [];
 const step = (name: string) => steps.find((s) => s.name === name);
 
 describe("ci-pyramid (#309)", () => {
-  test("the full suite also runs every night, on a schedule", () => {
-    expect(ci.on.schedule).toEqual([{ cron: "17 4 * * *" }]);
+  test("the full suite runs every 3 hours on a schedule, so a red only it sees shows within 3 h (#444)", () => {
+    expect(ci.on.schedule).toEqual([{ cron: "17 */3 * * *" }]);
   });
 
-  test("on a PR the suite job runs the fast tiers plus the related tests, gated per changed file, and keeps the lcov for SonarCloud", () => {
-    const pr = step("Testes do PR (pirâmide)");
-    expect(pr?.if).toBe("github.event_name == 'pull_request'");
-    // The base branch reaches the shell as a quoted variable, never expanded into the line.
-    expect(pr?.env).toEqual({ BASE_REF: "${{ github.base_ref }}" });
-    expect(pr?.run).toBe(
-      'bun run test:related -- --pr --base "origin/$BASE_REF" --keep-coverage coverage',
+  test("a PR and a push to main run the fast tiers plus the related tests from the plan's base, gated per changed file, and keep the lcov for SonarCloud (#309, #444)", () => {
+    const related = step("Testes da seleção (pirâmide)");
+    expect(related?.if).toBe("needs.quick.outputs.base != ''");
+    // The base reaches the shell as a quoted variable, never expanded into the line.
+    expect(related?.env).toEqual({ BASE: "${{ needs.quick.outputs.base }}" });
+    expect(related?.run).toBe(
+      'bun run test:related -- --pr --base "$BASE" --keep-coverage coverage',
     );
   });
 
-  test("on main, at night and by hand the suite job runs the whole suite with the 100% gate", () => {
+  test("the schedule and a run by hand run the whole suite with the 100% gate (#444)", () => {
     const full = step("Testes (cobertura 100%)");
-    expect(full?.if).toBe("github.event_name != 'pull_request'");
+    expect(full?.if).toBe("needs.quick.outputs.base == ''");
     expect(full?.run).toBe("bun run test");
+  });
+
+  test("the plan gives the selection's base: the PR's target, the commit a push to main came after, or none for a full run (#444)", () => {
+    const plan = (ci.jobs.quick?.steps ?? []).find((s) => s.name === "The jobs this run needs");
+    expect(plan?.env).toEqual({ BEFORE: "${{ github.event.before }}" });
+    const outputs = (ci.jobs.quick as { outputs?: Record<string, string> } | undefined)?.outputs;
+    expect(outputs?.base).toBe("${{ steps.plan.outputs.base }}");
   });
 
   test("on a PR the Windows shards run test:related's PR selection, the related integration and e2e tests included; on main, at night and by hand the whole suite (#309 b, #399)", () => {
@@ -44,21 +51,21 @@ describe("ci-pyramid (#309)", () => {
     const pr = shard.find(
       (s) =>
         s.name ===
-        "Testes do PR (shard ${{ matrix.shard }}/${{ strategy.job-total }}, seleção do test:related)",
+        "Testes da seleção (shard ${{ matrix.shard }}/${{ strategy.job-total }}, test:related)",
     );
     const full = shard.find(
       (s) => s.name === "Testes (shard ${{ matrix.shard }}/${{ strategy.job-total }})",
     );
-    expect(pr?.if).toBe("github.event_name == 'pull_request'");
-    expect(pr?.env?.BASE_REF).toBe("${{ github.base_ref }}");
+    expect(pr?.if).toBe("needs.quick.outputs.base != ''");
+    expect(pr?.env?.BASE).toBe("${{ needs.quick.outputs.base }}");
     expect(pr?.run).toBe(
       [
-        'bun run test:related -- --pr --base "origin/$BASE_REF" --list selection.txt',
+        'bun run test:related -- --pr --base "$BASE" --list selection.txt',
         "bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --files selection.txt --junit junit-${{ matrix.shard }}.xml",
         "",
       ].join("\n"),
     );
-    expect(full?.if).toBe("github.event_name != 'pull_request'");
+    expect(full?.if).toBe("needs.quick.outputs.base == ''");
     expect(full?.run).toBe(
       "bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --junit junit-${{ matrix.shard }}.xml",
     );

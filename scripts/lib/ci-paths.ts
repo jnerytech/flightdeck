@@ -64,6 +64,11 @@ export function ciPlan(event: string, changed: string[] | null, removed: string[
   };
 }
 
+/** The ref test:related compares with (#444): stub. */
+export function selectionBase(event: string, baseRef: string, before: string): string {
+  return event + baseRef + before ? "" : "";
+}
+
 /** The plan as GitHub step outputs, one `name=value` per line. */
 export function planOutputs(plan: CiPlan): string {
   const value = (key: keyof CiPlan) =>

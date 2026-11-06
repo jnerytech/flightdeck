@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { ciPlan, FULL, planOutputs } from "../lib/ci-paths.ts";
+import { ciPlan, FULL, planOutputs, selectionBase } from "../lib/ci-paths.ts";
 
 /**
  * #264: a pull request runs only the jobs its paths need; main, a run by hand and a diff that
@@ -112,10 +112,36 @@ describe("ci-paths: the rules", () => {
     });
   });
 
-  test("a push to main, a run by hand or a diff that cannot be read runs everything", () => {
-    expect(ciPlan("push", ["docs/TDD.md"])).toEqual(FULL);
+  test("the schedule, a run by hand or a diff that cannot be read runs everything", () => {
+    expect(ciPlan("schedule", ["docs/TDD.md"])).toEqual(FULL);
     expect(ciPlan("workflow_dispatch", [])).toEqual(FULL);
     expect(ciPlan(PR, null)).toEqual(FULL);
+    expect(ciPlan("push", null)).toEqual(FULL);
+  });
+
+  test("a push to main plans by its paths, like a PR (#444): the full run is the schedule's", () => {
+    expect(ciPlan("push", ["docs/TDD.md"])).toEqual(NONE);
+    expect(ciPlan("push", ["apps/daemon/src/main.ts"])).toEqual({
+      ...NONE,
+      windows: true,
+      smokes: true,
+      e2e: true,
+    });
+    expect(ciPlan("push", ["bun.lock"]).windowsShards).toBe(3);
+  });
+
+  test("the selection's base: the PR's target, the commit a push came after, none for a full run (#444)", () => {
+    expect(selectionBase("pull_request", "main", "")).toBe("origin/main");
+    expect(selectionBase("push", "", "0123456789abcdef0123456789abcdef01234567")).toBe(
+      "0123456789abcdef0123456789abcdef01234567",
+    );
+    // A new branch's push has no before (all zeros), and a garbled one is no commit.
+    expect(selectionBase("push", "", "0000000000000000000000000000000000000000")).toBe("");
+    expect(selectionBase("push", "", "main; rm -rf /")).toBe("");
+    expect(selectionBase("push", "", "")).toBe("");
+    expect(selectionBase("schedule", "", "abc")).toBe("");
+    expect(selectionBase("workflow_dispatch", "", "")).toBe("");
+    expect(selectionBase("pull_request", "", "")).toBe("");
   });
 
   test("every file the demo seed imports plans the journeys, so a change the journeys run cannot skip them (#410 review)", () => {
@@ -143,7 +169,7 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan(PR, ["apps/daemon/src/gone.ts"], ["apps/daemon/src/gone.ts"]).windowsShards).toBe(
       1,
     );
-    expect(ciPlan("push", ["docs/TDD.md"]).windowsShards).toBe(3);
+    expect(ciPlan("schedule", ["docs/TDD.md"]).windowsShards).toBe(3);
   });
 
   test("the plan becomes one GitHub output per job group", () => {
