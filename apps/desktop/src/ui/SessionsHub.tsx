@@ -19,6 +19,7 @@ import { ViewToggle } from "@/components/hub/view-toggle";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
+import { WorktreeChip } from "@/components/projects/worktree-chip";
 import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,7 @@ import {
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
+import { activeWorktreeFilter, rowInFilter } from "../lib/project-tree.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** How often the hub asks the hosts about their background sessions. */
@@ -140,6 +142,23 @@ export function SessionsHub(
     };
   }, [store, withBackground]);
 
+  // The branch picked in the sidebar tree, when it still points at a checkout that is there.
+  const picked = activeWorktreeFilter(state);
+  const pickedProject = picked
+    ? state.projects[picked.hostId]?.find((p) => p.id === picked.projectId)
+    : undefined;
+  const worktrees = useMemo(
+    () =>
+      picked
+        ? Object.entries(state.cards)
+            .filter(
+              ([key, card]) =>
+                key.startsWith(`${picked.hostId}/`) && card.projectId === picked.projectId,
+            )
+            .flatMap(([, card]) => (card.worktreePath ? [card.worktreePath] : []))
+        : [],
+    [state.cards, picked],
+  );
   // Only what the rows are made of recomputes them (a typing indicator or an error does not).
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const rows = useMemo(
@@ -149,7 +168,12 @@ export function SessionsHub(
         .filter(hubRows(state), state.clientSelection, (row) => row.projectKey)
         .filter(
           (row) => !only || (row.hostId === only.hostId && row.projectKey === only.projectKey),
-        ),
+        )
+        .filter((row) => {
+          // The branch picked in the sidebar tree keeps the sessions of that checkout.
+          if (!picked || !pickedProject) return true;
+          return rowInFilter(row, picked, pickedProject, worktrees);
+        }),
     [
       store,
       only,
@@ -159,7 +183,9 @@ export function SessionsHub(
       state.externals,
       state.names,
       state.background,
-      state.projects,
+      picked,
+      pickedProject,
+      worktrees,
       state.clientList,
       state.clientOverrides,
       state.clientSelection,
@@ -483,6 +509,9 @@ export function SessionsHub(
               <X aria-hidden="true" />
             </Button>
           </div>
+        )}
+        {picked && (
+          <WorktreeChip filter={picked} t={t} onClear={() => store.setWorktreeFilter(null)} />
         )}
         {renaming && (
           <div className="flex items-center gap-2">

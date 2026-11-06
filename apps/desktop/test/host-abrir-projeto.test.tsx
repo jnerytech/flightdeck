@@ -77,9 +77,11 @@ describe("host-abrir-projeto: a project on the host page opens (issue #207)", ()
       await d.start({ cwd: repo, prompt: "ola" });
       await store.refreshHub();
     });
-    await waitFor(() => expect(screen.queryByRole("button", { name: "repo" })).not.toBeNull());
+    // The sidebar's project tree has a "repo" button of its own: the card is the page's.
+    const page = () => within(screen.getByRole("main"));
+    await waitFor(() => expect(page().queryByRole("button", { name: "repo" })).not.toBeNull());
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "repo" }));
+      fireEvent.click(page().getByRole("button", { name: "repo" }));
     });
     expect(store.router.current.name).toBe("session");
   });

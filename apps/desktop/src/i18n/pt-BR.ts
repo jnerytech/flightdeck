@@ -902,6 +902,17 @@ export const ptBR = {
     gateRow: "A etapa “{step}” do workflow espera sua aprovação",
     release: "Soltar o par",
   },
+  projectTree: {
+    more: "mais {n}",
+    fewer: "Mostrar menos",
+    pickedFolded: "Branch escolhida: {branch}",
+    list: "Branches de {name}",
+    node: "{project}: {branch}",
+    primary: "principal",
+    base: "base {name}",
+    filter: "Branch: {branch}",
+    clear: "Limpar o filtro de branch",
+  },
   hub: {
     view: "Visualização",
     viewList: "Lista",

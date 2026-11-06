@@ -937,6 +937,42 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.setViewportSize({ width: 720, height: 480 });
     await waitFor(async () => (await inHeader()) === true, "as abas na linha da barra do topo");
   },
+
+  // 27. The wand on the message box (#158): Settings sends the text through a host only after the
+  // person agrees; then the wand improves what was typed, Accept replaces it, Undo puts it back.
+  // The demo's fake assistant answers "improved: <text>".
+  "wand-composer": async (c) => {
+    await open(c, { name: "settings" });
+    await c.page.getByRole("radio", { name: c.t("assistantSettings.host"), exact: true }).click();
+    const agree = c.page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: c.t("assistantSettings.hostConfirmYes", { host: "alfa" }) })
+      .or(
+        c.page
+          .getByRole("alertdialog")
+          .getByRole("button", { name: c.t("assistantSettings.hostConfirmYes", { host: "beta" }) }),
+      );
+    await agree.first().click({ timeout: WAIT });
+    await c.page
+      .getByRole("radio", { name: c.t("assistantSettings.host"), exact: true })
+      .and(c.page.locator(":checked"))
+      .waitFor({ timeout: WAIT });
+    await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+    const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+    const typed = `escreva melhor ${c.lang}`;
+    await box.fill(typed);
+    await c.page.getByRole("button", { name: c.t("assistantWand.improve"), exact: true }).click();
+    // The suggestion: what was there, and what would replace it.
+    const preview = c.page.getByRole("dialog", { name: c.t("assistantWand.preview"), exact: true });
+    await preview.waitFor({ timeout: SESSION_WAIT });
+    await preview.getByText(`improved: ${typed}`).first().waitFor({ timeout: WAIT });
+    if ((await box.inputValue()) !== typed) throw new Error("o texto mudou antes do Aceitar");
+    await preview.getByRole("button", { name: c.t("assistantWand.accept"), exact: true }).click();
+    await waitFor(async () => (await box.inputValue()) === `improved: ${typed}`, "o texto trocado");
+    // Undo puts the old text back.
+    await c.page.getByRole("button", { name: c.t("assistantWand.undo"), exact: true }).click();
+    await waitFor(async () => (await box.inputValue()) === typed, "o texto de volta");
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

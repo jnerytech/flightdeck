@@ -469,7 +469,6 @@ export const CostsPage = memo(function CostsPage(props: {
               </Panel>
             </section>
             {withRoi && <RoiPeople store={store} />}
-            {withRoi && <RoiSettingsPanel store={store} />}
             {withRoi && (
               <RoiTable
                 store={store}
@@ -542,6 +541,8 @@ export const CostsPage = memo(function CostsPage(props: {
                 </ul>
               </Panel>
             </section>
+            {/* What the person types for the return on cost, after the reports it changes (#588). */}
+            {withRoi && <RoiSettingsPanel store={store} />}
           </>
         )}
       </div>

@@ -905,6 +905,17 @@ export const en: Dictionary = {
     gateRow: "Workflow step “{step}” waits for your approval",
     release: "Free the pair",
   },
+  projectTree: {
+    list: "Branches of {name}",
+    node: "{project}: {branch}",
+    primary: "primary",
+    base: "base {name}",
+    filter: "Branch: {branch}",
+    clear: "Clear the branch filter",
+    more: "{n} more",
+    fewer: "Show fewer",
+    pickedFolded: "Branch picked: {branch}",
+  },
   hub: {
     view: "View",
     viewList: "List",
