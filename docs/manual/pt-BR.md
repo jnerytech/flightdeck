@@ -1531,7 +1531,7 @@ credencial). Você pode acrescentar padrões na configuração do host (`risk.ex
 podem ser rebaixados.
 
 - Um pedido de **Risco alto** fica vermelho e **Aprovar** vira **Segurar para aprovar**: segure o botão por
-  2 segundos. A tecla A não o aprova; N continua negando. O host também confere a espera: recusa a
+  2 segundos. O motivo fica escrito sob o botão (não só numa dica). A tecla A não o aprova; N continua negando. O host também confere a espera: recusa a
   aprovação de um pedido de risco alto que não a traga ("Um pedido de risco alto só é aprovado
   segurando o botão."), então nenhum outro cliente consegue pulá-la.
 - A bandeja nunca aprova um pedido de risco alto: oferece **Negar** e **Abrir**.
@@ -2142,10 +2142,13 @@ terceiros.
 
 #### Qual conta este host está usando?
 
-- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Team, Enterprise) e duas
+- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Ultra, Team, Enterprise) e duas
   barras, **5 horas** e **7 dias**, com a porcentagem usada e quando cada uma reinicia (passe o
   mouse para ver a hora exata). As barras de 7 dias do Opus e do Sonnet só aparecem quando o host
   as informa.
+- O plano vem do login do `claude` no host, que o guarda desde que você entrou: depois de mudar de
+  plano, saia e entre de novo lá e toque em **Atualizar**. As barras são lidas ao vivo e estão sempre
+  em dia.
 - Ele é lido ao abrir a página e de novo a cada 5 minutos enquanto ela fica aberta, e na hora em
   que uma sessão gerenciada termina um turno. "Última leitura há 2 min" diz o quanto está
   fresco. **Atualizar** lê agora; há 30 segundos de espera entre leituras.

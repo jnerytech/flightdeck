@@ -17,6 +17,8 @@ export interface UpdateCheckerOptions {
   now?: () => number;
   timers?: Timers;
   fetch?: (url: string) => Promise<Response>;
+  /** Called after every check, a failed one too (issue #280: the automatic update looks at the host then). */
+  onChecked?: () => unknown;
 }
 
 export class UpdateChecker {
@@ -80,6 +82,8 @@ export class UpdateChecker {
     if (!this.stopped) {
       this.timer = this.timers.set(() => void this.check(), this.opts.checkIntervalH * 3_600_000);
     }
+    // The automatic update looks at the host after a check; what it throws never stops the checks.
+    await Promise.resolve(this.opts.onChecked?.()).catch(() => undefined);
   }
 
   private async download(): Promise<DaemonManifest> {

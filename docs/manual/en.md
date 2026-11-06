@@ -1543,7 +1543,8 @@ paths). You can add patterns in the host configuration (`risk.extraHigh`); the b
 be lowered.
 
 - A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
-  seconds. The A key does not approve it; N still denies. The host checks the hold too: it refuses
+  seconds. The reason is written under the button (not only in a tooltip). The A key does not
+  approve it; N still denies. The host checks the hold too: it refuses
   an approval of a high-risk request that does not carry it ("A high-risk request is approved only
   by holding the button."), so no other client can skip it either.
 - The tray never approves a high-risk request: it offers **Deny** and **Open**.
@@ -2148,9 +2149,12 @@ reports of the Agent SDK), and Anthropic's terms keep a login out of third-party
 
 #### Which account is this host using?
 
-- The card shows the account's email, the organization, the plan (Pro, Max, Team, Enterprise) and
+- The card shows the account's email, the organization, the plan (Pro, Max, Ultra, Team, Enterprise) and
   two bars, **5 hours** and **7 days**, with the percentage used and when each resets (hover for
   the exact time). The 7-day Opus and Sonnet bars show only when the host reports them.
+- The plan comes from the sign-in of `claude` on the host, which keeps it from when you signed in:
+  after a change of plan, sign out and in again there, then press **Refresh**. The bars are read
+  live and are always current.
 - It is read when you open the page and again every 5 minutes while the page stays open, and at
   once when a managed session ends a turn. "Last read 2 min ago" tells how fresh it is. **Refresh**
   reads now; it waits 30 seconds between reads.
