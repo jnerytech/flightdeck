@@ -11,6 +11,9 @@ on:
     branches: [main]
     paths-ignore: ["docs/images/**"]
   pull_request:
+  # The whole suite every night on main (#309): a PR runs the cheap base of the test pyramid.
+  schedule:
+    - cron: "17 4 * * *"
   workflow_dispatch:
     inputs:
       only:
@@ -128,7 +131,18 @@ jobs:
           git config --global user.email "ci@flightdeck.invalid"
 
       # Typecheck, lint and the TDD audit ran in the quick job (#272).
+      # The test pyramid (#309): a PR runs every unit and component test plus the tests of the other
+      # tiers that reach a changed file, and every changed source file must be at 100% lines and
+      # functions from them. The coverage report stays in coverage/ for SonarCloud.
+      - name: Testes do PR (pirâmide)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: bun run test:related -- --pr --base "origin/$BASE_REF" --keep-coverage coverage
+
+      # main, the nightly schedule and a dispatch: the whole suite and the whole-repo 100% gate.
       - name: Testes (cobertura 100%)
+        if: github.event_name != 'pull_request'
         run: bun run test
 
       # SonarCloud reads it in its own job.
@@ -427,6 +441,7 @@ jobs:
           bun run smoke:github
           bun run smoke:boardsync
           bun run smoke:roi
+          bun run smoke:opencode
 
       # The built frontend: the bundle budget reads it, and the Tauri context needs it (frontendDist).
       # Only when the app or the shell changed, or on main (#264).
@@ -543,11 +558,15 @@ jobs:
           if-no-files-found: ignore
 
   # The end-to-end journeys, in both languages, against the same seeded demo.
-  # In three Playwright shards (#264): each runs a third of the journeys, in both languages.
+  # In three Playwright shards (#264). Playwright keeps a file's tests together on a shard, so each
+  # language's journeys are a file of their own (#292): shard 1 gets one language, shard 2 the other
+  # and shard 3 the BDD scenarios, instead of every journey on shard 1.
   screenshots-e2e:
     name: e2e journeys ${{ matrix.shard }}/3
     needs: [changes, quick]
-    if: needs.changes.outputs.screenshots == 'true'
+    # Off the PR path (#309): the journeys run on main, nightly and by hand; a PR gates on the
+    # unit and component tiers and the prints.
+    if: needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -621,4 +640,9 @@ jobs:
           fi
           echo "prints: ${{ needs.screenshots-prints.result }}, e2e: ${{ needs.screenshots-e2e.result }}"
           test "${{ needs.screenshots-prints.result }}" = success
-          test "${{ needs.screenshots-e2e.result }}" = success
+          # The journeys skip a PR (#309); everywhere else they must pass.
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            test "${{ needs.screenshots-e2e.result }}" = skipped
+          else
+            test "${{ needs.screenshots-e2e.result }}" = success
+          fi
