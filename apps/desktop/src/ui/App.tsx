@@ -33,6 +33,7 @@ import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
 import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
+import { UpdateCard } from "./UpdateCard.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
 type InPlace =
@@ -592,6 +593,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             onKeyDownCapture={commitActive}
           >
             <UpdateBanner store={store} />
+            <UpdateCard store={store} />
             <Areas
               store={store}
               state={state}
