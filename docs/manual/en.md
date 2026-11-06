@@ -1167,7 +1167,9 @@ conversation. It is where you check what the agent did and send it back what to 
   **Filter by name** keeps the names that match among the folders already open, with the folders
   on their way. A folder with more than 500 entries shows the first ones and says so. A session
   outside git has no tree: the tab says so. A click on a file opens it below the tree, read only,
-  with numbered lines; a file over 1 MB, one that is not text, or a credential says so instead. A
+  with numbered lines, and colored by token for common languages (TypeScript, JavaScript, JSON,
+  Python, Rust, shell, TOML, YAML, CSS, Go, HTML, XML, diffs, Dockerfiles); a file over 1 MB, one
+  that is not text, or a credential says so instead. A
   changed file has **Show changes**: its diff against HEAD, live. While you are at the bottom, the
   newest change scrolls into view as the session edits; scroll up and it stops, and **Jump to
   latest** (with how many changes came) or a scroll back to the bottom brings it back.
