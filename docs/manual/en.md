@@ -1022,6 +1022,11 @@ conversation. It is where you check what the agent did and send it back what to 
   - for a card, the diff against its base, with how many commits it is ahead of and behind it;
   - the files with their status and counts, and the diff unified or side by side, with numbered
     lines. A binary file is listed without a diff;
+  - a file that is too large (a diff or a new file over 512 KB) is listed with the **Too large**
+    mark and its size, without content, so the panel does not freeze. The same goes for what
+    passes 4 MB of diff in total: the files after that are only listed. On a host of this machine,
+    **Show in folder** opens the file manager on the file (the editor stays beside it, and refuses
+    what is over 1 MB);
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
 - **Inline comments:**

@@ -2004,6 +2004,12 @@ export const en: Dictionary = {
     },
     binary: "Binary",
     binaryNote: "Binary file: no diff.",
+    tooLarge: "Too large",
+    tooLargeNote:
+      "Too large to show here ({size}). Open it in the editor or show it in its folder.",
+    tooLargeNoteNoSize: "Too large to show here. Open it in the editor or show it in its folder.",
+    showInFolder: "Show in folder",
+    showInFolderLabel: "Show {path} in its folder",
     noLines: "No lines to show.",
     commentLine: "Comment on line {line} of {path}",
     commentOldLine: "Comment on old line {line} of {path}",

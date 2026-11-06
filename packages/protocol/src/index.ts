@@ -853,6 +853,13 @@ export const DiffFile = z.object({
   /** Not committed yet (tracked change or new file). */
   uncommitted: z.boolean(),
   binary: z.boolean(),
+  /**
+   * The file is listed without content because it is over the daemon's cap (issue #329): a new file
+   * over it, or a diff over it. Absent from a daemon that does not know the marker.
+   */
+  tooLarge: z.boolean().optional(),
+  /** With `tooLarge`: the size of the file (a new one) or of its diff text, in bytes. */
+  bytes: z.number().int().nonnegative().optional(),
   hunks: z.array(DiffHunk),
 });
 export type DiffFile = z.infer<typeof DiffFile>;

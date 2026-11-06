@@ -13,6 +13,14 @@ const none = () => null;
 
 /** At most the first `max` bytes of the regular file at `path`, or null when it is anything else. */
 export async function readRegular(path: string, max: number): Promise<Buffer | null> {
+  return (await readRegularSized(path, max))?.data ?? null;
+}
+
+/** Like `readRegular`, with the file's real size too (what is read stops at `max`). */
+export async function readRegularSized(
+  path: string,
+  max: number,
+): Promise<{ data: Buffer; size: number } | null> {
   const info = await lstat(path).catch(none);
   if (!info?.isFile()) return null;
   const handle = await open(path, FLAGS).catch(none);
@@ -21,7 +29,7 @@ export async function readRegular(path: string, max: number): Promise<Buffer | n
     if (!handle || !opened?.isFile()) return null;
     const bytes = Buffer.alloc(Math.min(max, opened.size));
     const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0);
-    return bytes.subarray(0, bytesRead);
+    return { data: bytes.subarray(0, bytesRead), size: opened.size };
   } finally {
     await handle?.close();
   }
