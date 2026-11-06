@@ -8,6 +8,7 @@ const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
 const { hubRows } = await import("../src/lib/hub.ts");
 const { useStoreState } = await import("../src/lib/use-store.ts");
 const { SessionTiles } = await import("../src/components/projects/session-tiles.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -24,14 +25,17 @@ function Live(props: {
   onOpen(row: { sessionId: string | null }): void;
 }) {
   const state = useStoreState(props.store);
+  // The app's language, as App provides it to every screen.
   return (
-    <SessionTiles
-      store={props.store}
-      state={state}
-      hostId={props.hostId}
-      projectKey={props.projectKey}
-      onOpen={props.onOpen as never}
-    />
+    <TContext.Provider value={props.store.i18n.t}>
+      <SessionTiles
+        store={props.store}
+        state={state}
+        hostId={props.hostId}
+        projectKey={props.projectKey}
+        onOpen={props.onOpen as never}
+      />
+    </TContext.Provider>
   );
 }
 
@@ -95,7 +99,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     expect(within(dois).getByText("idle")).toBeTruthy();
   });
 
-  test("the layout is a row of icons, Auto to start, each with a name and a tooltip, and the choice is kept", async () => {
+  test("the layout is a row of icons, Auto to start, each with a name and, on focus, a tooltip, and the choice is kept", async () => {
     const { store } = await setup(["a", "b", "c", "d", "e"]);
     const group = screen.getByRole("group", { name: "Layout" });
     const radios = within(group).getAllByRole("radio");
@@ -106,12 +110,12 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
       "2×3 grid",
       "Auto",
     ]);
-    expect(radios.map((r) => r.closest("label")?.getAttribute("title"))).toEqual([
-      "2 side by side",
-      "3 columns",
-      "2×2 grid",
-      "2×3 grid",
-      "Auto: every live session",
+    expect(radios.map((r) => r.closest("label")?.getAttribute("title") ?? null)).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
     ]);
     await waitFor(() => tiles().length === 5, "all five tiles in Auto");
     expect((within(group).getByRole("radio", { name: "Auto" }) as HTMLInputElement).checked).toBe(
@@ -131,7 +135,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     expect(screen.queryByText(/not shown/)).toBeNull();
   });
 
-  test("the session that needs you comes first, shows its request, and Allow answers it", async () => {
+  test("the session that needs you comes first, shows its request, and Approve answers it (issue #182: the same verb as everywhere)", async () => {
     const { store, hostId, ids } = await setup(["pede", "quieta"]);
     await needsYouFirst();
     const tile = tiles()[0] as HTMLElement;
@@ -140,14 +144,134 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
       "request",
     );
     expect(ask?.textContent).toContain("Write");
+    // Issue #245 (M5): what it would do is in sight, not just the tool's name.
+    expect(ask?.textContent).toContain("fake.txt");
+    const approve = within(tile).queryByRole("button", { name: "Approve" });
+    expect(approve).not.toBeNull();
     await act(async () => {
-      fireEvent.click(within(tile).getByRole("button", { name: "Allow" }));
+      fireEvent.click(approve as HTMLElement);
     });
     await waitFor(
       () => within(tile).queryByRole("group", { name: "Request" }) === null,
       "answered",
     );
     expect(store.getState().sessions[sessionKey(hostId, ids[0] as string)]?.pending).toEqual([]);
+  });
+
+  // Issue #244 (M4): the tile must pass the request's risk on; without it a high-risk request is
+  // approved there with one click.
+  test("a high-risk request on a tile is approved only by holding: no Approve, and a click answers nothing", async () => {
+    const { store, hostId, ids } = await setup(["pede", "quieta"]);
+    await needsYouFirst();
+    const tile = tiles()[0] as HTMLElement;
+    await waitFor(() => within(tile).queryByRole("group", { name: "Request" }), "request");
+    const key = sessionKey(hostId, ids[0] as string);
+    await act(async () => {
+      const state = store.getState();
+      const session = state.sessions[key];
+      if (!session) return;
+      (store as unknown as { update(patch: object): void }).update({
+        sessions: {
+          ...state.sessions,
+          [key]: {
+            ...session,
+            items: session.items.map((item) =>
+              item.kind === "permission"
+                ? { ...item, risk: "high", riskReason: "Writes outside the project" }
+                : item,
+            ),
+          },
+        },
+      });
+    });
+    // Issue #245 (M5): the tile holds over what it shows: the reason of the risk is there.
+    expect(tile.textContent).toContain("Writes outside the project");
+    expect(within(tile).queryByRole("button", { name: "Approve" })).toBeNull();
+    const hold = within(tile).queryByRole("button", { name: "Hold to approve" });
+    expect(hold).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(hold as HTMLElement);
+    });
+    expect(store.getState().sessions[key]?.pending.length).toBe(1);
+  });
+
+  /** Turns the first tile's request into another tool, as the daemon would have sent it. */
+  async function asTool(
+    store: InstanceType<typeof AppStore>,
+    key: string,
+    toolName: string,
+    input: Record<string, unknown>,
+  ) {
+    await act(async () => {
+      const state = store.getState();
+      const session = state.sessions[key];
+      if (!session) return;
+      (store as unknown as { update(patch: object): void }).update({
+        sessions: {
+          ...state.sessions,
+          [key]: {
+            ...session,
+            items: session.items.map((item) =>
+              item.kind === "permission" ? { ...item, toolName, input } : item,
+            ),
+          },
+        },
+      });
+    });
+  }
+
+  // Issue #245 (M5): a question or a plan cannot be answered on a tile, which shows neither.
+  test("a question or a plan on a tile only offers to open the session: no Approve, no Deny", async () => {
+    const { store, hostId, ids, opened } = await setup(["pede", "quieta"]);
+    await needsYouFirst();
+    const tile = tiles()[0] as HTMLElement;
+    await waitFor(() => within(tile).queryByRole("group", { name: "Request" }), "request");
+    const key = sessionKey(hostId, ids[0] as string);
+    for (const [tool, input] of [
+      ["AskUserQuestion", { questions: [{ question: "Which?", header: "", options: [] }] }],
+      ["ExitPlanMode", { plan: "1. do it" }],
+    ] as const) {
+      await asTool(store, key, tool, input);
+      const request = within(tile).queryByRole("group", { name: "Request" }) as HTMLElement;
+      // Booleans, not elements: a failed toEqual on a DOM node prints the whole tree.
+      const has = (name: string) => within(request).queryByRole("button", { name }) !== null;
+      expect([tool, has("Approve"), has("Hold to approve"), has("Deny")]).toEqual([
+        tool,
+        false,
+        false,
+        false,
+      ]);
+      expect([tool, has("Open to answer")]).toEqual([tool, true]);
+    }
+    await act(async () => {
+      fireEvent.click(within(tile).getByRole("button", { name: "Open to answer" }));
+    });
+    expect(opened).toEqual([ids[0] as string]);
+    expect(store.getState().sessions[key]?.pending.length).toBe(1);
+  });
+
+  // Issue #245 (L5): an answer on its way keeps both buttons off, so no second answer is sent.
+  test("while an answer is on its way, Approve and Deny of the tile are off", async () => {
+    const { store } = await setup(["pede", "quieta"]);
+    await needsYouFirst();
+    const tile = tiles()[0] as HTMLElement;
+    await waitFor(() => within(tile).queryByRole("group", { name: "Request" }), "request");
+    const sent: string[] = [];
+    (store as unknown as { respondTo(...args: unknown[]): Promise<void> }).respondTo = (
+      ...args: unknown[]
+    ) => {
+      sent.push(String(args[2]));
+      return new Promise<void>(() => {});
+    };
+    await act(async () => {
+      fireEvent.click(within(tile).getByRole("button", { name: "Approve" }));
+    });
+    const deny = within(tile).queryByRole("button", { name: "Deny" }) as HTMLButtonElement | null;
+    expect(deny?.disabled).toBe(true);
+    await act(async () => {
+      fireEvent.click(deny as HTMLElement);
+    });
+    expect(sent).toEqual(["allow"]);
   });
 
   test("Deny answers the request of that tile too, and the request goes away", async () => {

@@ -7,6 +7,12 @@ import { waiter } from "./wait.ts";
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+
+/** The person scrolls: the wheel, then the scroll event the browser sends for it. */
+const personScrolls = (el: Element) => {
+  fireEvent.wheel(el, { deltaY: -120 });
+  fireEvent.scroll(el);
+};
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
@@ -111,7 +117,7 @@ describe("leitor-cascata: a page read forward never drags the reader to its end"
     const first = shown().length;
     expect(first).toBeLessThan(TOTAL);
     const s = sized({ scroll: 3000, client: 400, top: 2590 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     await settle(() => shown().length > first);
     // The new page makes the log taller; the reader's place is the same message, not the new end.
     s.size.scroll = 6000;

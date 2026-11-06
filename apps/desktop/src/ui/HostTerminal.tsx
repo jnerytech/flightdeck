@@ -15,7 +15,7 @@ const LIST_REFRESH_MS = 1000;
  * The host's embedded terminals (phase 14): a new one, the live ones, and turning them on (which
  * asks, since a terminal is a full shell on the host) or off (which ends the live ones).
  */
-export function HostTerminal(props: { store: AppStore; host: HostView }) {
+export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const info = host.hostInfo;

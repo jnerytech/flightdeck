@@ -11,7 +11,15 @@ describe("sidebar-groups: the folded groups kept between runs", () => {
   });
 
   test("only known groups come back, in the sidebar's order", () => {
-    expect(loadFolded(storageWith('["infra","made-up","work"]'))).toEqual(["work", "infra"]);
+    expect(loadFolded(storageWith('["infra","made-up","machines","work"]'))).toEqual([
+      "work",
+      "machines",
+    ]);
+  });
+
+  test("a group folded under its old name (infra) is read as Machines, once (SG-m3)", () => {
+    expect(loadFolded(storageWith('["infra"]'))).toEqual(["machines"]);
+    expect(loadFolded(storageWith('["infra","machines"]'))).toEqual(["machines"]);
   });
 
   test("text that is not JSON is read as none folded", () => {

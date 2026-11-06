@@ -68,6 +68,13 @@ describe("app-store-lacunas: following sessions without opening them", () => {
         ),
       "subscribe of the followed session",
     );
+    expect(
+      daemon.commands.some(
+        (c) =>
+          c.type === "session.subscribe" &&
+          (c.payload as { sessionId: string }).sessionId === "s-early",
+      ),
+    ).toBe(true);
   });
 });
 

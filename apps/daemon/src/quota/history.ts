@@ -42,7 +42,7 @@ function exhaustion(points: Array<{ t: number; u: number }>, resetsAt: number | 
     den += (p.t - tMean) ** 2;
   }
   const slope = num / den;
-  if (!(slope > 0)) return null;
+  if (Number.isNaN(slope) || slope <= 0) return null;
   const at = Math.round((tMean + (1 - uMean) / slope) / MINUTE_MS) * MINUTE_MS;
   return resetsAt !== null && at >= resetsAt ? null : at;
 }

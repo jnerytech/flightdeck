@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { DepsResult, KeepAwakeStatus } from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import type { Account } from "../../daemon/src/account/account.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
@@ -60,6 +61,8 @@ import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/builtin.ts";
 import { TaskTracker } from "../../daemon/src/templates/tasks.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
+import { inspectProject } from "../../daemon/src/trust/inspect.ts";
+import { ProjectTrust } from "../../daemon/src/trust/project-trust.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import type { WebhookSender } from "../../daemon/src/webhook/sender.ts";
 import { FakeProvider } from "../../daemon/test/boardsync-fake.ts";
@@ -109,6 +112,8 @@ export function daemon(
     telemetry?: boolean;
     /** Claude Code's background sessions (phase 27): a service for the host to announce and call. */
     bg?: BgService;
+    /** Project trust (#196): the host announces it, over this daemon's database, with nothing trusted yet. */
+    trust?: boolean;
     /** Budgets (phase 8), built over this daemon's database. */
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
@@ -123,6 +128,8 @@ export function daemon(
     changesWatch?: WatchFn;
     /** Git snapshots per turn, rewind and fork (phase 12), over this daemon's database. */
     checkpoints?: boolean;
+    /** Phase 39: the host offers OpenCode (a fake runtime and two models). */
+    opencode?: boolean;
     /** The project's MCP servers, CLAUDE.md, agents and skills (phase 12), in this daemon's root. */
     agentcfg?: boolean;
     /** The MCP servers a live session of the fake runtime reports (phase 12). */
@@ -149,6 +156,8 @@ export function daemon(
     snippets?: boolean | { history?: HistorySources };
     /** The short summary of a session (phase 30), over this daemon's history. */
     summary?: boolean;
+    /** What `deps.check` answers (issue #121), fixed or computed at each ask. */
+    deps?: DepsResult | (() => DepsResult);
     /** The sender of the app's webhooks (phase 30). */
     webhook?: WebhookSender;
     /** The personas (phase 20): the pack, the host's in this daemon's database, and open sessions. */
@@ -163,6 +172,8 @@ export function daemon(
     roi?: boolean | { signals: ConstructorParameters<typeof RoiSummarizer>[0]["signals"] };
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
+    /** The host's keep-awake status (issue #163): announced with `host.info`, switched by `host.keepAwake`. */
+    keepAwake?: { held?: boolean; reason?: KeepAwakeStatus["reason"] };
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -186,6 +197,8 @@ export function daemon(
   const historyRoot = join(root, "claude-projects");
   mkdirSync(historyRoot);
   const history = new HistoryIndexer({ db: store.db, roots: [historyRoot] });
+  /** Phase 39: the fake OpenCode runtime, on a host that has it. */
+  const opencodeRuntime = options.opencode ? new FakeRuntime({ delayMs: 1 }) : undefined;
   const runtime = new FakeRuntime({
     delayMs: 1,
     ...(options.mcpServers ? { mcpServers: options.mcpServers } : {}),
@@ -207,6 +220,14 @@ export function daemon(
       })
     : undefined;
   let bypass = options.bypass === true;
+  let awake: KeepAwakeStatus | null = options.keepAwake
+    ? {
+        enabled: true,
+        held: options.keepAwake.held === true,
+        method: options.keepAwake.held === true ? "systemd-inhibit" : null,
+        reason: options.keepAwake.reason ?? null,
+      }
+    : null;
   const manager = new SessionManager({
     allowBypass: () => bypass,
     ...(personaStore ? { personas: personaStore } : {}),
@@ -223,6 +244,7 @@ export function daemon(
         }
       : {}),
     onQuota: (readings) => quota.record(readings),
+    ...(opencodeRuntime ? { opencode: opencodeRuntime } : {}),
     onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
     store,
     runtime,
@@ -468,6 +490,12 @@ export function daemon(
       fsDirs: true,
       ...firstRunOptions,
       ...(options.ui ? { ui: { ...options.ui }, onUiSettings: async () => {} } : {}),
+      ...(options.deps
+        ? {
+            deps: async () =>
+              typeof options.deps === "function" ? options.deps() : (options.deps as DepsResult),
+          }
+        : {}),
       ...(options.simple
         ? {
             templates: async () => ({ templates: BUILTIN_TEMPLATES, problems: [] }),
@@ -479,12 +507,39 @@ export function daemon(
       ...(roiSummarizer ? { roi: roiSummarizer } : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
+      ...(options.opencode
+        ? {
+            opencode: {
+              info: () => ({ available: true, path: "fake", version: "2.2.5", verified: true }),
+              models: async () => [
+                { id: "anthropic/claude-sonnet-5-5", name: "anthropic/claude-sonnet-5-5" },
+                { id: "opencode/crouton-alpha-free", name: "opencode/crouton-alpha-free" },
+              ],
+            },
+          }
+        : {}),
       bypass: {
         allowed: () => bypass,
         set: (allow) => {
           bypass = allow;
         },
       },
+      ...(awake
+        ? {
+            keepAwake: {
+              status: () => awake as KeepAwakeStatus,
+              set: (enabled: boolean) => {
+                const was = awake as KeepAwakeStatus;
+                awake = {
+                  ...was,
+                  enabled,
+                  held: enabled && was.held,
+                  method: enabled ? was.method : null,
+                };
+              },
+            },
+          }
+        : {}),
       manager,
       history,
       board,
@@ -498,6 +553,7 @@ export function daemon(
       ...(costs ? { costs } : {}),
       ...(telemetry ? { telemetry, telemetryOptIn } : {}),
       ...(options.bg ? { bg: options.bg } : {}),
+      ...(options.trust ? { projectTrust: projectTrustOver(store.db) } : {}),
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
       ...(review ?? {}),
@@ -558,6 +614,7 @@ export function daemon(
     history,
     historyRoot,
     runtime,
+    opencodeRuntime,
     board,
     snapshots,
     mcp,
@@ -583,6 +640,10 @@ export function daemon(
     boardSyncStore,
     keys,
     doctorAsked,
+    /** Changes what the host says about keep-awake from now on (the page must read it again). */
+    setKeepAwake: (change: Partial<KeepAwakeStatus>) => {
+      if (awake) awake = { ...awake, ...change };
+    },
   };
 }
 
@@ -657,3 +718,23 @@ export function memoryPlatform(focused = false, language = "pt-BR") {
 
 /** A folder every host refuses to allow, on whatever platform the tests run. */
 export const SYSTEM_FOLDER = process.platform === "win32" ? "C:\\Windows" : "/etc";
+
+/** The host's project trust over a database, as the daemon wires it (nothing trusted until the person says so). */
+function projectTrustOver(db: EventStore["db"]) {
+  const trust = new ProjectTrust(db);
+  return {
+    refresh: () => trust.refreshRoots(),
+    state: (paths: string[]) =>
+      paths.map((path) => {
+        const via = trust.via(path);
+        return { path, trusted: via !== null, via };
+      }),
+    inspect: (path: string) => inspectProject(path),
+    set: (path: string, trusted: boolean) => {
+      if (trusted) trust.trust(path);
+      else trust.revoke(path);
+      const via = trust.via(path);
+      return { path, trusted: via !== null, via };
+    },
+  };
+}

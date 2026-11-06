@@ -38,7 +38,7 @@ const FS_NAMES = [
   "writeFile",
 ];
 const BLOCKING = new RegExp(
-  `\\b(?:(?:${FS_NAMES.join("|")})Sync|execSync|execFileSync|spawnSync)\\b`,
+  String.raw`\b(?:(?:${FS_NAMES.join("|")})Sync|execSync|execFileSync|spawnSync)\b`,
   "g",
 );
 
@@ -54,7 +54,7 @@ export function syncCallCount(source: string): number {
     .replace(IMPORTS, "")
     .split("\n")
     .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
-    .reduce((total, line) => total + (line.match(BLOCKING)?.length ?? 0), 0);
+    .reduce((total, line) => total + (line.match(BLOCKING)?.length ?? 0), 0); // NOSONAR: a global regex, exec would return one match at a time
 }
 
 /** Blocking uses per file under `apps/daemon/src` and `apps/desktop/src` of `root` (files with none left out). */
@@ -96,7 +96,8 @@ export function withBaseline(source: string, counts: Record<string, number>): st
     ? source.slice(declaration.index + declaration[0].length)
     : source.slice(source.indexOf("\n};", declaration.index) + "\n};".length);
   const body = renderBaseline(counts);
-  return `${head}${opening}${body ? `\n${body}\n};` : "};"}${rest}`;
+  const closed = body ? "\n" + body + "\n};" : "};";
+  return head + opening + closed + rest;
 }
 
 export const SYNC_BASELINE: Record<string, number> = {};

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";
@@ -14,7 +15,7 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore, NOTIFY_UPDATES_KEY } = await import("../src/lib/app-store.ts");
+const { AppStore, AUTO_UPDATE_KEY, NOTIFY_UPDATES_KEY } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];
@@ -31,6 +32,8 @@ function setup(
   opts: { available?: { version: string; notes: string } | null; installError?: string } = {},
 ) {
   const mem = memoryPlatform();
+  // These tests read the manual banner; the automatic download (issue #280) has its own file.
+  mem.items.set(AUTO_UPDATE_KEY, "false");
   const calls: string[] = [];
   mem.platform.updater = {
     supported: true,
@@ -38,6 +41,10 @@ function setup(
       calls.push("check");
       return opts.available ?? null;
     },
+    download: async () => {
+      calls.push("download");
+    },
+    installDownloaded: async () => {},
     install: async () => {
       calls.push("install");
       if (opts.installError) throw new Error(opts.installError);
@@ -106,7 +113,7 @@ describe("app-updater", () => {
   test("Configurações: Procurar agora consulta; desligar o aviso para a verificação ao abrir", async () => {
     const mem = setup({ available: null });
     const store = await start(mem);
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     // Settings is a lazy screen: its chunk may still be loading when the click returns.
     await settle(
       () => screen.queryByRole("button", { name: "Procurar atualização agora" }) !== null,

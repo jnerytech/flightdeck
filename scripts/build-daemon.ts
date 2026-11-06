@@ -2,6 +2,7 @@
 /** Compiles `flightdeckd` into single-file executables for every supported target. */
 import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { parsePublicKey } from "../apps/daemon/src/updates/signature.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -25,7 +26,7 @@ try {
 }
 
 mkdirSync(OUT, { recursive: true });
-for (const { target, outfile } of TARGETS) {
+await inSequence(TARGETS, async ({ target, outfile }) => {
   const proc = Bun.spawn(
     [
       process.execPath,
@@ -43,5 +44,5 @@ for (const { target, outfile } of TARGETS) {
     console.error(`build de ${target} falhou (código ${code})`);
     process.exit(code);
   }
-}
+});
 console.log(`binários em ${OUT}`);

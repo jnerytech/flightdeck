@@ -1,9 +1,11 @@
 import { type LucideIcon, Settings } from "lucide-react";
 import { useEffect } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { SessionTiles } from "@/components/projects/session-tiles";
+import { TrustPanel } from "@/components/projects/trust-panel";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { HubRowState } from "../lib/hub.ts";
@@ -19,13 +21,15 @@ interface Destination {
 }
 
 /** One project: where Board, Sessions, Workflows, Costs and its settings open from (issue #9). */
-export function ProjectPage(props: {
-  store: AppStore;
-  state: Pick<AppState, "projects"> & HubRowState;
-  hostId: string;
-  projectId: string;
-  go(route: Route): void;
-}) {
+export function ProjectPage(
+  props: Readonly<{
+    store: AppStore;
+    state: Pick<AppState, "projects"> & HubRowState;
+    hostId: string;
+    projectId: string;
+    go(route: Route): void;
+  }>,
+) {
   const { store, state, hostId, projectId } = props;
   const { t } = store.i18n;
   const host = state.hosts.find((h) => h.id === hostId);
@@ -79,7 +83,11 @@ export function ProjectPage(props: {
             labelKey: "sidebar.costs" as const,
             hint: "projectPage.costsHint" as const,
             icon: NAV_ICONS.costs,
-            route: { name: "costs" } as Route,
+            route: {
+              name: "costs",
+              host: hostId,
+              projectKey: store.projectKeyOf(hostId, project),
+            } as Route,
           },
         ]
       : []),
@@ -97,6 +105,11 @@ export function ProjectPage(props: {
       title={project.name}
       subtitle={`${host?.name ?? hostId} · ${project.baseBranch} · ${project.path}`}
     >
+      {project.baseBranchInvalid && (
+        <InlineNotice tone="warn">
+          {t("projectPage.baseInvalid", { name: project.baseBranch })}
+        </InlineNotice>
+      )}
       <ul aria-label={project.name} className="card-grid" data-slot="project-destinations">
         {destinations.map(({ key, labelKey, hint, icon: Icon, route }) => (
           <li key={key}>
@@ -118,6 +131,15 @@ export function ProjectPage(props: {
           </li>
         ))}
       </ul>
+      {hasFeature(host?.hostInfo?.features, "projectTrust", false) && (
+        <TrustPanel
+          store={store}
+          hostId={hostId}
+          hostName={host?.name ?? hostId}
+          projectName={project.name}
+          path={project.path}
+        />
+      )}
       <SessionTiles
         store={store}
         state={state}

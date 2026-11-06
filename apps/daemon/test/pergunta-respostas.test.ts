@@ -42,22 +42,28 @@ describe("pergunta-respostas", () => {
   test("answers that are not strings are not carried", () => {
     const { broker, requestId, resolved } = setup();
     void broker.request("s", "AskUserQuestion", {}, new AbortController().signal);
-    broker.respond({
-      requestId: requestId(),
-      decision: "allow",
-      updatedInput: { answers: { q: 1 } },
-    });
-    expect(resolved()).not.toHaveProperty("answers");
+    // Answers that are not strings are refused (#384): the question stays open and nothing carries them.
+    expect(() =>
+      broker.respond({
+        requestId: requestId(),
+        decision: "allow",
+        updatedInput: { answers: { q: 1 } },
+      }),
+    ).toThrow("the answer changes what the request runs");
+    expect(resolved()).toBeUndefined();
   });
 
   test("another tool never carries answers", () => {
     const { broker, requestId, resolved } = setup();
     void broker.request("s", "Write", {}, new AbortController().signal);
-    broker.respond({
-      requestId: requestId(),
-      decision: "allow",
-      updatedInput: { answers: { q: "a" } },
-    });
-    expect(resolved()).not.toHaveProperty("answers");
+    // Another tool may not change its input at all, `answers` included (#384).
+    expect(() =>
+      broker.respond({
+        requestId: requestId(),
+        decision: "allow",
+        updatedInput: { answers: { q: "a" } },
+      }),
+    ).toThrow("the answer changes what the request runs");
+    expect(resolved()).toBeUndefined();
   });
 });

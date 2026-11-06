@@ -33,6 +33,9 @@ sessions from one place, without opening each machine.
   `flightdeckd claude`.
 - "Always allow" rules written to the project's local Claude Code settings, never to your global
   ones.
+- OpenCode sessions next to Claude Code's, on a host that turns OpenCode on (opt-in): every tool
+  call asks, the project's own OpenCode config is ignored, and a preflight refuses a folder whose
+  config or saved rules would skip the question.
 
 **Work**
 
@@ -244,6 +247,10 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
   or team talk (exceptions in Settings), with limits per pair and per session; a loop pauses the
   pair and tells you. A session that received third-party content passes that mark on, and
   automatic approval stays off for whoever it messages.
+- **OpenCode asks, by construction.** An OpenCode session runs only Flightdeck's own agents, with
+  the project config off; before each start a preflight refuses anything that could outrank the
+  question (a config layer, an extra agent, a saved "always" rule), and the global config is
+  scanned for plugins and MCP servers before OpenCode runs at all.
 - **Signed updates.** The app and the daemon install only updates signed with the project's key
   ([`release/flightdeck.pub`](release/flightdeck.pub)). The Windows installer itself is not
   code-signed.
@@ -252,7 +259,8 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
 
 - Manual: [English](docs/manual/en.md) | [Português (Brasil)](docs/manual/pt-BR.md)
 - Roadmap and specs: [`docs/SPEC.md`](docs/SPEC.md)
-- Decisions and deviations from the specs: [`docs/DECISIONS.md`](docs/DECISIONS.md)
+- Decisions and deviations from the specs: one file each in [`docs/decisions/`](docs/decisions/),
+  the older ones in [`docs/DECISIONS.md`](docs/DECISIONS.md)
 
 The specs, decisions and glossary are written in Portuguese.
 
