@@ -33,7 +33,8 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
     );
     const daemon = await startDaemon(
       { command: "start", config: file, runtime: "fake" },
-      {},
+      // Its own home: the hooks of the shared test home are whatever an earlier test left there.
+      { HOME: dir, USERPROFILE: dir },
       { log: () => {}, error: () => {} },
       // The service manager is the real one's stand-in: no systemctl is asked.
       { serviceInstalled: async () => true, linger: async () => "on" },
