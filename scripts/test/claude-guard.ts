@@ -7,6 +7,7 @@
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { guardPath } from "./guard-path.ts";
+import { logLines } from "./log-lines.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 const CLAUDE_NAMES = ["claude", "claude.exe", "claude.cmd", "claude.bat", "claude.ps1"];
@@ -48,7 +49,7 @@ export function installClaudeGuard(
 
 /** Lines recorded by the sentinel; empty when `claude` was never executed. */
 export function claudeCalls(guard: ClaudeGuard): string[] {
-  return existsSync(guard.log) ? readFileSync(guard.log, "utf8").trim().split(/\r?\n/) : [];
+  return existsSync(guard.log) ? logLines(readFileSync(guard.log, "utf8")) : [];
 }
 
 export function assertNoClaudeCalls(guard: ClaudeGuard): void {
