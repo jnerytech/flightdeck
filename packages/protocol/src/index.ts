@@ -111,6 +111,14 @@ export type PersonaRef = z.infer<typeof PersonaRef>;
 export const ToolInput = z.record(z.string(), z.unknown());
 export type ToolInput = z.infer<typeof ToolInput>;
 
+/** The team a session works in, its role there and, for a worker, its number (issue #101). */
+export const SessionTeam = z.object({
+  name: z.string(),
+  role: z.enum(["coordinator", "worker"]),
+  number: z.number().int().nullable(),
+});
+export type SessionTeam = z.infer<typeof SessionTeam>;
+
 /** The standard name of a session of the host (phase 21): `project · persona · number`. */
 export const SessionNameInfo = z.object({
   /** The managed id, or the Claude session id of a terminal. */
@@ -123,6 +131,10 @@ export const SessionNameInfo = z.object({
   persona: z.string(),
   number: z.number().int(),
   cardNumber: z.number().int().nullable(),
+  /** Issue #101: `display` is still the standard name (no rename, no Claude Code title). Absent from an older host. */
+  standard: z.boolean().optional(),
+  /** Issue #101: the team the session works in; the app names it by its persona. Absent from an older host. */
+  team: SessionTeam.nullable().optional(),
 });
 export type SessionNameInfo = z.infer<typeof SessionNameInfo>;
 
@@ -2722,6 +2734,8 @@ export const TeamMember = z.object({
   sessionId: z.string().nullable(),
   address: z.string().nullable(),
   sessionState: MessagingState.nullable(),
+  /** Issue #101: a worker's number in its team (null for the coordinator). Absent from an older host. */
+  number: z.number().int().nullable().optional(),
 });
 export type TeamMember = z.infer<typeof TeamMember>;
 

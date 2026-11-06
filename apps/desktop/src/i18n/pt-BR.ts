@@ -2965,6 +2965,13 @@ export const ptBR = {
     received: "Recebida",
     empty: "Nenhuma mensagem ainda. Use “Mandar para outra sessão…” para escrever a primeira.",
   },
+  // Issue #101: a team session is named by its persona; with none, by its role.
+  sessionLabel: {
+    team: "{team} · {member}",
+    persona: "{persona} {n}",
+    worker: "Executora {n}",
+    coordinator: "Coordenadora",
+  },
   teamsUi: {
     notifyTitle: "Time {name}",
     title: "Times",

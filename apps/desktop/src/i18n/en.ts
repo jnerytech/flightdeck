@@ -2966,6 +2966,13 @@ export const en: Dictionary = {
     received: "Received",
     empty: "No messages yet. Use “Send to another session…” to write the first one.",
   },
+  // Issue #101: a team session is named by its persona; with none, by its role.
+  sessionLabel: {
+    team: "{team} · {member}",
+    persona: "{persona} {n}",
+    worker: "Worker {n}",
+    coordinator: "Coordinator",
+  },
   teamsUi: {
     notifyTitle: "Team {name}",
     title: "Teams",

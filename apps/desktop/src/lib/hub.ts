@@ -10,6 +10,7 @@ import { type T, translator } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
 import { rowTitle } from "./hub-title.ts";
 import { basename } from "./paths.ts";
+import { sessionLabel } from "./session-label.ts";
 
 const PT = translator("pt-BR");
 
@@ -199,9 +200,11 @@ const NO_META: SessionMeta = { name: null, pinned: false, archived: false };
 export type HubRowState = Pick<
   AppState,
   "hosts" | "hub" | "meta" | "externals" | "names" | "background"
->;
+> &
+  Partial<Pick<AppState, "personas">>;
 
-export function hubRows(state: HubRowState): HubRow[] {
+/** `t`: the dictionaries, so a team session is named by its persona (#101); without, as before. */
+export function hubRows(state: HubRowState, t?: T): HubRow[] {
   return state.hosts.flatMap((host) => {
     const data = state.hub[host.id] ?? { managed: [], history: [] };
     const meta = (id: string | null) =>
@@ -218,8 +221,12 @@ export function hubRows(state: HubRowState): HubRow[] {
       const meta_ = meta(id);
       const standard = names.get(managedId ?? "") ?? names.get(id ?? "");
       return {
-        // The name the user gave wins; then the standard one; then the origin's own title.
-        name: meta_.name ?? standard?.display ?? null,
+        // The name the user gave wins; then a team's persona name, or the standard one (#101);
+        // then the origin's own title.
+        name: sessionLabel(
+          { metaName: meta_.name, names: standard, personas: state.personas?.[host.id] },
+          t,
+        ),
         pinned: meta_.pinned,
         archived: meta_.archived,
         standardName: standard?.display ?? null,
