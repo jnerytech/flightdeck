@@ -190,11 +190,18 @@ export function CardRunForm(
       {draft && (
         <PrDescriptionDialog
           text={draft.text}
+          title={card.title}
           redacted={draft.redacted}
+          assist={{
+            controller: store.assistant,
+            fieldHostId: hostId,
+            source: { kind: "card", cardId },
+            openSettings: store.openAssistantSettings,
+          }}
           onCancel={() => setDraft(null)}
-          onConfirm={async (description) => {
+          onConfirm={async (description, title) => {
             setDraft(null);
-            await store.hostCommand(hostId, "card.pr.create", { cardId, description });
+            await store.hostCommand(hostId, "card.pr.create", { cardId, description, title });
           }}
         />
       )}

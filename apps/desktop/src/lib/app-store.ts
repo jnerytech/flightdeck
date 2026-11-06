@@ -1056,6 +1056,9 @@ export class AppStore {
   readonly theme: ThemeController;
   /** Phase 40: the AI assistant's preferences, keys state and the wand's requests. */
   readonly assistant: AssistantController;
+  /** Where a wand with no provider sends the person: Settings, section Assistant (issue #162). */
+  readonly openAssistantSettings = (): void =>
+    this.router.push({ name: "settings", section: "assistant" });
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
   readonly terminalReader: TerminalReaderSetting;

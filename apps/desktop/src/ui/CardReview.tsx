@@ -1,6 +1,8 @@
 import type { Card, ChangesResult } from "@flightdeck/protocol";
 import { useState } from "react";
+import { AssistField } from "@/components/assistant/assist-field";
 import { ActionButton } from "@/components/feedback/action-button";
+import { Field } from "@/components/layout/form";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { translateError } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
@@ -37,6 +40,8 @@ export function CardReview(
   const [refusal, setRefusal] = useState<string | null>(null);
   const [merging, setMerging] = useState(false);
   const [mode, setMode] = useState<Mode>("merge");
+  /** The commit message the person confirmed (issue #162); empty keeps the host's default. */
+  const [message, setMessage] = useState("");
   const base = changes.base ?? "";
   const ahead = changes.position?.ahead ?? 0;
   const behind = changes.position?.behind ?? 0;
@@ -66,6 +71,7 @@ export function CardReview(
       cardId: card.id,
       mode,
       confirm: true,
+      ...(message.trim() ? { message: message.trim() } : {}),
     });
     if (!result.ok) return refused(result);
     store.success(t("cardReview.merged", { base }));
@@ -122,6 +128,33 @@ export function CardReview(
               </label>
             ))}
           </fieldset>
+          <Field label={t("cardReview.commitMessage")}>
+            {(control) => (
+              <AssistField
+                binding={{
+                  controller: store.assistant,
+                  kind: "commit.message",
+                  fieldHostId: hostId,
+                  source: { kind: "card", cardId: card.id },
+                  openSettings: store.openAssistantSettings,
+                }}
+                value={message}
+                onChange={setMessage}
+                t={t}
+              >
+                {(assist) => (
+                  <Textarea
+                    {...control}
+                    {...assist}
+                    className="w-full"
+                    placeholder={t("cardReview.commitMessageHint")}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                  />
+                )}
+              </AssistField>
+            )}
+          </Field>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => void merge()}>
