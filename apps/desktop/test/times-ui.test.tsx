@@ -134,6 +134,8 @@ async function open(options: { projects?: boolean } = {}) {
   const d = await daemonWithProject("pc", options);
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
+  // The teams are the subject: the dependency check the app starts on connect would run the real programs' versions.
+  store.checkHealth = async () => {};
   render(<App store={store} />);
   await act(() => store.addHost({ name: "alfa", url: d.url, token: d.token }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);

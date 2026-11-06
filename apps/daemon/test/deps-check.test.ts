@@ -260,6 +260,7 @@ describe("deps-check: over the protocol", () => {
       version: async (path) => {
         running++;
         most = Math.max(most, running);
+        // timing: a slow answer on purpose, so that two calls overlap
         await new Promise((r) => setTimeout(r, 20));
         running--;
         return base.version(path);

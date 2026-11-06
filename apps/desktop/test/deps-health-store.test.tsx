@@ -61,6 +61,7 @@ describe("deps-health-store: the background health read is silent and independen
     const asked: string[] = [];
     (store as unknown as { hostRequest: Request }).hostRequest = async (_h, type) => {
       asked.push(type);
+      // timing: a slow answer on purpose, so that two calls overlap
       await new Promise((r) => setTimeout(r, 30));
       return type === "deps.check" ? { ok: true, data: RESULT } : refusal("n/a");
     };

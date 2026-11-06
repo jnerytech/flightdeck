@@ -40,7 +40,7 @@ describe("deps-guard: a plain daemon asked for its dependencies runs no real pro
       true,
     );
     const before = sentinelCalls();
-    const probesBefore = sentinelProbes().length;
+    const probesBefore = sentinelProbes();
     // Nothing real is run for the other programs either: stand-ins that record what they are asked.
     const others = ["git", "ssh", "tailscale", "pwsh"].map((name) => {
       const fake = installFakeCli(name, [{ args: ["--version"], stdout: `${name} 9.9.9` }]);
@@ -84,7 +84,12 @@ describe("deps-guard: a plain daemon asked for its dependencies runs no real pro
     expect(items.find((i) => i.id === "claude")?.path).toContain("fd-claude-guard-");
     expect(sentinelCalls()).toEqual(before);
     // The guard still sees the probes: claude, gh and az were each asked for their version, and only that.
-    const probes = sentinelProbes().slice(probesBefore);
+    // What was added since: the logs of several sentinel folders are joined, so an index would drift.
+    const probes = [...sentinelProbes()];
+    for (const old of probesBefore) {
+      const at = probes.indexOf(old);
+      if (at >= 0) probes.splice(at, 1);
+    }
     for (const name of ["claude", "gh", "az"]) expect(probes).toContain(`${name} --version`);
     // The other programs found on the PATH are the stand-ins, asked for nothing but a version.
     for (const { name, fake } of others) {
