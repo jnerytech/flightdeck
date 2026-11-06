@@ -84,3 +84,30 @@ export function formatNumber(value: number, lang: Lang): string {
 export function formatUsd(value: number, lang: Lang): string {
   return plain(new Intl.NumberFormat(lang, { style: "currency", currency: "USD" }).format(value));
 }
+
+/** A large count in short form ("2.2M"), in the language's style. */
+export function formatCompact(value: number, lang: Lang): string {
+  return new Intl.NumberFormat(lang, { notation: "compact", maximumFractionDigits: 1 }).format(
+    value,
+  );
+}
+
+/** A time of a few seconds with a decimal ("4.5 s"); a longer one as `formatDuration` says it. */
+export function formatSeconds(ms: number, lang: Lang, t: T): string {
+  return ms < 60_000
+    ? `${new Intl.NumberFormat(lang, { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(ms / 1000)} s`
+    : formatDuration(ms, t);
+}
+
+/** A size in bytes as B, KB, MB or GB with the language's separators (one decimal at most). */
+export function formatBytes(bytes: number, lang: Lang): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  const number = new Intl.NumberFormat(lang, { maximumFractionDigits: unit === 0 ? 0 : 1 });
+  return `${number.format(value)} ${units[unit]}`;
+}

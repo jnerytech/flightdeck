@@ -62,6 +62,7 @@ const ClientsPage = lazyScreen(() => import("./ClientsPage.tsx"), "ClientsPage")
 const ConnectionsPage = lazyScreen(() => import("./ConnectionsPage.tsx"), "ConnectionsPage");
 const ConversationsPage = lazyScreen(() => import("./ConversationsPage.tsx"), "ConversationsPage");
 const CostsPage = lazyScreen(() => import("./CostsPage.tsx"), "CostsPage");
+const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("./HostPage.tsx"), "HostPage");
 const PersonasPage = lazyScreen(() => import("./PersonasPage.tsx"), "PersonasPage");
 const PluginsPage = lazyScreen(() => import("./PluginsPage.tsx"), "PluginsPage");
@@ -411,8 +412,15 @@ export function Screen(props: ScreenProps) {
             store={store}
             hostId={hostId}
             initial={
-              route.name === "history" && (route.cwd || route.projectKey || route.day)
-                ? { cwd: route.cwd, projectKey: route.projectKey, day: route.day }
+              route.name === "history" &&
+              (route.cwd || route.projectKey || route.day || route.from || route.to)
+                ? {
+                    cwd: route.cwd,
+                    projectKey: route.projectKey,
+                    day: route.day,
+                    from: route.from,
+                    to: route.to,
+                  }
                 : undefined
             }
             hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
@@ -462,6 +470,7 @@ export function Screen(props: ScreenProps) {
           state={state}
           density={props.density}
           project={route.name === "hub" ? route.project : undefined}
+          host={route.name === "hub" ? route.host : undefined}
           onOpen={(row) => go(rowRoute(row))}
           isOpen={(row) =>
             (opened.id !== undefined && row.sessionId === opened.id) ||
@@ -647,6 +656,8 @@ function routeScreen(props: ScreenProps): ReactNode {
         <ProjectsOverview
           store={store}
           state={state}
+          {...(route.host ? { host: route.host } : {})}
+          onClearHost={() => go({ name: "all-projects" })}
           onOpen={(card) => go({ name: "project", host: card.hostId, projectId: card.projectId })}
         />
       );
@@ -661,6 +672,8 @@ function routeScreen(props: ScreenProps): ReactNode {
           go={go}
         />
       );
+    case "overview":
+      return <HomePage store={store} state={state} go={go} />;
     case "costs":
       return (
         <CostsPage
@@ -669,6 +682,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           {...(route.host ? { host: route.host } : {})}
           {...(route.projectKey ? { projectKey: route.projectKey } : {})}
           {...(route.client ? { client: route.client } : {})}
+          {...(route.period ? { period: route.period } : {})}
         />
       );
     case "vault":
@@ -764,6 +778,16 @@ function routeScreen(props: ScreenProps): ReactNode {
           onPairAgain={(input) => store.pairAgain(host.id, input)}
           onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
           onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
+          onOpenSession={(row) => go(rowRoute(row))}
+          onOpenProject={(card) =>
+            go({ name: "project", host: card.hostId, projectId: card.projectId })
+          }
+          onSeeAllSessions={() => {
+            // The hub applies the host for this visit only: the saved filter stays the person's.
+            go({ name: "hub", host: host.name });
+          }}
+          onSeeAllProjects={() => go({ name: "all-projects", host: host.id })}
+          onNewSession={() => go({ name: "new-session", host: host.id })}
           onRemove={() => {
             go({ name: "hub" });
             void store.removeHost(host.id);

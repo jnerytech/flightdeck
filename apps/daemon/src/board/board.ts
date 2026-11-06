@@ -31,6 +31,7 @@ import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
+import { folderRemoving } from "../worktrees/locks.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
@@ -90,6 +91,8 @@ export interface BoardOptions {
   /** Reads the personas for a session about to open; none when absent. */
   preparePersonas?: Prepare;
   allowedRoots: readonly string[];
+  /** Folders being removed (issue #152): no card starts in one. */
+  folderLocks?: { isHeld(cwd: string): boolean };
   /** 2 when absent. */
   maxParallelRuns?: number;
   prPollIntervalMs?: number;
@@ -574,12 +577,14 @@ export class Board {
     };
   }
 
-  /** A new card goes to the end of the Backlog. */
+  /** A new card goes to the end of the column it is born in: the Backlog unless it says another. */
   createCard(
     projectId: string,
     input: {
       title: string;
       description: string;
+      /** The column the card is born in; the Backlog when absent. */
+      column?: BoardColumn;
       issueRef?: string;
       issueExternal?: boolean;
       /** Phase 31: what the card waits for. */
@@ -600,24 +605,26 @@ export class Board {
     this.getProject(projectId);
     const blockedBy = input.blockedBy ?? [];
     this.checkBlockers(null, projectId, blockedBy);
+    const column = input.column ?? "backlog";
     const { last } = this.db
-      .query<{ last: number | null }, [string]>(
-        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = 'backlog'",
+      .query<{ last: number | null }, [string, string]>(
+        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = ?",
       )
-      .get(projectId) ?? { last: null };
+      .get(projectId, column) ?? { last: null };
     const id = ulid();
     const at = now();
     this.db
       .query(
         `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
            issue_external, arena_of, variant, unblock_when, auto_start, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
         projectId,
         input.title,
         input.description,
+        column,
         (last ?? 0) + 1,
         input.issueRef ?? null,
         input.issueExternal ? 1 : 0,
@@ -1325,6 +1332,7 @@ export class Board {
         .run(added.slug, added.branch, added.path, notice, now(), id);
       this.changed(id);
     }
+    if (this.opts.folderLocks?.isHeld(worktree)) throw folderRemoving(worktree);
     await excludeLocalSettingsAsync(project.path);
     if (project.setupScript) await runSetup(project.setupScript, worktree);
     // The newest run is the active one: older sessions of the card are closed.
@@ -1923,6 +1931,35 @@ export class Board {
       const how = via ?? (event.type === "pr" && event.state === "merged" ? "merged" : "moved");
       recordDone(this.db, id, how, now());
     }
+    this.changed(id);
+  }
+
+  /** Every card of the project that has a worktree, arena variants included. */
+  worktreeCards(projectId: string): Card[] {
+    return this.db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM cards WHERE project_id = ? AND worktree_path IS NOT NULL",
+      )
+      .all(projectId)
+      .map(({ id }) => this.getCard(id));
+  }
+
+  /** Whether a card's run is going or waiting: its folder is in use. */
+  isActive(cardId: string): boolean {
+    return this.running.has(cardId) || this.getCard(cardId).queued;
+  }
+
+  /** The card no longer has its worktree (a panel removed it); the watchers hear of it. */
+  releaseWorktree(id: string, path: string, clearBranch: boolean): void {
+    // Only the worktree that was removed: a card that got another one meanwhile keeps it.
+    const done = this.db
+      .query(
+        `UPDATE cards SET worktree_path = NULL, notice = NULL, updated_at = ?${
+          clearBranch ? ", branch = NULL" : ""
+        } WHERE id = ? AND worktree_path = ?`,
+      )
+      .run(new Date().toISOString(), id, path);
+    if (done.changes === 0) return;
     this.changed(id);
   }
 

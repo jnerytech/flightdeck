@@ -85,6 +85,12 @@ fn every_limit_is_a_pinned_constant() {
         (BUCKET_WINDOW, CONNECT_TIMEOUT, TOTAL_TIMEOUT, MIN_VAULT_VALUE, MAX_DETAIL_CHARS),
         (Duration::from_secs(300), Duration::from_secs(10), Duration::from_secs(60), 6, 300)
     );
+    assert_eq!(MAX_PROMPT_CHARS, 2 * MAX_INPUT_CHARS, "the text, wrapped with its context");
+    assert_eq!(check_prompt(&"a".repeat(MAX_PROMPT_CHARS)), Ok(()));
+    assert_eq!(
+        check_prompt(&"a".repeat(MAX_PROMPT_CHARS + 1)),
+        Err(Refusal::new("assistant_too_long").with("max", "100000"))
+    );
     assert_eq!((ANTHROPIC_BASE, OPENROUTER_BASE), ("https://api.anthropic.com", "https://openrouter.ai"));
 }
 
@@ -331,4 +337,67 @@ fn a_request_id_is_one_call_a_cancel_may_come_first_and_a_dropped_wait_aborts_th
     assert!(gave_up);
     assert!(!finished.load(Ordering::SeqCst), "the call of a dropped wait is aborted");
     assert_eq!(rt.block_on(calls.run("gone", Duration::from_secs(1), async { Ok::<_, Refusal>(3) })), Ok(3), "its id is free");
+}
+
+fn a_parser_bug() -> Result<u8, Refusal> {
+    panic!("a bug in the provider's parser")
+}
+
+#[test]
+fn a_cancel_after_its_call_ended_is_nothing_two_cancels_stop_one_call_and_a_panic_is_bad_output() {
+    let calls = Calls::default();
+    let rt = runtime();
+    assert_eq!(rt.block_on(calls.run("done", Duration::from_secs(1), async { Ok::<_, Refusal>(1) })), Ok(1));
+    calls.cancel("done");
+    assert_eq!(
+        rt.block_on(calls.run("done", Duration::from_secs(1), async { Ok::<_, Refusal>(2) })),
+        Ok(2),
+        "a cancel that came after the end"
+    );
+    calls.cancel("twice");
+    calls.cancel("twice");
+    let first = rt.block_on(calls.run("twice", Duration::from_secs(1), async { Ok::<_, Refusal>(3) }));
+    assert_eq!(reason(first), Some("assistant_cancelled"));
+    assert_eq!(
+        rt.block_on(calls.run("twice", Duration::from_secs(1), async { Ok::<_, Refusal>(4) })),
+        Ok(4),
+        "one call per cancel"
+    );
+    let crashed = rt.block_on(calls.run("boom", Duration::from_secs(1), async { a_parser_bug() }));
+    assert_eq!(reason(crashed), Some("assistant_bad_output"), "not a cancel the person never asked for");
+}
+
+#[test]
+fn a_call_that_times_out_or_is_cancelled_gives_back_its_in_flight_place() {
+    let limits = Limits::default();
+    let calls = Arc::new(Calls::default());
+    let rt = runtime();
+    for id in ["slow-1", "slow-2"] {
+        let permit = limits.admit().map_err(|r| r.reason);
+        assert!(permit.is_ok(), "{id}");
+        let out = rt.block_on(calls.run(id, Duration::from_millis(30), async move {
+            let _held = permit;
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            Ok::<_, Refusal>(())
+        }));
+        assert_eq!(reason(out), Some("assistant_timeout"));
+    }
+    let held = limits.admit().map_err(|r| r.reason);
+    let (runner, canceller) = (calls.clone(), calls.clone());
+    let cancelled = rt.block_on(async move {
+        let call = tokio::spawn(async move {
+            runner
+                .run("stopped", Duration::from_secs(5), async move {
+                    let _held = held;
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    Ok::<_, Refusal>(())
+                })
+                .await
+        });
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        canceller.cancel("stopped");
+        call.await.map_err(|_| Refusal::new("join"))
+    });
+    assert_eq!(cancelled.map(reason), Ok(Some("assistant_cancelled")));
+    assert!(limits.admit().is_ok() && limits.admit().is_ok(), "every place is free again");
 }
