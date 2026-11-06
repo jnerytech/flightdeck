@@ -16,3 +16,10 @@
 
 - **Ported onto main (2026-11-06)** from fd-frontend's stranded branch palette-plus: it keeps main's
   `oldest` request line (#187, #245) and simple-mode action, and draws its keys with `Keycap` (#165).
+- **The clients have a section of their own** (decided with the coordinator, 2026-11-06): Manage
+  clients and the switches to all clients, to each client and to Unassigned leave the actions for a
+  Clients section after them, which is never cut at the eight-row cap. With main's simple-mode action
+  the actions grew past the cap, which hid the client switches behind "more"; a person switches
+  between every client from here, so they always show.
+- **GlobalSearch composes components:** a palette section (title, rows, more) and the scope chips are
+  `components/palette/palette-section.tsx`, so the screen stays under its layout baseline.
