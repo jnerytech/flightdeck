@@ -34,6 +34,38 @@ const PATH_SYNTAX = /[[\]{}!]/;
 
 /** What a wildcard of a path rule may stand for: the names the classifier calls a credential. */
 const NAMES = ["x", ".env", "id_rsa", "x.pem", "x.key", ".ssh", ".aws", "credentials"];
+/**
+ * The names a partial wildcard (`.cl*`, `.s?h`, `package.js*`) may stand for, one path segment at
+ * a time: the control directories and files, and the credential ones (issue #435).
+ */
+const SENSITIVE = [
+  ".claude",
+  ".git",
+  ".github",
+  ".husky",
+  ".vscode",
+  ".ssh",
+  ".aws",
+  ".env",
+  ".env.local",
+  ".mcp.json",
+  ".credentials.json",
+  ".claude.json",
+  "package.json",
+  "tasks.json",
+  "settings.json",
+  "id_rsa",
+  "credentials",
+];
+/** A segment's glob as a regular expression (`*` and `?` stay inside the segment). */
+const segmentGlob = (segment: string) =>
+  new RegExp(
+    `^${segment
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*+/g, "[^/]*")
+      .replace(/\?/g, "[^/]")}$`,
+    "i",
+  );
 /** What a `?` may stand for, one character at a time. */
 const CHARS = [..."abcdefghijklmnopqrstuvwxyz0123456789._-"];
 const WILDCARD = /(\*\*\/|\*\*|\*|\?)/;
@@ -86,6 +118,18 @@ function instances(pattern: string): string[] | null {
   for (const name of NAMES) {
     out.add(render((_, part) => (part === "?" ? "x" : part === "**/" ? `${name}/` : name)));
   }
+  // A wildcard that shares a segment with other characters may still be a sensitive name there.
+  const segments = pattern.split("/");
+  segments.forEach((segment, at) => {
+    if (!WILD.test(segment)) return;
+    const glob = segmentGlob(segment);
+    for (const name of SENSITIVE) {
+      if (!glob.test(name)) continue;
+      out.add(
+        segments.map((other, i) => (i === at ? name : other.replace(/\*+|\?/g, "x"))).join("/"),
+      );
+    }
+  });
   return [...out];
 }
 
