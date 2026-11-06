@@ -138,7 +138,9 @@ describe("terminal-ui: keys, colors and font", () => {
     }
     expect(sizes).toEqual([24, 24, 23, 13]);
     expect(kept.items.get(TERMINAL_FONT_KEY)).toBe("13");
-    const smallest = new TerminalFontController(memoryStorage({ [TERMINAL_FONT_KEY]: "10" }).storage);
+    const smallest = new TerminalFontController(
+      memoryStorage({ [TERMINAL_FONT_KEY]: "10" }).storage,
+    );
     smallest.zoom("zoomOut");
     expect(smallest.value).toBe(10);
   });
