@@ -258,6 +258,14 @@ describe("paleta-mais-ui: scope chips (issue #147)", () => {
     expect(labels()).toEqual(["Fix login"]);
   });
 
+  test("a project the host has not listed yet is named by its id in the chip", () => {
+    open(world(), { name: "board", host: "h1", projectId: "p-new" });
+    expect(chips().map((c) => c.getAttribute("aria-label"))).toEqual([
+      "Remove filter: host alfa",
+      "Remove filter: project p-new",
+    ]);
+  });
+
   test("removing a chip widens the list; Clear all removes the rest; the keyboard works", async () => {
     open(world(), { name: "board", host: "h1", projectId: "p-api" });
     await type("fix");
