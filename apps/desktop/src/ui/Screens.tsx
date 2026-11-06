@@ -787,6 +787,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           store={store}
           {...(route.host ? { host: route.host } : {})}
           {...(route.team ? { team: route.team } : {})}
+          go={go}
         />
       );
     case "conversations":
