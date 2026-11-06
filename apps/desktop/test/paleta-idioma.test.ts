@@ -55,6 +55,7 @@ describe("paleta", () => {
       "Ir para Configurações | ação",
       "Adicionar um host | ação",
       "Mostrar os atalhos de teclado | ação",
+      "# Clientes",
       "Gerenciar clientes | ação",
     ]);
   });
@@ -81,6 +82,7 @@ describe("paleta", () => {
       "Go to Settings | action",
       "Add a host | action",
       "Show the keyboard shortcuts | action",
+      "# Clients",
       "Manage clients | action",
     ]);
   });

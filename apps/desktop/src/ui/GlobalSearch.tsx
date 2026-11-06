@@ -1,5 +1,5 @@
-import { type KeyboardEvent, useEffect, useState } from "react";
-import { Keycap } from "@/components/shortcuts/keycap";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { PaletteScopeChips, PaletteSectionView } from "@/components/palette/palette-section";
 import { Input } from "@/components/ui/input";
 import type { T } from "../i18n/index.ts";
 import {
@@ -11,8 +11,10 @@ import {
 } from "../lib/app-store.ts";
 import {
   type PaletteItem,
+  type PaletteScope,
   type PaletteSection,
   type PaletteTarget,
+  paletteScope,
   paletteSections,
 } from "../lib/palette.ts";
 import { basename } from "../lib/paths.ts";
@@ -42,6 +44,10 @@ export function Snippet({ text }: Readonly<{ text: string }>) {
   );
 }
 
+/** Rows a section shows before its "more" button, and how many each press adds. */
+const SECTION_CAP = 8;
+const SECTION_MORE = 20;
+
 /**
  * The Ctrl+K palette: live sessions, cards, projects, hosts and actions filtered as you type, then
  * the history search across every host (Enter with nothing chosen), merged by date as each host
@@ -67,6 +73,14 @@ export function GlobalSearch(
   const [activeId, setActiveId] = useState<string | null>(null);
   /** The entry whose actions are shown (after Tab). */
   const [actionsOf, setActionsOf] = useState<PaletteItem | null>(null);
+  /** Where the person is narrows the list; the chips undo it, and closing the palette forgets it. */
+  const [scope, setScope] = useState<PaletteScope>(() =>
+    paletteScope(props.store.router.current, props.state),
+  );
+  /** The recent entries as they were when the palette opened: rows do not move under the cursor. */
+  const frozen = useRef<string[] | null>(null);
+  /** How many rows of each section show. */
+  const [limits, setLimits] = useState<Record<string, number>>({});
   const name = (id: string) => hosts.find((h) => h.id === id)?.name ?? id;
   const costs = props.costs && hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false));
 
@@ -91,11 +105,21 @@ export function GlobalSearch(
         costs,
         t: store.i18n.t,
         globalSnippets: store.globalSnippets.list(),
-        recents: store.paletteRecents(),
+        recents: frozen.current ?? store.paletteRecents(),
+        keepRecentOrder: frozen.current !== null,
         ...oldestOf(needsYou(props.state), store.i18n.t),
         modeSwitch: modeSwitch(store),
+        scope,
       });
-  const visible = sections.flatMap((section) => section.items);
+  if (frozen.current === null && !actionsOf) {
+    frozen.current = sections.find((section) => section.recent)?.items.map((i) => i.id) ?? [];
+  }
+  const capOf = (section: PaletteSection) =>
+    section.uncapped ? section.items.length : (limits[section.title] ?? SECTION_CAP);
+  const shown = (section: PaletteSection) =>
+    actionsOf ? section.items : section.items.slice(0, capOf(section));
+  const visible = sections.flatMap(shown);
+  const recentItems = sections.find((section) => section.recent)?.items ?? [];
   /** Where the chosen entry is in the visible list; -1 is the text field (or an entry that left). */
   const cursor = visible.findIndex((item) => item.id === activeId);
   const setCursor = (at: number) => setActiveId(visible[at]?.id ?? null);
@@ -112,7 +136,13 @@ export function GlobalSearch(
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     const chosen = visible[cursor];
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    const alt = /^[1-6]$/.test(e.key) && e.altKey && query.trim() === "" && !actionsOf;
+    if (alt) {
+      // Alt+1…6 open the recent entries; nowhere outside the palette do they mean anything.
+      e.preventDefault();
+      const recent = recentItems[Number(e.key) - 1];
+      if (recent) choose(recent);
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       const step = e.key === "ArrowDown" ? 1 : -1;
       setCursor(Math.max(-1, Math.min(visible.length - 1, cursor + step)));
@@ -135,6 +165,26 @@ export function GlobalSearch(
     }
   };
 
+  const chips = [
+    ...(scope.hostId
+      ? [{ key: "host", kind: t("palette.filterHost"), name: name(scope.hostId) }]
+      : []),
+    ...(scope.hostId && scope.projectId
+      ? [
+          {
+            key: "project",
+            kind: t("palette.filterProject"),
+            name:
+              props.state.projects[scope.hostId]?.find((p) => p.id === scope.projectId)?.name ??
+              scope.projectId,
+          },
+        ]
+      : []),
+  ];
+  const removeChip = (key: string) =>
+    setScope((before) =>
+      key === "host" ? { hostId: null, projectId: null } : { ...before, projectId: null },
+    );
   return (
     <dialog
       open
@@ -161,29 +211,28 @@ export function GlobalSearch(
           }}
         />
       </form>
+      <PaletteScopeChips
+        chips={chips}
+        t={t}
+        onRemove={removeChip}
+        onClear={() => setScope({ hostId: null, projectId: null })}
+      />
       {sections.map((section) => (
-        <section key={section.title} className="flex flex-col gap-1">
-          <h3 className="px-2 font-medium text-muted-foreground text-xs">{section.title}</h3>
-          <div role="listbox" aria-label={section.title} className="flex flex-col">
-            {section.items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="option"
-                aria-label={item.label}
-                aria-selected={visible.indexOf(item) === cursor}
-                className="flex items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent aria-selected:bg-accent"
-                onClick={() => choose(item)}
-              >
-                <span className="shrink-0 whitespace-nowrap">{item.label}</span>{" "}
-                <span className="min-w-0 truncate text-muted-foreground text-xs">
-                  {item.detail}
-                </span>
-                {item.shortcut && <Keycap className="ml-auto shrink-0">{item.shortcut}</Keycap>}
-              </button>
-            ))}
-          </div>
-        </section>
+        <PaletteSectionView
+          key={section.title}
+          section={section}
+          rows={shown(section)}
+          selected={(item) => visible.indexOf(item) === cursor}
+          hidden={actionsOf ? 0 : Math.max(0, section.items.length - capOf(section))}
+          t={t}
+          onChoose={choose}
+          onMore={() =>
+            setLimits((before) => ({
+              ...before,
+              [section.title]: capOf(section) + SECTION_MORE,
+            }))
+          }
+        />
       ))}
       {search && (
         <section className="flex flex-col gap-1">
