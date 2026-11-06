@@ -54,7 +54,7 @@ export function SessionCard(
         <button
           type="button"
           onClick={props.onOpen}
-          className="min-w-0 flex-1 truncate text-left font-medium"
+          className="min-h-6 min-w-0 flex-1 truncate text-left font-medium"
         >
           {props.title}
         </button>
