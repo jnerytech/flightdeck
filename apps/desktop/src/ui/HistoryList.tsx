@@ -215,7 +215,8 @@ export function HistoryList(
           <CheckField checked={hideAutomated} onChange={setHideAutomated}>
             {t("historyUi.hideAutomated")}
           </CheckField>
-          {hideAutomated && automatedCount > 0 && (
+          {/* An empty list says it and offers Show them itself (#588). */}
+          {hideAutomated && automatedCount > 0 && emptyBecause !== "automated" && (
             <>
               <span className="text-muted-foreground text-xs">
                 {t("historyUi.automatedHidden", { count: automatedCount })}
