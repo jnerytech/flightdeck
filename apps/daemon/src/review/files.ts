@@ -9,13 +9,14 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
+import { credential } from "../permissions/sensitive-paths.ts";
 import { ulid } from "../ulid.ts";
 import type { Changes } from "./changes.ts";
 import { fileInRoot } from "./paths.ts";
@@ -72,8 +73,10 @@ export class ReviewFiles {
 
   async read(target: string, path: string): Promise<FileContent> {
     const { root } = await this.opts.changes.resolve(target);
-    const full = fileInRoot(root, path);
-    const bytes = await bytesOrNull(full);
+    // Any target can be read, inside allowedRoots or not, but only inside its own repository.
+    const where = await located(root, await realpath(root), path);
+    refuseCredential(where, path);
+    const bytes = await bytesOrNull(where.full);
     if (!bytes) {
       throw new FlightdeckError("not_found", `${path} does not exist`, "review_file_missing", {
         path,
@@ -102,7 +105,9 @@ export class ReviewFiles {
     text: string,
     expectedHash: string,
   ): Promise<Omit<FileContent, "text">> {
-    const full = await this.writable(target, path);
+    const where = await this.writable(target, path);
+    refuseCredential(where, path);
+    const { full } = where;
     const bytes = Buffer.from(text, "utf8");
     if (bytes.length > MAX_BYTES) {
       throw new FlightdeckError("bad_request", "the text is over 1 MB", "review_text_big");
@@ -137,7 +142,7 @@ export class ReviewFiles {
       );
     }
     const { root, base } = await this.opts.changes.resolve(target);
-    const full = await this.writable(target, path);
+    const { full } = await this.writable(target, path);
     await this.pruneTrash();
     let copy: string | null = null;
     if (await exists(full)) {
@@ -189,7 +194,7 @@ export class ReviewFiles {
         { path },
       );
     }
-    const full = await this.writable(target, path);
+    const { full } = await this.writable(target, path);
     if (undo.copy) {
       await mkdir(dirname(full), { recursive: true });
       await copyFile(undo.copy, full);
@@ -222,19 +227,45 @@ export class ReviewFiles {
    * A file that may be changed: the repository inside allowedRoots, and the file itself (links
    * resolved) still inside the repository.
    */
-  private async writable(target: string, path: string): Promise<string> {
+  private async writable(target: string, path: string): Promise<Located> {
     const { root } = await this.opts.changes.resolve(target);
-    const realRoot = await resolveAllowedCwd(root, this.opts.allowedRoots);
-    const full = fileInRoot(root, path);
-    const real = await realpath(full).catch(() => null);
-    if (real && !isInside(realRoot, real)) {
-      throw new FlightdeckError(
-        "forbidden_cwd",
-        `${path} points outside the repository`,
-        "review_path_link",
-        { path },
-      );
-    }
-    return full;
+    return located(root, await resolveAllowedCwd(root, this.opts.allowedRoots), path);
+  }
+}
+
+interface Located {
+  full: string;
+  /** Where its links lead; `null` when the file is not there. */
+  real: string | null;
+  realRoot: string;
+}
+
+/** A file of the repository and where it really is: refused when a link takes it out of the repository. */
+async function located(root: string, realRoot: string, path: string): Promise<Located> {
+  const full = fileInRoot(root, path);
+  const real = await realpath(full).catch(() => null);
+  if (real && !isInside(realRoot, real)) {
+    throw new FlightdeckError(
+      "forbidden_cwd",
+      `${path} points outside the repository`,
+      "review_path_link",
+      { path },
+    );
+  }
+  return { full, real, realRoot };
+}
+
+/**
+ * Refuses a file that may hold a credential (the list of issue #449), named by the path asked for
+ * or by where its links lead (issue #509): Flightdeck neither shows nor changes it.
+ */
+function refuseCredential({ real, realRoot }: Located, path: string): void {
+  if (credential(path) || (real !== null && credential(relative(realRoot, real)))) {
+    throw new FlightdeckError(
+      "bad_request",
+      `${path} may hold a credential`,
+      "review_file_secret",
+      { path },
+    );
   }
 }

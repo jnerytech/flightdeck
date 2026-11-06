@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import { credential } from "../permissions/sensitive-paths.ts";
 import { readRegularSized } from "../read-regular.ts";
 import { git, gitLimited } from "./command.ts";
 import { type Rev, refArg } from "./ref-arg.ts";
@@ -58,24 +59,45 @@ function readHeader(file: DiffFile, line: string): void {
   if (line.startsWith("Binary files ")) file.binary = true;
 }
 
+/** A file git does not track yet, before its content is known. */
+const newFile = (path: string, binary: boolean): DiffFile => ({
+  path,
+  oldPath: null,
+  status: "added",
+  additions: 0,
+  deletions: 0,
+  uncommitted: true,
+  binary,
+  hunks: [],
+});
+
+/** A file that may hold a credential (issues #449, #509): listed with its mark, no lines, no counts. */
+const secretFile = (file: DiffFile): DiffFile => ({
+  ...file,
+  secret: true,
+  additions: 0,
+  deletions: 0,
+  hunks: [],
+});
+
+/** The files of a diff, with the content of every credential file, old path or new, left out. */
+const withoutSecrets = (files: DiffFile[]) =>
+  files.map((file) =>
+    credential(file.path) || (file.oldPath !== null && credential(file.oldPath))
+      ? secretFile(file)
+      : file,
+  );
+
 /**
  * A file git does not track yet, shown as entirely added. A link or a pipe is listed without
  * content, like a binary file: a link is never followed. A file over `max` bytes is listed with the
  * `tooLarge` marker and its size, and is never read past `max` (issue #329).
  */
 async function untrackedFile(worktree: string, path: string, max: number): Promise<DiffFile> {
+  if (credential(path)) return secretFile(newFile(path, false));
   const read = await readRegularSized(join(worktree, path), max + 1);
   const content = read?.data ?? null;
-  const file = {
-    path,
-    oldPath: null,
-    status: "added" as const,
-    additions: 0,
-    deletions: 0,
-    uncommitted: true,
-    binary: !content,
-    hunks: [] as DiffHunk[],
-  };
+  const file = newFile(path, !content);
   if (!content) return file;
   if (content.length > max) {
     return { ...file, tooLarge: true, bytes: read?.size ?? content.length };
@@ -248,7 +270,7 @@ export async function workingDiff(
   );
   const untracked = others.stdout.split("\0").filter(Boolean);
   const tracked = budgeted(
-    await trackedFiles(root, against, true, limits.rawBytes),
+    withoutSecrets(await trackedFiles(root, against, true, limits.rawBytes)),
     maxTracked,
     limits.totalBytes,
   );
@@ -276,7 +298,7 @@ export async function cardDiff(
   limits: DiffLimits = DIFF_LIMITS,
 ): Promise<CardDiff> {
   const committed = budgeted(
-    await trackedFiles(worktree, `${refArg(base)}...HEAD`, false, limits.rawBytes),
+    withoutSecrets(await trackedFiles(worktree, `${refArg(base)}...HEAD`, false, limits.rawBytes)),
     maxTracked,
     limits.totalBytes,
   );
