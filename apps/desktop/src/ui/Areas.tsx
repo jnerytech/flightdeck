@@ -37,14 +37,18 @@ export function Areas(
   const { t } = store.i18n;
   const { hostTabs } = store;
   useSyncExternalStore(hostTabs.subscribe, () => hostTabs.version);
-  const { split, fraction } = workspace;
+  // With no host the shared tabs are the window's only area.
+  const hostless = hostTabs.workspace === null;
+  const areas = hostless ? [hostTabs.shared] : workspace.areas;
+  const { fraction } = workspace;
+  const split = hostless ? null : workspace.split;
   const box = useRef<HTMLDivElement>(null);
   // Issue #488: each area's tabs have a row of their own, as in VS Code and Orca. In a window under
   // 600 px tall the one area's strip goes back to the top bar's row: a 720x480 window keeps its
   // conversation at least 150 px tall.
   const slot = useHeaderSlot();
   const short = useMediaQuery(SHORT_WINDOW);
-  const inHeader = short && !split && workspace.areas.length === 1 ? slot : null;
+  const inHeader = short && !split && areas.length === 1 ? slot : null;
   const dragging = useRef(false);
 
   useEffect(() => {
@@ -103,7 +107,7 @@ export function Areas(
 
   return (
     <div ref={box} className="grid min-h-0 flex-1" style={gridStyle(split, template)}>
-      {workspace.areas.flatMap((area, i) => {
+      {areas.flatMap((area, i) => {
         const pane = (
           <section
             key={area.id}
@@ -117,7 +121,7 @@ export function Areas(
                   store={store}
                   state={state}
                   tabs={area}
-                  {...(i === 0 ? { shared: hostTabs.shared } : {})}
+                  {...(i === 0 && !hostless ? { shared: hostTabs.shared } : {})}
                 >
                   {i === 0 && buttons}
                 </TabBar>,
@@ -128,7 +132,7 @@ export function Areas(
                 store={store}
                 state={state}
                 tabs={area}
-                {...(i === 0 ? { shared: hostTabs.shared } : {})}
+                {...(i === 0 && !hostless ? { shared: hostTabs.shared } : {})}
               >
                 {i === 0 && buttons}
               </TabBar>
