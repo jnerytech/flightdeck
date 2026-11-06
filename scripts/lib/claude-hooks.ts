@@ -31,12 +31,33 @@ const TEST_MARKERS = [
   { pattern: /\.toMatchSnapshot\(/g, text: "toMatchSnapshot(" },
 ];
 
-/** Heredoc bodies, which are data, not commands. */
-const HEREDOC_BODY = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2\s*(?=\n|$)/g;
+/** Where a heredoc starts on a line: `<<TAG`, `<<-TAG`, `<<'TAG'` or `<<"TAG"`. */
+const HEREDOC_START = /<<-?[ \t]*(['"]?)(\w+)\1/;
+
+/**
+ * The command without heredoc bodies, which are data, not commands: from `<<TAG` to the line that
+ * holds only TAG. A line scan, not one regex, so a long command cannot make it backtrack (S8786).
+ */
+function withoutHeredocs(command: string): string {
+  const lines = command.split("\n");
+  const kept: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] as string;
+    const start = HEREDOC_START.exec(line);
+    const end = start ? lines.findIndex((l, j) => j > i && l.trim() === start[2]) : -1;
+    if (!start || end < 0) {
+      kept.push(line);
+      continue;
+    }
+    kept.push(line.slice(0, start.index));
+    i = end;
+  }
+  return kept.join("\n");
+}
 
 /** The command without heredoc bodies and quoted text, which are data, not commands. */
 function commandWords(command: string): string {
-  return command.replace(HEREDOC_BODY, "").replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
+  return withoutHeredocs(command).replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
 }
 
 /** The subcommand and its arguments of each git invocation in a (possibly chained) command. */
@@ -407,7 +428,7 @@ export function heavyReasonGiven(value: string | undefined): boolean {
 
 /** The command's segments, split at ; & | and newlines outside quotes, without heredoc bodies. */
 function rawSegments(command: string): string[] {
-  const text = command.replace(HEREDOC_BODY, "");
+  const text = withoutHeredocs(command);
   const segments: string[] = [];
   let current = "";
   let quote = "";
