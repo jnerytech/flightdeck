@@ -605,6 +605,39 @@ async function greenWithBump(tag: string, deps: PrFlowDeps): Promise<string | nu
 }
 
 /**
+ * What to tag when the commit asked for (main's HEAD by default) has no full green run: an earlier
+ * commit of main, or the exit code of a refusal (said by `refuse`).
+ */
+async function earlierTarget(
+  want: { tag: string; sha: string; runs: MainRun[]; pinned: boolean },
+  refuse: (reason: string) => number,
+  deps: PrFlowDeps,
+): Promise<string | number> {
+  const { tag, sha, runs } = want;
+  // A run that failed is never skipped over; --commit asks for exactly that commit.
+  if (runs.some(runFailed) || want.pinned) return refuseRuns(sha, runs, refuse);
+  // A run that is queued or going has not failed (on a busy main it is HEAD's usual state, #529).
+  const running = runs.some((r) => r.status !== "completed");
+  // Without --commit, the newest commit that has the bump and a full green run is the release
+  // (#376, #444); with none, a full run of main starts, and pr tag runs again when it is green.
+  const earlier = await greenWithBump(tag, deps);
+  if (!earlier) {
+    // A full run starts at once, even while HEAD's push run is going: dispatches have their own concurrency group (#545).
+    const next = await startFullRun(runs, deps);
+    return refuse(
+      running
+        ? `${sha}'s CI run on ${MAIN} is still running, and no commit with the ${tag} bump has a full green run: ${next}`
+        : `${sha} has no full green run on ${MAIN}, and no commit with the ${tag} bump has one: ${next}`,
+    );
+  }
+  const why = running
+    ? `${sha}'s CI run on ${MAIN} is still running`
+    : `${sha} has no full green run on ${MAIN}`;
+  deps.log(`${why}: tagging ${earlier}, the newest commit with the ${tag} bump that has one`);
+  return earlier;
+}
+
+/**
  * Tags a commit of main (main's HEAD by default) as a release, only after a green full CI run of it
  * on main (its push), and pushes the tag alone as refs/tags/<tag>: a push of several tags starts no
  * workflow. The coordinator's only.
@@ -634,27 +667,10 @@ async function tagRelease(args: string[], deps: PrFlowDeps): Promise<number> {
   const runs = await mainRuns(sha, deps);
   let target = sha;
   if (!(await fullGreen(runs, deps))) {
-    // A run that failed is never skipped over; --commit asks for exactly that commit.
-    if (runs.some(runFailed) || args.includes("--commit")) return refuseRuns(sha, runs, refuse);
-    // A run that is queued or going has not failed (on a busy main it is HEAD's usual state, #529).
-    const running = runs.some((r) => r.status !== "completed");
-    // Without --commit, the newest commit that has the bump and a full green run is the release
-    // (#376, #444); with none, a full run of main starts, and pr tag runs again when it is green.
-    const earlier = await greenWithBump(tag, deps);
-    if (!earlier) {
-      // A full run starts at once, even while HEAD's push run is going: dispatches have their own concurrency group (#545).
-      const next = await startFullRun(runs, deps);
-      return refuse(
-        running
-          ? `${sha}'s CI run on ${MAIN} is still running, and no commit with the ${tag} bump has a full green run: ${next}`
-          : `${sha} has no full green run on ${MAIN}, and no commit with the ${tag} bump has one: ${next}`,
-      );
-    }
-    const why = running
-      ? `${sha}'s CI run on ${MAIN} is still running`
-      : `${sha} has no full green run on ${MAIN}`;
-    deps.log(`${why}: tagging ${earlier}, the newest commit with the ${tag} bump that has one`);
-    target = earlier;
+    const pinned = args.includes("--commit");
+    const fallback = await earlierTarget({ tag, sha, runs, pinned }, refuse, deps);
+    if (typeof fallback === "number") return fallback;
+    target = fallback;
   }
   if ((await deps.git(["tag", "-a", tag, "-m", tag, target])).code !== 0) {
     deps.log(`git refused to make ${tag}`);
