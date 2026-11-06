@@ -63,13 +63,13 @@ describe("sessao-estreita: a session fits a narrow pane", () => {
     expect(["min-w-0", "break-all"].filter((c) => !folder.includes(c))).toEqual([]);
   });
 
-  test("in a narrow dock the composer's box takes its own line, above the buttons", () => {
+  test("in a narrow dock (under 24 rem) the composer's box takes its own line, above the buttons", () => {
     const card = utility("composer-card");
     expect({
       container: utility("composer-dock").includes("container-type: inline-size"),
-      wraps: /@container \(width < 28rem\) \{[^}]*flex-wrap: wrap/.test(card),
+      wraps: /@container \(width < 24rem\) \{[^}]*flex-wrap: wrap/.test(card),
       boxFirst:
-        /@container \(width < 28rem\) \{[\s\S]*\.composer-box \{[^}]*order: -1;[^}]*flex-basis: 100%/.test(
+        /@container \(width < 24rem\) \{[\s\S]*\.composer-box \{[^}]*order: -1;[^}]*flex-basis: 100%/.test(
           card,
         ),
     }).toEqual({ container: true, wraps: true, boxFirst: true });
