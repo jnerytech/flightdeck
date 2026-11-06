@@ -136,7 +136,9 @@ jobs:
       # functions from them. The coverage report stays in coverage/ for SonarCloud.
       - name: Testes do PR (pirâmide)
         if: github.event_name == 'pull_request'
-        run: bun run test:related -- --pr --base origin/${{ github.base_ref }} --keep-coverage coverage
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: bun run test:related -- --pr --base "origin/$BASE_REF" --keep-coverage coverage
 
       # main, the nightly schedule and a dispatch: the whole suite and the whole-repo 100% gate.
       - name: Testes (cobertura 100%)

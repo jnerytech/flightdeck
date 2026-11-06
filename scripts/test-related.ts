@@ -10,7 +10,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { checkChanged } from "./lib/related-coverage.ts";
 import { planRelated } from "./lib/test-related.ts";
 import { testTiers } from "./lib/test-tiers.ts";
@@ -35,8 +35,20 @@ const pyramid = args.includes("--pr");
 const tierMap: Record<string, string> = tiers || pyramid ? liveTiers() : {};
 const keepFlag = args.indexOf("--keep-coverage");
 const keep = keepFlag >= 0 ? args[keepFlag + 1] : undefined;
+// The kept folder stays inside the repository, and is never another flag.
+if (keep !== undefined) {
+  const inside = relative(ROOT, resolve(ROOT, keep));
+  if (keep.startsWith("-") || inside === "" || inside.startsWith("..") || isAbsolute(inside)) {
+    console.error(
+      `test:related: --keep-coverage needs a folder inside the repository, got ${keep}`,
+    );
+    process.exit(2);
+  }
+}
 
 const coverageDir = keep ? resolve(ROOT, keep) : mkdtempSync(join(tmpdir(), "test-related-"));
+// A report left by an earlier run must never stand in for this one's.
+if (keep) rmSync(join(coverageDir, "lcov.info"), { force: true });
 const plan = planRelated({
   coverageDir,
   fast,
