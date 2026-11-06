@@ -27,6 +27,8 @@ export function AppShell(
     header: ReactNode;
     /** The top bar's right side, after the tab strip (issue #282). */
     actions?: ReactNode;
+    /** The slim bar under both columns (issue #491; stub: not drawn yet). */
+    status?: ReactNode;
     sidebar: (collapsed: boolean) => ReactNode;
     labels: AppShellLabels;
     children: ReactNode;

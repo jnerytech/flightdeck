@@ -58,6 +58,30 @@ const toggle = () =>
   screen.queryByRole("button", { name: "Mostrar barra lateral" });
 
 describe("layout", () => {
+  test("AppShell: a barra de status vai em uma terceira linha, depois do conteúdo e sem tirar a largura dele", () => {
+    render(
+      <AppShell
+        header={<span>Flightdeck</span>}
+        status={<p>barra</p>}
+        sidebar={() => <p>hosts</p>}
+        labels={LABELS}
+      >
+        <p>conteúdo</p>
+      </AppShell>,
+    );
+    const bar = screen.getByText("barra");
+    const main = screen.getByRole("main");
+    // Last in the frame, after the sidebar-and-content row, which keeps its own columns.
+    expect(bar.parentElement?.lastElementChild).toBe(bar.closest("[data-slot='shell-status']"));
+    expect(main.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bar.closest("[data-slot='shell-status']")?.parentElement?.className ?? "").toContain(
+      "grid-rows-[auto_minmax(0,1fr)_auto]",
+    );
+    cleanup();
+    shell();
+    expect(document.querySelector("[data-slot='shell-status']")).toBeNull();
+  });
+
   test("AppShell: cabeçalho fixo, barra de 240 px que recolhe para 56 px só com ícones, e conteúdo", async () => {
     shell();
     expect(screen.queryByRole("banner")?.textContent ?? "").toContain("Flightdeck");
