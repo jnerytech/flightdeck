@@ -22,14 +22,14 @@ const file = (extra: Record<string, unknown>) =>
     ...extra,
   }) as never;
 
-const view = (f: unknown, onOpenOutside?: (file: never) => void) => (
+const view = (f: unknown, onShowInFolder?: (file: never) => void) => (
   <DiffView
     files={[f as never]}
     mode="unified"
     selection={null}
     onPick={() => {}}
     composer={null}
-    {...(onOpenOutside ? { onOpenOutside } : {})}
+    {...(onShowInFolder ? { onShowInFolder } : {})}
   />
 );
 

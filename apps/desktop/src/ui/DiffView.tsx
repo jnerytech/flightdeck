@@ -44,7 +44,7 @@ function FileDiff(props: {
   mode: "unified" | "split";
   selection: Selection | null;
   onPick(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
-  onOpenOutside?: (file: DiffFile) => void;
+  onShowInFolder?: (file: DiffFile) => void;
 }) {
   const t = useT();
   const { file, selection, onPick } = props;
@@ -61,15 +61,15 @@ function FileDiff(props: {
             ? t("changes.tooLargeNoteNoSize")
             : t("changes.tooLargeNote", { size: formatBytes(file.bytes) })}
         </p>
-        {props.onOpenOutside && (
+        {props.onShowInFolder && file.status !== "deleted" && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            aria-label={t("changes.openOutsideLabel", { path })}
-            onClick={() => props.onOpenOutside?.(file)}
+            aria-label={t("changes.showInFolderLabel", { path })}
+            onClick={() => props.onShowInFolder?.(file)}
           >
-            {t("changes.openOutside")}
+            {t("changes.showInFolder")}
           </Button>
         )}
       </div>
@@ -151,8 +151,8 @@ export function DiffView(props: {
   onPick(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
   /** The form to comment on the selection; shown under the file it belongs to. */
   composer: ReactNode;
-  /** Opens a file with the system's app; absent where the app cannot (a browser, a remote host). */
-  onOpenOutside?: (file: DiffFile) => void;
+  /** Shows a file in the system's file manager; absent where the app cannot (a browser, a remote host). */
+  onShowInFolder?: (file: DiffFile) => void;
 }) {
   const t = useT();
   return (
@@ -168,7 +168,7 @@ export function DiffView(props: {
             mode={props.mode}
             selection={props.selection}
             onPick={props.onPick}
-            {...(props.onOpenOutside ? { onOpenOutside: props.onOpenOutside } : {})}
+            {...(props.onShowInFolder ? { onShowInFolder: props.onShowInFolder } : {})}
           />
           {props.selection?.path === file.path && props.composer}
         </div>

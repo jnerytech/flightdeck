@@ -105,7 +105,7 @@ export interface DiffLimits {
   /** `git diff` is killed after this much output: a 200 MB change must not be held in memory. */
   rawBytes: number;
 }
-export const DIFF_LIMITS: DiffLimits = { totalBytes: 4 * 1024 * 1024, rawBytes: 32 * 1024 * 1024 };
+export const DIFF_LIMITS: DiffLimits = { totalBytes: 4 * 1024 * 1024, rawBytes: 16 * 1024 * 1024 };
 
 /** Git's empty tree: what a repository without commits is compared with. */
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
@@ -198,15 +198,18 @@ async function trackedFiles(
   uncommitted: boolean,
   rawBytes: number,
 ): Promise<DiffFile[]> {
-  const out = await gitLimited(cwd, rawBytes, ...DIFF, against);
+  const out = await gitLimited(cwd, rawBytes, ...DIFF, "--end-of-options", against);
   if (!out.truncated) return parseUnifiedDiff(must(out, "git diff").stdout, uncommitted);
   const read = parseUnifiedDiff(out.stdout, uncommitted).slice(0, -1);
   const names = must(
-    await git(cwd, ...RAW_PATHS, "diff", "--name-status", "-z", "-M", against),
+    await git(cwd, ...RAW_PATHS, "diff", "--name-status", "-z", "-M", "--end-of-options", against),
     "git diff",
   );
   const counts = parseNumstat(
-    must(await git(cwd, ...RAW_PATHS, "diff", "--numstat", "-z", "-M", against), "git diff").stdout,
+    must(
+      await git(cwd, ...RAW_PATHS, "diff", "--numstat", "-z", "-M", "--end-of-options", against),
+      "git diff",
+    ).stdout,
   );
   const whole = new Set(read.map((file) => file.path));
   const listed = parseNameStatus(names.stdout, uncommitted)

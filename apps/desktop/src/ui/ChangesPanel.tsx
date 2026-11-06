@@ -265,8 +265,8 @@ export function ChangesPanel(props: {
             composer={composer}
             {...(store.canOpenPaths(hostId)
               ? {
-                  onOpenOutside: (file: DiffFile) =>
-                    void store.openPath(hostId, `${changes.root}/${file.path}`),
+                  onShowInFolder: (file: DiffFile) =>
+                    void store.revealPath(hostId, `${changes.root}/${file.path}`),
                 }
               : {})}
           />

@@ -99,17 +99,21 @@ export async function gitLimited(
   let size = 0;
   let truncated = false;
   const reader = proc.stdout.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    size += value.length;
-    if (size > limit) {
-      truncated = true;
-      proc.kill();
-      await reader.cancel();
-      break;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      size += value.length;
+      if (size > limit) {
+        truncated = true;
+        await reader.cancel();
+        break;
+      }
     }
+  } finally {
+    // Past the limit, or when reading failed: git does not go on writing to nobody.
+    proc.kill();
   }
   const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
   const all = Buffer.concat(chunks);
