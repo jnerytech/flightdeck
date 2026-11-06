@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { must } from "../../daemon/test/helpers.ts";
@@ -502,6 +502,42 @@ describe("board-ui", () => {
     const value = (label: string) =>
       (screen.queryByLabelText(label) as HTMLInputElement | null)?.value;
     expect([value("Título"), value("Ajuste")]).toEqual(["Rascunho meu", "meu ajuste"]);
+  });
+
+  // #641, narrow-window guard ("card"): the conversation's timeline scrolled inside a page body
+  // that scrolled too. Once the conversation shows, the card's details are a pane of their own
+  // above it, which scrolls by itself, so the page body never does. The same element, so what was
+  // typed stays (#249).
+  test("once the card's conversation shows, its details become a pane of their own above it", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Painel", "faça");
+    await openCard("Painel");
+    const details = () => screen.queryByLabelText("Título")?.closest("[data-slot='card-info']");
+    const before = details() ?? null;
+    const splitBefore = before?.getAttribute("data-split") ?? null;
+    await click("Iniciar");
+    await settle(() => screen.queryByRole("log", { name: "Conversa do card" }) !== null);
+    const after = details() ?? null;
+    const log = screen.queryByRole("log", { name: "Conversa do card" });
+    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    const at = css.indexOf("@utility card-info {");
+    const rule = at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
+    expect({
+      splitBefore,
+      same: before !== null && before === after,
+      splitAfter: after?.getAttribute("data-split") ?? null,
+      apart: log !== null && log.closest("[data-slot='card-info']") === null,
+      reachable: after?.getAttribute("tabindex") ?? null,
+      scrolls: /&\[data-split="true"\] \{[^}]*overflow-y: auto/.test(rule),
+    }).toEqual({
+      splitBefore: "false",
+      same: true,
+      splitAfter: "true",
+      apart: true,
+      reachable: "0",
+      scrolls: true,
+    });
   });
 
   test("detalhe: descrição editável, execuções, conversa, ajuste, diff lado a lado ou unificado", async () => {
