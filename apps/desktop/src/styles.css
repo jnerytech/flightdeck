@@ -2014,3 +2014,46 @@
   fill: color-mix(in oklab, var(--primary) 12%, transparent);
   stroke: none;
 }
+
+/* Issue #490: the update card in the bottom-right corner, above the status bar when there is one. */
+@utility update-card {
+  position: fixed;
+  right: 0.75rem;
+  bottom: calc(var(--status-bar-height, 0rem) + 0.75rem);
+  z-index: 40;
+  display: flex;
+  width: min(20rem, calc(100vw - 1.5rem));
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-popover);
+  color: var(--color-popover-foreground);
+  padding: 0.75rem 0.75rem 0.875rem 1rem;
+  font-size: 0.875rem;
+  box-shadow: 0 8px 24px oklch(0 0 0 / 0.18);
+}
+@utility update-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+@utility update-card-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+@utility update-card-note {
+  color: var(--color-muted-foreground);
+}
+@utility update-card-link {
+  width: fit-content;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border-radius: 2px;
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
