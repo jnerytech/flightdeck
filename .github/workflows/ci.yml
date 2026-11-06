@@ -11,6 +11,9 @@ on:
     branches: [main]
     paths-ignore: ["docs/images/**"]
   pull_request:
+  # The whole suite every night on main (#309): a PR runs the cheap base of the test pyramid.
+  schedule:
+    - cron: "17 4 * * *"
   workflow_dispatch:
     inputs:
       only:
@@ -128,7 +131,18 @@ jobs:
           git config --global user.email "ci@flightdeck.invalid"
 
       # Typecheck, lint and the TDD audit ran in the quick job (#272).
+      # The test pyramid (#309): a PR runs every unit and component test plus the tests of the other
+      # tiers that reach a changed file, and every changed source file must be at 100% lines and
+      # functions from them. The coverage report stays in coverage/ for SonarCloud.
+      - name: Testes do PR (pirâmide)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: bun run test:related -- --pr --base "origin/$BASE_REF" --keep-coverage coverage
+
+      # main, the nightly schedule and a dispatch: the whole suite and the whole-repo 100% gate.
       - name: Testes (cobertura 100%)
+        if: github.event_name != 'pull_request'
         run: bun run test
 
       # SonarCloud reads it in its own job.
