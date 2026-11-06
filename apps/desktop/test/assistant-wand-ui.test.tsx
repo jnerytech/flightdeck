@@ -10,6 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { SessionView } = await import("../src/ui/SessionView.tsx");
 const { emptySession } = await import("../src/lib/session-state.ts");
+const { AssistantSettings } = await import("../src/components/assistant/assistant-settings.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -284,5 +285,20 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     const dialog = await screen.findByRole("dialog", { name: "Sugestão da IA" });
     expect(within(dialog).getByRole("button", { name: "Aceitar" })).not.toBeNull();
     expect(within(dialog).getByRole("button", { name: "Descartar" })).not.toBeNull();
+  });
+});
+
+describe("assistant-wand-ui: Settings says why it opened (issue #158)", () => {
+  test("after a wand found no provider, Settings shows the one-line notice once", async () => {
+    const { store, t } = await make({}, { configured: false });
+    store.assistant.askForSetup();
+    const settings = render(<AssistantSettings store={store} t={t} />);
+    expect(screen.queryByRole("note")?.textContent).toBe(
+      "Choose an AI provider to use the wand on text fields.",
+    );
+    expect(store.assistant.wantsSetup()).toBe(false);
+    settings.unmount();
+    render(<AssistantSettings store={store} t={t} />);
+    expect(screen.queryByRole("note")).toBeNull();
   });
 });
