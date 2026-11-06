@@ -2289,6 +2289,13 @@ export const en: Dictionary = {
     asSession: "View as session",
     viewTerminal: "View terminal",
   },
+  liveElsewhere: {
+    title: "Already open in another terminal",
+    message:
+      "This session is open in another terminal. Opening it here starts a second copy that the other one will not see: each shows only its own turns, and both write to the same history.",
+    view: "View it live here",
+    anyway: "Open a second copy anyway",
+  },
   hostTerminal: {
     title: "Terminal",
     open: "New terminal",

@@ -2287,6 +2287,13 @@ export const ptBR = {
     asSession: "Ver como sessão",
     viewTerminal: "Ver terminal",
   },
+  liveElsewhere: {
+    title: "Já aberta em outro terminal",
+    message:
+      "Esta sessão está aberta em outro terminal. Abri-la aqui inicia uma segunda cópia que o outro não vê: cada um mostra só os próprios turnos, e os dois escrevem no mesmo histórico.",
+    view: "Ver ao vivo aqui",
+    anyway: "Abrir outra cópia mesmo assim",
+  },
   hostTerminal: {
     title: "Terminal",
     open: "Novo terminal",
