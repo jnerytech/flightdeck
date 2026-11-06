@@ -43,7 +43,9 @@ export function FileViewer(
   const follow = useFollow(props.diff?.hunks.length ?? 0);
   const diff = showDiff ? props.diff : undefined;
   // Only where the host's files are this computer's own (the store checks the path again).
-  const full = props.full && store.canOpenPaths(hostId) ? props.full : null;
+  // and only for a file the host could read.
+  const full =
+    phase.name === "ready" && props.full && store.canOpenPaths(hostId) ? props.full : null;
 
   useEffect(() => {
     let alive = true;
