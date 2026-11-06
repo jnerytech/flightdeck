@@ -22,6 +22,7 @@ export function fakeXterm() {
     rows: 24,
     options: {},
     unicode: { activeVersion: "6" },
+    modes: { bracketedPasteMode: false },
     loadAddon: () => {},
     open: () => {},
     write: (bytes) => void drawn.push(Buffer.from(bytes).toString()),
