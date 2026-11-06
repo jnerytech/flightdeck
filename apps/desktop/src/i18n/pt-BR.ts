@@ -1949,6 +1949,15 @@ export const ptBR = {
     undo: "Desfazer",
     dismiss: "Dispensar",
     stale: "O texto mudou enquanto isto era escrito.",
+    notes: "Observações",
+    notice: {
+      diff_truncated: "O diff era longo demais, então só parte dele foi lida.",
+      lines_redacted: "Algumas linhas ficaram de fora porque pareciam segredos.",
+      subject_too_long: "A primeira linha tem mais de 72 caracteres.",
+      subject_trailing_period: "A primeira linha termina com ponto.",
+      subject_not_conventional: "O repositório pede Conventional Commits: tipo(escopo): texto.",
+      body_needs_blank_line: "Deixe uma linha em branco depois da primeira linha.",
+    },
   },
   assistantSettings: {
     title: "Assistente de IA",

@@ -1951,6 +1951,15 @@ export const en: Dictionary = {
     undo: "Undo",
     dismiss: "Dismiss",
     stale: "The text changed while this was written.",
+    notes: "Notes",
+    notice: {
+      diff_truncated: "The diff was too long, so only part of it was read.",
+      lines_redacted: "Some lines were left out because they looked like secrets.",
+      subject_too_long: "The first line is longer than 72 characters.",
+      subject_trailing_period: "The first line ends with a period.",
+      subject_not_conventional: "The repository asks for Conventional Commits: type(scope): text.",
+      body_needs_blank_line: "Leave a blank line after the first line.",
+    },
   },
   assistantSettings: {
     title: "AI assistant",
