@@ -19,6 +19,8 @@ export function DiagnosticsPanel(props: { store: AppStore }) {
   const logs = store.platformLogs();
   if (!logs) return null;
   const copy = async () => {
+    // The lines still on their way to the file go first, so the tail has them (issue #259).
+    await store.appLog.flush();
     const fromFile = await logs.tail(LINES).catch(() => []);
     const lines = fromFile.length > 0 ? fromFile : store.appLog.recent(LINES);
     const text = diagnosticsText({

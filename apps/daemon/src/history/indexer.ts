@@ -6,8 +6,9 @@ import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol
 import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { promptText } from "../transcript-text.ts";
-import { type HistoryRecord, parseLines } from "./parser.ts";
+import { type HistoryRecord, lastTitle, parseLines } from "./parser.ts";
 import { lastTool, requestLine } from "./session-line.ts";
+import { fileLines, type ToolDetail, toolDetail } from "./tool-detail.ts";
 
 export interface HistoryIndexerOptions {
   db: Database;
@@ -18,6 +19,8 @@ export interface HistoryIndexerOptions {
   /** Whether SQLite has FTS5; detected when absent (injectable so tests cover both paths). */
   fts5?: boolean;
   log?: (message: string) => void;
+  /** The name Claude Code wrote into a transcript, once per pass that read one (issue #605). */
+  onTitle?: (claudeSessionId: string, title: string, kind: "custom" | "agent") => void;
   /** Fallback full pass while running (file watching is the fast path). Default 10 s. */
   scanIntervalMs?: number;
   /** Clock for `maybeActive`. */
@@ -309,6 +312,25 @@ export class HistoryIndexer {
       .query(`${SESSION_SELECT} WHERE s.claude_session_id = ?`)
       .get(claudeSessionId) as SessionRow | null;
     return row ? this.toSession(row) : null;
+  }
+
+  /**
+   * The `index`-th tool call of the message `uuid` with its result (#606), read from the transcript
+   * file the indexer recorded for the session: never a path the client names.
+   */
+  async tool(claudeSessionId: string, uuid: string, index: number): Promise<ToolDetail | null> {
+    const row = this.db
+      .query("SELECT file_path FROM history_sessions WHERE claude_session_id = ?")
+      .get(claudeSessionId) as { file_path: string } | null;
+    if (!row) {
+      throw new FlightdeckError(
+        "not_found",
+        `transcript ${claudeSessionId} not indexed`,
+        "transcript_not_indexed",
+        { id: claudeSessionId },
+      );
+    }
+    return await toolDetail(fileLines(row.file_path), uuid, index);
   }
 
   /** One page of the readable transcript (messages, summaries and system notes). */
@@ -726,6 +748,8 @@ export class HistoryIndexer {
         });
       if (!excluded) this.updateSession(claudeSessionId, path, cwd, records);
     })();
+    const title = excluded ? null : lastTitle(records);
+    if (title) this.opts.onTitle?.(claudeSessionId, title.name, title.kind);
     return {
       result: excluded ? null : { claudeSessionId, path, added: records.length, reset },
       more: offset + end < stat.size && end > 0,

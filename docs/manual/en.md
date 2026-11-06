@@ -900,6 +900,15 @@ live; the list is the project's, so a session of another project never shows her
   badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
   folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
+- Under **Projects**, each project of an online host lists its **branches**: the main checkout
+  (badge **primary**, the base branch) and one line per card that has a worktree, each with a state
+  dot, the branch and the base below it. Picking one narrows the board and the Sessions list to
+  that checkout (a chip with the branch clears it); picking it again clears it too. Picked from the Sessions list, it narrows the list in place and does not open the board; from anywhere else it opens the project's board. A pick whose branch, project or host is gone does nothing and shows no chip. The tree comes
+  from what the app already has, with no host change. A project with many worktrees lists the first
+  8 and a button **N more** (and **Show fewer**) for the rest; the picked branch is always listed.
+  The project's name folds its branches (the arrow keys left and right fold and unfold it); the fold
+  is remembered on this computer, and a folded project that holds the picked branch shows a check
+  on its name.
 - At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
   account (its email and plan, read from the host's account card; the rail shows only its initial)
   opens a menu. Its header names the app and its version. Then come the plan, the account and the id
@@ -1168,7 +1177,8 @@ conversation. It is where you check what the agent did and send it back what to 
     **Refresh** reads it again.
 - **Files tab** (when the host lists files): the session's repository as a tree. Folders come
   first, then files, in natural order (`file2` before `file10`); a folder opens on click and is
-  read once. A changed file carries its status (new, modified, deleted, renamed) from the same diff
+  read when opened, and again when the session writes or removes a file in it (no need to reopen
+  the tab). A changed file carries its status (new, modified, deleted, renamed) from the same diff
   as the Changes tab, live, and every folder above it says **has changes**. A file that may hold a
   credential shows as **Hidden**. `.git` and links that lead out of the repository never show.
   **Filter by name** keeps the names that match among the folders already open, with the folders
@@ -1528,7 +1538,10 @@ exits with code 3.
   is offline, or does not answer within 5 s, shows as "no answer" without blocking the rest.
 - **Reader:** read-only, with the chat's look, loading pages as you scroll. Coming from the
   search, it opens at the hit; otherwise it opens on the latest messages, and "Load earlier" brings
-  the ones before without moving what you are reading.
+  the ones before without moving what you are reading. A tool row (Bash, Read, Grep...) opens with a
+  click, Enter or Space to its whole input (the command, the file, the pattern) and its result, read
+  from the transcript when you open it; an error is red, a result over 64 KB is cut and says so, and
+  a call with no result yet says it is still running or was cut short.
 - **Where a conversation opens:** a session (managed, terminal or from the history) opens on its
   latest message and stays at the end while images, code and panels settle. If you scroll up, it
   stays where you are and the **Jump to latest** button counts the new messages ("3 new"). When you

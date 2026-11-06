@@ -25,6 +25,8 @@ function setup(
     supported?: boolean;
     secrets?: Array<{ id: string; name: string }>;
     answer?: (type: string, payload: unknown) => unknown;
+    /** The person agreed to the hosts (the default); false: nobody did yet. */
+    confirmed?: boolean;
     api?: Parameters<typeof fakeAssistant>[0];
   } = {},
 ) {
@@ -49,7 +51,11 @@ function setup(
     },
   };
   const controller = new AssistantController(deps);
-  controller.setPrefs({ ...options.prefs });
+  // The hosts these tests use have been agreed to, unless a test says otherwise.
+  controller.setPrefs({
+    ...(options.confirmed === false ? {} : { confirmedHosts: ["h1", "h2"] }),
+    ...options.prefs,
+  });
   return { controller, sent, fake, items };
 }
 const input = (over: Record<string, unknown> = {}) => ({
@@ -153,6 +159,44 @@ describe("assistant-run: a wand's request goes to the provider the person chose"
   });
 });
 
+describe("assistant-run: a host the person never agreed to is sent nothing (issue #579)", () => {
+  test("run refuses a host that is not confirmed, whoever asks, and the host sees no request", async () => {
+    const { controller, sent } = setup({ confirmed: false });
+    expect(await refusal(() => controller.run(input()))).toEqual({
+      reason: "assistant_not_configured",
+      params: undefined,
+    });
+    expect(
+      await refusal(() => controller.run(input({ provider: { provider: "host", hostId: "h1" } }))),
+    ).toEqual({ reason: "assistant_not_configured", params: undefined });
+    expect(sent).toEqual([]);
+  });
+
+  test("the refusal comes before the one run of the app is taken, and does not hold it", async () => {
+    const { controller } = setup({ confirmed: false });
+    expect(controller.gate.acquire("other")).toBe(true);
+    expect((await refusal(() => controller.run(input())))?.reason).toBe("assistant_not_configured");
+    controller.gate.release("other");
+    await refusal(() => controller.run(input()));
+    expect(controller.gate.busy()).toBe(false);
+  });
+
+  test("once the person agrees, the same call goes through; an API provider never needed it", async () => {
+    const { controller, sent, fake } = setup({
+      confirmed: false,
+      api: { run: () => ({ ...RESULT, provider: "anthropic" }) },
+    });
+    controller.confirmHost("h1");
+    await controller.run(input());
+    expect(sent.map((call) => [call[0], call[1]])).toEqual([["h1", "assistant.run"]]);
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await controller.refreshKeys();
+    controller.setPrefs({ provider: "anthropic", confirmedHosts: [] });
+    await controller.run(input({ requestId: "r2" }));
+    expect(fake.calls.filter((call) => call[0] === "run")).toHaveLength(1);
+  });
+});
+
 describe("assistant-run: nothing is sent when the text holds a secret", () => {
   test("a token shape in the text refuses with its kind, not its value, before any call", async () => {
     const { controller, sent, fake } = setup();
@@ -177,6 +221,47 @@ describe("assistant-run: nothing is sent when the text holds a secret", () => {
     await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
     await controller.refreshKeys();
     const error = await refusal(() => controller.run(input({ text: "the value is in here" })));
+    expect(error).toEqual({ reason: "assistant_vault_value", params: { names: "deploy key" } });
+    expect(fake.calls.filter((c) => c[0] === "run")).toEqual([]);
+  });
+
+  test("a token shape in the context (the card's title or description) is refused like one in the text, on every path", async () => {
+    const withSecret = { context: { description: "use password=hunter2secret to log in" } };
+    const host = setup();
+    const refused = await refusal(() => host.controller.run(input(withSecret)));
+    expect(refused?.reason).toBe("assistant_secret_found");
+    expect(JSON.stringify(refused)).not.toContain("hunter2secret");
+    expect(host.sent).toEqual([]);
+    const api = setup({ prefs: { provider: "anthropic" } });
+    await api.fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await api.controller.refreshKeys();
+    expect((await refusal(() => api.controller.run(input(withSecret))))?.reason).toBe(
+      "assistant_secret_found",
+    );
+    expect(api.fake.calls.filter((c) => c[0] === "run")).toEqual([]);
+    expect(api.controller.gate.busy()).toBe(false);
+  });
+
+  test("a name of a context entry is scanned too, since it is part of the request", async () => {
+    const { controller, sent } = setup();
+    const refused = await refusal(() =>
+      controller.run(input({ context: { "password=hunter2secret": "x" } })),
+    );
+    expect(refused?.reason).toBe("assistant_secret_found");
+    expect(sent).toEqual([]);
+  });
+
+  test("a vault value in the context is found by the shell and refused with the names, on the API path", async () => {
+    const { controller, fake } = setup({
+      prefs: { provider: "anthropic" },
+      secrets: [{ id: "s1", name: "deploy key" }],
+      api: { vaultHits: (text) => (text.includes("VAULT-VALUE") ? ["s1"] : []) },
+    });
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await controller.refreshKeys();
+    const error = await refusal(() =>
+      controller.run(input({ context: { description: "the key is VAULT-VALUE" } })),
+    );
     expect(error).toEqual({ reason: "assistant_vault_value", params: { names: "deploy key" } });
     expect(fake.calls.filter((c) => c[0] === "run")).toEqual([]);
   });
@@ -279,7 +364,7 @@ describe("assistant-run: one call at a time, and a call can be cancelled", () =>
 
 describe("assistant-run: the preferences and the keys", () => {
   test("setPrefs merges, keeps the shape and tells the listeners; keys read as present or not", async () => {
-    const { controller, fake, items } = setup();
+    const { controller, fake, items } = setup({ confirmed: false });
     const seen: number[] = [];
     controller.subscribe(() => void seen.push(1));
     controller.setPrefs({ enabled: false });
@@ -364,7 +449,7 @@ describe("assistant-run: another provider is a click, never a fallback", () => {
   });
 
   test("the host provider asks once per host, before the first text leaves", () => {
-    const { controller } = setup();
+    const { controller } = setup({ confirmed: false });
     expect(controller.needsHostConfirm({ provider: "host", hostId: "h1" })).toBe(true);
     expect(controller.needsHostConfirm({ provider: "anthropic" })).toBe(false);
     controller.confirmHost("h1");

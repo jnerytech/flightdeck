@@ -106,7 +106,7 @@ async function waitForRun(
         deps.log(`ci-branch: could not look at run ${id}: ${said(answer)}`);
         return null;
       }
-      await deps.sleep(options.pollMs);
+      await deps.sleep(options.pollMs); // NOSONAR: sequential by design: a poll waits before it asks again
       continue;
     }
     failures = 0;
@@ -117,7 +117,7 @@ async function waitForRun(
       );
       return null;
     }
-    await deps.sleep(options.pollMs);
+    await deps.sleep(options.pollMs); // NOSONAR: sequential by design: a poll waits before it asks again
   }
 }
 
@@ -176,7 +176,7 @@ export async function ciBranch(
       deps.log(`ci-branch: the run did not appear within ${Math.round(options.appearMs / 1000)} s`);
       return 2;
     }
-    await deps.sleep(options.pollMs);
+    await deps.sleep(options.pollMs); // NOSONAR: sequential by design: a poll waits before it asks again
   }
 
   const view = await waitForRun(id, deps, options);

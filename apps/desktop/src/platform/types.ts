@@ -235,7 +235,8 @@ export interface Platform {
 
 /** Where the app's log lines go: the shell's log file. */
 export interface LogSink {
-  write(line: string): Promise<void>;
+  /** Appends the lines in order, as one call (issue #259). */
+  write(lines: string[]): Promise<void>;
   tail(lines: number): Promise<string[]>;
   openFolder(): Promise<void>;
 }

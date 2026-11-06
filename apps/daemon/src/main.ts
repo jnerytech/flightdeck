@@ -78,7 +78,7 @@ import { LocalEndpoints } from "./messaging/endpoints.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
 import { Names } from "./names/names.ts";
-import { type TrackOptions, trackNames, warmKnown } from "./names/track.ts";
+import { adoptTitles, type TrackOptions, trackNames, warmKnown } from "./names/track.ts";
 import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
@@ -918,11 +918,15 @@ export async function startDaemon(
       }),
   });
   const rewinder = new Rewinder({ snapshots, sessions: manager });
+  // Phase 21: every session of this host has a standard name and an alias that addresses it.
+  const names = new Names(store.db);
   const history = new HistoryIndexer({
     db: store.db,
     roots: config.history.roots,
     excludeCwds: historyExcludes(config),
     log: (m) => logger.log(m),
+    // Issue #605: the name Claude Code gave a session (`--name`, `/rename`) is its name here too.
+    onTitle: adoptTitles(names, manager),
     ...(config.history.scanIntervalMs ? { scanIntervalMs: config.history.scanIntervalMs } : {}),
   });
   history.start();
@@ -1159,8 +1163,6 @@ export async function startDaemon(
     sendToLaunch: central.sendToLaunch.bind(central),
     autoApprove,
   });
-  // Phase 21: every session of this host has a standard name and an alias that addresses it.
-  const names = new Names(store.db);
   // The messaging service asks the teams who is on one, and the teams need the messaging service.
   let teams: Teams | undefined;
   const messaging = new Messaging({

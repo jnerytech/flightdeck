@@ -567,7 +567,7 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
   });
 });
 
-import { waitForStable } from "../lib/layout-guards.ts";
+import { GAP_BOXES, waitForStable } from "../lib/layout-guards.ts";
 
 describe("layout-guards: a layout that settles late is waited for, not guessed with a fixed wait", () => {
   /** The page height the next frames will report, one entry per frame. */
@@ -597,6 +597,41 @@ describe("layout-guards: a layout that settles late is waited for, not guessed w
     });
     const settled = await waitForStable({ frames: 3, maxMs: 120 });
     expect(settled.stable).toBe(false);
+  });
+
+  /** A toast over the status bar (top at 800) whose bottom edge reads the next value on each read. */
+  function slidingToast(bottoms: number[]) {
+    document.body.innerHTML = `
+      <div data-sonner-toast data-rect="1500,700,1900,780">saved</div>
+      <div data-slot="status-bar" data-rect="0,800,1920,824"></div>`;
+    const toast = document.querySelector("[data-sonner-toast]") as Element;
+    let at = 0;
+    Object.defineProperty(toast, "getBoundingClientRect", {
+      configurable: true,
+      value: () => {
+        const bottom = bottoms[Math.min(at++, bottoms.length - 1)] ?? 0;
+        return { left: 1500, right: 1900, top: bottom - 80, bottom, width: 400, height: 80 };
+      },
+    });
+  }
+  const gapFindings = () =>
+    layoutFindings({ gaps: GAPS })
+      .filter((f) => f.rule === "gap")
+      .map((f) => `${f.path}: ${f.detail}`);
+
+  test("issue #655: a toast still sliding in is waited for: one that reads 7 px and settles at 8 is no finding", async () => {
+    heights([100]);
+    slidingToast([793, 792.5, 792, 792, 792, 792, 792]);
+    const settled = await waitForStable({ frames: 3, maxMs: 2000, boxes: GAP_BOXES });
+    expect(settled.stable).toBe(true);
+    expect(gapFindings()).toEqual([]);
+  });
+
+  test("issue #655: the gap rule allows half a pixel of rounding, and no more", () => {
+    slidingToast([792.4]);
+    expect(gapFindings()).toEqual([]);
+    slidingToast([792.6]);
+    expect(gapFindings()).toEqual(["div: 7 px above status-bar, at least 8"]);
   });
 });
 

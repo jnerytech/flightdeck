@@ -883,4 +883,13 @@ export const MIGRATIONS: readonly string[] = [
   `
   CREATE INDEX IF NOT EXISTS sessions_status ON sessions (status, updated_at);
   `,
+  // Issue #605: the name a session has in Claude Code (a custom-title, else an agent-name), kept
+  // apart from the display name so a rename in Flightdeck is told from a title read again.
+  `
+  CREATE TABLE session_titles (
+    session_id TEXT PRIMARY KEY,
+    title      TEXT NOT NULL,
+    kind       TEXT NOT NULL
+  );
+  `,
 ];

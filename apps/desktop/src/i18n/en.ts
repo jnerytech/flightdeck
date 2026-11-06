@@ -905,6 +905,17 @@ export const en: Dictionary = {
     gateRow: "Workflow step “{step}” waits for your approval",
     release: "Free the pair",
   },
+  projectTree: {
+    list: "Branches of {name}",
+    node: "{project}: {branch}",
+    primary: "primary",
+    base: "base {name}",
+    filter: "Branch: {branch}",
+    clear: "Clear the branch filter",
+    more: "{n} more",
+    fewer: "Show fewer",
+    pickedFolded: "Branch picked: {branch}",
+  },
   hub: {
     view: "View",
     viewList: "List",
@@ -2128,6 +2139,10 @@ export const en: Dictionary = {
     continueAnyway: "Continue anyway",
     loadPrevious: "Load earlier",
     tool: "Tool {name}",
+    toolLoading: "Reading the call from the transcript…",
+    toolNoResult: "No result in the transcript: still running, or cut short.",
+    toolTruncated: "Cut at 64 KB.",
+    toolMissing: "This call could not be read from the transcript.",
     loading: "Opening the session…",
     missing: "This session is not on {host} any more: it may have been deleted or moved.",
     failed: "The session could not be read from {host}.",
@@ -3149,6 +3164,8 @@ export const en: Dictionary = {
     emptyHint:
       "Messages between sessions show up here once sessions can message each other, for example in a team.",
     emptyLink: "Open Teams",
+    noMatch: "No message matches the filter.",
+    loading: "Loading messages",
     to: "to",
     open: "Open the session",
     statuses: {
@@ -3490,6 +3507,10 @@ export const en: Dictionary = {
     trustMessage:
       "Trust the workflow {name}? It will be able to run these commands in the cards' worktrees: {commands}.",
     none: "none",
+    loading: "Loading workflows",
+    empty: "No workflows on the base branch yet.",
+    failed:
+      "Could not read the workflows. Check that the host is connected, then open the page again.",
   },
   shortcuts: {
     title: "Keyboard shortcuts",
@@ -3831,6 +3852,14 @@ export const en: Dictionary = {
     openBoard: "Open the board of {name}",
     workflows: "Workflows of {name}",
     edit: "Edit {name}",
+    /** What a project row shows on its action buttons; the full name above stays their accessible name. */
+    short: {
+      workflows: "Workflows",
+      agent: "Agent",
+      actions: "Actions",
+      automations: "Automations",
+      edit: "Edit",
+    },
     worktreeIncludeMissing:
       "This project has no .worktreeinclude. List in it the files git ignores that every worktree needs (such as .env), one pattern per line:",
     worktreeIncludeExample: "Example .worktreeinclude",

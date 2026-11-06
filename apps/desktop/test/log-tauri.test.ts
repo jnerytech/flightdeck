@@ -13,11 +13,11 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
       return cmd === "read_log_tail" ? ["a", "b"] : undefined;
     }) as never;
     const platform = tauriPlatform({} as never, call);
-    await platform.logs?.write("2026 INFO hello");
+    await platform.logs?.write(["2026 INFO hello", "2026 WARN again"]);
     expect(await platform.logs?.tail(50)).toEqual(["a", "b"]);
     await platform.logs?.openFolder();
     expect(invokes).toEqual([
-      ["append_log", { line: "2026 INFO hello" }],
+      ["append_log", { lines: ["2026 INFO hello", "2026 WARN again"] }],
       ["read_log_tail", { lines: 50 }],
       ["open_logs_dir", undefined],
     ]);
@@ -75,7 +75,7 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
     // L3: a file with invalid UTF-8 is read lossily, not skipped.
     expect(rust).toContain("from_utf8_lossy");
     // L4: the line is cut before the copy that flattens it.
-    const body = /fn append_line\([\s\S]*?\n\}\n/.exec(rust)?.[0] ?? "";
+    const body = /fn append_one\([\s\S]*?\n\}\n/.exec(rust)?.[0] ?? "";
     expect(body.indexOf("is_char_boundary")).toBeGreaterThan(-1);
     expect(body.indexOf("is_char_boundary")).toBeLessThan(body.indexOf("replace(["));
   });
@@ -88,6 +88,15 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
     expect(tests).toMatch(/tail_lines\(&dir, 100_000, 2\)\.len\(\),\s*LOG_MAX_TAIL/);
     expect(tests).toContain("remove_dir_all");
     expect(tests).toContain('append_line(&dir, "only", 10, 1)');
+  });
+
+  test("a batch of lines is one call, capped in the shell, and the live file never opens through a link (issue #259)", () => {
+    expect(rust).toMatch(/async fn append_log\(app: tauri::AppHandle, lines: Vec<String>\)/);
+    expect(rust).toMatch(/const LOG_MAX_BATCH: usize = 1000;/);
+    const command = /async fn append_log[\s\S]*?\n}\n/.exec(rust)?.[0] ?? "";
+    expect(command).toContain("append_lines(");
+    const opener = /fn open_append[\s\S]*?\n}\n/.exec(rust)?.[0] ?? "";
+    expect(opener).toContain("libc::O_NOFOLLOW");
   });
 
   test("the folder is made 0700, the file 0600, a symlink is refused, and the tail reads a bounded window", () => {
