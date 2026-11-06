@@ -270,8 +270,8 @@ describe("hub-ui", () => {
     expect(badge("repo-ask", "precisa de você")?.innerHTML).toContain("text-status-needs-you");
     // The host is the same for the whole group: it is in the header, not on the row.
     expect(within(ask).queryByText(/^alfa/)).toBeNull();
-    expect(badge("repo-run", "rodando")?.className).toContain("bg-status-running");
-    expect(badge("Gerenciada", "ociosa")?.className).toContain("bg-status-idle");
+    expect(badge("repo-run", "rodando")?.innerHTML).toContain("border-status-running");
+    expect(badge("Gerenciada", "ociosa")?.innerHTML).toContain("bg-status-idle");
     // Local time of the instant, not UTC: 10:00 UTC is 07:00 in São Paulo.
     expect(item("Do histórico")?.textContent ?? "").toContain("histórico");
     expect(item("Do histórico")?.querySelector("time")?.getAttribute("title")).toBe(
@@ -279,7 +279,7 @@ describe("hub-ui", () => {
     );
     expect(item("Do histórico")?.querySelector("time")?.textContent).toBe("1 de set.");
     expect(item("Do histórico")?.textContent ?? "").not.toContain("10:00");
-    expect(badge("Do histórico", "encerrada")?.className).toContain("bg-status-ended");
+    expect(badge("Do histórico", "encerrada")?.innerHTML).toContain("border-status-ended");
   });
 
   test("as ações ficam num menu no fim da linha, sem ícones soltos: renomear, fixar, arquivar e copiar o comando", async () => {
