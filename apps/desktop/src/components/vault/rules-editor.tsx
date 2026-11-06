@@ -53,13 +53,15 @@ const SELECT =
  * Phase 19: a secret's usage rules, in order (the first that matches decides). The connected
  * hosts check them when they are saved, and what they refuse (the ceiling) shows here.
  */
-export function RulesEditor(props: {
-  store: AppStore;
-  secret: SecretMeta;
-  /** A new rule matching this goes first, where it decides before the others. */
-  seed?: Record<string, string>;
-  onClose(): void;
-}) {
+export function RulesEditor(
+  props: Readonly<{
+    store: AppStore;
+    secret: SecretMeta;
+    /** A new rule matching this goes first, where it decides before the others. */
+    seed?: Record<string, string>;
+    onClose(): void;
+  }>,
+) {
   const t = useT();
   const id = useId();
   const { store, secret } = props;

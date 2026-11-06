@@ -4,7 +4,7 @@
 
 Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.19.0. O roadmap
 está em [`docs/SPEC.md`](../SPEC.md), as divergências em relação às specs em
-[`docs/DECISIONS.md`](../DECISIONS.md) e o vocabulário da interface em
+[`docs/decisions/`](../decisions/) (as mais antigas em [`docs/DECISIONS.md`](../DECISIONS.md)) e o vocabulário da interface em
 [`docs/GLOSSARY.md`](../GLOSSARY.md). O manual supõe `flightdeckd` no `PATH`; o binário instalado
 fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
@@ -292,6 +292,38 @@ hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, *
 **falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
 O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
 terminal com `flightdeckd doctor`.
+### Confiar em um projeto
+
+Um projeto (um repositório) pode trazer configuração própria: hooks que rodam comandos sozinhos,
+servidores MCP que iniciam programas, configurações com ferramentas liberadas, um `CLAUDE.md`,
+agentes, skills e comandos. Em uma sessão que o Flightdeck inicia, essa configuração carrega
+**somente em uma pasta em que você confiou**. As pastas em que você já trabalhava quando isso
+chegou (os projetos do quadro e as pastas das suas sessões anteriores) têm confiança; um
+repositório que você clonar depois, ou uma pasta que você adicionar, começa sem confiança.
+
+- Em uma pasta sem confiança a sessão carrega as suas configurações, não as do projeto, e
+  **também não os seus servidores MCP nem os seus plugins** (o Claude Code é instruído a usar só o
+  servidor MCP que o Flightdeck dá). O `CLAUDE.md`, os agentes e as skills do projeto também não
+  carregam. Um aviso no alto da sessão diz isso, com **Revisar e confiar**.
+- A página do projeto tem **Configuração do projeto**: o que o projeto carregaria, lido sem rodar
+  nada (hooks por evento e servidores MCP com o comando inteiro, em um bloco com rolagem e um
+  aviso quando um comando é longo ou tem várias linhas; programas que as configurações executam,
+  como `apiKeyHelper` e `statusLine`; variáveis de ambiente que desviam tráfego ou código, com o
+  valor, e os nomes das outras, nunca os valores; plugins; toda outra chave de configuração
+  presente; ferramentas liberadas; agentes, skills e comandos, e os que trazem hooks, servidores
+  ou permissões de ferramentas no cabeçalho; `CLAUDE.md`; e arquivos que não puderam ser lidos), o custo de não confiar e
+  **Confiar neste projeto**. Ele pergunta antes, citando o projeto e o host, porque hooks e
+  servidores MCP com confiança rodam comandos naquele computador sem perguntar a você. **Revogar a
+  confiança** não pergunta. Confiar vale para as pastas dentro do projeto, não para as ao redor.
+- Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
+  projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
+  segundo plano seguem a mesma regra das sessões do app.
+- O worktree de um card sempre lê a configuração do projeto da pasta principal dele, então uma
+  branch nunca traz hooks próprios, com confiança ou sem.
+- Confiar só funciona a partir do próprio computador do host ou pela Tailscale (como liberar uma pasta ou sessões sem pedidos); revogar funciona de qualquer lugar.
+- A decisão fica no host (`project_trust` no banco dele), por host, e é registrada no log. Um host
+  que não anuncia `projectTrust` carrega tudo, como antes.
+
 ### Sessões sem pedidos de permissão
 
 Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem
@@ -536,7 +568,12 @@ histórico.
   alterna entre Padrão, Aceitar edições e Planejar. **Ignorar permissões** também está no menu,
   mas o ciclo nunca cai nele: ele pergunta antes, citando o host e a sessão, e o chip fica
   vermelho enquanto está ligado. Em um host com a chave desligada (ou para um modo mais solto que
-  o da partida da sessão) a linha fica esmaecida, diz por quê e leva às configurações do host. Durante o
+  o da partida da sessão) a linha fica esmaecida, diz por quê e leva às configurações do host. O
+  modelo também é um chip ("Opus 5.5 · Médio"): o menu **Modelo** lista Padrão, Opus, Sonnet e
+  Haiku com para que serve cada um e seu número (tecle 1 a 4), **Mais modelos** traz as versões
+  específicas, e **Esforço** (num host que suporta) define Baixo, Médio, Alto, Muito alto ou Máximo
+  para os próximos turnos, ou volta ao nível do próprio modelo. Uma sessão do OpenCode mantém uma
+  lista simples dos seus modelos. Durante o
   turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
   arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
   menos movimento.
@@ -1009,6 +1046,11 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   - num card, o diff contra a base, com quantos commits ele está à frente e atrás dela;
   - os arquivos com status e contagens, e o diff unificado ou lado a lado, com as linhas
     numeradas. Um arquivo binário aparece na lista, sem diff;
+  - um arquivo grande demais (mais de 512 KB de diff ou de arquivo novo) aparece na lista com a
+    marca **Grande demais** e o tamanho, sem conteúdo, para o painel não travar. O mesmo vale
+    para o que passa de 4 MB de diff no total: os arquivos seguintes entram só na lista. Num host
+    desta máquina, **Mostrar na pasta** abre o gerenciador de arquivos no arquivo (o editor
+    segue ao lado, e recusa o que passa de 1 MB);
   - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
     lê de novo.
 - **Comentários inline:**
@@ -1521,8 +1563,10 @@ credencial). Você pode acrescentar padrões na configuração do host (`risk.ex
 podem ser rebaixados.
 
 - Um pedido de **Risco alto** fica vermelho e **Aprovar** vira **Segurar para aprovar**: segure o botão por
-  2 segundos. A tecla A não o aprova; N continua negando.
-- A bandeja nunca aprova um pedido de risco alto: só oferece **Abrir**.
+  2 segundos. O motivo fica escrito sob o botão (não só numa dica). A tecla A não o aprova; N continua negando. O host também confere a espera: recusa a
+  aprovação de um pedido de risco alto que não a traga ("Um pedido de risco alto só é aprovado
+  segurando o botão."), então nenhum outro cliente consegue pulá-la.
+- A bandeja nunca aprova um pedido de risco alto: oferece **Negar** e **Abrir**.
 - Com a aprovação automática ligada, o que ninguém aprovou à mão aparece na linha do tempo da sessão como
   "Aprovado automaticamente", com quem decidiu e o motivo. Um pedido de risco alto ou que acessa a rede
   sempre vem para você.
@@ -1775,8 +1819,8 @@ aparece em **Precisa de você** com uma notificação: quem pediu, a ação e os
 comando, os segredos e o host). **Aprovar** entrega o segredo só para aquela execução; **Negar**
 faz a execução falhar na hora. Uma ação com `approval: never` roda sem pergunta, `first-per-session`
 pergunta uma vez e fica lembrada até o app reiniciar, e `always` pergunta todas as vezes. Um
-`run_with_secret` é de risco alto: segure o botão por 2 segundos para aprovar, e a bandeja só o
-abre.
+`run_with_secret` é de risco alto: segure o botão por 2 segundos para aprovar; a bandeja só
+oferece Negar e Abrir.
 
 ### Regras de uso por segredo
 
@@ -2130,10 +2174,13 @@ terceiros.
 
 #### Qual conta este host está usando?
 
-- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Team, Enterprise) e duas
+- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Ultra, Team, Enterprise) e duas
   barras, **5 horas** e **7 dias**, com a porcentagem usada e quando cada uma reinicia (passe o
   mouse para ver a hora exata). As barras de 7 dias do Opus e do Sonnet só aparecem quando o host
   as informa.
+- O plano vem do login do `claude` no host, que o guarda desde que você entrou: depois de mudar de
+  plano, saia e entre de novo lá e toque em **Atualizar**. As barras são lidas ao vivo e estão sempre
+  em dia.
 - Ele é lido ao abrir a página e de novo a cada 5 minutos enquanto ela fica aberta, e na hora em
   que uma sessão gerenciada termina um turno. "Última leitura há 2 min" diz o quanto está
   fresco. **Atualizar** lê agora; há 30 segundos de espera entre leituras.
@@ -2220,7 +2267,9 @@ do app, dos cards e dos workflows, subagentes incluídos.
 - **O que aparece:**
   - o custo estimado, os tokens e a economia do cache (quanto o cache read custou a menos do que
     o mesmo volume como input normal);
-  - um gráfico por dia, empilhado por projeto, e as quebras por projeto, modelo e origem;
+  - um gráfico por dia, empilhado por projeto (Tab chega ao gráfico, as setas andam pelos dias e
+    cada dia diz o total numa dica ao passar o mouse ou ao receber o foco), e as quebras por
+    projeto, modelo e origem;
   - as sessões mais caras, e clicar numa abre a sessão;
   - o custo estimado também aparece na lista de sessões, na sessão aberta, no card e na execução
     de workflow.
@@ -2592,10 +2641,35 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 
 - **Precisa de você:** na barra lateral, com o contador de pedidos abertos em todos os hosts. A
   tela lista os pedidos, do mais antigo ao mais novo, e o cartão do pedido escolhido fica ao
-  lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
+  lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa. O
+  cartão recebe o foco, então A e N funcionam sem um clique antes, e quando um pedido é
+  respondido o próximo é escolhido, com quantos restam. Um pedido de risco alto continua sendo
+  aprovado só segurando o botão.
+- **De uma notificação:** o clique abre a sessão com o cartão do pedido em foco: uma tecla
+  responde. No sino, a entrada de um pedido já respondido abre a sessão naquele pedido.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Worktrees:** um painel da página do host (hosts que anunciam `worktrees`) lista as worktrees
+  dos cards em `.flightdeck/worktrees` com o tamanho em disco (**desconhecido** quando a medição
+  estourou o tempo, nunca 0), há quanto tempo estão paradas e o card de cada uma. **Sugerida** marca
+  uma worktree limpa, sem commits não enviados e sem sessão ao vivo, parada há mais de 7 dias, cujo
+  card está Concluído ou cujo PR foi mesclado, ou que não tem card. Uma worktree com alterações não
+  commitadas, commits que não existem em outro lugar, sessão, terminal ou execução rodando, branch base
+  desconhecido (precisa ser um branch de verdade, não uma tag nem `HEAD`), um branch que não é um
+  `fd/…` do Flightdeck, arquivos ignorados que um build não recria (só `node_modules`, `dist`,
+  `build`, `target`, `coverage`, `.cache`, `.next` e `out`, como pasta na raiz da worktree, não
+  contam, e um arquivo de credencial ignorado, como `.env` ou `*.pem`, sempre conta), alterações que
+  o git esconde do `git status` (`assume-unchanged` ou `skip-worktree`), ou algo que o git não soube
+  responder fica **mantida**: a linha diz por quê e não pode ser marcada. A confirmação diz que as
+  pastas recriáveis saem junto com a worktree. Filtre por Sugeridas,
+  Protegidas ou Sem card, ordene por idade ou tamanho, **Selecionar sugeridas** ou **Selecionar
+  todas que podem sair**, e então **Remover**: a confirmação cita cada branch com o card e a coluna, e o espaço
+  liberado. Só as linhas na tela podem ser marcadas ou removidas. O host trava cada pasta (nada
+  pode começar nela) e confere de novo antes de removê-la (sem force), então uma que mudou nesse
+  meio-tempo é mantida; o branch só é apagado se ainda estiver no commit que foi conferido, senão
+  a pasta sai e o branch fica, e o resultado diz isso. O card, se houver, continua no board sem a worktree. Um disco com menos de
+  10% livre gera aviso. Apagar algo que está mantido continua sendo pelo **Descartar** do card.
 - **Um host desconectado** mostra um aviso no topo da página dele: o estado, o que falhou em
   palavras simples (nada respondeu, sem resposta a tempo, a conexão caiu, o token foi recusado), a
   hora da última tentativa, a contagem até a próxima tentativa automática e **Reconectar agora**,
@@ -2622,7 +2696,8 @@ pedidos abertos, de sessões gerenciadas e do terminal, do mais antigo ao mais n
 
 - Cada pedido abre um submenu com **Aprovar**, **Negar** e **Abrir**. Aprovar e Negar respondem no
   host do pedido, sem abrir a janela; Abrir traz o app na sessão, com o card de aprovação.
-- Gates de workflow aparecem só com **Abrir**: eles pedem leitura, e a resposta fica no card.
+- Gates de workflow aparecem só com **Abrir**: eles pedem leitura, e a resposta fica no card. Um
+  pedido de risco alto e um pedido de segredo têm **Negar** e **Abrir**: aprovar pede a janela.
 - Acima de 10, a última linha é **e mais N…**, que abre o app.
 - O submenu é refeito meio segundo depois de a lista parar de mudar.
 - **Notificação de pedido:** leva o link `flightdeck://request?host=…&request=…`, que abre o app
@@ -2822,11 +2897,16 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
 
 - **O app:**
   - procura a versão nova ao abrir e a cada 6 h, no `latest.json` da última release;
-  - com uma versão nova, mostra a faixa "Flightdeck X disponível", com as notas, **Instalar e
-    reiniciar** e **Depois**;
-  - assinatura inválida ou download quebrado aparecem na faixa, e nada é instalado;
-  - em **Configurações**: **Procurar atualização agora** e **Avisar sobre atualizações** (ligado
-    por padrão).
+  - com **Atualizar automaticamente** ligado (o padrão), baixa a versão nova em segundo plano,
+    confere a assinatura e então mostra a faixa "O Flightdeck X está pronto. Reinicie para
+    atualizar." com **Reiniciar agora** e **Depois**. Nada reinicia sozinho (#280). Sair pela
+    bandeja com uma versão baixada a instala na saída, sem abrir o app de novo (#402);
+  - com ele desligado, a faixa diz "Flightdeck X disponível", com as notas, **Instalar e
+    reiniciar** e **Depois**, como antes;
+  - assinatura inválida ou download quebrado aparecem na faixa, e nada é instalado; um download que
+    falhou é tentado de novo na próxima verificação;
+  - em **Configurações**: **Procurar atualização agora**, **Avisar sobre atualizações** e
+    **Atualizar automaticamente** (os dois ligados por padrão).
 - **O daemon:**
   - verifica o `daemon-latest.json` ao subir, quando pedido e a cada `updates.checkIntervalH`
     (6 h por padrão);
@@ -2840,12 +2920,18 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
   - o daemon baixa o binário do próprio sistema para `<dataDir>/updates/`, confere o sha256 e a
     assinatura, e roda o `flightdeckd update --from` fora do serviço, para sobreviver à própria
     parada: uma tarefa única `Flightdeck\update` no Windows e `systemd-run --user` no Linux;
-  - o host mostra "atualizando…" até reconectar na versão nova.
+  - o host mostra "atualizando…" até reconectar na versão nova;
+  - **sozinho** (`updates.auto`, ligado por padrão; #280): quando uma verificação acha versão mais
+    nova, o daemon a aplica só com o host ocioso, sem sessão nem execução em andamento, e senão
+    espera. Nunca aplica uma versão mais velha. Uma aplicação que falha mantém o binário antigo e é
+    tentada de novo na próxima verificação. A página do host tem **Atualizar este host
+    automaticamente** (a mesma configuração, guardada pelo daemon) e diz se a atualização está
+    desligada, em dia, esperando, começou ou falhou, e por quê.
 - **Ordem:** com o app e os daemons atrasados, a faixa sugere atualizar primeiro o app.
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 6 } }
+               "checkIntervalH": 6, "auto": true } }
 ```
 
 Só o `flightdeckd` compilado verifica o GitHub por padrão. Rodando do código-fonte não há binário

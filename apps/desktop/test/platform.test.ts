@@ -61,6 +61,14 @@ mock.module("@tauri-apps/plugin-updater", () => ({
       downloadAndInstall: async () => {
         updaterCalls.push("downloadAndInstall");
       },
+      download: async () => {
+        updaterCalls.push("download");
+      },
+      install: async (options?: { restartAfterInstall?: boolean }) => {
+        updaterCalls.push(
+          options?.restartAfterInstall === false ? "install without restart" : "install",
+        );
+      },
     },
 }));
 mock.module("@tauri-apps/plugin-process", () => ({
@@ -348,6 +356,33 @@ describe("platform", () => {
     expect(updaterCalls).toEqual(["downloadAndInstall", "relaunch"]);
     updateOffer = { version: "0.9.2" };
     expect(await platform.updater.check()).toEqual({ version: "0.9.2", notes: "" });
+  });
+
+  test("tauri: on quit a downloaded update installs without a relaunch; nothing downloaded installs nothing (#402)", async () => {
+    const platform = tauriPlatform(fakeWindow().win);
+    updateOffer = { version: "0.9.4" };
+    await platform.updater.check();
+    updaterCalls.length = 0;
+    await platform.updater.installDownloaded();
+    expect(updaterCalls).toEqual([]);
+    await platform.updater.download();
+    await platform.updater.installDownloaded();
+    // Windows' installer starts the app again unless told not to: Quit means quit.
+    expect(updaterCalls).toEqual(["download", "install without restart"]);
+  });
+
+  test("tauri: a version downloaded in the background installs without a second download (#280)", async () => {
+    const platform = tauriPlatform(fakeWindow().win);
+    updateOffer = null;
+    await platform.updater.check();
+    const early = await platform.updater.download().catch((e: Error) => e.message);
+    expect(early).toBe("no update found to download");
+    updateOffer = { version: "0.9.3" };
+    await platform.updater.check();
+    updaterCalls.length = 0;
+    await platform.updater.download();
+    await platform.updater.install();
+    expect(updaterCalls).toEqual(["download", "install", "relaunch"]);
   });
 
   test("lint barra @tauri-apps/* fora de src/platform/tauri", async () => {

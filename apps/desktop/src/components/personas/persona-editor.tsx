@@ -41,21 +41,29 @@ const KNOWN_TOOLS: readonly string[] = [
   "mcp__flightdeck",
 ];
 
+/** Where a persona lives: the app, a project, or (the default) the host. */
+function placeOf(scope: string | undefined): Place {
+  if (scope === "app" || scope === "project") return scope;
+  return "host";
+}
+
 /**
  * Phase 20: creates or edits a persona, with a preview of what a session opened in it gets. A
  * pack persona edited here becomes the host's version of it; the id never changes.
  */
-export function PersonaEditor(props: {
-  store: AppStore;
-  hostId: string;
-  /** The chosen project's path; "" for none. */
-  project: string;
-  persona: AppPersona | null;
-  /** Shown inside the persona's own card, not above the list. */
-  inPlace?: boolean;
-  onSaved(): void;
-  onClose(): void;
-}) {
+export function PersonaEditor(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    /** The chosen project's path; "" for none. */
+    project: string;
+    persona: AppPersona | null;
+    /** Shown inside the persona's own card, not above the list. */
+    inPlace?: boolean;
+    onSaved(): void;
+    onClose(): void;
+  }>,
+) {
   const t = useT();
   const id = useId();
   const saving = useBusy();
@@ -73,9 +81,7 @@ export function PersonaEditor(props: {
   const [tools, setTools] = useState<string[]>(persona?.tools ?? []);
   const [mode, setMode] = useState<string>(persona?.permissionMode ?? "");
   const [body, setBody] = useState(persona?.body ?? "");
-  const initialPlace: Place =
-    persona?.scope === "app" ? "app" : persona?.scope === "project" ? "project" : "host";
-  const [place, setPlace] = useState<Place>(initialPlace);
+  const [place, setPlace] = useState<Place>(placeOf(persona?.scope));
   const [error, setError] = useState<string | null>(null);
 
   const input: PersonaInput = personaInput({

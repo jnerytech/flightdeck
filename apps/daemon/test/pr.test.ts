@@ -273,6 +273,32 @@ describe("pr: erros e configuração", () => {
   });
 });
 
+describe("pr: a round with nothing to ask", () => {
+  test("it ends in the tick it starts: the listeners fire at once and a second round is not dropped", () => {
+    const ctx = newBoard();
+    cleanups.push(() => ctx.board.stop());
+    let rounds = 0;
+    ctx.board.onPrRound(() => {
+      rounds++;
+    });
+    void ctx.board.pollPrs();
+    expect(rounds).toBe(1);
+    void ctx.board.pollPrs();
+    expect(rounds).toBe(2);
+  });
+
+  test("a board stopped right after starting the round still told its listeners", () => {
+    const ctx = newBoard();
+    let rounds = 0;
+    ctx.board.onPrRound(() => {
+      rounds++;
+    });
+    void ctx.board.pollPrs();
+    ctx.board.stop();
+    expect(rounds).toBe(1);
+  });
+});
+
 describe("pr: a poll in flight when the board stops", () => {
   test("it writes nothing and fails nothing once the board is stopped, even if the database is closed", async () => {
     let release: () => void = () => {};

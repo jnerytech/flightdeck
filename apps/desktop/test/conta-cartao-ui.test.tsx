@@ -97,6 +97,28 @@ describe("conta-cartao-ui: signed in", () => {
     expect(inCard().queryByText("Max")).not.toBeNull();
   });
 
+  test("names the Ultra plan, and says under the plan where it comes from and what to do after a change (issue #256)", () => {
+    show({ state: state({ plan: "ultra" }) });
+    expect(inCard().queryByText("Ultra")).not.toBeNull();
+    expect(
+      inCard().queryByText(
+        "From the sign-in of claude on this host. Changed your plan? Sign out and in again there, then Refresh.",
+      ),
+    ).not.toBeNull();
+  });
+
+  test("the plan hint reads in Portuguese in the Portuguese app, and is absent without a plan", () => {
+    show({ state: state({ plan: "ultra" }) }, "pt-BR");
+    expect(
+      inCard().queryByText(
+        "Vem do login do claude neste host. Mudou de plano? Saia e entre de novo lá, depois toque em Atualizar.",
+      ),
+    ).not.toBeNull();
+    cleanup();
+    show({ state: state({ plan: null }) });
+    expect(inCard().queryByText(/From the sign-in of claude/)).toBeNull();
+  });
+
   test("two bars with percentage, reset time (exact on hover) and the age of the reading", () => {
     show({ state: state() });
     expect(inBar("five_hour").queryByText("5 hours")).not.toBeNull();

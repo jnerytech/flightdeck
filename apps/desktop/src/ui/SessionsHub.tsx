@@ -54,6 +54,7 @@ import {
   sharedMeta,
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
+import { newSessionHost } from "../lib/new-session-host.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** How often the hub asks the hosts about their background sessions. */
@@ -73,16 +74,18 @@ const TONES: Record<HubState, StateTone> = {
  * the history), grouped by project; the ones that need you first, then pinned, then the latest
  * activity. Filters are kept in the app; each row has its actions in a menu.
  */
-export function SessionsHub(props: {
-  store: AppStore;
-  state: AppState;
-  onOpen(row: HubRow): void;
-  /** Whether the row is the session open on the right. */
-  isOpen(row: HubRow): boolean;
-  density: Density;
-  /** Only this project's sessions, with a chip that clears it (from the project page). */
-  project?: { hostId: string; projectKey: string; name: string } | undefined;
-}) {
+export function SessionsHub(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    onOpen(row: HubRow): void;
+    /** Whether the row is the session open on the right. */
+    isOpen(row: HubRow): boolean;
+    density: Density;
+    /** Only this project's sessions, with a chip that clears it (from the project page). */
+    project?: { hostId: string; projectKey: string; name: string } | undefined;
+  }>,
+) {
   const { store, state } = props;
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
   const [view, setView] = useState<HubView>(() => store.hubView());
@@ -301,6 +304,7 @@ export function SessionsHub(props: {
     filter.pinnedOnly,
     filter.showArchived,
   ].filter(Boolean).length;
+  const starter = newSessionHost(state.hosts, state.selected);
   const toolbar = (
     <Toolbar label={t("hub.filters")}>
       <ViewToggle
@@ -409,7 +413,23 @@ export function SessionsHub(props: {
   );
 
   return (
-    <Page title={t("sidebar.sessions")} toolbar={toolbar}>
+    <Page
+      title={t("sidebar.sessions")}
+      toolbar={toolbar}
+      actions={
+        starter && (
+          <Button
+            size="sm"
+            onClick={() => {
+              store.select(starter.id, null);
+              store.router.push({ name: "new-session", host: starter.id });
+            }}
+          >
+            {t("sidebar.newSession")}
+          </Button>
+        )
+      }
+    >
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
         <FoldAll

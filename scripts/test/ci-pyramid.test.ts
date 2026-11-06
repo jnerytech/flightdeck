@@ -39,6 +39,22 @@ describe("ci-pyramid (#309)", () => {
     expect(full?.run).toBe("bun run test");
   });
 
+  test("on a PR the Windows shards run the unit and component tiers; on main, at night and by hand the whole suite (#309 b)", () => {
+    const shard = ci.jobs["test-windows-shard"]?.steps ?? [];
+    const pr = shard.find(
+      (s) => s.name === "Testes do PR (shard ${{ matrix.shard }}/3, unit e component)",
+    );
+    const full = shard.find((s) => s.name === "Testes (shard ${{ matrix.shard }}/3)");
+    expect(pr?.if).toBe("github.event_name == 'pull_request'");
+    expect(pr?.run).toBe(
+      "bun run test:shards -- run ${{ matrix.shard }}/3 --tier unit,component --junit junit-${{ matrix.shard }}.xml",
+    );
+    expect(full?.if).toBe("github.event_name != 'pull_request'");
+    expect(full?.run).toBe(
+      "bun run test:shards -- run ${{ matrix.shard }}/3 --junit junit-${{ matrix.shard }}.xml",
+    );
+  });
+
   test("the e2e journeys leave the PR path: they run on main, nightly and by hand (#309 c)", () => {
     expect(ci.jobs["screenshots-e2e"]?.if).toBe(
       "needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'",
@@ -53,11 +69,18 @@ describe("ci-pyramid (#309)", () => {
     expect(check).toContain('test "${{ needs.screenshots-e2e.result }}" = success');
   });
 
-  test("the fast-coverage ratchet runs on main, nightly and by hand, never on a PR (#309 d)", () => {
+  test("the fast-coverage ratchet runs on PRs too, so a drop fails the PR, not main (#309 d, #358)", () => {
     const job = ci.jobs["fast-coverage"];
     expect(job?.name).toBe("fast coverage (ubuntu-latest)");
     expect(job?.needs).toEqual(["changes", "quick"]);
-    expect(job?.if ?? "").toContain("github.event_name != 'pull_request'");
+    expect(job?.if ?? "").not.toContain("pull_request");
     expect((job?.steps ?? []).some((s) => s.run === "bun run fast-coverage")).toBe(true);
+  });
+
+  test("the required test (ubuntu-latest) check waits for the fast-coverage ratchet and needs it green (#358)", () => {
+    const aggregate = ci.jobs.test;
+    expect(aggregate?.needs).toContain("fast-coverage");
+    const check = (aggregate?.steps ?? []).map((s) => s.run ?? "").join("\n");
+    expect(check).toContain('test "${{ needs.fast-coverage.result }}" = success');
   });
 });

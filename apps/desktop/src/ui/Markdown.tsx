@@ -11,7 +11,7 @@ export function preloadMarkdown(): void {
 }
 
 /** Assistant text: GitHub-flavored Markdown, no raw HTML (plain text while the renderer loads). */
-export function Markdown({ text }: { text: string }) {
+export function Markdown({ text }: Readonly<{ text: string }>) {
   return (
     <Suspense fallback={<div className="whitespace-pre-wrap break-words text-sm">{text}</div>}>
       <MarkdownBody text={text} />

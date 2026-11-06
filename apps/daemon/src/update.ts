@@ -81,7 +81,7 @@ export async function waitHealthy(url: string, timeoutMs: number, intervalMs: nu
       // Not listening yet.
     }
     if (Date.now() >= deadline) return false;
-    await Bun.sleep(intervalMs);
+    await Bun.sleep(intervalMs); // NOSONAR: polling: each look follows the wait before it
   }
 }
 
@@ -132,11 +132,11 @@ async function resolved(path: string): Promise<string> {
 
 async function waitStopped(deps: StopDeps, config: Config): Promise<boolean> {
   const deadline = Date.now() + (deps.stopTimeoutMs ?? 10_000);
-  while (await deps.daemonRunning(config)) {
+  for (;;) {
+    if (!(await deps.daemonRunning(config))) return true; // NOSONAR: polling: each look follows the wait before it
     if (Date.now() >= deadline) return false;
-    await Bun.sleep(100);
+    await Bun.sleep(100); // NOSONAR: polling: each look follows the wait before it
   }
-  return true;
 }
 
 /**

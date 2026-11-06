@@ -22,12 +22,16 @@ export interface AppShellLabels {
  * sidebar collapses to a 56 px rail of icons (it is given `collapsed` to draw itself); it does so
  * by itself in narrow windows, and the button overrides that until the window crosses 960 px again.
  */
-export function AppShell(props: {
-  header: ReactNode;
-  sidebar: (collapsed: boolean) => ReactNode;
-  labels: AppShellLabels;
-  children: ReactNode;
-}) {
+export function AppShell(
+  props: Readonly<{
+    header: ReactNode;
+    /** The top bar's right side, after the tab strip (issue #282). */
+    actions?: ReactNode;
+    sidebar: (collapsed: boolean) => ReactNode;
+    labels: AppShellLabels;
+    children: ReactNode;
+  }>,
+) {
   const narrow = useMediaQuery(NARROW_QUERY);
   /** The button's choice, valid while the window stays on the side of 960 px it was made on. */
   const [manual, setManual] = useState<{ open: boolean; narrow: boolean } | null>(null);
@@ -48,6 +52,7 @@ export function AppShell(props: {
         </Button>
         <div className="header-crumbs">{props.header}</div>
         <div ref={setSlot} className="header-tabs" />
+        {props.actions}
       </header>
       <div
         className={cn(

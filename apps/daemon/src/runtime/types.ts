@@ -56,6 +56,11 @@ export interface StartOptions {
   env: Record<string, string>;
   canUseTool: CanUseToolFn;
   /**
+   * Whether the folder's own configuration (hooks, MCP servers, settings, CLAUDE.md) may load, and
+   * the main checkout a worktree is read from (issue #196). Absent: everything loads, as before.
+   */
+  trust?: { trusted: boolean; configRoot?: string };
+  /**
    * The role the session plays (phase 20): `append` is added to the system prompt, `tools` is the
    * set of tools available (it only restricts; `null` leaves the session's own).
    */
@@ -92,6 +97,8 @@ export interface AgentRun {
   setPermissionMode?(mode: PermissionMode): Promise<void>;
   /** Changes the model of the live run; undefined is the default. */
   setModel?(model: string | undefined): Promise<void>;
+  /** Changes the effort of the live run; undefined is the model's default. */
+  setEffort?(effort: EffortLevel | undefined): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
 }

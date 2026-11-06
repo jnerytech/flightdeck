@@ -4,7 +4,7 @@ English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.m
 
 Complete Flightdeck reference, organized by topic. It applies to version 0.19.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
-[`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
+[`docs/decisions/`](../decisions/) (the older ones in [`docs/DECISIONS.md`](../DECISIONS.md)) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
 are written in Portuguese.
 
@@ -303,6 +303,37 @@ hooks, Tailscale and the daemon's version against the app's. Every item is **ok*
 **failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
 The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
 with `flightdeckd doctor`.
+### Trusting a project
+
+A project (a repository) can carry its own configuration: hooks that run commands by themselves,
+MCP servers that start programs, settings with allowed tools, a `CLAUDE.md`, agents, skills and
+commands. In a session Flightdeck starts, that configuration loads **only in a folder you trusted**.
+Folders you were already working in when this arrived (your board projects and the folders of your
+earlier sessions) are trusted; a repository you clone later, or a folder you add, starts untrusted.
+
+- In an untrusted folder the session loads your own settings, not the project's, and **neither your
+  own MCP servers nor your plugins** (Claude Code is told to use only the MCP server Flightdeck
+  gives it). The project's `CLAUDE.md`, agents and skills do not load either. A notice at the top
+  of the session says so, with **Review and trust**.
+- The project page has **Project configuration**: what the project would load, read without
+  running anything (hooks by event and MCP servers with their whole command, in a scrollable block
+  with a warning when a command is long or has several lines; programs the settings run, such as
+  `apiKeyHelper` and `statusLine`; environment variables that redirect traffic or code, with their
+  value, and the names of the others, never their values; plugins; every other settings key
+  present; allowed tools; agents, skills and commands, and the ones whose header carries hooks,
+  servers or tool grants; `CLAUDE.md`; and files that could not be read), the cost of not
+  trusting, and **Trust this project**. It asks first, naming the project and the host, because
+  trusted hooks and MCP servers run commands on that computer without asking you. **Revoke trust**
+  asks nothing. Trusting covers the folders inside the project, not the ones around it.
+- Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
+  project, and a folder that holds your allowed roots cannot be trusted at all. Background
+  sessions follow the same rule as the sessions in the app.
+- A card's worktree always reads its project configuration from the project's main folder, so a
+  branch never brings hooks of its own, trusted or not.
+- Trusting works only from the host's own computer or over Tailscale (like allowing a folder or sessions without prompts); revoking works from anywhere.
+- The decision lives on the host (`project_trust` in its database), per host, and is logged. A
+  host that does not announce `projectTrust` loads everything, as before.
+
 ### Sessions without permission prompts
 
 By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
@@ -551,8 +582,12 @@ A session appears only once. The order of preference is managed, then terminal, 
   and Plan. **Bypass permissions** is in the menu too, but the chip never lands on it by cycling:
   it asks first, naming the host and the session, and the chip turns red while it is on. On a
   host where the switch is off (or for a mode looser than the one the session started with) the
-  row is greyed out, says why, and links to the host's settings. While a turn runs a line above the
-  box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
+  row is greyed out, says why, and links to the host's settings. The model is a chip too ("Opus
+  5.5 · Medium"): its **Model** menu lists Default, Opus, Sonnet and Haiku with what each is for
+  and its number (press 1 to 4), **More models** has the specific versions, and **Effort** (on a
+  host that supports it) sets Low, Medium, High, Extra high or Max for the next turns, or back to
+  the model's own level. An OpenCode session keeps a plain list of its own models. While a turn
+  runs a line above the box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
   long; the spinner stops moving if your system asks for reduced motion.
 
 ### Claude Code hooks
@@ -1018,6 +1053,11 @@ conversation. It is where you check what the agent did and send it back what to 
   - for a card, the diff against its base, with how many commits it is ahead of and behind it;
   - the files with their status and counts, and the diff unified or side by side, with numbered
     lines. A binary file is listed without a diff;
+  - a file that is too large (a diff or a new file over 512 KB) is listed with the **Too large**
+    mark and its size, without content, so the panel does not freeze. The same goes for what
+    passes 4 MB of diff in total: the files after that are only listed. On a host of this machine,
+    **Show in folder** opens the file manager on the file (the editor stays beside it, and refuses
+    what is over 1 MB);
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
 - **Inline comments:**
@@ -1534,8 +1574,11 @@ paths). You can add patterns in the host configuration (`risk.extraHigh`); the b
 be lowered.
 
 - A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
-  seconds. The A key does not approve it; N still denies.
-- The tray never approves a high-risk request: it only offers **Open**.
+  seconds. The reason is written under the button (not only in a tooltip). The A key does not
+  approve it; N still denies. The host checks the hold too: it refuses
+  an approval of a high-risk request that does not carry it ("A high-risk request is approved only
+  by holding the button."), so no other client can skip it either.
+- The tray never approves a high-risk request: it offers **Deny** and **Open**.
 - With automatic approval on, an approval that nobody gave by hand shows in the session's
   timeline as "Approved automatically", with who decided and why. A high-risk request or one that
   reaches the network always comes to you.
@@ -1788,7 +1831,7 @@ When Claude, an automation or a workflow runs an action that needs a secret, the
 secrets and the host). **Approve** delivers the secret for that run only; **Deny** fails the run
 at once. An action with `approval: never` runs without a question, `first-per-session` asks once
 and is then remembered until the app restarts, and `always` asks every time. A `run_with_secret`
-is high risk: hold the button for 2 seconds to approve it, and the tray only opens it.
+is high risk: hold the button for 2 seconds to approve it; the tray offers only Deny and Open.
 
 ### Usage rules per secret
 
@@ -2137,9 +2180,12 @@ reports of the Agent SDK), and Anthropic's terms keep a login out of third-party
 
 #### Which account is this host using?
 
-- The card shows the account's email, the organization, the plan (Pro, Max, Team, Enterprise) and
+- The card shows the account's email, the organization, the plan (Pro, Max, Ultra, Team, Enterprise) and
   two bars, **5 hours** and **7 days**, with the percentage used and when each resets (hover for
   the exact time). The 7-day Opus and Sonnet bars show only when the host reports them.
+- The plan comes from the sign-in of `claude` on the host, which keeps it from when you signed in:
+  after a change of plan, sign out and in again there, then press **Refresh**. The bars are read
+  live and are always current.
 - It is read when you open the page and again every 5 minutes while the page stays open, and at
   once when a managed session ends a turn. "Last read 2 min ago" tells how fresh it is. **Refresh**
   reads now; it waits 30 seconds between reads.
@@ -2228,7 +2274,9 @@ app, cards and workflows, subagents included.
 - **What it shows:**
   - the estimated cost, the tokens and the cache savings (how much less the cache read cost than
     the same volume as normal input);
-  - a per-day chart stacked by project, and the breakdowns by project, model and origin;
+  - a per-day chart stacked by project (Tab reaches the chart, the arrow keys walk the days, and a
+    day says its total in a tooltip on hover or focus), and the breakdowns by project, model and
+    origin;
   - the most expensive sessions, and clicking one opens it;
   - the estimated cost also shows in the session list, the open session, the card and the
     workflow run.
@@ -2600,10 +2648,35 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Needs you:** in the sidebar, with the count of open requests across all hosts. The screen
   lists the requests, oldest to newest, and the selected request's card sits next to it: **A**
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
-  conversation.
+  conversation. The card takes the focus, so A and N work with no click first, and once a
+  request is answered the next one is chosen, with how many are left. A high-risk request is
+  still approved only by holding the button.
+- **From a notification:** clicking it opens the session with the request's card focused: one
+  key answers it. In the bell, an entry of a request already answered opens its session at that
+  request.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
+- **Worktrees:** a host page panel (hosts that announce `worktrees`) lists the cards' worktrees
+  under `.flightdeck/worktrees` with their size on disk (**unknown** when measuring ran out of
+  time, never 0), how long they have been idle, and their card. **Suggested** marks a clean worktree
+  with no unpushed commits and no live session, idle for over 7 days, whose card is Done or whose
+  PR merged, or that has no card. A worktree with uncommitted changes, commits that exist nowhere
+  else, a running session, terminal or run, an unknown base branch (it must be a real branch, not
+  a tag or `HEAD`), a branch that is not one of Flightdeck's `fd/…`, ignored files a build does not
+  recreate (only `node_modules`, `dist`, `build`, `target`, `coverage`, `.cache`, `.next` and `out`
+  as a folder at the root of the worktree do not count, and an ignored credential file such as `.env`
+  or `*.pem` always does), edits that git hides from `git status` (`assume-unchanged` or
+  `skip-worktree`), or anything git could not answer about is **kept**: the row says why and cannot
+  be ticked. The confirmation says the rebuildable folders go with the worktree. Filter by Suggested, Protected or No card, sort by age or size, **Select
+  suggested** or **Select all that can go**, then **Remove**: the confirmation names every branch
+  with its card and column, and the space it frees. Only the rows on screen can be ticked or
+  removed. The host holds each folder (nothing can start in it) and checks it again before removing
+  it (without force), so one that changed meanwhile is kept; the branch is deleted only if it is
+  still at the commit that was checked, otherwise the folder goes and the branch stays, and the
+  result says so. The card, if any, stays on the board without its
+  worktree. A disk under 10% free is warned about. Deleting something that is kept still goes through
+  the card's **Discard**.
 - **A host that is offline** shows a banner at the top of its page: the state, what failed in plain
   words (nothing answered, no answer in time, the link dropped, the token refused), the time of the
   last try, a countdown to the next automatic try and **Reconnect now**, which shows its progress
@@ -2633,7 +2706,8 @@ summary` (for example `pc · api · Bash: npm test`).
   on the request's host, without opening the window; Open brings the app to the session, with
   the approval card.
 - Workflow gates appear only with **Open**: they need reading, and the answer is given on the
-  card.
+  card. A high-risk request and a secret request have **Deny** and **Open**: approving them
+  takes the window.
 - Above 10, the last row is **and N more…**, which opens the app.
 - The submenu is rebuilt half a second after the list stops changing.
 - **Request notification:** carries the link `flightdeck://request?host=…&request=…`, which opens
@@ -2837,10 +2911,17 @@ signature (see [Installation](#from-the-release-binaries)).
 
 - **The app:**
   - looks for a new version on open and every 6 h, in the latest release's `latest.json`;
-  - with a new version, shows the banner "Flightdeck X available", with the notes, **Install and
-    restart** and **Later**;
-  - an invalid signature or a broken download shows up in the banner, and nothing is installed;
-  - in **Settings**: **Check for updates now** and **Notify about updates** (on by default).
+  - with **Update automatically** on (the default), it downloads the new version in the
+    background, checks its signature, and then shows the banner "Flightdeck X is ready. Restart
+    to update." with **Restart now** and **Later**. Nothing restarts by itself (#280). Quitting
+    from the tray with a version downloaded installs it on the way out, without starting the app
+    again (#402);
+  - with it off, the banner says "Flightdeck X available", with the notes, **Install and
+    restart** and **Later**, as before;
+  - an invalid signature or a broken download shows up in the banner, and nothing is installed; a
+    failed download is tried again at the next check;
+  - in **Settings**: **Check for updates now**, **Notify about updates** and **Update
+    automatically** (both on by default).
 - **The daemon:**
   - checks `daemon-latest.json` on start, when asked, and every `updates.checkIntervalH` (6 h by
     default);
@@ -2855,13 +2936,19 @@ signature (see [Installation](#from-the-release-binaries)).
     sha256 and the signature, and runs `flightdeckd update --from` outside the service, to
     survive its own stop: a one-off `Flightdeck\update` task on Windows and `systemd-run --user`
     on Linux;
-  - the host shows "updating…" until it reconnects on the new version.
+  - the host shows "updating…" until it reconnects on the new version;
+  - **by itself** (`updates.auto`, on by default; #280): when a check finds a newer version, the
+    daemon applies it only while the host is idle, with no session or run going on, and otherwise
+    waits. It never applies an older version. A failed apply keeps the old binary and is tried
+    again at the next check. The host page has **Update this host automatically** (the same
+    setting, kept by the daemon) and says whether the update is off, current, waiting, started or
+    failed, and why.
 - **Order:** with the app and the daemons both out of date, the banner suggests updating the app
   first.
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 6 } }
+               "checkIntervalH": 6, "auto": true } }
 ```
 
 Only the compiled `flightdeckd` checks GitHub by default. When running from source there is no

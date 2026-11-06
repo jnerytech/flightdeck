@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 /**
  * `bun run pr -- <open|next|update|merge> …` (issue #260, GitHub Flow): one PR per branch to main,
  * each merged on its own when its required checks are green on its HEAD. All of it through REST
@@ -321,7 +322,7 @@ async function nextPrs(deps: PrFlowDeps): Promise<number> {
   }
   const ready: string[] = [];
   const waiting: string[] = [];
-  for (const pr of mergeOrder(prs)) {
+  await inSequence(mergeOrder(prs), async (pr) => {
     const parent = prs.find((p) => p.head === pr.base);
     let reason: string | null = null;
     if (parent) reason = `waits for #${parent.number} (${parent.head})`;
@@ -331,7 +332,7 @@ async function nextPrs(deps: PrFlowDeps): Promise<number> {
     if (!reason) reason = await conflictProblem(deps, pr.number, pr.base, pr.head);
     if (reason) waiting.push(`  #${pr.number} ${pr.head}: ${reason}`);
     else ready.push(`  #${pr.number} ${pr.head}`);
-  }
+  });
   if (ready.length > 0) deps.log("ready to merge, in order:");
   for (const line of ready) deps.log(line);
   if (waiting.length > 0) deps.log("not ready:");
@@ -479,6 +480,45 @@ export async function headCi(sha: string, deps: PrFlowDeps): Promise<string> {
 
 const TAG = /^v\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 
+type MainRun = { status: string; conclusion: string | null };
+
+/** The full CI runs of a commit of main (its push). */
+async function mainRuns(sha: string, deps: PrFlowDeps): Promise<MainRun[]> {
+  const listed = await deps.gh([
+    "api",
+    `${REPO}/actions/workflows/ci.yml/runs?head_sha=${sha}&event=push&branch=${MAIN}`,
+    "--jq",
+    ".workflow_runs[] | {status, conclusion}",
+  ]);
+  return jsonLines<MainRun>(listed.stdout);
+}
+
+/** Why a commit's runs are not a green full run. */
+function refuseRuns(sha: string, runs: MainRun[], refuse: (reason: string) => number): number {
+  if (runs.length === 0) return refuse(`no CI run of ${sha} on ${MAIN} (a full run is its push)`);
+  if (runs.some((r) => r.status !== "completed"))
+    return refuse(`${sha}'s CI run on ${MAIN} is still running`);
+  return refuse(`${sha}'s CI run on ${MAIN} did not pass`);
+}
+
+/** The newest first-parent commit of main whose package.json says the tag's version and that has a green run. */
+async function greenWithBump(tag: string, deps: PrFlowDeps): Promise<string | null> {
+  const listed = await deps.git(["rev-list", "--first-parent", "-n", "30", `origin/${MAIN}`]);
+  for (const sha of listed.stdout.split("\n").filter(Boolean)) {
+    const shown = await deps.git(["show", `${sha}:package.json`]);
+    let version: unknown;
+    try {
+      version = (JSON.parse(shown.stdout) as { version?: unknown }).version;
+    } catch {
+      version = undefined;
+    }
+    if (version !== tag.slice(1)) return null;
+    const runs = await mainRuns(sha, deps);
+    if (runs.some((r) => r.status === "completed" && r.conclusion === "success")) return sha;
+  }
+  return null;
+}
+
 /**
  * Tags a commit of main (main's HEAD by default) as a release, only after a green full CI run of it
  * on main (its push), and pushes the tag alone as refs/tags/<tag>: a push of several tags starts no
@@ -506,20 +546,28 @@ async function tagRelease(args: string[], deps: PrFlowDeps): Promise<number> {
   if ((await deps.git(["merge-base", "--is-ancestor", sha, `origin/${MAIN}`])).code !== 0) {
     return refuse(`${sha} is not on ${MAIN}`);
   }
-  const listed = await deps.gh([
-    "api",
-    `${REPO}/actions/workflows/ci.yml/runs?head_sha=${sha}&event=push&branch=${MAIN}`,
-    "--jq",
-    ".workflow_runs[] | {status, conclusion}",
-  ]);
-  const runs = jsonLines<{ status: string; conclusion: string | null }>(listed.stdout);
-  if (runs.length === 0) return refuse(`no CI run of ${sha} on ${MAIN} (a full run is its push)`);
+  const runs = await mainRuns(sha, deps);
+  let target = sha;
   if (!runs.some((r) => r.status === "completed" && r.conclusion === "success")) {
-    if (runs.some((r) => r.status !== "completed"))
-      return refuse(`${sha}'s CI run on ${MAIN} is still running`);
-    return refuse(`${sha}'s CI run on ${MAIN} did not pass`);
+    // A later merge cancels the run of the one before it: without --commit, the newest commit
+    // that has the bump and a green run is the release (#376). A run that failed or is still going
+    // is not skipped over.
+    const cancelled =
+      runs.length > 0 &&
+      runs.every((r) => r.status === "completed" && r.conclusion === "cancelled");
+    if (!cancelled || args.includes("--commit")) return refuseRuns(sha, runs, refuse);
+    const earlier = await greenWithBump(tag, deps);
+    if (!earlier) {
+      return refuse(
+        `${sha}'s CI run on ${MAIN} was cancelled, and no commit with the ${tag} bump has a green CI run on ${MAIN}`,
+      );
+    }
+    deps.log(
+      `${sha}'s CI run on ${MAIN} was cancelled: tagging ${earlier}, the newest commit with the ${tag} bump that has a green run`,
+    );
+    target = earlier;
   }
-  if ((await deps.git(["tag", "-a", tag, "-m", tag, sha])).code !== 0) {
+  if ((await deps.git(["tag", "-a", tag, "-m", tag, target])).code !== 0) {
     deps.log(`git refused to make ${tag}`);
     return 1;
   }
@@ -527,7 +575,7 @@ async function tagRelease(args: string[], deps: PrFlowDeps): Promise<number> {
     deps.log(`the push of ${tag} failed: the tag is local only (git push origin refs/tags/${tag})`);
     return 1;
   }
-  deps.log(`${tag} tagged on ${sha} and pushed alone`);
+  deps.log(`${tag} tagged on ${target} and pushed alone`);
   return 0;
 }
 

@@ -148,8 +148,16 @@ describe("persistencia-abas", () => {
 
   test("a tab of a host that is not connected yet comes back saying Conectando a <host>…", async () => {
     const mem = memoryPlatform(false, "pt-BR");
+    // A host that takes the connection and never answers: it stays "connecting" for as long as the
+    // test looks. A closed port gave up at once on some machines, and then the screen is the
+    // offline banner (issue #227), not the wait this test is about.
+    const silent = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
     const first = new AppStore(mem.platform, { baseDelayMs: 10_000, maxDelayMs: 10_000 });
-    const hostId = await first.addHost({ name: "pc", url: "ws://127.0.0.1:9/v1/ws", token: "t" });
+    const hostId = await first.addHost({
+      name: "pc",
+      url: `ws://127.0.0.1:${silent.port}/v1/ws`,
+      token: "t",
+    });
     first.tabs.open({ name: "history", host: hostId });
     first.dispose();
     expect(mem.items.get(HOSTS_KEY)).toContain("pc");
@@ -161,6 +169,7 @@ describe("persistencia-abas", () => {
     );
     expect(second.workspace.tabs.tabs).toHaveLength(2);
     second.dispose();
+    silent.stop(true);
   });
 
   test("a stored window that is not JSON gives a fresh one", () => {

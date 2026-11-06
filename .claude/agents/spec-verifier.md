@@ -14,7 +14,9 @@ checkout). Run everything inside the worktree.
 
 ## What to check
 
-1. **The spec.** Read `docs/SPEC-fase-N.md` and the phase's section in `docs/DECISIONS.md`. List
+1. **The spec.** Read `docs/SPEC-fase-N.md` and the phase's records: the files in `docs/decisions/`
+   titled `(phase N)` or naming its issues, or its section in `docs/DECISIONS.md` for a phase before
+   #304. List
    every requirement: the areas in the table, the items of the design, the smoke and the
    acceptance criteria. A divergence recorded in DECISIONS counts as a decision, not as a gap.
    Cite the entry.
@@ -35,7 +37,7 @@ checkout). Run everything inside the worktree.
 6. **Version:** `bun run release:version v0.N.0`.
 7. **Hand-off stamp:** when the session gave a `HANDOFF` line, `bun run handoff:check -- --verify`
    in the worktree must print OK for its HEAD.
-8. **Docs:** the README (pt-BR and en), the manual and DECISIONS mention what the phase
+8. **Docs:** the README (pt-BR and en), the manual and the phase's records in `docs/decisions/` mention what the phase
    delivers.
 
 For each command, show the exit code (`echo $?` right after it). Do not trust commit messages or

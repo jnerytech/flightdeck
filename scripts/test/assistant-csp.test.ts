@@ -32,6 +32,7 @@ const COMMANDS = [
   "focus_main",
   "terminal_probe",
   "terminal_open",
+  "quit_now",
   "assistant::assistant_key_set",
   "assistant::assistant_key_status",
   "assistant::assistant_key_delete",

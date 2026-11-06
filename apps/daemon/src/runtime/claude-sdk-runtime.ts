@@ -10,7 +10,7 @@ import {
   forkSession as sdkForkSession,
   query as sdkQuery,
 } from "@anthropic-ai/claude-agent-sdk";
-import type { AssistantBlock, PermissionMode } from "@flightdeck/protocol";
+import type { AssistantBlock, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -41,6 +41,7 @@ export interface QueryHandle extends AsyncIterable<SDKMessage> {
   mcpServerStatus?(): Promise<McpServerStatus[]>;
   setPermissionMode?(mode: PermissionMode): Promise<void>;
   setModel?(model?: string): Promise<void>;
+  applyFlagSettings?(settings: { effortLevel?: EffortLevel | null }): Promise<void>;
   supportedCommands?(): Promise<SdkSlashCommand[]>;
 }
 
@@ -181,76 +182,113 @@ async function withCommands(
   }
 }
 
+type Message<T extends SDKMessage["type"]> = Extract<SDKMessage, { type: T }>;
+
+function initEvents(message: Message<"system">): RuntimeEvent[] {
+  if (message.subtype !== "init") return [];
+  return [
+    {
+      type: "session.init",
+      claudeSessionId: message.session_id,
+      model: message.model,
+      tools: message.tools,
+      ...(message.slash_commands ? { slashCommands: message.slash_commands } : {}),
+    },
+  ];
+}
+
+function deltaEvents(message: Message<"stream_event">): RuntimeEvent[] {
+  if (message.parent_tool_use_id !== null) return [];
+  const event = message.event;
+  if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+    return [{ type: "message.delta", text: event.delta.text }];
+  }
+  return [];
+}
+
+function assistantEvents(message: Message<"assistant">): RuntimeEvent[] {
+  if (message.parent_tool_use_id !== null) return [];
+  const blocks: AssistantBlock[] = [];
+  for (const block of message.message.content) {
+    if (block.type === "text") blocks.push({ type: "text", text: block.text });
+    else if (block.type === "tool_use") {
+      blocks.push({ type: "tool_use", id: block.id, name: block.name, input: block.input });
+    }
+  }
+  return blocks.length > 0 ? [{ type: "message.assistant", blocks }] : [];
+}
+
+function toolResultEvents(message: Message<"user">): RuntimeEvent[] {
+  if (message.parent_tool_use_id !== null) return [];
+  const content = message.message.content;
+  if (typeof content === "string") return [];
+  const events: RuntimeEvent[] = [];
+  for (const block of content) {
+    if (block.type !== "tool_result") continue;
+    events.push({
+      type: "tool.result",
+      toolUseId: block.tool_use_id,
+      content: truncateToolResult(toolResultText(block.content)),
+      isError: block.is_error === true,
+    });
+  }
+  return events;
+}
+
+function resultEvents(message: Message<"result">): RuntimeEvent[] {
+  return [
+    {
+      type: "turn.result",
+      subtype: message.subtype,
+      isError: message.is_error,
+      durationMs: message.duration_ms,
+      costUsd: message.total_cost_usd,
+      usage: {
+        inputTokens: message.usage.input_tokens,
+        outputTokens: message.usage.output_tokens,
+        cacheReadInputTokens: message.usage.cache_read_input_tokens,
+        cacheCreationInputTokens: message.usage.cache_creation_input_tokens,
+      },
+    },
+  ];
+}
+
+/**
+ * What the persona and the agents change in a session's options. `tools` is the set that is
+ * available, so a persona can only take away; `allowedTools` would pre-approve tools, which a
+ * persona never does.
+ */
+function personaOptions(opts: StartOptions): Partial<Options> {
+  return {
+    systemPrompt: {
+      type: "preset",
+      preset: "claude_code",
+      ...(opts.persona ? { append: opts.persona.append } : {}),
+    },
+    ...(opts.agents ? { agents: opts.agents } : {}),
+    ...(opts.persona?.effort ? { effort: opts.persona.effort } : {}),
+    ...(opts.persona?.tools ? { tools: opts.persona.tools } : {}),
+  };
+}
+
 /** Maps one SDK message to zero or more protocol events. Subagent traffic is left out. */
 export function normalizeSdkMessage(message: SDKMessage): RuntimeEvent[] {
   switch (message.type) {
     case "system":
-      if (message.subtype !== "init") return [];
-      return [
-        {
-          type: "session.init",
-          claudeSessionId: message.session_id,
-          model: message.model,
-          tools: message.tools,
-          ...(message.slash_commands ? { slashCommands: message.slash_commands } : {}),
-        },
-      ];
-    case "stream_event": {
-      if (message.parent_tool_use_id !== null) return [];
-      const event = message.event;
-      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-        return [{ type: "message.delta", text: event.delta.text }];
-      }
-      return [];
-    }
-    case "assistant": {
-      if (message.parent_tool_use_id !== null) return [];
-      const blocks: AssistantBlock[] = [];
-      for (const block of message.message.content) {
-        if (block.type === "text") blocks.push({ type: "text", text: block.text });
-        else if (block.type === "tool_use") {
-          blocks.push({ type: "tool_use", id: block.id, name: block.name, input: block.input });
-        }
-      }
-      return blocks.length > 0 ? [{ type: "message.assistant", blocks }] : [];
-    }
-    case "user": {
-      if (message.parent_tool_use_id !== null) return [];
-      const content = message.message.content;
-      if (typeof content === "string") return [];
-      const events: RuntimeEvent[] = [];
-      for (const block of content) {
-        if (block.type !== "tool_result") continue;
-        events.push({
-          type: "tool.result",
-          toolUseId: block.tool_use_id,
-          content: truncateToolResult(toolResultText(block.content)),
-          isError: block.is_error === true,
-        });
-      }
-      return events;
-    }
+      return initEvents(message);
+    case "stream_event":
+      return deltaEvents(message);
+    case "assistant":
+      return assistantEvents(message);
+    case "user":
+      return toolResultEvents(message);
     case "rate_limit_event": {
       // The host's plan quota, read defensively (see quotaReadings).
       const windows = quotaReadings((message as { rate_limit_info?: unknown }).rate_limit_info);
       return windows.length > 0 ? [{ type: "quota", windows }] : [];
     }
     case "result":
-      return [
-        {
-          type: "turn.result",
-          subtype: message.subtype,
-          isError: message.is_error,
-          durationMs: message.duration_ms,
-          costUsd: message.total_cost_usd,
-          usage: {
-            inputTokens: message.usage.input_tokens,
-            outputTokens: message.usage.output_tokens,
-            cacheReadInputTokens: message.usage.cache_read_input_tokens,
-            cacheCreationInputTokens: message.usage.cache_creation_input_tokens,
-          },
-        },
-      ];
+      return resultEvents(message);
     default:
       return [];
   }
@@ -296,6 +334,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
         cwd: opts.cwd,
         maxTurns: 1,
         settingSources: [],
+        // settingSources does not cover .mcp.json, and this runs in the session's folder.
+        strictMcpConfig: true,
         persistSession: false,
         tools: [],
         env: { ...process.env, FLIGHTDECK_MANAGED: "1" },
@@ -389,6 +429,49 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     return this.fork(claudeSessionId, options);
   }
 
+  /**
+   * The Flightdeck MCP server, added to the user's and the project's servers, never instead of
+   * them. The key is the one `claude mcp add flightdeck` uses, so a person who registered it by
+   * hand still has one entry.
+   */
+  private mcpOption(opts: StartOptions): Pick<Options, "mcpServers"> {
+    if (!this.mcpServer) return {};
+    // The session's own id: the MCP server knows who is sending (phase 21).
+    const session = opts.env.FLIGHTDECK_SESSION;
+    return {
+      mcpServers: {
+        flightdeck: {
+          type: "stdio" as const,
+          command: this.mcpServer.command,
+          args: this.mcpServer.args,
+          ...(session ? { env: { FLIGHTDECK_SESSION: session } } : {}),
+        },
+      },
+    };
+  }
+
+  /** Turns what the SDK says into the run's events, in order; the first failure ends the run. */
+  private async pump(handle: QueryHandle, events: AsyncQueue<RuntimeEvent>): Promise<void> {
+    try {
+      for await (const message of handle) {
+        for (const event of normalizeSdkMessage(message)) {
+          events.push(
+            event.type === "session.init"
+              ? await /* NOSONAR: the events of a session are queued in the order they happened */ withCommands(
+                  event,
+                  handle,
+                  this.commandsTimeoutMs,
+                )
+              : event,
+          );
+        }
+      }
+      events.end();
+    } catch (error) {
+      events.fail(error);
+    }
+  }
+
   start(opts: StartOptions): AgentRun {
     const prompt = new AsyncQueue<SDKUserMessage>();
     const events = new AsyncQueue<RuntimeEvent>();
@@ -402,34 +485,14 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       enableFileCheckpointing: true,
       // Hooks from the user's settings fire here too; the receptor ignores sessions marked so.
       env: { ...opts.env, FLIGHTDECK_MANAGED: "1" },
-      settingSources: ["user", "project", "local"],
-      // Added to the user's and the project's servers, never instead of them. The key is the one
-      // `claude mcp add flightdeck` uses, so a person who registered it by hand still has one entry.
-      ...(this.mcpServer
-        ? {
-            mcpServers: {
-              flightdeck: {
-                type: "stdio" as const,
-                command: this.mcpServer.command,
-                args: this.mcpServer.args,
-                // The session's own id: the MCP server knows who is sending (phase 21).
-                ...(opts.env.FLIGHTDECK_SESSION
-                  ? { env: { FLIGHTDECK_SESSION: opts.env.FLIGHTDECK_SESSION } }
-                  : {}),
-              },
-            },
-          }
-        : {}),
-      systemPrompt: {
-        type: "preset",
-        preset: "claude_code",
-        ...(opts.persona ? { append: opts.persona.append } : {}),
-      },
-      // `tools` is the set that is available, so a persona can only take away; `allowedTools`
-      // would pre-approve tools, which a persona never does.
-      ...(opts.agents ? { agents: opts.agents } : {}),
-      ...(opts.persona?.effort ? { effort: opts.persona.effort } : {}),
-      ...(opts.persona?.tools ? { tools: opts.persona.tools } : {}),
+      // A folder the person has not trusted brings no hooks, servers, settings or CLAUDE.md of its own
+      // (issue #196); the user's own settings and the MCP server Flightdeck passes still load. A
+      // worktree reads its project configuration from the main checkout, never from the branch.
+      settingSources: opts.trust?.trusted === false ? ["user"] : ["user", "project", "local"],
+      ...(opts.trust?.trusted === false ? { strictMcpConfig: true } : {}),
+      ...(opts.trust?.configRoot ? { projectConfigRoot: opts.trust.configRoot } : {}),
+      ...this.mcpOption(opts),
+      ...personaOptions(opts),
       canUseTool: async (toolName, input, ctx): Promise<PermissionResult> => {
         const decision = await opts.canUseTool(toolName, input, {
           signal: ctx.signal,
@@ -452,22 +515,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     };
     const handle = this.query({ prompt, options });
 
-    void (async () => {
-      try {
-        for await (const message of handle) {
-          for (const event of normalizeSdkMessage(message)) {
-            events.push(
-              event.type === "session.init"
-                ? await withCommands(event, handle, this.commandsTimeoutMs)
-                : event,
-            );
-          }
-        }
-        events.end();
-      } catch (error) {
-        events.fail(error);
-      }
-    })();
+    void this.pump(handle, events);
 
     return {
       events,
@@ -497,6 +545,11 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       setPermissionMode: (mode) =>
         (handle.setPermissionMode as NonNullable<QueryHandle["setPermissionMode"]>)(mode),
       setModel: (model) => (handle.setModel as NonNullable<QueryHandle["setModel"]>)(model),
+      // The SDK's flag settings layer; null clears it, back to the model's default.
+      setEffort: (effort) =>
+        (handle.applyFlagSettings as NonNullable<QueryHandle["applyFlagSettings"]>)({
+          effortLevel: effort ?? null,
+        }),
       toggleMcpServer: (name, enabled) =>
         (handle.toggleMcpServer as NonNullable<QueryHandle["toggleMcpServer"]>)(name, enabled),
       // Only what the screen shows: the SDK adds server info and configuration.
@@ -509,7 +562,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       async interrupt() {
         await handle.interrupt();
       },
-      async close() {
+      async close(/* NOSONAR: async by contract: a throw must reach the caller as a rejection */) {
         prompt.end();
         events.end();
         handle.close();

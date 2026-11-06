@@ -152,6 +152,7 @@ describe("paleta", () => {
       "Mudar para o modo simples",
       "Trocar idioma",
       "Ir para Configurações",
+      "Adicionar um host",
       "Mostrar os atalhos de teclado",
       "Gerenciar clientes",
     ]);
@@ -306,6 +307,7 @@ describe("paleta", () => {
 
     await choose("app-a", "Enter");
     // The project's group heading in the list and the session's own, on the right.
+    await settle(() => screen.queryAllByRole("heading", { name: "app-a" }).length === 2);
     expect(screen.queryAllByRole("heading", { name: "app-a" })).toHaveLength(2);
 
     // Tab again (or Esc) leaves the actions for the list.

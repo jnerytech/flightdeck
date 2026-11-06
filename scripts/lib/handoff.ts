@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 /**
  * `bun run handoff:check` (issue #169, D4): the four checks every hand-off needs, run in order,
  * and one stamp line the session pastes into its hand-off message. The receiver checks the stamp
@@ -40,11 +41,11 @@ export async function runHandoff({
 }> {
   const codes: string[] = [];
   let failed = false;
-  for (const [name, command] of STEPS) {
+  await inSequence(STEPS, async ([name, command]) => {
     const code = await run(name === "related" && base ? [...command, "--base", base] : command);
     failed ||= code !== 0;
     codes.push(`${name}=${code}`);
-  }
+  });
   if (security) {
     const verdict = await security();
     failed ||= verdict !== "0";

@@ -5,7 +5,7 @@ import * as protocol from "@flightdeck/protocol";
 import { FlightdeckError } from "../src/errors.ts";
 import { cloneRepo, type GitRunner, scanRepos } from "../src/project-find.ts";
 import { type RunningServer, startServer } from "../src/server.ts";
-import { newManager, poll, tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, poll, tempDir } from "./helpers.ts";
 
 /** A root with repos at several depths, plus things a scan must not enter or follow. */
 function tree() {
@@ -236,6 +236,8 @@ describe("projetos-busca: the commands", () => {
     const clone = await ask(bare, "projects.clone", { url: "https://a/b.git", root });
     expect(clone && !clone.ok && clone.error.reason).toBe("feature_off");
     const info = await ask(bare, "host.info", {});
-    expect(info?.ok && (info.data as { features: string[] }).features).toEqual(["session.images"]);
+    expect(info?.ok && (info.data as { features: string[] }).features).toEqual([
+      ...BASELINE_FEATURES,
+    ]);
   });
 });

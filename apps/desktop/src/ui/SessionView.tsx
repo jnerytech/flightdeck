@@ -1,6 +1,7 @@
 import {
+  type EffortLevel,
+  inSequence,
   type PermissionMode,
-  type PermissionUpdate,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
   type SessionImage,
@@ -12,10 +13,10 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
-import { MODELS } from "@/components/personas/model-select";
 import { ActivityLine } from "@/components/session/activity-line";
 import { MessageActions } from "@/components/session/message-actions";
 import { ModeChip } from "@/components/session/mode-chip";
+import { ModelChip } from "@/components/session/model-chip";
 import {
   Composer,
   ComposerDock,
@@ -34,6 +35,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
+import type { Answer } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import { modeRows, nextMode } from "../lib/mode-menu.ts";
 import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
@@ -69,6 +71,8 @@ function rememberPosition(key: string, top: number, atEnd: boolean, seq: number)
 
 /** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
+/** How long after the wheel, a key, a touch or a press on the scrollbar a scroll is the person's. */
+const PERSON_SCROLL_MS = 600;
 
 export interface SessionActions {
   /** Copies a text (the approval's folder); the app's store does. */
@@ -77,29 +81,27 @@ export interface SessionActions {
   /** Changes the permission mode / the model (null: the default) of the open session. */
   setMode?(mode: SettableMode): Promise<void>;
   setModel?(model: string | null): Promise<void>;
+  /** Changes the effort of the live session; null is the model's default. */
+  setEffort?(effort: EffortLevel | null): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
   resume(): Promise<void>;
-  respond(
-    requestId: string,
-    decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions?: PermissionUpdate[],
-    updatedInput?: Record<string, unknown>,
-  ): Promise<void>;
+  respond(requestId: string, decision: "allow" | "deny", answer?: Answer): Promise<void>;
 }
 
 type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
 
-function AssistantMessage(props: {
-  item: Item<"assistant">;
-  toolResults: SessionState["toolResults"];
-  t: T;
-  actions: SessionActions;
-  pin: SessionViewProps["pin"];
-  /** Only the latest message offers Fork. */
-  fork: SessionViewProps["fork"];
-}) {
+function AssistantMessage(
+  props: Readonly<{
+    item: Item<"assistant">;
+    toolResults: SessionState["toolResults"];
+    t: T;
+    actions: SessionActions;
+    pin: SessionViewProps["pin"];
+    /** Only the latest message offers Fork. */
+    fork: SessionViewProps["fork"];
+  }>,
+) {
   const text = props.item.blocks
     .flatMap((block) => (block.type === "text" ? [block.text] : []))
     .join("\n\n");
@@ -132,14 +134,16 @@ function AssistantMessage(props: {
   );
 }
 
-function PermissionItem(props: {
-  item: Item<"permission">;
-  cwd: string | null;
-  actions: SessionActions;
-  alwaysAllow: boolean;
-  t: T;
-  nowMs: number;
-}) {
+function PermissionItem(
+  props: Readonly<{
+    item: Item<"permission">;
+    cwd: string | null;
+    actions: SessionActions;
+    alwaysAllow: boolean;
+    t: T;
+    nowMs: number;
+  }>,
+) {
   const { item, actions } = props;
   return (
     <ApprovalCard
@@ -158,14 +162,19 @@ function PermissionItem(props: {
       {...(actions.copyText ? { onCopyPath: (path: string) => void actions.copyText?.(path) } : {})}
       alwaysAllow={props.alwaysAllow}
       {...(item.resolution ? { resolution: item.resolution } : {})}
-      onRespond={(decision, message, updates, updatedInput) =>
-        actions.respond(item.requestId, decision, message, updates, updatedInput)
+      onRespond={(decision, message, updates, updatedInput, held) =>
+        actions.respond(item.requestId, decision, {
+          message,
+          updatedPermissions: updates,
+          updatedInput,
+          held,
+        })
       }
     />
   );
 }
 
-function TurnResult(props: { item: Item<"result">; t: T }) {
+function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const { item } = props;
   const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
   const key = item.isError ? "session.turnFailed" : "session.turnDone";
@@ -307,6 +316,8 @@ interface SessionViewProps {
   fork?: () => void;
   /** Phase 39: the agent; an OpenCode session says so and offers no fork. */
   runtime?: "claude" | "opencode";
+  /** The host changes the effort of a live session (`session.effort`). */
+  effort?: boolean;
   /** Phase 39: OpenCode's models, for the live switch of an OpenCode session (none until known). */
   models?: readonly string[];
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
@@ -347,7 +358,7 @@ function offeredPrompts(
 }
 
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
-export function SessionView(props: SessionViewProps) {
+export function SessionView(props: Readonly<SessionViewProps>) {
   const ctx = useT();
   const t = props.t ?? ctx;
   const { focusRequestId } = props;
@@ -365,6 +376,14 @@ export function SessionView(props: SessionViewProps) {
   // Where the view itself last put the scroll: the scroll event of that move says nothing about the
   // reader, and by the time it is delivered the layout may have grown (a panel, a code block).
   const pinnedTop = useRef<number | null>(null);
+  // Until when a scroll is the person's: their wheel, keys, touch or a press on the scrollbar. The
+  // browser also scrolls by itself (it pulls the position back when the content shrinks), and the
+  // event for that can reach the handler after a panel changed the layout: read then, the view
+  // would look away from the end and stop following it (issue #315).
+  const personUntil = useRef(0);
+  const person = () => {
+    personUntil.current = Date.now() + PERSON_SCROLL_MS;
+  };
   const pin = (box: HTMLElement) => {
     box.scrollTop = box.scrollHeight;
     pinnedTop.current = box.scrollTop;
@@ -410,11 +429,20 @@ export function SessionView(props: SessionViewProps) {
     for (const child of Array.from(box.children)) observer.observe(child);
     return () => observer.disconnect();
   }, [cards]);
+  // The request the screen was opened for: in view, and once found, focused, so A and N answer it
+  // with no click first (#187). Only once: a card arriving later never takes the focus from the box.
+  const focusedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!focusRequestId || cards === 0) return;
-    const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
+    const card = timeline.current?.querySelector<HTMLElement>(
+      `[data-request-id="${focusRequestId}"]`,
+    );
     // The whole card, as little scroll as needed: centered, a tall card near the end was cut.
     card?.scrollIntoView?.({ block: "nearest" });
+    if (card && focusedFor.current !== focusRequestId) {
+      focusedFor.current = focusRequestId;
+      card.focus({ preventScroll: true });
+    }
   }, [focusRequestId, cards]);
   const missed = missedAfter(props.session.items, awaySeq);
   const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
@@ -441,6 +469,7 @@ export function SessionView(props: SessionViewProps) {
     void actions.setMode?.(next);
   };
   const [model, setModel] = useState("");
+  const [effort, setEffort] = useState<EffortLevel | null>(null);
   const slash = session.slashCommands;
   const described = session.commands;
   // A daemon that describes the commands gives each its group and its description; an older one
@@ -479,14 +508,14 @@ export function SessionView(props: SessionViewProps) {
     let have = attached.length;
     const taken: SessionImage[] = [];
     let turned: ImageRefusal | null = null;
-    for (const file of images) {
+    await inSequence(images, async (file) => {
       const why = refuseImage(file, have);
       if (why) turned = why;
       else {
         taken.push(await readImage(file));
         have++;
       }
-    }
+    });
     setRefusal(turned);
     if (taken.length > 0) setAttached((before) => [...before, ...taken]);
   };
@@ -530,7 +559,7 @@ export function SessionView(props: SessionViewProps) {
   const pickers = {
     ...(props.settings && actions.setModel && (!opencode || props.models)
       ? {
-          model: (
+          model: opencode ? (
             <NativeSelect
               compact
               inline
@@ -542,8 +571,24 @@ export function SessionView(props: SessionViewProps) {
               }}
             >
               <option value="">{t("session.modelDefault")}</option>
-              <ModelOptions models={opencode ? (props.models ?? []) : MODELS} />
+              <ModelOptions models={props.models ?? []} />
             </NativeSelect>
+          ) : (
+            <ModelChip
+              t={t}
+              model={model}
+              current={session.model}
+              effort={effort}
+              effortAvailable={Boolean(props.effort && actions.setEffort)}
+              onPickModel={(value) => {
+                setModel(value);
+                void actions.setModel?.(value || null);
+              }}
+              onPickEffort={(level) => {
+                setEffort(level);
+                void actions.setEffort?.(level);
+              }}
+            />
           ),
         }
       : {}),
@@ -633,12 +678,20 @@ export function SessionView(props: SessionViewProps) {
       <div className="pane-fill">
         <Timeline
           ref={timeline}
+          onWheel={person}
+          onTouchStart={person}
+          onTouchMove={person}
+          onKeyDown={person}
+          onPointerDown={person}
           onScroll={(e) => {
             const box = e.currentTarget;
             const own = pinnedTop.current === box.scrollTop;
             pinnedTop.current = null;
             if (own && following.current) return;
             const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight <= END_SLACK;
+            // Following and not at the end, with no hand on it: the layout moved, not the person.
+            // The observer pins the end again.
+            if (following.current && !atEnd && Date.now() >= personUntil.current) return;
             following.current = atEnd;
             lastHeight.current = box.scrollHeight;
             // Leaving the end remembers the last message seen; returning to it forgets that.

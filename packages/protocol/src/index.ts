@@ -7,6 +7,7 @@ import {
   type AssistantResult,
   AssistantRunPayload,
 } from "./assistant.ts";
+import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 
 export const PROTOCOL_VERSION = 1;
@@ -516,7 +517,15 @@ export const PermissionRespondPayload = z.object({
   updatedInput: ToolInput.optional(),
   /** Only the request's own suggestions or a project rule; anything else is refused. */
   updatedPermissions: z.array(PermissionUpdate).optional(),
+  /**
+   * The Approve was held its full time (#245, #251): a high-risk request is allowed only with it.
+   * Absent from an older app, which a newer host refuses only for a high-risk allow.
+   */
+  held: z.boolean().optional(),
 });
+
+/** The host refuses a high-risk `permission.respond` allow that does not carry `held: true`. */
+export const FEATURE_HOLD_PROOF = "hold-proof";
 
 // Phase 3: transcripts indexed from ~/.claude/projects (read only).
 export const HistoryOrigin = z.enum(["flightdeck", "external"]);
@@ -853,6 +862,13 @@ export const DiffFile = z.object({
   /** Not committed yet (tracked change or new file). */
   uncommitted: z.boolean(),
   binary: z.boolean(),
+  /**
+   * The file is listed without content because it is over the daemon's cap (issue #329): a new file
+   * over it, or a diff over it. Absent from a daemon that does not know the marker.
+   */
+  tooLarge: z.boolean().optional(),
+  /** With `tooLarge`: the size of the file (a new one) or of its diff text, in bytes. */
+  bytes: z.number().int().nonnegative().optional(),
   hunks: z.array(DiffHunk),
 });
 export type DiffFile = z.infer<typeof DiffFile>;
@@ -1768,6 +1784,10 @@ export const UsageRow = z.object({
   inputTokens: z.number().int(),
   outputTokens: z.number().int(),
   turns: z.number().int(),
+  /** How many of the turns ended in an error; absent from a daemon that does not count them. */
+  failedTurns: z.number().int().optional(),
+  /** The time the turns took, in milliseconds; absent from a daemon that does not add it up. */
+  durationMs: z.number().optional(),
 });
 export type UsageRow = z.infer<typeof UsageRow>;
 
@@ -2168,7 +2188,8 @@ export type CostsStatus = z.infer<typeof CostsStatus>;
 
 const ProjectFields = {
   name: z.string().min(1).optional(),
-  baseBranch: z.string().min(1).optional(),
+  /** A branch name git accepts, and never one that starts with `-` (issue #345). */
+  baseBranch: z.string().refine(isBranchName, "not a valid branch name").optional(),
   prProvider: PrProviderKind.optional(),
   /** `null` or blank removes the script. */
   setupScript: z.string().nullable().optional(),
@@ -2834,6 +2855,11 @@ export const Command = z.discriminatedUnion("type", [
     "session.setModel",
     z.object({ sessionId: z.string(), model: z.string().nullable() }).strict(),
   ),
+  /** Changes the effort of a live managed session for its next turn; null is the model's default. */
+  cmd(
+    "session.setEffort",
+    z.object({ sessionId: z.string(), effort: EffortLevel.nullable() }).strict(),
+  ),
   cmd("session.close", SessionIdPayload),
   cmd("session.resume", SessionIdPayload),
   cmd("session.subscribe", SessionSubscribePayload),
@@ -2857,6 +2883,16 @@ export const Command = z.discriminatedUnion("type", [
   cmd("roots.add", z.object({ path: z.string().min(1), confirm: z.boolean().optional() })),
   /** Lets a session of this host start with every permission check off; turning it on asks for `confirm`. */
   cmd("host.bypass", z.object({ allow: z.boolean(), confirm: z.boolean().optional() })),
+  /** Issue #196: which folders may bring their own hooks, MCP servers and settings into a managed session. */
+  cmd(
+    "project.trust.state",
+    z.object({ paths: z.array(z.string().min(1).max(4096)).min(1).max(200) }).strict(),
+  ),
+  cmd("project.trust.inspect", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  cmd(
+    "project.trust.set",
+    z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
+  ),
   cmd("board.get", z.object({ projectId: z.string() })),
   /** Host-wide board settings; without fields it only reads them. */
   cmd("board.settings", z.object({ maxParallelRuns: z.number().int().min(1).optional() })),
@@ -2946,6 +2982,17 @@ export const Command = z.discriminatedUnion("type", [
       archived: z.boolean().optional(),
     }),
   ),
+  /** Issue #152: the worktrees of the cards, with their size, state and why one is kept. */
+  cmd("worktree.list", z.object({ projectId: z.string().optional() }).strict()),
+  /** Removes the listed worktrees that are safe to remove; the daemon checks each one again. */
+  cmd(
+    "worktree.remove",
+    z.object({
+      items: z.array(z.object({ projectId: z.string(), path: z.string() }).strict()).min(1),
+      /** Like Discard and Delete: the host asks for the person's yes in the request itself. */
+      confirm: z.literal(true),
+    }),
+  ),
   cmd("maintenance.status", z.object({}).strict()),
   cmd("maintenance.backup", z.object({}).strict()),
   /** Applies the retention policy now; `dryRun` only counts. */
@@ -2955,6 +3002,7 @@ export const Command = z.discriminatedUnion("type", [
   /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
   cmd("daemon.update.check", z.object({}).strict()),
+  cmd("host.updates.set", z.object({ auto: z.boolean() })),
   /** Phase 12: the git snapshots of a Claude session, oldest first. */
   cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
   /** Phase 12: the files turn `n` (a `before` snapshot's n) changed, between its trees. */
@@ -4120,6 +4168,17 @@ export const UpdateStatus = z.object({
 });
 export type UpdateStatus = z.infer<typeof UpdateStatus>;
 
+/** Issue #280: where the daemon's automatic update stands, for the host page. */
+export const AutoUpdateStatus = z.object({
+  enabled: z.boolean(),
+  /** `off`, `current` (nothing newer), `waiting` (the host is busy), `started` or `failed`. */
+  state: z.enum(["off", "current", "waiting", "started", "failed"]),
+  version: z.string().optional(),
+  reason: z.string().optional(),
+  at: z.string().optional(),
+});
+export type AutoUpdateStatus = z.infer<typeof AutoUpdateStatus>;
+
 /** Phase 39: a runtime the host offers besides Claude Code, as discovery found it. */
 export const HostRuntime = z.object({
   kind: SessionRuntime,
@@ -4147,6 +4206,8 @@ export const HostInfoResult = z.object({
   features: z.array(z.string()).optional(),
   /** Phase 9: the last check of the daemon's release manifest; absent when it does not check. */
   update: UpdateStatus.optional(),
+  /** Issue #280: the automatic update; absent on a host that does not offer it (the `autoUpdate` feature). */
+  autoUpdate: AutoUpdateStatus.optional(),
   /** Phase 8: the stable `flightdeckd` (phase 7) when installed; "Abrir no terminal" runs it. */
   flightdeckdPath: z.string().nullable().optional(),
   /** Phase 8: the WSL distro this daemon runs in, `null` outside WSL. */
@@ -4242,6 +4303,49 @@ export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
 /** The host's allowed folders after `roots.add`. */
 export const RootsResult = z.object({ allowedRoots: z.array(z.string()) });
 
+/** Issue #196: whether a folder is trusted, and through which record (a parent folder may be the one). */
+export const ProjectTrustState = z.object({
+  path: z.string(),
+  trusted: z.boolean(),
+  via: z.string().nullable(),
+});
+export type ProjectTrustState = z.infer<typeof ProjectTrustState>;
+export const ProjectTrustStates = z.object({ items: z.array(ProjectTrustState) });
+export type ProjectTrustStates = z.infer<typeof ProjectTrustStates>;
+
+/** What a project's own files would load into a session, read without running anything. */
+export const ProjectLoad = z.object({
+  path: z.string(),
+  hooks: z.array(z.object({ event: z.string(), file: z.string(), commands: z.array(z.string()) })),
+  mcpServers: z.array(z.object({ name: z.string(), file: z.string(), command: z.string() })),
+  envKeys: z.array(z.string()),
+  allowRules: z.array(z.string()),
+  defaultMode: z.string().nullable(),
+  agents: z.array(z.string()),
+  skills: z.array(z.string()),
+  commands: z.array(z.string()),
+  claudeMd: z.boolean(),
+  /** Settings that name a program to run (apiKeyHelper, statusLine, ...): the whole command. */
+  executables: z.array(z.object({ key: z.string(), file: z.string(), command: z.string() })),
+  /** Environment variables that send traffic or code elsewhere (a base URL, a proxy, NODE_OPTIONS): the value too. */
+  redirects: z.array(z.object({ key: z.string(), file: z.string(), value: z.string() })),
+  /** Plugins and marketplaces the settings turn on or add. */
+  plugins: z.array(z.string()),
+  /** Settings keys present that this listing does not explain, so a key it does not know is still named. */
+  otherKeys: z.array(z.string()),
+  /** Agent, skill and command files whose header carries hooks, servers or tool grants. */
+  extras: z.array(z.object({ file: z.string(), keys: z.array(z.string()) })),
+  unreadable: z.array(z.string()),
+  /** How many entries of each list were left out because the list is capped: the screen must say so. */
+  omitted: z.object({
+    hooks: z.number().int().min(0),
+    mcpServers: z.number().int().min(0),
+    allowRules: z.number().int().min(0),
+    envKeys: z.number().int().min(0),
+  }),
+});
+export type ProjectLoad = z.infer<typeof ProjectLoad>;
+
 /** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
 export const BypassResult = z.object({ allowBypassPermissions: z.boolean() });
 export type BypassResult = z.infer<typeof BypassResult>;
@@ -4279,6 +4383,75 @@ export type BackupInfo = z.infer<typeof BackupInfo>;
 
 /** Rows removed (or that would be, with `dryRun`) per table. */
 export const PruneCounts = z.record(z.string(), z.number());
+
+/** Issue #152: why a worktree is kept and not offered for removal. */
+export const WorktreeBlocker = z.enum([
+  "live_session",
+  "running",
+  "dirty",
+  "unpushed",
+  "unknown_base",
+  /** git could not say (a command failed or answered nonsense): nothing is removed. */
+  "unknown_state",
+  /** The worktree is on a branch that is not one of Flightdeck's `fd/*`. */
+  "other_branch",
+  /** It holds files git ignores that are not rebuildable (not `node_modules`, build output…). */
+  "ignored_files",
+  /** A tracked file is hidden from `git status` (`assume-unchanged`, `skip-worktree`): its edits would go. */
+  "hidden_changes",
+]);
+export type WorktreeBlocker = z.infer<typeof WorktreeBlocker>;
+export const WorktreeItem = z.object({
+  projectId: z.string(),
+  projectName: z.string(),
+  path: z.string(),
+  branch: z.string().nullable(),
+  cardId: z.string().nullable(),
+  cardTitle: z.string().nullable(),
+  column: BoardColumn.nullable(),
+  prState: PrState.nullable(),
+  dirty: z.boolean(),
+  /** Commits that exist nowhere else: not on a remote and not on the base branch. */
+  unpushed: z.number().int().nonnegative(),
+  /** Bytes on disk; null when the scan was not finished in time (never shown as 0). */
+  sizeBytes: z.number().nonnegative().nullable(),
+  /** The newest of the last commit, the card's last change and the folder's. */
+  lastActivity: z.string(),
+  idleDays: z.number().nonnegative(),
+  blockers: z.array(WorktreeBlocker),
+  /** Safe to remove and worth it: no blocker, finished or without a card, idle over 7 days. */
+  suggested: z.boolean(),
+});
+export type WorktreeItem = z.infer<typeof WorktreeItem>;
+export const WorktreesResult = z.object({
+  worktrees: z.array(WorktreeItem),
+  disks: z.array(
+    z.object({
+      projectId: z.string(),
+      totalBytes: z.number().nonnegative(),
+      freeBytes: z.number().nonnegative(),
+    }),
+  ),
+});
+export type WorktreesResult = z.infer<typeof WorktreesResult>;
+export const WorktreeRemoveResult = z.object({
+  removed: z.array(
+    z.object({
+      path: z.string(),
+      freedBytes: z.number().nonnegative().nullable(),
+      /** The folder went but its branch was kept: it had moved, or git refused to delete it. */
+      branchKept: z.boolean().optional(),
+    }),
+  ),
+  kept: z.array(
+    z.object({
+      path: z.string(),
+      reason: z.union([WorktreeBlocker, z.enum(["not_listed", "failed"])]),
+      detail: z.string().optional(),
+    }),
+  ),
+});
+export type WorktreeRemoveResult = z.infer<typeof WorktreeRemoveResult>;
 export type PruneCounts = z.infer<typeof PruneCounts>;
 
 export const MaintenanceStatus = z.object({
@@ -4300,6 +4473,7 @@ export interface CommandResults {
   "session.interrupt": undefined;
   "session.setMode": undefined;
   "session.setModel": undefined;
+  "session.setEffort": undefined;
   "session.close": undefined;
   "session.resume": undefined;
   "session.subscribe": SessionSubscribeResult;
@@ -4319,6 +4493,9 @@ export interface CommandResults {
   "board.settings": BoardSettings;
   "roots.add": RootsResult;
   "host.bypass": BypassResult;
+  "project.trust.state": ProjectTrustStates;
+  "project.trust.inspect": ProjectLoad;
+  "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;
   "card.update": Card;
@@ -4341,12 +4518,15 @@ export interface CommandResults {
   "external.watch": undefined;
   "external.message": undefined;
   "session.meta.set": SessionMeta & { claudeSessionId: string };
+  "worktree.list": WorktreesResult;
+  "worktree.remove": WorktreeRemoveResult;
   "maintenance.status": MaintenanceStatus;
   "maintenance.backup": BackupInfo;
   "maintenance.prune": PruneCounts;
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
   "daemon.update.check": UpdateStatus;
+  "host.updates.set": AutoUpdateStatus;
   "snapshots.list": { snapshots: SnapshotInfo[] };
   "snapshots.files": SnapshotFiles;
   "rewind.preview": RewindPreview;
@@ -4959,11 +5139,13 @@ export * from "./activity.ts";
 export * from "./assistant.ts";
 export * from "./assistant-prompts.ts";
 export * from "./compare.ts";
+export * from "./git-ref.ts";
 export * from "./pairing.ts";
 export * from "./personas.ts";
 export * from "./question.ts";
 export * from "./refusals.ts";
 export * from "./run.ts";
+export * from "./sequence.ts";
 export * from "./snippets.ts";
 
 /**

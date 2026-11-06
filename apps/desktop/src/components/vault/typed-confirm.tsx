@@ -13,16 +13,18 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 
 /** A confirmation that only opens its button once the person has typed `word` (case aside). */
-export function TypedConfirm(props: {
-  message: string;
-  /** The word to type: "revelar", or the name of what is being removed. */
-  word: string;
-  inputLabel: string;
-  confirmLabel: string;
-  destructive?: boolean;
-  onConfirm(): void;
-  onCancel(): void;
-}) {
+export function TypedConfirm(
+  props: Readonly<{
+    message: string;
+    /** The word to type: "revelar", or the name of what is being removed. */
+    word: string;
+    inputLabel: string;
+    confirmLabel: string;
+    destructive?: boolean;
+    onConfirm(): void;
+    onCancel(): void;
+  }>,
+) {
   const t = useT();
   const [typed, setTyped] = useState("");
   // The action closes the dialog too: only a close that was not a confirmation is a cancel.

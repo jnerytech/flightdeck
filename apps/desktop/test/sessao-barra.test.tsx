@@ -98,9 +98,21 @@ describe("sessao-barra: the composer toolbar", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: "Modo de permissão: Padrão" })).not.toBeNull();
-    const model = screen.queryByLabelText("Modelo") as HTMLSelectElement;
-    await act(async () => void fireEvent.change(model, { target: { value: "opus" } }));
-    await act(async () => void fireEvent.change(model, { target: { value: "" } }));
+    const chip = () => screen.getByRole("button", { name: /^Modelo:/ });
+    const openChip = () =>
+      act(async () => {
+        fireEvent.pointerDown(chip(), { button: 0, ctrlKey: false, pointerType: "mouse" });
+        fireEvent.click(chip());
+      });
+    await openChip();
+    await act(
+      async () => void fireEvent.click(screen.getByRole("menuitemradio", { name: /^Opus/ })),
+    );
+    await openChip();
+    await act(
+      async () =>
+        void fireEvent.click(screen.getByRole("menuitemradio", { name: /^Modelo padrão/ })),
+    );
     expect(calls).toEqual(["model:opus", "model:null"]);
   });
 
@@ -109,7 +121,7 @@ describe("sessao-barra: the composer toolbar", () => {
       <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={actions} />,
     );
     expect(screen.queryByRole("button", { name: /^Modo de permissão:/ })).toBeNull();
-    expect(screen.queryByLabelText("Modelo")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Modelo:/ })).toBeNull();
   });
 
   test("a daemon that describes the commands gives the groups and the description of the selected one", async () => {

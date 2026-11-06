@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 
 export type ScopeFindingKind =
   | "plugins_entry"
@@ -69,18 +70,18 @@ export function globalConfigDir(
 }
 
 async function entries(dir: string): Promise<string[]> {
-  return (await readdir(dir).catch(() => [] as string[])).sort();
+  return (await readdir(dir).catch(() => [] as string[])).sort(byCodeUnit);
 }
 
 /** Every file under `dir` (relative paths, sorted), up to the cap. */
 async function walk(dir: string, out: string[], root = dir): Promise<void> {
-  for (const name of await entries(dir)) {
+  await inSequence(await entries(dir), async (name) => {
     if (out.length >= MAX_FILES) return;
     const path = join(dir, name);
     const info = await stat(path).catch(absent);
     if (info?.isDirectory()) await walk(path, out, root);
     else if (info) out.push(relative(root, path));
-  }
+  });
 }
 
 /** A plugin entry's id; a removal (`-id`) is none, and an unknown shape fails closed as itself. */
@@ -103,15 +104,9 @@ function mcpServers(mcp: Record<string, unknown>): string[] {
     .map(([name]) => name);
 }
 
-function findingsOf(path: string, text: string): ScopeFinding[] {
-  let config: Record<string, unknown>;
-  try {
-    config = (Bun.JSONC.parse(text) ?? {}) as Record<string, unknown>;
-  } catch {
-    return [{ kind: "unreadable_config", path }];
-  }
+/** The `plugins` (v2) and `plugin` (v1) lists of a config: each entry, a shape nobody expects fails closed. */
+function pluginFindings(path: string, config: Record<string, unknown>): ScopeFinding[] {
   const findings: ScopeFinding[] = [];
-  // v2 `plugins`, and the v1 `plugin` OpenCode still reads; a shape nobody expects fails closed.
   for (const key of ["plugins", "plugin"]) {
     const list = config[key];
     if (list === undefined) continue;
@@ -124,57 +119,97 @@ function findingsOf(path: string, text: string): ScopeFinding[] {
       if (id) findings.push({ kind: "plugins_entry", path, detail: id });
     }
   }
-  if (config.mcp !== undefined) {
-    if (!isObject(config.mcp)) findings.push({ kind: "unreadable_config", path, detail: "mcp" });
-    else
-      for (const name of mcpServers(config.mcp))
-        findings.push({ kind: "mcp_server", path, detail: name });
-  }
   return findings;
+}
+
+/** The enabled MCP servers of a config; a `mcp` that is not an object fails closed. */
+function mcpFindings(path: string, mcp: unknown): ScopeFinding[] {
+  if (mcp === undefined) return [];
+  if (!isObject(mcp)) return [{ kind: "unreadable_config", path, detail: "mcp" }];
+  return mcpServers(mcp).map((name): ScopeFinding => ({ kind: "mcp_server", path, detail: name }));
+}
+
+function findingsOf(path: string, text: string): ScopeFinding[] {
+  let config: Record<string, unknown>;
+  try {
+    config = (Bun.JSONC.parse(text) ?? {}) as Record<string, unknown>;
+  } catch {
+    return [{ kind: "unreadable_config", path }];
+  }
+  // v2 `plugins`, and the v1 `plugin` OpenCode still reads.
+  return [...pluginFindings(path, config), ...mcpFindings(path, config.mcp)];
+}
+
+/** A finding as one line: its kind, the detail when there is one, and the path. */
+export function findingText(f: ScopeFinding): string {
+  const detail = f.detail ? ` ${f.detail}` : "";
+  return `${f.kind}${detail} (${f.path})`;
+}
+
+type Fingerprint = (path: string) => Promise<void>;
+
+/** The global config files, and the plugin folders: what they hold and how they look. */
+async function scanGlobal(
+  global: string,
+  findings: ScopeFinding[],
+  fingerprint: Fingerprint,
+): Promise<void> {
+  await inSequence(CONFIG_FILES, async (name) => {
+    const path = join(global, name);
+    await fingerprint(path);
+    const text = await readFile(path, "utf8").catch(absent);
+    if (text !== null) findings.push(...findingsOf(path, text));
+  });
+  await inSequence(PLUGIN_DIRS, async (dir) => {
+    const root = join(global, dir);
+    for (const name of await entries(root)) {
+      findings.push({ kind: "plugin_file", path: join(root, name), detail: name });
+    }
+    const files: string[] = [];
+    await walk(root, files);
+    await inSequence(files, (file) => fingerprint(join(root, file)));
+  });
+}
+
+/** The entries of a folder that `keep` accepts, each one a finding of `kind` and part of the fingerprint. */
+async function scanFolder(
+  dir: string,
+  kind: "system_config" | "managed_config",
+  keep: (name: string) => boolean,
+  findings: ScopeFinding[],
+  fingerprint: Fingerprint,
+): Promise<void> {
+  await inSequence(await entries(dir), async (name) => {
+    if (!keep(name)) return;
+    const path = join(dir, name);
+    await fingerprint(path);
+    findings.push({ kind, path });
+  });
 }
 
 export async function scanOpenCodeScope(opts: ScopeOptions): Promise<ScopeResult> {
   const findings: ScopeFinding[] = [];
   const hash = createHash("sha256");
-  const fingerprint = async (path: string) => {
+  const fingerprint: Fingerprint = async (path) => {
     const info = await stat(path).catch(absent);
-    hash.update(`${path}\0${info ? `${info.size}:${info.mtimeMs}` : "-"}\n`);
+    const state = info ? `${info.size}:${info.mtimeMs}` : "-";
+    hash.update(`${path}\0${state}\n`);
   };
 
   const global = globalConfigDir(opts.env);
-  if (global) {
-    for (const name of CONFIG_FILES) {
-      const path = join(global, name);
-      await fingerprint(path);
-      const text = await readFile(path, "utf8").catch(absent);
-      if (text !== null) findings.push(...findingsOf(path, text));
-    }
-    for (const dir of PLUGIN_DIRS) {
-      const root = join(global, dir);
-      for (const name of await entries(root)) {
-        findings.push({ kind: "plugin_file", path: join(root, name), detail: name });
-      }
-      const files: string[] = [];
-      await walk(root, files);
-      for (const file of files) await fingerprint(join(root, file));
-    }
-  }
-
+  if (global) await scanGlobal(global, findings, fingerprint);
   // Anything in the system folder fails closed: it outranks the global config (OpenCode's config docs).
-  for (const dir of opts.systemDirs ?? ["/etc/opencode"]) {
-    for (const name of await entries(dir)) {
-      const path = join(dir, name);
-      await fingerprint(path);
-      findings.push({ kind: "system_config", path });
-    }
-  }
-  for (const dir of opts.managedDirs ?? defaultManagedDirs(process.platform, opts.env)) {
-    for (const name of await entries(dir)) {
-      if (!name.toLowerCase().includes("opencode")) continue;
-      const path = join(dir, name);
-      await fingerprint(path);
-      findings.push({ kind: "managed_config", path });
-    }
-  }
+  await inSequence(opts.systemDirs ?? ["/etc/opencode"], (dir) =>
+    scanFolder(dir, "system_config", () => true, findings, fingerprint),
+  );
+  await inSequence(opts.managedDirs ?? defaultManagedDirs(process.platform, opts.env), (dir) =>
+    scanFolder(
+      dir,
+      "managed_config",
+      (name) => name.toLowerCase().includes("opencode"),
+      findings,
+      fingerprint,
+    ),
+  );
   return { findings, fingerprint: hash.digest("hex") };
 }

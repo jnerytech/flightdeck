@@ -6,6 +6,7 @@
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { byCodeUnit } from "@flightdeck/protocol";
 import { isCompleteRun, printedPairs } from "./lib/shots-variants.ts";
 import { checkShots, type VisualIO, type VisualMode } from "./lib/visual.ts";
 
@@ -17,7 +18,7 @@ const diskIO: VisualIO = {
       return readdirSync(dir, { recursive: true, encoding: "utf8" })
         .map((path) => path.replaceAll("\\", "/"))
         .filter((path) => path.endsWith(".png"))
-        .sort();
+        .sort(byCodeUnit);
     } catch {
       return [];
     }

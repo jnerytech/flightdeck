@@ -5,7 +5,7 @@ import type { Key } from "../i18n/index.ts";
 import { statusTone } from "../lib/status.ts";
 
 /** A session's status: its dot and its word. */
-export function StatusBadge({ status }: { status: SessionStatus }) {
+export function StatusBadge({ status }: Readonly<{ status: SessionStatus }>) {
   const t = useT();
   return <StatusText tone={statusTone(status)}>{t(`status.${status}` as Key)}</StatusText>;
 }

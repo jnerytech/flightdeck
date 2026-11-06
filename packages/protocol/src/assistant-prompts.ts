@@ -165,7 +165,7 @@ export interface BuildInput {
 function neutralize(material: string): string {
   return material.replace(
     /<\/(text|context|diff|rules|recent)/gi,
-    (_tag, name: string) => `<\\/${name}`,
+    (_tag, name: string) => String.raw`<\/${name}`,
   );
 }
 
@@ -192,7 +192,8 @@ export function buildRequest(input: BuildInput): AssistantRequest {
   const task = empty && prompt.generate ? prompt.generate : prompt.improve;
   const language = LANGUAGES[input.language] ?? input.language;
   const system = `${PREAMBLE}\nWrite in the language of the text; when the text is empty, write in ${language}.\n\nTask: ${task}\n${prompt.rules}`;
-  const user = [`<text>\n${empty ? "" : `${neutralize(input.text)}\n`}</text>`];
+  const text = empty ? "" : `${neutralize(input.text)}\n`;
+  const user = [`<text>\n${text}</text>`];
   for (const name of Object.keys(input.context ?? {}).sort(byteOrder)) {
     user.push(`<context name="${name}">\n${neutralize(input.context?.[name] ?? "")}\n</context>`);
   }

@@ -1,8 +1,11 @@
+import { inSequence } from "@flightdeck/protocol";
 /**
  * `bun run release:close -- <tag> [--apply] [--since <tag>]` (issue #252): after a release tag, the
- * issues its commits reference get "Shipped in <tag>", are closed and go to Done on the board, and
- * the milestone named after the tag is closed once nothing in it is open. A dry run by default; an
- * issue the tag's commits do not reference is never touched, and a second run repeats nothing.
+ * issues the tag ships get "Shipped in <tag>", are closed and go to Done on the board, and the
+ * milestone named after the tag is closed once nothing in it is open. An issue ships when a merged
+ * pull request of the range closes it (its closingIssuesReferences) or a commit says
+ * `Closes/Fixes/Resolves #N` (#367); an issue only referenced (a docs mention, a partial commit, a
+ * PR that said Refs) is named and left open. A dry run by default, and a second run repeats nothing.
  */
 
 export interface GhResult {
@@ -24,6 +27,10 @@ export interface ReleaseCloseDeps {
 const REPO = "repos/{owner}/{repo}";
 /** A body line that closes: `Closes #12`, `fixes #12`, `Resolves #12`. */
 const CLOSING_LINE = /^\s*(?:closes|fixes|resolves)\s+#(\d+)/i;
+/** A subject that closes, said after a comma or a dash: `fix(x): y, closes #12`. */
+const CLOSING_SUBJECT = /\b(?:closes|fixes|resolves)\s+#(\d+)/i;
+/** The subject of the merge commit GitHub makes for a pull request. */
+const MERGE_SUBJECT = /^Merge pull request #(\d+)\b/;
 
 /** A release tag, and so a `--since`: a word that is never an option or a range for git. */
 const TAG = /^v\d+\.\d+\.\d+$/;
@@ -33,21 +40,38 @@ const plain = (text: string) => text.replace(/\p{Cc}/gu, " ");
 const numbers = (text: string) => [...text.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1]));
 const sorted = (set: Set<number>) => [...set].sort((a, b) => a - b);
 
-/** The issues a tag's commits reference: in a subject, or a `Closes/Fixes/Resolves #N` body line. */
+/**
+ * The issues a tag's commits close (a `Closes/Fixes/Resolves #N` line, in a subject or a body) and
+ * the ones they only reference. A merge commit's own pull request number is neither.
+ */
 export function issueRefs(log: string): { closes: number[]; mentioned: number[] } {
   const closes = new Set<number>();
-  const inBodies = new Set<number>();
+  const referenced = new Set<number>();
   for (const record of log.split("\x1e")) {
     const [subject = "", body = ""] = record.replace(/^\n/, "").split("\x1f");
-    for (const n of numbers(subject)) closes.add(n);
+    if (MERGE_SUBJECT.test(subject)) continue;
+    const closingSubject = CLOSING_SUBJECT.exec(subject);
+    if (closingSubject) closes.add(Number(closingSubject[1]));
+    for (const n of numbers(subject)) referenced.add(n);
     for (const line of body.split("\n")) {
       const closing = CLOSING_LINE.exec(line);
       if (closing) closes.add(Number(closing[1]));
-      for (const n of numbers(line)) inBodies.add(n);
+      for (const n of numbers(line)) referenced.add(n);
     }
   }
-  const mentioned = new Set([...inBodies].filter((n) => !closes.has(n)));
-  return { closes: sorted(closes), mentioned: sorted(mentioned) };
+  return {
+    closes: sorted(closes),
+    mentioned: sorted(new Set([...referenced].filter((n) => !closes.has(n)))),
+  };
+}
+
+/** The pull requests merged into the range, from the subjects of its merge commits. */
+export function mergedPulls(subjects: string): number[] {
+  return subjects
+    .split("\n")
+    .map((line) => MERGE_SUBJECT.exec(line)?.[1])
+    .filter((n): n is string => n !== undefined)
+    .map(Number);
 }
 
 interface Planned {
@@ -166,11 +190,37 @@ export async function releaseClose(
   const log = await deps.git(["log", "--format=%s%x1f%b%x1e", `${since}..${tag}`]);
   const refs = issueRefs(log.stdout);
   const comment = `Shipped in ${tag}.`;
-  deps.log(`release:close ${tag} (${since}..${tag}): ${refs.closes.length} referenced number(s)`);
-
   let failures = 0;
+  // The issues a merged pull request closes ship with it, even when no commit says so.
+  const closes = new Set(refs.closes);
+  const merges = await deps.git([
+    "log",
+    "--first-parent",
+    "--merges",
+    "--format=%s",
+    `${since}..${tag}`,
+  ]);
+  await inSequence(mergedPulls(merges.stdout), async (pull) => {
+    const closing = await deps.gh([
+      "pr",
+      "view",
+      String(pull),
+      "--json",
+      "closingIssuesReferences",
+      "--jq",
+      ".closingIssuesReferences[].number",
+    ]);
+    if (closing.code !== 0) {
+      deps.log(`#${pull}: its closing issues cannot be read`);
+      failures++;
+    } else
+      for (const line of closing.stdout.split("\n"))
+        if (/^\d+$/.test(line.trim())) closes.add(Number(line));
+  });
+  deps.log(`release:close ${tag} (${since}..${tag}): ${closes.size} issue(s) to close`);
+
   const planned: Planned[] = [];
-  for (const issue of refs.closes) {
+  await inSequence(sorted(closes), async (issue) => {
     const item = await read(deps, issue, comment);
     if (item === "unreadable") {
       deps.log(`#${issue}: cannot be read`);
@@ -184,10 +234,10 @@ export async function releaseClose(
         `#${issue} ${item.open ? "open" : "closed"}: ${plain(item.title)} → ${[...steps, "board Done"].join(", ")}`,
       );
     }
-  }
-  if (refs.mentioned.length > 0) {
-    const list = refs.mentioned.map((n) => `#${n}`).join(", ");
-    deps.log(`mentioned only in commit bodies, not touched: ${list}`);
+  });
+  const only = refs.mentioned.filter((n) => !closes.has(n));
+  if (only.length > 0) {
+    deps.log(`referenced only, left open: ${only.map((n) => `#${n}`).join(", ")}`);
   }
 
   const milestone = await milestoneOf(deps, tag);
@@ -208,7 +258,9 @@ export async function releaseClose(
   }
 
   if (!deps.board) deps.log("board skipped (no board command: set FLIGHTDECK_BOARD_CMD)");
-  for (const item of planned) failures += await ship(deps, item, comment);
+  await inSequence(planned, async (item) => {
+    failures += await ship(deps, item, comment);
+  });
 
   const after = milestone ? await milestoneOf(deps, tag) : undefined;
   if (!after) deps.log(`no milestone named ${tag}`);

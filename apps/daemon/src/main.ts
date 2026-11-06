@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
-import { homedir, tmpdir, userInfo } from "node:os";
+import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -125,6 +125,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { settled } from "./settled.ts";
 import { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
@@ -150,6 +151,8 @@ import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 import { TraceService } from "./trace/service.ts";
+import { inspectProject } from "./trust/inspect.ts";
+import { ProjectTrust } from "./trust/project-trust.ts";
 import {
   binaryVersion,
   refusedAddress,
@@ -161,6 +164,7 @@ import {
   waitHealthy,
 } from "./update.ts";
 import { DaemonUpdater } from "./updates/apply.ts";
+import { AutoUpdater, autoUpdateOf } from "./updates/auto.ts";
 import { UpdateChecker } from "./updates/check.ts";
 import { addToUserPath, binDir, removeFromUserPath } from "./user-path.ts";
 import { VaultRules } from "./vault/rules-store.ts";
@@ -172,6 +176,8 @@ import { PrWatcher } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { shellCheckRunner } from "./workflows/check-runner.ts";
+import { FolderLocks } from "./worktrees/locks.ts";
+import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 import { detectWsl, readProcVersion } from "./wsl-host.ts";
 
@@ -285,227 +291,255 @@ const SERVICE_ACTIONS: readonly ServiceAction[] = [
   "start",
 ];
 
+/** Where the parser is in the command line; a handler reads the words after its own through it. */
+class ArgReader {
+  private i = 0;
+  constructor(private readonly argv: readonly string[]) {}
+
+  /** The word the parser is on, or undefined once the line is read. */
+  current(): string | undefined {
+    return this.argv[this.i];
+  }
+
+  advance(): void {
+    this.i++;
+  }
+
+  /** The next word, moving onto it. */
+  next(): string | undefined {
+    return this.argv[++this.i];
+  }
+
+  /** The next word, without moving. */
+  peek(): string | undefined {
+    return this.argv[this.i + 1];
+  }
+
+  /** Everything after the current word, which the caller then owns (the parser stops). */
+  takeRest(): string[] {
+    const rest = this.argv.slice(this.i + 1);
+    this.i = this.argv.length;
+    return rest;
+  }
+}
+
+type Handler = (args: CliArgs, reader: ArgReader, value: () => string) => void;
+
+const invalid = (what: string, got: string | undefined, none = "(nenhuma)") =>
+  new Error(`${what}: ${got ?? none}\n${USAGE}`);
+
+/** The word after a command, which must be one of `allowed`. */
+function subAction<T extends string>(
+  reader: ArgReader,
+  allowed: readonly T[],
+  what: string,
+  none?: string,
+): T {
+  const action = reader.next();
+  if (action === undefined || !(allowed as readonly string[]).includes(action)) {
+    throw invalid(what, action, none);
+  }
+  return action as T;
+}
+
+/** A name after an action (`action run <name>`); it cannot be another flag. */
+function operand(reader: ArgReader, what: string): string {
+  const next = reader.next();
+  if (next === undefined || next.startsWith("--")) throw new Error(`falta ${what}\n${USAGE}`);
+  return next;
+}
+
+const setCommand =
+  (command: CliArgs["command"]): Handler =>
+  (args) => {
+    args.command = command;
+  };
+
+/** A command whose word after it is one of `allowed`, kept in `args.action`. */
+const withAction =
+  <T extends string>(command: CliArgs["command"], allowed: readonly T[], what: string): Handler =>
+  (args, reader) => {
+    args.command = command;
+    args.action = subAction(reader, allowed, what) as never;
+  };
+
+const setValue =
+  (set: (args: CliArgs, value: string) => void): Handler =>
+  (args, _reader, value) => {
+    set(args, value());
+  };
+
+const setFlag =
+  (set: (args: CliArgs) => void): Handler =>
+  (args) => {
+    set(args);
+  };
+
+/** `action list|run <name>`, `snippet list|get <name>`: the second word may take a name. */
+const withNamedAction =
+  (
+    command: CliArgs["command"],
+    allowed: readonly ["list", "run" | "get"],
+    what: string,
+    nameWhat: string,
+    keep: (args: CliArgs, name: string) => void,
+  ): Handler =>
+  (args, reader) => {
+    args.command = command;
+    const action = subAction(reader, allowed, what);
+    args.action = action as never;
+    if (action === allowed[1]) keep(args, operand(reader, nameWhat));
+  };
+
+const HANDLERS: Record<string, Handler> = {
+  db: (args, reader) => {
+    args.command = "db";
+    subAction(reader, ["prune"], "ação de db inválida");
+  },
+  backup: setCommand("backup"),
+  restore: (args, reader) => {
+    args.command = "restore";
+    const next = reader.peek();
+    if (next && !next.startsWith("--")) args.file = reader.next();
+  },
+  update: setCommand("update"),
+  "--version": setCommand("version"),
+  start: setCommand("start"),
+  pair: setCommand("pair"),
+  setup: setCommand("setup"),
+  doctor: setCommand("doctor"),
+  channel: setCommand("channel"),
+  mcp: setCommand("mcp"),
+  statusline: setCommand("statusline"),
+  service: withAction("service", SERVICE_ACTIONS, "ação de serviço inválida"),
+  hook: (args, reader) => {
+    args.command = "hook";
+    const event = reader.next();
+    if (event !== "session-start") throw new Error(`hook inválido: ${event ?? "(nenhum)"}`);
+  },
+  claude: (args, reader) => {
+    args.command = "claude";
+    args.claudeArgs = reader.takeRest();
+  },
+  askpass: (args, reader) => {
+    args.command = "askpass";
+    args.askpassPrompt = reader.takeRest().join(" ");
+  },
+  hooks: withAction("hooks", ["install", "uninstall", "status"], "ação de hooks inválida"),
+  telemetry: withAction(
+    "telemetry",
+    ["install", "uninstall", "status"],
+    "invalid telemetry action",
+  ),
+  history: withAction("history", ["reindex"], "ação de histórico inválida"),
+  action: withNamedAction(
+    "action",
+    ["list", "run"],
+    "ação inválida",
+    "o nome da ação",
+    (args, name) => {
+      args.actionName = name;
+    },
+  ),
+  snippet: withNamedAction(
+    "snippet",
+    ["list", "get"],
+    "ação de snippet inválida",
+    "o nome do snippet",
+    (args, name) => {
+      args.snippetName = name;
+    },
+  ),
+  message: (args, reader) => {
+    args.command = "message";
+    const action = subAction(
+      reader,
+      ["list", "send", "idle", "read", "team"],
+      "ação de mensagem inválida",
+    );
+    args.action = action as never;
+    if (action === "send") {
+      args.to = operand(reader, "o endereço da sessão");
+      args.text = operand(reader, "o texto");
+    }
+    if (action === "idle" || action === "read") args.session = operand(reader, "a sessão");
+    if (action === "team") args.team = operand(reader, "o time");
+  },
+  "--out": setValue((args, v) => {
+    args.out = v;
+  }),
+  "--from": setValue((args, v) => {
+    args.from = v;
+  }),
+  "--allow-downgrade": setFlag((args) => {
+    args.allowDowngrade = true;
+  }),
+  "--yes": setFlag((args) => {
+    args.yes = true;
+  }),
+  "--folders": setValue((args, v) => {
+    args.folders = v
+      .split(",")
+      .map((folder) => folder.trim())
+      .filter(Boolean);
+  }),
+  "--rotate": setFlag((args) => {
+    args.rotate = true;
+  }),
+  "--launch": setValue((args, v) => {
+    args.launch = v;
+  }),
+  "--url": setValue((args, v) => {
+    args.url = v;
+  }),
+  "--token": setValue((args, v) => {
+    args.token = v;
+  }),
+  "--last": setValue((args, v) => {
+    const last = Number(v);
+    if (!Number.isInteger(last) || last < 1)
+      throw new Error(`--last quer um inteiro positivo\n${USAGE}`);
+    args.last = last;
+  }),
+  "--project": setValue((args, v) => {
+    args.project = v;
+  }),
+  "--project-path": setValue((args, v) => {
+    args.projectPath = v;
+  }),
+  "--query": setValue((args, v) => {
+    args.query = v;
+  }),
+  "--param": setValue((args, v) => {
+    const [key, ...rest] = v.split("=");
+    if (!key || rest.length === 0) throw new Error(`--param quer chave=valor\n${USAGE}`);
+    args.params = { ...args.params, [key]: rest.join("=") };
+  }),
+  "--dry-run": setFlag((args) => {
+    args.dryRun = true;
+  }),
+  "--config": setValue((args, v) => {
+    args.config = v;
+  }),
+  "--runtime": setValue((args, v) => {
+    args.runtime = RuntimeKind.parse(v);
+  }),
+};
+
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i] ?? "";
-    const [flag, inline] = arg.startsWith("--") ? arg.split("=", 2) : [arg, undefined];
+  const reader = new ArgReader(argv);
+  for (let arg = reader.current(); arg !== undefined; reader.advance(), arg = reader.current()) {
+    const [flag = "", inline] = arg.startsWith("--") ? arg.split("=", 2) : [arg, undefined];
     const value = () => {
-      const v = inline ?? argv[++i];
+      const v = inline ?? reader.next();
       if (v === undefined || v.startsWith("--"))
         throw new Error(`${flag} precisa de um valor\n${USAGE}`);
       return v;
     };
-    switch (flag) {
-      case "db": {
-        args.command = "db";
-        const action = argv[++i];
-        if (action !== "prune")
-          throw new Error(`ação de db inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
-        break;
-      }
-      case "backup":
-        args.command = "backup";
-        break;
-      case "--out":
-        args.out = value();
-        break;
-      case "restore": {
-        args.command = "restore";
-        const next = argv[i + 1];
-        if (next && !next.startsWith("--")) args.file = argv[++i];
-        break;
-      }
-      case "update":
-        args.command = "update";
-        break;
-      case "--from":
-        args.from = value();
-        break;
-      case "--allow-downgrade":
-        args.allowDowngrade = true;
-        break;
-      case "--version":
-        args.command = "version";
-        break;
-      case "start":
-      case "pair":
-      case "setup":
-      case "doctor":
-        args.command = flag;
-        break;
-      case "--yes":
-        args.yes = true;
-        break;
-      case "--folders":
-        args.folders = value()
-          .split(",")
-          .map((folder) => folder.trim())
-          .filter(Boolean);
-        break;
-      case "--rotate":
-        args.rotate = true;
-        break;
-      case "service": {
-        args.command = "service";
-        const action = argv[++i] as ServiceAction | undefined;
-        if (!action || !SERVICE_ACTIONS.includes(action)) {
-          throw new Error(`ação de serviço inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
-        }
-        args.action = action;
-        break;
-      }
-      case "hook": {
-        args.command = "hook";
-        const event = argv[++i];
-        if (event !== "session-start") throw new Error(`hook inválido: ${event ?? "(nenhum)"}`);
-        break;
-      }
-      case "channel":
-      case "mcp":
-      case "statusline":
-        args.command = flag;
-        break;
-      case "claude":
-        args.command = "claude";
-        args.claudeArgs = argv.slice(i + 1);
-        i = argv.length;
-        break;
-      case "askpass":
-        args.command = "askpass";
-        args.askpassPrompt = argv.slice(i + 1).join(" ");
-        i = argv.length;
-        break;
-      case "--launch":
-        args.launch = value();
-        break;
-      case "--url":
-        args.url = value();
-        break;
-      case "--token":
-        args.token = value();
-        break;
-      case "hooks": {
-        args.command = "hooks";
-        const action = argv[++i];
-        if (action !== "install" && action !== "uninstall" && action !== "status") {
-          throw new Error(`ação de hooks inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
-        }
-        args.action = action;
-        break;
-      }
-      case "telemetry": {
-        args.command = "telemetry";
-        const action = argv[++i];
-        if (action !== "install" && action !== "uninstall" && action !== "status") {
-          throw new Error(`invalid telemetry action: ${action ?? "(nenhuma)"}\n${USAGE}`);
-        }
-        args.action = action;
-        break;
-      }
-      case "history": {
-        args.command = "history";
-        const action = argv[++i];
-        if (action !== "reindex") {
-          throw new Error(`ação de histórico inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
-        }
-        args.action = action;
-        break;
-      }
-      case "action": {
-        args.command = "action";
-        const action = argv[++i];
-        if (action !== "list" && action !== "run") {
-          throw new Error(`ação inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
-        }
-        args.action = action;
-        if (action === "run") {
-          const name = argv[++i];
-          if (name === undefined || name.startsWith("--")) {
-            throw new Error(`falta o nome da ação\n${USAGE}`);
-          }
-          args.actionName = name;
-        }
-        break;
-      }
-      case "snippet": {
-        args.command = "snippet";
-        const action = argv[++i];
-        if (action !== "list" && action !== "get") {
-          throw new Error(`ação de snippet inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
-        }
-        args.action = action;
-        if (action === "get") {
-          const name = argv[++i];
-          if (name === undefined || name.startsWith("--")) {
-            throw new Error(`falta o nome do snippet\n${USAGE}`);
-          }
-          args.snippetName = name;
-        }
-        break;
-      }
-      case "message": {
-        args.command = "message";
-        const action = argv[++i];
-        if (
-          action !== "list" &&
-          action !== "send" &&
-          action !== "idle" &&
-          action !== "read" &&
-          action !== "team"
-        ) {
-          throw new Error(`ação de mensagem inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
-        }
-        args.action = action;
-        const operand = (what: string) => {
-          const next = argv[++i];
-          if (next === undefined || next.startsWith("--")) {
-            throw new Error(`falta ${what}\n${USAGE}`);
-          }
-          return next;
-        };
-        if (action === "send") {
-          args.to = operand("o endereço da sessão");
-          args.text = operand("o texto");
-        }
-        if (action === "idle" || action === "read") args.session = operand("a sessão");
-        if (action === "team") args.team = operand("o time");
-        break;
-      }
-      case "--last": {
-        const last = Number(value());
-        if (!Number.isInteger(last) || last < 1)
-          throw new Error(`--last quer um inteiro positivo\n${USAGE}`);
-        args.last = last;
-        break;
-      }
-      case "--project":
-        args.project = value();
-        break;
-      case "--project-path":
-        args.projectPath = value();
-        break;
-      case "--query":
-        args.query = value();
-        break;
-      case "--param": {
-        const [key, ...rest] = value().split("=");
-        if (!key || rest.length === 0) throw new Error(`--param quer chave=valor\n${USAGE}`);
-        args.params = { ...args.params, [key]: rest.join("=") };
-        break;
-      }
-      case "--dry-run":
-        args.dryRun = true;
-        break;
-      case "--config":
-        args.config = value();
-        break;
-      case "--runtime":
-        args.runtime = RuntimeKind.parse(value());
-        break;
-      default:
-        throw new Error(`argumento desconhecido: ${arg}\n${USAGE}`);
-    }
+    const handler = Object.hasOwn(HANDLERS, flag) ? HANDLERS[flag] : undefined;
+    if (!handler) throw new Error(`argumento desconhecido: ${arg}\n${USAGE}`);
+    handler(args, reader, value);
   }
   return args;
 }
@@ -518,7 +552,7 @@ export const EXIT_ALREADY_RUNNING = 3;
 
 export class AlreadyRunningError extends Error {
   constructor(dataDir: string, hint?: string) {
-    super(`já em execução (dataDir ${dataDir})${hint ? `; ${hint}` : ""}`);
+    super(`já em execução (dataDir ${dataDir})` + (hint ? "; " + hint : ""));
   }
 }
 
@@ -582,7 +616,7 @@ function fakeOpenCode(): CreatedOpenCode {
   return {
     info: { available: true, path: "fake", version: VERIFIED_OPENCODE_VERSION, verified: true },
     runtime: new FakeRuntime(),
-    models: async () => models.map((id) => ({ id, name: id })),
+    models: () => Promise.resolve(models.map((id) => ({ id, name: id }))),
   };
 }
 
@@ -770,10 +804,27 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  // Folders a worktree removal holds: nothing starts in one while it is being removed.
+  const folderLocks = new FolderLocks();
+
+  // Whether a folder's own hooks, MCP servers and settings may load in a session (issue #196): only
+  // where the person trusted it (or already worked in it before this existed). A card's worktree is
+  // read from its project's main checkout.
+  const projectTrust = new ProjectTrust(store.db, {
+    roots: () => config.allowedRoots,
+    configRootOf: (cwd) => {
+      const found = board.projectForCwd(cwd);
+      return found?.card ? found.project.path : null;
+    },
+    log: (line) => logger.log(line),
+  });
   const manager = new SessionManager({
+    folderLocks,
     store,
     runtime,
     risk,
+    trust: projectTrust.sessionTrust.bind(projectTrust),
+    prepareTrust: projectTrust.prepare.bind(projectTrust),
     autoApprove,
     allowedRoots: config.allowedRoots,
     defaultPermissionMode: config.defaultPermissionMode,
@@ -832,6 +883,7 @@ export async function startDaemon(
   usageIndex.start();
   const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
+    folderLocks,
     preparePersonas: prepare,
     db: store.db,
     manager,
@@ -888,15 +940,18 @@ export async function startDaemon(
     snapshots,
   });
   await maintenance.start();
+  // Issue #280: a newer version is applied by itself, only while nothing runs on the host. Made
+  // after the checker, which tells it after each check.
+  let autoUpdater: AutoUpdater | undefined;
   // Checked in the background: a slow or unreachable release server never delays the boot.
   const updates = config.updates.manifestUrl
     ? new UpdateChecker({
         manifestUrl: config.updates.manifestUrl,
         checkIntervalH: config.updates.checkIntervalH,
         currentVersion: DAEMON_VERSION,
+        onChecked: () => autoUpdater?.checked(),
       })
     : undefined;
-  void updates?.start();
   const updater = updates
     ? new DaemonUpdater({
         manifest: () => updates.latest(),
@@ -904,8 +959,20 @@ export async function startDaemon(
         ctx: osServiceContext(false),
       })
     : undefined;
+  if (updates && updater) {
+    autoUpdater = new AutoUpdater({
+      enabled: () => config.updates.auto,
+      currentVersion: DAEMON_VERSION,
+      latest: updates.latest.bind(updates),
+      idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
+      apply: (proceed) => updater.apply(true, { proceed }),
+      log: logger.log.bind(logger),
+    });
+  }
+  void updates?.start();
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
   const terminals = new TerminalManager({
+    folderLocks,
     pty: options.pty ?? bunPty(),
     enabled: terminalEnabled(config.bind, config.terminal.enabled),
     allowedRoots: config.allowedRoots,
@@ -1170,6 +1237,10 @@ export async function startDaemon(
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
+  // A session that was open before the restart may be sent a message before anything else looks
+  // at its folder: read the git boundaries of every folder first, so the lazy reattach finds them.
+  // `prepare` answers every filesystem error itself (a folder it cannot read is a boundary).
+  await projectTrust.prepareSessions(manager.list());
   // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
   const assistant = assistantService({
     runtime,
@@ -1200,6 +1271,21 @@ export async function startDaemon(
         await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
       },
     },
+    projectTrust: {
+      refresh: projectTrust.refreshRoots.bind(projectTrust),
+      state: (paths) =>
+        paths.map((path) => {
+          const via = projectTrust.via(path);
+          return { path, trusted: via !== null, via };
+        }),
+      inspect: (path) => inspectProject(path),
+      set: (path, trusted) => {
+        if (trusted) projectTrust.trust(path);
+        else projectTrust.revoke(path);
+        const via = projectTrust.via(path);
+        return { path, trusted: via !== null, via };
+      },
+    },
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
@@ -1221,7 +1307,7 @@ export async function startDaemon(
       roots: config.allowedRoots,
       board,
       issues,
-      startSession: async ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
+      startSession: ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
     }),
     // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
     // folders checked without blocking, and the app's version to compare with its own.
@@ -1233,7 +1319,7 @@ export async function startDaemon(
           options.serviceInstalled ??
           (async () =>
             (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
-        healthy: async () => true,
+        healthy: () => Promise.resolve(true),
         mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
         opencode: () => openCodeState(config, env, opencode.info),
 
@@ -1279,6 +1365,8 @@ export async function startDaemon(
       db: store.db,
       claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
       channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
+      trust: projectTrust.sessionTrust.bind(projectTrust),
+      prepare: projectTrust.prepare.bind(projectTrust),
       // `getCard` refuses a card that does not exist, with the not_found the app knows.
       card: (cardId) => {
         const card = board.getCard(cardId);
@@ -1318,7 +1406,7 @@ export async function startDaemon(
     }),
     snippetHistory: new HistoryImporter({
       sources: defaultHistorySources({
-        home: homedir(),
+        home: userHome(env),
         appData: process.env.APPDATA,
         platform: process.platform,
       }),
@@ -1327,8 +1415,8 @@ export async function startDaemon(
     }),
     sshImport: new SshImporter({
       targets: sshTargets,
-      configPath: join(homedir(), ".ssh", "config"),
-      home: homedir(),
+      configPath: join(userHome(env), ".ssh", "config"),
+      home: userHome(env),
       defaultUser: userInfo().username,
     }),
     terminals,
@@ -1352,6 +1440,14 @@ export async function startDaemon(
     }),
     central,
     maintenance,
+    worktrees: createWorktrees({
+      board,
+      sessions: manager,
+      runs: runManager,
+      terminals,
+      externals: central.external,
+      locks: folderLocks,
+    }),
     ...(updates ? { updates } : {}),
     snapshots,
     rewinder,
@@ -1371,6 +1467,7 @@ export async function startDaemon(
       record: decisionLog(join(config.dataDir, "memory-decisions.jsonl")),
     }),
     ...(updater ? { updater } : {}),
+    ...(autoUpdater ? { autoUpdate: autoUpdateOf(autoUpdater, config, configFile) } : {}),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -1399,7 +1496,10 @@ export async function startDaemon(
   };
   watchFile(configFile, { interval: options.configWatchMs ?? 2000 }, onConfigChange);
 
-  logger.log(`flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind})`);
+  // `boot`: milliseconds since the process started, so a slow start shows in a CI log (#347).
+  logger.log(
+    `flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind}, boot ${Math.round(performance.now())} ms)`,
+  );
   boardLoop.start();
   if (config.allowedRoots.length === 0) {
     logger.error(
@@ -1434,6 +1534,7 @@ export async function startDaemon(
         await telemetry.stop();
         maintenance.stop();
         updates?.stop();
+        autoUpdater?.stop();
         await manager.shutdown();
         await server.stop();
         history.stop();
@@ -1674,41 +1775,58 @@ async function startInstalledService(
   deps.log.log(`daemon do serviço respondendo em ${url}`);
 }
 
+type ServiceContextOf = ReturnType<NonNullable<CliDeps["serviceContext"]>>;
+
+async function uninstallInstalledService(
+  args: CliArgs,
+  ctx: ServiceContextOf,
+  deps: CliDeps,
+): Promise<void> {
+  // Removing the task or unit alone would leave the daemon running: it goes first.
+  if (!ctx.dryRun && (await stopInstalledDaemon(args, ctx, deps)) === false) {
+    deps.log.error("aviso: o daemon do serviço continua rodando; pare-o à mão");
+  }
+  printResult(deps, await uninstallService(ctx));
+  if (ctx.dryRun) {
+    if (ctx.platform === "win32") deps.log.log(`# ${binDir(ctx)} would leave the user Path`);
+    return;
+  }
+  for (const line of await removeFromUserPath(ctx, binDir(ctx))) deps.log.log(line);
+}
+
+/** Writes the `claude` the service found into the config (or says it would, in a dry run). */
+async function recordServiceClaude(
+  file: string,
+  claude: ReturnType<typeof resolveServiceClaude>,
+  ctx: ServiceContextOf,
+  deps: CliDeps,
+): Promise<void> {
+  if (ctx.dryRun) {
+    if (claude.path) {
+      deps.log.log(`claude.executablePath = "${claude.path}" (seria gravado em ${file})`);
+    }
+    return;
+  }
+  await loadConfig(file);
+  const executablePath = claude.path;
+  if (executablePath) {
+    await updateConfigFile(file, (raw) => ({
+      ...raw,
+      claude: { ...(raw.claude as object), executablePath },
+    }));
+  }
+}
+
 async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
   const ctx = (deps.serviceContext ?? osServiceContext)(args.dryRun === true);
   if (args.action === "status") return printResult(deps, await serviceStatus(ctx));
   if (args.action === "stop") return stopService(args, ctx, deps);
   if (args.action === "start") return startInstalledService(args, ctx, deps);
-  if (args.action === "uninstall") {
-    // Removing the task or unit alone would leave the daemon running: it goes first.
-    if (!ctx.dryRun && (await stopInstalledDaemon(args, ctx, deps)) === false) {
-      deps.log.error("aviso: o daemon do serviço continua rodando; pare-o à mão");
-    }
-    printResult(deps, await uninstallService(ctx));
-    if (ctx.dryRun) {
-      if (ctx.platform === "win32") deps.log.log(`# ${binDir(ctx)} would leave the user Path`);
-      return;
-    }
-    for (const line of await removeFromUserPath(ctx, binDir(ctx))) deps.log.log(line);
-    return;
-  }
+  if (args.action === "uninstall") return uninstallInstalledService(args, ctx, deps);
   const file = configPath(args);
   const claude = resolveServiceClaude(ctx);
   if (claude.warning) deps.log.error(claude.warning);
-  if (ctx.dryRun) {
-    if (claude.path) {
-      deps.log.log(`claude.executablePath = "${claude.path}" (seria gravado em ${file})`);
-    }
-  } else {
-    await loadConfig(file);
-    const executablePath = claude.path;
-    if (executablePath) {
-      await updateConfigFile(file, (raw) => ({
-        ...raw,
-        claude: { ...(raw.claude as object), executablePath },
-      }));
-    }
-  }
+  await recordServiceClaude(file, claude, ctx, deps);
   // The service only gets --config when the user gave one, always as an absolute path.
   printResult(deps, await installService(ctx, args.config ? resolve(args.config) : null));
   if (ctx.dryRun) return;
@@ -1825,9 +1943,13 @@ async function runTelemetry(args: CliArgs, deps: CliDeps): Promise<void> {
   const had = (await optIn.status()).status;
   const result =
     args.action === "uninstall" ? await optIn.uninstall(true) : await optIn.install(true);
+  const removed =
+    had === "installed" || had === "outdated"
+      ? `telemetry removed from ${result.settingsPath}`
+      : "no Flightdeck telemetry installed";
   deps.log.log(
     args.action === "uninstall"
-      ? `${had === "installed" || had === "outdated" ? `telemetry removed from ${result.settingsPath}` : "no Flightdeck telemetry installed"}; the receiver has a new token`
+      ? `${removed}; the receiver has a new token`
       : `telemetry installed in ${result.settingsPath} (previous copy in settings.json.flightdeck-telemetry-backup)`,
   );
 }
@@ -1963,110 +2085,107 @@ export interface CliDeps {
   platform?: NodeJS.Platform;
 }
 
-/** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
-export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
-  try {
-    const args = parseArgs(argv);
-    if (args.command === "backup") {
-      await runBackup(args, deps);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "restore") {
-      await runRestore(args, deps);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "update") {
-      deps.exit(await runUpdateCommand(args, deps));
-      return null;
-    }
-    if (args.command === "db") {
-      await runPrune(args, deps);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "version") {
+/** A command that is not the daemon: what it prints and does, and the exit code (null: it stays open). */
+type CommandRun = (args: CliArgs, deps: CliDeps) => Promise<number | null>;
+
+/** Runs a one-shot step and exits 0. */
+const done =
+  (step: (args: CliArgs, deps: CliDeps) => Promise<unknown>): CommandRun =>
+  async (args, deps) => {
+    await step(args, deps);
+    return 0;
+  };
+
+/** Prints what a client command returned, as JSON, and exits 0. */
+const printed = (deps: CliDeps, result: unknown): Promise<number> =>
+  settled(() => {
+    deps.log.log(JSON.stringify(result, null, 2));
+    return 0;
+  });
+
+const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
+  backup: done(runBackup),
+  restore: done(runRestore),
+  update: (args, deps) => runUpdateCommand(args, deps),
+  db: done(runPrune),
+  version: (_args, deps) =>
+    settled(() => {
       deps.log.log(`flightdeckd ${DAEMON_VERSION} (protocolo ${PROTOCOL_VERSION})`);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "hook") {
-      await sendSessionStart({
-        url: args.url ?? "",
-        token: args.token ?? "",
-        input: await new Response(deps.stdin ?? Bun.stdin.stream()).text(),
-        env: deps.env,
-        timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
-      });
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "claude") {
-      // Its own arguments all go to claude, so the config comes from the environment.
-      const file = resolve(expandHome(deps.env.FLIGHTDECK_CONFIG ?? defaultConfigPath()));
-      const code = await runClaude({
-        args: args.claudeArgs ?? [],
-        cwd: deps.cwd ?? process.cwd(),
-        config: await loadConfig(file),
-        env: deps.env,
-        self: deps.selfCommand ?? daemonCommand(process.execPath, Bun.main),
-        log: deps.log,
-        timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
-        ...(deps.platform ? { platform: deps.platform } : {}),
-      });
-      deps.exit(code);
-      return null;
-    }
-    if (args.command === "askpass") {
-      // ssh runs this with only the prompt, so the config comes from the environment.
-      const file = resolve(expandHome(deps.env.FLIGHTDECK_CONFIG ?? defaultConfigPath()));
-      const secret = await runAskpass({
-        configFile: file,
-        ticket: deps.env.FLIGHTDECK_ASKPASS_TICKET,
-        prompt: args.askpassPrompt ?? "",
-      });
-      deps.log.log(secret);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "channel") {
-      const channel = await startChannel({
-        launchId: args.launch ?? "",
-        url: args.url ?? "",
-        token: args.token ?? "",
-        transport: deps.channelTransport ?? new StdioServerTransport(),
-      }).catch((error: Error) => {
-        throw new Error(`não consegui abrir o canal do Flightdeck: ${error.message}`);
-      });
-      void channel.closed.then(() => deps.exit(0));
-      return null;
-    }
-    if (args.command === "statusline") {
-      // Never creates the config: a statusline runs where there may be no daemon at all.
-      const line = await runStatusline({
-        configFile: configPath(args),
-        stdin: deps.stdin ?? Bun.stdin.stream(),
-      });
-      deps.log.log(line);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "mcp") {
-      const config = await loadConfig(configPath(args));
-      const mcp = await startMcp({
-        url: daemonUrl(config),
-        token: config.token,
-        transport: deps.mcpTransport ?? new StdioServerTransport(),
-        cwd: deps.cwd ?? process.cwd(),
-        identity: identityOf(deps.env),
-      });
-      void mcp.closed.then(() => deps.exit(0));
-      return null;
-    }
-    if (args.command === "message") {
-      const config = await loadConfig(configPath(args));
-      const printed = await runMessageCli(
+      return 0;
+    }),
+  hook: async (args, deps) => {
+    await sendSessionStart({
+      url: args.url ?? "",
+      token: args.token ?? "",
+      input: await new Response(deps.stdin ?? Bun.stdin.stream()).text(),
+      env: deps.env,
+      timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
+    });
+    return 0;
+  },
+  claude: async (args, deps) => {
+    // Its own arguments all go to claude, so the config comes from the environment.
+    const file = resolve(expandHome(deps.env.FLIGHTDECK_CONFIG ?? defaultConfigPath()));
+    return runClaude({
+      args: args.claudeArgs ?? [],
+      cwd: deps.cwd ?? process.cwd(),
+      config: await loadConfig(file),
+      env: deps.env,
+      self: deps.selfCommand ?? daemonCommand(process.execPath, Bun.main),
+      log: deps.log,
+      timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
+      ...(deps.platform ? { platform: deps.platform } : {}),
+    });
+  },
+  askpass: async (args, deps) => {
+    // ssh runs this with only the prompt, so the config comes from the environment.
+    const file = resolve(expandHome(deps.env.FLIGHTDECK_CONFIG ?? defaultConfigPath()));
+    const secret = await runAskpass({
+      configFile: file,
+      ticket: deps.env.FLIGHTDECK_ASKPASS_TICKET,
+      prompt: args.askpassPrompt ?? "",
+    });
+    deps.log.log(secret);
+    return 0;
+  },
+  channel: async (args, deps) => {
+    const channel = await startChannel({
+      launchId: args.launch ?? "",
+      url: args.url ?? "",
+      token: args.token ?? "",
+      transport: deps.channelTransport ?? new StdioServerTransport(),
+    }).catch((error: Error) => {
+      throw new Error(`não consegui abrir o canal do Flightdeck: ${error.message}`);
+    });
+    void channel.closed.then(() => deps.exit(0));
+    return null;
+  },
+  statusline: async (args, deps) => {
+    // Never creates the config: a statusline runs where there may be no daemon at all.
+    const line = await runStatusline({
+      configFile: configPath(args),
+      stdin: deps.stdin ?? Bun.stdin.stream(),
+    });
+    deps.log.log(line);
+    return 0;
+  },
+  mcp: async (args, deps) => {
+    const config = await loadConfig(configPath(args));
+    const mcp = await startMcp({
+      url: daemonUrl(config),
+      token: config.token,
+      transport: deps.mcpTransport ?? new StdioServerTransport(),
+      cwd: deps.cwd ?? process.cwd(),
+      identity: identityOf(deps.env),
+    });
+    void mcp.closed.then(() => deps.exit(0));
+    return null;
+  },
+  message: async (args, deps) => {
+    const config = await loadConfig(configPath(args));
+    return printed(
+      deps,
+      await runMessageCli(
         {
           action: args.action as "list" | "send" | "idle" | "read" | "team",
           to: args.to,
@@ -2077,14 +2196,14 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         },
         config,
         identityOf(deps.env),
-      );
-      deps.log.log(JSON.stringify(printed, null, 2));
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "action") {
-      const config = await loadConfig(configPath(args));
-      const printed = await runActionCli(
+      ),
+    );
+  },
+  action: async (args, deps) => {
+    const config = await loadConfig(configPath(args));
+    return printed(
+      deps,
+      await runActionCli(
         {
           action: args.action as "list" | "run",
           project: args.project,
@@ -2092,14 +2211,14 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
           params: args.params,
         },
         config,
-      );
-      deps.log.log(JSON.stringify(printed, null, 2));
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "snippet") {
-      const config = await loadConfig(configPath(args));
-      const printed = await runSnippetCli(
+      ),
+    );
+  },
+  snippet: async (args, deps) => {
+    const config = await loadConfig(configPath(args));
+    return printed(
+      deps,
+      await runSnippetCli(
         {
           action: args.action as "list" | "get",
           name: args.snippetName,
@@ -2107,38 +2226,26 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
           query: args.query,
         },
         config,
-      );
-      deps.log.log(JSON.stringify(printed, null, 2));
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "hooks") {
-      await runHooks(args, deps);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "telemetry") {
-      await runTelemetry(args, deps);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "history") {
-      await runReindex(args, deps);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "doctor") {
-      deps.exit(await runDoctorCommand(args, deps));
-      return null;
-    }
-    if (args.command === "setup") {
-      await runSetupCommand(args, deps);
-      deps.exit(0);
-      return null;
-    }
-    if (args.command === "pair" || args.command === "service") {
-      await (args.command === "pair" ? runPair(args, deps) : runService(args, deps));
-      deps.exit(0);
+      ),
+    );
+  },
+  hooks: done(runHooks),
+  telemetry: done(runTelemetry),
+  history: done(runReindex),
+  doctor: (args, deps) => runDoctorCommand(args, deps),
+  setup: done(runSetupCommand),
+  pair: done(runPair),
+  service: done(runService),
+};
+
+/** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
+export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
+  try {
+    const args = parseArgs(argv);
+    const run = COMMANDS[args.command];
+    if (run) {
+      const code = await run(args, deps);
+      if (code !== null) deps.exit(code);
       return null;
     }
     let stopping: Promise<void> | null = null;

@@ -5,11 +5,14 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
+import { HostAutoUpdate } from "@/components/hosts/host-auto-update";
 import { HostDoctor } from "@/components/hosts/host-doctor";
 import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
+import { HostVersionLine } from "@/components/hosts/host-version";
+import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
-import { Field, FieldRow } from "@/components/layout/form";
+import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
@@ -41,15 +44,18 @@ const HOOK_LABELS = {
  * One host: what `host.info` reports, heartbeat latency, the Claude Code hooks, and rename /
  * reconnect / remove.
  */
-export function HostPage(props: {
-  store: AppStore;
-  host: HostView;
-  onRename(name: string): HostNameError | null;
-  onReconnect(): void;
-  onOpenAutoApprovals(): void;
-  onOpenHistory(filter: UsageHistoryTarget): void;
-  onRemove(): void;
-}) {
+export function HostPage(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView;
+    onRename(name: string): HostNameError | null;
+    onReconnect(): void;
+    onPairAgain?(input: string): Promise<string | null>;
+    onOpenAutoApprovals(): void;
+    onOpenHistory(filter: UsageHistoryTarget): void;
+    onRemove(): void;
+  }>,
+) {
   const t = useT();
   const { host } = props;
   const [renaming, setRenaming] = useState(false);
@@ -60,6 +66,7 @@ export function HostPage(props: {
   const [removing, setRemoving] = useState(false);
   const now = useNow();
   const offline = host.status !== "online" && host.status !== "incompatible";
+  const hooksKey = hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking";
   useEffect(() => {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
@@ -87,7 +94,14 @@ export function HostPage(props: {
   return (
     <Page
       title={host.name}
-      subtitle={host.url}
+      subtitle={
+        <HostVersionLine
+          url={host.url}
+          daemon={info?.daemonVersion ?? null}
+          app={APP_VERSION}
+          t={t}
+        />
+      }
       actions={
         <Button variant="outline" onClick={() => setRenaming(true)}>
           {t("hostPage.rename")}
@@ -95,7 +109,13 @@ export function HostPage(props: {
       }
     >
       <div className="flex max-w-3xl flex-col gap-5">
-        {offline && <HostOfflineBanner host={host} onReconnect={props.onReconnect} />}
+        {offline && (
+          <HostOfflineBanner
+            host={host}
+            onReconnect={props.onReconnect}
+            {...(props.onPairAgain ? { onPairAgain: props.onPairAgain } : {})}
+          />
+        )}
         {host.status === "incompatible" && (
           <InlineNotice>
             <span className="flex flex-col gap-1">
@@ -127,6 +147,7 @@ export function HostPage(props: {
             onOpenHistory={props.onOpenHistory}
           />
         )}
+        <HostWorktrees store={store} host={host} />
         <Panel title={t("hostPage.info")} label={t("hostPage.info")}>
           {info ? (
             <ul className="flex flex-col gap-1 text-sm">
@@ -158,6 +179,7 @@ export function HostPage(props: {
         {host.status === "online" && hasFeature(info?.features, "github", false) && (
           <GithubPanel store={store} host={host} />
         )}
+        <HostAutoUpdate store={store} host={host} />
         <DaemonUpdate store={store} host={host} />
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
@@ -165,11 +187,7 @@ export function HostPage(props: {
         {showHooks && (
           <section aria-label={t("hostPage.hooks")}>
             <Panel title={t("hostPage.hooks")}>
-              <p className="text-sm">
-                {offline
-                  ? t("hostOffline.title")
-                  : t(hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking")}
-              </p>
+              <p className="text-sm">{offline ? t("hostOffline.title") : t(hooksKey)}</p>
               {/* Issue #181: nothing to install on a host that does not answer; the row says why. */}
               <FieldRow>
                 <ActionButton
@@ -256,7 +274,7 @@ export function HostPage(props: {
 }
 
 /** The heartbeat latency line: the only part of the page that renders on a ping. */
-function HostLatency(props: { store: AppStore; hostId: string }) {
+function HostLatency(props: Readonly<{ store: AppStore; hostId: string }>) {
   const t = useT();
   const latency = useHostLatency(props.store, props.hostId);
   return <li>{t("hostPage.latency", { value: latency === null ? "—" : `${latency} ms` })}</li>;

@@ -7,6 +7,8 @@ export const DAEMON_REASONS = [
   "terminal_enable_confirm",
   "central_confirm",
   "permission_request_closed",
+  "hold_required",
+  "input_changed",
   "update_needs_service",
   "update_signature_failed",
   "messaging_session_missing",
@@ -65,6 +67,7 @@ export const DAEMON_REASONS = [
   "update_manifest_unchecked",
   "update_manifest_no_binary",
   "perm_rule_other_tool",
+  "perm_rule_too_broad",
   "perm_rule_content_invalid",
   "perm_destination_denied",
   "perm_mode_denied",
@@ -338,6 +341,7 @@ export const DAEMON_REASONS = [
   "action_ssh_env_value",
   "review_path_outside",
   "review_target_invalid",
+  "branch_invalid",
   "review_file_missing",
   "review_file_big",
   "review_file_binary",
@@ -450,6 +454,9 @@ export const DAEMON_FEATURES = [
   "runEnv",
   "templates",
   "tasks",
+  "worktrees",
+  "projectTrust",
+  "autoUpdate",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
 

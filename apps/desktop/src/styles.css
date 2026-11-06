@@ -96,40 +96,40 @@
   --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
   /* The app's background sits a step under the panels (neutral-50 against white). */
   --background: oklch(0.98 0 0);
-  --foreground: oklch(0.2 0.01 270);
+  --foreground: oklch(0.2 0.01 75);
   --surface-1: oklch(1 0 0);
-  --surface-2: oklch(0.955 0.003 270);
+  --surface-2: oklch(0.955 0.003 75);
   --card: var(--surface-1);
-  --card-foreground: oklch(0.2 0.01 270);
+  --card-foreground: oklch(0.2 0.01 75);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.01 270);
+  --popover-foreground: oklch(0.2 0.01 75);
   /* The single accent: the primary button, the focus ring and the active item. */
   --brand: oklch(0.55 0.2 275);
   --primary: var(--brand);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.955 0.003 270);
-  --secondary-foreground: oklch(0.2 0.01 270);
-  --muted: oklch(0.955 0.003 270);
-  --muted-foreground: oklch(0.5 0.01 270);
-  --accent: oklch(0.945 0.004 270);
-  --accent-foreground: oklch(0.2 0.01 270);
+  --secondary: oklch(0.955 0.003 75);
+  --secondary-foreground: oklch(0.2 0.01 75);
+  --muted: oklch(0.955 0.003 75);
+  --muted-foreground: oklch(0.46 0.01 75);
+  --accent: oklch(0.945 0.004 75);
+  --accent-foreground: oklch(0.2 0.01 75);
   --destructive: oklch(0.55 0.22 27);
   --border: oklch(0 0 0 / 6%);
   /* A field's edge: opaque, 3:1 on the surfaces fields sit on (WCAG 1.4.11, issue #176); lines stay subtle. */
-  --input: oklch(0.62 0.005 270);
+  --input: oklch(0.62 0.005 75);
   --ring: var(--brand);
-  --sidebar: oklch(0.965 0.002 270);
-  --sidebar-foreground: oklch(0.2 0.01 270);
+  --sidebar: oklch(0.965 0.002 75);
+  --sidebar-foreground: oklch(0.2 0.01 75);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.93 0.004 270);
-  --sidebar-accent-foreground: oklch(0.2 0.01 270);
+  --sidebar-accent: oklch(0.93 0.004 75);
+  --sidebar-accent-foreground: oklch(0.2 0.01 75);
   --sidebar-border: oklch(0 0 0 / 6%);
   --sidebar-ring: var(--brand);
   /* Session states, as a dot (8 px) and as text on the background, AA in both themes. */
   --status-running: oklch(0.5 0.16 255);
   --status-needs-you: oklch(0.52 0.15 55);
-  --status-idle: oklch(0.5 0.01 270);
+  --status-idle: oklch(0.5 0.01 75);
   --status-ended: oklch(0.52 0 0);
   --status-error: oklch(0.5 0.2 27);
   --status-risk: oklch(0.5 0.2 330);
@@ -152,38 +152,38 @@
 
 .dark {
   /* A deep gray, never pure black. Elevation: background < surface-1 (panels, cards, composer) < surface-2 (inset areas) < popover; lines meet 3:1 (WCAG 1.4.11). */
-  --background: oklch(0.15 0.006 270);
-  --foreground: oklch(0.95 0.005 270);
-  --surface-1: oklch(0.225 0.006 270);
-  --surface-2: oklch(0.29 0.006 270);
+  --background: oklch(0.15 0.008 75);
+  --foreground: oklch(0.95 0.005 75);
+  --surface-1: oklch(0.23 0.008 75);
+  --surface-2: oklch(0.29 0.008 75);
   --card: var(--surface-1);
-  --card-foreground: oklch(0.95 0.005 270);
-  --popover: oklch(0.355 0.006 270);
-  --popover-foreground: oklch(0.95 0.005 270);
+  --card-foreground: oklch(0.95 0.005 75);
+  --popover: oklch(0.355 0.008 75);
+  --popover-foreground: oklch(0.95 0.005 75);
   --brand: oklch(0.68 0.17 275);
   --primary: var(--brand);
-  --primary-foreground: oklch(0.16 0.01 270);
+  --primary-foreground: oklch(0.16 0.01 75);
   --secondary: var(--surface-2);
-  --secondary-foreground: oklch(0.95 0.005 270);
+  --secondary-foreground: oklch(0.95 0.005 75);
   --muted: var(--surface-2);
-  --muted-foreground: oklch(0.76 0.01 270);
-  --accent: oklch(0.32 0.006 270);
-  --accent-foreground: oklch(0.95 0.005 270);
+  --muted-foreground: oklch(0.76 0.01 75);
+  --accent: oklch(0.32 0.008 75);
+  --accent-foreground: oklch(0.95 0.005 75);
   --destructive: oklch(0.7 0.19 22);
-  --border: oklch(0.58 0.006 270);
-  --input: oklch(0.6 0.006 270);
+  --border: oklch(0.58 0.008 75);
+  --input: oklch(0.6 0.008 75);
   --ring: var(--brand);
-  --sidebar: oklch(0.13 0.006 270);
-  --sidebar-foreground: oklch(0.95 0.005 270);
+  --sidebar: oklch(0.13 0.008 75);
+  --sidebar-foreground: oklch(0.95 0.005 75);
   --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: oklch(0.16 0.01 270);
-  --sidebar-accent: oklch(0.25 0.006 270);
-  --sidebar-accent-foreground: oklch(0.95 0.005 270);
-  --sidebar-border: oklch(0.58 0.006 270);
+  --sidebar-primary-foreground: oklch(0.16 0.01 75);
+  --sidebar-accent: oklch(0.25 0.008 75);
+  --sidebar-accent-foreground: oklch(0.95 0.005 75);
+  --sidebar-border: oklch(0.58 0.008 75);
   --sidebar-ring: var(--brand);
   --status-running: oklch(0.75 0.13 255);
   --status-needs-you: oklch(0.8 0.14 70);
-  --status-idle: oklch(0.72 0.01 270);
+  --status-idle: oklch(0.72 0.01 75);
   --status-ended: oklch(0.66 0 0);
   --status-error: oklch(0.72 0.17 25);
   --status-risk: oklch(0.74 0.17 330);
@@ -1106,6 +1106,10 @@
   max-width: 40%;
   align-items: center;
   gap: 0.5rem;
+  /* Narrow, the box is 40% of a small window: tighter gaps leave the crumbs their room (#391). */
+  @media (max-width: 959px) {
+    gap: 0.25rem;
+  }
 }
 
 @utility header-tabs {
@@ -1117,6 +1121,123 @@
   /* In the header's row the one bar takes the width left by the crumbs. */
   & > .tab-bar {
     flex: 1 1 auto;
+  }
+}
+
+/* The top bar's host switcher (issue #282): a fixed share of the crumbs' box, the name cut with a tooltip. */
+@utility top-bar-host {
+  max-width: 10rem;
+  min-width: 0;
+  flex: none;
+  gap: 0.25rem;
+  padding-inline: 0.5rem;
+  font-weight: 600;
+  @media (max-width: 959px) {
+    padding-inline: 0.375rem;
+  }
+}
+
+@utility top-bar-host-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  @media (max-width: 959px) {
+    display: none;
+  }
+}
+
+/* Below 960 px the switcher is only its icon, without the chevron, for the crumbs' room (#391). */
+@utility top-bar-host-chevron {
+  @media (max-width: 959px) {
+    display: none;
+  }
+}
+
+/* Only below 960 px, where the host's name is hidden (issue #391): the switcher keeps an icon. */
+@utility top-bar-host-icon {
+  display: none;
+  @media (max-width: 959px) {
+    display: block;
+  }
+}
+
+/* A daemon's version in the host switcher's list (issue #281); one that is not the app's is marked. */
+@utility top-bar-host-version {
+  margin-left: auto;
+  padding-left: 1rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+
+@utility top-bar-host-version-differs {
+  display: inline-flex;
+  margin-left: auto;
+  padding-left: 1rem;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-status-needs-you);
+  font-size: 0.75rem;
+}
+
+/* The host page header's mark for a daemon on another version than the app's (issue #281). */
+@utility host-version-differs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-status-needs-you);
+  & > svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+}
+
+/* The top bar's right side: search, theme, the bell and the version, never wrapping. */
+@utility top-bar-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* The search looks like a field that opens the palette; narrow, only its icon stays. */
+@utility top-bar-search {
+  width: 14rem;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  color: var(--color-muted-foreground);
+  font-weight: 400;
+  @media (max-width: 959px) {
+    width: auto;
+    padding-inline: 0.5rem;
+  }
+}
+
+@utility top-bar-search-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  @media (max-width: 959px) {
+    display: none;
+  }
+}
+
+@utility top-bar-search-keys {
+  @media (max-width: 959px) {
+    display: none;
+  }
+}
+
+@utility top-bar-version {
+  padding-inline: 0.25rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  @media (max-width: 959px) {
+    display: none;
   }
 }
 

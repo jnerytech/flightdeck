@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import { Children, type ReactNode, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
+import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,69 +51,74 @@ function NavIcon({ name, ...props }: LucideProps & { name: NavKey }) {
 }
 
 /** One line of the bar: an icon, its label (hidden in the rail, which keeps it as a tooltip) and a tail. */
-function NavButton(props: {
-  icon: ReactNode;
-  label: string;
-  /** The accessible name, when it is not the visible label. */
-  name?: string;
-  collapsed: boolean;
-  onClick(): void;
-  disabled?: boolean;
-  /** A chip or badge after the label: expanded only, the rail has no room for it. */
-  tail?: ReactNode;
-  /** What the tail says in words (a count, a shortcut): the rail moves it to the name and the tooltip. */
-  hint?: string;
-  /** The keys that open this item, for assistive technology (`Control+K`). */
-  keys?: string;
-  /** Something waits here: the rail marks the icon with a dot instead of a badge. */
-  attention?: boolean;
-  /** The screen the user is on: full contrast and marked as the current page. */
-  active?: boolean;
-  /** Something waits here: full contrast even when it is not the open screen. */
-  strong?: boolean;
-}) {
+function NavButton(
+  props: Readonly<{
+    icon: ReactNode;
+    label: string;
+    /** The accessible name, when it is not the visible label. */
+    name?: string;
+    collapsed: boolean;
+    onClick(): void;
+    disabled?: boolean;
+    /** A chip or badge after the label: expanded only, the rail has no room for it. */
+    tail?: ReactNode;
+    /** What the tail says in words (a count, a shortcut): the rail moves it to the name and the tooltip. */
+    hint?: string;
+    /** The keys that open this item, for assistive technology (`Control+K`). */
+    keys?: string;
+    /** Something waits here: the rail marks the icon with a dot instead of a badge. */
+    attention?: boolean;
+    /** The screen the user is on: full contrast and marked as the current page. */
+    active?: boolean;
+    /** Something waits here: full contrast even when it is not the open screen. */
+    strong?: boolean;
+  }>,
+) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
   return (
-    <button
-      type="button"
-      aria-current={props.active ? "page" : undefined}
-      aria-keyshortcuts={props.keys}
-      className={cn(
-        ITEM,
-        props.collapsed && "justify-center px-0",
-        (props.active || props.strong) && "text-sidebar-foreground",
-        props.active && "bg-sidebar-accent font-medium",
-      )}
-      aria-label={props.name ?? (props.collapsed ? railName : undefined)}
-      title={props.collapsed ? railName : undefined}
-      disabled={props.disabled ?? false}
-      onClick={props.onClick}
-    >
-      {props.collapsed && props.attention ? (
-        <span className="relative flex">
-          {props.icon}
-          <span
-            data-attention
-            aria-hidden="true"
-            className="-right-0.5 -top-0.5 absolute size-2 rounded-full bg-primary"
-          />
-        </span>
-      ) : (
-        props.icon
-      )}
-      {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
-      {!props.collapsed && props.tail}
-    </button>
+    <IconTip label={props.collapsed ? railName : undefined}>
+      <button
+        type="button"
+        aria-current={props.active ? "page" : undefined}
+        aria-keyshortcuts={props.keys}
+        className={cn(
+          ITEM,
+          props.collapsed && "justify-center px-0",
+          (props.active || props.strong) && "text-sidebar-foreground",
+          props.active && "bg-sidebar-accent font-medium",
+        )}
+        aria-label={props.name ?? (props.collapsed ? railName : undefined)}
+        disabled={props.disabled ?? false}
+        onClick={props.onClick}
+      >
+        {props.collapsed && props.attention ? (
+          <span className="relative flex">
+            {props.icon}
+            <span
+              data-attention
+              aria-hidden="true"
+              className="-right-0.5 -top-0.5 absolute size-2 rounded-full bg-primary"
+            />
+          </span>
+        ) : (
+          props.icon
+        )}
+        {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
+        {!props.collapsed && props.tail}
+      </button>
+    </IconTip>
   );
 }
 
 /** A section title that folds its list. */
-function SectionTitle(props: {
-  label: string;
-  open: boolean;
-  onToggle(): void;
-  action?: ReactNode;
-}) {
+function SectionTitle(
+  props: Readonly<{
+    label: string;
+    open: boolean;
+    onToggle(): void;
+    action?: ReactNode;
+  }>,
+) {
   return (
     <div className="flex items-center justify-between px-2 pt-3">
       <button
@@ -135,14 +142,16 @@ function SectionTitle(props: {
  * A titled group of items that folds. Without items it is not drawn; in the icon rail it is only
  * a run of icons, since a heading has no room there.
  */
-function NavGroup(props: {
-  id: string;
-  label: string;
-  collapsed: boolean;
-  folded: boolean;
-  onToggle(): void;
-  children: ReactNode;
-}) {
+function NavGroup(
+  props: Readonly<{
+    id: string;
+    label: string;
+    collapsed: boolean;
+    folded: boolean;
+    onToggle(): void;
+    children: ReactNode;
+  }>,
+) {
   const items = Children.toArray(props.children).filter(Boolean);
   if (items.length === 0) return null;
   if (props.collapsed) {
@@ -172,26 +181,28 @@ function NavGroup(props: {
 }
 
 /** The app's bar: logo, navigation, hosts, pinned sessions and the footer; a rail of icons when collapsed. */
-export function Sidebar(props: {
-  store: AppStore;
-  state: AppState;
-  collapsed: boolean;
-  t: T;
-  go(route: Route): void;
-  /** Where the user is, to mark the sidebar item of that screen. */
-  route?: Route;
-  /** Board or Workflows of a host: its only project opens directly, several ask which. */
-  onOpenProjectScreen(hostId: string, kind: "board" | "workflows"): void;
-  onNewSession(hostId: string): void;
-  onRemoveHost(hostId: string): void;
-  onRenameHost(hostId: string, name: string): HostNameError | null;
-  onOpenSearch(): void;
-  /** The next navigation opens a new tab ("Abrir em nova aba"). */
-  onNewTab(): void;
-  onToggleTheme(): void;
-  /** Switches to simple mode; absent when the host in view does not let the person choose. */
-  onSimpleMode?(): void;
-}) {
+export function Sidebar(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    collapsed: boolean;
+    t: T;
+    go(route: Route): void;
+    /** Where the user is, to mark the sidebar item of that screen. */
+    route?: Route;
+    /** Board or Workflows of a host: its only project opens directly, several ask which. */
+    onOpenProjectScreen(hostId: string, kind: "board" | "workflows"): void;
+    onNewSession(hostId: string): void;
+    onRemoveHost(hostId: string): void;
+    onRenameHost(hostId: string, name: string): HostNameError | null;
+    onOpenSearch(): void;
+    /** The next navigation opens a new tab ("Abrir em nova aba"). */
+    onNewTab(): void;
+    onToggleTheme(): void;
+    /** Switches to simple mode; absent when the host in view does not let the person choose. */
+    onSimpleMode?(): void;
+  }>,
+) {
   const { state, t, collapsed, go } = props;
   const here = props.route ? activeNav(props.route) : null;
   /** The host the screens that need one open on: the selected one, else the first online. */
@@ -396,21 +407,21 @@ export function Sidebar(props: {
         {collapsed ? (
           <div className="flex flex-col items-center gap-1 pt-3">
             {state.hosts.map((host) => (
-              <button
-                key={host.id}
-                type="button"
-                aria-label={t("sidebar.openHost", { host: host.name })}
-                title={host.name}
-                className="rail-host"
-                onClick={() => go({ name: "host", host: host.id })}
-              >
-                <span data-slot="host-initial" aria-hidden="true" className="rail-host-initial">
-                  {[...host.name][0]?.toUpperCase() ?? "?"}
-                </span>
-                <span className="rail-host-status">
-                  <HostDot host={host} t={t} />
-                </span>
-              </button>
+              <IconTip key={host.id} label={host.name}>
+                <button
+                  type="button"
+                  aria-label={t("sidebar.openHost", { host: host.name })}
+                  className="rail-host"
+                  onClick={() => go({ name: "host", host: host.id })}
+                >
+                  <span data-slot="host-initial" aria-hidden="true" className="rail-host-initial">
+                    {[...host.name][0]?.toUpperCase() ?? "?"}
+                  </span>
+                  <span className="rail-host-status">
+                    <HostDot host={host} t={t} />
+                  </span>
+                </button>
+              </IconTip>
             ))}
           </div>
         ) : (
@@ -540,14 +551,11 @@ export function Sidebar(props: {
                   <ul className="flex flex-col gap-0.5">
                     {pinned.map((row) => (
                       <li key={row.key}>
-                        <button
-                          type="button"
-                          className={ITEM}
-                          title={`${row.title} · ${row.hostName}`}
-                          onClick={() => go(rowRoute(row))}
-                        >
-                          <span className="min-w-0 flex-1 truncate">{row.title}</span>
-                        </button>
+                        <IconTip label={`${row.title} · ${row.hostName}`}>
+                          <button type="button" className={ITEM} onClick={() => go(rowRoute(row))}>
+                            <span className="min-w-0 flex-1 truncate">{row.title}</span>
+                          </button>
+                        </IconTip>
                       </li>
                     ))}
                   </ul>
@@ -567,11 +575,7 @@ export function Sidebar(props: {
           hint="Ctrl K"
           keys="Control+K"
           onClick={props.onOpenSearch}
-          tail={
-            <kbd className="rounded border bg-background px-1 font-mono text-[11px] text-muted-foreground">
-              Ctrl K
-            </kbd>
-          }
+          tail={<ShortcutKeys keys={["Mod", "K"]} className="text-muted-foreground" />}
         />
         <NavButton
           collapsed={collapsed}
@@ -618,7 +622,7 @@ export function Sidebar(props: {
 }
 
 /** A host's connection state as a dot. */
-function HostDot(props: { host: HostView; t: T }) {
+function HostDot(props: Readonly<{ host: HostView; t: T }>) {
   return (
     <StatusDot
       {...hostDotView(props.host.status)}
