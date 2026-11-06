@@ -981,11 +981,12 @@ export async function layout(c: Context, problems: string[]) {
     const fewTabs = await tabWidthsProblem(c.page, 80);
     if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
   }
-  // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than "Settings").
+  // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than
+  // "Settings"); since #488 it has a row of its own over the area.
   const lefts: number[] = [];
   for (const [, route] of screens.filter(([n]) => n === "host" || n === "configuracoes")) {
     await open(c, route);
-    const box = await c.page.locator(".header-tabs").first().boundingBox();
+    const box = await c.page.locator(".tab-bar").first().boundingBox();
     if (box) lefts.push(Math.round(box.x));
   }
   if (new Set(lefts).size > 1) {

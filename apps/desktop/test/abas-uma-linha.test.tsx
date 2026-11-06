@@ -16,8 +16,10 @@ const key = (k: string) =>
     fireEvent.keyDown(window, { key: k, ctrlKey: true });
   });
 
-describe("abas-uma-linha: breadcrumb and tabs on one row", () => {
-  test("with one area the tab strip sits in the top bar, next to the breadcrumb", async () => {
+// Issue #488: the tabs left the top bar for a row of their own over the area (the header gave them
+// 124 px at 1280), in one area as in a split, as VS Code and Orca do.
+describe("abas-uma-linha: the tabs have a row of their own under the top bar", () => {
+  test("with one area the tab strip sits over the area, not in the top bar with the breadcrumb", async () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
     render(<App store={store} />);
     await act(async () => {
@@ -25,13 +27,14 @@ describe("abas-uma-linha: breadcrumb and tabs on one row", () => {
     });
     const header = document.querySelector("header") as HTMLElement;
     const strip = screen.getByRole("tablist", { name: "Abas" });
-    expect(header.contains(strip)).toBe(true);
+    expect(header.contains(strip)).toBe(false);
     expect(header.contains(screen.getByRole("navigation", { name: "Você está em" }))).toBe(true);
     // The tab tools travel with the strip.
-    expect(header.contains(screen.getByRole("button", { name: "Nova aba" }))).toBe(true);
+    expect(header.contains(screen.getByRole("button", { name: "Nova aba" }))).toBe(false);
+    expect(strip.closest("section[aria-label]")).not.toBeNull();
   });
 
-  test("a split gives each area its own strip, and joining brings the strip back to the top bar", async () => {
+  test("a split gives each area its own strip, and joining keeps the one strip over its area", async () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
     render(<App store={store} />);
     const header = document.querySelector("header") as HTMLElement;
@@ -42,6 +45,6 @@ describe("abas-uma-linha: breadcrumb and tabs on one row", () => {
     await key("\\");
     const [only] = screen.getAllByRole("tablist", { name: "Abas" });
     expect(screen.getAllByRole("tablist")).toHaveLength(1);
-    expect(header.contains(only as HTMLElement)).toBe(true);
+    expect(header.contains(only as HTMLElement)).toBe(false);
   });
 });
