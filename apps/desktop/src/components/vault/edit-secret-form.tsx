@@ -1,6 +1,5 @@
 import { memo, useId, useState } from "react";
 import { Form, FormActions } from "@/components/layout/form";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";

@@ -14,9 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Key, T } from "@/i18n/index";
-import type { AppState } from "@/lib/app-store";
 import { hostDotView } from "@/lib/host-status";
-import type { Route } from "@/lib/router";
 import type { Theme } from "@/lib/theme";
 
 /** A host as the top bar shows it: its name and how its connection is. */

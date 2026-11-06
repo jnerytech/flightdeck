@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { writeFileAtomic } from "../atomic-write.ts";
 import { TELEMETRY_FILE } from "../central/wrapper.ts";

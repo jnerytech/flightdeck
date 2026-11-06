@@ -80,8 +80,7 @@ function failure(result: GhResult): FlightdeckError {
     text
       .split(/\r?\n/)
       .map((line) => line.trim())
-      .filter(Boolean)
-      .shift()
+      .find(Boolean)
       ?.slice(0, 300) ?? "";
   return refuse("board_sync_failed", `gh could not reach the board: ${detail}`, { detail });
 }
