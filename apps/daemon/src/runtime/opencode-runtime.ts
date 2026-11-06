@@ -88,6 +88,20 @@ async function agentsMd(
   };
 }
 
+/** The content blocks of a prompt: the AGENTS.md resource, the images, then the text. */
+function promptBlocks(
+  text: string,
+  images: SessionImage[],
+  context: Record<string, unknown> | undefined,
+): Array<Record<string, unknown>> {
+  return [
+    ...(context ? [context] : []),
+    ...images.map((image) => ({ type: "image", mimeType: image.mediaType, data: image.data })),
+    // ADR 39-2: a text that starts with `/` would run a command's shell blocks without a question.
+    ...(text ? [{ type: "text", text: text.trimStart().startsWith("/") ? `​${text}` : text }] : []),
+  ];
+}
+
 export interface OpenCodeRuntimeOptions {
   path: string;
   version: string;
@@ -447,6 +461,21 @@ class OpenCodeRun implements AgentRun {
     this.sessionId = conn.sessionId;
   }
 
+  /** A prompt that failed: a closed connection is thrown on, anything else becomes the turn's error events. */
+  private promptFailed(error: unknown, durationMs: number): void {
+    if (error instanceof AcpError && error.code === ACP_CLOSED) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    const events = this.normalizer.promptFailed(message, durationMs);
+    if (/auth_required/.test(message)) {
+      events[events.length - 1] = {
+        type: "session.error",
+        code: "opencode_auth_required",
+        message: AUTH_HELP,
+      };
+    }
+    this.push(events);
+  }
+
   private async turn(text: string, images: SessionImage[]): Promise<void> {
     this.queued--;
     if (this.stopped || this.dropInterrupted()) return;
@@ -468,14 +497,7 @@ class OpenCodeRun implements AgentRun {
         ...(context?.skipped ? { skipped: [AGENTS_MD] } : {}),
       }),
     );
-    const blocks = [
-      ...(context?.block ? [context.block] : []),
-      ...images.map((image) => ({ type: "image", mimeType: image.mediaType, data: image.data })),
-      // ADR 39-2: a text that starts with `/` would run a command's shell blocks without a question.
-      ...(text
-        ? [{ type: "text", text: text.trimStart().startsWith("/") ? `\u200b${text}` : text }]
-        : []),
-    ];
+    const blocks = promptBlocks(text, images, context?.block);
     const started = performance.now();
     const elapsed = () => Math.round(performance.now() - started);
     this.turnActive = true;
@@ -487,17 +509,7 @@ class OpenCodeRun implements AgentRun {
       if (!this.escalated) this.push(this.normalizer.promptEnded(result, elapsed()));
     } catch (error) {
       if (this.escalated) return;
-      if (error instanceof AcpError && error.code === ACP_CLOSED) throw error;
-      const message = error instanceof Error ? error.message : String(error);
-      const events = this.normalizer.promptFailed(message, elapsed());
-      if (/auth_required/.test(message)) {
-        events[events.length - 1] = {
-          type: "session.error",
-          code: "opencode_auth_required",
-          message: AUTH_HELP,
-        };
-      }
-      this.push(events);
+      this.promptFailed(error, elapsed());
     } finally {
       this.turnActive = false;
       if (this.escalation !== null) this.timers.clear(this.escalation);

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
 /** A host's name as a link to its page. */
-export function HostChip(props: { name: string; label: string; onOpen(): void }) {
+export function HostChip(props: Readonly<{ name: string; label: string; onOpen(): void }>) {
   return (
     <Button
       variant="link"
@@ -18,13 +18,15 @@ export function HostChip(props: { name: string; label: string; onOpen(): void })
 }
 
 /** A project's header: the fold toggle, then what the caller puts beside it (chips, counts). */
-export function ProjectHeader(props: {
-  name: string;
-  expanded: boolean;
-  toggleLabel: string;
-  onToggle(): void;
-  children?: ReactNode;
-}) {
+export function ProjectHeader(
+  props: Readonly<{
+    name: string;
+    expanded: boolean;
+    toggleLabel: string;
+    onToggle(): void;
+    children?: ReactNode;
+  }>,
+) {
   return (
     <div className="flex flex-wrap items-center gap-2 px-2 text-xs">
       <Button
@@ -45,7 +47,7 @@ export function ProjectHeader(props: {
 }
 
 /** The project's numbers as a chip: the live sessions out of all of them. */
-export function CountChip(props: { live: number; total: number; label: string }) {
+export function CountChip(props: Readonly<{ live: number; total: number; label: string }>) {
   return (
     <output
       aria-label={props.label}
@@ -57,12 +59,14 @@ export function CountChip(props: { live: number; total: number; label: string })
 }
 
 /** Opens or folds every project at once. */
-export function FoldAll(props: {
-  expandLabel: string;
-  collapseLabel: string;
-  onExpand(): void;
-  onCollapse(): void;
-}) {
+export function FoldAll(
+  props: Readonly<{
+    expandLabel: string;
+    collapseLabel: string;
+    onExpand(): void;
+    onCollapse(): void;
+  }>,
+) {
   return (
     <div className="flex items-center gap-1">
       <Button variant="ghost" size="sm" onClick={props.onExpand}>
@@ -76,12 +80,14 @@ export function FoldAll(props: {
 }
 
 /** One toggle per host, to show the sessions of that host only. */
-export function HostFilterRow(props: {
-  label: string;
-  hosts: string[];
-  selected: string;
-  onSelect(host: string): void;
-}) {
+export function HostFilterRow(
+  props: Readonly<{
+    label: string;
+    hosts: string[];
+    selected: string;
+    onSelect(host: string): void;
+  }>,
+) {
   return (
     <fieldset aria-label={props.label} className="flex flex-wrap items-center gap-1">
       {props.hosts.map((name) => (

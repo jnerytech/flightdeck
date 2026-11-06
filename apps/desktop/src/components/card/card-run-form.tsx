@@ -29,20 +29,22 @@ export interface CardRunFeatures {
  * How a card runs: the workflow and its inputs, the persona it starts in, and its actions (start,
  * in the background, stop, open the PR, finish, discard). Complete and discard ask first.
  */
-export function CardRunForm(props: {
-  store: AppStore;
-  hostId: string;
-  card: Card;
-  /** Workflows the card can start with: trusted and valid on the project's base branch. */
-  workflows: WorkflowInfo[];
-  features: CardRunFeatures;
-  /** The arena's Start, placed between Complete and Discard (it knows when it may show). */
-  arenaStart: ReactNode;
-  /** The card was discarded: the screen goes back. */
-  onDiscarded(): void;
-  /** Finish… chose to merge: the screen shows the card's diff, where the merge is. */
-  onShowDiff(): void;
-}) {
+export function CardRunForm(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    /** Workflows the card can start with: trusted and valid on the project's base branch. */
+    workflows: WorkflowInfo[];
+    features: CardRunFeatures;
+    /** The arena's Start, placed between Complete and Discard (it knows when it may show). */
+    arenaStart: ReactNode;
+    /** The card was discarded: the screen goes back. */
+    onDiscarded(): void;
+    /** Finish… chose to merge: the screen shows the card's diff, where the merge is. */
+    onShowDiff(): void;
+  }>,
+) {
   const t = useT();
   const { store, hostId, card, features } = props;
   const cardId = card.id;

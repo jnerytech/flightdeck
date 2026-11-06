@@ -6,7 +6,7 @@ import { startServer } from "../src/server.ts";
 import { SecretScanner } from "../src/snippets/model.ts";
 import { Snippets } from "../src/snippets/store.ts";
 import { EventStore } from "../src/store/event-store.ts";
-import { newManager, workspace } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, workspace } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "snippets-token-0123456789abcdef0123";
@@ -587,7 +587,7 @@ describe("snippets-escopos: pelo protocolo", () => {
       const { client } = await connect(snippets, setup().root);
       return (
         (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-          (name) => name !== "session.images",
+          (name) => !BASELINE_FEATURES.includes(name),
         ) ?? []
       );
     };

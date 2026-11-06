@@ -112,15 +112,17 @@ export function rowRoute(row: HubRow): Route {
 }
 
 /** A managed session's conversation; selecting it subscribes to its full event stream. */
-function ManagedSession(props: {
-  store: AppStore;
-  state: AppState;
-  hostId: string;
-  sessionId: string;
-  focus: string | null;
-  /** Opens the host's page (the mode menu links to the bypass switch there). */
-  go(route: Route): void;
-}) {
+function ManagedSession(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    hostId: string;
+    sessionId: string;
+    focus: string | null;
+    /** Opens the host's page (the mode menu links to the bypass switch there). */
+    go(route: Route): void;
+  }>,
+) {
   const { store, state, hostId, sessionId } = props;
   const host = state.hosts.find((h) => h.id === hostId);
   useEffect(() => {
@@ -281,12 +283,14 @@ function ManagedSession(props: {
 }
 
 /** Adding a host: by hand, or prefilled by a pairing link (saving still needs the click). */
-function AddHost(props: {
-  store: AppStore;
-  draft?: HostDraft;
-  empty: boolean;
-  go(r: Route): void;
-}) {
+function AddHost(
+  props: Readonly<{
+    store: AppStore;
+    draft?: HostDraft;
+    empty: boolean;
+    go(r: Route): void;
+  }>,
+) {
   const [error, setError] = useState<string | null>(null);
   const submit = async (draft: HostDraft) => {
     setError(null);
@@ -517,11 +521,11 @@ function costsOpener(go: (route: Route) => void): OpenCostSession {
 }
 
 /** What a screen shows instead of itself while it cannot open: the wait, or why it cannot. */
-function ScreenState(props: { children: ReactNode }) {
+function ScreenState(props: Readonly<{ children: ReactNode }>) {
   return <div className="p-6">{props.children}</div>;
 }
 
-function ScreenLoading(props: { label: string }) {
+function ScreenLoading(props: Readonly<{ label: string }>) {
   return (
     <ScreenState>
       <LoadingState label={props.label} />
@@ -916,13 +920,15 @@ async function startInBackground(
 }
 
 /** The new-session form of a host; the created session opens. */
-function NewSession(props: {
-  store: AppStore;
-  state: AppState;
-  host: HostView;
-  prompt?: string | undefined;
-  persona?: string | undefined;
-}) {
+function NewSession(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    host: HostView;
+    prompt?: string | undefined;
+    persona?: string | undefined;
+  }>,
+) {
   const { host } = props;
   const t = useT();
   // The persona the route asked for, else the one chosen, else the folder's client's default.

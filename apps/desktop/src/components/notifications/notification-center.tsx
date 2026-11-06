@@ -7,7 +7,7 @@ import type { T } from "../../i18n/index.ts";
 import { type InboxEntry, type InboxRow, inboxRows } from "../../lib/inbox.ts";
 
 /** The count on the bell: the unread rows, the same ones that show a dot. */
-export function UnreadBadge(props: { unread: number }) {
+export function UnreadBadge(props: Readonly<{ unread: number }>) {
   return (
     <span
       aria-hidden="true"
@@ -19,14 +19,16 @@ export function UnreadBadge(props: { unread: number }) {
 }
 
 /** One row: the dot and the title (bold) when unread, what it is about, and what a click does. */
-function InboxItem(props: {
-  row: InboxRow;
-  gone: boolean;
-  t: T;
-  onPick(row: InboxRow): void;
-  onMarkRead(row: InboxRow): void;
-  onDismiss(row: InboxRow): void;
-}) {
+function InboxItem(
+  props: Readonly<{
+    row: InboxRow;
+    gone: boolean;
+    t: T;
+    onPick(row: InboxRow): void;
+    onMarkRead(row: InboxRow): void;
+    onDismiss(row: InboxRow): void;
+  }>,
+) {
   const { row, t, gone } = props;
   const { entry } = row;
   const unread = !entry.read;
@@ -82,19 +84,21 @@ function InboxItem(props: {
 }
 
 /** The panel under the bell: unread first, Today then Earlier, a session's repeats as one row. */
-export function NotificationCenter(props: {
-  entries: InboxEntry[];
-  /** How many entries are unread, for Mark all as read. */
-  unread: number;
-  t: T;
-  /** Whether what an entry is about no longer exists. */
-  gone(entry: InboxEntry): boolean;
-  onPick(row: InboxRow): void;
-  onMarkRead(row: InboxRow): void;
-  onDismiss(row: InboxRow): void;
-  onMarkAll(): void;
-  onClear(): void;
-}) {
+export function NotificationCenter(
+  props: Readonly<{
+    entries: InboxEntry[];
+    /** How many entries are unread, for Mark all as read. */
+    unread: number;
+    t: T;
+    /** Whether what an entry is about no longer exists. */
+    gone(entry: InboxEntry): boolean;
+    onPick(row: InboxRow): void;
+    onMarkRead(row: InboxRow): void;
+    onDismiss(row: InboxRow): void;
+    onMarkAll(): void;
+    onClear(): void;
+  }>,
+) {
   const { t, unread } = props;
   const groups = inboxRows(props.entries, new Date());
   const titleId = useId();

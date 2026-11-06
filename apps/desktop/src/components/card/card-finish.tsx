@@ -11,16 +11,18 @@ import type { AppStore } from "@/lib/app-store";
  * Finish… (journey J5, issue #188): the three ways a card ends, each with what it does: move it to
  * Done, complete it (asks first), or merge its work (from the diff, while the card has no PR).
  */
-export function CardFinishDialog(props: {
-  store: AppStore;
-  hostId: string;
-  card: Card;
-  onClose(): void;
-  /** Complete was chosen: the caller asks to confirm. */
-  onComplete(): void;
-  /** Merge was chosen: the caller shows the card's diff, where the merge is. */
-  onMerge(): void;
-}) {
+export function CardFinishDialog(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    onClose(): void;
+    /** Complete was chosen: the caller asks to confirm. */
+    onComplete(): void;
+    /** Merge was chosen: the caller shows the card's diff, where the merge is. */
+    onMerge(): void;
+  }>,
+) {
   const t = useT();
   const { store, hostId, card } = props;
   return (

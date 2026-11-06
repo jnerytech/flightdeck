@@ -2,7 +2,7 @@
  * Phase 39: the `<option>`s of a model list. Ids written `provider/model` (OpenCode's) are grouped
  * by provider; plain ids (Claude Code's aliases) stay a flat list.
  */
-export function ModelOptions(props: { models: readonly string[] }) {
+export function ModelOptions(props: Readonly<{ models: readonly string[] }>) {
   const providers = new Map<string, string[]>();
   const plain: string[] = [];
   for (const id of props.models) {

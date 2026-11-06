@@ -44,6 +44,7 @@ import {
 } from "./merge.ts";
 import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
+import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import type {
   BoardColumn,
@@ -416,7 +417,9 @@ export class Board {
       id: ulid(),
       path,
       name: input.name?.trim() || basename(path),
-      baseBranch: input.baseBranch?.trim() || head.stdout.trim(),
+      baseBranch: input.baseBranch?.trim()
+        ? assertBranchName(input.baseBranch.trim())
+        : head.stdout.trim(),
       prProvider: input.prProvider ?? "none",
       setupScript: script(input.setupScript),
       promptTemplate: input.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE,
@@ -451,7 +454,9 @@ export class Board {
     const next: Project = {
       ...current,
       ...(patch.name?.trim() ? { name: patch.name.trim() } : {}),
-      ...(patch.baseBranch?.trim() ? { baseBranch: patch.baseBranch.trim() } : {}),
+      ...(patch.baseBranch?.trim()
+        ? { baseBranch: assertBranchName(patch.baseBranch.trim()) }
+        : {}),
       ...(patch.prProvider ? { prProvider: patch.prProvider } : {}),
       ...(patch.setupScript !== undefined ? { setupScript: script(patch.setupScript) } : {}),
       ...(patch.promptTemplate !== undefined ? { promptTemplate: patch.promptTemplate } : {}),
@@ -1532,7 +1537,7 @@ export class Board {
         "the card has no worktree yet",
         "card_no_worktree",
       );
-    must(await git(cwd, "push", "-u", "origin", branch), "git push");
+    must(await git(cwd, "push", "-u", "origin", refArg(branch)), "git push");
     const url = await provider.create({
       cwd,
       base: project.baseBranch,
@@ -1684,7 +1689,7 @@ export class Board {
       const notice = `a pasta da worktree ficou em ${worktree}; remova depois (a branch ${branch} sai junto)`;
       return { worktree: true, branch: true, notice };
     }
-    const deleted = await git(repo, "branch", "-D", branch);
+    const deleted = await git(repo, "branch", "-D", refArg(branch));
     if (deleted.code !== 0) {
       const notice = `a branch ${branch} ficou (${deleted.stderr.trim()}); apague depois`;
       return { worktree: false, branch: true, notice };
@@ -1741,7 +1746,7 @@ export class Board {
         "git worktree remove",
       );
     }
-    if (card.branch) must(await git(repo, "branch", "-D", card.branch), "git branch -D");
+    if (card.branch) must(await git(repo, "branch", "-D", refArg(card.branch)), "git branch -D");
     return this.removeFromBoard(id, "discarded");
   }
 

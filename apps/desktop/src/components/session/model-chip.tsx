@@ -48,19 +48,21 @@ const labelOf = (t: T, model: string) => modelName(model) ?? t("session.modelDef
  * number key picks one), a "More models" submenu with the versions, and an Effort submenu when the
  * host can change the effort of a live session. The chip reads "Opus 5.5 · Medium".
  */
-export function ModelChip(props: {
-  t: T;
-  /** What the person chose in this view; "" is the default. */
-  model: string;
-  /** The model the session reports it runs, when known. */
-  current: string | undefined;
-  /** The effort set from this view; null is the model's default. */
-  effort: EffortLevel | null;
-  /** The host changes the effort of a live session. */
-  effortAvailable: boolean;
-  onPickModel(model: string): void;
-  onPickEffort(effort: EffortLevel | null): void;
-}) {
+export function ModelChip(
+  props: Readonly<{
+    t: T;
+    /** What the person chose in this view; "" is the default. */
+    model: string;
+    /** The model the session reports it runs, when known. */
+    current: string | undefined;
+    /** The effort set from this view; null is the model's default. */
+    effort: EffortLevel | null;
+    /** The host changes the effort of a live session. */
+    effortAvailable: boolean;
+    onPickModel(model: string): void;
+    onPickEffort(effort: EffortLevel | null): void;
+  }>,
+) {
   const { t } = props;
   const [open, setOpen] = useState(false);
   // What the person picked wins; else what the session runs.
