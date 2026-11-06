@@ -2213,13 +2213,15 @@ export class AppStore {
     const features = host.hostInfo?.features;
     const wantsHooks = hasFeature(features, "central", false);
     const wantsGithub = options.github === true && hasFeature(features, "github", false);
-    if (hasFeature(features, "workflows", false) && this.state.projects[hostId] === undefined) {
-      void this.loadProjects(hostId);
-    }
-    if (!wantsHooks && !wantsGithub) return;
-    const [hooks, github] = await Promise.all([
+    // The projects are read for the checklist only: the list the screens use stays unopened, so a
+    // screen that reads a project's trust or branch does not change because Setup looked.
+    const wantsProjects =
+      hasFeature(features, "workflows", false) && this.state.projects[hostId] === undefined;
+    if (!wantsHooks && !wantsGithub && !wantsProjects) return;
+    const [hooks, github, projects] = await Promise.all([
       wantsHooks ? this.hostRequest(hostId, "hooks.status", {}) : null,
       wantsGithub ? this.hostRequest(hostId, "github.status", {}) : null,
+      wantsProjects ? this.hostRequest(hostId, "project.list", {}) : null,
     ]);
     // The host may have gone while it was asked.
     if (!this.state.hosts.some((h) => h.id === hostId)) return;
@@ -2231,6 +2233,11 @@ export class AppStore {
           ? github.data.installed && github.data.loggedIn
           : null
         : (before?.github ?? null),
+      ...(wantsProjects && projects?.ok
+        ? { projects: projects.data.projects }
+        : before?.projects
+          ? { projects: before.projects }
+          : {}),
     };
     this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
   }

@@ -51,7 +51,8 @@ const announced = (hosts: SetupInput["hosts"], feature: string) => {
 export function setupSteps(input: SetupInput): SetupStep[] {
   const here = online(input.hosts);
   const first = here[0];
-  const projects = here.flatMap((h) => input.projects[h.id] ?? []);
+  // The opened list wins; until then, what the host answered at connect.
+  const projects = here.flatMap((h) => input.projects[h.id] ?? input.probes[h.id]?.projects ?? []);
   const withFeature = (feature: string) =>
     here.find((h) => h.hostInfo?.features?.includes(feature)) ?? first;
   // Where an action goes when it needs a host: the first that can do it, else the page that adds one.

@@ -21,7 +21,9 @@ describe("setup-live: the checklist learns from a real host (issue #164)", () =>
     await settle(() => store.getState().hosts[0]?.status === "online");
     // The hooks are not installed on a fresh host.
     await settle(() => store.getState().setupProbes[hostId]?.hooks === "absent");
-    await settle(() => store.getState().projects[hostId] !== undefined);
+    // The projects land in the probe; the list the screens use is left unopened.
+    await settle(() => store.getState().setupProbes[hostId]?.projects !== undefined);
+    expect(store.getState().projects[hostId]).toBeUndefined();
     expect(store.getState().setupProbes[hostId]?.hooks).toBe("absent");
   });
 });
