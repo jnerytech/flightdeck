@@ -100,6 +100,17 @@ export function answerFake(
  * hit. Linux only (it reads /proc); elsewhere the fakes' own parent watch and deadline end them.
  * Returns the pids it killed.
  */
+/**
+ * The process a fake watches (#254): the caller the shell shim handed over, else its parent.
+ */
+export function fakeCaller(
+  env: Record<string, string | undefined>,
+  platform: string,
+  ppid: number,
+): number {
+  return Number(env.FLIGHTDECK_FAKE_CALLER) || ppid;
+}
+
 export function reapFakes(runDir: string): number[] {
   if (process.platform !== "linux") return [];
   const killed: number[] = [];
