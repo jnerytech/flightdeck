@@ -32,3 +32,11 @@ open.
 **Consequences.** One small change in the daemon's header rule, one formatter and one target form
 in the app, the type's words in both languages, and a manual section. The notices stop while the
 app is closed; the manual says so.
+
+**Security review (2026-11-06).** No high or medium. Changed: a target switched to ntfy drops
+the generic type's signing secret unless a token comes with it, since that secret would go out
+as a Bearer and fail on every post. Left as they are: the daemon resolves the host once to check
+it and `fetch` resolves it again. That DNS-rebinding window existed for every webhook before, and
+the token now rides in it; pinning the resolved address is a change to the sender for all types,
+tracked separately. And a compromised webview could already send any body to any public host
+through `webhook.send`; the Bearer header adds only a header it could choose.
