@@ -36,13 +36,34 @@ const runs = (key: string) =>
     .join("\n");
 const gate = (output: string) => `needs.changes.outputs.${output} == 'true'`;
 const PR = "pull_request";
-const NONE = { windows: false, smokes: false, screenshots: false, cargo: false };
+const NONE = { windows: false, smokes: false, screenshots: false, cargo: false, e2e: false };
 
 describe("ci-paths: the rules", () => {
-  test("docs or scripts only run the Linux tests and lint, nothing else", () => {
+  test("docs only run the Linux tests and lint, nothing else", () => {
     expect(ciPlan(PR, ["docs/TDD.md", "README.md"])).toEqual(NONE);
-    expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(NONE);
     expect(ciPlan(PR, [])).toEqual(NONE);
+  });
+
+  test("scripts add the Windows shards, which run the tests related to them (#399: #383 changed only scripts/test and broke Windows)", () => {
+    const windows = { ...NONE, windows: true };
+    expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(windows);
+    expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual(windows);
+  });
+
+  test("the UI, the journeys, their config or the demo add the e2e journeys (#399)", () => {
+    for (const path of [
+      "scripts/e2e/define-journeys.ts",
+      "scripts/lib/e2e-config.ts",
+      "scripts/lib/e2e-demo.ts",
+      "scripts/demo.ts",
+      "scripts/demo-seed.ts",
+      "playwright.config.ts",
+    ]) {
+      expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
+    }
+    expect(ciPlan(PR, ["apps/desktop/src/ui/App.tsx"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).e2e).toBe(false);
+    expect(ciPlan(PR, ["scripts/lib/slot.ts"]).e2e).toBe(false);
   });
 
   test("the daemon or a smoke adds Windows and the smokes", () => {
@@ -80,7 +101,7 @@ describe("ci-paths: the rules", () => {
 
   test("the plan becomes one GitHub output per job group", () => {
     expect(planOutputs({ ...NONE, windows: true })).toBe(
-      "windows=true\nsmokes=false\nscreenshots=false\ncargo=false\n",
+      "windows=true\nsmokes=false\nscreenshots=false\ncargo=false\ne2e=false\n",
     );
   });
 });

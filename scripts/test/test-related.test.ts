@@ -334,6 +334,34 @@ describe("planRelated", () => {
     expect(calls.find((c) => c[0] === "diff")).toContain("--no-renames");
   });
 
+  test("--pr gives its selection as data: the test files it runs, or 'all' when the whole suite runs (#399)", () => {
+    const repo: Record<string, string> = {
+      "apps/daemon/src/a.ts": "export const a = 1;",
+      "apps/daemon/test/int-a.test.ts": `import "../src/a.ts";`,
+      "apps/daemon/test/int-b.test.ts": "export {};",
+      "apps/daemon/test/u1.test.ts": "export {};",
+    };
+    const tiers: Record<string, string> = {
+      "apps/daemon/test/int-a.test.ts": "integration",
+      "apps/daemon/test/int-b.test.ts": "integration",
+      "apps/daemon/test/u1.test.ts": "unit",
+    };
+    const plan = (changed: string[]) =>
+      planRelated({
+        platform: "win32",
+        git: fakeGit(changed, Object.keys(repo)),
+        readFile: (path) => repo[path] ?? "",
+        pyramid: true,
+        slot: false,
+        tierOf: (path) => tiers[path],
+      });
+    expect(plan(["apps/daemon/src/a.ts"]).files).toEqual([
+      "apps/daemon/test/int-a.test.ts",
+      "apps/daemon/test/u1.test.ts",
+    ]);
+    expect(plan(["bun.lock"]).files).toBe("all");
+  });
+
   test("--pr names how many fast-tier tests run, not each one; it lists the related tests (#309)", () => {
     const repo: Record<string, string> = {
       "apps/daemon/src/a.ts": "export const a = 1;",
