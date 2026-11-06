@@ -280,10 +280,16 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .first()
       .getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) })
       .click({ modifiers: ["Control"] });
-    await waitFor(async () => (await c.page.getByRole("tab").count()) === 2, "duas abas");
+    // The workspace's own tab bar: the host page has tabs of its own (Overview, Usage, Settings).
+    const bar = c.page.getByRole("tablist", { name: c.t("tabs.list"), exact: true });
+    await waitFor(async () => (await bar.getByRole("tab").count()) === 2, "duas abas");
     await c.page.getByRole("button", { name: c.t("tabs.split"), exact: true }).click();
-    await waitFor(async () => (await c.page.getByRole("tablist").count()) === 2, "a tela dividida");
-    // The new area shows alfa's page too: its Novo terminal opens the terminal there.
+    await waitFor(async () => (await bar.count()) === 2, "a tela dividida");
+    // The new area shows alfa's page too: its Novo terminal, in the Settings tab, opens the terminal there.
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .last()
+      .click();
     await c.page
       .getByRole("button", { name: c.t("hostTerminal.open"), exact: true })
       .last()
@@ -491,10 +497,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("region", { name: c.t("recap.region") })
       .waitFor({ timeout: SESSION_WAIT });
     await waitFor(async () => (await log.evaluate(bottom)) <= 24, "a conversa abriu no fim");
-    // Scrolled up, a message that arrives leaves the view where it was and is counted.
-    await log.evaluate((el) => {
-      el.scrollTop = 300;
-    });
+    // Scrolled up, a message that arrives leaves the view where it was and is counted. The reader
+    // scrolls with the wheel: a position set from a script is not a person leaving the end, and the
+    // view keeps following it (issue #315).
+    await log.hover();
+    await c.page.mouse.wheel(0, -600);
     const jump = c.page.getByRole("button", { name: new RegExp(`^${c.t("session.jumpLatest")}$`) });
     await jump.waitFor({ timeout: WAIT });
     const kept = await log.evaluate((el) => el.scrollTop);

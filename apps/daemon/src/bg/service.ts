@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { resolve } from "node:path";
 import type { BgList, BgSession } from "@flightdeck/protocol";
 import { runCommand } from "../board/command.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -14,6 +15,10 @@ export interface BgServiceOptions {
   start?: { self: string[]; configFile: string; allowedRoots: readonly string[] };
   /** The folder, prompt and name a card starts a session with; refuses (not_found) one that does not exist. */
   card?: (cardId: string) => { cwd: string; prompt: string; name: string };
+  /** What a folder's project setup may do (project trust): none to say means it is left alone. */
+  trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
+  /** Looks at the folder's git boundaries first, so `trust` can answer from them (a nested clone is not covered). */
+  prepare?: (cwd: string) => Promise<void>;
 }
 
 /** The listing and the commands are quick; a `claude` that does not answer is as good as none. */
@@ -97,6 +102,17 @@ export class BgService {
     return found;
   }
 
+  /** The flags that keep a folder's project setup from running when it is not trusted (project trust). */
+  private async trustFlags(cwd: string): Promise<string[]> {
+    await this.opts.prepare?.(cwd);
+    const trust = this.opts.trust?.(cwd);
+    if (!trust) return [];
+    return [
+      ...(trust.trusted ? [] : ["--setting-sources", "user", "--strict-mcp-config"]),
+      ...(trust.configRoot ? ["--project-config-root", trust.configRoot] : []),
+    ];
+  }
+
   /** Runs a `claude` command; a refusal of Claude Code reaches the app with what it said. */
   private async claudeDo(args: string[]): Promise<void> {
     // The listing was just read, so a `claude` exists.
@@ -118,7 +134,27 @@ export class BgService {
 
   /** Restarts the session so it runs the current Claude Code (it resumes its saved conversation). */
   async respawn(id: string): Promise<BgList> {
-    await this.find(id);
+    const session = await this.find(id);
+    // `claude respawn` takes no flags, so it cannot be told to leave a project's own hooks and servers
+    // out: in a folder not trusted it is refused (the person trusts the project, or starts a new one).
+    await this.opts.prepare?.(session.cwd);
+    const trust = this.opts.trust?.(session.cwd);
+    if (trust && !trust.trusted) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "this session's folder is not trusted: trust the project, or start a new session",
+        "bg_untrusted",
+      );
+    }
+    // A worktree is read from its main checkout, which a respawn cannot be told about: a branch's own
+    // hooks would load, even in a trusted project.
+    if (trust?.configRoot && resolve(trust.configRoot) !== resolve(session.cwd)) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "this session runs in a worktree, which cannot be restarted from here: start a new session",
+        "bg_worktree_respawn",
+      );
+    }
     await this.claudeDo(["respawn", id]);
     return this.list();
   }
@@ -140,7 +176,14 @@ export class BgService {
         "bg_no_message_path",
       );
     }
-    await this.claudeDo(["--resume", claudeSessionId, "--bg", "--", text]);
+    await this.claudeDo([
+      "--resume",
+      claudeSessionId,
+      "--bg",
+      ...(await this.trustFlags(session.cwd)),
+      "--",
+      text,
+    ]);
     return this.list();
   }
 
@@ -180,6 +223,7 @@ export class BgService {
         "--bg",
         ...(input.persona ? ["--persona", input.persona] : []),
         ...(name ? ["--name", name] : []),
+        ...(await this.trustFlags(folder)),
         "--",
         prompt ?? "",
       ],

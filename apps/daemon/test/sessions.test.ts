@@ -151,20 +151,25 @@ describe("permissão", () => {
     expect(store.getPermission(req?.requestId ?? "")?.status).toBe("allowed");
   });
 
-  test("allow com updatedInput repassa o input alterado", async () => {
+  test("allow com updatedInput que muda o input é recusado e o pedido segue aberto; o mesmo input passa (#384)", async () => {
     const { manager, project } = newManager();
     const { sessionId } = await manager.create({ cwd: project, prompt: "[tool]" });
     const rec = record(manager, sessionId);
     const [req] = await waitFor(
       () => rec.find("permission.requested").length > 0 && rec.find("permission.requested"),
     );
-    manager.respondPermission({
-      requestId: req?.requestId ?? "",
-      decision: "allow",
-      updatedInput: { file_path: "outro.txt", content: "x" },
-    });
+    const requestId = req?.requestId ?? "";
+    expect(() =>
+      manager.respondPermission({
+        requestId,
+        decision: "allow",
+        updatedInput: { file_path: "outro.txt", content: "x" },
+      }),
+    ).toThrow("the answer changes what the request runs");
+    expect(manager.get(sessionId).status).toBe("awaiting_permission");
+    manager.respondPermission({ requestId, decision: "allow", updatedInput: req?.input ?? {} });
     await waitFor(() => manager.get(sessionId).status === "idle");
-    expect(rec.find("tool.result")[0]?.content).toContain("outro.txt");
+    expect(rec.find("tool.result")[0]?.content).toContain("fake.txt");
   });
 
   test("deny encerra a chamada com a mensagem", async () => {
