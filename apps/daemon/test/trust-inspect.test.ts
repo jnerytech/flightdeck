@@ -15,6 +15,13 @@ function repo(files: Record<string, string>) {
 }
 
 describe("trust-inspect: what a project would load, read without running anything (#196)", () => {
+  test("a folder that does not exist loads nothing and is named as it was given", async () => {
+    const gone = join(tempDir("fd-inspect-"), "gone");
+    const load = await inspectProject(gone);
+    expect(load.path).toBe(gone);
+    expect(load.hooks).toEqual([]);
+  });
+
   test("a project with nothing of its own loads nothing", async () => {
     const root = repo({ "src/a.ts": "x" });
     expect(await inspectProject(root)).toEqual({
