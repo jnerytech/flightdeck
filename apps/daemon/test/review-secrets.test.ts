@@ -342,6 +342,21 @@ describe("review-secrets: .git stays out of reach, by any spelling or link (#509
     expect(await outcome(fresh)).toEqual({ code: "file_conflict", reason: "review_file_changed" });
   });
 
+  test("a link that leads nowhere yet is refused, wherever it would lead", async () => {
+    const { repo, files } = setup();
+    const outside = tempDir("fd-outside-");
+    await linkDir(join(outside, "new"), join(repo, "dangling"));
+    await linkDir(join(repo, ".git", "hooks", "later"), join(repo, "hook"));
+    for (const path of ["dangling", "dangling/x.txt", "hook"]) {
+      const written = files.write("session:s-1", path, "x\n", "");
+      expect({ path, ...(await outcome(written)) }).toEqual({
+        path,
+        code: "forbidden_cwd",
+        reason: "review_path_link",
+      });
+    }
+  });
+
   test("a link into .git is refused like .git itself", async () => {
     const { repo, files } = setup();
     await linkDir(join(repo, ".git"), join(repo, "meta"));
