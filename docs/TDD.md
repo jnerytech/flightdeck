@@ -141,6 +141,12 @@ git, readFile })` and the daemon's service contexts do; the entry file or the co
 only wires the real ones. The tests then pass fakes instead of `mock.module`, which leaks across
 files. This is a rule, not a style rewrite: React components and Bun idioms stay as they are.
 
+**Measuring the harness.** `bun run scripts/harness-eval.ts [--samples 3] [--budget 1]` gives a
+real headless session a small TDD task in fresh clones (origin removed) and grades what it left,
+deterministically: the test file's place, test before feat, a red by assertion before the test
+commit, `tdd:audit`, `test:related`. It costs real quota and is opt-in: never in the suite, CI or
+the slot. Run it after a change to the harness (CLAUDE.md, rules, hooks, skills).
+
 ## Test anchors
 
 How a UI test finds what it checks, in this order (issue #168, owner decision). The design rules

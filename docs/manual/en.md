@@ -2309,14 +2309,34 @@ window resets.
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.
-- **In the top bar:** a small meter shows the window under most pressure across the online hosts,
-  with its percentage (the window's name shows from 960 px wide). From 80% it carries a warning
-  mark in the needs-you colour, and at 100% (or from `pauseAt`, as the account card) the bar
-  turns red; its name and tooltip say the level,
-  the host and the time left. Clicking it opens that host's page. With no reading, it does not
-  show.
+- **In the status bar** (the slim line at the bottom of the window, below): a small meter shows the
+  window under most pressure across the online hosts, with its percentage and the time left until it
+  resets (the window's name shows from 960 px wide), and a **Refresh the plan usage** button that
+  asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
+  from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
+  host and the time left. Clicking it opens that host's page. With no reading, neither the meter
+  nor the refresh shows.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
   sees empty or stale bars until a card or a managed session runs on the host.
+
+### The status bar
+
+A slim bar (24 px) runs along the bottom of the window. On the left, the plan quota (above) with its
+reset time and a refresh. On the right, each item opens its page:
+
+- **Update:** only when there is one to say: an app update on offer, one downloaded that needs a
+  restart, or a failed check. It opens Settings.
+- **Keep awake:** what the hosts that offer it say together: **Awake** (holding the computer awake
+  now), **Keep awake** (on, holding only while sessions run) or **Sleep ok** (off). It opens that
+  host's page, where the switch is. A host that does not offer it is not counted.
+- **Terminals:** how many terminal tabs are open, in both areas. It brings the first one forward; with
+  none open, it opens the host where one can be opened.
+- **Hosts:** how many are online of all ("2/3"). It opens the first host that is not online, so a
+  problem is one click away; with every host online, the host in view.
+
+Every item is a button with its words as the name and a tooltip, never colour alone, and the two
+counts are live regions, so a screen reader hears them change.
+In a window under 600 px tall the bar is hidden, to leave the height to the conversation.
 
 ### Quota queue
 
@@ -2742,6 +2762,10 @@ tab, with no SSH.
 - **Limits:** 10 live terminals per host (`terminal.max`), and a terminal nobody is attached to is
   ended after 120 minutes (`terminal.idleMinutes`). Terminals do not survive a restart or an
   update of the daemon. Their content never goes to the log or to the database.
+- **Scrolling Claude Code:** in Claude Code's fullscreen mode the wheel goes to Claude Code, which
+  moves by its own `CLAUDE_CODE_SCROLL_SPEED`. Terminals opened by the app set it to 3 lines a
+  notch, as Windows Terminal and VS Code feel, unless the host's environment or Claude Code's
+  settings (where `/scroll-speed` keeps it) already set a speed: then that one is used.
 
 ### Claude here
 
@@ -3089,8 +3113,11 @@ signature (see [Installation](#from-the-release-binaries)).
 - **The app:**
   - looks for a new version on open and every 6 h, in the latest release's `latest.json`;
   - with **Update automatically** on (the default), it downloads the new version in the
-    background, checks its signature, and then shows the banner "Flightdeck X is ready. Restart
-    to update." with **Restart now** and **Later**. Nothing restarts by itself (#280). Quitting
+    background, checks its signature, and then shows a card in the bottom-right corner:
+    **Update available**, "Flightdeck vX is ready.", "Your sessions will not be interrupted." (they
+    run in the hosts' daemons), **Release notes** (the version's page on GitHub), one **Update**
+    button and a close button (×) that puts it away until the next check (#490). Nothing restarts
+    by itself (#280). Quitting
     from the tray with a version downloaded installs it on the way out, without starting the app
     again (#402);
   - with it off, the banner says "Flightdeck X available", with the notes, **Install and
