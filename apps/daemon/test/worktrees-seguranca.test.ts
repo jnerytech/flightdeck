@@ -577,11 +577,11 @@ describe("worktrees-seguranca: what git hides is not deleted (re-review N1)", ()
 });
 
 describe("worktrees-seguranca: only what a build recreates, at the root, goes unasked (re-review N2)", () => {
-  const ignoring = () => {
+  const ignoring = (extra = "") => {
     const where = gitRepo();
     writeFileSync(
       join(where.repo, ".gitignore"),
-      "node_modules/\nout\nbuild/\n.cache/\nnotes.local\n.env\n*.pem\ncredentials.json\nlocal.json\n",
+      `node_modules/\nout\nbuild/\n.cache/\nnotes.local\n.env\n*.pem\ncredentials.json\nlocal.json\n${extra}`,
     );
     git(where.repo, "add", ".gitignore");
     git(where.repo, ...ID, "commit", "-q", "-m", "ignore");
@@ -636,6 +636,28 @@ describe("worktrees-seguranca: only what a build recreates, at the root, goes un
       const path = s.add(tag);
       put(path, name, "same in both");
       expect((await blockersOf(s))[`fd/${tag}`]).toEqual(["ignored_files"]);
+    }
+  });
+
+  test("the secret names the classifier knows block too: a cloud config, a database password, a key store, a history (issue #449)", async () => {
+    const names = [
+      ".boto",
+      ".s3cfg",
+      ".pgpass",
+      "wallet.dat",
+      ".psql_history",
+      "key.ppk",
+      "a.tfstate",
+    ];
+    const where = ignoring(`${names.join("\n")}\n`);
+    const s = setup({}, where);
+    for (const name of names) {
+      const tag = name.replaceAll(/[./]/g, "_");
+      // The same bytes in the project: only a credential-looking name still blocks.
+      put(where.repo, name, "same in both");
+      const path = s.add(tag);
+      put(path, name, "same in both");
+      expect((await blockersOf(s))[`fd/${tag}`], `${name} blocks`).toEqual(["ignored_files"]);
     }
   });
 

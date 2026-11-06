@@ -10,6 +10,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { LANGS, type Lang, type T } from "../i18n/index.ts";
 import type { AppStore, AppUpdateState, Settings as SettingsState } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
+import type { TabOrder } from "../lib/tab-switcher.ts";
 import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../lib/terminal-view.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -72,6 +73,10 @@ export const Settings = memo(function Settings(props: {
     props.store.terminalFont.subscribe,
     () => props.store.terminalFont.value,
   );
+  const tabOrder = useSyncExternalStore(
+    props.store.tabOrder.subscribe,
+    () => props.store.tabOrder.value,
+  );
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const shortcutOff = !settings.globalShortcutSupported;
@@ -100,7 +105,7 @@ export const Settings = memo(function Settings(props: {
             {(id) => (
               <NativeSelect
                 id={id}
-                className="w-44"
+                className="setting-select"
                 value={props.theme}
                 onChange={(e) => props.onTheme(e.target.value as ThemeMode)}
               >
@@ -114,7 +119,7 @@ export const Settings = memo(function Settings(props: {
             {(id) => (
               <NativeSelect
                 id={id}
-                className="w-44"
+                className="setting-select"
                 value={props.density}
                 onChange={(e) => props.onDensity(e.target.value as Density)}
               >
@@ -123,12 +128,25 @@ export const Settings = memo(function Settings(props: {
               </NativeSelect>
             )}
           </SettingRow>
+          <SettingRow label={t("settings.tabOrder")}>
+            {(id) => (
+              <NativeSelect
+                id={id}
+                className="setting-select"
+                value={tabOrder}
+                onChange={(e) => props.store.tabOrder.set(e.target.value as TabOrder)}
+              >
+                <option value="mru">{t("settings.tabOrders.mru")}</option>
+                <option value="sequential">{t("settings.tabOrders.sequential")}</option>
+              </NativeSelect>
+            )}
+          </SettingRow>
           <SettingRow label={t("settings.terminalFont")}>
             {(id) => (
               <Input
                 id={id}
                 type="number"
-                className="w-44"
+                className="setting-select"
                 min={TERMINAL_FONT_MIN}
                 max={TERMINAL_FONT_MAX}
                 value={terminalFont}
@@ -140,7 +158,7 @@ export const Settings = memo(function Settings(props: {
             {(id) => (
               <NativeSelect
                 id={id}
-                className="w-44"
+                className="setting-select"
                 value={props.lang}
                 onChange={(e) => props.onLang(e.target.value as Lang)}
               >
