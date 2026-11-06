@@ -80,7 +80,7 @@ describe("releases-lib: the app's release notes from GitHub (issue #125)", () =>
     });
     // A release with no title is shown by its tag; with no notes it has no highlights.
     expect(list.releases[1]).toMatchObject({ title: "v0.37.3", highlights: [] });
-    expect(asked[0]?.url).toBe("https://api.example/releases?per_page=5");
+    expect(asked[0]?.url).toBe("https://api.example/releases?per_page=20");
     expect(asked[0]?.headers.Accept).toBe("application/vnd.github+json");
     expect(asked[0]?.headers["User-Agent"]).toContain("flightdeckd");
   });
