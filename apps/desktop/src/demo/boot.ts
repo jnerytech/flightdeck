@@ -102,3 +102,22 @@ export function demoPlatform(platform: Platform, search = ""): Platform {
     },
   };
 }
+
+/** What `demoToast` needs of the store. */
+export interface ToastTarget {
+  success(text: string): void;
+  i18n: { t: (key: "toast.rootAdded", params: Record<string, string>) => string };
+}
+
+/**
+ * The prints send `flightdeck:demo-toast` to the page (#581) right before a shot: each one shows a
+ * success toast in the page's language, so a print shows where the toasts sit (over the status bar,
+ * and over the update card with `update=`). A toast at boot would be gone by the shot. Returns the
+ * way to stop listening.
+ */
+export function demoToast(store: ToastTarget, page: EventTarget): () => void {
+  const show = () =>
+    store.success(store.i18n.t("toast.rootAdded", { folder: "~/projetos/loja", host: "alfa" }));
+  page.addEventListener("flightdeck:demo-toast", show);
+  return () => page.removeEventListener("flightdeck:demo-toast", show);
+}

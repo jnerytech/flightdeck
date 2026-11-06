@@ -77,6 +77,13 @@ function ErrorToast(
 const NOTICES_KEYS = ["notices"] as const;
 
 /**
+ * Issue #581: the toasts sit over the status bar, and over the update card while it shows, with the
+ * card's 0.75rem gap: styles.css's --toast-bottom, on a phone too. Their right edge lines up with
+ * the card's.
+ */
+const TOAST_OFFSET = { bottom: "var(--toast-bottom)", right: "0.75rem" };
+
+/**
  * The app's toasts (sonner): each error of a host, translated by its code with the daemon's
  * message behind "Detalhes", stays about ten seconds (paused while hovered or focused; one with an action waits until it is acted on) and always has Close; successes are short.
  */
@@ -138,5 +145,13 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
       );
     }
   }, [state.notices, store, t, prefix]);
-  return <Toaster theme={theme} position="bottom-right" visibleToasts={6} />;
+  return (
+    <Toaster
+      theme={theme}
+      position="bottom-right"
+      visibleToasts={6}
+      offset={TOAST_OFFSET}
+      mobileOffset={TOAST_OFFSET}
+    />
+  );
 });
