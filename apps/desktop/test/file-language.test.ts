@@ -27,9 +27,21 @@ describe("file-language: which language colors a file in the viewer (#506)", () 
 
   test("each language loads its parser on demand, named after it", async () => {
     const names = await Promise.all(
-      ["typescript", "json", "python", "rust", "shell", "toml", "yaml", "css", "go", "html"].map(
-        async (key) => [key, (await loadLanguage(key))?.name ?? null],
-      ),
+      [
+        "typescript",
+        "javascript",
+        "json",
+        "python",
+        "rust",
+        "shell",
+        "toml",
+        "yaml",
+        "css",
+        "go",
+        "html",
+        "xml",
+        "diff",
+      ].map(async (key) => [key, (await loadLanguage(key))?.name ?? null]),
     );
     expect(names.every(([, name]) => typeof name === "string" && name.length > 0)).toBe(true);
     // The Dockerfile mode has no name of its own; it is a parser all the same.
