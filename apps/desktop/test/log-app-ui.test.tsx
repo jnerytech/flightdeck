@@ -22,7 +22,7 @@ function setup(options: { logs?: boolean; language?: "en" | "pt-BR" } = {}) {
   const written: string[] = [];
   const copied: string[] = [];
   const sink: LogSink = {
-    write: async (line) => void written.push(line),
+    write: async (lines) => void written.push(...lines),
     tail: async (n) => {
       events.push(`tail:${n}`);
       return ["2026 INFO from the file", "2026 ERROR token=0123456789abcdef0123456789abcdef"];

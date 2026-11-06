@@ -690,6 +690,87 @@ mod log_tests {
         assert!(lines[1].contains("broken"));
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    // -- issue #259: batches, the hard limit, the raw open, rotation on Windows ----------------
+
+    fn owned(lines: &[&str]) -> Vec<String> {
+        lines.iter().map(|line| line.to_string()).collect()
+    }
+
+    #[test]
+    fn a_batch_is_appended_in_order_each_line_flattened() {
+        let dir = scratch("batch");
+        append_lines(&dir, &owned(&["first", "second\nhalf", "third"]), 1024, 3).unwrap();
+        let text = std::fs::read_to_string(log_path(&dir, 0)).unwrap_or_default();
+        assert_eq!(text, "first\nsecond half\nthird\n");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_batch_rotates_between_its_lines() {
+        let dir = scratch("batch-rotate");
+        let lines: Vec<String> = (0..40).map(|i| format!("message number {i} with padding")).collect();
+        append_lines(&dir, &lines, 200, 3).unwrap();
+        assert!(log_path(&dir, 1).exists());
+        let live = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
+        assert!(live.len() <= 200);
+        assert!(live.ends_with("message number 39 with padding\n"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_batch_over_the_cap_is_refused_whole() {
+        let dir = scratch("batch-cap");
+        let lines = vec!["x".to_string(); LOG_MAX_BATCH + 1];
+        assert!(append_lines(&dir, &lines, 1 << 20, 3).is_err());
+        assert!(!log_path(&dir, 0).exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_failed_rotation_lets_lines_in_up_to_twice_the_limit_then_refuses() {
+        let dir = scratch("stuck");
+        // A folder where the oldest file goes: removing it fails, so every rotation fails.
+        std::fs::create_dir_all(log_path(&dir, 1).join("held")).unwrap();
+        let line = "x".repeat(29); // 30 bytes with its newline
+        let written: Vec<bool> = (0..8)
+            .map(|_| append_line(&dir, &line, 100, 2).is_ok())
+            .collect();
+        assert_eq!(written, [true, true, true, true, true, true, false, false]);
+        assert_eq!(std::fs::metadata(log_path(&dir, 0)).unwrap().len(), 180);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_raw_open_never_follows_a_link() {
+        // `open_live_log` looks first; this is the open itself, for a link planted after the look.
+        let dir = scratch("nofollow");
+        std::fs::create_dir_all(&dir).unwrap();
+        let victim = dir.join("victim.txt");
+        std::fs::write(&victim, "do not touch\n").unwrap();
+        let link = log_path(&dir, 0);
+        std::os::unix::fs::symlink(&victim, &link).unwrap();
+        assert!(open_append(&link).is_err());
+        assert_eq!(std::fs::read_to_string(&victim).unwrap(), "do not touch\n");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn on_windows_the_files_rotate_while_a_reader_holds_the_live_one() {
+        let dir = scratch("held-open");
+        append_line(&dir, "before the rotation", 100, 3).unwrap();
+        let _reader = std::fs::File::open(log_path(&dir, 0)).unwrap();
+        for i in 0..10 {
+            append_line(&dir, &format!("message number {i} with padding"), 100, 3).unwrap();
+        }
+        let rotated = std::fs::read_to_string(log_path(&dir, 1)).unwrap();
+        let live = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
+        assert!(live.contains("message number 9"));
+        assert!(!rotated.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
 
 #[cfg(test)]
