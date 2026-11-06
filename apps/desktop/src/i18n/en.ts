@@ -2658,8 +2658,17 @@ export const en: Dictionary = {
     add: "Add webhook",
     name: "Name",
     type: "Type",
-    types: { slack: "Slack", discord: "Discord", generic: "Generic JSON (signed)" },
+    types: {
+      slack: "Slack",
+      discord: "Discord",
+      generic: "Generic JSON (signed)",
+      ntfy: "ntfy (phone notices)",
+    },
     url: "Webhook URL",
+    ntfyUrl: "Topic URL",
+    ntfyHelp:
+      "Like https://ntfy.sh/your-topic. The server must be reachable from the internet: one only on your home network is not. A tap on the notice opens nothing.",
+    token: "Access token (optional)",
     urlKeep: "Leave empty to keep the current URL",
     signing: "Signing secret",
     scope: "Hosts",
@@ -2696,6 +2705,8 @@ export const en: Dictionary = {
       no_kinds: "Pick at least one event.",
       no_name: "Give it a name.",
       not_found: "That webhook no longer exists.",
+      invalid_topic: "Use the address of one topic, like https://ntfy.sh/your-topic.",
+      invalid_token: "That is not an ntfy access token (letters, digits, - and _).",
     },
   },
   bg: {

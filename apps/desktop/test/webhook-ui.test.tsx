@@ -280,4 +280,46 @@ describe("webhook-ui", () => {
     await settle(() => screen.queryByRole("alertdialog") === null);
     expect(store.webhooks.targets.list()).toHaveLength(1);
   });
+
+  test("an ntfy target asks for its topic URL and an optional access token, says the server must be public, and posts to the server's root (#263)", async () => {
+    const { store, sent } = await open("en");
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Type"), { target: { value: "ntfy" } });
+    });
+    expect(screen.queryByLabelText("Topic URL")).not.toBeNull();
+    expect(screen.queryByText(/must be reachable from the internet/)).not.toBeNull();
+    await fill("Name", "Phone");
+    await fill("Topic URL", "https://ntfy.sh/fd-alerts");
+    await fill("Access token (optional)", "tk_abc123");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => screen.queryByText("Phone") !== null);
+    expect(store.webhooks.targets.list().map((t) => t.type)).toEqual(["ntfy"]);
+    expect(document.body.textContent).not.toContain("tk_abc123");
+    await click("Test Phone");
+    await settle(() => sent.length === 1);
+    expect(sent).toEqual(["https://ntfy.sh/"]);
+  });
+
+  test("an ntfy URL with more than a topic, or a token of another shape, is refused in words (pt-BR)", async () => {
+    await open("pt-BR");
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Tipo"), { target: { value: "ntfy" } });
+    });
+    expect(screen.queryByLabelText("URL do tópico")).not.toBeNull();
+    await fill("Nome", "Celular");
+    await fill("URL do tópico", "https://ntfy.sh/a/b");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Precisa de você" }));
+    });
+    await click("Salvar webhook");
+    await settle(() => screen.queryByText(/Use o endereço de um tópico/) !== null);
+    await fill("URL do tópico", "https://ntfy.sh/ok");
+    await fill("Token de acesso (opcional)", "tk com espaço");
+    await click("Salvar webhook");
+    await settle(() => screen.queryByText(/não é um token de acesso do ntfy/) !== null);
+    expect(screen.queryByText(/não é um token de acesso do ntfy/)).not.toBeNull();
+  });
 });
