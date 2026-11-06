@@ -222,9 +222,10 @@ async function openHostSettings(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
-/** The names of the prints, in order (#677: the narrow list is checked against them). Stub. */
+/** The names of the prints, in order (#677: the narrow list is checked against them). */
 export function shotNames(): string[] {
-  return [];
+  // The routes need ids; the names do not.
+  return shots({} as DemoIds).map((shot) => shot.name);
 }
 
 function shots(ids: DemoIds): Shot[] {
@@ -959,7 +960,10 @@ export async function takeShots(
   );
   const problems: string[] = [];
   const ratchet = (file: string): Ratchet => ({
-    baseline: loadCounts(() => (existsSync(file) ? readFileSync(file, "utf8") : null)),
+    baseline: loadCounts(
+      () => (existsSync(file) ? readFileSync(file, "utf8") : null),
+      basename(file),
+    ),
     seen: {},
     occurrences: {},
     gone: [],

@@ -504,19 +504,16 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     }
   };
   const checkHeader = (rules: ResponsiveRules) => {
-    const tabs = [...document.querySelectorAll(rules.tabs)].find((el) => !hidden(el));
+    // Every app tab row (a split has one per pane): a header is checked against the ones over it.
+    const rows = [...document.querySelectorAll(rules.tabs)].filter((el) => !hidden(el)).map(rectOf);
     for (const header of document.querySelectorAll(rules.header)) {
       if (hidden(header)) continue;
       const box = rectOf(header);
-      const row = tabs ? rectOf(tabs) : null;
-      const under = row ? row.bottom - box.top : 0;
-      if (
-        row &&
-        under > 0.5 &&
-        box.top >= row.top &&
-        box.left < row.right &&
-        row.left < box.right
-      ) {
+      const over = rows.filter(
+        (row) => box.top >= row.top && box.left < row.right && row.left < box.right,
+      );
+      const under = Math.max(0, ...over.map((row) => row.bottom - box.top));
+      if (under > 0.5) {
         add(
           "header-clipped",
           pathOf(header, true),
@@ -634,7 +631,8 @@ export const RESPONSIVE_RULES: Rule[] = ["overflow-x", "nested-scroll", "header-
 export const RESPONSIVE: ResponsiveRules = {
   header: '[data-slot="page-header"]',
   title: '[data-slot="page-title"]',
-  tabs: '[role="tablist"]',
+  // The app's tab rows (TabBar), not an in-page tab list (#677).
+  tabs: '.tab-strip[role="tablist"]',
 };
 
 export const SPACING_RULES: readonly Rule[] = [
@@ -699,14 +697,19 @@ export interface Ratchet {
   gone: string[];
 }
 
-/** A baseline of counts, or `null` when there is none yet; an entry that is not a number counts as one. */
-export function loadCounts(read: () => string | null): Record<string, number> | null {
+/** A baseline of counts, or `null` when there is none yet; refuses one that is not counts, by name (#677). */
+export function loadCounts(read: () => string | null, file: string): Record<string, number> | null {
   const text = read();
   if (text === null) return null;
-  const parsed = JSON.parse(text) as Record<string, unknown>;
-  return Object.fromEntries(
-    Object.entries(parsed).map(([key, value]) => [key, typeof value === "number" ? value : 1]),
-  );
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(`${file} is not valid JSON`);
+  }
+  const wrong = Object.entries(parsed).find(([, value]) => !Number.isInteger(value));
+  if (wrong) throw new Error(`${file}: ${wrong[0]} is not a count of findings`);
+  return parsed as Record<string, number>;
 }
 
 /** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */
