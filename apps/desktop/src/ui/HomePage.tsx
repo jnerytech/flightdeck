@@ -24,7 +24,8 @@ const REFRESH_MS = 60_000;
  */
 export function HomePage(props: {
   store: AppStore;
-  state: AppState;
+  /** The parts of the state Home reads: the hosts, whether the list was read, and the budgets. */
+  state: Pick<AppState, "hosts" | "hostsLoaded" | "budgets">;
   go(route: Route): void;
   /** How often the numbers are read again, in milliseconds (a minute). */
   refreshMs?: number;
