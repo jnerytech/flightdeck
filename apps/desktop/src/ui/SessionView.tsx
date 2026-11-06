@@ -360,6 +360,73 @@ function offeredPrompts(
   };
 }
 
+/** What the composer's pickers hold: the person's picks, and how a pick is made. */
+interface PickerState {
+  model: string;
+  setModel(value: string): void;
+  effort: EffortLevel | null;
+  setEffort(level: EffortLevel | null): void;
+  mode: PermissionMode;
+  modeMenu: ReturnType<typeof modeRows>;
+  chooseMode(next: SettableMode): void;
+}
+
+/** The pickers of what the session lets change (model and effort, mode); the rest shows as text. */
+function composerPickers(
+  props: SessionViewProps,
+  t: T,
+  state: PickerState,
+): { model?: ReactNode; mode?: ReactNode } {
+  const { actions, session } = props;
+  const opencode = props.runtime === "opencode";
+  const pickers: { model?: ReactNode; mode?: ReactNode } = {};
+  if (props.settings && actions.setModel && (!opencode || props.models)) {
+    pickers.model = opencode ? (
+      <NativeSelect
+        compact
+        inline
+        aria-label={t("session.modelLabel")}
+        value={state.model}
+        onChange={(e) => {
+          state.setModel(e.target.value);
+          void actions.setModel?.(e.target.value || null);
+        }}
+      >
+        <option value="">{t("session.modelDefault")}</option>
+        <ModelOptions models={props.models ?? []} />
+      </NativeSelect>
+    ) : (
+      <ModelChip
+        t={t}
+        model={state.model}
+        current={session.model}
+        effort={state.effort}
+        effortAvailable={Boolean(props.effort && actions.setEffort)}
+        onPickModel={(value) => {
+          state.setModel(value);
+          void actions.setModel?.(value || null);
+        }}
+        onPickEffort={(level) => {
+          state.setEffort(level);
+          void actions.setEffort?.(level);
+        }}
+      />
+    );
+  }
+  if (props.settings && actions.setMode) {
+    pickers.mode = (
+      <ModeChip
+        t={t}
+        mode={state.mode}
+        rows={state.modeMenu}
+        onPick={state.chooseMode}
+        onOpenHostSettings={props.onOpenHostSettings}
+      />
+    );
+  }
+  return pickers;
+}
+
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
 export function SessionView(props: Readonly<SessionViewProps>) {
   const ctx = useT();
@@ -564,56 +631,15 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     return actions.send(value, attached.length > 0 ? attached : undefined);
   };
 
-  const pickers = {
-    ...(props.settings && actions.setModel && (!opencode || props.models)
-      ? {
-          model: opencode ? (
-            <NativeSelect
-              compact
-              inline
-              aria-label={t("session.modelLabel")}
-              value={model}
-              onChange={(e) => {
-                setModel(e.target.value);
-                void actions.setModel?.(e.target.value || null);
-              }}
-            >
-              <option value="">{t("session.modelDefault")}</option>
-              <ModelOptions models={props.models ?? []} />
-            </NativeSelect>
-          ) : (
-            <ModelChip
-              t={t}
-              model={model}
-              current={session.model}
-              effort={effort}
-              effortAvailable={Boolean(props.effort && actions.setEffort)}
-              onPickModel={(value) => {
-                setModel(value);
-                void actions.setModel?.(value || null);
-              }}
-              onPickEffort={(level) => {
-                setEffort(level);
-                void actions.setEffort?.(level);
-              }}
-            />
-          ),
-        }
-      : {}),
-    ...(props.settings && actions.setMode
-      ? {
-          mode: (
-            <ModeChip
-              t={t}
-              mode={mode}
-              rows={modeMenu}
-              onPick={chooseMode}
-              onOpenHostSettings={props.onOpenHostSettings}
-            />
-          ),
-        }
-      : {}),
-  };
+  const pickers = composerPickers(props, t, {
+    model,
+    setModel,
+    effort,
+    setEffort,
+    mode,
+    modeMenu,
+    chooseMode,
+  });
 
   return (
     <SessionPane>
