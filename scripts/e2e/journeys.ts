@@ -1169,7 +1169,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // Issue #689: with seven projects the sidebar tree draws five, folded; the filter finds one by
   // name, a pin brings it to the top, and "All projects (N)" opens the Projects page.
   "project-tree-cap": async (c) => {
-    await open(c, { name: "hub" });
+    // The tree draws what the state knows of each host's projects, and the Projects page is what
+    // asks for them: open it, then go back to Sessions, where the tree has to stay narrow.
+    await open(c, { name: "all-projects" });
+    await c.page.getByRole("button", { name: c.t("sidebar.openSessions"), exact: true }).click();
     const tree = c.page.locator("[data-slot='project-tree']");
     const heads = tree.locator(".project-tree-name");
     const names = () => heads.evaluateAll((els) => els.map((el) => el.textContent ?? ""));
