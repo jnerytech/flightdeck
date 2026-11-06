@@ -914,7 +914,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   desta versão: um host com daemon mais antigo mostra "—" em vez de um zero inventado, e os dias
   anteriores à atualização são desconhecidos (o tempo médio e a taxa de sucesso usam só os turnos
   que foram contados). O Início lê de novo a cada minuto e quando a janela volta ao foco; um host
-  que não responde é citado sob o título e os outros continuam contando. O app abre no Início
+  que não responde é citado sob o título e os outros continuam contando. O Início guarda os últimos
+  números de cada conjunto de hosts, na memória e no armazenamento local do app (só números e a hora
+  da leitura, sem projeto nem título), e os mostra na hora com uma linha "Atualizado há …" enquanto
+  lê de novo em segundo plano; um host que não responde mantém os últimos números dele, e a página
+  avisa. O app abre no Início
   quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
   barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
   "N contas" quando diferem.

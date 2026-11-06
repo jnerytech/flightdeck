@@ -918,7 +918,10 @@ live; the list is the project's, so a session of another project never shows her
   host on an older daemon shows "—" instead of a made-up zero, and days before the update are
   unknown (the average time and the success rate use only the turns that were counted). Home reads
   again every minute and when the window gets focus; a host that does not answer is named under
-  the title and the others still count. The desktop app opens on Home when the window is new; a
+  the title and the others still count. Home keeps the last numbers of each set of hosts, in memory
+  and in the app's local storage (only numbers and the time they were read, no project or title),
+  and shows them at once with an "Updated … ago" line while it reads again in the background; a
+  host that does not answer keeps its last numbers, and the page says so. The desktop app opens on Home when the window is new; a
   window you already used comes back with its tabs. The account at the foot of the bar is the one
   of the host you are on; with no host open it is the shared account of the online hosts, or "N
   accounts" when they differ.
