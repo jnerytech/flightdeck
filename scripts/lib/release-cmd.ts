@@ -135,24 +135,9 @@ async function bump(run: Run, from: string): Promise<boolean> {
   return await commit(run, paths, chore);
 }
 
-/** Branch, bump, surface, push, PR and auto-merge. */
-async function prepare(run: Run, from: string): Promise<number> {
+/** Bump, surface, push, PR and auto-merge, on the release branch. */
+async function openPr(run: Run, from: string): Promise<number> {
   const { deps, branch } = run;
-  const open = await deps.gh([
-    "api",
-    `repos/{owner}/{repo}/pulls?head={owner}:${branch}&state=open`,
-    "--jq",
-    ".[].number",
-  ]);
-  const waiting = open.stdout.trim().split("\n")[0];
-  if (waiting) {
-    say(run, `${branch} has PR #${waiting} open: run this again once it merged`);
-    return 0;
-  }
-  if ((await deps.git(["switch", "-c", branch, `origin/${MAIN}`])).code !== 0) {
-    say(run, `${branch} cannot be made from origin/${MAIN} (does it exist already?)`);
-    return 1;
-  }
   if (!(await bump(run, from)) || !(await surfaceKept(run))) return 1;
   await deps.bun([...SURFACE, "--write"]);
   const moved = await deps.git(["status", "--porcelain", "--", BASELINE]);
@@ -189,6 +174,30 @@ async function prepare(run: Run, from: string): Promise<number> {
   }
   say(run, `PR #${number} is open with auto-merge: run this again once it merged`);
   return 0;
+}
+
+/** Branch from origin/main, then the bump PR; the checkout ends on the branch the run began on. */
+async function prepare(run: Run, from: string): Promise<number> {
+  const { deps, branch } = run;
+  const open = await deps.gh([
+    "api",
+    `repos/{owner}/{repo}/pulls?head={owner}:${branch}&state=open`,
+    "--jq",
+    ".[].number",
+  ]);
+  const waiting = open.stdout.trim().split("\n")[0];
+  if (waiting) {
+    say(run, `${branch} has PR #${waiting} open: run this again once it merged`);
+    return 0;
+  }
+  const start = (await deps.git(["rev-parse", "--abbrev-ref", "HEAD"])).stdout.trim() || MAIN;
+  if ((await deps.git(["switch", "-c", branch, `origin/${MAIN}`])).code !== 0) {
+    say(run, `${branch} cannot be made from origin/${MAIN} (does it exist already?)`);
+    return 1;
+  }
+  const code = await openPr(run, from);
+  await deps.git(["switch", start]);
+  return code;
 }
 
 /** Main has the version: the surface check, the tag and the close. */

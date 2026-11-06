@@ -45,6 +45,28 @@ function mask(source: string): string {
     underscore(from, i);
     return i + 1;
   };
+  /** Blanks the `//` comment at `i`; returns the index of the end of the line. */
+  const lineComment = (i: number): number => {
+    const end = source.indexOf("\n", i);
+    const to = end === -1 ? source.length : end;
+    blank(i, to);
+    return to;
+  };
+  /** Blanks the block comment at `i`; returns the index after its end. */
+  const blockComment = (i: number): number => {
+    const end = source.indexOf("*/", i + 2);
+    const to = end === -1 ? source.length : end + 2;
+    blank(i, to);
+    return to;
+  };
+  /** Turns the text of the string opened by `quote` at `i` into `_`; returns the index after it. */
+  const quoted = (i: number, quote: string): number => {
+    let j = i + 1;
+    while (j < source.length && source[j] !== quote && source[j] !== "\n")
+      j += source[j] === "\\" ? 2 : 1;
+    underscore(i + 1, j);
+    return j + 1;
+  };
   /** Masks code from `i`; with `inBraces` it stops after the `}` that closes the `${`. */
   const code = (start: number, inBraces: boolean): number => {
     let i = start;
@@ -52,29 +74,14 @@ function mask(source: string): string {
     while (i < source.length) {
       const c = source[i] as string;
       const next = source[i + 1];
-      if (c === "/" && next === "/") {
-        const end = source.indexOf("\n", i);
-        const to = end === -1 ? source.length : end;
-        blank(i, to);
-        i = to;
-      } else if (c === "/" && next === "*") {
-        const end = source.indexOf("*/", i + 2);
-        const to = end === -1 ? source.length : end + 2;
-        blank(i, to);
-        i = to;
-      } else if (c === '"' || c === "'") {
-        let j = i + 1;
-        while (j < source.length && source[j] !== c && source[j] !== "\n")
-          j += source[j] === "\\" ? 2 : 1;
-        underscore(i + 1, j);
-        i = j + 1;
-      } else if (c === "`") i = template(i + 1);
+      if (c === "/" && next === "/") i = lineComment(i);
+      else if (c === "/" && next === "*") i = blockComment(i);
+      else if (c === '"' || c === "'") i = quoted(i, c);
+      else if (c === "`") i = template(i + 1);
       else {
+        if (c === "}" && inBraces && depth === 0) return i + 1;
         if (c === "{") depth++;
-        if (c === "}") {
-          if (inBraces && depth === 0) return i + 1;
-          depth--;
-        }
+        else if (c === "}") depth--;
         i++;
       }
     }

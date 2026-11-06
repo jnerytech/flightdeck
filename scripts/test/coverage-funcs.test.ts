@@ -162,6 +162,60 @@ describe("onLoadFor", () => {
   test("a file that is not listed is left to Bun", () => {
     expect(onLoadFor(files, fake, read).load("/repo/other.ts")).toBeUndefined();
   });
+
+  describe("a run where another test file clears the global", () => {
+    const sources: Record<string, string> = {
+      "apps/a.ts": "const never = () => {};\nfunction main() { return 1; }",
+      "apps/b.ts": "function main() { return 2; }",
+    };
+    const names = Object.keys(sources);
+    const evaluate = (contents: string) =>
+      new Function(`${transpiler.transformSync(contents)}\nreturn main();`)();
+
+    function runTests() {
+      const hooks = onLoadFor(
+        names,
+        instrument,
+        (path) => sources[path.replace("/repo/", "")] as string,
+      );
+      evaluate(hooks.load("/repo/apps/a.ts")?.contents ?? "");
+      delete store[COVERAGE_VAR];
+      return hooks;
+    }
+
+    test("a loaded file with an uncalled anonymous arrow is named by line, never as not loaded", () => {
+      const hooks = runTests();
+      const report = formatReport(
+        [{ file: "apps/a.ts", source: sources["apps/a.ts"] as string }],
+        hooks.counters,
+      );
+      expect(report).toBe(
+        "apps/a.ts: 1 of 2 functions never called\n  apps/a.ts:1  const never = () => {};",
+      );
+      expect(report).not.toContain("no test loaded");
+    });
+
+    test("a file loaded after the clearing is kept too, and one nothing loaded is the only one reported as not loaded", () => {
+      const hooks = runTests();
+      evaluate(hooks.load("/repo/apps/b.ts")?.contents ?? "");
+      const report = formatReport(
+        [
+          { file: "apps/a.ts", source: sources["apps/a.ts"] as string },
+          { file: "apps/b.ts", source: sources["apps/b.ts"] as string },
+          { file: "apps/c.ts", source: "" },
+        ],
+        hooks.counters,
+      );
+      expect(report).toBe(
+        [
+          "apps/a.ts: 1 of 2 functions never called",
+          "  apps/a.ts:1  const never = () => {};",
+          "apps/b.ts: all 1 function called",
+          "apps/c.ts: no test loaded this file",
+        ].join("\n"),
+      );
+    });
+  });
 });
 
 describe("planCoverageFuncs", () => {

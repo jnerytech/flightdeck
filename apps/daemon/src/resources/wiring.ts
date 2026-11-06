@@ -114,11 +114,8 @@ export async function defaultSysconf(
   name: "PAGESIZE" | "CLK_TCK",
 ): Promise<number> {
   const value = await ask(name);
-  return value !== null && Number.isFinite(value) && value > 0
-    ? value
-    : name === "PAGESIZE"
-      ? 4096
-      : 100;
+  if (value !== null && Number.isFinite(value) && value > 0) return value;
+  return name === "PAGESIZE" ? 4096 : 100;
 }
 
 /** Asks `getconf`; null when it is not there or answers something else. */

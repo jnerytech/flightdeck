@@ -8,7 +8,7 @@ import { useStoreState } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
 
 /** On the host's page: the setting that resumes interrupted sessions by itself, and the way back to a put-off offer. */
-export function ResumePanel(props: { store: AppStore; host: HostView }) {
+export function ResumePanel(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const state = useStoreState(store);

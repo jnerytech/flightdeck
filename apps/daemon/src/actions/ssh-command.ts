@@ -8,7 +8,7 @@ import { FlightdeckError } from "../errors.ts";
 
 /** Reads `NAME=value` lines up to the first empty one, exports each, then runs the arguments. */
 const PRELUDE = 'while IFS= read -r l && [ -n "$l" ]; do export "$l"; done; exec "$@"';
-const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const NAME = /^[A-Za-z_]\w*$/;
 
 /** One argument of the remote command, single-quoted for a POSIX shell. */
 export function quoteArg(arg: string): string {

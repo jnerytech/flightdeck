@@ -28,6 +28,7 @@ import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-appro
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
 import { type Risk, RiskClassifier } from "../permissions/risk.ts";
+import { type DiskView, writeTarget } from "../permissions/rule-risk.ts";
 import { clampPermissionMode, toolAllowed } from "../personas/model.ts";
 import type { PreparedPersonas } from "../personas/prepare.ts";
 import { type PersonaSnapshot, snapshotOf } from "../personas/snapshot.ts";
@@ -556,9 +557,18 @@ export class SessionManager {
     this.updateListeners.add(listener);
   }
 
-  respondPermission(payload: CommandPayload<"permission.respond">): void {
+  /** The folder of the session a request is open in, and the file it writes; cwd "" when not open. */
+  permissionPlace(requestId: string): { cwd: string; target?: string } {
+    const sessionId = this.broker.sessionOf(requestId);
+    const cwd = sessionId ? (this.store.getSession(sessionId)?.cwd ?? "") : "";
+    const asked = this.broker.askedOf(requestId);
+    const target = asked ? writeTarget(asked.toolName, asked.input) : undefined;
+    return target === undefined ? { cwd } : { cwd, target };
+  }
+
+  respondPermission(payload: CommandPayload<"permission.respond">, disk?: DiskView): void {
     const sessionId = this.broker.sessionOf(payload.requestId);
-    this.broker.respond(payload);
+    this.broker.respond(payload, disk);
     const updates = payload.decision === "allow" ? (payload.updatedPermissions ?? []) : [];
     if (updates.length === 0) return;
     for (const listener of this.updateListeners) listener(sessionId, updates);

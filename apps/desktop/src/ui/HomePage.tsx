@@ -22,14 +22,16 @@ const REFRESH_MS = 60_000;
  * Home: the last seven days of every online host in four cards (spend, turns, tokens, the average
  * turn), from the hosts' own costs and usage; no command of its own.
  */
-export function HomePage(props: {
-  store: AppStore;
-  /** The parts of the state Home reads: the hosts, whether the list was read, and the budgets. */
-  state: Pick<AppState, "hosts" | "hostsLoaded" | "budgets">;
-  go(route: Route): void;
-  /** How often the numbers are read again, in milliseconds (a minute). */
-  refreshMs?: number;
-}) {
+export function HomePage(
+  props: Readonly<{
+    store: AppStore;
+    /** The parts of the state Home reads: the hosts, whether the list was read, and the budgets. */
+    state: Pick<AppState, "hosts" | "hostsLoaded" | "budgets">;
+    go(route: Route): void;
+    /** How often the numbers are read again, in milliseconds (a minute). */
+    refreshMs?: number;
+  }>,
+) {
   const { store, state, go } = props;
   const { t, lang } = store.i18n;
   const online = state.hosts.filter((host) => host.status === "online");
@@ -99,14 +101,10 @@ export function HomePage(props: {
   // At start the hosts are still connecting: that is not "no host".
   const connecting = !state.hostsLoaded || state.hosts.some((host) => host.status === "connecting");
   const busy = online.length === 0 ? connecting : !kpis;
-  const message =
-    online.length === 0
-      ? connecting
-        ? t("home.connecting")
-        : t("home.noHosts")
-      : !kpis
-        ? t("home.loading")
-        : t("home.ready");
+  const message = (() => {
+    if (online.length === 0) return connecting ? t("home.connecting") : t("home.noHosts");
+    return kpis ? t("home.ready") : t("home.loading");
+  })();
   // Hosts that do not have costs at all: their spend is unknown, which is not the same as none.
   const withoutCosts = online
     .filter((host) => !hasFeature(host.hostInfo?.features, "costs", false))

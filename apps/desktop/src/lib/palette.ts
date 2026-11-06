@@ -116,12 +116,10 @@ const RECENTS_SHOWN = 6;
 const LIVE: ReadonlySet<string> = new Set(["starting", "running", "awaiting_permission", "idle"]);
 
 /** The state a session's status shows as, for its glyph: Idle covers whatever is not running or waiting. */
-const stateOf = (status: string): NonNullable<PaletteItem["stateKey"]> =>
-  status === "awaiting_permission"
-    ? "needs_you"
-    : status === "running" || status === "starting"
-      ? "running"
-      : "idle";
+const stateOf = (status: string): NonNullable<PaletteItem["stateKey"]> => {
+  if (status === "awaiting_permission") return "needs_you";
+  return status === "running" || status === "starting" ? "running" : "idle";
+};
 
 /** How soon a recent entry is wanted: what waits for you, then what runs, then the rest. */
 const RANK = { needs_you: 0, running: 1, idle: 2 } as const;

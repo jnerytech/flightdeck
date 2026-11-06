@@ -54,22 +54,37 @@ export function brokenLinks(
   const broken: string[] = [];
   for (const [file, markdown] of files) {
     for (const { line, n } of proseLines(markdown)) {
-      const text = line.replace(/`[^`]*`/g, "");
-      for (const m of text.matchAll(/\]\(<?([^)\s>]+)>?(?:\s+"[^"]*")?\)/g)) {
-        const target = m[1] ?? "";
-        if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
-        const [path = "", anchor] = target.split("#");
-        const resolved =
-          path === "" ? file : posix.normalize(posix.join(posix.dirname(file), path));
-        if (path !== "" && !exists(resolved.replace(/\/$/, ""))) {
-          broken.push(`${file}:${n}: ${target} (no file ${resolved})`);
-        } else if (anchor && resolved.endsWith(".md") && !anchorsIn(resolved).has(anchor)) {
-          broken.push(`${file}:${n}: ${target} (no heading #${anchor} in ${resolved})`);
-        }
+      for (const target of relativeTargets(line)) {
+        const problem = linkProblem(file, target, exists, anchorsIn);
+        if (problem) broken.push(`${file}:${n}: ${target} (${problem})`);
       }
     }
   }
   return broken;
+}
+
+/** The targets of the links in a prose line that point inside the repo: code spans and URLs left out. */
+function relativeTargets(line: string): string[] {
+  const text = line.replace(/`[^`]*`/g, "");
+  return [...text.matchAll(/\]\(<?([^)\s>]+)>?(?:\s+"[^"]*")?\)/g)]
+    .map((m) => m[1] ?? "")
+    .filter((target) => !/^[a-z][a-z0-9+.-]*:/i.test(target));
+}
+
+/** Why a link of `file` is broken (the file or the heading is missing), or null when it holds. */
+function linkProblem(
+  file: string,
+  target: string,
+  exists: (path: string) => boolean,
+  anchorsIn: (path: string) => Set<string>,
+): string | null {
+  const [path = "", anchor] = target.split("#");
+  const resolved = path === "" ? file : posix.normalize(posix.join(posix.dirname(file), path));
+  if (path !== "" && !exists(resolved.replace(/\/$/, ""))) return `no file ${resolved}`;
+  if (anchor && resolved.endsWith(".md") && !anchorsIn(resolved).has(anchor)) {
+    return `no heading #${anchor} in ${resolved}`;
+  }
+  return null;
 }
 
 /** Every `docs/...md` path the code names that does not exist, as `file: path`. */

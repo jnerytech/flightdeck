@@ -22,6 +22,8 @@ import {
   layoutFindings,
   loadBaseline,
   pinnedProblem,
+  SCROLL_SIZES,
+  SINGLE_SCROLL,
   waitForStable,
 } from "../lib/layout-guards.ts";
 
@@ -196,6 +198,16 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // 5. Open the palette, search the history and open the reader.
   "paleta-e-leitor": async (c) => {
     await open(c, { name: "hub" });
+    // The palette leaves on Esc and on a click outside (issue #566).
+    const palette = c.page.getByRole("dialog", { name: c.t("searchUi.label") });
+    await c.page.keyboard.press("Control+K");
+    await palette.waitFor({ timeout: WAIT });
+    await c.page.keyboard.press("Escape");
+    await palette.waitFor({ state: "hidden", timeout: WAIT });
+    await c.page.keyboard.press("Control+K");
+    await palette.waitFor({ timeout: WAIT });
+    await c.page.locator("body").click({ position: { x: 3, y: 3 } });
+    await palette.waitFor({ state: "hidden", timeout: WAIT });
     await c.page.keyboard.press("Control+K");
     const input = c.page.getByLabel(c.t("searchUi.input"), { exact: true });
     await input.fill("revisão do arquivo");
@@ -205,6 +217,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("button")
       .first();
     await hit.waitFor({ timeout: WAIT });
+    // Long rows end in an ellipsis: the window never scrolls sideways.
+    expect(await palette.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     await hit.click();
     await c.page.getByRole("log", { name: c.t("reader.transcript") }).waitFor({ timeout: WAIT });
   },
@@ -760,7 +774,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
   },
 
-  // 24. The Files tab of a session opens a file read only; when the session rewrites it (a second
+  // 25. The Files tab of a session opens a file read only; when the session rewrites it (a second
   // window sends the message) the open file offers its diff, live, and the diff toggles back (#506).
   // The demo keeps its state: after the first run README.md is already changed, so only a fresh
   // demo proves that the button arrives by itself.
@@ -795,6 +809,64 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await viewer.locator(".cm-content").waitFor({ timeout: WAIT });
     await viewer.getByRole("button", { name: c.t("files.close"), exact: true }).click();
     await viewer.waitFor({ state: "detached", timeout: WAIT });
+  },
+
+  // 24. In the host terminal: a selection can be copied from the menu (#475), and Shift+Enter alone
+  // sends ESC then CR, the new line Claude Code reads, while a plain Enter does not (#485).
+  "terminal-copy": async (c) => {
+    const marker = `fd-${c.lang}-${Date.now()}`;
+    const rows = c.page.locator(".xterm-rows");
+    const screen = async () => (await rows.first().textContent()) ?? "";
+    await c.page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await open(c, { name: "host", host: ALFA });
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .first()
+      .click();
+    await c.page.getByRole("button", { name: c.t("hostTerminal.open"), exact: true }).click();
+    await c.page
+      .getByText(c.t("terminalUi.state.live"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    // The shell draws its prompt before it reads: type only after something is on the screen.
+    await waitFor(async () => (await screen()).trim() !== "", "o prompt do shell");
+    await c.page.locator(".xterm").first().click();
+    await c.page.keyboard.type("PS1='$ '\n");
+    await c.page.keyboard.type(`echo ${marker}\n`);
+    await waitFor(
+      async () => (await screen()).split(marker).length - 1 >= 2,
+      "o eco do terminal",
+      WAIT * 2,
+    );
+
+    // Copy is off with nothing selected, and on after Select all: what the clipboard gets is the screen.
+    const area = c.page.locator("[data-terminal-area]");
+    const menu = c.page.getByRole("menu", { name: c.t("terminalUi.title"), exact: true });
+    const copy = menu.getByRole("button", { name: c.t("terminalUi.copy"), exact: true });
+    await area.click({ button: "right" });
+    await copy.waitFor({ timeout: WAIT });
+    if (await copy.isEnabled()) throw new Error("Copy deveria estar desligado sem seleção");
+    await menu.getByRole("button", { name: c.t("terminalUi.selectAll"), exact: true }).click();
+    await area.click({ button: "right" });
+    await waitFor(async () => copy.isEnabled(), "o Copiar ligado depois de selecionar");
+    await copy.click();
+    await waitFor(
+      async () => (await c.page.evaluate(() => navigator.clipboard.readText())).includes(marker),
+      "o texto selecionado na área de transferência",
+    );
+
+    // An ESC shows as "^[" twice: the terminal's echo of the key, then cat -v printing the byte it read.
+    await c.page.locator(".xterm").first().click();
+    await c.page.keyboard.type("cat -v\n");
+    await c.page.keyboard.press("Enter");
+    const echoed = async () => (await screen()).split("^[").length - 1;
+    if ((await echoed()) !== 0) throw new Error("o Enter simples não manda ESC");
+    await c.page.keyboard.press("Shift+Enter");
+    await waitFor(async () => (await echoed()) === 2, "o ESC do Shift+Enter");
+
+    // Ends it: the demo keeps its state, and the other language's run lists only its own.
+    await c.page.keyboard.press("Control+C");
+    await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
+    await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
   },
 };
 
@@ -1263,6 +1335,16 @@ export async function layout(c: Context, problems: string[]) {
   // The geometry guards (issue #192), at three window sizes, on the longest labels (pt-BR). What
   // they find is named by data-slot path; the heuristic rules fail only when new against the baseline.
   if (c.lang === "pt-BR") await geometryGuards(c, screens, problems);
+  // Issue #567: the sidebar scrolls as one area between its fixed header and footer, at the
+  // usual window and at a short one, where it has to scroll at all.
+  for (const size of SCROLL_SIZES) {
+    await c.page.setViewportSize(size);
+    await open(c, { name: "hub" });
+    const found: Finding[] = await c.page.evaluate(layoutFindings, { single: SINGLE_SCROLL });
+    for (const split of found.filter((f) => f.rule === "scroll-split")) {
+      problems.push(`${c.lang} ${size.width}x${size.height}: ${split.path} ${split.detail}`);
+    }
+  }
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of screens) {

@@ -72,6 +72,16 @@ describe("atalhos-registro: the registry", () => {
     const own = SHORTCUTS.filter((s) => s.action === undefined).map((s) => s.id);
     expect(own).toEqual(expect.arrayContaining(["list-next", "list-previous", "approve", "deny"]));
   });
+
+  test("the wand's Ctrl or ⌘+I is on the sheet, handled by the field and not by an action", () => {
+    const wand = SHORTCUTS.find((s) => s.id === "assist-field");
+    expect(wand?.keys).toEqual(["Mod", "I"]);
+    expect(wand?.group).toBe("general");
+    expect(wand?.action).toBeUndefined();
+    expect(wand?.label).toBe("shortcuts.assistField");
+    expect(wand && keysLabel(wand, false)).toBe("Ctrl+I");
+    expect(wand && keysLabel(wand, true)).toBe("⌘I");
+  });
 });
 
 describe("atalhos-registro: the chords", () => {

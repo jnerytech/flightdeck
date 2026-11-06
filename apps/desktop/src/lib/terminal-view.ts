@@ -202,3 +202,25 @@ export class TerminalReaderSetting {
     for (const listener of this.listeners) listener();
   }
 }
+
+/** How the terminal's find matches (#476). */
+export interface FindFlags {
+  caseSensitive?: boolean;
+  wholeWord?: boolean;
+  regex?: boolean;
+}
+
+/**
+ * Why a find cannot run, with regular expressions on (#476): a pattern that does not read, or one
+ * that matches empty text (it would highlight nothing). Plain text always searches.
+ */
+export function findPatternProblem(text: string, flags: FindFlags): "invalid" | "empty" | null {
+  if (!flags.regex) return null;
+  let pattern: RegExp;
+  try {
+    pattern = new RegExp(text);
+  } catch {
+    return "invalid";
+  }
+  return pattern.test("") ? "empty" : null;
+}

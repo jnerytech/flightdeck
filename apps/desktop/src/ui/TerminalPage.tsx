@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { Page } from "@/components/layout/page";
 import { SnippetPicker } from "@/components/snippets/snippet-picker";
 import {
@@ -15,8 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
+import { resolvePath } from "../lib/terminal-paths.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import {
+  type FindFlags,
+  findPatternProblem,
   isWindowsHost,
   pasteLines,
   TERMINAL_FONT_FAMILY,
@@ -53,6 +57,17 @@ export function TerminalPage(
   });
   const [searching, setSearching] = useState(false);
   const [needle, setNeedle] = useState("");
+  /** Match case, whole word, regular expression (#476); the ref has the latest for a key and a change in one go. */
+  const [flags, setFlags] = useState<FindFlags>({});
+  const flagsNow = useRef<FindFlags>({});
+  const find = (text: string, direction: "next" | "previous", incremental = false) =>
+    screen.current?.find(text, direction, incremental, flagsNow.current);
+  const flip = (flag: keyof FindFlags) => {
+    flagsNow.current = { ...flagsNow.current, [flag]: !flagsNow.current[flag] };
+    setFlags(flagsNow.current);
+    if (needle !== "") find(needle, "next", true);
+  };
+  const problem = needle === "" ? null : findPatternProblem(needle, flags);
   const [closing, setClosing] = useState(false);
   /** A paste of several lines waiting for the OK: how many lines, and the answer to give xterm. */
   const [pasting, setPasting] = useState<{ lines: number; answer(ok: boolean): void } | null>(null);
@@ -86,6 +101,8 @@ export function TerminalPage(
       const deps = props.deps ?? (await import("../lib/xterm-deps.ts")).realXtermDeps;
       if (!alive || !parent) return;
       const host = store.terminalHost(hostId);
+      // The terminal's folder, for the relative paths of its output: known once the list answers.
+      let folder: Promise<string | null> = Promise.resolve(null);
       const xterm = createXtermScreen(deps, {
         theme: terminalTheme(store.theme.resolved),
         fontSize: store.terminalFont.value,
@@ -104,6 +121,7 @@ export function TerminalPage(
         onFindResults: setResults,
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
+        onPath: (path) => void showPath(store, hostId, path, folder),
         confirmPaste: (text) =>
           new Promise<boolean>((resolve) =>
             setPasting({
@@ -141,7 +159,9 @@ export function TerminalPage(
       );
       await current.start();
       // A "Claude aqui" terminal carries the launch its session in the central also carries.
-      const info = (await host.list().catch(() => [])).find((t) => t.terminalId === terminalId);
+      const listed = host.list().catch(() => []);
+      folder = listed.then((list) => list.find((t) => t.terminalId === terminalId)?.cwd ?? null);
+      const info = (await listed).find((t) => t.terminalId === terminalId);
       if (alive) setLaunchId(info?.launchId ?? null);
     })();
     return () => {
@@ -244,26 +264,41 @@ export function TerminalPage(
                 if (e.target.value === "") {
                   setResults(null);
                   screen.current?.clearFind();
-                } else screen.current?.find(e.target.value, "next", true);
+                } else find(e.target.value, "next", true);
               }}
               onKeyDown={(e) => {
-                if (e.key === "Escape") stopSearch();
-                else if (e.key === "Enter") {
-                  screen.current?.find(needle, e.shiftKey ? "previous" : "next");
-                }
+                const flag = e.altKey && !e.ctrlKey ? FIND_KEYS[e.key.toLowerCase()] : undefined;
+                if (flag) {
+                  e.preventDefault();
+                  flip(flag);
+                } else if (e.key === "Escape") stopSearch();
+                else if (e.key === "Enter") find(needle, e.shiftKey ? "previous" : "next");
               }}
             />
+            {FIND_TOGGLES.map(([flag, label, glyph, keys]) => (
+              <IconTip key={flag} label={`${t(label)} (${keys})`}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="terminal-find-toggle"
+                  aria-label={t(label)}
+                  aria-keyshortcuts={keys}
+                  aria-pressed={flags[flag] === true}
+                  onClick={() => flip(flag)}
+                >
+                  <span aria-hidden="true">{glyph}</span>
+                </Button>
+              </IconTip>
+            ))}
             <span role="status" className="text-xs text-muted-foreground">
-              {needle !== "" && results && findStatus(results)}
+              {problem
+                ? t(problem === "invalid" ? "terminalUi.badPattern" : "terminalUi.emptyPattern")
+                : needle !== "" && results && findStatus(results)}
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => screen.current?.find(needle, "previous")}
-            >
+            <Button size="sm" variant="ghost" onClick={() => find(needle, "previous")}>
               {t("terminalUi.findPrevious")}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => screen.current?.find(needle, "next")}>
+            <Button size="sm" variant="ghost" onClick={() => find(needle, "next")}>
               {t("terminalUi.findNext")}
             </Button>
             <Button size="sm" variant="ghost" onClick={stopSearch}>
@@ -356,6 +391,37 @@ export function TerminalPage(
 }
 
 /** Closing a terminal: detach (the default; the process keeps running on the host) or end it. */
+/** Alt and a letter turn a find option on or off while the search box has the focus, as in VS Code. */
+const FIND_KEYS: Record<string, keyof FindFlags> = {
+  c: "caseSensitive",
+  w: "wholeWord",
+  r: "regex",
+};
+
+/** The find options' buttons: the option, its name, the glyph drawn for it and its key. */
+const FIND_TOGGLES = [
+  ["caseSensitive", "terminalUi.matchCase", "Aa", "Alt+C"],
+  ["wholeWord", "terminalUi.wholeWord", "ab", "Alt+W"],
+  ["regex", "terminalUi.useRegex", ".*", "Alt+R"],
+] as const;
+
+/**
+ * A path clicked in a terminal's output (#476): on a host of this computer the file is shown in its
+ * folder, never opened or run (the app's own checks refuse links, `..` and shares); on another
+ * host the path is copied. A relative path is taken from the terminal's folder.
+ */
+async function showPath(
+  store: AppStore,
+  hostId: string,
+  path: string,
+  folder: Promise<string | null>,
+): Promise<void> {
+  const cwd = await folder;
+  const full = cwd ? resolvePath(cwd, path) : path;
+  if (store.canOpenPaths(hostId)) await store.revealPath(hostId, full);
+  else await store.copyText(full);
+}
+
 /**
  * The OK before a paste of several lines (#476): the program has not turned on bracketed paste, so
  * each line may run as a command as soon as it lands. Cancel has the focus: it is the safe answer.

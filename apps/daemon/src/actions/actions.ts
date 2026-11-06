@@ -981,5 +981,5 @@ export class Actions {
 /** `deploy-token` → `DEPLOY_TOKEN`. */
 function envName(secretId: string): string {
   const name = secretId.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-  return /^[0-9]/.test(name) ? `_${name}` : name;
+  return /^\d/.test(name) ? `_${name}` : name;
 }

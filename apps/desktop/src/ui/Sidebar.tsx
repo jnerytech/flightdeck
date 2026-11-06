@@ -485,264 +485,271 @@ export function Sidebar(
         collapsed={collapsed}
         go={go}
       />
-      <nav aria-label={t("sidebarGroups.main")} className="sidebar-nav">
-        <NavGroup
-          label={t("sidebarGroups.work")}
-          collapsed={collapsed}
-          folded={folded.includes("work")}
-          onToggle={() => toggle("work")}
-        >
-          {showSetup && (
-            <div className="group/setup host-row">
+      {/* The one area that scrolls, between the fixed header and footer (#567). */}
+      <div data-slot="sidebar-body" className="sidebar-body">
+        <nav aria-label={t("sidebarGroups.main")} className="sidebar-nav">
+          <NavGroup
+            label={t("sidebarGroups.work")}
+            collapsed={collapsed}
+            folded={folded.includes("work")}
+            onToggle={() => toggle("work")}
+          >
+            {showSetup && (
+              <div className="group/setup host-row">
+                <NavButton
+                  collapsed={collapsed}
+                  icon={<ProgressRing done={progress.done} total={progress.total} />}
+                  active={here === "setup"}
+                  label={t("setup.title")}
+                  name={t("setup.row", { done: progress.done, total: progress.total })}
+                  tail={
+                    <span className="shrink-0 text-sidebar-foreground/70 text-xs tabular-nums">
+                      {t("setup.count", { done: progress.done, total: progress.total })}
+                    </span>
+                  }
+                  onClick={() => go({ name: "setup" })}
+                />
+                {!collapsed && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover/setup:opacity-100"
+                    aria-label={t("setup.hide")}
+                    onClick={() => props.store.setup.setHidden(true)}
+                  >
+                    <EyeOff aria-hidden="true" />
+                  </Button>
+                )}
+              </div>
+            )}
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="overview" aria-hidden="true" className={icon} />}
+              active={here === "overview"}
+              label={t("nav.overview")}
+              onClick={() => go({ name: "overview" })}
+            />
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="sessions" aria-hidden="true" className={icon} />}
+              active={here === "sessions"}
+              label={t("sidebar.sessions")}
+              name={t("sidebar.openSessions")}
+              onClick={() => go({ name: "hub" })}
+            />
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="needs-you" aria-hidden="true" className={icon} />}
+              active={here === "needs-you"}
+              strong={pending > 0}
+              attention={pending > 0}
+              {...(pending > 0 ? { hint: String(pending) } : {})}
+              label={t("sidebar.needsYou")}
+              onClick={() => go({ name: "needs-you" })}
+              tail={
+                pending > 0 && (
+                  <Badge className="h-4 min-w-4 px-1 tabular-nums" variant="default">
+                    {pending}
+                  </Badge>
+                )
+              }
+            />
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
+              active={here === "projects"}
+              label={t("sidebar.projects")}
+              onClick={() => go({ name: "all-projects" })}
+            />
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="board" aria-hidden="true" className={icon} />}
+              active={here === "board"}
+              label={t("sidebar.board")}
+              disabled={!navHost}
+              onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "board")}
+            />
+          </NavGroup>
+          <NavGroup
+            label={t("sidebarGroups.automation")}
+            collapsed={collapsed}
+            folded={folded.includes("automation")}
+            onToggle={() => toggle("automation")}
+          >
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="workflows" aria-hidden="true" className={icon} />}
+              active={here === "workflows"}
+              label={t("sidebar.workflows")}
+              disabled={!navHost}
+              onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "workflows")}
+            />
+            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "teams", false)) && (
               <NavButton
                 collapsed={collapsed}
-                icon={<ProgressRing done={progress.done} total={progress.total} />}
-                active={here === "setup"}
-                label={t("setup.title")}
-                name={t("setup.row", { done: progress.done, total: progress.total })}
-                tail={
-                  <span className="shrink-0 text-sidebar-foreground/70 text-xs tabular-nums">
-                    {t("setup.count", { done: progress.done, total: progress.total })}
-                  </span>
-                }
-                onClick={() => go({ name: "setup" })}
+                icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
+                active={here === "teams"}
+                label={t("sidebar.teams")}
+                badge={badgeOf("teams")}
+                onClick={() => go({ name: "teams" })}
               />
-              {!collapsed && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover/setup:opacity-100"
-                  aria-label={t("setup.hide")}
-                  onClick={() => props.store.setup.setHidden(true)}
-                >
-                  <EyeOff aria-hidden="true" />
-                </Button>
-              )}
-            </div>
-          )}
-          <NavButton
-            collapsed={collapsed}
-            icon={<NavIcon name="overview" aria-hidden="true" className={icon} />}
-            active={here === "overview"}
-            label={t("nav.overview")}
-            onClick={() => go({ name: "overview" })}
-          />
-          <NavButton
-            collapsed={collapsed}
-            icon={<NavIcon name="sessions" aria-hidden="true" className={icon} />}
-            active={here === "sessions"}
-            label={t("sidebar.sessions")}
-            name={t("sidebar.openSessions")}
-            onClick={() => go({ name: "hub" })}
-          />
-          <NavButton
-            collapsed={collapsed}
-            icon={<NavIcon name="needs-you" aria-hidden="true" className={icon} />}
-            active={here === "needs-you"}
-            strong={pending > 0}
-            attention={pending > 0}
-            {...(pending > 0 ? { hint: String(pending) } : {})}
-            label={t("sidebar.needsYou")}
-            onClick={() => go({ name: "needs-you" })}
-            tail={
-              pending > 0 && (
-                <Badge className="h-4 min-w-4 px-1 tabular-nums" variant="default">
-                  {pending}
-                </Badge>
-              )
-            }
-          />
-          <NavButton
-            collapsed={collapsed}
-            icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
-            active={here === "projects"}
-            label={t("sidebar.projects")}
-            onClick={() => go({ name: "all-projects" })}
-          />
-          <NavButton
-            collapsed={collapsed}
-            icon={<NavIcon name="board" aria-hidden="true" className={icon} />}
-            active={here === "board"}
-            label={t("sidebar.board")}
-            disabled={!navHost}
-            onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "board")}
-          />
-        </NavGroup>
-        <NavGroup
-          label={t("sidebarGroups.automation")}
-          collapsed={collapsed}
-          folded={folded.includes("automation")}
-          onToggle={() => toggle("automation")}
-        >
-          <NavButton
-            collapsed={collapsed}
-            icon={<NavIcon name="workflows" aria-hidden="true" className={icon} />}
-            active={here === "workflows"}
-            label={t("sidebar.workflows")}
-            disabled={!navHost}
-            onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "workflows")}
-          />
-          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "teams", false)) && (
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
-              active={here === "teams"}
-              label={t("sidebar.teams")}
-              badge={badgeOf("teams")}
-              onClick={() => go({ name: "teams" })}
-            />
-          )}
-          {/* Hosts from phase 21 carry messages between sessions. */}
-          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "messaging", false)) && (
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="conversations" aria-hidden="true" className={icon} />}
-              active={here === "conversations"}
-              label={t("sidebar.conversations")}
-              badge={badgeOf("conversations")}
-              onClick={() => go({ name: "conversations" })}
-            />
-          )}
-        </NavGroup>
-        <NavGroup
-          label={t("sidebarGroups.observability")}
-          collapsed={collapsed}
-          folded={folded.includes("observability")}
-          onToggle={() => toggle("observability")}
-        >
-          {/* Hosts from phase 8 on read their costs from the transcripts. */}
-          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false)) && (
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="costs" aria-hidden="true" className={icon} />}
-              active={here === "costs"}
-              label={t("sidebar.costs")}
-              onClick={() => go({ name: "costs" })}
-            />
-          )}
-          <NavButton
-            collapsed={collapsed}
-            icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
-            active={here === "history"}
-            label={t("sidebar.history")}
-            disabled={!navHost}
-            onClick={needHost((host) => ({ name: "history", host }))}
-          />
-        </NavGroup>
-        <NavGroup
-          label={t("sidebarGroups.library")}
-          collapsed={collapsed}
-          folded={folded.includes("library")}
-          onToggle={() => toggle("library")}
-        >
-          {/* Hosts from phase 20 keep engineering personas. */}
-          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "personas", false)) && (
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="personas" aria-hidden="true" className={icon} />}
-              active={here === "personas"}
-              label={t("sidebar.personas")}
-              onClick={() => go({ name: "personas" })}
-            />
-          )}
-          {/* Hosts from phase 18 keep saved commands and prompts. */}
-          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "snippets", false)) && (
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="snippets" aria-hidden="true" className={icon} />}
-              active={here === "snippets"}
-              label={t("sidebar.snippets")}
-              onClick={() => go({ name: "snippets" })}
-            />
-          )}
-          {/* Hosts from phase 26 keep Claude Code's plugins. */}
-          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "plugins", false)) && (
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="plugins" aria-hidden="true" className={icon} />}
-              active={here === "plugins"}
-              label={t("sidebar.plugins")}
-              onClick={() => go({ name: "plugins" })}
-            />
-          )}
-          <NavButton
-            collapsed={collapsed}
-            icon={<NavIcon name="vault" aria-hidden="true" className={icon} />}
-            active={here === "vault"}
-            label={t("sidebar.vault")}
-            chevron
-            onClick={() => go({ name: "vault" })}
-          />
-        </NavGroup>
-      </nav>
-
-      <div data-slot="sidebar-hosts" className="sidebar-hosts">
-        <NavGroup
-          label={t("sidebarGroups.machines")}
-          attention={
-            state.hosts.some((host) => hostNeedsAttention(host, state.deps[host.id]))
-              ? t("sidebarGroups.attention")
-              : undefined
-          }
-          collapsed={collapsed}
-          folded={folded.includes("machines")}
-          onToggle={() => toggle("machines")}
-          action={
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              aria-label={t("sidebar.addHost")}
-              onClick={() => go({ name: "add-host" })}
-            >
-              <Plus />
-            </Button>
-          }
-        >
-          {hostsList}
-          {/* Hosts from phase 15 keep ssh destinos. */}
-          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "ssh", false)) && (
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="connections" aria-hidden="true" className={icon} />}
-              active={here === "connections"}
-              label={t("sidebar.connections")}
-              onClick={() => go({ name: "connections" })}
-            />
-          )}
-        </NavGroup>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {!collapsed && (
-          <>
-            {pinned.length > 0 && (
-              <>
-                <SectionTitle
-                  label={t("sidebar.pinned")}
-                  open={pinnedOpen}
-                  onToggle={() => setPinnedOpen(!pinnedOpen)}
-                />
-                {pinnedOpen && (
-                  <ul className="flex flex-col gap-0.5">
-                    {pinned.map((row) => (
-                      <li key={row.key}>
-                        <IconTip label={`${row.title} · ${row.hostName}`}>
-                          <button type="button" className={ITEM} onClick={() => go(rowRoute(row))}>
-                            <span className="min-w-0 flex-1 truncate">{row.title}</span>
-                          </button>
-                        </IconTip>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
             )}
-          </>
-        )}
+            {/* Hosts from phase 21 carry messages between sessions. */}
+            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "messaging", false)) && (
+              <NavButton
+                collapsed={collapsed}
+                icon={<NavIcon name="conversations" aria-hidden="true" className={icon} />}
+                active={here === "conversations"}
+                label={t("sidebar.conversations")}
+                badge={badgeOf("conversations")}
+                onClick={() => go({ name: "conversations" })}
+              />
+            )}
+          </NavGroup>
+          <NavGroup
+            label={t("sidebarGroups.observability")}
+            collapsed={collapsed}
+            folded={folded.includes("observability")}
+            onToggle={() => toggle("observability")}
+          >
+            {/* Hosts from phase 8 on read their costs from the transcripts. */}
+            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false)) && (
+              <NavButton
+                collapsed={collapsed}
+                icon={<NavIcon name="costs" aria-hidden="true" className={icon} />}
+                active={here === "costs"}
+                label={t("sidebar.costs")}
+                onClick={() => go({ name: "costs" })}
+              />
+            )}
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
+              active={here === "history"}
+              label={t("sidebar.history")}
+              disabled={!navHost}
+              onClick={needHost((host) => ({ name: "history", host }))}
+            />
+          </NavGroup>
+          <NavGroup
+            label={t("sidebarGroups.library")}
+            collapsed={collapsed}
+            folded={folded.includes("library")}
+            onToggle={() => toggle("library")}
+          >
+            {/* Hosts from phase 20 keep engineering personas. */}
+            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "personas", false)) && (
+              <NavButton
+                collapsed={collapsed}
+                icon={<NavIcon name="personas" aria-hidden="true" className={icon} />}
+                active={here === "personas"}
+                label={t("sidebar.personas")}
+                onClick={() => go({ name: "personas" })}
+              />
+            )}
+            {/* Hosts from phase 18 keep saved commands and prompts. */}
+            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "snippets", false)) && (
+              <NavButton
+                collapsed={collapsed}
+                icon={<NavIcon name="snippets" aria-hidden="true" className={icon} />}
+                active={here === "snippets"}
+                label={t("sidebar.snippets")}
+                onClick={() => go({ name: "snippets" })}
+              />
+            )}
+            {/* Hosts from phase 26 keep Claude Code's plugins. */}
+            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "plugins", false)) && (
+              <NavButton
+                collapsed={collapsed}
+                icon={<NavIcon name="plugins" aria-hidden="true" className={icon} />}
+                active={here === "plugins"}
+                label={t("sidebar.plugins")}
+                onClick={() => go({ name: "plugins" })}
+              />
+            )}
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="vault" aria-hidden="true" className={icon} />}
+              active={here === "vault"}
+              label={t("sidebar.vault")}
+              chevron
+              onClick={() => go({ name: "vault" })}
+            />
+          </NavGroup>
+        </nav>
+
+        <div data-slot="sidebar-hosts" className="sidebar-hosts">
+          <NavGroup
+            label={t("sidebarGroups.machines")}
+            attention={
+              state.hosts.some((host) => hostNeedsAttention(host, state.deps[host.id]))
+                ? t("sidebarGroups.attention")
+                : undefined
+            }
+            collapsed={collapsed}
+            folded={folded.includes("machines")}
+            onToggle={() => toggle("machines")}
+            action={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                aria-label={t("sidebar.addHost")}
+                onClick={() => go({ name: "add-host" })}
+              >
+                <Plus />
+              </Button>
+            }
+          >
+            {hostsList}
+            {/* Hosts from phase 15 keep ssh destinos. */}
+            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "ssh", false)) && (
+              <NavButton
+                collapsed={collapsed}
+                icon={<NavIcon name="connections" aria-hidden="true" className={icon} />}
+                active={here === "connections"}
+                label={t("sidebar.connections")}
+                onClick={() => go({ name: "connections" })}
+              />
+            )}
+          </NavGroup>
+        </div>
+
+        <div>
+          {!collapsed && (
+            <>
+              {pinned.length > 0 && (
+                <>
+                  <SectionTitle
+                    label={t("sidebar.pinned")}
+                    open={pinnedOpen}
+                    onToggle={() => setPinnedOpen(!pinnedOpen)}
+                  />
+                  {pinnedOpen && (
+                    <ul className="flex flex-col gap-0.5">
+                      {pinned.map((row) => (
+                        <li key={row.key}>
+                          <IconTip label={`${row.title} · ${row.hostName}`}>
+                            <button
+                              type="button"
+                              className={ITEM}
+                              onClick={() => go(rowRoute(row))}
+                            >
+                              <span className="min-w-0 flex-1 truncate">{row.title}</span>
+                            </button>
+                          </IconTip>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-0.5 border-t pt-2">
+      <div data-slot="sidebar-foot" className="flex flex-col gap-0.5 border-t pt-2">
         <NavButton
           collapsed={collapsed}
           icon={<Search aria-hidden="true" className={icon} />}

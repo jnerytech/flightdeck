@@ -25,6 +25,7 @@ export const JOURNEYS: readonly string[] = [
   "status-bar",
   "trust-revoke",
   "files-viewer",
+  "terminal-copy",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

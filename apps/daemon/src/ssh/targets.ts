@@ -46,7 +46,7 @@ interface Row {
 // ssh reads a word that starts with "-" as an option, so no name that reaches its argv may.
 const HOST = /^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$/;
 const IPV6 = /^[0-9A-Fa-f]*:[0-9A-Fa-f:.]{1,44}$/;
-const USER = /^[A-Za-z0-9_][A-Za-z0-9._-]{0,63}$/;
+const USER = /^\w[\w.-]{0,63}$/;
 /** `[bind:]port:host:port`, kept as the text OpenSSH takes for LocalForward. */
 const FORWARD = /^(?:[A-Za-z0-9.*-]+:)?(\d{1,5}):[A-Za-z0-9][A-Za-z0-9._-]*:(\d{1,5})$/;
 const hasControl = (text: string) =>

@@ -21,13 +21,15 @@ type Outcome = { ok: true } | { ok: false; reason: string };
  * The sessions a daemon restart interrupted, in one dialog (issue #150): grouped by project, all
  * ticked, with what resume sends. "Not now" keeps the offer on the host page; "Dismiss all" drops it.
  */
-export function ResumeOfferDialog(props: {
-  store: AppStore;
-  hostId: string;
-  hostName: string;
-  sessions: InterruptedSession[];
-  resumed: string[];
-}) {
+export function ResumeOfferDialog(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    hostName: string;
+    sessions: InterruptedSession[];
+    resumed: string[];
+  }>,
+) {
   const { store, hostId } = props;
   const t = useT();
   const [off, setOff] = useState<Set<string>>(new Set());

@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
-import { fakeAssistant, memoryPlatform } from "./fixtures.ts";
+import { fakeAssistant, memoryPlatform, seedHosts } from "./fixtures.ts";
 import { settle, stays } from "./wait.ts";
 
 registerDom();
@@ -14,10 +14,28 @@ const { AssistantSettings } = await import("../src/components/assistant/assistan
 
 setDefaultTimeout(30_000);
 const realObserver = globalThis.ResizeObserver;
+const realSetTimeout = globalThis.setTimeout;
 afterEach(() => {
   cleanup();
   globalThis.ResizeObserver = realObserver;
+  globalThis.setTimeout = realSetTimeout;
 });
+
+/** Holds back the long timers (the Undo window) so a test runs them by hand; short ones run as they are. */
+function watchTimers() {
+  const held: { run: () => void; delay: number }[] = [];
+  globalThis.setTimeout = ((run: () => void, delay?: number, ...rest: unknown[]) => {
+    if ((delay ?? 0) < 10_000) return realSetTimeout(run, delay, ...rest);
+    held.push({ run, delay: delay as number });
+    return held.length as unknown as ReturnType<typeof setTimeout>;
+  }) as unknown as typeof setTimeout;
+  return {
+    delays: () => held.map((timer) => timer.delay),
+    fire: () => {
+      for (const timer of held.splice(0)) timer.run();
+    },
+  };
+}
 
 /** Reports a 664x480 box to every observer, as a real layout does in a 720x480 window. */
 function shortWindow() {
@@ -103,6 +121,14 @@ const click = (name: string | RegExp) => {
     fireEvent.click(button as HTMLElement);
   });
 };
+/** Improve, then Accept the preview: the box holds the proposal and the Undo chip is up. */
+async function accepted() {
+  await click("Improve with AI");
+  const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
+  await act(async () => {
+    fireEvent.click(within(dialog).getByRole("button", { name: "Accept" }));
+  });
+}
 const asked = (fake: ReturnType<typeof fakeAssistant>) => fake.calls.filter((c) => c[0] === "run");
 
 describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
@@ -172,6 +198,60 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(asked(fake)).toHaveLength(1);
   });
 
+  test("Edit makes After a text to change, and Accept puts the edited text in the box", async () => {
+    await make();
+    type("fix the totl");
+    await click("Improve with AI");
+    const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
+    expect(within(dialog).queryByRole("textbox", { name: "After" })).toBeNull();
+    const edit = within(dialog).queryByRole("button", { name: "Edit" });
+    expect(edit).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(edit as HTMLElement);
+    });
+    const edited = within(dialog).queryByRole("textbox", { name: "After" }) as HTMLTextAreaElement;
+    expect(edited?.value).toBe("Fix the total.");
+    await act(async () => {
+      fireEvent.change(edited, { target: { value: "Fix the total of the cart." } });
+    });
+    // Nothing reaches the box before Accept, edited or not.
+    expect(box().value).toBe("fix the totl");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Accept" }));
+    });
+    expect(box().value).toBe("Fix the total of the cart.");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  test("Esc in the edited text discards the preview and leaves the box alone", async () => {
+    await make();
+    type("fix the totl");
+    await click("Improve with AI");
+    await click("Edit");
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "After" }), { key: "Escape" });
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(box().value).toBe("fix the totl");
+  });
+
+  test("Retry sends the same text again and shows the new answer", async () => {
+    let n = 0;
+    const { fake } = await make({
+      run: (request) => ({ ...ANSWER, text: `Answer ${++n}`, model: request.model }),
+    });
+    type("fix the totl");
+    await click("Improve with AI");
+    const first = await screen.findByRole("dialog", { name: "AI suggestion" });
+    expect(within(first).queryByText("Answer 1")).not.toBeNull();
+    await click("Retry");
+    await settle(() => screen.queryByText("Answer 2") !== null);
+    expect(asked(fake)).toHaveLength(2);
+    const sent = asked(fake).map((call) => (call[1] as { user: string }).user);
+    expect(sent[1]).toBe(sent[0]);
+    expect(box().value).toBe("fix the totl");
+  });
+
   test("Discard and Esc leave the box alone", async () => {
     await make();
     type("fix the totl");
@@ -189,6 +269,76 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(box().value).toBe("fix the totl");
+  });
+
+  test("after Accept an Undo chip puts the old text back and goes away", async () => {
+    await make();
+    type("fix the totl");
+    await accepted();
+    expect(screen.queryByText("Text replaced by AI.")).not.toBeNull();
+    await click("Undo");
+    expect(box().value).toBe("fix the totl");
+    expect(screen.queryByText("Text replaced by AI.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+  });
+
+  test("Ctrl+Z and Cmd+Z in the box undo the accepted text and are not typed; Shift and a later edit do not", async () => {
+    await make();
+    type("fix the totl");
+    await accepted();
+    let notPrevented = true;
+    await act(async () => {
+      notPrevented = fireEvent.keyDown(box(), { key: "z", ctrlKey: true, shiftKey: true });
+    });
+    expect(notPrevented).toBe(true);
+    expect(box().value).toBe("Fix the total.");
+    await act(async () => {
+      notPrevented = fireEvent.keyDown(box(), { key: "z", ctrlKey: true });
+    });
+    expect(notPrevented).toBe(false);
+    expect(box().value).toBe("fix the totl");
+    expect(screen.queryByText("Text replaced by AI.")).toBeNull();
+    await act(async () => {
+      notPrevented = fireEvent.keyDown(box(), { key: "z", ctrlKey: true });
+    });
+    expect(notPrevented).toBe(true);
+    await accepted();
+    await act(async () => {
+      notPrevented = fireEvent.keyDown(box(), { key: "Z", metaKey: true });
+    });
+    expect(notPrevented).toBe(false);
+    expect(box().value).toBe("fix the totl");
+  });
+
+  test("typing after Accept drops the chip and Ctrl+Z is left to the browser", async () => {
+    await make();
+    type("fix the totl");
+    await accepted();
+    type("Fix the total!");
+    expect(screen.queryByText("Text replaced by AI.")).toBeNull();
+    let notPrevented = false;
+    await act(async () => {
+      notPrevented = fireEvent.keyDown(box(), { key: "z", ctrlKey: true });
+    });
+    expect(notPrevented).toBe(true);
+    expect(box().value).toBe("Fix the total!");
+  });
+
+  test("the chip goes away on its own once its 15 seconds are over", async () => {
+    await make();
+    type("fix the totl");
+    const timers = watchTimers();
+    const acceptedAt = Date.now();
+    await accepted();
+    expect(timers.delays()).toHaveLength(1);
+    expect(timers.delays()[0]).toBeGreaterThan(14_000);
+    expect(timers.delays()[0]).toBeLessThanOrEqual(15_000);
+    expect(screen.queryByText("Text replaced by AI.")).not.toBeNull();
+    const spy = spyOn(Date, "now").mockReturnValue(acceptedAt + 16_000);
+    await act(async () => timers.fire());
+    spy.mockRestore();
+    expect(screen.queryByText("Text replaced by AI.")).toBeNull();
+    expect(box().value).toBe("Fix the total.");
   });
 
   test("Cancel while it runs stops the request, and a late answer is dropped", async () => {
@@ -259,6 +409,37 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(opened).toEqual(["settings"]);
     expect(store.assistant.wantsSetup()).toBe(true);
     expect(asked(fake)).toHaveLength(0);
+  });
+
+  test("a host the person never agreed to is not sent the text: the click opens Settings, where it asks once", async () => {
+    const { store, fake, opened } = await make({}, { configured: false });
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+      ok: true,
+      data: ANSWER,
+    } as never);
+    type("fix the totl");
+    await click("Improve with AI");
+    expect(opened).toEqual(["settings"]);
+    expect(store.assistant.wantsSetup()).toBe(true);
+    expect(toHost).not.toHaveBeenCalled();
+    expect(asked(fake)).toHaveLength(0);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  test("a host the person agreed to gets the click without a detour to Settings", async () => {
+    const { store, opened } = await make({}, { configured: false });
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    store.assistant.confirmHost("h1");
+    const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+      ok: true,
+      data: ANSWER,
+    } as never);
+    type("fix the totl");
+    await click("Improve with AI");
+    expect(opened).toEqual([]);
+    expect(store.assistant.wantsSetup()).toBe(false);
+    expect(toHost.mock.calls.map((call) => [call[0], call[1]])).toEqual([["h1", "assistant.run"]]);
   });
 
   test("a secret in the text is refused on the spot, naming what it looks like and never the text", async () => {
@@ -368,7 +549,14 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     await click("Melhorar com IA");
     const dialog = await screen.findByRole("dialog", { name: "Sugestão da IA" });
     expect(within(dialog).getByRole("button", { name: "Aceitar" })).not.toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Editar" })).not.toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Tentar de novo" })).not.toBeNull();
     expect(within(dialog).getByRole("button", { name: "Descartar" })).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Aceitar" }));
+    });
+    expect(screen.queryByText("Texto trocado pela IA.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Desfazer" })).not.toBeNull();
   });
 });
 

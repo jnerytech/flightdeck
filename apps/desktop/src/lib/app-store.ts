@@ -2267,18 +2267,14 @@ export class AppStore {
     // The host may have gone while it was asked.
     if (!this.state.hosts.some((h) => h.id === hostId)) return;
     const before = this.state.setupProbes[hostId];
+    let githubKnown = before?.github ?? null;
+    if (wantsGithub)
+      githubKnown = github?.ok ? github.data.installed && github.data.loggedIn : null;
+    const projectList = wantsProjects && projects?.ok ? projects.data.projects : before?.projects;
     const probe: SetupProbe = {
       hooks: hooks?.ok ? hooks.data.status : null,
-      github: wantsGithub
-        ? github?.ok
-          ? github.data.installed && github.data.loggedIn
-          : null
-        : (before?.github ?? null),
-      ...(wantsProjects && projects?.ok
-        ? { projects: projects.data.projects }
-        : before?.projects
-          ? { projects: before.projects }
-          : {}),
+      github: githubKnown,
+      ...(projectList ? { projects: projectList } : {}),
     };
     this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
   }
@@ -3735,8 +3731,7 @@ export class AppStore {
       // A whole value can be long and many-lined: what a history line would carry is one line,
       // and of an env set, one variable's value.
       for (const line of value.split(/\r?\n/)) {
-        const assigned =
-          secret.type === "env" ? /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/.exec(line) : null;
+        const assigned = secret.type === "env" ? /^\s*[A-Za-z_]\w*\s*=(.*)$/.exec(line) : null;
         const piece = (assigned ? (assigned[1] as string) : line)
           .trim()
           .replace(/^(["'])(.*)\1$/, "$2");

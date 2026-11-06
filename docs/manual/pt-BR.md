@@ -1164,7 +1164,9 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   para fora do repositório nunca aparecem. **Filtrar por nome** mantém os nomes que batem entre as
   pastas já abertas, com as pastas no caminho. Uma pasta com mais de 500 entradas mostra as
   primeiras e avisa. Uma sessão fora do git não tem árvore: a aba diz isso. Um clique num arquivo
-  o abre abaixo da árvore, só para leitura, com as linhas numeradas; um arquivo de mais de 1 MB, um
+  o abre abaixo da árvore, só para leitura, com as linhas numeradas e colorido por token nas
+  linguagens comuns (TypeScript, JavaScript, JSON, Python, Rust, shell, TOML, YAML, CSS, Go, HTML,
+  XML, diffs, Dockerfiles); um arquivo de mais de 1 MB, um
   que não é texto ou uma credencial diz isso no lugar. Um arquivo alterado tem **Mostrar mudanças**:
   o diff dele contra o HEAD, ao vivo. Enquanto você está no fim, a mudança mais nova entra na tela
   conforme a sessão edita; role para cima e isso para, e **Ir para a mais recente** (com quantas
@@ -2802,7 +2804,13 @@ numa aba, sem SSH.
   então colar nele entra direto. Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
-  busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
+  busca** fecha. Ao lado da caixa, **Diferenciar maiúsculas e minúsculas** (`Alt+C`), **Palavra
+  inteira** (`Alt+W`) e **Usar expressão regular** (`Alt+R`) estreitam a busca; uma expressão que
+  não se lê, ou que casa com texto vazio, avisa em vez de buscar. Links na saída abrem no navegador
+  (só `http` e `https`). Caminhos de arquivo na saída também são links: os absolutos
+  (`C:\repo\a.md`, `/home/ana/x.log`) e os relativos com pasta e extensão (`src/app.ts:12`), lidos a
+  partir da pasta do terminal. Num host deste computador o clique mostra o arquivo na pasta (nunca o
+  abre nem o executa); em outro host copia o caminho. A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
   10 a 24). Na aba, `Ctrl+=` (ou `Ctrl++`) e `Ctrl+-`, ou `Ctrl` com a roda do mouse, aumentam ou
   diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. Para
