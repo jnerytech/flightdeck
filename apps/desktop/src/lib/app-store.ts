@@ -666,6 +666,9 @@ export interface GateRef {
   cardId: string;
 }
 
+/** Where the Activity board keeps whether it shows its Idle column. */
+const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";
+
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
   try {
@@ -676,8 +679,22 @@ function storedWorkspace(storage: Platform["storage"]): unknown {
 }
 
 /** Every open permission request of every host, oldest first. */
+/** The parts of the state the requests waiting for the person are made of. */
+export type NeedsYouState = Pick<
+  AppState,
+  | "cards"
+  | "externalRequests"
+  | "externals"
+  | "hosts"
+  | "meta"
+  | "names"
+  | "personas"
+  | "runs"
+  | "vaultApprovals"
+>;
+
 /** `t`: the dictionaries, so a team session is named by its persona (#101); without, as before. */
-export function needsYou(state: AppState, t?: T): PendingItem[] {
+export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
   const requests: PendingItem[] = state.hosts.flatMap((host) => {
     const names = state.names?.[host.id] ?? [];
     const label = (id: string, metaName: string | null | undefined, createdName?: string | null) =>
@@ -1706,6 +1723,15 @@ export class AppStore {
 
   setTreePinned(pinned: readonly string[]): void {
     saveTreePinned(this.platform.storage, pinned);
+  }
+
+  /** Whether the Activity board shows its Idle column; kept across starts. */
+  activityIdle(): boolean {
+    return this.platform.storage.getItem(ACTIVITY_IDLE_KEY) === "true";
+  }
+
+  setActivityIdle(on: boolean): void {
+    this.platform.storage.setItem(ACTIVITY_IDLE_KEY, String(on));
   }
 
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */

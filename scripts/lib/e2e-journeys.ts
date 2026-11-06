@@ -29,6 +29,7 @@ export const JOURNEYS: readonly string[] = [
   "sleep-wake",
   "tab-row",
   "wand-composer",
+  "activity",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
