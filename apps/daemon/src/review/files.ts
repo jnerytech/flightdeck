@@ -150,7 +150,15 @@ export class ReviewFiles {
     const inSource = await git(root, "cat-file", "-e", `${refArg(source)}:${gitPath}`);
     if (inSource.code === 0) {
       must(
-        await git(root, "restore", `--source=${source}`, "--staged", "--worktree", "--", gitPath),
+        await git(
+          root,
+          "restore",
+          `--source=${refArg(source)}`,
+          "--staged",
+          "--worktree",
+          "--",
+          gitPath,
+        ),
         "git restore",
       );
     } else {

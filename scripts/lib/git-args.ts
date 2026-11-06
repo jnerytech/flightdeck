@@ -8,116 +8,193 @@ export interface GitArgFinding {
   call: string;
 }
 
-/** The names a branch or a revision comes in from a project's settings or a protocol field. */
-const REF_NAMES = "base|baseBranch|branch|source|rev|ref";
-const CALL = /(?<![\w$])(?:this\.)?(?:git|gitLimited)\(/g;
-/** An argument that begins with one of those names, bare or at the start of a template. */
-const STARTS_WITH_REF = new RegExp(`^\`?(?:\\$\\{)?[\\w$.?]*\\b(?:${REF_NAMES})\\b`);
+/** A call of the daemon's git helpers: `git(`, `gitLimited(`, `this.git(`, `deps.git(`. */
+const CALL = /(?<![\w$])(?:[\w$]+\.)*(?:git|gitLimited)\(/g;
+/** A name that carries a branch or a revision in, from a project's settings or a protocol field. */
+const REF_TOKEN =
+  /^(?:(?:base|branch|source|ref|against|upstream)\w*|rev(?:ision)?(?:[A-Z_]\w*)?|(?:start|target)[A-Z]\w*|\w*[a-z](?:Base|Branch|Source|Rev|Ref|Against|Upstream)\w*)$/;
 const REVIEWED = /\/\/ git-arg: \S/;
 
-/** The source with comments and string contents blanked, same length, so offsets and lines hold. */
-function blanked(source: string): string {
-  let out = "";
-  let i = 0;
-  while (i < source.length) {
-    const c = source[i] as string;
-    const next = source[i + 1];
-    if (c === "/" && next === "/") {
-      while (i < source.length && source[i] !== "\n") (out += " "), i++;
-    } else if (c === "/" && next === "*") {
-      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) {
-        out += source[i] === "\n" ? "\n" : " ";
+/**
+ * The source with comments blanked, the text of strings and templates turned into `_`, and
+ * everything else (the quotes, `${`, `}` and the code inside a template) kept: same length, so
+ * offsets and lines hold.
+ */
+function mask(source: string): string {
+  const out = source.split("");
+  const blank = (from: number, to: number) => {
+    for (let k = from; k < to; k++) if (out[k] !== "\n") out[k] = " ";
+  };
+  const underscore = (from: number, to: number) => {
+    for (let k = from; k < to; k++) if (out[k] !== "\n") out[k] = "_";
+  };
+  /** From the char after an opening backtick; returns the index after the closing one. */
+  const template = (start: number): number => {
+    let i = start;
+    let from = start;
+    while (i < source.length && source[i] !== "`") {
+      if (source[i] === "\\") i += 2;
+      else if (source[i] === "$" && source[i + 1] === "{") {
+        underscore(from, i);
+        i = code(i + 2, true);
+        from = i;
+      } else i++;
+    }
+    underscore(from, i);
+    return i + 1;
+  };
+  /** Masks code from `i`; with `inBraces` it stops after the `}` that closes the `${`. */
+  const code = (start: number, inBraces: boolean): number => {
+    let i = start;
+    let depth = 0;
+    while (i < source.length) {
+      const c = source[i] as string;
+      const next = source[i + 1];
+      if (c === "/" && next === "/") {
+        const end = source.indexOf("\n", i);
+        const to = end === -1 ? source.length : end;
+        blank(i, to);
+        i = to;
+      } else if (c === "/" && next === "*") {
+        const end = source.indexOf("*/", i + 2);
+        const to = end === -1 ? source.length : end + 2;
+        blank(i, to);
+        i = to;
+      } else if (c === '"' || c === "'") {
+        let j = i + 1;
+        while (j < source.length && source[j] !== c && source[j] !== "\n")
+          j += source[j] === "\\" ? 2 : 1;
+        underscore(i + 1, j);
+        i = j + 1;
+      } else if (c === "`") i = template(i + 1);
+      else {
+        if (c === "{") depth++;
+        if (c === "}") {
+          if (inBraces && depth === 0) return i + 1;
+          depth--;
+        }
         i++;
       }
-      out += "  ";
-      i += 2;
-    } else if (c === '"' || c === "'") {
-      out += c;
-      i++;
-      while (i < source.length && source[i] !== c && source[i] !== "\n") {
-        out += source[i] === "\\" ? "  " : "_";
-        i += source[i] === "\\" ? 2 : 1;
-      }
-      out += c;
-      i++;
-    } else {
-      out += c;
-      i++;
     }
+    return i;
+  };
+  code(0, false);
+  return out.join("");
+}
+
+/** The index of the parenthesis that closes the one at `open`, in masked text; -1 when there is none. */
+function closing(masked: string, open: number): number {
+  let depth = 0;
+  for (let i = open; i < masked.length; i++) {
+    if (masked[i] === "(") depth++;
+    if (masked[i] === ")" && --depth === 0) return i;
+  }
+  return -1;
+}
+
+/** Top-level `[from, to)` spans of the comma-separated items between two offsets of masked text. */
+function split(masked: string, from: number, to: number): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  let depth = 0;
+  let start = from;
+  for (let i = from; i < to; i++) {
+    const c = masked[i] as string;
+    if ("([{".includes(c)) depth++;
+    else if (")]}".includes(c)) depth--;
+    else if (c === "," && depth === 0) {
+      spans.push([start, i]);
+      start = i + 1;
+    }
+  }
+  spans.push([start, to]);
+  return spans;
+}
+
+/** The text of a masked argument with every `refArg(...)` taken out: what is left is unguarded. */
+function withoutGuards(text: string): string {
+  let out = text;
+  for (let at = out.indexOf("refArg("); at !== -1; at = out.indexOf("refArg(")) {
+    const end = closing(out, at + "refArg".length);
+    out = `${out.slice(0, at)} ${end === -1 ? "" : out.slice(end + 1)}`;
   }
   return out;
 }
 
-/** The text between the call's parentheses, with template strings read as one piece. */
-function callBody(source: string, open: number): string | null {
+/** The code inside the first `${...}` of a masked template that starts with one. */
+function firstInterpolation(text: string): string {
   let depth = 0;
-  let i = open;
-  while (i < source.length) {
-    const c = source[i] as string;
-    if (c === "`") {
-      i++;
-      while (i < source.length && source[i] !== "`") {
-        if (source[i] === "\\") i++;
-        else if (source[i] === "$" && source[i + 1] === "{") {
-          let braces = 0;
-          do {
-            if (source[i] === "{") braces++;
-            if (source[i] === "}") braces--;
-            i++;
-          } while (i < source.length && braces > 0);
-          continue;
-        }
-        i++;
-      }
-    } else if (c === "(") depth++;
-    else if (c === ")" && --depth === 0) return source.slice(open + 1, i);
-    i++;
-  }
-  return null;
-}
-
-/** The top-level arguments of a call body. */
-function argsOf(body: string): string[] {
-  const args: string[] = [];
-  let depth = 0;
-  let start = 0;
-  for (let i = 0; i < body.length; i++) {
-    const c = body[i] as string;
-    if (c === "`") {
-      i++;
-      while (i < body.length && body[i] !== "`") i++;
-    } else if ("([{".includes(c)) depth++;
-    else if (")]}".includes(c)) depth--;
-    else if (c === "," && depth === 0) {
-      args.push(body.slice(start, i));
-      start = i + 1;
+  for (let i = 3; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    if (text[i] === "}") {
+      if (depth === 0) return text.slice(3, i);
+      depth--;
     }
   }
-  args.push(body.slice(start));
-  return args.map((a) => a.trim());
+  return text.slice(3);
+}
+
+/** Whether one masked argument starts with, or is built from, a name that carries a branch in. */
+function exposed(argument: string): boolean {
+  const text = argument.trim();
+  if (text === "") return false;
+  if (text.startsWith('"') || text.startsWith("'")) return false;
+  if (text.startsWith("`")) {
+    // Text before the first `${` makes it a prefix (`refs/heads/...`): only a template that starts
+    // with the interpolation is exposed.
+    if (!text.startsWith("`${")) return false;
+    return exposed(firstInterpolation(text));
+  }
+  if (text.startsWith("...")) {
+    const spread = text.slice(3).trim();
+    // A constant list is fine; a plain name could hold anything, and an expression is read.
+    if (/^[A-Za-z_$][\w$]*$/.test(spread)) return !/^[A-Z][A-Z0-9_]*$/.test(spread);
+    return exposed(spread);
+  }
+  return (withoutGuards(text).match(/[A-Za-z_$][\w$]*/g) ?? []).some((token) =>
+    REF_TOKEN.test(token),
+  );
 }
 
 /** Calls of `git(` and `gitLimited(` in `source` that pass a base or branch without a guard (issue #345). */
 export function unguardedGitCalls(source: string, file = ""): GitArgFinding[] {
-  const code = blanked(source);
+  const masked = mask(source);
   const lines = source.split("\n");
   const found: GitArgFinding[] = [];
-  for (const match of code.matchAll(CALL)) {
+  for (const match of masked.matchAll(CALL)) {
     const open = (match.index as number) + match[0].length - 1;
-    // The arguments are read from the real text (the blanked one has lost the strings).
-    const body = callBody(source, open);
-    if (body === null) continue;
-    const args = argsOf(body);
-    const ended = args.findIndex((a) => a === '"--end-of-options"' || a === '"--"');
-    const exposed = (ended === -1 ? args : args.slice(0, ended)).some((a) =>
-      STARTS_WITH_REF.test(a),
-    );
-    if (!exposed) continue;
     const line = source.slice(0, match.index).split("\n").length;
-    const reviewed = REVIEWED.test(lines[line - 2] ?? "") || REVIEWED.test(lines[line - 1] ?? "");
-    const lastLine = line + body.split("\n").length - 1;
-    if (reviewed || REVIEWED.test(lines[lastLine - 1] ?? "")) continue;
-    found.push({ file, line, call: body.replace(/\s+/g, " ").trim() });
+    const close = closing(masked, open);
+    if (close === -1)
+      throw new Error(`${file}:${line}: cannot read the arguments of this git call`);
+    // `git(cwd, ...args) {` or `git(cwd): Promise<X> {` declares the helper: it is not a call.
+    if (/^\s*(?::[^;={}]+)?\{/.test(masked.slice(close + 1))) continue;
+    // An array of arguments is read item by item, at the same level as the arguments around it.
+    const spans = split(masked, open + 1, close).flatMap(([from, to]): Array<[number, number]> => {
+      const text = masked.slice(from, to).trim();
+      if (!text.startsWith("[") || !text.endsWith("]")) return [[from, to]];
+      const inner = from + masked.slice(from, to).indexOf("[") + 1;
+      return split(masked, inner, from + masked.slice(from, to).lastIndexOf("]"));
+    });
+    const ended = spans.findIndex(([from, to]) =>
+      ["'--end-of-options'", '"--end-of-options"', "'--'", '"--"'].includes(
+        source.slice(from, to).trim(),
+      ),
+    );
+    const read = ended === -1 ? spans : spans.slice(0, ended);
+    if (!read.some(([from, to]) => exposed(masked.slice(from, to)))) continue;
+    const lastLine = line + source.slice(open, close).split("\n").length - 1;
+    const reviewed = [lines[line - 2], lines[line - 1], lines[lastLine - 1]].some((l) =>
+      REVIEWED.test(l ?? ""),
+    );
+    if (reviewed) continue;
+    found.push({
+      file,
+      line,
+      call: source
+        .slice(open + 1, close)
+        .replace(/\s+/g, " ")
+        .trim(),
+    });
   }
   return found;
 }

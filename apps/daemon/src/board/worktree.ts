@@ -5,7 +5,7 @@ import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 import { type CommandResult, git } from "./command.ts";
 import { LOCAL_SETTINGS } from "./project-rules.ts";
-import { refArg } from "./ref-arg.ts";
+import { assertBranchName, refArg } from "./ref-arg.ts";
 
 /** Whether `path` exists, asked without blocking. */
 const exists = (path: string): Promise<boolean> =>
@@ -191,7 +191,9 @@ export async function freshBase(
   repo: string,
   base: string,
 ): Promise<{ ref: string; notice: string | null }> {
-  const safe = refArg(base);
+  // A base is also a refspec here: `a:b` or `+x:refs/heads/y` would write a ref. `HEAD` is the
+  // default of a detached checkout.
+  const safe = base === "HEAD" ? refArg(base) : assertBranchName(base);
   const remotes = (await git(repo, "remote")).stdout.split(/\s+/);
   if (!remotes.includes("origin")) return { ref: base, notice: null };
   const fetched = await git(repo, "fetch", "--end-of-options", "origin", base);

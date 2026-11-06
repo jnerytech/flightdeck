@@ -8,7 +8,8 @@ const FORBIDDEN = /[\u0000- \u007f~^:?*[\\]|\.\.|@\{/u;
  * reads it as an option (issue #345).
  */
 export function isBranchName(name: string): boolean {
-  if (name === "" || name === "@" || name === "HEAD" || name.startsWith("-")) return false;
+  // A leading `@` is legal for git but `az` reads `@file` as a file: refused here (issue #345).
+  if (name === "" || name === "HEAD" || name.startsWith("-") || name.startsWith("@")) return false;
   if (FORBIDDEN.test(name)) return false;
   if (name.endsWith(".") || name.endsWith("/")) return false;
   // No component starts with a dot or ends with `.lock`, and none is empty (no `//`, no leading `/`).
