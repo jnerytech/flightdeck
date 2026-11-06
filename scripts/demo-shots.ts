@@ -19,7 +19,7 @@ import {
   GAPS,
   KEY_REGIONS,
   layoutFindings,
-  loadBaseline,
+  loadCounts,
   type Ratchet,
   RESPONSIVE,
   RESPONSIVE_RULES,
@@ -36,13 +36,16 @@ import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
 /**
- * The spacing guard's baseline (#588): the findings each print had when the guard came in, keyed by
- * rule, "theme lang print" and data-slot path. A new one fails; one that is gone must leave the file,
- * so fixes only push it down. Without the file, the findings are only written down.
+ * The spacing guard's baseline (#588): how many findings each print had when the guard came in, per
+ * rule, "theme lang print" and data-slot path with no numbers (#641). More than its count fails;
+ * fewer must lower the count, so fixes only push it down. Without the file, the findings are only
+ * written down (spacing-findings.json, and each one by its numbered path in
+ * spacing-findings-occurrences.json).
  */
 export const SPACING_BASELINE = resolve(import.meta.dir, "../apps/desktop/spacing-baseline.json");
 /**
- * The narrow-window guard's baseline (#641), the same way: rule, "theme lang WxH print" and path.
+ * The narrow-window guard's baseline (#641), the same way: rule, "theme lang WxH print" and path
+ * with no numbers (responsive-findings.json, responsive-findings-occurrences.json).
  * The dark prints re-measure the pages of NARROW_SHOTS at each of NARROW_SIZES.
  */
 export const NARROW_BASELINE = resolve(import.meta.dir, "../apps/desktop/responsive-baseline.json");
@@ -951,15 +954,16 @@ export async function takeShots(
   );
   const problems: string[] = [];
   const ratchet = (file: string): Ratchet => ({
-    baseline: loadBaseline(() => (existsSync(file) ? readFileSync(file, "utf8") : null)),
+    baseline: loadCounts(() => (existsSync(file) ? readFileSync(file, "utf8") : null)),
     seen: {},
+    occurrences: {},
     gone: [],
   });
   const spacing = ratchet(SPACING_BASELINE);
   const narrow = ratchet(NARROW_BASELINE);
   const ratchets: Array<[file: string, findings: string, ratchet: Ratchet]> = [
-    [SPACING_BASELINE, "spacing-findings.json", spacing],
-    [NARROW_BASELINE, "responsive-findings.json", narrow],
+    [SPACING_BASELINE, "spacing-findings", spacing],
+    [NARROW_BASELINE, "responsive-findings", narrow],
   ];
   try {
     await inSequence(variants, async ({ theme, lang }) => {
@@ -1005,14 +1009,21 @@ export async function takeShots(
     // What the run saw, for the baseline (the screenshots folder is the CI job's artifact), even
     // when a print crashed or timed out.
     mkdirSync(SHOTS_DIR, { recursive: true });
-    for (const [, findings, { seen }] of ratchets) {
-      writeFileSync(join(SHOTS_DIR, findings), JSON.stringify(seen, null, 2));
-      log(`${findings}: ${Object.keys(seen).length} findings`);
+    // The counts are the baseline's format; the occurrences name each finding for a person.
+    for (const [, findings, { seen, occurrences }] of ratchets) {
+      writeFileSync(join(SHOTS_DIR, `${findings}.json`), JSON.stringify(seen, null, 2));
+      writeFileSync(
+        join(SHOTS_DIR, `${findings}-occurrences.json`),
+        JSON.stringify(occurrences, null, 2),
+      );
+      log(`${findings}: ${Object.keys(occurrences).length} findings`);
     }
   }
   for (const [file, , { gone }] of ratchets) {
     if (gone.length > 0) {
-      problems.push(`${basename(file)} holds findings that are gone: remove\n${gone.join("\n")}`);
+      problems.push(
+        `${basename(file)} holds more findings than this run saw: lower or remove\n${gone.join("\n")}`,
+      );
     }
   }
   if (problems.length > 0) {

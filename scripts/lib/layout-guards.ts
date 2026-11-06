@@ -84,11 +84,14 @@ export interface GuardOptions {
 export function layoutFindings(options: GuardOptions = {}): Finding[] {
   const found: Finding[] = [];
   const seen = new Set<string>();
+  /** A numbered path and the same path with no numbers, which the count baselines key by (#641). */
+  const groups = new Map<string, string>();
   const add = (rule: Rule, path: string, detail: string) => {
     const key = `${rule}|${path}`;
     if (seen.has(key)) return;
     seen.add(key);
-    found.push({ rule, path, detail });
+    const group = groups.get(path);
+    found.push(group === undefined ? { rule, path, detail } : { rule, path, group, detail });
   };
   const slotOf = (el: Element) => el.getAttribute("data-slot");
   /** An element with no data-slot: its tag and first class. */
@@ -125,7 +128,9 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
         names.unshift(numbered(name, at, peers));
       }
     }
-    return names.slice(-4).join(" > ") || el.tagName.toLowerCase();
+    const path = names.slice(-4).join(" > ") || el.tagName.toLowerCase();
+    if (withNumbers) groups.set(path, pathOf(el));
+    return path;
   };
   const shown = (el: Element) => {
     const style = getComputedStyle(el);
@@ -679,16 +684,49 @@ export interface Ratchet {
 }
 
 /** A baseline of counts, or `null` when there is none yet; an entry that is not a number counts as one. */
-export function loadCounts(_read: () => string | null): Record<string, number> | null {
-  return {};
+export function loadCounts(read: () => string | null): Record<string, number> | null {
+  const text = read();
+  if (text === null) return null;
+  const parsed = JSON.parse(text) as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.entries(parsed).map(([key, value]) => [key, typeof value === "number" ? value : 1]),
+  );
 }
 
 /** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */
 export function ratchetScreen(screen: string, findings: Finding[], ratchet: Ratchet): string[] {
-  for (const finding of findings) ratchet.seen[findingKey(screen, finding)] = finding.detail;
-  const verdict = judge(screen, findings, ratchet.baseline);
-  ratchet.gone.push(...verdict.fixed);
-  return verdict.failures;
+  const failures = findings
+    .filter((finding) => CONTRACT.has(finding.rule))
+    .map((finding) => `${screen}: ${finding.rule} ${finding.path} (${finding.detail})`);
+  const counted = new Map<string, Finding[]>();
+  for (const finding of findings.filter((f) => !CONTRACT.has(f.rule))) {
+    const key = `${finding.rule}|${screen}|${finding.group ?? finding.path}`;
+    counted.set(key, [...(counted.get(key) ?? []), finding]);
+    ratchet.occurrences[findingKey(screen, finding)] = finding.detail;
+  }
+  for (const [key, list] of counted) ratchet.seen[key] = list.length;
+  const baseline = ratchet.baseline;
+  if (!baseline) return failures;
+  for (const [key, list] of counted) {
+    const allowed = baseline[key] ?? 0;
+    if (list.length > allowed) {
+      const [rule, , group] = key.split("|");
+      const each = list.map((finding) => `${finding.path} (${finding.detail})`).join("; ");
+      failures.push(
+        `${screen}: ${rule} ${group}, ${list.length} where the baseline has ${allowed}: ${each}`,
+      );
+    }
+  }
+  const here = `|${screen}|`;
+  for (const [key, allowed] of Object.entries(baseline)) {
+    const now = counted.get(key)?.length ?? 0;
+    if (key.includes(here) && now < allowed) {
+      ratchet.gone.push(
+        `${key}: ${now} where the baseline has ${allowed}: ${now === 0 ? "remove it" : "lower it"}`,
+      );
+    }
+  }
+  return failures;
 }
 
 /** The baseline file, or `null` when there is none yet. */
