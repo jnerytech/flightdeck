@@ -133,7 +133,7 @@ describe("log-app: what the webview reports on its own", () => {
   });
 });
 
-/** A sink whose writes wait until the test settles them, one call per batch (#259). */
+/** A sink whose writes wait until the test releases them, one call per batch (#259). */
 function heldSink() {
   const calls: string[][] = [];
   const pending: Array<{ ok: () => void; fail: () => void }> = [];
@@ -146,11 +146,11 @@ function heldSink() {
     tail: async () => [],
     openFolder: async () => {},
   };
-  const settle = async (how: "ok" | "fail" = "ok") => {
+  const release = async (how: "ok" | "fail" = "ok") => {
     pending.shift()?.[how]();
     for (let i = 0; i < 5; i++) await Promise.resolve();
   };
-  return { s, calls, settle };
+  return { s, calls, release };
 }
 
 const body = (line: string | undefined) => (line ?? "").replace(/^\S+ /, "");
@@ -163,7 +163,7 @@ describe("log-app: a log storm reaches neither the disk nor the IPC whole (issue
     log.log("info", "b", "two");
     log.log("info", "c", "three");
     expect(held.calls.map((call) => call.map(body))).toEqual([["INFO a one"]]);
-    await held.settle();
+    await held.release();
     expect(held.calls.map((call) => call.map(body))).toEqual([
       ["INFO a one"],
       ["INFO b two", "INFO c three"],
@@ -175,7 +175,7 @@ describe("log-app: a log storm reaches neither the disk nor the IPC whole (issue
     const log = new AppLog({ sink: held.s, now: () => NOW });
     log.log("info", "a", "one");
     log.log("info", "b", "two");
-    await held.settle("fail");
+    await held.release("fail");
     expect(held.calls.map((call) => call.map(body))).toEqual([["INFO a one"], ["INFO b two"]]);
   });
 
@@ -222,7 +222,7 @@ describe("log-app: a log storm reaches neither the disk nor the IPC whole (issue
     const log = new AppLog({ sink: held.s, now: () => NOW });
     // Each line from its own source: the queue, not the rate limit, is what fills.
     for (let i = 0; i < LOG_QUEUE + 100; i++) log.log("info", `s${i}`, "x");
-    await held.settle();
+    await held.release();
     const second = held.calls[1] ?? [];
     expect([held.calls.length, second.length, body(second[0]), body(second.at(-1))]).toEqual([
       2,
