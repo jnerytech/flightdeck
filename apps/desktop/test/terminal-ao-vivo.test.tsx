@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ExternalSession, ExternalStatus } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { settleMaybe, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -119,6 +119,18 @@ describe("terminal-ao-vivo: a session already live in another terminal (#502)", 
     await click("Abrir outra cópia mesmo assim");
     await settle(() => copied.length > 0);
     expect(copied[0] ?? "").toContain("abc-123");
+  });
+
+  test("Cancel closes the question and starts nothing; asking again asks again", async () => {
+    const { ptys } = await setup("en", "running");
+    await click("Continue in the terminal");
+    await click("Cancel");
+    const gone = () => screen.queryByText("Already open in another terminal") === null;
+    await settleMaybe(gone);
+    expect(gone()).toBe(true);
+    expect(ptys.spawned).toHaveLength(0);
+    await click("Continue in the terminal");
+    expect(screen.queryByText("Already open in another terminal")).not.toBeNull();
   });
 
   test("a session that ended elsewhere, or that nobody runs, opens at once", async () => {
