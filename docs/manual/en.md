@@ -2293,14 +2293,33 @@ window resets.
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.
-- **In the top bar:** a small meter shows the window under most pressure across the online hosts,
-  with its percentage (the window's name shows from 960 px wide). From 80% it carries a warning
-  mark in the needs-you colour, and at 100% (or from `pauseAt`, as the account card) the bar
-  turns red; its name and tooltip say the level,
-  the host and the time left. Clicking it opens that host's page. With no reading, it does not
-  show.
+- **In the status bar** (the slim line at the bottom of the window, below): a small meter shows the
+  window under most pressure across the online hosts, with its percentage and the time left until it
+  resets (the window's name shows from 960 px wide), and a **Refresh the plan usage** button that
+  asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
+  from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
+  host and the time left. Clicking it opens that host's page. With no reading, neither the meter
+  nor the refresh shows.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
   sees empty or stale bars until a card or a managed session runs on the host.
+
+### The status bar
+
+A slim bar (24 px) runs along the bottom of the window. On the left, the plan quota (above) with its
+reset time and a refresh. On the right, each item opens its page:
+
+- **Update:** only when there is one to say: an app update on offer, one downloaded that needs a
+  restart, or a failed check. It opens Settings.
+- **Keep awake:** what the hosts that offer it say together: **Awake** (holding the computer awake
+  now), **Keep awake** (on, holding only while sessions run) or **Sleep ok** (off). It opens that
+  host's page, where the switch is. A host that does not offer it is not counted.
+- **Terminals:** how many terminal tabs are open, in both areas. It brings the first one forward; with
+  none open, it opens the host where one can be opened.
+- **Hosts:** how many are online of all ("2/3"). It opens the first host that is not online, so a
+  problem is one click away; with every host online, the host in view.
+
+Every item is a button with its words as the name and a tooltip, never colour alone, and the two
+counts are live regions, so a screen reader hears them change.
 
 ### Quota queue
 

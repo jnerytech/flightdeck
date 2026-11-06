@@ -70,13 +70,12 @@ describe("layout", () => {
       </AppShell>,
     );
     const bar = screen.getByText("barra");
+    const status = bar.closest("[data-slot='shell-status']") as HTMLElement;
     const main = screen.getByRole("main");
     // Last in the frame, after the sidebar-and-content row, which keeps its own columns.
-    expect(bar.parentElement?.lastElementChild).toBe(bar.closest("[data-slot='shell-status']"));
-    expect(main.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(bar.closest("[data-slot='shell-status']")?.parentElement?.className ?? "").toContain(
-      "grid-rows-[auto_minmax(0,1fr)_auto]",
-    );
+    expect(status.parentElement?.lastElementChild).toBe(status);
+    expect(main.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(status.parentElement?.className ?? "").toContain("grid-rows-[auto_minmax(0,1fr)_auto]");
     cleanup();
     shell();
     expect(document.querySelector("[data-slot='shell-status']")).toBeNull();
