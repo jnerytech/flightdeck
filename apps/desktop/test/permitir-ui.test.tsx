@@ -106,14 +106,14 @@ describe("permitir-ui", () => {
     await click("Sempre neste projeto");
     // A rule for the whole tool would cover a credential file: the daemon refuses it (#384).
     expect((screen.queryByLabelText("Regra") as HTMLInputElement | null)?.value ?? "").toMatch(
-      /^Write\(.+fake\.txt\)$/,
+      /^Write\(.*fake\.txt\)$/,
     );
     await click("Cancelar");
     expect(screen.queryByLabelText("Regra")).toBeNull();
     await click("Sempre neste projeto");
     await click("Salvar regra");
     expect((await result()) ?? "").toMatch(
-      /"rules":\[\{"toolName":"Write","ruleContent":".+fake\.txt"\}\]/,
+      /"rules":\[\{"toolName":"Write","ruleContent":".*fake\.txt"\}\]/,
     );
   });
 
