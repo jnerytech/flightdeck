@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { type StateTone, StatusDot } from "@/components/status/status-dot";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,8 @@ export function SessionCard(props: {
   cost?: string;
   costLabel: string;
   persona?: string | null;
+  /** Phase 39: the agent's name when it is not Claude Code ("OpenCode"). */
+  runtime?: string | null;
   /** The session open on the right. */
   current?: boolean;
   /** The row the keyboard is on. */
@@ -53,6 +56,7 @@ export function SessionCard(props: {
         {props.persona && (
           <span className="shrink-0 rounded bg-muted px-1 text-foreground">{props.persona}</span>
         )}
+        {props.runtime && <RuntimeBadge label={props.runtime} />}
         {props.cost !== undefined && (
           <output aria-label={props.costLabel} className="ml-auto shrink-0 tabular-nums">
             {props.cost}
