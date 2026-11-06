@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { EventStore } from "../src/store/event-store.ts";
 import { MIGRATIONS } from "../src/store/migrations.ts";
 import { ProjectTrust } from "../src/trust/project-trust.ts";
@@ -45,20 +45,22 @@ describe("project-trust: a project's own configuration loads only when the perso
 
   test("trusting and revoking are explicit, kept with their time and source, and logged", () => {
     const { trust, lines } = fresh();
-    trust.trust("/work/app");
-    trust.trust("/work/app");
+    const app = resolve("/work/app");
+    const never = resolve("/work/never");
+    trust.trust(app);
+    trust.trust(app);
     expect(trust.list()).toEqual([
-      { path: "/work/app", trustedAt: "2026-11-05T12:00:00.000Z", source: "person" },
+      { path: app, trustedAt: "2026-11-05T12:00:00.000Z", source: "person" },
     ]);
-    trust.revoke("/work/app");
-    expect(trust.isTrusted("/work/app")).toBe(false);
+    trust.revoke(app);
+    expect(trust.isTrusted(app)).toBe(false);
     expect(trust.list()).toEqual([]);
     expect(lines).toEqual([
-      "project trust: trusted /work/app (person)",
-      "project trust: revoked /work/app",
+      `project trust: trusted ${app} (person)`,
+      `project trust: revoked ${app}`,
     ]);
     // Revoking what was never trusted is quiet.
-    trust.revoke("/work/never");
+    trust.revoke(never);
     expect(lines).toHaveLength(2);
   });
 
@@ -172,18 +174,19 @@ describe("project-trust: trust never reaches a folder the person did not mean (s
 
   test("a folder of a card's worktree area is read from the main checkout even when the database does not know it", () => {
     const { trust } = fresh();
-    expect(trust.sessionTrust("/work/app/.flightdeck/worktrees/card-1")).toEqual({
+    const app = resolve("/work/app");
+    expect(trust.sessionTrust(join(app, ".flightdeck", "worktrees", "card-1"))).toEqual({
       trusted: false,
-      configRoot: "/work/app",
+      configRoot: app,
     });
-    trust.trust("/work/app");
-    expect(trust.sessionTrust("/work/app/.flightdeck/worktrees/card-1")).toEqual({
+    trust.trust(app);
+    expect(trust.sessionTrust(join(app, ".flightdeck", "worktrees", "card-1"))).toEqual({
       trusted: true,
-      configRoot: "/work/app",
+      configRoot: app,
     });
-    expect(trust.sessionTrust("/work/app/.claude/worktrees/x/sub")).toEqual({
+    expect(trust.sessionTrust(join(app, ".claude", "worktrees", "x", "sub"))).toEqual({
       trusted: true,
-      configRoot: "/work/app",
+      configRoot: app,
     });
   });
 
