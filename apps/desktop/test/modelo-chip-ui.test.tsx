@@ -18,6 +18,7 @@ interface Setup {
   effort?: boolean;
   noSettings?: boolean;
   runtime?: "claude" | "opencode";
+  models?: string[];
 }
 
 /** The open session with the model chip: the model and the effort it was asked to change. */
@@ -27,6 +28,7 @@ function view({
   effort = true,
   noSettings = false,
   runtime = "claude",
+  models: available,
 }: Setup = {}) {
   const models: Array<string | null> = [];
   const efforts: Array<string | null> = [];
@@ -49,6 +51,7 @@ function view({
         settings={!noSettings}
         effort={effort}
         runtime={runtime}
+        {...(available ? { models: available } : {})}
       />
     </TContext.Provider>,
   );
@@ -115,9 +118,18 @@ describe("modelo-chip: the chip under the composer", () => {
     expect(chip()?.getAttribute("aria-label")).toBe("Modelo: Haiku 5.5");
   });
 
-  test("an OpenCode session keeps its own list of models, a select", () => {
-    view({ runtime: "opencode" });
+  test("an OpenCode session keeps its own list of models, a select, which switches the model", async () => {
+    const { models } = view({ runtime: "opencode", models: ["anthropic/claude-sonnet-5-5"] });
     expect(chip()).toBeNull();
+    const select = screen.getByLabelText("Model") as HTMLSelectElement;
+    await act(async () => {
+      fireEvent.change(select, { target: { value: "anthropic/claude-sonnet-5-5" } });
+    });
+    expect(models).toEqual(["anthropic/claude-sonnet-5-5"]);
+    await act(async () => {
+      fireEvent.change(select, { target: { value: "" } });
+    });
+    expect(models).toEqual(["anthropic/claude-sonnet-5-5", null]);
   });
 });
 
