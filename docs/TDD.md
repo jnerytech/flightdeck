@@ -141,8 +141,8 @@ only the files listed are instrumented. Limits: it follows the test process only
 runs in a spawned child counts as not called), and istanbul skips private `#methods`. Use it before
 hand-off on the files you changed, to close a function gap without bisecting. A worker session runs it over at most 20 test files (#674): the guard hook refuses a longer
 `--tests` list and the script refuses a longer selection, since such a run holds the shared slot for
-what the PR's CI does anyway. `FLIGHTDECK_SLOT_HEAVY="<reason>"` in front of the command lets a real
-need through.
+what the PR's CI does anyway. `FLIGHTDECK_SLOT_HEAVY="<reason>"` as an env prefix of the run itself
+(a reason of at least 8 characters, #687) lets a real need through.
 
 **Functional core, imperative shell.** Logic that decides is a function that takes its effects
 (git, fs, clock, spawn, network) as a deps object or an injected context, as `runAudit({ since,

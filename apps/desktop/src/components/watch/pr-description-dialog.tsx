@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { AssistField } from "@/components/assistant/assist-field";
+import type { WandBinding } from "@/components/assistant/use-wand";
 import { ActionButton } from "@/components/feedback/action-button";
 import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 
@@ -13,13 +16,18 @@ import { useT } from "@/i18n/context";
 export function PrDescriptionDialog(
   props: Readonly<{
     text: string;
+    /** The PR's title to start from: the card's (issue #162). */
+    title: string;
     redacted: number;
-    onConfirm(text: string): unknown;
+    /** The wands of the title and the description, on the card's repo. */
+    assist: Omit<WandBinding, "kind">;
+    onConfirm(text: string, title: string): unknown;
     onCancel(): void;
   }>,
 ) {
   const t = useT();
   const [text, setText] = useState(props.text);
+  const [title, setTitle] = useState(props.title);
   return (
     <Dialog open onOpenChange={(open) => !open && props.onCancel()}>
       <AppDialogContent aria-describedby={undefined}>
@@ -33,17 +41,44 @@ export function PrDescriptionDialog(
             })}
           </p>
         )}
-        <Textarea
-          aria-label={t("watchUi.descriptionTitle")}
-          className="min-h-48"
+        <AssistField
+          binding={{ ...props.assist, kind: "pr.title" }}
+          value={title}
+          onChange={setTitle}
+          t={t}
+        >
+          {(assist) => (
+            <Input
+              {...assist}
+              aria-label={t("watchUi.prTitle")}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          )}
+        </AssistField>
+        <AssistField
+          binding={{ ...props.assist, kind: "pr.description" }}
           value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
+          onChange={setText}
+          t={t}
+        >
+          {(assist) => (
+            <Textarea
+              {...assist}
+              aria-label={t("watchUi.descriptionTitle")}
+              className="min-h-48"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+          )}
+        </AssistField>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={props.onCancel}>
             {t("common.cancel")}
           </Button>
-          <ActionButton onClick={() => props.onConfirm(text)}>{t("watchUi.confirm")}</ActionButton>
+          <ActionButton onClick={() => props.onConfirm(text, title.trim() || props.title)}>
+            {t("watchUi.confirm")}
+          </ActionButton>
         </DialogFooter>
       </AppDialogContent>
     </Dialog>

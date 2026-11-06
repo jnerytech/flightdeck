@@ -952,6 +952,17 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
 - **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
   cache e o modelo principal com o que ele custou.
+- **Atividade** (na barra lateral, depois de Custos; `g a`, ou **Ir para Atividade** na paleta)
+  mostra todas as sessões ao vivo de todos os hosts em quatro colunas: **Precisa de você** (a
+  sessão está pedindo algo), **Trabalhando**, **Concluídas** (um turno terminou nas últimas 2 horas
+  e você ainda não abriu a sessão) e **Ociosas**, que fica escondida até você marcar **Mostrar
+  sessões ociosas** (a escolha é guardada). Um card diz a sessão, o projeto, o host e a persona, o
+  último pedido e há quanto tempo mudou; a mudança mais recente vem primeiro. Um card que está
+  pedindo mostra o pedido com **Aprovar** e **Negar** (um de risco alto se aprova segurando o
+  botão; uma pergunta para você só abre a sessão). Um clique abre a sessão; Ctrl+clique ou o botão
+  do meio a abre numa aba nova. A busca e as listas de Host, Projeto e Persona reduzem os cards, e a
+  contagem diz "n de m mostradas". Quando uma sessão muda de estado, o card desliza para a outra
+  coluna (não com movimento reduzido). O quadro rola dentro de si. O modo simples não tem esta tela.
 
 ## Board
 
@@ -1219,7 +1230,9 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     está em checkout em alguma worktree (em geral o `main` do repositório principal), o merge é
     feito ali, e só se aquela worktree estiver limpa; senão, vai por uma worktree temporária. Um
     conflito recusa e não muda nada. Depois do merge, a worktree e a branch do card somem e o card
-    vai para Concluído.
+    vai para Concluído. O campo **Mensagem do commit** leva a mensagem do merge; vazio, fica a
+    padrão, com o título do card. **Escrever com IA** escreve a mensagem a partir do diff do card,
+    das regras do repositório e dos commits recentes (issue #162).
 - **Comentários do PR:** num card com PR, os comentários de revisão são lidos do GitHub (`gh api`)
   ou do Azure DevOps (`az devops invoke`) a cada consulta do PR, e listados com arquivo, linha,
   autor e estado (resolvido ou não). No GitHub, quem não é dono, membro nem colaborador ganha o
@@ -2259,7 +2272,8 @@ Mais duas coisas vêm junto:
 
 - **Abrir PR** num card mostra antes a **Descrição do PR**, feita das sessões do card, para você
   editar. As linhas que parecem segredo são tiradas e contadas. Nada é aberto até você clicar em
-  **Abrir o PR com este texto**.
+  **Abrir o PR com este texto**. O **Título do PR** começa com o título do card; o título e a
+  descrição têm cada um a varinha, que escreve a partir do repositório do card.
 - **Ctrl+K**: cole o link de um PR (Azure DevOps ou GitHub) e escolha **Abrir o PR do link**. Os
   hosts são consultados: abre o card, se o PR é de um; senão, a conversa da primeira sessão que o
   histórico conhece para ele; senão, uma mensagem diz que nada tem esse PR.
@@ -2296,6 +2310,8 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   `flightdeck · revisor · 3`.
   - Sem persona, a persona é `geral`.
   - A sessão de um card leva o número do card: `flightdeck · autor · card 42`.
+  - O app mostra o nome no idioma dele, com o nome da persona: `flightdeck · Revisor de código · 3`.
+    O alias não muda.
 - **Toda sessão ganha também um apelido:** `projeto-persona-número`, por exemplo
   `flightdeck-revisor-3`. O apelido endereça a sessão, sozinho ou como `host/apelido` entre hosts.
 - **Um número nunca é reaproveitado**, nem depois que a sessão some.
@@ -2439,6 +2455,10 @@ reinício e um botão de atualizar. À direita, cada item abre a sua página:
 Cada item é um botão com as palavras como nome e uma dica, nunca só a cor, e as duas contagens são
 regiões vivas, então o leitor de tela ouve quando mudam.
 Em uma janela com menos de 600 px de altura a barra fica escondida, para deixar a altura para a conversa.
+Em uma janela com menos de 1024 px de largura, as palavras ao lado de um valor vão para a dica e o
+nome do botão (os ícones e os valores ficam). Abaixo de 640 px só a cota e o manter acordado ficam
+na barra; a atualização da cota, a atualização do app, os terminais e os hosts ficam numa lista
+**Mais itens de status** na ponta direita.
 
 ### Fila por cota
 
@@ -3073,7 +3093,7 @@ Configurações) e, depois de Enter, **Histórico**.
 
 `?` (fora dos campos de texto) abre uma folha com todos os atalhos, por grupo. Os atalhos de ir
 para pressionam `g` e depois uma letra em até um segundo e meio: `g s` Sessões, `g n` Precisa de
-você, `g p` Projetos, `g c` Custos, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
+você, `g p` Projetos, `g c` Custos, `g a` Atividade, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
 `Alt+←`/`Alt+→` voltar e avançar, `Alt+Shift+C` próximo cliente, `Ctrl+T`/`W`/`Tab`/`1…9` abas,
 `j`/`k`/`Enter` nas listas e `A`/`N` em um pedido. Nenhum dispara enquanto você digita em um campo.
 

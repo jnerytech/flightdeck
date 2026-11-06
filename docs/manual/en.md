@@ -955,6 +955,17 @@ live; the list is the project's, so a session of another project never shows her
   a search box: typing keeps the sections whose name or settings match.
 - **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
   the top model with what it cost.
+- **Activity** (in the sidebar after Costs; `g a`, or **Go to Activity** in the palette) shows every
+  live session of every host in four columns: **Needs you** (the session is asking), **Working**,
+  **Done** (a turn ended in the last 2 hours and you have not opened the session) and **Idle**,
+  which stays hidden until you tick **Show idle sessions** (the choice is kept). A card says the
+  session, its project, host and persona, the last request and how long ago it changed; the newest
+  change is first. A card that is asking shows the request with **Approve** and **Deny** (a
+  high-risk one is approved by holding the button; a question for you only opens the session). A
+  click opens the session; Ctrl-click or the middle button opens it in a new tab. Search and the
+  Host, Project and Persona lists narrow the cards, and the count reads "n of m shown". When a
+  session changes state its card glides to the other column (not with reduced motion). The board
+  scrolls inside itself. Simple mode does not have this screen.
 
 ## Board
 
@@ -1221,7 +1232,9 @@ conversation. It is where you check what the agent did and send it back what to 
     the base is checked out in some worktree (usually `main` in the main repository), the merge
     happens there, and only if that worktree is clean; otherwise it goes through a temporary
     worktree. A conflict refuses and changes nothing. After the merge, the card's worktree and
-    branch go away and the card moves to Done.
+    branch go away and the card moves to Done. The **Commit message** field takes the message
+    of the merge; empty keeps the default, with the card's title. **Write with AI** writes it
+    from the card's diff, the repository's rules and its recent commits (issue #162).
 - **PR comments:** for a card with a PR, the review comments are read from GitHub (`gh api`) or
   Azure DevOps (`az devops invoke`) with each poll of the PR, and listed with file, line, author
   and resolved state. On GitHub, an author who is not the owner, a member or a collaborator gets
@@ -2260,7 +2273,8 @@ Two more things come with it:
 
 - **Open PR** on a card first shows the **PR description**, made from the card's sessions, to edit.
   Lines that look like a secret are taken out and counted. Nothing is opened until you click **Open
-  the PR with this text**.
+  the PR with this text**. The **PR title** starts from the card's title; the title and the description each have
+  the wand, which writes from the card's repository.
 - **Ctrl+K**: paste a PR link (Azure DevOps or GitHub) and choose **Open the PR from the link**. The
   hosts are asked: the card opens if the PR is from one; otherwise the transcript of the first
   session the history knows for it; otherwise a message says nothing has it.
@@ -2296,6 +2310,8 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   `flightdeck · revisor · 3`.
   - Without a persona, the persona is `geral`.
   - A card's session takes the card's number: `flightdeck · autor · card 42`.
+  - The app shows the name in its language, with the persona's name: `flightdeck · Code reviewer · 3`,
+    and `general` for a session without a persona. The alias stays as it is.
 - **Every session also gets an alias:** `project-persona-number`, for example
   `flightdeck-revisor-3`. The alias addresses the session, alone or as `host/alias` across hosts.
 - **A number is never reused**, not even after the session is gone.
@@ -2437,6 +2453,9 @@ reset time and a refresh. On the right, each item opens its page:
 Every item is a button with its words as the name and a tooltip, never colour alone, and the two
 counts are live regions, so a screen reader hears them change.
 In a window under 600 px tall the bar is hidden, to leave the height to the conversation.
+In a window under 1024 px wide the words beside a value go to the tooltip and the button's name
+(the icons and values stay). Under 640 px only the quota and keep-awake stay in the bar; the refresh,
+the update, the terminals and the hosts are in a **More status items** list at its right end.
 
 ### Quota queue
 
@@ -3078,7 +3097,7 @@ their English equivalents.
 
 `?` (outside text fields) opens a sheet with every shortcut, by group. The go-to chords press `g`
 and then a letter within about a second and a half: `g s` Sessions, `g n` Needs you, `g p`
-Projects, `g c` Costs, `g ,` Settings. Other shortcuts: `Ctrl+K` palette, `Alt+←`/`Alt+→` back and
+Projects, `g c` Costs, `g a` Activity, `g ,` Settings. Other shortcuts: `Ctrl+K` palette, `Alt+←`/`Alt+→` back and
 forward, `Alt+Shift+C` next client, `Ctrl+T`/`W`/`Tab`/`1…9` tabs, `j`/`k`/`Enter` in lists and
 `A`/`N` on a request. None of them fires while you type in a field.
 

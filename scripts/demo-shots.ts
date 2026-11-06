@@ -222,6 +222,12 @@ async function openHostSettings(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
+/** The names of the prints, in order (#677: the narrow list is checked against them). */
+export function shotNames(): string[] {
+  // The routes need ids; the names do not.
+  return shots({} as DemoIds).map((shot) => shot.name);
+}
+
 function shots(ids: DemoIds): Shot[] {
   return [
     { name: "hub", route: { name: "hub" } },
@@ -499,6 +505,8 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     { name: "custos", route: { name: "costs" } },
+    // Issue #151: the Activity board, its columns and cards (axe checks it in both themes).
+    { name: "atividade", route: { name: "activity" } },
     // Phase 36: the ROI card of the web project, and the project and people tables of Costs.
     {
       name: "roi-cartao",
@@ -844,99 +852,105 @@ async function printShot(
   const { url, theme, lang, dir, visual, log, spacing, narrow } = setup;
   const page = await context.newPage();
   page.on("pageerror", (error) => log(`erro na página ${shot.name} ${page.url()}: ${error.stack}`));
-  // The storage is the context's: a print with no clients clears what an earlier one kept.
-  await page.addInitScript(seedStorage, {
-    clients: shot.clients ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" } : null,
-    roi: shot.roi ? DEMO_ROI : null,
-    inbox: shot.inbox ? demoInbox(lang) : null,
-    simple: shot.simple === true,
-  });
-  const query = new URLSearchParams({
-    theme,
-    lang,
-    route: JSON.stringify(shot.route),
-    ...shot.query,
-  });
-  await page.goto(`${url}?${query}`);
-  // The hosts connect and the screen loads its data.
-  await page.waitForTimeout(1500);
-  // The host nothing listens on shows as offline (hollow gray), not still connecting.
-  await page
-    .getByRole("img", { name: /^notebook: offline$/ })
-    .first()
-    .waitFor({ timeout: 8000 })
-    .catch(() => undefined);
-  await shot.prepare?.(page).catch(async (error) => {
-    await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
-    throw error;
-  });
-  // A skeleton or a busy region is a screen still loading: the print waits for the real one.
-  await page.waitForFunction(
-    (selector) => document.querySelector(selector) === null,
-    PENDING_SELECTOR,
-    { timeout: 15_000 },
-  );
-  if (visual !== "off") await stabilize(page);
-  await page.screenshot({
-    path: join(dir, `${shot.name}.png`),
-    ...(visual === "off" ? {} : { animations: "disabled" as const, caret: "hide" as const }),
-  });
-  // A dark print that came out light is a broken print, not a pretty one.
-  const mismatch = themeProblem(
-    theme,
-    `${theme} ${lang} ${shot.name}`,
-    await page.evaluate(pageBackground),
-  );
-  if (mismatch) problems.push(mismatch);
-  // The window never scrolls sideways (issue #103) and the key regions have room (#192): the
-  // shared guards name the culprit by its data-slot path. What floats in the corner keeps clear
-  // of the status bar and of each other (#581).
-  const layout: Finding[] = await page.evaluate(layoutFindings, {
-    regions: KEY_REGIONS,
-    gaps: GAPS,
-    spacing: SPACING,
-  });
-  for (const finding of layout.filter(blocksPrint)) {
-    problems.push(
-      `${theme} ${lang} ${shot.name}: ${finding.rule} ${finding.path} (${finding.detail})`,
-    );
-  }
-  // The spacing guard (#588): judged against its own baseline, which only goes down.
-  const screen = `${theme} ${lang} ${shot.name}`;
-  const spaced = layout.filter((finding) => SPACING_RULES.includes(finding.rule));
-  problems.push(...ratchetScreen(screen, spaced, spacing));
-  // The same screen, checked for accessibility: serious and critical violations fail.
-  await page.addScriptTag({ path: AXE });
-  const found = await page.evaluate(
-    (options) =>
-      (
-        globalThis as unknown as {
-          axe: {
-            run(options: unknown): Promise<{ violations: AxeViolation[] }>;
-          };
-        }
-      ).axe
-        .run(options)
-        .then((result) => result.violations),
-    AXE_RUN_OPTIONS,
-  );
-  for (const violation of blocking(found)) {
-    problems.push(describeViolation(`${theme} ${lang} ${shot.name}`, violation));
-  }
-  // Narrow windows (#641): the same page resized, judged against its own baseline. The contract
-  // rules stay at 1280: the page scrolling sideways is overflow-x here, a finding with a baseline.
-  for (const size of narrowSizes(theme, shot.name)) {
-    await page.setViewportSize(size);
-    await page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES });
-    const at = `${size.width}x${size.height}`;
-    await page.screenshot({
-      path: join(SHOTS_DIR, `narrow-${theme}-${lang}`, `${shot.name}@${at}.png`),
+  // A print that throws or times out still closes its page (#677).
+  try {
+    // The storage is the context's: a print with no clients clears what an earlier one kept.
+    await page.addInitScript(seedStorage, {
+      clients: shot.clients
+        ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
+        : null,
+      roi: shot.roi ? DEMO_ROI : null,
+      inbox: shot.inbox ? demoInbox(lang) : null,
+      simple: shot.simple === true,
     });
-    const found: Finding[] = await page.evaluate(layoutFindings, { responsive: RESPONSIVE });
-    const kept = found.filter((finding) => RESPONSIVE_RULES.includes(finding.rule));
-    problems.push(...ratchetScreen(`${theme} ${lang} ${at} ${shot.name}`, kept, narrow));
+    const query = new URLSearchParams({
+      theme,
+      lang,
+      route: JSON.stringify(shot.route),
+      ...shot.query,
+    });
+    await page.goto(`${url}?${query}`);
+    // The hosts connect and the screen loads its data.
+    await page.waitForTimeout(1500);
+    // The host nothing listens on shows as offline (hollow gray), not still connecting.
+    await page
+      .getByRole("img", { name: /^notebook: offline$/ })
+      .first()
+      .waitFor({ timeout: 8000 })
+      .catch(() => undefined);
+    await shot.prepare?.(page).catch(async (error) => {
+      await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
+      throw error;
+    });
+    // A skeleton or a busy region is a screen still loading: the print waits for the real one.
+    await page.waitForFunction(
+      (selector) => document.querySelector(selector) === null,
+      PENDING_SELECTOR,
+      { timeout: 15_000 },
+    );
+    if (visual !== "off") await stabilize(page);
+    await page.screenshot({
+      path: join(dir, `${shot.name}.png`),
+      ...(visual === "off" ? {} : { animations: "disabled" as const, caret: "hide" as const }),
+    });
+    // A dark print that came out light is a broken print, not a pretty one.
+    const mismatch = themeProblem(
+      theme,
+      `${theme} ${lang} ${shot.name}`,
+      await page.evaluate(pageBackground),
+    );
+    if (mismatch) problems.push(mismatch);
+    // The window never scrolls sideways (issue #103) and the key regions have room (#192): the
+    // shared guards name the culprit by its data-slot path. What floats in the corner keeps clear
+    // of the status bar and of each other (#581).
+    const layout: Finding[] = await page.evaluate(layoutFindings, {
+      regions: KEY_REGIONS,
+      gaps: GAPS,
+      spacing: SPACING,
+    });
+    for (const finding of layout.filter(blocksPrint)) {
+      problems.push(
+        `${theme} ${lang} ${shot.name}: ${finding.rule} ${finding.path} (${finding.detail})`,
+      );
+    }
+    // The spacing guard (#588): judged against its own baseline, which only goes down.
+    const screen = `${theme} ${lang} ${shot.name}`;
+    const spaced = layout.filter((finding) => SPACING_RULES.includes(finding.rule));
+    problems.push(...ratchetScreen(screen, spaced, spacing));
+    // The same screen, checked for accessibility: serious and critical violations fail.
+    await page.addScriptTag({ path: AXE });
+    const found = await page.evaluate(
+      (options) =>
+        (
+          globalThis as unknown as {
+            axe: {
+              run(options: unknown): Promise<{ violations: AxeViolation[] }>;
+            };
+          }
+        ).axe
+          .run(options)
+          .then((result) => result.violations),
+      AXE_RUN_OPTIONS,
+    );
+    for (const violation of blocking(found)) {
+      problems.push(describeViolation(`${theme} ${lang} ${shot.name}`, violation));
+    }
+    // Narrow windows (#641): the same page resized, judged against its own baseline. The contract
+    // rules stay at 1280: the page scrolling sideways is overflow-x here, a finding with a baseline.
+    for (const size of narrowSizes(theme, shot.name)) {
+      await page.setViewportSize(size);
+      await page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES });
+      const at = `${size.width}x${size.height}`;
+      await page.screenshot({
+        path: join(SHOTS_DIR, `narrow-${theme}-${lang}`, `${shot.name}@${at}.png`),
+      });
+      const found: Finding[] = await page.evaluate(layoutFindings, { responsive: RESPONSIVE });
+      const kept = found.filter((finding) => RESPONSIVE_RULES.includes(finding.rule));
+      problems.push(...ratchetScreen(`${theme} ${lang} ${at} ${shot.name}`, kept, narrow));
+    }
+  } finally {
+    await page.close();
   }
-  await page.close();
 }
 
 export async function takeShots(
@@ -954,7 +968,10 @@ export async function takeShots(
   );
   const problems: string[] = [];
   const ratchet = (file: string): Ratchet => ({
-    baseline: loadCounts(() => (existsSync(file) ? readFileSync(file, "utf8") : null)),
+    baseline: loadCounts(
+      () => (existsSync(file) ? readFileSync(file, "utf8") : null),
+      basename(file),
+    ),
     seen: {},
     occurrences: {},
     gone: [],

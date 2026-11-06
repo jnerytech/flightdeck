@@ -1,9 +1,11 @@
 /** Phase 21, standard session names: `project · persona · number` and its alias. */
 
+import { NAME_GENERAL, NAME_NO_PROJECT } from "@flightdeck/protocol";
+
 /** The persona of a session that has none. */
-export const GENERAL = "geral";
+export const GENERAL = NAME_GENERAL;
 /** The project of a session that has no folder to name it. */
-const NO_PROJECT = "sem-projeto";
+export const NO_PROJECT = NAME_NO_PROJECT;
 
 export interface NameParts {
   project: string;

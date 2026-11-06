@@ -6,7 +6,7 @@
 import type { Database } from "bun:sqlite";
 import type { SessionTeam } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
-import { aliasName, displayName, GENERAL, slug } from "./format.ts";
+import { aliasName, displayName, GENERAL, NO_PROJECT, slug } from "./format.ts";
 
 export interface SessionName {
   id: string;
@@ -46,7 +46,6 @@ interface Row {
 
 /** Where the counter of the cards' numbers lives, next to the persona counters. */
 const CARDS = "#card";
-const NO_PROJECT = "sem-projeto";
 
 export class Names {
   constructor(

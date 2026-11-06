@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { shotNames } from "../demo-shots.ts";
 import { NARROW_SHOTS, narrowSizes } from "../lib/shots-narrow.ts";
 
 describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () => {
@@ -17,13 +16,9 @@ describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () =>
     expect(narrowSizes("dark", "paleta").length).toBe(0);
   });
 
-  test("every name in the list is a print of demo:shots, so a typo cannot skip one in silence", () => {
-    const source = readFileSync(join(import.meta.dir, "../demo-shots.ts"), "utf8");
-    // A print is `{ name: "<x>", route: ... }`; a route has `name` too, but no `route` after it.
-    const missing = NARROW_SHOTS.filter(
-      (name) => !new RegExp(`name: "${name}",\\s*route:`).test(source),
-    );
-    expect(NARROW_SHOTS.length).toBeGreaterThan(5);
-    expect(missing).toEqual([]);
+  test("#677: every name in the list is a print of demo:shots, so a typo cannot skip one in silence", () => {
+    const prints = shotNames();
+    expect(prints.length).toBeGreaterThan(40);
+    expect(NARROW_SHOTS.filter((name) => !prints.includes(name))).toEqual([]);
   });
 });

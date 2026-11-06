@@ -1010,6 +1010,112 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("assistantWand.undo"), exact: true }).click();
     await waitFor(async () => (await box.inputValue()) === typed, "o texto de volta");
   },
+
+  // 28. Notification preferences (#149): Settings switches an event off and mutes a host, both
+  // survive a reload (they live in the app's own storage), the switches come back on, and the test
+  // notification says whether the system showed it (a headless browser may refuse, so either
+  // answer is right; what matters is that it answers).
+  "notify-prefs": async (c) => {
+    await open(c, { name: "settings" });
+    // Settings has other switches with the same words (Needs you): these two groups are the panel's.
+    const events = c.page.getByRole("group", { name: c.t("notifyPrefs.events"), exact: true });
+    const mutes = c.page.getByRole("group", { name: c.t("notifyPrefs.mute"), exact: true });
+    const box = (group: typeof events, name: string) =>
+      group.getByRole("checkbox", { name, exact: true });
+    const finished = box(events, c.t("notifyPrefs.event.turn-finished"));
+    const muteAlfa = box(mutes, c.t("notifyPrefs.muteHost", { name: "alfa" }));
+    await finished.scrollIntoViewIfNeeded({ timeout: WAIT });
+    if (!(await finished.isChecked())) throw new Error("Turn finished começa ligado");
+    if (await muteAlfa.isChecked()) throw new Error("alfa começa sem silêncio");
+    await finished.uncheck();
+    await muteAlfa.check();
+    // The page is read again from the start: only what was stored can still be set.
+    await open(c, { name: "settings" });
+    await finished.scrollIntoViewIfNeeded({ timeout: WAIT });
+    await waitFor(
+      async () => !(await finished.isChecked()),
+      "Turn finished desligado após recarregar",
+    );
+    await waitFor(async () => await muteAlfa.isChecked(), "alfa silenciado após recarregar");
+    // The other switches were not touched.
+    if (!(await box(events, c.t("notifyPrefs.event.needs-you")).isChecked())) {
+      throw new Error("Needs you mudou sem ninguém pedir");
+    }
+    await finished.check();
+    await muteAlfa.uncheck();
+    await waitFor(
+      async () => (await finished.isChecked()) && !(await muteAlfa.isChecked()),
+      "as chaves de volta",
+    );
+    await c.page.getByRole("button", { name: c.t("notifyPrefs.test"), exact: true }).click();
+    await c.page
+      .getByText(new RegExp(`^(${c.t("notifyPrefs.delivered")}|${c.t("notifyPrefs.notShown")})`))
+      .first()
+      .waitFor({ timeout: WAIT });
+  },
+
+  // Issue #151: the Activity board puts the sessions of every host in columns by state. A request
+  // is approved from its card, the filters narrow the cards and a card opens its session.
+  activity: async (c) => {
+    // The demo's seeded requests run out, so the journey asks for its own.
+    await createSession(c, "[bash] ls", `Activity e2e ${c.lang} ${Date.now()}`);
+    await open(c, { name: "activity" });
+    const column = (name: string) => c.page.getByRole("region", { name, exact: true });
+    const needs = column(c.t("activityBoard.columns.needs_you"));
+    // A request waits in Needs you with its own buttons. The first card that has an Approve is
+    // followed by its key (what the view transition names it), whatever else the demo has waiting.
+    const approve = needs.getByRole("button", { name: c.t("activityBoard.approve"), exact: true });
+    await approve.first().waitFor({ timeout: SESSION_WAIT });
+    const approveButton = c.page.getByRole("button", {
+      name: c.t("activityBoard.approve"),
+      exact: true,
+    });
+    const top = needs.locator("[data-slot='activity-card']").filter({ has: approveButton }).first();
+    const key = await top.evaluate((el) => (el as HTMLElement).style.viewTransitionName);
+    if (!key) throw new Error("o card do pedido não tem nome de transição");
+    const mine = needs.locator(`[data-slot='activity-card'][style*="${key}"]`);
+    await mine.getByRole("button", { name: c.t("activityBoard.approve"), exact: true }).click();
+    await waitFor(
+      async () =>
+        (await mine
+          .getByRole("button", { name: c.t("activityBoard.approve"), exact: true })
+          .count()) === 0,
+      "o pedido aprovado saiu de Precisa de você",
+      SESSION_WAIT,
+    );
+    // The search narrows to nothing and back; the line says how many are shown.
+    const shown = c.page.locator("output[class*='activity-shown']");
+    const search = c.page.getByRole("searchbox", {
+      name: c.t("activityBoard.search"),
+      exact: true,
+    });
+    const total = (await shown.textContent()) ?? "";
+    if (total === "" || total.startsWith("0 "))
+      throw new Error(`a linha de contagem diz "${total}"`);
+    await search.fill("zz-no-such-session-zz");
+    await waitFor(
+      async () => ((await shown.textContent()) ?? "").startsWith("0 "),
+      "nenhum card mostrado",
+    );
+    await search.fill("");
+    await waitFor(
+      async () => !((await shown.textContent()) ?? "0 ").startsWith("0 "),
+      "os cards de volta",
+    );
+    // Idle waits for its switch.
+    const idle = column(c.t("activityBoard.columns.idle"));
+    if ((await idle.count()) !== 0) throw new Error("Ociosas apareceu sem o botão");
+    await c.page
+      .getByRole("checkbox", { name: c.t("activityBoard.showIdle"), exact: true })
+      .check();
+    await idle.waitFor({ timeout: WAIT });
+    // A card opens its session: the board is gone.
+    await c.page
+      .locator("[data-slot='activity-card'] .activity-card-title")
+      .first()
+      .click({ timeout: SESSION_WAIT });
+    await needs.waitFor({ state: "detached", timeout: SESSION_WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
@@ -1445,6 +1551,7 @@ export async function layout(c: Context, problems: string[]) {
     ["board", { name: "board", host: ALFA, projectId: c.ids.project }],
     ["host", { name: "host", host: ALFA }],
     ["custos", { name: "costs" }],
+    ["atividade", { name: "activity" }],
     ["configuracoes", { name: "settings" }],
     ["clientes", { name: "clients" }],
     [
