@@ -19,6 +19,9 @@ export interface ShardDeps {
   log(line: string): void;
 }
 
+/** Names in code-unit order, whatever the locale: the same split on every runner (and what a bare sort() does, said out loud). */
+const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
 const TEST_FILE = /(\.|_)(test|spec)\.[cm]?[jt]sx?$/;
 const SHARD = /^([1-9]\d*)\/([1-9]\d*)$/;
 const USAGE =
@@ -27,7 +30,7 @@ const BUN_TEST = ["--config=bunfig.area.toml", "test", "--timeout=15000"];
 
 /** The test files `bun test` runs: `*.test.*`, `*_test.*`, `*.spec.*` and `*_spec.*`, never the mods'. */
 export function testFiles(tracked: string[]): string[] {
-  return tracked.filter((path) => TEST_FILE.test(path) && !path.startsWith("mods/")).sort();
+  return tracked.filter((path) => TEST_FILE.test(path) && !path.startsWith("mods/")).sort(byName);
 }
 
 const median = (values: number[]) => {
@@ -59,14 +62,14 @@ export function splitShards(files: string[], timings: Timings, count: number): s
   const split: string[][] = Array.from({ length: count }, () => []);
   const load = new Array<number>(count).fill(0);
   const slowestFirst = [...files].sort(
-    (a, b) => (weight.get(b) ?? 0) - (weight.get(a) ?? 0) || a.localeCompare(b),
+    (a, b) => (weight.get(b) ?? 0) - (weight.get(a) ?? 0) || byName(a, b),
   );
   for (const file of slowestFirst) {
     const lightest = load.indexOf(Math.min(...load));
     split[lightest]?.push(file);
     load[lightest] = (load[lightest] ?? 0) + (weight.get(file) ?? 0);
   }
-  return split.map((shard) => shard.sort());
+  return split.map((shard) => shard.sort(byName));
 }
 
 /** `1/3` as an index (1-based) and a count, or null. */
@@ -122,7 +125,7 @@ export function parseBunLog(log: string): Timings {
 /** The timings after a run: its files replace the old ones, the files that are gone drop out. */
 export function mergeTimings(old: Timings, fresh: Timings, files: string[]): Timings {
   const out: Timings = {};
-  for (const file of [...files].sort()) {
+  for (const file of [...files].sort(byName)) {
     const seconds = fresh[file] ?? old[file];
     if (seconds !== undefined) out[file] = Math.round(seconds * 1000) / 1000;
   }
