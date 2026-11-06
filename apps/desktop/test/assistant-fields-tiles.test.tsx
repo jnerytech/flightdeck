@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { en } from "../src/i18n/en.ts";
 import { registerDom } from "./dom.ts";
-import { daemon as makeDaemon, fakeAssistant, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import { fakeAssistant, daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
