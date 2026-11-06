@@ -794,6 +794,7 @@ export const en: Dictionary = {
   },
   statusBar: {
     label: "Status bar",
+    more: "More status items",
     refreshQuota: "Refresh the plan usage",
     refreshingQuota: "Refreshing the plan usage…",
     keepAwake: {

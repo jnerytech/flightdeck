@@ -790,6 +790,7 @@ export const ptBR = {
   },
   statusBar: {
     label: "Barra de status",
+    more: "Mais itens de status",
     refreshQuota: "Atualizar o consumo do plano",
     refreshingQuota: "Atualizando o consumo do plano…",
     keepAwake: {
