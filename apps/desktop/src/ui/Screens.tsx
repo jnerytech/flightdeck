@@ -29,6 +29,7 @@ import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
+import { ActivityBoard } from "./ActivityBoard.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
 import type { TopSession } from "./CostsPage.tsx";
 import { ExternalView } from "./ExternalView.tsx";
@@ -781,6 +782,17 @@ function routeScreen(props: ScreenProps): ReactNode {
       return null;
     case "needs-you":
       return <NeedsYou store={store} state={state} go={go} onOpenRequest={props.onOpenRequest} />;
+    case "activity":
+      return (
+        <ActivityBoard
+          store={store}
+          go={go}
+          onOpen={(row, newTab) => {
+            if (newTab) store.tabs.openNextInNewTab();
+            go(rowRoute(row));
+          }}
+        />
+      );
     case "teams":
       return (
         <TeamsPage

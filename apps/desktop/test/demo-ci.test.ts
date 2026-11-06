@@ -149,6 +149,7 @@ describe("demo-prints: axe e CI", () => {
       "sleep-wake",
       "tab-row",
       "wand-composer",
+      "activity",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
