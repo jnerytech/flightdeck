@@ -196,6 +196,7 @@ describe("ci-paths: the workflow", () => {
       "cargo",
       "e2e",
       "windows_shards",
+      "base",
     ]);
     for (const key of ["test-windows-shard", "checks-windows"]) {
       expect(job(key).needs).toContain("quick");
