@@ -89,7 +89,7 @@ describe("home-cache-ui: Home shows the last numbers at once and reads again in 
     first.control.mode = "hang";
     render(first.view);
     expect(spend()).toContain("$2.25");
-    expect(text()).toContain("Updated now");
+    expect(text()).toContain("Updated just now");
     await act(async () => {
       first.control.release?.();
     });
