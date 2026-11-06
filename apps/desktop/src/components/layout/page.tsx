@@ -20,10 +20,16 @@ export function Page(
   return (
     // The page's stable slot: a layout finding inside it names the region (docs/DESIGN.md).
     <section aria-labelledby={id} data-slot="page" className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-col gap-3 border-b px-6 py-4">
+      {/* The side gutter is 12 px compact, 16 px from 640 px and 24 px from 1024 px (#641). */}
+      <div className="flex flex-col gap-3 border-b px-3 py-4 sm:px-4 lg:px-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 id={id} className="truncate font-semibold text-xl">
+            {/* Two lines, then an ellipsis; the full text stays in `title` (#641). */}
+            <h1
+              id={id}
+              title={typeof props.title === "string" ? props.title : undefined}
+              className="line-clamp-2 break-words font-semibold text-xl"
+            >
               {props.title}
             </h1>
             {props.subtitle && <p className="text-muted-foreground text-sm">{props.subtitle}</p>}
@@ -37,7 +43,7 @@ export function Page(
         {props.toolbar}
       </div>
       {props.fill ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-4 lg:px-6">
           {props.children}
         </div>
       ) : (
@@ -45,7 +51,9 @@ export function Page(
           {/* The body's blocks sit 24 px apart, the scale's step between blocks of a page (#588).
               It is positioned, so what it holds absolutely (an sr-only caption) scrolls and clips
               inside it instead of stretching the screen into a second scrollbar (#640). */}
-          <div className="relative flex flex-col gap-6 px-6 py-4">{props.children}</div>
+          <div className="relative flex flex-col gap-6 px-3 py-4 sm:px-4 lg:px-6">
+            {props.children}
+          </div>
         </ScrollArea>
       )}
     </section>
