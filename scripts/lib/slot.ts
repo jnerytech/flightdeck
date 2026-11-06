@@ -372,8 +372,8 @@ export function reap(env: SlotEnv): number {
       env.fs.remove(path);
       continue;
     }
-    if (!env.proc || !reapable(env, env.proc, path, waiter.pid)) continue;
-    const group = env.proc.pgid(waiter.pid) ?? 0;
+    const group = env.proc ? reapableGroup(env, env.proc, path, waiter.pid) : null;
+    if (group === null) continue;
     if (env.terminateGroup) env.terminateGroup(group);
     else env.terminate(waiter.pid);
     env.fs.remove(path);
@@ -385,17 +385,18 @@ export function reap(env: SlotEnv): number {
 }
 
 /**
- * Whether the waiter file names a slot waiter that may be stopped by group: the file's name
- * carries its pid, the pid is above 1 with parent pid 1, its group is above 1 and is not the
- * reaper's own, and its command line is the slot's (a pid reused by another program is left
- * alone). Read right before the kill.
+ * The process group to stop for a waiter file, or null when it names no slot waiter that may be
+ * stopped: the file's name carries its pid, the pid is above 1 with parent pid 1, its command line
+ * runs scripts/slot.ts (a pid reused by another program is left alone), and its group, read once
+ * right before the kill, is above 1 and not the reaper's own.
  */
-function reapable(env: SlotEnv, proc: ProcReader, path: string, pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 1 || path !== waiterPath(env, pid)) return false;
-  if (proc.ppid(pid) !== 1) return false;
+function reapableGroup(env: SlotEnv, proc: ProcReader, path: string, pid: number): number | null {
+  if (!Number.isInteger(pid) || pid <= 1 || path !== waiterPath(env, pid)) return null;
+  if (proc.ppid(pid) !== 1) return null;
+  if (!/(?:^|[\s/\\])scripts[\\/]slot\.ts\b/.test(proc.cmdline(pid))) return null;
   const group = proc.pgid(pid);
-  if (group === null || group <= 1 || group === proc.pgid(env.pid)) return false;
-  return /\bslot\.ts\b/.test(proc.cmdline(pid));
+  if (group === null || group <= 1 || group === proc.pgid(env.pid)) return null;
+  return group;
 }
 
 /**
