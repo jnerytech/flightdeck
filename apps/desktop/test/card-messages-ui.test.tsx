@@ -10,6 +10,8 @@ const screen = liveScreen(within);
 const { CardReview } = await import("../src/ui/CardReview.tsx");
 const { PrDescriptionDialog } = await import("../src/components/watch/pr-description-dialog.tsx");
 const { AssistantController } = await import("../src/lib/assistant.ts");
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { memoryPlatform } = await import("./fixtures.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
@@ -196,4 +198,37 @@ describe("card-messages-ui: the PR asks for its title and description (#162)", (
       ]);
     });
   }
+});
+
+describe("card-messages-ui: a wand with no provider opens Settings (#162)", () => {
+  test("the store opens Settings at the assistant's section", () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+    store.openAssistantSettings();
+    expect(store.router.current).toEqual({ name: "settings", section: "assistant" });
+  });
+
+  test("the merge's wand, with no provider chosen, sends the person to Settings", async () => {
+    const { store, t } = setup("en");
+    store.assistant.setPrefs({ provider: null });
+    const opened: string[] = [];
+    (store as unknown as { openAssistantSettings(): void }).openAssistantSettings = () =>
+      void opened.push("settings");
+    render(
+      <TContext.Provider value={t}>
+        <TooltipProvider>
+          <CardReview
+            store={store}
+            hostId="h1"
+            card={{ id: "c1", prUrl: null, title: "Add the login" } as never}
+            changes={{ base: "main", position: { ahead: 1, behind: 0 } } as never}
+            refresh={async () => {}}
+          />
+        </TooltipProvider>
+      </TContext.Provider>,
+    );
+    await press(screen.queryByRole("button", { name: WORDS.en.merge }));
+    const dialog = screen.queryByRole("alertdialog");
+    await press(dialog ? within(dialog).queryByRole("button", { name: WORDS.en.write }) : null);
+    expect(opened).toEqual(["settings"]);
+  });
 });
