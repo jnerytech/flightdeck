@@ -38,6 +38,9 @@
 - **Worse px (#637).** Each finding has its `excess`: how many px it is past its rule's limit (a
   gap's shortfall, a spill), so bigger is always worse. A baseline entry is `{ count, worst }`, and a
   key whose worst excess grows by more than 2 px (rendering tolerance) fails, naming the worst
-  occurrence. A smaller worst does not fail: a fix only has to lower the count.
+  occurrence. A smaller worst does not fail: a fix only has to lower the count. `nested-scroll` keeps a count
+  only: what a nested scroll hides grows with the demo's data, not with the layout (#703 review).
+  After a Chrome, font or runner change moves the px, rebuild both baselines from the CI run's
+  `*-findings.json` artifacts (the `{ count, worst }` the run saw), not from a local run.
 - **Rejected.** Making them contract rules, which fail with no baseline. Today's pages would fail
   every print until all of them are fixed.

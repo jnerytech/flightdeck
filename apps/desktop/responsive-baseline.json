@@ -1,27 +1,21 @@
 {
   "nested-scroll|dark en 1024x700 card|page > page-body > timeline": {
-    "count": 1,
-    "worst": 30
+    "count": 1
   },
   "nested-scroll|dark en 390x844 card|page > page-body > timeline": {
-    "count": 1,
-    "worst": 70
+    "count": 1
   },
   "nested-scroll|dark en 640x800 card|page > page-body > timeline": {
-    "count": 1,
-    "worst": 31
+    "count": 1
   },
   "nested-scroll|dark pt-BR 1024x700 card|page > page-body > timeline": {
-    "count": 1,
-    "worst": 30
+    "count": 1
   },
   "nested-scroll|dark pt-BR 390x844 card|page > page-body > timeline": {
-    "count": 1,
-    "worst": 70
+    "count": 1
   },
   "nested-scroll|dark pt-BR 640x800 card|page > page-body > timeline": {
-    "count": 1,
-    "worst": 31
+    "count": 1
   },
   "overflow-x|dark en 1024x700 abas-muitas|div.tab-item": {
     "count": 16,
