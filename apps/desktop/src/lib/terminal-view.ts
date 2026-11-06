@@ -1,7 +1,7 @@
 import type { Platform } from "../platform/types.ts";
 import type { Theme } from "./theme.ts";
 
-export type TerminalKeyAction = "copy" | "paste" | "search" | "snippets" | "pass";
+export type TerminalKeyAction = "copy" | "paste" | "search" | "snippets" | "newline" | "pass";
 
 export interface TerminalKey {
   key: string;

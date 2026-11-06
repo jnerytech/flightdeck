@@ -142,6 +142,7 @@ function setup(initial = "", clipboardFails = false, windows = false) {
       for (const callback of callbacks.splice(0)) callback();
     },
     press,
+    keys: (event: KeyboardEvent) => keyHandler(event),
     constructed: () => constructed,
     searches: () => searches,
     findOptions,
@@ -263,6 +264,31 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.press("c", true, false)).toBe(true);
     await Promise.resolve();
     expect(s.clip).toEqual([]);
+  });
+
+  test("Shift+Enter alone sends the newline Claude Code reads (ESC then CR) once, and plain Enter is left to xterm", () => {
+    const s = setup();
+    const key = (type: string, over: Partial<KeyboardEvent> = {}) =>
+      ({
+        key: "Enter",
+        type,
+        ctrlKey: false,
+        shiftKey: true,
+        altKey: false,
+        metaKey: false,
+        ...over,
+      }) as KeyboardEvent;
+    // xterm asks about keydown, keypress and keyup: only the keydown sends, and none of them reaches xterm's own CR.
+    expect(s.keys(key("keydown"))).toBe(false);
+    expect(s.keys(key("keypress"))).toBe(false);
+    expect(s.keys(key("keyup"))).toBe(false);
+    expect(s.inputs).toEqual(["\u001b\r"]);
+    // Enter alone, and Shift+Enter with another modifier, are not this.
+    expect(s.keys(key("keydown", { shiftKey: false }))).toBe(true);
+    expect(s.keys(key("keydown", { ctrlKey: true }))).toBe(true);
+    expect(s.keys(key("keydown", { altKey: true }))).toBe(true);
+    expect(s.keys(key("keydown", { metaKey: true }))).toBe(true);
+    expect(s.inputs).toEqual(["\u001b\r"]);
   });
 
   test("Ctrl+Shift+V pastes the clipboard through xterm; Ctrl+Shift+F asks for the search; the rest passes", async () => {
