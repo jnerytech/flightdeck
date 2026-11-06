@@ -19,6 +19,7 @@ import {
 } from "node:fs";
 import { constants, getPriority, setPriority, tmpdir, userInfo } from "node:os";
 import { basename, join } from "node:path";
+import { offerToOomKiller } from "./lib/oom-guard.ts";
 import { type ProcessInfo, type ProcReader, parseStat, run, type SlotEnv } from "./lib/slot.ts";
 
 const LOCK = process.env.FLIGHTDECK_SLOT_LOCK || join(tmpdir(), "flightdeck-slot.lock");
@@ -150,6 +151,9 @@ const env: SlotEnv = {
         },
       }
     : {}),
+  protect: () => {
+    offerToOomKiller({ platform: process.platform, write: writeFileSync });
+  },
   spawn: (command, nice, asHolder) => {
     // What runs under the lock is told whose it is, so a slot call inside it runs at once.
     const child = Bun.spawn(command, {
