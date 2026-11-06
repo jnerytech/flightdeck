@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import { git, gitRepo, gitRepoWithOrigin } from "./board-helpers.ts";
@@ -123,5 +123,12 @@ describe("teleport-bundle: the code of a session as one git bundle (#100)", () =
       "teleport_too_large",
       "",
     ]);
+  });
+
+  test("a repository with no index yet still bundles its working tree", async () => {
+    const { repo, folder } = await working();
+    await rm(join(repo, ".git", "index"));
+    const code = await bundleCode({ cwd: repo, folder, id: "p", scan: () => [] });
+    expect([code.base, code.changed > 0]).toEqual(["origin/main", true]);
   });
 });
