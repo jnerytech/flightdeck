@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import type { RunConfig, RunConfigs } from "./config.ts";
 import { type CardPorts, interpolatePorts, type PortMap, portEnv } from "./ports.ts";
@@ -169,7 +170,7 @@ export class RunManager {
 
   /** Resolves when no card is being stopped: its trees are gone and its files and ports are free. */
   async idle(): Promise<void> {
-    while (this.stopping.size > 0) await Promise.allSettled([...this.stopping]);
+    while (this.stopping.size > 0) await Promise.allSettled([...this.stopping]); // NOSONAR: sequential by design: each pass needs the answer of the one before
   }
 
   state(cardId: string): RunState {
@@ -232,7 +233,7 @@ export class RunManager {
         if (entry.status !== "setup") return;
       }
       entry.status = "running";
-      for (const proc of config.run) {
+      await inSequence(config.run, async (proc) => {
         const extra = Object.fromEntries(
           Object.entries(proc.env).map(([key, value]) => [
             key,
@@ -241,7 +242,7 @@ export class RunManager {
         );
         const url = proc.ready ? interpolatePorts(proc.ready.http, entry.ports) : null;
         this.track(entry, proc.name, await spawn(proc.name, proc.cmd, extra), url);
-      }
+      });
       this.emit(entry);
     } catch (error) {
       await this.fail(entry, error as StartError);

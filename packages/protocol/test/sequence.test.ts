@@ -8,11 +8,20 @@ describe("sequence: inSequence", () => {
 
   test("the next step starts only after the one before has finished", async () => {
     const events: string[] = [];
-    await inSequence(["a", "b", "c"], async (name) => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const running = inSequence(["a", "b", "c"], async (name) => {
       events.push(`start ${name}`);
-      await Bun.sleep(name === "a" ? 30 : 1);
+      if (name === "a") await gate;
       events.push(`end ${name}`);
     });
+    // The first step is held at the gate: the others have not started.
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(events).toEqual(["start a"]);
+    release();
+    await running;
     expect(events).toEqual(["start a", "end a", "start b", "end b", "start c", "end c"]);
   });
 

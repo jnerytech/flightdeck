@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { readFile } from "node:fs/promises";
+import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { type Central, messageExternal } from "../central/central.ts";
@@ -153,7 +154,7 @@ export class ReviewComments {
     // A card done or a repository gone: the comments stay, as history, outdated.
     const resolved = await this.opts.changes.resolve(target).catch(() => null);
     const comments: ReviewComment[] = [];
-    for (const row of rows) {
+    await inSequence(rows, async (row) => {
       const lines = resolved ? await this.content(resolved, row.path, row.side) : null;
       const quote = linesOf(row.quote);
       const start = lines ? anchor(lines, quote, row.line_start) : null;
@@ -165,7 +166,7 @@ export class ReviewComments {
           .run(row.line_start, row.line_end, row.id);
       }
       comments.push(toComment(row, start === null));
-    }
+    });
     return comments;
   }
 

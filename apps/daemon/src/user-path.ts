@@ -8,7 +8,7 @@ export type PathEnv = Pick<ServiceContext, "platform" | "home" | "exec"> & {
   writeFile?(path: string, content: string): void | Promise<void>;
 };
 
-const KEY = "HKCU\\Environment";
+const KEY = String.raw`HKCU\Environment`;
 /** The registry types the user's Path can have; `REG_EXPAND_SZ` is what Windows itself writes. */
 const DEFAULT_TYPE = "REG_EXPAND_SZ";
 

@@ -9,7 +9,7 @@ import type {
   PersonaSubagents,
   PersonaSubagentsMode,
 } from "@flightdeck/protocol";
-import { byCodeUnit } from "@flightdeck/protocol";
+import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SecretScanner } from "../snippets/model.ts";
@@ -390,24 +390,27 @@ export class Personas {
     if (names === null) return null;
     const views: Persona[] = [];
     const errors: string[] = [];
-    for (const name of names.filter((entry) => entry.endsWith(".md")).sort(byCodeUnit)) {
-      const id = name.slice(0, -3);
-      const path = join(dir, name);
-      try {
-        if ((await stat(path)).size > MAX_FILE_BYTES)
-          throw badRequest("file too big", "persona_file_big");
-        const source = await readFile(path, "utf8");
-        const persona = normalizePersona(parsePersona(source, id), this.opts.scanner);
-        const hash = personaHash(source);
-        const trusted =
-          this.opts.db
-            .query("SELECT 1 FROM persona_trust WHERE project_path = ? AND id = ? AND hash = ?")
-            .get(this.trustFolder(project), id, hash) !== null;
-        views.push({ ...persona, scope: "project", hash, trusted, modified: false });
-      } catch (error) {
-        errors.push(`${name}: ${(error as Error).message}`);
-      }
-    }
+    await inSequence(
+      names.filter((entry) => entry.endsWith(".md")).sort(byCodeUnit),
+      async (name) => {
+        const id = name.slice(0, -3);
+        const path = join(dir, name);
+        try {
+          if ((await stat(path)).size > MAX_FILE_BYTES)
+            throw badRequest("file too big", "persona_file_big");
+          const source = await readFile(path, "utf8");
+          const persona = normalizePersona(parsePersona(source, id), this.opts.scanner);
+          const hash = personaHash(source);
+          const trusted =
+            this.opts.db
+              .query("SELECT 1 FROM persona_trust WHERE project_path = ? AND id = ? AND hash = ?")
+              .get(this.trustFolder(project), id, hash) !== null;
+          views.push({ ...persona, scope: "project", hash, trusted, modified: false });
+        } catch (error) {
+          errors.push(`${name}: ${(error as Error).message}`);
+        }
+      },
+    );
     return { info: { path: dir, errors }, views };
   }
 }

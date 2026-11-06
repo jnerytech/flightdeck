@@ -22,7 +22,7 @@ function requireAbsolute(command: string[]): void {
 
 /** systemd quoting: arguments with spaces or quotes go inside double quotes. */
 const systemdQuote = (arg: string) =>
-  /[\s"\\]/.test(arg) ? `"${arg.replace(/(["\\])/g, "\\$1")}"` : arg;
+  /[\s"\\]/.test(arg) ? `"${arg.replace(/(["\\])/g, String.raw`\$1`)}"` : arg;
 
 /** What the service passes after the daemon command: `start`, plus `--config` when given. */
 const startArgs = (config?: string | null) => ["start", ...(config ? ["--config", config] : [])];
@@ -52,7 +52,7 @@ export function systemdUnit(command: string[], config?: string | null): string {
 }
 
 /** Scheduled task path, inside its own `Flightdeck` folder. */
-export const TASK_NAME = "Flightdeck\\flightdeckd";
+export const TASK_NAME = String.raw`Flightdeck\flightdeckd`;
 
 const xmlEscape = (text: string) =>
   text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -71,7 +71,7 @@ export function windowsTaskXml(
 ): string {
   requireAbsolute(command);
   const user = xmlEscape(options.user);
-  const conhost = xmlEscape(`${options.systemRoot}\\System32\\conhost.exe`);
+  const conhost = xmlEscape(String.raw`${options.systemRoot}\System32\conhost.exe`);
   const line = windowsCommandLine([...command, ...startArgs(options.config)]);
   const args = xmlEscape(`--headless ${line}`);
   return `<?xml version="1.0" encoding="UTF-16"?>

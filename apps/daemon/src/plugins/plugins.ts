@@ -4,7 +4,7 @@
  * only); installing, updating and removing only happen on an explicit confirmation tied to the
  * hash of the content that was shown, and the CLI is never given `-y`.
  */
-import { appendFile, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, realpath } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -210,6 +210,9 @@ function shownCommandOf(value: unknown): ChangeResult["shownCommand"] | null {
   return { ...(command ? { command } : {}), ...(plugin ? { plugin } : {}), sha256 };
 }
 
+/** Where a plugin is installed: for the user, for the project, or local to this checkout. */
+type PluginScope = "user" | "project" | "local";
+
 export class Plugins {
   constructor(private readonly opts: PluginsOptions) {}
 
@@ -224,9 +227,8 @@ export class Plugins {
     const listed = await this.json(["list", "--json", "--available"]);
     const markets = await this.json(["marketplace", "list", "--json"]);
     const pins = await this.opts.pins.all();
-    const installedRaw = Array.isArray(listed)
-      ? listed
-      : list(isObject(listed) ? listed.installed : []);
+    const fromObject = list(isObject(listed) ? listed.installed : []);
+    const installedRaw = Array.isArray(listed) ? listed : fromObject;
     const availableRaw = isObject(listed) ? list(listed.available) : [];
     return {
       installed: await Promise.all(
@@ -342,7 +344,7 @@ export class Plugins {
   async install(input: {
     plugin?: string;
     dir?: string;
-    scope?: "user" | "project" | "local";
+    scope?: PluginScope;
     confirmHash: string;
     acceptCommand?: string;
   }): Promise<ChangeResult> {
@@ -412,7 +414,7 @@ export class Plugins {
 
   async uninstall(input: {
     plugin: string;
-    scope?: "user" | "project" | "local";
+    scope?: PluginScope;
     confirm: boolean;
   }): Promise<ChangeResult> {
     arg(input.plugin);
@@ -433,7 +435,7 @@ export class Plugins {
 
   async marketplaceAdd(input: {
     source: string;
-    scope?: "user" | "project" | "local";
+    scope?: PluginScope;
     confirm: boolean;
   }): Promise<ChangeResult> {
     arg(input.source);
