@@ -2119,6 +2119,17 @@ export const ptBR = {
     install: "Instalar e reiniciar",
     later: "Depois",
   },
+  hostAutoUpdate: {
+    label: "Atualizar este host automaticamente",
+    off: "Desligado: este host só atualiza quando você escolhe.",
+    current:
+      "Ligado: este host se atualiza sozinho quando sai uma versão nova, nunca durante uma sessão.",
+    waiting:
+      "A versão {version} está pronta e espera até não haver sessão nem execução neste host.",
+    started: "Atualizando este host para a {version}…",
+    failed:
+      "A atualização para a {version} não deu certo: {reason}. O host manteve a versão e tenta de novo na próxima verificação.",
+  },
   daemonUpdate: {
     failed: "A atualização do daemon não terminou: {reason}. No host, com o binário novo:",
     binary: "<binário novo>",

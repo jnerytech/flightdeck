@@ -1563,7 +1563,7 @@ credencial). Você pode acrescentar padrões na configuração do host (`risk.ex
 podem ser rebaixados.
 
 - Um pedido de **Risco alto** fica vermelho e **Aprovar** vira **Segurar para aprovar**: segure o botão por
-  2 segundos. A tecla A não o aprova; N continua negando. O host também confere a espera: recusa a
+  2 segundos. O motivo fica escrito sob o botão (não só numa dica). A tecla A não o aprova; N continua negando. O host também confere a espera: recusa a
   aprovação de um pedido de risco alto que não a traga ("Um pedido de risco alto só é aprovado
   segurando o botão."), então nenhum outro cliente consegue pulá-la.
 - A bandeja nunca aprova um pedido de risco alto: oferece **Negar** e **Abrir**.
@@ -2877,11 +2877,15 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
 
 - **O app:**
   - procura a versão nova ao abrir e a cada 6 h, no `latest.json` da última release;
-  - com uma versão nova, mostra a faixa "Flightdeck X disponível", com as notas, **Instalar e
-    reiniciar** e **Depois**;
-  - assinatura inválida ou download quebrado aparecem na faixa, e nada é instalado;
-  - em **Configurações**: **Procurar atualização agora** e **Avisar sobre atualizações** (ligado
-    por padrão).
+  - com **Atualizar automaticamente** ligado (o padrão), baixa a versão nova em segundo plano,
+    confere a assinatura e então mostra a faixa "O Flightdeck X está pronto. Reinicie para
+    atualizar." com **Reiniciar agora** e **Depois**. Nada reinicia sozinho (#280);
+  - com ele desligado, a faixa diz "Flightdeck X disponível", com as notas, **Instalar e
+    reiniciar** e **Depois**, como antes;
+  - assinatura inválida ou download quebrado aparecem na faixa, e nada é instalado; um download que
+    falhou é tentado de novo na próxima verificação;
+  - em **Configurações**: **Procurar atualização agora**, **Avisar sobre atualizações** e
+    **Atualizar automaticamente** (os dois ligados por padrão).
 - **O daemon:**
   - verifica o `daemon-latest.json` ao subir, quando pedido e a cada `updates.checkIntervalH`
     (6 h por padrão);
@@ -2895,12 +2899,18 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
   - o daemon baixa o binário do próprio sistema para `<dataDir>/updates/`, confere o sha256 e a
     assinatura, e roda o `flightdeckd update --from` fora do serviço, para sobreviver à própria
     parada: uma tarefa única `Flightdeck\update` no Windows e `systemd-run --user` no Linux;
-  - o host mostra "atualizando…" até reconectar na versão nova.
+  - o host mostra "atualizando…" até reconectar na versão nova;
+  - **sozinho** (`updates.auto`, ligado por padrão; #280): quando uma verificação acha versão mais
+    nova, o daemon a aplica só com o host ocioso, sem sessão nem execução em andamento, e senão
+    espera. Nunca aplica uma versão mais velha. Uma aplicação que falha mantém o binário antigo e é
+    tentada de novo na próxima verificação. A página do host tem **Atualizar este host
+    automaticamente** (a mesma configuração, guardada pelo daemon) e diz se a atualização está
+    desligada, em dia, esperando, começou ou falhou, e por quê.
 - **Ordem:** com o app e os daemons atrasados, a faixa sugere atualizar primeiro o app.
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 6 } }
+               "checkIntervalH": 6, "auto": true } }
 ```
 
 Só o `flightdeckd` compilado verifica o GitHub por padrão. Rodando do código-fonte não há binário
