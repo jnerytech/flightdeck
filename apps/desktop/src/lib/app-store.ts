@@ -3094,6 +3094,21 @@ export class AppStore {
     );
   }
 
+  /** Asks every online host for its plan quota again (the status bar's refresh); a host that does not answer keeps what it had. */
+  async refreshQuota(): Promise<void> {
+    const online = this.state.hosts.filter((h) => h.status === "online");
+    await Promise.all(
+      online.map((h) =>
+        this.hostCommand(h.id, "quota.get", {}).then(
+          (state) => {
+            if (state) this.onQuota(h.id, state);
+          },
+          () => {},
+        ),
+      ),
+    );
+  }
+
   /** A discarded card leaves; any other replaces what the app had. */
   /** Crossing `pauseAt` notifies once per host, window and reset. */
   private onQuota(hostId: string, state: QuotaState): void {

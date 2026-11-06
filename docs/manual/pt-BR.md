@@ -2314,14 +2314,35 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   dias (hosts com a mesma conta compartilham um cartão, com o nome de todos), com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
   - A barra fica vermelha a partir de `quota.pauseAt`.
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
-- **Na barra superior:** um medidor pequeno mostra a janela mais usada entre os hosts online, com a
-  porcentagem (o nome da janela aparece a partir de 960 px de largura). A partir de 80% ele ganha
-  uma marca de alerta na cor de "precisa de você", e em 100% (ou a partir do
-  `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome e a dica
-  dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem leitura, ele
-  não aparece.
+- **Na barra de status** (a linha fina na base da janela, abaixo): um medidor pequeno mostra a
+  janela mais usada entre os hosts online, com a porcentagem e o tempo que falta para reiniciar (o
+  nome da janela aparece a partir de 960 px de largura), e um botão **Atualizar o consumo do plano**
+  que pergunta aos hosts de novo. A partir de 80% ele ganha uma marca de alerta na cor de "precisa de
+  você", e em 100% (ou a partir do `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome
+  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem
+  leitura, nem o medidor nem o botão aparecem.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
+
+### A barra de status
+
+Uma barra fina (24 px) corre pela base da janela. À esquerda, a cota do plano (acima) com a hora de
+reinício e um botão de atualizar. À direita, cada item abre a sua página:
+
+- **Atualização:** só quando há o que dizer: uma atualização do app disponível, uma já baixada que
+  pede reinício, ou uma verificação que falhou. Abre as Configurações.
+- **Manter acordado:** o que os hosts que oferecem isso dizem juntos: **Acordado** (segurando o
+  computador acordado agora), **Manter acordado** (ligado, segurando só enquanto há sessões) ou
+  **Pode dormir** (desligado). Abre a página desse host, onde está a chave. Um host que não oferece
+  isso não conta.
+- **Terminais:** quantas abas de terminal estão abertas, nas duas áreas. Traz a primeira para a
+  frente; sem nenhuma aberta, abre o host onde dá para abrir uma.
+- **Hosts:** quantos estão online do total ("2/3"). Abre o primeiro host que não está online, para um
+  problema ficar a um clique; com todos online, o host em vista.
+
+Cada item é um botão com as palavras como nome e uma dica, nunca só a cor, e as duas contagens são
+regiões vivas, então o leitor de tela ouve quando mudam.
+Em uma janela com menos de 600 px de altura a barra fica escondida, para deixar a altura para a conversa.
 
 ### Fila por cota
 
@@ -3085,8 +3106,11 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
 - **O app:**
   - procura a versão nova ao abrir e a cada 6 h, no `latest.json` da última release;
   - com **Atualizar automaticamente** ligado (o padrão), baixa a versão nova em segundo plano,
-    confere a assinatura e então mostra a faixa "O Flightdeck X está pronto. Reinicie para
-    atualizar." com **Reiniciar agora** e **Depois**. Nada reinicia sozinho (#280). Sair pela
+    confere a assinatura e então mostra um cartão no canto inferior direito: **Atualização
+    disponível**, "O Flightdeck vX está pronto.", "Suas sessões não serão interrompidas." (elas rodam
+    nos daemons dos hosts), **Notas da versão** (a página da versão no GitHub), um botão
+    **Atualizar** e um botão de fechar (×) que o guarda até a próxima verificação (#490). Nada
+    reinicia sozinho (#280). Sair pela
     bandeja com uma versão baixada a instala na saída, sem abrir o app de novo (#402);
   - com ele desligado, a faixa diz "Flightdeck X disponível", com as notas, **Instalar e
     reiniciar** e **Depois**, como antes;

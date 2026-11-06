@@ -377,13 +377,12 @@ function openedSession(route: Route, state: AppState): { id?: string; claude?: s
  * the new-session form shows on the right; the others use the whole width.
  */
 export function Screen(props: ScreenProps) {
-  const { store, state, go } = props;
+  const { state } = props;
   // The click of a measured action ends when its screen is painted.
   useEffect(() => {
     const action = actionOfRoute(props.route);
     if (action) endMeasure(action);
   }, [props.route]);
-  const { t } = store.i18n;
   // A host removed while its screen was open: back to the hub.
   const waiting = hostToWait(props.route);
   const removed =
@@ -397,67 +396,112 @@ export function Screen(props: ScreenProps) {
     return detail;
   }
 
-  const fromHistory =
-    route.name === "history" || (route.name === "reader" && route.list === "history");
-  if (fromHistory) {
-    const hostId =
-      route.name === "history"
-        ? route.host
-        : (route as { target: { hostId: string } }).target.hostId;
-    // A host that is not online yet shows its own loading screen, without the list.
-    if (hostToWait(route) && state.hosts.find((h) => h.id === hostId)?.status !== "online") {
-      return detail;
-    }
-    const opened = route.name === "reader" ? route.target.claudeSessionId : null;
-    return (
-      <SplitView
-        list={
-          <HistoryList
-            key={hostId}
-            store={store}
-            hostId={hostId}
-            initial={
-              route.name === "history" &&
-              (route.cwd || route.projectKey || route.day || route.from || route.to)
-                ? {
-                    cwd: route.cwd,
-                    projectKey: route.projectKey,
-                    day: route.day,
-                    from: route.from,
-                    to: route.to,
-                  }
-                : undefined
-            }
-            hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
-            density={props.density}
-            openId={opened}
-            onOpen={(claudeSessionId) =>
-              go({ name: "reader", target: { hostId, claudeSessionId }, list: "history" })
-            }
-          />
-        }
-        detail={route.name === "reader" ? detail : null}
-        empty={
-          <div className="flex h-full items-center justify-center p-6">
-            <EmptyState icon={BookOpen} title={t("history.pick")} />
-          </div>
-        }
-        onClose={() => go({ name: "history", host: hostId })}
-        labels={{ resize: t("hub.resize"), back: t("hub.back") }}
-        initialWidth={store.listWidth()}
-        onResize={(width) => store.setListWidth(width)}
-      />
-    );
-  }
+  if (isHistoryRoute(route)) return historySplit(props, route, detail);
+  return sessionsSplit(props, route, detail);
+}
 
-  const inSessions =
-    route.name === "hub" ||
-    route.name === "home" ||
-    route.name === "session" ||
-    route.name === "external" ||
-    route.name === "new-session" ||
-    route.name === "reader";
-  if (!inSessions) return detail;
+type HistoryRoute = Extract<Route, { name: "history" | "reader" }>;
+
+/** Histórico, or a transcript opened from it: the list stays on the left. */
+function isHistoryRoute(route: Route): route is HistoryRoute {
+  return route.name === "history" || (route.name === "reader" && route.list === "history");
+}
+
+/** The filters a history route carries; undefined when it carries none. */
+function historyFilters(route: Extract<Route, { name: "history" }>) {
+  const { cwd, projectKey, day, from, to } = route;
+  return cwd || projectKey || day || from || to ? { cwd, projectKey, day, from, to } : undefined;
+}
+
+/** Histórico: the list of past sessions on the left, the transcript (when one is open) on the right. */
+function historySplit(props: ScreenProps, route: HistoryRoute, detail: ReactNode): ReactNode {
+  const { store, state, go } = props;
+  const { t } = store.i18n;
+  const hostId = route.name === "history" ? route.host : route.target.hostId;
+  // A host that is not online yet shows its own loading screen, without the list.
+  if (hostToWait(route) && state.hosts.find((h) => h.id === hostId)?.status !== "online") {
+    return detail;
+  }
+  return (
+    <SplitView
+      list={
+        <HistoryList
+          key={hostId}
+          store={store}
+          hostId={hostId}
+          initial={route.name === "history" ? historyFilters(route) : undefined}
+          hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
+          density={props.density}
+          openId={route.name === "reader" ? route.target.claudeSessionId : null}
+          onOpen={(claudeSessionId) =>
+            go({ name: "reader", target: { hostId, claudeSessionId }, list: "history" })
+          }
+        />
+      }
+      detail={route.name === "reader" ? detail : null}
+      empty={
+        <div className="flex h-full items-center justify-center p-6">
+          <EmptyState icon={BookOpen} title={t("history.pick")} />
+        </div>
+      }
+      onClose={() => go({ name: "history", host: hostId })}
+      labels={{ resize: t("hub.resize"), back: t("hub.back") }}
+      initialWidth={store.listWidth()}
+      onResize={(width) => store.setListWidth(width)}
+    />
+  );
+}
+
+/** The routes of Sessões: the list on the left, the open session or the new-session form on the right. */
+const SESSIONS_ROUTES: ReadonlySet<Route["name"]> = new Set([
+  "hub",
+  "home",
+  "session",
+  "external",
+  "new-session",
+  "reader",
+]);
+
+/** Whether the row is the session open on the right (by its daemon id or its Claude id). */
+function rowIsOpen(row: HubRow, opened: { id?: string; claude?: string }): boolean {
+  return (
+    (opened.id !== undefined && row.sessionId === opened.id) ||
+    (opened.claude !== undefined && row.claudeSessionId === opened.claude)
+  );
+}
+
+/** What the right side shows when no session is open: a hint, the new-session button and the quota. */
+function sessionsEmpty(props: ScreenProps): ReactNode {
+  const { store, state, go } = props;
+  const firstHost = newSessionHost(state.hosts, state.selected);
+  return (
+    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+      <EmptyState
+        icon={MessagesSquare}
+        title={store.i18n.t("hub.pick")}
+        action={
+          firstHost && (
+            <Button
+              onClick={() => {
+                store.select(firstHost.id, null);
+                go({ name: "new-session", host: firstHost.id });
+              }}
+            >
+              {store.i18n.t("sidebar.newSession")}
+            </Button>
+          )
+        }
+      />
+      <QuotaPanel store={store} />
+    </div>
+  );
+}
+
+/** Sessões: the list of sessions on the left, the open one on the right; other routes use the whole width. */
+function sessionsSplit(props: ScreenProps, route: Route, detail: ReactNode): ReactNode {
+  const { store, state, go } = props;
+  const { t } = store.i18n;
+  if (!SESSIONS_ROUTES.has(route.name)) return detail;
   // Waiting for a host (a reader or the like) keeps the loading screen as it is.
   if (
     route.name === "reader" &&
@@ -466,7 +510,6 @@ export function Screen(props: ScreenProps) {
     return detail;
   }
   const opened = openedSession(route, state);
-  const firstHost = newSessionHost(state.hosts, state.selected);
   return (
     <SplitView
       list={
@@ -477,34 +520,11 @@ export function Screen(props: ScreenProps) {
           project={route.name === "hub" ? route.project : undefined}
           host={route.name === "hub" ? route.host : undefined}
           onOpen={(row) => go(rowRoute(row))}
-          isOpen={(row) =>
-            (opened.id !== undefined && row.sessionId === opened.id) ||
-            (opened.claude !== undefined && row.claudeSessionId === opened.claude)
-          }
+          isOpen={(row) => rowIsOpen(row, opened)}
         />
       }
       detail={detail}
-      empty={
-        <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-          <EmptyState
-            icon={MessagesSquare}
-            title={t("hub.pick")}
-            action={
-              firstHost && (
-                <Button
-                  onClick={() => {
-                    store.select(firstHost.id, null);
-                    go({ name: "new-session", host: firstHost.id });
-                  }}
-                >
-                  {t("sidebar.newSession")}
-                </Button>
-              )
-            }
-          />
-          <QuotaPanel store={store} />
-        </div>
-      }
+      empty={sessionsEmpty(props)}
       onClose={() => go({ name: "hub" })}
       labels={{ resize: t("hub.resize"), back: t("hub.back") }}
       initialWidth={store.listWidth()}

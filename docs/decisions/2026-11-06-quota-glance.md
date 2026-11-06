@@ -1,4 +1,4 @@
-# Plan quota at a glance in the top bar (issue #118)
+# Plan quota at a glance (issue #118, moved to the status bar by #491)
 
 Issue #118 asked for a quota view of its own. With the account cards already on the Sessions
 screen, fd-coordinator re-scoped it to a glance: one control in the top bar, before the search.
