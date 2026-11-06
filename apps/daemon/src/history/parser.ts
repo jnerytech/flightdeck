@@ -17,6 +17,19 @@ export interface HistoryRecord {
   cwd: string | null;
   /** How Claude Code was started (`cli`, `sdk-cli` for `claude -p`…); old transcripts have none. */
   entrypoint?: string;
+  /** Set on a `custom-title` or `agent-name` line. */
+  title?: TranscriptTitle;
+}
+
+/** The name Claude Code gave the session: from `--name` and `/rename`, or from an agent. */
+export interface TranscriptTitle {
+  kind: "custom" | "agent";
+  name: string;
+}
+
+/** Stub for the red test of issue #605. */
+export function lastTitle(_records: readonly HistoryRecord[]): TranscriptTitle | null {
+  return null;
 }
 
 export interface ParseResult {

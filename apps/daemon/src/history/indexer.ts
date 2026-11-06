@@ -18,6 +18,8 @@ export interface HistoryIndexerOptions {
   /** Whether SQLite has FTS5; detected when absent (injectable so tests cover both paths). */
   fts5?: boolean;
   log?: (message: string) => void;
+  /** The name Claude Code wrote into a transcript, once per pass that read one (issue #605). */
+  onTitle?: (claudeSessionId: string, title: string, kind: "custom" | "agent") => void;
   /** Fallback full pass while running (file watching is the fast path). Default 10 s. */
   scanIntervalMs?: number;
   /** Clock for `maybeActive`. */
