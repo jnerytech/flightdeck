@@ -85,8 +85,8 @@ export class AppLog {
   }
 
   /** Resolves once every line logged so far has been handed to the sink and settled. */
-  async flush(): Promise<void> {
-    while (this.writing) await this.writing;
+  flush(): Promise<void> {
+    return this.writing ? this.writing.then(() => this.flush()) : Promise.resolve();
   }
 
   /** The last `lines` lines, newest last. */
@@ -141,13 +141,8 @@ export class AppLog {
     }
     this.queue = [];
     this.overflow = 0;
-    let sent: Promise<void>;
-    try {
-      sent = Promise.resolve(sink.write(batch));
-    } catch {
-      // A sink that throws at once is as good as one that fails later.
-      sent = Promise.resolve();
-    }
+    // A sink that throws at once rejects here, as good as one that fails later.
+    const sent = new Promise<void>((resolve) => resolve(sink.write(batch)));
     this.writing = sent.catch(() => {}).then(() => this.drain());
   }
 }
