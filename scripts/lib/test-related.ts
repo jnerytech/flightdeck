@@ -276,7 +276,8 @@ function escapeRegExp(text: string): string {
 /** Why a `--keep-coverage` value cannot be the kept coverage folder, or null (#309). */
 export function keepCoverageProblem(root: string, value: string | undefined): string | null {
   const refuse = `--keep-coverage needs a folder inside the repository, got ${value ?? "nothing"}`;
-  if (value === undefined || value.startsWith("-")) return refuse;
+  // A flag, a Windows drive path (D:/x, C:x) or a leading slash is never a folder of the repository.
+  if (value === undefined || /^(?:-|[A-Za-z]:|[\\/])/.test(value)) return refuse;
   const inside = posix.relative(root, posix.resolve(root, value));
   if (inside === "" || inside === ".." || inside.startsWith("../") || posix.isAbsolute(inside)) {
     return refuse;
