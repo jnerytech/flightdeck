@@ -54,6 +54,9 @@ function FileDiff(
   const { file, selection, onPick } = props;
   const path = file.path;
   const rows = diffRows(file);
+  if (file.secret) {
+    return <p className="text-muted-foreground text-xs">{t("changes.secretNote")}</p>;
+  }
   if (file.binary) {
     return <p className="text-muted-foreground text-xs">{t("changes.binaryNote")}</p>;
   }

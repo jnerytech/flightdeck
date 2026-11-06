@@ -186,7 +186,7 @@ function NavGroup(
     /** Something at the end of the title (the + of Machines). */
     action?: ReactNode;
     /** What the folded group still has to say (a host needs attention): a mark after its name. */
-    attention?: string | undefined;
+    attention?: string;
     children: ReactNode;
   }>,
 ) {

@@ -1132,6 +1132,11 @@ conversation. It is where you check what the agent did and send it back what to 
     passes 4 MB of diff in total: the files after that are only listed. On a host of this machine,
     **Show in folder** opens the file manager on the file (the editor stays beside it, and refuses
     what is over 1 MB);
+  - a file that may hold a credential (`.env*`, `id_*`, `*.pem`, `*.key`, `.npmrc`, what is in
+    `.ssh` or `.aws`, and the rest of the list the permission rules use) is listed with the
+    **Hidden** mark and no content or counts. The host never reads a new one, and the editor
+    refuses to open or save it, even through a link with another name. A link that leads out of
+    the repository is refused too;
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
 - **Inline comments:**

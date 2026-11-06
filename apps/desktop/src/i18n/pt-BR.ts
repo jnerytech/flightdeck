@@ -1580,6 +1580,8 @@ export const ptBR = {
     review_undo_nothing:
       "Não há nada para desfazer em {path}: o revert só pode ser desfeito por 30 segundos.",
     review_path_link: "O caminho {path} aponta para fora do repositório.",
+    review_file_secret:
+      "O arquivo {path} pode guardar uma credencial: o Flightdeck não o mostra nem o altera.",
     review_comment_empty: "O comentário está vazio: escreva algo.",
     review_side_missing: "O arquivo {path} não existe desse lado do diff.",
     review_lines_outside: "As linhas {start}–{end} estão fora de {path}.",
@@ -2124,6 +2126,9 @@ export const ptBR = {
     },
     binary: "Binário",
     binaryNote: "Arquivo binário: sem diff.",
+    secret: "Oculto",
+    secretNote:
+      "Oculto: este arquivo pode guardar uma credencial, então o Flightdeck não mostra o conteúdo.",
     tooLarge: "Grande demais",
     tooLargeNote: "Grande demais para mostrar aqui ({size}). Abra no editor ou mostre na pasta.",
     tooLargeNoteNoSize: "Grande demais para mostrar aqui. Abra no editor ou mostre na pasta.",

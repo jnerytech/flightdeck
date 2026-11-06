@@ -32,7 +32,7 @@ export function ModeChip(
     rows: ModeRow[];
     onPick(mode: SettableMode): void;
     /** Opens the host's page, where the bypass switch is. */
-    onOpenHostSettings?: (() => void) | undefined;
+    onOpenHostSettings?: () => void;
   }>,
 ) {
   const { t, mode, rows } = props;

@@ -76,9 +76,9 @@ export function SessionsHub(
     isOpen(row: HubRow): boolean;
     density: Density;
     /** Only this project's sessions, with a chip that clears it (from the project page). */
-    project?: { hostId: string; projectKey: string; name: string } | undefined;
+    project?: { hostId: string; projectKey: string; name: string };
     /** Only this host's sessions (its name), set by the route: it applies the host filter once. */
-    host?: string | undefined;
+    host?: string;
   }>,
 ) {
   const { store, state } = props;
