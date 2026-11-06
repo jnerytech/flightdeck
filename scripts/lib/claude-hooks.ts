@@ -391,6 +391,23 @@ export function slotViolation(
   return null;
 }
 
+/**
+ * Why a worker session's full coverage run is refused (#674): a plain, `--base` or `--pr`
+ * `test:related`, or a `coverage:funcs` over more than 20 given test files, holds the shared slot
+ * for 12 to 25 minutes for what the PR's CI does anyway. Stub.
+ */
+export function heavyRunViolation(
+  _command: string,
+  _env: Record<string, string | undefined>,
+): string | null {
+  return null;
+}
+
+/** Whether a refused heavy run goes ahead on an override that gives its reason (#674). Stub. */
+export function heavyRunWaived(_command: string): boolean {
+  return false;
+}
+
 /** The package scripts that run only through the slot (CLAUDE.md). */
 const HEAVY =
   /^(test|coverage|fast-coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;

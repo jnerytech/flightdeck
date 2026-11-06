@@ -229,6 +229,30 @@ describe("planCoverageFuncs", () => {
   const readFile = (path: string) => tracked[path as keyof typeof tracked] as string;
   const deps = { platform: "linux" as const, git, readFile, out: "/tmp/cov.json" };
 
+  test("#674: a worker's plan over more than 20 test files is refused; the coordinator or a reason runs it", () => {
+    const many: Record<string, string> = { "apps/desktop/src/x.ts": "export const x = 1;" };
+    for (let i = 0; i < 21; i++)
+      many[`apps/desktop/test/x${i}.test.ts`] = 'import { x } from "../src/x.ts";';
+    const wide = {
+      ...deps,
+      git: (args: string[]) =>
+        args[0] === "ls-files" ? `${Object.keys(many).join("\n")}\n` : null,
+      readFile: (path: string) => many[path] as string,
+      files: ["apps/desktop/src/x.ts"],
+    };
+    const refused = planCoverageFuncs({ ...wide, env: {} });
+    expect(refused.code).toBe(2);
+    expect(refused.command).toBeNull();
+    expect(refused.output).toContain("21 test files");
+    expect(refused.output).toContain("--tests <a few tests>");
+    expect(
+      planCoverageFuncs({ ...wide, env: { FLIGHTDECK_COORDINATOR: "1" } }).command !== null,
+    ).toBe(true);
+    const reason = { FLIGHTDECK_SLOT_HEAVY: "every desktop test reaches the store" };
+    expect(planCoverageFuncs({ ...wide, env: reason }).command !== null).toBe(true);
+    expect(planCoverageFuncs({ ...wide, env: { FLIGHTDECK_SLOT_HEAVY: "1" } }).code).toBe(2);
+  });
+
   test("without files it prints the usage and fails", () => {
     const plan = planCoverageFuncs({ ...deps, files: [] });
     expect(plan.code).toBe(2);
