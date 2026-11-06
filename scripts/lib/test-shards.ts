@@ -17,6 +17,8 @@ export interface ShardDeps {
   /** Runs `bun <args>` with the terminal; its exit code. */
   bun(args: string[]): Promise<number>;
   log(line: string): void;
+  /** The tier of each of these test files (lib/test-tiers.ts); a file no tier claims is absent. */
+  tiers(files: string[]): Record<string, string>;
 }
 
 /** Names in code-unit order, whatever the locale: the same split on every runner (and what a bare sort() does, said out loud). */

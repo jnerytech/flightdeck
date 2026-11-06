@@ -31,6 +31,7 @@ process.exit(
         return await run.exited;
       },
       log: (line) => console.log(line),
+      tiers: () => ({}),
     },
   ),
 );

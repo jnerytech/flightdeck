@@ -195,11 +195,13 @@ function fake(
     junit?: Record<string, string>;
     code?: number;
     git?: null;
+    tiers?: Record<string, string>;
   } = {},
 ) {
   const logs: string[] = [];
   const runs: string[][] = [];
   let written: Timings | undefined;
+  let tierReads = 0;
   const deps: ShardDeps = {
     git: () =>
       opts.git === null
@@ -215,11 +217,60 @@ function fake(
       return opts.code ?? 0;
     },
     log: (line) => logs.push(line),
+    tiers: (files) => {
+      tierReads++;
+      return Object.fromEntries(
+        files.flatMap((file) => (opts.tiers?.[file] ? [[file, opts.tiers[file]]] : [])),
+      );
+    },
   };
-  return { deps, logs, runs, written: () => written };
+  return { deps, logs, runs, written: () => written, tierReads: () => tierReads };
 }
 
 describe("shards: plan and run", () => {
+  test("--tier keeps only the tests of those tiers, and a test no tier claims, before the split (#309)", async () => {
+    const tracked = ["a.test.ts", "b.test.ts", "c.test.ts", "d.test.ts"];
+    const tiers = { "a.test.ts": "integration", "b.test.ts": "unit", "c.test.ts": "component" };
+    const timings = { "a.test.ts": 9, "b.test.ts": 5, "c.test.ts": 4, "d.test.ts": 3 };
+    const one = fake({ tracked, tiers, timings });
+    expect(await shards(["plan", "1/2", "--tier", "unit,component"], one.deps)).toBe(0);
+    const two = fake({ tracked, tiers, timings });
+    expect(await shards(["plan", "2/2", "--tier", "unit,component"], two.deps)).toBe(0);
+    // The integration test is gone, and the three left are balanced between the two shards.
+    expect(one.logs).toEqual(["b.test.ts"]);
+    expect(two.logs).toEqual(["c.test.ts", "d.test.ts"]);
+  });
+
+  test("run with --tier says which tiers it holds and runs only their files (#309)", async () => {
+    const f = fake({
+      tiers: { "a.test.ts": "integration", "b.test.ts": "unit", "c.test.ts": "unit" },
+    });
+    expect(await shards(["run", "1/1", "--tier", "unit", "--junit", "r.xml"], f.deps)).toBe(0);
+    expect(f.logs[0]).toContain("shard 1/1 (unit): 2 files");
+    expect(f.runs[0]?.slice(-3)).toEqual([
+      "--reporter-outfile=r.xml",
+      "./b.test.ts",
+      "./c.test.ts",
+    ]);
+  });
+
+  test("without --tier the tiers are never read (#309)", async () => {
+    const f = fake();
+    expect(await shards(["run", "1/2"], f.deps)).toBe(0);
+    expect(f.tierReads()).toBe(0);
+  });
+
+  test("--tier with no list or an unknown tier is the usage, exit 2, and nothing runs (#309)", async () => {
+    for (const argv of [
+      ["run", "1/2", "--tier"],
+      ["run", "1/2", "--tier", "unit,smoke"],
+    ]) {
+      const f = fake();
+      expect(await shards(argv, f.deps)).toBe(2);
+      expect(f.runs).toEqual([]);
+    }
+  });
+
   test("plan prints the files of one shard, one per line", async () => {
     const f = fake();
     expect(await shards(["plan", "1/2"], f.deps)).toBe(0);
