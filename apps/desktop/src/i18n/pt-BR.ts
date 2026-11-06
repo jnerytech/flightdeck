@@ -748,6 +748,8 @@ export const ptBR = {
     host: "Host: {host}",
     noHost: "Nenhum host ainda",
     hostItem: "{host}, {state}",
+    hostItemVersion: "{host}, {state}, flightdeckd {version}",
+    hostItemDiffers: "{host}, {state}, flightdeckd {version}, diferente do app {app}",
     search: "Buscar ou ir para…",
     searchLabel: "Buscar ou ir para… (Ctrl+K)",
     toDark: "Mudar para o tema escuro",

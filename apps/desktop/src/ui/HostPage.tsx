@@ -8,6 +8,7 @@ import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostDoctor } from "@/components/hosts/host-doctor";
 import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
+import { HostVersionLine } from "@/components/hosts/host-version";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -91,7 +92,14 @@ export function HostPage(
   return (
     <Page
       title={host.name}
-      subtitle={host.url}
+      subtitle={
+        <HostVersionLine
+          url={host.url}
+          daemon={info?.daemonVersion ?? null}
+          app={APP_VERSION}
+          t={t}
+        />
+      }
       actions={
         <Button variant="outline" onClick={() => setRenaming(true)}>
           {t("hostPage.rename")}
