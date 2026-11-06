@@ -32,6 +32,8 @@ export interface LedgerEntry {
   pid: number;
   startTicks: number;
   cmdline: string;
+  /** The boot it was written in: after a reboot the start ticks begin again at zero. */
+  bootId: string;
 }
 
 export interface LedgerOptions {
@@ -62,10 +64,23 @@ export function parseStat(text: string): { pgrp: number; startTicks: number } | 
   return Number.isInteger(pgrp) && Number.isInteger(startTicks) ? { pgrp, startTicks } : null;
 }
 
+/**
+ * Only what `add` writes: a group id above 1 (0 is the caller's own group, 1 or below reaches
+ * every process in `kill(-pid)`), a start that is a tick count, and the boot. The file is the
+ * user's to edit, so anything else is dropped unread.
+ */
 const isEntry = (value: unknown): value is LedgerEntry => {
   if (typeof value !== "object" || value === null) return false;
   const e = value as Record<string, unknown>;
-  return Number.isInteger(e.pid) && Number.isFinite(e.startTicks) && typeof e.cmdline === "string";
+  return (
+    Number.isSafeInteger(e.pid) &&
+    (e.pid as number) > 1 &&
+    Number.isSafeInteger(e.startTicks) &&
+    (e.startTicks as number) >= 0 &&
+    typeof e.cmdline === "string" &&
+    typeof e.bootId === "string" &&
+    e.bootId !== ""
+  );
 };
 
 /** Linux guarantees that a pid is not reused while a process group of that id has members. */
@@ -95,9 +110,10 @@ export class ProcessLedger {
   /** Writes down a process group the daemon just started, led by `pid`. */
   add(pid: number): void {
     const identity = this.opts.proc.identity(pid);
-    if (!identity) return;
+    const bootId = this.opts.proc.bootId();
+    if (!identity || !bootId) return;
     const entries = this.read().filter((e) => e.pid !== pid);
-    entries.push({ pid, startTicks: identity.startTicks, cmdline: identity.cmdline });
+    entries.push({ pid, startTicks: identity.startTicks, cmdline: identity.cmdline, bootId });
     this.write(entries);
   }
 
@@ -128,6 +144,9 @@ export class ProcessLedger {
   /** Kills the group of an entry when it is still its own; whether it did. */
   private settle(entry: LedgerEntry): boolean {
     const { proc } = this.opts;
+    if (entry.bootId !== proc.bootId()) return false;
+    // Never the daemon itself or the group it runs in, whatever the file says.
+    if (entry.pid === process.pid || entry.pid === proc.identity(process.pid)?.pgrp) return false;
     const leader = proc.identity(entry.pid);
     let alive: boolean;
     if (leader) {
@@ -153,7 +172,7 @@ export class ProcessLedger {
 
 /** /proc on Linux; on any other system nothing is known, so nothing is recorded or reaped. */
 export function procSource(platform: NodeJS.Platform = process.platform): ProcSource {
-  if (platform !== "linux") return { identity: () => null, members: () => [], bootId: () => "" };
+  if (platform !== "linux") return { identity: () => null, members: () => [], bootId: () => null };
   const stat = (pid: number) => {
     try {
       return parseStat(readFileSync(`/proc/${pid}/stat`, "utf8"));
@@ -162,7 +181,13 @@ export function procSource(platform: NodeJS.Platform = process.platform): ProcSo
     }
   };
   return {
-    bootId: () => "",
+    bootId() {
+      try {
+        return readFileSync("/proc/sys/kernel/random/boot_id", "utf8").trim() || null;
+      } catch {
+        return null;
+      }
+    },
     identity(pid) {
       const parsed = stat(pid);
       if (!parsed) return null;
