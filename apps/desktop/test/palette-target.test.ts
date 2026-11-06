@@ -43,9 +43,17 @@ const run = (store: Store, target: Target, ui: ReturnType<ReturnType<typeof reco
 describe("palette-target: what a palette entry does in place", () => {
   test("a terminal opens Claude here when the host has an embedded terminal, else the machine's", () => {
     const here = recorder({ embedded: true });
-    run(here.store, { kind: "terminal", hostId: "h", target: { kind: "claude" } as never }, here.ui());
+    run(
+      here.store,
+      { kind: "terminal", hostId: "h", target: { kind: "claude" } as never },
+      here.ui(),
+    );
     const away = recorder({ embedded: false });
-    run(away.store, { kind: "terminal", hostId: "h", target: { kind: "claude" } as never }, away.ui());
+    run(
+      away.store,
+      { kind: "terminal", hostId: "h", target: { kind: "claude" } as never },
+      away.ui(),
+    );
     expect(here.calls).toEqual(["claude-here h"]);
     expect(away.calls).toEqual(["terminal h"]);
   });
