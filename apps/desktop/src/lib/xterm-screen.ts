@@ -4,6 +4,7 @@ import {
   type FindFlags,
   findPatternProblem,
   NEWLINE_SEQUENCE,
+  pasteNeedsConfirm,
   type TerminalColors,
   type TerminalZoom,
   terminalKeyAction,
@@ -21,6 +22,8 @@ export interface XtermTerminal {
     screenReaderMode?: boolean;
   };
   unicode: { activeVersion: string };
+  /** What the program turned on; a bracketed paste reaches it marked, so its lines do not run. */
+  modes: { bracketedPasteMode: boolean };
   loadAddon(addon: unknown): void;
   open(parent: HTMLElement): void;
   write(data: Uint8Array, callback?: () => void): void;
@@ -79,6 +82,8 @@ export interface XtermScreenOptions {
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;
+  /** A paste of several lines that would run as it lands: true to paste it anyway (#476). */
+  confirmPaste?(text: string): Promise<boolean>;
   /** Ctrl+=, Ctrl+-, Ctrl+0 or Ctrl+wheel asked for a zoom step (#476). */
   onZoom?(step: TerminalZoom): void;
   /** The matches of the find bar changed (typing, next, previous). */
@@ -147,7 +152,11 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
   };
   const paste = () => {
     options.clipboard.read().then(
-      (text) => terminal.paste(text),
+      async (text) => {
+        const ask = pasteNeedsConfirm(text, terminal.modes.bracketedPasteMode);
+        if (ask && options.confirmPaste && !(await options.confirmPaste(text))) return;
+        terminal.paste(text);
+      },
       () => {},
     );
   };

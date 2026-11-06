@@ -78,7 +78,10 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     time. `unstable-skip-ratchet.test.ts` checks every such skip has the note, with an issue number
     and a reason, and that there are at most 10 in the repository. CI's quick job
     (`scripts/unstable-issues.ts`, with gh) fails when a noted issue is closed or cannot be read, so
-    the skip comes out in the PR that fixes it.
+    the skip comes out in the PR that fixes it. On a pull request it also fails, naming the skip's
+    `file:line`, when the PR closes a noted issue (`Closes`/`Fixes`/`Resolves #N` in its body or
+    its commits' messages, #552): merged, it would close the issue with the skip still in, and
+    every later PR would go red.
 
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
 testes desligados. With `--spec docs/SPEC-fase-N.md` it also fails on an area of the spec's table
