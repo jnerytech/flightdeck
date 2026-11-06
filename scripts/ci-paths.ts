@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `bun run scripts/ci-paths.ts` (the CI's `changes` job, issue #264): which jobs this run needs,
+ * `bun run scripts/ci-paths.ts` (the first step of the CI's quick job, #264, #444): which jobs this run needs,
  * written to $GITHUB_OUTPUT. On a pull request it diffs against the merge-base with the target
  * branch; anything else, or a diff it cannot read, runs everything. The rules are in lib/ci-paths.ts.
  */
