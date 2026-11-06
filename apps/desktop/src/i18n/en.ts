@@ -3895,7 +3895,8 @@ export const en: Dictionary = {
   boardLanding: {
     noCards: "No cards yet",
     sessionsNeedYou: { one: "{n} session needs you", other: "{n} sessions need you" },
-    whatIs: "A board holds a project's cards, from the backlog to done, and the sessions that work on them.",
+    whatIs:
+      "A board holds a project's cards, from the backlog to done, and the sessions that work on them.",
     filter: "Filter projects",
     noMatch: "No project matches the filter.",
   },
