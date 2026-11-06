@@ -174,9 +174,10 @@ export function planRelated({
     const tier = tierOf(path);
     return !tiers || tier === undefined || tiers.includes(tier);
   };
-  const related = pyramid
-    ? pyramidTests(selected, tracked, tierOf)
-    : selected.filter((r) => kept(r.path));
+  // The mods' tests run under `claude plugin test`; every bunfig ignores mods/, so none is selected.
+  const related = (
+    pyramid ? pyramidTests(selected, tracked, tierOf) : selected.filter((r) => kept(r.path))
+  ).filter((r) => !r.path.startsWith("mods/"));
   const out = new Map<string, number>();
   for (const r of selected.filter((r) => !kept(r.path))) {
     const tier = tierOf(r.path) as string;
