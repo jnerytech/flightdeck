@@ -245,11 +245,15 @@ describe("planCoverageFuncs", () => {
     expect(refused.command).toBeNull();
     expect(refused.output).toContain("21 test files");
     expect(refused.output).toContain("--tests <a few tests>");
-    expect(
-      planCoverageFuncs({ ...wide, env: { FLIGHTDECK_COORDINATOR: "1" } }).command,
-    ).not.toBeNull();
+    expect(refused.slotHeavy).toBe("block");
+    const coordinator = planCoverageFuncs({ ...wide, env: { FLIGHTDECK_COORDINATOR: "1" } });
+    expect(coordinator.command).not.toBeNull();
+    // #687: the coordinator passes with nothing to log for harness:stats.
+    expect(coordinator.slotHeavy).toBeUndefined();
     const reason = { FLIGHTDECK_SLOT_HEAVY: "every desktop test reaches the store" };
-    expect(planCoverageFuncs({ ...wide, env: reason }).command).not.toBeNull();
+    const waived = planCoverageFuncs({ ...wide, env: reason });
+    expect(waived.command).not.toBeNull();
+    expect(waived.slotHeavy).toBe("waived");
     expect(planCoverageFuncs({ ...wide, env: { FLIGHTDECK_SLOT_HEAVY: "1" } }).code).toBe(2);
   });
 

@@ -94,6 +94,9 @@ const validCommands: Record<CommandType, unknown> = {
   },
   "assistant.cancel": { requestId: "r1" },
   "assistant.context": { kind: "commit", source: { kind: "card", cardId: "c" } },
+  "teleport.prepare": { sessionId: "s1" },
+  "teleport.read": { id: "p1", part: "transcript", offset: 0 },
+  "teleport.cancel": { id: "p1" },
   "assistant.record": {
     id: "r1",
     at: "2026-11-05T10:00:00.000Z",

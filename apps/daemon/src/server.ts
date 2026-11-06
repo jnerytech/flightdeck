@@ -104,6 +104,7 @@ import type { SummaryService } from "./summary/service.ts";
 import type { Teams } from "./teams/teams.ts";
 import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
+import type { TeleportPackages } from "./teleport/package.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
 import type { TaskTracker } from "./templates/tasks.ts";
 import type { TerminalManager } from "./terminal/terminal-manager.ts";
@@ -209,6 +210,8 @@ export interface ServerOptions {
   board?: Board;
   /** Phase 40: the AI assistant on this host's `claude`; announced in `host.info` when present. */
   assistant?: AssistantService;
+  /** Issue #100: the packages of the sessions this host teleports to another. */
+  teleport?: TeleportPackages;
   /** The run environment of the cards: the run.yaml and the processes (phase 24). */
   runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */
@@ -673,6 +676,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "board");
   }
 
+  function teleport(): TeleportPackages {
+    if (!opts.teleport) throw featureOff("teleport");
+    return opts.teleport;
+  }
+
   function assistant(): AssistantService {
     if (!opts.assistant) throw featureOff("assistant");
     return opts.assistant;
@@ -1009,6 +1017,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.tasks ? ["tasks"] : []),
             ...(opts.opencode?.info().available ? ["opencode"] : []),
             ...(opts.assistant ? [ASSISTANT_FEATURE] : []),
+            ...(opts.teleport ? ["teleport"] : []),
             ...(opts.autoUpdate ? ["autoUpdate"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
@@ -1314,6 +1323,15 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await assistant().run(command.payload));
       case "assistant.cancel":
         assistant().cancel(command.payload.requestId);
+        return ok(command.type);
+      case "teleport.prepare":
+        return ok(command.type, await teleport().prepare(command.payload.sessionId));
+      case "teleport.read": {
+        const { id, part, offset } = command.payload;
+        return ok(command.type, await teleport().read(id, part, offset));
+      }
+      case "teleport.cancel":
+        await teleport().cancel(command.payload.id);
         return ok(command.type);
       case "assistant.context":
         return ok(command.type, await assistant().context(command.payload));
