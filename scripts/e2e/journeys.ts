@@ -16,6 +16,7 @@ import {
   BARS,
   type Finding,
   findingKey,
+  GAP_BOXES,
   GAPS,
   GUARD_SIZES,
   judge,
@@ -79,7 +80,7 @@ export async function open(
     sleep: (ms) => c.page.waitForTimeout(ms),
     now: () => Date.now(),
   });
-  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES });
 }
 
 /** The sidebar's dots of the demo hosts a journey uses: none of them reads offline or connecting. */
@@ -889,7 +890,43 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
   },
 
-  // 25. The tab row (#488): two tabs, only the active one selected and showing its ×, which the
+  // 25. An idle session sleeps from its row's menu and the hub marks it asleep; a message wakes it
+  // from where it was, and the mark goes away (#157).
+  "sleep-wake": async (c) => {
+    // The first idle session of the demo: it answers again after it wakes, so it ends as it began.
+    await open(c, { name: "hub" });
+    await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
+    const rows = c.page.getByRole("main").locator("li[aria-label]");
+    const idle = rows.filter({
+      has: c.page.getByRole("img", { name: c.t("hub.stateDots.idle"), exact: true }),
+    });
+    await idle.first().waitFor({ timeout: SESSION_WAIT });
+    const title = (await idle.first().getAttribute("aria-label")) ?? "";
+    // Two sessions can share a standard name, so the row is kept by its place among the rows: its
+    // state, not its place, changes when it sleeps.
+    const place = await idle
+      .first()
+      .evaluate((el) =>
+        [...(el.closest("main")?.querySelectorAll("li[aria-label]") ?? [])].indexOf(el),
+      );
+    const row = rows.nth(place);
+    const asleep = async () =>
+      (await row.getByText(c.t("hub.asleep"), { exact: true }).count()) > 0;
+    // A fresh page opens no session, so nobody has this one open and it may sleep.
+    await row.getByRole("button", { name: c.t("hub.actions", { title }), exact: true }).click();
+    await c.page.getByRole("menuitem", { name: c.t("hub.sleepNow"), exact: true }).click();
+    await waitFor(asleep, "a sessão dormindo", SESSION_WAIT);
+    // A message to the sleeping session wakes it: the runtime answers again.
+    await row.getByRole("button", { name: title, exact: true }).click();
+    const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+    const message = `acorde ${c.lang} ${Date.now()}`;
+    await box.fill(message);
+    await box.press("Enter");
+    await c.page.getByText(`Echo: ${message}`).first().waitFor({ timeout: SESSION_WAIT });
+    await waitFor(async () => !(await asleep()), "a sessão acordada", SESSION_WAIT);
+  },
+
+  // 26. The tab row (#488): two tabs, only the active one selected and showing its ×, which the
   // other shows on hover; closing the active one leaves the other active; in a window under 600 px
   // tall the tabs share the top bar's row.
   "tab-row": async (c) => {
@@ -1236,7 +1273,7 @@ async function openCrowded(c: Context, first: Route, count = 12) {
     .first()
     .waitFor({ timeout: 5000 })
     .catch(() => undefined);
-  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES });
 }
 
 /** After scrolling every box to its end, the last row of the list is on screen (or why not). */
