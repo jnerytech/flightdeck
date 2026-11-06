@@ -4,7 +4,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -75,7 +75,7 @@ describe("journey-answer: a request is answered from where it was announced", ()
     await act(async () => mem.shown.at(-1)?.onclick?.());
     await settle(() => focusedRequest() === item?.requestId, 6000, "the card has the focus");
     await press("a");
-    await Bun.sleep(200);
+    await stays(() => d.manager.pendingPermissions(ids[0] as string).length === 1, 200);
     expect(d.manager.pendingPermissions(ids[0] as string).length).toBe(1);
   });
 

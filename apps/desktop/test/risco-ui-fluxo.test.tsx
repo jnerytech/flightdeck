@@ -5,7 +5,7 @@ import type { TrayAction, TrayMenu } from "../src/platform/types.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -115,7 +115,7 @@ describe("risco-ui: do daemon à tela", () => {
     const hostId = item?.hostId ?? "";
     const requestId = item?.requestId ?? "";
     await store.respondTo(hostId, requestId, "allow");
-    await Bun.sleep(150);
+    await stays(() => d.manager.get(sessionId).status === "awaiting_permission", 150);
     expect(d.manager.get(sessionId).status).toBe("awaiting_permission");
     expect(store.getState().notices.at(-1)?.text).toBe(
       "Um pedido de risco alto só é aprovado segurando o botão.",
@@ -129,7 +129,7 @@ describe("risco-ui: do daemon à tela", () => {
       ),
     );
     await store.respond(requestId, "allow");
-    await Bun.sleep(150);
+    await stays(() => d.manager.get(sessionId).status === "awaiting_permission", 150);
     expect(d.manager.get(sessionId).status).toBe("awaiting_permission");
     await store.respond(requestId, "allow", { held: true });
     await settle(() => d.manager.get(sessionId).status !== "awaiting_permission", 3000);
@@ -148,7 +148,8 @@ describe("risco-ui: do daemon à tela", () => {
     const opened: unknown[] = [];
     store.onOpenRequest((i) => opened.push(i));
     tray.act({ key: `${item?.hostId}/${item?.requestId}`, action: "approve" });
-    await Bun.sleep(150);
+    await settle(() => opened.length === 1);
+    await stays(() => d.manager.get(sessionId).status === "awaiting_permission", 150);
     expect(opened).toHaveLength(1);
     expect(d.manager.get(sessionId).status).toBe("awaiting_permission");
     // Deny from the tray answers it there.

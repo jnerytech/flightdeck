@@ -3,7 +3,7 @@ import { trayMenu } from "../src/lib/tray.ts";
 import type { TrayAction } from "../src/platform/types.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { settlePlain as settle } from "./wait.ts";
+import { settlePlain as settle, stays } from "./wait.ts";
 
 const { AppStore, needsYou } = await import("../src/lib/app-store.ts");
 
@@ -108,7 +108,7 @@ describe("regras-ui-aprovacao: a request that the rules decided", () => {
     expect(trayMenu(needsYou(store.getState())).items[0]?.actions).toEqual(["deny", "open"]);
     // Issue #245 (M2): the store itself refuses an approval that was not held.
     await store.respondTo(hostId, "r1", "allow");
-    await Bun.sleep(150);
+    await stays(() => !types().includes("vault.approve"), 150);
     expect(types().includes("vault.approve")).toBe(false);
     expect(store.getState().notices.at(-1)?.text).toBe(
       "Um pedido de risco alto só é aprovado segurando o botão.",
