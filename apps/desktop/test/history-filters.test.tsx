@@ -96,3 +96,16 @@ describe("history-filters: the filters say what they are, and an empty list says
     expect((screen.queryByLabelText(en.historyUi.folder) as HTMLInputElement).value).toBe("");
   });
 });
+
+describe("history-filters: one Show them at a time (#588)", () => {
+  test("when the empty list already offers Show them, the filter row does not repeat it or the count", async () => {
+    await emptyHistory(95);
+    const sentence = en.historyUi.emptyAutomated.replace("{count}", "95");
+    await settle(() => (document.body.textContent ?? "").includes(sentence));
+    const short = en.historyUi.automatedHidden.replace("{count}", "95");
+    expect({
+      buttons: screen.queryAllByRole("button", { name: en.historyUi.showAutomated }).length,
+      short: (document.body.textContent ?? "").includes(short),
+    }).toEqual({ buttons: 1, short: false });
+  });
+});
