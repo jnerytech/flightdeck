@@ -210,7 +210,8 @@ for (const [lang, dict] of [
       expect(await seen(() => (document.body.textContent ?? "").includes("bad signature"))).toBe(
         true,
       );
-      expect(screen.queryByRole("button", { name: dict.update.restartNow })).toBeNull();
+      // Issue #490: the ready state is the corner card; a failed download shows none.
+      expect(screen.queryByRole("region", { name: CARD[lang].title })).toBeNull();
     });
 
     test("turned off, nothing downloads: the banner offers Install as before", async () => {
