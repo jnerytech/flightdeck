@@ -252,6 +252,18 @@ describe("teleport-receive: a received package does not outlive its time (#100)"
     ]);
   });
 
+  test("a chunk that waited its turn while its package went is refused, and writes nothing", async () => {
+    const { inbox, deps } = setup();
+    await inbox.start();
+    const { id } = await inbox.receive(manifest());
+    const late = reason(() => inbox.write(id, "transcript", 0, b64("late")));
+    await inbox.abort(id);
+    expect([await late, await readdir(deps.dir).catch(() => ["no folder"])]).toEqual([
+      "teleport_not_found",
+      [],
+    ]);
+  });
+
   test("an abort, the daemon's start and its stop remove what was received", async () => {
     const { inbox, deps, timers } = setup();
     await inbox.start();
