@@ -39,13 +39,15 @@ export function reasonText(item: Pick<WorktreeItem, "blockers" | "unpushed">, t:
     .join("; ");
 }
 
-function Row(props: {
-  item: WorktreeItem;
-  t: T;
-  lang: "en" | "pt-BR";
-  checked: boolean;
-  onToggle(): void;
-}) {
+function Row(
+  props: Readonly<{
+    item: WorktreeItem;
+    t: T;
+    lang: "en" | "pt-BR";
+    checked: boolean;
+    onToggle(): void;
+  }>,
+) {
   const { item, t, lang } = props;
   const name = item.branch ?? item.path;
   const protectedRow = item.blockers.length > 0;
@@ -95,7 +97,7 @@ function Row(props: {
  * commits or a live session (the daemon looks again at the moment). Read on open and on demand: a
  * size scan is not something to repeat every few seconds.
  */
-export function HostWorktrees(props: { store: AppStore; host: HostView }) {
+export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const lang = store.i18n.lang;
