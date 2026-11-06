@@ -75,6 +75,7 @@ export async function runCommand(
 
 /** `git` from the current PATH, always with an explicit working directory. */
 export function git(cwd: string, ...args: string[]): Promise<CommandResult> {
+  // git-arg: the shared git helper: its callers are what the git-args ratchet checks
   return runCommand([whichOnPath("git") ?? "git", ...args], cwd);
 }
 
@@ -88,6 +89,7 @@ export async function gitLimited(
   limit: number,
   ...args: string[]
 ): Promise<CommandResult & { truncated: boolean }> {
+  // git-arg: the capped git helper: its callers are what the git-args ratchet checks
   const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
     cwd,
     env: { ...process.env },
