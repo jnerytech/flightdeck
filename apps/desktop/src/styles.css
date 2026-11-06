@@ -2425,6 +2425,16 @@ html:not(:has([data-slot="status-bar"])) {
     width: 1rem;
     height: 1rem;
   }
+  /* A webview without subgrid (Chromium before 117): fixed columns, the name truncated. */
+  @supports not (grid-template-columns: subgrid) {
+    grid-template-columns: 1rem minmax(0, 14rem) 11rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    & > span:nth-of-type(1) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
 }
 @utility dep-compact-found {
   min-width: 0;
