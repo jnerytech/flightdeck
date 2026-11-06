@@ -193,6 +193,24 @@ describe("assistant-service", () => {
     expect([runtime.completeCalls.length, contexts.length]).toEqual([0, 0]);
   });
 
+  test("a secret anywhere in what the repo gives refuses the run: the stat, the file names, the recent subjects, the rules (issue #646)", async () => {
+    const token = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
+    const source = { kind: "card" as const, cardId: "c1" };
+    const leaks: Array<Partial<AssistantContextBundle>> = [
+      { stat: ` ${token}.ts | 1 +` },
+      { notShown: [`${token}.lock`] },
+      { recent: ["feat: one", `fix: rotate ${token}`] },
+      { rules: `Use ${token} to publish.` },
+    ];
+    for (const leak of leaks) {
+      const { svc, runtime } = service({ bundle: { ...bundle, ...leak } });
+      const refused = await reason(svc.run(run({ kind: "commit.message", text: "", source })));
+      expect(Array.isArray(refused) ? refused[0] : refused).toBe("assistant_secret_found");
+      expect(runtime.completeCalls.length).toBe(0);
+      expect(JSON.stringify(refused)).not.toContain(token);
+    }
+  });
+
   test("a commit message reads the repo; a secret in the diff refuses; the commit notices come with the answer", async () => {
     const secret = service({
       bundle: { ...bundle, diff: "+const token = 'ghp_abcdefghijklmnopqrstuvwxyz0123456789'" },
