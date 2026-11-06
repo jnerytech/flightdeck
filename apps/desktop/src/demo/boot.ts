@@ -81,3 +81,12 @@ export function demoStoreOptions(
   }
   return { baseDelayMs: 60_000 };
 }
+
+/**
+ * The e2e asks for `?update=<version>`: the demo's updater then offers that version and "downloads"
+ * it, so the update card (#490) can be driven in a page, which has no Tauri updater. Without it, or
+ * with something that is not a version, the platform is the browser's as it is.
+ */
+export function demoPlatform(platform: Platform, search = ""): Platform {
+  return platform;
+}
