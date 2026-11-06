@@ -69,4 +69,39 @@ describe("host-tabs-store: each host has its own tabs in the app's store (issue 
     store.router.push({ name: "projects", host: "ha" });
     expect(store.activeHostId()).toBe("ha");
   });
+
+  test("removing a host through the store drops its set, and the switcher moves off it", async () => {
+    const { store } = twoHosts();
+    store.router.push({ name: "projects", host: "ha" });
+    store.router.push({ name: "projects", host: "hb" });
+    await store.removeHost("hb");
+    expect(Object.keys(store.hostTabs.snapshot().hosts)).toEqual(["ha"]);
+    expect(store.activeHostId()).toBe("ha");
+    await store.removeHost("ha");
+    expect(Object.keys(store.hostTabs.snapshot().hosts)).toEqual([]);
+    expect(store.activeHostId()).toBeNull();
+  });
+
+  test("a kept set of a host that is no longer configured does not come back", () => {
+    const { mem } = twoHosts();
+    const snapshot = (hosts: Record<string, unknown>, host: string) =>
+      JSON.stringify({
+        v: 2,
+        shared: { tabs: [{ route: { name: "home" }, pinned: true }], active: 0 },
+        hosts,
+        host,
+        onShared: false,
+      });
+    const set = (id: string) => ({
+      v: 1,
+      areas: [{ tabs: [{ route: { name: "projects", host: id }, pinned: false }], active: 0 }],
+      split: null,
+      focus: 0,
+      fraction: 0.5,
+    });
+    mem.items.set(WORKSPACE_KEY, snapshot({ ha: set("ha"), gone: set("gone") }, "gone"));
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    expect(Object.keys(store.hostTabs.snapshot().hosts)).toEqual(["ha"]);
+    expect(store.activeHostId()).toBe("ha");
+  });
 });
