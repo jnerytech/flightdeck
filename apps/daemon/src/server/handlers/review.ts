@@ -38,6 +38,10 @@ export const reviewHandlers = {
     const { claudeSessionId, cursor, limit, tail } = payload;
     return await server.need("history").get(claudeSessionId, cursor, limit, tail);
   },
+  "history.tool": async (payload, { server }) => {
+    const { claudeSessionId, uuid, index } = payload;
+    return { tool: await server.need("history").tool(claudeSessionId, uuid, index) };
+  },
   "history.search": (payload, { server }) => {
     const index = server.need("history");
     const hits = index.search(payload).map((hit) => ({

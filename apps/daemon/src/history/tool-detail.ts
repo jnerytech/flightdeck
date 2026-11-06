@@ -1,3 +1,5 @@
+import { createReadStream } from "node:fs";
+import { createInterface } from "node:readline";
 import { truncateUtf8 } from "./parser.ts";
 
 /** A tool call of a stored transcript with its whole input and its result (#606). */
@@ -91,4 +93,16 @@ export async function toolDetail(
   return found
     ? { name: found.name, input: found.input, result: null, truncated: found.truncated }
     : null;
+}
+
+/** The lines of a file, read as they are asked for: a caller that stops early closes the file. */
+export async function* fileLines(path: string): AsyncGenerator<string> {
+  const stream = createReadStream(path, { encoding: "utf8" });
+  const reader = createInterface({ input: stream, crlfDelay: Number.POSITIVE_INFINITY });
+  try {
+    for await (const line of reader) yield line;
+  } finally {
+    reader.close();
+    stream.destroy();
+  }
 }

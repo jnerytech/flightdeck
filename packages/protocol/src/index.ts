@@ -559,6 +559,13 @@ export const HistoryGetPayload = z.object({
   limit: z.number().int().min(1).max(500).optional(),
 });
 
+/** Issue #606: the `index`-th tool call of the message `uuid`, read from the session's own transcript. */
+export const HistoryToolPayload = z.object({
+  claudeSessionId: z.string().min(1),
+  uuid: z.string().min(1),
+  index: z.number().int().min(0).max(1000),
+});
+
 export const HistorySearchPayload = z.object({
   query: z.string().trim().min(1),
   cwd: z.string().min(1).optional(),
@@ -2973,6 +2980,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("host.info", z.object({}).strict()),
   cmd("history.list", HistoryListPayload),
   cmd("history.get", HistoryGetPayload),
+  cmd("history.tool", HistoryToolPayload),
   cmd("history.search", HistorySearchPayload),
   cmd("history.resume", HistoryResumePayload),
   cmd("history.watch", z.object({}).strict()),
@@ -4438,6 +4446,20 @@ export const HistoryGetResult = z.object({
 });
 export type HistoryGetResult = z.infer<typeof HistoryGetResult>;
 
+/** A stored tool call with its whole input and its result, each cut to 64 KiB (#606). */
+export const HistoryToolDetail = z.object({
+  name: z.string(),
+  /** The input as the call had it, or its JSON text cut to the cap. */
+  input: z.unknown(),
+  /** `null` while the transcript has no result (still running, or cut short). */
+  result: z.object({ content: z.string(), isError: z.boolean() }).nullable(),
+  truncated: z.boolean(),
+});
+export type HistoryToolDetail = z.infer<typeof HistoryToolDetail>;
+
+export const HistoryToolResult = z.object({ tool: HistoryToolDetail.nullable() });
+export type HistoryToolResult = z.infer<typeof HistoryToolResult>;
+
 export const HistorySearchHit = z.object({
   claudeSessionId: z.string(),
   uuid: z.string(),
@@ -4694,6 +4716,7 @@ export interface CommandResults {
   "host.info": HostInfoResult;
   "history.list": HistoryListResult;
   "history.get": HistoryGetResult;
+  "history.tool": HistoryToolResult;
   "history.search": HistorySearchResult;
   "history.resume": SessionCreateResult;
   "history.watch": undefined;
