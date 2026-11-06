@@ -91,30 +91,43 @@ export interface SkipCount {
 }
 
 /** Every test file under the roots that has an unstable skip, keyed under `root`. */
-export function unstableSkipCounts(root: string): Record<string, SkipCount> {
-  const counts: Record<string, SkipCount> = {};
+/** Every test file under the roots, with its path relative to `root`. */
+function testFilesUnder(root: string): { path: string; rel: string }[] {
+  const files: { path: string; rel: string }[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
       if (entry.isDirectory()) {
         if (entry.name !== "node_modules") walk(path);
       } else if (/\.test\.tsx?$/.test(entry.name)) {
-        const skips = unstableSkips(readFileSync(path, "utf8"));
-        if (skips.length === 0) continue;
-        counts[relative(root, path).replaceAll("\\", "/")] = {
-          total: skips.length,
-          undocumented: skips.filter((skip) => !skip.documented).length,
-        };
+        files.push({ path, rel: relative(root, path).replaceAll("\\", "/") });
       }
     }
   };
   for (const dir of UNSTABLE_ROOTS) {
     if (existsSync(join(root, dir))) walk(join(root, dir));
   }
+  return files;
+}
+
+export function unstableSkipCounts(root: string): Record<string, SkipCount> {
+  const counts: Record<string, SkipCount> = {};
+  for (const { path, rel } of testFilesUnder(root)) {
+    const skips = unstableSkips(readFileSync(path, "utf8"));
+    if (skips.length === 0) continue;
+    counts[rel] = {
+      total: skips.length,
+      undocumented: skips.filter((skip) => !skip.documented).length,
+    };
+  }
   return counts;
 }
 
-/** Every issue the repository's unstable skips are noted under, each once, ascending (#494): stub. */
+/** Every issue the repository's unstable skips are noted under, each once, ascending (#494). */
 export function unstableSkipIssues(root: string): number[] {
-  return root ? [] : [];
+  const issues = new Set<number>();
+  for (const { path } of testFilesUnder(root)) {
+    for (const issue of skipIssues(readFileSync(path, "utf8"))) issues.add(issue);
+  }
+  return [...issues].sort((a, b) => a - b);
 }
