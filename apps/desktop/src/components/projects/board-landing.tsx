@@ -86,10 +86,14 @@ function BoardCard(props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(
               {card.lastActivity
                 ? `${t("projectsOverview.lastActivity")}: ${store.formatWhen(card.lastActivity)}`
                 : t("projectsOverview.noActivity")}
+              <Pause />
             </span>
-            <span>{`${t("projectsOverview.costWeek")}: ${
-              card.costWeekUsd === null ? t("projectsOverview.noCost") : usd(card.costWeekUsd)
-            }`}</span>
+            <span>
+              {`${t("projectsOverview.costWeek")}: ${
+                card.costWeekUsd === null ? t("projectsOverview.noCost") : usd(card.costWeekUsd)
+              }`}
+              <Pause last />
+            </span>
           </span>
         </span>
       </button>
