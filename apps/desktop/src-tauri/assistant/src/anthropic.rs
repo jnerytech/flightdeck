@@ -203,8 +203,8 @@ pub async fn run(
     lookup: Lookup<'_>,
 ) -> Result<Answer, Refusal> {
     guard::check_model(call.model)?;
-    guard::check_input(call.system)?;
-    guard::check_input(call.user)?;
+    guard::check_prompt(call.system)?;
+    guard::check_prompt(call.user)?;
     let reply =
         guard::send(client, endpoint, "/v1/messages", Method::Post(body(call, lookup)), key, &headers()).await?;
     answer(&reply, key, call.model)
