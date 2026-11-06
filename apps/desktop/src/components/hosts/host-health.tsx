@@ -58,21 +58,23 @@ interface HealthRow {
  * where the app already has the action (hooks, the daemon update, the allowed folders). What needs
  * sudo or an installer is only copied: nothing here runs it.
  */
-export function HostHealth(props: {
-  store: AppStore;
-  host: HostView;
-  deps: DepsResult | null;
-  doctor: DoctorResult | null;
-  /** When the health was read, in epoch milliseconds; null before the first read. */
-  checkedAt: number | null;
-  /** Why the last read failed, when it did. */
-  error?: string | null;
-  onCheck(): Promise<void>;
-  /** "Add folder": the app takes the person to the allowed folders. */
-  onAddFolder(): void;
-  /** The hooks were installed from here: whoever shows their status asks again. */
-  onHooksChanged(): void;
-}) {
+export function HostHealth(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView;
+    deps: DepsResult | null;
+    doctor: DoctorResult | null;
+    /** When the health was read, in epoch milliseconds; null before the first read. */
+    checkedAt: number | null;
+    /** Why the last read failed, when it did. */
+    error?: string | null;
+    onCheck(): Promise<void>;
+    /** "Add folder": the app takes the person to the allowed folders. */
+    onAddFolder(): void;
+    /** The hooks were installed from here: whoever shows their status asks again. */
+    onHooksChanged(): void;
+  }>,
+) {
   const { store, host } = props;
   const { t } = store.i18n;
   const [confirming, setConfirming] = useState<Confirming | null>(null);
