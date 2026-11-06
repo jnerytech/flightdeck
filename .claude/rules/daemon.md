@@ -20,5 +20,5 @@ paths:
 - A branch or revision that comes from a project's settings or a protocol field goes into a git
   call only through `refArg()` (`board/ref-arg.ts`), or after `--end-of-options` or `--`: a name
   that starts with `-` is an option (`--output=`, `--exec=`). `scripts/test/git-args-ratchet.test.ts`
-  fails on a `git(...)` call that starts an argument with `base`, `branch`, `source`, `rev` or
-  `ref` without one; `// git-arg: <why>` on the call's line or the one above marks a reviewed one.
+  fails on a `git(...)` call (an argument, an array item or a spread) built from a name like `base`,
+  `branch`, `source`, `rev`, `ref` or `against` without one; `// git-arg: <why>` on the call's line or the one above marks a reviewed one.
