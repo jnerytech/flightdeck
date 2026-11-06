@@ -156,7 +156,7 @@ process.exit(${code});
         return { trusted: true };
       },
       prepare: async () => {
-        await Bun.sleep(5);
+        await Promise.resolve();
         order.push("prepare");
       },
     });
@@ -193,7 +193,9 @@ process.exit(${code});
       "--",
       "p",
     ]);
-    expect(asked.map((cwd) => realpathSync(cwd))).toEqual([realpathSync(untrusted.work)]);
+    expect(asked.map((cwd) => realpathSync.native(cwd))).toEqual([
+      realpathSync.native(untrusted.work),
+    ]);
     expect((await run({ trusted: true, configRoot: "/the/project" })).argv).toEqual([
       "claude",
       "--bg",

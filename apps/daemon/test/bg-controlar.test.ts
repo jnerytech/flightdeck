@@ -208,7 +208,7 @@ describe("bg-controlar: a message", () => {
         return { trusted: true };
       },
       async (cwd) => {
-        await Bun.sleep(5);
+        await Promise.resolve();
         order.push(`prepare ${cwd}`);
       },
     );

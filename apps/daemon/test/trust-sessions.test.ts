@@ -37,7 +37,7 @@ describe("trust-sessions: every run of a session is told whether its folder is t
     const { manager, project, start } = newManager({
       runtime,
       prepareTrust: async (cwd) => {
-        await Bun.sleep(5);
+        await Promise.resolve();
         order.push(`prepare ${cwd}`);
       },
       trust: () => {
