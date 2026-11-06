@@ -140,6 +140,8 @@ describe("demo-prints: axe e CI", () => {
       "segundo-host",
       "nova-sessao-host",
       "finalizar-card",
+      "webhook-ntfy",
+      "update-card",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

@@ -153,6 +153,7 @@ import { TelemetryStore } from "./telemetry/store.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
+import { claudeSettingsEnv } from "./terminal/claude-settings-env.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
@@ -1006,6 +1007,7 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     // "Claude aqui" runs this very daemon's `claude`, with this config.
     claude: { self: daemonCommand(process.execPath, Bun.main), configFile },
+    claudeEnv: () => claudeSettingsEnv(claudeSettingsPath()),
     log: (message) => logger.log(message),
   });
   // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.
@@ -1278,6 +1280,12 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     log: logger.log.bind(logger),
   });
+  /** A folder's trust as the clients see it, with the live sessions that still run with the setup they loaded (issue #463). */
+  const trustState = (path: string) => {
+    const via = projectTrust.via(path);
+    const stale = manager.staleSessions(path);
+    return { path, trusted: via !== null, via, ...(stale > 0 ? { staleSessions: stale } : {}) };
+  };
   const server = startServer({
     manager,
     opencode: {
@@ -1307,17 +1315,14 @@ export async function startDaemon(
     },
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
-      state: (paths) =>
-        paths.map((path) => {
-          const via = projectTrust.via(path);
-          return { path, trusted: via !== null, via };
-        }),
+      state: (paths) => paths.map(trustState),
       inspect: (path) => inspectProject(path),
       set: (path, trusted) => {
         if (trusted) projectTrust.trust(path);
         else projectTrust.revoke(path);
-        const via = projectTrust.via(path);
-        return { path, trusted: via !== null, via };
+        // The live sessions that loaded the setup say again whether it is still theirs (issue #463).
+        manager.trustChanged();
+        return trustState(path);
       },
     },
     persistRoots: (roots) =>
