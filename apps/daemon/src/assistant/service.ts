@@ -83,7 +83,11 @@ export class AssistantService {
       throw refusal("assistant_empty_input");
     }
     const repo = payload.source ? await this.opts.context(payload.source) : undefined;
-    this.refuseSecrets([payload.text, ...(repo ? repoTexts(repo) : [])]);
+    this.refuseSecrets([
+      payload.text,
+      ...Object.entries(payload.context ?? {}).flat(),
+      ...(repo ? repoTexts(repo) : []),
+    ]);
     const blocked = this.opts.quota?.blocked();
     if (blocked) {
       const until = blocked.until === null ? "" : new Date(blocked.until).toISOString();
