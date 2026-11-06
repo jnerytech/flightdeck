@@ -169,6 +169,11 @@ describe("assistant-settings-ui: the keys", () => {
     expect(keyInput("Anthropic key")).not.toBeNull();
     await click(button("Cancel"));
     expect(keyInput("Anthropic key")).toBeNull();
+    // Cancel in the confirmation leaves the key where it is.
+    await click(button("Remove"));
+    await click(within(screen.getByRole("alertdialog")).getByRole("button", { name: /^Cancel/ }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(fake2.calls.some((c) => c[0] === "deleteKey")).toBe(false);
     await click(button("Remove"));
     const dialog = screen.getByRole("alertdialog");
     expect(fake2.calls.some((c) => c[0] === "deleteKey")).toBe(false);
