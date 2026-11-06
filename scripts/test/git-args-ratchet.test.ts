@@ -126,6 +126,11 @@ describe("git-args-ratchet: no git call gives a base or a branch to git unguarde
     expect(calls('spawn(["git", "diff", "--end-of-options", base]);')).toEqual([]);
   });
 
+  test("findings come in the order of the file, whichever kind of call each one is", () => {
+    const source = ['Bun.spawn(["git", "rebase", base]);', "", "await git(dir, base);"].join("\n");
+    expect(unguardedGitCalls(source, "x.ts").map((f) => f.line)).toEqual([1, 3]);
+  });
+
   test("a forwarder says it is one: its callers are what is checked", () => {
     const reviewed =
       '// git-arg: a forwarder: the arguments are made by its callers, which are checked\nBun.spawn(["git", ...args]);';
