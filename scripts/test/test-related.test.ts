@@ -362,7 +362,17 @@ describe("planRelated", () => {
     const root = "/repo";
     expect(keepCoverageProblem(root, "coverage")).toBeNull();
     expect(keepCoverageProblem(root, "..cache/cov")).toBeNull();
-    for (const bad of [undefined, "--pr", "../x", "/tmp/x", "."]) {
+    // A Windows drive path or a leading slash is outside the repository whatever the root looks like.
+    for (const bad of [
+      undefined,
+      "--pr",
+      "../x",
+      "/tmp/x",
+      ".",
+      "D:/other",
+      "C:foo",
+      "\\\\server\\x",
+    ]) {
       expect(`${bad}: ${keepCoverageProblem(root, bad) ?? "ok"}`).toContain(
         "--keep-coverage needs a folder inside the repository",
       );
