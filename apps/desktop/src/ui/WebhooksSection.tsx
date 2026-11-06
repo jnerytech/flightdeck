@@ -24,7 +24,13 @@ const KINDS: WebhookKind[] = [
   "budget_alert",
   "pr_watch",
 ];
-const TYPES: WebhookType[] = ["slack", "discord", "generic"];
+const TYPES: WebhookType[] = ["slack", "discord", "generic", "ntfy"];
+
+/** The URL field's help: what an edit keeps, or how an ntfy topic URL looks. */
+function urlHelp(editing: boolean, type: WebhookType, t: (key: Key) => string): string | undefined {
+  if (editing) return t("webhooks.urlKeep");
+  return type === "ntfy" ? t("webhooks.ntfyHelp") : undefined;
+}
 
 interface Draft {
   id?: string;
@@ -234,7 +240,10 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                 </NativeSelect>
               )}
             </Field>
-            <Field label={t("webhooks.url")} help={editing ? t("webhooks.urlKeep") : undefined}>
+            <Field
+              label={draft.type === "ntfy" ? t("webhooks.ntfyUrl") : t("webhooks.url")}
+              help={urlHelp(Boolean(editing), draft.type, t)}
+            >
               {(control) => (
                 <Input
                   {...control}
@@ -245,8 +254,8 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                 />
               )}
             </Field>
-            {draft.type === "generic" && (
-              <Field label={t("webhooks.signing")}>
+            {(draft.type === "generic" || draft.type === "ntfy") && (
+              <Field label={draft.type === "ntfy" ? t("webhooks.token") : t("webhooks.signing")}>
                 {(control) => (
                   <Input
                     {...control}

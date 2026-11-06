@@ -311,20 +311,17 @@ function RequestDetail(
           nowMs={store.now()}
           onCopyPath={(text) => void store.copyText(text)}
           {...(item.gateText ? { body: <GateText {...item.gateText} /> } : {})}
-          onRespond={(decision, message, _updates, updatedInput, held) =>
-            item.gate
-              ? store.respondGate(
-                  item.hostId,
-                  item.gate,
-                  decision === "allow" ? "approve" : "reject",
-                  message,
-                )
-              : store.respondTo(item.hostId, item.requestId, decision, {
-                  message,
-                  updatedInput,
-                  held,
-                })
-          }
+          onRespond={(decision, message, _updates, updatedInput, held) => {
+            if (item.gate) {
+              const verdict = decision === "allow" ? "approve" : "reject";
+              return store.respondGate(item.hostId, item.gate, verdict, message);
+            }
+            return store.respondTo(item.hostId, item.requestId, decision, {
+              message,
+              updatedInput,
+              held,
+            });
+          }}
           actions={
             <RequestActions item={item} store={store} go={go} onOpenRequest={props.onOpenRequest} />
           }
