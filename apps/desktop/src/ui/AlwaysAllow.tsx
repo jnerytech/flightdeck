@@ -4,10 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 
-/** The default project rule: the exact command for Bash, the tool's name for the others. */
+/**
+ * The default project rule: the exact command for Bash, the exact file for a tool that names one,
+ * the tool's name for the others. A rule for a whole file tool would cover a credential file, and
+ * the daemon refuses it (issue #384).
+ */
 export function defaultRule(toolName: string, input: Record<string, unknown>): string {
   const command = input.command;
-  return toolName === "Bash" && typeof command === "string" ? `Bash(${command})` : toolName;
+  if (toolName === "Bash" && typeof command === "string") return `Bash(${command})`;
+  const file = input.file_path ?? input.notebook_path;
+  return typeof file === "string" && file !== "" ? `${toolName}(${file})` : toolName;
 }
 
 /** `Bash(npm test:*)` or `Write` as the project rule the daemon validates. */
