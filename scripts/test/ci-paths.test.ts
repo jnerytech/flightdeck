@@ -172,12 +172,14 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan("schedule", ["docs/TDD.md"]).windowsShards).toBe(3);
   });
 
-  test("a selection above 300 test files takes the three Windows shards, so a PR on a widely imported file never runs ~1000 files in one job (#483, #444)", () => {
-    expect(WINDOWS_SPLIT_ABOVE).toBe(300);
+  test("more than 100 selected integration and e2e test files take the three Windows shards, so a PR on a widely imported file never runs them all in one job (#483, #444)", () => {
+    // Every PR selects the ~600 fast-tier tests, which one shard runs in minutes; the slow tiers are
+    // what grows: #479's change to app-store.ts selected 1021 files, about 420 of them slow.
+    expect(WINDOWS_SPLIT_ABOVE).toBe(100);
     const hub = ["apps/desktop/src/lib/app-store.ts"];
-    expect(ciPlan(PR, hub, [], 1021).windowsShards).toBe(3);
-    expect(ciPlan(PR, hub, [], 301).windowsShards).toBe(3);
-    expect(ciPlan(PR, hub, [], 300).windowsShards).toBe(1);
+    expect(ciPlan(PR, hub, [], 420).windowsShards).toBe(3);
+    expect(ciPlan(PR, hub, [], 101).windowsShards).toBe(3);
+    expect(ciPlan(PR, hub, [], 100).windowsShards).toBe(1);
     expect(ciPlan(PR, hub).windowsShards).toBe(1);
   });
 
