@@ -16,7 +16,7 @@ What this phase does not do, so nobody builds it by accident. None.
 ## Proof of concept first
 
 Only when the phase depends on an external behavior nobody has confirmed (the Claude Code CLI, a
-file format, a platform API). Numbered questions; each answer goes to DECISIONS before any area
+file format, a platform API). Numbered questions; each answer goes to a record in `docs/decisions/` before any area
 starts. None.
 
 ## Design
@@ -63,7 +63,7 @@ What could go wrong for a user or another session, and what limits it. None.
 
 ## Acceptance criteria
 
-The usual ones (TDD per area and the audit, 100% coverage, the smokes, both manuals, DECISIONS,
+The usual ones (TDD per area and the audit, 100% coverage, the smokes, both manuals, the records in `docs/decisions/`,
 the spec-verifier's verdict is accept) and whatever is specific to this phase.
 
 ## Real checks

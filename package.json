@@ -62,6 +62,7 @@
     "slot": "bun run scripts/slot.ts",
     "demo": "bun run scripts/demo.ts",
     "demo:shots": "bun run scripts/demo.ts --shots",
+    "test:shards": "bun run scripts/test-shards.ts",
     "e2e": "bddgen -c scripts/e2e/playwright.config.ts && playwright test -c scripts/e2e/playwright.config.ts",
     "ui:lock": "bun run scripts/ui-lock.ts",
     "build:daemon": "bun run scripts/build-daemon.ts",

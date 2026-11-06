@@ -28,7 +28,10 @@ permissions:
 concurrency:
   # The job choice is in the key: a screenshots-only dispatch must not cancel a full one.
   group: ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}
-  cancel-in-progress: true
+  # A run on main always finishes (#326): a merge cancelling main's run in progress left 14 main runs
+  # cancelled in a row and no main result to release from. GitHub then keeps the run in progress and
+  # only the newest pending one. Branch and PR runs still cancel their previous push.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   # Which job groups this run needs (#264): on a pull request, from the paths it changes
@@ -395,8 +398,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           "CLAUDE_CODE_GIT_BASH_PATH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      # The shards are split by the seconds each test file took (scripts/test-timings.json, #292),
+      # not by file count. The JUnit report keeps this run's times: `bun run test:shards -- record`
+      # refreshes the timing file from the reports of the three shards.
       - name: Testes (shard ${{ matrix.shard }}/3)
-        run: bun --config=bunfig.area.toml test --timeout=15000 --shard=${{ matrix.shard }}/3
+        run: bun run test:shards -- run ${{ matrix.shard }}/3 --junit junit-${{ matrix.shard }}.xml
+
+      - name: Publicar os tempos dos testes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-timings-windows-${{ matrix.shard }}
+          path: junit-${{ matrix.shard }}.xml
+          if-no-files-found: ignore
 
   # The rest of the Windows leg: the smokes, the Rust shell, the bundle budget and the
   # performance baseline.
