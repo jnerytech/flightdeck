@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
+import { join, normalize } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import ignore from "ignore";
 import { checkUpdates, rulePaths } from "../src/permissions/permission-updates.ts";
@@ -164,7 +164,7 @@ describe("rule-risk: a rule that names a folder covers what is inside it (issue 
       asked.push(path);
       return path === join("/proj", "src")
         ? ("dir" as const)
-        : path === "/etc/hosts"
+        : path === normalize("/etc/hosts")
           ? ("file" as const)
           : ("missing" as const);
     };
@@ -176,7 +176,7 @@ describe("rule-risk: a rule that names a folder covers what is inside it (issue 
     );
     // The paths are joined the platform's way: backslashes on Windows.
     expect([...asked].sort()).toEqual(
-      ["/etc/hosts", join("/home/me", "notes"), join("/proj", "src")].sort(),
+      [normalize("/etc/hosts"), join("/home/me", "notes"), join("/proj", "src")].sort(),
     );
     expect([kind("src"), kind("/etc/hosts"), kind("~/notes"), kind("never-asked")]).toEqual([
       "dir",
