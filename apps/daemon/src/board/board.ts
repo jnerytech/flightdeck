@@ -1824,9 +1824,12 @@ export class Board {
         // The card may have been discarded while the provider was answering.
         if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
       };
-      await inSequence(open, async ({ id }) => {
-        await this.pollPr(id).catch(failed(id));
-      });
+      // An empty list is not awaited: a round with nothing to ask ends in the tick it starts.
+      if (open.length > 0) {
+        await inSequence(open, async ({ id }) => {
+          await this.pollPr(id).catch(failed(id));
+        });
+      }
       if (this.stopped) return;
       // Merged, but the worktree removal failed (a busy folder on Windows; its error is the
       // notice): finish again, without asking the provider. Pending changes wait for the user,
@@ -1837,9 +1840,11 @@ export class Board {
            AND worktree_path IS NOT NULL AND notice IS NOT NULL AND notice <> ?`,
         )
         .all(PENDING_NOTICE);
-      await inSequence(unfinished, async ({ id }) => {
-        await this.finish(id).catch(failed(id));
-      });
+      if (unfinished.length > 0) {
+        await inSequence(unfinished, async ({ id }) => {
+          await this.finish(id).catch(failed(id));
+        });
+      }
       for (const listener of this.prRoundListeners) listener();
     } finally {
       this.polling = false;

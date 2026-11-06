@@ -246,23 +246,26 @@ export class SshImporter {
       return [];
     }
     const out: Directive[] = [];
-    await inSequence(text.split(/\r?\n/), async (raw) => {
+    // A plain loop: only an Include awaits, so the other lines of a file are parsed in one pass.
+    for (const raw of text.split(/\r?\n/)) {
       const line = raw.trim();
-      if (line === "" || line.startsWith("#")) return;
+      if (line === "" || line.startsWith("#")) continue;
       const parsed = splitDirective(line);
-      if (!parsed) return;
+      if (!parsed) continue;
       const { key, value } = parsed;
       if (key === "host") {
         out.push({ kind: "host", patterns: value.split(/\s+/).map(unquote) });
       } else if (key === "match") {
         out.push({ kind: "match" });
       } else if (key === "include") {
-        if (stack.length < MAX_INCLUDE_DEPTH)
-          out.push(...(await this.includedDirectives(value, path, stack)));
+        if (stack.length < MAX_INCLUDE_DEPTH) {
+          const included = await this.includedDirectives(value, path, stack); // NOSONAR: lines are read in order, each Include expanded in place
+          out.push(...included);
+        }
       } else {
         out.push({ kind: "param", key, value });
       }
-    });
+    }
     return out;
   }
 
