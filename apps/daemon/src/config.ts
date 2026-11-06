@@ -17,6 +17,9 @@ export const RUNNING_COMPILED = Bun.main.includes("$bunfs") || Bun.main.includes
 export const MANIFEST_URL =
   "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json";
 
+/** The repository's public releases, which the app's What's new reads through the daemon (issue #125). */
+export const RELEASES_URL = "https://api.github.com/repos/jnerytech/flightdeck/releases";
+
 export const DEFAULT_HISTORY_ROOTS = ["~/.claude/projects"] as const;
 
 export const RuntimeKind = z.enum(["claude", "fake"]);

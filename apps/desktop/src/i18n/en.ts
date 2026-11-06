@@ -1297,6 +1297,7 @@ export const en: Dictionary = {
     templates: "ready-made tasks",
     tasks: "task results",
     logs: "the daemon log",
+    releases: "the app's release notes",
     sleep: "putting idle sessions to sleep",
     resources: "the host resources panel",
     depsCheck: "the dependencies check",
@@ -1433,6 +1434,7 @@ export const en: Dictionary = {
     update_manifest_unchecked:
       "The daemon has not checked for an update yet: try again in a moment.",
     update_manifest_no_binary: "The release {version} has no binary for {key}.",
+    releases_unavailable: "The release notes could not be read from GitHub: try again later.",
     perm_rule_other_tool: "That rule belongs to another tool ({tool}).",
     perm_rule_too_broad:
       "That rule would also allow {tool} uses of {level} risk, more than this request: narrow it.",
