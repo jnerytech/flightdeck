@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import ignore from "ignore";
 import { RANK, RiskClassifier } from "../src/permissions/risk.ts";
-import { type ClassifyCall, ruleLevel } from "../src/permissions/rule-risk.ts";
+import {
+  type ClassifyCall,
+  type PathKind,
+  pathKinds,
+  ruleLevel,
+} from "../src/permissions/rule-risk.ts";
 
 /**
  * The contract between `ruleLevel` and the matcher Claude Code runs for a Read or Edit rule
@@ -9,7 +14,8 @@ import { type ClassifyCall, ruleLevel } from "../src/permissions/rule-risk.ts";
  * `ignore` package (its error texts are in it), so `ignore` stands for the CLI's matching here.
  * What this test does not prove: how the CLI turns `//abs`, `~/`, `/` and a bare path into a root
  * and a relative path. It uses absolute rules (`//proj/...`) matched from `/`, the one form whose
- * root is plain (docs/decisions/2026-11-06-rule-contract.md).
+ * root is plain (docs/decisions/2026-11-06-rule-contract.md). What is on disk is the probes: a
+ * probe is a file, and every folder above one is a folder.
  */
 
 const PROJECT = "/proj";
@@ -35,6 +41,7 @@ const PROBES = [
   "/proj/.git/config",
   "/proj/.claude/settings.json",
   "/proj/package.json",
+  "/proj/conf.d/.env",
   "/home/me/.ssh/id_rsa",
   "/home/me/.aws/credentials",
   "/etc/passwd",
@@ -51,7 +58,16 @@ const RULES = [
   "//proj/app-*.ts",
   "//proj/*.md",
   "//proj/**/*.ts",
+  "//proj/conf.d",
+  "//proj/README.md",
 ];
+
+/** What the probes make of a path a rule names: a file, a folder above one, or nothing. */
+const onDisk: PathKind = (path) => {
+  const at = path.startsWith("/") ? path : `/${path}`;
+  if (PROBES.includes(at)) return "file";
+  return PROBES.some((probe) => probe.startsWith(`${at.replace(/\/+$/, "")}/`)) ? "dir" : "missing";
+};
 
 /** Whether the CLI's matcher, read as `ignore`, lets `rule` cover `path`. */
 function covers(rule: string, path: string, ignorecase: boolean): boolean {
@@ -63,7 +79,7 @@ function covers(rule: string, path: string, ignorecase: boolean): boolean {
 function breaches(tool: string, ignorecase: boolean): string[] {
   const found: string[] = [];
   for (const rule of RULES) {
-    const level = ruleLevel(tool, rule, classify);
+    const level = ruleLevel(tool, rule, classify, onDisk);
     if (level === "any") continue;
     for (const path of PROBES.filter((probe) => covers(rule, probe, ignorecase))) {
       const call = classify(tool, { file_path: path });
@@ -89,5 +105,51 @@ describe("rule-risk: a saved path rule covers no call riskier than its level, re
     expect(covers("//proj/src/**", "/proj/src/.env", false)).toBe(true);
     expect(covers("//proj/src", "/proj/SRC/.env", true)).toBe(true);
     expect(covers("//proj/src", "/proj/SRC/.env", false)).toBe(false);
+  });
+});
+
+describe("rule-risk: a rule that names a folder covers what is inside it (issue #395)", () => {
+  const missing: PathKind = () => "missing";
+  const folder: PathKind = () => "dir";
+  const file: PathKind = () => "file";
+
+  test("a folder on disk, or a path that ends with a slash, is refused: a credential can be inside", () => {
+    expect(ruleLevel("Read", "//proj/src", classify, folder)).toBe("any");
+    expect(ruleLevel("Edit", "src", classify, folder)).toBe("any");
+    expect(ruleLevel("Grep", "src", classify, folder)).toBe("any");
+    expect(ruleLevel("Read", "//proj/src/", classify, missing)).toBe("any");
+  });
+
+  test("an exact file, or a path not there yet, keeps the level of the path itself", () => {
+    expect(ruleLevel("Read", "//proj/src/a.ts", classify, file)).toBe("low");
+    expect(ruleLevel("Read", "//proj/src/a.ts", classify, onDisk)).toBe("low");
+    expect(ruleLevel("Write", "//proj/new.ts", classify, missing)).toBe(
+      ruleLevel("Write", "//proj/new.ts", classify, file),
+    );
+  });
+
+  test("pathKinds looks each path up from the request's folder and the home, and a path it did not look up counts as a folder", async () => {
+    const asked: string[] = [];
+    const stat = async (path: string) => {
+      asked.push(path);
+      return path === "/proj/src"
+        ? ("dir" as const)
+        : path === "/etc/hosts"
+          ? ("file" as const)
+          : ("missing" as const);
+    };
+    const kind = await pathKinds(
+      ["src", "/etc/hosts", "~/notes", "src"],
+      "/proj",
+      "/home/me",
+      stat,
+    );
+    expect([...asked].sort()).toEqual(["/etc/hosts", "/home/me/notes", "/proj/src"]);
+    expect([kind("src"), kind("/etc/hosts"), kind("~/notes"), kind("never-asked")]).toEqual([
+      "dir",
+      "file",
+      "missing",
+      "dir",
+    ]);
   });
 });

@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { checkUpdates, parseSuggestions } from "../src/permissions/permission-updates.ts";
+import type { PathKind } from "../src/permissions/rule-risk.ts";
 import { startServer } from "../src/server.ts";
 import { newManager, poll, record } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -35,12 +38,15 @@ async function asking(prompt: string) {
   cleanups.push(() => events.unsubscribe());
   const requested = await poll(() => events.find("permission.requested")[0], 3000);
   const requestId = requested?.requestId ?? "";
-  const respond = (updatedPermissions: unknown[]) =>
-    ctx.manager.respondPermission({
-      requestId,
-      decision: "allow",
-      updatedPermissions: updatedPermissions as PermissionUpdate[],
-    });
+  const respond = (updatedPermissions: unknown[], kind?: PathKind) =>
+    ctx.manager.respondPermission(
+      {
+        requestId,
+        decision: "allow",
+        updatedPermissions: updatedPermissions as PermissionUpdate[],
+      },
+      kind,
+    );
   /** The tool result the runtime reports once allowed. */
   const result = () => poll(() => events.find("tool.result")[0], 3000);
   const open = () => ctx.store.pendingPermissions(sessionId).length;
@@ -158,10 +164,14 @@ describe("permitir-sempre", () => {
     expect(refusal(() => respond([rule({})]))).toBe(
       "invalid_permission_update: a regra permitiria mais risco do que este pedido",
     );
-    respond([
-      rule({ rules: [{ toolName: "Write", ruleContent: `${project}/app-*.txt` }] }),
-      rule({ rules: [{ toolName: "Write", ruleContent: "x".repeat(500) }] }),
-    ]);
+    // Without the server's lookup an exact path counts as a folder (#395): here it is not there.
+    respond(
+      [
+        rule({ rules: [{ toolName: "Write", ruleContent: `${project}/app-*.txt` }] }),
+        rule({ rules: [{ toolName: "Write", ruleContent: "x".repeat(500) }] }),
+      ],
+      () => "missing",
+    );
     expect((await result())?.content ?? "").toStartWith("arquivo criado: fake.txt; permissões:");
   });
 
@@ -213,5 +223,44 @@ describe("permitir-sempre", () => {
       },
     });
     expect(open()).toBe(1);
+  });
+
+  test("over the wire, a rule that names a folder on disk is refused, and one that names a file is saved (#395)", async () => {
+    const { manager, root, project, requestId, open, result } = await asking("[tool] x");
+    mkdirSync(join(project, "src"), { recursive: true });
+    writeFileSync(join(project, "src", ".env"), "");
+    writeFileSync(join(project, "notes.txt"), "");
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [root],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const rule = (ruleContent: string) => ({
+      type: "addRules",
+      rules: [{ toolName: "Write", ruleContent }],
+      behavior: "allow",
+      destination: "localSettings",
+    });
+    const folder = await client.request("permission.respond", {
+      requestId,
+      decision: "allow",
+      updatedPermissions: [rule("src")],
+    });
+    expect(folder).toMatchObject({ ok: false, error: { code: "invalid_permission_update" } });
+    expect(open()).toBe(1);
+    const file = await client.request("permission.respond", {
+      requestId,
+      decision: "allow",
+      updatedPermissions: [rule("notes.txt")],
+    });
+    expect(file).toMatchObject({ ok: true });
+    expect((await result())?.content ?? "").toContain("notes.txt");
   });
 });

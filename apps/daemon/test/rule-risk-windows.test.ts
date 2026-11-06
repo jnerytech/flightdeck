@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { credential } from "../src/permissions/risk.ts";
-import { type ClassifyCall, ruleLevel } from "../src/permissions/rule-risk.ts";
+import { type ClassifyCall, type PathKind, ruleLevel } from "../src/permissions/rule-risk.ts";
 
 // The classifier is the daemon's own on the path a call names; here, its credential rule alone.
 const classify: ClassifyCall = (_tool, input) =>
   Object.values(input).some((v) => typeof v === "string" && credential(v)) ? "high" : "low";
 
-const level = (content: string, tool = "Write") => ruleLevel(tool, content, classify);
+// What is on disk does not matter here: each path is read as itself, never as a folder (#395).
+const notThere: PathKind = () => "missing";
+const level = (content: string, tool = "Write") => ruleLevel(tool, content, classify, notThere);
 
 describe("rule-risk: a Windows path in a rule (issue #431)", () => {
   test("a wildcard inside a project on a drive, with backslashes, is as narrow as the same path with slashes", () => {
