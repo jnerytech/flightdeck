@@ -92,6 +92,12 @@ describe("git-args-ratchet: no git call gives a base or a branch to git unguarde
     expect(calls('await git(r, "log", "--grep=(", base);')).toHaveLength(1);
   });
 
+  test("braces inside a template's interpolation do not end it early, and an unterminated one is an error", () => {
+    expect(calls('await git(r, "show", `${({ a: base }).a}:file`);')).toHaveLength(1);
+    expect(calls('await git(r, "show", `${({ a: "main" }).a}:file`);')).toEqual([]);
+    expect(() => calls('await git(r, "show", `${base`);')).toThrow("cannot read");
+  });
+
   test("a comma or a name inside a string is not an argument", () => {
     expect(calls('await git(r, "log", "--format=a, base");')).toEqual([]);
     expect(calls('await git(r, "log", "--author=branch");')).toEqual([]);
