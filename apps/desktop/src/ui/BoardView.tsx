@@ -482,7 +482,10 @@ export const BoardView = memo(function BoardView(props: {
               </ul>
               {all.every((card) => card.column !== id) && (
                 <BoardColumnEmpty
-                  label={t("kanban.addCard")}
+                  label={t("kanban.emptyName", {
+                    empty: t("kanban.empty"),
+                    action: t("kanban.addCard"),
+                  })}
                   text={t("kanban.empty")}
                   onAdd={() => {
                     setCreateIn(id);

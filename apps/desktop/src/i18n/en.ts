@@ -3080,6 +3080,8 @@ export const en: Dictionary = {
     satisfied: "done",
   },
   kanban: {
+    /** An empty column's box: the word it shows, then what pressing it does (WCAG 2.5.3). */
+    emptyName: "{empty}, {action}",
     needTitle: "Give the card a title",
     card: "Card {title}",
     queued: "queued",

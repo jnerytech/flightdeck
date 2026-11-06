@@ -3082,6 +3082,8 @@ export const ptBR = {
     satisfied: "pronto",
   },
   kanban: {
+    /** An empty column's box: the word it shows, then what pressing it does (WCAG 2.5.3). */
+    emptyName: "{empty}, {action}",
     needTitle: "Dê um título ao card",
     card: "Card {title}",
     queued: "na fila",
