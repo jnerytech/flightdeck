@@ -92,7 +92,7 @@ describe("status-bar: the slot over the app's state (issue #491)", () => {
         { id: "a", name: "alfa", status: "online" },
         { id: "b", name: "beta", status: "offline" },
       ],
-      appUpdate: { offer: null, upToDate: false, error: null, ready: null },
+      appUpdate: { offer: { version: "9.9.9" }, upToDate: false, error: null, ready: null },
       settings: { autoUpdate: false },
       quota: {
         a: {
@@ -145,10 +145,14 @@ describe("status-bar: the slot over the app's state (issue #491)", () => {
       fireEvent.click(screen.getByRole("button", { name: "1 of 2 hosts online" }));
       fireEvent.click(screen.getByRole("button", { name: "2 open terminals" }));
       fireEvent.click(screen.getByRole("button", { name: "Refresh the plan usage" }));
+      fireEvent.click(
+        screen.getByRole("button", { name: "App update 9.9.9 available: open Settings" }),
+      );
     });
     expect(routes).toEqual([
       { name: "host", host: "a" },
       { name: "host", host: "b" },
+      { name: "settings" },
     ]);
     expect(calls).toEqual(["terminals", "refresh"]);
   });
