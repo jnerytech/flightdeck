@@ -35,6 +35,7 @@ const TELEPORT_MANIFEST = {
     branch: "feature",
     head: "c".repeat(40),
     base: "origin/main",
+    baseSha: "d".repeat(40),
     ref: "refs/flightdeck/teleport/p1",
     ahead: 1,
     changed: 2,
@@ -647,9 +648,10 @@ describe("protocolo", () => {
       receive({ ...TELEPORT_MANIFEST, parts: [{ ...part, name: "../etc" }] }),
       receive({ ...TELEPORT_MANIFEST, parts: [{ ...part, sha256: "zz" }] }),
       receive({ ...TELEPORT_MANIFEST, permissionMode: "everything" }),
+      receive({ ...TELEPORT_MANIFEST, git: { ...TELEPORT_MANIFEST.git, baseSha: "origin/main" } }),
       write({ id: "in-1", part: "other", offset: 0, data: "" }),
       write({ id: "in-1", part: "code", offset: 0, data: "A".repeat(200_000) }),
-    ]).toEqual([false, false, false, false, false]);
+    ]).toEqual([false, false, false, false, false, false]);
   });
 
   test.each(Object.entries(validCommands))("comando %s válido passa no schema", (type, payload) => {
