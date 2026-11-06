@@ -31,13 +31,21 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     wait (the screen stopped changing). `lazy-wait-baseline.json` (a fixed wait before a one-shot
     query, or ending a helper) is empty, and an `act(() => Bun.sleep(…))` is allowed only with a
     `// timing:` comment on the line above saying why the clock is the thing under test.
+    Any other fixed sleep in a test file (`Bun.sleep`, `Bun.sleepSync`, a promise on a timer, a
+    `sleep(` or `delay(` helper) is counted by the sleep ratchet: `sleep-baseline.json` only goes
+    down, so a new test waits on the condition, and a `// timing:` comment on the line above allows
+    a sleep where the clock itself is under test.
+    The preload puts the timers, `Date`, `fetch`, the environment, the window size, the browser
+    storage and the page body back between two test files, and names on stderr the file that
+    left one changed (`isolation: <file> left … changed`): fix that file, the reset is a net.
    - Nada de `toMatchSnapshot` na primeira rodada: ele grava o resultado do stub. Use literais
      escritos à mão (`toBe`, `toMatchInlineSnapshot` com o texto).
    - `toContain` sobre algo que pode ser `undefined`: use `?? ""`.
 5. **Commit só do teste**, com caminhos explícitos (`git add <arquivo>`, nunca `git add -A`), e
    confira `git status --short` antes: `test(<área>): <comportamento>`.
-6. **Implementação mínima**, mesmo comando verde, depois a suíte inteira (`bun run test`, que
-   inclui o limite de 100% e o verificador de arquivos-fonte), `bun run typecheck` e
+6. **Implementação mínima**, mesmo comando verde, depois a suíte inteira
+   (`bun run slot -- bun run test`, que inclui o limite de 100% e o verificador de arquivos-fonte),
+   ou `bun run test:related -- --fast` numa sessão (a suíte inteira roda no CI), `bun run typecheck` e
    `bun run lint`, encadeados (`&&` ou `set -o pipefail`) para o commit não acontecer depois de
    uma falha. Commit `feat(<área>): ...`.
 7. **Cobertura revela ramo sem teste?** Remova o ramo, escreva o teste, mostre o vermelho e só
@@ -51,17 +59,60 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     controlada com código 1, não crash) e é commitado num `test(<área>)`.
 11. **Proibido:** implementação antes do teste, enfraquecer ou apagar asserção para passar,
     `.only`, `.skip` ou `test.todo` em código commitado.
+    **The one exception: an unstable test is skipped off Ubuntu** (decided 2026-11-05, issue #288).
+    A test that bets on the machine (wall-clock polls, a timer against a limit, a child process on
+    a loaded Windows runner) is written `test.skipIf(notLinux)(…)` (`notLinux` is in
+    `scripts/test/not-linux.ts`; `process.platform !== "linux"` also counts) with
+    `// unstable: #<issue> <reason>` on the same line or the line above. The issue is where the fix
+    goes: a skip is a promise to fix, not a place to leave the test. The test is intact, it still
+    runs on Ubuntu under the 100% coverage gate, and only Windows (and macOS) skip it. No other
+    skip is allowed: `.skip`, `.only`, `test.todo` and a first-run snapshot stay forbidden, and a
+    `skipIf` for a platform *capability* (no 8.3 names, no symlinks) is still fine without a note.
+    The hook knows the two spellings above, one line at a time, and does not look up the issue; the
+    ratchet (at most 5, each with its note) and review hold the rest.
+    `unstable-skip-ratchet.test.ts` checks every such skip has the note, with an issue number and a
+    reason, and that there are at most 5 in the repository (lower the number in that test when one
+    is fixed; never raise it).
 
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
-testes desligados.
+testes desligados. With `--spec docs/SPEC-fase-N.md` it also fails on an area of the spec's table
+with no `test(<area>)` commit. From phase 40 on the spec follows `docs/templates/SPEC.md`, and
+`bun run spec:lint <spec>` (run by the suite for every such spec) checks its sections and table.
+
+**Checked at commit time and in CI.** Without `--since` (or with `--since auto`) the audit starts
+at the merge-base with `main`, or at the last tag when `HEAD` is on `main`; CI runs it that way on
+every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard.ts`, rules in
+`scripts/lib/claude-hooks.ts`) checks the same things earlier:
+
+- it refuses a `git commit` whose subject is not `type(scope): text`, a `feat`/`fix` without a
+  scope, and a `feat(x)`/`fix(x)` with no `test(x)` commit since that base;
+- it refuses an Edit or Write that adds `.only(`, `.skip(`, `test.todo(` or `toMatchSnapshot(` to
+  a test file (one that keeps or removes them passes).
+- it refuses an Edit or Write that adds a `skipIf(notLinux)` (or `skipIf(process.platform !==
+  "linux")`) to a test file without `// unstable: #<issue> <reason>` on that line or the line above
+  (one that is already there, or a skip for a platform capability, passes).
+
+For a deliberate exception, end the commit message with a trailer line `TDD-Waiver: <why>` (or
+pass `--trailer "TDD-Waiver: <why>"`). The hook lets the commit through and `tdd:audit` lists it
+as waived; the trailer needs no hash, so it survives a rebase. `scripts/tdd-audit-waivers.json`
+keeps the waivers made before trailers existed. A message the hook cannot read (from an editor or
+a file) passes, and so does a commit hidden in `sh -c` or a subshell: the hook is a guardrail, and
+the audit in CI is the wall. `bun run harness:stats` shows how often each rule blocked and how
+many commits were waived.
 
 **Antes de entregar uma sessão:** `bun run typecheck`, `bun run lint`, `bun run tdd:audit` e
-`bun run test:related`. O `test:related [--base <ref>]` roda só os testes que alcançam o que
-mudou desde o merge-base com `main` (os arquivos de teste alterados e os que importam, direta ou
-indiretamente, um arquivo alterado), e imprime cada um com o motivo. A suíte completa
-(`bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador e no CI.
+`bun run test:related -- --fast`. O `test:related [--base <ref>]` roda só os testes que alcançam o
+que mudou desde o merge-base com `main` (os arquivos de teste alterados e os que importam, direta ou
+indiretamente, um arquivo alterado), e imprime cada um com o motivo. **`--fast`** (the hand-off
+default, #219) keeps only the tests that import a changed file directly, plus the changed tests
+and the tests that name a changed path, and still demands 100% coverage of the changed source
+files. On a hub file the set shrinks a lot (`packages/protocol/src/index.ts`: 688 tests
+transitively, 141 directly; `apps/desktop/src/i18n/en.ts`: 359 and 19). The transitive set runs
+in CI on the pushed branch. A suíte completa
+(`bun run slot -- bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador
+e no CI.
 
-**Which function is not covered.** Bun's coverage (`bun run test`) counts functions per file but
+**Which function is not covered.** Bun's coverage (the full suite) counts functions per file but
 does not name them, so a file at 94% function coverage does not say which function is missing.
 `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` does: it runs the tests that reach the
 files (the same selection as `test:related`; `--tests` names them by hand, which a hub file that
@@ -72,6 +123,12 @@ source line). The files are instrumented in memory by `istanbul-lib-instrument`,
 only the files listed are instrumented. Limits: it follows the test process only (a function that
 runs in a spawned child counts as not called), and istanbul skips private `#methods`. Use it before
 hand-off on the files you changed, to close a function gap without bisecting.
+
+**Functional core, imperative shell.** Logic that decides is a function that takes its effects
+(git, fs, clock, spawn, network) as a deps object or an injected context, as `runAudit({ since,
+git, readFile })` and the daemon's service contexts do; the entry file or the command handler
+only wires the real ones. The tests then pass fakes instead of `mock.module`, which leaks across
+files. This is a rule, not a style rewrite: React components and Bun idioms stay as they are.
 
 ## Travas
 
@@ -106,9 +163,11 @@ em vez de depender de cuidado.
 - **The slot for the heavy runs.** The full suite, `demo:shots`, `e2e`, the smokes and the builds
   run through `bun run slot -- <command>` (an exclusive lock with a queue, `scripts/lib/slot.ts`),
   never bare: two heavy runs at once overload the machine and make the timing-sensitive tests
-  flaky. Area tests, typecheck and lint do not need the slot. A full gate that must not be
+  flaky. Area tests, typecheck and lint do not need the slot; `bun run typecheck` and
+  `bun run lint` take a place in the light lane instead (`scripts/lane.ts`, two places), because
+  one tsc run takes up to 1.5 GB and six at once ran the machine out of memory. A full gate that must not be
   disturbed by the sessions' area tests runs with `--priority` (`bun run slot -- --priority bun run
-  test`): while it runs, the slot raises the niceness of the other `bun test` processes of the
+  test`): while it runs, the slot raises the niceness of the other bun test processes of the
   same user to 15 every few seconds. It only raises (never lowers a niceness), skips its own
   process tree, restores nothing (those processes finish niced) and does nothing on Windows.
 - **No floating promises.** Biome's `noFloatingPromises` (nursery, type-aware) is an error for
@@ -122,18 +181,18 @@ em vez de depender de cuidado.
   session, board, the simple mode of phase 33) are Gherkin scenarios in `pt-BR` and `en`
   (`scripts/e2e/bdd/features/`, run by `playwright-bdd`, pinned exactly), written to create their
   own state. Layout, terminal and keyboard journeys stay plain TypeScript
-  (`scripts/e2e/journeys.ts`), and unit tests stay plain `bun test` with behavior titles. The
+  (`scripts/e2e/journeys.ts`), and unit tests stay plain bun tests with behavior titles. The
   pilot's measurements are in `docs/DECISIONS.md` ("BDD pilot").
 
 ## Armadilhas conhecidas
 
-- `bun test` esconde as linhas `(pass)` quando `CLAUDECODE` está definida: para mostrar a lista,
-  rode `env -u CLAUDECODE bun test`.
+- O bun test esconde as linhas `(pass)` quando `CLAUDECODE` está definida: para mostrar a lista,
+  rode `env -u CLAUDECODE bun --config=bunfig.area.toml test <arquivo>`.
 - Testes de UI: o happy-dom é registrado uma vez por processo (`registerDom`), React e Testing
   Library são importados com `import()` depois disso, e `liveScreen` consulta o documento atual.
 - Biome: no modo stdin, o código de saída não reflete diagnósticos. Para testar uma regra, grave
   um arquivo real e apague depois. Padrões de import precisam de `**` (`@tauri-apps/**`).
-- `cargo check` exige `apps/desktop/dist`: rode `bun run build:desktop` antes. Plugins do Tauri
+- `cargo check` exige `apps/desktop/dist`: rode `bun run slot -- bun run build:desktop` antes. Plugins do Tauri
   ficam no major 2.
 - No Git Bash, `schtasks /TN ...` tem o `/TN` reescrito como caminho; use PowerShell.
 - UI tests that wait on a daemon: inside `waitFor`, never `expect(element).toBeNull()` or
@@ -146,10 +205,51 @@ em vez de depender de cuidado.
   (`mock.module(path, () => real)`), because Bun module mocks outlive their file and later files
   in the same run would draw the stand-in.
 
+## Delivery (GitHub Flow, #260)
+
+- Every branch reaches `main` through its own PR: `bun run pr -- open <branch>` titles it after the
+  branch's issue and closes it. A branch stacked on another opens with `--base <parent>`. When
+  `FLIGHTDECK_PR_OPENED` is set (words split on spaces, or a JSON array of strings for a path with
+  spaces), `open` runs it with the new PR's number, branch and base (the coordinator's tooling
+  queues an OpenCode review there, #273). A hook that fails, or runs past two minutes, leaves the
+  PR open; only its exit code is printed, never its output.
+- A change in a risk area (a spawn or kill, a delete, a secret, a permission, the vault or pairing,
+  read from the added lines of the changed code) needs a security review before the hand-off
+  (#273). Run the `security-reviewer` agent, fix what it finds, and commit its verdict after the
+  last risky commit: `git commit --allow-empty -m "chore(security): security-reviewer verdict (#N)"
+  -m "Security-Reviewed: <its one-line summary>"`. Until then `handoff:check` stamps
+  `security=unreviewed`, which `--verify` refuses; a git that fails stamps `security=unknown`, and a
+  stamp with no `security=` or no `ci=` vouches for nothing.
+- CI runs once per commit: on the PR (`pull_request`), on `main` (`push`), or by hand for a branch
+  with no PR yet (`bun run ci:branch`).
+- CI starts with a quick job (#272): typecheck, lint, the TDD audit and every ratchet test, in
+  minutes. The heavy jobs need it. A new ratchet's test file ends in
+  `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
+- Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub
+  then merges the PR with a merge commit, never a squash, once the main ruleset's required checks
+  are green on its HEAD, behind `main` or not (#305: the ruleset is not strict, so a merge no
+  longer reruns every other PR's CI; `main`'s push CI checks the merged result). It refuses a
+  draft, and a stacked PR whose parent
+  `main` does not have yet; once the parent is in `main`, it retargets the PR onto `main` first.
+- A session keeps at most 2 branches open (pushed and not merged yet).
+- `bun run pr -- next` lists the open PRs in merge order with what each still needs; a PR that
+  conflicts with its base (GitHub's mergeable state) waits until `main` is merged into it and the
+  conflicts resolved. `bun run pr -- update <n>` brings a PR up to date with its base when there is
+  no conflict. `bun run pr -- merge <n>` (the coordinator only; the guard hook refuses it in a
+  session) merges by hand with a merge commit, under the same conditions; a PR behind `main` merges,
+  with how far behind it is printed as a note.
+- A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
+  the Linux tests and lint; the daemon or a smoke adds Windows and the smokes; the app, the
+  protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job
+  skipped by path still reports under the ruleset's name. Every push to `main` runs everything.
+- A release is a tag on a green `main`, and on a commit whose full run (its push to `main`) is
+  green; there is no rc branch to assemble. `bun run pr -- tag vX` (the coordinator) tags main's
+  HEAD only after that run passed, and pushes the tag alone as `refs/tags/vX`.
+
 ## Evidência para o /goal
 
 - Cada comando de critério mostra o próprio código de saída (`echo $?` logo depois, ou
   `${PIPESTATUS[0]}` quando há pipe). Checagens de estado do sistema vão em chamadas separadas,
   para não misturar códigos de saída.
-- "Nenhum teste usou o Claude real" se prova pela trava: as rodadas finais de `bun test` e dos
+- "Nenhum teste usou o Claude real" se prova pela trava: as rodadas finais do bun test e dos
   smokes passam com ela ativa.

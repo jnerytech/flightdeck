@@ -2,7 +2,7 @@ import type { PendingPermission } from "@flightdeck/protocol";
 import { type T, translator } from "../i18n/index.ts";
 import type { TrayMenu, TrayStatus } from "../platform/types.ts";
 import type { PendingItem } from "./app-store.ts";
-import { inputSummary } from "./tool-input.ts";
+import { pendingText } from "./pending-text.ts";
 
 /** Requests listed in the tray submenu; the rest become "e mais N…". */
 export const TRAY_MENU_MAX = 10;
@@ -18,11 +18,9 @@ export function trayMenu(items: PendingItem[], t: T = PT): TrayMenu {
   const more = Math.max(0, items.length - TRAY_MENU_MAX);
   return {
     items: items.slice(0, TRAY_MENU_MAX).map((item) => {
-      const summary = inputSummary(item.input);
-      const tool = summary ? `${item.toolName}: ${summary}` : item.toolName;
       return {
         key: `${item.hostId}/${item.requestId}`,
-        label: `${item.hostName} · ${item.sessionName} · ${tool}`,
+        label: `${item.hostName} · ${item.sessionName} · ${pendingText(item, t)}`,
         // A gate is answered in the app, and a high-risk request is approved by holding a button.
         actions: item.gate || item.risk === "high" ? ["open"] : ["approve", "deny", "open"],
       };

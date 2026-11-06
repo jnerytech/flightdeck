@@ -139,7 +139,6 @@ async function run() {
       });
       return r?.files.some((f) => f.name === "note.md" && f.change === "new") ? r : null;
     }, "task.results");
-    void results;
     const file = (results as unknown as TaskResultsResult).files.find((f) => f.name === "note.md");
     const preview = await client.data<TaskPreviewResult>("task.preview", {
       sessionId: started.sessionId,
@@ -153,7 +152,7 @@ async function run() {
   }
 }
 
-const work = realTempDir("flightdeck-smoke-simple-");
+realTempDir("flightdeck-smoke-simple-");
 let code = 1;
 try {
   await run();
@@ -164,7 +163,5 @@ try {
   console.error(
     `SMOKE SIMPLE FAIL at step "${step}": ${error instanceof Error ? error.message : String(error)}`,
   );
-} finally {
-  void work;
 }
 process.exit(code);

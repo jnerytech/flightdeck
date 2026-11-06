@@ -13,6 +13,7 @@ import type { AssistantBlock, PermissionMode } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
+import { describeCommands, type SdkSlashCommand } from "./commands.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
 import type {
   AgentRun,
@@ -34,6 +35,7 @@ export interface QueryHandle extends AsyncIterable<SDKMessage> {
   mcpServerStatus?(): Promise<McpServerStatus[]>;
   setPermissionMode?(mode: PermissionMode): Promise<void>;
   setModel?(model?: string): Promise<void>;
+  supportedCommands?(): Promise<SdkSlashCommand[]>;
 }
 
 export type QueryFn = (params: {
@@ -50,6 +52,8 @@ export interface ClaudeSdkRuntimeOptions {
   forkSession?: (id: string, options: ForkOptions) => Promise<{ sessionId: string }>;
   /** The Flightdeck MCP server every session gets; none when absent. */
   mcpServer?: FlightdeckMcpServer;
+  /** How long the init event waits for the SDK to describe the slash commands (3 s). */
+  commandsTimeoutMs?: number;
 }
 
 const MAX_TOOL_RESULT = 4000;
@@ -108,6 +112,31 @@ function toolResultText(content: unknown): string {
       .join("\n");
   }
   return content === undefined ? "" : JSON.stringify(content);
+}
+
+const COMMANDS_TIMEOUT_MS = 3000;
+
+/**
+ * The init event with the commands described, when the SDK can say in time; the names alone
+ * otherwise (it fails or stalls: the session must not wait on it, since its events queue behind this).
+ */
+async function withCommands(
+  event: Extract<RuntimeEvent, { type: "session.init" }>,
+  handle: QueryHandle,
+  timeoutMs: number,
+): Promise<RuntimeEvent> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const late = new Promise<undefined>((resolve) => {
+      timer = setTimeout(() => resolve(undefined), timeoutMs);
+    });
+    const commands = await Promise.race([handle.supportedCommands?.(), late]);
+    return commands ? { ...event, commands: describeCommands(commands) } : event;
+  } catch {
+    return event;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Maps one SDK message to zero or more protocol events. Subagent traffic is left out. */
@@ -193,6 +222,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
   private readonly query: QueryFn;
   readonly claudePath: string | undefined;
   private readonly mcpServer: FlightdeckMcpServer | undefined;
+  private readonly commandsTimeoutMs: number;
 
   private readonly fork: NonNullable<ClaudeSdkRuntimeOptions["forkSession"]>;
 
@@ -201,6 +231,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     this.fork = options.forkSession ?? sdkForkSession;
     this.claudePath = resolveClaudePath(options.claudePath);
     this.mcpServer = options.mcpServer;
+    this.commandsTimeoutMs = options.commandsTimeoutMs ?? COMMANDS_TIMEOUT_MS;
   }
 
   /**
@@ -323,7 +354,13 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     void (async () => {
       try {
         for await (const message of handle) {
-          for (const event of normalizeSdkMessage(message)) events.push(event);
+          for (const event of normalizeSdkMessage(message)) {
+            events.push(
+              event.type === "session.init"
+                ? await withCommands(event, handle, this.commandsTimeoutMs)
+                : event,
+            );
+          }
         }
         events.end();
       } catch (error) {

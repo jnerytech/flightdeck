@@ -323,7 +323,7 @@ describe("snippets-escopos: do projeto", () => {
         "",
       ].join("\n"),
     );
-    expect((Bun.YAML.parse(readFileSync(file, "utf8")) as unknown[]).length).toBe(2);
+    expect(Bun.YAML.parse(readFileSync(file, "utf8")) as unknown[]).toHaveLength(2);
     expect(names((await snippets.list({ projectPath: project })).snippets).sort()).toEqual([
       "revisar",
       "testes-rapidos",

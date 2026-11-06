@@ -94,6 +94,8 @@ for (const [lang, t] of [
       await settle(() => screen.queryByLabelText(S.issues) !== null);
       await toggle(S.issues);
       await settle(() => screen.queryByText(S.error.gh_logged_out) !== null);
+      expect(screen.queryByText(S.error.gh_logged_out)).not.toBeNull();
+      expect(screen.queryByText(S.error.gh_logged_out)).not.toBeNull();
     });
 
     test("a host without roi shows no switches", async () => {

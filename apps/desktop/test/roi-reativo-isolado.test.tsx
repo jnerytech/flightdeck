@@ -1,4 +1,4 @@
-import { afterEach, describe, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import type { Project, RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { EMPTY_PERIOD } from "../src/lib/roi.ts";
@@ -52,6 +52,7 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
       store.roi.setDefaultRate(60);
     });
     await settle(() => screen.queryAllByText(/360[.,]00/).length > 0, 2000);
+    expect(screen.queryAllByText(/360[.,]00/).length).toBeGreaterThan(0);
     store.dispose();
   });
 
@@ -70,6 +71,7 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
       store.roi.setDefaultRate(60);
     });
     await settle(() => screen.queryByText(ptBR.roiUi.noRate) === null, 2000);
+    expect(screen.queryByText(ptBR.roiUi.noRate)).toBeNull();
     store.dispose();
   });
 
@@ -85,6 +87,7 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
     } as unknown as Project;
     render(<RoiCard store={store} hostId="h1" project={project} />);
     await settle(() => screen.queryByText(ptBR.roiUi.noHost) !== null);
+    expect(screen.queryByText(ptBR.roiUi.noHost)).not.toBeNull();
     store.dispose();
   });
 
@@ -110,6 +113,7 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
     await settle(
       () => screen.queryByRole("alert")?.textContent === ptBR.roiUi.settingsPanel.error.number,
     );
+    expect(screen.queryByRole("alert")?.textContent).toBe(ptBR.roiUi.settingsPanel.error.number);
     store.dispose();
   });
 });
