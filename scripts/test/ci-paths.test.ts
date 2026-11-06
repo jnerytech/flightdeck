@@ -108,6 +108,8 @@ describe("ci-paths: the rules", () => {
     }
     expect(ciPlan(PR, ["scripts/lib/slot.ts"]).screenshots).toBe(false);
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).screenshots).toBe(false);
+    // The raw-utility ratchet is a bun test; demo-shots does not import it (#703 review).
+    expect(ciPlan(PR, ["scripts/lib/layout-ratchet.ts"]).screenshots).toBe(false);
   });
 
   test("every local script file the journeys import plans them, so a change to a guard they run runs them (#637)", () => {
