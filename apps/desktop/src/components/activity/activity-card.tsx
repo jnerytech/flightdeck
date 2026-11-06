@@ -28,7 +28,8 @@ export function ActivityCardView(props: {
   t: T;
   nowMs: number;
   onOpen(newTab: boolean): void;
-  onRespond(request: PendingItem, decision: "allow" | "deny"): unknown;
+  /** `held`: the Approve was held its full time, the proof the store asks of a high risk (#245). */
+  onRespond(request: PendingItem, decision: "allow" | "deny", held?: boolean): unknown;
   /** Test seam: the hold time of a high-risk approval. */
   holdMs?: number;
 }) {
@@ -75,7 +76,7 @@ export function ActivityCardView(props: {
                 label={t("approval.hold")}
                 hint={t("approval.holdHint")}
                 holdMs={props.holdMs ?? 2000}
-                onHeld={() => void props.onRespond(pending, "allow")}
+                onHeld={() => void props.onRespond(pending, "allow", true)}
               />
             ) : (
               <ActionButton size="sm" onClick={() => props.onRespond(pending, "allow")}>

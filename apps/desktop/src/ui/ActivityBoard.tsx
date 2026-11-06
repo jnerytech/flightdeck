@@ -138,8 +138,8 @@ export function ActivityBoard(props: {
                 nowMs={nowMs}
                 {...(props.holdMs !== undefined ? { holdMs: props.holdMs } : {})}
                 onOpen={(newTab) => props.onOpen(card.row, newTab)}
-                onRespond={(request, decision) =>
-                  store.respondTo(request.hostId, request.requestId, decision)
+                onRespond={(request, decision, held) =>
+                  store.respondTo(request.hostId, request.requestId, decision, held ? { held } : {})
                 }
               />
             ))}

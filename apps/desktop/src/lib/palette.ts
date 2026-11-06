@@ -376,13 +376,6 @@ export function paletteSections(
       "go-needs-you",
     ),
     action(
-      "go:activity",
-      t("palette.goActivity"),
-      { kind: "go", to: "activity" },
-      undefined,
-      "go-activity",
-    ),
-    action(
       "go:all-projects",
       t("palette.goProjects"),
       { kind: "go", to: "all-projects" },
@@ -409,6 +402,14 @@ export function paletteSections(
     action("settings", t("palette.goSettings"), { kind: "settings" }, undefined, "go-settings"),
     action("add-host", t("palette.addHost"), { kind: "add-host" }),
     action("shortcuts", t("palette.showShortcuts"), { kind: "shortcuts" }, undefined, "help"),
+    // Last: the actions section shows eight, and the commands above are the ones used most.
+    action(
+      "go:activity",
+      t("palette.goActivity"),
+      { kind: "go", to: "activity" },
+      undefined,
+      "go-activity",
+    ),
   ];
 
   // The clients have a section of their own, shown whole: one switches between all of them (#147).

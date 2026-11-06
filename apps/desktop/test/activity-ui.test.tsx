@@ -226,7 +226,7 @@ describe("activity-ui: the Activity board (issue #151)", () => {
       hostId: string,
       requestId: string,
       decision: "allow" | "deny",
-      answer,
+      answer?: { held?: boolean },
     ) => {
       answers.push(answer ?? {});
       const result = AppStore.prototype.respondTo.call(
