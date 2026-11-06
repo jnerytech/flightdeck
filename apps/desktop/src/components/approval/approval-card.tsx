@@ -198,9 +198,13 @@ export function ApprovalCard(props: {
     updatedPermissions?: PermissionUpdate[],
     /** The tool's input as the user changed it (the answers of AskUserQuestion). */
     updatedInput?: Record<string, unknown>,
+    /** The Approve was held its full time: a high-risk request needs it (#245). */
+    held?: true,
   ): unknown;
   /** More buttons next to Aprovar and Negar (the queue's "Abrir sessão"). */
   actions?: ReactNode;
+  /** What is approved, when it is not a tool's input (a workflow gate's question, #245). */
+  body?: ReactNode;
   /** Copies the session's folder (the whole path) when the user asks. */
   onCopyPath?(path: string): void;
 }) {
@@ -224,7 +228,8 @@ export function ApprovalCard(props: {
   const [picks, setPicks] = useState<Record<string, AskPick>>({});
   const answers = questions ? buildAnswers(questions, picks) : null;
   const asks = questions !== null || plan !== null;
-  const high = request.risk === "high" && !asks;
+  // A plan is held like any request (#245); a question approves no action, so it never is.
+  const high = request.risk === "high" && !questions;
   const age = request.createdAt ? formatAgo(props.nowMs - Date.parse(request.createdAt), t) : null;
   const deny = () => {
     const message = reason.trim();
@@ -235,6 +240,8 @@ export function ApprovalCard(props: {
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     // Keys typed in the reason (or any other field of the card) are text, not shortcuts.
     if (e.target !== e.currentTarget || resolution || pending) return;
+    // Ctrl+A or Cmd+A is select-all, and a held key repeats: only a plain press answers (#244).
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const key = e.key.toLowerCase();
     // A high-risk request is approved by holding the button, never by a key.
     if (key === "a" && !high && !questions) respond("allow");
@@ -306,7 +313,7 @@ export function ApprovalCard(props: {
       ) : plan !== null ? (
         <Markdown text={plan} />
       ) : (
-        <Body view={view} t={t} onCopyPath={props.onCopyPath} />
+        (props.body ?? <Body view={view} t={t} onCopyPath={props.onCopyPath} />)
       )}
       {resolution ? (
         <p className="text-muted-foreground text-sm">{resolutionLine(resolution, t)}</p>
@@ -360,7 +367,9 @@ export function ApprovalCard(props: {
                       },
                     }
                   : {})}
-                onApprove={() => respond("allow")}
+                onApprove={(held) =>
+                  held ? respond("allow", undefined, undefined, undefined, true) : respond("allow")
+                }
                 onDeny={() => setDenying(true)}
               />
             )}

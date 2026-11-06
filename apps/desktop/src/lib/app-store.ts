@@ -89,6 +89,7 @@ import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
+import { HIGH_RISK_HOLD_MS } from "./hold.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
@@ -171,9 +172,6 @@ import { APP_VERSION, hasFeature, isNewer } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
-
-/** How long a prod or high-risk approval is held, as the approval card measures it. */
-const HOLD_MS = 2000;
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
@@ -478,6 +476,8 @@ export interface AppStoreOptions {
   wakeDebounceMs?: number;
   /** How long the global search waits for each host. */
   searchTimeoutMs?: number;
+  /** Starts the poll of the GitHub sign-in (calls `tick` now and then, returns its stop); tests drive it by hand. */
+  githubTicker?: (tick: () => void) => () => void;
   /** Milliseconds now: the age of quota readings. */
   now?: () => number;
   /** HH:MM of an instant (quota resets); the host machine's time zone when absent. */
@@ -550,6 +550,8 @@ export interface PendingItem {
   cwd?: string | null;
   /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
   gate?: GateRef;
+  /** What the gate asks and shows, so it is approved in sight of it (issue #245). */
+  gateText?: { message: string; output?: string };
   /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
   risk?: RiskLevel;
   riskReason?: string;
@@ -637,6 +639,10 @@ export function needsYou(state: AppState): PendingItem[] {
               attempt: step.attempt,
               cardId: run.cardId,
             },
+            gateText: {
+              message: step.message ?? "",
+              ...(step.output ? { output: step.output } : {}),
+            },
           })),
       ),
   ]);
@@ -644,6 +650,21 @@ export function needsYou(state: AppState): PendingItem[] {
     state.hosts.some((h) => h.id === item.hostId),
   );
   return [...requests, ...known].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+/** What goes with an answer to a request, besides allow or deny. */
+export interface Answer {
+  /** "Allow in this session" and "always in this project" (phase 7). */
+  updatedPermissions?: PermissionUpdate[] | undefined;
+  /** Why it was denied (phase 10: the card's reason). */
+  message?: string | undefined;
+  /** The tool's input as the person changed it (the answers of AskUserQuestion). */
+  updatedInput?: Record<string, unknown> | undefined;
+  /**
+   * The Approve was held its full time (#245): a high-risk request is approved only with it, so a
+   * screen that forgets the risk cannot approve one with a click.
+   */
+  held?: boolean | undefined;
 }
 
 /** Filters of the per-host history list. */
@@ -1070,6 +1091,13 @@ export class AppStore {
     return null;
   }
 
+  /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
+  githubTicker(tick: () => void): () => void {
+    if (this.options.githubTicker) return this.options.githubTicker(tick);
+    const timer = setInterval(tick, 1500);
+    return () => clearInterval(timer);
+  }
+
   /** Drops the connection and opens a new one right away. */
   async reconnectHost(hostId: string): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
@@ -1100,10 +1128,18 @@ export class AppStore {
     return true;
   }
 
-  /** Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray. */
-  decideOldest(decision: "approve" | "deny"): void {
+  /**
+   * Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray.
+   * `shown` is the `host/request` the command named: when that one has gone in between, the one
+   * now oldest is opened to be seen, never answered unseen (#245).
+   */
+  decideOldest(decision: "approve" | "deny", shown: string): void {
     const item = needsYou(this.state)[0];
     if (!item) return;
+    if (`${item.hostId}/${item.requestId}` !== shown) {
+      this.openRequest(item);
+      return;
+    }
     // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
     // palette is not the tray, so a vault grant is never logged as the tray's.
     if (item.gate || item.vault) this.openRequest(item);
@@ -1146,13 +1182,14 @@ export class AppStore {
     if (!item) return;
     // The tray never approves a high-risk request: that takes holding the button in the app. A
     // workflow gate is answered on its card, never as a permission (the host refuses its id).
-    if (action === "open" || item.gate || (action === "approve" && item.risk === "high"))
+    // A vault grant is opened too (#244): the tray's line cannot show the secret and parameters.
+    if (
+      action === "open" ||
+      item.gate ||
+      (action === "approve" && (item.risk === "high" || item.vault))
+    )
       this.openRequest(item);
-    else if (item.vault && action === "approve") {
-      // The daemon records that it was the tray that approved it.
-      this.vaultQuestions.get(item.requestId)?.({ scope: "once", via: "tray" });
-    } else
-      void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+    else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 
   /** Sends an OS notification and keeps it in the notification center. */
@@ -2073,16 +2110,42 @@ export class AppStore {
     return this.onSelected((conn, sessionId) => conn.request("session.resume", { sessionId }));
   }
 
+  /** The daemon's risk of a waiting request: its queue entry, else the session item it is. */
+  private riskOf(hostId: string, requestId: string): RiskLevel | undefined {
+    const queued = needsYou(this.state).find(
+      (item) => item.hostId === hostId && item.requestId === requestId,
+    );
+    if (queued?.risk) return queued.risk;
+    for (const [key, session] of Object.entries(this.state.sessions)) {
+      if (!key.startsWith(`${hostId}/`)) continue;
+      const item = session.items.find((i) => i.kind === "permission" && i.requestId === requestId);
+      if (item?.kind === "permission" && item.risk) return item.risk;
+    }
+    return undefined;
+  }
+
+  /**
+   * An allow of a high-risk request that was not held is refused here, below every screen, and
+   * the person is told why (#245). Deny never needs a hold.
+   */
+  private unheld(hostId: string, requestId: string, decision: "allow" | "deny", answer: Answer) {
+    if (decision !== "allow" || answer.held || this.riskOf(hostId, requestId) !== "high") {
+      return false;
+    }
+    const text = this.i18n.t("approval.holdRequired");
+    this.fail(new Error(text), text);
+    return true;
+  }
+
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
   async respondTo(
     hostId: string,
     requestId: string,
     decision: "allow" | "deny",
-    updatedPermissions?: PermissionUpdate[],
-    /** Why it was denied (phase 10: the card's reason). */
-    message?: string,
-    updatedInput?: Record<string, unknown>,
+    answer: Answer = {},
   ): Promise<void> {
+    const { updatedPermissions, message, updatedInput } = answer;
+    if (this.unheld(hostId, requestId, decision, answer)) return;
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
     if (question) {
@@ -2120,13 +2183,10 @@ export class AppStore {
     });
   }
 
-  respond(
-    requestId: string,
-    decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions?: PermissionUpdate[],
-    updatedInput?: Record<string, unknown>,
-  ): Promise<void> {
+  respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
+    const { updatedPermissions, message, updatedInput } = answer;
+    const hostId = this.state.selected?.hostId;
+    if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
     return this.onSelected((conn) =>
       conn.request("permission.respond", {
         requestId,
@@ -2539,7 +2599,12 @@ export class AppStore {
     const t = this.i18n.t;
     const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
     for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
-      this.notifyUser(n);
+      // A request's entry keeps its session too: once answered, the bell opens it at that request.
+      const requestId = n.link ? parseRequestLink(n.link)?.requestId : undefined;
+      this.notifyUser(
+        n,
+        requestId ? { name: "session", host: hostId, id: next.id, focus: requestId } : undefined,
+      );
     }
   }
 
@@ -3679,7 +3744,8 @@ export class AppStore {
     const item = this.state.vaultApprovals.find(
       (i) => i.hostId === hostId && i.requestId === requestId,
     );
-    if (!item?.vaultOnce) return;
+    // A high-risk request (a free command, a rule that needs the hold) never gets it (#244).
+    if (!item?.vaultOnce || item.risk === "high") return;
     this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
   }
 
@@ -3694,7 +3760,7 @@ export class AppStore {
           requestId: request.requestId,
           via: answer.via,
           scope: answer.scope,
-          ...(request.needsHold ? { heldMs: HOLD_MS } : {}),
+          ...(request.needsHold ? { heldMs: HIGH_RISK_HOLD_MS } : {}),
         });
       },
     });
@@ -3748,7 +3814,8 @@ export class AppStore {
         : {}),
       vault: true,
       // A request that needs holding is approved only by the held button, one use at a time.
-      ...(request.once && !request.needsHold ? { vaultOnce: true as const } : {}),
+      // Not a free command either: it is high risk, and a session approval has no hold (#244).
+      ...(request.once && !request.needsHold && !free ? { vaultOnce: true as const } : {}),
       vaultRule: {
         secretId: request.secretId,
         match: {

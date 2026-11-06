@@ -145,8 +145,13 @@ export function ExternalView(
               nowMs={store.now()}
               onCopyPath={(path) => void store.copyText(path)}
               alwaysAllow={alwaysAllow}
-              onRespond={(decision, message, updates, updatedInput) =>
-                store.respondTo(hostId, request.requestId, decision, updates, message, updatedInput)
+              onRespond={(decision, message, updates, updatedInput, held) =>
+                store.respondTo(hostId, request.requestId, decision, {
+                  updatedPermissions: updates,
+                  message,
+                  updatedInput,
+                  held,
+                })
               }
             />
           ))}
