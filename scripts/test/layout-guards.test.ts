@@ -678,3 +678,23 @@ describe("layout-guards: where a session opens (issues #173 and #456)", () => {
     expect(pinnedProblem()).toBe("no timeline");
   });
 });
+
+import { ratchetScreen } from "../lib/layout-guards.ts";
+
+describe("layout-guards: one screen against a ratchet, as demo:shots runs it (#641)", () => {
+  test("it records what the screen showed, fails a new finding, and lists a baseline key that is gone", () => {
+    const ratchet = {
+      baseline: { "overflow-x|dark en 640x800 board|page > old": true as const },
+      seen: {} as Record<string, string>,
+      gone: [] as string[],
+    };
+    const wide = { rule: "overflow-x" as const, path: "page > table", detail: "76 px past card" };
+    expect(ratchetScreen("dark en 640x800 board", [wide], ratchet)).toEqual([
+      "dark en 640x800 board: overflow-x page > table (76 px past card)",
+    ]);
+    expect(ratchet.seen).toEqual({
+      "overflow-x|dark en 640x800 board|page > table": "76 px past card",
+    });
+    expect(ratchet.gone).toEqual(["overflow-x|dark en 640x800 board|page > old"]);
+  });
+});

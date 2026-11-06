@@ -665,6 +665,18 @@ export function judge(
   return { failures: [...contract, ...fresh.map(say)], fixed };
 }
 
+/** A baseline and what one run did with it: the findings it saw, and the keys it found gone. */
+export interface Ratchet {
+  baseline: Baseline | null;
+  seen: Record<string, string>;
+  gone: string[];
+}
+
+/** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */
+export function ratchetScreen(_screen: string, _findings: Finding[], _ratchet: Ratchet): string[] {
+  return [];
+}
+
 /** The baseline file, or `null` when there is none yet. */
 export function loadBaseline(read: () => string | null): Baseline | null {
   const text = read();
