@@ -169,7 +169,7 @@ function EntryRow(
           {formatAgo(store.now() - Date.parse(item.createdAt), t)}
         </time>
       </DotLine>
-      <span className="truncate pl-4 text-muted-foreground text-xs" title={what}>
+      <span className="truncate pl-5 text-muted-foreground text-xs" title={what}>
         {what}
       </span>
     </RowButton>
