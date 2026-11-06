@@ -35,27 +35,33 @@ const PATH_SYNTAX = /[[\]{}!]/;
 /** What a wildcard of a path rule may stand for: the names the classifier calls a credential. */
 const NAMES = ["x", ".env", "id_rsa", "x.pem", "x.key", ".ssh", ".aws", "credentials"];
 /**
- * The names a partial wildcard (`.cl*`, `.s?h`, `package.js*`) may stand for, one path segment at
- * a time: the control directories and files, and the credential ones (issue #435).
+ * The paths a partial wildcard (`.cl*`, `.s?h`, `package.js*`, `.github/work*`) may stand for, as
+ * segments: the control files and directories and the credential ones (issue #435). A wildcard
+ * that shares a segment with other characters is matched against each, over every run of
+ * consecutive segments, so a path that is sensitive only as a pair (`.config/gh`) is found too.
  */
 const SENSITIVE = [
-  ".claude",
-  ".git",
-  ".github",
-  ".husky",
-  ".vscode",
-  ".ssh",
-  ".aws",
-  ".env",
-  ".env.local",
-  ".mcp.json",
-  ".credentials.json",
-  ".claude.json",
-  "package.json",
-  "tasks.json",
-  "settings.json",
-  "id_rsa",
-  "credentials",
+  [".claude"],
+  [".git"],
+  [".github"],
+  [".husky"],
+  [".vscode"],
+  [".ssh"],
+  [".aws"],
+  [".config"],
+  [".flightdeck"],
+  [".env"],
+  [".env.local"],
+  [".mcp.json"],
+  [".claude.json"],
+  ["package.json"],
+  ["id_rsa"],
+  ["credentials"],
+  [".config", "gh"],
+  [".flightdeck", "config.json"],
+  [".claude", ".credentials.json"],
+  [".github", "workflows"],
+  [".vscode", "tasks.json"],
 ];
 /** A segment's glob as a regular expression (`*` and `?` stay inside the segment). */
 const segmentGlob = (segment: string) =>
@@ -118,18 +124,29 @@ function instances(pattern: string): string[] | null {
   for (const name of NAMES) {
     out.add(render((_, part) => (part === "?" ? "x" : part === "**/" ? `${name}/` : name)));
   }
-  // A wildcard that shares a segment with other characters may still be a sensitive name there.
+  // A wildcard that shares a segment with other characters may still be a sensitive path there.
   const segments = pattern.split("/");
-  segments.forEach((segment, at) => {
-    if (!WILD.test(segment)) return;
-    const glob = segmentGlob(segment);
-    for (const name of SENSITIVE) {
-      if (!glob.test(name)) continue;
+  const globs = segments.map((segment) => (WILD.test(segment) ? segmentGlob(segment) : null));
+  const plainSegment = (segment: string) => segment.replace(/\*+|\?/g, "x");
+  for (const names of SENSITIVE) {
+    for (let at = 0; at + names.length <= segments.length; at++) {
+      const run = names.map(
+        (name, k) => [name, segments[at + k] as string, globs[at + k]] as const,
+      );
+      const partial = run.some(([, , glob]) => glob !== null);
+      const fits = run.every(([name, segment, glob]) =>
+        glob ? glob.test(name) : segment.toLowerCase() === name,
+      );
+      if (!partial || !fits) continue;
       out.add(
-        segments.map((other, i) => (i === at ? name : other.replace(/\*+|\?/g, "x"))).join("/"),
+        segments
+          .map((segment, i) =>
+            i >= at && i < at + names.length ? names[i - at] : plainSegment(segment),
+          )
+          .join("/"),
       );
     }
-  });
+  }
   return [...out];
 }
 
