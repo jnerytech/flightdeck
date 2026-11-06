@@ -14,7 +14,12 @@ export type Rule =
   | "region-small"
   | "region-missing"
   | "gap"
-  | "scroll-split";
+  | "scroll-split"
+  | "block-gap"
+  | "card-gap"
+  | "card-padding"
+  | "text-spill"
+  | "chip-gap";
 
 export interface Finding {
   rule: Rule;
@@ -39,11 +44,26 @@ export interface GapRule {
   min: number;
 }
 
+/** The spacing guard (#588): what is measured, and the least room each must keep, in px. */
+export interface SpacingRules {
+  /** Containers whose direct children are a page's blocks. */
+  blocks: string;
+  blockMin: number;
+  /** Cards: sibling cards keep `cardMin` apart, and their text `padMin` from their edges. */
+  card: string;
+  cardMin: number;
+  padMin: number;
+  /** Chips in a row keep `chipMin` apart. */
+  chip: string;
+  chipMin: number;
+}
+
 export interface GuardOptions {
   regions?: RegionRule[];
   /** Bars that must not grow: a selector and the most they may be tall, in px. */
   bars?: Array<{ selector: string; maxHeight: number }>;
   gaps?: GapRule[];
+  spacing?: SpacingRules;
   /** Regions (by `data-slot`) that scroll as one area: at most one element in each may scroll vertically. */
   single?: string[];
 }
@@ -256,6 +276,94 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     }
   };
 
+  // 10. Spacing (#588), heuristic: blocks, cards and chips keep room between them, and text keeps
+  // room in its card and inside its own box. A finding names the element and the px it has.
+  const spacing = options.spacing;
+  const nameOf = (el: Element) => pathOf(el).split(" > ").pop() ?? "";
+  const ownText = (el: Element) =>
+    [...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "");
+  /** The room between two boxes that share columns (stacked) or rows (side by side), or how far they overlap. */
+  const apart = (a: DOMRect, b: DOMRect) => {
+    const cols = a.left < b.right && b.left < a.right;
+    const rows = a.top < b.bottom && b.top < a.bottom;
+    if (cols && rows) {
+      const over = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      return {
+        px: -Math.min(over, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)),
+        how: "over",
+      };
+    }
+    if (cols) return { px: Math.max(b.top - a.bottom, a.top - b.bottom), how: "under" };
+    if (rows) return { px: Math.max(b.left - a.right, a.left - b.right), how: "beside" };
+    return null;
+  };
+  const checkPairs = (els: Element[], min: number, rule: Rule) => {
+    const boxes = els
+      .filter((el) => !hidden(el))
+      .map((el) => [el, rectOf(el)] as const)
+      .filter(([, box]) => box.width > 0 && box.height > 0);
+    boxes.forEach(([b, rb], j) => {
+      for (const [a, ra] of boxes.slice(0, j)) {
+        const room = apart(ra, rb);
+        if (room && room.px < min) {
+          add(
+            rule,
+            pathOf(b),
+            `${Math.round(room.px)} px ${room.how} ${nameOf(a)}, at least ${min}`,
+          );
+        }
+      }
+    });
+  };
+  /** Siblings that match `selector`, grouped by their parent. */
+  const siblingGroups = (selector: string) => {
+    const groups = new Map<Element, Element[]>();
+    for (const el of document.querySelectorAll(selector)) {
+      const parent = el.parentElement;
+      if (parent) groups.set(parent, [...(groups.get(parent) ?? []), el]);
+    }
+    return [...groups.values()];
+  };
+  const checkCardPadding = (card: Element, min: number) => {
+    if (hidden(card)) return;
+    const edge = rectOf(card);
+    for (const el of card.querySelectorAll("*")) {
+      if (hidden(el) || !ownText(el)) continue;
+      const box = rectOf(el);
+      if (box.width <= 0 || box.height <= 0) continue;
+      const insets: Array<[string, number]> = [
+        ["left", box.left - edge.left],
+        ["right", edge.right - box.right],
+        ["top", box.top - edge.top],
+        ["bottom", edge.bottom - box.bottom],
+      ];
+      const [side, px] = insets.reduce((low, next) => (next[1] < low[1] ? next : low));
+      if (px < min) {
+        add(
+          "card-padding",
+          pathOf(el),
+          `${Math.round(px)} px from the card's ${side} edge, at least ${min}`,
+        );
+      }
+    }
+  };
+  const checkSpill = (el: Element, style: CSSStyleDeclaration) => {
+    // Only text left to spill: a box that clips (an ellipsis) or scrolls is the other rules' business.
+    if ((style.overflowX || "visible") !== "visible" || !ownText(el)) return;
+    const past = el.scrollWidth - el.clientWidth;
+    if (past > 1) add("text-spill", pathOf(el), `${past} px past its box`);
+  };
+  const checkSpacing = () => {
+    if (!spacing) return;
+    for (const body of document.querySelectorAll(spacing.blocks)) {
+      if (!hidden(body)) checkPairs([...body.children], spacing.blockMin, "block-gap");
+    }
+    for (const cards of siblingGroups(spacing.card)) checkPairs(cards, spacing.cardMin, "card-gap");
+    for (const card of document.querySelectorAll(spacing.card))
+      checkCardPadding(card, spacing.padMin);
+    for (const chips of siblingGroups(spacing.chip)) checkPairs(chips, spacing.chipMin, "chip-gap");
+  };
+
   checkSideways();
   for (const el of document.querySelectorAll("body *")) {
     if (hidden(el)) continue;
@@ -265,12 +373,14 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     if (style.position !== "fixed" && box.width > 0 && box.height > 0) checkClipped(el, box);
     checkCollapsed(el, box, tiny);
     checkTruncated(el, style);
+    if (spacing) checkSpill(el, style);
   }
   checkAttention();
   checkBars();
   checkRegions();
   checkGaps();
   checkSingleScroll();
+  checkSpacing();
   return found;
 }
 
@@ -327,6 +437,26 @@ export const SCROLL_SIZES: ReadonlyArray<{ width: number; height: number }> = [
   { width: 1280, height: 800 },
   { width: 1280, height: 600 },
 ];
+
+/** The spacing guard's rules (#588): heuristic, judged against a baseline that only goes down. */
+export const SPACING_RULES: readonly Rule[] = [
+  "block-gap",
+  "card-gap",
+  "card-padding",
+  "text-spill",
+  "chip-gap",
+];
+
+/** What the spacing guard measures on every print (#588). */
+export const SPACING: SpacingRules = {
+  blocks: '[data-slot="page-body"]',
+  blockMin: 8,
+  card: '[data-slot="card"]',
+  cardMin: 8,
+  padMin: 8,
+  chip: '[data-slot="badge"]',
+  chipMin: 4,
+};
 
 /** Bars that never grow: the tab bar is one row. */
 export const BARS = [{ selector: ".tab-bar", maxHeight: 48 }];
