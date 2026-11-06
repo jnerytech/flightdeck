@@ -10,6 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { SessionView } = await import("../src/ui/SessionView.tsx");
 const { emptySession } = await import("../src/lib/session-state.ts");
+const { ShortArea } = await import("../src/components/session/parts.tsx");
 const { AssistantSettings } = await import("../src/components/assistant/assistant-settings.tsx");
 
 setDefaultTimeout(30_000);
@@ -33,7 +34,12 @@ const actions = {
 
 async function make(
   script: Parameters<typeof fakeAssistant>[0] = {},
-  options: { language?: "en" | "pt-BR"; configured?: boolean; assist?: boolean } = {},
+  options: {
+    language?: "en" | "pt-BR";
+    configured?: boolean;
+    assist?: boolean;
+    short?: boolean;
+  } = {},
 ) {
   const language = options.language ?? "en";
   const mem = memoryPlatform(false, language);
@@ -52,21 +58,23 @@ async function make(
   const opened: string[] = [];
   const t = translator(language);
   const ui = render(
-    <SessionView
-      t={t}
-      title="s"
-      session={{ ...emptySession(), status: "idle" }}
-      actions={actions}
-      {...(options.assist === false
-        ? {}
-        : {
-            assist: {
-              controller: store.assistant,
-              kind: "prompt" as const,
-              openSettings: () => void opened.push("settings"),
-            },
-          })}
-    />,
+    <ShortArea.Provider value={options.short === true}>
+      <SessionView
+        t={t}
+        title="s"
+        session={{ ...emptySession(), status: "idle" }}
+        actions={actions}
+        {...(options.assist === false
+          ? {}
+          : {
+              assist: {
+                controller: store.assistant,
+                kind: "prompt" as const,
+                openSettings: () => void opened.push("settings"),
+              },
+            })}
+      />
+    </ShortArea.Provider>,
   );
   return { store, fake, opened, t, ui };
 }
@@ -312,6 +320,17 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     await click("Cancel");
     expect(screen.queryByRole("status")).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
+
+  test("in a short window the toolbar keeps its room: no button, and Ctrl+I still works", async () => {
+    const { fake } = await make({}, { short: true });
+    type("fix the totl");
+    expect(screen.queryByRole("button", { name: /with AI/ })).toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(box(), { key: "i", ctrlKey: true });
+    });
+    await screen.findByRole("dialog", { name: "AI suggestion" });
+    expect(asked(fake)).toHaveLength(1);
   });
 
   test("while another wand holds the one run, this one is disabled and says why", async () => {
