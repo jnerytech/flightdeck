@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
-import type { AssistantBlock, McpLiveStatus } from "@flightdeck/protocol";
+import type { AssistantBlock, EffortLevel, McpLiveStatus } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
@@ -81,6 +81,8 @@ export class FakeRuntime implements AgentRuntime {
   /** Permission modes and models set in live runs. */
   readonly modes: string[] = [];
   readonly models: Array<string | undefined> = [];
+  /** Efforts set in live runs. */
+  readonly efforts: Array<EffortLevel | undefined> = [];
 
   /** Judge queries so far (phase 13). */
   readonly judgeCalls: JudgeOptions[] = [];
@@ -118,6 +120,7 @@ export class FakeRuntime implements AgentRuntime {
       this.modes,
       this.models,
       this.slashCommands,
+      this.efforts,
     );
   }
 }
@@ -141,6 +144,7 @@ class FakeRun implements AgentRun {
     private readonly modes: string[] = [],
     private readonly models: Array<string | undefined> = [],
     private readonly slashCommands?: string[],
+    private readonly efforts: Array<EffortLevel | undefined> = [],
   ) {
     this.claudeSessionId = opts.resume ?? `fake-${ulid().toLowerCase()}`;
   }
@@ -152,6 +156,8 @@ class FakeRun implements AgentRun {
   async setModel(model: string | undefined): Promise<void> {
     this.models.push(model);
   }
+
+  async setEffort(_effort: EffortLevel | undefined): Promise<void> {}
 
   async toggleMcpServer(name: string, enabled: boolean): Promise<void> {
     this.toggles.push({ name, enabled });

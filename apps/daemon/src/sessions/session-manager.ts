@@ -791,6 +791,9 @@ export class SessionManager {
     await run.setModel(model ?? undefined);
   }
 
+  /** Changes the effort of a live managed session, for its next turn; null is the model's default. */
+  async setEffort(_sessionId: string, _effort: EffortLevel | null): Promise<void> {}
+
   /** Phase 12: the live status of a managed session's MCP servers, as its runtime reports it. */
   async mcpStatus(sessionId: string): Promise<McpLiveStatus[]> {
     this.claudeOnly(sessionId, "mcp");

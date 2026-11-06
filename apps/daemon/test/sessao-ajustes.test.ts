@@ -60,6 +60,52 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
     const { manager } = await liveSession();
     expect(await code(manager.setPermissionMode("nope", "plan"))).toBe("invalid_state");
     expect(await code(manager.setModel("nope", "opus"))).toBe("invalid_state");
+    expect(await code(manager.setEffort("nope", "high"))).toBe("invalid_state");
+  });
+
+  test("the effort goes to the live run; null is the model's default", async () => {
+    const { manager, runtime, sessionId } = await liveSession();
+    await manager.setEffort(sessionId, "high");
+    await manager.setEffort(sessionId, null);
+    expect(runtime.efforts).toEqual(["high", undefined]);
+  });
+
+  test("a run that cannot change its effort (OpenCode) refuses: invalid_state", async () => {
+    const { manager, sessionId } = await liveSession();
+    const live = (manager as unknown as { live: Map<string, { run: { setEffort?: unknown } }> })
+      .live;
+    const run = live.get(sessionId)?.run;
+    if (run) run.setEffort = undefined;
+    expect(await code(manager.setEffort(sessionId, "low"))).toBe("invalid_state");
+  });
+
+  test("the SDK runtime sets the effort through applyFlagSettings, null clearing it", async () => {
+    const seen: string[] = [];
+    const queryFn: QueryFn = () => ({
+      async *[Symbol.asyncIterator]() {
+        yield {
+          type: "system",
+          subtype: "init",
+          session_id: "c1",
+          model: "m",
+          tools: [],
+        } as never;
+      },
+      interrupt: async () => {},
+      close: () => {},
+      applyFlagSettings: async (settings) => void seen.push(JSON.stringify(settings)),
+    });
+    const run = new ClaudeSdkRuntime({ query: queryFn }).start({
+      cwd: "/proj",
+      permissionMode: "default",
+      env: {},
+      canUseTool: async () => ({ behavior: "allow" }),
+    });
+    await run.events[Symbol.asyncIterator]().next();
+    await run.setEffort?.("xhigh");
+    await run.setEffort?.(undefined);
+    expect(seen).toEqual(['{"effortLevel":"xhigh"}', '{"effortLevel":null}']);
+    await run.close();
   });
 
   test("the session.init of the fake and of the SDK runtime carry the slash commands", async () => {
@@ -125,11 +171,15 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
     expect(await client.request("session.setModel", { sessionId, model: "opus" })).toMatchObject({
       ok: true,
     });
+    expect(await client.request("session.setEffort", { sessionId, effort: "max" })).toMatchObject({
+      ok: true,
+    });
     expect(
       await client.request("session.setMode", { sessionId: "nope", permissionMode: "plan" }),
     ).toMatchObject({ ok: false, error: { code: "invalid_state" } });
     const info = await client.data<{ features: string[] }>("host.info", {});
     expect(info?.features).toContain("session.settings");
+    expect(info?.features).toContain("session.effort");
   });
 
   test("the command takes default, acceptEdits, plan and bypassPermissions (the daemon refuses it unless the host allows): never dontAsk or auto", () => {

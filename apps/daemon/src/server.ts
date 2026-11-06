@@ -975,6 +975,9 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.setModel":
         await manager.setModel(command.payload.sessionId, command.payload.model);
         return ok(command.type);
+      case "session.setEffort":
+        await manager.setEffort(command.payload.sessionId, command.payload.effort);
+        return ok(command.type);
       case "session.close":
         await manager.close(command.payload.sessionId);
         return ok(command.type);

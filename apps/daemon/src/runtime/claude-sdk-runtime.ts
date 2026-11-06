@@ -9,7 +9,7 @@ import {
   forkSession as sdkForkSession,
   query as sdkQuery,
 } from "@anthropic-ai/claude-agent-sdk";
-import type { AssistantBlock, PermissionMode } from "@flightdeck/protocol";
+import type { AssistantBlock, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
@@ -36,6 +36,7 @@ export interface QueryHandle extends AsyncIterable<SDKMessage> {
   mcpServerStatus?(): Promise<McpServerStatus[]>;
   setPermissionMode?(mode: PermissionMode): Promise<void>;
   setModel?(model?: string): Promise<void>;
+  applyFlagSettings?(settings: { effortLevel?: EffortLevel | null }): Promise<void>;
   supportedCommands?(): Promise<SdkSlashCommand[]>;
 }
 
@@ -389,6 +390,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       setPermissionMode: (mode) =>
         (handle.setPermissionMode as NonNullable<QueryHandle["setPermissionMode"]>)(mode),
       setModel: (model) => (handle.setModel as NonNullable<QueryHandle["setModel"]>)(model),
+      setEffort: async (_effort) => {},
       toggleMcpServer: (name, enabled) =>
         (handle.toggleMcpServer as NonNullable<QueryHandle["toggleMcpServer"]>)(name, enabled),
       // Only what the screen shows: the SDK adds server info and configuration.

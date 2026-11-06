@@ -370,6 +370,7 @@ const validCommands: Record<CommandType, unknown> = {
   "github.start": { repo: "acme/app", issue: "7", root: "/work", mode: "card" },
   "session.setMode": { sessionId: "s", permissionMode: "plan" },
   "session.setModel": { sessionId: "s", model: null },
+  "session.setEffort": { sessionId: "s", effort: "high" },
   "session.files": { claudeSessionId: "s" },
   "statusline.get": { claudeSessionId: "s" },
   "terminal.open": { cwd: "/w", command: ["bash", "-l"], cols: 80, rows: 24 },

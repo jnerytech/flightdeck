@@ -2824,6 +2824,11 @@ export const Command = z.discriminatedUnion("type", [
     "session.setModel",
     z.object({ sessionId: z.string(), model: z.string().nullable() }).strict(),
   ),
+  /** Changes the effort of a live managed session for its next turn; null is the model's default. */
+  cmd(
+    "session.setEffort",
+    z.object({ sessionId: z.string(), effort: EffortLevel.nullable() }).strict(),
+  ),
   cmd("session.close", SessionIdPayload),
   cmd("session.resume", SessionIdPayload),
   cmd("session.subscribe", SessionSubscribePayload),
@@ -4268,6 +4273,7 @@ export interface CommandResults {
   "session.interrupt": undefined;
   "session.setMode": undefined;
   "session.setModel": undefined;
+  "session.setEffort": undefined;
   "session.close": undefined;
   "session.resume": undefined;
   "session.subscribe": SessionSubscribeResult;
