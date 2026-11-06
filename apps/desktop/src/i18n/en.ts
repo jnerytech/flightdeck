@@ -1751,6 +1751,10 @@ export const en: Dictionary = {
     card_no_worktree: "The card has no worktree yet.",
     pr_secret:
       "The description looks like it has a secret ({found}): take it out before opening the PR.",
+    pr_title_secret:
+      "The title looks like it has a secret ({found}): take it out before opening the PR.",
+    merge_message_secret:
+      "The merge message looks like it has a secret ({found}): take it out before merging.",
     project_no_pr_provider: "The project has no PR provider.",
     card_no_pr: "The card has no PR.",
     pr_no_comment: "No comment was chosen.",

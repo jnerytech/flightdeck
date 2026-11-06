@@ -1749,6 +1749,9 @@ export const ptBR = {
     rule_remove_confirm: "Confirme a remoção da regra.",
     card_no_worktree: "O card ainda não tem worktree.",
     pr_secret: "A descrição parece ter um segredo ({found}): tire-o antes de abrir o PR.",
+    pr_title_secret: "O título parece ter um segredo ({found}): tire-o antes de abrir o PR.",
+    merge_message_secret:
+      "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider: "O projeto não tem provedor de PR.",
     card_no_pr: "O card não tem PR.",
     pr_no_comment: "Nenhum comentário foi escolhido.",

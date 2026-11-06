@@ -1526,14 +1526,21 @@ export class Board {
     id: string,
     options: { description?: string; title?: string } = {},
   ): Promise<Card> {
-    const found = options.description ? (this.opts.scanner?.scan(options.description) ?? []) : [];
-    if (found.length > 0) {
-      throw new FlightdeckError(
-        "bad_request",
-        `the description looks like it has a secret (${found.join(", ")}): take it out before opening the PR`,
-        "pr_secret",
-        { found: found.join(", ") },
-      );
+    // Both texts go public (into the PR): each is refused by its own field, naming the pattern and
+    // never the secret.
+    for (const [field, text, reason] of [
+      ["description", options.description, "pr_secret"],
+      ["title", options.title, "pr_title_secret"],
+    ] as const) {
+      const found = text ? (this.opts.scanner?.scan(text) ?? []) : [];
+      if (found.length > 0) {
+        throw new FlightdeckError(
+          "bad_request",
+          `the ${field} looks like it has a secret (${found.join(", ")}): take it out before opening the PR`,
+          reason,
+          { found: found.join(", ") },
+        );
+      }
     }
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
@@ -1652,6 +1659,16 @@ export class Board {
     message?: string,
   ): Promise<Card> {
     if (!confirm) throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
+    // The message goes into the base branch, public history: a secret in it is refused up front.
+    const found = message ? (this.opts.scanner?.scan(message) ?? []) : [];
+    if (found.length > 0) {
+      throw new FlightdeckError(
+        "bad_request",
+        `the merge message looks like it has a secret (${found.join(", ")}): take it out before merging`,
+        "merge_message_secret",
+        { found: found.join(", ") },
+      );
+    }
     const { card, worktree, branch } = this.idleWorktree(id);
     if (card.prUrl) {
       throw new FlightdeckError(

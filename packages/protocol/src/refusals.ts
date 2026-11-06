@@ -138,6 +138,8 @@ export const DAEMON_REASONS = [
   "rule_remove_confirm",
   "card_no_worktree",
   "pr_secret",
+  "pr_title_secret",
+  "merge_message_secret",
   "project_no_pr_provider",
   "card_no_pr",
   "pr_no_comment",
