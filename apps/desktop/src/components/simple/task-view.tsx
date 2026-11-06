@@ -1,6 +1,7 @@
 import { type TaskFile, type TaskResultsResult, taskActivity } from "@flightdeck/protocol";
 import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
+import type { WandBinding } from "@/components/assistant/use-wand";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { T } from "../../i18n/index.ts";
@@ -86,6 +87,8 @@ export function TaskView(
     locked: boolean;
     /** The platform can open files of the host. */
     canOpen: boolean;
+    /** The AI wand of Ask for changes (phase 40); none when no assistant is ready. */
+    assist?: WandBinding;
   } & TaskViewHandlers,
 ) {
   const { t, session } = props;
