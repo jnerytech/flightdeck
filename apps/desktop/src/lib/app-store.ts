@@ -108,6 +108,7 @@ import { HomeCache } from "./home-cache.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
+import { HostTabs } from "./host-tabs.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import {
   type HubFilter,
@@ -1040,6 +1041,8 @@ export class AppStore {
   /** The screen in use and its history (phase 10). */
   readonly workspace: Workspace;
   readonly router: Navigation;
+  /** Each host's own tabs and the shared screens (issue #644). */
+  readonly hostTabs: HostTabs = HostTabs.restore(null);
 
   /** The focused area's tabs. */
   get tabs(): Tabs {
@@ -1646,6 +1649,14 @@ export class AppStore {
     const host = this.state.hosts.find((h) => h.id === hostId);
     return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
   }
+
+  /** The host the switcher shows: the active tab's, or the last one used on a shared tab. */
+  activeHostId(): string | null {
+    return null;
+  }
+
+  /** The switcher picked a host: its tabs replace the row. */
+  pickHost(_hostId: string): void {}
 
   /** The host whose mode the window shows: the selected one, else the first that is online. */
   uiHostId(): string | null {
