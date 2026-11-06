@@ -48,6 +48,8 @@ export const en: Dictionary = {
     noCosts: "No cost data from {hosts}",
     avgBasis: "Managed sessions only",
     ready: "Home is ready.",
+    updated: "Updated {ago}",
+    stale: "Showing the last numbers of {hosts}: they could not be refreshed. Updated {ago}.",
   },
   hosts: {
     status: {
