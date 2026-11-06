@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../src/demo/boot.ts";
+import type { Route } from "../src/lib/router.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -25,7 +26,7 @@ async function mount() {
   const names = () => store.tabs.tabs.map((tab) => tab.router.current.name);
   /** A single click on a screen of the host: its preview tab (shared screens are pinned instead). */
   const preview = (name: "history" | "projects" | "workflows") =>
-    act(async () => void store.hostTabs.openPreview({ name, host: "ha" }));
+    act(async () => void store.hostTabs.openPreview({ name, host: "ha" } as Route));
   return { store, item, names, preview };
 }
 
