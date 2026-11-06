@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { hostsRoute, statusBarSummary } from "../src/lib/status-bar.ts";
+import {
+  firstTerminalTab,
+  hostsRoute,
+  statusBarSummary,
+  terminalTabCount,
+} from "../src/lib/status-bar.ts";
 
 type Host = {
   id: string;
@@ -102,5 +107,20 @@ describe("status-bar: what the bar says about the app (issue #491)", () => {
     });
     expect(hostsRoute([host("a", "online")], "gone")).toEqual({ name: "host", host: "a" });
     expect(hostsRoute([], null)).toEqual({ name: "add-host" });
+  });
+
+  test("terminal tabs are counted across both areas, and the first one is found with its area", () => {
+    const tab = (id: string, name: string) => ({ id, router: { current: { name } } });
+    const area = (...tabs: ReturnType<typeof tab>[]) => ({ tabs });
+    const none = { areas: [area(tab("t1", "hub"))] };
+    const some = {
+      areas: [area(tab("t1", "hub"), tab("t2", "terminal")), area(tab("t3", "terminal"))],
+    };
+    expect(terminalTabCount(none)).toBe(0);
+    expect(firstTerminalTab(none)).toBeNull();
+    expect(terminalTabCount(some)).toBe(2);
+    expect(firstTerminalTab(some)).toEqual({ area: 0, id: "t2" });
+    const second = { areas: [area(tab("t1", "hub")), area(tab("t3", "terminal"))] };
+    expect(firstTerminalTab(second)).toEqual({ area: 1, id: "t3" });
   });
 });
