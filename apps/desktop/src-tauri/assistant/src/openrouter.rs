@@ -18,36 +18,186 @@ pub struct Reasoning {
     pub supported_efforts: Vec<String>,
 }
 
-/// The effort a call asks of a reasoning model.
+/// The efforts, lowest first.
+const EFFORTS: [&str; 6] = ["minimal", "low", "medium", "high", "xhigh", "max"];
+
+/// The effort a call asks of a reasoning model: `none` when reasoning is optional; when it is
+/// mandatory, `low`, or the lowest the model takes when `low` is not among them.
 pub fn effort(reasoning: &Reasoning) -> &'static str {
-    let _ = reasoning;
-    ""
+    if !reasoning.mandatory {
+        return "none";
+    }
+    let takes = |effort: &str| reasoning.supported_efforts.iter().any(|e| e == effort);
+    if reasoning.supported_efforts.is_empty() || takes("low") {
+        return "low";
+    }
+    EFFORTS.iter().find(|effort| takes(effort)).copied().unwrap_or("low")
 }
 
-/// The body of `POST /api/v1/chat/completions`.
+/// The body of `POST /api/v1/chat/completions`. `deny_collection` is the Settings switch (on by
+/// default); off, the provider object is left out, which is OpenRouter's default.
 pub fn body(call: &Call, reasoning: Option<&Reasoning>, deny_collection: bool) -> Value {
-    let _ = (call, reasoning, deny_collection, CHAT);
-    json!({})
+    let mut body = json!({
+        "model": call.model,
+        "messages": [
+            { "role": "system", "content": call.system },
+            { "role": "user", "content": call.user },
+        ],
+        "max_tokens": guard::cap_output_tokens(call.max_tokens),
+        "stream": false,
+    });
+    if deny_collection {
+        body["provider"] = json!({ "data_collection": "deny" });
+    }
+    if let Some(reasoning) = reasoning {
+        body["reasoning"] = json!({ "effort": effort(reasoning) });
+    }
+    body
 }
 
-pub fn answer(reply: &Reply, key: &Secret, model: &str) -> Result<Answer, Refusal> {
-    let _ = (reply, key, model);
-    Err(Refusal::new("assistant_bad_output"))
-}
-
-pub fn refusal(reply: &Reply, key: &Secret) -> Refusal {
-    let _ = (reply, key);
+fn bad_output() -> Refusal {
     Refusal::new("assistant_bad_output")
 }
 
-pub fn models(reply: &Reply, key: &Secret) -> Result<Vec<(ModelOption, Option<Reasoning>)>, Refusal> {
-    let _ = (reply, key);
-    Ok(Vec::new())
+fn success(reply: &Reply) -> bool {
+    (200..300).contains(&reply.status)
 }
 
+/// A reply of the chat completions: the answer, or what its error means. An `error` object in a
+/// 200 body (a failure after the answer started) is an error with the status it carries.
+pub fn answer(reply: &Reply, key: &Secret, model: &str) -> Result<Answer, Refusal> {
+    if !success(reply) {
+        return Err(refusal(reply, key));
+    }
+    let value: Value = serde_json::from_str(&reply.body).map_err(|_| bad_output())?;
+    if value["error"].is_object() {
+        return Err(refusal(reply, key));
+    }
+    let choice = &value["choices"][0];
+    let text = choice["message"]["content"].as_str().unwrap_or_default().to_string();
+    let stop_reason = choice["finish_reason"].as_str().unwrap_or_default().to_string();
+    match stop_reason.as_str() {
+        "length" => return Err(Refusal::new("assistant_truncated")),
+        "content_filter" => return Err(Refusal::new("assistant_refused")),
+        _ => {}
+    }
+    if text.trim().is_empty() {
+        return Err(bad_output());
+    }
+    let usage = &value["usage"];
+    let count = |field: &Value| field.as_u64().unwrap_or(0);
+    Ok(Answer {
+        text,
+        model: value["model"].as_str().unwrap_or(model).to_string(),
+        provider: "openrouter",
+        usage: Usage {
+            input_tokens: count(&usage["prompt_tokens"]),
+            output_tokens: count(&usage["completion_tokens"]),
+            cache_read_tokens: count(&usage["prompt_tokens_details"]["cached_tokens"]),
+            cache_write_tokens: 0,
+        },
+        cost_usd: usage["cost"].as_f64(),
+        stop_reason,
+        notices: Vec::new(),
+    })
+}
+
+/// What an error means: the HTTP status, or for a 200 the `error.code` in its body; the message
+/// scrubbed, and `retryAfter` from the header when the wait is the point.
+pub fn refusal(reply: &Reply, key: &Secret) -> Refusal {
+    let value: Value = serde_json::from_str(&reply.body).unwrap_or(Value::Null);
+    let error = &value["error"];
+    let status = if success(reply) {
+        error["code"].as_u64().and_then(|code| u16::try_from(code).ok()).unwrap_or(0)
+    } else {
+        reply.status
+    };
+    let limit_source = error["metadata"]["limit_source"].as_str();
+    let reason = match status {
+        401 => "assistant_auth",
+        402 => "assistant_credits",
+        403 if limit_source.is_some() => "assistant_credits",
+        403 => "assistant_auth",
+        404 => "assistant_model_unavailable",
+        408 => "assistant_timeout",
+        413 => "assistant_too_long",
+        429 => "assistant_rate_limited",
+        500 | 502 => "assistant_overloaded",
+        503 => "assistant_routing_unavailable",
+        _ => "assistant_bad_output",
+    };
+    let mut refused = Refusal::new(reason);
+    if let Some(message) = error["message"].as_str() {
+        refused = refused.with("detail", crate::detail(message, key));
+    }
+    if status == 413 {
+        refused = refused.with("max", guard::MAX_INPUT_CHARS.to_string());
+    }
+    let waits = status == 429 || limit_source == Some("openrouter_in_flight_budget");
+    let after = reply.header("retry-after").and_then(|after| crate::token(&crate::scrub(after, key)));
+    if let (true, Some(after)) = (waits, after) {
+        refused = refused.with("retryAfter", after);
+    }
+    refused
+}
+
+/// A price string in USD per token as USD per million tokens, to the millionth.
+fn per_million(price: &Value) -> Option<f64> {
+    let per_token: f64 = price.as_str()?.parse().ok()?;
+    (per_token >= 0.0).then(|| (per_token * 1e12).round() / 1e6)
+}
+
+fn has(list: &Value, item: &str) -> bool {
+    list.as_array().is_some_and(|items| items.iter().any(|i| i == item))
+}
+
+/// The models of `GET /api/v1/models` a call can use: served on the chat completions with text
+/// out (so the `:batch` ids drop out), grouped by the vendor before `/`, with prices per million
+/// tokens and the reasoning metadata.
+pub fn models(reply: &Reply, key: &Secret) -> Result<Vec<(ModelOption, Option<Reasoning>)>, Refusal> {
+    if !success(reply) {
+        return Err(refusal(reply, key));
+    }
+    let value: Value = serde_json::from_str(&reply.body).map_err(|_| bad_output())?;
+    let data = value["data"].as_array().ok_or_else(bad_output)?;
+    Ok(data
+        .iter()
+        .filter(|model| has(&model["endpoints"], CHAT) && has(&model["architecture"]["output_modalities"], "text"))
+        .filter_map(|model| {
+            let id = model["id"].as_str().filter(|id| guard::check_model(id).is_ok())?;
+            let reasoning = model["reasoning"].is_object().then(|| Reasoning {
+                mandatory: model["reasoning"]["mandatory"].as_bool().unwrap_or(false),
+                supported_efforts: model["reasoning"]["supported_efforts"]
+                    .as_array()
+                    .map(|efforts| efforts.iter().filter_map(|e| e.as_str().map(str::to_string)).collect())
+                    .unwrap_or_default(),
+            });
+            let option = ModelOption {
+                id: id.to_string(),
+                label: model["name"].as_str().unwrap_or(id).to_string(),
+                group: id.split_once('/').map(|(vendor, _)| vendor.to_string()),
+                prompt_per_m_tok: per_million(&model["pricing"]["prompt"]),
+                completion_per_m_tok: per_million(&model["pricing"]["completion"]),
+                supports_effort: Some(reasoning.is_some()),
+            };
+            Some((option, reasoning))
+        })
+        .collect())
+}
+
+/// The key test's result from `GET /api/v1/key`: the limit left and the free-tier flag, never
+/// the `label`.
 pub fn test_result(reply: &Reply, key: &Secret) -> TestResult {
-    let _ = (reply, key);
-    TestResult::default()
+    if !success(reply) {
+        return TestResult { ok: false, detail: Some(refusal(reply, key).reason.to_string()), ..TestResult::default() };
+    }
+    let value: Value = serde_json::from_str(&reply.body).unwrap_or(Value::Null);
+    TestResult {
+        ok: true,
+        detail: None,
+        limit_remaining: value["data"]["limit_remaining"].as_f64(),
+        is_free_tier: value["data"]["is_free_tier"].as_bool(),
+    }
 }
 
 pub async fn run(
@@ -58,8 +208,12 @@ pub async fn run(
     reasoning: Option<&Reasoning>,
     deny_collection: bool,
 ) -> Result<Answer, Refusal> {
-    let _ = (client, endpoint, key, call, reasoning, deny_collection, Method::Get, Usage::default(), guard::MAX_OUTPUT_TOKENS);
-    Err(Refusal::new("assistant_bad_output"))
+    guard::check_model(call.model)?;
+    guard::check_input(call.system)?;
+    guard::check_input(call.user)?;
+    let sent = Method::Post(body(call, reasoning, deny_collection));
+    let reply = guard::send(client, endpoint, CHAT, sent, key, &[]).await?;
+    answer(&reply, key, call.model)
 }
 
 pub async fn list(
@@ -67,13 +221,15 @@ pub async fn list(
     endpoint: &Endpoint,
     key: &Secret,
 ) -> Result<Vec<(ModelOption, Option<Reasoning>)>, Refusal> {
-    let _ = (client, endpoint, key);
-    Ok(Vec::new())
+    let reply = guard::send(client, endpoint, "/api/v1/models", Method::Get, key, &[]).await?;
+    models(&reply, key)
 }
 
 pub async fn test(client: &reqwest::Client, endpoint: &Endpoint, key: &Secret) -> TestResult {
-    let _ = (client, endpoint, key);
-    TestResult::default()
+    match guard::send(client, endpoint, "/api/v1/key", Method::Get, key, &[]).await {
+        Ok(reply) => test_result(&reply, key),
+        Err(refused) => TestResult { ok: false, detail: Some(refused.reason.to_string()), ..TestResult::default() },
+    }
 }
 
 #[cfg(test)]
