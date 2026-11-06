@@ -4,10 +4,10 @@
  * one (see guard-path.ts), so any code path that falls back to "claude on PATH" is caught
  * instead of executed.
  */
-import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { guardPath } from "./guard-path.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 const CLAUDE_NAMES = ["claude", "claude.exe", "claude.cmd", "claude.bat", "claude.ps1"];
 
@@ -21,7 +21,7 @@ export interface ClaudeGuard {
 export function installClaudeGuard(
   env: Record<string, string | undefined> = process.env,
 ): ClaudeGuard {
-  const dir = mkdtempSync(join(tmpdir(), "fd-claude-guard-"));
+  const dir = realTempDir("fd-claude-guard-");
   const log = join(dir, "calls.log");
   writeFileSync(join(dir, "claude"), `#!/bin/sh\necho "claude $*" >> "${log}"\nexit 99\n`);
   chmodSync(join(dir, "claude"), 0o755);

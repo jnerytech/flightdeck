@@ -6,6 +6,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -62,6 +63,7 @@ async function setup(
   });
   await settle(() => store.getState().hosts[0]?.sessions.length === 1);
   await sidebar.openHub();
+  await unfoldAll(act);
   await settle(() => screen.queryByRole("listitem", { name: "Alpha" }) !== null);
   return { d, store, mem };
 }
