@@ -133,6 +133,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { IdleSleeper } from "./sessions/sleeper.ts";
 import { settled } from "./settled.ts";
 import { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
@@ -830,6 +831,10 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  const awake: {
+    pinned?: (claudeSessionId: string | null) => boolean;
+    cardSession?: (sessionId: string) => boolean;
+  } = {};
   // Holds the computer awake while a session runs or waits for a permission (issue #163).
   const keepAwake = new KeepAwake(options.powerContext ?? osPowerContext(), config.keepAwake);
 
@@ -860,6 +865,9 @@ export async function startDaemon(
     defaultPermissionMode: config.defaultPermissionMode,
     allowApiKey: config.allowApiKey,
     allowBypass: () => config.allowBypassPermissions,
+    // A pinned session and a card's stay awake; filled in below, once the board and the meta exist.
+    keepAwake: (session) =>
+      awake.pinned?.(session.claudeSessionId) === true || awake.cardSession?.(session.id) === true,
     baseEnv: env,
     ...(opencode.runtime ? { opencode: opencode.runtime } : {}),
     onQuota: (readings) => {
@@ -1266,6 +1274,11 @@ export async function startDaemon(
   board.addEnd((cardId) => runManager.stop(cardId));
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
+  awake.pinned = (claudeSessionId) =>
+    claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
+  awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
+  // Idle sessions give back their process after N minutes (off by default: no timer then).
+  const sleeper = new IdleSleeper({ manager, minutes: config.sessions.sleepAfterMinutes });
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
   // A session that was open before the restart may be sent a message before anything else looks
@@ -1306,6 +1319,16 @@ export async function startDaemon(
       set: async (allow) => {
         config.allowBypassPermissions = allow;
         await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
+      },
+    },
+    sleep: {
+      minutes: () => sleeper.minutes(),
+      set: async (minutes) => {
+        sleeper.setMinutes(minutes);
+        await updateConfigFile(configFile, (raw) => ({
+          ...raw,
+          sessions: { ...(raw.sessions as object | undefined), sleepAfterMinutes: minutes },
+        }));
       },
     },
     keepAwake: {
@@ -1613,6 +1636,7 @@ export async function startDaemon(
         await central.stop();
         await telemetry.stop();
         maintenance.stop();
+        sleeper.stop();
         updates?.stop();
         autoUpdater?.stop();
         await manager.shutdown();

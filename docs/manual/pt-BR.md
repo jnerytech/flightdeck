@@ -851,6 +851,20 @@ Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às
 **Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
 configurações de projetos do host, onde se editam pasta, branch base, setup e personas) do projeto.
 
+### Dormir sessões ociosas
+
+Uma sessão ociosa mantém seu processo do Claude Code, e a memória dele, até terminar. Na página do
+host, **Dormir sessões ociosas após** (Desligado, 15 minutos, 30 minutos, 1 hora ou 4 horas;
+desligado por padrão, e `sessions.sleepAfterMinutes` na configuração do daemon) deixa o host
+encerrar o processo de uma sessão ociosa por esse tempo. A sessão continua em todas as listas como
+**Dormindo** (uma lua) e guarda a transcrição, o nome e o lugar; a próxima mensagem a inicia de
+novo de onde estava, sem perda visível. Só dorme a sessão sem nada acontecendo: não a que está
+trabalhando ou esperando você, nem uma com mensagem na fila, aberta numa aba ou observada pelo app,
+nem uma fixada, nem a de um card. **Dormir agora** no menu de uma sessão faz isso na hora para uma
+sessão ociosa (ainda recusa uma fixada ou de card). Cada sono fica registrado nos eventos da
+sessão. Com a opção desligada o daemon não mantém timer para isso, e reiniciar o daemon deixa as
+sessões ociosas dormindo do mesmo jeito.
+
 ### Sessões lado a lado
 
 Quando o projeto tem sessões iniciadas pelo Flightdeck, a página as mostra como **blocos**. O
@@ -2776,7 +2790,9 @@ numa aba, sem SSH.
   Claude Code) pode soltar uma seleção antes de você chegar em **Copiar**: a última seleção
   continua copiável até você digitar. Quando o programa toma o mouse para si, segure `Shift` ao
   arrastar para selecionar. `Shift+Enter` adiciona uma nova linha no prompt do Claude Code em vez
-  de enviá-lo (o mesmo que `Alt+Enter`). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  de enviá-lo (o mesmo que `Alt+Enter`). Se blocos cinza de uma tela antiga ficarem no painel
+  lateral do Claude Code, é o Claude Code deixando células sem limpar (acontece também em outros
+  terminais): `Ctrl+L` ou redimensionar o painel faz ele redesenhar. Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a

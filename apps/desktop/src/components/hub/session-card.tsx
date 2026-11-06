@@ -1,3 +1,4 @@
+import { Moon } from "lucide-react";
 import type { ReactNode } from "react";
 import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { type StateTone, StatusDot } from "@/components/status/status-dot";
@@ -29,6 +30,8 @@ export function SessionCard(
     cost?: string;
     costLabel: string;
     persona?: string | null;
+    /** The word for a session with no process (asleep): shown with a moon. */
+    asleep?: string | null;
     /** The prompt cache countdown of an idle session, when it is on. */
     cache?: ReactNode;
     /** Phase 39: the agent's name when it is not Claude Code ("OpenCode"). */
@@ -68,6 +71,12 @@ export function SessionCard(
         <span className="min-w-0 truncate">{props.host}</span>
         {props.persona && (
           <span className="shrink-0 rounded bg-muted px-1 text-foreground">{props.persona}</span>
+        )}
+        {props.asleep && (
+          <span className="inline-flex shrink-0 items-center gap-1">
+            <Moon aria-hidden="true" className="size-3" />
+            {props.asleep}
+          </span>
         )}
         {props.cache}
         {props.runtime && <RuntimeBadge label={props.runtime} />}

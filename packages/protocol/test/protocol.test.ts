@@ -111,6 +111,8 @@ const validCommands: Record<CommandType, unknown> = {
   "external.message": { claudeSessionId: "c", text: "oi" },
   "session.meta.set": { claudeSessionId: "c", name: null, pinned: true, archived: false },
   "maintenance.status": {},
+  "session.sleep": { sessionId: "s" },
+  "host.sleep": { minutes: 30 },
   "resources.get": {},
   "resources.endOrphan": { pid: 1234, startTicks: 99 },
   "worktree.list": {},
