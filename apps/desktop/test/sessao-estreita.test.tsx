@@ -30,17 +30,19 @@ function utility(name: string): string {
 // it, even at 1024. Each of them now fits: the views wrap, the folder breaks, and a narrow
 // composer puts its box on a line of its own above the buttons.
 describe("sessao-estreita: a session fits a narrow pane", () => {
-  test("the row of views wraps when it does not fit", () => {
+  test("the row of views scrolls sideways in a narrow pane, instead of taking a second row", () => {
     render(
       <SessionTabs store={{} as never} hostId="h" claudeSessionId="c-1" enabled>
         <p>conversation</p>
       </SessionTabs>,
     );
     const row = screen.queryByRole("button", { name: "Conversa" })?.parentElement;
+    const rule = utility("session-views");
     expect({
       slot: row?.getAttribute("data-slot") ?? null,
-      wraps: row?.className.split(" ").includes("flex-wrap") ?? false,
-    }).toEqual({ slot: "session-views", wraps: true });
+      styled: row?.className.split(" ").includes("session-views") ?? false,
+      scrolls: rule.includes("overflow-x: auto") && !rule.includes("flex-wrap"),
+    }).toEqual({ slot: "session-views", styled: true, scrolls: true });
   });
 
   test("a request's folder breaks inside the card instead of running past it", () => {
@@ -63,13 +65,13 @@ describe("sessao-estreita: a session fits a narrow pane", () => {
     expect(["min-w-0", "break-all"].filter((c) => !folder.includes(c))).toEqual([]);
   });
 
-  test("in a narrow dock (under 24 rem) the composer's box takes its own line, above the buttons", () => {
+  test("in a narrow dock (under 20 rem of content) the composer's box takes its own line, above the buttons", () => {
     const card = utility("composer-card");
     expect({
       container: utility("composer-dock").includes("container-type: inline-size"),
-      wraps: /@container \(width < 24rem\) \{[^}]*flex-wrap: wrap/.test(card),
+      wraps: /@container \(width < 20rem\) \{[^}]*flex-wrap: wrap/.test(card),
       boxFirst:
-        /@container \(width < 24rem\) \{[\s\S]*\.composer-box \{[^}]*order: -1;[^}]*flex-basis: 100%/.test(
+        /@container \(width < 20rem\) \{[\s\S]*\.composer-box \{[^}]*order: -1;[^}]*flex-basis: 100%/.test(
           card,
         ),
     }).toEqual({ container: true, wraps: true, boxFirst: true });
