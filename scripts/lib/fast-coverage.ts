@@ -34,13 +34,14 @@ export interface FastCoverageVerdict {
 export function fastCoverageVerdict(
   covered: readonly string[],
   baseline: readonly string[],
-  _sources: readonly string[],
+  sources: readonly string[],
 ): FastCoverageVerdict {
   const now = new Set(covered);
   const listed = new Set(baseline);
+  const exists = new Set(sources);
   return {
-    dropped: baseline.filter((path) => !now.has(path)).sort(byCodeUnit),
+    dropped: baseline.filter((path) => exists.has(path) && !now.has(path)).sort(byCodeUnit),
     gained: covered.filter((path) => !listed.has(path)).sort(byCodeUnit),
-    gone: [],
+    gone: baseline.filter((path) => !exists.has(path)).sort(byCodeUnit),
   };
 }

@@ -48,8 +48,13 @@ if (run.exitCode !== 0 || !lcov) {
 }
 
 const covered = fullyCovered(lcov, sources);
+// A missing baseline never passes as an empty one: only --write may create it.
+if (!existsSync(BASELINE) && !write) {
+  console.error("fast-coverage: fast-coverage-baseline.json is missing; create it with --write");
+  process.exit(1);
+}
 const baseline: string[] = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, "utf8")) : [];
-const { dropped, gained } = fastCoverageVerdict(covered, baseline);
+const { dropped, gained, gone } = fastCoverageVerdict(covered, baseline, sources);
 if (dropped.length > 0) {
   console.error(
     `fast-coverage: ${dropped.length} source(s) the fast tiers covered at 100% no longer are:`,
@@ -62,7 +67,9 @@ if (dropped.length > 0) {
 }
 if (write) {
   writeFileSync(BASELINE, `${JSON.stringify(covered, null, 2)}\n`);
-  console.log(`fast-coverage: ${covered.length} source(s) listed (+${gained.length})`);
+  console.log(
+    `fast-coverage: ${covered.length} source(s) listed (+${gained.length}, -${gone.length} gone)`,
+  );
 } else {
   console.log(
     `fast-coverage: ${covered.length} of ${sources.length} source(s) at 100% from the fast tiers; the ${baseline.length} listed hold`,
