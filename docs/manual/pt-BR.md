@@ -2680,7 +2680,7 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   projetos** abre essa lista filtrada pelo host, com um chip que limpa o filtro). Um host sem
   nada diz isso e oferece **Nova sessão**. O resto fica em três abas: **Visão geral** (sessões,
   projetos, a conta do Claude e as informações do host), **Consumo** (cota e a tabela de consumo)
-  e **Configurações** (pastas permitidas, hooks, telemetria, terminal, manutenção, reconectar e
+  e **Configurações** (pastas permitidas, hooks, limpeza de worktrees, telemetria, terminal, manutenção, reconectar e
   remover). As abas respondem às setas do teclado.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude

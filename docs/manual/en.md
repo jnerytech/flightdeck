@@ -2687,7 +2687,7 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   filtered by the host, with a chip that clears the filter). A host with none says so and offers
   **New session**. The rest is on three tabs: **Overview** (sessions, projects, the Claude account
   and the host information), **Usage** (quota and the usage table) and **Settings** (allowed
-  folders, hooks, telemetry, terminal, maintenance, reconnect and remove). The tabs answer to the
+  folders, hooks, worktrees clean-up, telemetry, terminal, maintenance, reconnect and remove). The tabs answer to the
   arrow keys.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
