@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   type CheckRun,
   checksVerdict,
@@ -8,6 +10,7 @@ import {
   type Pr,
   type PrFlowDeps,
   prFlow,
+  VERSION_FILE,
 } from "../lib/pr-flow.ts";
 
 const R = "repos/{owner}/{repo}";
@@ -1076,5 +1079,14 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
     expect(await prFlow(["tag", "v0.36.5"], tagRefused.deps)).toBe(1);
     expect(tagRefused.out()).toContain("git refused to make v0.36.5");
     expect(tagRefused.gitWrites).toEqual(["tag -a v0.36.5 -m v0.36.5 abc123"]);
+  });
+});
+
+describe("pr-flow: where the release tag reads the product version (#559)", () => {
+  test("the file greenWithBump reads holds a version in this repo", () => {
+    const root = join(import.meta.dir, "..", "..");
+    const version = (file: string) =>
+      (JSON.parse(readFileSync(join(root, file), "utf8")) as { version?: unknown }).version;
+    expect(typeof version(VERSION_FILE)).toBe("string");
   });
 });
