@@ -108,6 +108,12 @@ export class Names {
     return this.view({ ...current, display: name });
   }
 
+  /**
+   * The name the session has in Claude Code: a `custom-title` (`--name`, `/rename`) or, without
+   * one, an `agent-name`. Stub for the red test of issue #605.
+   */
+  adoptTitle(_id: string, _title: string, _kind: "custom" | "agent"): void {}
+
   list(): SessionName[] {
     return this.db
       .query<Row, []>("SELECT * FROM session_names ORDER BY rowid")
