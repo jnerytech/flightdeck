@@ -896,7 +896,11 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
         conclusion: "success",
       };
       const runJobs = {
-        7: [{ name: "test suite (ubuntu-latest) (dispatch)", conclusion: "success" }],
+        // Windows is a signal in a full run, never a gate (#534): a red shard does not block the tag.
+        7: [
+          { name: "test suite (ubuntu-latest) (dispatch)", conclusion: "success" },
+          { name: "test shard 1/3 (windows-latest) (dispatch)", conclusion: "failure" },
+        ],
         8: [{ name: "test suite (ubuntu-latest) (dispatch)", conclusion: "skipped" }],
       };
       const ok = fake({ ...stacked, mainRuns: { head3: [full] }, runJobs });
