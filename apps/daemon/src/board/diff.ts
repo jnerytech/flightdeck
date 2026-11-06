@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { readRegularSized } from "../read-regular.ts";
 import { git, gitLimited } from "./command.ts";
-import { refArg } from "./ref-arg.ts";
+import { type Rev, refArg } from "./ref-arg.ts";
 import type { CardDiff, DiffFile, DiffHunk } from "./types.ts";
 import { must } from "./worktree.ts";
 
@@ -270,7 +270,7 @@ export async function workingDiff(
  */
 export async function cardDiff(
   worktree: string,
-  base: string,
+  base: Rev,
   maxUntracked?: number,
   maxTracked = DIFF_FILE_MAX,
   limits: DiffLimits = DIFF_LIMITS,

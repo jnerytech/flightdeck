@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
-import { refArg } from "../board/ref-arg.ts";
+import { type Rev, refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 
 /** Where workflows live in the repository, read from the base branch only. */
@@ -23,7 +23,7 @@ export function hashOf(source: string): string {
  * The `.yaml` files under `.flightdeck/workflows/` as committed on `base`, by name. Never the
  * card's worktree: a workflow written by the agent on its own branch is never used.
  */
-export async function workflowSources(repo: string, base: string): Promise<WorkflowSource[]> {
+export async function workflowSources(repo: string, base: Rev): Promise<WorkflowSource[]> {
   const listed = must(
     await git(
       repo,

@@ -3459,6 +3459,8 @@ export const ptBR = {
       review: "Revisar e confiar",
     },
     notHere: "Este projeto não está neste host.",
+    baseInvalid:
+      "O branch base {name} não é um nome de branch válido, então abrir um PR e atualizar a partir do remoto são recusados neste projeto. Defina um de verdade em Configurações.",
     sessionsHint: "As sessões de todos os projetos",
     boardHint: "Cards por coluna, do backlog ao concluído",
     workflowsHint: "Os workflows do projeto e suas execuções",
