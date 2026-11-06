@@ -4,6 +4,7 @@
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
 import { auditBase, FORBIDDEN_MARKERS, parseCommits } from "./tdd-audit.ts";
 import { undocumentedSkips } from "./unstable-skip.ts";
 
@@ -413,19 +414,6 @@ export function slotViolation(
   return null;
 }
 
-/** The most test files a worker's coverage:funcs may run (#674). */
-export const HEAVY_TESTS = 20;
-
-/** The forms a worker session runs instead of a full coverage run (#674). */
-export const HEAVY_ALLOWED =
-  "`bun run test:related -- --fast --tier unit,component`; each touched test with `bun --config=bunfig.area.toml test <file>`; or `bun run coverage:funcs <file> --tests <a few tests>`";
-
-/** Whether an override's value is a reason, not a bare switch such as 1 or true (#674). */
-export function heavyReasonGiven(value: string | undefined): boolean {
-  // A reason is a few words: 1, true, no, x or - are placeholders (#687).
-  return (value ?? "").trim().length >= 8;
-}
-
 /** The command's segments, split at ; & | and newlines outside quotes, without heredoc bodies. */
 function rawSegments(command: string): string[] {
   const text = withoutHeredocs(command);
@@ -551,11 +539,6 @@ function heavyScript(script: string, args: string[]): string | null {
     return "`bun run coverage:funcs` over a glob or a command's output after --tests";
   }
   return given > HEAVY_TESTS ? `\`bun run coverage:funcs\` over ${given} test files` : null;
-}
-
-/** The refusal of a full coverage run (#674), shared by the hook and coverage:funcs. */
-export function heavyRunMessage(what: string): string {
-  return `${what} holds the slot 12 to 25 minutes for the full coverage run that the PR's CI does anyway (#674). Run instead: ${HEAVY_ALLOWED}. For a real need, put FLIGHTDECK_SLOT_HEAVY="<reason>" in front of the command.`;
 }
 
 /**
