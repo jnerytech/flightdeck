@@ -14,12 +14,26 @@ export const MORE_MODELS: readonly string[] = [
   "claude-haiku-5-5",
 ];
 
+const FAMILIES = "opus|sonnet|haiku|fable";
+const VERSIONED = new RegExp(`^claude-(${FAMILIES})-(\\d+)(?:-(\\d{1,2}))?(?:-\\d{8})?$`);
+const ALIAS = new RegExp(`^(${FAMILIES})$`);
+const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+
 /** A model as a person reads it ("Opus 5.5"); null for none. */
-export function modelName(_model: string | null | undefined): string | null {
-  return "";
+export function modelName(model: string | null | undefined): string | null {
+  if (!model) return null;
+  // "[1m]" and the like select a context size, not another model.
+  const id = model.replace(/\[[^\]]*\]$/, "");
+  const versioned = VERSIONED.exec(id);
+  if (versioned) {
+    const [, family = "", major = "", minor] = versioned;
+    return `${capital(family)} ${minor ? `${major}.${minor}` : major}`;
+  }
+  return ALIAS.test(id) ? capital(id) : model;
 }
 
 /** Whether the menu row `value` is the model in use (an alias covers every version of its family). */
-export function isCurrentModel(_value: string, _current: string): boolean {
-  return false;
+export function isCurrentModel(value: string, current: string): boolean {
+  if (value === current) return true;
+  return MAIN_MODELS.includes(value) && current.startsWith(`claude-${value}-`);
 }
