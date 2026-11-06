@@ -356,6 +356,18 @@ describe("platform", () => {
     expect(await platform.updater.check()).toEqual({ version: "0.9.2", notes: "" });
   });
 
+  test("tauri: on quit a downloaded update installs without a relaunch; nothing downloaded installs nothing (#402)", async () => {
+    const platform = tauriPlatform(fakeWindow().win);
+    updateOffer = { version: "0.9.4" };
+    await platform.updater.check();
+    updaterCalls.length = 0;
+    await platform.updater.installDownloaded();
+    expect(updaterCalls).toEqual([]);
+    await platform.updater.download();
+    await platform.updater.installDownloaded();
+    expect(updaterCalls).toEqual(["download", "install"]);
+  });
+
   test("tauri: a version downloaded in the background installs without a second download (#280)", async () => {
     const platform = tauriPlatform(fakeWindow().win);
     updateOffer = null;
