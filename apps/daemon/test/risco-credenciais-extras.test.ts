@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { join, resolve } from "node:path";
 import { credential, RiskClassifier } from "../src/permissions/risk.ts";
-import { type ClassifyCall, ruleLevel } from "../src/permissions/rule-risk.ts";
+import { type ClassifyCall, type PathKind, ruleLevel } from "../src/permissions/rule-risk.ts";
 
 const HOME = resolve("/casa/u");
 const CWD = resolve("/trabalho/proj");
 const risk = new RiskClassifier({ allowedRoots: [], home: HOME });
+// Each path is read as a file on disk (#395).
+const notThere: PathKind = () => "file";
 const level = (tool: string, input: Record<string, unknown>) =>
   risk.classify(tool, input, CWD).level;
 
@@ -131,8 +133,8 @@ describe("rule-risk: a partial name that can be one of those files (issue #439)"
       "/trabalho/proj/.cargo/cred*",
       "/trabalho/proj/.m2/settings*.xml",
     ]) {
-      expect(ruleLevel("Read", rule, classify), `Read(${rule})`).toBe("any");
+      expect(ruleLevel("Read", rule, classify, notThere), `Read(${rule})`).toBe("any");
     }
-    expect(ruleLevel("Read", "/trabalho/proj/src/app-*.ts", classify)).toBe("low");
+    expect(ruleLevel("Read", "/trabalho/proj/src/app-*.ts", classify, notThere)).toBe("low");
   });
 });

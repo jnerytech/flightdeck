@@ -1,7 +1,7 @@
 import { PermissionUpdate } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { RANK, type RiskLevel } from "./risk.ts";
-import { type ClassifyCall, ruleLevel } from "./rule-risk.ts";
+import { type ClassifyCall, exactPaths, type PathKind, ruleLevel } from "./rule-risk.ts";
 
 /** Destinations an answer may write to: the session, or the project's settings.local.json. */
 const DESTINATIONS: ReadonlySet<string> = new Set(["session", "localSettings"]);
@@ -73,9 +73,14 @@ function checkRule(rule: AddRules["rules"][number], toolName: string): void {
  */
 function checkRisk(
   rule: AddRules["rules"][number],
-  request: { risk: RiskLevel; classify: ClassifyCall },
+  request: { risk: RiskLevel; classify: ClassifyCall; kind?: PathKind },
 ): void {
-  const level = ruleLevel(rule.toolName, rule.ruleContent, request.classify);
+  const level = ruleLevel(
+    rule.toolName,
+    rule.ruleContent,
+    request.classify,
+    request.kind ?? (() => "dir"),
+  );
   // `any`: not shown to be narrow, so no request, held or not, may save it.
   if (level === "any" || RANK[level] > RANK[request.risk])
     refuse("a regra permitiria mais risco do que este pedido", "perm_rule_too_broad", {
@@ -108,6 +113,8 @@ export function checkUpdates(
     /** The risk judged when it was asked, and the daemon's classifier for what a rule would cover. */
     risk: RiskLevel;
     classify: ClassifyCall;
+    /** What the exact paths of the rules are on disk; without it each counts as a folder. */
+    kind?: PathKind;
   },
 ): void {
   const suggested = new Set(request.suggestions.map(canonical));
@@ -124,4 +131,13 @@ export function checkUpdates(
       checkRisk(rule, request);
     }
   }
+}
+
+/** The exact paths the rules of `updates` name, for the server to look up before the check. */
+export function rulePaths(updates: PermissionUpdate[]): string[] {
+  return updates.flatMap((update) =>
+    update.type === "addRules"
+      ? update.rules.flatMap((rule) => exactPaths(rule.toolName, rule.ruleContent))
+      : [],
+  );
 }

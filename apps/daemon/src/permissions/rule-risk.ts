@@ -1,3 +1,4 @@
+import { isAbsolute, join, normalize } from "node:path";
 import {
   NETWORK_TOOLS,
   RANK,
@@ -19,6 +20,9 @@ import {
 
 /** What a rule may cover: a level, or `any` for a rule this check cannot show to be narrow. */
 export type RuleLevel = RiskLevel | "any";
+
+/** What a path a rule names is on disk: a folder rule covers its whole subtree in the CLI (#395). */
+export type PathKind = (path: string) => "dir" | "file" | "missing";
 
 /** What the daemon thinks of one tool call: its own classifier, behind a function. */
 export type ClassifyCall = (toolName: string, input: Record<string, unknown>) => RiskLevel;
@@ -167,23 +171,47 @@ function shellLevel(
     : "any";
 }
 
-function pathLevel(
-  toolName: string,
-  content: string | undefined,
-  classify: ClassifyCall,
-): RuleLevel {
-  if (content === undefined || PATH_SYNTAX.test(content) || content.includes("..")) return "any";
-  const keys = READ_TOOLS[toolName] ?? ["file_path"];
-  const call = (path: string) =>
-    classify(toolName, Object.fromEntries(keys.map((key) => [key, path])));
+/**
+ * How a path rule may be read: its content without the leading `/` of a project path, both ways
+ * when it has a backslash (a separator on Windows, an escape for the CLI, issue #431); null when
+ * this check cannot read it (brackets, braces, `!`, a parent step).
+ */
+function readingsOf(content: string | undefined): string[] | null {
+  if (content === undefined || PATH_SYNTAX.test(content) || content.includes("..")) return null;
   const pattern = readAs(content);
-  // A backslash is a separator on Windows and an escape for the CLI: read the rule both ways, and
-  // the broader reading decides (issue #431). A drive path is not refused for its separators.
+  // A drive path is not refused for its separators.
   const readings = pattern.includes("\\")
     ? [pattern.replaceAll("\\", "/"), pattern.replaceAll("\\", "")]
     : [pattern];
   // Removing a backslash can make a parent step (`.\./`): each reading is checked for one.
-  if (readings.some((reading) => reading.includes(".."))) return "any";
+  return readings.some((reading) => reading.includes("..")) ? null : readings;
+}
+
+/** The paths a rule names exactly (no wildcard), as `ruleLevel` asks `kind` about them. */
+export function exactPaths(toolName: string, content: string | undefined): string[] {
+  if (!READ_TOOLS[toolName] && !WRITE_TOOLS.has(toolName)) return [];
+  return (readingsOf(content) ?? []).filter((reading) => !WILD.test(reading));
+}
+
+function pathLevel(
+  toolName: string,
+  content: string | undefined,
+  classify: ClassifyCall,
+  kind: PathKind,
+): RuleLevel {
+  const read = readingsOf(content);
+  if (!read) return "any";
+  const keys = READ_TOOLS[toolName] ?? ["file_path"];
+  const call = (path: string) =>
+    classify(toolName, Object.fromEntries(keys.map((key) => [key, path])));
+  // The CLI matches a rule the gitignore way: a folder covers everything below it. Only a file on
+  // disk is read as itself; a folder, a path ending with a slash, and a path not there yet (it can
+  // be made a folder once the rule is saved) are read with their subtree too (issue #395).
+  const readings = read.flatMap((reading) =>
+    !WILD.test(reading) && (reading.endsWith("/") || kind(reading) !== "file")
+      ? [reading, `${reading.replace(/\/+$/, "")}/**`]
+      : [reading],
+  );
   const wild = readings.some((reading) => WILD.test(reading));
   const reached = readings.map((reading) => (WILD.test(reading) ? instances(reading) : [reading]));
   if (reached.includes(null)) return "any";
@@ -204,13 +232,67 @@ export function ruleLevel(
   toolName: string,
   content: string | undefined,
   classify: ClassifyCall,
+  kind: PathKind,
 ): RuleLevel {
   if (SHELL_TOOLS.has(toolName)) return shellLevel(toolName, content, classify);
   if (READ_TOOLS[toolName] || WRITE_TOOLS.has(toolName))
-    return pathLevel(toolName, content, classify);
+    return pathLevel(toolName, content, classify, kind);
   // A network tool names a domain: the whole tool would reach any host.
   if (NETWORK_TOOLS.has(toolName)) {
     return content !== undefined && DOMAIN.test(content) ? classify(toolName, {}) : "any";
   }
   return classify(toolName, {});
+}
+
+/** At most this many paths are looked up for one answer: the rest count as folders. */
+const MAX_LOOKUPS = 32;
+/** A look-up that takes longer (a hung network mount) counts as a folder. */
+const LOOKUP_MS = 2000;
+
+/**
+ * The kind of each exact path a rule names, looked up once with `stat` (relative to the request's
+ * folder, `~/` to the home). A path it did not look up counts as a folder: past the cap, a network
+ * path (`//host/share`, which would reach another host), one with no folder to start from, and
+ * one whose look-up timed out. `target` is the file the request itself writes: missing, it counts
+ * as a file, which it will be once the request is allowed.
+ */
+export async function pathKinds(
+  paths: string[],
+  cwd: string,
+  home: string,
+  stat: (path: string) => Promise<"dir" | "file" | "missing">,
+  options: { timeoutMs?: number; target?: string } = {},
+): Promise<PathKind> {
+  const { timeoutMs = LOOKUP_MS, target } = options;
+  const at = (path: string) =>
+    normalize(
+      path.startsWith("~/") ? join(home, path.slice(2)) : isAbsolute(path) ? path : join(cwd, path),
+    );
+  // A tool writes a relative path under its folder: the target never gets the `~/` reading.
+  const created =
+    target === undefined ? undefined : normalize(isAbsolute(target) ? target : join(cwd, target));
+  const network = (path: string) => /^(?:\/\/|\\\\)/.test(path);
+  const timed = (where: string) =>
+    new Promise<"dir" | "file" | "missing">((resolve) => {
+      const timer = setTimeout(() => resolve("dir"), timeoutMs);
+      timer.unref?.();
+      stat(where).then(resolve, () => resolve("dir"));
+    });
+  const looked = await Promise.all(
+    [...new Set(paths)].slice(0, MAX_LOOKUPS).map(async (path) => {
+      const where = at(path);
+      const plain = isAbsolute(where) && !network(path) && !network(where);
+      const kind = plain ? await timed(where) : "dir";
+      return [path, kind === "missing" && where === created ? "file" : kind] as const;
+    }),
+  );
+  const kinds = new Map<string, "dir" | "file" | "missing">(looked);
+  return (path) => kinds.get(path) ?? "dir";
+}
+
+/** The file a request is about to write (Write, Edit, MultiEdit, NotebookEdit), or undefined. */
+export function writeTarget(toolName: string, input: Record<string, unknown>): string | undefined {
+  if (!WRITE_TOOLS.has(toolName)) return undefined;
+  const file = input.file_path ?? input.notebook_path;
+  return typeof file === "string" && file !== "" ? file : undefined;
 }
