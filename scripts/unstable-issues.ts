@@ -13,12 +13,20 @@ const ROOT = resolve(import.meta.dir, "..");
 const issues = unstableSkipIssues(ROOT);
 const { closed, unknown } = await closedSkipIssues(issues, async (issue) => {
   const args = ["api", `repos/{owner}/{repo}/issues/${issue}`, "--jq", ".state"];
-  const gh = spawnSync("gh", args, { cwd: ROOT, encoding: "utf8" }); // NOSONAR: gh from the CI runner's PATH
-  return gh.status === 0 ? gh.stdout.trim() : null;
+  // One retry: a rate limit or a 5xx must not turn every PR red (#494 review).
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const gh = spawnSync("gh", args, { cwd: ROOT, encoding: "utf8" }); // NOSONAR: gh from the CI runner's PATH
+    if (gh.status === 0) return gh.stdout.trim();
+  }
+  return null;
 });
 console.log(`unstable skips: ${issues.length} issue(s) noted`);
 for (const issue of closed) {
   console.error(`#${issue} is closed: its fix is in, so take its unstable skip out`);
 }
-for (const issue of unknown) console.error(`#${issue} cannot be read with gh`);
+for (const issue of unknown) {
+  console.error(
+    `#${issue} cannot be read with gh (twice): a GitHub outage, or a number that is no issue`,
+  );
+}
 process.exit(closed.length + unknown.length > 0 ? 1 : 0);

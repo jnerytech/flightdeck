@@ -18,8 +18,8 @@ export interface UnstableSkip {
 const OFF_LINUX =
   /\b(?:test|it|describe)\.skipIf\(\s*(?:notLinux|process\.platform\s*!==\s*(?:"linux"|'linux'))\s*\)/;
 
-/** A plain skip, on any platform (#494). */
-const PLAIN = /\b(?:test|it|describe)\.skip\(/;
+/** A plain skip, on any platform and any receiver (#494): the same `.skip(` the TDD audit marks. */
+const PLAIN = /\.skip\(/;
 
 /** The note: an issue number and at least one word of reason. */
 const NOTE = /\/\/ unstable: #(\d+) \S/;
