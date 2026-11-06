@@ -72,6 +72,20 @@ describe("splitShards", () => {
     expect(split.map((shard) => shard.length)).toEqual([2, 2]);
   });
 
+  test("a time that is not a number counts as unknown, so no file is ever left out of every shard", () => {
+    const bad = {
+      a: "x",
+      b: Number.NaN,
+      c: -1,
+      d: Number.POSITIVE_INFINITY,
+      e: 4,
+    } as unknown as Timings;
+    const files = ["a", "b", "c", "d", "e", "f"];
+    for (const count of [2, 3]) {
+      expect(splitShards(files, bad, count).flat().sort()).toEqual(files);
+    }
+  });
+
   test("more shards than files leaves the last ones empty, and the answer is the same each time", () => {
     const first = splitShards(["a"], timings, 3);
     expect(first).toEqual([["a"], [], []]);
@@ -110,6 +124,12 @@ describe("parseJunit", () => {
       "scripts/test/a.test.ts": 1.25,
       "apps/daemon/test/b.test.ts": 7.5,
     });
+  });
+
+  test("a tag with a huge run of word characters is read in linear time, not quadratic", () => {
+    const started = performance.now();
+    expect(parseJunit(`<testsuite ${"a".repeat(100_000)}>`)).toEqual({});
+    expect(performance.now() - started).toBeLessThan(2000);
   });
 
   test("a file that is not a JUnit report has no times", () => {
