@@ -263,6 +263,57 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(alert.textContent).toContain("The provider says there is no credit left on this key.");
   });
 
+  test("Esc in the box cancels a run, closes a preview and dismisses a failure", async () => {
+    let answer: (text: string) => void = () => {};
+    let fail = false;
+    const { fake } = await make({
+      run: (request) => {
+        if (fail) throw { reason: "assistant_credits" };
+        return new Promise((resolve) => {
+          answer = (text) => resolve({ ...ANSWER, text, model: request.model });
+        });
+      },
+    });
+    type("fix the totl");
+    await click("Improve with AI");
+    await act(async () => {
+      fireEvent.keyDown(box(), { key: "Escape" });
+    });
+    expect(fake.calls.filter((c) => c[0] === "cancel")).toHaveLength(1);
+    expect(screen.queryByRole("status")).toBeNull();
+    // The cancelled call ends on its own and gives the one run of the app back.
+    await act(async () => answer("Too late."));
+    await click("Improve with AI");
+    await act(async () => answer("Fix the total."));
+    await screen.findByRole("dialog", { name: "AI suggestion" });
+    await act(async () => {
+      fireEvent.keyDown(box(), { key: "Escape" });
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fail = true;
+    await click("Improve with AI");
+    await screen.findByRole("alert");
+    await act(async () => {
+      fireEvent.keyDown(box(), { key: "Escape" });
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    // With nothing open, Esc is the box's own.
+    expect(fireEvent.keyDown(box(), { key: "Escape" })).toBe(true);
+    expect(box().value).toBe("fix the totl");
+  });
+
+  test("a Cancel the provider cannot take is not an error: the wand still closes", async () => {
+    const { fake } = await make({ run: () => new Promise(() => {}) });
+    fake.assistant.cancel = async () => {
+      throw { reason: "assistant_offline" };
+    };
+    type("fix the totl");
+    await click("Improve with AI");
+    await click("Cancel");
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
+
   test("while another wand holds the one run, this one is disabled and says why", async () => {
     const { store } = await make();
     type("fix the totl");
