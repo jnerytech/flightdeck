@@ -2716,7 +2716,9 @@ numa aba, sem SSH.
   reiniciar ou atualizar o daemon. O conteúdo nunca vai para o log nem para o banco.
 - **Rolar o Claude Code:** no modo tela cheia do Claude Code a roda do mouse vai para o Claude Code,
   que anda conforme o próprio `CLAUDE_CODE_SCROLL_SPEED`. Os terminais abertos pelo app o põem em 3
-  linhas por clique da roda, como no Windows Terminal e no VS Code; um valor definido no host vale.
+  linhas por clique da roda, como no Windows Terminal e no VS Code, a menos que o ambiente do host ou
+  as configurações do Claude Code (onde o `/scroll-speed` a guarda) já definam uma velocidade: aí
+  vale essa.
 
 ### Claude aqui
 
