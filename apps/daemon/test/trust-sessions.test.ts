@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
+import { FolderLocks } from "../src/worktrees/locks.ts";
 import { newManager, waitFor } from "./helpers.ts";
 
 describe("trust-sessions: every run of a session is told whether its folder is trusted (#196)", () => {
@@ -75,5 +76,21 @@ describe("trust-sessions: no session exists before its folder's boundaries were 
     release();
     await creating;
     expect(manager.list()).toHaveLength(1);
+  });
+
+  test("a removal that takes the folder while its trust is looked at refuses the session, and no row is made", async () => {
+    const locks = new FolderLocks();
+    const { manager, project } = newManager({
+      runtime: new FakeRuntime({ delayMs: 1 }),
+      folderLocks: locks,
+      prepareTrust: async (cwd) => {
+        await Promise.resolve();
+        locks.hold(cwd);
+      },
+    });
+    await expect(manager.create({ cwd: project, prompt: "oi" })).rejects.toMatchObject({
+      reason: "folder_removing",
+    });
+    expect(manager.list()).toEqual([]);
   });
 });

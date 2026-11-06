@@ -343,3 +343,28 @@ describe("project-trust: the scope given when trusting is the scope kept (issue 
     expect(sensitive.trust.isTrusted("/work/app")).toBe(false);
   });
 });
+
+describe("project-trust: a look that is overtaken still answers for its own caller (issue #415, review)", () => {
+  test("the older of two overlapping scans, finishing first, stores what it found until the newer one stores", async () => {
+    const main = tempDir("fd-trust-");
+    const odd = join(main, "odd");
+    mkdirSync(odd, { recursive: true });
+    writeFileSync(join(odd, ".git"), "gitdir: unused\n");
+    const answers: Array<(text: string) => void> = [];
+    const { trust } = fresh({
+      readText: () => new Promise<string>((resolveText) => answers.push(resolveText)),
+    });
+    trust.trust(main);
+    const first = trust.prepare(odd);
+    await waitFor(() => answers.length === 1, { label: "first scan reads" });
+    const second = trust.prepare(odd);
+    await waitFor(() => answers.length === 2, { label: "second scan reads" });
+    answers[0]?.(`gitdir: ${join(main, "one", ".git", "worktrees", "odd")}`);
+    await first;
+    // The caller of the first look goes on: the folder is a worktree of another checkout, not trusted by prefix.
+    expect(trust.sessionTrust(odd).configRoot).toBe(join(main, "one"));
+    answers[1]?.(`gitdir: ${join(main, "two", ".git", "worktrees", "odd")}`);
+    await second;
+    expect(trust.sessionTrust(odd).configRoot).toBe(join(main, "two"));
+  });
+});
