@@ -1,4 +1,4 @@
-import { ChevronsUpDown, CircleAlert, Moon, Plus, Search, Sun } from "lucide-react";
+import { ChevronsUpDown, CircleAlert, Moon, Plus, Search, Server, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
@@ -49,6 +49,8 @@ export function TopBarHost(
       <IconTip label={current?.name}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" aria-label={name} className="top-bar-host">
+            {/* Narrow, the name gives its room to the crumbs: the icon stays, named by the button. */}
+            <Server aria-hidden="true" className="top-bar-host-icon" />
             <span className="top-bar-host-name">{current?.name ?? t("shell.noHost")}</span>
             <ChevronsUpDown aria-hidden="true" />
           </Button>

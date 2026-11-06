@@ -335,6 +335,7 @@ export type HostCommandType = Extract<
   | "roots.add"
   | "history.get"
   | "host.bypass"
+  | `project.trust.${string}`
   | "host.updates.set"
   | `ssh.${string}`
   | `snippets.${string}`

@@ -1237,6 +1237,7 @@ export const ptBR = {
     summary: "o resumo da sessão",
     webhook: "os webhooks",
     bg: "sessões em segundo plano",
+    projectTrust: "a confiança em projetos",
     autoUpdate: "atualização automática do host",
   },
   daemonRefusal: {
@@ -1250,6 +1251,7 @@ export const ptBR = {
     central_confirm: "Mexer no ~/.claude/settings.json do host pede a sua confirmação.",
     permission_request_closed: "O pedido de permissão {id} não está aberto.",
     hold_required: "Um pedido de risco alto só é aprovado segurando o botão.",
+    input_changed: "Um pedido é aprovado como foi feito: a resposta muda o que ele executa.",
     update_needs_service:
       "O daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>.",
     update_signature_failed: "Não foi possível verificar a atualização: {why}",
@@ -1318,6 +1320,8 @@ export const ptBR = {
       "O daemon ainda não verificou se há atualização: tente de novo daqui a pouco.",
     update_manifest_no_binary: "A versão {version} não tem binário para {key}.",
     perm_rule_other_tool: "Essa regra é de outra ferramenta ({tool}).",
+    perm_rule_too_broad:
+      "Essa regra também permitiria usos de {tool} de risco {level}, mais do que este pedido: estreite-a.",
     perm_rule_content_invalid: "O conteúdo da regra não vale: uma linha, até 500 caracteres.",
     perm_destination_denied: "O destino {destination} não é permitido para uma regra.",
     perm_mode_denied: "O modo {mode} não pode ser definido por uma resposta.",
@@ -3385,6 +3389,43 @@ export const ptBR = {
     placeholder: "Digite uma mensagem",
   },
   projectPage: {
+    trust: {
+      title: "Configuração do projeto",
+      hint: "Um projeto pode trazer hooks, servidores MCP, configurações, agentes e skills próprios. Eles só carregam em uma sessão quando você confia no projeto.",
+      untrusted:
+        "Sem confiança. As sessões aqui carregam as suas configurações, não as deste projeto.",
+      trusted: "Com confiança: a configuração própria deste projeto carrega nas sessões dele.",
+      trustedVia:
+        "Com confiança por {path}: a configuração própria deste projeto carrega nas sessões dele.",
+      cost: "Até você confiar nele, os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills deste projeto não carregam, e os seus próprios servidores MCP e plugins também não, nas sessões iniciadas aqui.",
+      listing: "O que este projeto carregaria",
+      hooks: "Hooks (comandos que rodam sozinhos)",
+      mcp: "Servidores MCP (programas que iniciam com a sessão)",
+      env: "Variáveis de ambiente (só os nomes)",
+      allow: "Ferramentas liberadas sem perguntar",
+      agents: "Agentes",
+      skills: "Skills",
+      commands: "Comandos",
+      claudeMd: "CLAUDE.md",
+      unreadable: "Arquivos que não puderam ser lidos ou seguidos",
+      programs: "Programas que as configurações executam",
+      redirects: "Variáveis de ambiente que mandam tráfego ou código para outro lugar",
+      plugins: "Plugins e marketplaces",
+      otherKeys: "Outras configurações presentes",
+      extras: "Agentes, skills e comandos com hooks, servidores ou permissões de ferramentas",
+      longWarning:
+        "Alguns comandos são longos ou têm várias linhas. Leia cada um até o fim: tudo roda quando você confia no projeto.",
+      nothing: "Nada: este projeto não traz configuração própria.",
+      omitted: "+{n} a mais, não mostrados",
+      action: "Confiar neste projeto",
+      revoke: "Revogar a confiança",
+      confirm:
+        "Confiar em {project} em {host}? Os hooks dele rodam comandos e os servidores MCP dele iniciam programas naquele computador, sem perguntar a você, sempre que uma sessão começa ali. Só faça isso para código que você escreveu ou leu.",
+      failed: "Não foi possível ler a configuração deste projeto.",
+      sessionNotice:
+        "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
+      review: "Revisar e confiar",
+    },
     notHere: "Este projeto não está neste host.",
     sessionsHint: "As sessões de todos os projetos",
     boardHint: "Cards por coluna, do backlog ao concluído",

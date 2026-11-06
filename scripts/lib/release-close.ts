@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 /**
  * `bun run release:close -- <tag> [--apply] [--since <tag>]` (issue #252): after a release tag, the
  * issues the tag ships get "Shipped in <tag>", are closed and go to Done on the board, and the
@@ -199,7 +200,7 @@ export async function releaseClose(
     "--format=%s",
     `${since}..${tag}`,
   ]);
-  for (const pull of mergedPulls(merges.stdout)) {
+  await inSequence(mergedPulls(merges.stdout), async (pull) => {
     const closing = await deps.gh([
       "pr",
       "view",
@@ -215,11 +216,11 @@ export async function releaseClose(
     } else
       for (const line of closing.stdout.split("\n"))
         if (/^\d+$/.test(line.trim())) closes.add(Number(line));
-  }
+  });
   deps.log(`release:close ${tag} (${since}..${tag}): ${closes.size} issue(s) to close`);
 
   const planned: Planned[] = [];
-  for (const issue of sorted(closes)) {
+  await inSequence(sorted(closes), async (issue) => {
     const item = await read(deps, issue, comment);
     if (item === "unreadable") {
       deps.log(`#${issue}: cannot be read`);
@@ -233,7 +234,7 @@ export async function releaseClose(
         `#${issue} ${item.open ? "open" : "closed"}: ${plain(item.title)} → ${[...steps, "board Done"].join(", ")}`,
       );
     }
-  }
+  });
   const only = refs.mentioned.filter((n) => !closes.has(n));
   if (only.length > 0) {
     deps.log(`referenced only, left open: ${only.map((n) => `#${n}`).join(", ")}`);
@@ -257,7 +258,9 @@ export async function releaseClose(
   }
 
   if (!deps.board) deps.log("board skipped (no board command: set FLIGHTDECK_BOARD_CMD)");
-  for (const item of planned) failures += await ship(deps, item, comment);
+  await inSequence(planned, async (item) => {
+    failures += await ship(deps, item, comment);
+  });
 
   const after = milestone ? await milestoneOf(deps, tag) : undefined;
   if (!after) deps.log(`no milestone named ${tag}`);

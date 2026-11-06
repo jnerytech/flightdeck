@@ -143,6 +143,79 @@ process.exit(${code});
     expect(run.config).toBe(h.configFile);
   });
 
+  test("the folder's git boundaries are looked at before a background session is told whether it is trusted (review of #196)", async () => {
+    const order: string[] = [];
+    const { self } = stub();
+    const h = host();
+    const bg = new BgService({
+      db: new EventStore(":memory:").db,
+      claude: () => "claude",
+      start: { self, configFile: h.configFile, allowedRoots: [h.work] },
+      trust: () => {
+        order.push("decide");
+        return { trusted: true };
+      },
+      prepare: async () => {
+        await Promise.resolve();
+        order.push("prepare");
+      },
+    });
+    await bg.start({ cwd: h.work, prompt: "p", name: "n" });
+    expect(order).toEqual(["prepare", "decide"]);
+  });
+
+  test("a folder not trusted starts without the project's hooks and servers; a worktree of a card reads the project's setup; a trusted one is left alone", async () => {
+    const asked: string[] = [];
+    const run = async (trust: { trusted: boolean; configRoot?: string }) => {
+      const { self, called } = stub();
+      const h = host();
+      const bg = new BgService({
+        db: new EventStore(":memory:").db,
+        claude: () => "claude",
+        start: { self, configFile: h.configFile, allowedRoots: [h.work] },
+        trust: (cwd) => {
+          asked.push(cwd);
+          return trust;
+        },
+      });
+      await bg.start({ cwd: h.work, prompt: "p", name: "n" });
+      return { argv: called().argv, work: h.work };
+    };
+    const untrusted = await run({ trusted: false });
+    expect(untrusted.argv).toEqual([
+      "claude",
+      "--bg",
+      "--name",
+      "n",
+      "--setting-sources",
+      "user",
+      "--strict-mcp-config",
+      "--",
+      "p",
+    ]);
+    expect(asked.map((cwd) => realpathSync.native(cwd))).toEqual([
+      realpathSync.native(untrusted.work),
+    ]);
+    expect((await run({ trusted: true, configRoot: "/the/project" })).argv).toEqual([
+      "claude",
+      "--bg",
+      "--name",
+      "n",
+      "--project-config-root",
+      "/the/project",
+      "--",
+      "p",
+    ]);
+    expect((await run({ trusted: true })).argv).toEqual([
+      "claude",
+      "--bg",
+      "--name",
+      "n",
+      "--",
+      "p",
+    ]);
+  });
+
   test("a card starts a session in its project's folder, named and prompted by the card", async () => {
     const { self, called } = stub();
     const h = host();
