@@ -13,14 +13,19 @@ afterEach(cleanup);
 const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
 const block = (name: string) => css.match(new RegExp(`@utility ${name} \\{([^}]*)\\}`))?.[1] ?? "";
 
-describe("crumb-largura: the tab strip starts at the same place on every screen", () => {
+/**
+ * Cheap guards, not proofs: these read the class names and the CSS text, so they only say the
+ * rules were not removed. The layout itself (widths, ellipsis, no sideways scroll) is measured in
+ * a real browser by the e2e `layout` journey (scripts/e2e/journeys.ts); happy-dom has no layout.
+ */
+describe("guard: crumb-largura: the tab strip starts at the same place on every screen", () => {
   test("the crumb slot has a width of its own that neither the crumbs nor the window's slack change", () => {
     const slot = block("header-crumbs");
     expect(slot).toMatch(/flex:\s*0 0 24rem/);
     expect(slot).not.toMatch(/flex:\s*0 1 auto/);
   });
 
-  test("a long last crumb is cut with an ellipsis and says its full text in a tooltip", () => {
+  test("a long last crumb is cut with an ellipsis (its full text is in a tooltip, see texto-cortado)", () => {
     render(
       <Breadcrumb
         crumbs={[
@@ -33,8 +38,8 @@ describe("crumb-largura: the tab strip starts at the same place on every screen"
     );
     const last = screen.getByText("A host with a very long name indeed");
     expect(last.className).toContain("truncate");
-    expect(last.getAttribute("title")).toBe("A host with a very long name indeed");
-    expect(screen.getByRole("button", { name: "Hosts" }).getAttribute("title")).toBe("Hosts");
+    expect(last.getAttribute("title")).toBeNull();
+    expect(screen.getByRole("button", { name: "Hosts" }).getAttribute("title")).toBeNull();
   });
 
   test("a step is cut with an ellipsis and is still a target at least 24 px high", () => {
@@ -60,7 +65,7 @@ describe("crumb-largura: the tab strip starts at the same place on every screen"
   });
 });
 
-describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps first (issue #133)", () => {
+describe("guard: crumb-largura: a long path is cut with an ellipsis, the earlier steps first (issue #133)", () => {
   const crumbs = [
     { label: "wsl - Ubuntu 24.04 on a long machine name", route: { name: "hub" as const } },
     { label: "Projects", route: { name: "hub" as const } },
@@ -68,12 +73,12 @@ describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps 
     { label: "agent-runtime-delivery-lens" },
   ];
 
-  test("each label is a block that truncates, with its full text as the tooltip", () => {
+  test("each label is a block that truncates, with a real tooltip (no native title)", () => {
     render(<Breadcrumb crumbs={crumbs.slice(0, 2)} label="Path" onGo={() => {}} />);
     const first = screen.getByRole("button", { name: /wsl - Ubuntu/ });
     expect(first.className).toMatch(/\bblock\b/);
     expect(first.className).toContain("truncate");
-    expect(first.getAttribute("title")).toContain("wsl - Ubuntu");
+    expect(first.getAttribute("title")).toBeNull();
   });
 
   test("the earlier steps shrink first, down to 4rem, and the current one last, with factors that add up to at least 1", () => {

@@ -9,27 +9,13 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { clampListWidth, LIST_DEFAULT, LIST_MAX, LIST_MIN } from "@/lib/list-width";
+import { useWidth } from "@/lib/use-width";
 
 const STEP = 16;
 /** Below this width of the area there is room for one pane only. */
 const NARROW = 560;
 /** The most of the area the list may take, so the detail keeps room to breathe. */
 const LIST_SHARE = 0.45;
-
-/** The width of `ref`'s box, kept up to date; 0 until it is measured. */
-function useWidth(ref: { current: HTMLElement | null }): number {
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    const box = ref.current;
-    if (!box || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver((entries) => {
-      setWidth(Math.round(entries[0]?.contentRect.width ?? 0));
-    });
-    observer.observe(box);
-    return () => observer.disconnect();
-  }, [ref]);
-  return width;
-}
 
 /**
  * A list on the left (about 380 px, resized by the divider with the pointer or ← →) and the
@@ -38,16 +24,18 @@ function useWidth(ref: { current: HTMLElement | null }): number {
  * more than 45% of it, and a narrow area shows one pane at a time (the detail brings a button
  * back to the list).
  */
-export function SplitView(props: {
-  list: ReactNode;
-  detail: ReactNode | null;
-  empty: ReactNode;
-  onClose(): void;
-  labels: { resize: string; back: string };
-  /** The width the list starts with (default 380) and what to do when it changes. */
-  initialWidth?: number;
-  onResize?(width: number): void;
-}) {
+export function SplitView(
+  props: Readonly<{
+    list: ReactNode;
+    detail: ReactNode | null;
+    empty: ReactNode;
+    onClose(): void;
+    labels: { resize: string; back: string };
+    /** The width the list starts with (default 380) and what to do when it changes. */
+    initialWidth?: number;
+    onResize?(width: number): void;
+  }>,
+) {
   const box = useRef<HTMLDivElement>(null);
   const area = useWidth(box);
   const narrow = area > 0 && area < NARROW;

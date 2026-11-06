@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { AppStore } from "../lib/app-store.ts";
 
 /** The clients as text, to move to another desktop: copy them out, paste them in. */
-export function ClientsTransfer(props: { store: AppStore }) {
+export function ClientsTransfer(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const { t } = store.i18n;
   const [exported, setExported] = useState<string | null>(null);

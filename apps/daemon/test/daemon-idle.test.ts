@@ -215,6 +215,6 @@ describe("daemon-idle: what a started daemon keeps running", () => {
     expect(mine()).toEqual([]);
     const settled = ticks.length;
     await Bun.sleep(100);
-    expect(ticks.length).toBe(settled);
+    expect(ticks).toHaveLength(settled);
   });
 });

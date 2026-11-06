@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { Actions } from "../src/actions/actions.ts";
 import { startServer } from "../src/server.ts";
 import { newBoard } from "./board-helpers.ts";
+import { BASELINE_FEATURES } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "recursos-token-0123456789abcdef";
@@ -29,7 +30,7 @@ async function features(withActions: boolean) {
   await client.request("hello", { token: TOKEN, client: "t" });
   return (
     (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-      (name) => name !== "session.images",
+      (name) => !BASELINE_FEATURES.includes(name),
     ) ?? []
   );
 }

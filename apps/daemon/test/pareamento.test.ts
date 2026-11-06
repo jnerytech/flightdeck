@@ -95,21 +95,21 @@ describe("pareamento", () => {
   test("o parser recusa esquema errado, endereço, porta inválida e token ausente; sem nome usa o endereço", () => {
     expect(parsePairingLink("http://pc:7420?token=t")).toEqual({
       ok: false,
-      error: "esquema inválido",
+      error: "scheme",
     });
     expect(parsePairingLink("flightdeck://:7420?token=t")).toEqual({
       ok: false,
-      error: "endereço inválido",
+      error: "address",
     });
     for (const port of ["", "0", "65536", "abc"]) {
       expect(parsePairingLink(`flightdeck://pc:${port}?token=t`)).toEqual({
         ok: false,
-        error: "porta inválida",
+        error: "port",
       });
     }
     expect(parsePairingLink("flightdeck://pc:7420?name=x")).toEqual({
       ok: false,
-      error: "token ausente",
+      error: "token",
     });
     expect(parsePairingLink(" FLIGHTDECK://pc:7420/?token=t ")).toEqual({
       ok: true,

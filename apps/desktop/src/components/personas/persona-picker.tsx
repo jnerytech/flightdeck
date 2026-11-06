@@ -17,7 +17,8 @@ export function useSuggestedPersona(
   idsOnly = false,
 ): string {
   const hosts = useStoreSlice(store, ["personas"]).personas[hostId];
-  return hosts?.some((p) => p.id === id) ? (idsOnly ? id : `host:${id}`) : "";
+  if (!hosts?.some((p) => p.id === id)) return "";
+  return idsOnly ? id : `host:${id}`;
 }
 
 /**
@@ -25,14 +26,16 @@ export function useSuggestedPersona(
  * a project's, resolved by the daemon) or `app:<id>` (the app's own, sent whole), "" for none.
  * `idsOnly` keeps to the host's, by plain id, for `flightdeckd claude --persona`.
  */
-export function PersonaPicker(props: {
-  store: AppStore;
-  hostId: string;
-  label: string;
-  value: string;
-  onChange(value: string): void;
-  idsOnly?: boolean;
-}) {
+export function PersonaPicker(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    label: string;
+    value: string;
+    onChange(value: string): void;
+    idsOnly?: boolean;
+  }>,
+) {
   const t = useT();
   const id = useId();
   const { store, hostId } = props;

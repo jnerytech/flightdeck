@@ -1,6 +1,8 @@
-import { lstat, mkdir, open, readdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { lstat, mkdir, open, readdir, readFile, realpath } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type { TaskFile, TaskPreviewResult, TaskResultsResult } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
+import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 
@@ -38,20 +40,34 @@ async function walk(folder: string, into: Snapshot): Promise<void> {
   let seen = 0;
   while (queue.length > 0 && seen < MAX_WALKED) {
     const { dir, depth } = queue.shift() as { dir: string; depth: number };
-    const entries = await orElse(() => readdir(dir, { withFileTypes: true }), []);
-    for (const entry of entries) {
-      if (entry.name.startsWith(".")) continue;
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (depth < MAX_DEPTH) queue.push({ dir: path, depth: depth + 1 });
-      } else if (entry.isFile()) {
-        const info = await orElse(() => lstat(path), null);
-        if (!info) continue;
-        into[path] = { size: info.size, mtimeMs: info.mtimeMs };
-        if (++seen >= MAX_WALKED) break;
-      }
+    const found = await scanFolder(dir, into, MAX_WALKED - seen); // NOSONAR: sequential by design: each pass needs the answer of the one before
+    seen += found.files;
+    if (depth < MAX_DEPTH)
+      queue.push(...found.folders.map((path) => ({ dir: path, depth: depth + 1 })));
+  }
+}
+
+/** One folder: records its files (at most `room`) in `into`, and lists the folders to walk next. */
+async function scanFolder(
+  dir: string,
+  into: Snapshot,
+  room: number,
+): Promise<{ files: number; folders: string[] }> {
+  const folders: string[] = [];
+  let files = 0;
+  const entries = await orElse(() => readdir(dir, { withFileTypes: true }), []);
+  for (const entry of entries) {
+    if (entry.name.startsWith(".")) continue;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) folders.push(path);
+    else if (entry.isFile()) {
+      const info = await orElse(() => lstat(path), null); // NOSONAR: files are read in order so the snapshot stops exactly at the cap
+      if (!info) continue;
+      into[path] = { size: info.size, mtimeMs: info.mtimeMs };
+      if (++files >= room) break;
     }
   }
+  return { files, folders };
 }
 
 /** Remembers what a task's folders held when it started, and says what it made since. */
@@ -70,7 +86,9 @@ export class TaskTracker {
   /** A look at the folders before the task starts. */
   async prepare(folders: readonly string[]): Promise<Snapshot> {
     const snapshot: Snapshot = {};
-    for (const folder of folders) await walk(folder, snapshot);
+    await inSequence(folders, async (folder) => {
+      await walk(folder, snapshot);
+    });
     return snapshot;
   }
 
@@ -78,7 +96,7 @@ export class TaskTracker {
   async keep(sessionId: string, folders: readonly string[], before: Snapshot): Promise<void> {
     await mkdir(this.opts.dir, { recursive: true });
     const kept: Kept = { folders: [...folders], before };
-    await writeFile(this.file(sessionId), JSON.stringify(kept));
+    await writeFileAtomic(this.file(sessionId), JSON.stringify(kept));
   }
 
   /** The start of a text file inside the task's folders (text, Markdown or CSV), for a preview. */
@@ -134,7 +152,9 @@ export class TaskTracker {
   async results(sessionId: string): Promise<TaskResultsResult> {
     const kept = await this.load(sessionId);
     const now: Snapshot = {};
-    for (const folder of kept.folders) await walk(folder, now);
+    await inSequence(kept.folders, async (folder) => {
+      await walk(folder, now);
+    });
     const files: TaskFile[] = [];
     for (const [path, info] of Object.entries(now)) {
       if (!kept.folders.some((folder) => isInside(folder, path))) continue;

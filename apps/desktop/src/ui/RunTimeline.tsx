@@ -1,6 +1,7 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
+import { ApprovalActions } from "@/components/approval/approval-actions";
+import { GateText } from "@/components/approval/gate-text";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { budgetLines, stepDuration, stepUsage } from "../lib/runs.ts";
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
 
 /** Turns, minutes and estimated cost against the run's budget. */
-function BudgetMeter({ run }: { run: WorkflowRun }) {
+function BudgetMeter({ run }: Readonly<{ run: WorkflowRun }>) {
   const t = useT();
   return (
     <section aria-label={t("runUi.budget")} className="flex flex-col gap-1 text-sm">
@@ -30,10 +31,12 @@ function BudgetMeter({ run }: { run: WorkflowRun }) {
 }
 
 /** An open gate, answered here with an optional note. */
-function GateCard(props: {
-  step: StepRun;
-  onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
-}) {
+export function GateCard(
+  props: Readonly<{
+    step: StepRun;
+    onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
+  }>,
+) {
   const t = useT();
   const { step } = props;
   const [note, setNote] = useState("");
@@ -44,12 +47,7 @@ function GateCard(props: {
       aria-label={t("runUi.gate", { step: step.stepId })}
       className="mt-2 flex flex-col gap-2 rounded-lg border border-status-needs-you/50 p-3 text-sm"
     >
-      <p>{step.message}</p>
-      {step.output && (
-        <pre className="overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
-          {step.output}
-        </pre>
-      )}
+      <GateText message={step.message ?? ""} output={step.output} />
       <Textarea
         aria-label={t("runUi.gateNote")}
         placeholder={t("runUi.notePlaceholder")}
@@ -57,21 +55,15 @@ function GateCard(props: {
         onChange={(e) => setNote(e.target.value)}
       />
       <div className="flex gap-2">
-        <ActionButton
+        {/* Issue #182: a gate is answered with the same Approve and Deny as a request. */}
+        <ApprovalActions
           size="sm"
+          // A gate has no risk: it is the workflow's own question, answered on its card.
+          risk={undefined}
           pending={busy}
-          onClick={() => run(() => props.onRespond(step, "approve", note))}
-        >
-          {t("runUi.approve")}
-        </ActionButton>
-        <ActionButton
-          variant="outline"
-          size="sm"
-          pending={busy}
-          onClick={() => run(() => props.onRespond(step, "reject", note))}
-        >
-          {t("runUi.reject")}
-        </ActionButton>
+          onApprove={() => run(() => props.onRespond(step, "approve", note))}
+          onDeny={() => run(() => props.onRespond(step, "reject", note))}
+        />
       </div>
     </section>
   );
@@ -81,16 +73,22 @@ function GateCard(props: {
  * A card's workflow run: status, budget and one line per step attempt. Agent and check steps
  * open (their conversation or their output) through `onOpenStep`.
  */
-export function RunTimeline(props: {
-  run: WorkflowRun;
-  /** HH:MM of an instant (the quota's reset). */
-  formatTime(iso: string): string;
-  onOpenStep(step: StepRun): void;
-  /** A promise keeps the gate's buttons busy until the answer is in. */
-  onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
-  /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
-  costUsd?: number | null;
-}) {
+export function RunTimeline(
+  props: Readonly<{
+    run: WorkflowRun;
+    /** HH:MM of an instant (the quota's reset). */
+    formatTime(iso: string): string;
+    onOpenStep(step: StepRun): void;
+    /**
+     * Answers a waiting gate in its step; a promise keeps the gate's buttons busy until the answer is
+     * in. Left out when the gate is answered elsewhere (the top of the card, issue #227): the step
+     * then only says it waits.
+     */
+    onRespond?(step: StepRun, decision: "approve" | "reject", note: string): unknown;
+    /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
+    costUsd?: number | null;
+  }>,
+) {
   const t = useT();
   const { run } = props;
   return (
@@ -143,7 +141,7 @@ export function RunTimeline(props: {
               ) : (
                 <span className="px-3 text-muted-foreground text-xs">{line}</span>
               )}
-              {step.type === "gate" && step.status === "waiting" && (
+              {step.type === "gate" && step.status === "waiting" && props.onRespond && (
                 <GateCard step={step} onRespond={props.onRespond} />
               )}
             </li>

@@ -1,4 +1,4 @@
-import { type SnippetInput, SnippetModelError } from "@flightdeck/protocol";
+import { inSequence, type SnippetInput, SnippetModelError } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -12,7 +12,9 @@ const SELECT = "h-9 rounded-md border bg-transparent px-2";
  * parser) with the versioned file's own rules, so a secret or a bad entry is left out with the
  * reason; nothing is saved until the person imports.
  */
-export function FileImport(props: { store: AppStore; hostId: string; onImported(): void }) {
+export function FileImport(
+  props: Readonly<{ store: AppStore; hostId: string; onImported(): void }>,
+) {
   const t = useT();
   const id = useId();
   const { store, hostId } = props;
@@ -27,28 +29,30 @@ export function FileImport(props: { store: AppStore; hostId: string; onImported(
     if (parsed) setFound(parsed);
   };
 
+  /** Saves one snippet where the person chose; the refusal in words, or null once it is saved. */
+  const saveOne = async (snippet: NonNullable<typeof found>["snippets"][number]) => {
+    if (target === "host") {
+      const saved = await store.hostRequest(hostId, "snippets.save", { ...snippet, scope: "host" });
+      return saved.ok ? null : refusalText(saved.code, saved.message, t, saved);
+    }
+    try {
+      store.globalSnippets.save(snippet);
+      return null;
+    } catch (thrown) {
+      if (!(thrown instanceof SnippetModelError)) throw thrown;
+      return refusalText(thrown.code, thrown.message, t, thrown);
+    }
+  };
+
   const importAll = async () => {
     if (!found) return;
     const failed: string[] = [];
     let done = 0;
-    for (const snippet of found.snippets) {
-      if (target === "host") {
-        const saved = await store.hostRequest(hostId, "snippets.save", {
-          ...snippet,
-          scope: "host",
-        });
-        if (saved.ok) done++;
-        else failed.push(`${snippet.name}: ${refusalText(saved.code, saved.message, t, saved)}`);
-      } else {
-        try {
-          store.globalSnippets.save(snippet);
-          done++;
-        } catch (thrown) {
-          if (!(thrown instanceof SnippetModelError)) throw thrown;
-          failed.push(`${snippet.name}: ${refusalText(thrown.code, thrown.message, t, thrown)}`);
-        }
-      }
-    }
+    await inSequence(found.snippets, async (snippet) => {
+      const refusal = await saveOne(snippet);
+      if (refusal === null) done++;
+      else failed.push(`${snippet.name}: ${refusal}`);
+    });
     setFound(null);
     setMessage([t("snippets.history.imported", { n: done }), ...failed]);
     props.onImported();

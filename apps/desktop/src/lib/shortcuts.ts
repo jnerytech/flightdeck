@@ -4,6 +4,7 @@ import type { Key } from "../i18n/index.ts";
 export type ShortcutAction =
   | "palette"
   | "help"
+  | "toggle-mode"
   | "back"
   | "forward"
   | "next-client"
@@ -47,6 +48,7 @@ const def = (
 export const SHORTCUTS: ShortcutDef[] = [
   def("palette", "general", ["Mod", "K"], "shortcuts.palette", "palette"),
   def("help", "general", ["?"], "shortcuts.help", "help"),
+  def("toggle-mode", "general", ["Mod", "Shift", "M"], "shortcuts.toggleMode", "toggle-mode"),
   def("next-client", "general", ["Alt", "Shift", "C"], "shortcuts.nextClient", "next-client"),
   def("back", "navigation", ["Alt", "←"], "shortcuts.back", "back"),
   def("forward", "navigation", ["Alt", "→"], "shortcuts.forward", "forward"),
@@ -72,12 +74,18 @@ export function shortcutOf(action: ShortcutAction): ShortcutDef | undefined {
   return SHORTCUTS.find((s) => s.action === action);
 }
 
+/** How keys read for a platform: `Ctrl+K`, `⌘K` on a Mac, `g p` for a chord. */
+export function keysText(keys: readonly string[], chord: boolean, mac: boolean): string {
+  const modifier = mac ? "⌘" : "Ctrl";
+  const named = keys.map((k) => (k === "Mod" ? modifier : k));
+  if (chord) return named.join(" ");
+  // On a Mac the modifier sits against its key (⌘K); elsewhere keys are joined with a plus.
+  return mac && keys[0] === "Mod" ? named.join("") : named.join("+");
+}
+
 /** How the keys read: `Ctrl+K`, `⌘K` on a Mac, `g p` for a chord. */
 export function keysLabel(shortcut: ShortcutDef, mac: boolean): string {
-  const keys = shortcut.keys.map((k) => (k === "Mod" ? (mac ? "⌘" : "Ctrl") : k));
-  if (shortcut.chord) return keys.join(" ");
-  // On a Mac the modifier sits against its key (⌘K); elsewhere keys are joined with a plus.
-  return mac && shortcut.keys[0] === "Mod" ? keys.join("") : keys.join("+");
+  return keysText(shortcut.keys, shortcut.chord === true, mac);
 }
 
 /** Whether the system is a Mac, where the shortcuts use ⌘ instead of Ctrl. */

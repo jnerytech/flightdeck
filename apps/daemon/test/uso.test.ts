@@ -69,6 +69,8 @@ describe("uso", () => {
           inputTokens: 20,
           outputTokens: 40,
           turns: 2,
+          failedTurns: 0,
+          durationMs: expect.any(Number),
         },
         {
           day: "2026-10-01",
@@ -77,6 +79,8 @@ describe("uso", () => {
           inputTokens: 10,
           outputTokens: 20,
           turns: 1,
+          failedTurns: 0,
+          durationMs: expect.any(Number),
         },
         // 0.25 then 0.75 as the session's total: 0.75, never 0.25 + 0.75.
         {
@@ -86,6 +90,8 @@ describe("uso", () => {
           inputTokens: 20,
           outputTokens: 40,
           turns: 2,
+          failedTurns: 0,
+          durationMs: expect.any(Number),
         },
       ],
     });
@@ -115,7 +121,16 @@ describe("uso", () => {
       durationMs: 1,
     });
     expect(ledger.summary(1).rows).toEqual([
-      { day: "d", projectKey: "p", costUsd: 0, inputTokens: 0, outputTokens: 0, turns: 1 },
+      {
+        day: "d",
+        projectKey: "p",
+        costUsd: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        turns: 1,
+        failedTurns: 0,
+        durationMs: 1,
+      },
     ]);
   });
 
@@ -197,7 +212,16 @@ describe("uso", () => {
     gate.resolve("p:late");
     await Bun.sleep(5);
     expect(ledger.summary(1).rows).toEqual([
-      { day: "d", projectKey: "p:late", costUsd: 0.5, inputTokens: 3, outputTokens: 4, turns: 1 },
+      {
+        day: "d",
+        projectKey: "p:late",
+        costUsd: 0.5,
+        inputTokens: 3,
+        outputTokens: 4,
+        turns: 1,
+        failedTurns: 0,
+        durationMs: 0,
+      },
     ]);
   });
 

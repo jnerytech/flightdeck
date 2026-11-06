@@ -34,7 +34,7 @@ export function detectWsl(probe: WslProbe): { distro: string | null } | null {
 export function defaultHostName(probe: WslProbe = realWslProbe): string {
   const wsl = detectWsl(probe);
   if (!wsl) return hostname();
-  return `${hostname()} (WSL${wsl.distro ? ` ${wsl.distro}` : ""})`;
+  return `${hostname()} (WSL${wsl.distro ? " " + wsl.distro : ""})`;
 }
 
 /** Ports of a daemon in WSL are the Windows daemon's plus this, so both can run side by side. */

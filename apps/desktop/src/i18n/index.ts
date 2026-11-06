@@ -43,11 +43,25 @@ export function languageFor(system: string): Lang {
 
 const DICTIONARIES: Record<Lang, Dictionary> = { "pt-BR": ptBR, en };
 
-/** The entry at a dotted key (a string or a plural). */
+/**
+ * The entry at a dotted key (a string or a plural). A key the dictionary lacks (a daemon newer than
+ * the app reports an id with no text yet) gives its last part, so a screen shows the raw id and never throws.
+ */
 function entry(dictionary: Dictionary, key: Key): string | Plural {
   let node: unknown = dictionary;
-  for (const part of key.split(".")) node = (node as Record<string, unknown>)[part];
-  return node as string | Plural;
+  const parts = key.split(".");
+  for (const part of parts) node = (node as Record<string, unknown> | undefined)?.[part];
+  const known =
+    typeof node === "string" || (typeof node === "object" && node !== null && "other" in node);
+  return known ? (node as string | Plural) : (parts.at(-1) as string);
+}
+
+/**
+ * Whether a count takes the singular. CLDR puts 0 in pt's "one" category, but a Brazilian reader
+ * expects "0 sessões ativas", so in pt-BR only exactly 1 is singular.
+ */
+function isSingular(rules: Intl.PluralRules, lang: Lang, n: number): boolean {
+  return lang === "pt-BR" ? Math.abs(n) === 1 : rules.select(n) === "one";
 }
 
 /**
@@ -61,7 +75,7 @@ export function translator(lang: Lang, mode: "full" | "simple" = "full"): T {
     const found = renames[key] ?? entry(DICTIONARIES[lang], key);
     let text: string;
     if (typeof found === "string") text = found;
-    else text = rules.select(Number(vars.n ?? 0)) === "one" ? found.one : found.other;
+    else text = isSingular(rules, lang, Number(vars.n ?? 0)) ? found.one : found.other;
     return text.replace(/\{(\w+)\}/g, (all, name: string) =>
       name in vars ? String(vars[name]) : all,
     );

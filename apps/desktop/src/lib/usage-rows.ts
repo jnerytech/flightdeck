@@ -45,7 +45,7 @@ export function projectCwd(key: string): string | null {
   return folder === null ? null : folder.replace(/[\\/]+$/, "");
 }
 
-const HIDDEN_FOLDERS = ["/temp/", "/tmp/", "/var/folders/", "/.claude/worktrees/"];
+const HIDDEN_FOLDERS = ["/temp/", "/tmp/", "/var/folders/", "/.claude/worktrees/"]; // NOSONAR: names of folders to hide, never a path this code reads or writes
 
 /** Keys of temp folders and agent worktrees: never a project a person works in. */
 export function hiddenProject(key: string): boolean {
