@@ -6,23 +6,28 @@ import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostAutoUpdate } from "@/components/hosts/host-auto-update";
-import { HostDoctor } from "@/components/hosts/host-doctor";
 import { hostDownReason } from "@/components/hosts/host-down-reason";
+import { HostHealth } from "@/components/hosts/host-health";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
+import { HostOverview } from "@/components/hosts/host-overview";
 import { HostVersionLine } from "@/components/hosts/host-version";
 import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
+import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
-import { useHostLatency } from "@/lib/use-store";
+import { useHostLatency, useStoreSlice } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import type { HostNameError } from "../lib/host-name.ts";
 import { hostUptime } from "../lib/host-offline.ts";
+import type { HubRow } from "../lib/hub.ts";
+import type { ProjectCard } from "../lib/project-cards.ts";
 import type { UsageHistoryTarget } from "../lib/usage-rows.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -33,6 +38,28 @@ import { MaintenanceSection } from "./MaintenanceSection.tsx";
 import { RenameHostDialog } from "./RenameHostDialog.tsx";
 import { TelemetrySection } from "./TelemetrySection.tsx";
 import { UsagePanel } from "./UsagePanel.tsx";
+
+/** What the overview reads from the app: the sessions, the projects and the cards of the hosts. */
+const OVERVIEW_KEYS = [
+  "hosts",
+  "hub",
+  "meta",
+  "externals",
+  "names",
+  "background",
+  "projects",
+  "cards",
+  "deps",
+  "doctor",
+  "healthAt",
+  "healthError",
+] as const;
+
+/**
+ * The tabs' panels stay mounted (what each one loads, and what was typed in it, is kept when the
+ * person goes to another tab): only the open one shows.
+ */
+const PANEL = "data-[state=inactive]:hidden";
 
 const HOOK_LABELS = {
   installed: "hostPage.hooksInstalled",
@@ -53,6 +80,11 @@ export function HostPage(
     onPairAgain?(input: string): Promise<string | null>;
     onOpenAutoApprovals(): void;
     onOpenHistory(filter: UsageHistoryTarget): void;
+    onOpenSession(row: HubRow): void;
+    onOpenProject(card: ProjectCard): void;
+    onSeeAllSessions(): void;
+    onSeeAllProjects(): void;
+    onNewSession(): void;
     onRemove(): void;
   }>,
 ) {
@@ -64,13 +96,30 @@ export function HostPage(
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [tab, setTab] = useState("overview");
   const now = useNow();
+  const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
+  // Opening the page reads the health again when the last read is older than a few minutes.
+  useEffect(() => {
+    if (host.status === "online") void store.ensureHealth(host.id);
+  }, [store, host.id, host.status]);
   const offline = host.status !== "online" && host.status !== "incompatible";
   const hooksKey = hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking";
   useEffect(() => {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
   }, [store, host.id, host.status]);
+  // The Health section can install the hooks too: the status shown in Settings is read again.
+  const refreshHooks = () => void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
+  // "Add folder" in the Health section opens Settings: once that panel shows, the field takes focus.
+  const [folderAsk, setFolderAsk] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new ask moves the focus
+  useEffect(() => {
+    if (folderAsk === 0 || tab !== "settings") return;
+    const field = document.querySelector<HTMLElement>("[data-folder-field]");
+    field?.focus();
+    field?.scrollIntoView?.({ block: "center" });
+  }, [folderAsk]);
   // A daemon older than the app may not have looked for its update since the release: ask it once
   // (the store keeps this to once per 10 minutes per host).
   const checkable = host.status === "online" && info?.update !== undefined;
@@ -136,94 +185,169 @@ export function HostPage(
             </span>
           </InlineNotice>
         )}
-        {hasFeature(info?.features, "account", false) && <HostAccount store={store} host={host} />}
-        {(hasFeature(info?.features, "quota", false) ||
-          hasFeature(info?.features, "costs", false)) && (
-          <UsagePanel
-            store={store}
-            hostId={host.id}
-            online={host.status === "online"}
-            costs={hasFeature(info?.features, "costs", false)}
-            onOpenHistory={props.onOpenHistory}
-          />
-        )}
-        <HostWorktrees store={store} host={host} />
-        <Panel title={t("hostPage.info")} label={t("hostPage.info")}>
-          {info ? (
-            <ul className="flex flex-col gap-1 text-sm">
-              <li>{`${info.os} · ${info.arch}`}</li>
-              <li>{t("hostPage.daemon", { version: info.daemonVersion })}</li>
-              <li>{t("hostPage.app", { version: APP_VERSION })}</li>
-              {info.daemonVersion !== APP_VERSION && (
-                <li className="text-status-needs-you">{t("hostPage.differs")}</li>
-              )}
-              <li>
-                {t("hostPage.claude", { version: info.claudeVersion ?? t("hostPage.unknown") })}
-              </li>
-              <li>{t("hostPage.active", { n: info.activeSessions })}</li>
-              <li>{t("hostPage.uptime", { n: hostUptime(info.uptimeSec, host.infoAt, now) })}</li>
-              <HostLatency store={store} hostId={host.id} />
-            </ul>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              {offline ? t("hostOffline.title") : t("hostPage.unavailable")}
-            </p>
-          )}
-        </Panel>
-        <AllowedFolders store={store} host={host} />
-        <BypassSwitch store={store} host={host} />
-        <SimpleModePanel store={store} host={host} />
-        {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
-          <HostDoctor store={store} host={host} />
-        )}
-        {host.status === "online" && hasFeature(info?.features, "github", false) && (
-          <GithubPanel store={store} host={host} />
-        )}
-        <HostAutoUpdate store={store} host={host} />
-        <DaemonUpdate store={store} host={host} />
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
         )}
-        {showHooks && (
-          <section aria-label={t("hostPage.hooks")}>
-            <Panel title={t("hostPage.hooks")}>
-              <p className="text-sm">{offline ? t("hostOffline.title") : t(hooksKey)}</p>
-              {/* Issue #181: nothing to install on a host that does not answer; the row says why. */}
-              <FieldRow>
-                <ActionButton
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList aria-label={t("hostHome.tabs")}>
+            <TabsTrigger value="overview">{t("hostHome.overview")}</TabsTrigger>
+            <TabsTrigger value="usage">{t("hostHome.usage")}</TabsTrigger>
+            <TabsTrigger value="settings">{t("hostHome.settings")}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview" forceMount className={PANEL}>
+            <Stack gap={4}>
+              <HostOverview
+                store={store}
+                state={overviewState}
+                host={host}
+                onOpenSession={props.onOpenSession}
+                onOpenProject={props.onOpenProject}
+                onSeeAllSessions={props.onSeeAllSessions}
+                onSeeAllProjects={props.onSeeAllProjects}
+                onNewSession={props.onNewSession}
+              />
+              {(hasFeature(info?.features, "depsCheck", false) ||
+                hasFeature(info?.features, "doctor.run", false)) && (
+                <HostHealth
+                  store={store}
+                  host={host}
+                  deps={overviewState.deps[host.id] ?? null}
+                  doctor={overviewState.doctor[host.id] ?? null}
+                  checkedAt={overviewState.healthAt[host.id] ?? null}
+                  error={overviewState.healthError[host.id] ?? null}
+                  onCheck={() => store.checkHealth(host.id)}
+                  onAddFolder={() => {
+                    setTab("settings");
+                    setFolderAsk((n) => n + 1);
+                  }}
+                  onHooksChanged={refreshHooks}
+                />
+              )}
+              {hasFeature(info?.features, "account", false) && (
+                <HostAccount store={store} host={host} />
+              )}
+              <Panel title={t("hostPage.info")} label={t("hostPage.info")}>
+                {info ? (
+                  <ul className="flex flex-col gap-1 text-sm">
+                    <li>{`${info.os} · ${info.arch}`}</li>
+                    <li>{t("hostPage.daemon", { version: info.daemonVersion })}</li>
+                    <li>{t("hostPage.app", { version: APP_VERSION })}</li>
+                    {info.daemonVersion !== APP_VERSION && (
+                      <li className="text-status-needs-you">{t("hostPage.differs")}</li>
+                    )}
+                    <li>
+                      {t("hostPage.claude", {
+                        version: info.claudeVersion ?? t("hostPage.unknown"),
+                      })}
+                    </li>
+                    <li>{t("hostPage.active", { n: info.activeSessions })}</li>
+                    <li>
+                      {t("hostPage.uptime", { n: hostUptime(info.uptimeSec, host.infoAt, now) })}
+                    </li>
+                    <HostLatency store={store} hostId={host.id} />
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    {offline ? t("hostOffline.title") : t("hostPage.unavailable")}
+                  </p>
+                )}
+              </Panel>
+            </Stack>
+          </TabsContent>
+          <TabsContent value="usage" forceMount className={PANEL}>
+            <Stack gap={4}>
+              {(hasFeature(info?.features, "quota", false) ||
+                hasFeature(info?.features, "costs", false)) && (
+                <UsagePanel
+                  store={store}
+                  hostId={host.id}
+                  online={host.status === "online"}
+                  costs={hasFeature(info?.features, "costs", false)}
+                  onOpenHistory={props.onOpenHistory}
+                />
+              )}
+            </Stack>
+          </TabsContent>
+          <TabsContent value="settings" forceMount className={PANEL}>
+            <Stack gap={4}>
+              <AllowedFolders store={store} host={host} />
+              <BypassSwitch store={store} host={host} />
+              <SimpleModePanel store={store} host={host} />
+              {host.status === "online" && hasFeature(info?.features, "github", false) && (
+                <GithubPanel store={store} host={host} />
+              )}
+              <HostWorktrees store={store} host={host} />
+              <HostAutoUpdate store={store} host={host} />
+              <DaemonUpdate store={store} host={host} />
+              {showHooks && (
+                <section aria-label={t("hostPage.hooks")}>
+                  <Panel title={t("hostPage.hooks")}>
+                    <p className="text-sm">{offline ? t("hostOffline.title") : t(hooksKey)}</p>
+                    {/* Issue #181: nothing to install on a host that does not answer; the row says why. */}
+                    <FieldRow>
+                      <ActionButton
+                        variant="outline"
+                        size="sm"
+                        disabled={offline}
+                        disabledReason={hostDownReason(host.status, host.name, t)}
+                        onClick={() => setConfirming("install")}
+                      >
+                        {t("hostPage.install")}
+                      </ActionButton>
+                      <ActionButton
+                        variant="outline"
+                        size="sm"
+                        disabled={offline}
+                        disabledReason={hostDownReason(host.status, host.name, t)}
+                        onClick={() => setConfirming("uninstall")}
+                      >
+                        {t("hostPage.uninstall")}
+                      </ActionButton>
+                    </FieldRow>
+                  </Panel>
+                </section>
+              )}
+              {host.status === "online" && hasFeature(info?.features, "telemetry", false) && (
+                <TelemetrySection store={store} hostId={host.id} />
+              )}
+              {host.status === "online" && hasFeature(info?.features, "autoapprove", false) && (
+                <Button
                   variant="outline"
-                  size="sm"
-                  disabled={offline}
-                  disabledReason={hostDownReason(host.status, host.name, t)}
-                  onClick={() => setConfirming("install")}
+                  className="self-start"
+                  onClick={props.onOpenAutoApprovals}
                 >
-                  {t("hostPage.install")}
-                </ActionButton>
-                <ActionButton
-                  variant="outline"
-                  size="sm"
-                  disabled={offline}
-                  disabledReason={hostDownReason(host.status, host.name, t)}
-                  onClick={() => setConfirming("uninstall")}
-                >
-                  {t("hostPage.uninstall")}
-                </ActionButton>
-              </FieldRow>
-            </Panel>
-          </section>
-        )}
-        {host.status === "online" && hasFeature(info?.features, "telemetry", false) && (
-          <TelemetrySection store={store} hostId={host.id} />
-        )}
-        {host.status === "online" && hasFeature(info?.features, "autoapprove", false) && (
-          <Button variant="outline" className="self-start" onClick={props.onOpenAutoApprovals}>
-            {t("autoApprovalsUi.open")}
-          </Button>
-        )}
-        <HostTerminal store={store} host={host} />
-        {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
-          <MaintenanceSection store={store} hostId={host.id} />
-        )}
+                  {t("autoApprovalsUi.open")}
+                </Button>
+              )}
+              <HostTerminal store={store} host={host} />
+              {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
+                <MaintenanceSection store={store} hostId={host.id} />
+              )}
+              <Panel title={t("hostPage.host")}>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={props.onReconnect}>
+                    {t("hostPage.reconnect")}
+                  </Button>
+                  <Button variant="destructive" onClick={() => setRemoving(true)}>
+                    {t("hostPage.remove")}
+                  </Button>
+                </div>
+                {removing && (
+                  <ConfirmDialog
+                    message={t("sidebar.removeConfirm", { host: host.name })}
+                    confirmLabel={t("hostPage.remove")}
+                    destructive
+                    onConfirm={() => {
+                      setRemoving(false);
+                      props.onRemove();
+                    }}
+                    onCancel={() => setRemoving(false)}
+                  />
+                )}
+              </Panel>
+            </Stack>
+          </TabsContent>
+        </Tabs>
         {confirming && (
           <ConfirmDialog
             message={
@@ -246,28 +370,6 @@ export function HostPage(
             onClose={() => setRenaming(false)}
           />
         )}
-        <Panel title={t("hostPage.host")}>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={props.onReconnect}>
-              {t("hostPage.reconnect")}
-            </Button>
-            <Button variant="destructive" onClick={() => setRemoving(true)}>
-              {t("hostPage.remove")}
-            </Button>
-          </div>
-          {removing && (
-            <ConfirmDialog
-              message={t("sidebar.removeConfirm", { host: host.name })}
-              confirmLabel={t("hostPage.remove")}
-              destructive
-              onConfirm={() => {
-                setRemoving(false);
-                props.onRemove();
-              }}
-              onCancel={() => setRemoving(false)}
-            />
-          )}
-        </Panel>
       </div>
     </Page>
   );

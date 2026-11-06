@@ -11,6 +11,8 @@ import type {
   CommandPayload,
   CommandResults,
   CommandType,
+  DepsResult,
+  DoctorResult,
   EffortLevel,
   EventEnvelope,
   ExternalPermissionFrame,
@@ -243,6 +245,14 @@ export interface AppState {
   account: Record<string, AccountState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
+  /** What `deps.check` found on each host, by host id (hosts that announce `deps`). */
+  deps: Record<string, DepsResult>;
+  /** What `doctor.run` found on each host, by host id. */
+  doctor: Record<string, DoctorResult>;
+  /** When each host's health (dependencies and doctor) was last read, in epoch milliseconds. */
+  healthAt: Record<string, number>;
+  /** Why the last health read of a host failed (the screen says it; no banner). Absent when it went well. */
+  healthError: Record<string, string>;
   /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
   askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
@@ -365,6 +375,7 @@ export type HostCommandType = Extract<
   | `trace.${string}`
   | `bg.${string}`
   | `budget.${string}`
+  | "deps.check"
   | `changes.${string}`
   | `review.${string}`
   | `file.${string}`
@@ -704,6 +715,9 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
+/** How long a read of a host's health stays fresh when a page opens. */
+const HEALTH_MAX_AGE_MS = 5 * 60_000;
+
 /** Where the window's events (focus, the network) arrive: `window` in a browser or the webview, else the runtime's own global. */
 const wakeTarget = (): Partial<Window> =>
   ("window" in globalThis ? globalThis.window : globalThis) as unknown as Partial<Window>;
@@ -831,6 +845,10 @@ export class AppStore {
       runs: {},
       quota: {},
       account: {},
+      deps: {},
+      doctor: {},
+      healthAt: {},
+      healthError: {},
       budgets: {},
       ssh: {},
       snippets: {},
@@ -1018,6 +1036,10 @@ export class AppStore {
       runs: {},
       quota: {},
       account: {},
+      deps: {},
+      doctor: {},
+      healthAt: {},
+      healthError: {},
     });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
@@ -1115,6 +1137,52 @@ export class AppStore {
     this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
     this.persistHosts();
     return null;
+  }
+
+  private readonly healthReads = new Map<string, Promise<void>>();
+
+  /**
+   * Reads a host's whole health now: its dependencies and its doctor; the sidebar and the host page
+   * read it. Silent (a failure goes to `healthError`, not to a banner), each half on its own, and a
+   * read already on its way is the answer to a second ask.
+   */
+  checkHealth(hostId: string): Promise<void> {
+    const running = this.healthReads.get(hostId);
+    if (running) return running;
+    const read = this.readHealth(hostId).finally(() => this.healthReads.delete(hostId));
+    this.healthReads.set(hostId, read);
+    return read;
+  }
+
+  private async readHealth(hostId: string): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    const features = host?.hostInfo?.features;
+    const [deps, doctor] = await Promise.all([
+      hasFeature(features, "depsCheck", false)
+        ? this.hostRequest(hostId, "deps.check", {})
+        : Promise.resolve(null),
+      hasFeature(features, "doctor.run", false)
+        ? this.hostRequest(hostId, "doctor.run", { appVersion: APP_VERSION })
+        : Promise.resolve(null),
+    ]);
+    const failed = [deps, doctor].find((half) => half !== null && !half.ok);
+    const error = this.state.healthError;
+    const { [hostId]: _gone, ...rest } = error;
+    const got = deps?.ok ? deps.data : null;
+    const heard = doctor?.ok ? doctor.data : null;
+    this.update({
+      ...(got ? { deps: { ...this.state.deps, [hostId]: got } } : {}),
+      ...(heard ? { doctor: { ...this.state.doctor, [hostId]: heard } } : {}),
+      ...(got || heard ? { healthAt: { ...this.state.healthAt, [hostId]: this.now() } } : {}),
+      healthError: failed && !failed.ok ? { ...rest, [hostId]: failed.message } : rest,
+    });
+  }
+
+  /** Reads it only when it was never read or is older than `maxAgeMs` (five minutes). */
+  async ensureHealth(hostId: string, maxAgeMs = HEALTH_MAX_AGE_MS): Promise<void> {
+    const at = this.state.healthAt[hostId];
+    if (at !== undefined && this.now() - at < maxAgeMs) return;
+    await this.checkHealth(hostId);
   }
 
   /** A new token or pairing link for a host that refused the old one; the error text, or null. */
@@ -2574,6 +2642,7 @@ export class AppStore {
     }
     // Phase 19: the daemon decides a request with the rules the app hands it.
     if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
+    void this.checkHealth(hostId);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
