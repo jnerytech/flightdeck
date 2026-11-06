@@ -95,6 +95,7 @@ describe("direcao-visual: barra lateral", () => {
       "Workflows",
       "Observabilidade",
       "Custos",
+      "Atividade",
       "Histórico",
       "Biblioteca",
       // The vault is the app's (phase 16), so Cofre shows whatever the hosts offer.

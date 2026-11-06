@@ -30,6 +30,7 @@ const OWNER: Record<Route["name"], "host" | "reader" | null> = {
   overview: null,
   hub: null,
   "needs-you": null,
+  activity: null,
   session: "host",
   "new-session": "host",
   external: "host",

@@ -505,6 +505,8 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     { name: "custos", route: { name: "costs" } },
+    // Issue #151: the Activity board, its columns and cards (axe checks it in both themes).
+    { name: "atividade", route: { name: "activity" } },
     // Phase 36: the ROI card of the web project, and the project and people tables of Costs.
     {
       name: "roi-cartao",
