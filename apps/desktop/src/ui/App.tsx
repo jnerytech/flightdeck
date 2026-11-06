@@ -190,7 +190,7 @@ function appKey(
 }
 
 /** An action of the palette that is not a screen: done in place, else the target's route. */
-function runPaletteTarget(
+export function runPaletteTarget(
   store: AppStore,
   target: PaletteTarget,
   ui: { lang: string; go(route: Route): void; showHelp(): void },

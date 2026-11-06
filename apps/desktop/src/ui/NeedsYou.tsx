@@ -334,10 +334,10 @@ function RequestDetail(
   );
 }
 
-/** The right-hand side for the chosen line, by its kind; nothing for a budget alert or none chosen. */
+/** The right-hand side for the chosen line, by its kind (a budget alert has none). */
 function Detail(
   props: Readonly<{
-    chosen: Entry | undefined;
+    chosen: Exclude<Entry, { kind: "alert" }>;
     requests: number;
     detailBox: RefObject<HTMLDivElement | null>;
     store: AppStore;
@@ -346,21 +346,18 @@ function Detail(
   }>,
 ) {
   const { chosen, store, go } = props;
-  if (chosen?.kind === "watch") return <WatchDetail alert={chosen.alert} store={store} go={go} />;
-  if (chosen?.kind === "loop") return <LoopDetail alert={chosen.alert} store={store} />;
-  if (chosen?.kind === "request") {
-    return (
-      <RequestDetail
-        item={chosen.item}
-        left={props.requests}
-        detailBox={props.detailBox}
-        store={store}
-        go={go}
-        onOpenRequest={props.onOpenRequest}
-      />
-    );
-  }
-  return null;
+  if (chosen.kind === "watch") return <WatchDetail alert={chosen.alert} store={store} go={go} />;
+  if (chosen.kind === "loop") return <LoopDetail alert={chosen.alert} store={store} />;
+  return (
+    <RequestDetail
+      item={chosen.item}
+      left={props.requests}
+      detailBox={props.detailBox}
+      store={store}
+      go={go}
+      onOpenRequest={props.onOpenRequest}
+    />
+  );
 }
 
 /** The requests waiting for the user: the list on the left, the chosen request's card on the right. */
