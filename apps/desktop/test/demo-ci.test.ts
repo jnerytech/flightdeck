@@ -150,6 +150,7 @@ describe("demo-prints: axe e CI", () => {
       "tab-row",
       "wand-composer",
       "activity",
+      "health-fold",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
