@@ -2979,7 +2979,9 @@ What keeps the app and the daemon light, and the numbers you can read yourself.
   this documentation). `flightdeckd --version` prints `flightdeckd <version> (protocolo 1)`.
 - **In the app:** the host page shows the daemon version, the app version and the `claude`
   version. A daemon of a different version gets the **≠** badge ("different version from the
-  app's") in the sidebar: it works, but update when you can.
+  app's") in the sidebar: it works, but update when you can. Hovering a host in the sidebar, or
+  moving the keyboard focus to it, shows its daemon's version in a tooltip (in the narrow rail,
+  after its name).
 - **Protocol:** the app sends its protocol version in `hello`. If the daemon does not accept it,
   the host becomes **incompatible: update the daemon**, with the command on the host page. It
   does not try to reconnect and drops out of the lists (sessions, search) until it is updated and
