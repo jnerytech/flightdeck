@@ -182,7 +182,7 @@ describe("board-ui", () => {
     await openBoard(repo);
     const region = screen.queryByRole("region", { name: "Em andamento" }) as HTMLElement;
     await act(async () => {
-      fireEvent.click(within(region).getByRole("button", { name: "Adicionar card" }));
+      fireEvent.click(within(region).getByRole("button", { name: "Vazio, Adicionar card" }));
     });
     expect(screen.queryByLabelText("Título do card")).not.toBeNull();
   });
@@ -224,9 +224,11 @@ describe("board-ui", () => {
     const { repo } = await setup();
     await openBoard(repo);
     const done = screen.getByRole("region", { name: "Concluído" });
-    const empty = within(done).getByRole("button", { name: "Adicionar card" });
-    expect(empty.textContent).toBe("Vazio");
-    expect(empty.className).toContain("border-dashed");
+    // WCAG 2.5.3: the name a voice user says starts with the word they see.
+    const empty = within(done).queryByRole("button", { name: "Vazio, Adicionar card" });
+    expect(empty).not.toBeNull();
+    expect(empty?.textContent).toBe("Vazio");
+    expect(empty?.className).toContain("border-dashed");
   });
 
   test("arrastar entre colunas move o card; soltar sobre outro card reordena a coluna", async () => {
