@@ -4306,6 +4306,82 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   present, which changed when a host went offline. `group.key` still names a real project for the client scope. A fold saved under the
   old key still counts until the person chooses again; no migration of storage.
 
+## Phase 40: AI assistant (provider keys, the magic wand, commit and PR messages)
+
+- **Base.** `fase-40` starts from `rc/0364` (v0.36.4), not from `main`: the spec was reviewed against that tree, and
+  `spec:lint`, the usage indexer's current shape and the Costs page it describes are there. When v0.36.4 is tagged, `main`
+  fast-forwards to it, and the branch merges `origin/main`; it is never rebased.
+- **The spec's review** (fd-developer, 2026-11-05, against `rc/0364`) is applied in `docs/SPEC-fase-40.md`:
+  - `risk.ts` exports `isCredentialPath`, in a commit of its own before `assistant-context`.
+  - `UsageIndexer.record` gains optional `messageId`, `origin`, `provider` and `costUsd`.
+  - The Rust guards are `pub` functions, and the `#[tauri::command]`s wrap them, because an integration test reaches only
+    `pub` items. `spawn_blocking_result` moves to a shared `pub(crate)` module.
+  - A word diff is new in `lib/`.
+  - `Mod+I` gets a dictionary key, `shortcuts.assistField`.
+  - The "add an Anthropic key" scenario stays out of the e2e, which runs on the web build.
+  The research behind the spec is `docs/research-fase-40.md`.
+- **Open questions.** The phase follows each default of the spec's list until the maintainer says otherwise.
+
+### Phase 40: the daemon slice, first part
+
+- **The refusal texts have their own namespace.** Every assistant refusal reason, whether the daemon or the Rust shell raises
+  it, is in `ASSISTANT_REASONS` (`packages/protocol/src/assistant.ts`). Its text lives in `assistantRefusal` in both
+  dictionaries, as the snippet model's reasons do, and not in `DAEMON_REASONS`, which stays the daemon's other refusals. The
+  protocol test reads the two dictionaries' `assistantRefusal` blocks as text, because importing the app's i18n would pull
+  the app into the protocol package's typecheck. Typecheck already keeps `en` and `pt-BR` on the same keys.
+- **The prompts are their own module** (`packages/protocol/src/assistant-prompts.ts`), beside the schemas, both exported
+  from the protocol. A refusal before any call is an `AssistantRefusal` (`reason`, `params`), which the daemon and the app
+  turn into their own errors.
+- **Commit notices are codes:** `subject_too_long`, `subject_trailing_period`, `subject_not_conventional` and
+  `body_needs_blank_line`. The app translates them; the message is shown with them, never discarded.
+- **`isCredentialPath` is an alias.** `risk.ts` exports `credential` exactly as fase-39 does (the same line), plus
+  `isCredentialPath = credential` on a line of its own, so the two phases merge without a conflict and fase-39's import keeps
+  working.
+- **Migration order with fase-39.** Both phases append one migration: fase-39 `sessions.runtime`, phase 40
+  `usage_entries.provider`. When both land, each keeps its own entry in `MIGRATIONS`. A database is never migrated by a
+  build of only one of them in a release, so the order the merge leaves is the order every released database gets.
+- **The usage helper of the tests names its columns.** `usage-helpers.ts` reads the columns from before this phase, so the
+  existing usage tests stay as they were, and only `assistant-usage` reads `provider`.
+- **A logged-out `claude`** answers `subtype: "success"` with `is_error: true` and the reason as its result. `complete`
+  maps that to `assistant_host_unavailable { detail }`, like a spawn failure. Proof of concept 3 confirms the shape.
+
+### Phase 40: ADR 40-3, the Rust logic in a crate of its own
+
+- **Decision.** The assistant's Rust logic (the key store, the two providers' request builders and response mappers, the
+  guards: caps, token bucket, in-flight limit, cancel) lives in the crate `flightdeck-assistant`
+  (`apps/desktop/src-tauri/assistant/`), which does not depend on Tauri. `src-tauri/src/assistant.rs` keeps only the
+  `#[tauri::command]` wrappers and the shared `spawn_blocking_result`. `src-tauri` becomes a workspace with members
+  `.` and `assistant`, both in `default-members`, so CI's `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`
+  runs the crate's tests too.
+- **Why.** The Tauri crate does not build on the development host without the webkit and GTK dev packages (a `sudo`
+  install); the crate does, so its tests run there and in CI. The spec's integration test already reached only `pub`
+  items, and the providers' logic is mostly pure (a request built from inputs, a result mapped from status and body).
+- **The spec follows it.** The areas table names `assistant/src/{keys,anthropic,openrouter}.rs` and
+  `assistant/tests/guard.rs`; `spec-lint` accepts a crate one level inside `src-tauri`.
+- **tokio as a dev-dependency** at the version already in the lock (through Tauri): the async tests need a runtime, and
+  no new crate enters the lock. The spec's "no new dev-dependency" is read as no HTTP mocking crate: the fake server is
+  `std::net::TcpListener` on loopback.
+- **TLS** mirrors the updater: `reqwest` with `rustls-no-provider`, and the ring `CryptoProvider` installed when none is.
+
+### Phase 40: the privacy review of the daemon slice
+
+OpenCode's review found three highs, fixed before the Rust slice:
+
+- **A link is never followed.** An untracked file is read through `readRegular` (`apps/daemon/src/read-regular.ts`):
+  `lstat`, a regular file only, opened with `O_NOFOLLOW | O_NONBLOCK` (where they exist), checked again with `fstat`, and
+  read up to a cap. A link or a pipe is listed like a binary file, without content. The rule is in `untrackedFile`, so
+  the Changes panel takes it too: a link to a file outside the worktree no longer shows its target there either, and a
+  pipe can no longer hang it. The 256 KB size cap is the assistant's only (`workingDiff`'s `maxUntracked`): the panel
+  still shows a large untracked file whole, and its editor says when the file is too large to edit. Git itself never lists an untracked pipe; the guard is for a file
+  swapped between the listing and the read.
+- **The rules are read the same way.** `extractRules` is async and reads 64 KB of `CLAUDE.md` and `AGENTS.md` and 1 KB of
+  the commitlint config and `.gitmessage`, each only when it is a regular file.
+- **One scanner.** The secret patterns are app-logs' (`0e2331fd2`: named secrets such as `DB_PASSWORD=` or
+  `clientSecret:`, option and curl passwords, auth headers, cookies, Basic credentials, JWTs, service keys, webhooks,
+  signed URLs, and a private key's whole block), ported as the same text so the two branches merge cleanly. The diff is
+  scanned line by line, so it also takes out every line from a `BEGIN ... PRIVATE KEY` line to its `END` line. The two
+  history and trace-export tests take app-logs' updated expectations too.
+
 ## Test tiers by content (issue #261)
 
 - **Why.** The owner asked which tests are unit and which integration. Renaming 800 files into
@@ -4737,6 +4813,30 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   The ratchet maximum is 0, so no test is skipped off Linux; the `skipIf(notLinux)` form and its hook
   check stay for the next unstable test, which must name an issue.
 
+## The Windows unit-test shards are split by measured time (issue #292)
+
+- **Why.** `bun test --shard=i/3` hands each shard a third of the files, whatever they cost: on CI
+  (2026-11-05) Windows shard 1/3 took 9 to 12 minutes while the others took 5 to 8, and the leg
+  waits for the slowest.
+- **How.** `scripts/test-timings.json` holds the seconds each test file took (sorted keys, three
+  decimals). `bun run test:shards -- run <i>/<n>` lists the tracked test files (`git ls-files`),
+  sorts them slowest first and gives each to the lightest shard so far (the same input always gives
+  the same split), then runs `bun test` on that shard's files with the JUnit reporter. A file with
+  no recorded time weighs the median of the known ones, so a new test is never dropped: it is just
+  placed by a guess until the next `record`. `plan <i>/<n>` prints a shard's files.
+- **Refreshing the times.** `record` reads JUnit files and the plain log of a `bun test` run alike
+  (`parseBunLog`: the `(pass)`/`(fail)` milliseconds under each `##[group]<file>:` line). Each
+  Windows shard uploads its JUnit report (artifact `test-timings-windows-<i>`), and
+  `bun run test:shards -- record junit-1.xml junit-2.xml junit-3.xml` moves the times of the files
+  they hold and drops the files that no longer exist. The first file was seeded from the logs of
+  the three Windows shards of main's run 42129496198 (`gh api repos/{owner}/{repo}/actions/jobs/<id>/logs`):
+  the summed test times were 94 to 96% of each shard's wall time, so the per-file overhead is left
+  out. Those times estimate the shards at 378, 378 and 378 s, against 541, 287 and 307 s under
+  `--shard`. It is a balance, not a gate: stale times only make a shard slower.
+- **Command line.** Each shard passes about 290 paths to `bun test` (about 14 KB), under the 32 KB
+  Windows allows for a command line. If the suite grows past roughly twice that per shard, `run`
+  must split its files into several `bun test` calls.
+- **Left out.** The coverage run on Linux is one process, unsharded, and is not touched.
 ## The e2e journeys of each language are a file of their own (issue #292)
 
 - **Why.** Measured on CI (2026-11-05): e2e shard 1/3 took 7 to 11 minutes while 2/3 and 3/3 took
@@ -4782,47 +4882,3 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
   journeys into independent tests, which is #292, not a one-line change.
 
-## Approval safety, second pass (issue #245)
-
-- **The hold is checked in the store, not in the daemon.** `respondTo` and `respond` refuse an allow
-  of a high-risk request unless the answer says it was held (`Answer.held`), and the person sees "A
-  high-risk request is approved only by holding the button." The proof comes from the hold itself:
-  `HoldButton` → `ApprovalActions.onApprove(true)`, and the simple mode's yes the same way. A screen
-  that forgets the risk now fails safe ("Approve does nothing, and says why") instead of approving
-  in one click. **Not done:** the daemon still accepts `permission.respond` allow for a high-risk
-  request without proof. That needs a protocol field and a daemon check; it is left for a decision.
-- **One hold constant**, `HIGH_RISK_HOLD_MS` in `lib/hold.ts`: the buttons, the simple mode and the
-  `heldMs` the store reports to the vault.
-- **`risk` is a required prop of `ApprovalActions`**, typed `RiskLevel | undefined`, so each caller
-  says it. A request with no risk keeps one click: external sessions' requests carry no risk at all
-  (`central/external-permissions.ts`), so treating a missing risk as high would hold every one of
-  them.
-- **A gate in Needs you** shows its question and its output (`GateText`, shared with the run's
-  timeline). A gate is never held: it has no risk.
-- **A tile** shows what a request would do (`inputSummary`) and, when high, why. A question or a
-  plan offers only "Open to answer": a tile shows neither the questions nor the plan. Both buttons
-  stay off while an answer is on its way.
-- **A high-risk plan is held**, like any request. Only a question, which approves no action, is
-  answered by a click. The daemon gives `AskUserQuestion` and `ExitPlanMode` medium risk today, so
-  this guards the day a rule raises them.
-- **The tray offers Deny** for a high-risk or vault request (Deny never needs a hold); Approve still
-  takes the window. A gate still only opens.
-- **The palette's approve and deny carry the request they named** (`host/request`). If that one was
-  answered in between, the one now oldest is opened, never answered unseen.
-
-## Answering a request with one key (issue #187, journey J4)
-
-- **The card takes the focus where the request is announced.** A notification opens the session
-  with `focus` on the request; `SessionView` scrolls to the card and focuses it once, so a card that
-  arrives later never takes the focus from the message box. In Needs you the chosen request's card
-  is focused, so A and N answer it with no click first. The hold of a high-risk request and the
-  plain-key rule (#244, #245) still apply.
-- **Needs you goes on by itself.** Once the chosen request is answered, the one now in its place is
-  chosen and focused, and the detail says how many are left ("2 left"). A chosen alert that goes
-  leaves nothing chosen, as before.
-- **The bell's entry of an answered request opens its session at that request.** A managed
-  session's request notification now keeps the session route (`focus` on the request) beside its
-  link; the link still wins while the request waits. External sessions keep the link only.
-- **The palette's "Approve the oldest"** was already handled by #187's first part and #245 (L4): the
-  command names the request, and a request gone in between is opened, not answered.
-- **e2e:** the journey `responder-sem-clique` answers two requests with A alone.
