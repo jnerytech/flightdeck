@@ -184,7 +184,7 @@ describe("planRelated", () => {
       readFile,
     });
     expect(calls.some((c) => c[0] === "merge-base")).toBe(false);
-    expect(calls).toContainEqual(["diff", "--name-only", "v0.31.0...HEAD"]);
+    expect(calls).toContainEqual(["diff", "--name-only", "--no-renames", "v0.31.0...HEAD"]);
   });
 
   test("an unknown base fails with code 2", () => {

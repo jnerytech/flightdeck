@@ -10,9 +10,9 @@
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { checkChanged } from "./lib/related-coverage.ts";
-import { planRelated } from "./lib/test-related.ts";
+import { keepCoverageProblem, planRelated } from "./lib/test-related.ts";
 import { testTiers } from "./lib/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -36,12 +36,10 @@ const tierMap: Record<string, string> = tiers || pyramid ? liveTiers() : {};
 const keepFlag = args.indexOf("--keep-coverage");
 const keep = keepFlag >= 0 ? args[keepFlag + 1] : undefined;
 // The kept folder stays inside the repository, and is never another flag.
-if (keep !== undefined) {
-  const inside = relative(ROOT, resolve(ROOT, keep));
-  if (keep.startsWith("-") || inside === "" || inside.startsWith("..") || isAbsolute(inside)) {
-    console.error(
-      `test:related: --keep-coverage needs a folder inside the repository, got ${keep}`,
-    );
+if (keepFlag >= 0) {
+  const problem = keepCoverageProblem(ROOT.replaceAll("\\", "/"), keep?.replaceAll("\\", "/"));
+  if (problem) {
+    console.error(`test:related: ${problem}`);
     process.exit(2);
   }
 }

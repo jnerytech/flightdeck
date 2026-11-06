@@ -26,8 +26,12 @@ export function resolveImport(from: string, spec: string, known: Set<string>): s
   let base: string;
   if (spec.startsWith(".")) base = posix.join(posix.dirname(from), spec);
   else if (spec.startsWith("@/")) base = `apps/desktop/src/${spec.slice(2)}`;
-  else if (spec === "@flightdeck/protocol") base = "packages/protocol/src/index.ts";
-  else return null;
+  else if (spec.startsWith("@flightdeck/")) {
+    // A workspace package (packages/<name>/src), whole or by subpath: no internal import is lost.
+    const [, name = "", ...sub] = spec.split("/");
+    base =
+      sub.length > 0 ? `packages/${name}/src/${sub.join("/")}` : `packages/${name}/src/index.ts`;
+  } else return null;
   const candidates = [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`, `${base}/index.tsx`];
   return candidates.find((path) => known.has(path)) ?? null;
 }
@@ -125,12 +129,34 @@ export function planRelated({
   const ref = base ?? auditBase(git) ?? git(["merge-base", "HEAD", "main"])?.trim();
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
   const label = base ?? ref.slice(0, 7);
-  const changed = (git(["diff", "--name-only", `${ref}...HEAD`]) ?? "").split("\n").filter(Boolean);
+  // --no-renames: a renamed file shows its old path as gone, so a renamed test counts as removed.
+  const changed = (git(["diff", "--name-only", "--no-renames", `${ref}...HEAD`]) ?? "")
+    .split("\n")
+    .filter(Boolean);
   const tracked = (git(["ls-files", "*.ts", "*.tsx"]) ?? "").split("\n").filter(Boolean);
   const sources = new Map(tracked.map((path) => [path, readFile(path)]));
   const warnings = changed
     .filter((path) => GLOBAL_FILE.test(path))
     .map((path) => `warning: ${path} affects every test, run the full suite`);
+  // --pr: a file every test reads, or a test that went away, can lower coverage of any file: the
+  // whole suite runs, with its whole-repo gate (#309).
+  if (pyramid) {
+    const removedTest = changed.find((path) => TEST_FILE.test(path) && !sources.has(path));
+    const global = changed.find((path) => GLOBAL_FILE.test(path));
+    const why = global
+      ? `${global} affects every test`
+      : removedTest
+        ? `${removedTest} went away`
+        : null;
+    if (why) {
+      const whole = ["bun", "run", "test"];
+      return {
+        code: 0,
+        output: `test:related --pr: the whole suite runs (${why})`,
+        command: slot ? ["bun", "run", "slot", "--", ...whole] : whole,
+      };
+    }
+  }
   const byImport = selectRelated(changed, sources, { direct: fast });
   const imported = new Set(byImport.map((r) => r.path));
   const selected = [
@@ -179,7 +205,10 @@ export function planRelated({
         ? `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`
         : `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
     ...warnings,
-    ...related.map((r) => `  ${r.path}  ${r.why}`),
+    // --pr lists the related tests; the fast tiers are counted in the header, not listed.
+    ...related
+      .filter((r) => !pyramid || !FAST_TIERS.has(tierOf(r.path) ?? ""))
+      .map((r) => `  ${r.path}  ${r.why}`),
   ].join("\n");
   const run = [
     "bun",
@@ -245,6 +274,12 @@ function escapeRegExp(text: string): string {
 }
 
 /** Why a `--keep-coverage` value cannot be the kept coverage folder, or null (#309). */
-export function keepCoverageProblem(_root: string, _value: string | undefined): string | null {
+export function keepCoverageProblem(root: string, value: string | undefined): string | null {
+  const refuse = `--keep-coverage needs a folder inside the repository, got ${value ?? "nothing"}`;
+  if (value === undefined || value.startsWith("-")) return refuse;
+  const inside = posix.relative(root, posix.resolve(root, value));
+  if (inside === "" || inside === ".." || inside.startsWith("../") || posix.isAbsolute(inside)) {
+    return refuse;
+  }
   return null;
 }
