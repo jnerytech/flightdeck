@@ -179,7 +179,7 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
               <li
                 key={`${p.scope}:${p.id}`}
                 data-slot={inEditor ? "persona-card" : "persona-row"}
-                className={inEditor ? "persona-card" : "persona-card persona-row"}
+                className={inEditor ? "persona-card" : "persona-row"}
               >
                 {inEditor ? (
                   <PersonaEditor
