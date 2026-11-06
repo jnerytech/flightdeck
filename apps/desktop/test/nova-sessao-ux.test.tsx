@@ -75,12 +75,12 @@ describe("nova-sessao-ux: the persona chosen is the persona the session is in", 
     await fill("First prompt", "oi");
     await press("Create session");
     await poll(() => d.manager.list().length === 1);
-    await settle(() => screen.queryByRole("button", { name: "Persona" }) !== null);
+    // Issue #183: the button names the persona it is in, and says None when there is none.
+    await settle(() => screen.queryByRole("button", { name: "Persona: None" }) !== null);
     await act(async () => {
-      fireEvent.click(screen.queryByRole("button", { name: "Persona" }) as HTMLElement);
+      fireEvent.click(screen.queryByRole("button", { name: "Persona: None" }) as HTMLElement);
     });
     await settle(() => screen.queryByRole("button", { name: "Apply" }) !== null, 10_000);
-    expect(screen.queryByRole("button", { name: /^Persona: / })).toBeNull();
     expect(screen.queryByRole("button", { name: "Back to normal" })).toBeNull();
     // Creating a session and opening its screen chains several waits: the limit guards a hang.
   });

@@ -319,6 +319,37 @@ jobs:
             test "${{ needs.checks-linux.result }}" = success
           fi
 
+  # The base of the test pyramid holds (#309): every source fast-coverage-baseline.json lists stays
+  # at 100% from the unit and component tiers alone. On main, nightly and by hand; not a required
+  # check, but a red main blocks `pr tag`.
+  fast-coverage:
+    name: fast coverage (ubuntu-latest)
+    needs: [changes, quick]
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      - name: Cobertura das camadas rápidas
+        run: bun run fast-coverage
+
   # Windows, the slowest leg (#220: 33 minutes, 25 of them tests), runs the suite in three shards
   # with no coverage: the 100% gate is Linux's. The required check `test (windows-latest)` is the
   # aggregate below.
@@ -558,7 +589,9 @@ jobs:
           if-no-files-found: ignore
 
   # The end-to-end journeys, in both languages, against the same seeded demo.
-  # In three Playwright shards (#264): each runs a third of the journeys, in both languages.
+  # In three Playwright shards (#264). Playwright keeps a file's tests together on a shard, so each
+  # language's journeys are a file of their own (#292): shard 1 gets one language, shard 2 the other
+  # and shard 3 the BDD scenarios, instead of every journey on shard 1.
   screenshots-e2e:
     name: e2e journeys ${{ matrix.shard }}/3
     needs: [changes, quick]
