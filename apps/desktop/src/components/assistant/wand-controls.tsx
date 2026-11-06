@@ -25,6 +25,7 @@ export function WandButton(props: { wand: Wand; t: T }) {
   if (wand.otherRunning) label = t("assistantWand.busy");
   return (
     <IconActionButton
+      type="button"
       label={label}
       disabled={wand.needsText || wand.otherRunning || wand.state.kind === "running"}
       aria-keyshortcuts={mac ? "Meta+I" : "Control+I"}
@@ -74,7 +75,7 @@ export function WandPanel(props: { wand: Wand; t: T }) {
         <Inline>
           <Spinner />
           <span className="text-sm">{t("assistantWand.running")}</span>
-          <Button variant="outline" size="sm" onClick={wand.cancel}>
+          <Button type="button" variant="outline" size="sm" onClick={wand.cancel}>
             {t("common.cancel")}
           </Button>
         </Inline>
@@ -93,6 +94,7 @@ export function WandPanel(props: { wand: Wand; t: T }) {
           </span>
           {wand.others.map(({ provider, hostName }) => (
             <Button
+              type="button"
               key={provider.provider === "host" ? provider.hostId : provider.provider}
               variant="outline"
               size="sm"
@@ -103,7 +105,7 @@ export function WandPanel(props: { wand: Wand; t: T }) {
               })}
             </Button>
           ))}
-          <Button variant="outline" size="sm" onClick={wand.discard}>
+          <Button type="button" variant="outline" size="sm" onClick={wand.discard}>
             {t("assistantWand.dismiss")}
           </Button>
         </Inline>
@@ -115,7 +117,7 @@ export function WandPanel(props: { wand: Wand; t: T }) {
       <div role="status">
         <Inline>
           <span className="text-sm">{t("assistantWand.replaced")}</span>
-          <Button variant="outline" size="sm" onClick={wand.undo}>
+          <Button type="button" variant="outline" size="sm" onClick={wand.undo}>
             {t("assistantWand.undo")}
           </Button>
         </Inline>
@@ -159,18 +161,18 @@ export function WandPanel(props: { wand: Wand; t: T }) {
         )}
         {state.stale && <p className="text-sm">{t("assistantWand.stale")}</p>}
         <Inline>
-          <Button size="sm" autoFocus onClick={wand.accept}>
+          <Button type="button" size="sm" autoFocus onClick={wand.accept}>
             {state.stale ? t("assistantWand.acceptAnyway") : t("assistantWand.accept")}
           </Button>
           {!state.editing && (
-            <Button variant="outline" size="sm" onClick={wand.edit}>
+            <Button type="button" variant="outline" size="sm" onClick={wand.edit}>
               {t("assistantWand.edit")}
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={wand.retry}>
+          <Button type="button" variant="outline" size="sm" onClick={wand.retry}>
             {t("assistantWand.retry")}
           </Button>
-          <Button variant="outline" size="sm" onClick={wand.discard}>
+          <Button type="button" variant="outline" size="sm" onClick={wand.discard}>
             {t("assistantWand.discard")}
           </Button>
         </Inline>

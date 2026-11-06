@@ -38,6 +38,7 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { AssistField } from "../components/assistant/assist-field.tsx";
 import { CardStartDialog } from "../components/board/card-start-dialog.tsx";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key, T } from "../i18n/index.ts";
@@ -205,6 +206,8 @@ export const BoardView = memo(function BoardView(props: {
   hostId: string;
   projectId: string;
   onOpenCard(cardId: string, edit?: boolean): void;
+  /** Opens Settings, section Assistant (the wand found no provider). */
+  onOpenSettings(): void;
   /** A project was added from here: its board opens. */
   onOpenProject?(projectId: string): void;
 }) {
@@ -555,18 +558,50 @@ export const BoardView = memo(function BoardView(props: {
               void create();
             }}
           >
-            <Input
-              aria-label={t("kanban.titleLabel")}
-              placeholder={t("kanban.titlePlaceholder")}
+            <AssistField
+              binding={{
+                controller: store.assistant,
+                kind: "card.title",
+                fieldHostId: hostId,
+                ...(description.trim() ? { context: { description } } : {}),
+                openSettings: props.onOpenSettings,
+              }}
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <Textarea
-              aria-label={t("kanban.descriptionLabel")}
-              placeholder={t("kanban.descriptionPlaceholder")}
+              onChange={setTitle}
+              t={t}
+            >
+              {(control) => (
+                <Input
+                  aria-label={t("kanban.titleLabel")}
+                  placeholder={t("kanban.titlePlaceholder")}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  {...control}
+                />
+              )}
+            </AssistField>
+            <AssistField
+              binding={{
+                controller: store.assistant,
+                kind: "card.description",
+                fieldHostId: hostId,
+                ...(title.trim() ? { context: { title } } : {}),
+                openSettings: props.onOpenSettings,
+              }}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+              onChange={setDescription}
+              t={t}
+            >
+              {(control) => (
+                <Textarea
+                  aria-label={t("kanban.descriptionLabel")}
+                  placeholder={t("kanban.descriptionPlaceholder")}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  {...control}
+                />
+              )}
+            </AssistField>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={close}>
                 {t("common.cancel")}

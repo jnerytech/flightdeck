@@ -908,6 +908,7 @@ function routeScreen(props: ScreenProps): ReactNode {
             })
           }
           onOpenProject={(projectId) => go({ name: "board", host: route.host, projectId })}
+          onOpenSettings={() => go({ name: "settings", section: "assistant" })}
         />
       );
     case "card":
