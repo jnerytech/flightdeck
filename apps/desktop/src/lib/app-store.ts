@@ -79,6 +79,7 @@ import type {
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
+import { BoardWidth } from "./board-select.ts";
 import { budgetLabel } from "./budgets.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
@@ -938,6 +939,7 @@ export class AppStore {
       browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
     );
     this.tabOrder = new TabOrderController(platform.storage);
+    this.boardWidth = new BoardWidth(platform.storage);
     this.i18n = new I18n(platform);
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
     this.i18n.subscribe(() => this.onLanguage());
@@ -1022,6 +1024,8 @@ export class AppStore {
   readonly clock: SharedClock;
   /** How Ctrl+Tab orders the tabs (issue #148). */
   readonly tabOrder: TabOrderController;
+  /** The board columns' width, one for all, kept across starts (issue #161). */
+  readonly boardWidth: BoardWidth;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */

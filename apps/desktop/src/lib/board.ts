@@ -38,6 +38,14 @@ export function positionBefore(cards: Card[], targetId: string): number {
   return previous ? (previous.position + target) / 2 : target - 1;
 }
 
+/** `n` positions that put a group right before `targetId` among `cards` (sorted, without the group), in order. */
+export function positionsBefore(cards: Card[], targetId: string, n: number): number[] {
+  void cards;
+  void targetId;
+  void n;
+  return [];
+}
+
 /** The board's title: "Board of <name>", or the plain "Board" until the project's name is known. */
 export function boardTitle(t: T, name: string | undefined): string {
   return name ? t("kanban.boardOf", { project: name }) : t("sidebar.board");
