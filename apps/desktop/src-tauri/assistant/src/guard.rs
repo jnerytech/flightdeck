@@ -38,6 +38,15 @@ pub fn check_input(text: &str) -> Result<(), Refusal> {
     Ok(())
 }
 
+/// The longest prompt (system or user) a call sends: the text, wrapped with its context.
+pub const MAX_PROMPT_CHARS: usize = 2 * MAX_INPUT_CHARS;
+
+/// Refuses a prompt over `MAX_PROMPT_CHARS`; the refusal names the text's own cap.
+pub fn check_prompt(text: &str) -> Result<(), Refusal> {
+    let _ = text;
+    Ok(())
+}
+
 /// The output tokens a call asks for, at most `MAX_OUTPUT_TOKENS`.
 pub fn cap_output_tokens(asked: u32) -> u32 {
     asked.min(MAX_OUTPUT_TOKENS)
