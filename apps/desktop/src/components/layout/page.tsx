@@ -22,12 +22,16 @@ export function Page(
     <section aria-labelledby={id} data-slot="page" className="flex h-full min-h-0 flex-col">
       {/* The side gutter is 12 px, 16 px from a 640 px area and 24 px from a 1024 px one (#641):
           the area, not the window, since a split pane is narrow in a wide window. */}
-      <div className="flex flex-col gap-3 border-b px-3 py-4 @min-[40rem]:px-4 @min-[64rem]:px-6">
+      <div
+        data-slot="page-header"
+        className="flex flex-col gap-3 border-b px-3 py-4 @min-[40rem]:px-4 @min-[64rem]:px-6"
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             {/* Two lines, then an ellipsis; the full text stays in `title` (#641). */}
             <h1
               id={id}
+              data-slot="page-title"
               title={typeof props.title === "string" ? props.title : undefined}
               className="line-clamp-2 break-words font-semibold text-xl"
             >

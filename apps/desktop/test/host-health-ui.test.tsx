@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { DepResult, DepsResult, DoctorResult } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -59,6 +61,7 @@ function setup(
     deps?: DepsResult | null;
     error?: string | null;
     lang?: "en" | "pt-BR";
+    doctor?: DoctorResult;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.lang ?? "en").platform, {
@@ -96,7 +99,7 @@ function setup(
         store={store}
         host={host}
         deps={options.deps === undefined ? DEPS : options.deps}
-        doctor={options.deps === null ? null : DOCTOR}
+        doctor={options.deps === null ? null : (options.doctor ?? DOCTOR)}
         checkedAt={options.checkedAt === undefined ? NOW - 3 * 60_000 : options.checkedAt}
         error={options.error ?? null}
         onCheck={async () => void checks++}
@@ -109,7 +112,12 @@ function setup(
 }
 
 const section = () => screen.getByRole("region", { name: "Health & dependencies" });
-const row = (name: string) => within(section()).getByRole("listitem", { name });
+/** A row by name; a folded one is reached by opening the fold first (#670). */
+const row = (name: string) => {
+  const fold = within(section()).queryByRole("button", { name: /with nothing to do/ });
+  if (fold?.getAttribute("aria-expanded") === "false") fireEvent.click(fold);
+  return within(section()).getByRole("listitem", { name });
+};
 
 describe("host-health-ui: one section for the dependencies and the doctor", () => {
   test("Required, Optional and Checks in one section, with when it was read", () => {
@@ -299,20 +307,107 @@ describe("host-health-ui: a summary, the problems first, the rest folded (#640)"
 
   test("the rows that are fine are folded in one compact list, closed", () => {
     render(setup().view);
-    const fold = section().querySelector(
-      "details[data-slot='health-ok']",
-    ) as HTMLDetailsElement | null;
-    const compact = [...(fold?.querySelectorAll("li[data-slot='dep-compact']") ?? [])].map((li) =>
-      li.getAttribute("aria-label"),
-    );
-    expect({
-      summary: fold?.querySelector("summary")?.textContent ?? null,
-      open: fold?.open ?? null,
-      compact,
-    }).toEqual({
-      summary: "2 with nothing to do",
-      open: false,
+    const toggle = within(section()).queryByRole("button", { name: /checks with nothing to do/ });
+    const closed = {
+      expanded: toggle?.getAttribute("aria-expanded") ?? null,
+      list: within(section()).queryByRole("list", { name: "Working" }) !== null,
+    };
+    if (toggle) fireEvent.click(toggle);
+    const compact = within(section())
+      .queryAllByRole("listitem")
+      .filter((li) => li.getAttribute("data-slot") === "dep-compact")
+      .map((li) => li.getAttribute("aria-label"));
+    expect({ closed, compact }).toEqual({
+      closed: { expanded: "false", list: false },
       compact: ["Claude Code", "Daemon"],
     });
+  });
+});
+
+const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+const utility = (name: string) => {
+  const at = css.indexOf(`@utility ${name} {`);
+  return at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
+};
+
+describe("host-health-ui: the folded list reads as a table and opens from a real button (#670)", () => {
+  test("the fold is a disclosure button with a chevron that says what it shows and what it hides", () => {
+    render(setup().view);
+    const toggle = within(section()).queryByRole("button", {
+      name: "Show 2 checks with nothing to do",
+    });
+    const before = {
+      expanded: toggle?.getAttribute("aria-expanded") ?? null,
+      chevron: toggle?.querySelector("[data-slot='fold-chevron']") !== null,
+    };
+    if (toggle) fireEvent.click(toggle);
+    const list = within(section()).queryByRole("list", { name: "Working" });
+    expect({
+      before,
+      after: toggle?.getAttribute("aria-expanded") ?? null,
+      text: toggle?.textContent ?? null,
+      controls:
+        toggle !== null && list !== null && toggle.getAttribute("aria-controls") === list.id,
+    }).toEqual({
+      before: { expanded: "false", chevron: true },
+      after: "true",
+      text: "Hide 2 checks with nothing to do",
+      controls: true,
+    });
+  });
+
+  test("in Portuguese it says Mostrar and Ocultar", () => {
+    render(setup({ lang: "pt-BR" }).view);
+    const region = screen.getByRole("region", { name: "Saúde e dependências" });
+    const toggle = within(region).queryByRole("button", {
+      name: "Mostrar 2 itens sem nada a fazer",
+    });
+    if (toggle) fireEvent.click(toggle);
+    expect(toggle?.textContent ?? null).toBe("Ocultar 2 itens sem nada a fazer");
+  });
+
+  test("the rows share the list's columns, so every status starts at the same place", () => {
+    // happy-dom does not lay out a grid: the list owns the columns and each row takes them as a
+    // subgrid, so the icon, name, status and detail line up across rows.
+    expect({
+      list: /grid-template-columns:[^;]*max-content/.test(utility("dep-compact-list")),
+      row: utility("dep-compact").includes("grid-template-columns: subgrid"),
+      // A webview without subgrid (Chromium before 117) gets fixed columns instead.
+      fallback:
+        /@supports not \(grid-template-columns: subgrid\) \{\s*grid-template-columns: 1rem minmax\(0, 14rem\)/.test(
+          utility("dep-compact"),
+        ),
+    }).toEqual({ list: true, row: true, fallback: true });
+  });
+
+  test("an optional tool that is not installed is muted, not a green OK, and not counted as OK", () => {
+    const doctor: DoctorResult = {
+      ...DOCTOR,
+      checks: [
+        ...DOCTOR.checks,
+        {
+          id: "opencode",
+          status: "ok",
+          detail: "OpenCode is not installed (optional)",
+          absent: true,
+        },
+      ],
+    };
+    render(setup({ doctor }).view);
+    const toggle = within(section()).queryByRole("button", { name: /checks with nothing to do/ });
+    if (toggle) fireEvent.click(toggle);
+    const item = within(section())
+      .queryAllByRole("listitem")
+      .find((li) => li.getAttribute("aria-label") === "OpenCode");
+    const icon = item?.querySelector("[data-slot='dep-icon']");
+    expect({
+      text: item?.textContent?.includes("Optional · not installed") ?? false,
+      okWord: item?.textContent?.includes("OK") ?? null,
+      icon: icon?.getAttribute("data-icon") ?? null,
+      green: icon?.getAttribute("class")?.includes("text-status-ok") ?? null,
+      counts:
+        section().querySelector("[data-slot='health-summary']")?.textContent?.includes("OK: 2 ·") ??
+        false,
+    }).toEqual({ text: true, okWord: false, icon: "dash", green: false, counts: true });
   });
 });
