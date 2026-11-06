@@ -59,7 +59,7 @@ export function FileImport(
   };
 
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-lg border p-4 text-sm">
+    <div className="flex flex-col gap-3 rounded-lg border p-4 text-sm">
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-file`}>{t("snippets.file.choose")}</label>
         <input

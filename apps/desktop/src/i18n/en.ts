@@ -12,6 +12,9 @@ export const en: Dictionary = {
     manyHint: "One per host",
     plan: "{plan} plan",
     version: "Version {version}",
+    whatsNew: "What's new",
+    whatsNewBadge: "New",
+    menuNew: "Account menu for {name}, new release notes",
     copyPlan: "Copy the plan: {value}",
     copyAccount: "Copy the account: {value}",
     copyHost: "Copy the host id: {value}",
@@ -1310,6 +1313,7 @@ export const en: Dictionary = {
     templates: "ready-made tasks",
     tasks: "task results",
     logs: "the daemon log",
+    releases: "the app's release notes",
     sleep: "putting idle sessions to sleep",
     resources: "the host resources panel",
     depsCheck: "the dependencies check",
@@ -1446,6 +1450,7 @@ export const en: Dictionary = {
     update_manifest_unchecked:
       "The daemon has not checked for an update yet: try again in a moment.",
     update_manifest_no_binary: "The release {version} has no binary for {key}.",
+    releases_unavailable: "The release notes could not be read from GitHub: try again later.",
     perm_rule_other_tool: "That rule belongs to another tool ({tool}).",
     perm_rule_too_broad:
       "That rule would also allow {tool} uses of {level} risk, more than this request: narrow it.",
@@ -2154,6 +2159,19 @@ export const en: Dictionary = {
   },
   toolCall: {
     waiting: "waiting for the result…",
+  },
+  whatsNew: {
+    title: "What's new",
+    description: "The highlights of the latest releases of Flightdeck.",
+    loading: "Reading the release notes…",
+    releases: "Releases",
+    noHighlights: "No highlights for this release.",
+    none: "No connected host can read the release notes yet: connect a host with a recent daemon, or open the releases page.",
+    retry: "Try again",
+    viewAll: "View all releases",
+    open: "On GitHub",
+    openRelease: "Open {title} on GitHub",
+    close: "Close",
   },
   alwaysAllow: {
     rule: "Rule",

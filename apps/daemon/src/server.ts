@@ -75,6 +75,7 @@ import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
 import { localDay } from "./quota/usage.ts";
+import type { ReleaseFeed } from "./releases/releases.ts";
 import type { Resources } from "./resources/resources.ts";
 import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
@@ -216,6 +217,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** The daemon's own log file, behind `logs.tail` and `host.info.logPath` (issue #255). */
   fileLog?: FileLog;
+  /** The app's latest releases, behind `releases.list` (issue #125). */
+  releases?: ReleaseFeed;
   /** What the host's sessions and terminals cost it, behind `resources.*` (issue #154). */
   resources?: Resources;
   /** What the cards' worktrees take on the disk, behind `worktree.*` (issue #152). */
@@ -398,6 +401,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.runenv && opts.board, "runenv"),
     ...when(opts.maintenance, "maintenance"),
     ...when(opts.fileLog, "logs"),
+    ...when(opts.releases, "releases"),
     ...when(opts.resources, "resources"),
     ...when(opts.worktrees, "worktrees"),
     ...when(opts.quota, "quota"),
@@ -636,6 +640,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "fileLog");
   }
 
+  function releases(): ReleaseFeed {
+    return need(opts, "releases");
+  }
+
   function resources(): Resources {
     return need(opts, "resources");
   }
@@ -846,6 +854,8 @@ export function startServer(opts: ServerOptions): RunningServer {
           command.type,
           await tailForOrigin(fileLog(), ws.data.origin, command.payload.lines ?? 100, opts.log),
         );
+      case "releases.list":
+        return ok(command.type, await releases().list(command.payload.limit ?? 5));
       case "resources.get":
         return ok(command.type, await resources().snapshot());
       case "resources.endOrphan":

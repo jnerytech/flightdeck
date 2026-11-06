@@ -336,6 +336,7 @@ const REASONS = [
   "update_confirm",
   "update_manifest_unchecked",
   "update_manifest_no_binary",
+  "releases_unavailable",
   "perm_rule_other_tool",
   "perm_rule_too_broad",
   "perm_rule_content_invalid",

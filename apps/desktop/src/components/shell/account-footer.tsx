@@ -8,6 +8,7 @@ import {
   LogOut,
   RefreshCw,
   Settings,
+  Sparkles,
   SunMoon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,9 @@ export function AccountFooter(
     onDensity(density: Density): void;
     onCopy(text: string): void;
     onCheckUpdates(): void;
+    /** There are release notes the person has not opened since the update (issue #125). */
+    hasNew: boolean;
+    onWhatsNew(): void;
     onShortcuts(): void;
   }>,
 ) {
@@ -68,7 +72,9 @@ export function AccountFooter(
     if (props.many > 1) return t("sidebarAccount.manyHint");
     return knownPlan ? t("sidebarAccount.plan", { plan: knownPlan }) : t("sidebarAccount.unread");
   })();
-  const label = t("sidebarAccount.menu", { name });
+  const label = props.hasNew
+    ? t("sidebarAccount.menuNew", { name })
+    : t("sidebarAccount.menu", { name });
   const planName = props.many > 1 ? null : knownPlan;
   const facts = [
     { key: "copyPlan", value: planName },
@@ -86,9 +92,15 @@ export function AccountFooter(
         >
           <span
             aria-hidden="true"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground text-xs"
+            className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground text-xs"
           >
             {name.charAt(0).toUpperCase()}
+            {props.hasNew && (
+              <span
+                data-slot="new-dot"
+                className="absolute top-0 right-0 size-2.5 rounded-full bg-status-needs-you ring-2 ring-sidebar"
+              />
+            )}
           </span>
           {!props.collapsed && (
             <>
@@ -131,6 +143,15 @@ export function AccountFooter(
         <DropdownMenuItem onSelect={() => props.go({ name: "settings" })}>
           <Settings aria-hidden="true" />
           {t("sidebar.settings")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={props.onWhatsNew}>
+          <Sparkles aria-hidden="true" />
+          {t("sidebarAccount.whatsNew")}
+          {props.hasNew && (
+            <span className="ml-auto rounded-full bg-status-needs-you/20 px-1.5 text-xs">
+              {t("sidebarAccount.whatsNewBadge")}
+            </span>
+          )}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={props.onCheckUpdates}>
           <RefreshCw aria-hidden="true" />

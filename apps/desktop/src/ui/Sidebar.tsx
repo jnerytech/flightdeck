@@ -254,6 +254,8 @@ export function Sidebar(
     onToggleTheme(): void;
     /** Opens the sheet of keyboard shortcuts (the account menu, issue #282). */
     onShortcuts?(): void;
+    /** Opens What's new: the notes of the latest releases (the account menu, issue #125). */
+    onWhatsNew?(): void;
     /** Switches to simple mode; absent when the host in view does not let the person choose. */
     onSimpleMode?(): void;
   }>,
@@ -346,6 +348,10 @@ export function Sidebar(
 
   /** The Claude account the foot shows: the open host's, how many differ, none from an offline host. */
   const foot = footAccount(state, props.route);
+  // Release notes the person has not opened since the app was updated: a dot on the account row.
+  const whatsNewDot = useSyncExternalStore(props.store.whatsNew.subscribe, () =>
+    props.store.whatsNew.hasNew(),
+  );
   const density = useSyncExternalStore(
     props.store.density.subscribe,
     () => props.store.density.value,
@@ -820,6 +826,8 @@ export function Sidebar(
             void props.store.checkAppUpdate();
           }}
           onShortcuts={() => props.onShortcuts?.()}
+          hasNew={whatsNewDot}
+          onWhatsNew={() => props.onWhatsNew?.()}
           onOpenManual={() =>
             void props.store.openLink(
               `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${t.lang === "pt-BR" ? "pt-BR" : "en"}.md`,

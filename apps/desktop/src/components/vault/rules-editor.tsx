@@ -165,7 +165,7 @@ export function RulesEditor(
   return (
     <section
       aria-label={t("vaultRulesUi.title", { name: secret.name })}
-      className="mb-4 flex flex-col gap-3 rounded-lg border p-4 text-sm"
+      className="flex flex-col gap-3 rounded-lg border p-4 text-sm"
     >
       <h2 className="font-medium">{t("vaultRulesUi.title", { name: secret.name })}</h2>
       <p className="text-muted-foreground text-xs">{t("vaultRulesUi.hint")}</p>
