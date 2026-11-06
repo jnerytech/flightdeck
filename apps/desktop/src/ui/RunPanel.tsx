@@ -35,8 +35,8 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
     if (info.hash) setInfo(await store.runTrust(hostId, card.projectId, info.hash));
   };
   const open = (name: "terminal" | "preview", terminalId: string, url = "", title = "") => {
-    if (name === "terminal") store.tabs.open({ name, host: hostId, terminalId });
-    else store.tabs.open({ name, url, title });
+    if (name === "terminal") store.tabs.show({ name, host: hostId, terminalId });
+    else store.tabs.show({ name, url, title });
   };
 
   return (

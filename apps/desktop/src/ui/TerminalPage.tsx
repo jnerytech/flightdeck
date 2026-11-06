@@ -229,7 +229,7 @@ export function TerminalPage(
               size="sm"
               variant="outline"
               onClick={() =>
-                store.tabs.open({
+                store.tabs.show({
                   name: "external",
                   host: hostId,
                   claudeSessionId: linked.claudeSessionId,

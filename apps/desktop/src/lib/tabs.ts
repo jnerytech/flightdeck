@@ -71,9 +71,11 @@ export class Tabs {
       get canForward() {
         return active()?.canForward ?? false;
       },
+      // A link inside a tab goes to the tab that already shows its screen, so a screen keeps one
+      // tab (#576); with ctrl or the middle button it opens a new one.
       push: (route) => {
         if (this.newTab || this.tabs.length === 0) this.open(route);
-        else active()?.push(route);
+        else if (!this.focusShown(route)) active()?.push(route);
       },
       back: () => active()?.back(),
       forward: () => active()?.forward(),
@@ -148,6 +150,21 @@ export class Tabs {
     return tab;
   }
 
+  /** A screen that may already have a tab (a running terminal, a session): that tab, or a new one. */
+  show(route: Route): void {
+    if (this.newTab || !this.focusShown(route)) this.open(route);
+  }
+
+  /** Activates the tab that shows `route`, if one does; false when none does. */
+  private focusShown(route: Route): boolean {
+    const key = routeKey(route);
+    const existing = this.tabs.find((tab) => routeKey(tab.router.current) === key);
+    if (!existing) return false;
+    this.activeId = existing.id;
+    this.emit();
+    return true;
+  }
+
   /**
    * A single click on a sidebar item: the screen opens in the preview tab, which the next single
    * click replaces. With no preview tab it opens one; a tab that was used or pinned is never
@@ -158,13 +175,7 @@ export class Tabs {
       this.open(route);
       return;
     }
-    const key = routeKey(route);
-    const existing = this.tabs.find((tab) => routeKey(tab.router.current) === key);
-    if (existing) {
-      this.activeId = existing.id;
-      this.emit();
-      return;
-    }
+    if (this.focusShown(route)) return;
     const preview = this.tabs.find((tab) => tab.preview && !tab.pinned);
     if (preview) {
       this.activeId = preview.id;
