@@ -214,7 +214,9 @@ describe("log-app: a log storm reaches neither the disk nor the IPC whole (issue
     const before = written.length;
     for (let i = 0; i < LOG_BURST + 10; i++) log.log("info", "console", `again ${i}`);
     await log.flush();
-    expect(written.slice(before).filter((line) => line.includes(" again ")).length).toBe(LOG_BURST);
+    expect(written.slice(before).filter((line) => line.includes(" again "))).toHaveLength(
+      LOG_BURST,
+    );
   });
 
   test("a sink that cannot keep up holds a bounded queue and counts what it had to drop", async () => {
