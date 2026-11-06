@@ -27,6 +27,7 @@ export const JOURNEYS: readonly string[] = [
   "files-viewer",
   "terminal-copy",
   "sleep-wake",
+  "tab-row",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
