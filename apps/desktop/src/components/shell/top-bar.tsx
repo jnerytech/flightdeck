@@ -97,7 +97,7 @@ function HostItem(props: Readonly<{ host: TopBarHostItem; appVersion: string | u
         });
   return (
     <DropdownMenuRadioItem value={host.id} aria-label={label}>
-      <StatusDot {...hostDotView(host.status)} label={state} />
+      <StatusDot dot {...hostDotView(host.status)} label={state} />
       {host.name}
       {version !== null && (
         <span className={differs ? "top-bar-host-version-differs" : "top-bar-host-version"}>

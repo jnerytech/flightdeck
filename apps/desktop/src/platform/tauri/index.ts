@@ -11,6 +11,7 @@ import {
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
+import { badgeRgba } from "../../lib/badge-icon.ts";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
 import type { GeneratedKey, PickedFile, Platform, TrayAction } from "../types.ts";
 
@@ -73,6 +74,9 @@ export function tauriPlatform(
       };
     },
     setTrayStatus: (status) => call("tray_set_status", { ...status }),
+    setBadge: async (count) => {
+      await call("set_unread_badge", { rgba: badgeRgba(count) ?? [] });
+    },
     setTrayMenu: (menu) => call("tray_set_menu", { ...menu }),
     // Issue #402: the tray's Quit asks the app first, so a downloaded update installs on the way out.
     onQuitRequested(handler) {
