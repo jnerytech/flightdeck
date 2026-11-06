@@ -5,7 +5,7 @@ import { bindInput } from "../permissions/bind-input.ts";
 import { requireHold } from "../permissions/hold.ts";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
 import { RiskClassifier } from "../permissions/risk.ts";
-import { type PathKind, writeTarget } from "../permissions/rule-risk.ts";
+import { type DiskView, writeTarget } from "../permissions/rule-risk.ts";
 import { ulid } from "../ulid.ts";
 import type { HookPayload } from "./external.ts";
 
@@ -123,7 +123,7 @@ export class ExternalPermissions {
     updatedPermissions: PermissionUpdate[] = [],
     updatedInput?: Record<string, unknown>,
     holdProof?: boolean,
-    kind?: PathKind,
+    disk: DiskView = {},
   ): boolean {
     const held = this.held.get(requestId);
     if (!held) return false;
@@ -138,7 +138,7 @@ export class ExternalPermissions {
         suggestions,
         risk: held.frame.risk ?? "low",
         classify: (tool, input) => this.risk.classify(tool, input, held.cwd).level,
-        ...(kind ? { kind } : {}),
+        ...disk,
       });
     }
     const updates = updatedPermissions.length > 0 ? { updatedPermissions } : {};

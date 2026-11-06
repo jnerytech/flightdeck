@@ -61,9 +61,9 @@ import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import { isInside, resolveAllowedCwd, rootNames } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
-import { statKind } from "./permissions/path-kind.ts";
-import { rulePaths } from "./permissions/permission-updates.ts";
-import { pathKinds } from "./permissions/rule-risk.ts";
+import { realPathOf, statKind } from "./permissions/path-kind.ts";
+import { rulePaths, ruleReadings } from "./permissions/permission-updates.ts";
+import { pathKinds, realPaths } from "./permissions/rule-risk.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import { preparePersonas } from "./personas/prepare.ts";
 import type { Personas } from "./personas/store.ts";
@@ -743,13 +743,19 @@ export function startServer(opts: ServerOptions): RunningServer {
         const external = opts.central?.permissions;
         // A rule that names a folder covers all it holds (#395): look its paths up first, only for
         // an allow of a request that is open (an unknown one is refused below anyway).
-        // The file the request itself writes counts as one before it exists.
+        // The file the request itself writes counts as one before it exists. A symlink on the way
+        // makes a rule reach its real path too, so that is rated as well (#528).
         const { cwd, target } = external?.placeOf(requestId) ?? manager.permissionPlace(requestId);
-        const kind =
+        const updates = updatedPermissions ?? [];
+        const home = userHome();
+        const disk =
           decision === "allow" && cwd
-            ? await pathKinds(rulePaths(updatedPermissions ?? []), cwd, userHome(), statKind, {
-                ...(target === undefined ? {} : { target }),
-              })
+            ? await Promise.all([
+                pathKinds(rulePaths(updates), cwd, home, statKind, {
+                  ...(target === undefined ? {} : { target }),
+                }),
+                realPaths(ruleReadings(updates), cwd, home, realPathOf),
+              ]).then(([kind, real]) => ({ kind, real }))
             : undefined;
         if (
           !external?.respond(
@@ -759,10 +765,10 @@ export function startServer(opts: ServerOptions): RunningServer {
             updatedPermissions,
             updatedInput,
             held,
-            kind,
+            disk,
           )
         ) {
-          manager.respondPermission(command.payload, kind);
+          manager.respondPermission(command.payload, disk);
         }
         return ok(command.type);
       }
