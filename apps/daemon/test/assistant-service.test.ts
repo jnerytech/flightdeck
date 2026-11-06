@@ -324,6 +324,25 @@ describe("assistant-service", () => {
     );
     expect(contexts).toEqual([{ kind: "worktree", cwd: "/w" }]);
   });
+
+  test("the bundle the app takes for an API provider is refused when a secret is anywhere in it (issue #646)", async () => {
+    const token = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
+    const source = { kind: "worktree" as const, cwd: "/w" };
+    const leaks: Array<Partial<AssistantContextBundle>> = [
+      { stat: ` ${token}.ts | 1 +` },
+      { notShown: [`${token}.lock`] },
+      { recent: [`fix: rotate ${token}`] },
+      { rules: `Use ${token} to publish.` },
+      { diff: `+const token = '${token}'` },
+    ];
+    for (const leak of leaks) {
+      const { svc } = service({ bundle: { ...bundle, ...leak } });
+      const refused = await reason(svc.context({ kind: "commit", source }));
+      expect(Array.isArray(refused) ? refused[0] : refused).toBe("assistant_secret_found");
+      expect(JSON.stringify(refused)).not.toContain(token);
+    }
+    expect(await service().svc.context({ kind: "commit", source })).toEqual(bundle);
+  });
 });
 
 describe("assistant-service: the factory and the server", () => {
