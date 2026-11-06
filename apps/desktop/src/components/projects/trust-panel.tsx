@@ -117,17 +117,17 @@ export function TrustPanel(
       ) : shown.length === 0 ? (
         <p className="text-sm">{t("projectPage.trust.nothing")}</p>
       ) : (
-        <dl className="stack-hair text-sm">
+        <dl className="flex flex-col gap-3 text-sm">
           {shown.map(([title, items]) => (
-            <div key={title}>
+            <div key={title} className="flex flex-col gap-1">
               <dt className="font-medium">{title}</dt>
               <dd>
-                <ul>
+                <ul className="flex flex-col gap-1">
                   {items.map((item) => (
-                    <li key={item} className="font-mono text-xs">
+                    <li key={item} className="font-mono text-xs [overflow-wrap:anywhere]">
                       {isLong(item) ? (
                         <pre
-                          className="max-h-48 overflow-auto whitespace-pre-wrap break-all"
+                          className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2"
                           // biome-ignore lint/a11y/noNoninteractiveTabindex: a long command scrolls, and focus lets the keyboard do it
                           tabIndex={0}
                         >
