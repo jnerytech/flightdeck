@@ -1762,6 +1762,11 @@ export const ptBR = {
     contextSkipped:
       "O AGENTS.md não foi enviado: tem mais de 64 KB, ou aponta para fora da pasta ou para uma credencial.",
     modeLabel: "Modo de permissão",
+    modeChip: "Modo de permissão: {mode}",
+    modeMenuTitle: "Modo",
+    modeBypassOff: "Desligado neste host",
+    modeBypassHow: "Ligue nas configurações do host",
+    modeLooser: "Mais solto que o modo em que a sessão começou",
     modelLabel: "Modelo",
     modelDefault: "Modelo padrão",
     insertSnippet: "Inserir um snippet",
@@ -1873,26 +1878,32 @@ export const ptBR = {
     default: {
       name: "Padrão",
       description: "pergunta antes de agir",
+      explain: "Pergunta antes de editar arquivos ou rodar comandos",
     },
     acceptEdits: {
       name: "Aceitar edições",
       description: "edita arquivos sem perguntar",
+      explain: "Edita arquivos sem perguntar; ainda pergunta antes de rodar comandos",
     },
     plan: {
       name: "Planejar",
       description: "só lê e propõe um plano",
+      explain: "Só lê e propõe um plano; não muda nada",
     },
     auto: {
       name: "Automático",
       description: "um classificador decide o que segue",
+      explain: "Um classificador decide o que segue",
     },
     dontAsk: {
       name: "Só o permitido",
       description: "nega o que as regras não liberam",
+      explain: "Nega o que as regras não liberam",
     },
     bypassPermissions: {
       name: "Ignorar permissões",
       description: "sem pedidos de permissão",
+      explain: "Executa tudo sem perguntar. Só numa pasta que possa ser descartada",
     },
     bypassWarning:
       "Ignorar permissões: o Claude executa tudo sem pedir aprovação. Use só numa pasta que possa ser descartada.",
