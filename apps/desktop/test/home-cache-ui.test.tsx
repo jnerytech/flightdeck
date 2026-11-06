@@ -136,6 +136,25 @@ describe("home-cache-ui: Home shows the last numbers at once and reads again in 
     expect(platform.storage.getItem("flightdeck.home.v1")).toContain("2.25");
   });
 
+  test("a storage that refuses writes does not stop Home: the cache stays in memory", async () => {
+    const platform = memoryPlatform(false, "en").platform;
+    const refusing = app({
+      ...platform,
+      storage: {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error("quota");
+        },
+      },
+    });
+    render(refusing.view);
+    await waitFor(() => expect(spend()).toContain("$2.25"));
+    cleanup();
+    refusing.control.mode = "hang";
+    render(refusing.view);
+    expect(spend()).toContain("$2.25");
+  });
+
   test("another host set has its own entry: it shows no numbers of the first one while it reads", async () => {
     const first = app();
     render(first.view);
