@@ -209,8 +209,8 @@ pub async fn run(
     deny_collection: bool,
 ) -> Result<Answer, Refusal> {
     guard::check_model(call.model)?;
-    guard::check_input(call.system)?;
-    guard::check_input(call.user)?;
+    guard::check_prompt(call.system)?;
+    guard::check_prompt(call.user)?;
     let sent = Method::Post(body(call, reasoning, deny_collection));
     let reply = guard::send(client, endpoint, CHAT, sent, key, &[]).await?;
     answer(&reply, key, call.model)
