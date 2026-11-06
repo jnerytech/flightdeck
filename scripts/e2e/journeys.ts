@@ -798,7 +798,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await box.fill("[result:README.md] reescreva o arquivo");
       await box.press("Enter");
       // The sent message is on screen: the daemon has it, and the first window learns the rest by itself.
-      await other.getByText("[result:README.md]", { exact: false }).first().waitFor({ timeout: WAIT });
+      await other
+        .getByText("[result:README.md]", { exact: false })
+        .first()
+        .waitFor({ timeout: WAIT });
     } finally {
       await other.close();
     }
