@@ -147,6 +147,7 @@ import {
   type UiMode,
 } from "./simple-mode.ts";
 import { savePayload } from "./ssh.ts";
+import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
   isLocalUrl,
@@ -841,6 +842,7 @@ export class AppStore {
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
     this.setup = new SetupSettings(platform.storage);
+    this.tabOrder = new TabOrderController(platform.storage);
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
@@ -913,6 +915,8 @@ export class AppStore {
   readonly terminalFont: TerminalFontController;
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;
+  /** How Ctrl+Tab orders the tabs (issue #148). */
+  readonly tabOrder: TabOrderController;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */

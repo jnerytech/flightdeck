@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { registerDom } from "./dom.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { runPaletteTarget } = await import("../src/ui/App.tsx");
@@ -8,7 +9,9 @@ type Target = Parameters<typeof runPaletteTarget>[1];
 type Route = Parameters<Parameters<typeof runPaletteTarget>[2]["go"]>[0];
 
 /** A store that writes down what it was asked, and a view that does the same. */
-function recorder(opts: { embedded?: boolean; link?: Route | null } = {}) {
+function recorder(
+  opts: { embedded?: boolean; link?: Route | null; answers?: Record<string, unknown> } = {},
+) {
   const calls: string[] = [];
   const store = {
     embeddedTerminal: () => opts.embedded ?? false,
@@ -25,8 +28,10 @@ function recorder(opts: { embedded?: boolean; link?: Route | null } = {}) {
       calls.push(`pr ${url}`);
       return Promise.resolve(opts.link ?? null);
     },
-    hostCommand: (host: string, type: string, payload: unknown) =>
-      void calls.push(`${host} ${type} ${JSON.stringify(payload)}`),
+    hostCommand: (host: string, type: string, payload: unknown) => {
+      calls.push(`${host} ${type} ${JSON.stringify(payload)}`);
+      return Promise.resolve(opts.answers?.[type] ?? null);
+    },
     decideOldest: (decision: string, key: string) => void calls.push(`decide ${decision} ${key}`),
   } as unknown as Store;
   const ui = (lang = "pt-BR") => ({
@@ -99,6 +104,30 @@ describe("palette-target: what a palette entry does in place", () => {
     await Promise.resolve();
     expect(found.calls).toEqual(["pr https://x/pr/1", 'go {"name":"hub"}']);
     expect(none.calls).toEqual(["pr https://x/pr/2"]);
+  });
+
+  test("an issue named by its number becomes a card through its reference, and its board opens", async () => {
+    const r = recorder({
+      answers: { "issues.get": { ref: "o/r#123" }, "issues.createCard": { id: "c" } },
+    });
+    const target = { kind: "create-card-issue", hostId: "h", projectId: "p", id: "123" } as const;
+    run(r.store, target, r.ui());
+    await settle(() => r.calls.length === 3, 2000, "the board after the card");
+    expect(r.calls).toEqual([
+      'h issues.get {"projectId":"p","id":"123"}',
+      'h issues.createCard {"projectId":"p","issueRef":"o/r#123"}',
+      'go {"name":"board","host":"h","projectId":"p"}',
+    ]);
+  });
+
+  test("an issue the host does not find, or one with neither reference nor number, makes no card", async () => {
+    const lost = recorder();
+    run(lost.store, { kind: "create-card-issue", hostId: "h", projectId: "p", id: "9" }, lost.ui());
+    const blank = recorder();
+    run(blank.store, { kind: "create-card-issue", hostId: "h", projectId: "p" }, blank.ui());
+    await stays(() => lost.calls.length === 1 && blank.calls.length === 0, 100, "no card");
+    expect(lost.calls).toEqual(['h issues.get {"projectId":"p","id":"9"}']);
+    expect(blank.calls).toEqual([]);
   });
 
   test("any other entry is a screen: the view goes to its route", () => {
