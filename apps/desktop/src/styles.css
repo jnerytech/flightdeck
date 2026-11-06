@@ -445,7 +445,7 @@
 
 /* A column under a dragged card: it shows where the card would land. */
 /* A board column: a thin top line and a faint tint of the column's own tone. */
-.board-column {
+@utility board-column {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -455,50 +455,54 @@
   --column-tone: var(--column-backlog);
   border-top: 2px solid var(--column-tone);
   background: color-mix(in oklab, var(--column-tone) 8%, var(--background));
+  &[data-column="in_progress"] {
+    --column-tone: var(--column-progress);
+  }
+  &[data-column="waiting"] {
+    --column-tone: var(--column-waiting);
+  }
+  &[data-column="review"] {
+    --column-tone: var(--column-review);
+  }
+  &[data-column="done"] {
+    --column-tone: var(--column-done);
+  }
+  & [data-slot="column-icon"] {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+    color: var(--column-tone);
+  }
 }
-.board-column[data-column="in_progress"] {
-  --column-tone: var(--column-progress);
-}
-.board-column[data-column="waiting"] {
-  --column-tone: var(--column-waiting);
-}
-.board-column[data-column="review"] {
-  --column-tone: var(--column-review);
-}
-.board-column[data-column="done"] {
-  --column-tone: var(--column-done);
-}
-.board-column [data-slot="column-icon"] {
-  width: 0.875rem;
-  height: 0.875rem;
-  flex-shrink: 0;
-  color: var(--column-tone);
-}
+
 /* The empty box of a column: dashed, quiet, and still a button that adds a card. */
-.column-empty {
+@utility column-empty {
   padding: 1.25rem 0.75rem;
   border: 1px dashed var(--border);
   border-radius: 0.375rem;
   text-align: center;
   font-size: 0.75rem;
   color: var(--muted-foreground);
+  &:hover {
+    background: color-mix(in oklch, var(--accent) 40%, transparent);
+  }
 }
-.column-empty:hover {
-  background: color-mix(in oklch, var(--accent) 40%, transparent);
-}
+
 /* A column's head: icon, name, count, and the + pushed to the end. */
-.column-head {
+@utility column-head {
   padding-inline: 0.25rem;
+  & > button {
+    margin-inline-start: auto;
+  }
 }
-.column-head > button {
-  margin-inline-start: auto;
-}
-.column-title {
+
+@utility column-title {
   font-size: 0.75rem;
   font-weight: 500;
 }
+
 /* The count of a column, a small pill. */
-.column-count {
+@utility column-count {
   min-width: 1rem;
   height: 1rem;
   padding-inline: 0.25rem;
