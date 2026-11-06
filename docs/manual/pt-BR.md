@@ -2825,8 +2825,10 @@ numa aba, sem SSH.
   não se lê, ou que casa com texto vazio, avisa em vez de buscar. Links na saída abrem no navegador
   (só `http` e `https`). Caminhos de arquivo na saída também são links: os absolutos
   (`C:\repo\a.md`, `/home/ana/x.log`) e os relativos com pasta e extensão (`src/app.ts:12`), lidos a
-  partir da pasta do terminal. Num host deste computador o clique mostra o arquivo na pasta (nunca o
-  abre nem o executa); em outro host copia o caminho. A fonte é a
+  partir da pasta do terminal. Um arquivo dentro da pasta do terminal abre embaixo dele no
+  visualizador de Arquivos, só leitura, na linha que o caminho diz (`src/app.ts:12` abre na linha
+  12); **Fechar** o guarda. Um caminho fora dessa pasta, ou num host com daemon antigo demais para lê-lo, é mostrado na
+  pasta num host deste computador (nunca aberto nem executado) e copiado em outro host. A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
   10 a 24). Na aba, `Ctrl+=` (ou `Ctrl++`) e `Ctrl+-`, ou `Ctrl` com a roda do mouse, aumentam ou
   diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. Para

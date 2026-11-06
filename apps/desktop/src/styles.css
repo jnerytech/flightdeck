@@ -314,6 +314,13 @@ html:not(:has([data-slot="status-bar"])) {
 
 /* A short list that scrolls inside its panel instead of pushing the screen. */
 /* The file viewer's diff (issue #506): a bounded box that scrolls, so it can follow the newest hunk. */
+/* A file a terminal printed, open in the Files viewer under the terminal (#506). */
+@utility terminal-file {
+  max-height: 45vh;
+  overflow-y: auto;
+  border-top-width: 1px;
+  padding-top: 0.5rem;
+}
 @utility diff-follow {
   max-height: 24rem;
   overflow-y: auto;

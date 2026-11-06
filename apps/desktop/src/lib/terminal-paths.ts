@@ -77,3 +77,15 @@ export function resolvePath(cwd: string, path: string): string {
   }
   return parts.length === 1 && parts[0] === "" ? sep : parts.join(sep);
 }
+
+/**
+ * `full` as a path inside `cwd` with `/` between its parts, or `null` when it is not inside it: the
+ * Files viewer reads a terminal's files from its folder, and nothing above it (#506).
+ */
+export function insideFolder(cwd: string, full: string): string | null {
+  const parts = (path: string) => path.split(/[\\/]/).filter((part) => part !== "");
+  const base = parts(cwd);
+  const own = parts(full);
+  if (own.length <= base.length || base.some((part, i) => part !== own[i])) return null;
+  return own.slice(base.length).join("/");
+}

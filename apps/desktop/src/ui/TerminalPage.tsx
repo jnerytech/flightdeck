@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { Page } from "@/components/layout/page";
 import { SnippetPicker } from "@/components/snippets/snippet-picker";
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
-import { resolvePath } from "../lib/terminal-paths.ts";
+import { insideFolder, resolvePath } from "../lib/terminal-paths.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import {
   type FindFlags,
@@ -27,6 +27,7 @@ import {
   terminalTheme,
 } from "../lib/terminal-view.ts";
 import { useStoreState } from "../lib/use-store.ts";
+import { hasFeature } from "../lib/version.ts";
 import {
   createXtermScreen,
   type FindResults,
@@ -35,6 +36,9 @@ import {
 } from "../lib/xterm-screen.ts";
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
+// CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first path opened.
+const FileViewer = lazy(() => import("./FileViewer.tsx").then((m) => ({ default: m.FileViewer })));
+
 export function TerminalPage(
   props: Readonly<{
     store: AppStore;
@@ -56,6 +60,13 @@ export function TerminalPage(
     exitCode: null,
   });
   const [searching, setSearching] = useState(false);
+  /** A file of the terminal's folder open in the Files viewer, from a clicked `path:line` (#506). */
+  const [viewing, setViewing] = useState<{
+    path: string;
+    full: string;
+    line: number | undefined;
+    col: number | undefined;
+  } | null>(null);
   const [needle, setNeedle] = useState("");
   /** Match case, whole word, regular expression (#476); the ref has the latest for a key and a change in one go. */
   const [flags, setFlags] = useState<FindFlags>({});
@@ -121,7 +132,17 @@ export function TerminalPage(
         onFindResults: setResults,
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
-        onPath: (path) => void showPath(store, hostId, path, folder),
+        onPath: (path, at) =>
+          void (async () => {
+            const cwd = await folder;
+            const full = cwd ? resolvePath(cwd, path) : path;
+            const inside = cwd ? insideFolder(cwd, full) : null;
+            const host = store.getState().hosts.find((h) => h.id === hostId);
+            // A path inside the terminal's folder opens in the Files viewer at its line (#506).
+            if (inside && hasFeature(host?.hostInfo?.features, "file.terminal", false)) {
+              setViewing({ path: inside, full, line: at?.line, col: at?.col });
+            } else await showPath(store, hostId, path, folder);
+          })(),
         confirmPaste: (text) =>
           new Promise<boolean>((resolve) =>
             setPasting({
@@ -329,6 +350,22 @@ export function TerminalPage(
         <p id={readerHint} hidden>
           {t("terminalUi.readerHint")}
         </p>
+      )}
+      {viewing && (
+        <div data-slot="terminal-file" className="terminal-file">
+          <Suspense fallback={null}>
+            <FileViewer
+              store={store}
+              hostId={hostId}
+              target={`terminal:${terminalId}`}
+              path={viewing.path}
+              full={viewing.full}
+              line={viewing.line}
+              col={viewing.col}
+              onClose={() => setViewing(null)}
+            />
+          </Suspense>
+        </div>
       )}
       {menu && (
         <div
