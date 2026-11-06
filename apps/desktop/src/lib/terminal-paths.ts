@@ -8,6 +8,10 @@ export interface FoundPath {
   text: string;
   /** The path alone. */
   path: string;
+  /** The line printed after it (`:12`), when there is one. */
+  line?: number;
+  /** The column printed after the line (`:12:5`), when there is one. */
+  column?: number;
 }
 
 /**
@@ -42,7 +46,15 @@ export function findPaths(line: string): FoundPath[] {
     const text = match[0].replace(TRAILING, "");
     const path = text.replace(LINE_AND_COLUMN, "");
     if (path === "") continue;
-    found.push({ start: match.index, end: match.index + text.length, text, path });
+    const [line, column] = text.slice(path.length).split(":").slice(1).map(Number);
+    found.push({
+      start: match.index,
+      end: match.index + text.length,
+      text,
+      path,
+      ...(line === undefined ? {} : { line }),
+      ...(column === undefined ? {} : { column }),
+    });
   }
   return found;
 }

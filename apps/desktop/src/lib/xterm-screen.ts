@@ -109,8 +109,11 @@ export interface XtermScreenOptions {
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;
-  /** A file path in the output was clicked: the path as printed, without its line (#476). */
-  onPath?(path: string): void;
+  /**
+   * A file path in the output was clicked (#476): the path as printed, and the line and column
+   * printed after it, when there were (for a viewer that opens at them, #506).
+   */
+  onPath?(path: string, at?: { line: number; col?: number }): void;
   /** Ctrl+=, Ctrl+-, Ctrl+0 or Ctrl+wheel asked for a zoom step (#476). */
   onZoom?(step: TerminalZoom): void;
   /** The matches of the find bar changed (typing, next, previous). */
@@ -193,7 +196,16 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
         (found): XtermLink => ({
           range: { start: { x: cell(found.start), y }, end: { x: cell(found.end - 1), y } },
           text: found.text,
-          activate: () => options.onPath?.(found.path),
+          activate: () =>
+            options.onPath?.(
+              found.path,
+              found.line === undefined
+                ? undefined
+                : {
+                    line: found.line,
+                    ...(found.column === undefined ? {} : { col: found.column }),
+                  },
+            ),
         }),
       );
       callback(links.length > 0 ? links : undefined);
