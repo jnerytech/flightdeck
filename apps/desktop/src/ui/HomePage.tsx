@@ -1,5 +1,6 @@
 import type { CostsSummary, UsageSummary } from "@flightdeck/protocol";
 import { useEffect, useMemo, useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { KpiCard } from "@/components/home/kpi-card";
 import { Page } from "@/components/layout/page";
 import { Grid, Stack } from "@/components/layout/stack";
@@ -139,12 +140,10 @@ export function HomePage(
         : kpis && (
             <Stack gap={4}>
               {silent.length > 0 && (
-                <p aria-live="polite" className="text-sm">
-                  {t("home.partial", { hosts: silent.join(", ") })}
-                </p>
+                <InlineNotice>{t("home.partial", { hosts: silent.join(", ") })}</InlineNotice>
               )}
               {kpis.turns.failed === null && (
-                <p className="text-muted-foreground text-sm">{t("home.olderDaemon")}</p>
+                <InlineNotice tone="info">{t("home.olderDaemon")}</InlineNotice>
               )}
               <Grid cols={{ base: 1, sm: 2, xl: 4 }} gap={4}>
                 <KpiCard
