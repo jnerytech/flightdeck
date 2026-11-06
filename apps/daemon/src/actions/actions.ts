@@ -10,7 +10,6 @@
  * checked again right before the program starts.
  */
 import type { Database } from "bun:sqlite";
-import { homedir } from "node:os";
 import type {
   ActionInfo,
   ActionList,
@@ -29,6 +28,7 @@ import type {
 import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { must } from "../board/worktree.ts";
+import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
 import { ulid } from "../ulid.ts";
 import { Decisions } from "../vault/decisions.ts";
@@ -527,7 +527,7 @@ export class Actions {
   // --- what is there ---
 
   private baseOf(projectId?: string): string {
-    return projectId ? this.opts.projects(projectId).path : (this.opts.hostBase ?? homedir());
+    return projectId ? this.opts.projects(projectId).path : (this.opts.hostBase ?? userHome());
   }
 
   private appActions(scope: string, base: string): Found[] {

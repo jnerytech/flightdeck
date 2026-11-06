@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
-import { homedir, tmpdir, userInfo } from "node:os";
+import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -1347,7 +1347,7 @@ export async function startDaemon(
     }),
     snippetHistory: new HistoryImporter({
       sources: defaultHistorySources({
-        home: homedir(),
+        home: userHome(env),
         appData: process.env.APPDATA,
         platform: process.platform,
       }),
@@ -1356,8 +1356,8 @@ export async function startDaemon(
     }),
     sshImport: new SshImporter({
       targets: sshTargets,
-      configPath: join(homedir(), ".ssh", "config"),
-      home: homedir(),
+      configPath: join(userHome(env), ".ssh", "config"),
+      home: userHome(env),
       defaultUser: userInfo().username,
     }),
     terminals,
