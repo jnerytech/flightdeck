@@ -49,12 +49,30 @@ describe("mode-menu: which modes the menu offers", () => {
     expect(rows("plan", "plan", true).every((r) => r.blocked === null)).toBe(true);
   });
 
-  test("a start mode outside the list (auto, bypass) holds nothing back but bypass itself", () => {
+  test("a start mode of auto holds back what the daemon refuses: its own rank (accept edits) and bypass", () => {
     expect(states(rows("auto", "auto", false))).toEqual([
+      "default:off:ok",
+      "acceptEdits:off:looserThanStart",
+      "plan:off:ok",
+      "bypassPermissions:off:bypassOff",
+    ]);
+  });
+
+  test("a start mode of don't ask only leaves plan below it", () => {
+    expect(states(rows("dontAsk", "dontAsk", false))).toEqual([
+      "default:off:looserThanStart",
+      "acceptEdits:off:looserThanStart",
+      "plan:off:ok",
+      "bypassPermissions:off:bypassOff",
+    ]);
+  });
+
+  test("a session that started in bypass can go to any other mode of the menu", () => {
+    expect(states(rows("bypassPermissions", "bypassPermissions", false))).toEqual([
       "default:off:ok",
       "acceptEdits:off:ok",
       "plan:off:ok",
-      "bypassPermissions:off:bypassOff",
+      "bypassPermissions:on:bypassOff",
     ]);
   });
 });

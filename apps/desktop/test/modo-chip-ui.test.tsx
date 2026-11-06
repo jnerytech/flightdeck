@@ -142,6 +142,27 @@ describe("modo-chip: the mode menu", () => {
     expect(calls).toEqual(["plan"]);
   });
 
+  test("the key 4 asks before bypass, and changes nothing until it is confirmed", async () => {
+    const { calls } = view({ start: "default", bypass: true });
+    await open();
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("menu"), { key: "4" });
+    });
+    expect(screen.queryByRole("alertdialog")).not.toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  test("the key 4 does nothing on a host that does not allow bypass, and neither does a key past the last row", async () => {
+    const { calls } = view({ start: "default" });
+    await open();
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("menu"), { key: "4" });
+      fireEvent.keyDown(screen.getByRole("menu"), { key: "5" });
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
   test("on a host that does not allow bypass, it is listed but blocked, with the reason and a way to turn it on", async () => {
     const { calls, opened } = view({ start: "default" });
     await open();
