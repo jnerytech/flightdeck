@@ -2,9 +2,10 @@ import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
-import { cardDiff, workingDiff } from "../src/board/diff.ts";
+import { cardDiff, parseUnifiedDiff, workingDiff } from "../src/board/diff.ts";
 import { refArg } from "../src/board/ref-arg.ts";
 import { Changes } from "../src/review/changes.ts";
+import { ReviewComments } from "../src/review/comments.ts";
 import { ReviewFiles } from "../src/review/files.ts";
 import { git, gitRepo } from "./board-helpers.ts";
 import { newManager, tempDir } from "./helpers.ts";
@@ -25,12 +26,14 @@ function setup() {
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "first");
   insertSession(ctx.store.db, "m-1", "s-1", repo);
+  const changes = new Changes({ db: ctx.store.db });
   const files = new ReviewFiles({
-    changes: new Changes({ db: ctx.store.db }),
+    changes,
     dataDir: tempDir("fd-data-"),
     allowedRoots: [ctx.root],
   });
-  return { ...ctx, repo, files };
+  const review = new ReviewComments({ db: ctx.store.db, changes, manager: {} as never });
+  return { ...ctx, repo, files, review };
 }
 
 /** The code and reason a call is refused with, or `ok` when it is not refused. */
@@ -169,4 +172,108 @@ describe("review-secrets: the diff lists a credential file without its content (
     expect(files.find((f) => f.path === "readme-2.md")?.hunks.length).toBe(1);
     expect(JSON.stringify(files)).not.toContain("_authToken");
   });
+});
+
+describe("review-secrets: a review comment never quotes a credential file or a file out of the repo (#509)", () => {
+  const comment = (over: Record<string, unknown>) => ({
+    target: "session:s-1",
+    path: "a.txt",
+    side: "new" as const,
+    lineStart: 1,
+    lineEnd: 1,
+    body: "look",
+    ...over,
+  });
+
+  test("a comment on a credential file is refused, on either side of the diff", async () => {
+    const { repo, review } = setup();
+    writeFileSync(join(repo, ".env"), "TOKEN=abc\n");
+    const cases = [
+      [".env", "new"],
+      [".env.example", "new"],
+      [".env.example", "old"],
+    ] as const;
+    for (const [path, side] of cases) {
+      expect({ path, side, ...(await outcome(review.add(comment({ path, side })))) }).toEqual({
+        path,
+        side,
+        code: "bad_request",
+        reason: "review_file_secret",
+      });
+    }
+    expect((await review.add(comment({}))).quote).toBe("one");
+  });
+
+  test("a comment through a link out of the repository is refused", async () => {
+    const { repo, review } = setup();
+    const outside = tempDir("fd-outside-");
+    writeFileSync(join(outside, "notes.txt"), "outside\n");
+    await linkDir(outside, join(repo, "link"));
+    expect(await outcome(review.add(comment({ path: "link/notes.txt" })))).toEqual({
+      code: "forbidden_cwd",
+      reason: "review_path_link",
+    });
+  });
+
+  test("a comment saved on a credential file before this fix lists without its quote", async () => {
+    const { store, review } = setup();
+    store.db
+      .query(
+        `INSERT INTO review_comments (id, target, path, side, line_start, line_end, quote, body, state, created_at, sent_at)
+         VALUES ('c-1', 'session:s-1', '.env.example', 'new', 1, 1, 'TOKEN=committed', 'old', 'draft', '2026-11-01T12:00:00.000Z', NULL)`,
+      )
+      .run();
+    const [listed] = await review.list("session:s-1");
+    expect(listed).toMatchObject({ path: ".env.example", quote: "", outdated: true });
+  });
+});
+
+describe("review-secrets: a quoted name in the diff is read as the name (#509)", () => {
+  test("quoted headers and rename lines are unquoted, and each file keeps its own lines", () => {
+    const text = [
+      "diff --git a/plain.txt b/plain.txt",
+      "--- a/plain.txt",
+      "+++ b/plain.txt",
+      "@@ -1 +1 @@",
+      "-old",
+      "+new",
+      'diff --git "a/x\\"y.pem" "b/x\\"y.pem"',
+      '--- "a/x\\"y.pem"',
+      '+++ "b/x\\"y.pem"',
+      "@@ -1 +1 @@",
+      "-KEY=1",
+      "+KEY=2",
+      'diff --git a/old.key "b/tab\\there.txt"',
+      "similarity index 90%",
+      "rename from old.key",
+      'rename to "tab\\there.txt"',
+      "",
+    ].join("\n");
+    const files = parseUnifiedDiff(text, true);
+    expect(files.map((f) => [f.path, f.oldPath, f.additions, f.deletions, f.hunks.length])).toEqual(
+      [
+        ["plain.txt", null, 1, 1, 1],
+        ['x"y.pem', null, 1, 1, 1],
+        ["tab\there.txt", "old.key", 0, 0, 0],
+      ],
+    );
+  });
+
+  // Windows refuses a quote in a file name.
+  test.skipIf(process.platform === "win32")(
+    "a tracked credential file with a quote in its name shows no lines, and its neighbour gets none of them",
+    async () => {
+      const { repo } = gitRepo();
+      writeFileSync(join(repo, "a.txt"), "old\n");
+      writeFileSync(join(repo, 'x"y.pem'), "KEY=old\n");
+      git(repo, "add", ".");
+      git(repo, "commit", "-q", "-m", "files");
+      writeFileSync(join(repo, "a.txt"), "new\n");
+      writeFileSync(join(repo, 'x"y.pem'), "KEY=new\n");
+      const files = await workingDiff(repo);
+      expect(files.find((f) => f.path === 'x"y.pem')).toMatchObject({ secret: true, hunks: [] });
+      expect(files.find((f) => f.path === "a.txt")).toMatchObject({ additions: 1, deletions: 1 });
+      expect(JSON.stringify(files)).not.toContain("KEY=");
+    },
+  );
 });
