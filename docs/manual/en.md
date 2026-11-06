@@ -2735,6 +2735,12 @@ checkpoint) gets a companion:
 
 The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 
+When the session is already live in another terminal (VS Code's, say), **Continue in the terminal**
+and the outside terminal ask first: a second `claude` on the same session would not be seen by the
+first one. Each shows only its own turns, and both write to the same history. **View it live here**
+(the default) opens the session's live view, which follows that terminal's transcript; **Open a
+second copy anyway** opens it here all the same.
+
 ## Daily use
 
 ### Needs you, host page and notifications

@@ -2730,6 +2730,12 @@ checkpoint) ganha um companheiro:
 
 O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 
+Quando a sessão já está ao vivo em outro terminal (o do VS Code, por exemplo), **Continuar no
+terminal** e o terminal de fora perguntam antes: um segundo `claude` na mesma sessão não seria
+visto pelo primeiro. Cada um mostra só os próprios turnos, e os dois escrevem no mesmo histórico.
+**Ver ao vivo aqui** (o padrão) abre a visão ao vivo da sessão, que segue a transcrição daquele
+terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
+
 ## Uso diário
 
 ### Precisa de você, página do host e notificações
