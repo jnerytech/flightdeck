@@ -884,6 +884,24 @@ export const DiffFile = z.object({
 });
 export type DiffFile = z.infer<typeof DiffFile>;
 
+/** One entry of a folder in the file explorer (issue #506). */
+export interface FileEntry {
+  name: string;
+  /** What it is, links followed: a link is listed only when it stays in the repository. */
+  kind: "dir" | "file";
+  /** It may hold a credential (issue #449): shown as hidden, never opened (issue #509). */
+  secret?: boolean;
+}
+
+/** A folder of the repository, folders first, then files, in natural order. */
+export interface FileListing {
+  /** The folder, relative to the repository's root ("" for the root). */
+  dir: string;
+  entries: FileEntry[];
+  /** More entries than the host sends at once. */
+  truncated: boolean;
+}
+
 export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) });
 export type CardDiff = z.infer<typeof CardDiff>;
 
@@ -4166,6 +4184,8 @@ export const Command = z.discriminatedUnion("type", [
     z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
   ),
   cmd("file.read", z.object({ target: ReviewTarget, path: z.string().min(1) })),
+  /** Issue #506: one folder of the target's repository for the file explorer; `dir` is "" for its root. */
+  cmd("file.list", z.object({ target: ReviewTarget, dir: z.string() })),
   /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
   cmd(
     "file.write",
@@ -4885,6 +4905,7 @@ export interface CommandResults {
   "changes.undoRevert": { path: string };
   /** `hash`: sha256 of the bytes, hex, for `file.write`. */
   "file.read": { path: string; text: string; hash: string; size: number };
+  "file.list": FileListing;
   "file.write": { path: string; hash: string; size: number };
 }
 
