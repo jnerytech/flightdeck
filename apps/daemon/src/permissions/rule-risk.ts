@@ -149,5 +149,5 @@ export function ruleLevel(
   if (NETWORK_TOOLS.has(toolName)) {
     return content !== undefined && DOMAIN.test(content) ? classify(toolName, {}) : "any";
   }
-  return highest([classify(toolName, {})]);
+  return classify(toolName, {});
 }
