@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../src/main.ts";
 import { REAL_KILL_DEPS } from "../src/runtime/opencode-runtime.ts";
+import { OPENCODE_LEDGER_FILE, procSource } from "../src/runtime/process-ledger.ts";
 import { installFakeOpenCode } from "./fake-opencode.ts";
 import { poll, tempDir } from "./helpers.ts";
 
@@ -38,7 +39,7 @@ async function client(url: string) {
   return { ask, events };
 }
 
-async function daemon(opencode: object | null) {
+async function daemon(opencode: object | null, prepare?: (dataDir: string) => void) {
   const fake = installFakeOpenCode();
   const dir = tempDir("fd-oc-wiring-");
   const root = join(dir, "root");
@@ -55,6 +56,7 @@ async function daemon(opencode: object | null) {
       ...(opencode ? { opencode } : {}),
     }),
   );
+  prepare?.(join(dir, "data"));
   const env = { ...process.env, PATH: `${fake.dir}${delimiter}${process.env.PATH ?? ""}` };
   const running = await startDaemon(
     { command: "start", config: file, runtime: "claude" },
@@ -129,11 +131,66 @@ describe("opencode-wiring", () => {
       true,
       sessionId,
     ]);
-    expect(fake.calls().filter((c) => c.args[0] === "api").length).toBeGreaterThanOrEqual(4);
+    // One private server for the preflight's three checks (issue #243); `api --standalone` is left
+    // to the canary of discovery and to the model list.
+    const calls = fake.calls();
+    expect(calls.filter((c) => c.args[0] === "serve")).toHaveLength(1);
+    expect(
+      calls
+        .filter((c) => c.args[0] === "GET")
+        .map((c) => [c.args[1], c.authorized])
+        .sort(),
+    ).toEqual([
+      ["/api/agent", true],
+      ["/api/config", true],
+      ["/api/permission/saved", true],
+    ]);
+    expect(calls.filter((c) => c.args[0] === "api")).toHaveLength(1);
   });
 
   test("the real kill: a group that is gone throws (the killer falls back), and a run spawns", () => {
     expect(() => REAL_KILL_DEPS.killGroup(2 ** 22 + 12345, "SIGTERM")).toThrow();
     expect(() => REAL_KILL_DEPS.run([process.execPath, "-e", ""])).not.toThrow();
+  });
+
+  test("at start, a process group an earlier daemon left behind is reaped, even with OpenCode off (issue #250); outside Linux nothing is known, so nothing is", async () => {
+    const linux = process.platform === "linux";
+    const orphan = Bun.spawn([process.execPath, "-e", "setTimeout(() => {}, 300000)"], {
+      detached: true,
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    try {
+      const real = procSource();
+      const cmdline = `/proc/${orphan.pid}/cmdline`;
+      await poll(
+        () =>
+          !linux || (existsSync(cmdline) && readFileSync(cmdline, "utf8").includes("setTimeout")),
+        5000,
+      );
+      const identity = await real.identity(orphan.pid);
+      const bootId = await real.bootId();
+      await daemon(null, (dataDir) => {
+        mkdirSync(dataDir, { recursive: true });
+        writeFileSync(
+          join(dataDir, OPENCODE_LEDGER_FILE),
+          JSON.stringify([
+            {
+              pid: orphan.pid,
+              startTicks: identity?.startTicks ?? 0,
+              cmdline: identity?.cmdline ?? "opencode",
+              bootId: bootId ?? "unknown",
+            },
+          ]),
+        );
+      });
+      let gone = false;
+      void orphan.exited.then(() => {
+        gone = true;
+      });
+      expect(await poll(() => gone, linux ? 5000 : 300)).toBe(linux ? true : null);
+    } finally {
+      orphan.kill("SIGKILL");
+    }
   });
 });

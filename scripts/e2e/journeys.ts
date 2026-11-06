@@ -1,5 +1,5 @@
 /**
- * The e2e journeys (phase 10): eighteen in a real browser against the seeded demo, in both
+ * The e2e journeys (phase 10): nineteen in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/define-journeys.ts, one file per language); this file holds the journeys themselves.
@@ -25,6 +25,8 @@ import {
 } from "../lib/layout-guards.ts";
 
 const ALFA = "demo-alfa";
+/** The name of the second demo host, as the sidebar and the forms show it. */
+const BETA = "beta";
 export const WAIT = 15_000;
 /** A session needs the host to start it: on a loaded machine that takes far longer than a click. */
 export const SESSION_WAIT = 60_000;
@@ -153,12 +155,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
     await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
     await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
-    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
-    await tile.waitFor({ timeout: WAIT });
-    // Issue #188: the creation says so, with a way to the new card.
+    // Issue #188: the creation says so (the toast is short-lived: look for it first), with a way
+    // to the new card.
     await c.page
       .getByText(c.t("kanban.created", { title }), { exact: true })
       .waitFor({ timeout: WAIT });
+    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
+    await tile.waitFor({ timeout: WAIT });
     await tile.getByRole("button", { name: title, exact: true }).click();
     await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
     await open(c, { name: "card", host: ALFA, projectId: c.ids.project, cardId: c.ids.diffCard });
@@ -551,24 +554,66 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open(c, { name: "hub" });
     await c.page.keyboard.press("Control+K");
     await c.page.getByLabel(c.t("searchUi.input"), { exact: true }).fill(c.t("palette.addHost"));
-    await c.page.getByText(c.t("palette.addHost"), { exact: true }).first().click();
+    await c.page
+      .getByRole("dialog", { name: c.t("searchUi.label") })
+      .getByRole("option", { name: c.t("palette.addHost"), exact: true })
+      .click();
     await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).waitFor({ timeout: WAIT });
   },
 
   // 18. New session (issue #186): the Sessions list starts one, and the form lets the host be chosen.
   "nova-sessao-host": async (c) => {
     await open(c, { name: "hub" });
+    // The header of the list; the sidebar has a button of the same name outside <main>.
     await c.page
+      .getByRole("main")
       .locator('[data-slot="page-actions"]')
-      .first()
       .getByRole("button", { name: c.t("sidebar.newSession"), exact: true })
       .click();
     const host = c.page.getByLabel(c.t("newSession.host"), { exact: true });
     await host.waitFor({ timeout: WAIT });
-    await host.selectOption({ label: "beta" });
+    await host.selectOption({ label: BETA });
     await c.page
-      .getByRole("heading", { name: c.t("newSession.title", { host: "beta" }) })
+      .getByRole("heading", { name: c.t("newSession.title", { host: BETA }) })
       .waitFor({ timeout: WAIT });
+  },
+
+  // 19. Finishing a card (issue #188): the card menu's Start asks first and can be cancelled;
+  // "Finish…" explains the three ways to Done, closes with Esc, and "Move to Done" moves the card.
+  "finalizar-card": async (c) => {
+    const title = `Finalizar ${c.lang} ${Date.now()}`;
+    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    await tile.waitFor({ timeout: WAIT });
+    // The menu's Start opens a dialog; Cancel leaves the card alone.
+    await tile
+      .getByRole("button", { name: c.t("board.cardActions", { title }), exact: true })
+      .click();
+    await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
+    await start.waitFor({ timeout: WAIT });
+    await start.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+    await start.waitFor({ state: "detached", timeout: WAIT });
+    // Finish… on the card's page.
+    await tile.getByRole("button", { name: title, exact: true }).click();
+    const finish = c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true });
+    await finish.click();
+    const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
+    await dialog.getByText(c.t("cardUi.finishMove"), { exact: true }).waitFor({ timeout: WAIT });
+    await dialog.getByText(c.t("cardUi.finishComplete"), { exact: true }).waitFor();
+    await dialog.getByText(c.t("cardUi.finishMerge"), { exact: true }).waitFor();
+    // No worktree yet: the merge is off and says why.
+    await dialog.getByText(c.t("cardUi.finishNeedWorktree"), { exact: true }).waitFor();
+    await c.page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    await finish.click();
+    await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
+    await dialog.getByText(c.t("cardUi.alreadyDone"), { exact: true }).waitFor({ timeout: WAIT });
   },
 };
 

@@ -5,6 +5,9 @@
  */
 import { join, resolve } from "node:path";
 import { isInside } from "../paths.ts";
+import { credential } from "./sensitive-paths.ts";
+
+export { credential };
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -82,30 +85,6 @@ const NETWORK_PROGRAMS = new Set([
 const SINKS = new Set(["/dev/null", "/dev/stdout", "/dev/stderr", "nul", "$null"]);
 /** What may come before the program and is not it. */
 const PREFIXES = new Set(["command", "nohup", "time", "exec", "builtin", "env", "xargs"]);
-
-/**
- * Whether a path (or a glob, or a word of a command) names a credential: ~/.ssh, ~/.aws,
- * ~/.config/gh, ~/.claude/.credentials.json, ~/.claude.json, ~/.flightdeck/config.json, .env*,
- * *.pem, *.key and id_*. Compared without case, with either slash.
- */
-export function credential(text: string): boolean {
-  const parts = text.toLowerCase().replaceAll("\\", "/").split("/");
-  const name = parts.at(-1) as string;
-  const after = (dir: string, next: string) =>
-    parts.some((p, i) => p === dir && parts[i + 1] === next);
-  return (
-    parts.includes(".ssh") ||
-    parts.includes(".aws") ||
-    after(".config", "gh") ||
-    after(".claude", ".credentials.json") ||
-    after(".flightdeck", "config.json") ||
-    name === ".claude.json" ||
-    name.startsWith(".env") ||
-    name.endsWith(".pem") ||
-    name.endsWith(".key") ||
-    name.startsWith("id_")
-  );
-}
 
 /** Phase 39: OpenCode's global folder (`~/.config/opencode`): a plugin written there runs code. */
 function opencodeConfig(text: string): boolean {

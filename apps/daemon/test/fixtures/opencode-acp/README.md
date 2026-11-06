@@ -16,6 +16,12 @@ entries. Nothing else was edited.
   recorded on 2026-11-05 with the shipped environment in a scratch folder; the global folder became
   `/home/u/.config/opencode`, the inline document's body was shortened, and `api-agent.json` keeps our two agents and
   `compaction` without their prompts.
+  `api-agent.json` was recorded again on 2026-11-06 (issue #449), with the same environment and a scratch `HOME`, when
+  the read rules for secret paths began to come from the one list in `permissions/sensitive-paths.ts`: only the
+  `permissions` of the agents changed.
+  `api-agent.json` was recorded again on 2026-11-06 (issue #449), with the same environment and a scratch `HOME`, when
+  the read rules for secret paths began to come from the one list in `permissions/sensitive-paths.ts`: only the
+  `permissions` of our two agents changed.
 - `api-permission-saved.json`: the answer of `GET /api/permission/saved --standalone` with one saved rule, recorded on
   2026-11-04 (DECISIONS, "two probes before the runtime"); its ids were replaced by zeros.
 - `resume.jsonl`: `initialize` and `session/resume` in a new process, recorded on 2026-11-05: the answer carries

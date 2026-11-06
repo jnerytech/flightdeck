@@ -33,6 +33,7 @@ export interface RewindPreview {
 const CHANGES: Record<string, string> = { M: "modified", A: "created", D: "deleted" };
 
 async function git(cwd: string, args: string[]): Promise<{ code: number; stdout: Buffer }> {
+  // git-arg: the rewind's own git: the trees and refs in its arguments were made by the checkpoints
   const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
     cwd,
     env: process.env,

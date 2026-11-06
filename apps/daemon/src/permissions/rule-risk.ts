@@ -6,6 +6,16 @@ import {
   SHELL_TOOLS,
   WRITE_TOOLS,
 } from "./risk.ts";
+import {
+  CONTROL_DIRS,
+  CONTROL_NAMES,
+  CONTROL_PAIRS,
+  isControl,
+  SECRET_DIRS,
+  SECRET_EXTENSIONS,
+  SECRET_NAMES,
+  SECRET_PAIRS,
+} from "./sensitive-paths.ts";
 
 /** What a rule may cover: a level, or `any` for a rule this check cannot show to be narrow. */
 export type RuleLevel = RiskLevel | "any";
@@ -40,28 +50,19 @@ const NAMES = ["x", ".env", "id_rsa", "x.pem", "x.key", ".ssh", ".aws", "credent
  * that shares a segment with other characters is matched against each, over every run of
  * consecutive segments, so a path that is sensitive only as a pair (`.config/gh`) is found too.
  */
-const SENSITIVE = [
-  [".claude"],
-  [".git"],
-  [".github"],
-  [".husky"],
-  [".vscode"],
-  [".ssh"],
-  [".aws"],
+const SENSITIVE: string[][] = [
+  ...CONTROL_DIRS.map((name) => [name]),
+  ...CONTROL_NAMES.map((name) => [name]),
+  ...CONTROL_PAIRS.flatMap(([dir, next]) => [[dir], [dir, next]]),
+  ...[...SECRET_NAMES, ...SECRET_DIRS, ...SECRET_EXTENSIONS].map((name) => [name]),
+  ...SECRET_PAIRS.map(([dir, next]) => [dir, next]),
+  // Partial names of what a whole-name check would not reach: a folder that holds both kinds, and
+  // the files a prefix stands for.
   [".config"],
   [".flightdeck"],
-  [".env"],
   [".env.local"],
-  [".mcp.json"],
-  [".claude.json"],
-  ["package.json"],
   ["id_rsa"],
   ["credentials"],
-  [".config", "gh"],
-  [".flightdeck", "config.json"],
-  [".claude", ".credentials.json"],
-  [".github", "workflows"],
-  [".vscode", "tasks.json"],
 ];
 /** A segment's glob as a regular expression (`*` and `?` stay inside the segment). */
 const segmentGlob = (segment: string) =>
@@ -78,23 +79,6 @@ const WILDCARD = /(\*\*\/|\*\*|\*|\?)/;
 /** Whether a pattern has a wildcard at all. */
 const WILD = /[*?]/;
 const MAX_WILDCARDS = 6;
-
-/**
- * The files that decide what the session may do or run: its own rules, the repository's hooks and
- * config, the scripts a test run starts, the CI. A standing permission to write one lets the
- * session end every hold, so no rule may cover them.
- */
-const CONTROL = [
-  /(^|\/)\.claude(\/|$)/,
-  /(^|\/)\.git(\/|$)/,
-  /(^|\/)\.mcp\.json$/,
-  /(^|\/)package\.json$/,
-  /(^|\/)\.husky(\/|$)/,
-  /(^|\/)\.github\/workflows(\/|$)/,
-  /(^|\/)\.vscode\/tasks\.json$/,
-];
-const isControl = (path: string) =>
-  CONTROL.some((re) => re.test(path.toLowerCase().replaceAll("\\", "/")));
 
 /** What a network rule must say: `domain:` and a host with at least two labels, one `*.` at most. */
 const DOMAIN = /^domain:(?:\*\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i;

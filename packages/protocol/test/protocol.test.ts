@@ -63,6 +63,7 @@ const validCommands: Record<CommandType, unknown> = {
   "board.settings": { maxParallelRuns: 3 },
   "roots.add": { path: "/work/new", confirm: true },
   "host.bypass": { allow: true, confirm: true },
+  "host.keepAwake": { enabled: true },
   "project.trust.state": { paths: ["/work/app"] },
   "project.trust.inspect": { path: "/work/app" },
   "project.trust.set": { path: "/work/app", trusted: true },
@@ -775,5 +776,21 @@ describe("git-ref-protocol: a project's base branch is a branch name", () => {
       expect(add(bad).success).toBe(false);
       expect(update(bad).success).toBe(false);
     }
+  });
+});
+
+describe("rev-stored-protocol: a project says when its stored base branch is not one", () => {
+  const project = {
+    id: "p",
+    path: "/w/p",
+    name: "p",
+    baseBranch: "--x",
+    prProvider: "none",
+    setupScript: null,
+    promptTemplate: "",
+  };
+  test("baseBranchInvalid survives a parse, and a daemon that never sends it still parses", () => {
+    expect(Project.parse({ ...project, baseBranchInvalid: true }).baseBranchInvalid).toBe(true);
+    expect(Project.parse(project).baseBranchInvalid).toBeUndefined();
   });
 });

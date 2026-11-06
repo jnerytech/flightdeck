@@ -5,7 +5,7 @@ import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 import { type CommandResult, git } from "./command.ts";
 import { LOCAL_SETTINGS } from "./project-rules.ts";
-import { assertBranchName, refArg } from "./ref-arg.ts";
+import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
 
 /** Whether `path` exists, asked without blocking. */
 const exists = (path: string): Promise<boolean> =>
@@ -189,7 +189,7 @@ export async function copyIncluded(
  */
 export async function freshBase(
   repo: string,
-  base: string,
+  base: Rev,
 ): Promise<{ ref: string; notice: string | null }> {
   // A base is also a refspec here: `a:b` or `+x:refs/heads/y` would write a ref. `HEAD` is the
   // default of a detached checkout.

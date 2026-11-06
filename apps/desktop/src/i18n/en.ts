@@ -2,7 +2,20 @@ import type { Dictionary } from "./index.ts";
 
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
+  inFlight: { stillWorking: "Still working…" },
   nav: { back: "Back", forward: "Forward", overview: "Home" },
+  sidebarAccount: {
+    menu: "Account menu for {name}",
+    none: "Claude account",
+    unread: "Not read yet",
+    many: "{n} accounts",
+    manyHint: "One per host",
+    plan: "{plan} plan",
+    signOutGithub: "Sign out of GitHub",
+    signOutGithubHost: "Sign out of GitHub ({host})",
+    signOutGithubConfirm:
+      "Sign out of GitHub on {host}? Its sessions lose access to your repositories until you sign in again.",
+  },
   home: {
     title: "Home",
     range: "Last 7 days · all hosts",
@@ -960,6 +973,8 @@ export const en: Dictionary = {
     densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
     terminalFont: "Terminal font size",
+    tabOrder: "Ctrl+Tab order",
+    tabOrders: { mru: "Most recently used", sequential: "Tab order" },
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -1270,6 +1285,7 @@ export const en: Dictionary = {
     webhook: "webhooks",
     bg: "background sessions",
     projectTrust: "project trust",
+    keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
   daemonRefusal: {
@@ -2273,6 +2289,7 @@ export const en: Dictionary = {
     preview: "preview",
     newTab: "New tab",
     badge: { "needs-you": "Needs you", running: "Running", unread: "Unread" },
+    switcher: { title: "Switch tab", position: "{title}, {n} of {total}" },
     all: "All tabs",
     scrollLeft: "Scroll the tabs left",
     scrollRight: "Scroll the tabs right",
@@ -3106,12 +3123,16 @@ export const en: Dictionary = {
     satisfied: "done",
   },
   kanban: {
+    /** An empty column's box: the word it shows, then what pressing it does (WCAG 2.5.3). */
+    emptyName: "{empty}, {action}",
     needTitle: "Give the card a title",
     card: "Card {title}",
     queued: "queued",
     waitingQuotaUntil: "waiting for the quota until {time}",
     waitingQuota: "waiting for the quota",
     addCard: "Add card",
+    addCardTo: "Add card to {column}",
+    empty: "Empty",
     boardOf: "Board of {project}",
     filter: "Filter cards",
     titleLabel: "Card title",
@@ -3266,7 +3287,7 @@ export const en: Dictionary = {
     goSettings: "Go to Settings",
     tabNew: "New tab",
     tabClose: "Close the tab",
-    tabNext: "Next tab",
+    tabRecent: "Switch to the previous tab (hold Ctrl and press Tab to cycle)",
     tabNumber: "Go to tab 1 to 9",
     listNext: "Next row",
     listPrevious: "Previous row",
@@ -3416,6 +3437,8 @@ export const en: Dictionary = {
   },
   projectPage: {
     notHere: "This project is not on this host.",
+    baseInvalid:
+      "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
     trust: {
       title: "Project configuration",
       hint: "A project can carry its own hooks, MCP servers, settings, agents and skills. They load into a session only when you trust the project.",
@@ -3718,6 +3741,11 @@ export const en: Dictionary = {
   hostDeps: {
     installPage: "Install page",
     installPageFor: "Open the install page for {name}",
+    fixNote: {
+      elevated: "Run it in an elevated PowerShell (Run as administrator).",
+      noSystemd:
+        "This computer has no systemd, so flightdeckd cannot be installed as a service here. Start it at login with your system's own tools.",
+    },
     check: "Check again",
     checking: "Checking…",
     readFailed: "Could not read the health: {reason}",
@@ -3913,6 +3941,23 @@ export const en: Dictionary = {
     bypassAllowMessage:
       "Allow sessions on {host} to run without permission prompts? Claude could then edit and delete files and run commands in any allowed folder without asking. Only do this on a machine and in folders you accept that risk for.",
     bypassTurnOff: "Turn off",
+    keepAwakeTitle: "Keep this computer awake",
+    keepAwakeHint:
+      "While a session of this host runs or waits for your answer, the host asks the computer not to sleep, so approvals and notifications keep working. The screen may still turn off, and closing the lid follows the system's power settings.",
+    keepAwakeOn: "On: the computer stays awake only while sessions run.",
+    keepAwakeOff: "Off: the computer sleeps as the system says.",
+    keepAwakeHeld: "Holding the computer awake now.",
+    keepAwakeTurnOff: "Turn off",
+    keepAwakeTurnOn: "Turn on",
+    keepAwakeReason: {
+      "no-inhibitor":
+        "Nothing on this computer can hold it awake (no systemd-inhibit, caffeinate or PowerShell).",
+      "unsupported-platform": "This system has no way to hold the computer awake.",
+      wsl: "This host runs inside WSL and cannot keep Windows awake. Turn it on for the Windows host.",
+      "start-failed": "The program that holds the computer awake could not start.",
+      ended:
+        "The program that holds the computer awake ended. It starts again with the next session.",
+    },
     rootsHint: "Sessions and projects can only use these folders and the ones inside them.",
     host: "Host",
     nameLabel: "Host name",

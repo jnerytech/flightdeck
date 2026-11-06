@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { TopBarActions, TopBarHost, TopBarQuotaSlot } from "@/components/shell/top-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
+import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TContext } from "@/i18n/context";
@@ -523,6 +524,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             />
           </div>
           <Notices store={store} />
+          <TabSwitcherHost store={store} />
           {state.closingTerminal && (
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
           )}

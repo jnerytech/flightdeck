@@ -6,18 +6,25 @@ const invalid = (name: string) =>
     name,
   });
 
+/** A branch or a revision that `refArg` or `assertBranchName` checked: what the git helpers take (issue #369). */
+declare const checked: unique symbol;
+export type Rev = string & { readonly [checked]: true };
+
 /**
  * A branch or revision that came from a project's settings, checked before it becomes an argument
  * of git: one that starts with `-` would be read as an option (`--output=`, `--exec=`), issue #345.
  * Only that is refused here, so a revision git accepts (`HEAD`, `origin/main`) still goes through.
  */
-export function refArg(name: string): string {
+export function refArg(name: string): Rev {
   if (name === "" || name.startsWith("-")) throw invalid(name);
-  return name;
+  return name as Rev;
 }
 
+/** `HEAD`: the one revision that is not looked up in a project's settings. */
+export const HEAD = "HEAD" as Rev;
+
 /** A base branch a person sets must be a branch name, by the rules of `git check-ref-format`. */
-export function assertBranchName(name: string): string {
+export function assertBranchName(name: string): Rev {
   if (!isBranchName(name)) throw invalid(name);
-  return name;
+  return name as Rev;
 }

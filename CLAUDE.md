@@ -32,8 +32,11 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - Full suite (with the 100% line and function threshold): `bun run slot -- bun run test`.
 - The heavy commands go through the slot: `bun run slot -- <command...>` (for example
   `bun run slot -- bun run test`). It is one exclusive lock for the whole machine, with a queue;
-  `bun run slot -- --status` shows the holder (with a warning past `--max-age`, 90 min by
-  default), `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
+  waiters take it first come, first served. `bun run slot -- --status` shows the holder (with a
+  warning past `--max-age`, 90 min by default) and each waiter in queue order with its age, folder
+  and an `ORPHAN` mark. A waiter whose shell is gone gives up (`FLIGHTDECK_SLOT_DETACHED=1` keeps a
+  launch detached on purpose in the queue), and `--reap` (the coordinator) stops orphan waiters by
+  process group, never the holder. `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
   `--priority` (for the maintainer's full gate) also lowers the other bun test processes of the
   user while it runs.
@@ -50,7 +53,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - Tests by tier (#261, computed from each test's content): `unit`, `component` (the DOM), `integration`
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
   `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
-  gate); CI runs every tier and the one combined 100% gate. `bun run test:tiers` prints the counts.
+  gate). A PR's CI runs `--pr`: every unit and component test plus the related tests of the other
+  tiers, with 100% on the changed files. Main, the nightly run and a run by hand run the whole suite
+  with the whole-repo 100% gate. `bun run test:tiers` prints the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.

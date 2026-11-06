@@ -38,7 +38,7 @@ function exportsOf(text: string): Map<string, string> {
 }
 
 const calls = (text: string, names: Set<string>) =>
-  [...names].some((name) => new RegExp(`\\b${name}\\s*(?:<[^>]*>)?\\(`).test(text));
+  [...names].some((name) => new RegExp(String.raw`\b${name}\s*(?:<[^>]*>)?\(`).test(text));
 
 /** The tier of every test file (and every journey and smoke) among these sources, by path. */
 export function testTiers(sources: Map<string, string>): Record<string, Tier> {

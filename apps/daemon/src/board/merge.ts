@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { ulid } from "../ulid.ts";
 import { git } from "./command.ts";
-import { refArg } from "./ref-arg.ts";
+import { HEAD, type Rev, refArg } from "./ref-arg.ts";
 import { must } from "./worktree.ts";
 
 /**
@@ -11,8 +11,8 @@ import { must } from "./worktree.ts";
  */
 export async function aheadBehind(
   worktree: string,
-  base: string,
-  ref = "HEAD",
+  base: Rev,
+  ref: Rev = HEAD,
 ): Promise<{ ahead: number; behind: number }> {
   const counted = must(
     await git(
@@ -30,7 +30,7 @@ export async function aheadBehind(
 }
 
 /** Merges go into a local branch: a remote ref or a deleted branch is refused. */
-export async function assertLocalBranch(repo: string, base: string): Promise<void> {
+export async function assertLocalBranch(repo: string, base: Rev): Promise<void> {
   const local = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/${refArg(base)}`);
   if (local.code !== 0) {
     throw new FlightdeckError(
@@ -52,7 +52,7 @@ export async function pendingFiles(cwd: string): Promise<string[]> {
  * Rebases the worktree's branch on `base`, uncommitted changes stashed and put back. On a
  * conflict the rebase is aborted (which restores them) and the error lists the files.
  */
-export async function rebaseOnto(worktree: string, base: string): Promise<void> {
+export async function rebaseOnto(worktree: string, base: Rev): Promise<void> {
   const rebase = await git(worktree, "rebase", "--autostash", "--end-of-options", refArg(base));
   if (rebase.code === 0) return;
   const conflicted = await git(worktree, "diff", "--name-only", "--diff-filter=U");
@@ -77,7 +77,7 @@ async function checkedOutAt(repo: string, branch: string): Promise<string | null
   return null;
 }
 
-async function mergeIn(cwd: string, branch: string, mode: "merge" | "squash", message: string) {
+async function mergeIn(cwd: string, branch: Rev, mode: "merge" | "squash", message: string) {
   if (mode === "merge") {
     must(await git(cwd, "merge", "--no-ff", "-m", message, refArg(branch)), "git merge");
     return;
@@ -95,8 +95,8 @@ async function mergeIn(cwd: string, branch: string, mode: "merge" | "squash", me
  */
 export async function mergeIntoBase(
   repo: string,
-  base: string,
-  branch: string,
+  base: Rev,
+  branch: Rev,
   mode: "merge" | "squash",
   message: string,
 ): Promise<void> {

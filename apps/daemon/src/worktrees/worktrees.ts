@@ -11,6 +11,7 @@ import type {
 import type { CommandResult } from "../board/command.ts";
 import { LOCAL_SETTINGS } from "../board/project-rules.ts";
 import { samePath } from "../paths.ts";
+import { credential } from "../permissions/sensitive-paths.ts";
 import type { FolderLocks } from "./locks.ts";
 
 export interface WorktreeProject {
@@ -83,9 +84,13 @@ const REBUILDABLE = new Set([
   "out",
 ]);
 
-/** A name that looks like it holds a credential: such a file is never a loss to shrug at. */
-const CREDENTIAL_NAME =
-  /^(?:\.env(?:\..*)?|\.netrc|\.npmrc|\.pypirc|id_(?:rsa|dsa|ecdsa|ed25519)(?:\.pub)?|.*\.(?:pem|key|p12|pfx|jks|keystore|kdbx|ovpn)|.*(?:credential|secret|token|passw(?:or)?d|api[_-]?key).*)$/i;
+/**
+ * A name that looks like it holds a credential: such a file is never a loss to shrug at. The names
+ * the classifier knows come from its one list (`credential()`); this adds the ones a name only
+ * hints at.
+ */
+const CREDENTIAL_HINT = /^.*(?:credential|secret|token|passw(?:or)?d|api[_-]?key).*$/i;
+const credentialName = (part: string) => credential(part) || CREDENTIAL_HINT.test(part);
 
 /** The size an ignored file may have to be compared with the project's copy of it. */
 const COMPARE_LIMIT = 1024 * 1024;
@@ -160,7 +165,7 @@ export class Worktrees {
       const folder = listed.endsWith("/");
       const rel = folder ? listed.slice(0, -1) : listed;
       // A credential-looking name at any depth: never.
-      if (rel.split("/").some((part) => CREDENTIAL_NAME.test(part))) return true;
+      if (credential(rel) || rel.split("/").some(credentialName)) return true;
       // Flightdeck's own file, written into every worktree.
       if (rel === LOCAL_SETTINGS) continue;
       // A rebuildable folder, at the root.

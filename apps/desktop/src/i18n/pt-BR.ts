@@ -4,7 +4,20 @@
  * Terms follow docs/GLOSSARY.md.
  */
 export const ptBR = {
+  inFlight: { stillWorking: "Ainda trabalhando…" },
   nav: { back: "Voltar", forward: "Avançar", overview: "Início" },
+  sidebarAccount: {
+    menu: "Menu da conta de {name}",
+    none: "Conta Claude",
+    unread: "Ainda não lida",
+    many: "{n} contas",
+    manyHint: "Uma por host",
+    plan: "Plano {plan}",
+    signOutGithub: "Sair do GitHub",
+    signOutGithubHost: "Sair do GitHub ({host})",
+    signOutGithubConfirm:
+      "Sair do GitHub em {host}? As sessões de lá perdem o acesso aos seus repositórios até você entrar de novo.",
+  },
   home: {
     title: "Início",
     range: "Últimos 7 dias · todos os hosts",
@@ -957,6 +970,8 @@ export const ptBR = {
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
     terminalFont: "Tamanho da fonte do terminal",
+    tabOrder: "Ordem do Ctrl+Tab",
+    tabOrders: { mru: "Mais recente primeiro", sequential: "Ordem das abas" },
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -1265,6 +1280,7 @@ export const ptBR = {
     webhook: "os webhooks",
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
+    keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
   daemonRefusal: {
@@ -2271,6 +2287,7 @@ export const ptBR = {
     preview: "prévia",
     newTab: "Nova aba",
     badge: { "needs-you": "Precisa de você", running: "Rodando", unread: "Não lida" },
+    switcher: { title: "Trocar de aba", position: "{title}, {n} de {total}" },
     all: "Todas as abas",
     scrollLeft: "Rolar as abas para a esquerda",
     scrollRight: "Rolar as abas para a direita",
@@ -3108,12 +3125,16 @@ export const ptBR = {
     satisfied: "pronto",
   },
   kanban: {
+    /** An empty column's box: the word it shows, then what pressing it does (WCAG 2.5.3). */
+    emptyName: "{empty}, {action}",
     needTitle: "Dê um título ao card",
     card: "Card {title}",
     queued: "na fila",
     waitingQuotaUntil: "aguardando cota até {time}",
     waitingQuota: "aguardando cota",
     addCard: "Adicionar card",
+    addCardTo: "Adicionar card em {column}",
+    empty: "Vazio",
     boardOf: "Board de {project}",
     filter: "Filtrar cards",
     titleLabel: "Título do card",
@@ -3270,7 +3291,7 @@ export const ptBR = {
     goSettings: "Ir para Configurações",
     tabNew: "Nova aba",
     tabClose: "Fechar a aba",
-    tabNext: "Próxima aba",
+    tabRecent: "Ir para a aba anterior (segure Ctrl e aperte Tab para percorrer)",
     tabNumber: "Ir para a aba 1 a 9",
     listNext: "Próxima linha",
     listPrevious: "Linha anterior",
@@ -3458,6 +3479,8 @@ export const ptBR = {
       review: "Revisar e confiar",
     },
     notHere: "Este projeto não está neste host.",
+    baseInvalid:
+      "O branch base {name} não é um nome de branch válido, então abrir um PR e atualizar a partir do remoto são recusados neste projeto. Defina um de verdade em Configurações.",
     sessionsHint: "As sessões de todos os projetos",
     boardHint: "Cards por coluna, do backlog ao concluído",
     workflowsHint: "Os workflows do projeto e suas execuções",
@@ -3724,6 +3747,11 @@ export const ptBR = {
   hostDeps: {
     installPage: "Página de instalação",
     installPageFor: "Abrir a página de instalação de {name}",
+    fixNote: {
+      elevated: "Execute em um PowerShell elevado (Executar como administrador).",
+      noSystemd:
+        "Este computador não tem systemd, então o flightdeckd não pode ser instalado como serviço aqui. Inicie-o no login com as ferramentas do seu sistema.",
+    },
     check: "Verificar de novo",
     checking: "Verificando…",
     readFailed: "Não foi possível ler a saúde: {reason}",
@@ -3919,6 +3947,23 @@ export const ptBR = {
     bypassAllowMessage:
       "Permitir que as sessões em {host} rodem sem pedidos de permissão? O Claude poderá editar e apagar arquivos e rodar comandos em qualquer pasta permitida sem perguntar. Só faça isso numa máquina e em pastas em que você aceite esse risco.",
     bypassTurnOff: "Desligar",
+    keepAwakeTitle: "Manter este computador acordado",
+    keepAwakeHint:
+      "Enquanto uma sessão deste host roda ou espera a sua resposta, o host pede ao computador para não dormir, e assim aprovações e avisos continuam chegando. A tela ainda pode apagar, e fechar a tampa segue as configurações de energia do sistema.",
+    keepAwakeOn: "Ligado: o computador fica acordado só enquanto há sessões.",
+    keepAwakeOff: "Desligado: o computador dorme como o sistema mandar.",
+    keepAwakeHeld: "Segurando o computador acordado agora.",
+    keepAwakeTurnOff: "Desligar",
+    keepAwakeTurnOn: "Ligar",
+    keepAwakeReason: {
+      "no-inhibitor":
+        "Nada neste computador consegue segurá-lo acordado (sem systemd-inhibit, caffeinate nem PowerShell).",
+      "unsupported-platform": "Este sistema não tem como segurar o computador acordado.",
+      wsl: "Este host roda dentro do WSL e não consegue manter o Windows acordado. Ligue no host do Windows.",
+      "start-failed": "O programa que segura o computador acordado não conseguiu iniciar.",
+      ended:
+        "O programa que segura o computador acordado terminou. Ele volta com a próxima sessão.",
+    },
     rootsHint: "Sessões e projetos só podem usar estas pastas e as que estão dentro delas.",
     host: "Host",
     nameLabel: "Nome do host",
