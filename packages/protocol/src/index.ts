@@ -119,6 +119,11 @@ export const SessionTeam = z.object({
 });
 export type SessionTeam = z.infer<typeof SessionTeam>;
 
+/** The persona of a standard name for a session that has none (phase 21); the app translates it (#668). */
+export const NAME_GENERAL = "geral";
+/** The project of a standard name for a session with no folder to name it; the app translates it (#668). */
+export const NAME_NO_PROJECT = "sem-projeto";
+
 /** The standard name of a session of the host (phase 21): `project · persona · number`. */
 export const SessionNameInfo = z.object({
   /** The managed id, or the Claude session id of a terminal. */
@@ -1573,6 +1578,12 @@ export interface DoctorCheckResult {
   status: "ok" | "warn" | "fail";
   detail: string;
   fix?: string;
+  /**
+   * An optional tool that is not installed (OpenCode): its status is "ok", since nothing failed,
+   * but the app shows it muted as "optional, not installed" rather than as OK (#670). An older
+   * daemon leaves it out, and the app then shows the plain status.
+   */
+  absent?: true;
 }
 
 /** What `doctor.run` answers. */

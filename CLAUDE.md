@@ -17,7 +17,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `tauri-rust-reviewer` (for changes in `src-tauri`), `test-quality-reviewer` (tests that cannot
   fail) and `security-reviewer` (spawns, paths, secrets, pairing), all read-only; hooks that block wide `git add`, edits of
   generated files, test edits that add `.only`/`test.todo`/`toMatchSnapshot` or an unnoted skip, commits
-  that break `type(scope): text` or the TDD order, and heavy runs outside the slot, and that run
+  that break `type(scope): text` or the TDD order, heavy runs outside the slot, and a worker's full
+  coverage run (#674), and that run
   Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
   `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Rules per
   area live in `.claude/rules/` (ui, protocol, daemon, tests, scripts) and load when a matching file
@@ -50,7 +51,12 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   CI runs: every unit and component test plus the related tests, with the same changed-file gate, or
   the whole suite when a global file changed or a test went away; `--keep-coverage <dir>` keeps the
   lcov there. A change to `package.json`, a `bunfig` or the preload
-  prints a warning: run the full suite then.
+  prints a warning: run the full suite then. A worker session runs it with `--fast` or `--tier`
+  (#674): the guard hook refuses a plain, `--base` or `--pr` run, through the slot or not, since it
+  holds the slot 12 to 25 minutes for what the PR's CI does anyway. `FLIGHTDECK_SLOT_HEAVY="<reason>"`
+  as an env prefix of the run itself lets a real need through (#687: anywhere else in the command it
+  does not count, and a reason has at least 8 characters); `harness:stats` counts the refusals and
+  the overrides.
 - Tests by tier (#261, computed from each test's content): `unit`, `component` (the DOM), `integration`
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
   `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
@@ -64,6 +70,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
+  A worker session runs it over at most 20 test files (#674): more is refused, by the guard hook
+  for `--tests` and by the script for the tests it picks, with the same override.
 - Sonar: SonarCloud Code Analysis on the PR is the only Sonar check (#283); there is no local copy
   to run before a push. `// NOSONAR: <reason>` on the flagged line suppresses a reviewed false
   positive there. `sonar-project.properties` keeps SonarCloud's coverage on exactly the files of

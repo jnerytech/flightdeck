@@ -7,7 +7,7 @@ import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { runCli } from "../../daemon/src/main.ts";
 import { FrameClient } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
+import { fakeAssistant, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
 import { waiter } from "./wait.ts";
 
@@ -130,9 +130,13 @@ async function daemonWithProject(hostName: string, options: { projects?: boolean
 }
 
 /** The app on a daemon with a project, on its Times screen. */
-async function open(options: { projects?: boolean } = {}) {
+async function open(
+  options: { projects?: boolean; assistant?: ReturnType<typeof fakeAssistant> } = {},
+) {
   const d = await daemonWithProject("pc", options);
-  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+  const mem = memoryPlatform();
+  if (options.assistant) mem.platform.assistant = options.assistant.assistant;
+  const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   // The teams are the subject: the dependency check the app starts on connect would run the real programs' versions.
   store.checkHealth = async () => {};
@@ -352,7 +356,8 @@ describe("times-ui: the teams of a host", () => {
       );
     });
     await click("Trocar a persona de t3 · executora 1", row("t3"));
-    await settle(() => (row("t3")?.textContent ?? "").includes("qa"));
+    // The persona shows by its name, not its id (#101).
+    await settle(() => (row("t3")?.textContent ?? "").includes("QA / testes"));
     const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
     expect(members.find((m) => m.name === "t3 · executora 1")?.persona).toBe("qa");
   });
@@ -566,9 +571,10 @@ describe("times-ui: the teams of a host", () => {
       // One grid for every row: the name and chips, then a column of the same width on the right.
       expect(classes(member.querySelector("[data-slot='member-head']"))).toContain("member-head");
       expect(classes(member.querySelector("[data-slot='member-end']"))).toContain("member-end");
-      // The persona row: a select of a fixed width and two outline buttons of the same height.
+      // The persona row: a select of a fixed width and two outline buttons of the same height, on
+      // the shared field row, lined up by their bottom edges (#101).
       expect(classes(member.querySelector("[data-slot='member-persona']"))).toContain(
-        "member-persona",
+        "field-row-end",
       );
       expect(classes(member.querySelector("[data-slot='persona-field']"))).toContain(
         "persona-field",
@@ -604,5 +610,59 @@ describe("times-ui: the teams of a host", () => {
       name: "card",
       projectId: project?.id,
     });
+  });
+});
+
+describe("times-ui: the wand on the goal of a new team (issue #160)", () => {
+  const answer = {
+    model: "claude-haiku-5-5",
+    provider: "anthropic" as const,
+    usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    stopReason: "end_turn" as const,
+    notices: [] as string[],
+  };
+  const assistantWith = async (configured = true) => {
+    const fake = fakeAssistant({
+      run: () => ({ ...answer, text: "Rever o fluxo de login; pronto quando os testes passarem." }),
+    });
+    if (configured) await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    return fake;
+  };
+  const configure = async (store: InstanceType<typeof AppStore>) => {
+    store.assistant.setPrefs({ provider: "anthropic" });
+    await store.assistant.refreshKeys();
+  };
+
+  test("the goal is improved, the preview is accepted into the field, and no team is made by it", async () => {
+    const fake = await assistantWith();
+    const { store, teams } = await open({ assistant: fake });
+    await configure(store);
+    await click("Novo time");
+    expect(
+      (screen.queryByRole("button", { name: "Escreva algo primeiro" }) as HTMLButtonElement | null)
+        ?.disabled,
+    ).toBe(true);
+    await change("Objetivo", "revisar login");
+    await click("Melhorar com IA");
+    await settle(() => screen.queryByRole("dialog", { name: "Sugestão da IA" }) !== null);
+    expect(JSON.stringify(fake.calls.filter((c) => c[0] === "run").at(-1)?.[1])).toContain(
+      "coordinator who splits the work",
+    );
+    await click("Aceitar");
+    expect((screen.queryByLabelText("Objetivo") as HTMLTextAreaElement).value).toBe(
+      "Rever o fluxo de login; pronto quando os testes passarem.",
+    );
+    expect(await teams()).toEqual([]);
+    expect(screen.queryByRole("button", { name: "Criar e iniciar" })).not.toBeNull();
+  });
+
+  test("with no provider the wand opens Settings, Assistant", async () => {
+    const fake = await assistantWith(false);
+    const { store } = await open({ assistant: fake });
+    await click("Novo time");
+    await change("Objetivo", "revisar login");
+    await click("Melhorar com IA");
+    expect(store.router.current).toEqual({ name: "settings", section: "assistant" });
+    expect(fake.calls.filter((c) => c[0] === "run")).toHaveLength(0);
   });
 });

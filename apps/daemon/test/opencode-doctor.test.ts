@@ -20,6 +20,9 @@ describe("opencode-doctor", () => {
       name: "opencode",
       status: "ok",
       detail: "OpenCode is not installed (optional)",
+      // An optional tool that is not there: nothing failed and nothing is to do, but it is not
+      // "OK" either; the app shows it muted (#670).
+      absent: true,
     });
   });
 

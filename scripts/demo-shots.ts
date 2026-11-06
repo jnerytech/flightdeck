@@ -6,7 +6,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { type BrowserContext, chromium, type Page } from "playwright-core";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
@@ -14,29 +14,41 @@ import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
 import {
-  type Baseline,
   type Finding,
-  findingKey,
+  GAP_BOXES,
   GAPS,
-  judge,
   KEY_REGIONS,
   layoutFindings,
-  loadBaseline,
+  loadCounts,
+  type Ratchet,
+  RESPONSIVE,
+  RESPONSIVE_RULES,
+  ratchetScreen,
   SPACING,
   SPACING_RULES,
+  waitForStable,
 } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
+import { narrowSizes } from "./lib/shots-narrow.ts";
 import { pickVariants } from "./lib/shots-variants.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
 /**
- * The spacing guard's baseline (#588): the findings each print had when the guard came in, keyed by
- * rule, "theme lang print" and data-slot path. A new one fails; one that is gone must leave the file,
- * so fixes only push it down. Without the file, the findings are only written down.
+ * The spacing guard's baseline (#588): how many findings each print had when the guard came in, per
+ * rule, "theme lang print" and data-slot path with no numbers (#641). More than its count fails;
+ * fewer must lower the count, so fixes only push it down. Without the file, the findings are only
+ * written down (spacing-findings.json, and each one by its numbered path in
+ * spacing-findings-occurrences.json).
  */
 export const SPACING_BASELINE = resolve(import.meta.dir, "../apps/desktop/spacing-baseline.json");
+/**
+ * The narrow-window guard's baseline (#641), the same way: rule, "theme lang WxH print" and path
+ * with no numbers (responsive-findings.json, responsive-findings-occurrences.json).
+ * The dark prints re-measure the pages of NARROW_SHOTS at each of NARROW_SIZES.
+ */
+export const NARROW_BASELINE = resolve(import.meta.dir, "../apps/desktop/responsive-baseline.json");
 
 interface Shot {
   name: string;
@@ -487,6 +499,8 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     { name: "custos", route: { name: "costs" } },
+    // Issue #151: the Activity board, its columns and cards (axe checks it in both themes).
+    { name: "atividade", route: { name: "activity" } },
     // Phase 36: the ROI card of the web project, and the project and people tables of Costs.
     {
       name: "roi-cartao",
@@ -817,7 +831,9 @@ interface PrintSetup {
   visual: VisualMode;
   log: (msg: string) => void;
   /** The spacing guard's ratchet (#588): its baseline, and what this run saw and found gone. */
-  spacing: { baseline: Baseline | null; seen: Record<string, string>; gone: string[] };
+  spacing: Ratchet;
+  /** The narrow-window guard's ratchet (#641). */
+  narrow: Ratchet;
 }
 
 /** One print and its checks (theme, layout, accessibility); what is wrong goes to `problems`. */
@@ -827,7 +843,7 @@ async function printShot(
   setup: PrintSetup,
   problems: string[],
 ): Promise<void> {
-  const { url, theme, lang, dir, visual, log, spacing } = setup;
+  const { url, theme, lang, dir, visual, log, spacing, narrow } = setup;
   const page = await context.newPage();
   page.on("pageerror", (error) => log(`erro na página ${shot.name} ${page.url()}: ${error.stack}`));
   // The storage is the context's: a print with no clients clears what an earlier one kept.
@@ -890,10 +906,7 @@ async function printShot(
   // The spacing guard (#588): judged against its own baseline, which only goes down.
   const screen = `${theme} ${lang} ${shot.name}`;
   const spaced = layout.filter((finding) => SPACING_RULES.includes(finding.rule));
-  for (const finding of spaced) spacing.seen[findingKey(screen, finding)] = finding.detail;
-  const verdict = judge(screen, spaced, spacing.baseline);
-  problems.push(...verdict.failures);
-  spacing.gone.push(...verdict.fixed);
+  problems.push(...ratchetScreen(screen, spaced, spacing));
   // The same screen, checked for accessibility: serious and critical violations fail.
   await page.addScriptTag({ path: AXE });
   const found = await page.evaluate(
@@ -912,6 +925,19 @@ async function printShot(
   for (const violation of blocking(found)) {
     problems.push(describeViolation(`${theme} ${lang} ${shot.name}`, violation));
   }
+  // Narrow windows (#641): the same page resized, judged against its own baseline. The contract
+  // rules stay at 1280: the page scrolling sideways is overflow-x here, a finding with a baseline.
+  for (const size of narrowSizes(theme, shot.name)) {
+    await page.setViewportSize(size);
+    await page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES });
+    const at = `${size.width}x${size.height}`;
+    await page.screenshot({
+      path: join(SHOTS_DIR, `narrow-${theme}-${lang}`, `${shot.name}@${at}.png`),
+    });
+    const found: Finding[] = await page.evaluate(layoutFindings, { responsive: RESPONSIVE });
+    const kept = found.filter((finding) => RESPONSIVE_RULES.includes(finding.rule));
+    problems.push(...ratchetScreen(`${theme} ${lang} ${at} ${shot.name}`, kept, narrow));
+  }
   await page.close();
 }
 
@@ -929,15 +955,23 @@ export async function takeShots(
     chromium.launch({ ...attempt, headless: true, env }),
   );
   const problems: string[] = [];
-  const spacingBaseline = loadBaseline(() =>
-    existsSync(SPACING_BASELINE) ? readFileSync(SPACING_BASELINE, "utf8") : null,
-  );
-  const spacingSeen: Record<string, string> = {};
-  const spacingGone: string[] = [];
+  const ratchet = (file: string): Ratchet => ({
+    baseline: loadCounts(() => (existsSync(file) ? readFileSync(file, "utf8") : null)),
+    seen: {},
+    occurrences: {},
+    gone: [],
+  });
+  const spacing = ratchet(SPACING_BASELINE);
+  const narrow = ratchet(NARROW_BASELINE);
+  const ratchets: Array<[file: string, findings: string, ratchet: Ratchet]> = [
+    [SPACING_BASELINE, "spacing-findings", spacing],
+    [NARROW_BASELINE, "responsive-findings", narrow],
+  ];
   try {
     await inSequence(variants, async ({ theme, lang }) => {
       const dir = join(SHOTS_DIR, `${theme}-${lang}`);
       mkdirSync(dir, { recursive: true });
+      mkdirSync(join(SHOTS_DIR, `narrow-${theme}-${lang}`), { recursive: true });
       // For the comparison: the same locale, zone and scale on every machine.
       const context = await browser.newContext({
         viewport: { width: 1280, height: 800 },
@@ -963,7 +997,8 @@ export async function takeShots(
               dir,
               visual,
               log,
-              spacing: { baseline: spacingBaseline, seen: spacingSeen, gone: spacingGone },
+              spacing,
+              narrow,
             },
             problems,
           ),
@@ -976,13 +1011,22 @@ export async function takeShots(
     // What the run saw, for the baseline (the screenshots folder is the CI job's artifact), even
     // when a print crashed or timed out.
     mkdirSync(SHOTS_DIR, { recursive: true });
-    writeFileSync(join(SHOTS_DIR, "spacing-findings.json"), JSON.stringify(spacingSeen, null, 2));
-    log(`spacing guard: ${Object.keys(spacingSeen).length} findings`);
+    // The counts are the baseline's format; the occurrences name each finding for a person.
+    for (const [, findings, { seen, occurrences }] of ratchets) {
+      writeFileSync(join(SHOTS_DIR, `${findings}.json`), JSON.stringify(seen, null, 2));
+      writeFileSync(
+        join(SHOTS_DIR, `${findings}-occurrences.json`),
+        JSON.stringify(occurrences, null, 2),
+      );
+      log(`${findings}: ${Object.keys(occurrences).length} findings`);
+    }
   }
-  if (spacingGone.length > 0) {
-    problems.push(
-      `spacing-baseline.json holds findings that are gone: remove\n${spacingGone.join("\n")}`,
-    );
+  for (const [file, , { gone }] of ratchets) {
+    if (gone.length > 0) {
+      problems.push(
+        `${basename(file)} holds more findings than this run saw: lower or remove\n${gone.join("\n")}`,
+      );
+    }
   }
   if (problems.length > 0) {
     throw new Error(

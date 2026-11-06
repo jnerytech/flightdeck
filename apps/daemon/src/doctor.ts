@@ -52,6 +52,8 @@ export interface DoctorCheck {
   detail: string;
   /** What to run; absent when the check passed. */
   fix?: string;
+  /** An optional tool that is not installed: no fault and nothing to do, shown muted (#670). */
+  absent?: true;
 }
 
 const check = (
@@ -83,7 +85,10 @@ export function opencodeCheck(state: OpenCodeState): DoctorCheck {
           `OpenCode is installed (${found}) but turned off on this host`,
           'set "opencode": { "enabled": true } in the host config, then restart the daemon',
         )
-      : check("opencode", "opencode", "ok", "OpenCode is not installed (optional)");
+      : {
+          ...check("opencode", "opencode", "ok", "OpenCode is not installed (optional)"),
+          absent: true,
+        };
   }
   if (!info?.available) {
     return check(

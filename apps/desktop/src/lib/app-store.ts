@@ -82,6 +82,7 @@ import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { BoardWidth } from "./board-select.ts";
+import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { budgetLabel } from "./budgets.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
@@ -660,6 +661,9 @@ export interface GateRef {
   cardId: string;
 }
 
+/** Where the Activity board keeps whether it shows its Idle column. */
+const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";
+
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
   try {
@@ -670,8 +674,22 @@ function storedWorkspace(storage: Platform["storage"]): unknown {
 }
 
 /** Every open permission request of every host, oldest first. */
+/** The parts of the state the requests waiting for the person are made of. */
+export type NeedsYouState = Pick<
+  AppState,
+  | "cards"
+  | "externalRequests"
+  | "externals"
+  | "hosts"
+  | "meta"
+  | "names"
+  | "personas"
+  | "runs"
+  | "vaultApprovals"
+>;
+
 /** `t`: the dictionaries, so a team session is named by its persona (#101); without, as before. */
-export function needsYou(state: AppState, t?: T): PendingItem[] {
+export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
   const requests: PendingItem[] = state.hosts.flatMap((host) => {
     const names = state.names?.[host.id] ?? [];
     const label = (id: string, metaName: string | null | undefined, createdName?: string | null) =>
@@ -1687,6 +1705,15 @@ export class AppStore {
     saveTreeFolded(this.platform.storage, folded);
   }
 
+  /** Whether the Activity board shows its Idle column; kept across starts. */
+  activityIdle(): boolean {
+    return this.platform.storage.getItem(ACTIVITY_IDLE_KEY) === "true";
+  }
+
+  setActivityIdle(on: boolean): void {
+    this.platform.storage.setItem(ACTIVITY_IDLE_KEY, String(on));
+  }
+
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {
     const host = this.state.hosts.find((h) => h.id === hostId);
@@ -1749,6 +1776,16 @@ export class AppStore {
     if (!now.canSwitch) return false;
     this.setUiChoice(hostId, now.mode === "simple" ? "full" : "simple");
     return true;
+  }
+
+  /** The board last opened on a host, kept between runs (#669); `null` when none. */
+  lastBoard(hostId: string): string | null {
+    return loadLastBoards(this.platform.storage)[hostId] ?? null;
+  }
+
+  /** Keeps the board just opened on a host, for the sidebar's Board item (#669). */
+  rememberBoard(hostId: string, projectId: string): void {
+    saveLastBoard(this.platform.storage, hostId, projectId);
   }
 
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */

@@ -952,6 +952,17 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
 - **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
   cache e o modelo principal com o que ele custou.
+- **Atividade** (na barra lateral, depois de Custos; `g a`, ou **Ir para Atividade** na paleta)
+  mostra todas as sessões ao vivo de todos os hosts em quatro colunas: **Precisa de você** (a
+  sessão está pedindo algo), **Trabalhando**, **Concluídas** (um turno terminou nas últimas 2 horas
+  e você ainda não abriu a sessão) e **Ociosas**, que fica escondida até você marcar **Mostrar
+  sessões ociosas** (a escolha é guardada). Um card diz a sessão, o projeto, o host e a persona, o
+  último pedido e há quanto tempo mudou; a mudança mais recente vem primeiro. Um card que está
+  pedindo mostra o pedido com **Aprovar** e **Negar** (um de risco alto se aprova segurando o
+  botão; uma pergunta para você só abre a sessão). Um clique abre a sessão; Ctrl+clique ou o botão
+  do meio a abre numa aba nova. A busca e as listas de Host, Projeto e Persona reduzem os cards, e a
+  contagem diz "n de m mostradas". Quando uma sessão muda de estado, o card desliza para a outra
+  coluna (não com movimento reduzido). O quadro rola dentro de si. O modo simples não tem esta tela.
 
 ## Board
 
@@ -2321,6 +2332,8 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   `flightdeck · revisor · 3`.
   - Sem persona, a persona é `geral`.
   - A sessão de um card leva o número do card: `flightdeck · autor · card 42`.
+  - O app mostra o nome no idioma dele, com o nome da persona: `flightdeck · Revisor de código · 3`.
+    O alias não muda.
 - **Toda sessão ganha também um apelido:** `projeto-persona-número`, por exemplo
   `flightdeck-revisor-3`. O apelido endereça a sessão, sozinho ou como `host/apelido` entre hosts.
 - **Um número nunca é reaproveitado**, nem depois que a sessão some.
@@ -3098,7 +3111,7 @@ Configurações) e, depois de Enter, **Histórico**.
 
 `?` (fora dos campos de texto) abre uma folha com todos os atalhos, por grupo. Os atalhos de ir
 para pressionam `g` e depois uma letra em até um segundo e meio: `g s` Sessões, `g n` Precisa de
-você, `g p` Projetos, `g c` Custos, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
+você, `g p` Projetos, `g c` Custos, `g a` Atividade, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
 `Alt+←`/`Alt+→` voltar e avançar, `Alt+Shift+C` próximo cliente, `Ctrl+T`/`W`/`Tab`/`1…9` abas,
 `j`/`k`/`Enter` nas listas e `A`/`N` em um pedido. Nenhum dispara enquanto você digita em um campo.
 

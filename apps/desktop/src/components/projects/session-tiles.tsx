@@ -1,6 +1,8 @@
 import { CornerDownLeft } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { ApprovalActions } from "@/components/approval/approval-actions";
+import { useWand } from "@/components/assistant/use-wand";
+import { WandButton, WandPanel } from "@/components/assistant/wand-controls";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { StatusText } from "@/components/status/status-text";
@@ -95,6 +97,18 @@ function SessionTile(
     if (caret.current !== null) box.current?.setSelectionRange(caret.current, caret.current);
     caret.current = null;
   }, []);
+  // The AI wand of the message box (phase 40): it improves the text and never sends it.
+  const wand = useWand(
+    {
+      controller: store.assistant,
+      kind: "prompt",
+      fieldHostId: hostId,
+      ...(row.cwd ? { cwd: row.cwd } : {}),
+      openSettings: () => store.router.push({ name: "settings", section: "assistant" }),
+    },
+    text,
+    setText,
+  );
   const send = () => {
     const value = text.trim();
     if (!value) return undefined;
@@ -102,6 +116,7 @@ function SessionTile(
     return store.sendTo(hostId, sessionId, value);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (wand?.onKeyDown(e)) return;
     if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
@@ -155,7 +170,9 @@ function SessionTile(
           onOpen={props.onOpen}
         />
       )}
+      {wand && <WandPanel wand={wand} t={t} />}
       <div data-slot="composer-card" className="composer-card">
+        {wand && <WandButton wand={wand} t={t} />}
         <Textarea
           ref={box}
           aria-label={t("tiles.message", { name: row.title })}

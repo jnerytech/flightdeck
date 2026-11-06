@@ -228,6 +228,8 @@ export function FieldRow(
     className?: string;
     /** `end` lines the controls up by their bottom edges (fields with labels above them). */
     align?: "end";
+    /** The row's `data-slot`, for a screen that names its part. */
+    slot?: string;
   }>,
 ) {
   const id = useId();
@@ -235,7 +237,10 @@ export function FieldRow(
   return (
     <FieldRowContext.Provider value={{ id, setReason }}>
       <div className="field-row-wrap">
-        <div className={cn("field-row", props.align === "end" && "field-row-end", props.className)}>
+        <div
+          data-slot={props.slot}
+          className={cn("field-row", props.align === "end" && "field-row-end", props.className)}
+        >
           {props.children}
         </div>
         {reason && (

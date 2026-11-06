@@ -31,11 +31,12 @@ const TEST_MARKERS = [
   { pattern: /\.toMatchSnapshot\(/g, text: "toMatchSnapshot(" },
 ];
 
+/** Heredoc bodies, which are data, not commands. */
+const HEREDOC_BODY = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2\s*(?=\n|$)/g;
+
 /** The command without heredoc bodies and quoted text, which are data, not commands. */
 function commandWords(command: string): string {
-  return command
-    .replace(/<<-?\s*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2\s*(?=\n|$)/g, "")
-    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
+  return command.replace(HEREDOC_BODY, "").replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
 }
 
 /** The subcommand and its arguments of each git invocation in a (possibly chained) command. */
@@ -389,6 +390,118 @@ export function slotViolation(
     return `${heavy} is heavy: run it through the slot, \`bun run slot -- ${heavy}\` (CLAUDE.md: two heavy runs at once make the timing tests flaky).`;
   }
   return null;
+}
+
+/** The most test files a worker's coverage:funcs may run (#674). */
+export const HEAVY_TESTS = 20;
+
+/** The forms a worker session runs instead of a full coverage run (#674). */
+export const HEAVY_ALLOWED =
+  "`bun run test:related -- --fast --tier unit,component`; each touched test with `bun --config=bunfig.area.toml test <file>`; or `bun run coverage:funcs <file> --tests <a few tests>`";
+
+/** Whether an override's value is a reason, not a bare switch such as 1 or true (#674). */
+export function heavyReasonGiven(value: string | undefined): boolean {
+  // A reason is a few words: 1, true, no, x or - are placeholders (#687).
+  return (value ?? "").trim().length >= 8;
+}
+
+/** The command's segments, split at ; & | and newlines outside quotes, without heredoc bodies. */
+function rawSegments(command: string): string[] {
+  const text = command.replace(HEREDOC_BODY, "");
+  const segments: string[] = [];
+  let current = "";
+  let quote = "";
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i] as string;
+    // A backslash escapes the next character, except inside single quotes.
+    if (quote !== "'" && ch === "\\") {
+      current += ch + (text[++i] ?? "");
+    } else if (quote) {
+      current += ch;
+      if (ch === quote) quote = "";
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      current += ch;
+    } else if (";&|\n".includes(ch)) {
+      segments.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  return [...segments, current];
+}
+
+/** One `NAME=value` env assignment at the start of the text, with the value unquoted (#687). */
+const ASSIGNMENT = /^([A-Za-z_]\w*)=(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|(\S*))(?:\s+|$)/;
+
+/** FLIGHTDECK_SLOT_HEAVY among the env assignments in front of a segment's command, or undefined. */
+function prefixOverride(segment: string): string | undefined {
+  let rest = segment.trimStart().replace(/^env\s+/, "");
+  for (let found = ASSIGNMENT.exec(rest); found; found = ASSIGNMENT.exec(rest)) {
+    if (found[1] === "FLIGHTDECK_SLOT_HEAVY") return found[2] ?? found[3] ?? found[4] ?? "";
+    rest = rest.slice(found[0].length);
+  }
+  return undefined;
+}
+
+/**
+ * The full coverage run a command starts, through the slot or not, and the override in front of
+ * that run's own segment (#687: an override elsewhere in the command does not count), or null.
+ */
+function heavyRun(command: string): { what: string; override: string | undefined } | null {
+  for (const segment of rawSegments(command)) {
+    const words = commandWords(segment).trim().split(/\s+/);
+    for (let i = 0; i < words.length; i++) {
+      const what = words[i] === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null;
+      if (what) return { what, override: prefixOverride(segment) };
+    }
+  }
+  return null;
+}
+
+/** Whether the script at `at` (with the words after it as its arguments) is a full coverage run. */
+function heavyScript(words: string[], at: number): string | null {
+  const args = words.slice(at + 1);
+  if (words[at] === "test:related") {
+    const light = args.some((a) => a === "--fast" || a === "--tier" || a.startsWith("--tier="));
+    return args.includes("--pr") || !light
+      ? "a plain, --base or --pr `bun run test:related`"
+      : null;
+  }
+  if (words[at] !== "coverage:funcs") return null;
+  const from = args.indexOf("--tests");
+  const given = from < 0 ? 0 : args.slice(from + 1).filter((a) => !a.startsWith("-")).length;
+  return given > HEAVY_TESTS ? `\`bun run coverage:funcs\` over ${given} test files` : null;
+}
+
+/** The refusal of a full coverage run (#674), shared by the hook and coverage:funcs. */
+export function heavyRunMessage(what: string): string {
+  return `${what} holds the slot 12 to 25 minutes for the full coverage run that the PR's CI does anyway (#674). Run instead: ${HEAVY_ALLOWED}. For a real need, put FLIGHTDECK_SLOT_HEAVY="<reason>" in front of the command.`;
+}
+
+/**
+ * Why a worker session's full coverage run is refused (#674): a plain, `--base` or `--pr`
+ * `test:related`, or a `coverage:funcs` over more than 20 given test files, holds the shared slot
+ * for 12 to 25 minutes for what the PR's CI does anyway. The coordinator
+ * (`FLIGHTDECK_COORDINATOR=1` in the hook's environment) and an override with a reason pass.
+ */
+export function heavyRunViolation(
+  command: string,
+  env: Record<string, string | undefined>,
+): string | null {
+  if (env.FLIGHTDECK_COORDINATOR) return null;
+  const heavy = heavyRun(command);
+  if (!heavy) return null;
+  if (heavy.override === undefined) return heavyRunMessage(heavy.what);
+  if (heavyReasonGiven(heavy.override)) return null;
+  return `FLIGHTDECK_SLOT_HEAVY needs a reason: give the reason as the value. ${heavyRunMessage(heavy.what)}`;
+}
+
+/** Whether a refused heavy run goes ahead on an override that gives its reason (#674). */
+export function heavyRunWaived(command: string): boolean {
+  const heavy = heavyRun(command);
+  return heavy !== null && heavy.override !== undefined && heavyReasonGiven(heavy.override);
 }
 
 /** The package scripts that run only through the slot (CLAUDE.md). */

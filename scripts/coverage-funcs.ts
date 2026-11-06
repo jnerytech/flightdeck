@@ -8,6 +8,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { logHook } from "../.claude/hooks/log.ts";
 import { formatReport, planCoverageFuncs } from "./lib/coverage-funcs.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -30,7 +31,10 @@ const plan = planCoverageFuncs({
   },
   readFile: (path) => readFileSync(resolve(ROOT, path), "utf8"),
   out,
+  env: process.env,
 });
+// #674: harness:stats counts the refusal (or the run let through on a reason) with the hook's.
+if (plan.slotHeavy) logHook("coverage-funcs", "slot-heavy", plan.slotHeavy);
 (plan.code === 0 ? console.log : console.error)(plan.output);
 let code = plan.code;
 if (plan.command) {

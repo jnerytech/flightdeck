@@ -329,6 +329,8 @@ export const BoardView = memo(function BoardView(props: {
       if (board) setProject(board.project);
     });
   }, [store, hostId, projectId]);
+  // The sidebar's Board item opens this board next time on this host (#669).
+  useEffect(() => store.rememberBoard(hostId, projectId), [store, hostId, projectId]);
 
   const all = projectCards(state, hostId, projectId);
   // The branch picked in the sidebar tree keeps the cards of that checkout (of this project only).
