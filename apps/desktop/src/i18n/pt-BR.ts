@@ -787,6 +787,39 @@ export const ptBR = {
       'O card "{title}" já começou, então não pode ser excluído. Descarte-o para remover também o worktree e a branch dele.',
     deleteConfirm: "Excluir card",
     discardInstead: "Descartar card",
+    selection: "Seleção",
+    selectedOne: "1 selecionado",
+    selectedCount: "{n} selecionados",
+    hiddenOne: "1 escondido pelo filtro",
+    hiddenCount: "{n} escondidos pelo filtro",
+    moveSelected: "Mover para…",
+    discardSelected: "Descartar…",
+    clearSelection: "Limpar seleção",
+    selectCard: "Selecionar card",
+    deselectCard: "Desmarcar card",
+    selectedCard: "selecionado",
+    stayedOne: "1 card ficou onde estava: {names}",
+    stayed: "{count} cards ficaram onde estavam: {names}",
+    dismiss: "Dispensar",
+    discardOneTitle: "Descartar 1 card?",
+    discardManyTitle: "Descartar {n} cards?",
+    discardOneConfirm: "Descartar 1 card",
+    discardManyConfirm: "Descartar {n} cards",
+    discardStarted:
+      "o worktree e a branch dele vão junto; mudanças não commitadas e commits não enviados são perdidos",
+    discardSession: "a sessão dele é encerrada",
+    discardStartedCount: "{n} destes cards têm trabalho iniciado.",
+    discardFailedOne:
+      "1 card não pôde ser descartado e pode ter ficado parcialmente limpo: {names}",
+    discardFailed:
+      "{count} cards não puderam ser descartados e podem ter ficado parcialmente limpos: {names}",
+    resize: "Redimensionar as colunas",
+    resizeValue: "{n} px",
+    countOne: "1 card",
+    countMany: "{n} cards",
+    countOfMany: "{shown} de {total} cards",
+    noMatches: "Nenhuma correspondência",
+    quickAdd: "Novo card em {column}",
   },
   statusBar: {
     label: "Barra de status",
@@ -917,6 +950,11 @@ export const ptBR = {
     base: "base {name}",
     filter: "Branch: {branch}",
     clear: "Limpar o filtro de branch",
+    projectFilter: "Filtrar projetos",
+    noMatch: "Nenhum projeto combina",
+    projectsAll: "Todos os projetos ({n})",
+    pin: "Fixar {name}",
+    unpin: "Desafixar {name}",
   },
   hub: {
     view: "Visualização",
@@ -2058,6 +2096,8 @@ export const ptBR = {
   common: {
     cancel: "Cancelar",
     close: "Fechar",
+    /** A wide table's frame (#641): it scrolls sideways by itself. */
+    scrollsSideways: "{name}, rola para os lados",
   },
   session: {
     moreActions: "Mais ações",
@@ -3910,6 +3950,15 @@ export const ptBR = {
     workflowsHint: "Os workflows do projeto e suas execuções",
     costsHint: "Quanto as sessões custaram",
     settingsHint: "Pasta, branch base, setup, personas e regras",
+  },
+  /** The Board screen of a host: its projects as cards (#669). */
+  boardLanding: {
+    noCards: "Nenhum card ainda",
+    sessionsNeedYou: { one: "{n} sessão precisa de você", other: "{n} sessões precisam de você" },
+    whatIs:
+      "Um board guarda os cards de um projeto, do backlog ao feito, e as sessões que trabalham neles.",
+    filter: "Filtrar projetos",
+    noMatch: "Nenhum projeto corresponde ao filtro.",
   },
   projectsOverview: {
     title: "Projetos",

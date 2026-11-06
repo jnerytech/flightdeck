@@ -1,4 +1,4 @@
-import type { Card, CostsSummary, Project } from "@flightdeck/protocol";
+import type { BoardColumn, Card, CostsSummary, Project } from "@flightdeck/protocol";
 import type { HubRow } from "./hub.ts";
 
 /** One project as a card of the Projects screen. */
@@ -17,6 +17,8 @@ export interface ProjectCard {
   lastActivity: string | null;
   /** The project's cost over the week, `null` while the host has not answered. */
   costWeekUsd: number | null;
+  /** How many of the project's cards sit in each board column (#669). */
+  columns: Record<BoardColumn, number>;
 }
 
 export interface ProjectCardsInput {
@@ -31,6 +33,19 @@ export interface ProjectCardsInput {
 export type ProjectSort = "activity" | "name" | "cost" | "attention";
 
 const LIVE = new Set(["running", "needs_you"]);
+
+/** How many cards sit in each board column. */
+function countColumns(cards: Card[]): Record<BoardColumn, number> {
+  const counts: Record<BoardColumn, number> = {
+    backlog: 0,
+    in_progress: 0,
+    waiting: 0,
+    review: 0,
+    done: 0,
+  };
+  for (const card of cards) counts[card.column] += 1;
+  return counts;
+}
 
 /** One card per project of every host, from what the app already holds. */
 export function buildProjectCards(input: ProjectCardsInput): ProjectCard[] {
@@ -61,6 +76,7 @@ export function buildProjectCards(input: ProjectCardsInput): ProjectCard[] {
         costWeekUsd: summary
           ? (summary.byProject.find((p) => p.projectKey === projectKey)?.costUsd ?? 0)
           : null,
+        columns: countColumns(cards.map((c) => c.card)),
       };
     }),
   );
@@ -101,4 +117,14 @@ export function sortProjectCards(cards: ProjectCard[], sort: ProjectSort): Proje
           byName(a, b),
       );
   }
+}
+
+/** The Board landing's order (#669): the ones that need you first, then the latest activity. */
+export function boardLandingOrder(cards: ProjectCard[]): ProjectCard[] {
+  return [...cards].sort(
+    (a, b) =>
+      b.needsYou - a.needsYou ||
+      (b.lastActivity ?? "").localeCompare(a.lastActivity ?? "") ||
+      byName(a, b),
+  );
 }

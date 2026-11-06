@@ -149,6 +149,34 @@ const dotSampler: Sampler = (x, y) =>
   Math.hypot(x - DOT_CENTER, y - DOT_CENTER) <= DOT_RADIUS ? RED : null;
 
 /**
+ * One pixel's RGBA: the mean colour of the samples (a 4 x 4 grid) the shape covers, and the share
+ * covered as alpha; null when the shape covers none of it.
+ */
+function pixelOf(sample: Sampler, x: number, y: number): [number, number, number, number] | null {
+  const samples = SUPERSAMPLE * SUPERSAMPLE;
+  const sum = [0, 0, 0];
+  let covered = 0;
+  for (let i = 0; i < samples; i++) {
+    const color = sample(
+      x + ((i % SUPERSAMPLE) + 0.5) / SUPERSAMPLE,
+      y + (Math.floor(i / SUPERSAMPLE) + 0.5) / SUPERSAMPLE,
+    );
+    if (color === null) continue;
+    covered++;
+    sum[0] = (sum[0] ?? 0) + color[0];
+    sum[1] = (sum[1] ?? 0) + color[1];
+    sum[2] = (sum[2] ?? 0) + color[2];
+  }
+  if (covered === 0) return null;
+  return [
+    Math.round((sum[0] ?? 0) / covered),
+    Math.round((sum[1] ?? 0) / covered),
+    Math.round((sum[2] ?? 0) / covered),
+    Math.round((covered * 255) / samples),
+  ];
+}
+
+/**
  * The overlay icon for `count` unread notifications as RGBA bytes, or null for none. By default a
  * red disc with a white ring and the number in white ("9+" past nine); in `dot` mode a small red dot
  * at the bottom-right with no number. Every pixel's alpha is the share of its 4 x 4 samples the
@@ -160,28 +188,10 @@ export function badgeRgba(count: number, mode: BadgeMode = "count"): number[] | 
   if (!Number.isFinite(whole) || whole <= 0) return null;
   const sample = mode === "dot" ? dotSampler : countSampler(whole > 9 ? "9+" : String(whole));
   const rgba = new Array<number>(BADGE_SIZE * BADGE_SIZE * 4).fill(0);
-  const samples = SUPERSAMPLE * SUPERSAMPLE;
   for (let y = 0; y < BADGE_SIZE; y++) {
     for (let x = 0; x < BADGE_SIZE; x++) {
-      const sum = [0, 0, 0];
-      let covered = 0;
-      for (let i = 0; i < samples; i++) {
-        const color = sample(
-          x + ((i % SUPERSAMPLE) + 0.5) / SUPERSAMPLE,
-          y + (Math.floor(i / SUPERSAMPLE) + 0.5) / SUPERSAMPLE,
-        );
-        if (color === null) continue;
-        covered++;
-        sum[0] = (sum[0] ?? 0) + color[0];
-        sum[1] = (sum[1] ?? 0) + color[1];
-        sum[2] = (sum[2] ?? 0) + color[2];
-      }
-      if (covered === 0) continue;
-      const at = (y * BADGE_SIZE + x) * 4;
-      rgba[at] = Math.round((sum[0] ?? 0) / covered);
-      rgba[at + 1] = Math.round((sum[1] ?? 0) / covered);
-      rgba[at + 2] = Math.round((sum[2] ?? 0) / covered);
-      rgba[at + 3] = Math.round((covered * 255) / samples);
+      const pixel = pixelOf(sample, x, y);
+      if (pixel) rgba.splice((y * BADGE_SIZE + x) * 4, 4, ...pixel);
     }
   }
   return rgba;

@@ -221,7 +221,13 @@ export const CardDetail = memo(function CardDetail(props: {
             </>
           )}
         </CardArena>
-        <CardAdjustment store={store} hostId={hostId} cardId={cardId} />
+        <CardAdjustment
+          store={store}
+          hostId={hostId}
+          cardId={cardId}
+          {...(card.worktreePath ? { cwd: card.worktreePath } : {})}
+          onOpenSettings={props.onOpenSettings}
+        />
         <CardRuns runs={card.runs} formatDateTime={(iso) => store.formatDateTime(iso)} />
         {run && (
           <RunTimeline

@@ -277,3 +277,43 @@ describe("assistant-fields: the detail of a card (issue #160)", () => {
     expect(screen.queryAllByRole("button", { name: "Melhorar com IA" }).length).toBe(2);
   });
 });
+
+describe("assistant-fields: the adjustment of a card (issue #160)", () => {
+  test("the adjustment improves with the wand, and only its own button sends it", async () => {
+    const { store, fake, t, cardId } = await cardDetail();
+    const sent: Array<{ type: string; payload: unknown }> = [];
+    const real = store.hostCommand.bind(store);
+    store.hostCommand = (async (hostId, type, payload) => {
+      sent.push({ type, payload });
+      return real(hostId, type, payload);
+    }) as typeof store.hostCommand;
+    await type(t.cardUi.adjustment, "make it faster");
+    const wands = screen.queryAllByRole("button", { name: /with AI/ });
+    expect(wands).toHaveLength(3);
+    await act(async () => {
+      fireEvent.click(wands[2] as HTMLElement);
+    });
+    await settle(() => screen.queryByRole("dialog", { name: "AI suggestion" }) !== null);
+    expect(JSON.stringify(asked(fake).at(-1)?.[1])).toContain("make it faster");
+    await click("Accept");
+    expect(field(t.cardUi.adjustment)?.value).toBe("Sum the items; check the totals.");
+    expect(sent.map((s) => s.type)).not.toContain("card.message");
+    await click(t.cardUi.askAdjustment);
+    expect(sent.find((s) => s.type === "card.message")?.payload).toEqual({
+      cardId,
+      text: "Sum the items; check the totals.",
+    });
+  });
+
+  test("with no provider the adjustment's wand opens Settings, Assistant", async () => {
+    const { store, fake, t } = await cardDetail({ configured: false });
+    await type(t.cardUi.adjustment, "make it faster");
+    const wands = screen.queryAllByRole("button", { name: /with AI/ });
+    expect(wands[2]).toBeDefined();
+    await act(async () => {
+      fireEvent.click(wands[2] as HTMLElement);
+    });
+    expect(store.router.current).toEqual({ name: "settings", section: "assistant" });
+    expect(asked(fake)).toHaveLength(0);
+  });
+});

@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Pin } from "lucide-react";
 import { useState } from "react";
 import { type StateTone, StatusDot } from "@/components/status/status-dot";
 import { cn } from "@/lib/utils";
@@ -6,7 +6,16 @@ import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { TreeNode, TreeProject, WorktreeFilter } from "../../lib/project-tree.ts";
 import type { Route } from "../../lib/router.ts";
-import { pickedIn, TREE_CAP, visibleNodes } from "../../lib/tree-fold.ts";
+import {
+  foldedByDefault,
+  liveTone,
+  PROJECT_CAP,
+  pickedIn,
+  projectKey,
+  shownProjects,
+  TREE_CAP,
+  visibleNodes,
+} from "../../lib/tree-fold.ts";
 
 /** The dictionary's name of a state dot's tone: an error reads as idle, as the sidebar always did. */
 const toneKey = (tone: StateTone): string => {
@@ -49,21 +58,61 @@ export function ProjectTree(props: {
     props.go({ name: "board", host: project.hostId, projectId: project.projectId });
   };
   const [folded, setFolded] = useState<string[]>(() => props.store.treeFolded());
+  const [unfolded, setUnfolded] = useState<string[]>(() => props.store.treeOpened());
+  const [pinned, setPinned] = useState<string[]>(() => props.store.treePinned());
+  const [query, setQuery] = useState("");
+  // The checkouts a project lists past the cap, for this run only.
   const [opened, setOpened] = useState<string[]>([]);
   const flip = (list: string[], key: string) =>
     list.includes(key) ? list.filter((other) => other !== key) : [...list, key];
+  const total = props.tree.length;
+  const active = filter ? `${filter.hostId}/${filter.projectId}` : null;
+  const isFolded = (key: string) =>
+    folded.includes(key) || (foldedByDefault(total, key, active) && !unfolded.includes(key));
+  /** The person's choice wins over the default fold: it is kept for folding and for unfolding. */
   const fold = (key: string, to?: boolean) => {
-    const isFolded = folded.includes(key);
-    if (to !== undefined && to === isFolded) return;
-    const next = flip(folded, key);
-    setFolded(next);
-    props.store.setTreeFolded(next);
+    const now = isFolded(key);
+    if (to !== undefined && to === now) return;
+    const toFold = !now;
+    const nextFolded = toFold ? [...folded, key] : folded.filter((other) => other !== key);
+    const nextUnfolded = toFold
+      ? unfolded.filter((other) => other !== key)
+      : foldedByDefault(total, key, active)
+        ? [...unfolded, key]
+        : unfolded;
+    setFolded(nextFolded);
+    setUnfolded(nextUnfolded);
+    props.store.setTreeFolded(nextFolded);
+    props.store.setTreeOpened(nextUnfolded);
   };
+  const pin = (key: string) => {
+    const next = flip(pinned, key);
+    setPinned(next);
+    props.store.setTreePinned(next);
+  };
+  const projects = shownProjects(props.tree, pinned, query, active);
   return (
     <div data-slot="project-tree" className="project-tree">
-      {props.tree.map((project) => {
-        const key = `${project.hostId}/${project.projectId}`;
-        const isFolded = folded.includes(key);
+      {total > PROJECT_CAP && (
+        <input
+          type="search"
+          aria-label={t("projectTree.projectFilter")}
+          placeholder={t("projectTree.projectFilter")}
+          className="project-tree-filter"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setQuery("");
+          }}
+        />
+      )}
+      {query.trim() !== "" && projects.length === 0 && (
+        <p className="project-tree-none">{t("projectTree.noMatch")}</p>
+      )}
+      {projects.map((project) => {
+        const key = projectKey(project);
+        const closed = isFolded(key);
+        const live = closed ? liveTone(project) : null;
         const pickedHere = pickedIn(filter, project.hostId, project.projectId);
         const picked = (node: TreeNode) => pickedHere !== null && pickedHere.path === node.path;
         const expanded = opened.includes(key);
@@ -71,30 +120,47 @@ export function ProjectTree(props: {
         const rest = project.nodes.length - nodes.length;
         return (
           <div key={key} className="project-tree-project">
-            <button
-              type="button"
-              aria-expanded={!isFolded}
-              className="project-tree-name"
-              onClick={() => fold(key)}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowLeft") fold(key, true);
-                else if (e.key === "ArrowRight") fold(key, false);
-              }}
-            >
-              <ChevronDown
-                aria-hidden="true"
-                className={cn("size-3 transition-transform duration-150", isFolded && "-rotate-90")}
-              />
-              {project.name}
-              {isFolded && pickedHere && (
-                <Check
-                  role="img"
-                  aria-label={t("projectTree.pickedFolded", { branch: pickedHere.branch })}
-                  className="size-3"
+            <div className="project-tree-head">
+              <button
+                type="button"
+                data-project={project.name}
+                aria-expanded={!closed}
+                className="project-tree-name"
+                onClick={() => fold(key)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowLeft") fold(key, true);
+                  else if (e.key === "ArrowRight") fold(key, false);
+                }}
+              >
+                <ChevronDown
+                  aria-hidden="true"
+                  className={cn("size-3 transition-transform duration-150", closed && "-rotate-90")}
                 />
-              )}
-            </button>
-            {!isFolded && (
+                {project.name}
+                {closed && pickedHere && (
+                  <Check
+                    role="img"
+                    aria-label={t("projectTree.pickedFolded", { branch: pickedHere.branch })}
+                    className="size-3"
+                  />
+                )}
+                {live && (
+                  <StatusDot tone={live} label={t(`hub.stateDots.${toneKey(live)}` as Key)} />
+                )}
+              </button>
+              <button
+                type="button"
+                aria-pressed={pinned.includes(key)}
+                aria-label={t(pinned.includes(key) ? "projectTree.unpin" : "projectTree.pin", {
+                  name: project.name,
+                })}
+                className={cn("project-tree-pin", pinned.includes(key) && "project-tree-pinned")}
+                onClick={() => pin(key)}
+              >
+                <Pin aria-hidden="true" className="size-3" />
+              </button>
+            </div>
+            {!closed && (
               <ul aria-label={t("projectTree.list", { name: project.name })}>
                 {nodes.map((node) => {
                   const current = same(filter, {
@@ -158,6 +224,15 @@ export function ProjectTree(props: {
           </div>
         );
       })}
+      {total > PROJECT_CAP && (
+        <button
+          type="button"
+          className="project-tree-more"
+          onClick={() => props.go({ name: "all-projects" })}
+        >
+          {t("projectTree.projectsAll", { n: total })}
+        </button>
+      )}
     </div>
   );
 }
