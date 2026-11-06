@@ -39,6 +39,7 @@ import type {
   SessionMeta,
   SessionNameInfo,
   SessionRecap,
+  SessionRuntime,
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
@@ -181,6 +182,8 @@ export interface SidebarSession {
   status: SessionStatus;
   pendingPermissions: PendingPermission[];
   updatedAt: string;
+  /** Phase 39: set for an OpenCode session only. */
+  runtime?: SessionRuntime;
 }
 
 export interface HostView extends HostConfig {
@@ -385,6 +388,7 @@ export type HostCommandType = Extract<
   | `pr.${string}`
   | "files.sessions"
   | "fs.dirs"
+  | "runtime.models"
   | "fs.files"
   | "doctor.run"
   | "projects.scan"
@@ -652,6 +656,8 @@ export const HISTORY_PAGE = 50;
 
 /** Preference stored in plain settings; anything but "false" means on. */
 export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
+/** Where the return on cost card's open or folded state is kept. */
+const ROI_OPEN_KEY = "flightdeck.roiOpen";
 export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
 const PALETTE_RECENTS_KEPT = 12;
@@ -943,6 +949,15 @@ export class AppStore {
 
   saveHubView(view: HubView): void {
     saveHubView(this.platform.storage, view);
+  }
+
+  /** Whether the return on cost card opens unfolded (issue #178): folded unless the person opened it. */
+  roiOpen(): boolean {
+    return this.platform.storage.getItem(ROI_OPEN_KEY) === "true";
+  }
+
+  saveRoiOpen(open: boolean): void {
+    this.platform.storage.setItem(ROI_OPEN_KEY, String(open));
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -2479,6 +2494,7 @@ export class AppStore {
       status: summary.status,
       pendingPermissions: summary.pendingPermissions,
       updatedAt: summary.updatedAt,
+      ...(summary.runtime ? { runtime: summary.runtime } : {}),
     };
     const prev = host.sessions.find((s) => s.id === next.id);
     this.updateHost(hostId, (h) => ({

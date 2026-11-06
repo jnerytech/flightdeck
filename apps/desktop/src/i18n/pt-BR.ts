@@ -48,6 +48,7 @@ export const ptBR = {
       mcp: "Ferramentas do time",
 
       linger: "Iniciar no boot",
+      opencode: "OpenCode",
     },
     steps: {
       config: "Rode flightdeckd setup no host para refazer a configuração.",
@@ -64,6 +65,8 @@ export const ptBR = {
 
       linger:
         "No host, rode sudo loginctl enable-linger $USER (no WSL, ligue também o systemd em /etc/wsl.conf).",
+      opencode:
+        'O OpenCode é opcional. Para usar, ponha "opencode": { "enabled": true } na configuração do host e reinicie o daemon; a seção OpenCode do manual explica cada motivo.',
     },
   },
   findProjects: {
@@ -256,6 +259,7 @@ export const ptBR = {
       derivation: "Como foi calculado",
     },
     title: "Retorno sobre o custo",
+    details: "Detalhes",
     period: "Período",
     period7: "7 dias",
     period30: "30 dias",
@@ -309,6 +313,7 @@ export const ptBR = {
     settings: "Horas e valor da hora",
     defaultHours: "Horas por card (padrão deste projeto)",
     saveHours: "Salvar horas",
+    cardHoursInvalid: "Digite um número de horas de 0 a 1000, ou deixe vazio.",
     cardHoursSave: "Salvar as horas do card",
     projectRate: "Valor da hora deste projeto",
     saveRate: "Salvar valor",
@@ -331,6 +336,7 @@ export const ptBR = {
       "Papéis de engenharia que o Claude assume numa sessão, do host {host}, dos projetos e do app.",
     apply: {
       trigger: "Persona",
+      none: "Nenhuma",
       active: "Persona ativa",
       label: "Aplicar nesta sessão (como instrução)",
       apply: "Aplicar",
@@ -1148,6 +1154,7 @@ export const ptBR = {
       "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
   },
   daemonFeature: {
+    assistant: "o assistente de IA",
     github: "o login do GitHub",
     boardsync: "a sincronização do quadro",
     roi: "a visão de retorno",
@@ -1651,6 +1658,31 @@ export const ptBR = {
     cwd_outside_roots:
       "A pasta {cwd} está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
     session_not_found: "A sessão {id} não existe neste host.",
+    runtime_unavailable: "O OpenCode não está disponível neste host.",
+    runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
+    opencode_unsafe_global:
+      "O OpenCode {version} não pode rodar aqui: a configuração global ou do sistema carrega código ou servidores que o Flightdeck não permite ({found}).",
+    opencode_config_outranks:
+      "OpenCode {version}: {what} passaria por cima das perguntas do Flightdeck, então a sessão não foi iniciada.",
+    opencode_saved_rules:
+      'O OpenCode {version} tem regras "sempre" salvas para esta pasta, que pulariam as perguntas do Flightdeck: {rules}. Remova com: {commands}',
+    opencode_preflight_failed:
+      "O OpenCode {version} não conseguiu verificar esta pasta. Tente de novo ou rode flightdeckd doctor.",
+    opencode_changed:
+      "O OpenCode mudou desde que o daemon o verificou. Reinicie o daemon, ou rode flightdeckd doctor, para verificar de novo.",
+    opencode_permissions_overridden:
+      "Algo fora do Flightdeck mudou as regras do OpenCode durante a sessão ({detail}), então a sessão foi parada.",
+    opencode_auth_required:
+      "O OpenCode não tem login neste provedor: rode opencode auth login no host.",
+    opencode_disabled: "O OpenCode está desligado na configuração deste host.",
+    opencode_missing: "O OpenCode não está instalado neste host.",
+    opencode_version_failed: "O OpenCode não informou a versão.",
+    opencode_v1: "Este host tem o OpenCode 1; o Flightdeck precisa do OpenCode 2.",
+    opencode_project_config_not_disabled:
+      "O OpenCode {version} não desligou a configuração do projeto, então o Flightdeck não pode usá-lo com segurança.",
+    opencode_canary_failed: "Não foi possível verificar o OpenCode neste host.",
+    opencode_scope_mismatch:
+      "O OpenCode lê a configuração global de outra pasta, não da que o Flightdeck verificou.",
     session_ended:
       "A sessão não está rodando (terminou ou deu erro): retome-a para mandar uma mensagem.",
     session_not_ended: "A sessão ainda está rodando: não há o que retomar.",
@@ -1671,6 +1703,38 @@ export const ptBR = {
     transcript_not_indexed: "O transcript {id} não está indexado neste host.",
     session_maybe_active:
       "A sessão pode estar em uso em outro lugar: retome mesmo assim só se tiver certeza de que não está.",
+  },
+  assistantRefusal: {
+    assistant_not_configured: "Escolha antes um provedor de IA em Configurações, Assistente.",
+    assistant_empty_input: "Escreva algo primeiro.",
+    assistant_too_long: "O texto é longo demais para o assistente (no máximo {max} caracteres).",
+    assistant_secret_found:
+      "Nada foi enviado: o texto parece conter um segredo ({labels}). Remova-o e tente de novo.",
+    assistant_vault_value:
+      "Nada foi enviado: o texto contém o valor de um segredo do cofre ({names}). Remova-o e tente de novo.",
+    assistant_quota_blocked:
+      "O plano do Claude no host está no limite até {until}. Tente depois disso, ou escolha outro provedor.",
+    assistant_host_unavailable: "O Claude Code no host não consegue responder: {detail}",
+    assistant_auth: "O provedor recusou a chave. Confira em Configurações, Assistente.",
+    assistant_credits: "O provedor diz que não há mais crédito nesta chave.",
+    assistant_rate_limited: "Pedidos demais agora. Espere um pouco e tente de novo.",
+    assistant_overloaded: "O provedor está sobrecarregado. Tente de novo em instantes.",
+    assistant_routing_unavailable:
+      "Nenhum provedor deste modelo no OpenRouter aceita o pedido sem coletar dados. Desligue a opção de dados em Configurações, ou escolha outro modelo.",
+    assistant_model_unavailable:
+      "O provedor não oferece este modelo. Escolha outro em Configurações.",
+    assistant_truncated:
+      "A resposta foi cortada antes do fim. Tente de novo, ou use um texto mais curto.",
+    assistant_refused: "O modelo se recusou a responder a este texto.",
+    assistant_bad_output: "O modelo deu uma resposta que não dá para usar. Tente de novo.",
+    assistant_placeholders_changed:
+      "A sugestão mudou as variáveis do snippet, então não é oferecida. Tente de novo.",
+    assistant_timeout: "O provedor demorou demais para responder.",
+    assistant_cancelled: "Cancelado.",
+    assistant_offline: "Não foi possível alcançar o provedor. Confira a conexão.",
+    assistant_no_changes: "Não há alterações para descrever.",
+    assistant_not_a_repo: "Esta pasta não é um repositório git.",
+    assistant_request_id: "Id do pedido: {id}",
   },
   snippetRefusal: {
     name_invalid: "Nome de 1 a 64 caracteres: letras, números, espaço, . _ -",
@@ -1727,7 +1791,17 @@ export const ptBR = {
     bypassMessage:
       'Em {host}, "{session}" vai executar tudo sem perguntar antes, a partir de agora, até você voltar o modo. Pode editar e apagar arquivos e rodar comandos.',
     bypassConfirm: "Mudar para ignorar permissões",
+    runtimeOpenCode: "OpenCode",
+    openCodeDenied: "O OpenCode parou este turno porque o pedido foi negado.",
+    contextSent: "As instruções do projeto (AGENTS.md) foram com a primeira mensagem.",
+    contextSkipped:
+      "O AGENTS.md não foi enviado: tem mais de 64 KB, ou aponta para fora da pasta ou para uma credencial.",
     modeLabel: "Modo de permissão",
+    modeChip: "Modo de permissão: {mode}",
+    modeMenuTitle: "Modo",
+    modeBypassOff: "Desligado neste host",
+    modeBypassHow: "Ligue nas configurações do host",
+    modeLooser: "Mais solto que o modo em que a sessão começou",
     modelLabel: "Modelo",
     modelDefault: "Modelo padrão",
     insertSnippet: "Inserir um snippet",
@@ -1826,6 +1900,11 @@ export const ptBR = {
     optional: "opcional",
     mode: "Modo de permissão",
     prompt: "Primeiro prompt",
+    agent: "Agente",
+    agentClaude: "Claude Code",
+    agentOpenCode: "OpenCode",
+    effort: "Esforço",
+    effortDefault: "Esforço padrão",
     create: "Criar sessão",
     needFolder: "Este host não tem pasta permitida: acrescente uma nas configurações dele",
   },
@@ -1834,26 +1913,32 @@ export const ptBR = {
     default: {
       name: "Padrão",
       description: "pergunta antes de agir",
+      explain: "Pergunta antes de editar arquivos ou rodar comandos",
     },
     acceptEdits: {
       name: "Aceitar edições",
       description: "edita arquivos sem perguntar",
+      explain: "Edita arquivos sem perguntar; ainda pergunta antes de rodar comandos",
     },
     plan: {
       name: "Planejar",
       description: "só lê e propõe um plano",
+      explain: "Só lê e propõe um plano; não muda nada",
     },
     auto: {
       name: "Automático",
       description: "um classificador decide o que segue",
+      explain: "Um classificador decide o que segue",
     },
     dontAsk: {
       name: "Só o permitido",
       description: "nega o que as regras não liberam",
+      explain: "Nega o que as regras não liberam",
     },
     bypassPermissions: {
       name: "Ignorar permissões",
       description: "sem pedidos de permissão",
+      explain: "Executa tudo sem perguntar. Só numa pasta que possa ser descartada",
     },
     bypassWarning:
       "Ignorar permissões: o Claude executa tudo sem pedir aprovação. Use só numa pasta que possa ser descartada.",
@@ -2018,6 +2103,7 @@ export const ptBR = {
     openNamed: "Abrir Claude aqui em {name} (terminal)",
     resume: "Continuar no terminal",
     resumeNamed: "Continuar {name} no terminal",
+    start: "Abrir o terminal",
     asSession: "Ver como sessão",
     viewTerminal: "Ver terminal",
   },
@@ -3410,6 +3496,9 @@ export const ptBR = {
     filter: "Filtrar",
     hideAutomated: "Ocultar execuções automáticas",
     automatedHidden: "{count} execuções automáticas ocultas",
+    emptyAutomated: "{count} execuções automáticas estão ocultas pelo filtro.",
+    emptyFiltered: "Nenhuma sessão atende a estes filtros.",
+    clearFilters: "Limpar os filtros",
     showAutomated: "Mostrar",
     automatedTag: "automática",
     list: "Sessões do histórico",

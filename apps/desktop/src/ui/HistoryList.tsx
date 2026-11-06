@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CardGrid } from "@/components/hub/card-grid";
 import { HistoryCard } from "@/components/hub/history-card";
 import { ViewToggle } from "@/components/hub/view-toggle";
-import { CheckField, NativeSelect } from "@/components/layout/form";
+import { CheckField, Field, NativeSelect } from "@/components/layout/form";
 import { Inline } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
@@ -128,6 +128,21 @@ export function HistoryList(props: {
     value: draft[key],
     onChange: (e: { target: { value: string } }) => setDraft({ ...draft, [key]: e.target.value }),
   });
+  /** Why the list is empty, once it is read: the hidden automated runs, the filters, or nothing yet. */
+  const emptyBecause =
+    loading || sessions?.length !== 0
+      ? null
+      : hideAutomated && automatedCount > 0
+        ? "automated"
+        : Object.keys(filter).length > 0
+          ? "filtered"
+          : "nothing";
+  /** Every filter back to empty, and the list read again without them. */
+  const clearFilters = () => {
+    const empty: Draft = { cwd: "", projectKey: "", from: "", to: "", origin: "" };
+    setDraft(empty);
+    setFilter(toFilter(empty));
+  };
   const clearProject = () => {
     const next = { ...draft, projectKey: "" };
     setDraft(next);
@@ -152,20 +167,26 @@ export function HistoryList(props: {
             }}
           />
         </Inline>
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            aria-label={t("historyUi.folder")}
-            placeholder={t("historyUi.folder")}
-            className="w-32"
-            {...field("cwd")}
-          />
-          <Input aria-label={t("historyUi.from")} type="date" className="w-36" {...field("from")} />
-          <Input aria-label={t("historyUi.to")} type="date" className="w-36" {...field("to")} />
-          <NativeSelect inline aria-label={t("historyUi.origin")} {...field("origin")}>
-            <option value="">{t("historyUi.allOrigins")}</option>
-            <option value="flightdeck">{t("historyUi.flightdeck")}</option>
-            <option value="external">{t("historyUi.external")}</option>
-          </NativeSelect>
+        {/* Issue #180: every filter has a visible label (which date is from and which is to). */}
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label={t("historyUi.folder")}>
+            {(control) => <Input {...control} className="w-32" {...field("cwd")} />}
+          </Field>
+          <Field label={t("historyUi.from")}>
+            {(control) => <Input {...control} type="date" className="w-36" {...field("from")} />}
+          </Field>
+          <Field label={t("historyUi.to")}>
+            {(control) => <Input {...control} type="date" className="w-36" {...field("to")} />}
+          </Field>
+          <Field label={t("historyUi.origin")}>
+            {(control) => (
+              <NativeSelect {...control} inline {...field("origin")}>
+                <option value="">{t("historyUi.allOrigins")}</option>
+                <option value="flightdeck">{t("historyUi.flightdeck")}</option>
+                <option value="external">{t("historyUi.external")}</option>
+              </NativeSelect>
+            )}
+          </Field>
           <Button variant="outline" onClick={() => setFilter(toFilter(draft))}>
             {t("historyUi.filter")}
           </Button>
@@ -196,7 +217,30 @@ export function HistoryList(props: {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {loading && <LoadingState label={t("states.loadingSessions")} />}
-        {!loading && sessions?.length === 0 && (
+        {/* Issue #180: an empty list says why: the hidden automated runs, the filters, or nothing yet. */}
+        {emptyBecause === "automated" && (
+          <EmptyState
+            icon={History}
+            title={t("historyUi.emptyAutomated", { count: automatedCount })}
+            action={
+              <Button variant="link" onClick={() => setHideAutomated(false)}>
+                {t("historyUi.showAutomated")}
+              </Button>
+            }
+          />
+        )}
+        {emptyBecause === "filtered" && (
+          <EmptyState
+            icon={History}
+            title={t("historyUi.emptyFiltered")}
+            action={
+              <Button variant="link" onClick={clearFilters}>
+                {t("historyUi.clearFilters")}
+              </Button>
+            }
+          />
+        )}
+        {emptyBecause === "nothing" && (
           <EmptyState
             icon={History}
             title={t("states.emptyHistory")}

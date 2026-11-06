@@ -42,7 +42,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
   path, prints each with the reason, and runs them in one call (through the slot above 60 files). The run also collects coverage and fails unless every
   changed source file is at 100% lines and functions, listing the uncovered `file:line` and the
-  uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A change to `package.json`, a `bunfig` or the preload
+  uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). `--pr` (#309) is what a PR's
+  CI runs: every unit and component test plus the related tests, with the same changed-file gate, or
+  the whole suite when a global file changed or a test went away; `--keep-coverage <dir>` keeps the
+  lcov there. A change to `package.json`, a `bunfig` or the preload
   prints a warning: run the full suite then.
 - Tests by tier (#261, computed from each test's content): `unit`, `component` (the DOM), `integration`
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
@@ -103,7 +106,8 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - Delivery is GitHub Flow (#260, #271): one PR per branch to `main`. A session pushes its own
   branch, opens its PR (`bun run pr -- open <branch>`) and turns on auto-merge
   (`bun run pr -- auto <n>`): GitHub merges it with a merge commit once its required checks are
-  green on its HEAD and it is up to date (a PR behind `main` waits for `bun run pr -- update <n>`).
+  green on its HEAD, even when it is behind `main` (#305: the ruleset is not strict; `main`'s push
+  CI checks the result). Only a PR that conflicts with `main` waits: merge `main` into it.
   A stacked PR gets auto-merge once its parent is in
   `main` (`pr auto` retargets it). A session keeps at most 2 branches open (pushed and not merged
   yet): it finishes one before it starts a third. A release is a tag on a green `main`.
