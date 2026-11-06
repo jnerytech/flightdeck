@@ -224,12 +224,7 @@ describe("log-app: a log storm reaches neither the disk nor the IPC whole (issue
     for (let i = 0; i < LOG_QUEUE + 100; i++) log.log("info", `s${i}`, "x");
     await held.settle();
     const second = held.calls[1] ?? [];
-    expect([
-      held.calls.length,
-      second.length,
-      body(second[0]),
-      body(second.at(-1)),
-    ]).toEqual([
+    expect([held.calls.length, second.length, body(second[0]), body(second.at(-1))]).toEqual([
       2,
       LOG_QUEUE + 1,
       "WARN app-log 99 lines dropped: the log file could not keep up",
