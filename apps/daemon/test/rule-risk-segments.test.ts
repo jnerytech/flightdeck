@@ -33,6 +33,21 @@ describe("rule-risk: a wildcard inside a directory or file name (issue #435)", (
     expect(level("/proj/id_r*", "Read")).toBe("any");
   });
 
+  test("a sensitive path of several segments is matched across partial segments", () => {
+    expect(level("/proj/.github/work*/x.yml")).toBe("any");
+    expect(level("/proj/.github/w*/ci.yml")).toBe("any");
+    expect(level("/proj/.gith*/work*/ci.yml")).toBe("any");
+    expect(level("/proj/.vscode/tas*.json")).toBe("any");
+    expect(level("/proj/.cl*/.cred*.json", "Read")).toBe("any");
+    expect(level("/proj/.cl*/.credentials.j?on", "Read")).toBe("any");
+    expect(level("/proj/.conf*/gh/hosts.yml", "Read")).toBe("any");
+    expect(level("/proj/.config/g*/hosts.yml", "Read")).toBe("any");
+    expect(level("/proj/.fl*/conf*.json", "Read")).toBe("any");
+    expect(level("/proj/.flightdeck/c*.json", "Read")).toBe("any");
+    expect(level("/proj/.flightdeck/conf*g.json", "Read")).toBe("any");
+    expect(level("C:\\proj\\.cl*\\.cred*.json", "Read")).toBe("any");
+  });
+
   test("the same on a drive path with backslashes", () => {
     expect(level("C:\\proj\\.cl*\\x")).toBe("any");
     expect(level("C:\\proj\\.s*h\\x", "Read")).toBe("any");
@@ -44,5 +59,8 @@ describe("rule-risk: a wildcard inside a directory or file name (issue #435)", (
     expect(level("/proj/docs/page-?.md")).toBe("low");
     expect(level("/proj/src/app-*.ts", "Read")).toBe("low");
     expect(level("C:\\proj\\src\\app-*.ts")).toBe("low");
+    expect(level("/proj/docs/conf*.md")).toBe("low");
+    expect(level("/proj/src/work*/x.yml")).toBe("low");
+    expect(level("/proj/.github-notes/page-*.md")).toBe("low");
   });
 });
