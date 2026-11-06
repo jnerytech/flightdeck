@@ -1251,7 +1251,7 @@ export async function startDaemon(
       },
     },
     projectTrust: {
-      refresh: () => projectTrust.refreshRoots(),
+      refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) =>
         paths.map((path) => {
           const via = projectTrust.via(path);
@@ -1344,8 +1344,8 @@ export async function startDaemon(
       db: store.db,
       claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
       channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
-      trust: (cwd) => projectTrust.sessionTrust(cwd),
-      prepare: (cwd) => projectTrust.prepare(cwd),
+      trust: projectTrust.sessionTrust.bind(projectTrust),
+      prepare: projectTrust.prepare.bind(projectTrust),
       // `getCard` refuses a card that does not exist, with the not_found the app knows.
       card: (cardId) => {
         const card = board.getCard(cardId);
