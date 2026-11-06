@@ -61,3 +61,16 @@ ADR 40-3 and the earlier phase 40 entries, frozen. These cover the crate `flight
   take `low` gets the lowest effort it lists. A price that does not parse, or is negative (a
   router's variable price), shows no price; a price is rounded to the millionth of a dollar per
   million tokens. No request id is passed: OpenRouter's answers carry none the person can quote.
+- **The commands' contract** (agreed with the UI branch, 2026-11-06). `assistant_run` takes
+  `{ provider, request, vaultIds, denyDataCollection }`: `AssistantRequest` names neither the
+  provider nor the OpenRouter switch, so `Platform.assistant.run` becomes
+  `run(request, vaultIds, { provider, denyDataCollection })` instead of the spec's
+  `run(request, vaultIds)`. Every assistant command, and `vault_hits`, rejects with the refusal
+  object `{ reason, params }`, never a string. A request id must be a short token (a UUID fits).
+  A vault check reads at most 200 ids; a store failure while reading them is `assistant_key_store`.
+  The key test and a model list count against the same in-flight limit and bucket as a call; a
+  list is kept 10 minutes, and a model it does not have is sent with neither thinking nor
+  reasoning. A prompt (the system or the user part) may be twice the text's cap, since the user
+  part wraps the text with its context; the refusal still names the text's cap of 100 000.
+  `REASONS` in the crate's `lib.rs` lists every reason the crate refuses with, and the UI branch
+  checks each against `ASSISTANT_REASONS`.
