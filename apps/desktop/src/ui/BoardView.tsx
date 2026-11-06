@@ -584,7 +584,7 @@ export const BoardView = memo(function BoardView(props: {
         </>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="board-body">
         {withRoi && project && <RoiCard store={store} hostId={hostId} project={project} />}
         {loading && <LoadingState label={t("states.loadingBoard")} shape="columns" />}
         {!loading && project && all.length === 0 && (
