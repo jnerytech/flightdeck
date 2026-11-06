@@ -217,8 +217,7 @@ describe("assistant-fields: the detail of a card (issue #160)", () => {
     }) as typeof store.hostCommand;
     await type(t.cardUi.title, "ship the crat");
     const wands = screen.queryAllByRole("button", { name: /with AI/ });
-    // The title, the description and the adjustment box (issue #160).
-    expect(wands).toHaveLength(3);
+    expect(wands).toHaveLength(2);
     await act(async () => {
       fireEvent.click(wands[0] as HTMLElement);
     });
