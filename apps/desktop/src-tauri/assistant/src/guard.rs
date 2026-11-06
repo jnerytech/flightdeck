@@ -174,6 +174,9 @@ fn loopback(url: &str) -> bool {
     })
 }
 
+/// The HTTP client type, so the app's commands keep one without depending on `reqwest` itself.
+pub type Client = reqwest::Client;
+
 /// The HTTP client of every call: the timeouts, no redirect, no default headers.
 pub fn client() -> Result<reqwest::Client, Refusal> {
     // As the updater does: the ring provider, installed once for the process.

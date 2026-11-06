@@ -3,6 +3,8 @@
 //! forwarding, the terminal of "Abrir no terminal", and the official plugins (notifications,
 //! deep links, opener).
 
+mod assistant;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::menu::{Menu, MenuItem, Submenu};
@@ -13,7 +15,7 @@ const KEYRING_SERVICE: &str = "dev.flightdeck.app";
 
 /// Runs blocking work (the credential store, a PATH walk, a process spawn) on the blocking pool:
 /// a plain `async fn` still holds one of the runtime's few workers while it waits.
-async fn spawn_blocking_result<T: Send + 'static>(
+pub(crate) async fn spawn_blocking_result<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(work)
@@ -61,7 +63,7 @@ const VAULT_SERVICE: &str = "flightdeck-vault";
 /// The Windows credential store keeps at most 2560 bytes per entry, and `keyring` writes UTF-16.
 const WINDOWS_CREDENTIAL_MAX_BYTES: usize = 2560;
 
-fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
+pub(crate) fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(VAULT_SERVICE, id).map_err(|e| e.to_string())
 }
 
@@ -801,6 +803,7 @@ pub fn run() {
         // webview has no `dialog:*` permission.
         .plugin(tauri_plugin_dialog::init())
         .manage(PickedFile::default())
+        .manage(assistant::Assistant::default())
         .setup(|app| {
             // Registers the scheme at runtime too, so dev builds work without an installer.
             #[cfg(any(windows, target_os = "linux"))]
@@ -839,7 +842,15 @@ pub fn run() {
             set_close_to_tray,
             focus_main,
             terminal_probe,
-            terminal_open
+            terminal_open,
+            assistant::assistant_key_set,
+            assistant::assistant_key_status,
+            assistant::assistant_key_delete,
+            assistant::assistant_test,
+            assistant::assistant_models,
+            assistant::assistant_run,
+            assistant::assistant_cancel,
+            assistant::vault_hits
         ])
         .run(tauri::generate_context!())
         .expect("error while running Flightdeck");
