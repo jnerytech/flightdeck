@@ -107,4 +107,20 @@ describe("historico-titulo: the name Claude Code writes into a transcript (issue
     await index.scanAsync();
     expect(names.get(ID)?.display).toBe("fd-architect");
   });
+
+  test("a title an older daemon stored from a harness wrapper is taken again from the first real prompt", async () => {
+    const root = projectsRoot();
+    writeTranscript(root, "-app", ID, [
+      userLine({ uuid: "u1", text: "<system-reminder>context</system-reminder>", cwd: CWD }),
+      userLine({ uuid: "u2", text: "fix the cart total", cwd: CWD }),
+    ]);
+    const db = new EventStore(":memory:").db;
+    await new HistoryIndexer({ db, roots: [root] }).scanAsync();
+    db.run(
+      "UPDATE history_sessions SET title = '<system-reminder>context' WHERE claude_session_id = ?",
+      [ID],
+    );
+    const again = new HistoryIndexer({ db, roots: [root] });
+    expect(again.list({}).sessions[0]?.title).toBe("fix the cart total");
+  });
 });
