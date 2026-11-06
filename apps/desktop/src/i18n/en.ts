@@ -781,6 +781,9 @@ export const en: Dictionary = {
     discardInstead: "Discard card",
   },
   shell: {
+    quotaLabel: "Plan quota {state}: {window} at {percent}% on {host}, resets in {remaining}",
+    quotaLabelNoReset: "Plan quota {state}: {window} at {percent}% on {host}",
+    quotaLevels: { ok: "fine", near: "near the limit", reached: "limit reached" },
     host: "Host: {host}",
     noHost: "No host yet",
     hostItem: "{host}, {state}",
