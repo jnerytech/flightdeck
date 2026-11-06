@@ -1,0 +1,13 @@
+[
+  {
+    "type": "directory",
+    "path": "/home/u/.config/opencode"
+  },
+  {
+    "type": "document",
+    "info": {
+      "default_agent": "flightdeck",
+      "(the inline document, shortened)": true
+    }
+  }
+]

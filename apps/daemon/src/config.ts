@@ -40,6 +40,16 @@ export const Config = z.object({
     .array(z.string().refine((cidr) => parseCidr(cidr) !== null, "CIDR inválido"))
     .default(() => [...DEFAULT_ALLOWED_NETWORKS]),
   runtime: RuntimeKind.default("claude"),
+  /**
+   * Phase 39: OpenCode sessions on this host. Off unless turned on: finding and checking OpenCode
+   * runs its binary, which must be the person's choice (DECISIONS, "opt-in per host").
+   */
+  opencode: z
+    .object({
+      enabled: z.boolean().default(false),
+      executablePath: z.string().min(1).optional(),
+    })
+    .default(() => ({ enabled: false })),
   defaultPermissionMode: PermissionMode.default("default"),
   allowApiKey: z.boolean().default(false),
   /** A session may start in `bypassPermissions`; off until the person turns it on for the host. */

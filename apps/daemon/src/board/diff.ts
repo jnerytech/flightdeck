@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { readRegular } from "../read-regular.ts";
 import { git } from "./command.ts";
 import type { CardDiff, DiffFile, DiffHunk } from "./types.ts";
 import { must } from "./worktree.ts";
@@ -56,11 +56,15 @@ function readHeader(file: DiffFile, line: string): void {
   if (line.startsWith("Binary files ")) file.binary = true;
 }
 
-/** A file git does not track yet, shown as entirely added. */
-async function untrackedFile(worktree: string, path: string): Promise<DiffFile> {
-  const content = await readFile(join(worktree, path));
-  const binary = content.includes(0);
-  const lines = binary ? [] : content.toString("utf8").replace(/\n$/, "").split("\n");
+/**
+ * A file git does not track yet, shown as entirely added. A link or a pipe is listed without
+ * content, like a binary file: a link is never followed. So is a file over `max` bytes, when the
+ * caller caps them (the assistant does; the Changes panel shows a large file whole).
+ */
+async function untrackedFile(worktree: string, path: string, max: number): Promise<DiffFile> {
+  const content = await readRegular(join(worktree, path), max + 1);
+  const binary = !content || content.length > max || content.includes(0);
+  const lines = !content || binary ? [] : content.toString("utf8").replace(/\n$/, "").split("\n");
   const hunks = binary
     ? []
     : [
@@ -85,7 +89,10 @@ async function untrackedFile(worktree: string, path: string): Promise<DiffFile> 
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 /** Uncommitted tracked changes against `HEAD` (the empty tree before the first commit), then untracked files. */
-export async function workingDiff(root: string): Promise<DiffFile[]> {
+export async function workingDiff(
+  root: string,
+  maxUntracked = Number.MAX_SAFE_INTEGER - 1,
+): Promise<DiffFile[]> {
   const head = await git(root, "rev-parse", "--verify", "--quiet", "HEAD");
   const against = head.code === 0 ? "HEAD" : EMPTY_TREE;
   const pending = must(await git(root, ...DIFF, against), "git diff");
@@ -96,7 +103,7 @@ export async function workingDiff(root: string): Promise<DiffFile[]> {
   const untracked = others.stdout.split("\0").filter(Boolean);
   const files = parseUnifiedDiff(pending.stdout, true);
   // One at a time: a tree of untracked files must not open them all at once.
-  for (const path of untracked) files.push(await untrackedFile(root, path));
+  for (const path of untracked) files.push(await untrackedFile(root, path, maxUntracked));
   return files;
 }
 
@@ -104,10 +111,17 @@ export async function workingDiff(root: string): Promise<DiffFile[]> {
  * What the card changed: commits since the base (`<base>...HEAD`, so later moves of the base
  * stay out), then uncommitted tracked changes, then untracked files.
  */
-export async function cardDiff(worktree: string, base: string): Promise<CardDiff> {
+export async function cardDiff(
+  worktree: string,
+  base: string,
+  maxUntracked?: number,
+): Promise<CardDiff> {
   const committed = must(await git(worktree, ...DIFF, `${base}...HEAD`), "git diff");
   return {
     base,
-    files: [...parseUnifiedDiff(committed.stdout, false), ...(await workingDiff(worktree))],
+    files: [
+      ...parseUnifiedDiff(committed.stdout, false),
+      ...(await workingDiff(worktree, maxUntracked)),
+    ],
   };
 }

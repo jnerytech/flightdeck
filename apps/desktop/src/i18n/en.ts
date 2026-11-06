@@ -46,6 +46,7 @@ export const en: Dictionary = {
       mcp: "Team tools",
 
       linger: "Start at boot",
+      opencode: "OpenCode",
     },
     steps: {
       config: "Run flightdeckd setup on the host to redo the configuration.",
@@ -62,6 +63,8 @@ export const en: Dictionary = {
 
       linger:
         "On the host, run sudo loginctl enable-linger $USER (on WSL also turn on systemd in /etc/wsl.conf).",
+      opencode:
+        'OpenCode is optional. To use it, set "opencode": { "enabled": true } in the host config and restart the daemon; the manual\'s OpenCode section explains each reason.',
     },
   },
   findProjects: {
@@ -253,6 +256,7 @@ export const en: Dictionary = {
       derivation: "How it was computed",
     },
     title: "Return on cost",
+    details: "Details",
     period: "Period",
     period7: "7 days",
     period30: "30 days",
@@ -306,6 +310,7 @@ export const en: Dictionary = {
     settings: "Hours and rate",
     defaultHours: "Hours per card (default for this project)",
     saveHours: "Save hours",
+    cardHoursInvalid: "Type a number of hours from 0 to 1000, or leave it empty.",
     cardHoursSave: "Save the card's hours",
     projectRate: "Hourly rate for this project",
     saveRate: "Save rate",
@@ -328,6 +333,7 @@ export const en: Dictionary = {
       "Engineering roles Claude takes on in a session, of host {host}, the projects and the app.",
     apply: {
       trigger: "Persona",
+      none: "None",
       active: "Active persona",
       label: "Apply to this session (as an instruction)",
       apply: "Apply",
@@ -1153,6 +1159,7 @@ export const en: Dictionary = {
       "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
   },
   daemonFeature: {
+    assistant: "the AI assistant",
     github: "sign-in with GitHub",
     boardsync: "board sync",
     roi: "the ROI view",
@@ -1656,6 +1663,31 @@ export const en: Dictionary = {
     cwd_outside_roots:
       "The folder {cwd} is outside the host's allowed folders. Add it with flightdeckd setup, or in allowedRoots in ~/.flightdeck/config.json.",
     session_not_found: "Session {id} does not exist on this host.",
+    runtime_unavailable: "OpenCode is not available on this host.",
+    runtime_unsupported: "An OpenCode session does not offer {feature}.",
+    opencode_unsafe_global:
+      "OpenCode {version} cannot run here: its global or system config loads code or servers Flightdeck does not allow ({found}).",
+    opencode_config_outranks:
+      "OpenCode {version}: {what} would outrank Flightdeck's questions, so the session was not started.",
+    opencode_saved_rules:
+      'OpenCode {version} has saved "always" rules for this folder, which would skip Flightdeck\'s questions: {rules}. Remove them with: {commands}',
+    opencode_preflight_failed:
+      "OpenCode {version} could not check this folder. Try again, or run flightdeckd doctor.",
+    opencode_changed:
+      "OpenCode changed since the daemon checked it. Restart the daemon, or run flightdeckd doctor, to check it again.",
+    opencode_permissions_overridden:
+      "Something outside Flightdeck changed OpenCode's rules during the session ({detail}), so the session was stopped.",
+    opencode_auth_required:
+      "OpenCode has no login for this provider: run opencode auth login on the host.",
+    opencode_disabled: "OpenCode is turned off in this host's config.",
+    opencode_missing: "OpenCode is not installed on this host.",
+    opencode_version_failed: "OpenCode did not tell its version.",
+    opencode_v1: "This host has OpenCode 1; Flightdeck needs OpenCode 2.",
+    opencode_project_config_not_disabled:
+      "OpenCode {version} did not turn the project config off, so Flightdeck cannot use it safely.",
+    opencode_canary_failed: "OpenCode could not be checked on this host.",
+    opencode_scope_mismatch:
+      "OpenCode reads its global config from another folder than the one Flightdeck checked.",
     session_ended: "The session is not running (it ended or failed): resume it to send a message.",
     session_not_ended: "The session is still running: there is nothing to resume.",
     personas_off: "Personas are not available on this host.",
@@ -1675,6 +1707,38 @@ export const en: Dictionary = {
     transcript_not_indexed: "The transcript {id} is not indexed on this host.",
     session_maybe_active:
       "The session may be in use elsewhere: resume it anyway only if you are sure it is not.",
+  },
+  assistantRefusal: {
+    assistant_not_configured: "Choose an AI provider in Settings, Assistant, first.",
+    assistant_empty_input: "Write something first.",
+    assistant_too_long: "The text is too long for the assistant (at most {max} characters).",
+    assistant_secret_found:
+      "Nothing was sent: the text looks like it holds a secret ({labels}). Remove it and try again.",
+    assistant_vault_value:
+      "Nothing was sent: the text holds the value of a vault secret ({names}). Remove it and try again.",
+    assistant_quota_blocked:
+      "The host's Claude plan is at its limit until {until}. Try again then, or choose another provider.",
+    assistant_host_unavailable: "Claude Code on the host cannot answer: {detail}",
+    assistant_auth: "The provider refused the key. Check it in Settings, Assistant.",
+    assistant_credits: "The provider says there is no credit left on this key.",
+    assistant_rate_limited: "Too many requests right now. Wait a moment and try again.",
+    assistant_overloaded: "The provider is overloaded. Try again in a moment.",
+    assistant_routing_unavailable:
+      "No provider of this model on OpenRouter takes the request without collecting data. Turn off the data switch in Settings, or pick another model.",
+    assistant_model_unavailable:
+      "The provider does not offer this model. Pick another one in Settings.",
+    assistant_truncated:
+      "The answer was cut short before it ended. Try again, or use a shorter text.",
+    assistant_refused: "The model declined to answer this text.",
+    assistant_bad_output: "The model gave an answer that cannot be used. Try again.",
+    assistant_placeholders_changed:
+      "The suggestion changed the snippet's variables, so it is not offered. Try again.",
+    assistant_timeout: "The provider took too long to answer.",
+    assistant_cancelled: "Cancelled.",
+    assistant_offline: "The provider cannot be reached. Check the connection.",
+    assistant_no_changes: "There are no changes to describe.",
+    assistant_not_a_repo: "This folder is not a git repository.",
+    assistant_request_id: "Request id: {id}",
   },
   snippetRefusal: {
     name_invalid: "Name must be 1 to 64 characters: letters, numbers, space, . _ -",
@@ -1731,7 +1795,17 @@ export const en: Dictionary = {
     bypassMessage:
       'On {host}, "{session}" will run everything without asking you first, from now on, until you change the mode back. It can edit and delete files and run commands.',
     bypassConfirm: "Switch to bypass",
+    runtimeOpenCode: "OpenCode",
+    openCodeDenied: "OpenCode stopped this turn because the request was denied.",
+    contextSent: "Project instructions (AGENTS.md) went with the first message.",
+    contextSkipped:
+      "AGENTS.md was not sent: it is over 64 KB, or it links out of the folder or to a credential.",
     modeLabel: "Permission mode",
+    modeChip: "Permission mode: {mode}",
+    modeMenuTitle: "Mode",
+    modeBypassOff: "Turned off on this host",
+    modeBypassHow: "Turn it on in the host settings",
+    modeLooser: "Looser than the mode this session started in",
     modelLabel: "Model",
     modelDefault: "Default model",
     insertSnippet: "Insert a snippet",
@@ -1829,6 +1903,11 @@ export const en: Dictionary = {
     optional: "optional",
     mode: "Permission mode",
     prompt: "First prompt",
+    agent: "Agent",
+    agentClaude: "Claude Code",
+    agentOpenCode: "OpenCode",
+    effort: "Effort",
+    effortDefault: "Default effort",
     create: "Create session",
     needFolder: "This host has no allowed folder: add one in its settings",
   },
@@ -1837,26 +1916,32 @@ export const en: Dictionary = {
     default: {
       name: "Default",
       description: "asks before acting",
+      explain: "Asks before it edits files or runs commands",
     },
     acceptEdits: {
       name: "Accept edits",
       description: "edits files without asking",
+      explain: "Edits files without asking; still asks before running commands",
     },
     plan: {
       name: "Plan",
       description: "only reads and proposes a plan",
+      explain: "Only reads and proposes a plan; changes nothing",
     },
     auto: {
       name: "Automatic",
       description: "a classifier decides what goes on",
+      explain: "A classifier decides what goes on",
     },
     dontAsk: {
       name: "Allowed only",
       description: "denies what the rules do not allow",
+      explain: "Denies what the rules do not allow",
     },
     bypassPermissions: {
       name: "Bypass permissions",
       description: "no prompts",
+      explain: "Runs everything without asking. Only in a folder you can throw away",
     },
     bypassWarning:
       "Bypass permissions: Claude runs everything without asking for approval. Use it only in a folder you can throw away.",
@@ -2021,6 +2106,7 @@ export const en: Dictionary = {
     openNamed: "Open Claude here in {name} (terminal)",
     resume: "Continue in the terminal",
     resumeNamed: "Continue {name} in the terminal",
+    start: "Open the terminal",
     asSession: "View as session",
     viewTerminal: "View terminal",
   },
