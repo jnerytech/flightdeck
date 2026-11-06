@@ -36,19 +36,47 @@ const runs = (key: string) =>
     .join("\n");
 const gate = (output: string) => `needs.changes.outputs.${output} == 'true'`;
 const PR = "pull_request";
-const NONE = { windows: false, smokes: false, screenshots: false, cargo: false };
+const NONE = { windows: false, smokes: false, screenshots: false, cargo: false, e2e: false };
 
 describe("ci-paths: the rules", () => {
-  test("docs or scripts only run the Linux tests and lint, nothing else", () => {
+  test("docs only run the Linux tests and lint, nothing else", () => {
     expect(ciPlan(PR, ["docs/TDD.md", "README.md"])).toEqual(NONE);
-    expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(NONE);
     expect(ciPlan(PR, [])).toEqual(NONE);
   });
 
+  test("scripts add the Windows shards, which run the tests related to them (#399: #383 changed only scripts/test and broke Windows)", () => {
+    const windows = { ...NONE, windows: true };
+    expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(windows);
+    // A test helper the demo seed loads (fake CLIs) plans the journeys as well (#410 review).
+    expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual({ ...windows, e2e: true });
+  });
+
+  test("the UI, the journeys, their config or the demo add the e2e journeys (#399)", () => {
+    for (const path of [
+      "scripts/e2e/define-journeys.ts",
+      "scripts/lib/e2e-config.ts",
+      "scripts/lib/e2e-demo.ts",
+      "scripts/demo.ts",
+      "scripts/demo-seed.ts",
+      "playwright.config.ts",
+    ]) {
+      expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
+    }
+    expect(ciPlan(PR, ["apps/desktop/src/ui/App.tsx"]).e2e).toBe(true);
+    // The demo the journeys drive starts the real daemon (scripts/demo-seed.ts, #410 review).
+    expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["apps/daemon/test/workflow-helpers.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["scripts/test/fake-cli.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["scripts/test/slot.test.ts"]).e2e).toBe(false);
+    expect(ciPlan(PR, ["scripts/lib/slot.ts"]).e2e).toBe(false);
+  });
+
   test("the daemon or a smoke adds Windows and the smokes", () => {
-    const daemon = { ...NONE, windows: true, smokes: true };
+    // The demo the journeys drive starts the real daemon, so the daemon plans them too (#410 review).
+    const daemon = { ...NONE, windows: true, smokes: true, e2e: true };
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"])).toEqual(daemon);
-    expect(ciPlan(PR, ["scripts/smoke-limits.ts"])).toEqual(daemon);
+    // A smoke is no part of the demo: Windows and the smokes, not the journeys.
+    expect(ciPlan(PR, ["scripts/smoke-limits.ts"])).toEqual({ ...daemon, e2e: false });
   });
 
   test("the app, the protocol, the dependencies or the workflow run everything but cargo", () => {
@@ -78,9 +106,18 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan(PR, null)).toEqual(FULL);
   });
 
+  test("every file the demo seed imports plans the journeys, so a change the journeys run cannot skip them (#410 review)", () => {
+    const seed = readFileSync(join(ROOT, "scripts/demo-seed.ts"), "utf8");
+    const local = [...seed.matchAll(/from "(\.{1,2}\/[^"]+)"/g)].map((m) =>
+      join("scripts", m[1] ?? "").replaceAll("\\", "/"),
+    );
+    expect(local.length).toBeGreaterThan(3);
+    for (const path of local) expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
+  });
+
   test("the plan becomes one GitHub output per job group", () => {
     expect(planOutputs({ ...NONE, windows: true })).toBe(
-      "windows=true\nsmokes=false\nscreenshots=false\ncargo=false\n",
+      "windows=true\nsmokes=false\nscreenshots=false\ncargo=false\ne2e=false\n",
     );
   });
 });
@@ -93,15 +130,16 @@ describe("ci-paths: the workflow", () => {
       "smokes",
       "screenshots",
       "cargo",
+      "e2e",
     ]);
     for (const key of ["test-windows-shard", "checks-windows"]) {
       expect(job(key).needs).toContain("changes");
       expect(job(key).if ?? "").toContain(gate("windows"));
     }
-    for (const key of ["screenshots-prints", "screenshots-e2e"]) {
-      expect(job(key).needs).toContain("changes");
-      expect(job(key).if ?? "").toContain(gate("screenshots"));
-    }
+    expect(job("screenshots-prints").needs).toContain("changes");
+    expect(job("screenshots-prints").if ?? "").toContain(gate("screenshots"));
+    expect(job("screenshots-e2e").needs).toContain("changes");
+    expect(job("screenshots-e2e").if ?? "").toContain(gate("e2e"));
     expect(step("checks-linux", "Smokes")?.if).toBe(gate("smokes"));
   });
 

@@ -109,6 +109,11 @@ export interface Plan {
   command: string[] | null;
   /** The changed source files the run must cover at 100%; only when coverage was asked for. */
   targets?: string[];
+  /**
+   * The test files the run holds, or "all" when the whole suite runs: what `--list` writes for the
+   * Windows shards of a PR (#399).
+   */
+  files?: string[] | "all";
 }
 
 export function planRelated({
@@ -152,6 +157,7 @@ export function planRelated({
         code: 0,
         output: `test:related --pr: the whole suite runs (${why})`,
         command: slot ? ["bun", "run", "slot", "--", ...whole] : whole,
+        files: "all",
       };
     }
   }
@@ -166,9 +172,10 @@ export function planRelated({
     const tier = tierOf(path);
     return !tiers || tier === undefined || tiers.includes(tier);
   };
-  const related = pyramid
-    ? pyramidTests(selected, tracked, tierOf)
-    : selected.filter((r) => kept(r.path));
+  // The mods' tests run under `claude plugin test`; every bunfig ignores mods/, so none is selected.
+  const related = (
+    pyramid ? pyramidTests(selected, tracked, tierOf) : selected.filter((r) => kept(r.path))
+  ).filter((r) => !r.path.startsWith("mods/"));
   const out = new Map<string, number>();
   for (const r of selected.filter((r) => !kept(r.path))) {
     const tier = tierOf(r.path) as string;
@@ -223,8 +230,26 @@ export function planRelated({
     code: 0,
     output,
     command: slot && related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
+    files: related.map((r) => r.path),
     ...(targets ? { targets } : {}),
   };
+}
+
+/**
+ * `--list <file>` (#399): writes the plan's selection, one test file per line or `*` for the whole
+ * suite, and gives the exit code and the line to print. A missing file name is the usage (2).
+ */
+export function listSelection(
+  plan: Plan,
+  list: string | undefined,
+  write: (path: string, text: string) => void,
+): { code: number; line: string } {
+  if (!list || list.startsWith("--")) {
+    return { code: 2, line: "test:related: --list needs a file to write the selection to" };
+  }
+  const files = plan.files === "all" ? ["*"] : (plan.files ?? []);
+  write(list, files.map((file) => `${file}\n`).join(""));
+  return { code: plan.code, line: `test:related: ${files.length} line(s) written to ${list}` };
 }
 
 /** The tiers a PR runs whole (#309): the cheap base of the pyramid. */

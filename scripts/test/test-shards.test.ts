@@ -252,6 +252,39 @@ describe("shards: plan and run", () => {
     ]);
   });
 
+  test("--files keeps only the test files the list names before the split, and a '*' line keeps them all (#399)", async () => {
+    const timings = { "a.test.ts": 9, "b.test.ts": 5, "c.test.ts": 4 };
+    const some = fake({ timings, junit: { "sel.txt": "b.test.ts\nc.test.ts\n\n" } });
+    expect(await shards(["plan", "1/1", "--files", "sel.txt"], some.deps)).toBe(0);
+    expect(some.logs).toEqual(["b.test.ts", "c.test.ts"]);
+    const all = fake({ timings, junit: { "sel.txt": "*\n" } });
+    expect(await shards(["plan", "1/1", "--files", "sel.txt"], all.deps)).toBe(0);
+    expect(all.logs).toEqual(["a.test.ts", "b.test.ts", "c.test.ts"]);
+    const run = fake({ timings, junit: { "sel.txt": "c.test.ts\n" } });
+    expect(await shards(["run", "1/1", "--files", "sel.txt", "--junit", "r.xml"], run.deps)).toBe(
+      0,
+    );
+    expect(run.logs[0]).toContain("shard 1/1 (selection): 1 files");
+    expect(run.runs[0]?.at(-1)).toBe("./c.test.ts");
+  });
+
+  test("--files fails on a listed name that is no tracked test, and an empty shard runs nothing instead of the whole suite (#410 review)", async () => {
+    const typo = fake({ junit: { "sel.txt": "b.test.ts\nnope.test.ts\n" } });
+    expect(await shards(["run", "1/1", "--files", "sel.txt"], typo.deps)).toBe(1);
+    expect(typo.runs).toEqual([]);
+    expect(typo.logs.join("\n")).toContain("nope.test.ts");
+    const empty = fake({ junit: { "sel.txt": "c.test.ts\n" } });
+    expect(await shards(["run", "2/2", "--files", "sel.txt"], empty.deps)).toBe(0);
+    expect(empty.runs).toEqual([]);
+    expect(empty.logs.join("\n")).toContain("no test files");
+  });
+
+  test("--files with no list is the usage, exit 2, and nothing runs (#399)", async () => {
+    const f = fake();
+    expect(await shards(["run", "1/2", "--files"], f.deps)).toBe(2);
+    expect(f.runs).toEqual([]);
+  });
+
   test("without --tier the tiers are never read (#309)", async () => {
     const f = fake();
     expect(await shards(["run", "1/2"], f.deps)).toBe(0);
