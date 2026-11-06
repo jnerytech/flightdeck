@@ -203,6 +203,12 @@ em vez de depender de cuidado.
   own state. Layout, terminal and keyboard journeys stay plain TypeScript
   (`scripts/e2e/journeys.ts`), and unit tests stay plain bun tests with behavior titles. The
   pilot's measurements are in `docs/DECISIONS.md` ("BDD pilot").
+- **Docs links and size.** `md-links.test.ts` fails on a relative link to a missing file, on an
+  anchor that matches no heading (with GitHub's slugs, accents included), and on a `docs/...md` path
+  in the code (not in the tests) that does not exist. `md-size.test.ts` fails on a tracked Markdown
+  file over its line limit (150 for `CLAUDE.md`, `.claude/rules` and `.claude/agents`, 300 for a
+  `SKILL.md`, 400 otherwise) beyond `md-size-baseline.json`, which only goes down. The frozen
+  `docs/DECISIONS.md` has no limit.
 
 ## Armadilhas conhecidas
 
