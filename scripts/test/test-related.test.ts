@@ -485,7 +485,8 @@ describe("planRelated", () => {
       "bun",
       "--config=bunfig.area.toml",
     ]);
-    expect(plan.command).toContain("--timeout=15000");
+    // win32: the Windows runners get 30 s per test (#534).
+    expect(plan.command).toContain("--timeout=30000");
     expect(plan.command?.length).toBe(6 + 2 + 61);
   });
 });

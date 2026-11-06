@@ -282,9 +282,12 @@ em vez de depender de cuidado.
   session) merges by hand with a merge commit, under the same conditions; a PR behind `main` merges,
   with how far behind it is printed as a note.
 - A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
-  the Linux tests and lint; the daemon or a smoke adds Windows and the smokes; the app, the
+  the Linux tests and lint; the daemon or a smoke adds the smokes; the app, the
   protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job
-  skipped by path still reports under the ruleset's name. Every push to `main` runs everything.
+  skipped by path still reports under the ruleset's name. No PR and no push to `main` runs
+  Windows (#534): its jobs run in the schedule's and a run by hand's full runs only, as a signal
+  that gates nothing (`continue-on-error`), and a release does not wait for them. See
+  `docs/decisions/2026-11-06-windows-off-the-pr-path.md`.
 - A release is a tag on a green `main`, and on a commit whose full run (its push to `main`) is
   green; there is no rc branch to assemble. `bun run pr -- tag vX` (the coordinator) tags main's
   HEAD only after that run passed, and pushes the tag alone as `refs/tags/vX`.

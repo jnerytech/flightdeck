@@ -5,12 +5,15 @@
  * `bun run test:shards -- record <junit.xml>...` refreshes it from the JUnit files a CI run keeps.
  */
 
+import { testArgs } from "../test/timeout.ts";
 import { TIERS } from "./test-tiers.ts";
 
 /** Seconds per test file, keyed by repository-relative path. */
 export type Timings = Record<string, number>;
 
 export interface ShardDeps {
+  /** The platform the shard runs on: it picks the per-test timeout. */
+  platform: NodeJS.Platform;
   /** `git <args>` in the repository; null when it fails. */
   git(args: string[]): string | null;
   readTimings(): Timings;
@@ -33,7 +36,10 @@ const TEST_FILE = /(\.|_)(test|spec)\.[cm]?[jt]sx?$/;
 const SHARD = /^([1-9]\d*)\/([1-9]\d*)$/;
 const USAGE =
   "usage: bun run test:shards -- plan|run <i>/<n> [--tier <tier>,...] [--files <list>] [--junit <file>] | record <junit.xml>...";
-const BUN_TEST = ["--config=bunfig.area.toml", "test", "--timeout=15000"];
+const bunTest = (platform: NodeJS.Platform) => [
+  "--config=bunfig.area.toml",
+  ...testArgs(platform, []),
+];
 /**
  * The most characters of file arguments one bun test gets (#483). Windows caps a command line at
  * 32767 characters, and 8191 through a .cmd shim: 1021 files once died with ENAMETOOLONG.
@@ -276,7 +282,7 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   let worst = 0;
   for (const [index, part] of parts.entries()) {
     const code = await deps.bun([
-      ...BUN_TEST,
+      ...bunTest(deps.platform),
       "--reporter=junit",
       `--reporter-outfile=${batchReport(junit, index)}`,
       ...part,

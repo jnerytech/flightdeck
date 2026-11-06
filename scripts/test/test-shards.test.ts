@@ -197,6 +197,7 @@ function fake(
     code?: number;
     git?: null;
     tiers?: Record<string, string>;
+    platform?: NodeJS.Platform;
   } = {},
 ) {
   const logs: string[] = [];
@@ -204,6 +205,7 @@ function fake(
   let written: Timings | undefined;
   let tierReads = 0;
   const deps: ShardDeps = {
+    platform: opts.platform ?? "linux",
     git: () =>
       opts.git === null
         ? null
@@ -362,6 +364,17 @@ describe("shards: plan and run", () => {
         "./c.test.ts",
       ],
     ]);
+  });
+
+  test("a Windows shard gives each test 30 s and any other platform 15 s: only the slower runners get more room (#534)", async () => {
+    const win = fake({ platform: "win32" });
+    expect(await shards(["run", "2/2"], win.deps)).toBe(0);
+    expect(win.runs[0]).toContain("--timeout=30000");
+    expect(win.runs[0]).not.toContain("--timeout=15000");
+    const linux = fake({ platform: "linux" });
+    expect(await shards(["run", "2/2"], linux.deps)).toBe(0);
+    expect(linux.runs[0]).toContain("--timeout=15000");
+    expect(linux.runs[0]).not.toContain("--timeout=30000");
   });
 
   test("--junit names the report, and the exit code of bun test is the run's", async () => {

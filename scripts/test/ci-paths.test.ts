@@ -52,11 +52,29 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan(PR, [])).toEqual(NONE);
   });
 
-  test("scripts add the Windows shards, which run the tests related to them (#399: #383 changed only scripts/test and broke Windows)", () => {
-    const windows = { ...NONE, windows: true };
-    expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(windows);
+  test("scripts plan no Windows on a PR (#534: Windows left the PR path), and the journeys only for a helper the demo loads", () => {
+    expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(NONE);
     // A test helper the demo seed loads (fake CLIs) plans the journeys as well (#410 review).
-    expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual({ ...windows, e2e: true });
+    expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual({ ...NONE, e2e: true });
+  });
+
+  test("a PR and a push to main never plan Windows, whatever they change or whether the diff reads (#534); the schedule and a run by hand do", () => {
+    for (const event of [PR, "push"]) {
+      for (const changed of [
+        ["docs/TDD.md"],
+        ["scripts/lib/slot.ts"],
+        ["apps/daemon/src/main.ts"],
+        ["apps/desktop/src/ui/App.tsx"],
+        ["package.json"],
+        null,
+      ]) {
+        expect(`${event} ${JSON.stringify(changed)}: ${ciPlan(event, changed).windows}`).toBe(
+          `${event} ${JSON.stringify(changed)}: false`,
+        );
+      }
+    }
+    expect(ciPlan("schedule", ["docs/TDD.md"]).windows).toBe(true);
+    expect(ciPlan("workflow_dispatch", []).windows).toBe(true);
   });
 
   test("the UI, the journeys, their config or the demo add the e2e journeys (#399)", () => {
@@ -79,11 +97,11 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan(PR, ["scripts/lib/slot.ts"]).e2e).toBe(false);
   });
 
-  test("the daemon or a smoke adds Windows and the smokes", () => {
+  test("the daemon or a smoke adds the smokes", () => {
     // The demo the journeys drive starts the real daemon, so the daemon plans them too (#410 review).
-    const daemon = { ...NONE, windows: true, smokes: true, e2e: true };
+    const daemon = { ...NONE, smokes: true, e2e: true };
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"])).toEqual(daemon);
-    // A smoke is no part of the demo: Windows and the smokes, not the journeys.
+    // A smoke is no part of the demo: the smokes, not the journeys.
     expect(ciPlan(PR, ["scripts/smoke-limits.ts"])).toEqual({ ...daemon, e2e: false });
   });
 
@@ -98,7 +116,7 @@ describe("ci-paths: the rules", () => {
       ["tsconfig.base.json", 3],
       [".github/workflows/ci.yml", 1],
     ] as const) {
-      const all = { ...FULL, cargo: false, windowsShards };
+      const all = { ...FULL, windows: false, cargo: false, windowsShards };
       expect(`${path}: ${JSON.stringify(ciPlan(PR, [path]))}`).toBe(
         `${path}: ${JSON.stringify(all)}`,
       );
@@ -108,22 +126,22 @@ describe("ci-paths: the rules", () => {
   test("the Tauri shell runs everything and cargo", () => {
     expect(ciPlan(PR, ["apps/desktop/src-tauri/src/lib.rs"])).toEqual({
       ...FULL,
+      windows: false,
       windowsShards: 1,
     });
   });
 
-  test("the schedule, a run by hand or a diff that cannot be read runs everything", () => {
+  test("the schedule or a run by hand runs everything; a diff that cannot be read runs everything but Windows (#534)", () => {
     expect(ciPlan("schedule", ["docs/TDD.md"])).toEqual(FULL);
     expect(ciPlan("workflow_dispatch", [])).toEqual(FULL);
-    expect(ciPlan(PR, null)).toEqual(FULL);
-    expect(ciPlan("push", null)).toEqual(FULL);
+    expect(ciPlan(PR, null)).toEqual({ ...FULL, windows: false });
+    expect(ciPlan("push", null)).toEqual({ ...FULL, windows: false });
   });
 
   test("a push to main plans by its paths, like a PR (#444): the full run is the schedule's", () => {
     expect(ciPlan("push", ["docs/TDD.md"])).toEqual(NONE);
     expect(ciPlan("push", ["apps/daemon/src/main.ts"])).toEqual({
       ...NONE,
-      windows: true,
       smokes: true,
       e2e: true,
     });
