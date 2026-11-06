@@ -68,6 +68,18 @@ export function WandPanel(props: { wand: Wand; t: T }) {
       </div>
     );
   }
+  if (state.kind === "undo") {
+    return (
+      <div role="status">
+        <Inline>
+          <span className="text-sm">{t("assistantWand.replaced")}</span>
+          <Button variant="outline" size="sm" onClick={wand.undo}>
+            {t("assistantWand.undo")}
+          </Button>
+        </Inline>
+      </div>
+    );
+  }
   if (state.kind !== "preview") return null;
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Esc closes the non-modal preview from any control in it

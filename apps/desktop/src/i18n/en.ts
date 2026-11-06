@@ -1862,6 +1862,8 @@ export const en: Dictionary = {
     discard: "Discard",
     edit: "Edit",
     retry: "Retry",
+    replaced: "Text replaced by AI.",
+    undo: "Undo",
     dismiss: "Dismiss",
     stale: "The text changed while this was written.",
   },

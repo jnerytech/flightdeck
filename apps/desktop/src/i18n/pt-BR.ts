@@ -1858,6 +1858,8 @@ export const ptBR = {
     discard: "Descartar",
     edit: "Editar",
     retry: "Tentar de novo",
+    replaced: "Texto trocado pela IA.",
+    undo: "Desfazer",
     dismiss: "Dispensar",
     stale: "O texto mudou enquanto isto era escrito.",
   },
