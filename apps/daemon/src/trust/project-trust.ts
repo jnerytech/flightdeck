@@ -58,6 +58,9 @@ interface Boundary {
 /** The person's decision, per folder, kept by the daemon: off until they say so. */
 export class ProjectTrust {
   private readonly boundaries = new Map<string, Boundary>();
+  /** The look at each folder that started last, so an older one that finishes later stores nothing. */
+  private readonly latest = new Map<string, number>();
+  private scans = 0;
   /** The real paths of the roots (a root named by a symlink is one place under two names), read by `refreshRoots`. */
   private realRoots: string[] = [];
 
@@ -141,7 +144,12 @@ export class ProjectTrust {
 
   private async scan(here: string): Promise<void> {
     // Judged first, stored after: the answer a session was given stays until the new one replaces it.
+    // Two looks at one folder can overlap: the one that started last has read the later state, so it
+    // is the one that is kept, whichever finishes last (issue #415).
+    const ticket = ++this.scans;
+    this.latest.set(here, ticket);
     const found = await this.boundaryOf(here);
+    if (this.latest.get(here) !== ticket) return;
     if (found) this.boundaries.set(here, found);
     else this.boundaries.delete(here);
   }
