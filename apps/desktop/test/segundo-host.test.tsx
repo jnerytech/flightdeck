@@ -68,7 +68,6 @@ describe("segundo-host: Add host is a palette command", () => {
     const sections = paletteSections(state as never, "", {
       costs: false,
       t: translator("en"),
-      waiting: false,
     });
     const found = sections.flatMap((s) => s.items).find((i) => i.label === "Add a host");
     expect(found?.target).toEqual({ kind: "add-host" });
@@ -78,7 +77,6 @@ describe("segundo-host: Add host is a palette command", () => {
     const sections = paletteSections(state as never, "host", {
       costs: false,
       t: translator("en"),
-      waiting: false,
     });
     expect(sections.flatMap((s) => s.items).map((i) => i.label)).toContain("Add a host");
   });
