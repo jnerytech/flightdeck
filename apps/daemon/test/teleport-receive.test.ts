@@ -131,9 +131,12 @@ describe("teleport-receive: the target takes a package in chunks (#100)", () => 
       await reason(() => inbox.write(id, "transcript", 0, b64("again"))),
       await reason(() => inbox.write(id, "transcript", 9, b64("gap"))),
       await reason(() => inbox.write(id, "transcript", 8, b64("123456789"))),
-      await reason(() => inbox.write(id, "code", 0, b64(`${CODE}!`.slice(-8)))),
+      await reason(() => inbox.write(id, "code", 0, b64(CODE.slice(0, 8)))),
     ];
-    await send(inbox, id, { code: CODE });
+    // The rest of the code part, from where the chunk above left it.
+    for (let offset = 8; offset < CODE.length; offset += 8) {
+      await inbox.write(id, "code", offset, b64(CODE.slice(offset, offset + 8)));
+    }
     answers.push(await reason(() => inbox.write(id, "code", Buffer.byteLength(CODE), b64("more"))));
     expect(answers).toEqual([
       "teleport_not_found",
