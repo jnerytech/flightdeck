@@ -77,6 +77,9 @@ describe("nomes-sessao-protocolo", () => {
       persona: "geral",
       number: 1,
       cardNumber: null,
+      // Issue #101: still the standard name, and a session of no team.
+      standard: true,
+      team: null,
     });
   });
 

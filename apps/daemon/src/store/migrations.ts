@@ -892,4 +892,11 @@ export const MIGRATIONS: readonly string[] = [
     kind       TEXT NOT NULL
   );
   `,
+  // Issue #101: the team a session works in, its role and a worker's number, so the app names a
+  // team session by its persona. NULL for a session of no team.
+  `
+  ALTER TABLE session_names ADD COLUMN team TEXT;
+  ALTER TABLE session_names ADD COLUMN team_role TEXT;
+  ALTER TABLE session_names ADD COLUMN team_number INTEGER;
+  `,
 ];
