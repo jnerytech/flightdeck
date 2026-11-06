@@ -114,15 +114,16 @@ describe("ci-paths: the workflow", () => {
       "smokes",
       "screenshots",
       "cargo",
+      "e2e",
     ]);
     for (const key of ["test-windows-shard", "checks-windows"]) {
       expect(job(key).needs).toContain("changes");
       expect(job(key).if ?? "").toContain(gate("windows"));
     }
-    for (const key of ["screenshots-prints", "screenshots-e2e"]) {
-      expect(job(key).needs).toContain("changes");
-      expect(job(key).if ?? "").toContain(gate("screenshots"));
-    }
+    expect(job("screenshots-prints").needs).toContain("changes");
+    expect(job("screenshots-prints").if ?? "").toContain(gate("screenshots"));
+    expect(job("screenshots-e2e").needs).toContain("changes");
+    expect(job("screenshots-e2e").if ?? "").toContain(gate("e2e"));
     expect(step("checks-linux", "Smokes")?.if).toBe(gate("smokes"));
   });
 
