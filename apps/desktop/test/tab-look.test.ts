@@ -31,4 +31,10 @@ describe("tab-look: flat tabs that share the bar, the active one joined to the c
     expect(active).toContain("background: var(--color-primary);");
     expect(item).toContain("color: var(--color-muted-foreground);");
   });
+
+  test("the bar's lower line is painted under the tabs, so the active one covers it and joins the content", () => {
+    const bar = utility("tab-bar");
+    expect(bar).toContain("box-shadow: inset 0 -1px 0 var(--color-border);");
+    expect(bar.includes("border-bottom")).toBe(false);
+  });
 });
