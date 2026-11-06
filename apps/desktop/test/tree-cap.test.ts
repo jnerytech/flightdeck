@@ -121,6 +121,7 @@ describe("tree-cap: what the tree remembers (issue #689)", () => {
   test("the pinned and the unfolded are read with care", () => {
     expect([loadTreePinned(storage(null)), loadTreeOpened(storage(null))]).toEqual([[], []]);
     expect(loadTreePinned(storage("{nope"))).toEqual([]);
+    expect(loadTreePinned(storage('{"a":1}'))).toEqual([]);
     expect(loadTreeOpened(storage('["h1/p", 3, null]'))).toEqual(["h1/p"]);
   });
 
