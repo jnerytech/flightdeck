@@ -39,6 +39,22 @@ describe("ci-pyramid (#309)", () => {
     expect(full?.run).toBe("bun run test");
   });
 
+  test("on a PR the Windows shards run the unit and component tiers; on main, at night and by hand the whole suite (#309 b)", () => {
+    const shard = ci.jobs["test-windows-shard"]?.steps ?? [];
+    const pr = shard.find(
+      (s) => s.name === "Testes do PR (shard ${{ matrix.shard }}/3, unit e component)",
+    );
+    const full = shard.find((s) => s.name === "Testes (shard ${{ matrix.shard }}/3)");
+    expect(pr?.if).toBe("github.event_name == 'pull_request'");
+    expect(pr?.run).toBe(
+      "bun run test:shards -- run ${{ matrix.shard }}/3 --tier unit,component --junit junit-${{ matrix.shard }}.xml",
+    );
+    expect(full?.if).toBe("github.event_name != 'pull_request'");
+    expect(full?.run).toBe(
+      "bun run test:shards -- run ${{ matrix.shard }}/3 --junit junit-${{ matrix.shard }}.xml",
+    );
+  });
+
   test("the e2e journeys leave the PR path: they run on main, nightly and by hand (#309 c)", () => {
     expect(ci.jobs["screenshots-e2e"]?.if).toBe(
       "needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'",
