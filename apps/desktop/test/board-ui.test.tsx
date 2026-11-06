@@ -522,7 +522,8 @@ describe("board-ui", () => {
     expect({
       fill:
         body !== null && body !== undefined && body.closest("[data-slot='scroll-area']") === null,
-      row: ["min-h-0", "flex-1", "@max-[40rem]:snap-x", "@max-[40rem]:snap-mandatory"].filter(
+      // A 16 rem floor: an empty board's notice above never squeezes the columns to nothing.
+      row: ["min-h-64", "flex-1", "@max-[40rem]:snap-x", "@max-[40rem]:snap-mandatory"].filter(
         (c) => !classes(row).includes(c),
       ),
       lists: lists.length,
