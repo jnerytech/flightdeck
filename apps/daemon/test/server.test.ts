@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   type Ack,
-  FEATURE_RESUME_OFFER,
   CLOSE_UNAUTHORIZED,
   type EventEnvelope,
+  FEATURE_RESUME_OFFER,
   PROTOCOL_VERSION,
   parseServerMessage,
 } from "@flightdeck/protocol";

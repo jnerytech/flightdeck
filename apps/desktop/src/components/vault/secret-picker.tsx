@@ -14,7 +14,7 @@ export interface SecretPickerProps {
 }
 
 /** Picks a secret by id. It only ever sees metadata, so no value can reach the screen. */
-export function SecretPicker(props: SecretPickerProps) {
+export function SecretPicker(props: Readonly<SecretPickerProps>) {
   const t = useT();
   const shown = props.types
     ? props.secrets.filter((s) => props.types?.includes(s.type))

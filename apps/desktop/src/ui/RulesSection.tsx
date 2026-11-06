@@ -6,7 +6,9 @@ import type { AppStore } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** The project's rules (`permissions.allow` of its `.claude/settings.local.json`), each removable. */
-export function RulesSection(props: { store: AppStore; hostId: string; projectId: string }) {
+export function RulesSection(
+  props: Readonly<{ store: AppStore; hostId: string; projectId: string }>,
+) {
   const t = useT();
   const { store, hostId, projectId } = props;
   const [rules, setRules] = useState<string[]>([]);

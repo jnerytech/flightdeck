@@ -143,7 +143,7 @@ describe("navegacao", () => {
     await settle(() => heading("Configurações"));
     expect(heading("Configurações")).toBe(true);
     // The queue shows the request; "Abrir sessão" opens it (and leaves Settings).
-    await sidebar.queueItem("alfa · Pedinte: Bash");
+    await sidebar.queueItem(/^alfa · Pedinte: Bash/);
     await click("Abrir sessão");
     expect(heading("Configurações")).toBe(false);
     expect(heading("Pedinte")).toBe(true);
@@ -225,6 +225,15 @@ describe("navegacao", () => {
     expect(start).not.toBeNull();
     await act(async () => {
       fireEvent.click(start as HTMLElement);
+    });
+    // The menu's Start asks for the workflow and persona first (issue #188).
+    await settle(() => screen.queryByRole("dialog", { name: "Iniciar card" }) !== null);
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("dialog", { name: "Iniciar card" })).getByRole("button", {
+          name: "Iniciar",
+        }),
+      );
     });
     await poll(() => d.board.getCard(card.id).runs.length > 0, 8000);
     expect(d.board.getCard(card.id).runs).toHaveLength(1);

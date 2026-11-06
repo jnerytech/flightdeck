@@ -111,7 +111,7 @@ describe("times-cota: a pausa e a retomada pela cota do plano", () => {
     expect(teams.get(byQuota.id)).toMatchObject({ pausedBy: "quota" });
     // The one already paused by the user is not paused again, nor taken over by the quota.
     expect(teams.get(byHand.id)).toMatchObject({ state: "paused", pausedBy: "user" });
-    expect(stops().length).toBe(before + 2);
+    expect(stops()).toHaveLength(before + 2);
     reading(0.1);
     expect(teams.get(byQuota.id).state).toBe("active");
     expect(teams.get(byHand.id)).toMatchObject({ state: "paused", pausedBy: "user" });

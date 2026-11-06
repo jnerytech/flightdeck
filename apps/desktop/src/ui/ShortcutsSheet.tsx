@@ -1,12 +1,15 @@
 import { X } from "lucide-react";
+import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { Button } from "@/components/ui/button";
 import type { AppStore } from "../lib/app-store.ts";
-import { keysLabel, SHORTCUTS, type ShortcutGroup } from "../lib/shortcuts.ts";
+import { SHORTCUTS, type ShortcutGroup } from "../lib/shortcuts.ts";
 
 const GROUPS: ShortcutGroup[] = ["general", "navigation", "tabs", "lists", "approvals"];
 
 /** The `?` sheet: every shortcut of the registry, by group. */
-export function ShortcutsSheet(props: { store: AppStore; mac: boolean; onClose(): void }) {
+export function ShortcutsSheet(
+  props: Readonly<{ store: AppStore; mac: boolean; onClose(): void }>,
+) {
   const { t } = props.store.i18n;
   return (
     <dialog
@@ -39,7 +42,7 @@ export function ShortcutsSheet(props: { store: AppStore; mac: boolean; onClose()
                 <div key={s.id} className="shortcut-row">
                   <dt>{t(s.label)}</dt>
                   <dd>
-                    <kbd className="keycap bg-muted font-mono">{keysLabel(s, props.mac)}</kbd>
+                    <ShortcutKeys keys={s.keys} chord={s.chord === true} mac={props.mac} />
                   </dd>
                 </div>
               ))}

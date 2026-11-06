@@ -10,7 +10,9 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
+import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
@@ -145,10 +147,18 @@ export class ReviewFiles {
     }
     const source = base ?? "HEAD";
     const gitPath = path.replaceAll("\\", "/");
-    const inSource = await git(root, "cat-file", "-e", `${source}:${gitPath}`);
+    const inSource = await git(root, "cat-file", "-e", `${refArg(source)}:${gitPath}`);
     if (inSource.code === 0) {
       must(
-        await git(root, "restore", `--source=${source}`, "--staged", "--worktree", "--", gitPath),
+        await git(
+          root,
+          "restore",
+          `--source=${refArg(source)}`,
+          "--staged",
+          "--worktree",
+          "--",
+          gitPath,
+        ),
         "git restore",
       );
     } else {
@@ -200,12 +210,12 @@ export class ReviewFiles {
   /** Copies older than 7 days leave the trash. */
   private async pruneTrash(): Promise<void> {
     const names = await readdir(this.trash).catch(() => []);
-    for (const name of names) {
+    await inSequence(names, async (name) => {
       const dir = join(this.trash, name);
       const info = await stat(dir).catch(() => null);
       if (info && this.now() - info.mtimeMs > TRASH_MS)
         await rm(dir, { recursive: true, force: true });
-    }
+    });
   }
 
   /**

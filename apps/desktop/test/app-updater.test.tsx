@@ -14,7 +14,7 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore, NOTIFY_UPDATES_KEY } = await import("../src/lib/app-store.ts");
+const { AppStore, AUTO_UPDATE_KEY, NOTIFY_UPDATES_KEY } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];
@@ -31,12 +31,17 @@ function setup(
   opts: { available?: { version: string; notes: string } | null; installError?: string } = {},
 ) {
   const mem = memoryPlatform();
+  // These tests read the manual banner; the automatic download (issue #280) has its own file.
+  mem.items.set(AUTO_UPDATE_KEY, "false");
   const calls: string[] = [];
   mem.platform.updater = {
     supported: true,
     check: async () => {
       calls.push("check");
       return opts.available ?? null;
+    },
+    download: async () => {
+      calls.push("download");
     },
     install: async () => {
       calls.push("install");

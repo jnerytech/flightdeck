@@ -69,6 +69,18 @@
       "linter": { "rules": { "nursery": { "noFloatingPromises": "error" } } }
     },
     {
+      "includes": [
+        "apps/**",
+        "packages/**",
+        "scripts/**",
+        "!**/test/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!scripts/e2e/**"
+      ],
+      "linter": { "rules": { "suspicious": { "useArraySortCompare": "error" } } }
+    },
+    {
       "includes": ["apps/desktop/src/components/ui/**"],
       "linter": { "enabled": false },
       "assist": { "enabled": false }

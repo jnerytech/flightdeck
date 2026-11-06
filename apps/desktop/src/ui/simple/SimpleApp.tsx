@@ -1,10 +1,13 @@
 import type { TaskFile, TaskResultsResult, Template } from "@flightdeck/protocol";
-import { FolderOpen, Home, Settings as SettingsIcon } from "lucide-react";
+import { inSequence } from "@flightdeck/protocol";
+import { FolderOpen, Home, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Notices } from "@/components/feedback/notices";
 import { HomeView } from "@/components/simple/home-view";
 import { SettingsView } from "@/components/simple/settings-view";
 import { TaskView } from "@/components/simple/task-view";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { translator } from "../../i18n/index.ts";
 import {
   type AppStore,
@@ -32,16 +35,18 @@ function stateOf(status: SidebarSession["status"]): TaskState {
 }
 
 /** One task: its conversation underneath, only the result on top. */
-function TaskScreen(props: {
-  store: AppStore;
-  hostId: string;
-  sessionId: string;
-  title: string;
-  locked: boolean;
-  t: ReturnType<typeof translator>;
-  onBack(): void;
-  onDetails(): void;
-}) {
+function TaskScreen(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    sessionId: string;
+    title: string;
+    locked: boolean;
+    t: ReturnType<typeof translator>;
+    onBack(): void;
+    onDetails(): void;
+  }>,
+) {
   const { store, hostId, sessionId, t } = props;
   useEffect(() => store.watchSession(hostId, sessionId), [store, hostId, sessionId]);
   const session = useSessionState(store, sessionKey(hostId, sessionId));
@@ -71,7 +76,9 @@ function TaskScreen(props: {
       canOpen={store.canOpenPaths(hostId)}
       onBack={props.onBack}
       onStop={() => void store.hostCommand(hostId, "session.close", { sessionId })}
-      onAnswer={(requestId, decision) => void store.respondTo(hostId, requestId, decision)}
+      onAnswer={(requestId, decision, held) =>
+        void store.respondTo(hostId, requestId, decision, { held })
+      }
       onOpenFull={props.onDetails}
       onCopy={store.copyText.bind(store)}
       onOpenFile={(path) => void store.openPath(hostId, path)}
@@ -90,12 +97,14 @@ function TaskScreen(props: {
 }
 
 /** Every file the recent tasks made, newest first. */
-function FilesScreen(props: {
-  store: AppStore;
-  hostId: string;
-  tasks: Array<{ id: string; title: string }>;
-  t: ReturnType<typeof translator>;
-}) {
+function FilesScreen(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    tasks: Array<{ id: string; title: string }>;
+    t: ReturnType<typeof translator>;
+  }>,
+) {
   const { store, hostId, t } = props;
   const [rows, setRows] = useState<Array<{ task: string; file: TaskFile }>>([]);
   const ids = props.tasks.map((task) => task.id).join(",");
@@ -104,10 +113,10 @@ function FilesScreen(props: {
     let alive = true;
     void (async () => {
       const found: Array<{ task: string; file: TaskFile }> = [];
-      for (const task of props.tasks.slice(0, 10)) {
+      await inSequence(props.tasks.slice(0, 10), async (task) => {
         const answer = await store.hostRequest(hostId, "task.results", { sessionId: task.id });
         if (answer.ok) for (const file of answer.data.files) found.push({ task: task.title, file });
-      }
+      });
       found.sort((a, b) => b.file.modifiedAt.localeCompare(a.file.modifiedAt));
       if (alive) setRows(found);
     })();
@@ -156,12 +165,14 @@ function FilesScreen(props: {
 }
 
 /** Simple mode for one host (phase 33): Home, a task, Files and Settings, in a narrow frame. */
-export function SimpleApp(props: {
-  store: AppStore;
-  host: HostView | undefined;
-  notifyUpdates: boolean;
-  hostId: string;
-}) {
+export function SimpleApp(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView | undefined;
+    notifyUpdates: boolean;
+    hostId: string;
+  }>,
+) {
   const { store, host, hostId } = props;
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const t = useMemo(() => translator(lang, "simple"), [lang]);
@@ -169,6 +180,7 @@ export function SimpleApp(props: {
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const [templates, setTemplates] = useState<Template[]>([]);
   const mode = store.uiMode(hostId);
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -218,7 +230,28 @@ export function SimpleApp(props: {
         {item("home", t("simple.nav.home"), Home)}
         {item("files", t("simple.nav.files"), FolderOpen)}
         {item("settings", t("simple.nav.settings"), SettingsIcon)}
+        <div className="simple-nav-foot">
+          {mode.canSwitch ? (
+            <Button variant="ghost" className="simple-nav-item" onClick={() => setLeaving(true)}>
+              <LayoutDashboard aria-hidden="true" className="size-4" />
+              {t("simple.fullApp")}
+            </Button>
+          ) : (
+            <p className="question-card-note">{t("simple.lockedNote")}</p>
+          )}
+        </div>
       </nav>
+      {leaving && (
+        <ConfirmDialog
+          message={t("simple.settings.everythingConfirm")}
+          confirmLabel={t("simple.settings.everythingYes")}
+          onCancel={() => setLeaving(false)}
+          onConfirm={() => {
+            setLeaving(false);
+            toFull();
+          }}
+        />
+      )}
       <main className="simple-main">
         {screen.name === "home" && (
           <HomeView
@@ -270,12 +303,15 @@ export function SimpleApp(props: {
             canPickFolder={store.canPickFolder()}
             onPickFolder={() => store.pickFolder()}
             notifications={props.notifyUpdates}
-            onNotifications={(enabled) => void store.setNotifyUpdates(enabled)}
+            onNotifications={(enabled) => {
+              void store.setNotifyUpdates(enabled);
+            }}
             canSwitch={mode.canSwitch}
             onShowEverything={() => toFull()}
           />
         )}
       </main>
+      <Notices store={store} />
     </div>
   );
 }

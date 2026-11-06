@@ -15,7 +15,7 @@ export function activityText(activity: Activity, t: T): string {
 }
 
 /** Above the message box while a turn runs: a small spinner, what is happening and for how long. */
-export function ActivityLine(props: { activity: Activity; t: T }) {
+export function ActivityLine(props: Readonly<{ activity: Activity; t: T }>) {
   const started = useRef(Date.now());
   const [now, setNow] = useState(started.current);
   useEffect(() => {
@@ -23,6 +23,8 @@ export function ActivityLine(props: { activity: Activity; t: T }) {
     return () => clearInterval(timer);
   }, []);
   return (
+    // testid: the line is aria-hidden (the status line says the same for screen readers), so it
+    // has no role or name a test could find it by.
     <div data-testid="activity" className="activity-line" aria-hidden="true">
       <Loader2 aria-hidden="true" className="size-3.5 motion-safe:animate-spin" />
       <span>{activityText(props.activity, props.t)}</span>

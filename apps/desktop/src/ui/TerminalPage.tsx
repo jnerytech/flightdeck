@@ -26,15 +26,17 @@ import {
 } from "../lib/xterm-screen.ts";
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
-export function TerminalPage(props: {
-  store: AppStore;
-  hostId: string;
-  terminalId: string;
-  /** xterm's pieces; the real ones when absent. */
-  deps?: XtermDeps;
-  /** The terminal was closed from here (detached or ended): leave the screen. */
-  onClosed(): void;
-}) {
+export function TerminalPage(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    terminalId: string;
+    /** xterm's pieces; the real ones when absent. */
+    deps?: XtermDeps;
+    /** The terminal was closed from here (detached or ended): leave the screen. */
+    onClosed(): void;
+  }>,
+) {
   const { store, hostId, terminalId } = props;
   const { t } = store.i18n;
   const area = useRef<HTMLDivElement>(null);
@@ -77,7 +79,9 @@ export function TerminalPage(props: {
         fontSize: store.terminalFont.value,
         fontFamily: TERMINAL_FONT_FAMILY,
         clipboard: {
-          copy: async (text) => void (await store.copyText(text)),
+          copy: async (text) => {
+            await store.copyText(text);
+          },
           read: () => navigator.clipboard.readText(),
         },
         onInput: (data) => session.current?.input(data),
@@ -317,7 +321,7 @@ export function TerminalPage(props: {
 }
 
 /** Closing a terminal: detach (the default; the process keeps running on the host) or end it. */
-export function TerminalCloseDialog(props: { onClose(kill: boolean | null): void }) {
+export function TerminalCloseDialog(props: Readonly<{ onClose(kill: boolean | null): void }>) {
   const t = useT();
   const detach = useRef<HTMLButtonElement>(null);
   return (

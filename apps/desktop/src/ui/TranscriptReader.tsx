@@ -1,8 +1,9 @@
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
-import { Copy } from "lucide-react";
+import { Copy, History } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Note } from "@/components/layout/note";
+import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
 import { ToolRow } from "@/components/session/tool-row";
 import { Button } from "@/components/ui/button";
@@ -35,13 +36,15 @@ function merge(list: HistoryMessage[], page: HistoryMessage[], where: "before" |
 }
 
 /** Read-only transcript from a host's history, in pages, with the chat's look. */
-export function TranscriptReader(props: {
-  store: AppStore;
-  target: ReaderTarget;
-  hostName: string;
-  /** The transcript became a managed session (already selected in the store). */
-  onResumed(): void;
-}) {
+export function TranscriptReader(
+  props: Readonly<{
+    store: AppStore;
+    target: ReaderTarget;
+    hostName: string;
+    /** The transcript became a managed session (already selected in the store). */
+    onResumed(): void;
+  }>,
+) {
   const t = props.store.i18n.t;
   const { store, target } = props;
   const [session, setSession] = useState<HistorySessionSummary | null>(null);
@@ -66,14 +69,28 @@ export function TranscriptReader(props: {
   const roots = host?.info?.allowedRoots ?? [];
   const [copied, setCopied] = useState(false);
 
+  // Issue #227: the first page says what happened: loading, a session the host does not have, or a
+  // request that failed (with Try again). The screen only opens on an online host.
+  const [load, setLoad] = useState<"loading" | "missing" | "failed" | "ready">("loading");
+  const [attempt, setAttempt] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt reads the page again
   useEffect(() => {
     let live = true;
+    setLoad("loading");
     // Opened on a hit or a cursor it starts there; opened plainly it starts on the latest messages.
     const latest = target.cursor === undefined && target.focusUuid === undefined;
+    let reason: string | undefined;
     void store
-      .historyGet(target.hostId, target.claudeSessionId, target.cursor, latest)
+      .historyGet(target.hostId, target.claudeSessionId, target.cursor, latest, (why) => {
+        reason = why;
+      })
       .then((page) => {
-        if (!live || !page) return;
+        if (!live) return;
+        if (!page) {
+          setLoad(reason === "transcript_not_indexed" ? "missing" : "failed");
+          return;
+        }
+        setLoad("ready");
         if (page.cursor !== undefined) lastAfter.current = page.cursor;
         // Asked for the latest messages and got a page with no cursor: the daemon predates `tail` and sent page one.
         if (latest && page.cursor === undefined) following.current = false;
@@ -87,7 +104,7 @@ export function TranscriptReader(props: {
     return () => {
       live = false;
     };
-  }, [store, target]);
+  }, [store, target, attempt]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the end moves when messages come in
   useLayoutEffect(() => {
@@ -162,7 +179,8 @@ export function TranscriptReader(props: {
   const gone = session !== null && cwdExists === false;
   const outside = session !== null && !roots.some((root) => isInside(session.cwd, root));
   const blocked = gone || outside;
-  const why = !session ? null : t(gone ? "reader.gone" : "reader.outside", { folder: session.cwd });
+  const whyKey = gone ? "reader.gone" : "reader.outside";
+  const why = session ? t(whyKey, { folder: session.cwd }) : null;
   return (
     <SessionPane>
       <SessionHeader
@@ -249,6 +267,25 @@ export function TranscriptReader(props: {
             </Button>
           </div>
         </div>
+      )}
+      {load === "loading" && <LoadingState label={t("reader.loading")} />}
+      {load === "missing" && (
+        <EmptyState
+          icon={History}
+          title={t("reader.missing", { host: props.hostName })}
+          action={
+            <Button variant="outline" onClick={() => store.router.push({ name: "hub" })}>
+              {t("reader.back")}
+            </Button>
+          }
+        />
+      )}
+      {load === "failed" && (
+        <ErrorState
+          message={t("reader.failed", { host: props.hostName })}
+          retryLabel={t("reader.retry")}
+          onRetry={() => setAttempt((n) => n + 1)}
+        />
       )}
       <Timeline
         role="log"

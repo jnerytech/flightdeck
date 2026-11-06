@@ -109,9 +109,9 @@ describe("clients-filter: the tray, the notifications and the global search", ()
     expect(store.getState().clientSelection).toBe("acme");
     expect(needsYou(store.getState())).toHaveLength(1);
     await settle(() => (menus.at(-1)?.items.length ?? 0) === 1, 3000);
-    expect(menus.at(-1)?.items.length).toBe(1);
+    expect(menus.at(-1)?.items).toHaveLength(1);
     await settle(() => platform.notifications.length > 0, 3000);
-    expect(platform.notifications.length > 0).toBe(true);
+    expect(platform.notifications.length).toBeGreaterThan(0);
   });
 
   test("with Acme selected, the global search finds the sessions of every client", async () => {
@@ -123,7 +123,7 @@ describe("clients-filter: the tray, the notifications and the global search", ()
     const option = (label: string) =>
       dialog?.querySelector(`[role='option'][aria-label='${label}']`) ?? null;
     await settle(() => option("Sessão Beta") !== null);
-    expect(option("Sessão Acme") !== null).toBe(true);
-    expect(option("Sessão Beta") !== null).toBe(true);
+    expect(option("Sessão Acme")).not.toBeNull();
+    expect(option("Sessão Beta")).not.toBeNull();
   });
 });

@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/ui/ConfirmDialog";
  * with a confirmation that names the host; turning it off asks nothing. Hidden on a daemon that
  * predates the switch.
  */
-export function BypassSwitch(props: { store: AppStore; host: HostView }) {
+export function BypassSwitch(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const [asking, setAsking] = useState(false);
