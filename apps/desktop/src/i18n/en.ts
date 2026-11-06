@@ -2997,6 +2997,9 @@ export const en: Dictionary = {
     persona: "{persona} {n}",
     worker: "Worker {n}",
     coordinator: "Coordinator",
+    general: "general",
+    noProject: "no project",
+    card: "card {n}",
   },
   teamsUi: {
     notifyTitle: "Team {name}",

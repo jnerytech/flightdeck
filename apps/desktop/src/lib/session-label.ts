@@ -20,7 +20,7 @@ export interface LabelInput {
  * 2. for a session of a team, the team and the member's persona in the app's language and its
  *    number, or its role when it has no persona the host lists ("md-server · Arquiteto 2");
  * 3. the name it was created with;
- * 4. the standard name (`project · persona · number`).
+ * 4. the standard name (`project · persona · number`), in the app's language (#668).
  * Null when none is known; the caller falls back to the folder.
  */
 export function sessionLabel(input: LabelInput, t?: T): string | null {
@@ -40,5 +40,30 @@ export function sessionLabel(input: LabelInput, t?: T): string | null {
         : t("sessionLabel.coordinator");
     return t("sessionLabel.team", { team: team.name, member });
   }
-  return input.createdName ?? names?.display ?? null;
+  if (input.createdName) return input.createdName;
+  if (names?.standard === true && t) return standardLabel(names, input.personas, t);
+  return names?.display ?? null;
+}
+
+/** What the daemon writes for a session with no persona and one with no project (`format.ts`). */
+const GENERAL = "geral";
+const NO_PROJECT = "sem-projeto";
+
+/**
+ * The standard name in the person's language (issue #668), from the parts the daemon built it
+ * from: `project · persona · number`, or `· card 42` and the run of the card from the second. A
+ * persona the host does not list keeps the slug the daemon gave it.
+ */
+function standardLabel(names: SessionNameInfo, personas: LabelInput["personas"], t: T): string {
+  const project = names.project === NO_PROJECT ? t("sessionLabel.noProject") : names.project;
+  const listed = personas?.find((p) => p.id === names.persona)?.name;
+  const persona = listed ?? (names.persona === GENERAL ? t("sessionLabel.general") : names.persona);
+  const sequence =
+    names.cardNumber === null
+      ? [String(names.number)]
+      : [
+          t("sessionLabel.card", { n: names.cardNumber }),
+          ...(names.number > 1 ? [String(names.number)] : []),
+        ];
+  return [project, persona, ...sequence].join(" · ");
 }

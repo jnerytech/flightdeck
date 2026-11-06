@@ -2997,6 +2997,9 @@ export const ptBR = {
     persona: "{persona} {n}",
     worker: "Executora {n}",
     coordinator: "Coordenadora",
+    general: "geral",
+    noProject: "sem projeto",
+    card: "card {n}",
   },
   teamsUi: {
     notifyTitle: "Time {name}",
