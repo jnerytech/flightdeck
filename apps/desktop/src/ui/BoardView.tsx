@@ -26,10 +26,12 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { CardStartDialog } from "../components/board/card-start-dialog.tsx";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
+import { cardStartBlock } from "../lib/card-start-block.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -37,26 +39,30 @@ import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
 
-function CardTile(props: {
-  card: Card;
-  /** The name of the workflow the card is running, when known. */
-  workflow?: string;
-  formatTime(iso: string): string;
-  labels: { actions: string; start: string; edit: string; delete: string };
-  /** Phase 31: the titles of the cards it waits for and of those it holds up. */
-  deps: { waiting: string; holding: string };
-  /** The ways to move the card without dragging it, in menu order. */
-  moves: Array<{ key: string; label: string; disabled?: boolean; onSelect(): void }>;
-  onOpen(): void;
-  /** "Iniciar card" from the card's menu, without opening it (phase 10). */
-  onStart(): void;
-  /** Opens the card with its title ready to edit. */
-  onEdit(): void;
-  /** Asks to delete the card (a card that already started is offered Discard instead). */
-  onDelete(): void;
-  onDragStart(): void;
-  onDropOn(): void;
-}) {
+function CardTile(
+  props: Readonly<{
+    card: Card;
+    /** The name of the workflow the card is running, when known. */
+    workflow?: string;
+    formatTime(iso: string): string;
+    labels: { actions: string; start: string; edit: string; delete: string };
+    /** Why "Iniciar card" is off (queued or running), else null. */
+    startOff: string | null;
+    /** Phase 31: the titles of the cards it waits for and of those it holds up. */
+    deps: { waiting: string; holding: string };
+    /** The ways to move the card without dragging it, in menu order. */
+    moves: Array<{ key: string; label: string; disabled?: boolean; onSelect(): void }>;
+    onOpen(): void;
+    /** "Iniciar card" from the card's menu, without opening it (phase 10). */
+    onStart(): void;
+    /** Opens the card with its title ready to edit. */
+    onEdit(): void;
+    /** Asks to delete the card (a card that already started is offered Discard instead). */
+    onDelete(): void;
+    onDragStart(): void;
+    onDropOn(): void;
+  }>,
+) {
   const t = useT();
   const { card } = props;
   /** The workflow (when its run is known) and the branch, when there are any. */
@@ -103,7 +109,9 @@ function CardTile(props: {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onSelect={props.onStart}>{props.labels.start}</DropdownMenuItem>
+            <DropdownMenuItem disabled={props.startOff !== null} onSelect={props.onStart}>
+              {props.startOff ? `${props.labels.start} · ${props.startOff}` : props.labels.start}
+            </DropdownMenuItem>
             {props.moves.map((move) => (
               <DropdownMenuItem key={move.key} disabled={move.disabled} onSelect={move.onSelect}>
                 {move.label}
@@ -189,6 +197,7 @@ export const BoardView = memo(function BoardView(props: {
   const loading = useMinLoading(project === null);
   /** The new-card dialog. */
   const [creating, setCreating] = useState(false);
+  const [starting, setStarting] = useState<Card | null>(null);
   /** The card whose Delete… is asking for confirmation. */
   const [deleting, setDeleting] = useState<Card | null>(null);
   /** The column a dragged card is over. */
@@ -291,13 +300,20 @@ export const BoardView = memo(function BoardView(props: {
       ?.focus();
   });
 
-  const create = () => {
-    const made = store.hostCommand(hostId, "card.create", {
+  const create = async () => {
+    const made = await store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
     });
+    // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
+    // (the banner says why). A made card says so, with a way to open it (issue #188).
+    if (!made) return made;
     close();
+    store.success(t("kanban.created", { title: made.title }), {
+      label: t("kanban.openCard"),
+      run: () => props.onOpenCard(made.id),
+    });
     return made;
   };
   /** Closes the dialog and forgets what was typed. */
@@ -362,6 +378,7 @@ export const BoardView = memo(function BoardView(props: {
         )}
         <div
           ref={boardRef}
+          data-slot="board-columns"
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
           className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"
@@ -406,6 +423,13 @@ export const BoardView = memo(function BoardView(props: {
                         edit: store.i18n.t("board.edit"),
                         delete: store.i18n.t("board.delete"),
                       }}
+                      startOff={
+                        cardStartBlock(card) === "queued"
+                          ? store.i18n.t("board.startQueued")
+                          : cardStartBlock(card) === "running"
+                            ? store.i18n.t("board.startRunning")
+                            : null
+                      }
                       deps={{
                         waiting: titlesOf(card.waitingOn),
                         holding: titlesOf(card.blocking),
@@ -414,9 +438,7 @@ export const BoardView = memo(function BoardView(props: {
                       onOpen={() => props.onOpenCard(card.id)}
                       onEdit={() => props.onOpenCard(card.id, true)}
                       onDelete={() => setDeleting(card)}
-                      onStart={() =>
-                        void store.hostCommand(hostId, "card.start", { cardId: card.id })
-                      }
+                      onStart={() => setStarting(card)}
                       onDragStart={() => {
                         dragging.current = card.id;
                       }}
@@ -464,6 +486,20 @@ export const BoardView = memo(function BoardView(props: {
           onClose={() => setIssuesOpen(false)}
           onProject={setProject}
           onOpenCard={props.onOpenCard}
+        />
+      )}
+      {starting && (
+        <CardStartDialog
+          store={store}
+          hostId={hostId}
+          card={starting}
+          onClose={() => setStarting(null)}
+          onStarted={() =>
+            store.success(t("kanban.started", { title: starting.title }), {
+              label: t("kanban.openCard"),
+              run: () => props.onOpenCard(starting.id),
+            })
+          }
         />
       )}
       <Dialog open={creating} onOpenChange={(open) => (open ? setCreating(true) : close())}>

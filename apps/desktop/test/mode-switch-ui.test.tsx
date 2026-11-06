@@ -43,7 +43,7 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
       within(nav())
         .getAllByRole("button")
         .map((b) => b.textContent),
-    ).toEqual(["Home", "Files", "Settings"]);
+    ).toEqual(["Home", "Files", "Settings", "Full app"]);
     expect(screen.queryByRole("button", { name: "Board" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Workflows" })).toBeNull();
     await waitFor(() => screen.getByRole("button", { name: /Summarise a folder/ }));

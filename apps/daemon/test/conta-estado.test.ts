@@ -243,7 +243,7 @@ describe("conta-estado: the windows go through the quota", () => {
     const state = await account.readNow();
     expect(state.status).toBe("signed_in");
     expect(state.name).toBe("demo@example.com");
-    expect(state.windows.length).toBe(2);
+    expect(state.windows).toHaveLength(2);
     expect(state.source).toBe("status");
     expect(state.stale).toBe(false);
     expect(state.error).toBeNull();

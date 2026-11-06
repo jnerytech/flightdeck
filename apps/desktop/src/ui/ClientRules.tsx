@@ -10,12 +10,20 @@ import type { Client, ClientRule, RuleInput } from "../lib/clients.ts";
 
 const ruleValue = (rule: ClientRule) => (rule.kind === "remote" ? rule.pattern : rule.path);
 
+/** How many sessions the rule would take in, in words. */
+function previewText(matches: number, t: AppStore["i18n"]["t"]): string {
+  if (matches === 0) return t("clients.previewNone");
+  return matches === 1 ? t("clients.previewOne") : t("clients.previewMany", { count: matches });
+}
+
 /** The rules of one client: what joins a project to it, in order, and a form for a new one. */
-export function ClientRules(props: {
-  store: AppStore;
-  state: Pick<AppState, "hosts">;
-  client: Client;
-}) {
+export function ClientRules(
+  props: Readonly<{
+    store: AppStore;
+    state: Pick<AppState, "hosts">;
+    client: Client;
+  }>,
+) {
   const { store, state, client } = props;
   const { t } = store.i18n;
   const [kind, setKind] = useState<RuleInput["kind"]>("remote");
@@ -123,11 +131,7 @@ export function ClientRules(props: {
         </Inline>
         {clean && (
           <p data-rule-preview className="text-muted-foreground text-sm">
-            {matches === 0
-              ? t("clients.previewNone")
-              : matches === 1
-                ? t("clients.previewOne")
-                : t("clients.previewMany", { count: matches })}
+            {previewText(matches, t)}
           </p>
         )}
         <FormActions submit={t("clients.addRule")} disabled={!valid} />

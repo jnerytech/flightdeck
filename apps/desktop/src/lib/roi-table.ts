@@ -27,6 +27,12 @@ export interface RowsInput {
 }
 
 /** One row per project of the scope; a project on several hosts is one row. */
+/** Two values where one or both are missing: equal if both, and the missing one goes last. */
+function compareMissing(x: number | null, y: number | null): number {
+  if (x === y) return 0;
+  return x === null ? 1 : -1;
+}
+
 export function rowsFrom({ summaries, inScope, moneyOf, nameOf }: RowsInput): RoiRow[] {
   const byKey = new Map<string, { name: string; periods: RoiPeriod[] }>();
   for (const { result } of summaries) {
@@ -73,7 +79,7 @@ export function sortRows(rows: RoiRow[], column: RoiColumn, direction: "asc" | "
     if (column === "project") return sign * a.name.localeCompare(b.name);
     const x = numberOf(a, column);
     const y = numberOf(b, column);
-    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+    if (x === null || y === null) return compareMissing(x, y);
     return sign * (x - y);
   });
 }

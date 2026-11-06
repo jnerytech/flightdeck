@@ -11,7 +11,9 @@ import type { AppStore } from "../lib/app-store.ts";
  * Phase 21: a session's messages, sent and received, and a message from it to another session
  * it may see. The daemon applies its rules: what it refuses comes back with the reason.
  */
-export function SessionMessages(props: { store: AppStore; hostId: string; sessionId: string }) {
+export function SessionMessages(
+  props: Readonly<{ store: AppStore; hostId: string; sessionId: string }>,
+) {
   const { store, hostId, sessionId } = props;
   const { t } = store.i18n;
   const [messages, setMessages] = useState<MessageInfo[]>([]);

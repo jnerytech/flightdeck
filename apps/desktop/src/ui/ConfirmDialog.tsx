@@ -16,16 +16,18 @@ import { useT } from "@/i18n/context";
  * focus trapped, Esc to cancel, and the confirming button named for what it does (red when it
  * cannot be undone).
  */
-export function ConfirmDialog(props: {
-  message: string;
-  warning?: string | null;
-  /** The verb of the confirming button ("Remover host", "Encerrar sessão"…). */
-  confirmLabel: string;
-  /** The confirming button is red: what it does cannot be undone. */
-  destructive?: boolean;
-  onConfirm(): void;
-  onCancel(): void;
-}) {
+export function ConfirmDialog(
+  props: Readonly<{
+    message: string;
+    warning?: string | null;
+    /** The verb of the confirming button ("Remover host", "Encerrar sessão"…). */
+    confirmLabel: string;
+    /** The confirming button is red: what it does cannot be undone. */
+    destructive?: boolean;
+    onConfirm(): void;
+    onCancel(): void;
+  }>,
+) {
   const t = useT();
   // The action closes the dialog too: only a close that was not a confirmation is a cancel.
   const confirmed = useRef(false);

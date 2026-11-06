@@ -10,7 +10,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 const LIVE = new Set(["setup", "running"]);
 
 /** A card's run environment: trust the run.yaml, Run and Stop, its processes and their preview. */
-export function RunPanel(props: { store: AppStore; hostId: string; card: Card }) {
+export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card: Card }>) {
   const { store, hostId, card } = props;
   const t = useT();
   const state = useSyncExternalStore(store.subscribe, store.getState).runEnvs[

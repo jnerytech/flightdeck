@@ -8,7 +8,7 @@ import type { AppStore } from "../lib/app-store.ts";
  * A card's running app in a frame. Only the loopback addresses the run.yaml allows open: the
  * address is checked again here, since it comes from a route and not from the file.
  */
-export function PreviewPage(props: { store: AppStore; url: string; title: string }) {
+export function PreviewPage(props: Readonly<{ store: AppStore; url: string; title: string }>) {
   const { store, url, title } = props;
   const { t } = store.i18n;
   const allowed = isPreviewUrl(url);

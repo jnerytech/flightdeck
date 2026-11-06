@@ -21,11 +21,13 @@ function gridStyle(split: Orientation | null, template: string) {
 }
 
 /** The window's one or two areas, each with its tab bar and screen, and the divider between them. */
-export function Areas(props: {
-  store: AppStore;
-  state: AppState;
-  screen: Omit<ScreenProps, "route">;
-}) {
+export function Areas(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    screen: Omit<ScreenProps, "route">;
+  }>,
+) {
   const { store, state } = props;
   const { workspace } = store;
   const { t } = store.i18n;

@@ -1,6 +1,7 @@
 import type { AutoApproval, ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
+import { requireHold } from "../permissions/hold.ts";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
 import { RiskClassifier } from "../permissions/risk.ts";
 import { ulid } from "../ulid.ts";
@@ -108,10 +109,13 @@ export class ExternalPermissions {
     message?: string,
     updatedPermissions: PermissionUpdate[] = [],
     updatedInput?: Record<string, unknown>,
+    holdProof?: boolean,
   ): boolean {
     const held = this.held.get(requestId);
     if (!held) return false;
     if (decision === "allow") {
+      // The frame carries the risk the daemon judged: a high one needs the hold, and stays held.
+      requireHold(held.frame.risk ?? "low", holdProof);
       // Refused updates leave the hook held, before anything is answered.
       const { toolName, suggestions = [] } = held.frame;
       checkUpdates(updatedPermissions, { toolName, suggestions });

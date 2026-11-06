@@ -31,36 +31,47 @@ export class CronError extends Error {
 
 const NUMBER = /^\d+$/;
 
+/** The `/step` of one comma-separated part (1 when it has none); refuses a step that is no whole number >= 1. */
+function stepOf(part: string, field: number, step: string | undefined, extra: string | undefined) {
+  const every = step === undefined ? 1 : Number(step);
+  if (extra !== undefined || (step !== undefined && !NUMBER.test(step)) || every < 1) {
+    throw new CronError(`cron: invalid step in field ${field}: ${part}`, "cron_step", {
+      field,
+      part,
+    });
+  }
+  return every;
+}
+
+/** The first and last value a part covers: `*`, `a`, `a-b`, and `a/step` running to the field's end. */
+function boundsOf(
+  range: string,
+  hasStep: boolean,
+  field: number,
+  part: string,
+  [min, max]: [number, number],
+): [number, number] {
+  if (range === "*") return [min, max];
+  const [from = "", to, more] = range.split("-");
+  if (!NUMBER.test(from) || (to !== undefined && !NUMBER.test(to)) || more !== undefined) {
+    throw new CronError(`cron: invalid value in field ${field}: ${part}`, "cron_value", {
+      field,
+      part,
+    });
+  }
+  const low = Number(from);
+  // "5/10" runs from 5 to the end of the field; a plain "5" is just 5.
+  if (to !== undefined) return [low, Number(to)];
+  return [low, hasStep ? max : low];
+}
+
 /** `field` is the position in the expression, counted from 1. */
 function parseField(text: string, field: number, min: number, max: number): Set<number> {
   const values = new Set<number>();
   for (const part of text.split(",")) {
     const [range = "", step, extra] = part.split("/");
-    const every = step === undefined ? 1 : Number(step);
-    if (extra !== undefined || (step !== undefined && !NUMBER.test(step)) || every < 1) {
-      throw new CronError(`cron: invalid step in field ${field}: ${part}`, "cron_step", {
-        field,
-        part,
-      });
-    }
-    let low: number;
-    let high: number;
-    if (range === "*") {
-      [low, high] = [min, max];
-    } else {
-      const [from = "", to, more] = range.split("-");
-      if (!NUMBER.test(from) || (to !== undefined && !NUMBER.test(to)) || more !== undefined) {
-        throw new CronError(`cron: invalid value in field ${field}: ${part}`, "cron_value", {
-          field,
-          part,
-        });
-      }
-      low = Number(from);
-      // "5/10" runs from 5 to the end of the field; a plain "5" is just 5.
-      high = low;
-      if (to !== undefined) high = Number(to);
-      else if (step !== undefined) high = max;
-    }
+    const every = stepOf(part, field, step, extra);
+    const [low, high] = boundsOf(range, step !== undefined, field, part, [min, max]);
     if (low < min || high > max || low > high) {
       throw new CronError(`cron: field ${field} out of ${min}-${max}: ${part}`, "cron_range", {
         field,

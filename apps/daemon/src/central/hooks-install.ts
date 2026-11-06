@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { writeFileAtomic } from "../atomic-write.ts";
 
 /** Events installed as http hooks; SessionStart is a command hook (its http form never fires). */
 export const HTTP_HOOK_EVENTS = [
@@ -100,7 +101,7 @@ async function readSettings(file: string): Promise<Settings | null> {
 
 async function writeSettings(file: string, settings: Settings): Promise<void> {
   await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, `${JSON.stringify(settings, null, 2)}\n`);
+  await writeFileAtomic(file, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
 /** Drops Flightdeck's hooks; groups, events and `hooks` emptied by that go too. */

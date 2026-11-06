@@ -48,6 +48,8 @@ function card(risk: Risk | undefined, over: Record<string, unknown> = {}) {
 }
 
 const button = (g: HTMLElement, name: string) => within(g).queryByRole("button", { name });
+/** What a held approval answers: allow, with the proof of the hold (#245, M2). */
+const HELD = ["allow", undefined, undefined, undefined, true];
 const press = async (el: HTMLElement) => {
   await act(async () => {
     fireEvent.pointerDown(el);
@@ -128,16 +130,46 @@ describe("risco-ui: o alto pede para segurar", () => {
     expect(calls).toEqual([]);
   });
 
+  // Issue #245 (L3): a plan is an action like any other; only a question is answered by a click.
+  test("a high-risk plan is held too: no Approve the plan, and a click or the A key approves nothing", async () => {
+    const calls: unknown[][] = [];
+    render(
+      <ApprovalCard
+        request={{
+          ...base,
+          toolName: "ExitPlanMode",
+          input: { plan: "1. apagar a pasta" },
+          risk: "high",
+          riskReason: "motivo high",
+        }}
+        t={pt}
+        nowMs={NOW}
+        onRespond={(...args) => calls.push(args)}
+        holdMs={80}
+      />,
+    );
+    const group = screen.getByRole("group", { name: "Pedido de ExitPlanMode" });
+    expect(button(group, "Aprovar plano") === null).toBe(true);
+    const hold = button(group, "Segurar para aprovar");
+    expect(hold).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(hold as HTMLElement);
+      fireEvent.keyDown(group, { key: "a" });
+    });
+    await wait(150);
+    expect(calls).toEqual([]);
+  });
+
   test("segurar o tempo todo aprova uma vez só, e a barra mostra o andamento", async () => {
     const { calls, group } = card("high");
     const hold = button(group, "Segurar para aprovar") as HTMLElement;
     await press(hold);
     expect(hold.getAttribute("data-holding")).toBe("true");
     await wait(160);
-    expect(calls).toEqual([["allow"]]);
+    expect(calls).toEqual([HELD]);
     await release(hold);
     await wait(120);
-    expect(calls).toEqual([["allow"]]);
+    expect(calls).toEqual([HELD]);
   });
 
   test("soltar antes do tempo, ou sair do botão com o ponteiro, cancela", async () => {
@@ -174,7 +206,7 @@ describe("risco-ui: o alto pede para segurar", () => {
       fireEvent.keyDown(hold, { key: "Enter", repeat: true });
     });
     await wait(160);
-    expect(calls).toEqual([["allow"]]);
+    expect(calls).toEqual([HELD]);
   });
 
   test("o alto não oferece Sempre permitir, e Negar segue num toque", async () => {
@@ -205,7 +237,7 @@ describe("risco-ui: o alto pede para segurar", () => {
     await wait(1700);
     expect(calls).toEqual([]);
     await wait(500);
-    expect(calls).toEqual([["allow"]]);
+    expect(calls).toEqual([HELD]);
   });
 });
 
@@ -223,8 +255,9 @@ describe("risco-ui: a bandeja", () => {
 
   test("o pedido de risco alto só tem Abrir; os outros seguem com Aprovar, Negar e Abrir", () => {
     const menu = trayMenu([item(1, "high"), item(2, "medium"), item(3, "low"), item(4)]);
+    // Issue #245 (L1): Deny needs no hold, so the tray offers it; only Approve takes the window.
     expect(menu.items.map((i) => i.actions)).toEqual([
-      ["open"],
+      ["deny", "open"],
       ["approve", "deny", "open"],
       ["approve", "deny", "open"],
       ["approve", "deny", "open"],
