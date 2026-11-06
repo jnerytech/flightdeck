@@ -1290,8 +1290,12 @@
   flex: 1 1 0;
   align-self: stretch;
   align-items: flex-end;
-  /* Issue #488: the tabs left the header for a row of their own; this box only keeps the top bar's
-     actions on the right. */
+  /* Issue #488: the tabs have a row of their own; this box keeps the top bar's actions on the right,
+     and in a window under 600 px tall it holds the one area's strip, filling the row. */
+  & > .tab-bar {
+    flex: 1 1 auto;
+    background: transparent;
+  }
 }
 
 /* The top bar's host switcher (issue #282): a fixed share of the crumbs' box, the name cut with a tooltip. */

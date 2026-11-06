@@ -1,12 +1,18 @@
 import { Columns2, Rows2, SquareSplitHorizontal } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
+import { useHeaderSlot } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import type { Orientation } from "../lib/workspace.ts";
 import { Screen } from "./Screens.tsx";
 import { TabBar } from "./TabBar.tsx";
+
+/** Below this height the one area's tabs share the top bar's row (issue #488). */
+export const SHORT_WINDOW = "(max-height: 599px)";
 
 const STEP = 0.05;
 
@@ -32,7 +38,12 @@ export function Areas(
   useSyncExternalStore(workspace.subscribe, () => workspace.version);
   const { split, fraction } = workspace;
   const box = useRef<HTMLDivElement>(null);
-  /** With one area its strip sits in the top bar, on the row of the breadcrumb. */
+  // Issue #488: each area's tabs have a row of their own, as in VS Code and Orca. In a window under
+  // 600 px tall the one area's strip goes back to the top bar's row: a 720x480 window keeps its
+  // conversation at least 150 px tall.
+  const slot = useHeaderSlot();
+  const short = useMediaQuery(SHORT_WINDOW);
+  const inHeader = short && !split && workspace.areas.length === 1 ? slot : null;
   const dragging = useRef(false);
 
   useEffect(() => {
@@ -99,11 +110,18 @@ export function Areas(
             className="flex min-h-0 min-w-0 flex-col"
             onPointerDownCapture={() => workspace.focusArea(i as 0 | 1)}
           >
-            {/* Issue #488: every area holds its own tab row, as in VS Code and Orca; the header's
-                row left the tabs 124 px at 1280. */}
-            <TabBar store={store} state={state} tabs={area}>
-              {i === 0 && buttons}
-            </TabBar>
+            {inHeader ? (
+              createPortal(
+                <TabBar store={store} state={state} tabs={area}>
+                  {i === 0 && buttons}
+                </TabBar>,
+                inHeader,
+              )
+            ) : (
+              <TabBar store={store} state={state} tabs={area}>
+                {i === 0 && buttons}
+              </TabBar>
+            )}
             {/* Screens that are a Page scroll by themselves; the others scroll here. The area is the
                 container its screens lay out against. */}
             <div className="@container min-h-0 flex-1 overflow-y-auto">
