@@ -85,6 +85,27 @@ describe("telas-rotas: routes that open a screen", () => {
     expect(Object.values(store.getState().meta)[0]?.pinned).toBe(false);
   });
 
+  test("the wand on a session's message box, with no provider set up, opens Settings, section Assistant", async () => {
+    const { store, hostId, sessionId } = await setup();
+    // A provider chosen whose key is absent reads as not configured.
+    store.assistant.setPrefs({ provider: "anthropic" });
+    await act(async () => {
+      store.router.push({ name: "session", host: hostId, id: sessionId });
+    });
+    await settle(() => screen.queryByRole("textbox", { name: "Mensagem" }) !== null);
+    await act(async () => {
+      fireEvent.change(screen.getByRole("textbox", { name: "Mensagem" }), {
+        target: { value: "corrige o totl" },
+      });
+    });
+    const wand = screen.queryByRole("button", { name: "Melhorar com IA" });
+    expect(wand).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(wand as HTMLElement);
+    });
+    expect(store.router.current).toEqual({ name: "settings", section: "assistant" });
+  });
+
   test("a history route with a folder opens the history filtered by it", async () => {
     const { store, hostId, project } = await setup();
     await act(async () => {

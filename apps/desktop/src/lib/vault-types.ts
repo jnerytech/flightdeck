@@ -61,7 +61,7 @@ function tokenInfo(value: string): SecretInfo {
 function envInfo(value: string): SecretInfo {
   const names = value
     .split(/\r?\n/)
-    .map((line) => /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line)?.[1])
+    .map((line) => /^\s*([A-Za-z_]\w*)\s*=/.exec(line)?.[1])
     .filter((name): name is string => name !== undefined);
   return { names };
 }

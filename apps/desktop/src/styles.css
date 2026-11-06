@@ -693,6 +693,15 @@
   align-items: center;
   gap: 0.5rem;
 }
+/* A find option (#476): on, it keeps the accent's fill and a ring, so it reads as pressed. */
+@utility terminal-find-toggle {
+  font-family: var(--font-mono, monospace);
+  &[aria-pressed="true"] {
+    background: var(--color-accent);
+    color: var(--color-accent-foreground);
+    box-shadow: inset 0 0 0 1px var(--color-ring);
+  }
+}
 
 /* A vertical list of rows (the check results, the repositories found). */
 @utility check-list {

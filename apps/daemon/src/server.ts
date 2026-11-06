@@ -42,6 +42,7 @@ import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
+import { userHome } from "./config.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
@@ -60,6 +61,9 @@ import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import { isInside, resolveAllowedCwd, rootNames } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
+import { statKind } from "./permissions/path-kind.ts";
+import { rulePaths } from "./permissions/permission-updates.ts";
+import { pathKinds } from "./permissions/rule-risk.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import { preparePersonas } from "./personas/prepare.ts";
 import type { Personas } from "./personas/store.ts";
@@ -758,10 +762,28 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { requestId, decision, message, updatedPermissions, updatedInput, held } =
           command.payload;
         const external = opts.central?.permissions;
+        // A rule that names a folder covers all it holds (#395): look its paths up first, only for
+        // an allow of a request that is open (an unknown one is refused below anyway).
+        // The file the request itself writes counts as one before it exists.
+        const { cwd, target } = external?.placeOf(requestId) ?? manager.permissionPlace(requestId);
+        const kind =
+          decision === "allow" && cwd
+            ? await pathKinds(rulePaths(updatedPermissions ?? []), cwd, userHome(), statKind, {
+                ...(target === undefined ? {} : { target }),
+              })
+            : undefined;
         if (
-          !external?.respond(requestId, decision, message, updatedPermissions, updatedInput, held)
+          !external?.respond(
+            requestId,
+            decision,
+            message,
+            updatedPermissions,
+            updatedInput,
+            held,
+            kind,
+          )
         ) {
-          manager.respondPermission(command.payload);
+          manager.respondPermission(command.payload, kind);
         }
         return ok(command.type);
       }

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { FileListing } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
-import { uiIdle } from "./wait.ts";
+import { settleMaybe, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -20,6 +20,7 @@ const ROOT: FileListing = {
     { name: ".env", kind: "file", secret: true },
     { name: "logo.png", kind: "file" },
     { name: "README.md", kind: "file" },
+    { name: "app.ts", kind: "file" },
   ],
   truncated: false,
 };
@@ -42,7 +43,8 @@ function host(local = false) {
             params: { path: "logo.png" },
           };
         }
-        const text = "first line\nsecond line\n";
+        const text =
+          payload.path === "app.ts" ? "const answer = 42;\n" : "first line\nsecond line\n";
         return { ok: true, data: { path: payload.path, text, hash: "h", size: text.length } };
       }
       return { ok: true, data: { target: "session:abc", root: "/r", base: null, files: [] } };
@@ -103,6 +105,21 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     await press("logo.png");
     expect(screen.queryByText("The file logo.png is not text.")).not.toBeNull();
     expect(read).toEqual(["logo.png"]);
+  });
+
+  test("a file in a known language is colored by token once its language loads; plain text is not", async () => {
+    const { store } = host();
+    await show(store);
+    await press("app.ts");
+    const tokens = () => [...document.querySelectorAll(".cm-content .cm-line span")];
+    const colored = () =>
+      tokens().some((span) => span.textContent === "const" && span.className !== "");
+    await settleMaybe(colored);
+    expect(colored()).toBe(true);
+    await press("Close");
+    await press("README.md");
+    expect(document.querySelector(".cm-content")?.textContent ?? "").toContain("second line");
+    expect(tokens().length).toBe(0);
   });
 
   test("on a host of this computer the file opens in its app or shows in its folder; elsewhere neither is offered", async () => {

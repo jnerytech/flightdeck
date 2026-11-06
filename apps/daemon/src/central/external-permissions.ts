@@ -5,6 +5,7 @@ import { bindInput } from "../permissions/bind-input.ts";
 import { requireHold } from "../permissions/hold.ts";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
 import { RiskClassifier } from "../permissions/risk.ts";
+import { type PathKind, writeTarget } from "../permissions/rule-risk.ts";
 import { ulid } from "../ulid.ts";
 import type { HookPayload } from "./external.ts";
 
@@ -107,6 +108,14 @@ export class ExternalPermissions {
    * Answers an external request; false when `requestId` is not one (a managed session's). Allowed
    * with `updatedPermissions`, the hook's decision carries them (Claude Code applies them).
    */
+  /** The folder a held request ran in and the file it writes; undefined when it is not one of these. */
+  placeOf(requestId: string): { cwd: string; target?: string } | undefined {
+    const held = this.held.get(requestId);
+    if (!held) return undefined;
+    const target = writeTarget(held.frame.toolName, held.input);
+    return target === undefined ? { cwd: held.cwd } : { cwd: held.cwd, target };
+  }
+
   respond(
     requestId: string,
     decision: "allow" | "deny",
@@ -114,6 +123,7 @@ export class ExternalPermissions {
     updatedPermissions: PermissionUpdate[] = [],
     updatedInput?: Record<string, unknown>,
     holdProof?: boolean,
+    kind?: PathKind,
   ): boolean {
     const held = this.held.get(requestId);
     if (!held) return false;
@@ -128,6 +138,7 @@ export class ExternalPermissions {
         suggestions,
         risk: held.frame.risk ?? "low",
         classify: (tool, input) => this.risk.classify(tool, input, held.cwd).level,
+        ...(kind ? { kind } : {}),
       });
     }
     const updates = updatedPermissions.length > 0 ? { updatedPermissions } : {};
