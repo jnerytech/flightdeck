@@ -2757,6 +2757,14 @@ const ok = fresh && timingSafeEqual(Buffer.from(signature), Buffer.from(`sha256=
 
 Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico de voltar e avançar.
 
+- **Abas por host:** cada host guarda as próprias abas. Escolher um host na barra do topo troca a
+  fileira pelas abas desse host e volta para a aba que ele tinha aberta (um host sem aba abre a
+  Visão geral). Abrir uma tela de outro host (um resultado de busca, uma notificação, um link)
+  muda para esse host. As telas que não são de nenhum host (Início, Sessões, Precisa de você,
+  Projetos de todos os hosts, Configurações e semelhantes) ficam à esquerda de toda fileira como
+  abas fixas só com o ícone, e a barra do topo continua mostrando o último host usado enquanto uma
+  delas está aberta. `Ctrl+Tab` percorre as abas compartilhadas e depois as do host atual.
+
 - **Abrir:** o clique normal troca a aba atual. `Ctrl+clique`, o botão do meio do mouse ou **Abrir
   em nova aba** (no menu do host e no menu de uma linha de sessão) abre uma nova. O botão **+** no
   fim da barra abre uma aba nova na paleta `Ctrl+K`. Uma tela tem uma aba só: um link para uma
