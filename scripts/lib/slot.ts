@@ -60,12 +60,26 @@ export interface SlotEnv {
   renice?(pid: number, nice: number): void;
   /** Calls the handler with the exit code of SIGINT or SIGTERM; returns the way to stop listening. */
   onSignal(handler: (code: number) => void): () => void;
+  /** Reads the process table (/proc on Linux); absent elsewhere, where ancestry and orphans are not checked. */
+  proc?: ProcReader;
+  /** Stops a whole process group (SIGTERM to -pgid), for `--reap`. */
+  terminateGroup?(pgid: number): void;
+}
+
+export interface ProcReader {
+  /** The parent of a process, or null when it is gone. */
+  ppid(pid: number): number | null;
+  /** The process group of a process, or null when it is gone. */
+  pgid(pid: number): number | null;
+  /** The working folder of a process, or null when it cannot be read. */
+  cwd(pid: number): string | null;
 }
 
 export type SlotArgs =
   | { kind: "status"; maxAgeMs: number }
   | { kind: "run"; nice: boolean; priority?: true; maxAgeMs: number; command: string[] }
   | { kind: "cancel" }
+  | { kind: "reap" }
   | { kind: "usage" };
 
 export type Attempt = { acquired: boolean; holder: SlotHolder | null };
@@ -78,13 +92,14 @@ export const NICE_OTHERS = 15;
 /** A holder older than this is reported as suspicious (never taken over). */
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 export const USAGE =
-  "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel";
+  "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel | bun run slot -- --reap";
 
 interface SlotFlags {
   nice: boolean;
   priority: boolean;
   asStatus: boolean;
   asCancel: boolean;
+  asReap: boolean;
   maxAgeMs: number;
   rest: string[];
 }
@@ -96,6 +111,7 @@ function readFlags(argv: string[]): SlotFlags | null {
     priority: false,
     asStatus: false,
     asCancel: false,
+    asReap: false,
     maxAgeMs: DEFAULT_MAX_AGE_MS,
     rest: argv[0] === "--" ? argv.slice(1) : argv,
   };
@@ -105,6 +121,7 @@ function readFlags(argv: string[]): SlotFlags | null {
     else if (flag === "--priority") flags.priority = true;
     else if (flag === "--status") flags.asStatus = true;
     else if (flag === "--cancel") flags.asCancel = true;
+    else if (flag === "--reap") flags.asReap = true;
     else if (flag === "--max-age") {
       const minutes = Number(flags.rest[1]);
       if (!flags.rest[1] || Number.isNaN(minutes) || minutes <= 0) return null;
@@ -119,7 +136,12 @@ function readFlags(argv: string[]): SlotFlags | null {
 export function parseArgs(argv: string[]): SlotArgs {
   const flags = readFlags(argv);
   if (!flags) return { kind: "usage" };
-  const { nice, priority, asStatus, asCancel, maxAgeMs, rest } = flags;
+  const { nice, priority, asStatus, asCancel, asReap, maxAgeMs, rest } = flags;
+  if (asReap) {
+    return rest.length === 0 && !asStatus && !asCancel && !nice
+      ? { kind: "reap" }
+      : { kind: "usage" };
+  }
   if (asCancel)
     return rest.length === 0 && !asStatus && !nice ? { kind: "cancel" } : { kind: "usage" };
   if (asStatus) return rest.length === 0 ? { kind: "status", maxAgeMs } : { kind: "usage" };
@@ -154,7 +176,9 @@ export function describeHolder(holder: SlotHolder, now: number): string {
   let held = `${seconds}s`;
   if (minutes >= 60) held = `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
   else if (minutes > 0) held = `${minutes}m ${seconds % 60}s`;
-  return `${holder.label}: ${holder.command} (pid ${holder.pid}, ${held})`;
+  // A holder or waiter of hundreds of test files stays one line (#236).
+  const command = holder.command.length > 80 ? `${holder.command.slice(0, 80)}…` : holder.command;
+  return `${holder.label}: ${command} (pid ${holder.pid}, ${held})`;
 }
 
 /**
@@ -286,8 +310,10 @@ export function release(env: SlotEnv): void {
 export function status(env: SlotEnv, maxAgeMs = DEFAULT_MAX_AGE_MS): string {
   const lines = [holderStatus(env, maxAgeMs)];
   waiters(env).forEach((waiter, index) => {
-    const command = waiter.command.length > 80 ? `${waiter.command.slice(0, 80)}…` : waiter.command;
-    lines.push(`waiting ${index + 1}: ${describeHolder({ ...waiter, command }, env.now())}`);
+    // Where the process table can be read: the waiter's folder, and whether its shell is gone (#236).
+    const where = env.proc ? ` in ${env.proc.cwd(waiter.pid) ?? "?"}` : "";
+    const orphan = env.proc?.ppid(waiter.pid) === 1 ? " ORPHAN" : "";
+    lines.push(`waiting ${index + 1}: ${describeHolder(waiter, env.now())}${where}${orphan}`);
   });
   return lines.join("\n");
 }
@@ -327,6 +353,51 @@ export function cancel(env: SlotEnv): number {
 }
 
 /**
+ * Stops the waiters whose shell is gone (their parent is pid 1), by process group, and forgets
+ * them; waiter files of dead processes are cleaned up. The holder is never touched (#236).
+ */
+export function reap(env: SlotEnv): number {
+  let reaped = 0;
+  for (const path of env.fs.list(`${env.path}.wait.`)) {
+    const waiter = parseHolder(env.fs.read(path));
+    if (!waiter || !env.alive(waiter.pid)) {
+      env.fs.remove(path);
+      continue;
+    }
+    if (env.proc?.ppid(waiter.pid) !== 1) continue;
+    const group = env.proc.pgid(waiter.pid) ?? waiter.pid;
+    if (env.terminateGroup) env.terminateGroup(group);
+    else env.terminate(waiter.pid);
+    env.fs.remove(path);
+    env.log(`reaped ${describeHolder(waiter, env.now())}`);
+    reaped += 1;
+  }
+  if (reaped === 0) env.log("nothing to reap");
+  return 0;
+}
+
+/**
+ * Whether a live process that holds the slot is an ancestor of this one: a nested call from a
+ * holder whose children lost FLIGHTDECK_SLOT_HOLDER, or an older slot.ts that never set it (#236).
+ * At most 64 steps, so a parent table that loops ends.
+ */
+function underAncestor(env: SlotEnv): boolean {
+  const holder = parseHolder(env.fs.read(env.path));
+  if (!holder || !env.alive(holder.pid) || !env.proc) return false;
+  let pid = env.pid;
+  for (let step = 0; step < 64; step++) {
+    const parent = env.proc.ppid(pid);
+    if (parent === null || parent <= 1) return false;
+    if (parent === holder.pid) return true;
+    pid = parent;
+  }
+  return false;
+}
+
+const ORPHANED =
+  "slot: the shell that started this run is gone; giving up so the queue moves (rerun it if you still need it)";
+
+/**
  * Whether this process was started by the process that holds the slot now: the variable names a
  * live pid, and the lock names the same one (a name left over from an old run is not enough).
  */
@@ -344,6 +415,7 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     return 2;
   }
   if (args.kind === "cancel") return cancel(env);
+  if (args.kind === "reap") return reap(env);
   if (args.kind === "status") {
     env.log(status(env, args.maxAgeMs));
     return 0;
@@ -356,12 +428,22 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
   try {
     // A command the slot started that asks for the slot again (the test runner does above 60
     // files) would wait for the lock its own parent holds, forever: it runs at once instead.
-    if (underHolder(env)) {
+    if (underHolder(env) || underAncestor(env)) {
       state.child = env.spawn(args.command, args.nice, false);
       const code = await state.child.wait();
       return state.signal ?? code;
     }
-    if (!(await acquire(env, args.command.join(" "), () => state.signal !== null, args.maxAgeMs))) {
+    // A waiter whose launching shell is gone would hold its place for nobody: it gives up (#236).
+    const parent = env.proc?.ppid(env.pid) ?? null;
+    const orphaned = () =>
+      parent !== null && (parent <= 1 || !env.alive(parent) || env.proc?.ppid(env.pid) !== parent);
+    if (orphaned()) {
+      env.log(ORPHANED);
+      return 1;
+    }
+    const stopped = () => state.signal !== null || orphaned();
+    if (!(await acquire(env, args.command.join(" "), stopped, args.maxAgeMs))) {
+      if (state.signal === null) env.log(ORPHANED);
       return state.signal ?? 1;
     }
     try {
