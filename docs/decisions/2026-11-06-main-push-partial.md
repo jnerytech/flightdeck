@@ -25,3 +25,9 @@
   slow. Batching (#487) keeps each command line short inside every shard.
 - **Risk.** A red that only the full suite sees now shows within 3 hours, or before a tag, instead
   of right after the merge.
+- **Security review, low findings kept as they are:**
+  - A full green schedule run on a commit outweighs a red partial push run of the same commit,
+    because the full suite holds every test of the selection.
+  - `--commit` is not checked as a full sha. It is coordinator-only and fails closed.
+  - A push run that a newer push replaced leaves its commit out of every selection. The 3-hour
+    full run covers it, and the release gate never relies on push runs.
