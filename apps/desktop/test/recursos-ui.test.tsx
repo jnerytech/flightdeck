@@ -176,6 +176,15 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
     await settle(() => reads(w.asked).length >= 2);
   });
 
+  test("a measured host with no session or terminal running says so", async () => {
+    const w = setup({ snap: snapshot({ rows: [], orphans: [] }) });
+    render(w.view());
+    await settle(
+      () => document.body.textContent?.includes("No session or terminal is running") === true,
+    );
+    expect(document.querySelector("[data-slot='resources-row']")).toBeNull();
+  });
+
   test("a panel that is not on screen never asks", async () => {
     const w = setup({ active: false });
     render(w.view());

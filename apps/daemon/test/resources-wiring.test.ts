@@ -229,6 +229,31 @@ describe("resources-wiring: the machine's own page size and clock (F8)", () => {
   });
 });
 
+describe("resources-wiring: getconf when it cannot run", () => {
+  test("a getconf that cannot be started, or answers something else, is no answer", async () => {
+    const { getconf } = await import("../src/resources/wiring.ts");
+    const broken = (() => {
+      throw new Error("spawn getconf ENOENT");
+    }) as unknown as typeof Bun.spawn;
+    expect(await getconf("PAGESIZE", broken)).toBeNull();
+    const nonsense = (() => ({
+      stdout: new Response("banana\n").body,
+      exited: Promise.resolve(0),
+    })) as unknown as typeof Bun.spawn;
+    expect(await getconf("PAGESIZE", nonsense)).toBeNull();
+    const failed = (() => ({
+      stdout: new Response("4096\n").body,
+      exited: Promise.resolve(1),
+    })) as unknown as typeof Bun.spawn;
+    expect(await getconf("PAGESIZE", failed)).toBeNull();
+    const fine = (() => ({
+      stdout: new Response("16384\n").body,
+      exited: Promise.resolve(0),
+    })) as unknown as typeof Bun.spawn;
+    expect(await getconf("PAGESIZE", fine)).toBe(16384);
+  });
+});
+
 describe("resources-wiring: getconf", () => {
   test("the machine's own page size and clock are asked, and are whole positive numbers", async () => {
     const { getconf } = await import("../src/resources/wiring.ts");
