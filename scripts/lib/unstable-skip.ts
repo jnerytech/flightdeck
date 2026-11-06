@@ -113,3 +113,8 @@ export function unstableSkipCounts(root: string): Record<string, SkipCount> {
   }
   return counts;
 }
+
+/** Every issue the repository's unstable skips are noted under, each once, ascending (#494): stub. */
+export function unstableSkipIssues(root: string): number[] {
+  return root ? [] : [];
+}

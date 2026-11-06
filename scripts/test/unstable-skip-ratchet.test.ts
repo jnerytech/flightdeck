@@ -6,6 +6,7 @@ import {
   skipIssues,
   UNSTABLE_ROOTS,
   unstableSkipCounts,
+  unstableSkipIssues,
   unstableSkips,
 } from "../lib/unstable-skip.ts";
 import { realTempDir } from "./temp-dir.ts";
@@ -81,6 +82,22 @@ describe("unstable-skip-ratchet: tests skipped off Linux name their issue, and t
       { line: 5, documented: true },
     ]);
     expect(skipIssues(source)).toEqual([484, 492, 288]);
+  });
+
+  test("the repository's noted issues are read from every test file under the roots, each once, in order (#494)", () => {
+    const root = realTempDir("fd-unstable-issues-");
+    const put = (path: string, text: string) => {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), text);
+    };
+    const plain = `test.${"skip"}("x", () => {});`;
+    put(
+      "apps/daemon/test/a.test.ts",
+      `// unstable: #7 late\n${plain}\n// unstable: #5 races\n${plain}\n`,
+    );
+    put("scripts/test/b.test.ts", `${plain} // unstable: #7 late again\n`);
+    put("docs/c.test.ts", `${plain} // unstable: #9 outside the roots\n`);
+    expect(unstableSkipIssues(root)).toEqual([5, 7]);
   });
 
   test("a skip whose issue is closed fails the check, so the skip comes out with the fix; an issue that cannot be read fails too (#494)", async () => {
