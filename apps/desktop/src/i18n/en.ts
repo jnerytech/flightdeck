@@ -2056,6 +2056,8 @@ export const en: Dictionary = {
   common: {
     cancel: "Cancel",
     close: "Close",
+    /** A wide table's frame (#641): it scrolls sideways by itself. */
+    scrollsSideways: "{name}, scrolls sideways",
   },
   session: {
     moreActions: "More actions",

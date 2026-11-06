@@ -565,6 +565,34 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
+/*
+ * A wide table's frame (#641, responsive spec "Tables"): it scrolls sideways by itself, the only
+ * sideways scroller a page may hold. The shadows are drawn by the background: two covers that
+ * scroll with the content hide them at an end, two shadows fixed to the frame show them otherwise.
+ */
+@utility table-wide {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  background-image:
+    linear-gradient(to right, var(--background) 30%, transparent),
+    linear-gradient(to left, var(--background) 30%, transparent),
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 18%, transparent), transparent),
+    linear-gradient(to left, color-mix(in oklab, var(--foreground) 18%, transparent), transparent);
+  background-position: left center, right center, left center, right center;
+  background-repeat: no-repeat;
+  background-size: 2.5rem 100%, 2.5rem 100%, 0.75rem 100%, 0.75rem 100%;
+  background-attachment: local, local, scroll, scroll;
+  /* The frame scrolls instead: a figure stays on one line, as wide as it needs. */
+  & :is(th, td) {
+    white-space: nowrap;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
 /* A disabled button and its reason: one block, the reason wrapping under it at a readable width. */
 @utility action-with-reason {
   display: inline-flex;
