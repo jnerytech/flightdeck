@@ -216,6 +216,44 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     expect(w.responded[0]).toEqual(["h1", "r-ask", "allow"]);
   });
 
+  test("the store takes the hold as the proof: a held approval of a high-risk request is not refused", async () => {
+    const specs: Specs = [{ id: "ask", status: "awaiting_permission", agoMs: MIN, risk: "high" }];
+    const w = setup(specs);
+    // The store's own respondTo, the one that refuses an allow that was not held (#245).
+    const answers: Array<{ held?: boolean }> = [];
+    const done: Array<Promise<void>> = [];
+    w.store.respondTo = ((
+      hostId: string,
+      requestId: string,
+      decision: "allow" | "deny",
+      answer,
+    ) => {
+      answers.push(answer ?? {});
+      const result = AppStore.prototype.respondTo.call(
+        w.store,
+        hostId,
+        requestId,
+        decision,
+        answer,
+      );
+      done.push(result);
+      return result;
+    }) as never;
+    render(w.view(specs));
+    await act(async () => {
+      fireEvent.pointerDown(control(column("Needs you"), "Hold to approve"));
+    });
+    await settle(() => done.length === 1);
+    await act(async () => {
+      await Promise.all(done);
+    });
+    expect(answers).toEqual([{ held: true }]);
+    const refused = w.store
+      .getState()
+      .notices.some((notice) => notice.text === w.store.i18n.t("approval.holdRequired"));
+    expect(refused).toBe(false);
+  });
+
   test("a question for the person has no Approve: only the session to open", () => {
     const specs: Specs = [
       { id: "q", status: "awaiting_permission", agoMs: MIN, tool: "AskUserQuestion" },
@@ -283,8 +321,10 @@ describe("activity-ui: cards move with a view transition when the browser has on
       removeEventListener() {},
     });
   };
+  const realMatchMedia = window.matchMedia;
   afterEach(() => {
     delete (document as unknown as { startViewTransition?: unknown }).startViewTransition;
+    window.matchMedia = realMatchMedia;
   });
 
   test("a card that changes column starts one; the first draw and the same state do not", async () => {
