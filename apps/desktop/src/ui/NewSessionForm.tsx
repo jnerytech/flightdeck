@@ -1,5 +1,6 @@
 import type { CommandPayload, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { AssistField } from "@/components/assistant/assist-field";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -277,15 +278,37 @@ export function NewSessionForm(
         </Field>
       )}
       <Field label={t("newSession.prompt")}>
-        {(control) => (
-          <Textarea
-            {...control}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder={t("newSession.optional")}
-            className="min-h-28"
-          />
-        )}
+        {(control) => {
+          const area = (assist?: object) => (
+            <Textarea
+              {...control}
+              {...assist}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder={t("newSession.optional")}
+              className="min-h-28"
+            />
+          );
+          // The AI wand (phase 40): it improves the prompt and never starts the session.
+          return store ? (
+            <AssistField
+              binding={{
+                controller: store.assistant,
+                kind: "prompt",
+                fieldHostId: hostId,
+                ...(cwd ? { cwd } : {}),
+                openSettings: () => store.router.push({ name: "settings", section: "assistant" }),
+              }}
+              value={prompt}
+              onChange={setPrompt}
+              t={t}
+            >
+              {area}
+            </AssistField>
+          ) : (
+            area()
+          );
+        }}
       </Field>
       {!opencode && props.extra}
       {asking && (
