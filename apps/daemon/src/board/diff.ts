@@ -100,6 +100,15 @@ async function untrackedFile(worktree: string, path: string, max: number): Promi
  */
 export const DIFF_FILE_MAX = 512 * 1024;
 
+/** What the whole answer may weigh, and how much of `git diff`'s output is read at all (issue #329). */
+export interface DiffLimits {
+  /** The diff text of every file shown, together: the files after it is spent are listed only. */
+  totalBytes: number;
+  /** `git diff` is killed after this much output: a 200 MB change must not be held in memory. */
+  rawBytes: number;
+}
+export const DIFF_LIMITS: DiffLimits = { totalBytes: 4 * 1024 * 1024, rawBytes: 32 * 1024 * 1024 };
+
 /** Git's empty tree: what a repository without commits is compared with. */
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
@@ -128,6 +137,7 @@ export async function workingDiff(
   root: string,
   maxUntracked = DIFF_FILE_MAX,
   maxTracked = DIFF_FILE_MAX,
+  limits: DiffLimits = DIFF_LIMITS,
 ): Promise<DiffFile[]> {
   const head = await git(root, "rev-parse", "--verify", "--quiet", "HEAD");
   const against = head.code === 0 ? "HEAD" : EMPTY_TREE;

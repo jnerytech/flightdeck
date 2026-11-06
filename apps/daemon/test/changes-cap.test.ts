@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cardDiff, DIFF_FILE_MAX, workingDiff } from "../src/board/diff.ts";
+import { cardDiff, DIFF_FILE_MAX, DIFF_LIMITS, workingDiff } from "../src/board/diff.ts";
 import { git, gitRepo } from "./board-helpers.ts";
 
 // Real git in temp repositories.
@@ -138,5 +138,70 @@ describe("changes-cap: a tracked change whose diff is over the cap is listed wit
       tooLarge: true,
       hunks: [],
     });
+  });
+});
+
+const big = { totalBytes: 1e9, rawBytes: 1e9 };
+const shownBytes = (file: { hunks: Array<{ lines: Array<{ text: string }> }> }) =>
+  file.hunks.reduce((sum, h) => sum + h.lines.reduce((n, l) => n + l.text.length + 2, 0), 0);
+
+describe("changes-cap: the whole answer has a budget, and a huge diff is not read to the end", () => {
+  test("the default limits are 4 MB of shown diff and 32 MB of git output", () => {
+    expect(DIFF_LIMITS).toEqual({ totalBytes: 4 * 1024 * 1024, rawBytes: 32 * 1024 * 1024 });
+  });
+
+  test("thirty files of 100 KB each: the first ones are shown while the budget lasts, all are listed", async () => {
+    const { repo } = gitRepo();
+    const names = Array.from({ length: 30 }, (_, i) => `f${String(i).padStart(2, "0")}.txt`);
+    for (const name of names) writeFileSync(join(repo, name), lines(10));
+    commit(repo, "thirty");
+    for (const name of names) appendFileSync(join(repo, name), lines(1000, "y"));
+    const files = (
+      await workingDiff(repo, DIFF_FILE_MAX, DIFF_FILE_MAX, { ...big, totalBytes: 1_000_000 })
+    ).filter((f) => names.includes(f.path));
+    expect(files.map((f) => f.path)).toEqual(names);
+    const shown = files.filter((f) => !f.tooLarge);
+    expect(shown.length).toBeGreaterThanOrEqual(5);
+    expect(shown.length).toBeLessThan(30);
+    expect(shown.reduce((sum, f) => sum + shownBytes(f), 0)).toBeLessThanOrEqual(1_000_000);
+    // Once the budget is spent every later file is only listed, with its counts and size.
+    expect(
+      files.slice(shown.length).every((f) => f.tooLarge === true && f.hunks.length === 0),
+    ).toBe(true);
+    expect(files.at(-1)).toMatchObject({ additions: 1000, deletions: 0, tooLarge: true });
+  });
+
+  test("a 3 MB change is cut at the raw limit, listed with exact counts, and the files after it are still listed", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "big.txt"), lines(10));
+    writeFileSync(join(repo, "z-after.txt"), "um\n");
+    commit(repo, "two");
+    appendFileSync(join(repo, "big.txt"), lines(30_000, "y"));
+    appendFileSync(join(repo, "z-after.txt"), "dois\n");
+    const files = await workingDiff(repo, DIFF_FILE_MAX, 1e9, { ...big, rawBytes: 512 * 1024 });
+    expect(files.find((f) => f.path === "big.txt")).toMatchObject({
+      additions: 30_000,
+      deletions: 0,
+      tooLarge: true,
+      hunks: [],
+    });
+    expect(files.find((f) => f.path === "z-after.txt")).toMatchObject({
+      additions: 1,
+      deletions: 0,
+      tooLarge: true,
+      hunks: [],
+    });
+  });
+
+  test("a diff under the raw limit is read whole and nothing is marked", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "a.txt"), "um\n");
+    commit(repo, "a");
+    appendFileSync(join(repo, "a.txt"), "dois\n");
+    const file = (
+      await workingDiff(repo, DIFF_FILE_MAX, DIFF_FILE_MAX, { ...big, rawBytes: 512 * 1024 })
+    ).find((f) => f.path === "a.txt");
+    expect(file?.tooLarge).toBeUndefined();
+    expect(file?.additions).toBe(1);
   });
 });
