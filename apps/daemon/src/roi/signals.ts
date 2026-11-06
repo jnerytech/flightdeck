@@ -57,7 +57,7 @@ export class RoiSignals {
       ],
       cwd,
     ).catch(() => null);
-    if (!answer || answer.code !== 0) return 0;
+    if (answer?.code !== 0) return 0;
     return answer.stdout.split("\0").filter((message) => TRAILER.test(message)).length;
   }
 

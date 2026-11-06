@@ -91,7 +91,7 @@ export function FindProjects(
                 {t("findProjects.scan")}
               </ActionButton>
               {scan?.truncated && <InlineNotice>{t("findProjects.truncated")}</InlineNotice>}
-              {scan && scan.repos.length === 0 && (
+              {scan?.repos.length === 0 && (
                 <p className="text-muted-foreground text-sm">{t("findProjects.none")}</p>
               )}
               {scan && scan.repos.length > 0 && (

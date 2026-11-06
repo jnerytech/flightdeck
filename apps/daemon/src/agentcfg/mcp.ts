@@ -4,7 +4,7 @@
  * it) is read-only. `.claude/settings.local.json` turns `.mcp.json` servers on and off. Secrets
  * are masked, and "Testar" only starts a server with confirm, after showing the exact command.
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";

@@ -157,6 +157,7 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
               hostId={hostId}
               target={target}
               path={viewing}
+              diff={changes.find((file) => file.path === viewing)}
               onClose={() => setViewing(null)}
             />
           </Suspense>

@@ -858,6 +858,19 @@ Click a card to open the project's page. It links the project's **Board**, **Ses
 **Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
 settings, where the folder, base branch, setup and personas are edited).
 
+### Sleeping idle sessions
+
+An idle session keeps its Claude Code process, and its memory, until it ends. On the host page,
+**Sleep idle sessions after** (Off, 15 minutes, 30 minutes, 1 hour or 4 hours; off by default, and
+`sessions.sleepAfterMinutes` in the daemon config) lets the host end the process of a session that
+has been idle that long. The session stays in every list as **Asleep** (a moon) and keeps its
+transcript, name and place; the next message starts it again from where it was, with no visible
+loss. Only a session with nothing going on sleeps: not one that is working or waiting for you, not
+one with a queued message, not one open in a tab or watched by the app, not a pinned one and not a
+card's. **Sleep now** in a session's menu does it at once for an idle session (it still refuses a
+pinned or card session). Every sleep is logged in the session's events. While the setting is off the
+daemon runs no timer for it, and a daemon restart leaves idle sessions asleep in the same way.
+
 ### Sessions side by side
 
 When the project has sessions that Flightdeck started, the page shows them as **tiles**. The
@@ -1154,7 +1167,10 @@ conversation. It is where you check what the agent did and send it back what to 
   **Filter by name** keeps the names that match among the folders already open, with the folders
   on their way. A folder with more than 500 entries shows the first ones and says so. A session
   outside git has no tree: the tab says so. A click on a file opens it below the tree, read only,
-  with numbered lines; a file over 1 MB, one that is not text, or a credential says so instead.
+  with numbered lines; a file over 1 MB, one that is not text, or a credential says so instead. A
+  changed file has **Show changes**: its diff against HEAD, live. While you are at the bottom, the
+  newest change scrolls into view as the session edits; scroll up and it stops, and **Jump to
+  latest** (with how many changes came) or a scroll back to the bottom brings it back.
 - **Inline comments:**
   - click a line number to comment on it, and shift+click another to extend the range. A removed
     line is commented on its old side;
@@ -2776,7 +2792,9 @@ tab, with no SSH.
   can drop a selection before you reach **Copy**: the last selection stays copyable until you
   type. When the program takes the mouse for itself, hold `Shift` while you drag to select.
   `Shift+Enter` adds a new line in a Claude Code prompt instead of sending it (the same as
-  `Alt+Enter`). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  `Alt+Enter`). If grey blocks of an old screen stay behind in Claude Code's side panel, that is
+  Claude Code leaving cells uncleared (the same happens in other terminals): `Ctrl+L` or resizing
+  the pane makes it repaint. Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
   in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
   the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
   closes. Links in the output open in the browser (`http` and `https` only). The font is the

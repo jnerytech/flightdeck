@@ -38,6 +38,8 @@ export interface HubRow {
   persona: SessionPersona | null;
   /** Phase 21: `project · persona · number`, on a host with names; null elsewhere. */
   standardName?: string | null;
+  /** Issue #157: idle with no process: a message wakes it. Only a managed session can be. */
+  asleep?: boolean;
   /** Phase 39: set for an OpenCode session only. */
   runtime?: "opencode";
 }
@@ -243,6 +245,7 @@ export function hubRows(state: HubRowState): HubRow[] {
           cwd: s.cwd,
         }),
         state: MANAGED[live?.status ?? s.status],
+        asleep: MANAGED[live?.status ?? s.status] === "idle" && s.asleep === true,
         controllable: false,
         lastActivity: live?.updatedAt ?? s.updatedAt,
         summary: liveLine(s.summary, live),

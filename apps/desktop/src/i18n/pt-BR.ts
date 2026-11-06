@@ -935,7 +935,10 @@ export const ptBR = {
       idle: "Ociosa",
       ended: "Encerrada",
     },
+    asleep: "Dormindo",
+    sleepNow: "Dormir agora",
     stateDots: {
+      asleep: "dormindo",
       running: "rodando",
       needs_you: "precisa de você",
       idle: "ociosa",
@@ -1283,6 +1286,7 @@ export const ptBR = {
     runEnv: "o ambiente de execução",
     templates: "as tarefas prontas",
     tasks: "os resultados das tarefas",
+    sleep: "pôr sessões ociosas para dormir",
     resources: "o painel de recursos do host",
     depsCheck: "a verificação das dependências",
     worktrees: "o painel de worktrees",
@@ -2216,6 +2220,10 @@ export const ptBR = {
     viewer: "Arquivo {path}",
     close: "Fechar",
     opening: "Abrindo…",
+    showChanges: "Mostrar mudanças",
+    showFile: "Mostrar o arquivo",
+    jumpLatestOne: "Ir para a mais recente ({n} mudança nova)",
+    jumpLatestMany: "Ir para a mais recente ({n} mudanças novas)",
   },
   changes: {
     tab: "Mudanças",
@@ -4111,6 +4119,23 @@ export const ptBR = {
     hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
     hintAddress:
       "Ou o daemon recusou o endereço desta máquina: no host, inclua a rede dela em allowedNetworks (o flightdeckd setup faz isso para o Tailscale).",
+  },
+  sleep: {
+    title: "Dormir sessões ociosas",
+    label: "Dormir sessões ociosas após",
+    hint: "Uma sessão ociosa devolve a memória depois desse tempo. Uma mensagem a acorda de onde estava. Sessões fixadas, de cards e as que você tem abertas ficam acordadas.",
+    off: "Desligado",
+    minutes: "{n} minutos",
+    hour: "1 hora",
+    hours: "{n} horas",
+    result: {
+      slept: "A sessão está dormindo. Uma mensagem a acorda.",
+      already: "A sessão já estava dormindo.",
+      not_idle: "A sessão está trabalhando ou esperando você, então fica acordada.",
+      queued: "Há uma mensagem esperando, então a sessão fica acordada.",
+      subscribed: "Alguém está com a sessão aberta, então ela fica acordada.",
+      kept_awake: "A sessão está fixada ou pertence a um card, então fica acordada.",
+    },
   },
   resources: {
     title: "Recursos",

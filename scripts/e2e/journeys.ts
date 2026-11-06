@@ -678,6 +678,35 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await card.getByRole("button", { name: c.t("update.cardClose"), exact: true }).click();
     await card.waitFor({ state: "detached", timeout: WAIT });
   },
+
+  // 22. The status bar (issue #491): it counts the hosts and the terminals, and its keep-awake item
+  // (on or holding the computer awake) opens the host's setting for it.
+  "status-bar": async (c) => {
+    await open(c, { name: "hub" });
+    const bar = c.page.getByRole("region", { name: c.t("statusBar.label"), exact: true });
+    await bar.waitFor({ timeout: WAIT });
+    const pattern = (key: "statusBar.hosts" | "statusBar.terminals") => {
+      const text = c.t(key, { online: "@1", total: "@2", n: "@1" });
+      const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`^${escaped.replace("@1", "\\d+").replace("@2", "\\d+")}$`);
+    };
+    await bar.getByRole("button", { name: pattern("statusBar.hosts") }).waitFor({ timeout: WAIT });
+    await bar
+      .getByRole("button", { name: pattern("statusBar.terminals") })
+      .or(bar.getByRole("button", { name: c.t("statusBar.terminalsOne"), exact: true }))
+      .first()
+      .waitFor({ timeout: WAIT });
+    const awake = (state: "on" | "off" | "holding") =>
+      bar.getByRole("button", { name: c.t(`statusBar.keepAwake.${state}`), exact: true });
+    const holdsOn = awake("on").or(awake("holding"));
+    await holdsOn.first().click({ timeout: WAIT });
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .click({ timeout: WAIT });
+    await c.page
+      .getByText(c.t("hostPage.keepAwakeTitle"), { exact: true })
+      .waitFor({ timeout: WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

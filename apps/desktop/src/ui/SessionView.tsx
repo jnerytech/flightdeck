@@ -450,6 +450,8 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   // Where the view itself last put the scroll: the scroll event of that move says nothing about the
   // reader, and by the time it is delivered the layout may have grown (a panel, a code block).
   const pinnedTop = useRef<number | null>(null);
+  /** The place a returning reader asked for, until the layout has the height to hold it (issue #515). */
+  const restoring = useRef<number | null>(null);
   // Until when a scroll is the person's: their wheel, keys, touch or a press on the scrollbar. The
   // browser also scrolls by itself (it pulls the position back when the content shrinks), and the
   // event for that can reach the handler after a panel changed the layout: read then, the view
@@ -479,6 +481,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     const saved = scrollKey ? positions.get(scrollKey) : undefined;
     if (!box || !saved || saved.atEnd) return;
     following.current = false;
+    restoring.current = saved.top;
     box.scrollTop = saved.top;
     setAwaySeq(saved.seq);
   }, []);
@@ -501,7 +504,11 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     const box = timeline.current;
     if (!box || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
-      if (following.current) pin(box);
+      // The content got taller: the place a returning reader asked for may fit now.
+      if (restoring.current !== null) {
+        box.scrollTop = restoring.current;
+        if (box.scrollTop === restoring.current) restoring.current = null;
+      } else if (following.current) pin(box);
       lastHeight.current = box.scrollHeight;
     });
     observer.observe(box);
@@ -727,6 +734,13 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             const own = pinnedTop.current === box.scrollTop;
             pinnedTop.current = null;
             if (own && following.current) return;
+            // A restore the layout has not held yet: the browser's clamp is not the reader going to
+            // the end, and the place kept stays as it was. The person's own scroll ends the restore.
+            if (restoring.current !== null) {
+              if (Date.now() < personUntil.current || box.scrollTop === restoring.current)
+                restoring.current = null;
+              else return;
+            }
             const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight <= END_SLACK;
             // Following and not at the end, with no hand on it: the layout moved, not the person.
             // The observer pins the end again.
