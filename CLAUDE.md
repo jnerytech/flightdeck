@@ -9,8 +9,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   excluded from coverage.
 - `packages/protocol`: protocol types and envelope between the app and the daemon.
 - `scripts/`: smokes, demo, TDD audit, build and release. Testable logic lives in `scripts/lib/`.
-- `docs/`: `SPEC.md` and `SPEC-fase-N.md` (one per phase), `DECISIONS.md` (divergences and
-  decisions of each phase), `TDD.md` (the testing rules), `GLOSSARY.md`, `manual/` (en, pt-BR).
+- `docs/`: `SPEC.md` and `SPEC-fase-N.md` (one per phase), `decisions/` (one file per decision or
+  divergence; `DECISIONS.md` holds the older ones, frozen), `TDD.md` (the testing rules),
+  `GLOSSARY.md`, `manual/` (en, pt-BR).
 - `.claude/`: the shared Claude Code setup. Skills `tdd-area` (one TDD area) and `new-phase`
   (open or close a phase); agents `spec-verifier` (checks a phase against its spec),
   `tauri-rust-reviewer` (for changes in `src-tauri`), `test-quality-reviewer` (tests that cannot
@@ -140,7 +141,9 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   Start its session there (`cd ../flightdeck-faseN && claude`, or `/cd` into it): the worktree's
   own rules and hooks load only for a session whose folder is that worktree.
   Each phase also updates both manuals (`docs/manual/en.md` and `pt-BR.md`).
-- Divergences from the spec go to `docs/DECISIONS.md`, in the phase's section.
+- Divergences from the spec and decisions go to a file of their own under `docs/decisions/`, named
+  `<yyyy-mm-dd>-<topic>.md` with a first line `# <title> (issue #N)` or `(phase N)` (#304). Never
+  append to `docs/DECISIONS.md`: it is frozen, and a test fails when it changes.
 
 ## Gotchas
 

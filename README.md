@@ -259,7 +259,8 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
 
 - Manual: [English](docs/manual/en.md) | [Português (Brasil)](docs/manual/pt-BR.md)
 - Roadmap and specs: [`docs/SPEC.md`](docs/SPEC.md)
-- Decisions and deviations from the specs: [`docs/DECISIONS.md`](docs/DECISIONS.md)
+- Decisions and deviations from the specs: one file each in [`docs/decisions/`](docs/decisions/),
+  the older ones in [`docs/DECISIONS.md`](docs/DECISIONS.md)
 
 The specs, decisions and glossary are written in Portuguese.
 
