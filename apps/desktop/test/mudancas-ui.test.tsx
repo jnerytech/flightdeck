@@ -406,6 +406,42 @@ describe("mudancas-ui", () => {
     expect(document.querySelector(".cm-content")).toBeNull();
   });
 
+  test("um arquivo grande demais para mostrar vem com o tamanho e um jeito de abrir fora, sem o conteúdo", async () => {
+    const ctx = await setup();
+    const opened: string[] = [];
+    ctx.platform.openPath = async (path) => {
+      opened.push(path);
+    };
+    writeFileSync(join(ctx.repo, "dump.log"), `SEGREDO${"x".repeat(700_000)}`);
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\n");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("dump.log"));
+    expect(files()).toContain("Grande demais");
+    const diff = () => screen.queryByRole("region", { name: "Diff unificado" })?.textContent ?? "";
+    expect(diff()).toContain("Grande demais para mostrar aqui (683.6 KB)");
+    expect(diff()).not.toContain("SEGREDO");
+    // The small file beside it is shown whole.
+    expect(diff()).toContain("+dois");
+    await click("Abrir dump.log fora do Flightdeck");
+    expect(opened).toHaveLength(1);
+    expect(opened[0]?.endsWith("/dump.log")).toBe(true);
+    // The editor stays one click away: it says why it cannot take the file when it is over 1 MB.
+    expect(screen.queryByRole("button", { name: "Editar arquivo dump.log" })).not.toBeNull();
+  });
+
+  test("sem programa do sistema (o app no navegador) o motivo aparece e não há botão de abrir fora", async () => {
+    const ctx = await setup();
+    ctx.platform.openPath = undefined;
+    writeFileSync(join(ctx.repo, "dump.log"), "x".repeat(700_000));
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("dump.log"));
+    const diff = screen.queryByRole("region", { name: "Diff unificado" })?.textContent ?? "";
+    expect(diff).toContain("Grande demais para mostrar aqui");
+    expect(screen.queryByRole("button", { name: "Abrir dump.log fora do Flightdeck" })).toBeNull();
+  });
+
   test("Sessões que mexeram aqui lista as sessões que gravaram o arquivo", async () => {
     const ctx = await setup();
     writeFileSync(join(ctx.repo, "novo.txt"), "um\n");
