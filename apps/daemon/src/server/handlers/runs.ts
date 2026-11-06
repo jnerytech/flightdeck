@@ -4,7 +4,7 @@
  */
 import { FlightdeckError, featureOff } from "../../errors.ts";
 import { startTemplate } from "../../templates/start.ts";
-import type { Handlers } from "../dispatch.ts";
+import { afterAck, type Handlers } from "../dispatch.ts";
 
 export const runsHandlers = {
   "automation.list": (payload, { server }) => {
@@ -107,15 +107,17 @@ export const runsHandlers = {
     const { manager } = server.need("runenv");
     ws.data.unwatchRunEnv?.();
     ws.data.unwatchRunEnv = manager.watch((state) => send({ type: "runenv.updated", state }));
-    undefined;
-    for (const state of manager.live()) send({ type: "runenv.updated", state });
+    return afterAck(undefined, () => {
+      for (const state of manager.live()) send({ type: "runenv.updated", state });
+    });
   },
   "run.watch": (_payload, { ws, send, server }) => {
     // Ack, the runs still going, then every change: the app sees open gates right away.
     const runs = server.need("board").workflows;
     ws.data.unwatchRuns?.();
     ws.data.unwatchRuns = runs.watch((run) => send({ type: "run.updated", run }));
-    undefined;
-    for (const run of runs.activeRuns()) send({ type: "run.updated", run });
+    return afterAck(undefined, () => {
+      for (const run of runs.activeRuns()) send({ type: "run.updated", run });
+    });
   },
 } satisfies Partial<Handlers>;
