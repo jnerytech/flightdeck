@@ -1766,6 +1766,11 @@ export const en: Dictionary = {
     contextSkipped:
       "AGENTS.md was not sent: it is over 64 KB, or it links out of the folder or to a credential.",
     modeLabel: "Permission mode",
+    modeChip: "Permission mode: {mode}",
+    modeMenuTitle: "Mode",
+    modeBypassOff: "Turned off on this host",
+    modeBypassHow: "Turn it on in the host settings",
+    modeLooser: "Looser than the mode this session started in",
     modelLabel: "Model",
     modelDefault: "Default model",
     insertSnippet: "Insert a snippet",
@@ -1876,26 +1881,32 @@ export const en: Dictionary = {
     default: {
       name: "Default",
       description: "asks before acting",
+      explain: "Asks before it edits files or runs commands",
     },
     acceptEdits: {
       name: "Accept edits",
       description: "edits files without asking",
+      explain: "Edits files without asking; still asks before running commands",
     },
     plan: {
       name: "Plan",
       description: "only reads and proposes a plan",
+      explain: "Only reads and proposes a plan; changes nothing",
     },
     auto: {
       name: "Automatic",
       description: "a classifier decides what goes on",
+      explain: "A classifier decides what goes on",
     },
     dontAsk: {
       name: "Allowed only",
       description: "denies what the rules do not allow",
+      explain: "Denies what the rules do not allow",
     },
     bypassPermissions: {
       name: "Bypass permissions",
       description: "no prompts",
+      explain: "Runs everything without asking. Only in a folder you can throw away",
     },
     bypassWarning:
       "Bypass permissions: Claude runs everything without asking for approval. Use it only in a folder you can throw away.",
