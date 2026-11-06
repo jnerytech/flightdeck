@@ -46,6 +46,7 @@ jobs:
       smokes: ${{ steps.plan.outputs.smokes }}
       screenshots: ${{ steps.plan.outputs.screenshots }}
       cargo: ${{ steps.plan.outputs.cargo }}
+      e2e: ${{ steps.plan.outputs.e2e }}
     steps:
       # Full history: the changed paths are taken against the merge-base with the target branch.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -402,12 +403,16 @@ jobs:
       # The shards are split by the seconds each test file took (scripts/test-timings.json, #292),
       # not by file count. The JUnit report keeps this run's times: `bun run test:shards -- record`
       # refreshes the timing file from the reports of the three shards.
-      # On a PR, the base of the test pyramid (#309): the unit and component tiers, about 70 s a
-      # shard against 400 s. The integration and e2e tiers run on Windows on main, nightly and by
-      # hand; Linux runs the related tests of every tier on the PR.
-      - name: Testes do PR (shard ${{ matrix.shard }}/3, unit e component)
+      # On a PR, the selection the Linux suite runs (#309, #399): every unit and component test plus
+      # the integration and e2e tests related to the changed files, or the whole suite when a file
+      # every test reads changed. No coverage gate on Windows: Linux holds the 100% gate.
+      - name: Testes do PR (shard ${{ matrix.shard }}/3, seleção do test:related)
         if: github.event_name == 'pull_request'
-        run: bun run test:shards -- run ${{ matrix.shard }}/3 --tier unit,component --junit junit-${{ matrix.shard }}.xml
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          bun run test:related -- --pr --base "origin/$BASE_REF" --list selection.txt
+          bun run test:shards -- run ${{ matrix.shard }}/3 --files selection.txt --junit junit-${{ matrix.shard }}.xml
 
       - name: Testes (shard ${{ matrix.shard }}/3)
         if: github.event_name != 'pull_request'
@@ -618,9 +623,10 @@ jobs:
   screenshots-e2e:
     name: e2e journeys ${{ matrix.shard }}/3
     needs: [changes, quick]
-    # Off the PR path (#309): the journeys run on main, nightly and by hand; a PR gates on the
-    # unit and component tiers and the prints.
-    if: needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'
+    # On main, nightly and by hand always; on a PR when it changes what the journeys read (#399:
+    # the screens, the journeys, their config, the demo). A failing journey gets Playwright's one
+    # CI retry (scripts/lib/e2e-config.ts) and nothing more.
+    if: needs.changes.outputs.e2e == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -689,14 +695,16 @@ jobs:
         run: |
           test "${{ needs.changes.result }}" = success
           test "${{ needs.quick.result }}" = success
-          if [ "${{ needs.changes.outputs.screenshots }}" != true ]; then
-            echo "Screens skipped by path (scripts/lib/ci-paths.ts)"; exit 0
-          fi
           echo "prints: ${{ needs.screenshots-prints.result }}, e2e: ${{ needs.screenshots-e2e.result }}"
-          test "${{ needs.screenshots-prints.result }}" = success
-          # The journeys skip a PR (#309); everywhere else they must pass.
-          if [ "${{ github.event_name }}" = pull_request ]; then
-            test "${{ needs.screenshots-e2e.result }}" = skipped
+          if [ "${{ needs.changes.outputs.screenshots }}" != true ]; then
+            echo "Prints skipped by path (scripts/lib/ci-paths.ts)"
           else
+            test "${{ needs.screenshots-prints.result }}" = success
+          fi
+          # The journeys run when the plan asks for them (#399), and then they must pass.
+          if [ "${{ needs.changes.outputs.e2e }}" = true ]; then
             test "${{ needs.screenshots-e2e.result }}" = success
+          else
+            echo "Journeys skipped by path (scripts/lib/ci-paths.ts)"
+            test "${{ needs.screenshots-e2e.result }}" = skipped
           fi
