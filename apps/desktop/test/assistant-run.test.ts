@@ -242,6 +242,15 @@ describe("assistant-run: nothing is sent when the text holds a secret", () => {
     expect(api.controller.gate.busy()).toBe(false);
   });
 
+  test("a name of a context entry is scanned too, since it is part of the request", async () => {
+    const { controller, sent } = setup();
+    const refused = await refusal(() =>
+      controller.run(input({ context: { "password=hunter2secret": "x" } })),
+    );
+    expect(refused?.reason).toBe("assistant_secret_found");
+    expect(sent).toEqual([]);
+  });
+
   test("a vault value in the context is found by the shell and refused with the names, on the API path", async () => {
     const { controller, fake } = setup({
       prefs: { provider: "anthropic" },
