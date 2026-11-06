@@ -6,7 +6,7 @@ import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { cardDiff, workingDiff } from "../board/diff.ts";
 import { aheadBehind } from "../board/merge.ts";
-import { refArg } from "../board/ref-arg.ts";
+import { HEAD, type Rev, refArg } from "../board/ref-arg.ts";
 import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
@@ -35,7 +35,7 @@ export interface ResolvedTarget {
   /** The repository's top level (the worktree, for a card). */
   root: string;
   /** The card's base branch; `null` for a session, whose diff is against `HEAD`. */
-  base: string | null;
+  base: Rev | null;
   cardId: string | null;
   claudeSessionId: string | null;
   /** The card's branch: its position is read from it, never from a `HEAD` that a rebase detaches. */
@@ -155,7 +155,13 @@ export class Changes {
     if (base === null)
       return { target, root, base, files: await workingDiff(root), position: null };
     const { files } = await cardDiff(root, base);
-    return { target, root, base, files, position: await aheadBehind(root, base, branch) };
+    return {
+      target,
+      root,
+      base,
+      files,
+      position: await aheadBehind(root, base, branch ? refArg(branch) : HEAD),
+    };
   }
 
   /**

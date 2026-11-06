@@ -11,7 +11,9 @@ const { ProjectPage } = await import("../src/ui/ProjectPage.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
-function setup(options: { language?: string; known?: boolean; features?: string[] } = {}) {
+function setup(
+  options: { language?: string; known?: boolean; features?: string[]; storedBase?: string } = {},
+) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
   });
@@ -35,7 +37,17 @@ function setup(options: { language?: string; known?: boolean; features?: string[
     projects:
       options.known === false
         ? {}
-        : { h1: [{ id: "p1", name: "api", path: "/work/api", baseBranch: "develop" }] },
+        : {
+            h1: [
+              {
+                id: "p1",
+                name: "api",
+                path: "/work/api",
+                baseBranch: options.storedBase ?? "develop",
+                ...(options.storedBase ? { baseBranchInvalid: true } : {}),
+              },
+            ],
+          },
   } as never as ReturnType<typeof store.getState>;
   const went: Route[] = [];
   const view = (
@@ -72,6 +84,20 @@ describe("projetos-pagina-ui: the project page", () => {
       { name: "costs", host: "h1", projectKey: "host:h1:/work/api" },
       { name: "projects", host: "h1" },
     ]);
+  });
+
+  test("a base branch an older daemon stored without checking it is flagged, in both languages, and a good one is not", async () => {
+    render(setup({ storedBase: "--output=/tmp/x" }).view);
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "api" })).not.toBeNull());
+    expect(screen.queryByText(/--output=\/tmp\/x is not a valid branch name/)).not.toBeNull();
+    cleanup();
+    render(setup({ storedBase: "--output=/tmp/x", language: "pt-BR" }).view);
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "api" })).not.toBeNull());
+    expect(screen.queryByText(/--output=\/tmp\/x não é um nome de branch válido/)).not.toBeNull();
+    cleanup();
+    render(setup().view);
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "api" })).not.toBeNull());
+    expect(screen.queryByText(/is not a valid branch name/)).toBeNull();
   });
 
   test("a host without the costs feature has no Costs link", async () => {

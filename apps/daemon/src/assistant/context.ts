@@ -13,6 +13,7 @@ import type {
 } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { cardDiff, parseUnifiedDiff, workingDiff } from "../board/diff.ts";
+import { refArg } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isCredentialPath } from "../permissions/risk.ts";
 import { readRegular } from "../read-regular.ts";
@@ -92,7 +93,7 @@ async function changes(
 ): Promise<{ root: string; files: DiffFile[] }> {
   if (source.kind === "card") {
     const { worktree, base } = deps.card(source.cardId);
-    return { root: worktree, files: (await cardDiff(worktree, base, UNTRACKED_MAX)).files };
+    return { root: worktree, files: (await cardDiff(worktree, refArg(base), UNTRACKED_MAX)).files };
   }
   const root = await topLevel(await deps.allowed(source.cwd));
   if (source.kind === "worktree") return { root, files: await workingDiff(root, UNTRACKED_MAX) };

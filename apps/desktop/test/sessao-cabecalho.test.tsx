@@ -4,7 +4,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ComposerDock, SessionHeader, SessionPane } = await import(
+const { ComposerDock, RecapSlot, SessionHeader, SessionPane } = await import(
   "../src/components/session/parts.tsx"
 );
 
@@ -101,6 +101,32 @@ describe("sessao-cabecalho: the session header in a short area", () => {
     await act(async () => {});
     expect(more()).toBeNull();
     expect(screen.queryByText("/tmp/alfa/projects/flightdeck-web")).not.toBeNull();
+  });
+});
+
+// Issue #422: at 720x480 the summary's band (the not-trusted notice, then the summary) took 142 px.
+describe("sessao-cabecalho: the summary's band in a short area", () => {
+  const slot = () => document.querySelector(".recap-slot");
+  test("in an area under 600 px high the band is marked short, so it keeps tight", async () => {
+    layoutBox(664, 480);
+    render(
+      <SessionPane>
+        <RecapSlot>summary</RecapSlot>
+      </SessionPane>,
+    );
+    await act(async () => {});
+    expect(slot()?.getAttribute("data-short")).toBe("true");
+  });
+
+  test("a tall area keeps the roomy band", async () => {
+    layoutBox(664, 800);
+    render(
+      <SessionPane>
+        <RecapSlot>summary</RecapSlot>
+      </SessionPane>,
+    );
+    await act(async () => {});
+    expect(slot()?.getAttribute("data-short")).toBeNull();
   });
 });
 

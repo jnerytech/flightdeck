@@ -182,9 +182,53 @@ describe("board-ui", () => {
     await openBoard(repo);
     const region = screen.queryByRole("region", { name: "Em andamento" }) as HTMLElement;
     await act(async () => {
-      fireEvent.click(within(region).getByRole("button", { name: "Adicionar card" }));
+      fireEvent.click(within(region).getByRole("button", { name: "Vazio, Adicionar card" }));
     });
     expect(screen.queryByLabelText("Título do card")).not.toBeNull();
+  });
+
+  test("cada coluna mostra o ícone, a contagem em pílula e um + que cria o card nela", async () => {
+    const { repo, store } = await setup();
+    await openBoard(repo);
+    for (const title of ["A", "B"]) await createCard(title);
+    const count = (name: string) =>
+      screen.getByRole("region", { name }).querySelector(".column-count")?.textContent;
+    expect(count("Backlog")).toBe("2");
+    expect(count("Concluído")).toBe("0");
+    for (const name of ["Backlog", "Em andamento", "Esperando você", "Em revisão", "Concluído"]) {
+      expect(
+        screen.getByRole("region", { name }).querySelector("[data-slot='column-icon']"),
+      ).not.toBeNull();
+    }
+    const sent: Array<[string, unknown]> = [];
+    const send = store.hostCommand.bind(store) as (...a: unknown[]) => Promise<unknown>;
+    store.hostCommand = ((host: string, type: string, payload: unknown) => {
+      sent.push([type, payload]);
+      return send(host, type, payload);
+    }) as never;
+    await click("Adicionar card em Em revisão");
+    await type("Título do card", "Direto na revisão");
+    await click("Criar card");
+    await settle(() => column("Em revisão").includes("Direto na revisão"));
+    expect(column("Em revisão")).toEqual(["Direto na revisão"]);
+    // One command that says the column, not a create followed by a move that could fail or race.
+    expect(sent.filter(([type]) => type === "card.create")).toMatchObject([
+      ["card.create", { column: "review" }],
+    ]);
+    expect(sent.some(([type]) => type === "card.move")).toBe(false);
+    expect(column("Backlog")).toEqual(["A", "B"]);
+    expect(count("Em revisão")).toBe("1");
+  });
+
+  test("uma coluna vazia mostra uma caixa tracejada e quieta que diz Vazio", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    const done = screen.getByRole("region", { name: "Concluído" });
+    // WCAG 2.5.3: the name a voice user says starts with the word they see.
+    const empty = within(done).queryByRole("button", { name: "Vazio, Adicionar card" });
+    expect(empty).not.toBeNull();
+    expect(empty?.textContent).toBe("Vazio");
+    expect(empty?.className).toContain("border-dashed");
   });
 
   test("arrastar entre colunas move o card; soltar sobre outro card reordena a coluna", async () => {

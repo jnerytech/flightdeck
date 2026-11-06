@@ -23,6 +23,7 @@ import type { AppStore } from "../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../lib/client-costs.ts";
 import { ALL_CLIENTS } from "../lib/client-scope.ts";
 import {
+  ALL_HOSTS,
   daysBetween,
   PERIODS,
   type Period,
@@ -35,9 +36,6 @@ import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
 import { TimingBreakdown } from "./TimingBreakdown.tsx";
-
-/** The host choice that adds every host up (phase 29). */
-const ALL_HOSTS = "__all__";
 
 const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
 
@@ -111,6 +109,8 @@ export const CostsPage = memo(function CostsPage(props: {
   host?: string;
   projectKey?: string;
   client?: string;
+  /** The period it opens on (Home points at the last seven days). */
+  period?: Exclude<Period, "range">;
 }) {
   const t = useT();
   const number = useFormatNumber();
@@ -144,9 +144,9 @@ export const CostsPage = memo(function CostsPage(props: {
     const found = personaHosts.flatMap((h) => state.personas[h.id] ?? []).find((p) => p.id === id);
     return id === null ? t("costsUi.noPersona") : (found?.name ?? id);
   };
-  const [period, setPeriod] = useState<Period>("7d");
+  const [period, setPeriod] = useState<Period>(props.period ?? "7d");
   const today = store.today();
-  const [range, setRange] = useState(periodRange("7d", today));
+  const [range, setRange] = useState(periodRange(props.period ?? "7d", today));
   const [filters, setFilters] = useState<Omit<CostsFilter, "from" | "to">>(
     props.projectKey ? { projectKey: props.projectKey } : {},
   );

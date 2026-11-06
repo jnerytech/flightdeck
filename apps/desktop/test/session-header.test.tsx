@@ -44,6 +44,7 @@ describe("session-header: the summary card lines up with the header and the conv
     const source = readFileSync(resolve(import.meta.dir, "../src/ui/ExternalView.tsx"), "utf8");
     const lines = source.split("\n");
     const at = lines.findIndex((line) => line.includes("<RecapPanel"));
-    expect(lines[at - 1] ?? "").toContain("recap-slot");
+    // The slot is RecapSlot, which draws .recap-slot and tightens it in a short area (#422).
+    expect(lines[at - 1] ?? "").toMatch(/recap-slot|<RecapSlot>/);
   });
 });

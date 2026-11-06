@@ -219,6 +219,7 @@ const STDERR_GRACE_MS = 2_000;
 export const gitRunner =
   (timeoutMs: number): GitRunner =>
   async (args) => {
+    // git-arg: the clone runner: the url comes after `--` and the path is under an allowed root
     const proc = Bun.spawn(["git", ...args], {
       stdout: "ignore",
       stderr: "pipe",

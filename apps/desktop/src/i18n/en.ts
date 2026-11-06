@@ -2,7 +2,33 @@ import type { Dictionary } from "./index.ts";
 
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
-  nav: { back: "Back", forward: "Forward" },
+  nav: { back: "Back", forward: "Forward", overview: "Home" },
+  home: {
+    title: "Home",
+    range: "Last 7 days · all hosts",
+    spend: "Spend",
+    noBudget: "No budget set",
+    ofBudget: "{spent} of {limit} budget this month",
+    turns: "Turns",
+    turnsOk: "{n} ok",
+    turnsFailed: "{n} failed",
+    tokens: "Tokens",
+    cacheRead: "{n} cache read",
+    average: "Avg cost / turn",
+    avgTime: "Avg turn time",
+    successRate: "{rate} success rate",
+    unknown: "—",
+    openCard: "Open {card}",
+    chart: "{card}, last 7 days: {values}",
+    noHosts: "No host is connected yet.",
+    partial: "Some hosts did not answer: {hosts}.",
+    olderDaemon: "Failed turns and turn time need a daemon with the Home counters.",
+    loading: "Reading the hosts…",
+    connecting: "Connecting to your hosts…",
+    noCosts: "No cost data from {hosts}",
+    avgBasis: "Managed sessions only",
+    ready: "Home is ready.",
+  },
   hosts: {
     status: {
       online: "online",
@@ -1241,6 +1267,7 @@ export const en: Dictionary = {
     webhook: "webhooks",
     bg: "background sessions",
     projectTrust: "project trust",
+    keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
   daemonRefusal: {
@@ -3077,12 +3104,16 @@ export const en: Dictionary = {
     satisfied: "done",
   },
   kanban: {
+    /** An empty column's box: the word it shows, then what pressing it does (WCAG 2.5.3). */
+    emptyName: "{empty}, {action}",
     needTitle: "Give the card a title",
     card: "Card {title}",
     queued: "queued",
     waitingQuotaUntil: "waiting for the quota until {time}",
     waitingQuota: "waiting for the quota",
     addCard: "Add card",
+    addCardTo: "Add card to {column}",
+    empty: "Empty",
     boardOf: "Board of {project}",
     filter: "Filter cards",
     titleLabel: "Card title",
@@ -3405,6 +3436,8 @@ export const en: Dictionary = {
   },
   projectPage: {
     notHere: "This project is not on this host.",
+    baseInvalid:
+      "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
     trust: {
       title: "Project configuration",
       hint: "A project can carry its own hooks, MCP servers, settings, agents and skills. They load into a session only when you trust the project.",
@@ -3438,6 +3471,7 @@ export const en: Dictionary = {
       failed: "Could not read this project's configuration.",
       sessionNotice:
         "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
+      sessionNoticeShort: "This folder is not trusted.",
       review: "Review and trust",
     },
     sessionsHint: "The sessions of every project",
@@ -3901,6 +3935,23 @@ export const en: Dictionary = {
     bypassAllowMessage:
       "Allow sessions on {host} to run without permission prompts? Claude could then edit and delete files and run commands in any allowed folder without asking. Only do this on a machine and in folders you accept that risk for.",
     bypassTurnOff: "Turn off",
+    keepAwakeTitle: "Keep this computer awake",
+    keepAwakeHint:
+      "While a session of this host runs or waits for your answer, the host asks the computer not to sleep, so approvals and notifications keep working. The screen may still turn off, and closing the lid follows the system's power settings.",
+    keepAwakeOn: "On: the computer stays awake only while sessions run.",
+    keepAwakeOff: "Off: the computer sleeps as the system says.",
+    keepAwakeHeld: "Holding the computer awake now.",
+    keepAwakeTurnOff: "Turn off",
+    keepAwakeTurnOn: "Turn on",
+    keepAwakeReason: {
+      "no-inhibitor":
+        "Nothing on this computer can hold it awake (no systemd-inhibit, caffeinate or PowerShell).",
+      "unsupported-platform": "This system has no way to hold the computer awake.",
+      wsl: "This host runs inside WSL and cannot keep Windows awake. Turn it on for the Windows host.",
+      "start-failed": "The program that holds the computer awake could not start.",
+      ended:
+        "The program that holds the computer awake ended. It starts again with the next session.",
+    },
     rootsHint: "Sessions and projects can only use these folders and the ones inside them.",
     host: "Host",
     nameLabel: "Host name",

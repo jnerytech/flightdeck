@@ -86,6 +86,7 @@ import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
+import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
@@ -113,6 +114,8 @@ import { OpenCodePreflight } from "./runtime/opencode-preflight.ts";
 import { OpenCodeModels, runCommand } from "./runtime/opencode-process.ts";
 import { OpenCodeRuntime, REAL_KILL_DEPS, treeKiller } from "./runtime/opencode-runtime.ts";
 import { scanOpenCodeScope } from "./runtime/opencode-scope.ts";
+import { startPrivateServer } from "./runtime/opencode-serve.ts";
+import { OPENCODE_LEDGER_FILE, ProcessLedger, procSource } from "./runtime/process-ledger.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
 import {
@@ -555,7 +558,7 @@ export const EXIT_ALREADY_RUNNING = 3;
 
 export class AlreadyRunningError extends Error {
   constructor(dataDir: string, hint?: string) {
-    super(`já em execução (dataDir ${dataDir})` + (hint ? "; " + hint : ""));
+    super(`já em execução (dataDir ${dataDir})${hint ? `; ${hint}` : ""}`);
   }
 }
 
@@ -667,6 +670,17 @@ async function createOpenCode(
 ): Promise<CreatedOpenCode> {
   // The demo and the journeys show the picker with a fake OpenCode, which runs nothing.
   if (kind === "fake") return fakeOpenCode();
+  // A daemon that was killed leaves the commands its OpenCode sessions ran: reaped first, even
+  // when OpenCode is off now (issue #250).
+  const ledger = new ProcessLedger({
+    file: join(config.dataDir, OPENCODE_LEDGER_FILE),
+    proc: procSource(),
+    killGroup: REAL_KILL_DEPS.killGroup,
+  });
+  const left = await ledger.reap();
+  if (left.reaped.length > 0) {
+    log(`OpenCode: ${left.reaped.length} process group(s) left by an earlier daemon were ended`);
+  }
   if (!config.opencode.enabled) return { info: { available: false, reason: "opencode_disabled" } };
   const childEnv = buildChildEnv(env, config.allowApiKey);
   const scan = () => scanOpenCodeScope({ env: childEnv });
@@ -677,7 +691,8 @@ async function createOpenCode(
     path,
     version,
     env: childEnv,
-    run: runCommand,
+    // One private server per preflight, in the process groups the ledger knows (issue #243).
+    serve: (opts) => startPrivateServer({ path, ledger, ...opts }),
     scan,
     log,
     // An executable discovery could not stamp is never trusted: the preflight refuses opencode_changed.
@@ -690,6 +705,7 @@ async function createOpenCode(
     scan,
     kill: treeKiller(process.platform, REAL_KILL_DEPS),
     mcpServer,
+    ledger,
   });
   const models = new OpenCodeModels({
     path,
@@ -739,6 +755,8 @@ export async function startDaemon(
     serviceContext?: (dryRun: boolean) => ServiceContext;
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
+    /** What keeps the computer awake (issue #163); the machine's own when absent. */
+    powerContext?: PowerContext;
   } = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);
@@ -807,6 +825,9 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  // Holds the computer awake while a session runs or waits for a permission (issue #163).
+  const keepAwake = new KeepAwake(options.powerContext ?? osPowerContext(), config.keepAwake);
+
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
 
@@ -826,6 +847,7 @@ export async function startDaemon(
     store,
     runtime,
     risk,
+    onActivity: (active) => keepAwake.update(active),
     trust: projectTrust.sessionTrust.bind(projectTrust),
     prepareTrust: projectTrust.prepare.bind(projectTrust),
     autoApprove,
@@ -1274,6 +1296,15 @@ export async function startDaemon(
         await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
       },
     },
+    keepAwake: {
+      status: () => keepAwake.status(),
+      set: async (enabled) => {
+        // The file first: when it cannot be written the switch stays as it was, for the client and the daemon.
+        await updateConfigFile(configFile, (raw) => ({ ...raw, keepAwake: enabled }));
+        config.keepAwake = enabled;
+        keepAwake.setEnabled(enabled);
+      },
+    },
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) =>
@@ -1543,6 +1574,8 @@ export async function startDaemon(
     stop: () => {
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
+        // First: whatever stops slowly after must not keep the computer awake meanwhile.
+        keepAwake.stop();
         await wsl?.stop();
         automations.stop();
         clearInterval(messagingSweep);

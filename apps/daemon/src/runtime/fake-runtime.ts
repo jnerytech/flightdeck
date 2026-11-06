@@ -367,6 +367,7 @@ class FakeRun implements AgentRun {
         ["commit", "-q", "-m", `fake: ${text}`],
       ],
       async (args) => {
+        // git-arg: the fake runtime's git, for tests: its arguments are fixed
         const git = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
           cwd: this.opts.cwd,
           // The daemon's current environment, not the one it started with (see board/command.ts).

@@ -89,6 +89,8 @@ export interface SessionManagerOptions {
     /** Phase 39: OpenCode turns spend no Claude plan, so the account is not told. */
     runtime: SessionRuntime,
   ) => void;
+  /** How many sessions are running or waiting for a permission, after every change of status (keep-awake, #163). */
+  onActivity?: (active: number) => void;
   /** Start and end of every turn (phase 12's snapshots); the first start waits for session.init. */
   onTurnEdge?: (edge: TurnEdge) => void;
   /** Phase 13: the risk of each permission request; built-in rules over allowedRoots when absent. */
@@ -960,6 +962,7 @@ export class SessionManager {
     this.store.updateSession(sessionId, { status });
     this.emit(sessionId, { type: "session.status", status, ...(reason ? { reason } : {}) });
     this.emitSummary(sessionId);
+    this.opts.onActivity?.(this.activeSessionCount());
   }
 
   private emit(sessionId: string, event: SessionEvent): void {

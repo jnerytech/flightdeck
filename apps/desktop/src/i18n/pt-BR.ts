@@ -4,7 +4,33 @@
  * Terms follow docs/GLOSSARY.md.
  */
 export const ptBR = {
-  nav: { back: "Voltar", forward: "Avançar" },
+  nav: { back: "Voltar", forward: "Avançar", overview: "Início" },
+  home: {
+    title: "Início",
+    range: "Últimos 7 dias · todos os hosts",
+    spend: "Gasto",
+    noBudget: "Sem orçamento definido",
+    ofBudget: "{spent} de {limit} de orçamento no mês",
+    turns: "Turnos",
+    turnsOk: "{n} ok",
+    turnsFailed: "{n} com falha",
+    tokens: "Tokens",
+    cacheRead: "{n} lidos do cache",
+    average: "Custo médio / turno",
+    avgTime: "Tempo médio do turno",
+    successRate: "{rate} de sucesso",
+    unknown: "—",
+    openCard: "Abrir {card}",
+    chart: "{card}, últimos 7 dias: {values}",
+    noHosts: "Nenhum host conectado ainda.",
+    partial: "Alguns hosts não responderam: {hosts}.",
+    olderDaemon: "Turnos com falha e tempo do turno pedem um daemon com os contadores do Início.",
+    loading: "Lendo os hosts…",
+    connecting: "Conectando aos seus hosts…",
+    noCosts: "Sem dados de custo de {hosts}",
+    avgBasis: "Só sessões gerenciadas",
+    ready: "O Início está pronto.",
+  },
   hosts: {
     status: {
       online: "online",
@@ -1236,6 +1262,7 @@ export const ptBR = {
     webhook: "os webhooks",
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
+    keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
   daemonRefusal: {
@@ -3079,12 +3106,16 @@ export const ptBR = {
     satisfied: "pronto",
   },
   kanban: {
+    /** An empty column's box: the word it shows, then what pressing it does (WCAG 2.5.3). */
+    emptyName: "{empty}, {action}",
     needTitle: "Dê um título ao card",
     card: "Card {title}",
     queued: "na fila",
     waitingQuotaUntil: "aguardando cota até {time}",
     waitingQuota: "aguardando cota",
     addCard: "Adicionar card",
+    addCardTo: "Adicionar card em {column}",
+    empty: "Vazio",
     boardOf: "Board de {project}",
     filter: "Filtrar cards",
     titleLabel: "Título do card",
@@ -3443,9 +3474,12 @@ export const ptBR = {
       failed: "Não foi possível ler a configuração deste projeto.",
       sessionNotice:
         "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
+      sessionNoticeShort: "Esta pasta não tem confiança.",
       review: "Revisar e confiar",
     },
     notHere: "Este projeto não está neste host.",
+    baseInvalid:
+      "O branch base {name} não é um nome de branch válido, então abrir um PR e atualizar a partir do remoto são recusados neste projeto. Defina um de verdade em Configurações.",
     sessionsHint: "As sessões de todos os projetos",
     boardHint: "Cards por coluna, do backlog ao concluído",
     workflowsHint: "Os workflows do projeto e suas execuções",
@@ -3907,6 +3941,23 @@ export const ptBR = {
     bypassAllowMessage:
       "Permitir que as sessões em {host} rodem sem pedidos de permissão? O Claude poderá editar e apagar arquivos e rodar comandos em qualquer pasta permitida sem perguntar. Só faça isso numa máquina e em pastas em que você aceite esse risco.",
     bypassTurnOff: "Desligar",
+    keepAwakeTitle: "Manter este computador acordado",
+    keepAwakeHint:
+      "Enquanto uma sessão deste host roda ou espera a sua resposta, o host pede ao computador para não dormir, e assim aprovações e avisos continuam chegando. A tela ainda pode apagar, e fechar a tampa segue as configurações de energia do sistema.",
+    keepAwakeOn: "Ligado: o computador fica acordado só enquanto há sessões.",
+    keepAwakeOff: "Desligado: o computador dorme como o sistema mandar.",
+    keepAwakeHeld: "Segurando o computador acordado agora.",
+    keepAwakeTurnOff: "Desligar",
+    keepAwakeTurnOn: "Ligar",
+    keepAwakeReason: {
+      "no-inhibitor":
+        "Nada neste computador consegue segurá-lo acordado (sem systemd-inhibit, caffeinate nem PowerShell).",
+      "unsupported-platform": "Este sistema não tem como segurar o computador acordado.",
+      wsl: "Este host roda dentro do WSL e não consegue manter o Windows acordado. Ligue no host do Windows.",
+      "start-failed": "O programa que segura o computador acordado não conseguiu iniciar.",
+      ended:
+        "O programa que segura o computador acordado terminou. Ele volta com a próxima sessão.",
+    },
     rootsHint: "Sessões e projetos só podem usar estas pastas e as que estão dentro delas.",
     host: "Host",
     nameLabel: "Nome do host",

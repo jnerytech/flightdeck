@@ -82,6 +82,7 @@ describe("direcao-visual: barra lateral", () => {
     expect(items.map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual([
       // The folding groups by purpose, each with its heading.
       "Trabalho",
+      "Início",
       "Sessões",
       "Precisa de você",
       "Projetos",
