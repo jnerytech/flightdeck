@@ -1531,7 +1531,7 @@ credencial). Você pode acrescentar padrões na configuração do host (`risk.ex
 podem ser rebaixados.
 
 - Um pedido de **Risco alto** fica vermelho e **Aprovar** vira **Segurar para aprovar**: segure o botão por
-  2 segundos. A tecla A não o aprova; N continua negando. O host também confere a espera: recusa a
+  2 segundos. O motivo fica escrito sob o botão (não só numa dica). A tecla A não o aprova; N continua negando. O host também confere a espera: recusa a
   aprovação de um pedido de risco alto que não a traga ("Um pedido de risco alto só é aprovado
   segurando o botão."), então nenhum outro cliente consegue pulá-la.
 - A bandeja nunca aprova um pedido de risco alto: oferece **Negar** e **Abrir**.

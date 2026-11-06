@@ -1543,7 +1543,8 @@ paths). You can add patterns in the host configuration (`risk.extraHigh`); the b
 be lowered.
 
 - A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
-  seconds. The A key does not approve it; N still denies. The host checks the hold too: it refuses
+  seconds. The reason is written under the button (not only in a tooltip). The A key does not
+  approve it; N still denies. The host checks the hold too: it refuses
   an approval of a high-risk request that does not carry it ("A high-risk request is approved only
   by holding the button."), so no other client can skip it either.
 - The tray never approves a high-risk request: it offers **Deny** and **Open**.
