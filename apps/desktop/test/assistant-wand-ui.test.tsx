@@ -72,6 +72,8 @@ async function make(
     configured?: boolean;
     assist?: boolean;
     short?: boolean;
+    /** The host of the field and the folder it works in. */
+    field?: { hostId: string; cwd: string };
   } = {},
 ) {
   const language = options.language ?? "en";
@@ -103,12 +105,30 @@ async function make(
             assist: {
               controller: store.assistant,
               kind: "prompt" as const,
+              ...(options.field
+                ? { fieldHostId: options.field.hostId, cwd: options.field.cwd }
+                : {}),
               openSettings: () => void opened.push("settings"),
             },
           })}
     />,
   );
   return { store, fake, opened, t, ui };
+}
+
+/** A field on host `fieldHost` working in /work, an API provider that fails, and a confirmed host "alfa" (h1). */
+async function makeScoped(fieldHost: string) {
+  const made = await make(
+    {
+      run: () => {
+        throw { reason: "assistant_credits" };
+      },
+    },
+    { field: { hostId: fieldHost, cwd: "/work" } },
+  );
+  seedHosts(made.store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+  made.store.assistant.confirmHost("h1");
+  return { store: made.store, unmount: made.ui.unmount };
 }
 
 const box = () =>
@@ -526,6 +546,50 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(dialog.textContent).toContain("Fix the total, from alfa.");
     expect(toHost.mock.calls.map((call) => [call[0], call[1]])).toEqual([["h1", "assistant.run"]]);
     expect(asked(fake)).toHaveLength(1);
+  });
+
+  test("Try with sends the text the failed run had, not what the box holds by now", async () => {
+    const { store, fake } = await make({
+      run: (request) => {
+        if (JSON.stringify(request).includes("fix the totl")) throw { reason: "assistant_credits" };
+        return { ...ANSWER, text: "Fixed." };
+      },
+    });
+    await fake.assistant.setKey("openrouter", "sk-or-ccccdddd");
+    await store.assistant.refreshKeys();
+    type("fix the totl");
+    await click("Improve with AI");
+    const alert = await screen.findByRole("alert");
+    type("a different text");
+    await act(async () => {
+      fireEvent.click(within(alert).getByRole("button", { name: "Try with OpenRouter (API key)" }));
+    });
+    await screen.findByRole("dialog", { name: "AI suggestion" });
+    expect(JSON.stringify(asked(fake).at(-1)?.[1])).toContain("fix the totl");
+    expect(JSON.stringify(asked(fake).at(-1)?.[1])).not.toContain("a different text");
+  });
+
+  test("the folder of the field goes only to the host of the field, never to another host", async () => {
+    for (const [fieldHost, cwd] of [
+      ["h0", undefined],
+      ["h1", "/work"],
+    ] as const) {
+      const { store, unmount } = await makeScoped(fieldHost);
+      const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+        ok: true,
+        data: { ...ANSWER, text: "Fixed." },
+      } as never);
+      type("fix the totl");
+      await click("Improve with AI");
+      const alert = await screen.findByRole("alert");
+      await act(async () => {
+        fireEvent.click(within(alert).getByRole("button", { name: "Try with alfa" }));
+      });
+      await screen.findByRole("dialog", { name: "AI suggestion" });
+      const payload = toHost.mock.calls[0]?.[2] as { cwd?: string };
+      expect(payload.cwd).toBe(cwd);
+      unmount();
+    }
   });
 
   test("a host the person never agreed to, or no other provider at all, offers no Try with", async () => {
