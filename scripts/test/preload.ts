@@ -2,8 +2,9 @@
 // `az`, nor a real shell command from a workflow `check`, nor read the real `~/.claude`, nor reach
 // the Tauri shell (the terminal opened by "Abrir no terminal").
 import { afterAll, setDefaultTimeout } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { offerToOomKiller } from "../lib/oom-guard.ts";
 import { assertBinaryUntouched, installBinaryGuard } from "./binary-guard.ts";
 import { assertCheckGuardActive, assertNoRefusedChecks, installCheckGuard } from "./check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";
@@ -23,6 +24,11 @@ import { defaultTestTimeoutMs } from "./timeout.ts";
 // Area runs (`bun --config=bunfig.area.toml test <file>`) have no --timeout flag, and a preload
 // default reaches the first file only: enough for one file. The full suite passes the flag.
 setDefaultTimeout(defaultTestTimeoutMs(process.platform));
+
+// A leaking test must be what the kernel kills when memory runs out, never a Claude session next to
+// it (#247: a 10 GB area run took a session with it). Every `bun test` loads this preload, in the
+// slot or not; the processes a test starts inherit the score.
+offerToOomKiller({ platform: process.platform, write: writeFileSync });
 
 // First of all: every temp folder below (the guards', the tests', their children's) lands in this
 // run's own, removed at the end even when a test or a guard fails (temp-run.ts). `exit` covers a run

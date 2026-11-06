@@ -8,6 +8,7 @@ const ME = 100;
 function lane(files: Record<string, string>, alive: Set<number>, nested = false) {
   const logs: string[] = [];
   const ran: { command: string; holding: string[] }[] = [];
+  const order: string[] = [];
   let sleeps = 0;
   const onSleep: (() => void)[] = [];
   const fs = {
@@ -39,7 +40,11 @@ function lane(files: Record<string, string>, alive: Set<number>, nested = false)
       onSleep.shift()?.();
     },
     log: (line) => logs.push(line),
+    protect: () => {
+      order.push("protect");
+    },
     spawn: (command) => {
+      order.push("spawn");
       const holding = Object.entries(files)
         .filter(([, text]) => JSON.parse(text).pid === ME)
         .map(([path]) => path);
@@ -47,7 +52,7 @@ function lane(files: Record<string, string>, alive: Set<number>, nested = false)
       return { wait: async () => 3, kill: () => {} };
     },
   };
-  return { deps, logs, ran, files, onSleep, sleeps: () => sleeps };
+  return { deps, logs, ran, files, onSleep, order, sleeps: () => sleeps };
 }
 
 const holder = (pid: number, command = "bun run typecheck") =>
@@ -111,5 +116,16 @@ describe("light-lane", () => {
     expect(await runInLane(["tsc"], l.deps)).toBe(3);
     expect(l.logs.join("\n")).toContain("running without it");
     expect(l.ran).toHaveLength(1);
+  });
+});
+
+describe("light-lane: the OOM killer's first choice (issue #247)", () => {
+  test("the command is offered to the OOM killer before it starts, in a place or nested", async () => {
+    const free = lane({}, new Set([ME]));
+    await runInLane(["tsc"], free.deps);
+    expect(free.order).toEqual(["protect", "spawn"]);
+    const nested = lane({}, new Set([ME]), true);
+    await runInLane(["tsc"], nested.deps);
+    expect(nested.order).toEqual(["protect", "spawn"]);
   });
 });

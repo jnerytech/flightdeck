@@ -39,6 +39,8 @@ function fake(
   const terminated: number[] = [];
   const spawned: { command: string[]; nice: boolean }[] = [];
   const spawnedAsHolder: Array<boolean | undefined> = [];
+  /** protect and spawn, in the order they were called. */
+  const order: string[] = [];
   let time = 5000;
   let handler: ((code: number) => void) | null = null;
   const listeners = { off: 0 };
@@ -70,7 +72,11 @@ function fake(
       logs.push(line);
     },
     ...(opts.holder !== undefined ? { holder: opts.holder } : {}),
+    protect: () => {
+      order.push("protect");
+    },
     spawn: (command, nice, asHolder) => {
+      order.push("spawn");
       spawned.push({ command, nice });
       spawnedAsHolder.push(asHolder);
       return opts.child ?? { wait: async () => 0, kill: () => {} };
@@ -93,6 +99,7 @@ function fake(
     sleeps,
     spawned,
     spawnedAsHolder,
+    order,
     terminated,
     listeners,
     onSleep,
@@ -766,5 +773,23 @@ describe("slot: a command that runs under the slot may call the slot again", () 
     expect(await run(f.env, ["bun", "test", "x"])).toBe(0);
     // The dead lock was stale: the slot was taken in the ordinary way.
     expect(f.spawnedAsHolder).toEqual([true]);
+  });
+});
+
+describe("slot: the OOM killer's first choice (issue #247)", () => {
+  test("the command is offered to the OOM killer before it starts, holding the slot or nested", async () => {
+    const free = fake();
+    expect(await run(free.env, ["--", "bun", "run", "test"])).toBe(0);
+    expect(free.order).toEqual(["protect", "spawn"]);
+    const nested = fake({ holder: 99, files: { [PATH]: held({ ...theirs, pid: 99 }) } });
+    await run(nested.env, ["--", "bun", "test"]);
+    expect(nested.order).toEqual(["protect", "spawn"]);
+  });
+
+  test("--status and the usage start nothing and change no score", async () => {
+    const f = fake();
+    await run(f.env, ["--status"]);
+    await run(f.env, []);
+    expect(f.order).toEqual([]);
   });
 });

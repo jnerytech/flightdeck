@@ -1,10 +1,10 @@
 import type { DepsResult } from "@flightdeck/protocol";
 import {
-  BookOpen,
   ChevronDown,
   ChevronRight,
   CircleAlert,
   CircleX,
+  EyeOff,
   Lock,
   type LucideProps,
   MoreHorizontal,
@@ -12,15 +12,16 @@ import {
   Plus,
   Search,
   Sparkles,
-  SunMoon,
   TriangleAlert,
 } from "lucide-react";
-import { Children, type ReactNode, useId, useState } from "react";
+import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { IconTip } from "@/components/feedback/icon-tip";
+import { HostVersionTip, hostVersionText } from "@/components/hosts/host-version";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
+import { ProgressRing } from "@/components/status/progress-ring";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "../lib/nav-badges.ts";
 import type { Route } from "../lib/router.ts";
+import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
 import type { SidebarGroup } from "../lib/sidebar-groups.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { watchAlerts } from "../lib/watch-alerts.ts";
@@ -248,6 +250,8 @@ export function Sidebar(
     /** The next navigation opens a new tab ("Abrir em nova aba"). */
     onNewTab(): void;
     onToggleTheme(): void;
+    /** Opens the sheet of keyboard shortcuts (the account menu, issue #282). */
+    onShortcuts?(): void;
     /** Switches to simple mode; absent when the host in view does not let the person choose. */
     onSimpleMode?(): void;
   }>,
@@ -278,6 +282,40 @@ export function Sidebar(
   // Who is signed in to GitHub is asked when the account menu opens, not on every render.
   const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);
   const [signingOut, setSigningOut] = useState<GithubHost | null>(null);
+  // The setup checklist: from the real state; it leaves when done or hidden.
+  const setupHidden = useSyncExternalStore(
+    props.store.setup.subscribe,
+    () => props.store.setup.hidden,
+  );
+  const setupNotified = useSyncExternalStore(
+    props.store.setup.subscribe,
+    () => props.store.setup.notified,
+  );
+  const setup = useMemo(
+    () =>
+      setupSteps({
+        hosts: state.hosts,
+        projects: state.projects,
+        cards: state.cards,
+        hub: state.hub,
+        budgets: state.budgets,
+        externals: state.externals,
+        probes: state.setupProbes,
+        notified: setupNotified,
+      }),
+    [
+      state.hosts,
+      state.projects,
+      state.cards,
+      state.hub,
+      state.budgets,
+      state.externals,
+      state.setupProbes,
+      setupNotified,
+    ],
+  );
+  const progress = setupProgress(setup);
+  const showSetup = !setupHidden && !progress.complete;
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.sidebarFolded());
   const toggle = (group: SidebarGroup) => {
@@ -295,12 +333,21 @@ export function Sidebar(
 
   /** The Claude account the foot shows: the open host's, how many differ, none from an offline host. */
   const foot = footAccount(state, props.route);
+  const density = useSyncExternalStore(
+    props.store.density.subscribe,
+    () => props.store.density.value,
+  );
   /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
   const hereHost = props.route?.name === "host" ? props.route.host : null;
+  const versionOf = (host: HostView) =>
+    hostVersionText(t, host.hostInfo?.daemonVersion, APP_VERSION);
   const hostsList = collapsed ? (
     <div className="rail-hosts">
       {state.hosts.map((host) => (
-        <IconTip key={host.id} label={host.name}>
+        <IconTip
+          key={host.id}
+          label={[host.name, versionOf(host)].filter((part) => part !== null).join(" · ")}
+        >
           <button
             type="button"
             aria-label={t("sidebar.openHost", { host: host.name })}
@@ -322,21 +369,23 @@ export function Sidebar(
     <ul className="host-list">
       {state.hosts.map((host) => (
         <li key={host.id} className="group host-row">
-          <button
-            type="button"
-            className={cn(
-              ITEM,
-              "min-w-0 flex-1",
-              hereHost === host.id &&
-                "nav-active bg-sidebar-accent font-medium text-sidebar-foreground",
-            )}
-            aria-current={hereHost === host.id ? "page" : undefined}
-            aria-label={t("sidebar.openHost", { host: host.name })}
-            onClick={() => go({ name: "host", host: host.id })}
-          >
-            <HostDot host={host} t={t} />
-            <span className="min-w-0 flex-1 truncate">{host.name}</span>
-          </button>
+          <HostVersionTip text={versionOf(host)}>
+            <button
+              type="button"
+              className={cn(
+                ITEM,
+                "min-w-0 flex-1",
+                hereHost === host.id &&
+                  "nav-active bg-sidebar-accent font-medium text-sidebar-foreground",
+              )}
+              aria-current={hereHost === host.id ? "page" : undefined}
+              aria-label={t("sidebar.openHost", { host: host.name })}
+              onClick={() => go({ name: "host", host: host.id })}
+            >
+              <HostDot host={host} t={t} />
+              <span className="min-w-0 flex-1 truncate">{host.name}</span>
+            </button>
+          </HostVersionTip>
           {host.hostInfo?.ui?.mode === "simple" && (
             <span data-slot="host-mode-badge" className="host-mode-badge">
               {t("sidebar.hostSimple")}
@@ -368,14 +417,7 @@ export function Sidebar(
               role="img"
               aria-label={t("sidebar.versionDiffers", { host: host.name })}
               className="size-3.5 shrink-0 text-status-needs-you"
-            >
-              <title>
-                {t("sidebar.versionTitle", {
-                  daemon: host.hostInfo.daemonVersion,
-                  app: APP_VERSION,
-                })}
-              </title>
-            </CircleAlert>
+            />
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -450,6 +492,34 @@ export function Sidebar(
           folded={folded.includes("work")}
           onToggle={() => toggle("work")}
         >
+          {showSetup && (
+            <div className="group/setup host-row">
+              <NavButton
+                collapsed={collapsed}
+                icon={<ProgressRing done={progress.done} total={progress.total} />}
+                active={here === "setup"}
+                label={t("setup.title")}
+                name={t("setup.row", { done: progress.done, total: progress.total })}
+                tail={
+                  <span className="shrink-0 text-sidebar-foreground/70 text-xs tabular-nums">
+                    {t("setup.count", { done: progress.done, total: progress.total })}
+                  </span>
+                }
+                onClick={() => go({ name: "setup" })}
+              />
+              {!collapsed && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover/setup:opacity-100"
+                  aria-label={t("setup.hide")}
+                  onClick={() => props.store.setup.setHidden(true)}
+                >
+                  <EyeOff aria-hidden="true" />
+                </Button>
+              )}
+            </div>
+          )}
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="overview" aria-hidden="true" className={icon} />}
@@ -703,6 +773,16 @@ export function Sidebar(
           t={t}
           go={go}
           onToggleTheme={props.onToggleTheme}
+          hostId={foot.hostId}
+          version={version}
+          density={density}
+          onDensity={(next) => props.store.density.set(next)}
+          onCopy={(text) => void props.store.copyText(text)}
+          onCheckUpdates={() => {
+            go({ name: "settings" });
+            void props.store.checkAppUpdate();
+          }}
+          onShortcuts={() => props.onShortcuts?.()}
           onOpenManual={() =>
             void props.store.openLink(
               `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${t.lang === "pt-BR" ? "pt-BR" : "en"}.md`,

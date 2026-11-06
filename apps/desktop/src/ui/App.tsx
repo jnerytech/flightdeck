@@ -6,7 +6,8 @@ import { Notices } from "@/components/feedback/notices";
 import { ResumeOfferDialog } from "@/components/hosts/resume-offer-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
-import { TopBarActions, TopBarHost, TopBarQuotaSlot } from "@/components/shell/top-bar";
+import { StatusBarSlot } from "@/components/shell/status-bar";
+import { TopBarActions, TopBarHost } from "@/components/shell/top-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { pairingErrorText } from "../lib/pairing-text.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
+import { firstTerminalTab, hostsRoute, terminalTabCount } from "../lib/status-bar.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
@@ -31,6 +33,7 @@ import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
 import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
+import { UpdateCard } from "./UpdateCard.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
 type InPlace =
@@ -298,6 +301,26 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   // The `?` sheet, and the first key of a go-to chord waiting for its second.
   const [help, setHelp] = useState(false);
   const chord = useRef<ChordState>(NO_CHORD);
+  // The status bar (issue #491): the terminal tabs open, and the plan usage asked again.
+  const terminalTabs = useSyncExternalStore(store.workspace.subscribe, () =>
+    terminalTabCount(store.workspace),
+  );
+  const [refreshingQuota, setRefreshingQuota] = useState(false);
+  const refreshQuota = async () => {
+    setRefreshingQuota(true);
+    try {
+      await store.refreshQuota();
+    } finally {
+      setRefreshingQuota(false);
+    }
+  };
+  /** The first terminal tab is brought forward; with none open, the host where one can be opened. */
+  const openTerminals = () => {
+    const found = firstTerminalTab(store.workspace);
+    if (!found) return go(hostsRoute(state.hosts, store.uiHostId()));
+    store.workspace.focusArea(found.area);
+    store.workspace.tabs.activate(found.id);
+  };
 
   // The header's path names the project of a board, a card or workflows: load the host's projects
   // when the screen was opened without passing through them (a link, a card of the queue).
@@ -522,9 +545,21 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               theme={resolvedTheme}
               version={APP_VERSION}
               bell={<NotificationBell store={store} inbox={state.inbox} t={t} go={go} />}
-              quota={<TopBarQuotaSlot t={t} state={state} now={Date.now()} go={go} />}
               onSearch={() => store.openSearch()}
               onToggleTheme={() => store.theme.toggle()}
+            />
+          }
+          status={
+            <StatusBarSlot
+              t={t}
+              state={state}
+              now={Date.now()}
+              terminalTabs={terminalTabs}
+              refreshing={refreshingQuota}
+              currentHostId={store.uiHostId()}
+              onRefreshQuota={() => void refreshQuota()}
+              onOpenTerminals={openTerminals}
+              go={go}
             />
           }
           sidebar={(collapsed) => (
@@ -545,6 +580,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               onOpenSearch={() => store.openSearch()}
               onNewTab={() => store.tabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}
+              onShortcuts={() => setHelp(true)}
               {...(focusHost && store.uiMode(focusHost.id).canSwitch
                 ? { onSimpleMode: () => void store.toggleUiMode() }
                 : {})}
@@ -557,6 +593,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             onKeyDownCapture={commitActive}
           >
             <UpdateBanner store={store} />
+            <UpdateCard store={store} />
             <Areas
               store={store}
               state={state}

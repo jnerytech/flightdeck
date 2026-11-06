@@ -291,7 +291,8 @@ describe("direcao-visual: ajustes finos", () => {
     const hostId = store.getState().hosts[0]?.id ?? "";
     const project = (await store.hostCommand(hostId, "project.list", {}))?.projects[0];
     expect(project?.name).toBe("repo0");
-    // A fresh state: the projects list was never opened.
+    // A fresh state: the projects list was never opened (the Setup checklist read it at connect).
+    (store as unknown as { update(patch: object): void }).update({ projects: {} });
     expect(store.getState().projects[hostId]).toBeUndefined();
     await act(async () => {
       store.router.push({ name: "board", host: hostId, projectId: project?.id ?? "" });

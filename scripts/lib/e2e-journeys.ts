@@ -20,6 +20,8 @@ export const JOURNEYS: readonly string[] = [
   "segundo-host",
   "nova-sessao-host",
   "finalizar-card",
+  "webhook-ntfy",
+  "update-card",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

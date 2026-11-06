@@ -27,6 +27,8 @@ export function AppShell(
     header: ReactNode;
     /** The top bar's right side, after the tab strip (issue #282). */
     actions?: ReactNode;
+    /** The slim bar under both columns (issue #491). */
+    status?: ReactNode;
     sidebar: (collapsed: boolean) => ReactNode;
     labels: AppShellLabels;
     children: ReactNode;
@@ -39,7 +41,7 @@ export function AppShell(
   const { labels } = props;
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   return (
-    <div className="grid h-screen grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] bg-background text-foreground">
+    <div className="grid h-screen grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] bg-background text-foreground">
       <header className="flex h-12 min-w-0 items-center gap-2 border-b px-3">
         <Button
           variant="ghost"
@@ -71,6 +73,11 @@ export function AppShell(
           <HeaderSlot.Provider value={slot}>{props.children}</HeaderSlot.Provider>
         </main>
       </div>
+      {props.status && (
+        <div data-slot="shell-status" className="shell-status">
+          {props.status}
+        </div>
+      )}
     </div>
   );
 }

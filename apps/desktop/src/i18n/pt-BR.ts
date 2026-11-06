@@ -13,6 +13,13 @@ export const ptBR = {
     many: "{n} contas",
     manyHint: "Uma por host",
     plan: "Plano {plan}",
+    version: "Versão {version}",
+    copyPlan: "Copiar o plano: {value}",
+    copyAccount: "Copiar a conta: {value}",
+    copyHost: "Copiar o id do host: {value}",
+    compact: "Linhas compactas",
+    checkUpdates: "Procurar atualizações",
+    shortcuts: "Atalhos de teclado",
     signOutGithub: "Sair do GitHub",
     signOutGithubHost: "Sair do GitHub ({host})",
     signOutGithubConfirm:
@@ -776,6 +783,31 @@ export const ptBR = {
     deleteConfirm: "Excluir card",
     discardInstead: "Descartar card",
   },
+  statusBar: {
+    label: "Barra de status",
+    refreshQuota: "Atualizar o consumo do plano",
+    refreshingQuota: "Atualizando o consumo do plano…",
+    keepAwake: {
+      holding: "Manter acordado: segurando o computador acordado agora",
+      on: "Manter acordado: ligado, o computador fica acordado enquanto há sessões",
+      off: "Manter acordado: desligado",
+    },
+    keepAwakeShort: { holding: "Acordado", on: "Manter acordado", off: "Pode dormir" },
+    terminals: "{n} terminais abertos",
+    terminalsOne: "1 terminal aberto",
+    hosts: "{online} de {total} hosts online",
+    hostsOne: "{online} de 1 host online",
+    update: {
+      available: "Atualização {version} do app disponível: abrir as Configurações",
+      ready: "Reinicie para terminar de atualizar para {version}: abrir as Configurações",
+      failed: "A última verificação de atualização falhou: abrir as Configurações",
+    },
+    updateShort: {
+      available: "Atualização {version}",
+      ready: "Reiniciar para atualizar",
+      failed: "Falha na atualização",
+    },
+  },
   shell: {
     quotaLabel: "Cota do plano {state}: {window} em {percent}% em {host}, renova em {remaining}",
     quotaLabelNoReset: "Cota do plano {state}: {window} em {percent}% em {host}",
@@ -852,7 +884,6 @@ export const ptBR = {
     hostSimple: "Simples",
     hostLocked: "{host}: travado no seu modo",
     versionDiffers: "{host}: versão diferente",
-    versionTitle: "flightdeckd {daemon}, app {app}",
   },
   needsYou: {
     title: "Precisa de você",
@@ -970,8 +1001,20 @@ export const ptBR = {
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
     terminalFont: "Tamanho da fonte do terminal",
+    cacheTimer: "Contador do cache do prompt",
+    cacheTtl: "Duração do cache",
+    cacheTtls: { fiveMinutes: "5 minutos", oneHour: "1 hora" },
     tabOrder: "Ordem do Ctrl+Tab",
     tabOrders: { mru: "Mais recente primeiro", sequential: "Ordem das abas" },
+  },
+  cacheTimer: {
+    expires: "Cache do prompt expira em {time}",
+    cold: "Cache do prompt frio",
+    coldTip: "A próxima mensagem vai reenviar todo o contexto como tokens sem cache",
+    minutes: "{n} minutos",
+    minutesOne: "1 minuto",
+    seconds: "{n} segundos",
+    secondsOne: "1 segundo",
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -2168,8 +2211,12 @@ export const ptBR = {
     },
   },
   update: {
-    ready: "O Flightdeck {version} está pronto. Reinicie para atualizar.",
-    restartNow: "Reiniciar agora",
+    cardTitle: "Atualização disponível",
+    cardReady: "O Flightdeck v{version} está pronto.",
+    cardSafe: "Suas sessões não serão interrompidas.",
+    cardNotes: "Notas da versão",
+    cardUpdate: "Atualizar",
+    cardClose: "Fechar o aviso de atualização",
     label: "Atualização do app",
     available: "Flightdeck {version} disponível",
     first: "Atualize primeiro o app e depois os daemons dos hosts.",
@@ -2238,6 +2285,13 @@ export const ptBR = {
     start: "Abrir o terminal",
     asSession: "Ver como sessão",
     viewTerminal: "Ver terminal",
+  },
+  liveElsewhere: {
+    title: "Já aberta em outro terminal",
+    message:
+      "Esta sessão está aberta em outro terminal. Abri-la aqui inicia uma segunda cópia que o outro não vê: cada um mostra só os próprios turnos, e os dois escrevem no mesmo histórico.",
+    view: "Ver ao vivo aqui",
+    anyway: "Abrir outra cópia mesmo assim",
   },
   hostTerminal: {
     title: "Terminal",
@@ -3351,6 +3405,70 @@ export const ptBR = {
       webhooks: "webhook url avisar eventos http",
     },
   },
+  setup: {
+    title: "Configuração inicial",
+    row: "Configuração inicial, {done} de {total} passos feitos",
+    count: "{done}/{total}",
+    ring: "{done} de {total} passos feitos",
+    hide: "Esconder a lista de configuração inicial",
+    subtitle:
+      "O que está configurado e o que não está, lido dos seus hosts e do app. Nada aqui é marcado à mão.",
+    core: "Para começar",
+    optional: "Vale a pena",
+    allDone: "Tudo para começar está feito. A lista sai da barra lateral sozinha.",
+    done: "Feito",
+    todo: "A fazer",
+    go: "Abrir",
+    restore: "Mostrar a lista de configuração inicial",
+    step: {
+      host: {
+        title: "Conectar um host",
+        text: "Um host é uma máquina que roda o flightdeckd. Adicione um para ver as sessões dele.",
+        action: "Adicionar um host",
+      },
+      hooks: {
+        title: "Instalar os hooks do Claude Code",
+        text: "Os hooks deixam uma sessão que você inicia num terminal ser vista e aprovada aqui.",
+        action: "Abrir o host",
+      },
+      project: {
+        title: "Adicionar um projeto",
+        text: "Um projeto é uma pasta com um repositório git e um branch base. Os cards e os workflows ficam nele.",
+        action: "Adicionar um projeto",
+      },
+      session: {
+        title: "Iniciar uma primeira sessão ou card",
+        text: "Inicie uma sessão num projeto, ou um card no board dele.",
+        action: "Nova sessão",
+      },
+      github: {
+        title: "Entrar no GitHub no host",
+        text: "Com o gh do host conectado, pull requests e issues funcionam.",
+        action: "Abrir o host",
+      },
+      notifications: {
+        title: "Conferir se as notificações funcionam",
+        text: "Envie uma notificação de teste e veja-a aparecer.",
+        action: "Abrir Configurações",
+      },
+      budget: {
+        title: "Definir um orçamento",
+        text: "Um limite avisa antes de um projeto ou host gastar mais do que você quis.",
+        action: "Abrir Configurações",
+      },
+      worktreeinclude: {
+        title: "Adicionar um .worktreeinclude a um projeto",
+        text: "Ele lista os arquivos não versionados (como o .env) que o worktree de um card deve receber.",
+        action: "Abrir projetos",
+      },
+    },
+    tools: {
+      title: "{tool} não está em {host}",
+      text: "Alguns recursos precisam dele.",
+      fix: "Como instalar",
+      dismiss: "Dispensar",
+    },
+  },
   resumeOffer: {
     title: "Retomar as sessões interrompidas",
     intro:
@@ -3518,6 +3636,11 @@ export const ptBR = {
       sessionNotice:
         "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
       sessionNoticeShort: "Esta pasta não tem confiança.",
+      revokedNotice:
+        "Confiança removida. Esta sessão continua com os hooks e servidores MCP que já carregou. Reinicie para aplicar.",
+      restart: "Reiniciar sessão",
+      staleCount:
+        "Sessões ativas que ainda rodam com a confiança antiga: {n}. Reinicie para aplicar.",
       review: "Revisar e confiar",
     },
     notHere: "Este projeto não está neste host.",

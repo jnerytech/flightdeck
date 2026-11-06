@@ -11,6 +11,13 @@ export const en: Dictionary = {
     many: "{n} accounts",
     manyHint: "One per host",
     plan: "{plan} plan",
+    version: "Version {version}",
+    copyPlan: "Copy the plan: {value}",
+    copyAccount: "Copy the account: {value}",
+    copyHost: "Copy the host id: {value}",
+    compact: "Compact rows",
+    checkUpdates: "Check for updates",
+    shortcuts: "Keyboard shortcuts",
     signOutGithub: "Sign out of GitHub",
     signOutGithubHost: "Sign out of GitHub ({host})",
     signOutGithubConfirm:
@@ -780,6 +787,31 @@ export const en: Dictionary = {
     deleteConfirm: "Delete card",
     discardInstead: "Discard card",
   },
+  statusBar: {
+    label: "Status bar",
+    refreshQuota: "Refresh the plan usage",
+    refreshingQuota: "Refreshing the plan usage…",
+    keepAwake: {
+      holding: "Keep awake: holding the computer awake now",
+      on: "Keep awake: on, the computer stays awake while sessions run",
+      off: "Keep awake: off",
+    },
+    keepAwakeShort: { holding: "Awake", on: "Keep awake", off: "Sleep ok" },
+    terminals: "{n} open terminals",
+    terminalsOne: "1 open terminal",
+    hosts: "{online} of {total} hosts online",
+    hostsOne: "{online} of 1 host online",
+    update: {
+      available: "App update {version} available: open Settings",
+      ready: "Restart to finish updating to {version}: open Settings",
+      failed: "The last update check failed: open Settings",
+    },
+    updateShort: {
+      available: "Update {version}",
+      ready: "Restart to update",
+      failed: "Update failed",
+    },
+  },
   shell: {
     quotaLabel: "Plan quota {state}: {window} at {percent}% on {host}, resets in {remaining}",
     quotaLabelNoReset: "Plan quota {state}: {window} at {percent}% on {host}",
@@ -855,7 +887,6 @@ export const en: Dictionary = {
     hostSimple: "Simple",
     hostLocked: "{host}: locked to its mode",
     versionDiffers: "{host}: different version",
-    versionTitle: "flightdeckd {daemon}, app {app}",
   },
   needsYou: {
     title: "Needs you",
@@ -973,8 +1004,20 @@ export const en: Dictionary = {
     densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
     terminalFont: "Terminal font size",
+    cacheTimer: "Prompt cache timer",
+    cacheTtl: "Cache lifetime",
+    cacheTtls: { fiveMinutes: "5 minutes", oneHour: "1 hour" },
     tabOrder: "Ctrl+Tab order",
     tabOrders: { mru: "Most recently used", sequential: "Tab order" },
+  },
+  cacheTimer: {
+    expires: "Prompt cache expires in {time}",
+    cold: "Prompt cache is cold",
+    coldTip: "The next message will re-send the full context as uncached tokens",
+    minutes: "{n} minutes",
+    minutesOne: "1 minute",
+    seconds: "{n} seconds",
+    secondsOne: "1 second",
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -2172,8 +2215,12 @@ export const en: Dictionary = {
     },
   },
   update: {
-    ready: "Flightdeck {version} is ready. Restart to update.",
-    restartNow: "Restart now",
+    cardTitle: "Update available",
+    cardReady: "Flightdeck v{version} is ready.",
+    cardSafe: "Your sessions will not be interrupted.",
+    cardNotes: "Release notes",
+    cardUpdate: "Update",
+    cardClose: "Close the update notice",
     label: "App update",
     available: "Flightdeck {version} available",
     first: "Update the app first, then the hosts' daemons.",
@@ -2240,6 +2287,13 @@ export const en: Dictionary = {
     start: "Open the terminal",
     asSession: "View as session",
     viewTerminal: "View terminal",
+  },
+  liveElsewhere: {
+    title: "Already open in another terminal",
+    message:
+      "This session is open in another terminal. Opening it here starts a second copy that the other one will not see: each shows only its own turns, and both write to the same history.",
+    view: "View it live here",
+    anyway: "Open a second copy anyway",
   },
   hostTerminal: {
     title: "Terminal",
@@ -3347,6 +3401,70 @@ export const en: Dictionary = {
       webhooks: "webhook url notify events http",
     },
   },
+  setup: {
+    title: "Setup",
+    row: "Setup, {done} of {total} steps done",
+    count: "{done}/{total}",
+    ring: "{done} of {total} steps done",
+    hide: "Hide the setup checklist",
+    subtitle:
+      "What is set up and what is not, read from your hosts and the app. Nothing here is ticked by hand.",
+    core: "To get going",
+    optional: "Worth doing",
+    allDone: "Everything to get going is done. The checklist leaves the sidebar by itself.",
+    done: "Done",
+    todo: "To do",
+    go: "Open",
+    restore: "Show the setup checklist",
+    step: {
+      host: {
+        title: "Connect a host",
+        text: "A host is a machine that runs flightdeckd. Add one to see its sessions.",
+        action: "Add a host",
+      },
+      hooks: {
+        title: "Install the Claude Code hooks",
+        text: "The hooks let a session you start in a terminal be seen and approved here.",
+        action: "Open the host",
+      },
+      project: {
+        title: "Add a project",
+        text: "A project is a folder with a git repository and a base branch. Cards and workflows live in it.",
+        action: "Add a project",
+      },
+      session: {
+        title: "Start a first session or card",
+        text: "Start a session in a project, or a card on its board.",
+        action: "New session",
+      },
+      github: {
+        title: "Sign in to GitHub on the host",
+        text: "With the host's gh signed in, pull requests and issues work.",
+        action: "Open the host",
+      },
+      notifications: {
+        title: "Check that notifications work",
+        text: "Send a test notification and see it appear.",
+        action: "Open Settings",
+      },
+      budget: {
+        title: "Set a budget",
+        text: "A limit warns you before a project or a host spends more than you meant to.",
+        action: "Open Settings",
+      },
+      worktreeinclude: {
+        title: "Add a .worktreeinclude to a project",
+        text: "It lists the untracked files (such as .env) that a card's worktree should receive.",
+        action: "Open projects",
+      },
+    },
+    tools: {
+      title: "{tool} is missing on {host}",
+      text: "Some features need it.",
+      fix: "How to install it",
+      dismiss: "Dismiss",
+    },
+  },
   resumeOffer: {
     title: "Resume interrupted sessions",
     intro:
@@ -3515,6 +3633,10 @@ export const en: Dictionary = {
       sessionNotice:
         "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
       sessionNoticeShort: "This folder is not trusted.",
+      revokedNotice:
+        "Trust removed. This session still runs with the hooks and MCP servers it loaded. Restart it to apply.",
+      restart: "Restart session",
+      staleCount: "Live sessions still running with the old trust: {n}. Restart them to apply.",
       review: "Review and trust",
     },
     sessionsHint: "The sessions of every project",

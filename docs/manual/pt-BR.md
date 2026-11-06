@@ -879,9 +879,13 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
 - No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
-  a inicial) abre um menu com **Configurações**, **Alternar tema**, **Manual** e, para cada host cujo
-  `gh` está conectado ao GitHub com um login que o app pode remover, **Sair do GitHub** (após uma
-  confirmação; um login que vem do ambiente do daemon é removido lá). Com vários hosts aparece a
+  a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
+  e o id do host dessa conta, cada um copiado ao ser escolhido; **Linhas compactas**, uma chave
+  guardada neste computador (a mesma densidade das Configurações); **Configurações**; **Procurar
+  atualizações** (abre as Configurações, onde a resposta aparece); **Atalhos de teclado**; **Alternar
+  tema**; **Manual**; e, para cada host cujo `gh` está conectado ao GitHub com um login que o app pode
+  remover, **Sair do GitHub** (após uma confirmação; um login que vem do ambiente do daemon é removido
+  lá). Com vários hosts aparece a
   conta do host aberto, e quantas contas há quando diferem; um host offline não mostra nenhuma.
 - O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
   os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
@@ -1975,6 +1979,28 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
 - As notificações do sistema não mudam. A central só guarda uma cópia: uma que nunca é enviada
   (a janela estava em foco) também não entra nela.
 
+## Lista de configuração inicial
+
+Uma linha **Configuração inicial** no topo do grupo Trabalho da barra lateral mostra um anel e uma
+contagem (por exemplo `1/4`) enquanto os passos para começar não estão todos feitos. Ela abre a
+tela de **Configuração inicial**: uma lista de passos, cada um com uma frase e um botão que abre a
+tela onde ele se resolve. Um passo está feito quando o app consegue ver que está: é lido dos seus
+hosts e do app, nunca marcado à mão; conectar um host move o anel na hora e remover o host o move
+de volta.
+
+- **Para começar:** conectar um host (um online); instalar os hooks do Claude Code nele (a página
+  do host diz instalados); adicionar um projeto com um branch base; iniciar uma primeira sessão ou
+  card. O passo que a tela marca como atual (o primeiro não feito) tem o botão cheio.
+- **Vale a pena:** entrar no GitHub no host, conferir se as notificações funcionam (uma notificação
+  de teste chegou ao sistema uma vez), definir um orçamento e adicionar um `.worktreeinclude` a um
+  projeto. A linha não espera por esses.
+- Um passo que o host não pode fazer (ele não anuncia o recurso) fica de fora, não pendente.
+- A linha sai sozinha quando os quatro passos para começar estão feitos. **Esconder** (o botão de
+  olho que aparece ao lado da linha, ou na tela) a remove de vez; Configurações, Janela, **Mostrar a
+  lista de configuração inicial** a traz de volta. O modo simples não mostra nada disso.
+- Uma ferramenta que falta num host (a CLI do GitHub, o `claude`) ganha um cartão discreto na tela
+  inicial, não um banner vermelho, com um link de como instalar e **Dispensar**.
+
 ## Snippets
 
 **Snippets** são comandos e prompts salvos. A tela **Snippets** (barra lateral, para hosts que os
@@ -2288,14 +2314,35 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   dias (hosts com a mesma conta compartilham um cartão, com o nome de todos), com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
   - A barra fica vermelha a partir de `quota.pauseAt`.
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
-- **Na barra superior:** um medidor pequeno mostra a janela mais usada entre os hosts online, com a
-  porcentagem (o nome da janela aparece a partir de 960 px de largura). A partir de 80% ele ganha
-  uma marca de alerta na cor de "precisa de você", e em 100% (ou a partir do
-  `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome e a dica
-  dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem leitura, ele
-  não aparece.
+- **Na barra de status** (a linha fina na base da janela, abaixo): um medidor pequeno mostra a
+  janela mais usada entre os hosts online, com a porcentagem e o tempo que falta para reiniciar (o
+  nome da janela aparece a partir de 960 px de largura), e um botão **Atualizar o consumo do plano**
+  que pergunta aos hosts de novo. A partir de 80% ele ganha uma marca de alerta na cor de "precisa de
+  você", e em 100% (ou a partir do `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome
+  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem
+  leitura, nem o medidor nem o botão aparecem.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
+
+### A barra de status
+
+Uma barra fina (24 px) corre pela base da janela. À esquerda, a cota do plano (acima) com a hora de
+reinício e um botão de atualizar. À direita, cada item abre a sua página:
+
+- **Atualização:** só quando há o que dizer: uma atualização do app disponível, uma já baixada que
+  pede reinício, ou uma verificação que falhou. Abre as Configurações.
+- **Manter acordado:** o que os hosts que oferecem isso dizem juntos: **Acordado** (segurando o
+  computador acordado agora), **Manter acordado** (ligado, segurando só enquanto há sessões) ou
+  **Pode dormir** (desligado). Abre a página desse host, onde está a chave. Um host que não oferece
+  isso não conta.
+- **Terminais:** quantas abas de terminal estão abertas, nas duas áreas. Traz a primeira para a
+  frente; sem nenhuma aberta, abre o host onde dá para abrir uma.
+- **Hosts:** quantos estão online do total ("2/3"). Abre o primeiro host que não está online, para um
+  problema ficar a um clique; com todos online, o host em vista.
+
+Cada item é um botão com as palavras como nome e uma dica, nunca só a cor, e as duas contagens são
+regiões vivas, então o leitor de tela ouve quando mudam.
+Em uma janela com menos de 600 px de altura a barra fica escondida, para deixar a altura para a conversa.
 
 ### Fila por cota
 
@@ -2701,8 +2748,13 @@ numa aba, sem SSH.
   shell padrão do host (`pwsh` ou `powershell` no Windows; `$SHELL`, `bash` ou `sh` no Linux) na
   primeira pasta permitida. O painel também lista os terminais vivos, cada um com **Abrir**.
 - **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` ou com o menu do botão direito
-  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**; `Ctrl+C` vai para o
-  processo). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**). No Windows `Ctrl+C`
+  também copia enquanto há algo selecionado, e vai para o processo (a interrupção) quando não há;
+  nos outros sistemas `Ctrl+C` sempre vai para o processo. Um programa que redesenha a tela (o
+  Claude Code) pode soltar uma seleção antes de você chegar em **Copiar**: a última seleção
+  continua copiável até você digitar. Quando o programa toma o mouse para si, segure `Shift` ao
+  arrastar para selecionar. `Shift+Enter` adiciona uma nova linha no prompt do Claude Code em vez
+  de enviá-lo (o mesmo que `Alt+Enter`). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
@@ -2714,6 +2766,11 @@ numa aba, sem SSH.
 - **Limites:** 10 terminais vivos por host (`terminal.max`), e um terminal sem ninguém anexado é
   encerrado depois de 120 minutos (`terminal.idleMinutes`). Os terminais não sobrevivem a
   reiniciar ou atualizar o daemon. O conteúdo nunca vai para o log nem para o banco.
+- **Rolar o Claude Code:** no modo tela cheia do Claude Code a roda do mouse vai para o Claude Code,
+  que anda conforme o próprio `CLAUDE_CODE_SCROLL_SPEED`. Os terminais abertos pelo app o põem em 3
+  linhas por clique da roda, como no Windows Terminal e no VS Code, a menos que o ambiente do host ou
+  as configurações do Claude Code (onde o `/scroll-speed` a guarda) já definam uma velocidade: aí
+  vale essa.
 
 ### Claude aqui
 
@@ -2729,6 +2786,12 @@ checkpoint) ganha um companheiro:
   são o mesmo Claude, ligadas pelo id do lançamento.
 
 O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
+
+Quando a sessão já está ao vivo em outro terminal (o do VS Code, por exemplo), **Continuar no
+terminal** e o terminal de fora perguntam antes: um segundo `claude` na mesma sessão não seria
+visto pelo primeiro. Cada um mostra só os próprios turnos, e os dois escrevem no mesmo histórico.
+**Ver ao vivo aqui** (o padrão) abre a visão ao vivo da sessão, que segue a transcrição daquele
+terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
 
 ## Uso diário
 
@@ -2909,6 +2972,16 @@ encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 - **Teclado:** `J` e `K` movem pela lista, `Enter` abre, `Esc` fecha o detalhe, `A` e `N`
   aprovam e negam, `Ctrl K` abre a paleta, `Alt+←` e `Alt+→` voltam e avançam.
 - **Densidade:** linhas compactas (32 px, o padrão) ou confortáveis (40 px), em Configurações.
+- **Contador do cache do prompt** (Configurações, desligado por padrão): o Claude Code mantém o
+  início da conversa em cache por 5 minutos (1 hora com cache estendido, **Duração do cache** nas
+  Configurações), e responder dentro dessa janela custa menos. Com o contador ligado, uma sessão
+  ociosa na lista de Sessões (linha e cartão) e na linha de estado sob a caixa de mensagem mostra
+  um relógio pequeno com o tempo que resta em `m:ss`, na cor de aviso no último minuto e só o
+  relógio quando o cache esfria (a próxima mensagem
+  reenvia todo o contexto como tokens sem cache). Leitores de tela ouvem "Cache do prompt expira em
+  2 minutos 10 segundos". A aba da sessão leva só o ícone do relógio no canto (o tempo fica na dica),
+  então ela não fica mais larga. A contagem não roda para sessões em andamento ou encerradas, um único
+  relógio de 1 segundo atende todas, e ele para enquanto a janela está escondida.
 - **Tema:** Claro, Escuro e Sistema (o padrão), em Configurações, na barra lateral e na paleta.
   A escolha fica guardada.
 - **Idioma:** o do sistema (`pt-BR` para qualquer `pt-*`, `en` para o resto), trocado em
@@ -2969,7 +3042,8 @@ O que mantém o app e o daemon leves, e os números que você mesmo pode ler.
   documentação). `flightdeckd --version` imprime `flightdeckd <versão> (protocolo 1)`.
 - **No app:** a página do host mostra a versão do daemon, a do app e a do `claude`. Um daemon de
   outra versão ganha o selo **≠** ("versão diferente") na barra lateral: funciona, mas atualize
-  quando puder.
+  quando puder. Passar o mouse sobre um host na barra lateral, ou levar o foco do teclado até ele,
+  mostra a versão do daemon numa dica (no trilho estreito, depois do nome).
 - **Protocolo:** o app manda a versão de protocolo dele no `hello`. Se o daemon não a aceita, o
   host fica **incompatível: atualize o daemon**, com o comando na página do host. Ele não tenta
   reconectar e sai das listas (sessões, busca) até ser atualizado e reconectado.
@@ -3044,8 +3118,11 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
 - **O app:**
   - procura a versão nova ao abrir e a cada 6 h, no `latest.json` da última release;
   - com **Atualizar automaticamente** ligado (o padrão), baixa a versão nova em segundo plano,
-    confere a assinatura e então mostra a faixa "O Flightdeck X está pronto. Reinicie para
-    atualizar." com **Reiniciar agora** e **Depois**. Nada reinicia sozinho (#280). Sair pela
+    confere a assinatura e então mostra um cartão no canto inferior direito: **Atualização
+    disponível**, "O Flightdeck vX está pronto.", "Suas sessões não serão interrompidas." (elas rodam
+    nos daemons dos hosts), **Notas da versão** (a página da versão no GitHub), um botão
+    **Atualizar** e um botão de fechar (×) que o guarda até a próxima verificação (#490). Nada
+    reinicia sozinho (#280). Sair pela
     bandeja com uma versão baixada a instala na saída, sem abrir o app de novo (#402);
   - com ele desligado, a faixa diz "Flightdeck X disponível", com as notas, **Instalar e
     reiniciar** e **Depois**, como antes;

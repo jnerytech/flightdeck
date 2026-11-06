@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
-import { TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
+import { isWindowsHost, TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import {
   createXtermScreen,
@@ -78,6 +78,7 @@ export function TerminalPage(
         theme: terminalTheme(store.theme.resolved),
         fontSize: store.terminalFont.value,
         fontFamily: TERMINAL_FONT_FAMILY,
+        windows: isWindowsHost(navigator.userAgent),
         clipboard: {
           copy: async (text) => {
             await store.copyText(text);

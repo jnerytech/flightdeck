@@ -84,7 +84,8 @@ describe("webhook-app", () => {
       budgets.set({ scope: "host", period: "day", limitUsd: 10, action: "notify" });
     });
     expect(await settleMaybe(() => sent.length > 0)).toBe(true);
-    expect(sent[0]?.url).toBe("https://hooks.slack.com/services/T/B/SECRET");
+    // The daemon connects to the address it checked, keeping the name in Host (#465).
+    expect(sent[0]?.url).toBe("https://93.184.216.34/services/T/B/SECRET");
     const body = JSON.parse(sent[0]?.body ?? "{}") as { text: string };
     expect(body.text).toContain("budget alert");
     expect(JSON.stringify(body)).toContain("50% of US$ 10.00");

@@ -78,6 +78,7 @@ import type {
 } from "../platform/types.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
+import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,
@@ -152,6 +153,7 @@ import {
   markGap,
   type SessionState,
 } from "./session-state.ts";
+import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
@@ -204,6 +206,8 @@ export interface SidebarSession {
   updatedAt: string;
   /** Phase 39: set for an OpenCode session only. */
   runtime?: SessionRuntime;
+  /** Issue #463: its folder's trust was revoked after the run loaded the project's setup. */
+  trustStale?: boolean;
 }
 
 export interface HostView extends HostConfig {
@@ -265,6 +269,8 @@ export interface AppState {
   account: Record<string, AccountState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
+  /** What hosts answered for the setup checklist (hooks, GitHub), by host id (issue #164). */
+  setupProbes: Record<string, SetupProbe>;
   /** What `deps.check` found on each host, by host id (hosts that announce `deps`). */
   deps: Record<string, DepsResult>;
   /** What `doctor.run` found on each host, by host id. */
@@ -451,6 +457,7 @@ export type HostCommandType = Extract<
   | "task.results"
   | "task.preview"
   | "session.close"
+  | "session.resume"
   | `mcp.${string}`
   | `agentcfg.${string}`
   | `issues.${string}`
@@ -864,6 +871,11 @@ export class AppStore {
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
+    this.setup = new SetupSettings(platform.storage);
+    this.cacheTimer = new CacheTimerSettings(platform.storage);
+    this.clock = new SharedClock(
+      browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
+    );
     this.tabOrder = new TabOrderController(platform.storage);
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());
@@ -886,6 +898,7 @@ export class AppStore {
       healthAt: {},
       healthError: {},
       budgets: {},
+      setupProbes: {},
       ssh: {},
       snippets: {},
       snippetChoice: null,
@@ -935,6 +948,12 @@ export class AppStore {
   readonly theme: ThemeController;
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  /** The setup checklist: hidden or not, and whether a test notification ever showed. */
+  readonly setup: SetupSettings;
+  /** The prompt cache countdown on idle sessions: off by default (issue #159). */
+  readonly cacheTimer: CacheTimerSettings;
+  /** One 1-second clock for every countdown on screen. */
+  readonly clock: SharedClock;
   /** How Ctrl+Tab orders the tabs (issue #148). */
   readonly tabOrder: TabOrderController;
   /** pt-BR or English, and the translator (phase 10). */
@@ -1166,6 +1185,9 @@ export class AppStore {
       sessions,
       cards,
       selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
+      setupProbes: Object.fromEntries(
+        Object.entries(this.state.setupProbes).filter(([id]) => id !== hostId),
+      ),
     });
     this.persistHosts();
   }
@@ -2191,6 +2213,47 @@ export class AppStore {
     return host?.status === "online" && hasFeature(host.hostInfo?.features, "terminal", false);
   }
 
+  /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
+  /**
+   * Asks a host what the setup checklist reads: its hooks and its projects, at connect. GitHub runs
+   * `gh auth status` on the host, so it is asked only with `github` (the Setup screen, the GitHub
+   * panel); what it said last stays until then.
+   */
+  async refreshSetup(hostId: string, options: { github?: boolean } = {}): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (host?.status !== "online") return;
+    const features = host.hostInfo?.features;
+    const wantsHooks = hasFeature(features, "central", false);
+    const wantsGithub = options.github === true && hasFeature(features, "github", false);
+    // The projects are read for the checklist only: the list the screens use stays unopened, so a
+    // screen that reads a project's trust or branch does not change because Setup looked.
+    const wantsProjects =
+      hasFeature(features, "workflows", false) && this.state.projects[hostId] === undefined;
+    if (!wantsHooks && !wantsGithub && !wantsProjects) return;
+    const [hooks, github, projects] = await Promise.all([
+      wantsHooks ? this.hostRequest(hostId, "hooks.status", {}) : null,
+      wantsGithub ? this.hostRequest(hostId, "github.status", {}) : null,
+      wantsProjects ? this.hostRequest(hostId, "project.list", {}) : null,
+    ]);
+    // The host may have gone while it was asked.
+    if (!this.state.hosts.some((h) => h.id === hostId)) return;
+    const before = this.state.setupProbes[hostId];
+    const probe: SetupProbe = {
+      hooks: hooks?.ok ? hooks.data.status : null,
+      github: wantsGithub
+        ? github?.ok
+          ? github.data.installed && github.data.loggedIn
+          : null
+        : (before?.github ?? null),
+      ...(wantsProjects && projects?.ok
+        ? { projects: projects.data.projects }
+        : before?.projects
+          ? { projects: before.projects }
+          : {}),
+    };
+    this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
+  }
+
   /** Asks the host for its `host.info` again (after a change of its settings). */
   async reloadHostInfo(hostId: string): Promise<void> {
     const conn = this.connections.get(hostId);
@@ -2798,6 +2861,8 @@ export class AppStore {
       const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
       return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
     });
+    // The setup checklist reads what this host has: its hooks, GitHub, projects.
+    void this.refreshSetup(hostId);
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);
@@ -2924,6 +2989,7 @@ export class AppStore {
       pendingPermissions: summary.pendingPermissions,
       updatedAt: summary.updatedAt,
       ...(summary.runtime ? { runtime: summary.runtime } : {}),
+      ...(summary.trustStale ? { trustStale: true } : {}),
     };
     const prev = host.sessions.find((s) => s.id === next.id);
     this.updateHost(hostId, (h) => ({
@@ -3029,6 +3095,21 @@ export class AppStore {
       this.state.meta[key]?.name ??
       this.state.hub[hostId]?.history.find((h) => h.claudeSessionId === claudeSessionId)?.title ??
       (cwd ? basename(cwd) : claudeSessionId.slice(0, 8))
+    );
+  }
+
+  /** Asks every online host for its plan quota again (the status bar's refresh); a host that does not answer keeps what it had. */
+  async refreshQuota(): Promise<void> {
+    const online = this.state.hosts.filter((h) => h.status === "online");
+    await Promise.all(
+      online.map((h) =>
+        this.hostCommand(h.id, "quota.get", {}).then(
+          (state) => {
+            if (state) this.onQuota(h.id, state);
+          },
+          () => {},
+        ),
+      ),
     );
   }
 
