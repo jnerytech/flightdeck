@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -95,7 +96,7 @@ const projectOptions = () =>
 describe("orcamentos-ui", () => {
   test("criar, editar e remover orçamento, com o percentual atual", async () => {
     await online();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     expect(section()).not.toBeNull();
     await choose("Limite (US$)", "10");
@@ -130,7 +131,7 @@ describe("orcamentos-ui", () => {
 
   test("o formulário tem rótulos, diz o que cada ação faz e só salva com um limite", async () => {
     await online();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     expect(form().getAttribute("aria-label")).toBe("Novo orçamento");
     for (const label of ["Escopo", "Período", "Limite (US$)", "Ao passar do limite"]) {
@@ -163,7 +164,7 @@ describe("orcamentos-ui", () => {
 
   test("Enter no limite salva o orçamento", async () => {
     await online();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     expect(saveButton().type).toBe("submit");
     await choose("Limite (US$)", "10");
@@ -177,7 +178,7 @@ describe("orcamentos-ui", () => {
 
   test("sem orçamentos diz Nenhum orçamento; editar abre o formulário com Cancelar", async () => {
     await online();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     expect(within(section() as HTMLElement).queryByText("Nenhum orçamento ainda.")).not.toBeNull();
     await choose("Limite (US$)", "10");
@@ -197,7 +198,7 @@ describe("orcamentos-ui", () => {
   test("um orçamento de projeto mostra o nome do projeto e deixa o caminho inteiro no title", async () => {
     const { spend } = await online();
     spend(1, "/srv/work/flightdeck-web");
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     await choose("Escopo", "project");
     await settle(() => projectOptions().includes("flightdeck-web"));
@@ -220,7 +221,7 @@ describe("orcamentos-ui", () => {
     const { spend } = await online();
     spend(1, "github.com/acme/app");
     spend(1, "github.com/acme/web");
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     await choose("Escopo", "project");
     await settle(() => projectOptions().length > 1);
@@ -239,7 +240,7 @@ describe("orcamentos-ui", () => {
 
   test("Outro projeto… mostra o campo da chave, com a ajuda, para um projeto sem uso recente", async () => {
     await online();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     await choose("Escopo", "project");
     await settle(() => projectOptions().length > 1);
@@ -269,7 +270,7 @@ describe("orcamentos-ui", () => {
     const { spend } = await online();
     spend(1, "github.com/acme/app");
     spend(1, "github.com/other/app");
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     await choose("Escopo", "project");
     await settle(() => projectOptions().length > 1);
@@ -284,7 +285,7 @@ describe("orcamentos-ui", () => {
 
   test("sem projetos conhecidos o projeto é um campo de texto", async () => {
     await online(false);
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     await choose("Escopo", "project");
     await uiIdle();
@@ -300,7 +301,7 @@ describe("orcamentos-ui", () => {
 
   test("cada orçamento tem uma barra com o percentual, vermelha ao passar de 80%", async () => {
     const { spend } = await online();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     await choose("Limite (US$)", "10");
     await click("Criar orçamento");
@@ -320,7 +321,7 @@ describe("orcamentos-ui", () => {
 
   test("o botão diz Criar num orçamento novo e Salvar ao editar um", async () => {
     await online();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     await settle(() => section() !== null);
     expect(screen.queryByRole("button", { name: "Salvar orçamento" })).toBeNull();
     await choose("Limite (US$)", "10");
@@ -444,7 +445,7 @@ describe("orcamentos-ui", () => {
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     await uiIdle();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     expect(section()).toBeNull();
     expect(legacy.asked.some((t) => t === "budget.list")).toBe(false);
     expect(store.getState().error).toBeNull();

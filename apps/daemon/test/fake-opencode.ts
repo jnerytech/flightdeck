@@ -19,6 +19,8 @@ export interface FakeOpenCode {
     disableProjectConfig: string | null;
     hasConfigContent: boolean;
     session: string | null;
+    /** A request a `serve` got (`GET <route>`): whether it carried the password. */
+    authorized?: boolean;
   }>;
   /** The ACP requests it got, in order: the method, and a prompt's text. */
   acp(): Array<{ method: string; text?: string }>;

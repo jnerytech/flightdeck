@@ -3,6 +3,10 @@ import {
   RANK,
   READ_TOOLS,
   type RiskLevel,
+  SECRET_DIRS,
+  SECRET_EXTENSIONS,
+  SECRET_NAMES,
+  SECRET_PAIRS,
   SHELL_TOOLS,
   WRITE_TOOLS,
 } from "./risk.ts";
@@ -34,6 +38,47 @@ const PATH_SYNTAX = /[[\]{}!]/;
 
 /** What a wildcard of a path rule may stand for: the names the classifier calls a credential. */
 const NAMES = ["x", ".env", "id_rsa", "x.pem", "x.key", ".ssh", ".aws", "credentials"];
+/**
+ * The paths a partial wildcard (`.cl*`, `.s?h`, `package.js*`, `.github/work*`) may stand for, as
+ * segments: the control files and directories and the credential ones (issue #435). A wildcard
+ * that shares a segment with other characters is matched against each, over every run of
+ * consecutive segments, so a path that is sensitive only as a pair (`.config/gh`) is found too.
+ */
+const SENSITIVE = [
+  [".claude"],
+  [".git"],
+  [".github"],
+  [".husky"],
+  [".vscode"],
+  [".ssh"],
+  [".aws"],
+  [".config"],
+  [".flightdeck"],
+  [".env"],
+  [".env.local"],
+  [".mcp.json"],
+  [".claude.json"],
+  ["package.json"],
+  ["id_rsa"],
+  ["credentials"],
+  [".config", "gh"],
+  [".flightdeck", "config.json"],
+  [".claude", ".credentials.json"],
+  [".github", "workflows"],
+  [".vscode", "tasks.json"],
+  // What `credential()` names (issue #439): one list, so a rule cannot cover what a call may not.
+  ...[...SECRET_NAMES, ...SECRET_DIRS, ...SECRET_EXTENSIONS].map((name) => [name]),
+  ...SECRET_PAIRS.map(([dir, next]) => [dir, next]),
+];
+/** A segment's glob as a regular expression (`*` and `?` stay inside the segment). */
+const segmentGlob = (segment: string) =>
+  new RegExp(
+    `^${segment
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*+/g, "[^/]*")
+      .replace(/\?/g, "[^/]")}$`,
+    "i",
+  );
 /** What a `?` may stand for, one character at a time. */
 const CHARS = [..."abcdefghijklmnopqrstuvwxyz0123456789._-"];
 const WILDCARD = /(\*\*\/|\*\*|\*|\?)/;
@@ -85,6 +130,29 @@ function instances(pattern: string): string[] | null {
   });
   for (const name of NAMES) {
     out.add(render((_, part) => (part === "?" ? "x" : part === "**/" ? `${name}/` : name)));
+  }
+  // A wildcard that shares a segment with other characters may still be a sensitive path there.
+  const segments = pattern.split("/");
+  const globs = segments.map((segment) => (WILD.test(segment) ? segmentGlob(segment) : null));
+  const plainSegment = (segment: string) => segment.replace(/\*+|\?/g, "x");
+  for (const names of SENSITIVE) {
+    for (let at = 0; at + names.length <= segments.length; at++) {
+      const run = names.map(
+        (name, k) => [name, segments[at + k] as string, globs[at + k]] as const,
+      );
+      const partial = run.some(([, , glob]) => glob !== null);
+      const fits = run.every(([name, segment, glob]) =>
+        glob ? glob.test(name) : segment.toLowerCase() === name,
+      );
+      if (!partial || !fits) continue;
+      out.add(
+        segments
+          .map((segment, i) =>
+            i >= at && i < at + names.length ? names[i - at] : plainSegment(segment),
+          )
+          .join("/"),
+      );
+    }
   }
   return [...out];
 }

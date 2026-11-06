@@ -457,6 +457,7 @@ export const DAEMON_FEATURES = [
   "depsCheck",
   "worktrees",
   "projectTrust",
+  "keepAwake",
   "autoUpdate",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];

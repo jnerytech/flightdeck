@@ -5,6 +5,15 @@ import { Panel } from "@/components/layout/panel";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
+/** What the panel says about the folder: trusted (on its own or through a parent), or not. */
+function trustLine(state: ProjectTrustState, t: AppStore["i18n"]["t"]): string {
+  if (!state.trusted) return t("projectPage.trust.untrusted");
+  if (state.via && state.via !== state.path) {
+    return t("projectPage.trust.trustedVia", { path: state.via });
+  }
+  return t("projectPage.trust.trusted");
+}
+
 /** Past this many characters a listed command is shown in a block of its own. */
 const LONG_LINE = 300;
 
@@ -15,13 +24,15 @@ type Loaded = { state: ProjectTrustState; load: ProjectLoad } | "failed" | null;
  * (issue #196): what the project would load, read without running anything, what not trusting costs,
  * and the decision. Trusting asks first; revoking does not. Hidden on a host that does not announce it.
  */
-export function TrustPanel(props: {
-  store: AppStore;
-  hostId: string;
-  hostName: string;
-  projectName: string;
-  path: string;
-}) {
+export function TrustPanel(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    hostName: string;
+    projectName: string;
+    path: string;
+  }>,
+) {
   const { store, hostId, path } = props;
   const { t } = store.i18n;
   const [loaded, setLoaded] = useState<Loaded>(null);
@@ -88,13 +99,7 @@ export function TrustPanel(props: {
   return (
     <Panel title={t("projectPage.trust.title")} label={t("projectPage.trust.title")}>
       <p className="text-muted-foreground text-xs">{t("projectPage.trust.hint")}</p>
-      <p className="font-medium text-sm">
-        {state.trusted
-          ? state.via && state.via !== state.path
-            ? t("projectPage.trust.trustedVia", { path: state.via })
-            : t("projectPage.trust.trusted")
-          : t("projectPage.trust.untrusted")}
-      </p>
+      <p className="font-medium text-sm">{trustLine(state, t)}</p>
       {!state.trusted && <p className="text-sm">{t("projectPage.trust.cost")}</p>}
       <h3 className="font-medium text-sm">{t("projectPage.trust.listing")}</h3>
       {anyLong && <p className="text-sm">{t("projectPage.trust.longWarning")}</p>}

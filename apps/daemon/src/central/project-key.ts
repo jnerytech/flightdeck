@@ -14,6 +14,7 @@ const exists = (path: string): Promise<boolean> =>
   );
 
 const runGitAsync: AsyncGitRunner = async (args) => {
+  // git-arg: a forwarder: the arguments are the fixed commands of commonDirArgs and remoteArgs
   const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
     env: process.env,
     stdout: "pipe",

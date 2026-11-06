@@ -29,13 +29,12 @@ const keep: Record<Filter, (item: WorktreeItem) => boolean> = {
 /** Why a worktree is kept, in words: the blockers, with the unpushed count. */
 export function reasonText(item: Pick<WorktreeItem, "blockers" | "unpushed">, t: T): string {
   return item.blockers
-    .map((blocker) =>
-      blocker === "unpushed"
-        ? t(item.unpushed === 1 ? "worktrees.reasons.unpushedOne" : "worktrees.reasons.unpushed", {
-            n: item.unpushed,
-          })
-        : t(`worktrees.reasons.${blocker}` as Key),
-    )
+    .map((blocker) => {
+      if (blocker !== "unpushed") return t(`worktrees.reasons.${blocker}` as Key);
+      const key =
+        item.unpushed === 1 ? "worktrees.reasons.unpushedOne" : "worktrees.reasons.unpushed";
+      return t(key, { n: item.unpushed });
+    })
     .join("; ");
 }
 
@@ -134,12 +133,9 @@ export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView 
     (d) => d.totalBytes > 0 && d.freeBytes / d.totalBytes < LOW_DISK,
   );
   const count = all.length;
-  const removeLabel =
-    chosen.length === 0
-      ? t("worktrees.removeNone")
-      : chosen.length === 1
-        ? t("worktrees.removeOne")
-        : t("worktrees.remove", { n: chosen.length });
+  let removeLabel = t("worktrees.remove", { n: chosen.length });
+  if (chosen.length === 0) removeLabel = t("worktrees.removeNone");
+  else if (chosen.length === 1) removeLabel = t("worktrees.removeOne");
   const reasonOf = (reason: string, detail?: string) =>
     reason === "failed" && detail
       ? `${t("worktrees.reasons.failed")}: ${detail}`
@@ -171,12 +167,15 @@ export function HostWorktrees(props: Readonly<{ store: AppStore; host: HostView 
     if (!result) setNotice([t("worktrees.noAnswer")]);
     else {
       const freed = result.removed.reduce((sum, r) => sum + (r.freedBytes ?? 0), 0);
-      const lines = [
-        result.removed.length === 0
-          ? ""
-          : freed > 0
+      let removedLine = "";
+      if (result.removed.length > 0) {
+        removedLine =
+          freed > 0
             ? t("worktrees.freed", { size: formatBytes(freed, lang) })
-            : t("worktrees.removedNoSize", { n: result.removed.length }),
+            : t("worktrees.removedNoSize", { n: result.removed.length });
+      }
+      const lines = [
+        removedLine,
         ...result.removed
           .filter((r) => r.branchKept)
           .map((r) =>

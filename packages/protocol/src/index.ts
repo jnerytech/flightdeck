@@ -676,6 +676,12 @@ export const Project = z.object({
   path: z.string(),
   name: z.string(),
   baseBranch: z.string(),
+  /**
+   * The base branch is not a branch name (an older daemon stored it without checking): opening a PR
+   * and updating from the remote refuse it, and every git step refuses an option, until the person
+   * sets a real one (issue #369).
+   */
+  baseBranchInvalid: z.boolean().optional(),
   prProvider: PrProviderKind,
   /** The only shell command Flightdeck runs on its own, and only when registered. */
   setupScript: z.string().nullable(),
@@ -1580,7 +1586,13 @@ export interface DepResult {
    * How to install or upgrade it, per operating system: a package-manager command where one exists,
    * and the official install page. Never a download piped into a shell.
    */
-  fix: Array<{ os: "linux" | "darwin" | "win32"; command?: string; url?: string }>;
+  fix: Array<{
+    os: "linux" | "darwin" | "win32";
+    command?: string;
+    url?: string;
+    /** What to know before running it: the app words each code in both languages. */
+    note?: "elevated" | "noSystemd";
+  }>;
 }
 
 /** What `deps.check` answers. */
@@ -2942,6 +2954,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("roots.add", z.object({ path: z.string().min(1), confirm: z.boolean().optional() })),
   /** Lets a session of this host start with every permission check off; turning it on asks for `confirm`. */
   cmd("host.bypass", z.object({ allow: z.boolean(), confirm: z.boolean().optional() })),
+  /** Keep this computer awake while sessions run: the host's switch (issue #163). */
+  cmd("host.keepAwake", z.object({ enabled: z.boolean() }).strict()),
   /** Issue #196: which folders may bring their own hooks, MCP servers and settings into a managed session. */
   cmd(
     "project.trust.state",
@@ -2962,6 +2976,8 @@ export const Command = z.discriminatedUnion("type", [
       projectId: z.string(),
       title: z.string().min(1),
       description: z.string(),
+      /** The column the card is born in; the Backlog when absent (an older daemon ignores it). */
+      column: BoardColumn.optional(),
       ...CardDeps,
     }),
   ),
@@ -4229,6 +4245,16 @@ export const UpdateStatus = z.object({
 });
 export type UpdateStatus = z.infer<typeof UpdateStatus>;
 
+/** Keep-awake (issue #163): the switch, whether the computer is held awake now, how, and why not. */
+export const KeepAwakeStatus = z.object({
+  enabled: z.boolean(),
+  held: z.boolean(),
+  method: z.enum(["powershell", "systemd-inhibit", "caffeinate"]).nullable(),
+  reason: z
+    .enum(["no-inhibitor", "unsupported-platform", "wsl", "start-failed", "ended"])
+    .nullable(),
+});
+export type KeepAwakeStatus = z.infer<typeof KeepAwakeStatus>;
 /** Issue #280: where the daemon's automatic update stands, for the host page. */
 export const AutoUpdateStatus = z.object({
   enabled: z.boolean(),
@@ -4279,6 +4305,8 @@ export const HostInfoResult = z.object({
   ui: UiSettings.optional(),
   /** Whether a session may start in `bypassPermissions`; absent on a daemon that predates the switch. */
   allowBypassPermissions: z.boolean().optional(),
+  /** The host's keep-awake switch and whether it is holding the computer now; absent before issue #163. */
+  keepAwake: KeepAwakeStatus.optional(),
   /** Phase 39: the host's other runtimes (OpenCode), each available or not with the reason. */
   runtimes: z.array(HostRuntime).optional(),
 });
@@ -4554,6 +4582,7 @@ export interface CommandResults {
   "board.settings": BoardSettings;
   "roots.add": RootsResult;
   "host.bypass": BypassResult;
+  "host.keepAwake": KeepAwakeStatus;
   "project.trust.state": ProjectTrustStates;
   "project.trust.inspect": ProjectLoad;
   "project.trust.set": ProjectTrustState;

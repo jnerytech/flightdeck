@@ -311,7 +311,13 @@ first) and **Add folder** (it opens Settings with the folder box focused and in 
 hooks** also refreshes the hooks status shown in Settings). What needs `sudo` or an installer is only shown to copy: the app never
 runs it. A missing program shows the package-manager line where one exists (apt, brew, winget) and
 an **Install page** button that opens the official page; Flightdeck never offers a download piped
-into a shell. The same checks run in a terminal with `flightdeckd doctor`.
+into a shell. The advice is true for the system it is shown for: **GitHub** counts as outdated below
+gh 2.31 (the first with `gh project`, which board sync needs), and on Linux it points to the install
+page because the apt package of an LTS can be older than that; **OpenSSH** on Windows says to run its
+`Add-WindowsCapability` line in an elevated PowerShell (Run as administrator); on a Linux without
+systemd the **service** row says there is no service to install here and to start `flightdeckd` at
+login with the system's own tools, instead of offering a command that fails. The same checks run in
+a terminal with `flightdeckd doctor`.
 
 ### Trusting a project
 
@@ -343,6 +349,24 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
 - Trusting works only from the host's own computer or over Tailscale (like allowing a folder or sessions without prompts); revoking works from anywhere.
 - The decision lives on the host (`project_trust` in its database), per host, and is logged. A
   host that does not announce `projectTrust` loads everything, as before.
+
+### Keeping the computer awake
+
+While a session of a host runs, or waits for your answer, the host asks its computer not to go to
+sleep, so approvals and notifications keep arriving and a long run is not paused by a nap. The
+host's **Settings** tab has **Keep this computer awake** to turn it off or on again; the choice is saved in the
+host's config (`keepAwake`, on by default) and applies at once. The host releases the computer when
+the last session stops and when the daemon exits.
+
+- It stops the computer from sleeping when idle; the screen may still turn off, and closing the lid
+  follows the system's power settings.
+- On Linux it uses `systemd-inhibit`, on macOS `caffeinate` and on Windows PowerShell
+  (`SetThreadExecutionState`). When none of them is there, or it cannot start, the page says why and
+  the computer sleeps as usual.
+- It works for the host's own computer: a host on another machine keeps that machine awake, not
+  yours.
+- Inside WSL it holds nothing: a lock taken there does not keep Windows awake, so the page says so
+  and the switch is for the Windows host.
 
 ### Sessions without permission prompts
 
@@ -599,6 +623,11 @@ A session appears only once. The order of preference is managed, then terminal, 
   the model's own level. An OpenCode session keeps a plain list of its own models. While a turn
   runs a line above the box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
   long; the spinner stops moving if your system asks for reduced motion.
+- **Waiting on a button:** a button whose command is running ignores a second click at once. Under a
+  tenth of a second nothing changes on screen; up to one second it only looks busy; from one second
+  it shows a spinner; after three seconds it also says **Still working…** (or the stage, when the
+  command reports one). A list or panel that is loading draws its placeholders only if the wait
+  passes two tenths of a second, so a quick load shows no flicker.
 
 ### Claude Code hooks
 
@@ -845,16 +874,38 @@ live; the list is the project's, so a session of another project never shows her
 
 ### The sidebar, the tab strip and Settings
 
-- The sidebar groups its items by purpose, in five folding groups: **Work** (Sessions, Needs you,
+- The sidebar groups its items by purpose, in five folding groups: **Work** (Home, Sessions, Needs you,
   Projects, Board), **Automation** (Workflows, Teams, Conversations), **Observability** (Costs,
   History), **Library** (Personas, Snippets, Plugins, Vault) and **Machines** (the hosts, each with
   its state dot, health mark and menu, a **+** to add one, then **SSH**, the saved SSH destinations).
   The open page has a filled row and a bar at its left edge, items with sub-pages end in a chevron,
   recent features carry a **Beta** or **New** badge that goes away by itself from the version the
-  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38), and **Manual** at the foot opens this manual in
-  the browser (its icon says it leaves the app). A group with nothing to offer is not drawn, the
+  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
   folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
+- At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
+  account (its email and plan, read from the host's account card; the rail shows only its initial)
+  opens a menu with **Settings**, **Toggle theme**, **Manual** and, for each host whose `gh` is signed
+  in to GitHub with a login the app can remove, **Sign out of GitHub** (after a confirmation; a login
+  that comes from the daemon's environment is removed there). With several hosts the account of the
+  open host is shown, and how many accounts there are when they differ; an offline host shows none.
+- **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
+  each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
+  failed), **Tokens** (with what came from the cache) and the **average turn** (cost, time and
+  success rate). Spend, Tokens and the average open Costs on the same seven days (across all hosts when
+  several have costs); Turns opens the History of the host, on the same days, when there is one
+  online host, and Costs across all of them when there are several (History is one host's). A host
+  that does not have costs shows "—" for Spend and Tokens, not $0, and the card names it; the
+  average cost counts managed sessions only, unlike Spend, which reads every transcript, and its
+  card says so. While the hosts are still connecting at start, Home says "Connecting to your
+  hosts…" in a live region, and "Home is ready." is announced when the numbers arrive. The failed turns and the turn time are counted by the daemon from this version on: a
+  host on an older daemon shows "—" instead of a made-up zero, and days before the update are
+  unknown (the average time and the success rate use only the turns that were counted). Home reads
+  again every minute and when the window gets focus; a host that does not answer is named under
+  the title and the others still count. The desktop app opens on Home when the window is new; a
+  window you already used comes back with its tabs. The account at the foot of the bar is the one
+  of the host you are on; with no host open it is the shared account of the online hosts, or "N
+  accounts" when they differ.
 - With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
   area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
   or right, move to the other area, pin), **New tab** and **Split**.
@@ -868,6 +919,10 @@ live; the list is the project's, so a session of another project never shows her
 Each project (a git repository on the host) has a board with five columns: Backlog, In progress,
 Needs you, In review and Done. A card becomes a branch `fd/<slug>`, a worktree and a session; the
 card moves by itself according to the session and the PR, and it can also be dragged by hand.
+Each column has its own tint and a thin line on top (Backlog neutral, In progress amber, Needs you
+orange, In review green, Done muted), its status icon, the number of cards as a pill and a **+**
+that adds a card straight into that column. An empty column shows a quiet dashed box that says
+"Empty" and also adds a card when pressed.
 
 ### Choosing a folder
 

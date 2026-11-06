@@ -13,6 +13,8 @@ const CALL = /(?<![\w$])(?:[\w$]+\.)*(?:git|gitLimited)\(/g;
 /** A name that carries a branch or a revision in, from a project's settings or a protocol field. */
 const REF_TOKEN =
   /^(?:(?:base|branch|source|ref|against|upstream)\w*|rev(?:ision)?(?:[A-Z_]\w*)?|(?:start|target)[A-Z]\w*|\w*[a-z](?:Base|Branch|Source|Rev|Ref|Against|Upstream)\w*)$/;
+/** Other calls that start a program from an array: git is the one that follows `"git"` in it. */
+const SPAWN = /(?<![\w$])(?:[\w$]+\.)*(?:spawn|spawnSync|runCommand|exec)\(/g;
 const REVIEWED = /\/\/ git-arg: \S/;
 
 /**
@@ -159,33 +161,45 @@ export function unguardedGitCalls(source: string, file = ""): GitArgFinding[] {
   const masked = mask(source);
   const lines = source.split("\n");
   const found: GitArgFinding[] = [];
-  for (const match of masked.matchAll(CALL)) {
-    const open = (match.index as number) + match[0].length - 1;
-    const line = source.slice(0, match.index).split("\n").length;
-    const close = closing(masked, open);
-    if (close === -1)
-      throw new Error(`${file}:${line}: cannot read the arguments of this git call`);
-    // `git(cwd, ...args) {` or `git(cwd): Promise<X> {` declares the helper: it is not a call.
-    if (/^\s*(?::[^;={}]+)?\{/.test(masked.slice(close + 1))) continue;
-    // An array of arguments is read item by item, at the same level as the arguments around it.
-    const spans = split(masked, open + 1, close).flatMap(([from, to]): Array<[number, number]> => {
+  const isEnd = (from: number, to: number) =>
+    ["'--end-of-options'", '"--end-of-options"', "'--'", '"--"'].includes(
+      source.slice(from, to).trim(),
+    );
+  /** An array of arguments is read item by item, at the same level as the arguments around it. */
+  const flat = (open: number, close: number) =>
+    split(masked, open + 1, close).flatMap(([from, to]): Array<[number, number]> => {
       const text = masked.slice(from, to).trim();
       if (!text.startsWith("[") || !text.endsWith("]")) return [[from, to]];
       const inner = from + masked.slice(from, to).indexOf("[") + 1;
       return split(masked, inner, from + masked.slice(from, to).lastIndexOf("]"));
     });
-    const ended = spans.findIndex(([from, to]) =>
-      ["'--end-of-options'", '"--end-of-options"', "'--'", '"--"'].includes(
-        source.slice(from, to).trim(),
-      ),
-    );
+  const check = (open: number, kind: "git" | "spawn") => {
+    const line = source.slice(0, open).split("\n").length;
+    const close = closing(masked, open);
+    if (close === -1) throw new Error(`${file}:${line}: cannot read the arguments of this call`);
+    // `git(cwd, ...args) {` or `git(cwd): Promise<X> {` declares the helper: it is not a call.
+    if (/^\s*(?::[^;={}]+)?\{/.test(masked.slice(close + 1))) return;
+    let spans = flat(open, close);
+    if (kind === "spawn") {
+      // Only a program started with `"git"` first in its array: what follows it goes to git.
+      const first = split(masked, open + 1, close)[0] as [number, number];
+      const items = flat(first[0] - 1, first[1]);
+      const at = items.findIndex(([from, to]) =>
+        /^(?:["']git["']|[\w$.]*whichOnPath\(["']git["']\)[^,]*)$/.test(
+          source.slice(from, to).trim(),
+        ),
+      );
+      if (at === -1 || !masked.slice(first[0], first[1]).trim().startsWith("[")) return;
+      spans = items.slice(at + 1);
+    }
+    const ended = spans.findIndex(([from, to]) => isEnd(from, to));
     const read = ended === -1 ? spans : spans.slice(0, ended);
-    if (!read.some(([from, to]) => exposed(masked.slice(from, to)))) continue;
+    if (!read.some(([from, to]) => exposed(masked.slice(from, to)))) return;
     const lastLine = line + source.slice(open, close).split("\n").length - 1;
     const reviewed = [lines[line - 2], lines[line - 1], lines[lastLine - 1]].some((l) =>
       REVIEWED.test(l ?? ""),
     );
-    if (reviewed) continue;
+    if (reviewed) return;
     found.push({
       file,
       line,
@@ -194,8 +208,12 @@ export function unguardedGitCalls(source: string, file = ""): GitArgFinding[] {
         .replace(/\s+/g, " ")
         .trim(),
     });
-  }
-  return found;
+  };
+  for (const match of masked.matchAll(CALL))
+    check((match.index as number) + match[0].length - 1, "git");
+  for (const match of masked.matchAll(SPAWN))
+    check((match.index as number) + match[0].length - 1, "spawn");
+  return found.sort((a, b) => a.line - b.line);
 }
 
 /** The findings of every `.ts` file under `root`, files with none left out. */

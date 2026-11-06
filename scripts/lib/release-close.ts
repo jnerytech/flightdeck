@@ -237,7 +237,8 @@ export async function releaseClose(
   });
   const only = refs.mentioned.filter((n) => !closes.has(n));
   if (only.length > 0) {
-    deps.log(`referenced only, left open: ${only.map((n) => `#${n}`).join(", ")}`);
+    const left = only.map((n) => `#${n}`).join(", ");
+    deps.log(`referenced only, left open: ${left}`);
   }
 
   const milestone = await milestoneOf(deps, tag);

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { cardDiff } from "../src/board/diff.ts";
 import { aheadBehind, assertLocalBranch, mergeIntoBase, rebaseOnto } from "../src/board/merge.ts";
+import { type Rev, refArg } from "../src/board/ref-arg.ts";
 import { freshBase } from "../src/board/worktree.ts";
 import { workflowSources } from "../src/workflows/repo.ts";
 import { gitRepo, gitRepoWithOrigin, newBoard } from "./board-helpers.ts";
@@ -20,13 +21,13 @@ const evil = (file: string) => [`--output=${file}`, `--exec=touch ${file}`, "-x"
 
 /** Every helper that puts a base into git's arguments refuses it, and nothing is written. */
 const helpers = (repo: string, remoteRepo: string) => ({
-  aheadBehind: (base: string) => aheadBehind(repo, base),
-  assertLocalBranch: (base: string) => assertLocalBranch(repo, base),
-  rebaseOnto: (base: string) => rebaseOnto(repo, base),
-  mergeIntoBase: (base: string) => mergeIntoBase(repo, base, "main", "merge", "m"),
-  freshBase: (base: string) => freshBase(remoteRepo, base),
-  workflowSources: (base: string) => workflowSources(repo, base),
-  cardDiff: (base: string) => cardDiff(repo, base),
+  aheadBehind: (base: string) => aheadBehind(repo, base as Rev),
+  assertLocalBranch: (base: string) => assertLocalBranch(repo, base as Rev),
+  rebaseOnto: (base: string) => rebaseOnto(repo, base as Rev),
+  mergeIntoBase: (base: string) => mergeIntoBase(repo, base as Rev, refArg("main"), "merge", "m"),
+  freshBase: (base: string) => freshBase(remoteRepo, base as Rev),
+  workflowSources: (base: string) => workflowSources(repo, base as Rev),
+  cardDiff: (base: string) => cardDiff(repo, base as Rev),
 });
 
 describe("git-arg-guard: a base branch that looks like an option never reaches git", () => {
@@ -57,19 +58,19 @@ describe("git-arg-guard: a base branch that looks like an option never reaches g
   test("a base stored before the upgrade that git would read as a refspec is refused by freshBase", async () => {
     const origin = gitRepoWithOrigin();
     for (const base of ["+x:refs/heads/victim", "a:b", "a..b"]) {
-      await expect(freshBase(origin.repo, base)).rejects.toMatchObject({
+      await expect(freshBase(origin.repo, base as Rev)).rejects.toMatchObject({
         reason: "branch_invalid",
       });
     }
     // The detached default and a real branch still go through.
-    expect((await freshBase(origin.repo, "main")).ref).toBe("main");
+    expect((await freshBase(origin.repo, refArg("main"))).ref).toBe("main");
   });
 
   test("a real base still works: ahead and behind of main against itself is 0 and 0", async () => {
     const { repo } = gitRepo();
-    expect(await aheadBehind(repo, "main")).toEqual({ ahead: 0, behind: 0 });
-    await assertLocalBranch(repo, "main");
-    expect(await workflowSources(repo, "main")).toEqual([]);
+    expect(await aheadBehind(repo, refArg("main"))).toEqual({ ahead: 0, behind: 0 });
+    await assertLocalBranch(repo, refArg("main"));
+    expect(await workflowSources(repo, refArg("main"))).toEqual([]);
   });
 });
 

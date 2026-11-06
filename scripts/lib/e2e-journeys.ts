@@ -19,6 +19,7 @@ export const JOURNEYS: readonly string[] = [
   "primeira-vez",
   "segundo-host",
   "nova-sessao-host",
+  "finalizar-card",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

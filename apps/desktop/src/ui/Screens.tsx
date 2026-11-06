@@ -62,6 +62,7 @@ const ClientsPage = lazyScreen(() => import("./ClientsPage.tsx"), "ClientsPage")
 const ConnectionsPage = lazyScreen(() => import("./ConnectionsPage.tsx"), "ConnectionsPage");
 const ConversationsPage = lazyScreen(() => import("./ConversationsPage.tsx"), "ConversationsPage");
 const CostsPage = lazyScreen(() => import("./CostsPage.tsx"), "CostsPage");
+const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("./HostPage.tsx"), "HostPage");
 const PersonasPage = lazyScreen(() => import("./PersonasPage.tsx"), "PersonasPage");
 const PluginsPage = lazyScreen(() => import("./PluginsPage.tsx"), "PluginsPage");
@@ -411,8 +412,15 @@ export function Screen(props: ScreenProps) {
             store={store}
             hostId={hostId}
             initial={
-              route.name === "history" && (route.cwd || route.projectKey || route.day)
-                ? { cwd: route.cwd, projectKey: route.projectKey, day: route.day }
+              route.name === "history" &&
+              (route.cwd || route.projectKey || route.day || route.from || route.to)
+                ? {
+                    cwd: route.cwd,
+                    projectKey: route.projectKey,
+                    day: route.day,
+                    from: route.from,
+                    to: route.to,
+                  }
                 : undefined
             }
             hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
@@ -664,6 +672,8 @@ function routeScreen(props: ScreenProps): ReactNode {
           go={go}
         />
       );
+    case "overview":
+      return <HomePage store={store} state={state} go={go} />;
     case "costs":
       return (
         <CostsPage
@@ -672,6 +682,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           {...(route.host ? { host: route.host } : {})}
           {...(route.projectKey ? { projectKey: route.projectKey } : {})}
           {...(route.client ? { client: route.client } : {})}
+          {...(route.period ? { period: route.period } : {})}
         />
       );
     case "vault":

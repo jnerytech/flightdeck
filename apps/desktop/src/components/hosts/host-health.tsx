@@ -6,9 +6,16 @@ import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { formatAgo } from "../../i18n/format.ts";
-import type { Key } from "../../i18n/index.ts";
+import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { type DepLook, depLook, depsSummary, fixFor, fixPageFor } from "../../lib/deps-summary.ts";
+import {
+  type DepLook,
+  depLook,
+  depsSummary,
+  fixFor,
+  fixNoteFor,
+  fixPageFor,
+} from "../../lib/deps-summary.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 const ICONS = { check: Check, warning: TriangleAlert, cross: X, dash: Minus } as const;
@@ -52,6 +59,111 @@ interface HealthRow {
   action: { label: string; run(): void } | null;
 }
 
+/** What a row builder needs from the component. */
+interface RowEnv {
+  t: T;
+  os: string;
+  update: string | null;
+  onAddFolder(): void;
+  confirm(what: Confirming): void;
+}
+
+/** The one-click fix a dependency row offers, when the app already has the action. */
+function depAction(item: DepResult, lacking: boolean, env: RowEnv): HealthRow["action"] {
+  if (!lacking) return null;
+  if (item.id === "hooks")
+    return { label: env.t("hostPage.install"), run: () => env.confirm("hooks") };
+  if (item.id === "folders") return { label: env.t("hostHealth.addFolder"), run: env.onAddFolder };
+  return null;
+}
+
+function depRow(item: DepResult, env: RowEnv): HealthRow {
+  const { t, os } = env;
+  const lacking = item.state === "missing" || item.state === "outdated";
+  const note = lacking ? fixNoteFor(item, os) : null;
+  return {
+    key: item.id,
+    name: t(`hostDeps.names.${item.id}` as Key),
+    look: depLook(item),
+    word: t(`hostDeps.state.${item.state}` as Key),
+    found: [
+      item.version ? t("hostDeps.version", { version: item.version }) : null,
+      item.minVersion ? t("hostDeps.minVersion", { version: item.minVersion }) : null,
+      item.path ?? null,
+    ].filter((part): part is string => part !== null),
+    breaks:
+      lacking && item.breaks.length > 0
+        ? t("hostDeps.without", {
+            features: item.breaks.map((f) => t(`hostDeps.breaks.${f}` as Key)).join(", "),
+          })
+        : null,
+    copy: lacking ? fixFor(item, os) : null,
+    page: lacking ? fixPageFor(item, os) : null,
+    step: note ? t(`hostDeps.fixNote.${note}` as Key) : null,
+    action: depAction(item, lacking, env),
+  };
+}
+
+const CHECK_LOOKS: Record<DoctorCheckResult["status"], DepLook> = {
+  ok: { icon: "check", tone: "ok" },
+  warn: { icon: "warning", tone: "warn" },
+  fail: { icon: "cross", tone: "error" },
+};
+const CHECK_WORDS: Record<DoctorCheckResult["status"], Key> = {
+  ok: "hostDeps.state.ok",
+  warn: "hostHealth.warning",
+  fail: "hostHealth.failed",
+};
+
+function checkRow(check: DoctorCheckResult, env: RowEnv): HealthRow {
+  const { t, update } = env;
+  const offersUpdate = check.id === "version" && check.status !== "ok" && update !== null;
+  return {
+    key: check.id,
+    name: t(`doctor.check.${check.id}` as Key),
+    look: CHECK_LOOKS[check.status],
+    word: t(CHECK_WORDS[check.status]),
+    found: [check.detail],
+    breaks: null,
+    copy: null,
+    page: null,
+    step:
+      check.status === "ok"
+        ? null
+        : t("doctor.fix", { step: t(`doctor.steps.${check.id}` as Key) }),
+    action: offersUpdate
+      ? { label: t("daemonUpdate.button", { version: update }), run: () => env.confirm("update") }
+      : null,
+  };
+}
+
+/** The section's headline and its icon: a failed read, the first read pending, or what is missing. */
+function headlineFor(
+  state: { error: string | null; read: boolean; required: number; optional: number },
+  t: T,
+): { text: string; look: DepLook } {
+  if (state.error) {
+    return {
+      text: t("hostDeps.readFailed", { reason: state.error }),
+      look: { icon: "warning", tone: "warn" },
+    };
+  }
+  if (!state.read) return { text: t("hostDeps.checking"), look: { icon: "dash", tone: "off" } };
+  if (state.required > 0) {
+    return {
+      text: t("hostDeps.requiredMissing", { n: state.required }),
+      look: { icon: "cross", tone: "error" },
+    };
+  }
+  if (state.optional > 0) {
+    return {
+      text: t("hostDeps.optionalMissing", { n: state.optional }),
+      look: { icon: "warning", tone: "warn" },
+    };
+  }
+  return { text: t("hostDeps.allSet"), look: { icon: "check", tone: "ok" } };
+}
+
 /**
  * One section for what a host needs and how it is doing: its dependencies (required and optional)
  * and the checks the doctor makes, with the same icon and word on every row, and a one-click fix
@@ -88,102 +200,32 @@ export function HostHealth(
     return covering === undefined || !have.has(covering);
   });
 
-  const depRow = (item: DepResult): HealthRow => {
-    const look = depLook(item);
-    const name = t(`hostDeps.names.${item.id}` as Key);
-    const lacking = item.state === "missing" || item.state === "outdated";
-    const action =
-      item.id === "hooks" && lacking
-        ? { label: t("hostPage.install"), run: () => setConfirming("hooks") }
-        : item.id === "folders" && lacking
-          ? { label: t("hostHealth.addFolder"), run: props.onAddFolder }
-          : null;
-    return {
-      key: item.id,
-      name,
-      look,
-      word: t(`hostDeps.state.${item.state}` as Key),
-      found: [
-        item.version ? t("hostDeps.version", { version: item.version }) : null,
-        item.minVersion ? t("hostDeps.minVersion", { version: item.minVersion }) : null,
-        item.path ?? null,
-      ].filter((part): part is string => part !== null),
-      breaks:
-        lacking && item.breaks.length > 0
-          ? t("hostDeps.without", {
-              features: item.breaks.map((f) => t(`hostDeps.breaks.${f}` as Key)).join(", "),
-            })
-          : null,
-      copy: lacking ? fixFor(item, os) : null,
-      page: lacking ? fixPageFor(item, os) : null,
-      step: null,
-      action,
-    };
+  const env: RowEnv = {
+    t,
+    os,
+    update,
+    onAddFolder: props.onAddFolder,
+    confirm: setConfirming,
   };
-
-  const checkRow = (check: DoctorCheckResult): HealthRow => {
-    const look: DepLook =
-      check.status === "ok"
-        ? { icon: "check", tone: "ok" }
-        : check.status === "warn"
-          ? { icon: "warning", tone: "warn" }
-          : { icon: "cross", tone: "error" };
-    const word = { ok: "hostDeps.state.ok", warn: "hostHealth.warning", fail: "hostHealth.failed" }[
-      check.status
-    ] as Key;
-    return {
-      key: check.id,
-      name: t(`doctor.check.${check.id}` as Key),
-      look,
-      word: t(word),
-      found: [check.detail],
-      breaks: null,
-      copy: null,
-      page: null,
-      step:
-        check.status === "ok"
-          ? null
-          : t("doctor.fix", { step: t(`doctor.steps.${check.id}` as Key) }),
-      action:
-        check.id === "version" && check.status !== "ok" && update
-          ? {
-              label: t("daemonUpdate.button", { version: update }),
-              run: () => setConfirming("update"),
-            }
-          : null,
-    };
-  };
-
   const rows = {
-    required: items.filter((item) => item.group === "required").map(depRow),
-    optional: items.filter((item) => item.group === "optional").map(depRow),
-    checks: checks.map(checkRow),
+    required: items.filter((item) => item.group === "required").map((item) => depRow(item, env)),
+    optional: items.filter((item) => item.group === "optional").map((item) => depRow(item, env)),
+    checks: checks.map((check) => checkRow(check, env)),
   };
   const base = depsSummary(items);
   const failing = checks.filter((check) => check.status === "fail").length;
   const warning = checks.filter((check) => check.status === "warn").length;
   const required = (base.kind === "required" ? base.n : 0) + failing;
   const optional = (base.kind === "optional" ? base.n : 0) + warning;
-  const read = props.deps !== null || props.doctor !== null;
-  const kind = required > 0 ? "required" : optional > 0 ? "optional" : "ok";
-  const headline = props.error
-    ? t("hostDeps.readFailed", { reason: props.error })
-    : !read
-      ? t("hostDeps.checking")
-      : {
-          required: t("hostDeps.requiredMissing", { n: required }),
-          optional: t("hostDeps.optionalMissing", { n: optional }),
-          ok: t("hostDeps.allSet"),
-        }[kind];
-  const headlineLook: DepLook = props.error
-    ? { icon: "warning", tone: "warn" }
-    : !read
-      ? { icon: "dash", tone: "off" }
-      : kind === "ok"
-        ? { icon: "check", tone: "ok" }
-        : kind === "optional"
-          ? { icon: "warning", tone: "warn" }
-          : { icon: "cross", tone: "error" };
+  const { text: headline, look: headlineLook } = headlineFor(
+    {
+      error: props.error ?? null,
+      read: props.deps !== null || props.doctor !== null,
+      required,
+      optional,
+    },
+    t,
+  );
   const HeadIcon = ICONS[headlineLook.icon];
 
   const renderRow = (row: HealthRow) => {
@@ -253,14 +295,14 @@ export function HostHealth(
 
   return (
     <Panel title={t("hostHealth.title")} label={t("hostHealth.title")}>
-      <p role="status" className="dep-line">
+      <output className="dep-line">
         <HeadIcon
           data-slot="dep-icon"
           aria-hidden="true"
           className={toneClass(headlineLook.tone)}
         />
         <strong>{headline}</strong>
-      </p>
+      </output>
       {/* Outside the live region: the age changes every minute and must not be announced each time. */}
       {props.checkedAt !== null && (
         <span className="dep-found">
