@@ -1237,6 +1237,7 @@ export const ptBR = {
     summary: "o resumo da sessão",
     webhook: "os webhooks",
     bg: "sessões em segundo plano",
+    projectTrust: "a confiança em projetos",
     autoUpdate: "atualização automática do host",
   },
   daemonRefusal: {
@@ -3385,6 +3386,43 @@ export const ptBR = {
     placeholder: "Digite uma mensagem",
   },
   projectPage: {
+    trust: {
+      title: "Configuração do projeto",
+      hint: "Um projeto pode trazer hooks, servidores MCP, configurações, agentes e skills próprios. Eles só carregam em uma sessão quando você confia no projeto.",
+      untrusted:
+        "Sem confiança. As sessões aqui carregam as suas configurações, não as deste projeto.",
+      trusted: "Com confiança: a configuração própria deste projeto carrega nas sessões dele.",
+      trustedVia:
+        "Com confiança por {path}: a configuração própria deste projeto carrega nas sessões dele.",
+      cost: "Até você confiar nele, os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills deste projeto não carregam, e os seus próprios servidores MCP e plugins também não, nas sessões iniciadas aqui.",
+      listing: "O que este projeto carregaria",
+      hooks: "Hooks (comandos que rodam sozinhos)",
+      mcp: "Servidores MCP (programas que iniciam com a sessão)",
+      env: "Variáveis de ambiente (só os nomes)",
+      allow: "Ferramentas liberadas sem perguntar",
+      agents: "Agentes",
+      skills: "Skills",
+      commands: "Comandos",
+      claudeMd: "CLAUDE.md",
+      unreadable: "Arquivos que não puderam ser lidos ou seguidos",
+      programs: "Programas que as configurações executam",
+      redirects: "Variáveis de ambiente que mandam tráfego ou código para outro lugar",
+      plugins: "Plugins e marketplaces",
+      otherKeys: "Outras configurações presentes",
+      extras: "Agentes, skills e comandos com hooks, servidores ou permissões de ferramentas",
+      longWarning:
+        "Alguns comandos são longos ou têm várias linhas. Leia cada um até o fim: tudo roda quando você confia no projeto.",
+      nothing: "Nada: este projeto não traz configuração própria.",
+      omitted: "+{n} a mais, não mostrados",
+      action: "Confiar neste projeto",
+      revoke: "Revogar a confiança",
+      confirm:
+        "Confiar em {project} em {host}? Os hooks dele rodam comandos e os servidores MCP dele iniciam programas naquele computador, sem perguntar a você, sempre que uma sessão começa ali. Só faça isso para código que você escreveu ou leu.",
+      failed: "Não foi possível ler a configuração deste projeto.",
+      sessionNotice:
+        "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
+      review: "Revisar e confiar",
+    },
     notHere: "Este projeto não está neste host.",
     baseInvalid:
       "O branch base {name} não é um nome de branch válido, e os passos de git do board o recusam. Defina um de verdade em Configurações.",
