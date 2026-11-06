@@ -61,6 +61,18 @@ export function WandPanel(props: { wand: Wand; t: T }) {
               ...(state.params ? { params: state.params } : {}),
             })}
           </span>
+          {wand.others.map(({ provider, hostName }) => (
+            <Button
+              key={provider.provider === "host" ? provider.hostId : provider.provider}
+              variant="outline"
+              size="sm"
+              onClick={() => wand.tryWith(provider)}
+            >
+              {t("assistantWand.tryWith", {
+                provider: hostName ?? t(`assistantSettings.${provider.provider}`),
+              })}
+            </Button>
+          ))}
           <Button variant="outline" size="sm" onClick={wand.discard}>
             {t("assistantWand.dismiss")}
           </Button>

@@ -1862,6 +1862,7 @@ export const en: Dictionary = {
     discard: "Discard",
     edit: "Edit",
     retry: "Retry",
+    tryWith: "Try with {provider}",
     replaced: "Text replaced by AI.",
     undo: "Undo",
     dismiss: "Dismiss",

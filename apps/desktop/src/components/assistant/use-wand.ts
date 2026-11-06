@@ -16,6 +16,12 @@ export interface WandBinding {
   openSettings(): void;
 }
 
+/** Another provider a failed run can be sent to; a host carries the name the person gave it. */
+export interface WandAlternative {
+  provider: ResolvedProvider;
+  hostName?: string;
+}
+
 export interface Wand {
   state: WandState;
   /** The field is empty and its kind cannot write from nothing. */
@@ -34,6 +40,10 @@ export interface Wand {
   setProposal(text: string): void;
   /** Sends the same text again. */
   retry(): void;
+  /** After a failure: the other providers that could run now and have the person's agreement. */
+  others: WandAlternative[];
+  /** After a failure: sends the text again, to this provider. */
+  tryWith(provider: ResolvedProvider): void;
   /** Puts back the text from before Accept, while the Undo chip is up. */
   undo(): void;
   /** Ctrl or Cmd+I (and Esc while there is something to close) in the field: true when the wand took the key. */
@@ -82,8 +92,8 @@ export function useWand(
   const empty = value.trim() === "";
   const needsText = empty && !spec.generates;
 
-  const launch = (text: string) => {
-    const provider = controller.resolve(binding.fieldHostId);
+  const launch = (text: string, chosen?: ResolvedProvider) => {
+    const provider = chosen ?? controller.resolve(binding.fieldHostId);
     // A host the person never agreed to is asked in Settings, once; until then the text goes nowhere.
     if (!provider || controller.needsHostConfirm(provider)) {
       controller.askForSetup();
@@ -120,6 +130,22 @@ export function useWand(
     if (state.kind !== "preview" || gateBusy) return;
     launch(state.original);
   };
+  const tryWith = (provider: ResolvedProvider) => {
+    if (state.kind !== "failed" || needsText || gateBusy) return;
+    launch(value, provider);
+  };
+  const others =
+    state.kind === "failed" && run.current
+      ? controller
+          .alternatives(run.current.provider)
+          .filter((provider) => !controller.needsHostConfirm(provider))
+          .map((provider) => ({
+            provider,
+            ...(provider.provider === "host"
+              ? { hostName: controller.hostName(provider.hostId) }
+              : {}),
+          }))
+      : [];
   const cancel = () => {
     if (state.kind !== "running" || !run.current) return;
     controller.cancel(run.current.requestId, run.current.provider).catch(() => {});
@@ -169,6 +195,8 @@ export function useWand(
     edit: () => dispatch({ type: "edit" }),
     setProposal: (text: string) => dispatch({ type: "proposal", text }),
     retry,
+    others,
+    tryWith,
     undo,
     onKeyDown,
   };

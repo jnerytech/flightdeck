@@ -102,6 +102,8 @@ export function modelFor(
 
 export interface HostChoice {
   id: string;
+  /** What the person calls the host, when known. */
+  name?: string;
   online: boolean;
   /** The host announces the `assistant` feature. */
   assistant: boolean;
