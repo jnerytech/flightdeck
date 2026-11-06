@@ -42,7 +42,8 @@ export function Page(
         </div>
       ) : (
         <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
-          <div className="px-6 py-4">{props.children}</div>
+          {/* The body's blocks sit 24 px apart, the scale's step between blocks of a page (#588). */}
+          <div className="flex flex-col gap-6 px-6 py-4">{props.children}</div>
         </ScrollArea>
       )}
     </section>
