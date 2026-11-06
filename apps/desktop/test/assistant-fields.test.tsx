@@ -135,6 +135,27 @@ describe("assistant-fields: the New card dialog (issue #160)", () => {
     expect(field(t.kanban.titleLabel)?.value).toBe("ship the crat");
   });
 
+  test("no wand button submits the form: the card is not created by using the wand", async () => {
+    const { store, t } = await newCardDialog();
+    const sent: string[] = [];
+    const real = store.hostCommand.bind(store);
+    store.hostCommand = (async (hostId, type, payload) => {
+      sent.push(type);
+      return real(hostId, type, payload);
+    }) as typeof store.hostCommand;
+    await type(t.kanban.titleLabel, "ship the crat");
+    await click("Improve with AI");
+    await settle(() => screen.queryByRole("dialog", { name: "AI suggestion" }) !== null);
+    await click("Retry");
+    await settle(() => screen.queryByRole("button", { name: "Accept" }) !== null);
+    await click("Edit");
+    await click("Accept");
+    await click("Undo");
+    expect(screen.queryByRole("dialog", { name: t.kanban.newCard })).not.toBeNull();
+    expect(sent).not.toContain("card.create");
+    expect(field(t.kanban.titleLabel)?.value).toBe("ship the crat");
+  });
+
   test("with no provider the wand opens Settings, Assistant", async () => {
     const { store, fake } = await newCardDialog({ configured: false });
     await click(/with AI/);
