@@ -413,7 +413,8 @@ function rawSegments(command: string): string[] {
   let quote = "";
   for (let i = 0; i < text.length; i++) {
     const ch = text[i] as string;
-    if (quote === '"' && ch === "\\") {
+    // A backslash escapes the next character, except inside single quotes.
+    if (quote !== "'" && ch === "\\") {
       current += ch + (text[++i] ?? "");
     } else if (quote) {
       current += ch;
