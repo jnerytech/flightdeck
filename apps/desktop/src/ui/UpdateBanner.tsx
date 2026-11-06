@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { Inline } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
@@ -28,14 +29,14 @@ export const UpdateBanner = memo(function UpdateBanner(props: { store: AppStore 
       {offer && auto && ready === offer.version && (
         <>
           <strong>{t("update.ready", { version: offer.version })}</strong>
-          <div className="flex gap-2">
+          <Inline gap={2}>
             <ActionButton size="sm" onClick={() => store.installAppUpdate()}>
               {t("update.restartNow")}
             </ActionButton>
             <Button variant="outline" size="sm" onClick={() => store.dismissAppUpdate()}>
               {t("update.later")}
             </Button>
-          </div>
+          </Inline>
         </>
       )}
       {offer && !auto && (
@@ -43,14 +44,14 @@ export const UpdateBanner = memo(function UpdateBanner(props: { store: AppStore 
           <strong>{t("update.available", { version: offer.version })}</strong>
           {offer.notes && <p>{offer.notes}</p>}
           {daemonsBehind && <p className="text-muted-foreground text-xs">{t("update.first")}</p>}
-          <div className="flex gap-2">
+          <Inline gap={2}>
             <ActionButton size="sm" onClick={() => store.installAppUpdate()}>
               {t("update.install")}
             </ActionButton>
             <Button variant="outline" size="sm" onClick={() => store.dismissAppUpdate()}>
               {t("update.later")}
             </Button>
-          </div>
+          </Inline>
         </>
       )}
       {error && <p className="text-status-needs-you">{error}</p>}
