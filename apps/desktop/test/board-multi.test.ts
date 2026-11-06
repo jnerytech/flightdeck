@@ -88,6 +88,23 @@ describe("board-multi: the column width (issue #161)", () => {
     ]);
   });
 
+  test("a storage that cannot be read gives the default width", () => {
+    const unreadable = {
+      getItem: () => {
+        throw new Error("denied");
+      },
+      setItem: () => {},
+      removeItem: () => {},
+    } as unknown as ConstructorParameters<typeof BoardWidth>[0];
+    let width: number | "threw";
+    try {
+      width = new BoardWidth(unreadable).value;
+    } catch {
+      width = "threw";
+    }
+    expect(width).toBe(COLUMN_WIDTH.default);
+  });
+
   test("a whole number always, and a storage that throws does not stop the width", () => {
     expect(clampWidth(300.4)).toBe(300);
     const broken = {
