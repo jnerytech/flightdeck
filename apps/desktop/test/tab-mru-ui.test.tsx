@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { seedDemoHosts } from "../src/demo/boot.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -14,6 +15,9 @@ afterEach(cleanup);
 function setup(lang: "en" | "pt-BR" = "en", order?: string) {
   const mem = memoryPlatform(false, lang);
   if (order) mem.platform.storage.setItem("flightdeck.tabOrder", order);
+  seedDemoHosts(mem.win.localStorage, mem.tokens, [
+    { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+  ]);
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   store.tabs.open({ name: "costs" });
@@ -171,10 +175,14 @@ describe("tab-mru-ui: hold Ctrl and press Tab to cycle the recent tabs (issue #1
     });
     // Ctrl+\ splits: the new area shows the same screen and takes the focus.
     store.workspace.toggleSplit();
-    store.tabs.open({ name: "workflows", host: "ha" } as never);
+    store.hostTabs.open({ name: "projects", host: "ha" } as never);
     expect(store.workspace.areas).toHaveLength(2);
     await ctrlTab();
-    expect(options()).toHaveLength(2);
+    // Only the focused area's tabs, the newest first.
+    expect(options().map((o) => o.textContent)).toEqual([
+      expect.stringContaining("Projects"),
+      expect.stringContaining("Automatic approvals"),
+    ]);
     await releaseCtrl();
     expect(active(store)).toBe("auto-approvals");
     // The other area keeps its own tabs and its own active one.

@@ -94,6 +94,11 @@ for (const [lang, dict] of [
         store.hostTabs.open({ name: "terminal", host: "a", terminalId: "t1" });
       });
       const opened = store.workspace.tabs.active;
+      // Another tab of the host takes the focus, so bringing the terminal forward is a real move.
+      await act(async () => {
+        store.hostTabs.open({ name: "projects", host: "a" });
+      });
+      expect(store.workspace.tabs.activeId === opened.id).toBe(false);
       const brought: string[] = [];
       store.workspace.focusArea = ((area: number) => brought.push(`area:${area}`)) as never;
       store.hostTabs.activate = ((id: string) => brought.push(`tab:${id}`)) as never;

@@ -62,6 +62,20 @@ describe("abas-previa", () => {
     store.dispose();
   });
 
+  test("a single click on a host's item in the sidebar opens its preview tab, a double click keeps it", async () => {
+    const { store } = await mount();
+    const aside = screen.queryByRole("complementary") as HTMLElement;
+    const item = () =>
+      within(aside).queryAllByRole("button", { name: /^Open host alfa/ })[0] as HTMLElement;
+    expect(item() === undefined).toBe(false);
+    await act(async () => void fireEvent.click(item()));
+    expect(store.hostTabs.hostId).toBe("ha");
+    expect(store.tabs.active.preview).toBe(true);
+    await act(async () => void fireEvent.doubleClick(item()));
+    expect(store.tabs.active.preview).toBe(false);
+    store.dispose();
+  });
+
   test("a single click on a shared screen gives it its pinned tab, never a preview", async () => {
     const { store, item } = await mount();
     await act(async () => void fireEvent.click(item(/^Vault/)));

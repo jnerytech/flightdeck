@@ -157,7 +157,7 @@ describe("navegacao", () => {
     await settle(() => heading("Configurações"));
     expect(heading("Configurações")).toBe(true);
     await act(async () => {
-      store.hostTabs.activate(store.hostTabs.workspace?.tabs.activeId ?? "");
+      store.hostTabs.activate(store.hostTabs.workspace?.tabs.activeId as string);
     });
     expect(heading("Pedinte")).toBe(true);
 
@@ -173,24 +173,30 @@ describe("navegacao", () => {
       fireEvent.keyDown(window, { key: "ArrowLeft", altKey: true });
     });
     expect(here()).toBe("session");
+    expect(heading("Pedinte")).toBe(true);
     await act(async () => {
       fireEvent.keyDown(window, { key: "ArrowRight", altKey: true });
     });
     expect(here()).toBe("host");
+    expect(heading("Pedinte")).toBe(false);
     // The mouse's back (3) and forward (4) buttons.
     await act(async () => {
       fireEvent.mouseUp(window, { button: 3 });
     });
     expect(here()).toBe("session");
+    expect(heading("Pedinte")).toBe(true);
     await act(async () => {
       fireEvent.mouseUp(window, { button: 4 });
     });
     expect(here()).toBe("host");
+    expect(heading("Pedinte")).toBe(false);
     // The header's own buttons.
     await click("Voltar");
     expect(store.router.current).toEqual(session);
+    expect(heading("Pedinte")).toBe(true);
     await click("Avançar");
     expect(here()).toBe("host");
+    expect(heading("Pedinte")).toBe(false);
   });
 
   test("abrir um item fecha a paleta; um deep link de pedido vira rota", async () => {

@@ -187,6 +187,7 @@ describe("persistencia-abas", () => {
     mem.items.set(WORKSPACE_KEY, "{oops");
     const store = new AppStore(mem.platform);
     expect(store.hostTabs.hostId).toBeNull();
+    expect(store.hostTabs.shared.activeId).toBe(store.hostTabs.shared.tabs[0]?.id as string);
     expect(
       store.hostTabs.shared.tabs.map((tab): [string, boolean] => [
         tab.router.current.name,
