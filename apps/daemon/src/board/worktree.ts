@@ -191,7 +191,7 @@ export async function freshBase(
   repo: string,
   base: string,
 ): Promise<{ ref: string; notice: string | null }> {
-  refArg(base);
+  const safe = refArg(base);
   const remotes = (await git(repo, "remote")).stdout.split(/\s+/);
   if (!remotes.includes("origin")) return { ref: base, notice: null };
   const fetched = await git(repo, "fetch", "--end-of-options", "origin", base);
@@ -200,9 +200,9 @@ export async function freshBase(
     return { ref: base, notice: `Could not refresh ${base} from origin: ${why}` };
   }
   const remote = `origin/${base}`;
-  const behind = await git(repo, "merge-base", "--is-ancestor", base, remote);
+  const behind = await git(repo, "merge-base", "--is-ancestor", safe, remote);
   const same =
-    (await git(repo, "rev-parse", base)).stdout === (await git(repo, "rev-parse", remote)).stdout;
+    (await git(repo, "rev-parse", safe)).stdout === (await git(repo, "rev-parse", remote)).stdout;
   return { ref: behind.code === 0 && !same ? remote : base, notice: null };
 }
 
@@ -246,7 +246,10 @@ async function create(
   const path = worktreeDir(repo, slug);
   await addExcludeLine(await excludeFileAsync(repo), EXCLUDE_LINE);
   await excludeLocalSettingsAsync(repo);
-  must(await git(repo, "worktree", "add", path, "-b", branch, refArg(base)), "git worktree add");
+  must(
+    await git(repo, "worktree", "add", path, "-b", refArg(branch), refArg(base)),
+    "git worktree add",
+  );
   const { skipped } = await copyIncluded(repo, path, includeLimit);
   return { slug, branch, path, skipped };
 }

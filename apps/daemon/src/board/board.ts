@@ -44,7 +44,7 @@ import {
 } from "./merge.ts";
 import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
-import { assertBranchName } from "./ref-arg.ts";
+import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import type {
   BoardColumn,
@@ -1537,7 +1537,7 @@ export class Board {
         "the card has no worktree yet",
         "card_no_worktree",
       );
-    must(await git(cwd, "push", "-u", "origin", branch), "git push");
+    must(await git(cwd, "push", "-u", "origin", refArg(branch)), "git push");
     const url = await provider.create({
       cwd,
       base: project.baseBranch,
@@ -1689,7 +1689,7 @@ export class Board {
       const notice = `a pasta da worktree ficou em ${worktree}; remova depois (a branch ${branch} sai junto)`;
       return { worktree: true, branch: true, notice };
     }
-    const deleted = await git(repo, "branch", "-D", branch);
+    const deleted = await git(repo, "branch", "-D", refArg(branch));
     if (deleted.code !== 0) {
       const notice = `a branch ${branch} ficou (${deleted.stderr.trim()}); apague depois`;
       return { worktree: false, branch: true, notice };
@@ -1746,7 +1746,7 @@ export class Board {
         "git worktree remove",
       );
     }
-    if (card.branch) must(await git(repo, "branch", "-D", card.branch), "git branch -D");
+    if (card.branch) must(await git(repo, "branch", "-D", refArg(card.branch)), "git branch -D");
     return this.removeFromBoard(id, "discarded");
   }
 

@@ -12,6 +12,7 @@ import {
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
+import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
@@ -146,7 +147,7 @@ export class ReviewFiles {
     }
     const source = base ?? "HEAD";
     const gitPath = path.replaceAll("\\", "/");
-    const inSource = await git(root, "cat-file", "-e", `${source}:${gitPath}`);
+    const inSource = await git(root, "cat-file", "-e", `${refArg(source)}:${gitPath}`);
     if (inSource.code === 0) {
       must(
         await git(root, "restore", `--source=${source}`, "--staged", "--worktree", "--", gitPath),

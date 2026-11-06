@@ -79,10 +79,10 @@ async function checkedOutAt(repo: string, branch: string): Promise<string | null
 
 async function mergeIn(cwd: string, branch: string, mode: "merge" | "squash", message: string) {
   if (mode === "merge") {
-    must(await git(cwd, "merge", "--no-ff", "-m", message, branch), "git merge");
+    must(await git(cwd, "merge", "--no-ff", "-m", message, refArg(branch)), "git merge");
     return;
   }
-  must(await git(cwd, "merge", "--squash", branch), "git merge --squash");
+  must(await git(cwd, "merge", "--squash", refArg(branch)), "git merge --squash");
   must(await git(cwd, "commit", "-m", message), "git commit");
 }
 
