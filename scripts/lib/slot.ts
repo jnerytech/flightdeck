@@ -185,6 +185,27 @@ function waiterPath(env: SlotEnv, pid: number): string {
 }
 
 /**
+ * The live waiters, first come first: by the time they queued, then by pid (#372). Dead or
+ * unreadable waiter files count for nothing, and a pid shows once (a waiter file being written
+ * has a staging copy under the same prefix).
+ */
+export function waiters(env: SlotEnv): SlotHolder[] {
+  const byPid = new Map<number, SlotHolder>();
+  for (const path of env.fs.list(`${env.path}.wait.`)) {
+    const waiter = parseHolder(env.fs.read(path));
+    if (waiter && env.alive(waiter.pid)) byPid.set(waiter.pid, waiter);
+  }
+  return [...byPid.values()].sort((a, b) => a.startedAt - b.startedAt || a.pid - b.pid);
+}
+
+/** The live waiters that queued before `me`; the slot is only tried when there are none. */
+function ahead(env: SlotEnv, me: { pid: number; startedAt: number }): SlotHolder[] {
+  return waiters(env).filter(
+    (w) => w.startedAt < me.startedAt || (w.startedAt === me.startedAt && w.pid < me.pid),
+  );
+}
+
+/**
  * Waits for the slot while a waiter file says who is waiting (so `--cancel` can find it); false
  * when `stopped` ended the wait.
  */
@@ -195,6 +216,7 @@ export async function acquire(
   maxAgeMs = DEFAULT_MAX_AGE_MS,
 ): Promise<boolean> {
   const waiting = waiterPath(env, env.pid);
+  const queuedAt = env.now();
   env.fs.remove(waiting);
   env.fs.create(
     waiting,
@@ -202,25 +224,42 @@ export async function acquire(
       pid: env.pid,
       label: env.label,
       command,
-      startedAt: env.now(),
+      startedAt: queuedAt,
     } satisfies SlotHolder),
   );
   try {
-    return await waitForSlot(env, command, stopped, maxAgeMs);
+    return await waitForSlot(env, command, stopped, maxAgeMs, queuedAt);
   } finally {
     env.fs.remove(waiting);
   }
 }
 
-/** Waits for the slot, naming each new holder once. */
+/**
+ * Waits for the slot, naming each new holder once. Only the first live waiter tries the lock, so
+ * the slot goes in queue order, not to whichever poll lands first after a release (#372).
+ */
 async function waitForSlot(
   env: SlotEnv,
   command: string,
   stopped: () => boolean,
   maxAgeMs: number,
+  queuedAt: number,
 ): Promise<boolean> {
   let named = "";
+  let queue = "";
   while (!stopped()) {
+    const before = ahead(env, { pid: env.pid, startedAt: queuedAt });
+    const [first] = before;
+    if (first) {
+      if (`${before.length}@${first.pid}` !== queue) {
+        queue = `${before.length}@${first.pid}`;
+        env.log(
+          `slot queue: ${before.length} waiting before you (first: ${describeHolder(first, env.now())}); waiting`,
+        );
+      }
+      await env.sleep(POLL_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
+      continue;
+    }
     const attempt = tryAcquire(env, command);
     if (attempt.acquired) return true;
     const { holder } = attempt;
@@ -243,7 +282,17 @@ export function release(env: SlotEnv): void {
   if (parseHolder(env.fs.read(env.path))?.pid === env.pid) env.fs.remove(env.path);
 }
 
+/** Who holds the slot, then each live waiter in queue order with how long it has waited. */
 export function status(env: SlotEnv, maxAgeMs = DEFAULT_MAX_AGE_MS): string {
+  const lines = [holderStatus(env, maxAgeMs)];
+  waiters(env).forEach((waiter, index) => {
+    const command = waiter.command.length > 80 ? `${waiter.command.slice(0, 80)}…` : waiter.command;
+    lines.push(`waiting ${index + 1}: ${describeHolder({ ...waiter, command }, env.now())}`);
+  });
+  return lines.join("\n");
+}
+
+function holderStatus(env: SlotEnv, maxAgeMs: number): string {
   const text = env.fs.read(env.path);
   if (text === null) return "free";
   const holder = parseHolder(text);
