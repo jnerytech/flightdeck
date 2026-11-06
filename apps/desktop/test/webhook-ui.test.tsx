@@ -139,7 +139,8 @@ describe("webhook-ui", () => {
     await settle(() => screen.queryByRole("button", { name: "Test Team" }) !== null);
     await click("Test Team");
     await settle(() => screen.queryByText(/^Sent: HTTP 200 at /) !== null);
-    expect(sent).toEqual([SECRET]);
+    // The daemon connects to the address it checked (#465).
+    expect(sent).toEqual([SECRET.replace("hooks.slack.com", "93.184.216.34")]);
     expect(screen.queryByText("working")).not.toBeNull();
     await fill("Name", "Inside");
     await fill("Webhook URL", "https://internal.example/hook");
@@ -300,7 +301,7 @@ describe("webhook-ui", () => {
     expect(document.body.textContent).not.toContain("tk_abc123");
     await click("Test Phone");
     await settle(() => sent.length === 1);
-    expect(sent).toEqual(["https://ntfy.sh/"]);
+    expect(sent).toEqual(["https://93.184.216.34/"]);
   });
 
   test("an ntfy URL with more than a topic, or a token of another shape, is refused in words (pt-BR)", async () => {
