@@ -67,23 +67,31 @@ function mask(source: string): string {
     underscore(i + 1, j);
     return j + 1;
   };
+  /** Masks the comment, string or template that starts at `i`; returns the index after it, or null when none does. */
+  const skipped = (i: number): number | null => {
+    const c = source[i];
+    const next = source[i + 1];
+    if (c === "/" && next === "/") return lineComment(i);
+    if (c === "/" && next === "*") return blockComment(i);
+    if (c === '"' || c === "'") return quoted(i, c);
+    if (c === "`") return template(i + 1);
+    return null;
+  };
   /** Masks code from `i`; with `inBraces` it stops after the `}` that closes the `${`. */
   const code = (start: number, inBraces: boolean): number => {
     let i = start;
     let depth = 0;
     while (i < source.length) {
-      const c = source[i] as string;
-      const next = source[i + 1];
-      if (c === "/" && next === "/") i = lineComment(i);
-      else if (c === "/" && next === "*") i = blockComment(i);
-      else if (c === '"' || c === "'") i = quoted(i, c);
-      else if (c === "`") i = template(i + 1);
-      else {
-        if (c === "}" && inBraces && depth === 0) return i + 1;
-        if (c === "{") depth++;
-        else if (c === "}") depth--;
-        i++;
+      const to = skipped(i);
+      if (to !== null) {
+        i = to;
+        continue;
       }
+      const c = source[i];
+      if (c === "}" && inBraces && depth === 0) return i + 1;
+      if (c === "{") depth++;
+      else if (c === "}") depth--;
+      i++;
     }
     return i;
   };
