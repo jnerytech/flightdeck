@@ -50,7 +50,12 @@ export class BoardWidth {
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly storage: Platform["storage"]) {
-    const stored = Number(storage.getItem(COLUMN_WIDTH_KEY));
+    let stored = Number.NaN;
+    try {
+      stored = Number(storage.getItem(COLUMN_WIDTH_KEY));
+    } catch {
+      // A storage that cannot be read (a private window): the default width.
+    }
     this.value = Number.isFinite(stored) && stored > 0 ? clampWidth(stored) : COLUMN_WIDTH.default;
   }
 

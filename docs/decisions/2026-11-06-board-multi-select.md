@@ -30,6 +30,9 @@ the work was redone from the branch, not merged.
   is shown with the host's reason in the app's language (`reasonText`), moves included.
 - **A batch in flight is guarded** (`busy`): the bar, the drag and a second dialog are off while moves
   or discards run.
+  The guard is React state, not a ref: two calls in the same tick before a re-render could both pass,
+  but the UI cannot make them (a drop clears what was dragged on its first call, and the dialog closes
+  before it sends), and the host refuses a card that is already gone.
 - **Esc and focus.** Esc clears the selection from the board or the bar, not from a card's open menu.
   When the bar goes away the focus goes to the board. One live region (`role=status`) speaks the
   selection count and what a refusal left; the bar keeps its place (`selection-slot`) so the first
