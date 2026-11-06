@@ -18,3 +18,18 @@ daemon for one call site. Checking again after the request: too late, the reques
 **Consequences.** A server that serves several names on one address still gets the right one
 through `Host` and SNI. A name with several addresses uses the first that was checked, with no
 fallback to the others: a webhook either goes through or is retried by the app's queue.
+
+**Evidence that the name is still verified (Bun 1.4.4, 2026-11-06).** A local `Bun.serve` over TLS
+on `127.0.0.1` with a self-signed certificate for `hooks.example.test`, fetched at
+`https://127.0.0.1:<port>/` with the certificate as `ca`: `tls.serverName: "hooks.example.test"`
+answered 200 and the server saw `Host: hooks.example.test`; `serverName: "other.example.test"` and
+no `serverName` were refused with `ERR_TLS_CERT_ALTNAME_INVALID`; the right name without the `ca`
+was refused with `DEPTH_ZERO_SELF_SIGNED_CERT`. So `serverName` sets what the certificate is
+checked against, and `rejectUnauthorized` stays on by default. This is not a test in the suite: it
+would need a private key in the repository or `openssl` on every CI runner. The unit tests pin
+what the sender passes (`serverName` for a name, none for an address written in the URL).
+
+**Security review (2026-11-06).** The rebinding window is closed: `fetch` gets an address, so it
+makes no lookup, and `redirect: "manual"` stops a hop to another name. Changed after the review: an
+IPv4 address is pinned first (a loopback name also answers `::1`), and an address written in the
+URL gets no server name (SNI carries names only).
