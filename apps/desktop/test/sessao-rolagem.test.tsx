@@ -5,6 +5,12 @@ import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+
+/** The person scrolls: the wheel, then the scroll event the browser sends for it. */
+const personScrolls = (el: Element) => {
+  fireEvent.wheel(el, { deltaY: -120 });
+  fireEvent.scroll(el);
+};
 const screen = liveScreen(within);
 const { SessionView } = await import("../src/ui/SessionView.tsx");
 const { RecapPanel } = await import("../src/ui/RecapPanel.tsx");
@@ -66,7 +72,7 @@ describe("sessao-rolagem: the conversation is the one scroll area of the session
   test("a new message follows the end when you were at the end", async () => {
     const { rerender } = render(view(3));
     const s = scroller({ scroll: 1000, client: 400, top: 600 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     s.size.scroll = 1100;
     rerender(view(4));
     await act(async () => {});
@@ -77,7 +83,7 @@ describe("sessao-rolagem: the conversation is the one scroll area of the session
   test("a new message leaves you where you were reading, and offers Ir para a última", async () => {
     const { rerender } = render(view(3));
     const s = scroller({ scroll: 1000, client: 400, top: 100 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     s.size.scroll = 1100;
     rerender(view(4));
     await act(async () => {});
