@@ -6,7 +6,7 @@
  */
 import type { AutoUpdateStatus, DaemonManifest } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
-import type { Timers } from "../quota/quota.ts";
+import { realTimers, type Timers } from "../quota/quota.ts";
 import { compareVersions } from "../update.ts";
 
 export interface AutoUpdaterOptions {
@@ -34,10 +34,7 @@ export class AutoUpdater {
   private readonly timers: Timers;
 
   constructor(private readonly opts: AutoUpdaterOptions) {
-    this.timers = opts.timers ?? {
-      set: (fn, ms) => setTimeout(fn, ms),
-      clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
-    };
+    this.timers = opts.timers ?? realTimers;
   }
 
   status(): AutoUpdateStatus {
