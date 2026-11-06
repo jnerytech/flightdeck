@@ -103,8 +103,32 @@ export const DIFF_FILE_MAX = 512 * 1024;
 /** Git's empty tree: what a repository without commits is compared with. */
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
-/** Uncommitted tracked changes against `HEAD` (the empty tree before the first commit), then untracked files. */
-export async function workingDiff(root: string, maxUntracked = DIFF_FILE_MAX): Promise<DiffFile[]> {
+/** The size of a file's diff text: each line with its marker and its newline, in bytes. */
+function diffBytes(file: DiffFile): number {
+  let bytes = 0;
+  for (const hunk of file.hunks)
+    for (const line of hunk.lines) bytes += Buffer.byteLength(line.text) + 2;
+  return bytes;
+}
+
+/** A file whose diff is over `max` bytes is kept with its counts, without hunks, marked `tooLarge`. */
+function capped(files: DiffFile[], max: number): DiffFile[] {
+  return files.map((file) => {
+    const bytes = diffBytes(file);
+    return bytes > max ? { ...file, hunks: [], tooLarge: true, bytes } : file;
+  });
+}
+
+/**
+ * Uncommitted tracked changes against `HEAD` (the empty tree before the first commit), then
+ * untracked files. A new file over `maxUntracked` bytes and a diff over `maxTracked` bytes are
+ * listed without content (issue #329).
+ */
+export async function workingDiff(
+  root: string,
+  maxUntracked = DIFF_FILE_MAX,
+  maxTracked = DIFF_FILE_MAX,
+): Promise<DiffFile[]> {
   const head = await git(root, "rev-parse", "--verify", "--quiet", "HEAD");
   const against = head.code === 0 ? "HEAD" : EMPTY_TREE;
   const pending = must(await git(root, ...DIFF, against), "git diff");
@@ -113,7 +137,7 @@ export async function workingDiff(root: string, maxUntracked = DIFF_FILE_MAX): P
     "git ls-files",
   );
   const untracked = others.stdout.split("\0").filter(Boolean);
-  const files = parseUnifiedDiff(pending.stdout, true);
+  const files = capped(parseUnifiedDiff(pending.stdout, true), maxTracked);
   // One at a time: a tree of untracked files must not open them all at once.
   for (const path of untracked) files.push(await untrackedFile(root, path, maxUntracked));
   return files;
@@ -127,13 +151,14 @@ export async function cardDiff(
   worktree: string,
   base: string,
   maxUntracked?: number,
+  maxTracked = DIFF_FILE_MAX,
 ): Promise<CardDiff> {
   const committed = must(await git(worktree, ...DIFF, `${base}...HEAD`), "git diff");
   return {
     base,
     files: [
-      ...parseUnifiedDiff(committed.stdout, false),
-      ...(await workingDiff(worktree, maxUntracked)),
+      ...capped(parseUnifiedDiff(committed.stdout, false), maxTracked),
+      ...(await workingDiff(worktree, maxUntracked, maxTracked)),
     ],
   };
 }
