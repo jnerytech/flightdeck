@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { REAL_TIMERS } from "./real-timers.ts";
 import type { MinLoadingTimers } from "./use-min-loading.ts";
 
 /**
@@ -12,14 +13,8 @@ export const IN_FLIGHT = { quietMs: 100, spinnerMs: 1000, slowMs: 3000, deferMs:
 
 export type InFlightStage = "idle" | "quiet" | "pending" | "spinner" | "slow";
 
-const REAL: MinLoadingTimers = {
-  now: () => performance.now(),
-  setTimeout: (fn, ms) => setTimeout(fn, ms),
-  clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
-};
-
 /** The clock of the hooks below; the real one by default, a test's own through the provider. */
-export const InFlightTimers = createContext<MinLoadingTimers>(REAL);
+export const InFlightTimers = createContext<MinLoadingTimers>(REAL_TIMERS);
 
 /** The stage `elapsedMs` after the work started. */
 export function inFlightStage(elapsedMs: number): Exclude<InFlightStage, "idle"> {
