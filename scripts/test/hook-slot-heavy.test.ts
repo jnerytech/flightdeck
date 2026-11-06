@@ -168,6 +168,13 @@ describe("guard: the #687 lows", () => {
       expect(worker(command) ?? `allowed: ${command}`).toContain("holds the slot");
     }
     expect(worker("bun --bun run test:related -- --fast")).toBeNull();
+    // A script file named as another script's argument is no run of it.
+    expect(worker("bun run lint scripts/test-related.ts")).toBeNull();
+    expect(worker("bun run format scripts/test-related.ts scripts/coverage-funcs.ts")).toBeNull();
+    // A quoted assignment after env sets the variable all the same.
+    expect(
+      worker('env "FLIGHTDECK_COORDINATOR=1" bun run coverage:funcs a.ts') ?? "allowed",
+    ).toContain("only the coordinator's own environment");
   });
 
   test("#698 review: a second heavy run with an override only in front of another command is refused", () => {
