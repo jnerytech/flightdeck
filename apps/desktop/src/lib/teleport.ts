@@ -60,8 +60,7 @@ export const plainText = (text: string, max: number): string =>
   text.replace(MARKS, "").slice(0, max);
 
 export function teleportSummary(manifest: TeleportManifest): TeleportSummary {
-  const branch =
-    manifest.git?.branch === undefined ? undefined : plainText(manifest.git.branch, 255);
+  const branch = manifest.git?.branch ? plainText(manifest.git.branch, 255) : null;
   return {
     branch: branch || null,
     ahead: manifest.git?.ahead ?? 0,
