@@ -1,4 +1,14 @@
-import { ChevronsUpDown, CircleAlert, Moon, Plus, Search, Server, Sun } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronsUpDown,
+  CircleAlert,
+  Moon,
+  Plus,
+  Search,
+  Server,
+  Sun,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { HostDot } from "@/components/hosts/host-dot";
@@ -7,6 +17,7 @@ import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
@@ -40,6 +51,9 @@ export function TopBarHost(
     t: T;
     onChoose(hostId: string): void;
     onAdd(): void;
+    /** The tab row shows every host's tabs, grouped by host. */
+    allHosts?: boolean;
+    onAllHosts?(on: boolean): void;
   }>,
 ) {
   const { t } = props;
@@ -50,9 +64,22 @@ export function TopBarHost(
       <IconTip label={current?.name}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" aria-label={name} className="top-bar-host">
-            {/* Narrow, the name gives its room to the crumbs: the icon stays, named by the button. */}
-            <Server aria-hidden="true" className="top-bar-host-icon" />
-            {current && <HostDot hostId={current.id} />}
+            {/* Narrow, the name gives its room to the crumbs: the dot and the initial stay, and the
+                button names the host. With no host, the server icon stands in. */}
+            {current ? (
+              <>
+                <HostDot hostId={current.id} />
+                <span
+                  data-slot="top-bar-host-initial"
+                  aria-hidden="true"
+                  className="top-bar-host-initial"
+                >
+                  {initialOf(current.name)}
+                </span>
+              </>
+            ) : (
+              <Server aria-hidden="true" className="top-bar-host-icon" />
+            )}
             <span className="top-bar-host-name">{current?.name ?? t("shell.noHost")}</span>
             <ChevronsUpDown aria-hidden="true" className="top-bar-host-chevron" />
           </Button>
@@ -70,6 +97,17 @@ export function TopBarHost(
               ))}
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
+            {props.onAllHosts && props.hosts.length > 1 && (
+              <>
+                <DropdownMenuCheckboxItem
+                  checked={props.allHosts ?? false}
+                  onCheckedChange={(on) => props.onAllHosts?.(on === true)}
+                >
+                  {t("shell.allHostsTabs")}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
           </>
         )}
         <DropdownMenuItem onSelect={() => props.onAdd()}>
@@ -78,6 +116,48 @@ export function TopBarHost(
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** The first letter of a host's name, upper case, for the narrow switcher. */
+function initialOf(name: string): string {
+  return ([...name.trim()][0] ?? "").toUpperCase();
+}
+
+/**
+ * Back and forward through the history. They sit in the top bar, and below 640 px in the sidebar's
+ * drawer, so the bar keeps its room (issue #641).
+ */
+export function HistoryButtons(
+  props: Readonly<{
+    t: T;
+    canBack: boolean;
+    canForward: boolean;
+    onBack(): void;
+    onForward(): void;
+  }>,
+) {
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={props.t("nav.back")}
+        disabled={!props.canBack}
+        onClick={props.onBack}
+      >
+        <ArrowLeft aria-hidden="true" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={props.t("nav.forward")}
+        disabled={!props.canForward}
+        onClick={props.onForward}
+      >
+        <ArrowRight aria-hidden="true" />
+      </Button>
+    </>
   );
 }
 

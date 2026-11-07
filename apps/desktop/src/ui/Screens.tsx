@@ -193,6 +193,12 @@ function ManagedSession(
     <SessionTabs
       store={store}
       hostId={hostId}
+      viewKey={sessionKey(hostId, sessionId)}
+      // Issue #107: a shell in the session's folder, where the host opens one for a session.
+      {...(store.embeddedTerminal(hostId) &&
+      hasFeature(host?.hostInfo?.features, "terminal.session", false)
+        ? { terminal: { session: sessionId } }
+        : {})}
       claudeSessionId={claudeId}
       // Phase 39: these tabs read Claude Code's transcript, and OpenCode sessions stay out of messaging.
       enabled={!opencode && hasFeature(host?.hostInfo?.features, "review", false)}
@@ -653,6 +659,15 @@ function externalScreen(
   return (
     <SessionTabs
       key={`${route.host}/${route.claudeSessionId}`}
+      viewKey={`${route.host}/${route.claudeSessionId}`}
+      // Issue #107: the PTY the session was started from, when there is one.
+      {...(store.embeddedTerminal(route.host)
+        ? {
+            terminal: {
+              launch: state.externals[`${route.host}/${route.claudeSessionId}`]?.launchId ?? null,
+            },
+          }
+        : {})}
       store={store}
       hostId={route.host}
       claudeSessionId={route.claudeSessionId}

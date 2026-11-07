@@ -103,6 +103,12 @@ interface Parts {
   onShared: boolean;
 }
 
+/** One host's tabs in the all-hosts row: its first area, whose tabs the row shows. */
+export interface HostGroup {
+  hostId: string;
+  tabs: Tabs;
+}
+
 /**
  * The window's tabs, one set per host plus the shared screens (issue #644). Each host keeps its
  * own `Workspace` (its tabs, their histories and its split); the shared screens are one `Tabs`,
@@ -215,6 +221,13 @@ export class HostTabs {
     this.emit();
   }
 
+  /** Every host's first-area tabs, host by host, for the row that shows all hosts (issue #644). */
+  groups(): HostGroup[] {
+    return [...this.sets]
+      .map(([hostId, set]) => ({ hostId, tabs: set.areas[0] as Tabs }))
+      .filter((group) => group.tabs.tabs.length > 0);
+  }
+
   /** How many tabs a host's set holds (for "wsl - A: 5 tabs"). */
   tabCount(id: string): number {
     return (this.sets.get(id)?.areas ?? []).reduce((sum, area) => sum + area.tabs.length, 0);
@@ -268,11 +281,16 @@ export class HostTabs {
       this.emit();
       return;
     }
-    const set = this.workspace;
-    const area = set?.areas.findIndex((tabs) => tabs.tabs.some((tab) => tab.id === tabId)) ?? -1;
-    if (!set || area < 0) return;
+    // The current host's set first; a tab of another host (the all-hosts row) switches to that host.
+    const owner = [[this.hostId, this.workspace] as const, ...this.sets].find(([, set]) =>
+      set?.areas.some((tabs) => tabs.tabs.some((tab) => tab.id === tabId)),
+    );
+    const set = owner?.[1];
+    if (!owner || !set) return;
+    const area = set.areas.findIndex((tabs) => tabs.tabs.some((tab) => tab.id === tabId));
     (set.areas[area] as Tabs).activate(tabId);
     set.focusArea(area as 0 | 1);
+    this.hostId = owner[0];
     this.onShared = false;
     this.emit();
   }

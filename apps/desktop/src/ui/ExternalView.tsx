@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
+import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BgPanel } from "./BgPanel.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
@@ -209,28 +210,4 @@ export function ExternalView(
       </div>
     </SessionPane>
   );
-}
-
-/** The live terminal of the host that launched this session ("Claude aqui"), if there is one. */
-function useLaunchTerminal(store: AppStore, hostId: string, launchId: string | null) {
-  const [terminalId, setTerminalId] = useState<string | null>(null);
-  const embedded = store.embeddedTerminal(hostId);
-  useEffect(() => {
-    if (!launchId || !embedded) return;
-    let alive = true;
-    store
-      .terminalHost(hostId)
-      .list()
-      .then(
-        (terminals) => {
-          const found = terminals.find((t) => t.launchId === launchId && t.exitCode === null);
-          if (alive) setTerminalId(found?.terminalId ?? null);
-        },
-        () => {},
-      );
-    return () => {
-      alive = false;
-    };
-  }, [store, hostId, launchId, embedded]);
-  return launchId ? terminalId : null;
 }

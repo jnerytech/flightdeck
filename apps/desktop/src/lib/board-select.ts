@@ -81,16 +81,25 @@ export class BoardWidth {
   }
 }
 
-/** A column's count: `3`, or `2 / 5` while a filter hides some. */
-export function columnCount(shown: number, total: number, filtering: boolean): string {
-  // A column that never had a card is just 0: a ratio of nothing says nothing.
-  return filtering && total > 0 ? `${shown} / ${total}` : String(shown);
+/** A column's count: `3`. */
+export function columnCount(shown: number): string {
+  return String(shown);
 }
 
-/** The same count in words, for a screen reader: "3 cards", "1 of 3 cards". */
-export function countLabel(t: T, shown: number, total: number, filtering: boolean): string {
-  if (filtering && total > 0) return t("board.countOfMany", { shown, total });
+/** A column's count while a filter is on: `2 / 5` when it hides some. */
+export function filteredColumnCount(shown: number, total: number): string {
+  // A column that never had a card is just 0: a ratio of nothing says nothing.
+  return total > 0 ? `${shown} / ${total}` : String(shown);
+}
+
+/** The same count in words, for a screen reader: "3 cards". */
+export function countLabel(t: T, shown: number): string {
   return shown === 1 ? t("board.countOne") : t("board.countMany", { n: shown });
+}
+
+/** The same count in words while a filter is on: "1 of 3 cards". */
+export function filteredCountLabel(t: T, shown: number, total: number): string {
+  return total > 0 ? t("board.countOfMany", { shown, total }) : countLabel(t, shown);
 }
 
 /** The outcome of moving many cards at once: the ones the host refused, with its reason. */
@@ -131,8 +140,8 @@ export async function moveMany(
 /** The refusal's text and, when the host gave one, its code and values. */
 export function answerOf(answer: {
   message: string;
-  reason?: string | undefined;
-  params?: Record<string, string | number> | undefined;
+  reason?: string;
+  params?: Record<string, string | number>;
 }): Pick<BulkRefusal, "message" | "reason" | "params"> {
   return {
     message: answer.message,

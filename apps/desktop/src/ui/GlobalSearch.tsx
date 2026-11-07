@@ -137,6 +137,7 @@ export function GlobalSearch(
         keepRecentOrder: frozen.current !== null,
         ...oldestOf(needsYou(props.state, store.i18n.t), store.i18n.t),
         modeSwitch: modeSwitch(store),
+        views: store.sessionViews.available(),
         scope,
       });
   if (frozen.current === null && !actionsOf) {

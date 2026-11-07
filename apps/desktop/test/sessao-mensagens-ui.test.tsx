@@ -18,7 +18,8 @@ afterEach(async () => {
 });
 
 const click = async (name: string | RegExp) => {
-  const button = screen.queryByRole("button", { name });
+  // The session's views are tabs; everything else is a button.
+  const button = screen.queryByRole("button", { name }) ?? screen.queryByRole("tab", { name });
   expect(button).not.toBeNull();
   await act(async () => {
     fireEvent.click(button as HTMLElement);
@@ -91,10 +92,10 @@ async function open(features = ["messaging"]) {
 describe("sessao-mensagens-ui: the Mensagens tab of a session", () => {
   test("a session of a host with messaging has a Mensagens tab; without it, none", async () => {
     await open([]);
-    expect(screen.queryByRole("button", { name: "Mensagens" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Mensagens" })).toBeNull();
     cleanup();
     await open();
-    expect(screen.queryByRole("button", { name: "Mensagens" })).not.toBeNull();
+    expect(screen.queryByRole("tab", { name: "Mensagens" })).not.toBeNull();
   });
 
   test("the tab lists this session's messages, sent and received", async () => {

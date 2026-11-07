@@ -206,7 +206,9 @@ describe("custos-ui", () => {
       "2026-10-14: US$ 2.00",
       "2026-10-15: US$ 2.00",
     ]);
-    expect(days.every((d) => d.getAttribute("role") === "group")).toBe(true);
+    expect(within(chart).getAllByRole("group", { name: /^2026-10-\d\d: / })).toHaveLength(
+      days.length,
+    );
     expect(chart.textContent).toContain("Maior dia: US$ 2.00");
     const legend = chart.querySelector("[aria-label='Projetos no gráfico']") as HTMLElement;
     const items = [...legend.querySelectorAll("li")];
