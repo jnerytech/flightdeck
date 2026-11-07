@@ -2712,7 +2712,7 @@ export const ptBR = {
     move: "Mover",
     back: "Voltar",
     moving: "Movendo… {percent}%",
-    finishing: "Finalizando em {host}…",
+    finishing: "Finalizando em {host}… Pode fechar esta janela: a mudança continua.",
     done: "A sessão está agora em {host}. A daqui fica como estava.",
     open: "Abrir lá",
     close: "Fechar",

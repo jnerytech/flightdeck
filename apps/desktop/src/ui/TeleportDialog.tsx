@@ -72,7 +72,15 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
   const [phase, setPhase] = useState<Phase>({ at: "pick" });
   const answer = useRef<((yes: boolean) => void) | null>(null);
   const stop = useRef<AbortController | null>(null);
+  const closed = useRef(false);
   const host = props.targets.find((h) => h.id === target)?.name ?? "";
+
+  /** The dialog closes once, whatever closes it: the person, then the run that ends after. */
+  const close = () => {
+    if (closed.current) return;
+    closed.current = true;
+    props.onClose();
+  };
 
   const begin = () => {
     // One move per dialog: a double-click or a second Enter never starts another.
@@ -102,7 +110,7 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
       })
       .then(
         (outcome) => {
-          if (outcome.kind !== "moved") return props.onClose();
+          if (outcome.kind !== "moved") return close();
           // A move that names no session on the target did not land anywhere the app can open.
           if (typeof outcome.sessionId !== "string" || !outcome.sessionId) {
             return setPhase({ at: "failed", text: failureText(null, t) });
@@ -122,14 +130,15 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
   /** Closing while the source prepares stops the move: its package goes once the source answers. */
   const leave = () => {
     stop.current?.abort();
-    props.onClose();
+    close();
   };
 
   const dismiss = () => {
     if (phase.at === "confirm") reply(false);
     else if (phase.at === "moving") {
-      // Once the target imports, the move ends there: the dialog waits for it.
-      if (!phase.finishing) stop.current?.abort();
+      // Once the target imports, the move ends there: the dialog may close, the import goes on.
+      if (phase.finishing) close();
+      else stop.current?.abort();
     } else leave();
   };
 
@@ -203,7 +212,7 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
               submit={t("teleportUi.move")}
               busy
               {...(phase.finishing
-                ? {}
+                ? { cancel: t("teleportUi.close"), onCancel: close }
                 : { cancel: t("teleportUi.cancel"), onCancel: () => stop.current?.abort() })}
             />
           </Form>
@@ -214,12 +223,12 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
             <FormActions
               submit={t("teleportUi.open")}
               cancel={t("teleportUi.close")}
-              onCancel={props.onClose}
+              onCancel={close}
             />
           </Form>
         )}
         {phase.at === "failed" && (
-          <Form variant="dialog" onSubmit={props.onClose}>
+          <Form variant="dialog" onSubmit={close}>
             <p role="alert">{phase.text}</p>
             <FormActions submit={t("teleportUi.close")} />
           </Form>

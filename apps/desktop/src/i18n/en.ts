@@ -2711,7 +2711,7 @@ export const en: Dictionary = {
     move: "Move",
     back: "Back",
     moving: "Moving… {percent}%",
-    finishing: "Finishing on {host}…",
+    finishing: "Finishing on {host}… You can close this window: the move goes on.",
     done: "The session is on {host} now. The one here stays as it was.",
     open: "Open it there",
     close: "Close",
