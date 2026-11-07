@@ -97,3 +97,11 @@ export function specPathProblem(path: string): string | null {
   }
   return path.toLowerCase().endsWith(".md") ? null : "extension";
 }
+
+/** The path a card's spec is looked for at. Stub. */
+export function specExpectedPath(_card: {
+  specPath: string | null;
+  slug: string | null;
+}): string | null {
+  return null;
+}

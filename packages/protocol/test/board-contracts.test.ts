@@ -10,6 +10,7 @@ import {
   ErrorCode,
   missingFor,
   Project,
+  specExpectedPath,
   specPathProblem,
 } from "../src/index.ts";
 
@@ -20,6 +21,8 @@ const card = (
     checksState: never;
     validationNote: string | null;
     specState: { path: string; found: boolean; heading: string | null } | null;
+    specPath: string | null;
+    slug: string | null;
   }>,
 ) => ({
   description: "",
@@ -27,6 +30,8 @@ const card = (
   checksState: null,
   validationNote: null,
   specState: null,
+  specPath: null,
+  slug: null,
   ...over,
 });
 
@@ -181,13 +186,13 @@ describe("board-contracts: the validation note (issue #78, slice 3a)", () => {
 
 describe("board-contracts: the spec artifact (issue #78, slice 3b)", () => {
   const asks: ContractOverrides = { review: { enforce: "confirm", checks: ["spec"] } };
-  const withSpec = (found: boolean, heading: string | null = null) => ({
-    ...card({}),
-    specState: { path: "docs/specs/x.md", found, heading },
+  const withSpec = (found: boolean, heading: string | null = null, path = "docs/specs/x.md") => ({
+    ...card({ slug: "x" }),
+    specState: { path, found, heading },
   });
 
   test("a column can ask for a spec: it lacks one until the worktree has the file", () => {
-    expect(missingFor("review", { ...card({}), specState: null }, asks)).toEqual(["spec"]);
+    expect(missingFor("review", card({ slug: "x" }), asks)).toEqual(["spec"]);
     expect(missingFor("review", withSpec(false), asks)).toEqual(["spec"]);
     expect(missingFor("review", withSpec(true), asks)).toEqual([]);
     expect(missingFor("review", withSpec(true, "A heading"), asks)).toEqual([]);
@@ -220,6 +225,44 @@ describe("board-contracts: the spec artifact (issue #78, slice 3b)", () => {
       "docs/specs/",
     ]) {
       expect(typeof specPathProblem(bad)).toBe("string");
+    }
+  });
+
+  test("what was found counts only for the path the card names now", () => {
+    // Found at the default path, then the card named another: the old finding says nothing.
+    const moved = { ...withSpec(true), specPath: "notes/mine.md" };
+    expect(missingFor("review", moved, asks)).toEqual(["spec"]);
+    expect(
+      missingFor(
+        "review",
+        { ...moved, specState: { ...moved.specState, path: "notes/mine.md" } },
+        asks,
+      ),
+    ).toEqual([]);
+    // No slug and no path: nothing to be found.
+    expect(missingFor("review", { ...withSpec(true), slug: null }, asks)).toEqual(["spec"]);
+    expect(specExpectedPath({ specPath: null, slug: "login" })).toBe("docs/specs/login.md");
+    expect(specExpectedPath({ specPath: "a.md", slug: "login" })).toBe("a.md");
+    expect(specExpectedPath({ specPath: null, slug: null })).toBeNull();
+  });
+
+  test("a path Windows would read as a device, a stream or a trimmed name is refused", () => {
+    for (const bad of [
+      "docs/a:b.md",
+      "con.md",
+      "docs/NUL.md",
+      "aux.md",
+      "docs/com1.md",
+      "LPT9.md",
+      "docs/prn.x.md",
+      "docs/name .md/x.md",
+      "docs/dot./x.md",
+      "docs/space /x.md",
+    ]) {
+      expect(typeof specPathProblem(bad)).toBe("string");
+    }
+    for (const ok of ["docs/console.md", "docs/connect.md", "docs/com10.md", "docs/a.b.md"]) {
+      expect(specPathProblem(ok)).toBeNull();
     }
   });
 

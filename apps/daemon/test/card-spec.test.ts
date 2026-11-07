@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  linkSync,
+  mkdirSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { readSpec } from "../src/board/spec.ts";
 import { FlightdeckError } from "../src/errors.ts";
@@ -108,6 +116,57 @@ describe("card-spec: what the daemon learns of a spec file", () => {
     expect(await readSpec(root, "loop.md")).toEqual({ found: false, heading: null });
   });
 
+  test("a folder swapped for a link between the check and the open is not followed", async () => {
+    if (!posix) return;
+    const { root, outside } = folders();
+    mkdirSync(join(root, "docs"));
+    writeFileSync(join(root, "docs/s.md"), "# Inside\n");
+    writeFileSync(join(outside, "s.md"), "# Outside\n");
+    const swapped = await readSpec(root, "docs/s.md", {
+      beforeOpen: async () => {
+        renameSync(join(root, "docs"), join(root, "docs-away"));
+        symlinkSync(outside, join(root, "docs"));
+      },
+    });
+    expect(swapped).toEqual({ found: false, heading: null });
+  });
+
+  test("the same file swapped for another one in that gap is not read either", async () => {
+    const { root } = folders();
+    writeFileSync(join(root, "s.md"), "# First\n");
+    const swapped = await readSpec(root, "s.md", {
+      beforeOpen: async () => {
+        // The other file exists before the first goes, so the two cannot share an inode.
+        writeFileSync(join(root, "next.md"), "# Second\n");
+        renameSync(join(root, "next.md"), join(root, "s.md"));
+      },
+    });
+    expect(swapped).toEqual({ found: false, heading: null });
+  });
+
+  test("a second name for a file outside the worktree (a hard link) is refused", async () => {
+    if (!posix) return;
+    const { root, outside } = folders();
+    writeFileSync(join(outside, "secret.md"), "# Not yours\n");
+    linkSync(join(outside, "secret.md"), join(root, "hard.md"));
+    expect(await readSpec(root, "hard.md")).toEqual({ found: false, heading: null });
+  });
+
+  test("a heading carries no invisible or direction-changing character", async () => {
+    const { root } = folders();
+    writeFileSync(join(root, "h.md"), "# A\u0085B\u202eC\u200bD\u2028E\u2066F\u00adG\ufeffH\n");
+    expect((await readSpec(root, "h.md")).heading).toBe("ABCDEFGH");
+  });
+
+  test("a heading line made to make a pattern backtrack is read in linear time", async () => {
+    const { root } = folders();
+    writeFileSync(join(root, "slow.md"), `# a${" ".repeat(8000)}b\n`);
+    const started = performance.now();
+    const found = await readSpec(root, "slow.md");
+    expect(performance.now() - started).toBeLessThan(100);
+    expect(found.heading).toBe(`a${" ".repeat(8000)}b`.slice(0, 120));
+  });
+
   test("a worktree reached through a link is still the worktree", async () => {
     if (!posix) return;
     const { base, root } = folders();
@@ -196,6 +255,23 @@ describe("card-spec: the card keeps what it found", () => {
       expect(error.reason).toBe("spec_path_invalid");
     }
     expect(board.getCard(card.id).specPath).toBeNull();
+  });
+
+  test("a look that ends after the card named another path does not overwrite what was found for it", async () => {
+    const { board, card, tree } = await withCard();
+    writeFileSync(join(tree, "one.md"), "# One\n");
+    writeFileSync(join(tree, "two.md"), "# Two\n");
+    board.updateCard(card.id, { specPath: "one.md" });
+    const first = board.refreshSpec(card.id);
+    // The card names another path while the first look is still reading.
+    board.updateCard(card.id, { specPath: "two.md" });
+    await first;
+    expect(board.getCard(card.id).specState).toBeNull();
+    expect((await board.refreshSpec(card.id)).specState).toEqual({
+      path: "two.md",
+      found: true,
+      heading: "Two",
+    });
   });
 
   test("a spec that went away is lost again", async () => {
