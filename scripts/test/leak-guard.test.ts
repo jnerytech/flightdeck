@@ -131,7 +131,7 @@ async function runFiles(dir: string, files: string[]) {
     [process.execPath, "test", "--preload", PRELOAD, ...files.map((f) => join(dir, f))],
     {
       cwd: dir,
-      env: { ...process.env, CLAUDECODE: "" },
+      env: { ...process.env, CLAUDECODE: "", FLIGHTDECK_ISOLATION: "" },
       stdout: "pipe",
       stderr: "pipe",
     },
