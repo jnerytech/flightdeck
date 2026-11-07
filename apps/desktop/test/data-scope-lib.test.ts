@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   ALL_SCOPE,
   activeScope,
+  awayKey,
   DATA_SCOPE_KEY,
   DataScopeController,
   parseScope,
@@ -160,5 +161,24 @@ describe("data-scope: a project scope", () => {
       after: activeScope(project, hosts),
       hosts: scopeHosts(hosts, project).map((host) => host.id),
     }).toEqual({ before: project, after: project, hosts: ["h1", "h2"] });
+  });
+});
+
+// #886: the notice says why the scoped host shows nothing, in what the screen lists.
+describe("data-scope: why a scoped host has nothing to show", () => {
+  test("an incompatible daemon needs an update; any other host is offline, numbers or sessions", () => {
+    expect([
+      awayKey("incompatible", "numbers"),
+      awayKey("incompatible", "sessions"),
+      awayKey("offline", "numbers"),
+      awayKey("offline", "sessions"),
+      awayKey("unauthorized", "sessions"),
+    ]).toEqual([
+      "scope.incompatible",
+      "scope.incompatible",
+      "scope.offline",
+      "scope.offlineSessions",
+      "scope.offlineSessions",
+    ]);
   });
 });

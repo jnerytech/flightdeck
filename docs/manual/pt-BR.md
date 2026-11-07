@@ -332,6 +332,13 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **Confiar neste projeto**. Ele pergunta antes, citando o projeto e o host, porque hooks e
   servidores MCP com confiança rodam comandos naquele computador sem perguntar a você. **Revogar a
   confiança** não pergunta. Confiar vale para as pastas dentro do projeto, não para as ao redor.
+- Logo abaixo, **Configuração do Claude Code** lista, como uma checklist, o que ajuda o Claude
+  Code a trabalhar bem no projeto: `CLAUDE.md`, hooks (e se algum roda um formatador após
+  edições, ou verifica o `git add` ou arquivos de segredo antes de uma ferramenta rodar), skills, subagentes, permissões
+  (quantas regras de permissão) e servidores MCP. Cada um aparece como **Encontrado** ou
+  **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
+  variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
+  avisa: uma parte marcada como faltando pode existir.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
@@ -966,7 +973,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
   aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
   abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
-  hosts**. Os Custos também o seguem (veja **Custos e orçamentos**), e as Sessões também (o filtro
+  hosts**; um host cujo daemon precisa de atualização diz isso no lugar, e o menu não o oferece. Os
+  Custos também o seguem (veja **Custos e orçamentos**), e as Sessões também (o filtro
   de host próprio delas, se você tinha um, vira a escolha uma vez); o Board passa a segui-lo numa
   versão seguinte.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
@@ -1039,7 +1047,11 @@ aparece mascarado e como **Oculto**, e não abre.
   cards uma só janela lista cada card que não tem algo, com **Mover só os que atendem**. **Em
   andamento** só mostra o aviso, nunca pergunta, então começar o trabalho continua sendo um
   movimento. Os movimentos que o app faz sozinho (um PR abre ou é mesclado, uma sessão falha)
-  nunca são perguntados.
+  nunca são perguntados. O host guarda os contratos de
+  cada projeto e confere também os seus movimentos: um movimento que ele recusaria diz o que falta ao
+  card. **Mover mesmo assim** manda o host seguir, e o card guarda um aviso ("Movido para Em revisão
+  mesmo assim; faltava um link de PR"). O host nunca recusa o que move cards sozinho: o gerente, a
+  sincronização do quadro, a vigia do PR e os eventos de PR.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com

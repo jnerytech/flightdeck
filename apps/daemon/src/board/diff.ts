@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import { maskConfig, maskedConfig } from "../permissions/mask-config.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { readRegularSized } from "../read-regular.ts";
 import { git, gitLimited } from "./command.ts";
@@ -119,13 +120,55 @@ const secretFile = (file: DiffFile): DiffFile => ({
   hunks: [],
 });
 
-/** The files of a diff, with the content of every credential file, old path or new, left out. */
+/** A credential file that is shown anyway, its private values masked (#806): `.mcp.json`. */
+const unlisted = (path: string) => credential(path) && !maskedConfig(path);
+
+const masks = (text: string) => text.split('"[redacted]"').length;
+
+/**
+ * A config's hunks with their private values masked; the command it runs stays readable. The old
+ * side (context and removed lines) and the new side (context and added lines) are masked as two
+ * texts, each as a hunk may open anywhere in it; a context line keeps the stricter of its two.
+ */
+const maskedFile = (file: DiffFile): DiffFile => ({
+  ...file,
+  hunks: file.hunks.map((hunk) => {
+    const old = maskConfig(
+      hunk.lines.filter((line) => line.op !== "+").map((line) => line.text),
+      true,
+    );
+    const now = maskConfig(
+      hunk.lines.filter((line) => line.op !== "-").map((line) => line.text),
+      true,
+    );
+    let o = 0;
+    let n = 0;
+    return {
+      ...hunk,
+      header: maskConfig([hunk.header], true)[0] ?? hunk.header,
+      lines: hunk.lines.map((line) => {
+        const before = line.op === "+" ? "" : (old[o++] ?? "");
+        const after = line.op === "-" ? "" : (now[n++] ?? "");
+        const text =
+          line.op === "+" || (line.op === " " && masks(after) > masks(before)) ? after : before;
+        return { ...line, text };
+      }),
+    };
+  }),
+});
+
+/**
+ * The files of a diff, with the content of every credential file, old path or new, left out; a
+ * config shown masked keeps its lines, masked.
+ */
 const withoutSecrets = (files: DiffFile[]) =>
-  files.map((file) =>
-    credential(file.path) || (file.oldPath !== null && credential(file.oldPath))
-      ? secretFile(file)
-      : file,
-  );
+  files.map((file) => {
+    if (unlisted(file.path) || (file.oldPath !== null && unlisted(file.oldPath))) {
+      return secretFile(file);
+    }
+    const shown = maskedConfig(file.path) || (file.oldPath !== null && maskedConfig(file.oldPath));
+    return shown ? maskedFile(file) : file;
+  });
 
 /**
  * A file git does not track yet, shown as entirely added. A link or a pipe is listed without
@@ -133,7 +176,7 @@ const withoutSecrets = (files: DiffFile[]) =>
  * `tooLarge` marker and its size, and is never read past `max` (issue #329).
  */
 async function untrackedFile(worktree: string, path: string, max: number): Promise<DiffFile> {
-  if (credential(path)) return secretFile(newFile(path, false));
+  if (unlisted(path)) return secretFile(newFile(path, false));
   const read = await readRegularSized(join(worktree, path), max + 1);
   const content = read?.data ?? null;
   const file = newFile(path, !content);
@@ -143,7 +186,7 @@ async function untrackedFile(worktree: string, path: string, max: number): Promi
   }
   if (content.includes(0)) return { ...file, binary: true };
   const lines = content.toString("utf8").replace(/\n$/, "").split("\n");
-  return {
+  const added = {
     ...file,
     additions: lines.length,
     hunks: [
@@ -153,6 +196,7 @@ async function untrackedFile(worktree: string, path: string, max: number): Promi
       },
     ],
   };
+  return maskedConfig(path) ? maskedFile(added) : added;
 }
 
 /**

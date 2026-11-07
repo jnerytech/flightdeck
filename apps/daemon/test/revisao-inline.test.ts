@@ -180,6 +180,40 @@ describe("revisao-inline", () => {
     expect(await ctx.review.send("session:e-2")).toEqual({ via: "copy", text, comments: 1 });
   });
 
+  test("um alvo de projeto, sem sessão nem card, vira Copiar revisão, mesmo que o canal responda a qualquer id (#806)", async () => {
+    const ctx = newBoard();
+    cleanups.push(() => ctx.board.stop());
+    writeFileSync(join(ctx.repo, "a.txt"), "um\n");
+    const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
+    const sent: string[] = [];
+    // A channel that answers for every id, a null one included: only the target decides.
+    const review = new ReviewComments({
+      db: ctx.store.db,
+      changes: new Changes({ db: ctx.store.db, board: ctx.board, allowedRoots: [ctx.root] }),
+      manager: {} as ReviewCommentsOptions["manager"],
+      central: {
+        external: { get: () => ({ launchId: "launch-any" }) },
+        receptor: {
+          sendToLaunch: (_launch: string, text: string) => {
+            sent.push(text);
+            return true;
+          },
+        },
+      } as unknown as ReviewCommentsOptions["central"],
+    });
+    const target = `project:${project.id}`;
+    // `add` refuses a project target; a draft left by an older version is what `send` could meet.
+    ctx.store.db
+      .query(
+        `INSERT INTO review_comments (id, target, path, side, line_start, line_end, quote, body,
+           state, created_at, sent_at)
+         VALUES ('old-1', ?, 'a.txt', 'new', 1, 1, 'um', 'ok?', 'draft', 'x', NULL)`,
+      )
+      .run(target);
+    const outcome = await review.send(target);
+    expect([outcome.via, sent]).toEqual(["copy", []]);
+  });
+
   test("card: a revisão vai para a sessão do card", async () => {
     const ctx = newBoard();
     cleanups.push(() => ctx.board.stop());

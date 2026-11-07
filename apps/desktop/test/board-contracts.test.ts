@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { contractOf, missingFor } from "../src/lib/board-contracts.ts";
+import { askAbout, contractOf, dragNeeds, missingFor } from "../src/lib/board-contracts.ts";
 
 const card = (over: Partial<Card> = {}) =>
   ({
@@ -56,5 +56,24 @@ describe("board-contracts: what a column asks of a card", () => {
     expect(missingFor("in_progress", card({ description: "  - [X] indented" }))).toEqual([]);
     // A bracket in a sentence is not a checklist.
     expect(missingFor("in_progress", card({ description: "see [ ] here" }))).toEqual(["criteria"]);
+  });
+});
+
+describe("board-contracts: a project's own contracts", () => {
+  const mine = { done: { enforce: "confirm" as const, checks: ["pr" as const] } };
+
+  test("a column the project sets asks what it says; the others keep the default", () => {
+    expect(contractOf("done", mine)).toEqual(mine.done);
+    expect(contractOf("review", mine)).toEqual({ enforce: "confirm", checks: ["pr", "checks"] });
+    expect(missingFor("done", card(), mine)).toEqual(["pr"]);
+    expect(missingFor("done", card({ ...PR }), mine)).toEqual([]);
+  });
+
+  test("the question and the drag hint follow the project's contract", () => {
+    expect(askAbout("done", [card()], mine).map((l) => l.needs)).toEqual([["pr"]]);
+    expect(askAbout("done", [card()])).toEqual([]);
+    expect(dragNeeds("done", [card()], mine)).toEqual(["pr"]);
+    const off = { review: { enforce: "confirm" as const, checks: [] } };
+    expect(askAbout("review", [card()], off)).toEqual([]);
   });
 });

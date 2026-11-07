@@ -1028,3 +1028,49 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
     }
   });
 });
+
+import { confirmGaps, type Finding } from "../lib/layout-guards.ts";
+
+describe("layout-guards: a gap read while a toast slides in is measured again (issue #747)", () => {
+  const gap: Finding = { rule: "gap", path: "li", detail: "7 px above status-bar, at least 8" };
+  const other: Finding = { rule: "overflow-x", path: "area-screen", detail: "wide" };
+
+  /** A measure that answers the given lists in order, then the last one for good; and a settle that counts. */
+  function rig(answers: Finding[][]) {
+    let reads = 0;
+    let settles = 0;
+    return {
+      measure: async () => answers[Math.min(reads++, answers.length - 1)] ?? [],
+      settle: async () => {
+        settles++;
+      },
+      reads: () => reads,
+      settles: () => settles,
+    };
+  }
+
+  test("a gap that is gone once the boxes hold still is no finding", async () => {
+    const r = rig([[gap], []]);
+    expect(await confirmGaps(r.measure, r.settle)).toEqual([]);
+    expect(r.settles()).toBe(1);
+  });
+
+  test("a gap that stays through every re-measure is reported, after three settles", async () => {
+    const r = rig([[gap]]);
+    expect(await confirmGaps(r.measure, r.settle)).toEqual([gap]);
+    expect(r.settles()).toBe(3);
+    expect(r.reads()).toBe(4);
+  });
+
+  test("findings that are not gaps are returned at once, with no settle and no second read", async () => {
+    const r = rig([[other]]);
+    expect(await confirmGaps(r.measure, r.settle)).toEqual([other]);
+    expect(r.settles()).toBe(0);
+    expect(r.reads()).toBe(1);
+  });
+
+  test("the last read is the answer: a gap that was steady and moves off is not kept", async () => {
+    const r = rig([[gap, other], [gap, other], [other]]);
+    expect(await confirmGaps(r.measure, r.settle)).toEqual([other]);
+  });
+});

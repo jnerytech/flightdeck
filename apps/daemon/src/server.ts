@@ -1179,8 +1179,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "card.dismissUnblocked":
         return ok(command.type, board().dismissUnblocked(command.payload.cardId));
       case "card.move": {
-        const { cardId, column, position } = command.payload;
-        return ok(command.type, board().moveCard(cardId, column, position));
+        const { cardId, column, position, force } = command.payload;
+        return ok(command.type, board().moveByHand(cardId, column, position, force === true));
       }
       case "card.get":
         return ok(command.type, board().getCard(command.payload.cardId));

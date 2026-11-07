@@ -34,6 +34,8 @@ export const en: Dictionary = {
     projects: "Projects",
     showing: "Showing {scope}",
     offline: "{host} is offline. Its numbers come back when it reconnects.",
+    offlineSessions: "{host} is offline. Its sessions show again when it reconnects.",
+    incompatible: "{host} needs a daemon update before its data shows here.",
     showAll: "Show all hosts",
     noCosts: "{host} does not report costs.",
   },
@@ -1304,6 +1306,7 @@ export const en: Dictionary = {
       "The host refused the token: pair again with the host's new link (flightdeckd pair).",
     not_found: "Not found on the host.",
     invalid_state: "That can't be done right now.",
+    contract_unmet: "The card does not meet what that column asks for.",
     forbidden_cwd:
       "The folder is outside the host's allowed folders. Add it with flightdeckd setup or in allowedRoots, in ~/.flightdeck/config.json.",
     protocol_incompatible:
@@ -1504,6 +1507,9 @@ export const en: Dictionary = {
       "The session is on another host: read_session only reads sessions of this host.",
     messaging_policy_invalid: "The messaging rules are not valid: {errors}",
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
+    card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
+    card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
+    contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
     remote_not_github: "The remote {url} is not a GitHub one.",
     remote_not_azure: "The remote {url} is not an Azure DevOps one.",
@@ -1805,6 +1811,7 @@ export const en: Dictionary = {
     column_unknown: "The column {column} does not exist.",
     persona_id_invalid: "A persona id is not valid.",
     repo_not_git: "{path} is not a git repository.",
+    search_busy: "Too many searches are running: try again in a moment.",
     project_exists: "{path} is already a project.",
     card_not_found: "The card {id} does not exist.",
     arena_variants: "An arena has 2 to 4 variants.",
@@ -4102,6 +4109,29 @@ export const en: Dictionary = {
     notHere: "This project is not on this host.",
     baseInvalid:
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
+    harness: {
+      title: "Claude Code setup",
+      hint: "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Read-only: nothing here changes the project.",
+      summary: "{n} of {total} parts found",
+      found: "Found",
+      missing: "Missing",
+      rules: "Allow rules: {n}",
+      unreadable:
+        "Some of the project's files could not be read: a part shown as missing may be there.",
+      parts: {
+        claudeMd: "CLAUDE.md",
+        hooks: "Hooks",
+        skills: "Skills",
+        agents: "Subagents",
+        permissions: "Permissions",
+        mcp: "MCP servers",
+      },
+      kinds: {
+        format: "a formatter after edits",
+        gitAdd: "a check before git add",
+        secrets: "a check on secret files",
+      },
+    },
     trust: {
       title: "Project configuration",
       hint: "A project can carry its own hooks, MCP servers, settings, agents and skills. They load into a session only when you trust the project.",

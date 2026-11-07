@@ -21,7 +21,11 @@ import { ALL_SCOPE, type DataScope, scopeOfValue, scopeValue } from "../../lib/d
 export function ScopeMenu(
   props: Readonly<{
     store: AppStore;
-    hosts: readonly { id: string; name: string }[];
+    /**
+     * An incompatible host is not offered (#886): it has nothing to show until its daemon is
+     * updated. The scoped one stays, checked, so the menu says what is chosen.
+     */
+    hosts: readonly { id: string; name: string; status?: string }[];
     /**
      * The projects a screen can show one of (slice 4), labelled as everywhere. A screen that passes
      * none does not read projects yet: a project scope there reads, and shows, every host.
@@ -71,14 +75,20 @@ export function ScopeMenu(
             <DropdownMenuRadioItem value={scopeValue(ALL_SCOPE)}>
               {t("scope.all")}
             </DropdownMenuRadioItem>
-            {hosts.map((host) => (
-              <DropdownMenuRadioItem
-                key={host.id}
-                value={scopeValue({ kind: "host", hostId: host.id })}
-              >
-                {host.name}
-              </DropdownMenuRadioItem>
-            ))}
+            {hosts
+              .filter(
+                (host) =>
+                  host.status !== "incompatible" ||
+                  scopeValue(scope) === scopeValue({ kind: "host", hostId: host.id }),
+              )
+              .map((host) => (
+                <DropdownMenuRadioItem
+                  key={host.id}
+                  value={scopeValue({ kind: "host", hostId: host.id })}
+                >
+                  {host.name}
+                </DropdownMenuRadioItem>
+              ))}
           </DropdownMenuRadioGroup>
           {projects && projects.length > 0 && (
             <>

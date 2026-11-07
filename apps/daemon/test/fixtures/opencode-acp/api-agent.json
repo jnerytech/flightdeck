@@ -57,6 +57,11 @@
         },
         {
           "action": "read",
+          "resource": "*/.mcp.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
           "resource": "*/.npmrc",
           "effect": "ask"
         },
@@ -308,6 +313,16 @@
         {
           "action": "read",
           "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json/*",
           "effect": "ask"
         },
         {
@@ -507,6 +522,11 @@
         },
         {
           "action": "read",
+          "resource": "*/.mcp.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
           "resource": "*/.npmrc",
           "effect": "ask"
         },
@@ -758,6 +778,16 @@
         {
           "action": "read",
           "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json/*",
           "effect": "ask"
         },
         {
@@ -1000,6 +1030,11 @@
         },
         {
           "action": "read",
+          "resource": "*/.mcp.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
           "resource": "*/.npmrc",
           "effect": "ask"
         },
@@ -1251,6 +1286,16 @@
         {
           "action": "read",
           "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json/*",
           "effect": "ask"
         },
         {
@@ -1494,6 +1539,11 @@
         },
         {
           "action": "read",
+          "resource": "*/.mcp.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
           "resource": "*/.npmrc",
           "effect": "ask"
         },
@@ -1745,6 +1795,16 @@
         {
           "action": "read",
           "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json/*",
           "effect": "ask"
         },
         {
@@ -1944,6 +2004,11 @@
         },
         {
           "action": "read",
+          "resource": "*/.mcp.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
           "resource": "*/.npmrc",
           "effect": "ask"
         },
@@ -2195,6 +2260,16 @@
         {
           "action": "read",
           "resource": "*/.claude/.credentials.json/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/settings.local.json/*",
           "effect": "ask"
         },
         {

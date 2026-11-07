@@ -36,6 +36,8 @@ export const ptBR = {
     projects: "Projetos",
     showing: "Mostrando {scope}",
     offline: "{host} está offline. Os números voltam quando ele reconectar.",
+    offlineSessions: "{host} está offline. As sessões dele voltam quando ele reconectar.",
+    incompatible: "{host} precisa de uma atualização do daemon para os dados aparecerem aqui.",
     showAll: "Mostrar todos os hosts",
     noCosts: "{host} não informa custos.",
   },
@@ -1302,6 +1304,7 @@ export const ptBR = {
       "O host recusou o token: pareie de novo com o link novo do host (flightdeckd pair).",
     not_found: "Não encontrado no host.",
     invalid_state: "Não dá para fazer isso agora.",
+    contract_unmet: "O card não atende ao que essa coluna pede.",
     forbidden_cwd:
       "A pasta está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
     protocol_incompatible:
@@ -1500,6 +1503,9 @@ export const ptBR = {
     messaging_policy_invalid: "As regras de mensagens não valem: {errors}",
     project_no_issues:
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
+    card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",
+    card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
+    contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
     remote_not_github: "O remoto {url} não é do GitHub.",
     remote_not_azure: "O remoto {url} não é do Azure DevOps.",
@@ -1804,6 +1810,7 @@ export const ptBR = {
     column_unknown: "A coluna {column} não existe.",
     persona_id_invalid: "O id de persona não é válido.",
     repo_not_git: "{path} não é um repositório git.",
+    search_busy: "Há buscas demais em andamento: tente de novo em instantes.",
     project_exists: "{path} já é um projeto.",
     card_not_found: "O card {id} não existe.",
     arena_variants: "Uma arena tem de 2 a 4 variantes.",
@@ -4105,6 +4112,29 @@ export const ptBR = {
     placeholder: "Digite uma mensagem",
   },
   projectPage: {
+    harness: {
+      title: "Configuração do Claude Code",
+      hint: "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Só leitura: nada aqui muda o projeto.",
+      summary: "{n} de {total} partes encontradas",
+      found: "Encontrado",
+      missing: "Faltando",
+      rules: "Regras de permissão: {n}",
+      unreadable:
+        "Alguns arquivos do projeto não puderam ser lidos: uma parte marcada como faltando pode existir.",
+      parts: {
+        claudeMd: "CLAUDE.md",
+        hooks: "Hooks",
+        skills: "Skills",
+        agents: "Subagentes",
+        permissions: "Permissões",
+        mcp: "Servidores MCP",
+      },
+      kinds: {
+        format: "um formatador após edições",
+        gitAdd: "uma verificação antes do git add",
+        secrets: "uma verificação de arquivos de segredo",
+      },
+    },
     trust: {
       title: "Configuração do projeto",
       hint: "Um projeto pode trazer hooks, servidores MCP, configurações, agentes e skills próprios. Eles só carregam em uma sessão quando você confia no projeto.",

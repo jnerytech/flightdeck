@@ -2,6 +2,7 @@ import { lstat, realpath } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
+import { maskedConfig } from "../permissions/mask-config.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 
 /** The first step of a path relative to the repository's root. */
@@ -94,8 +95,14 @@ export async function located(root: string, realRoot: string, path: string): Pro
  * Refuses a file that may hold a credential (the list of issue #449), named by the path asked for
  * or by where its links lead (issue #509): Flightdeck neither shows nor changes it.
  */
-export function refuseCredential({ real, realRoot }: Located, path: string): void {
-  if (credential(path) || (real !== null && credential(relative(realRoot, real)))) {
+export function refuseCredential(
+  { real, realRoot }: Located,
+  path: string,
+  /** The config shown masked (`.mcp.json`) is no credential here: a review comment may quote it (#806). */
+  shown = false,
+): void {
+  const secret = (name: string) => credential(name) && !(shown && maskedConfig(name));
+  if (secret(path) || (real !== null && secret(relative(realRoot, real)))) {
     throw new FlightdeckError(
       "bad_request",
       `${path} may hold a credential`,

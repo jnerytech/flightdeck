@@ -715,8 +715,13 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // The run stops at its gate: an open request in "Precisa de você", with its steps on the card.
   const gated = await card("Revisar o fluxo de login", "Faça o plano e peça aprovação.");
   await client.call("card.start", { cardId: gated.id, workflow: "feature" });
-  const review = await card("Revisar mensagens de erro", "Padronize os textos.");
-  await client.call("card.move", { cardId: review.id, column: "review" });
+  // Created in Review: a person's move there would ask for a PR (issue #78), and the demo has none.
+  await client.call("card.create", {
+    projectId: project.id,
+    title: "Revisar mensagens de erro",
+    description: "Padronize os textos.",
+    column: "review",
+  });
   const waiting = await card("Aguardando o time de design", "Espere o layout.");
   // Phase 31: a chain of three cards: the schema, the API that needs it, the screen that needs the API.
   const schema = await card("Definir o esquema do carrinho", "Tabelas e índices.");

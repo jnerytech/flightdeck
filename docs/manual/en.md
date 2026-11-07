@@ -341,6 +341,12 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   trusting, and **Trust this project**. It asks first, naming the project and the host, because
   trusted hooks and MCP servers run commands on that computer without asking you. **Revoke trust**
   asks nothing. Trusting covers the folders inside the project, not the ones around it.
+- Below it, **Claude Code setup** lists, as a checklist, what helps Claude Code work well in the
+  project: `CLAUDE.md`, hooks (and whether one runs a formatter after edits, or checks `git add` or
+  secret files before a tool runs), skills, subagents, permissions (how many allow rules) and MCP servers.
+  Each is **Found** or **Missing**, and the card says how many of the six are there. It only reads:
+  nothing in the project changes, and environment variables are never shown in it. When some of
+  the project's files cannot be read, it says so: a part shown as missing may be there.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
@@ -966,7 +972,8 @@ live; the list is the project's, so a session of another project never shows her
 - **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
   it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
   change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
-  When the chosen host is offline, Home says so and offers **Show all hosts**. Costs follows it too
+  When the chosen host is offline, Home says so and offers **Show all hosts**; a host whose daemon
+  needs an update says that instead, and the menu does not offer it. Costs follows it too
   (see **Costs and budgets**), and so does Sessions (the hub's own host filter, if you had one,
   becomes the choice once); the Board follows it in a later version.
 - The tabs have a row of their own under the top bar, over each area (with a split, each area has
@@ -1037,7 +1044,11 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   asks first and names what is missing; **Move anyway** moves it, and with several cards one
   dialog lists every card that lacks something, with **Move only the ones that qualify**. **In
   progress** only shows its note, it never asks, so starting work stays one move. Moves the app
-  makes by itself (a PR opens or merges, a session fails) are never asked about.
+  makes by itself (a PR opens or merges, a session fails) are never asked about. The host keeps each
+  project's own contracts and checks your moves too: a move it would refuse says what the card lacks.
+  **Move anyway** tells the host to go on, and the card keeps a notice ("Moved to In review anyway;
+  it lacked a PR link"). The host never refuses what moves cards by itself: the manager, the board
+  sync, the PR watch and PR events.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
 - **Discard…** shows one dialog with every selected card, and says what goes with each: a

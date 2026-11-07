@@ -22,6 +22,7 @@ import {
 import { ensureOnline } from "../lib/e2e-online.ts";
 import {
   BARS,
+  confirmGaps,
   type Finding,
   findingKey,
   GAP_BOXES,
@@ -2539,12 +2540,17 @@ async function geometryGuards(c: Context, screens: Array<[string, Route]>, probl
     for (const [name, route] of screens) {
       await open(c, route);
       const screen = `${name}@${size.width}`;
-      const found: Finding[] = await c.page.evaluate(layoutFindings, {
-        // The key regions are a contract at the usual window: the smallest one is #135's business.
-        regions: size.width >= 1280 ? KEY_REGIONS : [],
-        bars: BARS,
-        gaps: GAPS,
-      });
+      const found: Finding[] = await confirmGaps(
+        () =>
+          c.page.evaluate(layoutFindings, {
+            // The key regions are a contract at the usual window: the smallest one is #135's business.
+            regions: size.width >= 1280 ? KEY_REGIONS : [],
+            bars: BARS,
+            gaps: GAPS,
+          }),
+        // A toast that came after the page settled is still sliding: wait for it, then read again (#747).
+        () => c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES }),
+      );
       for (const finding of found) seen[findingKey(screen, finding)] = finding.detail;
       const verdict = judge(screen, found, baseline);
       problems.push(...verdict.failures);

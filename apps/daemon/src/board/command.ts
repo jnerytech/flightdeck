@@ -127,6 +127,20 @@ export function gitLimitedFor(
   return runLimited([whichOnPath("git") ?? "git", ...args], cwd, limit, timeoutMs, kill, separator);
 }
 
+/** The most stderr `runLimited` keeps; the rest is read and dropped (#806). */
+const STDERR_MAX = 64 * 1024;
+
+/** All of a stream is read, so its writer never blocks; only the first `max` bytes are kept. */
+async function readCapped(stream: ReadableStream<Uint8Array>, max: number): Promise<string> {
+  const kept: Uint8Array[] = [];
+  let size = 0;
+  for await (const chunk of stream) {
+    if (size < max) kept.push(chunk.subarray(0, max - size));
+    size += chunk.length;
+  }
+  return Buffer.concat(kept).toString("utf8");
+}
+
 /**
  * Runs a program, never through a shell, and reads at most `limit` bytes of its output: past it the
  * program is killed and the result says `truncated`, cut after the last `separator`. With
@@ -159,6 +173,8 @@ export async function runLimited(
           timedOut = true;
           killing = kill(proc.pid).catch(() => {});
         }, timeoutMs);
+  // Read at the same time as stdout: a program that fills the pipe's buffer with stderr would stall.
+  const errors = readCapped(proc.stderr, STDERR_MAX);
   const chunks: Uint8Array[] = [];
   let size = 0;
   let truncated = false;
@@ -179,7 +195,7 @@ export async function runLimited(
     // Past the limit, or when reading failed: the program does not go on writing to nobody.
     proc.kill();
   }
-  const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
+  const [stderr, code] = await Promise.all([errors, proc.exited]);
   if (timer) clearTimeout(timer);
   await killing;
   const all = Buffer.concat(chunks);

@@ -2,6 +2,7 @@ import type { ProjectLoad, ProjectTrustState } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Panel } from "@/components/layout/panel";
+import { HarnessPanel } from "@/components/projects/harness-panel";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
@@ -108,74 +109,77 @@ export function TrustPanel(
   const isLong = (item: string) => item.includes("\n") || item.length > LONG_LINE;
   const anyLong = shown.some(([, items]) => items.some(isLong));
   return (
-    <Panel title={t("projectPage.trust.title")} label={t("projectPage.trust.title")}>
-      <p className="text-muted-foreground text-xs">{t("projectPage.trust.hint")}</p>
-      <p className="font-medium text-sm">{trustLine(state, t)}</p>
-      {!state.trusted && <p className="text-sm">{t("projectPage.trust.cost")}</p>}
-      {state.staleSessions !== undefined && (
-        <p className="text-sm">{t("projectPage.trust.staleCount", { n: state.staleSessions })}</p>
-      )}
-      <h3 className="font-medium text-sm">{t("projectPage.trust.listing")}</h3>
-      {anyLong && <p className="text-sm">{t("projectPage.trust.longWarning")}</p>}
-      {listingNote ? (
-        <p className="text-sm">{t(listingNote)}</p>
-      ) : (
-        <dl className="flex flex-col gap-3 text-sm">
-          {shown.map(([title, items]) => (
-            <div key={title} className="flex flex-col gap-1">
-              <dt className="font-medium">{title}</dt>
-              <dd>
-                <ul className="flex flex-col gap-1">
-                  {items.map((item) => (
-                    <li key={item} className="font-mono text-xs [overflow-wrap:anywhere]">
-                      {isLong(item) ? (
-                        <pre
-                          className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2"
-                          // biome-ignore lint/a11y/noNoninteractiveTabindex: a long command scrolls, and focus lets the keyboard do it
-                          tabIndex={0}
-                        >
-                          {item}
-                        </pre>
-                      ) : (
-                        item
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      <div>
-        {state.trusted ? (
-          <ActionButton variant="outline" onClick={() => decide(state.via ?? path, false)}>
-            {t("projectPage.trust.revoke")}
-          </ActionButton>
-        ) : (
-          // Trusting is for a person who read what the project would load: no listing, no button.
-          load && (
-            <ActionButton variant="outline" onClick={() => setAsking(true)}>
-              {t("projectPage.trust.action")}
-            </ActionButton>
-          )
+    <>
+      <Panel title={t("projectPage.trust.title")} label={t("projectPage.trust.title")}>
+        <p className="text-muted-foreground text-xs">{t("projectPage.trust.hint")}</p>
+        <p className="font-medium text-sm">{trustLine(state, t)}</p>
+        {!state.trusted && <p className="text-sm">{t("projectPage.trust.cost")}</p>}
+        {state.staleSessions !== undefined && (
+          <p className="text-sm">{t("projectPage.trust.staleCount", { n: state.staleSessions })}</p>
         )}
-      </div>
-      {asking && (
-        <ConfirmDialog
-          destructive
-          message={t("projectPage.trust.confirm", {
-            project: props.projectName,
-            host: props.hostName,
-          })}
-          confirmLabel={t("projectPage.trust.action")}
-          onCancel={() => setAsking(false)}
-          onConfirm={() => {
-            setAsking(false);
-            void decide(path, true);
-          }}
-        />
-      )}
-    </Panel>
+        <h3 className="font-medium text-sm">{t("projectPage.trust.listing")}</h3>
+        {anyLong && <p className="text-sm">{t("projectPage.trust.longWarning")}</p>}
+        {listingNote ? (
+          <p className="text-sm">{t(listingNote)}</p>
+        ) : (
+          <dl className="flex flex-col gap-3 text-sm">
+            {shown.map(([title, items]) => (
+              <div key={title} className="flex flex-col gap-1">
+                <dt className="font-medium">{title}</dt>
+                <dd>
+                  <ul className="flex flex-col gap-1">
+                    {items.map((item) => (
+                      <li key={item} className="font-mono text-xs [overflow-wrap:anywhere]">
+                        {isLong(item) ? (
+                          <pre
+                            className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2"
+                            // biome-ignore lint/a11y/noNoninteractiveTabindex: a long command scrolls, and focus lets the keyboard do it
+                            tabIndex={0}
+                          >
+                            {item}
+                          </pre>
+                        ) : (
+                          item
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <div>
+          {state.trusted ? (
+            <ActionButton variant="outline" onClick={() => decide(state.via ?? path, false)}>
+              {t("projectPage.trust.revoke")}
+            </ActionButton>
+          ) : (
+            // Trusting is for a person who read what the project would load: no listing, no button.
+            load && (
+              <ActionButton variant="outline" onClick={() => setAsking(true)}>
+                {t("projectPage.trust.action")}
+              </ActionButton>
+            )
+          )}
+        </div>
+        {asking && (
+          <ConfirmDialog
+            destructive
+            message={t("projectPage.trust.confirm", {
+              project: props.projectName,
+              host: props.hostName,
+            })}
+            confirmLabel={t("projectPage.trust.action")}
+            onCancel={() => setAsking(false)}
+            onConfirm={() => {
+              setAsking(false);
+              void decide(path, true);
+            }}
+          />
+        )}
+      </Panel>
+      {load && <HarnessPanel load={load} t={t} />}
+    </>
   );
 }
