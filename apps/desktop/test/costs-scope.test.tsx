@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
+import { projectLabels } from "../src/lib/costs.ts";
 import { DATA_SCOPE_KEY } from "../src/lib/data-scope.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle } from "./wait.ts";
+import { settle, settleMaybe } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -28,21 +29,25 @@ let seq = 0;
 const fill = (text: string, vars: Record<string, string>) =>
   Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), text);
 
-/** Two hosts with costs (alfa spent 2, beta 5) and one that reports none (gama); the app on Home. */
-async function setup(kept?: unknown) {
-  const spend = (d: ReturnType<typeof makeDaemon>, cost: number) =>
+/**
+ * Two hosts with costs (alfa spent 2, beta 5, both on github.com/x/y) and one that reports none
+ * (gama); the app on Home. With `other`, beta also spent 1 on github.com/x/z.
+ */
+async function setup(kept?: unknown, options: { other?: boolean } = {}) {
+  const spend = (d: ReturnType<typeof makeDaemon>, cost: number, project = "github.com/x/y") =>
     d.eventStore.db
       .query(
         `INSERT INTO usage_entries (message_id, claude_session_id, at, day, project_key, model, origin,
            speed, input, output, cache_read, cache_write_5m, cache_write_1h, cost_usd)
-         VALUES (?, 's', ?, ?, 'github.com/x/y', 'claude-opus-5-5', 'terminal', 'standard', 1, 1, 0, 0, 0, ?)`,
+         VALUES (?, 's', ?, ?, ?, 'claude-opus-5-5', 'terminal', 'standard', 1, 1, 0, 0, 0, ?)`,
       )
-      .run(`s${++seq}`, `${TODAY}T12:00:00.000Z`, TODAY, cost);
+      .run(`s${++seq}`, `${TODAY}T12:00:00.000Z`, TODAY, project, cost);
   const alfa = makeDaemon(cleanups, { costs: true });
   const beta = makeDaemon(cleanups, { costs: true });
   const gama = legacyDaemon(cleanups);
   spend(alfa, 2);
   spend(beta, 5);
+  if (options.other) spend(beta, 1, "github.com/x/z");
   const platform = memoryPlatform(false);
   seedDemoHosts(platform.win.localStorage, platform.tokens, [
     { id: "ha", name: "alfa", url: alfa.listen().url, token: TOKEN },
@@ -175,5 +180,79 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     await settle(() => total() === "US$ 2.00");
     expect(store.dataScope.value).toEqual({ kind: "host", hostId: "ha" });
     expect(screen.queryByText(ptBR.costsUi.quotaPick) === null).toBe(true);
+  });
+});
+
+// Issue #126, slice 4: a project is a scope too, in the same menu; Costs has no project select of
+// its own any more.
+describe("costs-scope: a project scope", () => {
+  const Y = "github.com/x/y";
+  const Z = "github.com/x/z";
+  /** The menu's label of a project, as every screen labels it. */
+  const label = (key: string) => projectLabels([Y, Z]).get(key) ?? key;
+
+  test("the menu lists the period's projects under Projetos; picking one shows its costs and keeps it", async () => {
+    const { store } = await setup(undefined, { other: true });
+    await act(async () => store.router.push({ name: "costs" }));
+    await settle(() => total() === "US$ 8.00");
+    const trigger = menu(ptBR.scope.all) as HTMLElement;
+    expect(trigger === null).toBe(false);
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    await settleMaybe(() => screen.queryByRole("group", { name: ptBR.scope.projects }) !== null);
+    const found = screen.queryByRole("group", { name: ptBR.scope.projects });
+    expect(found === null).toBe(false);
+    const group = found as HTMLElement;
+    const listed = within(group)
+      .queryAllByRole("menuitemradio")
+      .map((item) => item.textContent);
+    const entry = within(group).queryByRole("menuitemradio", { name: label(Z) });
+    expect(entry === null).toBe(false);
+    await act(async () => {
+      fireEvent.click(entry as HTMLElement);
+    });
+    await settle(() => total() === "US$ 1.00");
+    expect({
+      listed,
+      total: total(),
+      scope: store.dataScope.value,
+      menu: menu(label(Z)) !== null,
+    }).toEqual({
+      listed: [label(Y), label(Z)],
+      total: "US$ 1.00",
+      scope: { kind: "project", projectKey: Z },
+      menu: true,
+    });
+  });
+
+  test("a kept project scope is what the screen opens on", async () => {
+    const { store } = await setup({ kind: "project", projectKey: Z }, { other: true });
+    await act(async () => store.router.push({ name: "costs" }));
+    await settleMaybe(() => total() === "US$ 1.00");
+    expect({ total: total(), menu: menu(label(Z)) !== null }).toEqual({
+      total: "US$ 1.00",
+      menu: true,
+    });
+  });
+
+  test("a route's project (a Home card) wins for the visit and never rewrites the scope; a pick ends it", async () => {
+    const { store } = await setup(undefined, { other: true });
+    await act(async () => store.router.push({ name: "costs", projectKey: Z }));
+    await settle(() => total() === "US$ 1.00");
+    const visit = { total: total(), menu: menu(label(Z)) !== null, scope: store.dataScope.value };
+    await pick(label(Z), ptBR.scope.all);
+    await settle(() => total() === "US$ 8.00");
+    expect({ visit, after: total() }).toEqual({
+      visit: { total: "US$ 1.00", menu: true, scope: { kind: "all" } },
+      after: "US$ 8.00",
+    });
+  });
+
+  test("Costs has no project select of its own", async () => {
+    const { store } = await setup();
+    await act(async () => store.router.push({ name: "costs" }));
+    await settle(() => total() === "US$ 7.00");
+    expect(screen.queryByRole("combobox", { name: "Projeto" }) === null).toBe(true);
   });
 });
