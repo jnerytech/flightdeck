@@ -637,6 +637,37 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
+/*
+ * The wide table's right-edge fade (#786): an overlay beside the frame, so it stays put while the
+ * content scrolls, shown while the frame can still scroll right (`table-wide-more`, set from the
+ * scroll state). It fades from the surface to transparent and never takes a click.
+ */
+@utility table-wide-frame {
+  position: relative;
+  max-width: 100%;
+}
+[data-slot="table-wide-fade"] {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 2.5rem;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background-image: linear-gradient(to left, var(--background), transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+.table-wide-more + [data-slot="table-wide-fade"] {
+  opacity: 1;
+}
+
+/* The first column of a wide table: the project stays in view, opaque over what scrolls under it. */
+@utility table-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: var(--background);
+}
+
 /* A disabled button and its reason: one block, the reason wrapping under it at a readable width. */
 @utility action-with-reason {
   display: inline-flex;
