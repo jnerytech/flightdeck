@@ -103,7 +103,7 @@ describe("teleport-move-ui: the entry that moves a session, behind the preview (
       ...((screen.queryByRole("combobox", { name: "Host" }) as HTMLSelectElement | null)?.options ??
         []),
     ].map((o) => o.textContent ?? "");
-    // A move the source refuses (this test's alfa makes no packages): the app's own alert.
+    // A move the source refuses (this test's alfa makes no packages): the app's own text for it.
     const select = screen.queryByRole("combobox", { name: "Host" });
     await act(async () => {
       fireEvent.change(select as HTMLElement, { target: { value: store.getState().hosts[1]?.id } });
@@ -117,7 +117,8 @@ describe("teleport-move-ui: the entry that moves a session, behind the preview (
     await act(async () => {
       fireEvent.click(next as HTMLElement);
     });
-    const refused = await seen(() => screen.queryByRole("alert") !== null);
+    await seen(() => screen.queryByRole("alert") !== null);
+    const refused = screen.queryByRole("alert")?.textContent ?? null;
     // The form's own Close, not the dialog's X.
     const form = screen.queryByRole("alert")?.closest("form") ?? null;
     const close = form ? within(form).queryByRole("button", { name: "Close" }) : null;
@@ -159,7 +160,15 @@ describe("teleport-move-ui: the entry that moves a session, behind the preview (
       refused,
       closedAfterRefusal,
       closed,
-    ]).toEqual([false, true, true, ["Pick a host", "beta"], true, true, true]);
+    ]).toEqual([
+      false,
+      true,
+      true,
+      ["Pick a host", "beta"],
+      "This host does not offer moving a session to another host: update the daemon, or check its settings.",
+      true,
+      true,
+    ]);
   });
 
   test("the preview is a switch in Settings, off until the person turns it on", async () => {

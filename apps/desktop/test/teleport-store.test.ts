@@ -63,4 +63,29 @@ describe("teleport-store: the preview switch and the hosts' channels (#100)", ()
       { hostId: "beta", sessionId: "t1" },
     ]);
   });
+
+  test("a connected host's teleport answer never reaches the board's cards or runs", async () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform);
+    // A host answering a teleport command with a card and a run: the relay checks what it gets,
+    // and nothing it says lands in the board's state on the way.
+    const shaped = {
+      id: "c1",
+      column: "todo",
+      projectId: "p1",
+      title: "planted",
+      workflowName: "planted",
+      steps: [],
+    };
+    const fake = { request: async () => shaped, dispose: () => {} };
+    (store as unknown as { connections: Map<string, unknown> }).connections.set("h1", fake);
+    const answer = await store.teleportRequest("h1")("teleport.receive", {
+      manifest: {} as never,
+    });
+    expect([
+      answer === (shaped as unknown),
+      Object.keys(store.getState().cards),
+      Object.keys(store.getState().runs),
+    ]).toEqual([true, [], []]);
+    store.dispose();
+  });
 });

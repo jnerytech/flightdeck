@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { TeleportOutcome, TeleportSummary } from "../src/lib/teleport.ts";
 import { liveScreen, registerDom } from "./dom.ts";
-import { waiter } from "./wait.ts";
+import { settleMaybe, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -55,8 +55,11 @@ const TEXT = {
   },
 } as const;
 
-/** The dialog with a fake run the test drives: the person's answers and the move's end. */
-function open(lang: "en" | "pt-BR", summary: TeleportSummary = SUMMARY) {
+/**
+ * The dialog with a fake run the test drives: the person's answers and the move's end. `held` keeps
+ * the source preparing until the test calls `ready`.
+ */
+function open(lang: "en" | "pt-BR", summary: TeleportSummary = SUMMARY, held = false) {
   const calls = {
     opened: [] as string[][],
     closed: 0,
@@ -69,6 +72,7 @@ function open(lang: "en" | "pt-BR", summary: TeleportSummary = SUMMARY) {
     fail?: (error: unknown) => void;
     answer?: Promise<boolean>;
     signal?: AbortSignal;
+    ready?: () => void;
   } = {};
   render(
     <TContext.Provider value={translator(lang)}>
@@ -81,7 +85,10 @@ function open(lang: "en" | "pt-BR", summary: TeleportSummary = SUMMARY) {
           calls.args.push({ target: args.target, repo: args.repo });
           control.progress = args.onProgress;
           control.signal = args.signal;
-          control.answer = args.confirm(summary);
+          control.ready = () => {
+            control.answer = args.confirm(summary);
+          };
+          if (!held) control.ready();
           return new Promise<TeleportOutcome>((resolve, reject) => {
             control.finish = resolve;
             control.fail = reject;
@@ -209,8 +216,17 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
     await shows("Moving… 10%");
     await click("Cancel");
     const stopped = first.control.signal?.aborted ?? false;
+    cleanup();
+    const moving = open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      moving.control.progress?.(10, 100);
+    });
+    await shows("Moving… 10%");
     await pressEscape();
-    const stoppedByEscape = first.control.signal?.aborted ?? false;
+    const stoppedByEscape = moving.control.signal?.aborted ?? false;
     cleanup();
     const second = open("en");
     await start("en");
@@ -286,5 +302,125 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       control.progress?.(0, 0);
     });
     expect([over, await shows("Moving… 0%")]).toEqual([true, true]);
+  });
+
+  test("a second Continue while the host prepares starts no second move, and Cancel then frees the package", async () => {
+    const { calls, control } = open("en", SUMMARY, true);
+    await start("en");
+    const preparing = await shows("Getting the session ready…");
+    // A double-click or a second Enter: whatever form is on screen is sent again.
+    const form = document.querySelector("form");
+    if (form) {
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+    }
+    const runs = calls.args.length;
+    await click("Cancel");
+    let answered: boolean | null = null;
+    await act(async () => {
+      control.ready?.();
+    });
+    void control.answer?.then((yes) => {
+      answered = yes;
+    });
+    await settleMaybe(() => answered !== null, 2000);
+    expect([preparing, runs, calls.closed >= 1, answered]).toEqual([true, 1, true, false]);
+  });
+
+  test("Enter or a second click on Move never cancels the move it just started", async () => {
+    const { control } = open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      control.progress?.(10, 100);
+    });
+    await shows("Moving… 10%");
+    const form = screen.queryByRole("status")?.closest("form") ?? null;
+    if (form) {
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+    }
+    const move = screen.queryByRole("button", { name: TEXT.en.move });
+    if (move) {
+      await act(async () => {
+        fireEvent.click(move);
+      });
+    }
+    expect([
+      control.signal?.aborted ?? null,
+      screen.queryByRole("button", { name: "Cancel" }) !== null,
+    ]).toEqual([false, true]);
+  });
+
+  test("once every byte is sent the move cannot be cancelled, and the dialog says it is finishing", async () => {
+    const { control } = open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      control.progress?.(2048, 2048);
+    });
+    const finishing = await shows("Finishing on pi…");
+    const cancel = screen.queryByRole("button", { name: "Cancel" }) !== null;
+    await act(async () => {
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    });
+    expect([finishing, cancel, control.signal?.aborted ?? null]).toEqual([true, false, false]);
+  });
+
+  test("a repository of spaces does not continue, and the one typed goes without its spaces", async () => {
+    const { calls } = open("en");
+    const host = screen.queryByRole("combobox", { name: TEXT.en.host });
+    await act(async () => {
+      fireEvent.change(host as HTMLElement, { target: { value: "h2" } });
+    });
+    const repo = screen.queryByRole("textbox", { name: "repo-path" });
+    await act(async () => {
+      fireEvent.change(repo as HTMLElement, { target: { value: "   " } });
+    });
+    const blank =
+      (screen.queryByRole("button", { name: TEXT.en.next }) as HTMLButtonElement | null)
+        ?.disabled ?? null;
+    await act(async () => {
+      fireEvent.change(repo as HTMLElement, { target: { value: "  /work/app  " } });
+    });
+    await click(TEXT.en.next);
+    expect([blank, calls.args]).toEqual([true, [{ target: "h2", repo: "/work/app" }]]);
+  });
+
+  test("a reason the dialog does not expect never shows the host's words, and a known one shows its values as short plain text", async () => {
+    const alertText = async (error: unknown) => {
+      const { control } = open("en");
+      await start("en");
+      await shows(TEXT.en.secrets);
+      await click(TEXT.en.move);
+      await act(async () => {
+        control.fail?.(error);
+      });
+      await settleMaybe(() => screen.queryByRole("alert") !== null);
+      const text = screen.queryByRole("alert")?.textContent ?? "";
+      cleanup();
+      return text;
+    };
+    const unlisted = await alertText(
+      new RequestError("invalid_state", "host says ghp_secret", "teleport_unlisted", {
+        token: "ghp_secret",
+      }),
+    );
+    const known = await alertText(
+      new RequestError("bad_request", "x", "teleport_too_large", {
+        max: `\u202e${"9".repeat(500)}`,
+      }),
+    );
+    expect([
+      unlisted.length > 0,
+      unlisted.includes("ghp_secret"),
+      known.startsWith("The transcript is larger than"),
+      known.includes("\u202e"),
+      known.length < 200,
+    ]).toEqual([true, false, true, false, true]);
   });
 });
