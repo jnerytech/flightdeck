@@ -164,6 +164,7 @@ describe("demo-prints: axe e CI", () => {
       "layout-medido",
       "teleport-mover",
       "time-novo-alcance",
+      "board-arquivos",
       "sessao-vistas",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
