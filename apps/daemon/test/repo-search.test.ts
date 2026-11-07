@@ -291,7 +291,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     expect(found.matches.map((m) => m.path)).toEqual(["a\\b.ts"]);
   });
 
-  test("a folder that is no repository is refused by name, and its content search without rg fails", async () => {
+  test("a folder that is no repository is refused by name and by content", async () => {
     const plain = tempDir("fd-plain-");
     writeFileSync(join(plain, "panel.ts"), "panel\n");
     expect([
@@ -299,7 +299,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
       await failure(
         searchRepository(plain, { mode: "content", query: "panel" }, { rg: () => null }),
       ),
-    ]).toEqual(["repo_not_git", "command_failed"]);
+    ]).toEqual(["repo_not_git", "repo_not_git"]);
   });
 
   test("a search runs on a repository inside the allowed roots, never a terminal's folder or a session's elsewhere", async () => {
