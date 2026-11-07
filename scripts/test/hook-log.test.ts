@@ -132,17 +132,21 @@ describe("hook-log", () => {
       entry("guard", 40),
       hold("2026-11-07T05:15:00.000Z", 33, "flightdeck-sonar3: bun --config=bunfig.area.toml test"),
       hold("2026-11-07T06:00:00.000Z", 21, "fd-qa: bun run e2e"),
-      // A refusal of a run over the file limit is a block like any other.
-      entry("slot", 0, "slot-heavy"),
+      // A refusal of a run over the file limit is a block like any other; its own rule, since the
+      // guard's slot-heavy counts the same override once already (#865 review).
+      entry("slot", 0, "slot-files"),
+      // #865 review: an allow with a rule other than a long hold still counts where it did.
+      { ...entry("guard", 40), rule: "commit", decision: "allow" as const },
     ]
       .map((e) => JSON.stringify(e))
       .join("\n");
     expect(summarizeHookLog(text).split("\n")).toEqual([
       "hook   calls  blocks  p50 ms  p95 ms",
-      "guard      1       0      40      40",
+      "guard      2       0      40      40",
       "",
       "blocks by rule:",
-      "  slot-heavy  1",
+      "  commit      1",
+      "  slot-files  1",
       "",
       "long slot holds (over 20 min): 2",
       "  2026-11-07 05:15 UTC  33 min  flightdeck-sonar3: bun --config=bunfig.area.toml test",

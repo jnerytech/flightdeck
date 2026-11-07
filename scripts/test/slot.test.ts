@@ -835,7 +835,7 @@ describe("slot: long holds and the test file limit (#833)", () => {
     expect(f.files.size).toBe(0);
     expect(f.logs.join("\n")).toContain("61 test files");
     expect(f.logs.join("\n")).toContain('FLIGHTDECK_SLOT_HEAVY="<reason>"');
-    expect(records).toEqual([["slot-heavy", "block", {}]]);
+    expect(records).toEqual([["slot-files", "block", {}]]);
     // A placeholder is no reason.
     const placeholder = fake();
     placeholder.env.heavyReason = "1";
@@ -856,16 +856,23 @@ describe("slot: long holds and the test file limit (#833)", () => {
     expect(await run(given.env, related(200))).toBe(0);
     expect(given.spawned).toHaveLength(1);
     expect(waived).toEqual([
-      ["slot-heavy", "waived", { detail: "the release gate needs every daemon test" }],
+      ["slot-files", "waived", { detail: "the release gate needs every daemon test" }],
     ]);
   });
 
-  test("a run nested under the holder is not counted: it already holds the slot", async () => {
+  test("#865 review: a run nested under the holder is counted too, so `slot -- bun run test:related` cannot pass 60 files unseen", async () => {
+    // The outer run (`bun run test:related`) names no file; the files come with the nested call.
     const f = fake({ files: { [PATH]: held(theirs) }, holder: 20 });
     const records = recorder(f);
-    expect(await run(f.env, related(61))).toBe(0);
-    expect(f.spawned).toHaveLength(1);
-    expect(records).toEqual([]);
+    expect(await run(f.env, related(61))).toBe(2);
+    expect(f.spawned).toEqual([]);
+    expect(records).toEqual([["slot-files", "block", {}]]);
+    const given = fake({ files: { [PATH]: held(theirs) }, holder: 20 });
+    const waived = recorder(given);
+    given.env.heavyReason = "the release gate needs every daemon test";
+    expect(await run(given.env, related(61))).toBe(0);
+    expect(given.spawned).toHaveLength(1);
+    expect(waived.map(([rule, decision]) => [rule, decision])).toEqual([["slot-files", "waived"]]);
   });
 
   test("a hold past 20 minutes is logged with its minutes when the slot is given back, a stopped one too, a shorter one not", async () => {
