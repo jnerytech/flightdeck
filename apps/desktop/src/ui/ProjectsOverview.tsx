@@ -7,6 +7,7 @@ import { ProjectCardTile } from "@/components/projects/project-card-tile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProjectCards } from "@/hooks/use-project-cards";
+import { useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { HubRowState } from "../lib/hub.ts";
 import {
@@ -35,7 +36,11 @@ export function ProjectsOverview(
   const [sort, setSort] = useState<ProjectSort>("activity");
   const cards = useProjectCards(store, state);
   const hostName = props.host ? state.hosts.find((h) => h.id === props.host)?.name : undefined;
-  const scoped = props.host ? cards.filter((card) => card.hostId === props.host) : cards;
+  // A route's host wins; else the hosts the switcher shows (#932), so a pick never lands elsewhere.
+  const shownHosts = useSwitcherHosts(store, state.hosts).map((host) => host.id);
+  const scoped = props.host
+    ? cards.filter((card) => card.hostId === props.host)
+    : cards.filter((card) => shownHosts.includes(card.hostId));
   const shown = sortProjectCards(filterProjectCards(scoped, query), sort);
 
   return (

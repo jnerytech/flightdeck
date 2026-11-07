@@ -853,8 +853,9 @@ criou. Rode depois de cada atualização do OpenCode; ele nunca faz parte dos te
 
 ## Projetos
 
-O item **Projetos** da barra lateral (entre Precisa de você e Board) lista todos os projetos de
-todos os hosts como cartões: nome, host, branch base, sessões ativas, cards em andamento, os que
+O item **Projetos** da barra lateral (entre Precisa de você e Board) lista os projetos do host
+escolhido no seletor da barra do topo (os de todos com **Abas de todos os hosts**) como cartões,
+para que abrir um nunca leve a outro host: nome, host, branch base, sessões ativas, cards em andamento, os que
 precisam de você, a última atividade e quanto custou nos últimos sete dias. O custo aparece como
 um traço quando o host não informa custos. Digite na busca para filtrar por nome, host, branch ou
 pasta, e use **Ordenar por** para ordenar por última atividade, nome, custo da semana ou o que
@@ -916,7 +917,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   Equipes acaba na 0.39, o Novo de Conversas na 0.38). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
   uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
-- Em **Projetos**, cada projeto de um host online lista seus **branches**: o checkout principal
+- Em **Projetos**, cada projeto do host do seletor (de todo host online com **Abas de todos os
+  hosts**) lista seus **branches**: o checkout principal
   (selo **principal**, o branch base) e uma linha por card que tem worktree, cada uma com o pontinho
   de estado, o branch e a base logo abaixo. Escolher um reduz o board e a lista de Sessões àquele
   checkout (um chip com o branch limpa); escolher de novo também limpa. Escolhido na lista de Sessões, ele reduz a lista ali mesmo, sem abrir o board; de outro lugar, abre o board do projeto. Uma escolha cujo branch, projeto ou host sumiu não faz nada e não mostra chip. A árvore vem do que o app já
