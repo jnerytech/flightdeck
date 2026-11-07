@@ -229,7 +229,6 @@ describe("hub-ui", () => {
     expect(loadHubFilter(storage)).toEqual(DEFAULT_HUB_FILTER);
     saveHubFilter(storage, {
       text: "algo",
-      host: "alfa",
       origin: "terminal",
       state: "idle",
       persona: "qa",
@@ -237,7 +236,6 @@ describe("hub-ui", () => {
       showArchived: true,
     });
     expect(JSON.parse(items.get(HUB_FILTER_KEY) ?? "{}")).toEqual({
-      host: "alfa",
       origin: "terminal",
       state: "idle",
       persona: "qa",
@@ -246,7 +244,6 @@ describe("hub-ui", () => {
     });
     expect(loadHubFilter(storage)).toEqual({
       text: "",
-      host: "alfa",
       origin: "terminal",
       state: "idle",
       persona: "qa",
@@ -344,7 +341,6 @@ describe("hub-ui", () => {
     await sidebar.openFilters();
     await act(async () => {
       fireEvent.change(select("Estado") as HTMLSelectElement, { target: { value: "idle" } });
-      fireEvent.change(select("Host") as HTMLSelectElement, { target: { value: "alfa" } });
     });
     await act(async () => {
       fireEvent.change(screen.queryByLabelText("Filtrar sessões") as HTMLInputElement, {
@@ -354,7 +350,6 @@ describe("hub-ui", () => {
     expect(group("central")).toEqual(["Gerenciada"]);
     expect(JSON.parse(first.platform.items.get(HUB_FILTER_KEY) ?? "{}")).toMatchObject({
       state: "idle",
-      host: "alfa",
     });
 
     // The next opening of the app: same storage, a new store; the typed text is not kept.
@@ -363,11 +358,11 @@ describe("hub-ui", () => {
     render(<App store={store} />);
     await act(async () => store.router.push({ name: "hub" }));
     await settle(() => screen.queryByLabelText("Filtrar sessões") !== null);
-    // The button counts the two filters kept; the popover shows them.
-    expect(screen.queryByRole("button", { name: /^Filtros/ })?.textContent).toBe("Filtros2");
+    // The button counts the filter kept; the popover shows it. Whose sessions is the data scope's
+    // (#126), kept by the store, not a filter of the hub.
+    expect(screen.queryByRole("button", { name: /^Filtros/ })?.textContent).toBe("Filtros1");
     await sidebar.openFilters();
     expect(select("Estado")?.value).toBe("idle");
-    expect(select("Host")?.value).toBe("alfa");
     expect((screen.queryByLabelText("Filtrar sessões") as HTMLInputElement | null)?.value).toBe("");
   });
 

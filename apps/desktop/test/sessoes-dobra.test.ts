@@ -76,7 +76,6 @@ describe("sessoes-dobra: a Hosts chip narrows the list without unfolding it (iss
     expect(isSearching({ ...DEFAULT_HUB_FILTER, state: "idle" })).toBe(true);
     expect(isSearching({ ...DEFAULT_HUB_FILTER, persona: "dev" })).toBe(true);
     expect(isSearching({ ...DEFAULT_HUB_FILTER, pinnedOnly: true })).toBe(true);
-    expect(isSearching({ ...DEFAULT_HUB_FILTER, host: "alfa" })).toBe(false);
     expect(isSearching({ ...DEFAULT_HUB_FILTER, showArchived: true })).toBe(false);
   });
 });
