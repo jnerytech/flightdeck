@@ -5,6 +5,7 @@ registerDom();
 const { cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { useState } = await import("react");
 const { SessionTabs } = await import("../src/ui/SessionTabs.tsx");
+const { SessionViews } = await import("../src/lib/session-views.ts");
 
 afterEach(cleanup);
 
@@ -14,7 +15,8 @@ function Conversation() {
   return <textarea aria-label="draft" value={draft} onChange={(e) => setDraft(e.target.value)} />;
 }
 
-const store = {} as never;
+// The page tells the store its views: nothing else of the store is read here.
+const store = { sessionViews: new SessionViews() } as never;
 const tabs = (claudeSessionId: string | null) => (
   <SessionTabs store={store} hostId="h" claudeSessionId={claudeSessionId} enabled>
     <Conversation />

@@ -8,6 +8,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { cleanup, render, screen } = await import("@testing-library/react");
 const { SessionTabs } = await import("../src/ui/SessionTabs.tsx");
+const { SessionViews } = await import("../src/lib/session-views.ts");
 const { ApprovalCard } = await import("../src/components/approval/approval-card.tsx");
 
 afterEach(cleanup);
@@ -32,7 +33,12 @@ function utility(name: string): string {
 describe("sessao-estreita: a session fits a narrow pane", () => {
   test("the row of views scrolls sideways in a narrow pane, instead of taking a second row", () => {
     render(
-      <SessionTabs store={{} as never} hostId="h" claudeSessionId="c-1" enabled>
+      <SessionTabs
+        store={{ sessionViews: new SessionViews() } as never}
+        hostId="h"
+        claudeSessionId="c-1"
+        enabled
+      >
         <p>conversation</p>
       </SessionTabs>,
     );

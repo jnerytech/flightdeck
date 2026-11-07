@@ -8,6 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { FileExplorer } = await import("../src/ui/FileExplorer.tsx");
 const { SessionTabs } = await import("../src/ui/SessionTabs.tsx");
+const { SessionViews } = await import("../src/lib/session-views.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 
@@ -52,6 +53,8 @@ function host(refuse = false) {
   const asked: string[] = [];
   let live: ((update: ChangesUpdated) => void) | null = null;
   const store = {
+    // The session page tells the store its views.
+    sessionViews: new SessionViews(),
     hostRequest: async (_host: string, type: string, payload: { dir?: string }) => {
       if (type === "file.list") {
         asked.push(payload.dir ?? "?");
@@ -108,7 +111,8 @@ const show = async (store: AppStore, language: "en" | "pt-BR" = "en") => {
 const row = (name: string) => screen.queryByText(name, { selector: "li *" })?.closest("li") ?? null;
 
 const toggle = async (name: string) => {
-  const button = screen.queryByRole("button", { name });
+  // The session's views are tabs; the rest of the page is buttons.
+  const button = screen.queryByRole("button", { name }) ?? screen.queryByRole("tab", { name });
   expect(button).not.toBeNull();
   await act(async () => {
     if (button) fireEvent.click(button);
@@ -214,7 +218,7 @@ describe("file-explorer-ui: the session's files as a tree (#506)", () => {
       </TContext.Provider>
     );
     render(tabs(false));
-    expect(screen.queryByRole("button", { name: "Files" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Files" })).toBeNull();
     cleanup();
     render(tabs(true));
     await toggle("Files");
