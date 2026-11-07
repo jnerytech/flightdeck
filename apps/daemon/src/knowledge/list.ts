@@ -1,6 +1,8 @@
-import { lstat, open, readdir } from "node:fs/promises";
+import { constants } from "node:fs";
+import { open, readdir, realpath } from "node:fs/promises";
 import { posix } from "node:path";
 import type { KnowledgeEntry, KnowledgeListResult } from "@flightdeck/protocol";
+import { isInside } from "../paths.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { parseKnowledge } from "./parse.ts";
 
@@ -25,7 +27,7 @@ const MAX_DEPTH = 6;
 /** The most directory entries looked at in all, so a huge tree costs a bounded walk. */
 const MAX_SCANNED = 5_000;
 /** `](./other.md)` or `](other.md#part)`: a link to a Markdown file in the project. */
-const LINK = /\]\(([^)\s#]+\.md)(?:#[^)\s]*)?\)/gi;
+const LINK = /\]\(([^)\s#]{1,256}\.md)(?:#[^)\s]{0,64})?\)/gi;
 
 /** Byte order of two names, as git sorts paths. */
 const order = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -51,11 +53,19 @@ async function walk(
   }
 }
 
-/** The start of the file as text, its real size and when it changed. */
+/**
+ * The start of the file as text, its real size and when it changed; `null` for what is no plain
+ * file of its own by the time it is opened: a link swapped in (not followed), a pipe (not waited
+ * for), a name shared with another file (a hard link may lead to a file that is not a document).
+ */
 async function readStart(file: string) {
-  const handle = await open(file, "r");
+  const flags = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0);
+  const [opened] = await Promise.allSettled([open(file, flags)]);
+  if (opened.status !== "fulfilled") return null;
+  const handle = opened.value;
   try {
     const info = await handle.stat();
+    if (!info.isFile() || info.nlink > 1) return null;
     const buffer = Buffer.alloc(Math.min(READ_BYTES, info.size));
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
     return {
@@ -86,10 +96,11 @@ export async function listKnowledge(
 ): Promise<KnowledgeListResult> {
   const found: string[] = [];
   const seen = { n: 0 };
+  const real = await realpath(root);
   for (const folder of FOLDERS) {
-    // A folder that is a link would lead out of the project.
-    const [info] = await Promise.allSettled([lstat(`${root}/${folder}`)]);
-    if (info.status === "fulfilled" && info.value.isDirectory()) {
+    // A folder, or a folder above it, that is a link must still lead inside the project.
+    const [at] = await Promise.allSettled([realpath(`${root}/${folder}`)]);
+    if (at.status === "fulfilled" && isInside(real, at.value)) {
       await walk(root, folder, 0, found, seen);
     }
   }
@@ -98,6 +109,7 @@ export async function listKnowledge(
   const read = new Map<string, { text: string; entry: KnowledgeEntry }>();
   for (const path of found.slice(0, max)) {
     const start = await readStart(`${root}/${path}`);
+    if (!start) continue;
     const parsed = parseKnowledge(path, start.text);
     read.set(path, {
       text: start.text,
