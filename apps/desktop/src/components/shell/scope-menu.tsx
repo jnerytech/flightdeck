@@ -63,7 +63,8 @@ export function ScopeMenu(
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      <span role="status" className="sr-only">
+      {/* Not role=status: Home's own status region is the one that says the screen's state (#212). */}
+      <span aria-live="polite" aria-atomic="true" className="sr-only">
         {said}
       </span>
     </>
