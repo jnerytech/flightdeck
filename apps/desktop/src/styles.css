@@ -742,6 +742,19 @@ html:not(:has([data-slot="status-bar"])) {
   border-radius: 0.5rem;
 }
 
+/* The area that holds a screen, which its screens lay out against. A screen that is not a Page
+   scrolls here; a Page scrolls by itself (alone or in a split view's pane), so around one the
+   area scrolls on neither axis and never shows a second bar beside the page's own (#785). */
+@utility area-screen {
+  container-type: inline-size;
+  min-height: 0;
+  flex: 1 1 0%;
+  overflow-y: auto;
+  &:has([data-slot="page"]) {
+    overflow: hidden;
+  }
+}
+
 /* The board's toolbar and its selection bar in one cell: the cell is as tall as the taller one,
    so the bar covering the toolbar moves nothing below (#760). */
 @utility selection-stack {

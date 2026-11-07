@@ -74,6 +74,8 @@ export interface GuardOptions {
   responsive?: ResponsiveRules;
   /** Regions (by `data-slot`) that scroll as one area: at most one element in each may scroll vertically. */
   single?: string[];
+  /** The area (by `data-slot`) that holds a screen: around a Page it scrolls on neither axis (#785). */
+  pageArea?: string;
 }
 
 /**
@@ -316,6 +318,14 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       if (scrollers.length > 1) {
         const names = scrollers.map((el) => pathOf(el)).join(", ");
         add("scroll-split", pathOf(region), `${scrollers.length} scroll areas (${names})`);
+      }
+    }
+    if (!options.pageArea) return;
+    for (const area of document.querySelectorAll(`[data-slot="${options.pageArea}"]`)) {
+      if (hidden(area) || !area.querySelector('[data-slot="page"]')) continue;
+      const style = getComputedStyle(area);
+      if (scrolls(style.overflowY) || scrolls(style.overflowX)) {
+        add("scroll-split", pathOf(area), "scrolls around a page that scrolls by itself");
       }
     }
   };
@@ -642,6 +652,12 @@ export const GAP_BOXES = [...new Set(GAPS.flatMap((rule) => [rule.above, rule.be
 
 /** The sidebar scrolls as one area between its fixed header and footer (#567). */
 export const SINGLE_SCROLL = ["sidebar"];
+
+/**
+ * The area that holds a screen (#785). A Page scrolls by itself, so the area around it must not
+ * scroll on either axis: any overflow of the page would show a second bar beside its own.
+ */
+export const PAGE_AREA = "area-screen";
 
 /** The windows the one-scroll rule is checked at: the usual one and a short one (#567). */
 export const SCROLL_SIZES: ReadonlyArray<{ width: number; height: number }> = [
