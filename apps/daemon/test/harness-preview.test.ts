@@ -219,6 +219,26 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
     },
   );
 
+  test.skipIf(onWindows)(
+    "a link anywhere on the way, dangling or into the project itself, gets nothing proposed through it",
+    async () => {
+      const dangling = repo(bunProject);
+      symlinkSync(join(tempDir("fd-gone-"), "nowhere"), join(dangling, ".claude"));
+      const inner = repo({ ...bunProject, "docs/x.md": "" });
+      symlinkSync(join(inner, "docs"), join(inner, ".claude"));
+      const unread = async (root: string) => {
+        const preview = await previewHarness(root, ALL);
+        return [preview.settings, preview.files.map((file) => file.path), preview.unreadable];
+      };
+      const refused = [
+        null,
+        ["CLAUDE.md"],
+        [SETTINGS, ".claude/agents/reviewer.md", ".claude/skills/tdd/SKILL.md"],
+      ];
+      expect([await unread(dangling), await unread(inner)]).toEqual([refused, refused]);
+    },
+  );
+
   test("once its proposals are in place, a preview proposes nothing", async () => {
     const root = repo(bunProject);
     const first = await previewHarness(root, ALL);
