@@ -2,7 +2,8 @@
 /**
  * The sharded whole-suite run (#296); the logic is in lib/shard-gate.ts, this wires the effects.
  * - `run <i>/<n> <bun|istanbul> <out>`: runs shard i of n, split as `test:shards` splits it, and
- *   writes `marker.json` next to the lcov (bun) or the function counters (istanbul).
+ *   writes `marker.json` next to the lcov (bun) or the function counters (istanbul). <out> is
+ *   outside the checkout: the repo guard fails a test run that leaves a file in it.
  * - `merge <dir> <n> <lcov>`: reads each job's folder under <dir>, runs the merged 100% gate, and
  *   writes the merged lcov for SonarCloud. It fails closed when a shard is missing or failed.
  */
@@ -31,6 +32,12 @@ async function run(spec: string, kind: string, out: string): Promise<number> {
   const [index, count] = spec.split("/").map(Number);
   if (!index || !count || (kind !== "bun" && kind !== "istanbul")) {
     console.error("usage: bun run scripts/shard-gate.ts run <i>/<n> <bun|istanbul> <out>");
+    return 2;
+  }
+  // The istanbul preload writes its counters after each test file, and the repo guard fails a run
+  // that leaves a file in the checkout.
+  if (resolve(out).startsWith(`${ROOT}/`)) {
+    console.error(`shard-gate: write the shard's output outside the checkout, not in ${out}`);
     return 2;
   }
   const timings = JSON.parse(
