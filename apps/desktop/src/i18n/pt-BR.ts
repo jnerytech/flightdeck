@@ -1163,6 +1163,10 @@ export const ptBR = {
       one: "Flightdeck: {n} pedido esperando você ({hosts})",
       other: "Flightdeck: {n} pedidos esperando você ({hosts})",
     },
+    plainWaiting: {
+      one: "Flightdeck: {n} tarefa esperando a sua resposta ({hosts})",
+      other: "Flightdeck: {n} tarefas esperando a sua resposta ({hosts})",
+    },
     autoApproved: {
       one: "{n} aprovação automática",
       other: "{n} aprovações automáticas",
@@ -3837,6 +3841,13 @@ export const ptBR = {
     snooze: "Adiar notificações por 1 hora",
   },
   simple: {
+    windowTitle: {
+      idle: "Flightdeck",
+      waiting: {
+        one: "Flightdeck: {n} tarefa esperando a sua resposta",
+        other: "Flightdeck: {n} tarefas esperando a sua resposta",
+      },
+    },
     modeLabel: "Modo simples",
     fullApp: "App completo",
     lockedNote: "Este host está no modo simples. Peça a quem administra para liberar.",

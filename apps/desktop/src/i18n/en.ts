@@ -1164,6 +1164,10 @@ export const en: Dictionary = {
       one: "Flightdeck: {n} request waiting for you ({hosts})",
       other: "Flightdeck: {n} requests waiting for you ({hosts})",
     },
+    plainWaiting: {
+      one: "Flightdeck: {n} task waiting for your answer ({hosts})",
+      other: "Flightdeck: {n} tasks waiting for your answer ({hosts})",
+    },
     autoApproved: {
       one: "{n} automatic approval",
       other: "{n} automatic approvals",
@@ -3831,6 +3835,13 @@ export const en: Dictionary = {
     snooze: "Snooze notifications for 1 hour",
   },
   simple: {
+    windowTitle: {
+      idle: "Flightdeck",
+      waiting: {
+        one: "Flightdeck: {n} task waiting for your answer",
+        other: "Flightdeck: {n} tasks waiting for your answer",
+      },
+    },
     modeLabel: "Simple mode",
     fullApp: "Full app",
     lockedNote: "This host is set to simple mode. Ask its admin to unlock it.",

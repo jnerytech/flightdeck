@@ -4835,7 +4835,17 @@ export class AppStore {
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
     if (patch.secrets) void this.rememberVaultValues();
-    if (patch.hosts) this.syncTray();
+    if (patch.hosts || patch.uiChoices) this.syncTray();
+    if (
+      patch.hosts ||
+      patch.uiChoices ||
+      patch.selected ||
+      patch.externalRequests ||
+      patch.externals ||
+      patch.runs
+    ) {
+      this.syncTitle();
+    }
     if (patch.hosts) this.watchClientBudgetHosts();
     if (patch.hub || patch.projects) this.scheduleVaultScope();
     if (patch.hosts || patch.externalRequests || patch.externals || patch.runs || patch.cards) {
@@ -4861,6 +4871,26 @@ export class AppStore {
     }, TRAY_MENU_DELAY_MS);
   }
 
+  /** The title the window has now, so the platform is told only when it changes. */
+  private titleShown = "Flightdeck";
+
+  /**
+   * The window shows one host (the selected one): in simple mode its title says how many tasks wait
+   * for an answer; in full mode the title is left alone (issue #88).
+   */
+  private syncTitle(): void {
+    const { t } = this.i18n;
+    const hostId = this.uiHostId();
+    let title = t("simple.windowTitle.idle");
+    if (hostId && this.uiMode(hostId).mode === "simple") {
+      const n = needsYou(this.state, t).filter((item) => item.hostId === hostId).length;
+      if (n > 0) title = t("simple.windowTitle.waiting", { n });
+    }
+    if (title === this.titleShown) return;
+    this.titleShown = title;
+    void Promise.resolve(this.platform.setTitle?.(title)).catch(() => {});
+  }
+
   /** The tray's "needs you" menu now: a host in simple mode words its requests plainly (issue #88). */
   private trayMenuNow(): TrayMenu {
     return trayMenu(
@@ -4876,6 +4906,7 @@ export class AppStore {
    */
   private onLanguage(): void {
     this.syncTray();
+    this.syncTitle();
     const menu = this.trayMenuNow();
     this.trayMenuSent = JSON.stringify(menu);
     void this.platform.setTrayMenu(menu);
@@ -4891,7 +4922,12 @@ export class AppStore {
         if (item.kind === "permission" && item.resolution?.auto) autoApproved++;
       }
     }
-    const status = trayStatus(this.state.hosts, this.i18n.t, autoApproved);
+    const hosts = this.state.hosts.map((h) => ({
+      name: h.name,
+      sessions: h.sessions,
+      simple: this.uiMode(h.id).mode === "simple",
+    }));
+    const status = trayStatus(hosts, this.i18n.t, autoApproved);
     if (this.tray?.label === status.label && this.tray.tooltip === status.tooltip) return;
     this.tray = status;
     void this.platform.setTrayStatus(status);
