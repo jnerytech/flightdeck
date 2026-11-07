@@ -112,7 +112,55 @@ const SECRET_WORD = anyCase(`(?:${SECRET_WORDS})`);
 /** What may follow the word in a name: `_KEY`, `.value`, `2`, or a capitalised word (`Hash`). */
 const NAME_TAIL = "(?:[A-Z][A-Za-z0-9]*|[_.-][A-Za-z0-9_.-]*|[0-9]+)?";
 
-const SECRET_PATTERNS: Array<[string, RegExp]> = [
+const AUTHORIZATION_SEPARATOR = String.raw`\\?["']?\s*[:=]\s*\\?["']?`;
+const AUTHORIZATION_SCHEMES = "Bearer|Basic|Token|Digest|Negotiate|NTLM|Bot";
+// A scheme and its credential, or one long unbroken value: not the word in a sentence.
+const AUTHORIZATION_VALUE = String.raw`(?:(?:${AUTHORIZATION_SCHEMES})\s+[^\r\n"'\\]+|[^\s"'\\]{20,})`;
+const AUTHORIZATION_HEADER = new RegExp(
+  String.raw`\b(?:Proxy-)?Authorization${AUTHORIZATION_SEPARATOR}${AUTHORIZATION_VALUE}`,
+  "gi",
+);
+
+/** One secret found in a text: where it starts and what it is. */
+interface SecretHit {
+  index: number;
+  text: string;
+}
+
+/** Finds the secrets of one kind in a text, in order and without overlap, for a kind a regex cannot match in linear time. */
+type SecretFinder = (text: string) => SecretHit[];
+
+/**
+ * What decides whether a `-u` or `--user` in a curl command is followed by a password: the word
+ * `curl` arms it, a line break, `|`, `;` or `&` disarms it, and the flag (after a whitespace
+ * character, before another) is the place to look. One pass, so a long line costs what it is.
+ */
+const CURL_EVENT = /(\s)(?:-u|--user)(?=\s)|\bcurl\b|[\n|;&]/g;
+const CURL_CREDENTIAL = /\s+([^\s:]+:\S+)/y;
+
+/** The `user:password` after `-u` or `--user` of a curl command, for as long as no separator ended the command. */
+const curlCredentials: SecretFinder = (text) => {
+  const hits: SecretHit[] = [];
+  let armed = false;
+  for (const event of text.matchAll(CURL_EVENT)) {
+    const [word, space] = event;
+    if (space === undefined) {
+      armed = word === "curl";
+      continue;
+    }
+    if (armed) {
+      CURL_CREDENTIAL.lastIndex = event.index + word.length;
+      const credential = CURL_CREDENTIAL.exec(text)?.[1];
+      if (credential !== undefined) {
+        hits.push({ index: CURL_CREDENTIAL.lastIndex - credential.length, text: credential });
+      }
+    }
+    if (space === "\n") armed = false;
+  }
+  return hits;
+};
+
+const SECRET_PATTERNS: Array<[string, RegExp | SecretFinder]> = [
   ["token do GitHub", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,})/g],
   ["chave sk-", /\bsk-[A-Za-z0-9_-]{16,}/g],
   ["chave da AWS", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
@@ -121,7 +169,7 @@ const SECRET_PATTERNS: Array<[string, RegExp]> = [
     "chave privada",
     /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
   ],
-  ["token Bearer", /\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi],
+  ["token Bearer", /\bBearer\s+[a-z0-9._~+/=-]{16,}/gi],
   ["token do Slack", /\bxox[abprs]-[A-Za-z0-9-]{10,}/g],
   // A name with the word anywhere in it, quoted or not (JSON, escaped JSON), then `=` or `:` and the value.
   [
@@ -133,12 +181,8 @@ const SECRET_PATTERNS: Array<[string, RegExp]> = [
   ],
   ["credencial em URL", /:\/\/[^\s/:@]+:[^\s/@]+@/g],
   ["senha em opção", new RegExp(String.raw`--(?:${SECRET_WORDS})(?:=|\s+)[^\s]+`, "gi")],
-  ["senha do curl", /(?<=\bcurl\b[^\n|;&]*\s(?:-u|--user)\s+)[^\s:]+:\S+/g],
-  [
-    "cabeçalho de autorização",
-    // A scheme and its credential, or one long unbroken value: not the word in a sentence.
-    /\b(?:Proxy-)?Authorization\\?["']?\s*[:=]\s*\\?["']?(?:(?:Bearer|Basic|Token|Digest|Negotiate|NTLM|Bot)\s+[^\r\n"'\\]+|[^\s"'\\]{20,})/gi,
-  ],
+  ["senha do curl", curlCredentials],
+  ["cabeçalho de autorização", AUTHORIZATION_HEADER],
   ["cookie", /\b(?:Set-)?Cookie\s*:\s*[^\r\n]+/gi],
   ["credencial Basic", /\bBasic\s+[A-Za-z0-9+/=]{8,}/g],
   ["JWT", /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g],
@@ -154,6 +198,24 @@ const SECRET_PATTERNS: Array<[string, RegExp]> = [
   ["token em URL", /:\/\/[A-Za-z0-9_-]{20,}@/g],
 ];
 
+/** Every hit of a pattern in a text, whether it is a regex or a finder. */
+const hitsOf = (pattern: RegExp | SecretFinder, text: string): SecretHit[] =>
+  typeof pattern === "function"
+    ? pattern(text)
+    : Array.from(text.matchAll(pattern), (match) => ({ index: match.index, text: match[0] }));
+
+/** The text with each hit replaced by `[redacted]`; a hit with a `{{variable}}` stays when `keepPlaceholders`. */
+function redactHits(text: string, hits: SecretHit[], keepPlaceholders: boolean): string {
+  let clean = "";
+  let from = 0;
+  for (const hit of hits) {
+    const kept = keepPlaceholders && hit.text.includes("{{");
+    clean += text.slice(from, hit.index) + (kept ? hit.text : "[redacted]");
+    from = hit.index + hit.text.length;
+  }
+  return clean + text.slice(from);
+}
+
 /** Vault values shorter than this are not told apart from ordinary text. */
 const MIN_VAULT_VALUE = 6;
 
@@ -168,7 +230,7 @@ export class SecretScanner {
   scan(text: string): string[] {
     const found: string[] = [];
     for (const [label, pattern] of SECRET_PATTERNS) {
-      const hit = [...text.matchAll(pattern)].some((match) => !match[0].includes("{{"));
+      const hit = hitsOf(pattern, text).some(({ text: found }) => !found.includes("{{"));
       if (hit) found.push(label);
     }
     if (
@@ -187,9 +249,7 @@ export class SecretScanner {
   redact(text: string, keepPlaceholders = true): string {
     let clean = text;
     for (const [, pattern] of SECRET_PATTERNS) {
-      clean = clean.replace(pattern, (hit) =>
-        keepPlaceholders && hit.includes("{{") ? hit : "[redacted]",
-      );
+      clean = redactHits(clean, hitsOf(pattern, clean), keepPlaceholders);
     }
     for (const value of this.vaultValues()) {
       if (value.length >= MIN_VAULT_VALUE) clean = clean.split(value).join("[redacted]");
@@ -199,7 +259,13 @@ export class SecretScanner {
 }
 
 /** `/home/<name>`, `/Users/<name>` and `C:\\Users\\<name>` (also with the backslashes doubled, as in JSON). */
-const HOME_FOLDER = /(?:\/(?:home|Users)\/|[A-Za-z]:\\{1,2}Users\\{1,2})[^/\\\s"']+/gi;
+const HOME_FOLDER = /(?:\/(?:home|Users)\/|[a-z]:\\{1,2}Users\\{1,2})[^/\\\s"']+/gi;
+
+function withoutTrailingSeparators(path: string): string {
+  let end = path.length;
+  while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) end--;
+  return path.slice(0, end);
+}
 
 /**
  * The text with the user's home folder as `~`: a log is pasted in public issues, and the user's
@@ -209,7 +275,7 @@ const HOME_FOLDER = /(?:\/(?:home|Users)\/|[A-Za-z]:\\{1,2}Users\\{1,2})[^/\\\s"
  */
 export function scrubHome(text: string, home?: string): string {
   let clean = text;
-  const known = home?.replace(/[/\\]+$/, "") ?? "";
+  const known = withoutTrailingSeparators(home ?? "");
   if (known.length >= 3) {
     for (const spelling of new Set([known, known.replaceAll("\\", "\\\\")])) {
       clean = clean.split(spelling).join("~");
