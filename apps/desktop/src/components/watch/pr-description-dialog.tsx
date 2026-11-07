@@ -57,7 +57,12 @@ export function PrDescriptionDialog(
           )}
         </AssistField>
         <AssistField
-          binding={{ ...props.assist, kind: "pr.description" }}
+          binding={{
+            ...props.assist,
+            kind: "pr.description",
+            // The description is written knowing the title the person is about to confirm.
+            ...(title.trim() ? { context: { title } } : {}),
+          }}
           value={text}
           onChange={setText}
           t={t}

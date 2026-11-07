@@ -4,6 +4,7 @@ import { HistoryIndexer } from "../src/history/indexer.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { TeleportPackages, type TeleportSession, teleportDeps } from "../src/teleport/package.ts";
+import { TeleportInbox } from "../src/teleport/receive.ts";
 import { newManager, tempDir } from "./helpers.ts";
 import { FrameClient, projectsRoot, userLine, writeTranscript } from "./history-helpers.ts";
 
@@ -151,5 +152,75 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       true,
       { feature: "teleport" },
     ]);
+  });
+
+  test("the server takes a package for this host in receive, write and abort; without it they are off", async () => {
+    const { manager } = newManager();
+    const inbox = new TeleportInbox({
+      dir: tempDir("fd-teleport-in-"),
+      now: () => 0,
+      newId: () => "in-1",
+      timers: globalThis,
+    });
+    await inbox.start();
+    cleanups.push(() => inbox.stop());
+    const base = {
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    };
+    const server = startServer({ ...base, teleportInbox: inbox });
+    const off = startServer(base);
+    const client = new FrameClient(server.url);
+    const bare = new FrameClient(off.url);
+    cleanups.push(async () => {
+      client.close();
+      bare.close();
+      await server.stop();
+      await off.stop();
+    });
+    for (const c of [client, bare]) await c.request("hello", { token: TOKEN, client: "test" });
+    const text = "hello";
+    const manifest = {
+      id: "p1",
+      sessionId: "s1",
+      claudeSessionId: ID,
+      cwd: "/work/app",
+      model: null,
+      permissionMode: "default",
+      persona: null,
+      expiresAt: "2026-11-06T12:30:00.000Z",
+      parts: [
+        {
+          name: "transcript",
+          size: text.length,
+          sha256: new Bun.CryptoHasher("sha256").update(text).digest("hex"),
+        },
+      ],
+      secrets: { lines: 0, labels: [] },
+    };
+    const received = await client.data<{ id: string }>("teleport.receive", { manifest });
+    const written = await client.data<{ written: number }>("teleport.write", {
+      id: "in-1",
+      part: "transcript",
+      offset: 0,
+      data: Buffer.from(text).toString("base64"),
+    });
+    const whole = await inbox.received("in-1").then(
+      () => "whole",
+      (e: { reason?: string }) => e.reason,
+    );
+    const aborted = (await client.request("teleport.abort", { id: "in-1" })).ok;
+    const refused = await bare.request("teleport.receive", { manifest });
+    expect([
+      received?.id,
+      written?.written,
+      whole,
+      aborted,
+      (refused.error as { params?: unknown } | undefined)?.params,
+    ]).toEqual(["in-1", 5, "whole", true, { feature: "teleport" }]);
   });
 });

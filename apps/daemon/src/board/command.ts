@@ -84,10 +84,24 @@ export function git(cwd: string, ...args: string[]): Promise<CommandResult> {
  * result says `truncated`, with the output cut at its last whole line (a change of 200 MB must not
  * be held in memory, issue #329).
  */
-export async function gitLimited(
+export function gitLimited(
   cwd: string,
   limit: number,
   ...args: string[]
+): Promise<CommandResult & { truncated: boolean }> {
+  return gitLimitedFor(cwd, limit, args);
+}
+
+/**
+ * Like `gitLimited`, with a time limit (issue #100): a git still running at `timeoutMs` is killed
+ * with everything it started, and the result says `timedOut`.
+ */
+export async function gitLimitedFor(
+  cwd: string,
+  limit: number,
+  args: string[],
+  timeoutMs?: number,
+  kill: (pid: number) => Promise<void> = killTree,
 ): Promise<CommandResult & { truncated: boolean }> {
   // git-arg: the capped git helper: its callers are what the git-args ratchet checks
   const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
@@ -96,7 +110,18 @@ export async function gitLimited(
     stdout: "pipe",
     stderr: "pipe",
     stdin: "ignore",
+    // Its own process group (outside Windows), so the whole tree can be killed at the limit.
+    detached: timeoutMs !== undefined && process.platform !== "win32",
   });
+  let timedOut = false;
+  let killing: Promise<void> = Promise.resolve();
+  const timer =
+    timeoutMs === undefined
+      ? null
+      : setTimeout(() => {
+          timedOut = true;
+          killing = kill(proc.pid).catch(() => {});
+        }, timeoutMs);
   const chunks: Uint8Array[] = [];
   let size = 0;
   let truncated = false;
@@ -118,7 +143,15 @@ export async function gitLimited(
     proc.kill();
   }
   const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
+  if (timer) clearTimeout(timer);
+  await killing;
   const all = Buffer.concat(chunks);
   const kept = truncated ? all.subarray(0, all.subarray(0, limit).lastIndexOf(10) + 1) : all;
-  return { code, stdout: kept.toString("utf8"), stderr, truncated };
+  return {
+    code,
+    stdout: kept.toString("utf8"),
+    stderr,
+    truncated,
+    ...(timedOut ? { timedOut } : {}),
+  };
 }
