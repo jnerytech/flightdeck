@@ -116,7 +116,7 @@ export const PersonaRef = z
   })
   .strict()
   .refine((ref) => (ref.id === undefined) !== (ref.definition === undefined), {
-    message: "informe id ou definition, um dos dois",
+    message: "give id or definition, one of the two",
   });
 export type PersonaRef = z.infer<typeof PersonaRef>;
 
@@ -962,7 +962,7 @@ export const ReviewTarget = z
   .string()
   .regex(
     /^(session|card|terminal|project):.+$/,
-    "alvo session:<id>, card:<id>, terminal:<id> ou project:<id>",
+    "target session:<id>, card:<id>, terminal:<id> or project:<id>",
   );
 
 /** Issue #797: a search over a repository, by path or by content; a fixed string, never a pattern. */
@@ -2056,9 +2056,7 @@ export const TelemetrySummary = z.object({
 });
 export type TelemetrySummary = z.infer<typeof TelemetrySummary>;
 
-const BgId = z
-  .string()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "id de sessão em segundo plano inválido");
+const BgId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "invalid background session id");
 
 /** Phase 27: a Claude Code background session (`claude --bg`), as `claude agents --json` lists it. */
 export const BgSession = z.object({
@@ -2698,7 +2696,7 @@ export type VaultDaemonRequester = z.infer<typeof VaultDaemonRequester>;
 export const SessionIdentity = z
   .object({ session: z.string().min(1).optional(), launch: z.string().min(1).optional() })
   .refine((who) => (who.session === undefined) !== (who.launch === undefined), {
-    message: "informe a sessão (session) ou o lançamento (launch), um dos dois",
+    message: "give the session (session) or the launch (launch), one of the two",
   });
 export type SessionIdentity = z.infer<typeof SessionIdentity>;
 
@@ -3749,7 +3747,7 @@ export const Command = z.discriminatedUnion("type", [
       .object({ plugin: z.string().min(1).optional(), dir: z.string().min(1).optional() })
       .strict()
       .refine((p) => (p.plugin === undefined) !== (p.dir === undefined), {
-        message: "informe plugin ou dir, um dos dois",
+        message: "give plugin or dir, one of the two",
       }),
   ),
   cmd("plugins.previewUpdate", z.object({ plugin: z.string().min(1) }).strict()),
@@ -3766,7 +3764,7 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict()
       .refine((p) => (p.plugin === undefined) !== (p.dir === undefined), {
-        message: "informe plugin ou dir, um dos dois",
+        message: "give plugin or dir, one of the two",
       }),
   ),
   cmd(
@@ -3870,11 +3868,11 @@ export const Command = z.discriminatedUnion("type", [
         name: z.string().min(1).max(120).optional(),
         persona: z
           .string()
-          .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
+          .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "invalid persona id")
           .optional(),
       })
       .refine((p) => p.cardId !== undefined || (p.cwd !== undefined && p.prompt !== undefined), {
-        message: "bg.start pede cwd e prompt, ou um card",
+        message: "bg.start needs cwd and prompt, or a card",
       }),
   ),
   cmd("telemetry.status", z.object({}).strict()),
@@ -3936,12 +3934,12 @@ export const Command = z.discriminatedUnion("type", [
           .object({
             resume: z
               .string()
-              .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/, "id de sessão inválido")
+              .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/, "invalid session id")
               .optional(),
             /** Phase 20: `--persona <id>` (a persona of the host, the project or the pack). */
             persona: z
               .string()
-              .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
+              .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "invalid persona id")
               .optional(),
           })
           .optional(),
@@ -3949,7 +3947,7 @@ export const Command = z.discriminatedUnion("type", [
         rows: TerminalRows,
       })
       .refine((payload) => !(payload.command && payload.claude), {
-        message: "command e claude não podem ir juntos",
+        message: "command and claude cannot go together",
       }),
   ),
   /**
@@ -4098,7 +4096,7 @@ export const Command = z.discriminatedUnion("type", [
         projectPath: z.string().optional(),
       })
       .strict()
-      .refine((p) => p.id !== undefined || p.name !== undefined, { message: "id ou name" }),
+      .refine((p) => p.id !== undefined || p.name !== undefined, { message: "give id or name" }),
   ),
   cmd("snippets.remove", z.object({ id: z.string() }).strict()),
   /** Trusts the content of the project's versioned file, by the hash `snippets.list` showed. */
@@ -4196,7 +4194,7 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict()
       .refine((p) => (p.sessionId === undefined) !== (p.claudeSessionId === undefined), {
-        message: "informe sessionId ou claudeSessionId, um dos dois",
+        message: "give sessionId or claudeSessionId, one of the two",
       }),
   ),
   /** Leaves the role that was applied: back to normal. */
@@ -4210,7 +4208,7 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict()
       .refine((p) => (p.sessionId === undefined) !== (p.claudeSessionId === undefined), {
-        message: "informe sessionId ou claudeSessionId, um dos dois",
+        message: "give sessionId or claudeSessionId, one of the two",
       }),
   ),
   /** The personas that hold in the project, as the agents `persona-<id>` a session can call. */
