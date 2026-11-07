@@ -21,6 +21,17 @@ import { SessionTerminal } from "./SessionTerminal.tsx";
 import { TempoPanel } from "./TempoPanel.tsx";
 import { TracePanel } from "./TracePanel.tsx";
 
+/** The part of a key event the page reads for its view keys. */
+interface ViewKey {
+  key: string;
+  code: string;
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+  preventDefault(): void;
+}
+
 /**
  * A session's screen with the Mudanças tab beside its conversation (phase 11). Without the tab
  * (a host that does not announce the review, or a session Claude Code has not named yet) the
@@ -105,32 +116,36 @@ export function SessionTabs(
   );
   const root = useRef<HTMLDivElement>(null);
   const tabs = useRef(new Map<SessionView, HTMLButtonElement>());
-  // Alt+1 to Alt+7 (Ctrl+1 to 9 are the app's tabs), and Ctrl+` between the Terminal and the Conversation:
-  // from anywhere in the page, the message box and the terminal too.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `viewsKey` stands for the `views` list
+  // Alt+1 to Alt+7 (Ctrl+1 to 9 are the app's tabs), and Ctrl+` between the Terminal and the Conversation.
+  // `true` when the key was one of them and the view changed.
+  const viewKeyHandler = useRef<((event: ViewKey) => boolean) | null>(null);
+  viewKeyHandler.current = (event) => {
+    if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+      if (event.key !== "`" || !views.includes("terminal")) return false;
+      event.preventDefault();
+      pick(tab === "terminal" ? "conversation" : "terminal");
+      return true;
+    }
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+    // On a Mac Alt+1 types a symbol: the physical key says which digit it was.
+    const digit = /^Digit(\d)$/.exec(event.code)?.[1] ?? (/^\d$/.test(event.key) ? event.key : "");
+    const view = views[Number(digit) - 1];
+    if (!view) return false;
+    event.preventDefault();
+    pick(view);
+    return true;
+  };
+  // From anywhere in the page, the message box too (the terminal has its own, below).
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
       // Only when the key came from this page (or from nowhere): the palette's own Alt keys stay its own.
       const target = event.target as Node | null;
       if (!(target === document.body || (target && root.current?.contains(target)))) return;
-      if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
-        if (event.key !== "`" || !views.includes("terminal")) return;
-        event.preventDefault();
-        pick(tab === "terminal" ? "conversation" : "terminal");
-        return;
-      }
-      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      // On a Mac Alt+1 types a symbol: the physical key says which digit it was.
-      const digit =
-        /^Digit(\d)$/.exec(event.code)?.[1] ?? (/^\d$/.test(event.key) ? event.key : "");
-      const view = views[Number(digit) - 1];
-      if (!view) return;
-      event.preventDefault();
-      pick(view);
+      viewKeyHandler.current?.(event);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [viewsKey, pick, tab]);
+  }, []);
   const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
     const at = views.indexOf(tab);
     const to =
@@ -195,7 +210,16 @@ export function SessionTabs(
         {props.children}
       </div>
       {terminalOpened && props.viewKey && terminalSource && (
-        <div hidden={tab !== "terminal"} className="min-h-0 flex-1" {...panel("terminal")}>
+        // Capture phase: xterm listens on its own text box and would send the key to the shell, so the
+        // page takes the view keys first and stops them there.
+        <div
+          hidden={tab !== "terminal"}
+          className="min-h-0 flex-1"
+          onKeyDownCapture={(event) => {
+            if (viewKeyHandler.current?.(event.nativeEvent)) event.stopPropagation();
+          }}
+          {...panel("terminal")}
+        >
           <SessionTerminal
             store={props.store}
             hostId={props.hostId}

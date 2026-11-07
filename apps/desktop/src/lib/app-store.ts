@@ -2187,11 +2187,8 @@ export class AppStore {
       return;
     }
     // Issue #107: the shell a session page opened lives as long as its tab.
-    if (route?.name === "session" || route?.name === "external") {
-      const key =
-        route.name === "session"
-          ? sessionKey(route.host, route.id)
-          : `${route.host}/${route.claudeSessionId}`;
+    if (route?.name === "session") {
+      const key = sessionKey(route.host, route.id);
       const terminalId = this.sessionViews.terminalOf(key);
       if (terminalId) {
         this.sessionViews.setTerminal(key, null);
@@ -2327,11 +2324,17 @@ export class AppStore {
     hostId: string,
     type: T,
     payload: CommandPayload<T>,
+    /** `retry: false` for a command that opens something: repeated later, unseen, it would leave it behind. */
+    options: { retry?: boolean } = {},
   ): Promise<CommandResults[T] | null> {
     try {
       return await this.dispatch(hostId, type, payload);
     } catch (error) {
-      this.fail(error, undefined, () => void this.hostCommand(hostId, type, payload));
+      this.fail(
+        error,
+        undefined,
+        options.retry === false ? undefined : () => void this.hostCommand(hostId, type, payload),
+      );
       return null;
     }
   }

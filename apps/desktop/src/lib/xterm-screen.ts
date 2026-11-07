@@ -242,9 +242,6 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       selected: current() !== "",
     });
     switch (action) {
-      case "views":
-        // The page switches its view on this key: xterm lets it bubble and sends nothing to the process.
-        return false;
       case "newline":
         // xterm asks for keydown, keypress and keyup: one newline, and none of them gets xterm's own CR.
         if (event.type === "keydown") options.onInput(NEWLINE_SEQUENCE);

@@ -41,14 +41,6 @@ function memoryStorage(initial: Record<string, string> = {}) {
 }
 
 describe("terminal-ui: keys, colors and font", () => {
-  test("Ctrl+` is the session page's: it switches the view, and no other combination of that key is (issue #107)", () => {
-    expect(terminalKeyAction(key("`", { ctrl: true }))).toBe("views");
-    expect(terminalKeyAction(key("`", {}))).toBe("pass");
-    expect(terminalKeyAction(key("`", { ctrl: true, shift: true }))).toBe("pass");
-    expect(terminalKeyAction(key("`", { ctrl: true, alt: true }))).toBe("pass");
-    expect(terminalKeyAction(key("`", { meta: true }))).toBe("pass");
-  });
-
   test("Ctrl+Shift+C, V and F are the app's, in either case; Ctrl+C and the rest go to the process", () => {
     expect(terminalKeyAction(key("C", { ctrl: true, shift: true }))).toBe("copy");
     expect(terminalKeyAction(key("c", { ctrl: true, shift: true }))).toBe("copy");

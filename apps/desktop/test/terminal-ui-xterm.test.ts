@@ -400,12 +400,6 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.press("a", false, false)).toBe(true);
   });
 
-  test("Ctrl+` is left to the page, which switches the view: xterm sends nothing to the process (issue #107)", () => {
-    const s = setup();
-    expect(s.press("`", true, false)).toBe(false);
-    expect(s.press("`", false, false)).toBe(true);
-  });
-
   test("theme and font changes apply and refit; find goes next or previous and clears", () => {
     const s = setup();
     s.screen.setTheme({ ...THEME, background: "#ffffff" });

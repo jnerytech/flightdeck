@@ -34,34 +34,47 @@ export function SessionTerminal(
   useEffect(() => {
     if (!session || terminalId || asking.current) return;
     asking.current = true;
+    // False once the page is gone: a shell that opens after that is ended, not left running unseen.
+    let alive = true;
     void (async () => {
       const kept = store.sessionViews.terminalOf(viewKey);
-      const running = (
-        await store
-          .terminalHost(hostId)
-          .list()
-          .catch(() => [])
-      )
-        .filter((t) => t.exitCode === null)
-        .some((t) => t.terminalId === kept);
-      if (kept && running) {
-        setTerminalId(kept);
+      const listed = await store
+        .terminalHost(hostId)
+        .list()
+        .catch(() => null);
+      // A host that cannot say which shells are live is not a reason for a second one.
+      if (
+        kept &&
+        (listed === null || listed.some((t) => t.terminalId === kept && t.exitCode === null))
+      ) {
+        if (alive) setTerminalId(kept);
         return;
       }
-      const opened = await store.hostCommand(hostId, "terminal.openSession", {
-        session,
-        cols: 80,
-        rows: 24,
-      });
+      const opened = await store.hostCommand(
+        hostId,
+        "terminal.openSession",
+        { session, cols: 80, rows: 24 },
+        { retry: false },
+      );
       if (!opened) {
         // The refusal reached the person as a message: back to where they were.
         asking.current = false;
-        props.onClosed();
+        if (alive) props.onClosed();
+        return;
+      }
+      if (!alive) {
+        void store.hostCommand(hostId, "terminal.close", {
+          terminalId: opened.terminalId,
+          kill: true,
+        });
         return;
       }
       store.sessionViews.setTerminal(viewKey, opened.terminalId);
       setTerminalId(opened.terminalId);
     })();
+    return () => {
+      alive = false;
+    };
   }, []);
   if (!terminalId) return null;
   return (
