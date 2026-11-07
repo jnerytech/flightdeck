@@ -1859,6 +1859,42 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       `o filtro de Custos no projeto ${label}`,
     );
   },
+
+  // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one
+  // host, the choice is kept when the page is opened again, a host that is offline says so and
+  // offers all hosts, and the menu is in reach in a phone-sized window and a desktop one.
+  "escopo-dados": async (c) => {
+    const menuOf = (scope: string) =>
+      c.page.getByRole("button", { name: c.t("scope.menu", { scope }), exact: true });
+    const all = c.t("scope.all");
+    const pick = async (from: string, host: string) => {
+      await menuOf(from).click();
+      await c.page.getByRole("menuitemradio", { name: host, exact: true }).click();
+    };
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "overview" });
+      await inReach(c, `o menu Dados de a ${size.width}x${size.height}`, menuOf(all));
+    }
+    // One host: the trigger and the subtitle say whose numbers they are.
+    const subtitle = (host: string) =>
+      c.page.getByText(c.t("home.rangeHost", { host }), { exact: true });
+    await pick(all, "alfa");
+    await menuOf("alfa").waitFor({ timeout: WAIT });
+    await subtitle("alfa").waitFor({ timeout: WAIT });
+    // Kept: the page opened again is still on alfa.
+    await open(c, { name: "overview" });
+    await menuOf("alfa").waitFor({ timeout: WAIT });
+    await subtitle("alfa").waitFor({ timeout: WAIT });
+    // A host that is offline: Home says so and offers all hosts, which brings them back.
+    await pick("alfa", "notebook");
+    await menuOf("notebook").waitFor({ timeout: WAIT });
+    const showAll = c.page.getByRole("button", { name: c.t("scope.showAll"), exact: true });
+    await showAll.waitFor({ timeout: SESSION_WAIT });
+    await showAll.click();
+    await menuOf(all).waitFor({ timeout: WAIT });
+    await c.page.getByText(c.t("home.range"), { exact: true }).waitFor({ timeout: WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

@@ -46,6 +46,7 @@ export const JOURNEYS: readonly string[] = [
   "board-arquivos",
   "sessao-vistas",
   "ranking-home",
+  "escopo-dados",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
