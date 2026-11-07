@@ -2636,7 +2636,10 @@ app, cards and workflows, subagents included.
   - On the first boot of this version, the daemon reads the existing transcripts in the
     background and keeps answering meanwhile.
 - **Period:** today, 7 days, 30 days, current month or a range, always in the host's timezone.
-- **Filters:** host, project, model and origin (terminal, app, card, workflow, subagent).
+- **Data from:** every host, one host, or one project. The **Projects** group of the menu lists the
+  period's projects, named as on Home; the choice is the same one Home and Sessions keep (#126). A
+  budget alert or a Home card opens a project for that visit only.
+- **Filters:** model and origin (terminal, app, card, workflow, subagent).
 - **What it shows:**
   - the estimated cost, the tokens and the cache savings (how much less the cache read cost than
     the same volume as normal input);

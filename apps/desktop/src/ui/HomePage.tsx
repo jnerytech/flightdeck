@@ -43,7 +43,9 @@ export function HomePage(
   // The data scope (#126): Home adds up only the hosts in it; a host no longer there means all,
   // once the host list is read (before, a kept host is only not listed yet, and Home asks nobody).
   const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
-  const scope = activeScope(kept, state.hosts, state.hostsLoaded);
+  const active = activeScope(kept, state.hosts, state.hostsLoaded);
+  // Home does not read projects yet (#126 slice 4): a project scope is every host here.
+  const scope = active.kind === "project" ? ALL_SCOPE : active;
   const hosts = useMemo(() => scopeHosts(state.hosts, scope), [state.hosts, scope]);
   /** The scoped host, when it is offline (not still connecting): Home says so and offers all. */
   const away =

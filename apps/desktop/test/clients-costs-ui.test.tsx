@@ -102,7 +102,12 @@ async function pickHost(name: string) {
 }
 const hostOptions = async () => {
   await openScopeMenu();
-  const names = screen.getAllByRole("menuitemradio").map((o) => o.textContent ?? "");
+  // The hosts only: the Projetos group of the menu (#126 slice 4) lists projects.
+  const projects = screen.queryByRole("group", { name: "Projetos" });
+  const names = screen
+    .getAllByRole("menuitemradio")
+    .filter((o) => !projects?.contains(o))
+    .map((o) => o.textContent ?? "");
   await act(async () => {
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
   });

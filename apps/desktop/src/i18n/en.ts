@@ -31,12 +31,14 @@ export const en: Dictionary = {
   scope: {
     menu: "Data from {scope}",
     all: "All hosts",
+    projects: "Projects",
     showing: "Showing {scope}",
     offline: "{host} is offline. Its numbers come back when it reconnects.",
     offlineSessions: "{host} is offline. Its sessions show again when it reconnects.",
     incompatible: "{host} needs a daemon update before its data shows here.",
     showAll: "Show all hosts",
     noCosts: "{host} does not report costs.",
+    projectEmpty: "{project} has no costs in this period.",
   },
   home: {
     title: "Home",
@@ -4343,8 +4345,6 @@ export const en: Dictionary = {
     quotaPick: "Pick a host to see its quota",
     from: "From",
     to: "To",
-    project: "Project",
-    allProjects: "All projects",
     model: "Model",
     allModels: "All models",
     origin: "Origin",

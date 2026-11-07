@@ -33,12 +33,14 @@ export const ptBR = {
   scope: {
     menu: "Dados de {scope}",
     all: "Todos os hosts",
+    projects: "Projetos",
     showing: "Mostrando {scope}",
     offline: "{host} está offline. Os números voltam quando ele reconectar.",
     offlineSessions: "{host} está offline. As sessões dele voltam quando ele reconectar.",
     incompatible: "{host} precisa de uma atualização do daemon para os dados aparecerem aqui.",
     showAll: "Mostrar todos os hosts",
     noCosts: "{host} não informa custos.",
+    projectEmpty: "{project} não tem custos neste período.",
   },
   home: {
     title: "Início",
@@ -4351,8 +4353,6 @@ export const ptBR = {
     quotaPick: "Escolha um host para ver a cota",
     from: "De",
     to: "Até",
-    project: "Projeto",
-    allProjects: "Todos os projetos",
     model: "Modelo",
     allModels: "Todos os modelos",
     origin: "Origem",
