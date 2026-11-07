@@ -22,7 +22,15 @@ function spent(f: Fixture, n: number, costUsd = 0) {
         `INSERT INTO pr_watch_rounds (id, card_id, n, status, trigger, summary, cost_usd, started_at, ended_at)
          VALUES (?, ?, ?, 'pushed', ?, NULL, ?, ?, ?)`,
       )
-      .run(ulid(), f.card.id, i, JSON.stringify({ failed: [], conflicts: false, comments: [] }), costUsd, at, at);
+      .run(
+        ulid(),
+        f.card.id,
+        i,
+        JSON.stringify({ failed: [], conflicts: false, comments: [] }),
+        costUsd,
+        at,
+        at,
+      );
   }
 }
 
@@ -43,7 +51,9 @@ describe("watch-extend: more fixing rounds for a card (#77)", () => {
   test("a card's watch says how many rounds count and its limit", async () => {
     const f = await fixture();
     spent(f, 2);
-    expect([service(f).info(f.card.id).roundsUsed, service(f).info(f.card.id).maxRounds]).toEqual([2, 3]);
+    expect([service(f).info(f.card.id).roundsUsed, service(f).info(f.card.id).maxRounds]).toEqual([
+      2, 3,
+    ]);
   });
 
   test("more rounds hand the card back to the watch: watched again, back in review, with the new limit", async () => {

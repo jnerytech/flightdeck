@@ -198,10 +198,12 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
       ok: false,
       error: { code: "bad_request" },
     });
-    expect(await client.request("watch.extend", { cardId: "nao-existe", rounds: 1 })).toMatchObject({
-      ok: false,
-      error: { code: "not_found" },
-    });
+    expect(await client.request("watch.extend", { cardId: "nao-existe", rounds: 1 })).toMatchObject(
+      {
+        ok: false,
+        error: { code: "not_found" },
+      },
+    );
   });
 
   test("with the build red, the daemon watches by itself: it fixes, finds no commit, and the card asks for you", async () => {
