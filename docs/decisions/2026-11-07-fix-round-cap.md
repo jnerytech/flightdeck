@@ -1,4 +1,4 @@
-# One budget of automatic fixes per card, and the drift gate (issue #77)
+# The watch alone fixes a watched PR, the Needs you hand-over, and the drift gate (issue #77)
 
 ## Context
 
@@ -9,32 +9,42 @@ opens:
   pushes them itself after the local checks;
 - the automations' `send_to_card` on `ci_failed` and `pr_comment`, which had no cap at all.
 
+On a watched card both paths fire for the same failure. Both reach the same card session: the
+watch through `fixCard`, the automation through `board.message`. So one failure ran twice, and the
+automation's send went around the watch's cap.
+
 ## Decision
 
-- **One budget per card.** The automations' send counts against the same `maxRounds` as the
-  watch's own rounds. It is recorded in `pr_watch_rounds` with the status `sent`, so the counter,
-  the rounds history and the ROI rework count see it. Past the cap the automation sends nothing,
-  and its run records why.
-- **The cap stays a project setting,** counted per card since the watch was last turned on
-  (`round_base`).
-- **The hand-over:** when a card's rounds run out, or a round fails in a way no new trigger fixes,
-  the card moves to the `waiting` column, which the board shows as "Needs you". The watch keeps
-  `needs_you` with the reason, which lists each round.
-- **Drift is measured at the push gate,** deterministically, with git only (slice D3):
-  - a round that touches files outside the PR's footprint, that its trigger does not name;
-  - or a round whose churn passes `max(200, footprint churn)`.
+- **While a card's PR is watched, the watch alone fixes it.** An automation's `send_to_card` for
+  that card is skipped, and its run records why: "the PR watch fixes this card", or the watch's
+  reason when the card needs you. Nothing is written for a skipped send.
+- **A card whose PR is not watched gets the automation's send as before,** with no cap. Turning
+  Vigiar on is how a person bounds the automatic fixes of a card.
+- **The cap stays a project setting** (`maxRounds`), counted per card since the watch was last
+  turned on (`round_base`).
+- **The hand-over:** the card needs you when its rounds run out, or when enough rounds in a row
+  fail. The watch keeps `needs_you` with the reason, which lists each round. A card in `review`
+  then moves to the `waiting` column, which the board shows as "Needs you". A card in any other
+  column stays: done is done, and a running card belongs to its session.
+- **Drift is measured at the push gate,** deterministically, with git only (slice D3). A round
+  drifts when:
+  - it touches files outside the PR's footprint that its trigger does not name;
+  - or its churn passes `max(200, footprint churn)`.
 
   Such a round is held, not pushed, until the person pushes it or drops it.
 
 ## Discarded alternatives
 
-- **A separate cap per automation:** a card would still loop across two paths.
-- **An LLM judge of drift against the card's description:** non-deterministic, it costs a turn
-  per round, and the reviewer's text it reads could steer it. It may come later as a second
-  signal, never the only one.
+- **One budget shared by the watch and the automations** (the first version of #817): it capped
+  cards whose project never turned the watch on. It also still fixed one failure twice on a
+  watched card, so a single failure cost two of its rounds.
+- **A separate cap per automation:** a watched card would still be fixed twice per failure.
+- **An LLM judge of drift against the card's description:** it is not deterministic, it costs a
+  turn per round, and the reviewer's text it reads could steer it. It may come later as a second
+  signal, never as the only one.
 
 ## Consequences
 
-- An automation that used to send every failure to a card now stops after the card's rounds. The
-  person then allows more rounds (`watch.extend`, slice D2) or takes over.
-- The rounds history shows the automation's sends as "asked of the card".
+- On a watched card, an automation that sends failures or comments to the card stops sending; the
+  watch's rounds do that work. Its run history says so.
+- Out of rounds, the person allows more rounds (`watch.extend`, slice D2) or takes over.
