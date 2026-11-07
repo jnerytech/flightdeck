@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import { testArgs } from "../test/timeout.ts";
 import { coverageTargets, loadedTargets } from "./related-coverage.ts";
+import { SLOT_TEST_FILES } from "./slot.ts";
 import { auditBase } from "./tdd-audit.ts";
 
 export interface Related {
@@ -13,8 +14,8 @@ export const TEST_FILE = /\.test\.tsx?$/;
 /** Files that shape every test run, which the import graph cannot see. */
 export const GLOBAL_FILE =
   /^(?:package\.json|bun\.lock|bunfig[\w.]*\.toml|tsconfig[\w.]*\.json|scripts\/test\/preload\.ts|(?:apps|packages)\/[^/]+\/package\.json)$/;
-/** More files than this go through the machine-wide slot. */
-export const SLOT_ABOVE = 60;
+/** More files than this go through the machine-wide slot, which asks a reason for them (#833). */
+export const SLOT_ABOVE = SLOT_TEST_FILES;
 
 /** The module specifiers a source file imports, re-exports or loads with `import()`. */
 export function importsOf(source: string): string[] {

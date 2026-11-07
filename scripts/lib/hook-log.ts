@@ -6,6 +6,9 @@ import { gitCommonDir, printable } from "./claude-hooks.ts";
  * so `bun run harness:stats` can show how often each rule blocks and how long the hooks take.
  */
 
+/** The `hook` of what the slot logs (#833): a run refused or waived over the file limit, a long hold. */
+const SLOT = "slot";
+
 export interface HookLogEntry {
   /** ISO time of the call. */
   t: string;
@@ -56,9 +59,11 @@ export function summarizeHookLog(text: string): string {
   const byRule = new Map<string, number>();
   const waivedByRule = new Map<string, number>();
   for (const e of entries) {
-    byHook.set(e.hook, [...(byHook.get(e.hook) ?? []), e]);
+    // The slot is no hook: its entries take no time to decide, so they stay out of the timings (#833).
+    if (e.hook !== SLOT) byHook.set(e.hook, [...(byHook.get(e.hook) ?? []), e]);
+    // Only a block or a waiver counts under a rule: a long hold is neither.
     const counts = e.decision === "waived" ? waivedByRule : byRule;
-    if (e.rule) counts.set(e.rule, (counts.get(e.rule) ?? 0) + 1);
+    if (e.rule && e.decision !== "allow") counts.set(e.rule, (counts.get(e.rule) ?? 0) + 1);
   }
   const hookWidth = Math.max(4, ...[...byHook.keys()].map((h) => h.length)) + 2;
   const out = [`${"hook".padEnd(hookWidth)}calls  blocks  p50 ms  p95 ms`];
@@ -80,7 +85,7 @@ export function summarizeHookLog(text: string): string {
       out.push(`  ${rule.padEnd(ruleWidth)}${n}`);
     }
   }
-  out.push(...overrideLines(entries));
+  out.push(...overrideLines(entries), ...longHoldLines(entries));
   const skipped = lines.length - entries.length;
   if (skipped > 0) out.push("", `${skipped} line(s) skipped (not a hook log entry)`);
   return out.join("\n");
@@ -99,6 +104,22 @@ function overrideLines(entries: HookLogEntry[]): string[] {
       const age = e.minutes === undefined ? "no run in progress" : `run ${e.minutes} min old`;
       const when = `${e.t.slice(0, 16).replace("T", " ")} UTC`;
       return `  ${when}  ${age.padEnd(20)}${printable(e.detail ?? "")}`;
+    }),
+  ];
+}
+
+/** #833: each hold of the slot past 20 minutes, with its time, its length and who held it. */
+function longHoldLines(entries: HookLogEntry[]): string[] {
+  const holds = entries.filter(
+    (e) => e.hook === SLOT && e.rule === "long-hold" && e.minutes !== undefined,
+  );
+  if (holds.length === 0) return [];
+  return [
+    "",
+    `long slot holds (over 20 min): ${holds.length}`,
+    ...holds.map((e) => {
+      const when = `${e.t.slice(0, 16).replace("T", " ")} UTC`;
+      return `  ${when}  ${`${e.minutes} min`.padEnd(8)}${printable(e.detail ?? "")}`;
     }),
   ];
 }
