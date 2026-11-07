@@ -31,7 +31,7 @@ const MANIFEST: TeleportManifest = {
     { name: "transcript", size: Buffer.byteLength(TRANSCRIPT), sha256: "a".repeat(64) },
     { name: "code", size: Buffer.byteLength(CODE), sha256: "b".repeat(64) },
   ],
-  secrets: { lines: 2, labels: ["token do GitHub", "senha na linha"] },
+  secrets: { lines: 2, labels: ["github_token", "password_line"] },
   git: {
     branch: "feature",
     head: "c".repeat(40),

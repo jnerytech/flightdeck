@@ -2137,6 +2137,28 @@ export const en: Dictionary = {
     assistant_key_store:
       "The system's credential store could not be reached. Try again, or check that it is unlocked.",
   },
+  /** What the secret scanner found, by kind (#714): the daemon sends the kinds, the app names them. */
+  secretKind: {
+    github_token: "GitHub token",
+    sk_key: "sk- key",
+    aws_key: "AWS key",
+    private_key: "private key",
+    bearer_token: "Bearer token",
+    slack_token: "Slack token",
+    password_line: "password in a line",
+    url_credential: "credential in a URL",
+    password_option: "password in an option",
+    curl_password: "curl password",
+    authorization_header: "authorization header",
+    cookie: "cookie",
+    basic_credential: "Basic credential",
+    jwt: "JWT",
+    service_key: "service key",
+    webhook: "webhook",
+    signed_url: "signed URL",
+    url_token: "token in a URL",
+    vault_value: "vault value",
+  },
   snippetRefusal: {
     name_invalid: "Name must be 1 to 64 characters: letters, numbers, space, . _ -",
     needs_run: "A command needs something to run.",

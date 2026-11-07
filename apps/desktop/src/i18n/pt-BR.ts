@@ -2136,6 +2136,28 @@ export const ptBR = {
     assistant_key_store:
       "Não deu para acessar o cofre de credenciais do sistema. Tente de novo ou veja se ele está desbloqueado.",
   },
+  /** What the secret scanner found, by kind (#714): the daemon sends the kinds, the app names them. */
+  secretKind: {
+    github_token: "token do GitHub",
+    sk_key: "chave sk-",
+    aws_key: "chave da AWS",
+    private_key: "chave privada",
+    bearer_token: "token Bearer",
+    slack_token: "token do Slack",
+    password_line: "senha na linha",
+    url_credential: "credencial em URL",
+    password_option: "senha em opção",
+    curl_password: "senha do curl",
+    authorization_header: "cabeçalho de autorização",
+    cookie: "cookie",
+    basic_credential: "credencial Basic",
+    jwt: "JWT",
+    service_key: "chave de serviço",
+    webhook: "webhook",
+    signed_url: "URL assinada",
+    url_token: "token em URL",
+    vault_value: "valor do cofre",
+  },
   snippetRefusal: {
     name_invalid: "Nome de 1 a 64 caracteres: letras, números, espaço, . _ -",
     needs_run: "Um comando precisa de algo para rodar.",

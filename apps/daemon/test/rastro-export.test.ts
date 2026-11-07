@@ -98,7 +98,7 @@ describe("rastro-export: with the content, past the secret scan", () => {
     expect(nodes.find((n) => n.id === "turn:1")?.label).toBe("Arrume o build");
     expect(nodes.find((n) => n.id === "tool:toolu_2")?.input).toBe("bun test");
     expect(nodes.find((n) => n.id === "tool:toolu_x")?.input).toBe(
-      "[redacted: token do GitHub, cabeçalho de autorização]",
+      "[redacted: github_token, authorization_header]",
     );
     expect(out.redacted).toBe(1);
     expect(out.json).not.toContain(KEY);

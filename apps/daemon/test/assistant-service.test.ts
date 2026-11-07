@@ -184,7 +184,7 @@ describe("assistant-service", () => {
     ]);
     expect(await reason(svc.run(run({ text: "password=hunter2hunter2" })))).toEqual([
       "assistant_secret_found",
-      { labels: "senha na linha" },
+      { labels: "password_line" },
     ]);
     expect(await reason(svc.run(run()))).toEqual([
       "assistant_quota_blocked",
@@ -215,11 +215,11 @@ describe("assistant-service", () => {
     const { svc, runtime, contexts } = service();
     expect(
       await reason(svc.run(run({ context: { description: "password=hunter2hunter2" } }))),
-    ).toEqual(["assistant_secret_found", { labels: "senha na linha" }]);
+    ).toEqual(["assistant_secret_found", { labels: "password_line" }]);
     expect([runtime.completeCalls.length, contexts.length]).toEqual([0, 0]);
     expect(await reason(svc.run(run({ context: { "password=hunter2hunter2": "x" } })))).toEqual([
       "assistant_secret_found",
-      { labels: "senha na linha" },
+      { labels: "password_line" },
     ]);
     expect(runtime.completeCalls.length).toBe(0);
     await svc.run(run({ context: { description: "sum the items" } }));
