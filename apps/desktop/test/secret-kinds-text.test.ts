@@ -40,7 +40,7 @@ describe("secret-kinds-text: every kind has a name in both languages (#714)", ()
       SECRET_KINDS.map((kind) => [kind, t(`secretKind.${kind}` as Key)]).filter(
         ([kind, text]) => text !== NAMES[kind as string]?.[at],
       );
-    expect([[...SECRET_KINDS].sort(), named(EN, 0), named(PT, 1)]).toEqual([
+    expect([([...SECRET_KINDS] as string[]).sort(), named(EN, 0), named(PT, 1)]).toEqual([
       Object.keys(NAMES).sort(),
       [],
       [],

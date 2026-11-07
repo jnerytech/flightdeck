@@ -5,7 +5,7 @@ import { SECRET_KINDS, SecretScanner } from "../src/snippets.ts";
  * Issue #714: the scanner names what it finds with stable kinds, never with a label in one
  * language. The app names each kind from its dictionaries.
  */
-const KINDS = [
+const KINDS: string[] = [
   "github_token",
   "sk_key",
   "aws_key",
@@ -51,10 +51,10 @@ const SAMPLES: Record<string, string> = {
 
 describe("secret-kinds: the scanner names what it finds with stable kinds (#714)", () => {
   test("the kinds are these, each an identifier and none a label in a language", () => {
-    expect([[...SECRET_KINDS], SECRET_KINDS.every((kind) => /^[a-z][a-z_]*$/.test(kind))]).toEqual([
-      KINDS,
-      true,
-    ]);
+    expect([
+      [...SECRET_KINDS] as string[],
+      SECRET_KINDS.every((kind) => /^[a-z][a-z_]*$/.test(kind)),
+    ]).toEqual([KINDS, true]);
   });
 
   test("a text of each kind is found as that kind", () => {
