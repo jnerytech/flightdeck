@@ -123,7 +123,7 @@ describe("teleport-move-ui: the entry that moves a session, behind the preview (
   test("the preview is a switch in Settings, off until the person turns it on", async () => {
     const { store } = await setup();
     await act(async () => {
-      store.router.push({ name: "settings" });
+      store.router.push({ name: "settings", section: "window" });
     });
     await settle(
       () =>
