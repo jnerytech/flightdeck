@@ -81,7 +81,8 @@ function target(
   options: {
     local?: string | null;
     failResume?: boolean;
-    mine?: { id: string; status: SessionStatus } | null;
+    /** This host's managed records of the session: a resume can leave more than one. */
+    mine?: { id: string; status: SessionStatus }[];
     /** What happens on this host while the session starts, before it answers. */
     whileStarting?: () => Promise<void>;
     failClose?: boolean;
@@ -116,7 +117,7 @@ function target(
       if (options.failResume) throw new Error("claude would not start");
       return { sessionId: "t1" };
     },
-    sessionOf: () => options.mine ?? null,
+    sessionsOf: () => options.mine ?? [],
     close: async (sessionId) => {
       calls.closed.push(sessionId);
       if (options.failClose) throw new Error("the old record would not end");
@@ -366,7 +367,13 @@ describe("teleport-import: a received package becomes a session on this host (#1
     const history = tempDir("fd-teleport-history-");
     // The copy it left here: the first bytes of the transcript that comes back.
     const { folder, file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
-    const { repo, deps, calls } = target(pkg, { local: file, mine: { id: "old", status: "idle" } });
+    const { repo, deps, calls } = target(pkg, {
+      local: file,
+      mine: [
+        { id: "old", status: "ended" },
+        { id: "older", status: "idle" },
+      ],
+    });
     const done = await importPackage({ ...deps, historyRoot: history }, "in-1", repo);
     expect([
       done.sessionId,
@@ -384,7 +391,8 @@ describe("teleport-import: a received package becomes a session on this host (#1
       [`${ID}.jsonl.replaced-2026-11-07T12-00-00-000Z`],
       TRANSCRIPT.slice(0, 20),
       TRANSCRIPT,
-      ["old"],
+      // Every record of it here ends: none keeps writing to the copy set aside.
+      ["old", "older"],
       [ID],
     ]);
   });
@@ -396,7 +404,14 @@ describe("teleport-import: a received package becomes a session on this host (#1
     const other = tempDir("fd-teleport-history-");
     const busy = await localCopy(other, TRANSCRIPT.slice(0, 20));
     const a = target(pkg, { local: diverged.file });
-    const b = target(pkg, { local: busy.file, mine: { id: "old", status: "running" } });
+    // An ended record first, and one still at work after it: any record at work refuses.
+    const b = target(pkg, {
+      local: busy.file,
+      mine: [
+        { id: "old", status: "ended" },
+        { id: "newer", status: "running" },
+      ],
+    });
     expect([
       await reason(() => importPackage({ ...a.deps, historyRoot: history }, "in-1", a.repo)),
       await reason(() => importPackage({ ...b.deps, historyRoot: other }, "in-1", b.repo)),
@@ -454,7 +469,7 @@ describe("teleport-import: a received package becomes a session on this host (#1
     const { repo, deps, calls } = target(pkg, {
       local: file,
       failResume: true,
-      mine: { id: "old", status: "ended" },
+      mine: [{ id: "old", status: "ended" }],
     });
     const failed = await reason(() =>
       importPackage({ ...deps, historyRoot: history }, "in-1", repo),
@@ -474,7 +489,7 @@ describe("teleport-import: a received package becomes a session on this host (#1
     const { file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
     const { repo, deps, calls } = target(pkg, {
       local: file,
-      mine: { id: "old", status: "idle" },
+      mine: [{ id: "old", status: "idle" }],
       failClose: true,
     });
     const done = await importPackage({ ...deps, historyRoot: history }, "in-1", repo).catch(

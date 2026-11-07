@@ -249,10 +249,11 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
           resumed.push(opts);
           return { sessionId: "t1" };
         },
-        // #870: an ended record of another session, then this session's own.
+        // #870: a record of another session, then two of this session's own.
         list: () => [
           { id: "other", claudeSessionId: "11111111-1111-4111-8111-111111111111", status: "idle" },
           { id: "old", claudeSessionId: ID, status: "idle" },
+          { id: "older", claudeSessionId: ID, status: "ended" },
         ],
         close: async (sessionId) => {
           closed.push(sessionId);
@@ -278,8 +279,8 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       await deps.transcriptOf("11111111-1111-4111-8111-111111111111"),
       await deps.resume(opts),
       resumed,
-      deps.sessionOf(ID),
-      deps.sessionOf("22222222-2222-4222-8222-222222222222"),
+      deps.sessionsOf(ID),
+      deps.sessionsOf("22222222-2222-4222-8222-222222222222"),
       await deps.close("old").then(() => closed),
       (deps.unarchive(ID), shown),
       deps.now() instanceof Date && Math.abs(deps.now().getTime() - Date.now()) < 60_000,
@@ -299,8 +300,11 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       null,
       { sessionId: "t1" },
       [opts],
-      { id: "old", status: "idle" },
-      null,
+      [
+        { id: "old", status: "idle" },
+        { id: "older", status: "ended" },
+      ],
+      [],
       ["old"],
       [[ID, { archived: false }]],
       true,
