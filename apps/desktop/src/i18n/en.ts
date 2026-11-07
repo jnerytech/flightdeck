@@ -19,6 +19,8 @@ export const en: Dictionary = {
     copyAccount: "Copy the account: {value}",
     copyHost: "Copy the host id: {value}",
     compact: "Compact rows",
+    hideBadges: "Hide New and Beta badges",
+    hideWhatsNew: "Hide What's new",
     checkUpdates: "Check for updates",
     shortcuts: "Keyboard shortcuts",
     signOutGithub: "Sign out of GitHub",

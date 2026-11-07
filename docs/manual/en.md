@@ -931,7 +931,10 @@ live; the list is the project's, so a session of another project never shows her
   account (its email and plan, read from the host's account card; the rail shows only its initial)
   opens a menu. Its header names the app and its version. Then come the plan, the account and the id
   of the host whose account it is, each copied when chosen; **Compact rows**, a switch kept on this
-  computer (the same density as in Settings); **Settings**; **What's new** (the highlights of the latest
+  computer (the same density as in Settings); three more switches kept on this computer, **Hide New
+  and Beta badges** (the small badges on the sidebar's recent items), **Hide What's new** (the dot and
+  the item below) and **Hide the setup checklist** (the same as the hide button on its row; **Show the
+  setup checklist** in Settings brings it back); **Settings**; **What's new** (the highlights of the latest
   releases, read from GitHub through a host that can; the account row and this item carry a dot, and
   the row's name says so, after the app was updated, until you open it; full-screen in a narrow
   window; **View all releases** opens GitHub); **Check for updates** (it opens Settings,

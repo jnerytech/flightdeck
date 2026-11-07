@@ -21,6 +21,8 @@ export const ptBR = {
     copyAccount: "Copiar a conta: {value}",
     copyHost: "Copiar o id do host: {value}",
     compact: "Linhas compactas",
+    hideBadges: "Ocultar os selos Novo e Beta",
+    hideWhatsNew: "Ocultar as novidades",
     checkUpdates: "Procurar atualizações",
     shortcuts: "Atalhos de teclado",
     signOutGithub: "Sair do GitHub",
