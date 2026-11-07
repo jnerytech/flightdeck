@@ -763,6 +763,40 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 1rem;
 }
 
+/* The columns and, beside them, the files of the picked worktree (#117); stacked when narrow. */
+@utility board-split {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  gap: 0.75rem;
+  & > [data-slot="board-columns"] {
+    min-width: 0;
+  }
+  @container (width >= 64rem) {
+    flex-direction: row;
+  }
+}
+
+/* The files panel: its own scroll, at most 40% of the height when stacked, a side column when wide. */
+@utility board-files {
+  display: flex;
+  min-height: 0;
+  max-height: 40%;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 0.75rem;
+  @container (width >= 64rem) {
+    max-height: none;
+    width: clamp(16rem, 28%, 26rem);
+    flex: 0 0 auto;
+  }
+}
+
 /* A column under a dragged card: it shows where the card would land. */
 /* A board column: a thin top line and a faint tint of the column's own tone. */
 @utility board-column {

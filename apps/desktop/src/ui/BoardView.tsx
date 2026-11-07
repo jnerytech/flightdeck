@@ -5,6 +5,7 @@ import {
   CircleCheck,
   CircleCheckBig,
   Columns3,
+  FolderOpen,
   ListTodo,
   Loader,
   Lock,
@@ -57,6 +58,7 @@ import {
   positionsBefore,
   projectCards,
 } from "../lib/board.ts";
+import { boardFiles } from "../lib/board-files.ts";
 import {
   answerOf,
   type BulkRefusal,
@@ -74,6 +76,7 @@ import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
+import { BoardFilesPanel } from "./BoardFiles.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
 
@@ -322,6 +325,8 @@ export const BoardView = memo(function BoardView(props: {
     "issues",
     false,
   );
+  /** The checkout whose files panel (#117) was hidden with its button: another one shows it again. */
+  const [filesHiddenFor, setFilesHiddenFor] = useState<string | null>(null);
   const { t } = store.i18n;
 
   useEffect(() => {
@@ -339,6 +344,12 @@ export const BoardView = memo(function BoardView(props: {
   const shown = filterCards(all, filter)
     .filter((card) => !onlyBlocked || card.waitingOn.length > 0)
     .filter((card) => !treeBranch || cardInFilter(card, treeBranch));
+  const files = boardFiles(
+    treeBranch,
+    all,
+    state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+  );
+  const filesShown = files !== null && filesHiddenFor !== treeBranch?.path;
   const filtering = filter.trim() !== "" || onlyBlocked;
   // The board's order: column by column, top to bottom, among the cards a filter leaves.
   const boardOrder = COLUMNS.flatMap(({ id }) =>
@@ -577,6 +588,17 @@ export const BoardView = memo(function BoardView(props: {
                 </Button>
               )}
               {withSync && <BoardSyncControl store={store} hostId={hostId} projectId={projectId} />}
+              {files && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-pressed={filesShown}
+                  onClick={() => setFilesHiddenFor(filesShown ? (treeBranch?.path ?? null) : null)}
+                >
+                  <FolderOpen aria-hidden="true" />
+                  {t("board.files")}
+                </Button>
+              )}
               {withIssues && (
                 <Button size="sm" variant="outline" onClick={() => setIssuesOpen(true)}>
                   <ListTodo aria-hidden="true" />
@@ -630,149 +652,152 @@ export const BoardView = memo(function BoardView(props: {
             onDismiss={() => setNotice(null)}
           />
         )}
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: Esc clears the selection from any card inside the board */}
-        <div
-          ref={boardRef}
-          data-slot="board-columns"
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
-          tabIndex={0}
-          style={{ gridAutoColumns: `${width}px` }}
-          className="grid min-h-48 flex-1 grid-flow-col gap-3 overflow-x-auto pb-2 @max-[40rem]:snap-x @max-[40rem]:snap-mandatory"
-          onKeyDown={(e) => {
-            // Only the board's own Esc: one that closes a card's menu is the menu's.
-            if (e.key !== "Escape" || e.defaultPrevented) return;
-            if (!e.currentTarget.contains(e.target as Node)) return;
-            if (selection.length > 0) clearSelection();
-          }}
-        >
-          {COLUMNS.map(({ id }) => (
-            <section
-              key={id}
-              aria-label={t(`kanban.columns.${id}` as Key)}
-              data-column={id}
-              className={cn(
-                "board-column group/lane relative snap-start",
-                over === id && "drop-over",
-              )}
-              onDragOver={(e) => e.preventDefault()}
-              onDragEnter={() => setOver(id)}
-              onDragLeave={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
-              }}
-              onDrop={() => {
-                setOver(null);
-                drop(id);
-              }}
-            >
-              <ColumnHeader
-                id={id}
-                title={t(`kanban.columns.${id}` as Key)}
-                count={columnCount(
-                  shown.filter((card) => card.column === id).length,
-                  all.filter((card) => card.column === id).length,
-                  filtering,
+        <div className="board-split">
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: Esc clears the selection from any card inside the board */}
+          <div
+            ref={boardRef}
+            data-slot="board-columns"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
+            tabIndex={0}
+            style={{ gridAutoColumns: `${width}px` }}
+            className="grid min-h-48 flex-1 grid-flow-col gap-3 overflow-x-auto pb-2 @max-[40rem]:snap-x @max-[40rem]:snap-mandatory"
+            onKeyDown={(e) => {
+              // Only the board's own Esc: one that closes a card's menu is the menu's.
+              if (e.key !== "Escape" || e.defaultPrevented) return;
+              if (!e.currentTarget.contains(e.target as Node)) return;
+              if (selection.length > 0) clearSelection();
+            }}
+          >
+            {COLUMNS.map(({ id }) => (
+              <section
+                key={id}
+                aria-label={t(`kanban.columns.${id}` as Key)}
+                data-column={id}
+                className={cn(
+                  "board-column group/lane relative snap-start",
+                  over === id && "drop-over",
                 )}
-                label={countLabel(
-                  t,
-                  shown.filter((card) => card.column === id).length,
-                  all.filter((card) => card.column === id).length,
-                  filtering,
-                )}
-                addLabel={t("kanban.addCardTo", { column: t(`kanban.columns.${id}` as Key) })}
-                onAdd={() => {
-                  setCreateIn(id);
-                  setCreating(true);
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnter={() => setOver(id)}
+                onDragLeave={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
                 }}
-              />
-              <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto empty:hidden">
-                {shown
-                  .filter((card) => card.column === id)
-                  .map((card) => (
-                    <CardTile
-                      key={card.id}
-                      card={card}
-                      workflow={
-                        card.workflowRunId
-                          ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
-                          : undefined
-                      }
-                      formatTime={(iso) => store.formatTime(iso)}
-                      labels={{
-                        actions: store.i18n.t("board.cardActions", { title: card.title }),
-                        start: store.i18n.t("board.startCard"),
-                        edit: store.i18n.t("board.edit"),
-                        delete: store.i18n.t("board.delete"),
-                        select: t("board.selectCard"),
-                        deselect: t("board.deselectCard"),
-                        selected: t("board.selectedCard"),
-                      }}
-                      startOff={startOffText(cardStartBlock(card), store.i18n.t)}
-                      deps={{
-                        waiting: titlesOf(card.waitingOn),
-                        holding: titlesOf(card.blocking),
-                      }}
-                      moves={movesOf(card)}
-                      onOpen={() => props.onOpenCard(card.id)}
-                      onEdit={() => props.onOpenCard(card.id, true)}
-                      onDelete={() => setDeleting(card)}
-                      onStart={() => setStarting(card)}
-                      locked={busy}
-                      selected={selection.includes(card.id)}
-                      onToggleSelect={() => select(card)}
-                      onRangeSelect={() => selectRange(card)}
-                      onDragStart={() => {
-                        dragging.current = card.id;
-                        draggingMany.current =
-                          acting.includes(card.id) && acting.length > 1 ? acting : null;
-                      }}
-                      onDropOn={() => {
-                        setOver(null);
-                        drop(id, card.id);
-                      }}
-                    />
-                  ))}
-              </ul>
-              {all.every((card) => card.column !== id) && (
-                <BoardColumnEmpty
-                  label={t("kanban.emptyName", {
-                    empty: t("kanban.empty"),
-                    action: t("kanban.addCard"),
-                  })}
-                  text={t("kanban.empty")}
+                onDrop={() => {
+                  setOver(null);
+                  drop(id);
+                }}
+              >
+                <ColumnHeader
+                  id={id}
+                  title={t(`kanban.columns.${id}` as Key)}
+                  count={columnCount(
+                    shown.filter((card) => card.column === id).length,
+                    all.filter((card) => card.column === id).length,
+                    filtering,
+                  )}
+                  label={countLabel(
+                    t,
+                    shown.filter((card) => card.column === id).length,
+                    all.filter((card) => card.column === id).length,
+                    filtering,
+                  )}
+                  addLabel={t("kanban.addCardTo", { column: t(`kanban.columns.${id}` as Key) })}
                   onAdd={() => {
                     setCreateIn(id);
                     setCreating(true);
                   }}
                 />
-              )}
-              {filtering &&
-                all.some((card) => card.column === id) &&
-                shown.every((card) => card.column !== id) && (
-                  <p className="column-empty">{t("board.noMatches")}</p>
+                <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto empty:hidden">
+                  {shown
+                    .filter((card) => card.column === id)
+                    .map((card) => (
+                      <CardTile
+                        key={card.id}
+                        card={card}
+                        workflow={
+                          card.workflowRunId
+                            ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
+                            : undefined
+                        }
+                        formatTime={(iso) => store.formatTime(iso)}
+                        labels={{
+                          actions: store.i18n.t("board.cardActions", { title: card.title }),
+                          start: store.i18n.t("board.startCard"),
+                          edit: store.i18n.t("board.edit"),
+                          delete: store.i18n.t("board.delete"),
+                          select: t("board.selectCard"),
+                          deselect: t("board.deselectCard"),
+                          selected: t("board.selectedCard"),
+                        }}
+                        startOff={startOffText(cardStartBlock(card), store.i18n.t)}
+                        deps={{
+                          waiting: titlesOf(card.waitingOn),
+                          holding: titlesOf(card.blocking),
+                        }}
+                        moves={movesOf(card)}
+                        onOpen={() => props.onOpenCard(card.id)}
+                        onEdit={() => props.onOpenCard(card.id, true)}
+                        onDelete={() => setDeleting(card)}
+                        onStart={() => setStarting(card)}
+                        locked={busy}
+                        selected={selection.includes(card.id)}
+                        onToggleSelect={() => select(card)}
+                        onRangeSelect={() => selectRange(card)}
+                        onDragStart={() => {
+                          dragging.current = card.id;
+                          draggingMany.current =
+                            acting.includes(card.id) && acting.length > 1 ? acting : null;
+                        }}
+                        onDropOn={() => {
+                          setOver(null);
+                          drop(id, card.id);
+                        }}
+                      />
+                    ))}
+                </ul>
+                {all.every((card) => card.column !== id) && (
+                  <BoardColumnEmpty
+                    label={t("kanban.emptyName", {
+                      empty: t("kanban.empty"),
+                      action: t("kanban.addCard"),
+                    })}
+                    text={t("kanban.empty")}
+                    onAdd={() => {
+                      setCreateIn(id);
+                      setCreating(true);
+                    }}
+                  />
                 )}
-              <Button
-                variant="secondary"
-                size="sm"
-                aria-label={t("board.quickAdd", { column: t(`kanban.columns.${id}` as Key) })}
-                className="w-full focus-visible:opacity-100 group-hover/lane:opacity-100 [@media(hover:hover)]:opacity-0"
-                onClick={() => {
-                  setCreateIn(id);
-                  setCreating(true);
-                }}
-              >
-                <Plus aria-hidden="true" />
-                {t("kanban.newCard")}
-              </Button>
-              <ColumnHandle
-                t={t}
-                width={width}
-                index={COLUMNS.findIndex((column) => column.id === id) + 1}
-                last={id === COLUMNS[COLUMNS.length - 1]?.id}
-                onChange={(next) => store.boardWidth.set(next, false)}
-                onCommit={() => store.boardWidth.persist()}
-              />
-            </section>
-          ))}
+                {filtering &&
+                  all.some((card) => card.column === id) &&
+                  shown.every((card) => card.column !== id) && (
+                    <p className="column-empty">{t("board.noMatches")}</p>
+                  )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  aria-label={t("board.quickAdd", { column: t(`kanban.columns.${id}` as Key) })}
+                  className="w-full focus-visible:opacity-100 group-hover/lane:opacity-100 [@media(hover:hover)]:opacity-0"
+                  onClick={() => {
+                    setCreateIn(id);
+                    setCreating(true);
+                  }}
+                >
+                  <Plus aria-hidden="true" />
+                  {t("kanban.newCard")}
+                </Button>
+                <ColumnHandle
+                  t={t}
+                  width={width}
+                  index={COLUMNS.findIndex((column) => column.id === id) + 1}
+                  last={id === COLUMNS[COLUMNS.length - 1]?.id}
+                  onChange={(next) => store.boardWidth.set(next, false)}
+                  onCommit={() => store.boardWidth.persist()}
+                />
+              </section>
+            ))}
+          </div>
+          {filesShown && <BoardFilesPanel store={store} hostId={hostId} files={files} />}
         </div>
       </div>
       {deleting && (
