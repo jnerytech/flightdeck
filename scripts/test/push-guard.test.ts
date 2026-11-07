@@ -101,4 +101,27 @@ describe("push-guard", () => {
     ).toBeNull();
     expect(quiet.calls).toEqual([]);
   });
+
+  test("#759: a quoted git option value, or a quoted subcommand, does not hide the push", () => {
+    for (const command of [
+      'git -c http.extraHeader="Authorization: x" push origin main',
+      "git -c 'user.name=A B' push origin rc/0363",
+      'git -c "credential.helper=" push origin v0.36.2',
+      'git --config-env "core.askPass=ASK" push origin main',
+      'git "push" origin main',
+      "git -C . -c x='a; b' push origin HEAD:main",
+    ]) {
+      expect(push(command) ?? "").toContain("is blocked");
+    }
+  });
+
+  test("#759: a push named only inside a quoted value is no push", () => {
+    for (const command of [
+      'git -c alias.x="push origin main" status',
+      'git log --grep "push origin main"',
+      "git -c 'x=a b' fetch origin main",
+    ]) {
+      expect(push(command)).toBeNull();
+    }
+  });
 });

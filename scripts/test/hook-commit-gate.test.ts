@@ -224,4 +224,16 @@ describe("hook-commit-gate", () => {
     expect(commitViolation("bun run test && git add a.ts", CWD, quiet)).toBeNull();
     expect(quiet.calls).toEqual([]);
   });
+
+  test("#759: a quoted git option value, or a quoted subcommand, does not hide the commit", () => {
+    for (const command of [
+      'git -c user.name="A B" commit -m "wip"',
+      "git -c 'core.editor=vim -f' commit -m 'wip'",
+      'git "commit" -m "wip"',
+    ]) {
+      expect(gate(command) ?? "").toContain("type(scope): text");
+    }
+    // A commit named only inside a quoted value is no commit.
+    expect(gate('git -c alias.c="commit -m wip" status')).toBeNull();
+  });
 });

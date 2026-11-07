@@ -32,6 +32,17 @@ describe("claude-hooks", () => {
     }
   });
 
+  test("#759: commit -a behind a quoted git option value, or as a quoted subcommand, is blocked", () => {
+    for (const command of [
+      'git -c user.name="A B" commit -a -m wip',
+      "git -c 'core.editor=vim -f' commit -am wip",
+      'git "commit" --all -m wip',
+    ]) {
+      expect(commandViolation(command) ?? "").toContain("is blocked");
+    }
+    expect(commandViolation('git -c alias.c="commit -a" status')).toBeNull();
+  });
+
   test("commit -a is blocked wherever the flag sits", () => {
     for (const command of [
       "git commit -a -m wip",
