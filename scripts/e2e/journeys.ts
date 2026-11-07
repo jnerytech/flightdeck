@@ -1480,6 +1480,91 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       }
     }
   },
+
+  // Issue #802: three layout claims the unit tests could only pin by class name are measured in
+  // the browser: a reason under a disabled button sits in the flow and not over the next field, the
+  // untrusted notice stays small with its link on the text line, and the status bar's items never
+  // overlap or run past it at a compact, a medium and a wide window.
+  "layout-medido": async (c) => {
+    // 1. The Run row of a card that has not started: its reasons are lines of the row's own box.
+    const title = `Card medido ${Date.now()}`;
+    await c.page.setViewportSize({ width: 1280, height: 800 });
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
+    await tile.waitFor({ timeout: WAIT });
+    await tile.getByRole("button", { name: title, exact: true }).click();
+    const start = c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true });
+    await start.waitFor({ timeout: WAIT });
+    const reasons = await start.evaluate((button) => {
+      const wrap = button.closest(".field-row-wrap");
+      const row = wrap?.querySelector(".field-row");
+      if (!wrap || !row) return "the Run row has no wrapper";
+      const edge = (el: Element) => el.getBoundingClientRect();
+      const helps = [...wrap.querySelectorAll(".field-help")];
+      if (helps.length < 2) return `expected two reasons under the row, found ${helps.length}`;
+      const next = wrap.nextElementSibling;
+      let above = edge(row).bottom;
+      for (const help of helps) {
+        const box = edge(help);
+        if (box.top < above - 1) return `a reason starts at ${box.top}, above ${above}`;
+        above = box.bottom;
+      }
+      if (edge(wrap).bottom < above - 1) return "the reasons hang out of the row's box";
+      if (next && edge(next).top < above - 1) return "the reasons run over the next block";
+      return null;
+    });
+    if (reasons) throw new Error(`a razão sob o botão desabilitado: ${reasons}`);
+
+    // 2. The untrusted notice of a session: small, and its link is on the text line.
+    await c.page.setViewportSize({ width: 1280, height: 800 });
+    await open(c, { name: "session", host: ALFA, id: c.ids.waitingSession });
+    const review = c.page.getByRole("button", {
+      name: c.t("projectPage.trust.review"),
+      exact: true,
+    });
+    await review.waitFor({ timeout: WAIT });
+    const notice = await review.evaluate((link) => {
+      const box = link.closest("[role='status']")?.getBoundingClientRect();
+      const own = link.getBoundingClientRect();
+      return box ? { height: box.height, link: own.height } : null;
+    });
+    if (!notice) throw new Error("o aviso de pasta sem confiança não está em um role=status");
+    if (notice.link >= 30) throw new Error(`o link do aviso tem ${notice.link}px: cresceu`);
+    if (notice.height > 72) throw new Error(`o aviso tem ${notice.height}px de altura`);
+
+    // 3. The status bar at three widths: nothing overlaps and nothing runs past the bar.
+    for (const width of [500, 800, 1280]) {
+      await c.page.setViewportSize({ width, height: 800 });
+      await open(c, { name: "hub" });
+      const bar = c.page.locator("[data-slot='status-bar']");
+      await bar.waitFor({ timeout: WAIT });
+      const problem = await bar.evaluate((el) => {
+        const whole = el.getBoundingClientRect();
+        if (el.scrollWidth > el.clientWidth + 1) return "the bar scrolls sideways";
+        const items = [...el.querySelectorAll("button, a, [role='status']")]
+          .map((item) => item.getBoundingClientRect())
+          .filter((box) => box.width > 0 && box.height > 0);
+        for (const box of items) {
+          if (box.right > whole.right + 1 || box.left < whole.left - 1)
+            return "an item is past the bar";
+        }
+        for (let a = 0; a < items.length; a++) {
+          for (let b = a + 1; b < items.length; b++) {
+            const x = items[a] as DOMRect;
+            const y = items[b] as DOMRect;
+            const across = Math.min(x.right, y.right) - Math.max(x.left, y.left);
+            const down = Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top);
+            if (across > 2 && down > 2) return `two items overlap (${a} and ${b})`;
+          }
+        }
+        return null;
+      });
+      if (problem) throw new Error(`a barra de status a ${width}px: ${problem}`);
+    }
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

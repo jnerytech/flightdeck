@@ -40,6 +40,7 @@ export const JOURNEYS: readonly string[] = [
   "card-start-alcance",
   "orcamento-alcance",
   "modo-simples-alcance",
+  "layout-medido",
   "time-novo-alcance",
 ];
 
