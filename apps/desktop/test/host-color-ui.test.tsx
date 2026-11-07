@@ -44,10 +44,8 @@ describe("host-color-ui: a host's color shows where its name does (issue #644)",
       fireEvent.click(button);
     });
     const items = screen.queryAllByRole("menuitemradio");
-    expect(items.map((item) => paint(item.querySelector("[data-host-dot]")))).toEqual([
-      hostColorVar("ha"),
-      hostColorVar("hb"),
-    ]);
+    const painted = items.map((item) => paint(item.querySelector("[data-host-dot]")));
+    expect(painted).toEqual([hostColorVar("ha"), hostColorVar("hb")]);
   });
 
   test("the list of all tabs puts the host's dot before its name, and none on a shared screen", async () => {

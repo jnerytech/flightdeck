@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { T } from "@/i18n/index";
 import { cn } from "@/lib/utils";
+import { HostDot } from "../hosts/host-dot.tsx";
 
 /** One tab as the list of all tabs shows it. */
 export interface TabRow {
@@ -166,9 +167,10 @@ function TabList(
                   {row.host && (
                     <span
                       data-slot="tab-host"
-                      className="max-w-[40%] shrink-0 truncate text-muted-foreground text-xs"
+                      className="flex max-w-[40%] shrink-0 items-center gap-1 text-muted-foreground text-xs"
                     >
-                      {row.host}
+                      {row.hostId && <HostDot hostId={row.hostId} />}
+                      <span className="truncate">{row.host}</span>
                     </span>
                   )}
                 </div>
