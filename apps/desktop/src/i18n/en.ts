@@ -1467,6 +1467,7 @@ export const en: Dictionary = {
     webhook: "webhooks",
     bg: "background sessions",
     projectTrust: "project trust",
+    harnessStack: "reading the project's stack",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },

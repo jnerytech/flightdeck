@@ -1464,6 +1464,7 @@ export const ptBR = {
     webhook: "os webhooks",
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
+    harnessStack: "a leitura do stack do projeto",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
