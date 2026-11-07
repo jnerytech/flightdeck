@@ -113,6 +113,10 @@ describe("push-guard", () => {
       // The refspec and the folder may be quoted too.
       'git push origin "main"',
       `git -C "${CWD}" push origin 'rc/0363'`,
+      // #759 review: a quote in the middle of a word, and a quoted cd.
+      'git "pu"sh origin main',
+      'git push origin ma"in"',
+      `cd "${CWD}" && git push origin main`,
     ]) {
       expect(push(command) ?? "").toContain("is blocked");
     }
