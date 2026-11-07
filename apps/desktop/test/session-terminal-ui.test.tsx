@@ -131,6 +131,45 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     expect((await live(store, hostId)).length).toBe(1);
   });
 
+  test("a session page that comes back finds its shell and its view, and opens no second shell", async () => {
+    const { store, hostId, sessionId } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    await clickTab("Terminal");
+    await settle(() => terminalShown());
+    const [shell] = await live(store, hostId);
+    await act(async () => {
+      store.router.push({ name: "hub" });
+    });
+    await settle(() => tab("Terminal") === null);
+    await act(async () => {
+      store.router.push({ name: "session", host: hostId, id: sessionId });
+    });
+    // The tab remembers it was on the Terminal, and the shell is the one it had.
+    await settle(() => terminalShown());
+    expect((await live(store, hostId)).map((t) => t.terminalId)).toEqual([
+      shell?.terminalId as string,
+    ]);
+  });
+
+  test("a shell the host refuses sends the person back to the conversation, and the view stays offered", async () => {
+    const { store, hostId } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    const real = store.hostCommand.bind(store);
+    (store as unknown as { hostCommand: unknown }).hostCommand = ((
+      host: string,
+      type: string,
+      payload: unknown,
+    ) =>
+      type === "terminal.openSession"
+        ? Promise.resolve(null)
+        : (real as (h: string, t: string, p: unknown) => unknown)(host, type, payload)) as never;
+    await clickTab("Terminal");
+    await settle(() => tab("Conversa")?.getAttribute("aria-selected") === "true");
+    expect(terminalShown()).toBe(false);
+    expect(tab("Terminal")).not.toBeNull();
+    expect((await live(store, hostId)).length).toBe(0);
+  });
+
   test("closing the session's tab ends the shell it opened", async () => {
     const { store, hostId } = await onSessionPage();
     await settle(() => tab("Terminal") !== null);
