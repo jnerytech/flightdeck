@@ -2815,7 +2815,9 @@ custos, os Custos dizem isso e oferecem **Mostrar todos os hosts**. **Por client
 custos ou não responde é citado. A exportação CSV cobre todos os hosts em **Todos os hosts**, com o
 nome do host na primeira coluna (um host que não responde fica de fora). Os gráficos de cota são
 por host: em **Todos os hosts** há uma linha, **Escolha um host para ver a cota**, com um botão por
-host. Cada
+host. Um projeto cujo nome também é de um projeto em outro host aparece com o host
+(`docs-site · alfa`), igual no Início e nos Custos, mesmo quando só um deles está na lista da
+tela. Cada
 cliente pode ter um **limite mensal** (US$): o app confere quando um host com custos entra no ar,
 quando você muda o limite e a cada dez minutos, avisa uma vez por mês em 50%, 80% e 100% (uma
 notificação e uma linha em **Precisa de você**) e **não segura cards**: os limites de cada host e

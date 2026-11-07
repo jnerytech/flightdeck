@@ -48,12 +48,15 @@ export function projectLabel(key: string): string {
 }
 
 /**
- * The label of each project key, told apart when two read the same: the host when the hosts
+ * The label of each of `keys`, told apart when two read the same: the host when the hosts
  * differ (`docs-site · alfa`), else the parent folder (`b/docs-site`), both when neither is enough.
+ * `known` are the other keys to be told apart from: the same ones give the same label on any screen.
  */
-export function projectLabels(keys: string[], _known: readonly string[] = []): Map<string, string> {
+export function projectLabels(keys: string[], known: readonly string[] = []): Map<string, string> {
+  // A name is told apart against every key the app knows, not only the ones on this screen, so one
+  // project reads the same everywhere (issue #881).
   const byLabel = new Map<string, string[]>();
-  for (const key of keys)
+  for (const key of new Set([...known, ...keys]))
     byLabel.set(projectLabel(key), [...(byLabel.get(projectLabel(key)) ?? []), key]);
   const labels = new Map<string, string>();
   for (const [label, group] of byLabel) {

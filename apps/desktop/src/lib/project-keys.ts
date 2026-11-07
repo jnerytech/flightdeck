@@ -7,6 +7,7 @@ import type { Project } from "@flightdeck/protocol";
 export class ProjectKeys {
   /** Moves whenever a new key is seen, so a screen can tell its labels may have changed. */
   version = 0;
+  private readonly seen = new Set<string>();
   private readonly listeners = new Set<() => void>();
 
   subscribe = (listener: () => void): (() => void) => {
@@ -15,14 +16,23 @@ export class ProjectKeys {
   };
 
   /** Remembers keys a screen has just read; nothing moves unless one is new. */
-  note(_keys: Iterable<string>): void {}
+  note(keys: Iterable<string>): void {
+    const before = this.seen.size;
+    for (const key of keys) this.seen.add(key);
+    if (this.seen.size === before) return;
+    this.version += 1;
+    for (const listener of this.listeners) listener();
+  }
 
   all(): string[] {
-    return [];
+    return [...this.seen];
   }
 }
 
 /** The keys of the projects the hosts list, which a host that does not send them leaves out. */
-export function knownProjectKeys(_projects: Record<string, readonly Project[]>): string[] {
-  return [];
+export function knownProjectKeys(projects: Record<string, readonly Project[]>): string[] {
+  const keys = Object.values(projects).flatMap((list) =>
+    list.flatMap((project) => (project.projectKey ? [project.projectKey] : [])),
+  );
+  return [...new Set(keys)];
 }
