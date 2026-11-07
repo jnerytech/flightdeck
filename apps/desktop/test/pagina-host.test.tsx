@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DAEMON_VERSION } from "../../daemon/src/server.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
@@ -244,5 +244,41 @@ describe("pagina-host", () => {
       fireEvent.click(open as HTMLElement);
     });
     await waitFor(() => expect(text()).toContain("informações indisponíveis"));
+  });
+
+  // #785: Health sat below Sessions and Projects (y=1087 at 1280x800) in one column 770 px wide.
+  // The host's status (health, resources, information) is one column, first; its work the other.
+  test("a visão geral põe o estado do host numa coluna, primeiro, e o trabalho do host na outra", async () => {
+    await setup();
+    const region = (name: string) => screen.queryByRole("region", { name });
+    await waitFor(() => expect(region("Sessões de pc")).not.toBeNull());
+    // The test daemon has no health check or resources: Information stands for the status column.
+    await waitFor(() => expect(region("Informações")).not.toBeNull());
+    const status = document.querySelector("[data-slot='host-overview-status']");
+    const work = document.querySelector("[data-slot='host-overview-work']");
+    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    const rule = (name: string) => css.split(`@utility ${name} {`)[1]?.split(/\n}\n/)[0] ?? "";
+    expect({
+      statusFirst:
+        status !== null &&
+        work !== null &&
+        (status.compareDocumentPosition(work) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      status: [region("Informações")].map((r) => r !== null && (status?.contains(r) ?? false)),
+      work: [region("Sessões de pc"), region("Projetos de pc")].map(
+        (r) => r !== null && (work?.contains(r) ?? false),
+      ),
+      // Two columns once the area is 64rem wide; each column is the container its cards lay out against.
+      twoColumns:
+        /@container \(width >= 64rem\) \{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/.test(
+          rule("host-overview"),
+        ),
+      columnsAreContainers: rule("host-overview-column").includes("container-type: inline-size"),
+    }).toEqual({
+      statusFirst: true,
+      status: [true],
+      work: [true, true],
+      twoColumns: true,
+      columnsAreContainers: true,
+    });
   });
 });
