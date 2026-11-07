@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { TeleportManifest } from "@flightdeck/protocol";
 import { bundleCode } from "../src/teleport/bundle.ts";
@@ -215,6 +215,41 @@ describe("teleport-import: a received package becomes a session on this host (#1
       await reason(() => importPackage(claimOf(noCode, null), "in-1", repo)),
       await leftovers(repo, history),
     ]).toEqual(["teleport_exists", "request_invalid", "request_invalid", [1, "", "", []]]);
+  });
+
+  test("a transcript file already where this one would go stays as it is, and a head the bundle does not carry is refused", async () => {
+    const pkg = await packaged();
+    const { repo, history, deps } = target(pkg);
+    const place = join(history, slug(join(repo, ".flightdeck", "worktrees", "teleport-feature")));
+    await mkdir(place, { recursive: true });
+    await writeFile(join(place, `${ID}.jsonl`), "this host's own\n");
+    const there = await reason(() => importPackage(deps, "in-1", repo));
+    const kept = await readFile(join(place, `${ID}.jsonl`), "utf8");
+    const forged = await packaged();
+    const other = target(forged);
+    const wrongHead = {
+      ...other.deps,
+      inbox: {
+        claim: async () => ({
+          manifest: {
+            ...forged.manifest,
+            git: {
+              ...(forged.manifest.git as NonNullable<TeleportManifest["git"]>),
+              head: "f".repeat(40),
+            },
+          },
+          transcript: forged.transcript,
+          code: forged.code,
+          release: async () => {},
+        }),
+      },
+    };
+    expect([
+      there,
+      kept,
+      await reason(() => importPackage(wrongHead, "in-1", other.repo)),
+      (await leftovers(other.repo, other.history)).slice(0, 3),
+    ]).toEqual(["teleport_exists", "this host's own\n", "request_invalid", [1, "", ""]]);
   });
 
   test("a session that does not start takes its worktree, branch and transcript with it", async () => {
