@@ -825,6 +825,8 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
 function redacted(text: string): string {
   return text
     .replace(/:\/\/[^/@\s]+@/g, "://***@")
+    .replace(/\b(?:gh[pousr]_|github_pat_)\w+/g, "***")
+    .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
     .replace(
       /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
       "$1=***",
@@ -845,7 +847,11 @@ function pushNowOverride(
     if (call.sub !== "push") continue;
     const reason = prefixAssignment(command.slice(call.start, call.end), "FLIGHTDECK_PUSH_NOW");
     if (!heavyReasonGiven(reason)) continue;
-    const detail = redacted((reason ?? "").trim()).slice(0, 200);
+    // Control characters out first, so none reaches the terminal through harness:stats.
+    const printable = Array.from(reason ?? "")
+      .filter((c) => c.charCodeAt(0) >= 32 && c.charCodeAt(0) !== 127)
+      .join("");
+    const detail = redacted(printable.trim()).slice(0, 200);
     const dir = call.dir;
     if (!push || dir === null) return { detail };
     const branch = pushedBranches(call, (args) => push.deps.git(args, dir))[0];
