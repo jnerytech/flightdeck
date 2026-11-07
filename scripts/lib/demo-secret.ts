@@ -14,6 +14,6 @@ export const DEMO_SECRET_FILE: { name: string; text: string } = {
 
 /** A credential file (the host never sends a line of one): searching its content finds nothing. */
 export const DEMO_CREDENTIAL_FILE: { name: string; text: string } = {
-  name: "wrong.txt",
-  text: "",
+  name: ".env",
+  text: "DEMO_MODE=on\n",
 };
