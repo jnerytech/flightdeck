@@ -7,6 +7,7 @@ import type { Database } from "bun:sqlite";
 import {
   inSequence,
   type MessageInfo,
+  type PermissionMode,
   type SessionTeam,
   type TeamInfo,
   type TeamMember,
@@ -54,6 +55,8 @@ export interface TeamsOptions {
     setTeam?(sessionId: string, team: SessionTeam): unknown;
   };
   clock?: () => number;
+  /** Issue #93: whether the host lets a session run without permission prompts. */
+  bypassAllowed?: () => boolean;
   /** Starts the coordinator session; phase 20 passes the persona on. */
   startCoordinator?: (input: {
     cwd: string;
@@ -61,6 +64,8 @@ export interface TeamsOptions {
     name: string;
     persona: string | null;
     model: string | null;
+    /** Issue #93: the mode the coordinator opens in; null is the host's default. */
+    permissionMode: PermissionMode | null;
   }) => { sessionId: string } | Promise<{ sessionId: string }>;
   /** Reads the personas for the coordinator when `startCoordinator` is not given. */
   preparePersonas?: Prepare;
@@ -82,6 +87,9 @@ export interface NewTeam {
   /** The model of the coordinator and of each worker; none or null is the persona's own. */
   coordinatorModel?: string;
   workerModels?: Array<string | null>;
+  /** Issue #93: the permission mode of the coordinator and of each worker; none or null is the default. */
+  coordinatorPermission?: PermissionMode;
+  workerPermissions?: Array<PermissionMode | null>;
   checks?: string[];
 }
 
@@ -92,7 +100,11 @@ export interface TeamPatch {
   persona?: { member: string; persona: string | null };
   addWorkers?: number;
   /** One more worker with the persona and model asked for (none or null is the default). */
-  addMember?: { persona?: string | null; model?: string | null };
+  addMember?: {
+    persona?: string | null;
+    model?: string | null;
+    permission?: PermissionMode | null;
+  };
   removeMember?: string;
 }
 
@@ -102,6 +114,8 @@ interface StoredMember {
   role: "coordinator" | "worker";
   persona: string | null;
   model?: string | null;
+  /** Issue #93: the permission mode it was asked to open in. */
+  permission?: PermissionMode | null;
   cardId: string | null;
   sessionId: string | null;
   /** A worker's number in the team (issue #101); absent from a team saved before. */
@@ -207,6 +221,7 @@ export class Teams {
       role: stored.role,
       persona: stored.persona,
       model: stored.model ?? null,
+      permission: null,
       cardId: stored.cardId,
       sessionId,
       address: sessionId ? `${this.opts.host}/${sessionId}` : null,
@@ -377,7 +392,13 @@ export class Teams {
     });
     const startCoordinator =
       this.opts.startCoordinator ??
-      (async (start: { cwd: string; prompt: string; name: string; model: string | null }) =>
+      (async (start: {
+        cwd: string;
+        prompt: string;
+        name: string;
+        model: string | null;
+        permissionMode: PermissionMode | null;
+      }) =>
         this.opts.manager.create(
           {
             cwd: start.cwd,
@@ -396,6 +417,7 @@ export class Teams {
       name: coordinatorName,
       persona: coordinatorPersona,
       model: coordinatorModel,
+      permissionMode: null,
     });
     if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
     this.opts.names?.setTeam?.(sessionId, { name: label(name), role: "coordinator", number: null });

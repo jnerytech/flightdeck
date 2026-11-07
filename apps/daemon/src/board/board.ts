@@ -11,6 +11,7 @@ import {
   IssuesConfig,
   inSequence,
   isBranchName,
+  type PermissionMode,
   type PermissionUpdate,
   type PersonaRef,
   type PersonaSubagentsMode,
@@ -608,6 +609,8 @@ export class Board {
         effort: EffortLevel | null;
         /** Phase 20: the id of the persona the variant runs in. */
         persona?: string | null;
+        /** Issue #93: the permission mode the variant's session opens in. */
+        permissionMode?: PermissionMode | null;
       };
     },
   ): Card {

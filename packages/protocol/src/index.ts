@@ -822,6 +822,8 @@ export const Card = z.object({
       effort: EffortLevel.nullable(),
       /** Phase 20: the id of the persona the variant runs in. */
       persona: z.string().nullable().optional(),
+      /** Issue #93: the permission mode the variant's session opens in (a team's worker). */
+      permissionMode: PermissionMode.nullable().optional(),
     })
     .nullable()
     .default(null),
@@ -2753,6 +2755,8 @@ export const TeamMember = z.object({
   persona: z.string().nullable(),
   /** The model it was asked to run in; null is the persona's own, else the default. */
   model: z.string().nullable(),
+  /** Issue #93: the permission mode it was asked to open in; null is the host's default. Absent from an older host. */
+  permission: PermissionMode.nullable().optional(),
   cardId: z.string().nullable(),
   /** Null while a worker's card waits in the quota queue and has no session yet. */
   sessionId: z.string().nullable(),
@@ -3381,6 +3385,9 @@ export const Command = z.discriminatedUnion("type", [
       /** The model of the coordinator and of each worker; none or null is the persona's own. */
       coordinatorModel: z.string().min(1).optional(),
       workerModels: z.array(z.string().min(1).nullable()).max(8).optional(),
+      /** Issue #93: the permission mode of the coordinator and of each worker; none or null is the default. */
+      coordinatorPermission: PermissionMode.optional(),
+      workerPermissions: z.array(PermissionMode.nullable()).max(8).optional(),
       checks: z.array(z.string().min(1).max(400)).max(10).optional(),
     }),
   ),
@@ -3400,6 +3407,8 @@ export const Command = z.discriminatedUnion("type", [
         .object({
           persona: z.string().min(1).nullable().optional(),
           model: z.string().min(1).nullable().optional(),
+          /** Issue #93: the permission mode the new worker opens in. */
+          permission: PermissionMode.nullable().optional(),
         })
         .optional(),
       removeMember: z.string().min(1).optional(),
