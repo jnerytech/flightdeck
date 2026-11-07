@@ -56,4 +56,11 @@ to B could never move back to A. The teleport decision
   files. It is a whole transcript, with whatever secrets it holds, under the permissions it had.
 - The refusal keeps the reason `teleport_exists`; its text now also names a copy with other turns
   and one still in use here.
+- The source's archive is a hint, not a lock. It is best effort, within the clean-up's time limit,
+  so a source that is slow or gone keeps showing its copy. And archived only hides the session: it
+  does not close or sleep it, and the person can still open and continue it there. Either way no
+  turn is lost: if the person goes on with the copy on the source, that copy diverges, and a later
+  move back is refused (`teleport_exists`) instead of replacing it. A lock (closing the source's
+  session, or refusing its messages) was left out: it would act on a host while it may be offline,
+  and the prefix check already keeps the data safe.
 - The real check is a manual A → B → A move (fd-qa's script, #14): tests never run the real Claude.

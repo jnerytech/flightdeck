@@ -872,7 +872,7 @@ An idle session can continue on another host: its conversation, its commits and 
 3. Read what moves: the branch, the commits not on origin yet, the files changed, the size, and how many lines look like secrets. The secrets themselves are never shown, and they move as they are.
 4. Press **Move**, then **Open it there**. Once every byte is sent you can close the window: when the move ends, a toast says so, with **Open it there**, or says why it was refused.
 
-On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here stays as it was. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them. Symbolic links in the code arrive as links, as in any clone of someone else's repository: a write through one can land outside the worktree, so move sessions only between hosts you trust.
+On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here is archived, with its conversation kept: it lives on the other host now. You can move it back later: this host takes it when the copy it kept has nothing the moved session lacks and is not in use, and sets that copy aside as `<id>.jsonl.replaced-<date>` next to it, never deleting it. If you went on with the copy here after the move, the move back is refused: open the one here instead. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them. Symbolic links in the code arrive as links, as in any clone of someone else's repository: a write through one can land outside the worktree, so move sessions only between hosts you trust.
 
 ### Sleeping idle sessions
 

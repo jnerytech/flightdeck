@@ -156,18 +156,26 @@ export async function teleportSession(run: TeleportRun): Promise<TeleportOutcome
     if (error instanceof Cancelled) return { kind: "cancelled" };
     throw error;
   } finally {
-    await cleanUp(run, manifest.id, landed ? null : id);
+    await cleanUp(run, manifest.id, landed ? null : id, landed ? manifest.claudeSessionId : null);
   }
 }
 
 /**
  * Both hosts drop what they hold for this move, at once and for a limited time: a host that went or
- * does not answer never hides why the move stopped, nor holds it.
+ * does not answer never hides why the move stopped, nor holds it. A move that landed also archives
+ * the copy it left on the source (#870): the session lives on the target now, and the target
+ * shows it again if it ever comes back.
  */
-async function cleanUp(run: TeleportRun, packageId: string, received: string | null) {
+async function cleanUp(
+  run: TeleportRun,
+  packageId: string,
+  received: string | null,
+  moved: string | null = null,
+) {
   const steps = [
     ...(received ? [run.target("teleport.abort", { id: received })] : []),
     run.source("teleport.cancel", { id: packageId }),
+    ...(moved ? [run.source("session.meta.set", { claudeSessionId: moved, archived: true })] : []),
   ];
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise((resolve) => {
