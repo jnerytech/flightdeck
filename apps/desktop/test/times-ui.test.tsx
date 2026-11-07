@@ -42,7 +42,10 @@ const change = async (label: string, value: string) => {
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, stdio: "ignore" });
 
 /** A --runtime fake daemon named `hostName` with a project. */
-async function daemonWithProject(hostName: string, options: { projects?: boolean } = {}) {
+async function daemonWithProject(
+  hostName: string,
+  options: { projects?: boolean; bypass?: boolean } = {},
+) {
   const dir = realTempDir(`fd-times-ui-${hostName}-`);
   const repo = join(dir, "app");
   mkdirSync(repo);
@@ -64,6 +67,7 @@ async function daemonWithProject(hostName: string, options: { projects?: boolean
       dataDir: join(dir, "data"),
       hooks: { port: 0 },
       allowedRoots: [dir],
+      ...(options.bypass ? { allowBypassPermissions: true } : {}),
     }),
   );
   // The app asks this daemon for its background sessions (`claude agents`): a fake answers, the
@@ -112,6 +116,7 @@ async function daemonWithProject(hostName: string, options: { projects?: boolean
         sessionId: string | null;
         persona: string | null;
         model: string | null;
+        permission?: string | null;
       }>;
     }>;
   };
@@ -131,7 +136,11 @@ async function daemonWithProject(hostName: string, options: { projects?: boolean
 
 /** The app on a daemon with a project, on its Times screen. */
 async function open(
-  options: { projects?: boolean; assistant?: ReturnType<typeof fakeAssistant> } = {},
+  options: {
+    projects?: boolean;
+    bypass?: boolean;
+    assistant?: ReturnType<typeof fakeAssistant>;
+  } = {},
 ) {
   const d = await daemonWithProject("pc", options);
   const mem = memoryPlatform();
@@ -472,6 +481,104 @@ describe("times-ui: the teams of a host", () => {
     // The model each member was asked for is shown on its line.
     await settle(() => (row("tm")?.textContent ?? "").includes("haiku"));
     expect(row("tm")?.textContent).toContain("opus");
+  });
+
+  test("the coordinator and each worker open in the permission mode picked, and Bypass shows only where the host allows it (#93)", async () => {
+    const { teams } = await open();
+    await click("Novo time");
+    await change("Objetivo", "só planejar");
+    await change("Nome do time", "pm");
+    const options = (label: string) =>
+      [...((screen.queryByLabelText(label) as HTMLSelectElement | null)?.options ?? [])].map(
+        (o) => o.value,
+      );
+    // The host forbids bypass (the default): the choice is not offered, for any member.
+    expect(options("Permissões da coordenadora")).toEqual(["", "acceptEdits", "plan"]);
+    expect(options("Permissões da executora 1")).toEqual(["", "acceptEdits", "plan"]);
+    await change("Permissões da coordenadora", "plan");
+    await change("Permissões da executora 2", "acceptEdits");
+    await click("Criar e iniciar");
+    await settle(() => row("pm") !== null);
+    const members = (await teams())[0]?.members as Array<{
+      name: string;
+      permission: string | null;
+    }>;
+    expect(members.map((m) => [m.name, m.permission])).toEqual([
+      ["pm · coordenadora", "plan"],
+      ["pm · executora 1", null],
+      ["pm · executora 2", "acceptEdits"],
+    ]);
+  });
+
+  test("choosing Bypass on a host that allows it asks before the team is created, and cancelling creates nothing (#93)", async () => {
+    const { teams } = await open({ bypass: true });
+    await click("Novo time");
+    await change("Objetivo", "sem perguntas");
+    await change("Nome do time", "by");
+    await workerRows(1);
+    expect(
+      [
+        ...((screen.queryByLabelText("Permissões da executora 1") as HTMLSelectElement | null)
+          ?.options ?? []),
+      ].map((o) => o.value),
+    ).toEqual(["", "acceptEdits", "plan", "bypassPermissions"]);
+    await change("Permissões da executora 1", "bypassPermissions");
+    await click("Criar e iniciar");
+    await settle(() => screen.queryByRole("alertdialog") !== null);
+    await click("Cancelar", screen.queryByRole("alertdialog"));
+    await settle(() => screen.queryByRole("alertdialog") === null);
+    expect(await teams()).toEqual([]);
+    await click("Criar e iniciar");
+    await settle(() => screen.queryByRole("alertdialog") !== null);
+    await click("Criar sem pedidos de permissão", screen.queryByRole("alertdialog"));
+    await settle(() => row("by") !== null);
+    const members = (await teams())[0]?.members as Array<{ permission: string | null }>;
+    expect(members.map((m) => m.permission)).toEqual([null, "bypassPermissions"]);
+  });
+
+  test("a host that does not announce the permission modes shows no picker, so nothing is silently ignored (#93)", async () => {
+    const { store } = await open();
+    await click("Novo time");
+    await settle(() => screen.queryByLabelText("Permissões da executora 1") !== null);
+    const host = store.getState().hosts[0];
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        hosts: [
+          {
+            ...host,
+            hostInfo: {
+              ...host?.hostInfo,
+              features: (host?.hostInfo?.features ?? []).filter((f) => f !== "teams.permissions"),
+            },
+          },
+        ],
+      });
+    });
+    await settle(() => screen.queryByLabelText("Permissões da executora 1") === null);
+    expect(screen.queryByLabelText("Modelo da executora 1")).not.toBeNull();
+    expect(screen.queryByLabelText("Permissões da coordenadora")).toBeNull();
+    expect(screen.queryByLabelText("Permissões da executora 1")).toBeNull();
+  });
+
+  test("a worker added to a running team takes a permission mode too (#93)", async () => {
+    const { teams } = await open();
+    await create("ad", "1");
+    await click("Adicionar executora a ad", row("ad"));
+    await settle(() => screen.queryByLabelText("Permissões da nova executora de ad") !== null);
+    await change("Permissões da nova executora de ad", "plan");
+    await click("Adicionar a ad", row("ad"));
+    await settle(() => (row("ad")?.textContent ?? "").includes("ad · executora 2"));
+    const added = (await teams())[0]?.members.find((m) => m.name === "ad · executora 2");
+    expect(added?.permission).toBe("plan");
+  });
+
+  test("the worker rows are a grid of fixed columns: persona, model, permissions, remove (#93)", async () => {
+    await open();
+    await click("Novo time");
+    await workerRows(2);
+    const rows = [...document.querySelectorAll<HTMLElement>("[data-slot='worker-row']")];
+    expect(rows.length).toBe(2);
+    for (const item of rows) expect(item.className.split(" ")).toContain("worker-row");
   });
 
   test("a member's persona is switched with a picker of the host's personas", async () => {
