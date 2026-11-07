@@ -68,6 +68,61 @@ describe("botao-motivo-linha: a button in a form row", () => {
     expect(css).toMatch(/@utility field-help \{/);
   });
 
+  // #732: the row kept one reason, so two disabled buttons shared it (the last one won) and the
+  // card's Run row fell back to reasons that hung under each button and printed over each other.
+  test("two disabled buttons each say why on a line of their own, and enabling one drops only its line", () => {
+    const pair = (stopOff: boolean) => (
+      <FieldRow>
+        <ActionButton disabled={stopOff} disabledReason="Não está rodando.">
+          Parar
+        </ActionButton>
+        <ActionButton disabled disabledReason="Inicie antes do PR.">
+          Abrir PR
+        </ActionButton>
+      </FieldRow>
+    );
+    const { rerender } = render(pair(true));
+    const describedBy = (name: string) =>
+      document.getElementById(
+        screen.queryByRole("button", { name })?.getAttribute("aria-describedby") ?? "",
+      )?.textContent ?? null;
+    const lines = () =>
+      [...document.querySelectorAll(".field-help")].map((line) => line.textContent ?? "");
+    const both = { stop: describedBy("Parar"), pr: describedBy("Abrir PR"), lines: lines() };
+    rerender(pair(false));
+    const one = { stop: describedBy("Parar"), pr: describedBy("Abrir PR"), lines: lines() };
+    expect({ both, one }).toEqual({
+      both: {
+        stop: "Não está rodando.",
+        pr: "Inicie antes do PR.",
+        lines: ["Não está rodando.", "Inicie antes do PR."],
+      },
+      one: { stop: null, pr: "Inicie antes do PR.", lines: ["Inicie antes do PR."] },
+    });
+  });
+
+  // #732: Open PR stays off while its reason changes ("start the card first", then "a PR is
+  // already open"): its own line says the new reason, in the same place.
+  test("a disabled button whose reason changes says the new one on its own line", () => {
+    const one = (reason: string) => (
+      <FieldRow>
+        <ActionButton disabled disabledReason={reason}>
+          Abrir PR
+        </ActionButton>
+      </FieldRow>
+    );
+    const { rerender } = render(one("Inicie antes do PR."));
+    rerender(one("O PR já está aberto."));
+    const lines = [...document.querySelectorAll(".field-help")].map((line) => line.textContent);
+    const described = document.getElementById(
+      screen.queryByRole("button", { name: "Abrir PR" })?.getAttribute("aria-describedby") ?? "",
+    )?.textContent;
+    expect({ lines, described }).toEqual({
+      lines: ["O PR já está aberto."],
+      described: "O PR já está aberto.",
+    });
+  });
+
   test("the help is gone once the button is enabled", () => {
     const { rerender } = render(row(true));
     expect(screen.queryByText("Digite a pasta.")).not.toBeNull();

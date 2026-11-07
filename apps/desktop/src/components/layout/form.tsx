@@ -2,8 +2,10 @@ import {
   type ComponentProps,
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useId,
+  useMemo,
   useState,
 } from "react";
 import { Spinner } from "@/components/feedback/busy";
@@ -237,10 +239,15 @@ export function FieldRow(
     slot?: string;
   }>,
 ) {
-  const id = useId();
-  const [reason, setReason] = useState<string | null>(null);
+  // One line per disabled button, in the order they said why (#732): two buttons off at
+  // once each keep their own reason, and enabling one drops only its line.
+  const [reasons, setReasons] = useState<ReadonlyArray<RowReason>>([]);
+  const setReason = useCallback((id: string, text: string | null) => {
+    setReasons((list) => withReason(list, id, text));
+  }, []);
+  const slot = useMemo(() => ({ setReason }), [setReason]);
   return (
-    <FieldRowContext.Provider value={{ id, setReason }}>
+    <FieldRowContext.Provider value={slot}>
       <div className="field-row-wrap">
         <div
           data-slot={props.slot}
@@ -248,20 +255,37 @@ export function FieldRow(
         >
           {props.children}
         </div>
-        {reason && (
-          <p id={id} className="field-help">
-            {reason}
+        {reasons.map((reason) => (
+          <p key={reason.id} id={reason.id} className="field-help">
+            {reason.text}
           </p>
-        )}
+        ))}
       </div>
     </FieldRowContext.Provider>
   );
 }
 
-interface FieldRowSlot {
-  /** The id of the row's help line, which the button it explains points at. */
+interface RowReason {
   id: string;
-  setReason(reason: string | null): void;
+  text: string;
+}
+
+/**
+ * The row's reasons with the one of `id` taken out and, when it has a text, put back at the end. A
+ * button's changed reason comes as its old one taken out (the effect's cleanup), then the new one.
+ */
+function withReason(
+  list: ReadonlyArray<RowReason>,
+  id: string,
+  text: string | null,
+): ReadonlyArray<RowReason> {
+  const rest = list.filter((reason) => reason.id !== id);
+  return text === null ? rest : [...rest, { id, text }];
+}
+
+interface FieldRowSlot {
+  /** Shows the reason of the button whose help line is `id`, or removes it with `null`. */
+  setReason(id: string, reason: string | null): void;
 }
 
 /** What a button inside a `FieldRow` finds: where to say why it is disabled. */
