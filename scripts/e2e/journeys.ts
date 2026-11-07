@@ -1212,10 +1212,13 @@ async function crumbsProblem(page: Page): Promise<string | null> {
   });
 }
 
-/** Since #488 a tab is as wide as its title, as in VS Code: never under the minimum, never past 13rem. */
+/**
+ * Since #488 a tab is as wide as its title, as in VS Code: never under the minimum, never past 13rem.
+ * The shared tabs are pinned and show only their icon (#644), so they are not counted.
+ */
 async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
   const widths = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>(".tab-item")].map((tab) =>
+    [...document.querySelectorAll<HTMLElement>(".tab-item:not([data-pinned])")].map((tab) =>
       Math.round(tab.getBoundingClientRect().width),
     ),
   );
