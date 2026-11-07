@@ -746,7 +746,6 @@ html:not(:has([data-slot="status-bar"])) {
    scrolls here; a Page scrolls by itself (alone or in a split view's pane), so around one the
    area scrolls on neither axis and never shows a second bar beside the page's own (#785). */
 @utility area-screen {
-  container-type: inline-size;
   min-height: 0;
   flex: 1 1 0%;
   overflow-y: auto;

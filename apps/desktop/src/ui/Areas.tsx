@@ -139,7 +139,7 @@ export function Areas(
             )}
             {/* Screens that are a Page scroll by themselves; the others scroll here. The area is the
                 container its screens lay out against. */}
-            <div data-slot="area-screen" className="area-screen">
+            <div data-slot="area-screen" className="@container area-screen">
               <Screen
                 {...props.screen}
                 route={
