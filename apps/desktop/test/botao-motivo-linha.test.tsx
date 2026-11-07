@@ -101,6 +101,28 @@ describe("botao-motivo-linha: a button in a form row", () => {
     });
   });
 
+  // #732: Open PR stays off while its reason changes ("start the card first", then "a PR is
+  // already open"): its own line says the new reason, in the same place.
+  test("a disabled button whose reason changes says the new one on its own line", () => {
+    const one = (reason: string) => (
+      <FieldRow>
+        <ActionButton disabled disabledReason={reason}>
+          Abrir PR
+        </ActionButton>
+      </FieldRow>
+    );
+    const { rerender } = render(one("Inicie antes do PR."));
+    rerender(one("O PR já está aberto."));
+    const lines = [...document.querySelectorAll(".field-help")].map((line) => line.textContent);
+    const described = document.getElementById(
+      screen.queryByRole("button", { name: "Abrir PR" })?.getAttribute("aria-describedby") ?? "",
+    )?.textContent;
+    expect({ lines, described }).toEqual({
+      lines: ["O PR já está aberto."],
+      described: "O PR já está aberto.",
+    });
+  });
+
   test("the help is gone once the button is enabled", () => {
     const { rerender } = render(row(true));
     expect(screen.queryByText("Digite a pasta.")).not.toBeNull();
