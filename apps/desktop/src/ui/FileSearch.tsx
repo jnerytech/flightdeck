@@ -1,4 +1,4 @@
-import type { FileSearchResult } from "@flightdeck/protocol";
+import { type FileSearchResult, SecretScanner } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,9 @@ type Mode = "name" | "content";
 const MODES: readonly Mode[] = ["name", "content"];
 /** What a search shows: none asked (the tree), on its way, its matches, or why the host refused. */
 type Found = null | "searching" | FileSearchResult | { refused: string };
+
+/** The app's secret masker (the one the log uses): a match's line never shows a token or a key. */
+const scanner = new SecretScanner();
 
 /** The query as the host takes it: no control characters, at most 200 characters. */
 const cleaned = (query: string) =>
@@ -129,7 +132,10 @@ function Matches(props: Readonly<{ found: Exclude<Found, null>; onOpen(path: str
                   {place}
                 </button>
               )}
-              {match.text !== undefined && <code className="file-hit-line">{match.text}</code>}
+              {/* A credential's line is never shown; any other goes through the masker (#827). */}
+              {match.text !== undefined && !match.secret && (
+                <code className="file-hit-line">{scanner.redact(match.text, false)}</code>
+              )}
             </li>
           );
         })}
