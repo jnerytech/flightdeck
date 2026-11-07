@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { FunctionCoverage } from "../lib/coverage-funcs.ts";
 import {
   failedCount,
@@ -448,8 +449,8 @@ describe("shard-gate run: one shard job (#296, #828 review)", () => {
     const f = fakes();
     expect(await runShard("2/3", "bun", "/tmp/out", f.deps)).toBe(0);
     expect(f.spawned).toEqual([shardRun("bun", ["b.test.ts"], "/tmp/out", ["src/x.ts"])]);
-    expect(f.written.get("/tmp/out/test.log")).toContain("1 pass");
-    expect(JSON.parse(f.written.get("/tmp/out/marker.json") ?? "")).toEqual({
+    expect(f.written.get(join("/tmp/out", "test.log"))).toContain("1 pass");
+    expect(JSON.parse(f.written.get(join("/tmp/out", "marker.json")) ?? "")).toEqual({
       shard: 2,
       of: 3,
       kind: "bun",
@@ -463,7 +464,7 @@ describe("shard-gate run: one shard job (#296, #828 review)", () => {
   test("a failed test run keeps its exit code and failed count in the marker", async () => {
     const f = fakes({ exit: 1, log: " 0 pass\n 2 fail\n" });
     expect(await runShard("1/3", "istanbul", "/tmp/out", f.deps)).toBe(1);
-    expect(JSON.parse(f.written.get("/tmp/out/marker.json") ?? "")).toMatchObject({
+    expect(JSON.parse(f.written.get(join("/tmp/out", "marker.json")) ?? "")).toMatchObject({
       exit: 1,
       fail: 2,
     });
@@ -505,11 +506,12 @@ describe("shard-gate merge: the six job folders into the gate (#296, #828 review
   function disk(jobs: ShardJob[], extra: Record<string, string> = {}) {
     const files = new Map<string, string>(Object.entries(extra));
     jobs.forEach((job, i) => {
-      const name = `/art/job-${i}`;
-      if (job.marker) files.set(`${name}/marker.json`, JSON.stringify(job.marker));
+      // The paths as mergeShards joins them: with \ on Windows (#534).
+      const name = join("/art", `job-${i}`);
+      if (job.marker) files.set(join(name, "marker.json"), JSON.stringify(job.marker));
       if (job.data !== null) {
         files.set(
-          `${name}/${job.marker?.kind === "istanbul" ? "funcs.json" : "lcov.info"}`,
+          join(name, job.marker?.kind === "istanbul" ? "funcs.json" : "lcov.info"),
           job.data,
         );
       }
@@ -517,7 +519,7 @@ describe("shard-gate merge: the six job folders into the gate (#296, #828 review
     const written = new Map<string, string>();
     const printed: string[] = [];
     const errors: string[] = [];
-    const folders = () => [...new Set([...files.keys()].map((p) => p.split("/")[2] as string))];
+    const folders = () => [...new Set([...files.keys()].map((p) => p.split(/[\\/]/)[2] as string))];
     return {
       written,
       printed,
@@ -570,7 +572,7 @@ describe("shard-gate merge: the six job folders into the gate (#296, #828 review
     expect(mergeShards("/art", 3, "/out/lcov.info", none.deps)).toBe(1);
     expect(none.errors[0]).toBe("the sharded run has no coverage verdict (7 problem(s)):");
     expect(none.written.size).toBe(0);
-    const torn = disk(healthy(), { "/art/torn/marker.json": '{"shard": 1, "of"' });
+    const torn = disk(healthy(), { [join("/art", "torn", "marker.json")]: '{"shard": 1, "of"' });
     expect(mergeShards("/art", 3, "/out/lcov.info", torn.deps)).toBe(1);
     expect(torn.errors).toEqual([
       "the sharded run has no coverage verdict (1 problem(s)):",
