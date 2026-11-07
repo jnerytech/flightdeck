@@ -1,5 +1,5 @@
 import { ChevronDown, type LucideIcon, X } from "lucide-react";
-import { type KeyboardEvent, useId, useState } from "react";
+import { type KeyboardEvent, type ReactElement, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -34,6 +34,10 @@ export function TabOverflow(
   props: Readonly<{
     t: T;
     rows: readonly TabRow[];
+    /** What opens the list, in place of the chevron (the narrow window's current-tab button). */
+    trigger?: ReactElement;
+    /** The list takes the window's width: a narrow window has no room for a card beside the tabs. */
+    wide?: boolean;
     onPick(id: string): void;
     onClose(id: string): void;
   }>,
@@ -42,13 +46,19 @@ export function TabOverflow(
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="tab-tool" aria-label={props.t("tabs.all")}>
-          <ChevronDown />
-        </Button>
+        {props.trigger ?? (
+          <Button variant="ghost" size="icon" className="tab-tool" aria-label={props.t("tabs.all")}>
+            <ChevronDown />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent
-        align="end"
-        className="flex max-h-[min(24rem,70vh)] w-[min(24rem,calc(100vw-2rem))] flex-col gap-1 p-1"
+        align={props.wide ? "start" : "end"}
+        collisionPadding={8}
+        className={cn(
+          "flex max-h-[min(24rem,70vh)] flex-col gap-1 p-1",
+          props.wide ? "w-[calc(100vw-1rem)]" : "w-[min(24rem,calc(100vw-2rem))]",
+        )}
         data-slot="tab-overflow"
         aria-label={props.t("tabs.all")}
       >

@@ -721,6 +721,41 @@ html:not(:has([data-slot="status-bar"])) {
     opacity: 0.8;
   }
 }
+/* The narrow window's one tab button (issue #644): the current tab's icon, host dot and title, the
+   count and a chevron, in the row the strip leaves. */
+@utility tab-current {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0%;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 0.75rem;
+  font-size: 0.875rem;
+  text-align: left;
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--color-ring);
+  }
+  & > svg {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex: none;
+  }
+  & > [data-slot="tab-title"] {
+    min-width: 0;
+    flex: 1 1 0%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  & > [data-slot="tab-count"] {
+    flex: none;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+}
 @utility tab-button {
   display: flex;
   min-width: 0;

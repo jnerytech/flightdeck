@@ -2858,6 +2858,11 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   each of the host's tabs is named like "Board, host alfa", and picking a host says "alfa: 5 tabs"
   once, politely.
 
+- **Narrow windows:** under 640 px wide the row is one button, not a strip to scroll. It shows the
+  current tab (its icon, its title and its host's dot) and how many tabs are open; it opens the list of
+  all tabs across the width of the window, where a tap goes to a tab. **+** still opens a new tab; the
+  split buttons are not offered. A screen reader hears it as "All tabs (5), current: Board, host alfa".
+
 - **Host colors:** each host has one of eight colors, the same wherever the host shows. It is a dot
   next to the host's name in the top bar's switcher and in the list of all tabs, and a 2 px line over
   the top of each of the host's tabs. The color is never the only sign: the host's name stands beside

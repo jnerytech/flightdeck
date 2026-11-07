@@ -2638,6 +2638,7 @@ export const en: Dictionary = {
     scrollRight: "Scroll the tabs right",
     list: "Tabs",
     named: "{title}, host {host}",
+    currentTab: "All tabs ({n}), current: {title}",
     hostCount: { one: "{host}: {n} tab", other: "{host}: {n} tabs" },
     close: "Close tab {title}",
     pin: "Pin tab {title}",
