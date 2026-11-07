@@ -6,8 +6,10 @@
 - **Keys.** Ctrl+1 to 9 already switch the app's tabs, so the views took **Alt+1 to Alt+7**: the
   Nth view the page has (a view the host does not offer has no number, so the Terminal is Alt+4 on a
   host with Files and no Time, Trace or Messages). The keys work from anywhere in the page, the
-  message box included, and not from the palette. **Ctrl+`** toggles Terminal and Conversation;
-  xterm lets it bubble (`terminalKeyAction` returns `views`), so the shell never gets a NUL.
+  message box included, and not from the palette. **Ctrl+`** toggles Terminal and Conversation.
+  Inside the terminal the page takes these keys in the capture phase of the terminal's panel and
+  stops them there, so xterm never sees them and the shell gets neither an ESC and a digit nor a
+  NUL; `terminalKeyAction` and xterm are unchanged, so a standalone terminal tab keeps every key.
 - **Remembered view.** `SessionViews` (in the store) keeps the last view per session tab
   (`<host>/<session>`) for the run of the app; it is not written to disk. A remembered view the host
   does not offer shows the Conversation and is kept.
