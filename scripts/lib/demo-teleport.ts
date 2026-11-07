@@ -11,7 +11,7 @@ export const DEMO_TELEPORT_SESSION = "7e1c2a9b-4f3d-4c8e-9a6b-1d2e3f4a5b6c";
 /** One movable transcript per language: a second import of the same session is refused (#790). */
 export const DEMO_TELEPORT_SESSIONS: Record<"en" | "pt-BR", string> = {
   en: DEMO_TELEPORT_SESSION,
-  "pt-BR": DEMO_TELEPORT_SESSION,
+  "pt-BR": "3b8f6d52-0c1a-4e7b-8d49-5a2c9e1f7b60",
 };
 
 /** Runs git in a folder; the demo's own runner, a test's in the tests. */
