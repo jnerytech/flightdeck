@@ -1452,6 +1452,32 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await inReach(c, `${c.t("budgetsUi.create")} a ${size.width}x${size.height}`, create);
     }
   },
+
+  // Simple mode (#754, #784): the host menu switches to it, and its first screen keeps the
+  // templates in reach at a phone's, a narrow window's and a desktop's size, without the page
+  // scrolling sideways at the first two.
+  "modo-simples-alcance": async (c) => {
+    await open(c, { name: "hub" });
+    await c.page
+      .getByRole("button", { name: c.t("sidebar.hostMenu", { host: "alfa" }), exact: true })
+      .click();
+    await c.page.getByRole("menuitem", { name: c.t("sidebar.hostSimple"), exact: true }).click();
+    const templates = c.page.getByRole("region", { name: c.t("simple.home.templates") });
+    const first = templates.getByRole("button").first();
+    await first.waitFor({ timeout: WAIT });
+    for (const size of [
+      { width: 390, height: 844 },
+      { width: 640, height: 800 },
+      { width: 1280, height: 800 },
+    ]) {
+      await c.page.setViewportSize(size);
+      await inReach(c, `um modelo de tarefa a ${size.width}x${size.height}`, first);
+      if (size.width < 1280) {
+        const sideways = await pageScrollsSideways(c.page);
+        if (sideways) throw new Error(`o modo simples rola de lado a ${size.width}: ${sideways}`);
+      }
+    }
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

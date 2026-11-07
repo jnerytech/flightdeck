@@ -39,6 +39,7 @@ export const JOURNEYS: readonly string[] = [
   "tabs-por-host",
   "card-start-alcance",
   "orcamento-alcance",
+  "modo-simples-alcance",
   "time-novo-alcance",
 ];
 
