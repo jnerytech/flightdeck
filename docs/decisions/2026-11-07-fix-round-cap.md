@@ -52,7 +52,8 @@ automation's send went around the watch's cap.
 - **A held round** keeps its commits and the HEAD it was held at (`held_sha`). The card goes to
   "Needs you" with the files and the churn. A round git cannot measure is held too (fail closed),
   with git's first error line. `watch.resolveHeld` pushes exactly the held commit (never forced)
-  or resets the branch to `origin/<branch>` with `--keep`. It is refused when the branch moved
+  or resets the branch with `--keep` to the HEAD the round started from (`base_sha`), so work
+  committed before the round stays. It is refused when the branch moved
   since the hold, so neither unmeasured commits are pushed nor later work dropped.
 - **More rounds while a round is held** start a new round on top of the held commits. That round
   is measured with them, so it is held again. This is safe, but it spends a session: resolve the
