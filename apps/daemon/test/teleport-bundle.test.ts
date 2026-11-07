@@ -167,6 +167,15 @@ describe("teleport-bundle: the code of a session as one git bundle (#100)", () =
     expect(code.secrets).toEqual({ lines: 1, labels: ["GitHub token"] });
   });
 
+  test("a package id that is not a plain name never reaches git", async () => {
+    const { repo, folder } = await working();
+    expect([
+      await reason(() => bundleCode({ cwd: repo, folder, id: "../x", scan: () => [] })),
+      await reason(() => bundleCode({ cwd: repo, folder, id: "a".repeat(65), scan: () => [] })),
+      git(repo, "for-each-ref", "refs/flightdeck"),
+    ]).toEqual(["request_invalid", "request_invalid", ""]);
+  });
+
   test("a repository with no index yet still bundles its working tree", async () => {
     const { repo, folder } = await working();
     await rm(join(repo, ".git", "index"));
