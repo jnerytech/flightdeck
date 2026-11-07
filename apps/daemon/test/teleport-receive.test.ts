@@ -265,6 +265,30 @@ describe("teleport-receive: a received package does not outlive its time (#100)"
     ]);
   });
 
+  test("packages sent at once still keep to two a host and one a session", async () => {
+    const { inbox, deps } = setup();
+    await inbox.start();
+    const session = (n: number) =>
+      `${n}${n}${n}${n}${n}${n}${n}${n}-${n}${n}${n}${n}-4${n}${n}${n}-8${n}${n}${n}-${`${n}`.repeat(12)}`;
+    const many = await Promise.all(
+      [1, 2, 3].map((n) => reason(() => inbox.receive(manifest({ claudeSessionId: session(n) })))),
+    );
+    await inbox.stop();
+    const again = new TeleportInbox({
+      ...deps,
+      newId: (() => {
+        let i = 0;
+        return () => `again-${++i}`;
+      })(),
+    });
+    await again.start();
+    await Promise.all([again.receive(manifest()), again.receive(manifest())]);
+    expect([many.sort(), (await readdir(deps.dir).catch(() => [])).length]).toEqual([
+      ["no refusal", "no refusal", "teleport_too_many"],
+      1,
+    ]);
+  });
+
   test("an abort, the daemon's start and its stop remove what was received", async () => {
     const { inbox, deps, timers } = setup();
     await inbox.start();
