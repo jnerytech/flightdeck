@@ -64,9 +64,13 @@ describe("host-ver-todas: See all sessions looks at one host without rewriting t
     });
     expect(store.router.current).toEqual({ name: "hub", host: "pc" });
     await waitFor(() => expect(screen.queryByRole("button", { name: /Filtros/ })).not.toBeNull());
-    // The hub counts the host and the pinned filter; the stored filter has only the pinned one.
-    expect(screen.getByRole("button", { name: /Filtros/ }).textContent).toContain("2");
-    expect(store.hubFilter()).toMatchObject({ host: "", pinnedOnly: true });
+    // The hub counts the pinned filter; the host is the visit's scope, and the kept data scope
+    // stays every host (#126).
+    expect(screen.getByRole("button", { name: /Filtros/ }).textContent).toContain("1");
+    expect({ pinned: store.hubFilter().pinnedOnly, scope: store.dataScope.value }).toEqual({
+      pinned: true,
+      scope: { kind: "all" },
+    });
   });
 
   test("changing another filter while looking at the host keeps the stored host empty", async () => {
@@ -88,7 +92,10 @@ describe("host-ver-todas: See all sessions looks at one host without rewriting t
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Só fixadas" }));
     });
-    expect(store.hubFilter()).toMatchObject({ host: "", pinnedOnly: true });
+    expect({ pinned: store.hubFilter().pinnedOnly, scope: store.dataScope.value }).toEqual({
+      pinned: true,
+      scope: { kind: "all" },
+    });
   });
 });
 

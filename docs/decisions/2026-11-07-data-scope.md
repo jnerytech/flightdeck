@@ -24,7 +24,11 @@ The host switcher at the top is about tabs. Since #644 it names the active tab's
 ## Slices
 
 1. The store value and Home (this one).
-2. Sessions: `hubFilter.host` is read once into the scope, then dropped.
+2. Sessions: `hubFilter.host` is read once into the scope, then dropped. It held a host's name, so
+   the store maps it to that host's id once the saved hosts are loaded (an unknown name means every
+   host); a scope already chosen wins. The hub's Host select and Hosts row go, and the hub has the
+   Data from menu. A route's host ("See all sessions") is a visit override that any pick in the
+   menu ends.
 3. Costs.
 4. The project level, for every scoped screen.
 

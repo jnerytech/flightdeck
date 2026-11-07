@@ -56,6 +56,7 @@ function setup(
   store.router.push = ((route: unknown) => void pushed.push(route)) as never;
   const state = {
     ...store.getState(),
+    hostsLoaded: true,
     hosts: [host("alfa"), host("beta")],
     externals: {
       ...(options.needsYou
@@ -135,6 +136,20 @@ const click = async (el: HTMLElement) => {
 const API = "host:alfa:/work/api";
 const expandAll = () => screen.getByRole("button", { name: "Expandir tudo" });
 const collapseAll = () => screen.getByRole("button", { name: "Recolher tudo" });
+
+/** Picks whose sessions in the Data from menu (#126), which replaced the hub's Hosts row. */
+async function scopeTo(item: string) {
+  const trigger = screen.queryByRole("button", { name: /^Dados de / });
+  if (!trigger) throw new Error("no Data from menu");
+  await act(async () => {
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+  });
+  const entry = screen.queryByRole("menuitemradio", { name: item });
+  if (!entry) throw new Error(`no item named ${item}`);
+  await act(async () => {
+    fireEvent.click(entry);
+  });
+}
 
 describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)", () => {
   test("every project starts folded: a heading, a folder, a live/total chip and its host chips, no rows", async () => {
@@ -246,11 +261,11 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     expect(pushed).toEqual([{ name: "host", host: "alfa" }]);
   });
 
-  test("the chip row narrows the list by host without unfolding the projects it keeps (issue #241)", async () => {
+  // The Hosts row became the Data from menu (#126 slice 2); what it does to the list is the same.
+  test("Data from narrows the list by host without unfolding the projects it keeps (issue #241)", async () => {
     setup();
     await settle(() => screen.queryByRole("heading", { name: "docs" }) !== null);
-    const chips = screen.getByRole("group", { name: "Hosts" });
-    await click(within(chips).getByRole("button", { name: "beta" }));
+    await scopeTo("beta");
     const docs = screen.getByRole("region", { name: "Projeto docs" });
     expect(
       within(docs)
@@ -260,22 +275,22 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     expect(titles()).toEqual([]);
   });
 
-  test("the chip row filters by host", async () => {
+  test("Data from lists one host's projects, then every host's again", async () => {
     setup();
     await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
-    const chips = screen.getByRole("group", { name: "Hosts" });
-    const alfa = within(chips).getByRole("button", { name: "alfa" });
-    const beta = within(chips).getByRole("button", { name: "beta" });
-    expect([alfa.getAttribute("aria-pressed"), beta.getAttribute("aria-pressed")]).toEqual([
-      "false",
-      "false",
-    ]);
-    await click(beta);
-    expect(beta.getAttribute("aria-pressed")).toBe("true");
-    expect(screen.queryByRole("region", { name: "Projeto api" })).toBeNull();
-    expect(screen.getByRole("region", { name: "Projeto docs" })).toBeTruthy();
-    await click(beta);
-    expect(screen.getByRole("region", { name: "Projeto api" })).toBeTruthy();
+    const all = screen.queryByRole("button", { name: "Dados de Todos os hosts" }) !== null;
+    await scopeTo("beta");
+    const beta = {
+      menu: screen.queryByRole("button", { name: "Dados de beta" }) !== null,
+      api: screen.queryByRole("region", { name: "Projeto api" }) !== null,
+      docs: screen.queryByRole("region", { name: "Projeto docs" }) !== null,
+    };
+    await scopeTo("Todos os hosts");
+    expect({
+      all,
+      beta,
+      back: screen.queryByRole("region", { name: "Projeto api" }) !== null,
+    }).toEqual({ all: true, beta: { menu: true, api: false, docs: true }, back: true });
   });
 
   test("a project on two hosts has a chip for each in the header, and an open row names its own host", async () => {

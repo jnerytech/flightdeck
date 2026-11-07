@@ -88,9 +88,11 @@ describe("direcao-visual: ajustes finos", () => {
     expect(filtersButton()?.textContent).toBe("Filtros");
     expect(filtersButton()?.querySelector("svg")).not.toBeNull();
     await click(filtersButton());
-    for (const label of ["Host", "Origem", "Estado"]) {
+    for (const label of ["Origem", "Estado"]) {
       expect(screen.queryByLabelText(label)).not.toBeNull();
     }
+    // Whose sessions is the Dados de menu's (#126), not a Host field of the popover.
+    expect(screen.queryByLabelText("Host")).toBeNull();
     expect(screen.queryByRole("button", { name: "Só fixadas" })).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Mostrar arquivadas" })).not.toBeNull();
     await act(async () => {
@@ -222,7 +224,6 @@ describe("direcao-visual: ajustes finos", () => {
     expect(within(list).queryByLabelText("Filter sessions")).not.toBeNull();
     expect(filtersButton()?.textContent).toBe("Filters");
     await click(filtersButton());
-    expect(screen.queryByLabelText("Host")).not.toBeNull();
     for (const label of ["Origin", "State"]) expect(screen.queryByLabelText(label)).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Pinned only" })).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Show archived" })).not.toBeNull();

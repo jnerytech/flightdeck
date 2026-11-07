@@ -59,7 +59,7 @@ export function sidebarNav({ act, fireEvent, screen }: Deps) {
     },
     /** The hub's Filtros popover, open (it stays open when it already is). */
     async openFilters() {
-      if (screen.queryByLabelText(/^(Host)$/)) return;
+      if (screen.queryByLabelText(/^(Origem|Origin)$/)) return;
       await click(screen.queryByRole("button", { name: /^(Filtros|Filters)/ }));
     },
     /** The Precisa de você screen. */

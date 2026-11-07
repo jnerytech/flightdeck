@@ -533,15 +533,16 @@ lugar só, agrupadas por projeto e ordenadas pela última atividade.
   escolha é lembrada por projeto. **Expandir tudo** e **Recolher tudo**, no topo, fazem isso com
   todos. Aberto, o projeto mostra primeiro as sessões ao vivo (as que precisam de você no topo). As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
   nova para a mais antiga. Digitar no filtro também casa com o nome do projeto, e qualquer filtro (texto, origem,
-  estado, persona, fixadas) abre tudo o que ele mantém. Um chip de **Hosts** só restringe a lista a
-  esse host: os projetos ficam abertos ou dobrados como você os deixou. A dobra de um projeto é
+  estado, persona, fixadas) abre tudo o que ele mantém. Escolher um host em **Dados de** só restringe
+  a lista a esse host: os projetos ficam abertos ou dobrados como você os deixou. A dobra de um projeto é
   lembrada sob uma chave que não muda quando um host fica offline ou pastas se juntam. Uma sessão fixada fica sempre com as ao
   vivo. **O mesmo projeto em dois hosts é um só grupo**, com os dois chips de host, e cada linha
   mantém o seu chip de host. Um projeto sem remote git é reconhecido pelo nome da pasta entre
   hosts, mas nunca quando um host tem duas pastas com esse nome: essas ficam em grupos separados em
   todo lugar. Grupos que repetem o nome mostram uma **dica de caminho** curta (a pasta acima do
-  projeto, por exemplo `work`) ao lado do título e no nome dele para leitores de tela. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host
-  (aperte de novo para limpar).
+  projeto, por exemplo `work`) ao lado do título e no nome dele para leitores de tela. **Dados de**
+  na barra (com dois hosts ou mais) lista as sessões de um host ou de todos, a mesma escolha do
+  Início; **Ver todas as sessões** na página de um host olha esse host na visita sem mudá-la.
 - **Títulos.** A sessão se chama pelo nome, senão pelo título que o host dá a ela (o resumo que o
   Claude Code escreveu, ou o primeiro prompt), senão pela persona com a tarefa, senão pela pasta. Os invólucros do
   sistema (`<task-notification>`, "Another Claude session sent a message:", saída de comando
@@ -965,8 +966,9 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
   aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
   abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
-  hosts**. Os Custos também o seguem (veja **Custos e orçamentos**); Sessões e o Board passam a
-  segui-lo em versões seguintes.
+  hosts**. Os Custos também o seguem (veja **Custos e orçamentos**), e as Sessões também (o filtro
+  de host próprio delas, se você tinha um, vira a escolha uma vez); o Board passa a segui-lo numa
+  versão seguinte.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
   tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
   (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
