@@ -1595,9 +1595,18 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const listed = () =>
       c.page.locator("li[aria-label]").evaluateAll((els) => els.map((e) => e.ariaLabel));
     const menus: string[][] = [];
+    const started = Date.now();
+    let widened = false;
     await waitFor(
       async () => {
-        // The row may not be listed yet: a missed click is another turn of the wait, not a failure.
+        // The row may not be listed yet. After a few turns the filter is dropped and every project
+        // opened: if the row shows then, the filter hid it (the report below says which).
+        if ((await actions.count()) === 0 && Date.now() - started > 15_000 && !widened) {
+          widened = true;
+          await filter.fill("");
+          await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
+        }
+        // A missed click is another turn of the wait, not a failure.
         const clicked = await actions
           .first()
           .click({ timeout: 2000 })
@@ -1616,7 +1625,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     ).catch(async (error: Error) => {
       // What the page showed, so a red run says why without a second one.
       throw new Error(
-        `${error.message} (linhas: ${JSON.stringify(await listed())}; itens do menu: ${JSON.stringify(menus.at(-1))})`,
+        `${error.message} (sem filtro: ${widened}; linhas: ${JSON.stringify(await listed())}; itens do menu: ${JSON.stringify(menus.at(-1))}; página: ${JSON.stringify(((await c.page.getByRole("main").textContent()) ?? "").slice(0, 1200))})`,
       );
     });
     await move.click();
