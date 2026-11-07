@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Inline, Stack } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
@@ -6,6 +6,7 @@ import { type AppStore, sessionKey } from "@/lib/app-store";
 import { useStoreState } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
 import type { Key } from "../../i18n/index.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /** Issue #77: the rounds "Allow more rounds" gives at a time. */
 const MORE_ROUNDS = 2;
@@ -22,6 +23,22 @@ export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; 
   const features = state.hosts.find((h) => h.id === hostId)?.hostInfo?.features;
   const canExtend = hasFeature(features, "watch.extend", false);
   const canResolve = hasFeature(features, "watch.resolveHeld", false);
+  // Issue #77: a held round's push or drop is confirmed first, and one runs at a time.
+  const [asking, setAsking] = useState<{
+    roundId: string;
+    action: "push" | "drop";
+    files: string;
+  } | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const resolve = async (roundId: string, action: "push" | "drop") => {
+    setAsking(null);
+    setResolving(true);
+    try {
+      await store.resolveHeld(hostId, cardId, roundId, action);
+    } finally {
+      setResolving(false);
+    }
+  };
   useEffect(() => {
     void store.loadWatch(hostId, cardId);
   }, [store, hostId, cardId]);
@@ -86,14 +103,28 @@ export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; 
                         <ActionButton
                           variant="outline"
                           size="sm"
-                          onClick={() => store.resolveHeld(hostId, cardId, round.id, "push")}
+                          disabled={resolving}
+                          onClick={() =>
+                            setAsking({
+                              roundId: round.id,
+                              action: "push",
+                              files: (round.drift?.outside ?? []).join(", "),
+                            })
+                          }
                         >
                           {t("watchUi.pushHeld")}
                         </ActionButton>
                         <ActionButton
                           variant="outline"
                           size="sm"
-                          onClick={() => store.resolveHeld(hostId, cardId, round.id, "drop")}
+                          disabled={resolving}
+                          onClick={() =>
+                            setAsking({
+                              roundId: round.id,
+                              action: "drop",
+                              files: (round.drift?.outside ?? []).join(", "),
+                            })
+                          }
                         >
                           {t("watchUi.dropHeld")}
                         </ActionButton>
@@ -126,6 +157,19 @@ export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; 
           </ActionButton>
         )}
       </Stack>
+      {asking && (
+        <ConfirmDialog
+          message={
+            asking.action === "push"
+              ? t("watchUi.pushHeldConfirm", { files: asking.files || "—" })
+              : t("watchUi.dropHeldConfirm")
+          }
+          confirmLabel={t(asking.action === "push" ? "watchUi.pushHeld" : "watchUi.dropHeld")}
+          destructive
+          onConfirm={() => void resolve(asking.roundId, asking.action)}
+          onCancel={() => setAsking(null)}
+        />
+      )}
     </section>
   );
 }

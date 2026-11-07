@@ -3556,6 +3556,10 @@ export const ptBR = {
     churn: "{churn} de no máximo {limit} linhas mudadas",
     pushHeld: "Enviar assim mesmo",
     dropHeld: "Descartar a rodada",
+    pushHeldConfirm:
+      "Enviar os commits da rodada como estão? Eles mudam arquivos fora do PR: {files}. Um push não se desfaz.",
+    dropHeldConfirm:
+      "Descartar os commits da rodada? O branch volta para onde a rodada começou; o trabalho de antes dela fica.",
     openCard: "Abrir o card",
     notifyTitle: "PR precisa de você",
     entry: "PR de {card}: {reason}",

@@ -4356,7 +4356,13 @@ export class AppStore {
 
   /** Issue #77: the person allows a card's watch `rounds` more fixing rounds. */
   async extendWatch(hostId: string, cardId: string, rounds: number): Promise<void> {
-    const watch = await this.hostCommand(hostId, "watch.extend", { cardId, rounds });
+    // A refusal (no watch, another limit) would come back: nothing to retry.
+    const watch = await this.hostCommand(
+      hostId,
+      "watch.extend",
+      { cardId, rounds },
+      { retry: false },
+    );
     if (watch) this.keepWatch(hostId, watch);
   }
 
@@ -4367,7 +4373,13 @@ export class AppStore {
     roundId: string,
     action: "push" | "drop",
   ): Promise<void> {
-    const watch = await this.hostCommand(hostId, "watch.resolveHeld", { cardId, roundId, action });
+    // Repeated later, a push or drop would act on a round that may be settled already.
+    const watch = await this.hostCommand(
+      hostId,
+      "watch.resolveHeld",
+      { cardId, roundId, action },
+      { retry: false },
+    );
     if (watch) this.keepWatch(hostId, watch);
   }
 

@@ -3550,6 +3550,10 @@ export const en: Dictionary = {
     churn: "{churn} of at most {limit} lines changed",
     pushHeld: "Push anyway",
     dropHeld: "Drop the round",
+    pushHeldConfirm:
+      "Push the round's commits as they are? They change files outside the PR: {files}. A push cannot be taken back.",
+    dropHeldConfirm:
+      "Drop the round's commits? The branch goes back to where the round started; work from before it stays.",
     openCard: "Open the card",
     notifyTitle: "A PR needs you",
     entry: "PR of {card}: {reason}",
