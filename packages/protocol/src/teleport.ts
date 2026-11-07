@@ -28,8 +28,17 @@ export interface TeleportManifest {
   permissionMode: PermissionMode;
   persona: string | null;
   expiresAt: string;
-  parts: Array<{ name: "transcript"; size: number; sha256: string }>;
+  parts: Array<{ name: "transcript" | "code"; size: number; sha256: string }>;
   secrets: { lines: number; labels: string[] };
+  /** The code part (slice 1b): the branch, HEAD, the base on origin it starts from, the ref the bundle carries, and what moves. */
+  git?: {
+    branch: string | null;
+    head: string;
+    base: string;
+    ref: string;
+    ahead: number;
+    changed: number;
+  };
 }
 
 /** One chunk of a part: the bytes in base64, where the next one starts, and whether this was the last. */
