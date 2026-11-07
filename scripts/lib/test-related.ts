@@ -78,6 +78,19 @@ export function selectRelated(
     .sort((a, b) => (a.path < b.path ? -1 : 1));
 }
 
+/**
+ * #762: the tracked files a changed test imports now and did not import at the base (`before`
+ * gives a file's text there, or null for a new file). Loading a file puts it in the whole-repo
+ * coverage report, so the changed-file gate covers it too. Changed files are left out.
+ */
+export function newImports(
+  changed: string[],
+  sources: Map<string, string>,
+  before: (path: string) => string | null,
+): string[] {
+  return changed.length < 0 && sources.size > 0 && before("") !== null ? [] : [];
+}
+
 export interface PlanDeps {
   /** Value of `--base`, if given. */
   base?: string;
