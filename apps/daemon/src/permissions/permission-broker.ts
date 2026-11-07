@@ -64,6 +64,8 @@ export class PermissionBroker {
   private readonly open = new Map<string, Pending>();
   /** The open requests whose `permission.requested` went out: a summary lists only these. */
   private readonly announced = new Set<string>();
+  /** The plain wording of an announced request, for the summary to list it (issue #88). */
+  private readonly plains = new Map<string, PlainInfo>();
 
   constructor(
     private readonly store: EventStore,
@@ -99,6 +101,7 @@ export class PermissionBroker {
         // Answered meanwhile (the turn was interrupted): nothing to announce.
         if (!this.open.has(id)) return;
         this.announced.add(id);
+        if (plain) this.plains.set(id, plain);
         this.hooks.emit(sessionId, {
           type: "permission.requested",
           requestId: id,
@@ -138,6 +141,11 @@ export class PermissionBroker {
   /** Whether the request was announced (and is still open): the summary counts it from then on. */
   isAnnounced(requestId: string): boolean {
     return this.announced.has(requestId);
+  }
+
+  /** The plain wording the request was announced with, if the host worded it. */
+  plainOf(requestId: string): PlainInfo | undefined {
+    return this.plains.get(requestId);
   }
 
   /** The session of an open request; "" when it is not open. */
@@ -228,6 +236,7 @@ export class PermissionBroker {
     if (!pending) return;
     this.open.delete(id);
     this.announced.delete(id);
+    this.plains.delete(id);
     pending.detach();
     const status = STATUS_OF[decision];
     this.store.resolvePermission(id, status, message);
