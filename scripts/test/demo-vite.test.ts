@@ -49,3 +49,15 @@ describe("demo-vite: the dev server for a person, a built bundle for CI (#444)",
     }
   });
 });
+
+describe("demo-vite: the web entry reaches the build too (#444)", () => {
+  test("the entry swap runs before Vite reads index.html's scripts, so vite build bundles main.web.tsx", async () => {
+    const config = (await import("../../apps/desktop/vite.config.ts")).default as {
+      plugins: Array<{ name?: string; transformIndexHtml?: unknown }>;
+    };
+    const entry = config.plugins.find((p) => p?.name === "flightdeck-entry")?.transformIndexHtml as
+      | { order?: string }
+      | undefined;
+    expect(entry?.order).toBe("pre");
+  });
+});
