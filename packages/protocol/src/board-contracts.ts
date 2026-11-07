@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { BoardColumn, Card } from "./index.ts";
 
 /** What a column can ask of a card before it gets there (issue #78). */
-export const ContractCheck = z.enum(["criteria", "pr", "checks", "validation"]);
+export const ContractCheck = z.enum(["criteria", "pr", "checks", "validation", "spec"]);
 export type ContractCheck = z.infer<typeof ContractCheck>;
 
 /**
@@ -16,7 +16,24 @@ export const ColumnContract = z.object({
 export type ColumnContract = z.infer<typeof ColumnContract>;
 
 /** What a card still lacks for a column, as a reader would say it. */
-export type ContractNeed = "criteria" | "pr" | "checksPending" | "checksFailing" | "validation";
+export type ContractNeed =
+  | "criteria"
+  | "pr"
+  | "checksPending"
+  | "checksFailing"
+  | "validation"
+  | "spec";
+
+/**
+ * What the host found of a card's spec file (issue #78): where it looked, whether a file is there
+ * and its first heading. The contents never travel.
+ */
+export const SpecState = z.object({
+  path: z.string(),
+  found: z.boolean(),
+  heading: z.string().nullable(),
+});
+export type SpecState = z.infer<typeof SpecState>;
 
 export type ContractOverrides = Partial<Record<BoardColumn, ColumnContract>>;
 
@@ -44,7 +61,7 @@ const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
 /** What `card` lacks for `column`; nothing when the column asks nothing or the card has it all. */
 export function missingFor(
   column: BoardColumn,
-  card: Pick<Card, "description" | "prUrl" | "checksState" | "validationNote">,
+  card: Pick<Card, "description" | "prUrl" | "checksState" | "validationNote" | "specState">,
   overrides: ContractOverrides = {},
 ): ContractNeed[] {
   const needs: ContractNeed[] = [];
@@ -52,6 +69,7 @@ export function missingFor(
     if (check === "criteria" && !CHECKLIST_ITEM.test(card.description)) needs.push("criteria");
     if (check === "pr" && !card.prUrl) needs.push("pr");
     if (check === "validation" && !card.validationNote?.trim()) needs.push("validation");
+    if (check === "spec" && !card.specState?.found) needs.push("spec");
     // Checks belong to a PR. A repository with none reports no state: that is not the card's fault.
     if (check === "checks" && card.prUrl) {
       if (card.checksState === "pending") needs.push("checksPending");
@@ -61,7 +79,21 @@ export function missingFor(
   return needs;
 }
 
-/** Why a spec path is refused, or null when it may be looked up in a worktree. Stub. */
-export function specPathProblem(_path: string): string | null {
-  return null;
+/** The longest path a card can name for its spec. */
+export const SPEC_PATH_MAX = 200;
+
+/**
+ * Why a spec path is refused, or null when it may be looked up in a worktree: a relative path of
+ * plain segments to a Markdown file, with no `.`, `..` or empty segment and nothing a terminal
+ * would act on. The host checks it again, and checks where it lands, before it opens anything.
+ */
+export function specPathProblem(path: string): string | null {
+  if (path.length === 0 || path.length > SPEC_PATH_MAX) return "length";
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
+  if (/[\u0000-\u001f\u007f]/.test(path)) return "control";
+  if (/^[\\/]/.test(path) || /^[A-Za-z]:/.test(path)) return "absolute";
+  if (path.split(/[\\/]/).some((part) => part === "" || part === "." || part === "..")) {
+    return "segment";
+  }
+  return path.toLowerCase().endsWith(".md") ? null : "extension";
 }

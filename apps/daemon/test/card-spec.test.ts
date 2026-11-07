@@ -124,7 +124,6 @@ describe("card-spec: what the daemon learns of a spec file", () => {
       expect(await readSpec(root, path)).toEqual({ found: false, heading: null });
     }
     expect(await readSpec("", "x.md")).toEqual({ found: false, heading: null });
-    expect(realpathSync(mkdtempSync(join(tmpdir(), "fd-spec-x-"))).length).toBeGreaterThan(0);
   });
 });
 
@@ -152,7 +151,12 @@ const never = async (call: () => unknown): Promise<FlightdeckError> => {
 describe("card-spec: the card keeps what it found", () => {
   test("the default spec is docs/specs/<slug>.md in the card's worktree", async () => {
     const { board, card, tree } = await withCard();
-    expect((await board.refreshSpec(card.id)).specState).toBeNull();
+    // Where it looked is kept even when nothing is there: the card says where a spec is expected.
+    expect((await board.refreshSpec(card.id)).specState).toEqual({
+      path: "docs/specs/login-screen.md",
+      found: false,
+      heading: null,
+    });
     mkdirSync(join(tree, "docs/specs"), { recursive: true });
     writeFileSync(join(tree, "docs/specs/login-screen.md"), "# Login\n");
     const found = await board.refreshSpec(card.id);

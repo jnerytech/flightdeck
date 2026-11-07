@@ -22,6 +22,8 @@ import {
   PersonaSubagentsMode as PersonaSubagentsModeSchema,
   type SessionEvent,
   type SessionStatus,
+  type SpecState,
+  specPathProblem,
   type UnblockWhen,
   type WorkflowInfo,
 } from "@flightdeck/protocol";
@@ -53,6 +55,7 @@ import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts"
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
+import { readSpec } from "./spec.ts";
 import type {
   BoardColumn,
   Card,
@@ -258,6 +261,10 @@ interface CardRow {
   external_gone: number;
   estimate_hours: number | null;
   validation_note: string | null;
+  spec_path: string | null;
+  spec_checked_path: string | null;
+  spec_found: number;
+  spec_heading: string | null;
   arena_of: string | null;
   variant: string | null;
   unblock_when: UnblockWhen;
@@ -616,6 +623,15 @@ export class Board {
       externalGone: row.external_gone === 1,
       estimateHours: row.estimate_hours,
       validationNote: row.validation_note,
+      specPath: row.spec_path,
+      specState:
+        row.spec_checked_path === null
+          ? null
+          : {
+              path: row.spec_checked_path,
+              found: row.spec_found === 1,
+              heading: row.spec_heading,
+            },
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
       waitingOn: rows.length === 0 ? this.unsatisfied(id, row.unblock_when) : [],
@@ -907,6 +923,8 @@ export class Board {
       estimateHours?: number | null;
       /** Issue #78: blank or `null` clears the note. */
       validationNote?: string | null;
+      /** Issue #78: the spec file in the worktree; `null` goes back to the default. */
+      specPath?: string | null;
       blockedBy?: string[];
       unblockWhen?: UnblockWhen;
       autoStart?: { workflow: string | null } | null;
@@ -914,10 +932,18 @@ export class Board {
   ): Card {
     const card = this.getCard(id);
     if (patch.blockedBy) this.checkBlockers(id, card.projectId, patch.blockedBy);
+    const specPath = patch.specPath === undefined ? card.specPath : patch.specPath;
+    if (specPath !== null && specPathProblem(specPath) !== null) {
+      throw new FlightdeckError(
+        "bad_request",
+        "the spec path must be a relative path to a Markdown file inside the worktree",
+        "spec_path_invalid",
+      );
+    }
     this.db
       .query(
-        `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, validation_note = ?, unblock_when = ?,
-           auto_start = ?, updated_at = ? WHERE id = ?`,
+        `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, validation_note = ?,
+           spec_path = ?, unblock_when = ?, auto_start = ?, updated_at = ? WHERE id = ?`,
       )
       .run(
         patch.title ?? card.title,
@@ -926,11 +952,20 @@ export class Board {
         patch.validationNote === undefined
           ? card.validationNote
           : patch.validationNote?.trim() || null,
+        specPath,
         patch.unblockWhen ?? card.unblockWhen,
         autoStartOf(patch.autoStart === undefined ? card.autoStart : patch.autoStart),
         now(),
         id,
       );
+    // What was found belongs to the path it was found at.
+    if (specPath !== card.specPath) {
+      this.db
+        .query(
+          "UPDATE cards SET spec_checked_path = NULL, spec_found = 0, spec_heading = NULL WHERE id = ?",
+        )
+        .run(id);
+    }
     if (patch.blockedBy) {
       const changed = new Set([...card.blockedBy, ...patch.blockedBy]);
       this.storeBlockers(id, patch.blockedBy);
@@ -1487,13 +1522,14 @@ export class Board {
     position: number | undefined,
     force: boolean,
   ): Promise<Card> {
-    const card = this.getCard(id);
-    const overrides = this.getProject(card.projectId).contractByColumn;
+    const before = this.getCard(id);
+    const overrides = this.getProject(before.projectId).contractByColumn;
+    const contract = contractOf(column, overrides);
     // A card already in the column is only reordered; a column that hints never holds a card back.
-    const needs =
-      card.column !== column && contractOf(column, overrides)?.enforce === "confirm"
-        ? missingFor(column, card, overrides)
-        : [];
+    const asks = before.column !== column && contract?.enforce === "confirm";
+    // The spec is a file that comes and goes: it is looked at now, only when the column asks.
+    const card = asks && contract.checks.includes("spec") ? await this.refreshSpec(id) : before;
+    const needs = asks ? missingFor(column, card, overrides) : [];
     const why = (code: "contract_unmet" | "invalid_state", text: string, reason: string) =>
       new FlightdeckError(code, text, reason, { column, needs: needs.join(",") });
     if (needs.length > 0 && !force) {
@@ -1512,9 +1548,26 @@ export class Board {
     return this.changed(id);
   }
 
-  /** Looks at the card's spec file again and keeps what it finds. Stub. */
+  /**
+   * Looks at the card's spec file again (the path set on the card, else `docs/specs/<slug>.md`)
+   * in its worktree, and keeps whether it is there and its first heading (issue #78).
+   */
   async refreshSpec(id: string): Promise<Card> {
-    return this.getCard(id);
+    const card = this.getCard(id);
+    const path = card.specPath ?? (card.slug ? `docs/specs/${card.slug}.md` : null);
+    const seen: SpecState | null =
+      card.worktreePath && path ? { path, ...(await readSpec(card.worktreePath, path)) } : null;
+    // The card may have been discarded, or the board stopped, while the files were read.
+    if (this.stopped || this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id) === null) {
+      return card;
+    }
+    if (JSON.stringify(seen) === JSON.stringify(card.specState)) return card;
+    this.db
+      .query(
+        "UPDATE cards SET spec_checked_path = ?, spec_found = ?, spec_heading = ? WHERE id = ?",
+      )
+      .run(seen?.path ?? null, seen?.found ? 1 : 0, seen?.heading ?? null, id);
+    return this.changed(id);
   }
 
   private clearNotice(id: string): void {

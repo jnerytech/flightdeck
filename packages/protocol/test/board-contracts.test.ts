@@ -19,12 +19,14 @@ const card = (
     prUrl: string | null;
     checksState: never;
     validationNote: string | null;
+    specState: { path: string; found: boolean; heading: string | null } | null;
   }>,
 ) => ({
   description: "",
   prUrl: null,
   checksState: null,
   validationNote: null,
+  specState: null,
   ...over,
 });
 
