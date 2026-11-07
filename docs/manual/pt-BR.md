@@ -1060,6 +1060,15 @@ aparece mascarado e como **Oculto**, e não abre.
   pergunta antes só num projeto cujo contrato de Em andamento confirma critérios de aceite, e só
   para um card sem eles (nenhum item `- [ ] …` na descrição): **Iniciar mesmo assim** segue. Por
   padrão Em andamento só avisa, então Iniciar não pergunta nada.
+- **Um arquivo de especificação** (#78). Um projeto pode fazer uma coluna pedir uma
+  **especificação**: o worktree do card precisa ter o arquivo que o card indica,
+  `docs/specs/<nome do card>.md`, a menos que você defina outro caminho no campo **Arquivo da
+  especificação** do card (um caminho relativo para um arquivo `.md` dentro do worktree). A página do
+  card diz o que o host achou ("Especificação encontrada: <primeiro título>" ou "Nenhum arquivo de
+  especificação em <caminho>") e **Verificar de novo** olha mais uma vez; um movimento para uma
+  coluna que pede isso olha o arquivo antes. O host só confere que o arquivo existe (um arquivo
+  comum, não vazio, que não seja um link, dentro do worktree) e lê o primeiro título: nunca lê nem
+  envia o resto.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com

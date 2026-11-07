@@ -1183,16 +1183,23 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.update": {
         const { cardId, ...patch } = command.payload;
-        return ok(command.type, board().updateCard(cardId, patch));
+        const updated = board().updateCard(cardId, patch);
+        // A new spec path is looked at at once, so the card says what was found there.
+        return ok(
+          command.type,
+          patch.specPath === undefined ? updated : await board().refreshSpec(cardId),
+        );
       }
       case "card.dismissUnblocked":
         return ok(command.type, board().dismissUnblocked(command.payload.cardId));
       case "card.move": {
         const { cardId, column, position, force } = command.payload;
-        return ok(command.type, board().moveByHand(cardId, column, position, force === true));
+        return ok(command.type, await board().moveByHand(cardId, column, position, force === true));
       }
       case "card.get":
         return ok(command.type, board().getCard(command.payload.cardId));
+      case "card.spec":
+        return ok(command.type, await board().refreshSpec(command.payload.cardId));
       case "gate.respond": {
         const { runId, stepId, attempt, decision, note } = command.payload;
         board().workflows.respond(runId, stepId, attempt, decision, note);
