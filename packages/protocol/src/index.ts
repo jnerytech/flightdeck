@@ -2887,7 +2887,8 @@ export const FixRoundInfo = z.object({
   id: z.string(),
   cardId: z.string(),
   n: z.number().int(),
-  status: z.enum(["running", "pushed", "failed", "stopped"]),
+  /** `sent`: an automation sent the failure or the comment to the card's session (#77). */
+  status: z.enum(["running", "pushed", "failed", "stopped", "sent"]),
   trigger: z.object({
     failed: z.array(z.string()),
     conflicts: z.boolean(),

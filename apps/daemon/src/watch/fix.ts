@@ -16,7 +16,8 @@ export interface FixRound {
   id: string;
   cardId: string;
   n: number;
-  status: "running" | "pushed" | "failed" | "stopped";
+  /** `sent`: an automation sent the failure or the comment to the card's session (#77). */
+  status: "running" | "pushed" | "failed" | "stopped" | "sent";
   /** What started it: the failed checks, the conflict, the comments. */
   trigger: { failed: string[]; conflicts: boolean; comments: string[] };
   summary: string | null;
@@ -29,7 +30,7 @@ export interface FixRound {
 
 export interface PrFixerOptions {
   db: Database;
-  board: Pick<Board, "getCard" | "getProject" | "fixCard">;
+  board: Pick<Board, "getCard" | "getProject" | "fixCard" | "moveCard">;
   watcher: PrWatcher;
   provider?: (kind: PrProviderKind) => PrProvider | null;
   /** Runs the project's local checks in the card's worktree. */
@@ -167,6 +168,35 @@ export class PrFixer {
     return (this.opts.git ?? realGit)(cwd, ...args);
   }
 
+  /**
+   * An automation's send to the card (#77): a round of the same budget as the watch's own. Past
+   * the cap it is refused, the card needs you, and the reason comes back; otherwise null.
+   */
+  spend(cardId: string, cause: string): string | null {
+    const stop = this.roundLimit(cardId);
+    if (stop) {
+      this.needsYou(cardId, stop);
+      return stop;
+    }
+    const at = new Date(this.now).toISOString();
+    this.opts.db
+      .query(
+        `INSERT INTO pr_watch_rounds (id, card_id, n, status, trigger, summary, started_at, ended_at)
+         VALUES (?, ?, ?, 'sent', ?, ?, ?, ?)`,
+      )
+      .run(
+        ulid(),
+        cardId,
+        this.rounds(cardId).length + 1,
+        JSON.stringify({ failed: [], conflicts: false, comments: [] }),
+        cause,
+        at,
+        at,
+      );
+    this.opts.onUpdate?.(cardId);
+    return null;
+  }
+
   /** The watcher's trigger: starts a round, one at a time per card, unless a limit says stop. */
   onTrigger(trigger: WatchTrigger): Promise<void> {
     return settled(() => this.triggerNow(trigger));
@@ -225,14 +255,9 @@ export class PrFixer {
       return `the card's branch is the target branch (${project.baseBranch}): nothing is pushed to it`;
     }
     const settings = watcher.settings(card.projectId);
+    const rounds = this.roundLimit(cardId);
+    if (rounds) return rounds;
     const done = this.counted(cardId);
-    if (done.length >= settings.maxRounds) {
-      const list = done.map(
-        (r) =>
-          `round ${r.n}: ${r.status}` + (r.summary ? " (" + r.summary.split("\n")[0] + ")" : ""),
-      );
-      return `limit of ${settings.maxRounds} rounds reached — ${list.join("; ")}`;
-    }
     const turns = done.reduce((sum, r) => sum + r.turns, 0);
     if (settings.maxTurns !== null && turns >= settings.maxTurns) {
       return `${turns} of ${settings.maxTurns} turns used on this PR`;
@@ -253,9 +278,26 @@ export class PrFixer {
     return null;
   }
 
+  /** The card's rounds used up: the reason with each round, or null while some are left. */
+  private roundLimit(cardId: string): string | null {
+    const settings = this.opts.watcher.settings(this.opts.board.getCard(cardId).projectId);
+    const done = this.counted(cardId);
+    if (done.length < settings.maxRounds) return null;
+    const list = done.map(
+      (r) => `round ${r.n}: ${r.status}` + (r.summary ? " (" + r.summary.split("\n")[0] + ")" : ""),
+    );
+    return `limit of ${settings.maxRounds} rounds reached — ${list.join("; ")}`;
+  }
+
+  /** Hands the card to the person: the watch says why, and the card goes to "Needs you" (#77). */
   private needsYou(cardId: string, reason: string): void {
     if (this.stopped) return;
     this.opts.watcher.markNeedsYou(cardId, reason);
+    try {
+      this.opts.board.moveCard(cardId, "waiting");
+    } catch {
+      // A card that went meanwhile (discarded) has no column to go to: the reason stays.
+    }
     this.opts.onUpdate?.(cardId);
   }
 
