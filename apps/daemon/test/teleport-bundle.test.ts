@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import { git, gitRepo, gitRepoWithOrigin } from "./board-helpers.ts";
@@ -59,6 +59,78 @@ describe("teleport-bundle: a daemon that stops kills the git calls (#715)", () =
       }),
     );
     expect([refusal, state(repo), await readdir(folder)]).toEqual(["teleport_stopped", before, []]);
+  });
+});
+
+/** Whether the repository has an object (a blob, a tree or a commit) in its own store. */
+const has = (repo: string, sha: string) => {
+  try {
+    git(repo, "cat-file", "-e", sha);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+describe("teleport-bundle: the person's repository keeps no object of the bundle (#715)", () => {
+  test("the new files, the tree and the WIP commit are built in a temporary object folder", async () => {
+    const { repo, folder } = await working();
+    const blob = git(repo, "hash-object", join(repo, "new.txt")).trim();
+    const code = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan: () => [] });
+    const wip = git(repo, "bundle", "list-heads", code.file).split(" ")[0] ?? "";
+    // The bundle holds the file all the same: a clone of it restores it.
+    const verified = git(repo, "bundle", "verify", code.file);
+    expect([
+      has(repo, blob),
+      wip.length === 40 && has(repo, wip),
+      verified.includes("okay"),
+      await readdir(folder),
+    ]).toEqual([false, false, true, ["code"]]);
+  });
+});
+
+describe("teleport-bundle: refs a dead daemon left are swept before the next bundle (#715)", () => {
+  const aged = async (repo: string, name: string, hoursAgo: number) => {
+    const head = git(repo, "rev-parse", "HEAD").trim();
+    git(repo, "update-ref", `refs/flightdeck/teleport/${name}`, head);
+    const file = join(
+      git(repo, "rev-parse", "--absolute-git-dir").trim(),
+      "refs/flightdeck/teleport",
+      name,
+    );
+    const at = new Date(Date.now() - hoursAgo * 3_600_000);
+    await utimes(file, at, at);
+  };
+  const refs = (repo: string) =>
+    git(repo, "for-each-ref", "--format=%(refname)").trim().split("\n");
+
+  test("only an old ref under refs/flightdeck/teleport goes; a young one, and every other ref, stay", async () => {
+    const { repo, folder } = await working();
+    await aged(repo, "old-1", 3);
+    await aged(repo, "young-1", 0);
+    git(repo, "update-ref", "refs/flightdeck/other/keep", git(repo, "rev-parse", "HEAD").trim());
+    await bundleCode({ cwd: repo, folder, id: "pkg-2", scan: () => [] });
+    expect(refs(repo).filter((ref) => ref.startsWith("refs/flightdeck"))).toEqual([
+      "refs/flightdeck/other/keep",
+      "refs/flightdeck/teleport/young-1",
+    ]);
+  });
+
+  test("a ref whose object is gone is swept, and a name that is no package id is left alone, without stopping the bundle", async () => {
+    const { repo, folder } = await working();
+    const dir = join(
+      git(repo, "rev-parse", "--absolute-git-dir").trim(),
+      "refs/flightdeck/teleport",
+    );
+    await mkdir(dir, { recursive: true });
+    // What a dead daemon leaves with the temporary object folder: a ref to an object nobody has.
+    const broken = join(dir, "broken-1");
+    await writeFile(broken, `${"1".repeat(40)}\n`);
+    const old = new Date(Date.now() - 5 * 3_600_000);
+    await utimes(broken, old, old);
+    await mkdir(join(dir, "not an id"), { recursive: true });
+    const code = await bundleCode({ cwd: repo, folder, id: "pkg-3", scan: () => [] });
+    expect([code.size > 0, await readdir(dir)]).toEqual([true, ["not an id"]]);
   });
 });
 
