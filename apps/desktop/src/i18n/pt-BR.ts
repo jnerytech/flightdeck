@@ -2638,6 +2638,8 @@ export const ptBR = {
     scrollLeft: "Rolar as abas para a esquerda",
     scrollRight: "Rolar as abas para a direita",
     list: "Abas",
+    named: "{title}, host {host}",
+    hostCount: { one: "{host}: {n} aba", other: "{host}: {n} abas" },
     close: "Fechar aba {title}",
     pin: "Fixar aba {title}",
     unpin: "Desafixar aba {title}",

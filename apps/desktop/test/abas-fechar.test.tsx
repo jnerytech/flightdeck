@@ -33,7 +33,7 @@ const closeButton = (title: string) => {
   return found as HTMLElement;
 };
 const tab = (title: string) => {
-  const found = screen.queryByRole("tab", { name: title });
+  const found = screen.queryByRole("tab", { name: `${title}, host alfa` });
   expect(found).not.toBeNull();
   return found as HTMLElement;
 };
@@ -41,7 +41,7 @@ const tab = (title: string) => {
 describe("abas: o × de cada aba", () => {
   test("every tab has its own close button, next to the tab and not inside it", async () => {
     await twoTabs();
-    for (const title of ["alfa", "Projetos"]) {
+    for (const title of ["Histórico", "Projetos"]) {
       const close = closeButton(title);
       expect(close.parentElement).toBe(tab(title).parentElement);
       expect(close.parentElement?.getAttribute("role")).toBe("presentation");
@@ -61,7 +61,7 @@ describe("abas: o × de cada aba", () => {
     const store = await twoTabs();
     const active = store.tabs.activeId;
     await act(async () => {
-      fireEvent.click(closeButton("alfa"));
+      fireEvent.click(closeButton("Histórico"));
     });
     expect(store.tabs.tabs.map((t) => t.id)).toEqual([active]);
     expect(store.tabs.activeId).toBe(active);
@@ -73,13 +73,13 @@ describe("abas: o × de cada aba", () => {
       store.tabs.pin(store.tabs.activeId, true);
     });
     expect(screen.queryByLabelText("Fechar aba Projetos")).toBeNull();
-    expect(screen.queryByLabelText("Fechar aba alfa")).not.toBeNull();
+    expect(screen.queryByLabelText("Fechar aba Histórico")).not.toBeNull();
   });
 
   test("the × shows on the active tab, and on the others under the pointer or the keyboard focus", async () => {
     await twoTabs();
     expect(closeButton("Projetos").className).not.toContain("opacity-0");
-    const other = closeButton("alfa").className;
+    const other = closeButton("Histórico").className;
     expect(other).toContain("opacity-0");
     expect(other).toContain("group-hover:opacity-100");
     expect(other).toContain("group-focus-within:opacity-100");
@@ -88,15 +88,15 @@ describe("abas: o × de cada aba", () => {
   test("Delete on a focused tab closes it", async () => {
     const store = await twoTabs();
     await act(async () => {
-      fireEvent.keyDown(tab("alfa"), { key: "Delete" });
+      fireEvent.keyDown(tab("Histórico"), { key: "Delete" });
     });
     expect(store.tabs.tabs).toHaveLength(1);
-    expect(screen.queryByRole("tab", { name: "alfa" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Histórico, host alfa" })).toBeNull();
   });
 
   test("the keyboard focus ring is drawn once, on the whole tab, so its close button is inside it", async () => {
     await twoTabs();
-    const focus = tab("alfa");
+    const focus = tab("Histórico");
     // One ring only (crumb-largura, #96): the strip item draws it when its tab has keyboard focus.
     // A second ring on the inner tab would cut the × out of the outline.
     expect(focus.parentElement?.className).toContain("has-[[role=tab]:focus-visible]:ring-2");
@@ -106,7 +106,7 @@ describe("abas: o × de cada aba", () => {
 
   test("a tab shows its hover and keyboard focus states", async () => {
     await twoTabs();
-    const focus = tab("alfa");
+    const focus = tab("Histórico");
     // Issue #488: the hover is the flat tab's own (tab-item's &:hover in styles.css).
     expect(focus.parentElement?.className).toContain("tab-item");
     expect(focus.parentElement?.className).toContain("has-[[role=tab]:focus-visible]:ring");
