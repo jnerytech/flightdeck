@@ -297,6 +297,18 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     { name: "board", route: { name: "board", host: ALFA, projectId: ids.project } },
+    // #117: the files of a worktree picked in the sidebar tree, in a panel beside the columns.
+    {
+      name: "board-arquivos",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        const tree = page.locator("[data-slot=project-tree]");
+        const head = tree.locator('[data-project="flightdeck-web"]');
+        if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+        await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
+        await page.locator("[data-slot=board-files]").getByText("app.ts").waitFor();
+      },
+    },
     {
       name: "card",
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },

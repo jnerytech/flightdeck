@@ -949,10 +949,51 @@ export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) })
 export type CardDiff = z.infer<typeof CardDiff>;
 
 // Phase 11: review of the changes of any session or card.
-/** `session:<claudeSessionId>`, `card:<id>` or `terminal:<terminalId>` (its folder, #506). */
+/**
+ * `session:<claudeSessionId>`, `card:<id>`, `terminal:<terminalId>` (its folder, #506) or
+ * `project:<projectId>` (its own checkout, read only, #797).
+ */
 export const ReviewTarget = z
   .string()
-  .regex(/^(session|card|terminal):.+$/, "alvo session:<id>, card:<id> ou terminal:<id>");
+  .regex(
+    /^(session|card|terminal|project):.+$/,
+    "alvo session:<id>, card:<id>, terminal:<id> ou project:<id>",
+  );
+
+/** Issue #797: a search over a repository, by path or by content; a fixed string, never a pattern. */
+export const FileSearchPayload = z
+  .object({
+    target: ReviewTarget,
+    mode: z.enum(["name", "content"]),
+    // A program gets it as one argument: no control character (a NUL, a line break) splits it.
+    query: z
+      .string()
+      .min(1)
+      .max(200)
+      .regex(/^[^\p{Cc}]+$/u, "no control characters"),
+    /** At most this many matches; 100 when absent. */
+    limit: z.number().int().min(1).max(200).optional(),
+  })
+  .strict();
+export type FileSearchPayload = z.infer<typeof FileSearchPayload>;
+
+export interface FileSearchMatch {
+  /** Relative to the target's repository, with `/`. */
+  path: string;
+  /** A credential file: its name matched, its content is never searched. */
+  secret?: true;
+  /** Content search: the line's number (from 1) and its text, cut to 200 characters. */
+  line?: number;
+  text?: string;
+}
+
+export interface FileSearchResult {
+  mode: "name" | "content";
+  query: string;
+  matches: FileSearchMatch[];
+  /** More matches than the limit, more output than the cap, or out of time. */
+  truncated: boolean;
+}
 
 export const ChangesResult = z.object({
   target: z.string(),
@@ -4280,6 +4321,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("file.read", z.object({ target: ReviewTarget, path: z.string().min(1) })),
   /** Issue #506: one folder of the target's repository for the file explorer; `dir` is "" for its root. */
   cmd("file.list", z.object({ target: ReviewTarget, dir: z.string() })),
+  /** Issue #797: a search over the target's repository, by name or by content. */
+  cmd("file.search", FileSearchPayload),
   /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
   cmd(
     "file.write",
@@ -5100,6 +5143,7 @@ export interface CommandResults {
   /** `hash`: sha256 of the bytes, hex, for `file.write`. */
   "file.read": { path: string; text: string; hash: string; size: number };
   "file.list": FileListing;
+  "file.search": FileSearchResult;
   "file.write": { path: string; hash: string; size: number };
 }
 
