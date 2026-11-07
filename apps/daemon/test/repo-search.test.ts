@@ -230,6 +230,23 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     ]).toEqual([3, false, false, true, 'const [redacted]";']);
   });
 
+  test("a private key's body lines leave the host masked, without their header on the line (#829)", async () => {
+    const { repo } = await setup();
+    // A fake key body of PEM's shape: 64 base64 characters a line; not a real key.
+    const body = "MIIEowIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gun";
+    writeFileSync(
+      join(repo, "notes", "setup.md"),
+      `${body}\nMIIEpanelQEAu1SU1LfVLPHCozMxH2Mo4lg\n`,
+    );
+    const found = await searchRepository(
+      repo,
+      { mode: "content", query: "MIIE" },
+      { rg: () => null },
+    );
+    const lines = found.matches.filter((m) => m.path === "notes/setup.md").map((m) => m.text);
+    expect(lines).toEqual(["[redacted]", "[redacted]"]);
+  });
+
   test("a file named after a token is never listed, by name or by content (#829)", async () => {
     const { repo } = await setup();
     // A fake token of GitHub's shape in the file's name; the test never uses a real one.
