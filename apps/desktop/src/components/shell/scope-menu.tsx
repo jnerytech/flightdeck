@@ -9,10 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AppStore } from "../../lib/app-store.ts";
-import { ALL_SCOPE, type DataScope } from "../../lib/data-scope.ts";
-
-/** The menu's value for every host; a host's is its id. */
-const ALL = "*";
+import { ALL_SCOPE, type DataScope, scopeOfValue, scopeValue } from "../../lib/data-scope.ts";
 
 /**
  * The data scope in a scoped screen's toolbar (#126): it says whose numbers the screen shows and
@@ -35,7 +32,7 @@ export function ScopeMenu(
       : t("scope.all");
   const label = nameOf(scope);
   const choose = (value: string) => {
-    const next: DataScope = value === ALL ? ALL_SCOPE : { kind: "host", hostId: value };
+    const next = scopeOfValue(value);
     store.dataScope.set(next);
     setSaid(t("scope.showing", { scope: nameOf(next) }));
   };
@@ -50,13 +47,15 @@ export function ScopeMenu(
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuRadioGroup
-            value={scope.kind === "host" ? scope.hostId : ALL}
-            onValueChange={choose}
-          >
-            <DropdownMenuRadioItem value={ALL}>{t("scope.all")}</DropdownMenuRadioItem>
+          <DropdownMenuRadioGroup value={scopeValue(scope)} onValueChange={choose}>
+            <DropdownMenuRadioItem value={scopeValue(ALL_SCOPE)}>
+              {t("scope.all")}
+            </DropdownMenuRadioItem>
             {hosts.map((host) => (
-              <DropdownMenuRadioItem key={host.id} value={host.id}>
+              <DropdownMenuRadioItem
+                key={host.id}
+                value={scopeValue({ kind: "host", hostId: host.id })}
+              >
                 {host.name}
               </DropdownMenuRadioItem>
             ))}
