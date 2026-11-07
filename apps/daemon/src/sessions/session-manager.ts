@@ -814,21 +814,24 @@ export class SessionManager {
       if (!live.closing)
         this.fail(sessionId, live, "runtime_exit", "o runtime encerrou inesperadamente");
     } catch (error) {
-      if (!live.closing) {
-        // Phase 39: a typed refusal from the runtime keeps its reason for the app to translate.
-        const typed =
-          error instanceof FlightdeckError && error.reason
-            ? { reason: error.reason, ...(error.params ? { params: error.params } : {}) }
-            : undefined;
-        this.fail(
-          sessionId,
-          live,
-          typed?.reason ?? "runtime",
-          error instanceof Error ? error.message : String(error),
-          typed,
-        );
-      }
+      if (!live.closing) this.failFrom(sessionId, live, error);
     }
+  }
+
+  /** The runtime threw: the session fails, with the error's typed reason when it has one. */
+  private failFrom(sessionId: string, live: LiveSession, error: unknown): void {
+    // Phase 39: a typed refusal from the runtime keeps its reason for the app to translate.
+    const typed =
+      error instanceof FlightdeckError && error.reason
+        ? { reason: error.reason, ...(error.params ? { params: error.params } : {}) }
+        : undefined;
+    this.fail(
+      sessionId,
+      live,
+      typed?.reason ?? "runtime",
+      error instanceof Error ? error.message : String(error),
+      typed,
+    );
   }
 
   private handle(sessionId: string, live: LiveSession, event: RuntimeEvent): void {

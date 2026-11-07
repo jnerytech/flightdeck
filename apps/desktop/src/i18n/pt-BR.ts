@@ -968,6 +968,9 @@ export const ptBR = {
     clearProjectFilter: "Limpar o filtro de projeto",
     toggleProject: "Mostrar ou esconder {name}",
     countChip: "{live} ao vivo de {total} sessões",
+    noHost: "Nenhum host ainda",
+    noOnlineHost: "Nenhum host online",
+    addHost: "Adicionar um host",
     expandAll: "Expandir tudo",
     collapseAll: "Recolher tudo",
     earlier: "{n} sessões anteriores",
@@ -1890,7 +1893,11 @@ export const ptBR = {
     teleport_git:
       "O git não conseguiu empacotar o código da sessão. Tente de novo; se falhar outra vez, confira o repositório.",
     teleport_stopped:
-      "O host está parando, por isso a sessão não foi empacotada. Tente de novo quando ele voltar.",
+      "O host está parando, por isso a sessão não mudou de host. Tente de novo quando ele voltar.",
+    teleport_incomplete:
+      "Parte da sessão ainda não chegou a este host, por isso ela não pode começar aqui. Tente mudar de novo.",
+    teleport_corrupt:
+      "O que chegou a este host não bate com o que o outro host mandou, por isso foi descartado. Tente mudar de novo.",
     runtime_unavailable: "O OpenCode não está disponível neste host.",
     runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
     opencode_unsafe_global:
