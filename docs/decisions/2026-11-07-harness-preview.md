@@ -68,6 +68,17 @@ size. A `.claude` that is a link leaving the project gets no proposal.
 The command is gated by the feature `harnessPreview`, which is listed in `DAEMON_FEATURES` and named
 in both languages.
 
+For S4, from the review of #923:
+
+- **Repeat the walk before writing.** Right before writing, apply walks the path again with no link
+  allowed anywhere on it, then opens the file without following links and hashes it from that same
+  handle. The preview's hash catches a change of content, not a link swapped in after the preview.
+- **Say that the formatter runs the project's own script.** The proposed formatter hook runs
+  `<runner> run format`, whose body comes from `package.json` and can change with a later pull. The
+  confirm step shows the command and says this.
+- **Call the deny rules best-effort.** They block Claude Code's `Read` tool and the named `git add`
+  forms. They do not block a shell `cat .env`. The app never presents them as a guarantee.
+
 ## Alternatives discarded
 
 - **A unified diff from the daemon, as designed.** It would ship `env` values in context lines, and
