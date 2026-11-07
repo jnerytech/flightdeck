@@ -81,6 +81,39 @@ describe("plain-title: the window title", () => {
     expect(titles).toEqual(["Flightdeck: 1 task waiting for your answer"]);
   });
 
+  test("Given a platform that cannot set the title, Then the app goes on and the next change is still tried", async () => {
+    const mem = memoryPlatform(false, "en");
+    let tried = 0;
+    mem.platform.setTitle = async () => {
+      tried++;
+      throw new Error("no window");
+    };
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    stores.push(store);
+    store.i18n.start();
+    const host = (count: number) => ({
+      id: "h1",
+      name: "alfa",
+      status: "online" as const,
+      hostInfo: { daemonVersion: "x", features: [], ui: { mode: "simple", locked: false } },
+      sessions: [
+        {
+          id: "s1",
+          name: "Reports",
+          cwd: "/w",
+          status: "awaiting_permission" as const,
+          updatedAt: "t",
+          pendingPermissions: Array.from({ length: count }, (_, i) => request(i + 1)),
+        },
+      ],
+    });
+    const update = (store as unknown as { update(patch: object): void }).update.bind(store);
+    update({ hosts: [host(1)] });
+    update({ hosts: [host(2)] });
+    await Promise.resolve();
+    expect(tried).toBe(2);
+  });
+
   test("Given the person switches the host to full mode, Then the title goes back to the plain name", () => {
     const { titles, store } = setup("simple", 2);
     store.setUiChoice("h1", "full");

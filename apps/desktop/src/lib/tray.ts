@@ -56,6 +56,8 @@ export function trayMenu(
 
 export interface TrayHost {
   name: string;
+  /** The host is in simple mode: its requests are told as tasks waiting for an answer (issue #88). */
+  simple?: boolean;
   sessions: { pendingPermissions: PendingPermission[] }[];
 }
 
@@ -76,5 +78,10 @@ export function trayStatus(hosts: TrayHost[], t: T = PT, autoApproved = 0): Tray
   const auto = autoApproved > 0 ? ` · ${t("tray.autoApproved", { n: autoApproved })}` : "";
   if (count === 0) return { count, label, tooltip: `${t("tray.idle")}${auto}` };
   const breakdown = perHost.map((h) => `${h.name}: ${h.count}`).join(", ");
-  return { count, label, tooltip: `${t("tray.waiting", { n: count, hosts: breakdown })}${auto}` };
+  // Plain words only when every host that waits is in simple mode: a mixed fleet keeps the usual one.
+  const plainly = hosts
+    .filter((h) => perHost.some((p) => p.name === h.name))
+    .every((h) => h.simple);
+  const key = plainly ? "tray.plainWaiting" : "tray.waiting";
+  return { count, label, tooltip: `${t(key, { n: count, hosts: breakdown })}${auto}` };
 }

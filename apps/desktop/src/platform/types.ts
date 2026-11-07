@@ -169,6 +169,11 @@ export interface Platform {
    * Absent where the platform has no such badge (a browser).
    */
   setBadge?(count: number): Promise<void>;
+  /**
+   * The window's title (issue #88): in simple mode it says how many tasks wait for an answer.
+   * Absent where the platform keeps its own title (a browser shows the badge there).
+   */
+  setTitle?(title: string): Promise<void>;
   /** Rebuilds the "Precisa de você" submenu (phase 8). */
   setTrayMenu(menu: TrayMenu): Promise<void>;
   /** Clicks in that submenu: approve and deny answer without opening the window. */
