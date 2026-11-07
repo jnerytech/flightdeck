@@ -100,6 +100,17 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
     expect(selected()).toEqual(["Conversa"]);
   });
 
+  test("a key the tab bar does not use is left alone: no view changes and the browser keeps it", async () => {
+    mount();
+    tabs()[0]?.focus();
+    const event = new KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true });
+    await act(async () => {
+      tabs()[0]?.dispatchEvent(event);
+    });
+    expect(selected()).toEqual(["Conversa"]);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   test("Alt+1 to Alt+6 pick the views, from the message box too; other combinations and numbers do nothing", async () => {
     mount();
     const box = within(document.body).queryByLabelText("caixa") as HTMLElement;
