@@ -62,7 +62,16 @@ const SHARES: Record<string, Shares> = {
 
 const usage: UsageSummary = { days: 7, rows: [] };
 
-function setup(options: { language?: "en" | "pt-BR"; empty?: boolean; costs?: boolean } = {}) {
+function setup(
+  options: {
+    language?: "en" | "pt-BR";
+    empty?: boolean;
+    costs?: boolean;
+    /** While `now` is true every costs request is refused (the host is busy or went away). */
+    failing?: { now: boolean };
+    refreshMs?: number;
+  } = {},
+) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
     day: () => "2026-10-10",
@@ -73,6 +82,7 @@ function setup(options: { language?: "en" | "pt-BR"; empty?: boolean; costs?: bo
     if (command === "usage.summary") return { ok: true, data: usage };
     const { from, to } = payload as { from: string; to: string };
     ranges.push(`${from}|${to}`);
+    if (options.failing?.now) return { ok: false, code: "internal", message: "no" };
     const summary = emptySummary(from, to);
     if (!options.empty) Object.assign(summary, SHARES[`${from}|${to}`]);
     return { ok: true, data: summary };
@@ -93,7 +103,14 @@ function setup(options: { language?: "en" | "pt-BR"; empty?: boolean; costs?: bo
     budgets: {},
   } as never as ReturnType<typeof store.getState>;
   const routes: unknown[] = [];
-  render(<HomePage store={store} state={state} go={(route) => void routes.push(route)} />);
+  render(
+    <HomePage
+      store={store}
+      state={state}
+      go={(route) => void routes.push(route)}
+      {...(options.refreshMs ? { refreshMs: options.refreshMs } : {})}
+    />,
+  );
   return { routes, ranges };
 }
 
@@ -205,5 +222,48 @@ describe("home-leaders-ui: where the tokens of the 7 days went", () => {
   test("a project's button is a target of at least 24 px", () => {
     const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
     expect(/@utility leader-link \{[^}]*min-height: 1\.5rem/.test(css)).toBe(true);
+  });
+
+  // OpenCode review of #780: a read where every costs request failed replaced the shares with
+  // empty ones, so the panel said "no tokens" for a host that only did not answer.
+  test("when no host gave its costs, the panel says it could not read them, not that there were none", async () => {
+    setup({ failing: { now: true } });
+    await loaded("Where the tokens went");
+    await settleMaybe(
+      () =>
+        screen.queryByText(
+          "Could not read where the tokens went. Home tries again in a minute.",
+        ) !== null,
+    );
+    expect({
+      unavailable:
+        screen.queryByText(
+          "Could not read where the tokens went. Home tries again in a minute.",
+        ) !== null,
+      none: screen.queryByText("No tokens in the last 7 days.") !== null,
+    }).toEqual({ unavailable: true, none: false });
+  });
+
+  test("a refresh whose costs fail keeps the shares read before", async () => {
+    const failing = { now: false };
+    const { ranges } = setup({ failing, refreshMs: 150 });
+    await loaded("Where the tokens went");
+    const before = rows("Where the tokens went", [
+      ["app", "60%"],
+      ["web", "40%"],
+    ]);
+    failing.now = true;
+    const asked = ranges.length;
+    await settle(() => ranges.length >= asked + 6);
+    expect({
+      before,
+      after: rows("Where the tokens went", [
+        ["app", "60%"],
+        ["web", "40%"],
+      ]),
+    }).toEqual({
+      before: [true, true],
+      after: [true, true],
+    });
   });
 });
