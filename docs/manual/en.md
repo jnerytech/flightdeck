@@ -2842,6 +2842,11 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   showing the last host used while one of them is open. `Ctrl+Tab` goes over the shared tabs and
   then the current host's.
 
+- **Host colors:** each host has one of eight colors, the same wherever the host shows. It is a dot
+  next to the host's name in the top bar's switcher and in the list of all tabs, and a 2 px line over
+  the top of each of the host's tabs. The color is never the only sign: the host's name stands beside
+  every dot, and the colors keep 3:1 against the surfaces in the light and the dark theme.
+
 - **Opening:** a normal click changes the current tab. `Ctrl+click`, the middle mouse button or
   **Open in new tab** (in the host's menu and in a session row's menu) opens a new one. The **+**
   button at the end of the bar opens a new tab on the `Ctrl+K` palette. A screen has one tab: a

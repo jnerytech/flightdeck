@@ -1359,6 +1359,24 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await count(3, "as duas abas do alfa voltaram");
   },
 
+  // Issue #732: a card that has not started opens on its Run section, so Start is in view and
+  // clickable without a scroll, in a phone-sized window and a desktop one. The card is left idle.
+  "card-start-alcance": async (c) => {
+    const title = `Card alcance ${Date.now()}`;
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
+    await tile.waitFor({ timeout: WAIT });
+    await tile.getByRole("button", { name: title, exact: true }).click();
+    const start = c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true });
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await inReach(c, `${c.t("cardUi.start")} a ${size.width}x${size.height}`, start);
+    }
+  },
+
   // Teams (#754): the form of a new team ends in Create and start, which must be in view and
   // clickable once the goal is written, in a phone-sized window and a desktop one. Nothing is
   // created: the demo keeps no team behind, so the other journeys' counts stay as they were.

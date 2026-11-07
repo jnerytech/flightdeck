@@ -4,7 +4,7 @@
  * everything at once (docs/TDD.md), hand edits of generated files, test edits that add
  * .only/.skip/test.todo/toMatchSnapshot, commits whose subject breaks the format or the TDD
  * order, heavy runs outside `bun run slot --`, a worker's full coverage run (#674), a session's hand merge or tag of a PR, and pushes of anything but the session's own work
- * branch. Exit 2 blocks the call and shows the reason to Claude. The rules live in
+ * branch, and a push that would cancel the branch's PR run while it is still green (#741). Exit 2 blocks the call and shows the reason to Claude. The rules live in
  * scripts/lib/claude-hooks.ts, with their tests.
  */
 import { spawnSync } from "node:child_process";
@@ -18,7 +18,9 @@ import {
   guardAllowLogs,
   heavyRunViolation,
   prMergeViolation,
+  prRunVia,
   pushViolation,
+  pushWaitViolation,
   slotViolation,
   testEditViolation,
 } from "../../scripts/lib/claude-hooks.ts";
@@ -50,6 +52,21 @@ if (typeof command === "string") {
   };
   block("commit", commitViolation(command, cwd, repo));
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
+  // #741: gh is asked only for a push without an override, in the push's own checkout; any
+  // failure reads as no run (prRunVia in scripts/lib/claude-hooks.ts makes the calls).
+  const gh = (args: string[], dir: string) => {
+    // 3 s each: two calls stay inside the hook's 10 s with the git calls; gh never prompts. Past
+    // the 10 s, Claude Code lets the command through, so a slow GitHub fails open too.
+    const proc = spawnSync("gh", args, {
+      cwd: dir,
+      encoding: "utf8",
+      timeout: 3000,
+      env: { ...process.env, GH_PROMPT_DISABLED: "1" },
+    });
+    return proc.status === 0 ? proc.stdout : null;
+  };
+  const prRun = prRunVia(gh, Date.now);
+  block("push-wait", pushWaitViolation(command, cwd, { ...repo, env: process.env, prRun }));
 }
 if (typeof filePath === "string") {
   const root = checkoutRoot(filePath, ROOT);

@@ -73,3 +73,23 @@ describe("permissao-plain: the summary lists the request with its plain wording 
     expect(pending[0]?.plain?.sentence.en).toBe(`Create the file fake.txt in ${basename(project)}`);
   });
 });
+
+describe("permissao-plain: the fake runtime can raise a vault request (issue #88)", () => {
+  test("Given [vault], Then the session waits on a request that needs full access, and its wording never shows the command", async () => {
+    const { manager, project } = newManager();
+    const { sessionId } = await manager.create({ cwd: project, prompt: "[vault]" });
+    await waitFor(() => (manager.get(sessionId).status === "running" ? null : true), {
+      label: "the first turn to stop",
+    });
+    const pending = manager.pendingPermissions(sessionId);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.plain?.outcome).toBe("needs_full_access");
+    expect(JSON.stringify(pending[0]?.plain)).not.toContain("vault get");
+    // Allowed, the turn goes on to its tool result and ends.
+    manager.respondPermission({ requestId: pending[0]?.requestId ?? "", decision: "allow" });
+    await waitFor(() => (manager.get(sessionId).status === "idle" ? true : null), {
+      label: "the turn to end after the answer",
+    });
+    expect(manager.pendingPermissions(sessionId)).toHaveLength(0);
+  });
+});

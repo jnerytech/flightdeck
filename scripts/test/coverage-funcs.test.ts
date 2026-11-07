@@ -254,6 +254,16 @@ describe("planCoverageFuncs", () => {
       expect(coordinator.command).toBeNull();
       expect(coordinator.slotHeavy).toBe("block");
     }
+    // The coordinator with a reason runs it, like anyone (#744 review).
+    const withReason = planCoverageFuncs({
+      ...wide,
+      env: {
+        FLIGHTDECK_COORDINATOR: "1",
+        FLIGHTDECK_SLOT_HEAVY: "every desktop test reaches the store",
+      },
+    });
+    expect(withReason.command).not.toBeNull();
+    expect(withReason.slotHeavy).toBe("waived");
     const reason = { FLIGHTDECK_SLOT_HEAVY: "every desktop test reaches the store" };
     const waived = planCoverageFuncs({ ...wide, env: reason });
     expect(waived.command).not.toBeNull();

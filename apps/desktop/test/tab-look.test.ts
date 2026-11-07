@@ -28,7 +28,8 @@ describe("tab-look: flat tabs that share the bar, the active one joined to the c
     const active = item.slice(item.indexOf('&:has([role="tab"][aria-selected="true"])'));
     expect(active).toContain("background: var(--color-background);");
     expect(active).toContain("color: var(--color-foreground);");
-    expect(active).toContain("background: var(--color-primary);");
+    // The line is the host's color on a host's tab (#644), the accent on a shared one.
+    expect(active).toContain("background: var(--host-color, var(--color-primary));");
     expect(item).toContain("color: var(--color-muted-foreground);");
   });
 
