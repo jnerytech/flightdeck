@@ -834,6 +834,8 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.roi",
       "flightdeck.uiMode",
       "flightdeck.inbox",
+      // The "barra-recolhida" print folds the sidebar, and the fold is kept: not into the next print.
+      "flightdeck.sidebarFolded",
     ]) {
       localStorage.removeItem(key);
     }
