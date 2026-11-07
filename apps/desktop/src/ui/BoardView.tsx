@@ -534,7 +534,10 @@ export const BoardView = memo(function BoardView(props: {
   };
 
   return (
+    // The board fills its page (#641): the columns row takes the rest of the height and scrolls
+    // sideways at the window's bottom, and each column's cards scroll by themselves.
     <Page
+      fill
       title={boardTitle(t, project?.name)}
       toolbar={
         <>
@@ -581,7 +584,7 @@ export const BoardView = memo(function BoardView(props: {
         </>
       }
     >
-      <div className="flex flex-col gap-4">
+      <div className="board-body">
         {withRoi && project && <RoiCard store={store} hostId={hostId} project={project} />}
         {loading && <LoadingState label={t("states.loadingBoard")} shape="columns" />}
         {!loading && project && all.length === 0 && (
@@ -633,7 +636,7 @@ export const BoardView = memo(function BoardView(props: {
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
           style={{ gridAutoColumns: `${width}px` }}
-          className="grid grid-flow-col gap-3 overflow-x-auto pb-2"
+          className="grid min-h-48 flex-1 grid-flow-col gap-3 overflow-x-auto pb-2 @max-[40rem]:snap-x @max-[40rem]:snap-mandatory"
           onKeyDown={(e) => {
             // Only the board's own Esc: one that closes a card's menu is the menu's.
             if (e.key !== "Escape" || e.defaultPrevented) return;
@@ -646,7 +649,10 @@ export const BoardView = memo(function BoardView(props: {
               key={id}
               aria-label={t(`kanban.columns.${id}` as Key)}
               data-column={id}
-              className={cn("board-column group/lane relative", over === id && "drop-over")}
+              className={cn(
+                "board-column group/lane relative snap-start",
+                over === id && "drop-over",
+              )}
               onDragOver={(e) => e.preventDefault()}
               onDragEnter={() => setOver(id)}
               onDragLeave={(e) => {
@@ -677,7 +683,7 @@ export const BoardView = memo(function BoardView(props: {
                   setCreating(true);
                 }}
               />
-              <ul className="flex flex-col gap-2">
+              <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
                 {shown
                   .filter((card) => card.column === id)
                   .map((card) => (
