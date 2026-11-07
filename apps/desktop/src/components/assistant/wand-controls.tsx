@@ -159,6 +159,7 @@ export function WandPanel(props: { wand: Wand; t: T }) {
             </Stack>
           </>
         )}
+        <Notices notices={state.notices} t={t} />
         {state.stale && <p className="text-sm">{t("assistantWand.stale")}</p>}
         <Inline>
           <Button type="button" size="sm" autoFocus onClick={wand.accept}>
@@ -178,5 +179,28 @@ export function WandPanel(props: { wand: Wand; t: T }) {
         </Inline>
       </Stack>
     </div>
+  );
+}
+
+/** What the notices mean, in the codes the answer can carry; one the app does not know is left out. */
+const NOTICE_CODES = [
+  "diff_truncated",
+  "lines_redacted",
+  "subject_too_long",
+  "subject_trailing_period",
+  "subject_not_conventional",
+  "body_needs_blank_line",
+] as const;
+
+/** Beside a suggestion: what was cut, left out or broken, so the person decides knowing it. */
+function Notices(props: Readonly<{ notices: string[]; t: T }>) {
+  const shown = NOTICE_CODES.filter((code) => props.notices.includes(code));
+  if (shown.length === 0) return null;
+  return (
+    <ul aria-label={props.t("assistantWand.notes")} className="list-disc ps-5 text-sm">
+      {shown.map((code) => (
+        <li key={code}>{props.t(`assistantWand.notice.${code}`)}</li>
+      ))}
+    </ul>
   );
 }

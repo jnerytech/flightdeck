@@ -1526,16 +1526,29 @@ export class Board {
     id: string,
     options: { description?: string; title?: string } = {},
   ): Promise<Card> {
-    const found = options.description ? (this.opts.scanner?.scan(options.description) ?? []) : [];
-    if (found.length > 0) {
-      throw new FlightdeckError(
-        "bad_request",
-        `the description looks like it has a secret (${found.join(", ")}): take it out before opening the PR`,
-        "pr_secret",
-        { found: found.join(", ") },
-      );
-    }
     const card = this.getCard(id);
+    // What goes public (into the PR) is what the provider gets: the confirmed text, else the card's
+    // own. Each is refused by its own field, naming the pattern and never the secret.
+    const body =
+      options.description ??
+      [card.description, card.issueRef ? closingLine(card.issueRef) : null]
+        .filter((part) => part?.trim())
+        .join("\n\n");
+    const title = options.title ?? card.title;
+    for (const [field, text, reason] of [
+      ["description", body, "pr_secret"],
+      ["title", title, "pr_title_secret"],
+    ] as const) {
+      const found = this.opts.scanner?.scan(text) ?? [];
+      if (found.length > 0) {
+        throw new FlightdeckError(
+          "bad_request",
+          `the ${field} looks like it has a secret (${found.join(", ")}): take it out before opening the PR`,
+          reason,
+          { found: found.join(", ") },
+        );
+      }
+    }
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
     if (!provider)
@@ -1560,13 +1573,9 @@ export class Board {
       base,
       head: branch,
       // Phase 40: the title the person confirmed, else the card's.
-      title: options.title ?? card.title,
+      title,
       // The provider links the PR to the issue and closes it on merge (`Fixes #n`, `AB#id`).
-      body:
-        options.description ??
-        [card.description, card.issueRef ? closingLine(card.issueRef) : null]
-          .filter((part) => part?.trim())
-          .join("\n\n"),
+      body,
     });
     this.db
       .query(
@@ -1652,6 +1661,22 @@ export class Board {
     message?: string,
   ): Promise<Card> {
     if (!confirm) throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
+    // The message goes into the base branch, public history: a secret in it is refused up front,
+    // whether the person typed it or it is the default built from the card.
+    const named = this.getCard(id);
+    const found =
+      this.opts.scanner?.scan(
+        message ??
+          (mode === "squash" ? named.title : `Merge ${named.branch ?? ""}: ${named.title}`),
+      ) ?? [];
+    if (found.length > 0) {
+      throw new FlightdeckError(
+        "bad_request",
+        `the merge message looks like it has a secret (${found.join(", ")}): take it out before merging`,
+        "merge_message_secret",
+        { found: found.join(", ") },
+      );
+    }
     const { card, worktree, branch } = this.idleWorktree(id);
     if (card.prUrl) {
       throw new FlightdeckError(

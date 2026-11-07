@@ -162,6 +162,16 @@ export function GlobalSearch(
     props.onGo(item.target);
   };
 
+  /** Tab: into the chosen entry's actions, or back from them to the list. */
+  const toggleActions = (chosen: PaletteItem | undefined) => {
+    if (actionsOf) back();
+    else if (chosen && chosen.actions.length > 0) {
+      setActionsOf(chosen);
+      // The actions are their own list: its first one is chosen.
+      setActiveId("action:0");
+    }
+  };
+
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     const chosen = visible[cursor];
     const alt = /^[1-6]$/.test(e.key) && e.altKey && query.trim() === "" && !actionsOf;
@@ -180,12 +190,7 @@ export function GlobalSearch(
       choose(chosen);
     } else if (e.key === "Tab") {
       e.preventDefault();
-      if (actionsOf) back();
-      else if (chosen && chosen.actions.length > 0) {
-        setActionsOf(chosen);
-        // The actions are their own list: its first one is chosen.
-        setActiveId("action:0");
-      }
+      toggleActions(chosen);
     } else if (e.key === "Escape" && actionsOf) {
       // Back to the list; the dialog only closes from there.
       e.stopPropagation();

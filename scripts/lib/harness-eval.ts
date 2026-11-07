@@ -80,27 +80,36 @@ export function parseStream(jsonl: string): Transcript {
     const event = eventOf(line);
     if (!event) continue;
     if (event.type === "result") {
-      out.costUsd = Number(event.total_cost_usd ?? 0);
-      out.turns = Number(event.num_turns ?? 0);
-      out.denials = Array.isArray(event.permission_denials) ? event.permission_denials.length : 0;
-      out.isError = event.is_error === true;
+      addTotals(out, event);
       continue;
     }
     const blocks = (event.message as { content?: unknown } | undefined)?.content;
-    if (!Array.isArray(blocks)) continue;
-    for (const block of blocks as StreamBlock[]) {
-      const command = bashCommand(block);
-      if (command !== null) {
-        const step = { command, output: "" };
-        steps.push(step);
-        byId.set(block.id ?? "", step);
-      } else if (block.type === "tool_result") {
-        const step = byId.get(block.tool_use_id ?? "");
-        if (step) step.output = resultText(block.content);
-      }
-    }
+    if (Array.isArray(blocks)) addBlocks(steps, byId, blocks as StreamBlock[]);
   }
   return out;
+}
+
+/** Copies the totals of a run from its closing `result` event. */
+function addTotals(out: Transcript, event: Record<string, unknown>): void {
+  out.costUsd = Number(event.total_cost_usd ?? 0);
+  out.turns = Number(event.num_turns ?? 0);
+  out.denials = Array.isArray(event.permission_denials) ? event.permission_denials.length : 0;
+  out.isError = event.is_error === true;
+}
+
+/** Adds the Bash steps of a message's blocks and gives each tool result to the step it answers. */
+function addBlocks(steps: EvalStep[], byId: Map<string, EvalStep>, blocks: StreamBlock[]): void {
+  for (const block of blocks) {
+    const command = bashCommand(block);
+    if (command !== null) {
+      const step = { command, output: "" };
+      steps.push(step);
+      byId.set(block.id ?? "", step);
+    } else if (block.type === "tool_result") {
+      const step = byId.get(block.tool_use_id ?? "");
+      if (step) step.output = resultText(block.content);
+    }
+  }
 }
 
 const GRADERS = ["test-file", "test-first", "red-by-assertion", "audit", "coverage", "no-error"];

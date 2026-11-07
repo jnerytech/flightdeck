@@ -307,6 +307,14 @@ export class HistoryIndexer {
     };
   }
 
+  /** The transcript file the indexer recorded for a Claude session (issue #100), or null. */
+  transcriptFile(claudeSessionId: string): string | null {
+    const row = this.db
+      .query("SELECT file_path FROM history_sessions WHERE claude_session_id = ?")
+      .get(claudeSessionId) as { file_path: string | null } | null;
+    return row?.file_path ?? null;
+  }
+
   session(claudeSessionId: string): HistorySession | null {
     const row = this.db
       .query(`${SESSION_SELECT} WHERE s.claude_session_id = ?`)

@@ -8,7 +8,7 @@ export interface Related {
   why: string;
 }
 
-const IMPORT = /\b(?:from|import)\s*\(?\s*["']([^"']+)["']/g;
+const IMPORT = /\b(?:from|import)\s*(?:\(\s*)?["']([^"']+)["']/g;
 export const TEST_FILE = /\.test\.tsx?$/;
 /** Files that shape every test run, which the import graph cannot see. */
 export const GLOBAL_FILE =
@@ -116,6 +116,119 @@ export interface Plan {
   files?: string[] | "all";
 }
 
+/** The lines of a git command's output; none when git fails. */
+function gitLines(git: PlanDeps["git"], args: string[]): string[] {
+  return (git(args) ?? "").split("\n").filter(Boolean);
+}
+
+/** `--base`, else the same base as tdd:audit (origin/main first), else the local main. */
+function baseRef(base: string | undefined, git: PlanDeps["git"]): string | undefined {
+  return base ?? auditBase(git) ?? git(["merge-base", "HEAD", "main"])?.trim();
+}
+
+/**
+ * `--pr`: a file every test reads, or a test that went away, can lower coverage of any file, so the
+ * whole suite runs, with its whole-repo gate (#309). The plan for that, or null.
+ */
+function wholeSuitePlan(
+  changed: string[],
+  sources: Map<string, string>,
+  slot: boolean,
+): Plan | null {
+  const global = changed.find((path) => GLOBAL_FILE.test(path));
+  const removedTest = changed.find((path) => TEST_FILE.test(path) && !sources.has(path));
+  const why = global ? `${global} affects every test` : `${removedTest} went away`;
+  if (!global && !removedTest) return null;
+  const whole = ["bun", "run", "test"];
+  return {
+    code: 0,
+    output: `test:related --pr: the whole suite runs (${why})`,
+    command: slot ? ["bun", "run", "slot", "--", ...whole] : whole,
+    files: "all",
+  };
+}
+
+/** `--tier`: a test with no tier still runs, never silently dropped. */
+function keptByTier(
+  tiers: string[] | undefined,
+  tierOf: (path: string) => string | undefined,
+  path: string,
+): boolean {
+  const tier = tierOf(path);
+  return !tiers || tier === undefined || tiers.includes(tier);
+}
+
+/** The warning for the tests a `--tier` run left out, or null when it left none out. */
+function tierWarning(
+  tiers: string[] | undefined,
+  selected: Related[],
+  related: Related[],
+  tierOf: (path: string) => string | undefined,
+): string | null {
+  const out = new Map<string, number>();
+  for (const r of selected.filter((r) => !keptByTier(tiers, tierOf, r.path))) {
+    const tier = tierOf(r.path) as string;
+    out.set(tier, (out.get(tier) ?? 0) + 1);
+  }
+  if (!tiers || out.size === 0) return null;
+  const counts = [...out].map(([tier, n]) => `${tier} ${n}`).join(", ");
+  return `--tier ${tiers.join(",")}: ${selected.length - related.length} test file(s) left out (${counts}); CI runs every tier and the coverage gate`;
+}
+
+/** The first line of the output: what the run holds and for which changes. */
+function headerOf(
+  mode: { pyramid: boolean; fast?: boolean },
+  count: { related: number; fastTier: number; changed: number },
+  label: string,
+): string {
+  const since = `${count.changed} changed file(s) since ${label}`;
+  if (mode.pyramid) {
+    return `test:related --pr: ${count.fastTier} fast-tier test file(s) + ${count.related - count.fastTier} related test file(s) of the other tiers for ${since}`;
+  }
+  if (mode.fast) {
+    return `test:related --fast: ${count.related} test file(s) for ${since} (direct importers only; CI runs the rest)`;
+  }
+  return `test:related: ${count.related} test file(s) for ${since}`;
+}
+
+/** The command that runs the related tests, through the slot when they are many. */
+function runCommand(
+  platform: NodeJS.Platform,
+  coverageDir: string | undefined,
+  related: Related[],
+  slot: boolean,
+): string[] {
+  const run = [
+    "bun",
+    // The area config turns coverage off; the related one turns it on without the 100% gate.
+    coverageDir ? "--config=bunfig.related.toml" : "--config=bunfig.area.toml",
+    ...testArgs(platform, [
+      ...(coverageDir ? [`--coverage-dir=${coverageDir}`] : []),
+      ...related.map((r) => `./${r.path}`),
+    ]),
+  ];
+  return slot && related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run;
+}
+
+/** The plan when nothing is left to run: changed source files with no test, or no related test. */
+function nothingToRun(
+  targets: string[] | undefined,
+  changed: string[],
+  label: string,
+  warnings: string[],
+): Plan {
+  if (targets && targets.length > 0) {
+    const lines = targets.map((path) => `  ${path}: no related test loads this file`);
+    const output = [
+      `test:related: ${targets.length} changed source file(s) with no test`,
+      ...lines,
+    ];
+    return { code: 1, output: output.join("\n"), command: null, targets };
+  }
+  const none = `test:related: no test file is related to the ${changed.length} changed file(s) since ${label}`;
+  return { code: 0, output: [none, ...warnings].join("\n"), command: null };
+}
+
 export function planRelated({
   base,
   platform,
@@ -130,85 +243,45 @@ export function planRelated({
 }: PlanDeps): Plan {
   // A run of some tiers covers only part of a file: the 100% gate is the full run's (CI).
   const coverageDir = tiers ? undefined : asked;
-  // The same base as tdd:audit (origin/main first); the local main only when that gives none.
-  const ref = base ?? auditBase(git) ?? git(["merge-base", "HEAD", "main"])?.trim();
+  const ref = baseRef(base, git);
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
   const label = base ?? ref.slice(0, 7);
   // --no-renames: a renamed file shows its old path as gone, so a renamed test counts as removed.
-  const changed = (git(["diff", "--name-only", "--no-renames", `${ref}...HEAD`]) ?? "")
-    .split("\n")
-    .filter(Boolean);
-  const tracked = (git(["ls-files", "*.ts", "*.tsx"]) ?? "").split("\n").filter(Boolean);
+  const changed = gitLines(git, ["diff", "--name-only", "--no-renames", `${ref}...HEAD`]);
+  const tracked = gitLines(git, ["ls-files", "*.ts", "*.tsx"]);
   const sources = new Map(tracked.map((path) => [path, readFile(path)]));
   const warnings = changed
     .filter((path) => GLOBAL_FILE.test(path))
     .map((path) => `warning: ${path} affects every test, run the full suite`);
-  // --pr: a file every test reads, or a test that went away, can lower coverage of any file: the
-  // whole suite runs, with its whole-repo gate (#309).
-  if (pyramid) {
-    const removedTest = changed.find((path) => TEST_FILE.test(path) && !sources.has(path));
-    const global = changed.find((path) => GLOBAL_FILE.test(path));
-    let why: string | null = null;
-    if (global) why = `${global} affects every test`;
-    else if (removedTest) why = `${removedTest} went away`;
-    if (why) {
-      const whole = ["bun", "run", "test"];
-      return {
-        code: 0,
-        output: `test:related --pr: the whole suite runs (${why})`,
-        command: slot ? ["bun", "run", "slot", "--", ...whole] : whole,
-        files: "all",
-      };
-    }
-  }
+  const whole = pyramid ? wholeSuitePlan(changed, sources, slot) : null;
+  if (whole) return whole;
   const byImport = selectRelated(changed, sources, { direct: fast });
   const imported = new Set(byImport.map((r) => r.path));
   const selected = [
     ...byImport,
     ...selectByPath(changed, sources).filter((r) => !imported.has(r.path)),
   ].sort((a, b) => (a.path < b.path ? -1 : 1));
-  // --tier: a test with no tier still runs, never silently dropped.
-  const kept = (path: string) => {
-    const tier = tierOf(path);
-    return !tiers || tier === undefined || tiers.includes(tier);
-  };
   // The mods' tests run under `claude plugin test`; every bunfig ignores mods/, so none is selected.
   const related = (
-    pyramid ? pyramidTests(selected, tracked, tierOf) : selected.filter((r) => kept(r.path))
+    pyramid
+      ? pyramidTests(selected, tracked, tierOf)
+      : selected.filter((r) => keptByTier(tiers, tierOf, r.path))
   ).filter((r) => !r.path.startsWith("mods/"));
-  const out = new Map<string, number>();
-  for (const r of selected.filter((r) => !kept(r.path))) {
-    const tier = tierOf(r.path) as string;
-    out.set(tier, (out.get(tier) ?? 0) + 1);
-  }
-  if (tiers && out.size > 0) {
-    const counts = [...out].map(([tier, n]) => `${tier} ${n}`).join(", ");
-    warnings.push(
-      `--tier ${tiers.join(",")}: ${selected.length - related.length} test file(s) left out (${counts}); CI runs every tier and the coverage gate`,
-    );
-  }
+  const warning = tierWarning(tiers, selected, related, tierOf);
+  if (warning) warnings.push(warning);
   const targets = coverageDir
-    ? coverageTargets(changed, (path) => (sources.has(path) ? (sources.get(path) ?? null) : null))
+    ? coverageTargets(changed, (path) => sources.get(path) ?? null)
     : undefined;
-  if (related.length === 0 && targets && targets.length > 0) {
-    const lines = targets.map((path) => `  ${path}: no related test loads this file`);
-    const output = [
-      `test:related: ${targets.length} changed source file(s) with no test`,
-      ...lines,
-    ];
-    return { code: 1, output: output.join("\n"), command: null, targets };
-  }
-  if (related.length === 0 && !pyramid) {
-    const none = `test:related: no test file is related to the ${changed.length} changed file(s) since ${label}`;
-    return { code: 0, output: [none, ...warnings].join("\n"), command: null };
+  const nothing = related.length === 0;
+  if (nothing && (targets?.length || !pyramid)) {
+    return nothingToRun(targets, changed, label, warnings);
   }
   const fastTier = related.filter((r) => FAST_TIERS.has(tierOf(r.path) ?? "")).length;
-  let header = `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`;
-  if (pyramid) {
-    header = `test:related --pr: ${fastTier} fast-tier test file(s) + ${related.length - fastTier} related test file(s) of the other tiers for ${changed.length} changed file(s) since ${label}`;
-  } else if (fast) {
-    header = `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`;
-  }
+  const header = headerOf(
+    { pyramid, fast },
+    { related: related.length, fastTier, changed: changed.length },
+    label,
+  );
   const output = [
     header,
     ...warnings,
@@ -217,19 +290,10 @@ export function planRelated({
       .filter((r) => !pyramid || !FAST_TIERS.has(tierOf(r.path) ?? ""))
       .map((r) => `  ${r.path}  ${r.why}`),
   ].join("\n");
-  const run = [
-    "bun",
-    // The area config turns coverage off; the related one turns it on without the 100% gate.
-    coverageDir ? "--config=bunfig.related.toml" : "--config=bunfig.area.toml",
-    ...testArgs(platform, [
-      ...(coverageDir ? [`--coverage-dir=${coverageDir}`] : []),
-      ...related.map((r) => `./${r.path}`),
-    ]),
-  ];
   return {
     code: 0,
     output,
-    command: slot && related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
+    command: runCommand(platform, coverageDir, related, slot),
     files: related.map((r) => r.path),
     ...(targets ? { targets } : {}),
   };
