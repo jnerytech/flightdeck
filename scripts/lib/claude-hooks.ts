@@ -936,6 +936,7 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
 /** The guard's gh for push-wait (#945 review): calls start only before `limit`; why nothing answered. */
 export function budgetedGh(
   spawn: (args: string[], dir: string) => { stdout: string | null; missing: boolean },
+  _exists: (dir: string) => boolean,
   now: () => number,
   limit: number,
 ): { gh: Gh; whyUnread: () => string | null } {

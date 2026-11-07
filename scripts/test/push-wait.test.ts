@@ -177,6 +177,12 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
         passes: [{ reason: why }],
       });
     }
+    // A reason left by an earlier branch's lookups is cleared first, so it never passes this one.
+    const stale = ["no time", null];
+    const left = { ...deps(null), whyUnread: () => stale.shift() ?? null };
+    expect(pushWaitViolation("git push origin fix-x", CWD, left) ?? "").toContain(
+      "GitHub could not be read",
+    );
     // GitHub that answered with a failure still holds.
     const failed = { ...deps(null), whyUnread: () => null };
     expect(pushWaitViolation("git push origin fix-x", CWD, failed) ?? "").toContain(
@@ -392,18 +398,44 @@ describe("push-wait: budgetedGh, the guard's gh with its time limit (#945 review
         ? { stdout: null, missing: true }
         : { stdout: args[0] === "fail" ? null : "ok", missing: false };
     };
-    const ok = budgetedGh(spawn, () => t, 6000);
+    const ok = budgetedGh(
+      spawn,
+      () => true,
+      () => t,
+      6000,
+    );
     expect(ok.gh(["run"], CWD)).toBe("ok");
     expect(ok.gh(["fail"], CWD)).toBeNull();
     // A call that ran and failed is GitHub's answer: no reason to pass.
     expect(ok.whyUnread()).toBeNull();
-    const missing = budgetedGh(spawn, () => t, 6000);
+    const missing = budgetedGh(
+      spawn,
+      () => true,
+      () => t,
+      6000,
+    );
     expect(missing.gh(["missing"], CWD)).toBeNull();
     expect(missing.whyUnread()).toBe("gh missing");
-    const late = budgetedGh(spawn, () => t, 6000);
+    const late = budgetedGh(
+      spawn,
+      () => true,
+      () => t,
+      6000,
+    );
     t = 6001;
     expect(late.gh(["run"], CWD)).toBeNull();
     expect(late.whyUnread()).toBe("no time");
+    // Read once: the next branch's lookups start with no reason left over (#945 security review).
+    expect(late.whyUnread()).toBeNull();
+    // ENOENT in a folder that does not exist is that folder, not gh: no reason to pass (high).
+    const gone = budgetedGh(
+      spawn,
+      (dir) => dir !== "/nowhere",
+      () => 0,
+      6000,
+    );
+    expect(gone.gh(["missing"], "/nowhere")).toBeNull();
+    expect(gone.whyUnread()).toBeNull();
     expect(ran).toEqual(["run", "fail", "missing"]);
   });
 });
