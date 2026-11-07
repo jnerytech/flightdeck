@@ -2390,6 +2390,7 @@ export const en: Dictionary = {
     effortDefault: "Default effort",
     create: "Create session",
     needFolder: "This host has no allowed folder.",
+    needPrompt: "Write the first prompt to start in the background.",
     addFolder: "Add a folder on {host}'s page",
     host: "Host",
   },
