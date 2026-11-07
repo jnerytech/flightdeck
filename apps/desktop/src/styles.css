@@ -883,6 +883,16 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
+/* The files panel's search modes (#827): a bare group of pressed buttons over the one field. */
+@utility file-search-by {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  min-inline-size: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
 /* A search match in the files panel (#117): its place wraps instead of pushing the panel sideways. */
 @utility file-hit {
   display: flex;
