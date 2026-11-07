@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { TeleportManifest } from "@flightdeck/protocol";
 import { RequestError } from "../src/lib/host-connection.ts";
 import {
+  plainText,
   type TeleportRequest,
   type TeleportSummary,
   teleportSession,
@@ -335,6 +336,16 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       git: { ...(MANIFEST.git as NonNullable<TeleportManifest["git"]>), branch: "\u202e\u200b" },
     });
     expect([summary.branch, marksOnly.branch]).toEqual(["fix-login", null]);
+  });
+
+  test("line and paragraph separators and look-alike spaces show as one plain space (#100)", () => {
+    expect([
+      plainText("fix\u2028login\u2029now", 64),
+      plainText("a\u00a0b\u2003c\u3000d\u202fe\u2009f", 64),
+      plainText("a\u00a0\u00a0 b", 64),
+      plainText("\u2028\u00a0 ", 64),
+      plainText("two  spaces", 64),
+    ]).toEqual(["fix login now", "a b c d e f", "a b", "", "two spaces"]);
   });
 
   test("a source that answers prepare with something that is not a manifest is refused, and never told an id it made up", async () => {

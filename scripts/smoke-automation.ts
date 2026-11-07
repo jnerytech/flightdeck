@@ -70,7 +70,7 @@ async function until<T>(
     const value = await check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(30);
+    await Bun.sleep(30); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
@@ -96,7 +96,7 @@ interface Variant {
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
   frames: ServerMessage[] = [];
 
@@ -136,8 +136,8 @@ class Client {
   card(id: string, check: (card: Card) => boolean): Card | undefined {
     return this.frames
       .flatMap((f) => (f.type === "card.updated" && f.card.id === id ? [f.card as Card] : []))
-      .filter(check)
-      .at(-1);
+      .reverse()
+      .find(check);
   }
 
   /** Any card with this issue reference that satisfies `check`. */
@@ -146,8 +146,8 @@ class Client {
       .flatMap((f) =>
         f.type === "card.updated" && f.card.issueRef === ref ? [f.card as Card] : [],
       )
-      .filter(check)
-      .at(-1);
+      .reverse()
+      .find(check);
   }
 
   close(): void {

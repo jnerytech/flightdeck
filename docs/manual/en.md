@@ -872,7 +872,7 @@ An idle session can continue on another host: its conversation, its commits and 
 3. Read what moves: the branch, the commits not on origin yet, the files changed, the size, and how many lines look like secrets. The secrets themselves are never shown, and they move as they are.
 4. Press **Move**, then **Open it there**. Once every byte is sent you can close the window: when the move ends, a toast says so, with **Open it there**, or says why it was refused.
 
-On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here is archived, with its conversation kept: it lives on the other host now. You can move it back later: this host takes it when the copy it kept has nothing the moved session lacks and is not in use, and sets that copy aside as `<id>.jsonl.replaced-<date>` next to it, never deleting it. If you went on with the copy here after the move, the move back is refused: open the one here instead. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them.
+On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here is archived, with its conversation kept: it lives on the other host now. You can move it back later: this host takes it when the copy it kept has nothing the moved session lacks and is not in use, and sets that copy aside as `<id>.jsonl.replaced-<date>` next to it, never deleting it. If you went on with the copy here after the move, the move back is refused: open the one here instead. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them. Symbolic links in the code arrive as links, as in any clone of someone else's repository: a write through one can land outside the worktree, so move sessions only between hosts you trust.
 
 ### Sleeping idle sessions
 
@@ -965,8 +965,8 @@ live; the list is the project's, so a session of another project never shows her
 - **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
   it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
   change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
-  When the chosen host is offline, Home says so and offers **Show all hosts**. Sessions, Costs and
-  the Board follow it in later versions.
+  When the chosen host is offline, Home says so and offers **Show all hosts**. Costs follows it too
+  (see **Costs and budgets**); Sessions and the Board follow it in later versions.
 - The tabs have a row of their own under the top bar, over each area (with a split, each area has
   its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
   the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
@@ -1027,6 +1027,15 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 - **The selection bar** above the board shows "3 selected" with **Move to…** (a column),
   **Discard…** and **Clear selection**. Dragging a selected card drags the whole selection into the
   column you drop it on, in the board's order; dropped on a card, they land before it.
+- **What a column asks of a card** (#78). **In review** asks for a PR link and passing checks;
+  **In progress** asks for acceptance criteria, a checklist item (`- [ ] …`) in the card's
+  description. The other columns ask nothing. A card that lacks something says so on itself
+  ("Needs: a PR link"), and while you drag a card the columns that ask something say what, with a
+  dashed edge. Moving a card to **In review** by hand (drag, the card's menu, or the selection bar)
+  asks first and names what is missing; **Move anyway** moves it, and with several cards one
+  dialog lists every card that lacks something, with **Move only the ones that qualify**. **In
+  progress** only shows its note, it never asks, so starting work stays one move. Moves the app
+  makes by itself (a PR opens or merges, a session fails) are never asked about.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
 - **Discard…** shows one dialog with every selected card, and says what goes with each: a
@@ -2799,9 +2808,15 @@ ones hidden), Costs, and the Vault. It never filters **Needs you**, the tray, no
 budget alerts or the global search, and each request there wears its client's chip. A host's own
 **Projects** screen always lists every project.
 
-**Costs and budgets.** On **Costs**, **All hosts** adds the hosts up, **By client** splits the
-spend (with **No client**), and a selected client narrows everything; a host that is offline, has
-no costs or does not answer is named. The CSV export and the quota charts stay per host. Each
+**Costs and budgets.** On **Costs**, the **Data from** menu in the toolbar (the same as Home's, and
+kept across starts) picks **All hosts**, which is how Costs opens and adds the hosts up, or one host.
+A link that names a host (an alert, a card on Home) shows that host for that visit and leaves the
+menu's choice alone. If the chosen host is offline or does not report costs, Costs says so and
+offers **Show all hosts**. **By client** splits the spend (with **No client**), and a selected client
+narrows everything; a host that is offline, has no costs or does not answer is named. The CSV export
+covers every host on **All hosts**, with the host's name as the first column (a host that does not
+answer is left out). The quota charts are per host: on **All hosts** one line, **Pick a host to see
+its quota**, has a button for each host. Each
 client can have a **monthly limit** (US$): the app looks at it when a host with costs comes online,
 when you change it and every ten minutes, warns once a month at 50%, 80% and 100% (a notification
 and a line in **Needs you**), and **does not hold cards**: the limits of each host and project stay

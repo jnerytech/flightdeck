@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, readdir, readFile, symlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readdir, readFile, symlink, utimes, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { SessionStatus, TeleportManifest } from "@flightdeck/protocol";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import {
@@ -89,11 +89,15 @@ function target(
     whileStarting?: () => Promise<void>;
     failClose?: boolean;
     failUnarchive?: boolean;
+    autocrlf?: boolean;
   } = {},
 ) {
   const roots = tempDir("fd-teleport-target-");
   const repo = join(roots, "app");
   git(roots, "clone", "-q", pkg.remote, repo);
+  // The import runs git with the repository's own config, and the test's git() with autocrlf off:
+  // pinned here, both read the files the same way on every OS (Git for Windows defaults to true).
+  git(repo, "config", "core.autocrlf", String(options.autocrlf ?? false));
   const history = tempDir("fd-teleport-history-");
   const calls = {
     released: 0,
@@ -196,6 +200,31 @@ describe("teleport-import: a received package becomes a session on this host (#1
       [{ cwd: done.worktree, claudeSessionId: ID, name: null, permissionMode: "default" }],
       1,
       "",
+    ]);
+  });
+
+  test("on a host whose git writes CRLF (core.autocrlf=true), the worktree shows only the real changes (#868)", async () => {
+    const pkg = await packaged();
+    const { repo, deps } = target(pkg, { autocrlf: true });
+    const done = await importPackage(deps, "in-1", repo);
+    // A new timestamp before each status makes git compare the contents, as Windows' stat data
+    // often does; a status refreshes the index, so each one gets its own.
+    let at = Date.parse("2020-01-01T00:00:00Z");
+    const status = async (autocrlf: boolean) => {
+      at += 60_000;
+      for (const file of ["README.md", ".gitignore"])
+        await utimes(join(done.worktree, file), new Date(at), new Date(at));
+      return git(done.worktree, "-c", `core.autocrlf=${autocrlf}`, "status", "--porcelain").trim();
+    };
+    expect([
+      await readFile(join(done.worktree, "README.md"), "utf8").catch(() => "missing"),
+      await status(true),
+      // Read with autocrlf off, as the test's git() reads, the same files look all changed.
+      await status(false),
+    ]).toEqual([
+      "# repo\r\n",
+      "M f1.txt\n?? new.txt",
+      "M .gitignore\n M README.md\n M f1.txt\n?? new.txt",
     ]);
   });
 
@@ -345,6 +374,54 @@ describe("teleport-import: a received package becomes a session on this host (#1
     expect([failed.includes("ENOENT"), await leftovers(repo, history)]).toEqual([
       true,
       [1, "", "", []],
+    ]);
+  });
+
+  test("a transcript copy that fails halfway leaves no partial file, even in a folder that was already there", async () => {
+    const pkg = await packaged();
+    const { repo, deps } = target(pkg);
+    let place = "";
+    const half: TeleportImportDeps = {
+      ...deps,
+      copyFile: async (_from, to) => {
+        place = String(to);
+        await writeFile(place, '{"type":"user"');
+        throw Object.assign(new Error("no space left on device"), { code: "ENOSPC" });
+      },
+    };
+    // The first try makes the folder and takes it back; the second finds it there already.
+    await reason(() => importPackage(half, "in-1", repo));
+    const folder = place ? dirname(place) : "";
+    if (folder) await mkdir(folder, { recursive: true });
+    const failed = await reason(() => importPackage(half, "in-1", repo));
+    expect([
+      failed.includes("no space left"),
+      folder ? await readdir(folder) : "the copy was never asked for",
+      git(repo, "branch", "--list", "fd/*").trim(),
+    ]).toEqual([true, [], ""]);
+  });
+
+  test("a copy that fails on its source never removes a transcript the host has", async () => {
+    const pkg = await packaged();
+    const { repo, deps } = target(pkg);
+    let place = "";
+    const lost: TeleportImportDeps = {
+      ...deps,
+      copyFile: async (_from, to) => {
+        place = String(to);
+        throw Object.assign(new Error("no such file"), { code: "ENOENT" });
+      },
+    };
+    // The first try learns where the transcript goes; the host's own file turns up there.
+    await reason(() => importPackage(lost, "in-1", repo));
+    if (place) {
+      await mkdir(dirname(place), { recursive: true });
+      await writeFile(place, "mine\n");
+    }
+    const failed = await reason(() => importPackage(lost, "in-1", repo));
+    expect([failed.includes("no such file"), place ? await readFile(place, "utf8") : ""]).toEqual([
+      true,
+      "mine\n",
     ]);
   });
 

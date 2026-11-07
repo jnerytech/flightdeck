@@ -64,7 +64,7 @@ async function setup(clients: unknown[] = TWO) {
   });
   await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
   await act(async () => store.router.push({ name: "costs" }));
-  await settle(() => screen.queryByLabelText("Host dos custos") !== null);
+  await settle(() => scopeButton() !== null);
   return { store };
 }
 
@@ -74,17 +74,40 @@ const rowsOf = (name: string) =>
   [...(screen.queryByRole("region", { name })?.querySelectorAll("tr") ?? [])].map(
     (tr) => tr.textContent ?? "",
   );
-async function pickHost(value: string) {
-  const select = screen.queryByLabelText("Host dos custos");
-  expect(select).not.toBeNull();
+/** The data scope menu in the Costs toolbar (#126): "Dados de Todos os hosts", "Dados de alfa"... */
+const scopeButton = () =>
+  screen
+    .getAllByRole("button")
+    .find((b) => (b.getAttribute("aria-label") ?? "").startsWith("Dados de ")) ?? null;
+async function openScopeMenu() {
+  const trigger = scopeButton();
+  expect(trigger).not.toBeNull();
   await act(async () => {
-    fireEvent.change(select as HTMLElement, { target: { value } });
+    fireEvent.pointerDown(trigger as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+  });
+  await screen.findByRole("menu");
+}
+/** Picks "alfa", "beta" or "Todos os hosts" in the scope menu. */
+async function pickHost(name: string) {
+  await openScopeMenu();
+  const item = screen.queryByRole("menuitemradio", { name });
+  expect(item).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(item as HTMLElement);
   });
 }
-const hostOptions = () =>
-  [
-    ...((screen.queryByLabelText("Host dos custos") as HTMLSelectElement | null)?.options ?? []),
-  ].map((o) => o.text);
+const hostOptions = async () => {
+  await openScopeMenu();
+  const names = screen.getAllByRole("menuitemradio").map((o) => o.textContent ?? "");
+  await act(async () => {
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+  });
+  return names;
+};
 
 describe("clients-costs: the Costs screen across hosts", () => {
   test("a route with host and client opens that host's costs for that client", async () => {
@@ -93,21 +116,20 @@ describe("clients-costs: the Costs screen across hosts", () => {
     await act(async () => store.router.push({ name: "costs", host: beta, client: "beta" }));
     await settle(() => store.getState().clientSelection === "beta");
     expect(store.getState().clientSelection).toBe("beta");
-    expect((screen.queryByLabelText("Host dos custos") as HTMLSelectElement).value).toBe(beta);
+    expect(scopeButton()?.getAttribute("aria-label")).toBe("Dados de beta");
     await settle(() => total() === "US$ 3.00");
     expect(total()).toBe("US$ 3.00");
   });
 
-  test("it keeps the first host by default, and offers all hosts when there are several", async () => {
+  test("it opens on all hosts by default, and the scope menu offers every host", async () => {
     await setup();
-    expect(hostOptions()).toEqual(["alfa", "beta", "Todos os hosts"]);
-    await settle(() => total() === "US$ 3.00");
-    expect(total()).toBe("US$ 3.00");
+    expect(await hostOptions()).toEqual(["Todos os hosts", "alfa", "beta"]);
+    await settle(() => total() === "US$ 6.00");
+    expect(total()).toBe("US$ 6.00");
   });
 
   test("all hosts adds the hosts up, and splits the spend by client, with what no client claims", async () => {
     await setup();
-    await pickHost("__all__");
     await settle(() => total() === "US$ 6.00");
     expect(total()).toBe("US$ 6.00");
     await settle(() => rowsOf("Por cliente").length === 3);
@@ -117,7 +139,7 @@ describe("clients-costs: the Costs screen across hosts", () => {
 
   test("a summary that names no model shows the totals without a top-model card", async () => {
     const { store } = await setup();
-    await settle(() => total() === "US$ 3.00");
+    await settle(() => total() === "US$ 6.00");
     expect(screen.queryByText("Modelo principal")).not.toBeNull();
     const ask = store.hostCommand.bind(store);
     (store as unknown as { hostCommand: unknown }).hostCommand = async (
@@ -132,20 +154,20 @@ describe("clients-costs: the Costs screen across hosts", () => {
       );
       return type === "costs.summary" ? { ...(answer as object), byModel: [] } : answer;
     };
-    await pickHost("__all__");
+    await pickHost("alfa");
     await settle(() => screen.queryByText("Modelo principal") === null);
-    expect(total()).toBe("US$ 6.00");
+    expect(total()).toBe("US$ 3.00");
   });
 
   test("one host splits its own spend by client too", async () => {
     await setup();
+    await pickHost("alfa");
     await settle(() => rowsOf("Por cliente").length === 2);
     expect(rowsOf("Por cliente")).toEqual(["AcmeUS$ 2.00", "Sem clienteUS$ 1.00"]);
   });
 
   test("the selected client narrows the totals and the breakdowns, and the split by client is not shown", async () => {
     const { store } = await setup();
-    await pickHost("__all__");
     await settle(() => total() === "US$ 6.00");
     await act(async () => store.setClientSelection("beta"));
     await settle(() => total() === "US$ 3.00");
@@ -160,18 +182,18 @@ describe("clients-costs: the Costs screen across hosts", () => {
 
   test("with no client defined there is no split by client, and all hosts still adds up", async () => {
     await setup([]);
-    await pickHost("__all__");
     await settle(() => total() === "US$ 6.00");
     expect(total()).toBe("US$ 6.00");
     expect(screen.queryByRole("region", { name: "Por cliente" })).toBeNull();
   });
 
-  test("across hosts there is no CSV export, which is per host", async () => {
+  test("the CSV export is offered across hosts as well as for one (the file itself is in costs-scope)", async () => {
     await setup();
-    expect(screen.queryByRole("button", { name: "Exportar CSV" })).not.toBeNull();
-    await pickHost("__all__");
     await settle(() => total() === "US$ 6.00");
-    expect(screen.queryByRole("button", { name: "Exportar CSV" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Exportar CSV" })).not.toBeNull();
+    await pickHost("alfa");
+    await settle(() => total() === "US$ 3.00");
+    expect(screen.queryByRole("button", { name: "Exportar CSV" })).not.toBeNull();
   });
 
   test("a host without costs is named as skipped, and one that does not answer as failed", async () => {
@@ -184,7 +206,6 @@ describe("clients-costs: the Costs screen across hosts", () => {
       await store.addHost({ name: "delta", url: mute.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
-    await pickHost("__all__");
     await settle(() => screen.queryByText("Sem resposta de: delta.") !== null);
     expect(screen.queryByText("Sem resposta de: delta.")).not.toBeNull();
     expect(screen.queryByText("Sem custos de: gama.")).not.toBeNull();
@@ -193,7 +214,6 @@ describe("clients-costs: the Costs screen across hosts", () => {
 
   test("a selected client costs one round of requests, not two, when no filter is set", async () => {
     const { store } = await setup();
-    await pickHost("__all__");
     await settle(() => total() === "US$ 6.00");
     const asked: string[] = [];
     const ask = store.hostCommand.bind(store);

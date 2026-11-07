@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import { git, gitRepo, gitRepoWithOrigin } from "./board-helpers.ts";
@@ -59,6 +59,94 @@ describe("teleport-bundle: a daemon that stops kills the git calls (#715)", () =
       }),
     );
     expect([refusal, state(repo), await readdir(folder)]).toEqual(["teleport_stopped", before, []]);
+  });
+});
+
+/** A repository on a branch of its own, level with origin/main, and a scan that counts token lines. */
+function branched() {
+  const { repo } = gitRepoWithOrigin();
+  git(repo, "checkout", "-q", "-b", "feature");
+  const folder = tempDir("fd-teleport-code-");
+  const scan = (text: string) => (text.includes("ghp_") ? ["github_token"] : []);
+  return { repo, folder, scan };
+}
+
+describe("teleport-bundle: what the scan and the counts read of the code (#715)", () => {
+  test("a name with a line break in it is one changed file, not two", async () => {
+    const { repo, folder, scan } = branched();
+    // A line break cannot be part of a name on Windows.
+    const odd = process.platform === "win32" ? "odd name.txt" : "odd\nname.txt";
+    await writeFile(join(repo, odd), "one\n");
+    await writeFile(join(repo, "plain.txt"), "two\n");
+    const code = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan });
+    expect(code.changed).toBe(2);
+  });
+
+  test("an added line that starts with two plus signs is still scanned", async () => {
+    const { repo, folder, scan } = branched();
+    await writeFile(join(repo, "plus.txt"), `++${TOKEN}\nplain line\n`);
+    // A tracked folder the person deleted: its files have no size and no folder to look in.
+    await mkdir(join(repo, "gone"));
+    await writeFile(join(repo, "gone", "old.txt"), "old\n");
+    git(repo, "add", "gone/old.txt");
+    git(repo, "commit", "-q", "-m", "feat(x): gone");
+    await rm(join(repo, "gone"), { recursive: true });
+    // Two files in one new folder: the folder is checked once.
+    await mkdir(join(repo, "sub"));
+    await writeFile(join(repo, "sub", "a.txt"), "a\n");
+    await writeFile(join(repo, "sub", "b.txt"), "b\n");
+    const code = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan });
+    expect(code.secrets.lines).toBe(1);
+  });
+
+  test("a secret added only in the resolution of a merge is scanned", async () => {
+    const { repo, folder, scan } = branched();
+    await writeFile(join(repo, "f1.txt"), "feature\n");
+    git(repo, "add", "f1.txt");
+    git(repo, "commit", "-q", "-m", "feat(x): f1");
+    git(repo, "checkout", "-q", "-b", "side", "origin/main");
+    await writeFile(join(repo, "f1.txt"), "side\n");
+    git(repo, "add", "f1.txt");
+    git(repo, "commit", "-q", "-m", "feat(x): f1 on the side");
+    git(repo, "checkout", "-q", "feature");
+    // The two f1.txt conflict: the resolution holds a line neither side has.
+    try {
+      git(repo, "merge", "-q", "--no-edit", "side");
+    } catch {
+      // The conflict is the point.
+    }
+    await writeFile(join(repo, "f1.txt"), `resolved ${TOKEN}\n`);
+    git(repo, "add", "f1.txt");
+    git(repo, "commit", "-q", "-m", "merge side");
+    const code = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan });
+    expect(code.secrets.lines).toBe(1);
+  });
+
+  test("a file the repository marks as binary is still scanned", async () => {
+    const { repo, folder, scan } = branched();
+    // `-diff` makes git print "Binary files differ" for a match, a line a session can add itself.
+    await writeFile(join(repo, ".gitattributes"), "*.env -diff\n");
+    await writeFile(join(repo, "app.env"), `KEY=${TOKEN}\n`);
+    const code = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan });
+    expect(code.secrets.lines).toBe(1);
+  });
+
+  test("a folder swapped for a link to somewhere else adds nothing to the size", async () => {
+    const { repo, folder, scan } = branched();
+    await mkdir(join(repo, "dir"));
+    await writeFile(join(repo, "dir", "big.txt"), "x\n");
+    git(repo, "add", "dir/big.txt");
+    git(repo, "commit", "-q", "-m", "feat(x): dir");
+    // The folder is now a link to a place outside the repository that holds a big file.
+    const outside = tempDir("fd-teleport-outside-");
+    await writeFile(join(outside, "big.txt"), "y".repeat(5000));
+    await rm(join(repo, "dir"), { recursive: true });
+    await symlink(outside, join(repo, "dir"));
+    const outcome = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan, maxBytes: 1000 }).then(
+      () => "bundled",
+      (error: { reason?: string }) => error.reason ?? String(error),
+    );
+    expect(outcome).toBe("bundled");
   });
 });
 

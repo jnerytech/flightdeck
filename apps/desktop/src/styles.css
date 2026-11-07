@@ -1008,6 +1008,20 @@ html:not(:has([data-slot="status-bar"])) {
   background-color: var(--accent);
 }
 
+/* What a dragged card would lack in a column that asks something (issue #78): a quiet dashed edge
+   and a line of words, so it is not only a colour. The drop highlight is stronger and wins. */
+@utility column-needs {
+  &:not(.drop-over) {
+    outline: 1px dashed var(--color-muted-foreground);
+    outline-offset: -1px;
+  }
+}
+@utility column-hint {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+
 /* A key of a shortcut, as printed in a list. */
 @utility keycap {
   border: 1px solid var(--border);

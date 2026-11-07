@@ -55,6 +55,8 @@ export interface TeleportImportDeps {
   unarchive(claudeSessionId: string): void;
   /** The time a set-aside transcript is named after. */
   now(): Date;
+  /** Puts the transcript in place (`fs.copyFile`); a test makes it fail halfway. */
+  copyFile?: typeof copyFile;
   resume(opts: {
     cwd: string;
     claudeSessionId: string;
@@ -313,12 +315,20 @@ async function start(
   const made = await mkdir(folder, { recursive: true, mode: 0o700 });
   const file = join(folder, `${manifest.claudeSessionId}.jsonl`);
   // Never over a transcript this host has; any other failure (a full disk) is itself.
-  await copyFile(claim.transcript, file, constants.COPYFILE_EXCL).catch(async (error) => {
-    if (made) await rm(made, { recursive: true, force: true });
-    throw (error as { code?: string }).code === "EEXIST"
-      ? refuse("invalid_state", "teleport_exists")
-      : error;
-  });
+  const exists = (error: unknown) => (error as { code?: string }).code === "EEXIST";
+  // A file already there is the host's: a failure on the package's side must leave it alone.
+  const there = await lstat(file).then(
+    () => true,
+    () => false,
+  );
+  await (deps.copyFile ?? copyFile)(claim.transcript, file, constants.COPYFILE_EXCL).catch(
+    async (error) => {
+      if (made) await rm(made, { recursive: true, force: true });
+      // A copy that stopped halfway left this file, unless the host had it before.
+      else if (!there) await rm(file, { force: true });
+      throw exists(error) ? refuse("invalid_state", "teleport_exists") : error;
+    },
+  );
   try {
     return await deps.resume({
       cwd: path,

@@ -64,10 +64,12 @@ export type TeleportOutcome =
 const CLEANUP_MS = 5_000;
 /** Control and format characters (direction marks among them). */
 const MARKS = /[\p{Cc}\p{Cf}]/gu;
+/** Line and paragraph separators, and every space that is not the plain one: each reads as a space or a break. */
+const SPACES = /[\p{Zl}\p{Zp}]|(?! )\p{Zs}/gu;
 
 /** A host's text shown as the plain text it is: no mark that could disguise it, at most `max` long. */
 export const plainText = (text: string, max: number): string =>
-  text.replace(MARKS, "").slice(0, max);
+  text.replace(MARKS, "").replace(SPACES, " ").replace(/ {2,}/g, " ").trim().slice(0, max);
 
 /** A host the app reaches over plain `ws://` and not on this machine: nothing encrypts its traffic. */
 export function isPlainRemote(url: string): boolean {

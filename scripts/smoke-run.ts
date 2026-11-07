@@ -44,13 +44,13 @@ async function untilAsync<T>(
     const value = await check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50);
+    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
   constructor(private readonly url: string) {}
 
@@ -251,7 +251,10 @@ ports: [web]
     log("os dois servidores respondem, cada um na sua porta");
     await inSequence(cards, async (card) => {
       const file = join(card.worktree, "pids.json");
-      await untilAsync(async () => (existsSync(file) ? true : null), "o pids.json do card");
+      await untilAsync(
+        () => Promise.resolve(existsSync(file) ? true : null),
+        "o pids.json do card",
+      );
       const found = JSON.parse(readFileSync(file, "utf8")) as { pid: number; child: number };
       pids.push(found.pid, found.child);
     });
@@ -261,7 +264,7 @@ ports: [web]
       await client.call("runenv.stop", { cardId: card.id });
     });
     await untilAsync(
-      async () => (pids.every((pid) => !alive(pid)) ? true : null),
+      () => Promise.resolve(pids.every((pid) => !alive(pid)) ? true : null),
       "os processos e os filhos encerrarem",
     );
     await inSequence(ports, async (port) => {
