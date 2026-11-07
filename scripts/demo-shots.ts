@@ -593,7 +593,8 @@ function shots(ids: DemoIds): Shot[] {
     // The time panel of Custos (phase 23): the wait for permissions and the slowest tools.
     {
       name: "custos-tempo",
-      route: { name: "costs" },
+      // The time panel is per host: on All hosts, the default scope, it gives way to a pick-a-host line.
+      route: { name: "costs", host: ALFA },
       prepare: showSection(/^(Tempo por projeto|Time per project)$/),
     },
     {
@@ -693,10 +694,8 @@ function shots(ids: DemoIds): Shot[] {
       name: "custos-por-cliente",
       route: { name: "costs" },
       clients: {},
+      // The data scope is every host by default (#126), so this is the all-hosts view as it opens.
       prepare: async (page) => {
-        await page
-          .getByRole("combobox", { name: /^(Host dos custos|Costs host)/ })
-          .selectOption("__all__");
         await page.waitForTimeout(1500);
       },
     },
@@ -862,6 +861,8 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.inbox",
       // The "barra-recolhida" print folds the sidebar, and the fold is kept: not into the next print.
       "flightdeck.sidebarFolded",
+      // Every scoped screen reads the data scope (#126): a print that picks a host does not scope the next.
+      "flightdeck.dataScope",
     ]) {
       localStorage.removeItem(key);
     }
