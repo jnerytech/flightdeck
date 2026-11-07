@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { seedDemoHosts } from "../src/demo/boot.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -31,7 +32,13 @@ describe("split-tabbar: a split area's tab bar keeps its height", () => {
   // Issue #488: the header left the tabs 124 px at 1280 (two boxes reading "B." and "P."); like
   // VS Code and Orca, they get a row of their own over the area, in one area as in a split.
   test("in one area as in a split, each area holds its own tab bar, never the header", async () => {
-    const store = new AppStore(memoryPlatform(false, "en").platform);
+    // A split belongs to a host's own window: one host, with a screen of its open.
+    const mem = memoryPlatform(false, "en");
+    seedDemoHosts(mem.win.localStorage, mem.tokens, [
+      { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+    ]);
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    store.hostTabs.open({ name: "history", host: "ha" });
     render(<App store={store} />);
     expect(document.querySelectorAll("section[aria-label] > .tab-bar")).toHaveLength(1);
     expect(document.querySelectorAll("header .tab-bar")).toHaveLength(0);

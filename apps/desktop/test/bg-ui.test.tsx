@@ -214,6 +214,9 @@ describe("bg-ui: the actions of a session", () => {
       id: "7c5dcf5d",
       text: "continue",
     });
+    // The field empties once the host has answered: type the next message after that, or the
+    // late answer would clear it.
+    await settle(() => field.value === "");
     daemon.bg.refused.set("bg.message", { reason: "bg_no_message_path" });
     await act(async () => {
       fireEvent.change(field, { target: { value: "de novo" } });

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { seedDemoHosts } from "../src/demo/boot.ts";
 import type { AppState } from "../src/lib/app-store.ts";
 import { tabBadge, tabKind } from "../src/lib/tab-badge.ts";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -52,14 +53,22 @@ describe("abas: selos e botão de aba nova", () => {
   });
 
   test("the plus button opens a new tab on the palette, for where Ctrl+T is the browser's", async () => {
-    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    const mem = memoryPlatform(false, "pt-BR");
+    seedDemoHosts(mem.win.localStorage, mem.tokens, [
+      { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+    ]);
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
     render(<App store={store} />);
+    await act(async () => {});
     const plus = screen.queryByRole("button", { name: "Nova aba" });
     expect(plus).not.toBeNull();
     await act(async () => {
       if (plus) fireEvent.click(plus);
     });
-    expect(store.tabs.tabs).toHaveLength(2);
+    // The new tab is the host's Overview; Home keeps its one shared tab.
+    expect(store.router.current).toEqual({ name: "host", host: "ha" });
+    expect(store.tabs.tabs).toHaveLength(1);
+    expect(store.hostTabs.shared.tabs).toHaveLength(1);
     expect(store.getState().searchOpen).toBe(true);
   });
 

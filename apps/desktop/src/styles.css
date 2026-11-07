@@ -679,8 +679,10 @@ html:not(:has([data-slot="status-bar"])) {
   &:hover {
     background: color-mix(in oklch, var(--color-accent) 55%, transparent);
   }
+  /* A pinned tab is its icon: it never shrinks below it, however many tabs share the bar. */
   &[data-pinned="true"] {
     min-width: 0;
+    flex: none;
   }
   &:has([role="tab"][aria-selected="true"]) {
     background: var(--color-background);

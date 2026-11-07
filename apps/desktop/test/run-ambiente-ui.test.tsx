@@ -173,7 +173,7 @@ describe("run-ui: o preview em uma aba", () => {
     const kept = JSON.parse(items.get(WORKSPACE_KEY) ?? "null");
     expect(JSON.stringify(kept)).not.toContain("41000");
     const next = new AppStore(memoryPlatform(false, "pt-BR").platform);
-    expect(next.workspace.tabs.router.current.name).toBe("home");
+    expect(next.router.current.name).toBe("home");
   });
 
   test("a CSP do app deixa quadros só em http(s) 127.0.0.1 e localhost", () => {
@@ -294,8 +294,9 @@ describe("run-ui: Run e Stop no card", () => {
       url: "http://127.0.0.1:41000/",
       title: "web",
     });
+    // The preview is a shared tab; the card's own tab is in its host's set: back to it.
     await act(async () => {
-      store.tabs.activate(store.tabs.tabs[0]?.id ?? "");
+      store.hostTabs.activate(store.hostTabs.workspace?.tabs.tabs[0]?.id ?? "");
     });
     expect(
       await shows(

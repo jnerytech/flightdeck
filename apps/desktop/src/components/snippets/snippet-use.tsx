@@ -123,7 +123,7 @@ export const SnippetUse = memo(function SnippetUse(props: {
     if (text === null) return;
     const { terminalId } = await store.terminalHost(hostId).open(folder, 120, 30);
     await store.terminalHost(hostId).write(terminalId, `${text}\r`);
-    store.tabs.open({ name: "terminal", host: hostId, terminalId });
+    store.hostTabs.open({ name: "terminal", host: hostId, terminalId });
     done();
   };
 
@@ -137,7 +137,7 @@ export const SnippetUse = memo(function SnippetUse(props: {
     });
     if (!result.ok) return fail(refusalText(result.code, result.message, t, result));
     if (result.data.terminal) {
-      store.tabs.open({
+      store.hostTabs.open({
         name: "terminal",
         host: choice.hostId,
         terminalId: result.data.terminal.terminalId,

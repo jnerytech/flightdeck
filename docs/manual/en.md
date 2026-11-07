@@ -2834,6 +2834,14 @@ const ok = fresh && timingSafeEqual(Buffer.from(signature), Buffer.from(`sha256=
 
 Every screen opens in a tab, as in a browser. Each tab keeps its own back and forward history.
 
+- **Tabs per host:** each host keeps its own tabs. Picking a host in the top bar swaps the row to
+  that host's tabs and goes back to the tab it had open (a host with no tab opens its Overview).
+  Opening a screen of another host (a search result, a notification, a link) switches to that host.
+  The screens that belong to no host (Home, Sessions, Needs you, Projects of all hosts, Settings and
+  the like) sit at the left of every row as pinned tabs with an icon only, and the top bar keeps
+  showing the last host used while one of them is open. `Ctrl+Tab` goes over the shared tabs and
+  then the current host's.
+
 - **Opening:** a normal click changes the current tab. `Ctrl+click`, the middle mouse button or
   **Open in new tab** (in the host's menu and in a session row's menu) opens a new one. The **+**
   button at the end of the bar opens a new tab on the `Ctrl+K` palette. A screen has one tab: a
