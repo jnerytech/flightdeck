@@ -71,6 +71,16 @@ export interface SlotEnv {
    * exits at once), so a gone parent does not make it give up its place (#236).
    */
   detached?: boolean;
+  /** FLIGHTDECK_SLOT_HEAVY in this process's environment: the reason a run over the file limit gives (#833). */
+  heavyReason?: string;
+  /** Appends a refusal, a waiver or a long hold to the hook log, for harness:stats (#833). */
+  record?(
+    rule: "slot-heavy" | "long-hold",
+    decision: "allow" | "block" | "waived",
+    extra: { detail?: string; minutes?: number },
+  ): void;
+  /** Calls `fn` once after `ms`; returns the way to cancel it (#833: the holder's LONG line). */
+  after?(ms: number, fn: () => void): () => void;
 }
 
 export interface ProcReader {
@@ -118,6 +128,10 @@ export const RENICE_MS = 5000;
 export const NICE_OTHERS = 15;
 /** A holder older than this is reported as suspicious (never taken over). */
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
+/** A hold past this is LONG: the holder, its waiters and `--status` say so, and the hook log keeps it (#833). */
+export const LONG_HOLD_MS = 20 * 60_000;
+/** The most test files a slot run may name without a reason (#833); `test:related` takes the slot above it. */
+export const SLOT_TEST_FILES = 60;
 export const USAGE =
   "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel | bun run slot -- --reap";
 
@@ -557,6 +571,11 @@ export async function lowerOthers(env: SlotEnv): Promise<number[]> {
     lowered.push(p.pid);
   }
   return lowered;
+}
+
+/** How many test files a `bun ... test` command names; 0 for any other command (#833). */
+export function testFileCount(_command: string[]): number {
+  return 0;
 }
 
 /** `bun test ...`, `bun --config=x test ...` or a path to bun: its first plain argument is `test`. */

@@ -4,6 +4,7 @@ import {
   cancel,
   DEFAULT_MAX_AGE_MS,
   describeHolder,
+  LONG_HOLD_MS,
   lowerOthers,
   POLL_MS,
   type ProcessInfo,
@@ -16,6 +17,7 @@ import {
   type SlotEnv,
   type SlotHolder,
   status,
+  testFileCount,
   tryAcquire,
   USAGE,
 } from "../lib/slot.ts";
@@ -791,5 +793,154 @@ describe("slot: the OOM killer's first choice (issue #247)", () => {
     await run(f.env, ["--status"]);
     await run(f.env, []);
     expect(f.order).toEqual([]);
+  });
+});
+
+describe("slot: long holds and the test file limit (#833)", () => {
+  const testFiles = (n: number) =>
+    Array.from({ length: n }, (_, i) => `./apps/daemon/test/t${i}.test.ts`);
+  /** What test:related starts through the slot above 60 files. */
+  const related = (n: number) => [
+    "bun",
+    "--config=bunfig.area.toml",
+    "test",
+    "--timeout=15000",
+    ...testFiles(n),
+  ];
+  type Logged = [string, string, { detail?: string; minutes?: number }];
+  const recorder = (f: ReturnType<typeof fake>) => {
+    const records: Logged[] = [];
+    f.env.record = (rule, decision, extra) => {
+      records.push([rule, decision, extra]);
+    };
+    return records;
+  };
+
+  test("testFileCount counts the test files a bun test command names, and nothing else", () => {
+    expect(testFileCount(related(3))).toBe(3);
+    expect(testFileCount(["bun", "test", "a.test.tsx", "b.spec.ts", "--bail"])).toBe(2);
+    expect(testFileCount(["bun", "run", "test"])).toBe(0);
+    expect(testFileCount(["bun", "run", "e2e", "a.test.ts"])).toBe(0);
+    expect(testFileCount(["node", "test", "a.test.ts"])).toBe(0);
+  });
+
+  test("a run over 60 test files is refused before it queues, and the refusal is logged", async () => {
+    const f = fake();
+    const records = recorder(f);
+    expect(await run(f.env, related(61))).toBe(2);
+    expect(f.spawned).toEqual([]);
+    expect(f.files.size).toBe(0);
+    expect(f.logs.join("\n")).toContain("61 test files");
+    expect(f.logs.join("\n")).toContain('FLIGHTDECK_SLOT_HEAVY="<reason>"');
+    expect(records).toEqual([["slot-heavy", "block", {}]]);
+    // A placeholder is no reason.
+    const placeholder = fake();
+    placeholder.env.heavyReason = "1";
+    expect(await run(placeholder.env, related(61))).toBe(2);
+    expect(placeholder.spawned).toEqual([]);
+  });
+
+  test("60 files, the full suite, and a run with a reason go through; the reason is logged", async () => {
+    const f = fake();
+    const records = recorder(f);
+    expect(await run(f.env, related(60))).toBe(0);
+    expect(await run(f.env, ["bun", "run", "test"])).toBe(0);
+    expect(f.spawned).toHaveLength(2);
+    expect(records).toEqual([]);
+    const given = fake();
+    const waived = recorder(given);
+    given.env.heavyReason = "the release gate needs every daemon test";
+    expect(await run(given.env, related(200))).toBe(0);
+    expect(given.spawned).toHaveLength(1);
+    expect(waived).toEqual([
+      ["slot-heavy", "waived", { detail: "the release gate needs every daemon test" }],
+    ]);
+  });
+
+  test("a run nested under the holder is not counted: it already holds the slot", async () => {
+    const f = fake({ files: { [PATH]: held(theirs) }, holder: 20 });
+    const records = recorder(f);
+    expect(await run(f.env, related(61))).toBe(0);
+    expect(f.spawned).toHaveLength(1);
+    expect(records).toEqual([]);
+  });
+
+  test("a hold past 20 minutes is logged with its minutes when the slot is given back, a stopped one too, a shorter one not", async () => {
+    const cases: Array<[number, number, Logged[]]> = [
+      [21, 0, [["long-hold", "allow", { minutes: 21, detail: "sonar: bun run e2e" }]]],
+      [25, 143, [["long-hold", "allow", { minutes: 25, detail: "sonar: bun run e2e" }]]],
+      [19, 0, []],
+    ];
+    for (const [minutes, code, expected] of cases) {
+      let time = 5000;
+      const child = {
+        wait: async () => {
+          time += minutes * 60_000;
+          return code;
+        },
+        kill: () => {},
+      };
+      const f = fake({ child });
+      f.env.now = () => time;
+      const records = recorder(f);
+      expect(await run(f.env, ["bun", "run", "e2e"])).toBe(code);
+      expect(records).toEqual(expected);
+    }
+  });
+
+  test("the holder's own output gets one LONG line at 20 minutes, with its waiters; the timer stops with the run", async () => {
+    const timers: Array<{ ms: number; fn: () => void; cancelled: boolean }> = [];
+    const child = {
+      wait: async () => {
+        timers[0]?.fn();
+        return 0;
+      },
+      kill: () => {},
+    };
+    // A waiter that queued after this run: it waits behind it.
+    const f = fake({ files: { [`${PATH}.wait.30`]: queued(30, "userhome", 9000) }, child });
+    f.env.after = (ms, fn) => {
+      const timer = { ms, fn, cancelled: false };
+      timers.push(timer);
+      return () => {
+        timer.cancelled = true;
+      };
+    };
+    expect(await run(f.env, ["bun", "run", "e2e"])).toBe(0);
+    expect(timers.map((t) => [t.ms, t.cancelled])).toEqual([[LONG_HOLD_MS, true]]);
+    expect(f.logs).toEqual([
+      "slot: this run has held the slot for over 20m (LONG); 1 waiting for it",
+    ]);
+  });
+
+  test("--status marks a holder past 20 minutes LONG, and each waiter names the holder it waits on", () => {
+    const f = fake({
+      files: { [PATH]: held(theirs), [`${PATH}.wait.30`]: queued(30, "userhome", 2000) },
+    });
+    f.env.now = () => 1000 + 25 * 60_000;
+    expect(status(f.env)).toBe(
+      [
+        "held by kiwi: bun run e2e (pid 20, 25m 0s); LONG: over 20m",
+        "waiting 1: userhome: bun run test (pid 30, 24m 59s); waits on kiwi (pid 20)",
+      ].join("\n"),
+    );
+  });
+
+  test("a waiter is told once when the holder passes 20 minutes, first in line or behind another", async () => {
+    for (const ahead of [false, true]) {
+      const files: Record<string, string> = { [PATH]: held(theirs) };
+      if (ahead) files[`${PATH}.wait.5`] = queued(5, "top-bar", 1000);
+      const f = fake({ files });
+      let time = 1000 + 19 * 60_000;
+      f.env.now = () => time;
+      f.env.sleep = async () => {
+        time += 60_000;
+      };
+      let stop = 0;
+      expect(await acquire(f.env, "x", () => stop++ >= 5)).toBe(false);
+      const long = "slot warning: kiwi (pid 20) has held the slot for over 20m (LONG); waiting";
+      expect(f.logs.filter((line) => line === long)).toHaveLength(1);
+      expect(f.logs.filter((line) => line.includes("LONG"))).toHaveLength(1);
+    }
   });
 });

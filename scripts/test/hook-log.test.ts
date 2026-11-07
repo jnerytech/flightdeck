@@ -118,6 +118,38 @@ describe("hook-log", () => {
     ]);
   });
 
+  test("#833: the slot's long holds get a section of their own, out of the timing table and the blocks", () => {
+    const hold = (t: string, minutes: number, detail: string): HookLogEntry => ({
+      t,
+      hook: "slot",
+      rule: "long-hold",
+      decision: "allow",
+      ms: 1_800_000,
+      detail,
+      minutes,
+    });
+    const text = [
+      entry("guard", 40),
+      hold("2026-11-07T05:15:00.000Z", 33, "flightdeck-sonar3: bun --config=bunfig.area.toml test"),
+      hold("2026-11-07T06:00:00.000Z", 21, "fd-qa: bun run e2e"),
+      // A refusal of a run over the file limit is a block like any other.
+      entry("slot", 0, "slot-heavy"),
+    ]
+      .map((e) => JSON.stringify(e))
+      .join("\n");
+    expect(summarizeHookLog(text).split("\n")).toEqual([
+      "hook   calls  blocks  p50 ms  p95 ms",
+      "guard      1       0      40      40",
+      "",
+      "blocks by rule:",
+      "  slot-heavy  1",
+      "",
+      "long slot holds (over 20 min): 2",
+      "  2026-11-07 05:15 UTC  33 min  flightdeck-sonar3: bun --config=bunfig.area.toml test",
+      "  2026-11-07 06:00 UTC  21 min  fd-qa: bun run e2e",
+    ]);
+  });
+
   test("#821 review: a line with a time or a reason that is not text is skipped, not a crash", () => {
     const bad = (over: Record<string, unknown>) =>
       JSON.stringify({
