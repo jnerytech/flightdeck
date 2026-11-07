@@ -1462,12 +1462,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.keyboard.press("Control+K");
     const input = c.page.getByLabel(c.t("searchUi.input"), { exact: true });
     await input.fill(c.t("palette.switchToSimple"));
-    await c.page
-      .getByRole("button", {
-        name: new RegExp(c.t("palette.switchToSimple").replaceAll(/[()]/g, "\\$&")),
-      })
-      .first()
-      .click();
+    await c.page.getByRole("option", { name: c.t("palette.switchToSimple") }).click();
     const templates = c.page.getByRole("region", { name: c.t("simple.home.templates") });
     const first = templates.getByRole("button").first();
     await first.waitFor({ timeout: WAIT });
