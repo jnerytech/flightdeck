@@ -2331,6 +2331,17 @@ rounds per PR, US$ 5 per PR, 30 turns, US$ 20 per day and project, two failed ro
 the quota queue. It also stops by itself when the PR is merged or closed, or when you turn the
 watch off. **Watch again** puts it back.
 
+The card shows **Fix rounds used: 2 of 3**. When the rounds run out, **Allow 2 more rounds** gives the
+card two more without forgetting what it spent; the host refuses it when another limit (turns, cost,
+the card's branch) would stop the next round anyway. While a card's PR is watched, an automation that
+sends failed checks or review comments to the card leaves it to the watch.
+
+Before it pushes, the host checks that the round stayed inside the PR: a round that touches a file
+the PR does not change (and that no review comment names), or that changes more lines than
+`max(200, the PR's)`, is **held for you** instead of pushed. The round lists the files outside the PR
+and the lines it changed. **Push anyway** pushes those commits as they are; **Drop the round** takes
+them back, keeping what was there before the round. Lockfiles and `*.snap` never count.
+
 **Settings** has **Watch and fix PRs · <host>**, one block per project: watch by default, rounds per
 PR, cost limit per PR and per day (empty is no limit), the time limit per check (1 to 60 minutes,
 10 by default) and the **local checks**, one per line. A check is a command with its arguments, with
