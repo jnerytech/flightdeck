@@ -99,53 +99,8 @@ export class Changes {
         { target },
       );
     const [, kind, id] = match as unknown as [string, "session" | "card" | "terminal", string];
-    // A terminal's folder, as the daemon opened it: never a folder the client names (#506).
-    if (kind === "terminal") {
-      if (!opts.terminal) {
-        throw new FlightdeckError(
-          "bad_request",
-          `a terminal target only reads files: ${target}`,
-          "review_target_invalid",
-          { target },
-        );
-      }
-      const cwd = this.opts.terminals?.cwdOf(id) ?? null;
-      if (cwd === null) {
-        throw new FlightdeckError(
-          "not_found",
-          `terminal ${id} does not exist`,
-          "terminal_missing",
-          {
-            id,
-          },
-        );
-      }
-      return { target, root: resolve(cwd), base: null, cardId: null, claudeSessionId: null };
-    }
-    if (kind === "card") {
-      if (!this.opts.board) {
-        throw new FlightdeckError("not_found", `card ${id} does not exist`, "card_not_found", {
-          id,
-        });
-      }
-      const card = this.opts.board.getCard(id);
-      if (!card.worktreePath) {
-        throw new FlightdeckError(
-          "invalid_state",
-          "the card has no worktree yet",
-          "card_no_worktree",
-        );
-      }
-      const base = refArg(this.opts.board.getProject(card.projectId).baseBranch);
-      return {
-        target,
-        root: card.worktreePath,
-        base,
-        cardId: id,
-        claudeSessionId: null,
-        ...(card.branch ? { branch: card.branch } : {}),
-      };
-    }
+    if (kind === "terminal") return this.terminalTarget(target, id, opts.terminal === true);
+    if (kind === "card") return this.cardTarget(target, id);
     const row = this.opts.db.query(SESSION_CWD).get({ id }) as { cwd: string } | null;
     if (!row) {
       throw new FlightdeckError("not_found", `session ${id} does not exist`, "session_not_found", {
@@ -173,6 +128,51 @@ export class Changes {
       base: null,
       cardId: null,
       claudeSessionId: id,
+    };
+  }
+
+  /** A terminal's folder, as the daemon opened it: never a folder the client names (#506). */
+  private terminalTarget(target: string, id: string, readsFiles: boolean): ResolvedTarget {
+    if (!readsFiles) {
+      throw new FlightdeckError(
+        "bad_request",
+        `a terminal target only reads files: ${target}`,
+        "review_target_invalid",
+        { target },
+      );
+    }
+    const cwd = this.opts.terminals?.cwdOf(id) ?? null;
+    if (cwd === null) {
+      throw new FlightdeckError("not_found", `terminal ${id} does not exist`, "terminal_missing", {
+        id,
+      });
+    }
+    return { target, root: resolve(cwd), base: null, cardId: null, claudeSessionId: null };
+  }
+
+  /** A card's worktree against its project's base branch. */
+  private cardTarget(target: string, id: string): ResolvedTarget {
+    if (!this.opts.board) {
+      throw new FlightdeckError("not_found", `card ${id} does not exist`, "card_not_found", {
+        id,
+      });
+    }
+    const card = this.opts.board.getCard(id);
+    if (!card.worktreePath) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card has no worktree yet",
+        "card_no_worktree",
+      );
+    }
+    const base = refArg(this.opts.board.getProject(card.projectId).baseBranch);
+    return {
+      target,
+      root: card.worktreePath,
+      base,
+      cardId: id,
+      claudeSessionId: null,
+      ...(card.branch ? { branch: card.branch } : {}),
     };
   }
 
