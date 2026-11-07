@@ -2481,7 +2481,7 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
 - **Na barra de status** (a linha fina na base da janela, abaixo): um medidor pequeno mostra a
   janela mais usada entre os hosts online, com a porcentagem e o tempo que falta para reiniciar (o
-  nome da janela aparece a partir de 960 px de largura), e um botão **Atualizar o consumo do plano**
+  nome da janela aparece a partir de 1024 px de largura), e um botão **Atualizar o consumo do plano**
   que pergunta aos hosts de novo. A partir de 80% ele ganha uma marca de alerta na cor de "precisa de
   você", e em 100% (ou a partir do `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome
   e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem
@@ -3206,7 +3206,7 @@ encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 
 - **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
   Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
-  Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 960 px.
+  Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 1024 px, e abaixo de 640 px vira uma gaveta.
 - **Três colunas** em Sessões, Precisa de você e Histórico: a lista à esquerda (largura
   ajustável e guardada), a sessão, o pedido ou a transcrição à direita. Board, Custos,
   Configurações e as páginas do host usam a largura toda. O cabeçalho mostra o caminho
