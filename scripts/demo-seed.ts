@@ -20,6 +20,7 @@ import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
+import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo-teleport.ts";
 import { acoesActions, DANGER_SESSION } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
@@ -681,6 +682,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     ".claude/agents/revisor.md": AGENT_MD,
     ".claude/skills/deploy/SKILL.md": SKILL_MD,
     ".flightdeck/actions.yaml": ACTIONS_YAML,
+    // Issue #846: a key-shaped line and a credential file, for the Files panel's search to hide.
+    [DEMO_SECRET_FILE.name]: DEMO_SECRET_FILE.text,
+    [DEMO_CREDENTIAL_FILE.name]: DEMO_CREDENTIAL_FILE.text,
   });
   git(web, "remote", "add", "origin", "git@github.com:Acme/App.git");
   repo(join(alfa.projects, "vazio"), { "README.md": "# vazio\n" });
