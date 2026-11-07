@@ -779,7 +779,10 @@ export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDe
 function redacted(text: string): string {
   return text
     .replace(/:\/\/[^/@\s]+@/g, "://***@")
-    .replace(/\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY)\w*)=\S+/gi, "$1=***");
+    .replace(
+      /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
+      "$1=***",
+    );
 }
 
 /** Whether a push goes ahead on a FLIGHTDECK_PUSH_NOW override with its reason (#741). */
