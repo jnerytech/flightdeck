@@ -38,7 +38,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `bun run slot -- bun run test`). It is one exclusive lock for the whole machine, with a queue;
   waiters take it first come, first served. `bun run slot -- --status` shows the holder (with a
   warning past `--max-age`, 90 min by default) and each waiter in queue order with its age, folder
-  and an `ORPHAN` mark. A waiter whose shell is gone gives up (`FLIGHTDECK_SLOT_DETACHED=1` keeps a
+  and an `ORPHAN` mark. Past 20 min a hold is LONG for the holder, its waiters and `--status`, and
+  harness:stats lists it; a run of more than 60 test files needs `FLIGHTDECK_SLOT_HEAVY="<reason>"`
+  (#833). A waiter whose shell is gone gives up (`FLIGHTDECK_SLOT_DETACHED=1` keeps a
   launch detached on purpose in the queue), and `--reap` (the coordinator) stops orphan waiters by
   process group, never the holder. `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
