@@ -247,6 +247,72 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     expect(lines).toEqual(["[redacted]", "[redacted]"]);
   });
 
+  test("a key's body lines with quotes, a comment mark, a comma, a CR or short padding leave masked too (#829)", async () => {
+    const { repo } = await setup();
+    // Fake key body lines of PEM's shape; not a real key.
+    const body = "MIIEowIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gun";
+    writeFileSync(
+      join(repo, "notes", "keys.js"),
+      [
+        `  "${body}",`,
+        `# ${body}`,
+        `// ${body}`,
+        ` * ${body}`,
+        `MIIEow\rIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOE`,
+        "MIIEpQ0tRgeLe==",
+      ].join("\n") + "\n",
+    );
+    const found = await searchRepository(
+      repo,
+      { mode: "content", query: "MIIE" },
+      { rg: () => null },
+    );
+    const lines = found.matches.filter((m) => m.path === "notes/keys.js").map((m) => m.text);
+    expect(lines).toEqual(Array(6).fill("[redacted]"));
+  });
+
+  test("a line of 100 000 characters leaves cut to 200, with no token from anywhere in it (#829)", async () => {
+    const { repo } = await setup();
+    // A fake token of GitHub's shape; the test never uses a real one.
+    const token = `ghp_${"A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"}`;
+    // Each token stands apart, as one does in code; the first starts at 190, across the cut.
+    const line = `panel ${"x".repeat(183)} ${token} ${"y".repeat(1000)} ${token} ${"z".repeat(98_000)}`;
+    writeFileSync(join(repo, "src", "huge.js"), `${line}\n`);
+    const found = await searchRepository(
+      repo,
+      { mode: "content", query: "panel" },
+      { rg: () => null },
+    );
+    const text = found.matches.find((m) => m.path === "src/huge.js")?.text ?? "";
+    expect([Array.from(text).length, text.includes("ghp_"), text.includes("A1b2C3d4")]).toEqual([
+      200,
+      false,
+      false,
+    ]);
+  });
+
+  test.skipIf(onWindows)(
+    "by content with rg, the lines leave masked the same way (#829)",
+    async () => {
+      const { repo } = await setup();
+      // A fake token and a fake key body line; neither is real.
+      const token = `ghp_${"A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"}`;
+      const body = "MIIEowIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gun";
+      const rg = fakeRg(
+        [
+          event({ text: "./src/panel.ts" }, 1, { text: `const panelToken = "${token}";\n` }),
+          event({ text: "./src/panel.ts" }, 2, { text: `  "${body}",\n` }),
+        ].join("\n"),
+      );
+      const found = await searchRepository(
+        repo,
+        { mode: "content", query: "panel" },
+        { rg: () => rg.path },
+      );
+      expect(found.matches.map((m) => m.text)).toEqual(['const [redacted]";', "[redacted]"]);
+    },
+  );
+
   test("a file named after a token is never listed, by name or by content (#829)", async () => {
     const { repo } = await setup();
     // A fake token of GitHub's shape in the file's name; the test never uses a real one.
