@@ -876,6 +876,7 @@ export const en: Dictionary = {
     quotaLevels: { ok: "fine", near: "near the limit", reached: "limit reached" },
     host: "Host: {host}",
     noHost: "No host yet",
+    allHostsTabs: "Tabs of all hosts",
     hostItem: "{host}, {state}",
     hostItemVersion: "{host}, {state}, flightdeckd {version}",
     hostItemDiffers: "{host}, {state}, flightdeckd {version}, not the app's {app}",

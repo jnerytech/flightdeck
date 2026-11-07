@@ -2871,6 +2871,12 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   all tabs across the width of the window, where a tap goes to a tab. **+** still opens a new tab; the
   split buttons are not offered. A screen reader hears it as "All tabs (5), current: Board, host alfa".
 
+- **Tabs of all hosts:** the host switcher has an entry, **Tabs of all hosts**, for people who work
+  across hosts at once. Checked, the row lists every host's tabs after the shared ones, in a group
+  headed by the host's name and dot, each tab in its host's color. A tab of another host switches to
+  that host when you pick it, and the switcher follows. Unchecked, the row is the current host's
+  again. The choice is kept. The entry appears with two hosts or more.
+
 - **Host colors:** each host has one of eight colors, the same wherever the host shows. It is a dot
   next to the host's name in the top bar's switcher and in the list of all tabs, and a 2 px line over
   the top of each of the host's tabs. The color is never the only sign: the host's name stands beside
