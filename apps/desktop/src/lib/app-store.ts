@@ -429,6 +429,7 @@ export type HostCommandType = Extract<
   | "session.sleep"
   | "host.keepAwake"
   | `project.trust.${string}`
+  | "knowledge.list"
   | "host.updates.set"
   | `ssh.${string}`
   | `snippets.${string}`

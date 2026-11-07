@@ -4134,6 +4134,32 @@ export const ptBR = {
     placeholder: "Digite uma mensagem",
   },
   projectPage: {
+    knowledge: {
+      title: "Conhecimento do projeto",
+      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter. Só leitura: nada aqui muda o projeto.",
+      filter: "{status} ({n})",
+      all: "Todos",
+      status: {
+        valid: "Válido",
+        transitional: "Em transição",
+        obsolete: "Obsoleto",
+        unclassified: "Sem classificação",
+      },
+      type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
+      changed: "Alterado em {date}",
+      referencesObsolete: "Aponta para um documento obsoleto: {path}",
+      problem: {
+        status_unknown:
+          "O status no front matter não é válido, então os agentes não recebem este documento.",
+        type_unknown: "O tipo no front matter não é prd, rfc, adr nem spec.",
+        frontmatter_invalid: "Não foi possível ler o front matter.",
+        supersedes_invalid: "supersedes não é o caminho de um documento.",
+        supersedes_missing: "Substitui um documento que não está na biblioteca.",
+      },
+      empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
+      truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
+      failed: "Não foi possível ler os documentos neste host.",
+    },
     harness: {
       title: "Configuração do Claude Code",
       hint: "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Só leitura: nada aqui muda o projeto.",

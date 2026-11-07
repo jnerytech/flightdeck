@@ -149,9 +149,9 @@ describe("knowledge-panel-ui: the library of a project on its page (#76)", () =>
     const without = setup({ features: [] });
     render(without.view);
     expect([
-      screen.queryByRole("region", { name: "Project knowledge" }),
+      screen.queryByRole("region", { name: "Project knowledge" }) === null,
       without.sent.some(([type]) => type === "knowledge.list"),
-    ]).toEqual([null, false]);
+    ]).toEqual([true, false]);
     cleanup();
     render(setup({ list: null }).view);
     await waitFor(() =>

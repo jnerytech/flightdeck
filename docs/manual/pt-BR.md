@@ -339,6 +339,12 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
   variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
   avisa: uma parte marcada como faltando pode existir.
+- **Conhecimento do projeto** lista os PRDs, RFCs, ADRs e specs do projeto (os arquivos Markdown em
+  `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` e `docs/specs`), cada um com título, caminho,
+  tipo e o status que diz ter no front matter (`status: valid`, `transitional` ou `obsolete`). Um
+  documento sem status aparece como **Sem classificação**. Os filtros contam os documentos de cada
+  status, e um aviso aparece quando um documento válido aponta para um obsoleto. Ele só lê: nada no
+  projeto muda. Só os primeiros 500 documentos aparecem.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
