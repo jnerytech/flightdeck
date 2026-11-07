@@ -3,6 +3,7 @@ import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { CacheTimer } from "@/components/hub/cache-timer";
+import { Page } from "@/components/layout/page";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -340,25 +341,28 @@ function AddHost(
     if (result.ok) props.go({ name: "host", host: result.hostId });
     else setError(result.error);
   };
+  const { t } = props.store.i18n;
+  // A page: a title, and a body that scrolls from its top. A centered box that scrolled hid the
+  // top of a screen taller than the window, out of reach (#728).
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto p-6">
-      {props.empty && (
-        <>
-          <p className="text-muted-foreground text-sm">{props.store.i18n.t("welcome.addHost")}</p>
-          <FirstRun onCopy={(text) => void props.store.copyText(text)} />
-        </>
-      )}
-      <HostForm
-        {...(props.draft
-          ? {
-              initial: props.draft,
-              notice: props.store.i18n.t("hostForm.fromLink"),
-            }
-          : {})}
-        error={error}
-        onSubmit={(draft) => submit(draft)}
-      />
-    </div>
+    <Page
+      title={t(props.empty ? "welcome.title" : "welcome.titleMore")}
+      {...(props.empty ? { subtitle: t("welcome.addHost") } : {})}
+    >
+      <div className="flex w-full max-w-xl flex-col gap-6">
+        {props.empty && <FirstRun onCopy={(text) => void props.store.copyText(text)} />}
+        <HostForm
+          {...(props.draft
+            ? {
+                initial: props.draft,
+                notice: props.store.i18n.t("hostForm.fromLink"),
+              }
+            : {})}
+          error={error}
+          onSubmit={(draft) => submit(draft)}
+        />
+      </div>
+    </Page>
   );
 }
 
