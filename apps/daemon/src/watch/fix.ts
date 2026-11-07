@@ -97,7 +97,7 @@ const SAFE_GIT = ["-c", "core.fsmonitor=false"];
 const SAFE_DIFF = ["diff", "--numstat", "-z", "--no-renames", "--no-ext-diff", "--no-textconv"];
 
 /** A held round's summary, also the reason the card needs you. */
-function heldSummary(measured: { drift: Drift } | { error: string }): string {
+export function heldSummary(measured: { drift: Drift } | { error: string }): string {
   if ("error" in measured) return `held: the drift could not be measured (${measured.error})`;
   const { outside, churn, limit } = measured.drift;
   const shown = outside.slice(0, 5).map((path) => masked(path.replace(/\p{Cc}/gu, "?")));
@@ -258,22 +258,21 @@ export class PrFixer {
     }
     const sha = last.held_sha ?? "";
     const head = await this.git(worktree, ...SAFE_GIT, "rev-parse", "HEAD");
-    if (!COMMIT_ID.test(sha) || head.stdout.trim() !== sha) {
+    // A drop goes back to where the round started: work committed before it stays.
+    const base = last.base_sha ?? "";
+    const known = COMMIT_ID.test(sha) && (action === "push" || COMMIT_ID.test(base));
+    if (!known || head.stdout.trim() !== sha) {
       throw new FlightdeckError(
         "invalid_state",
         "the branch has new commits since the round was held",
         "watch_held_moved",
       );
     }
-    // Back to where the round started: work committed before it stays.
-    const base = COMMIT_ID.test(last.base_sha ?? "")
-      ? (last.base_sha as string)
-      : refArg(`origin/${branch}`);
     const done =
       action === "push"
         ? // git-arg: the held commit id (checked hex) to the card's own branch (refArg), never forced
           await this.git(worktree, ...SAFE_GIT, "push", "origin", `${sha}:refs/heads/${branch}`)
-        : // git-arg: the round's start (checked hex) or what was pushed (refArg); --keep keeps uncommitted work
+        : // git-arg: the round's start (checked hex); --keep keeps uncommitted work
           await this.git(worktree, ...SAFE_GIT, "reset", "--keep", base);
     if (done.code !== 0) {
       throw new FlightdeckError(
