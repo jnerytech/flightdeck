@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { ciPlan, FULL, planOutputs, selectionBase, WINDOWS_SPLIT_ABOVE } from "../lib/ci-paths.ts";
 
 /**
@@ -46,6 +46,23 @@ const NONE = {
   windowsShards: 1,
 };
 
+/**
+ * The local script files `files` import (`from "./x"` or a bare `import "./x"`), and the ones those
+ * import in turn (#724: one level down), as repository paths under scripts/.
+ */
+function localImports(files: string[]): string[] {
+  const direct = (file: string) =>
+    [
+      ...readFileSync(join(ROOT, file), "utf8").matchAll(
+        /(?:from|import)\s+"(\.{1,2}\/[^"]+\.ts)"/g,
+      ),
+    ]
+      .map((m) => join(dirname(file), m[1] ?? "").replaceAll("\\", "/"))
+      .filter((path) => path.startsWith("scripts/"));
+  const first = files.flatMap(direct);
+  return [...new Set([...first, ...first.flatMap(direct)])];
+}
+
 describe("ci-paths: the rules", () => {
   test("docs only run the Linux tests and lint, nothing else", () => {
     expect(ciPlan(PR, ["docs/TDD.md", "README.md"])).toEqual(NONE);
@@ -54,8 +71,13 @@ describe("ci-paths: the rules", () => {
 
   test("scripts plan no Windows on a PR (#534: Windows left the PR path), and the journeys only for a helper the demo loads", () => {
     expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(NONE);
-    // A test helper the demo seed loads (fake CLIs) plans the journeys as well (#410 review).
-    expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual({ ...NONE, e2e: true });
+    // A test helper the demo seed loads (fake CLIs) plans the journeys as well (#410 review), and
+    // the prints, which run the same demo (#724).
+    expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual({
+      ...NONE,
+      e2e: true,
+      screenshots: true,
+    });
   });
 
   test("a PR and a push to main never plan Windows, whatever they change or whether the diff reads (#534); the schedule and a run by hand do", () => {
@@ -98,10 +120,7 @@ describe("ci-paths: the rules", () => {
   });
 
   test("demo:shots and every local file it imports plan the prints, so a change to the print guards runs them (#637)", () => {
-    const shots = readFileSync(join(ROOT, "scripts/demo-shots.ts"), "utf8");
-    const local = [...shots.matchAll(/from "(\.\/[^"]+)"/g)].map((m) =>
-      join("scripts", m[1] ?? "").replaceAll("\\", "/"),
-    );
+    const local = localImports(["scripts/demo-shots.ts"]);
     expect(local).toContain("scripts/lib/layout-guards.ts");
     for (const path of ["scripts/demo.ts", "scripts/demo-shots.ts", ...local]) {
       expect(`${path}: ${ciPlan(PR, [path]).screenshots}`).toBe(`${path}: true`);
@@ -113,13 +132,10 @@ describe("ci-paths: the rules", () => {
   });
 
   test("every local script file the journeys import plans them, so a change to a guard they run runs them (#637)", () => {
-    const dir = join(ROOT, "scripts/e2e");
-    const files = readdirSync(dir).filter((name) => name.endsWith(".ts"));
-    const local = files.flatMap((name) =>
-      [...readFileSync(join(dir, name), "utf8").matchAll(/from "(\.{1,2}\/[^"]+)"/g)]
-        .map((m) => join("scripts/e2e", m[1] ?? "").replaceAll("\\", "/"))
-        .filter((path) => path.startsWith("scripts/")),
-    );
+    const journeys = readdirSync(join(ROOT, "scripts/e2e"))
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => `scripts/e2e/${name}`);
+    const local = localImports(journeys);
     expect(local).toContain("scripts/lib/layout-guards.ts");
     for (const path of local) expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
   });
