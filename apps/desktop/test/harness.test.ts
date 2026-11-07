@@ -66,7 +66,8 @@ describe("harness: a project's Claude Code setup as a checklist (#75)", () => {
       { part: "hooks", found: true, detail: ["format", "gitAdd", "secrets"] },
       { part: "skills", found: true, detail: ["tdd-area", "new-phase"] },
       { part: "agents", found: true, detail: ["spec-verifier", "security-reviewer"] },
-      { part: "permissions", found: true, detail: ["5", "0"] },
+      // A host older than deny rules sends none: the count says nothing about them.
+      { part: "permissions", found: true, detail: ["5"] },
       { part: "mcp", found: true, detail: ["db"] },
     ]);
   });
@@ -99,10 +100,17 @@ describe("harness: a project's Claude Code setup as a checklist (#75)", () => {
 
   test("permissions count what the project denies too, and a host older than deny rules counts none (#75)", () => {
     const denies = { ...EMPTY, denyRules: ["Read(./.env)", "Read(~/.ssh/**)"] };
+    const allowsOnly = { ...EMPTY, allowRules: ["Read"], denyRules: [] };
     const cut = { ...denies, omitted: { ...EMPTY.omitted, denyRules: 4 } };
-    expect([harnessParts(denies)[4], harnessParts(cut)[4], harnessParts(EMPTY)[4]]).toEqual([
+    expect([
+      harnessParts(denies)[4],
+      harnessParts(cut)[4],
+      harnessParts(allowsOnly)[4],
+      harnessParts(EMPTY)[4],
+    ]).toEqual([
       { part: "permissions", found: true, detail: ["0", "2"] },
       { part: "permissions", found: true, detail: ["0", "6"] },
+      { part: "permissions", found: true, detail: ["1", "0"] },
       { part: "permissions", found: false, detail: [] },
     ]);
   });
