@@ -196,9 +196,20 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
         ),
         late.truncated,
         Date.now() - started < 3000,
-      ]).toEqual([[], "internal", true, true]);
+      ]).toEqual([[], "command_failed", true, true]);
     },
   );
+
+  test("a folder that is no repository is refused by name, and its content search without rg fails", async () => {
+    const plain = tempDir("fd-plain-");
+    writeFileSync(join(plain, "panel.ts"), "panel\n");
+    expect([
+      await failure(searchRepository(plain, { mode: "name", query: "panel" })),
+      await failure(
+        searchRepository(plain, { mode: "content", query: "panel" }, { rg: () => null }),
+      ),
+    ]).toEqual(["repo_not_git", "command_failed"]);
+  });
 
   test("a search runs on a repository target, never a terminal's folder", async () => {
     const { changes, target } = await setup();
@@ -247,7 +258,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     const found = await client.data<{ matches: Array<{ path: string }> }>("file.search", {
       target: ctx.target,
       mode: "name",
-      query: "readme",
+      query: "readme-panel",
     });
     expect([info?.features?.includes("file.search") ?? false, found?.matches ?? null]).toEqual([
       true,
