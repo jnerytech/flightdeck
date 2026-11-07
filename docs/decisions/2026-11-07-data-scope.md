@@ -40,10 +40,12 @@ The host switcher at the top is about tabs. Since #644 it names the active tab's
 - **Menu values:** `project:<key>`, beside `host:<id>` and `all`. The prefix is read before anything
   else, so a folder key, which starts with `host:`, never parses as a host.
 - **Not checked against a list:** projects load per host and late (the #860 trap). A kept project is
-  never dropped at start; a screen with nothing for it says so and offers **Show all hosts**.
-- **The menu** adds a labelled **Projects** group after the hosts, with every project the app knows
-  (`knownProjectKeys` and the keys the screens have read), labelled by `useProjectLabels` so a name
-  on two hosts carries its host. The live region names the project.
+  never dropped at start; a screen with nothing for it says so and offers **Show all hosts**
+  (Costs: "{project} has no costs in this period.").
+- **The menu** adds a labelled **Projects** group after the hosts, with the projects of the screen
+  (Costs: the period's; Home: every project the app knows), labelled by `useProjectLabels` so a name
+  on two hosts carries its host. The live region names the project. Picking a host in Costs' quota
+  line replaces a project scope with that host, as any pick does.
 - **The hosts of a project scope** are every host (`scopeHosts`); each screen then keeps the
   project's rows.
 - **Route overrides stay visit-only:** Costs opened on a project (a Home card, an alert) and the

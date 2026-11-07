@@ -40,6 +40,7 @@ export const ptBR = {
     incompatible: "{host} precisa de uma atualização do daemon para os dados aparecerem aqui.",
     showAll: "Mostrar todos os hosts",
     noCosts: "{host} não informa custos.",
+    projectEmpty: "{project} não tem custos neste período.",
   },
   home: {
     title: "Início",

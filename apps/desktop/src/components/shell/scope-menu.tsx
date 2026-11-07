@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AppStore } from "../../lib/app-store.ts";
+import { projectLabel } from "../../lib/costs.ts";
 import { ALL_SCOPE, type DataScope, scopeOfValue, scopeValue } from "../../lib/data-scope.ts";
 
 /**
@@ -46,14 +47,15 @@ export function ScopeMenu(
     }
     if (value.kind === "project" && projects) {
       return (
-        projects.find((project) => project.key === value.projectKey)?.label ?? value.projectKey
+        projects.find((project) => project.key === value.projectKey)?.label ??
+        projectLabel(value.projectKey)
       );
     }
     return t("scope.all");
   };
   const label = nameOf(scope);
   // Where projects are not read, a project scope is every host, and the menu says so.
-  const value = scope.kind === "project" && !projects ? scopeValue(ALL_SCOPE) : scopeValue(scope);
+  const checked = scope.kind === "project" && !projects ? scopeValue(ALL_SCOPE) : scopeValue(scope);
   const choose = (value: string) => {
     const next = scopeOfValue(value);
     store.dataScope.set(next);
@@ -71,7 +73,7 @@ export function ScopeMenu(
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuRadioGroup value={value} onValueChange={choose}>
+          <DropdownMenuRadioGroup value={checked} onValueChange={choose}>
             <DropdownMenuRadioItem value={scopeValue(ALL_SCOPE)}>
               {t("scope.all")}
             </DropdownMenuRadioItem>
@@ -94,7 +96,7 @@ export function ScopeMenu(
             <>
               <DropdownMenuSeparator />
               <DropdownMenuRadioGroup
-                value={value}
+                value={checked}
                 onValueChange={choose}
                 aria-labelledby={projectsId}
               >
