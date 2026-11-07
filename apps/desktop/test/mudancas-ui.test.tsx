@@ -28,7 +28,8 @@ afterEach(async () => {
 const settle = waiter(6000);
 
 const click = async (name: string | RegExp) => {
-  const button = screen.queryByRole("button", { name });
+  // The session's views are tabs; everything else is a button.
+  const button = screen.queryByRole("button", { name }) ?? screen.queryByRole("tab", { name });
   expect(button).not.toBeNull();
   await act(async () => {
     fireEvent.click(button as HTMLElement);
@@ -106,7 +107,7 @@ async function openSession(ctx: Awaited<ReturnType<typeof setup>>, cwd = ctx.rep
 
 const openChanges = async () => {
   // The tab comes with the session list, which now waits for the project keys of its folders.
-  await settle(() => screen.queryByRole("button", { name: "Mudanças" }) !== null);
+  await settle(() => screen.queryByRole("tab", { name: "Mudanças" }) !== null);
   await click("Mudanças");
   await settle(() => screen.queryByRole("region", { name: "Mudanças" }) !== null);
 };
@@ -149,7 +150,7 @@ describe("mudancas-ui", () => {
   test("a aba só aparece em um host que anuncia a revisão, e explica uma pasta fora do git", async () => {
     const old = await setup(["rules"]);
     await openSession(old);
-    expect(screen.queryByRole("button", { name: "Mudanças" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Mudanças" })).toBeNull();
     cleanup();
 
     const ctx = await setup();
@@ -256,7 +257,7 @@ describe("mudancas-ui", () => {
     ctx.platform.copyText = async (value) => {
       copied.push(value);
     };
-    await settle(() => screen.queryByRole("button", { name: "Mudanças" }) !== null);
+    await settle(() => screen.queryByRole("tab", { name: "Mudanças" }) !== null);
     await openChanges();
     await settle(() => files().includes("novo.txt"));
     await click("Comentar a linha 1 de novo.txt");
@@ -537,7 +538,7 @@ describe("mudancas-ui", () => {
       await ctx.store.refreshHub();
       ctx.store.router.push({ name: "external", host: ctx.hostId, claudeSessionId: "fora-1" });
     });
-    await settle(() => screen.queryByRole("button", { name: "Mudanças" }) !== null);
+    await settle(() => screen.queryByRole("tab", { name: "Mudanças" }) !== null);
     await openChanges();
     await settle(() => files().includes("a.txt"));
 

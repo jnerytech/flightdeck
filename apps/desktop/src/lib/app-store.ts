@@ -172,6 +172,7 @@ import {
   markGap,
   type SessionState,
 } from "./session-state.ts";
+import { SessionViews } from "./session-views.ts";
 import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
@@ -1108,6 +1109,8 @@ export class AppStore {
     this.router.push({ name: "settings", section: "assistant" });
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  /** Issue #107: the view each session tab was on, and the page now on screen. */
+  readonly sessionViews = new SessionViews();
   readonly terminalReader: TerminalReaderSetting;
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;
@@ -2178,9 +2181,21 @@ export class AppStore {
   /** Closes a tab; a terminal's waits in `closingTerminal` for detach or end. */
   closeTab(area: Tabs, tabId: string): void {
     const tab = area.tabs.find((candidate) => candidate.id === tabId);
-    if (tab?.router.current.name === "terminal") {
+    const route = tab?.router.current;
+    if (route?.name === "terminal") {
       this.update({ closingTerminal: { areaId: area.id, tabId } });
-    } else area.close(tabId);
+      return;
+    }
+    // Issue #107: the shell a session page opened lives as long as its tab.
+    if (route?.name === "session") {
+      const key = sessionKey(route.host, route.id);
+      const terminalId = this.sessionViews.terminalOf(key);
+      if (terminalId) {
+        this.sessionViews.setTerminal(key, null);
+        void this.hostCommand(route.host, "terminal.close", { terminalId, kill: true });
+      }
+    }
+    area.close(tabId);
   }
 
   /** Ends the pending close of a terminal tab: `kill` ends the process, false detaches, null keeps it. */
@@ -2309,11 +2324,17 @@ export class AppStore {
     hostId: string,
     type: T,
     payload: CommandPayload<T>,
+    /** `retry: false` for a command that opens something: repeated later, unseen, it would leave it behind. */
+    options: { retry?: boolean } = {},
   ): Promise<CommandResults[T] | null> {
     try {
       return await this.dispatch(hostId, type, payload);
     } catch (error) {
-      this.fail(error, undefined, () => void this.hostCommand(hostId, type, payload));
+      this.fail(
+        error,
+        undefined,
+        options.retry === false ? undefined : () => void this.hostCommand(hostId, type, payload),
+      );
       return null;
     }
   }

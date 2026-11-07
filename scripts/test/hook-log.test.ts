@@ -92,6 +92,29 @@ describe("hook-log", () => {
     );
   });
 
+  test("#741: each push-wait override is listed with its time, the run's age and its reason", () => {
+    const override = (t: string, detail: string, minutes?: number): HookLogEntry => ({
+      ...entry("guard", 40),
+      t,
+      rule: "push-wait",
+      decision: "waived",
+      detail,
+      ...(minutes === undefined ? {} : { minutes }),
+    });
+    const text = [
+      override("2026-11-07T02:10:05.000Z", "a fix after review", 6),
+      override("2026-11-07T03:01:00.000Z", "the reviewer waits"),
+    ]
+      .map((e) => JSON.stringify(e))
+      .join("\n");
+    expect(summarizeHookLog(text).split("\n").slice(-4)).toEqual([
+      "",
+      "push-wait overrides:",
+      "  2026-11-07 02:10  run 6 min old  a fix after review",
+      "  2026-11-07 03:01  no run found   the reviewer waits",
+    ]);
+  });
+
   test("waived commits are counted apart from blocks, per rule", () => {
     const waived: HookLogEntry = { ...entry("guard", 40), rule: "commit", decision: "waived" };
     const text = [entry("guard", 30), waived, waived].map((e) => JSON.stringify(e)).join("\n");

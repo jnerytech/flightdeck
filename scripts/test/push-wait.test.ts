@@ -149,9 +149,49 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
 
   test("an override with a reason logs a push-wait waiver, not an allow", () => {
     expect(guardAllowLogs('FLIGHTDECK_PUSH_NOW="the reviewer waits on it" git push', {})).toEqual([
-      { rule: "push-wait", decision: "waived" },
+      { rule: "push-wait", decision: "waived", detail: "the reviewer waits on it" },
     ]);
     expect(guardAllowLogs("git push", {})).toEqual([{ rule: null, decision: "allow" }]);
+  });
+
+  test("#741: the waiver keeps the reason, with secrets hidden, and the age of the run the push cancels", () => {
+    const push = { cwd: CWD, deps: deps(green) };
+    expect(
+      guardAllowLogs('FLIGHTDECK_PUSH_NOW="a fix after review" git push origin fix-x', {}, push),
+    ).toEqual([
+      { rule: "push-wait", decision: "waived", detail: "a fix after review", minutes: 6 },
+    ]);
+    expect(push.deps.asked).toEqual([`fix-x in ${CWD}`]);
+    // No run in progress: the reason alone. A token in the reason is hidden; a long one is cut.
+    const quiet = { cwd: CWD, deps: deps(null) };
+    expect(
+      guardAllowLogs(
+        `FLIGHTDECK_PUSH_NOW="GH_TOKEN=abc123 ${"x".repeat(300)}" git push`,
+        {},
+        quiet,
+      ),
+    ).toEqual([
+      { rule: "push-wait", decision: "waived", detail: `GH_TOKEN=*** ${"x".repeat(187)}` },
+    ]);
+    // A bare token in free text, a Bearer header and control characters never reach the log.
+    const loose = { cwd: CWD, deps: deps(null) };
+    expect(
+      guardAllowLogs(
+        'FLIGHTDECK_PUSH_NOW="retry with ghp_abcdefghijklmnopqrstuvwxyz0123456789 and Bearer xyz.123\u001b[2J" git push',
+        {},
+        loose,
+      ),
+    ).toEqual([{ rule: "push-wait", decision: "waived", detail: "retry with *** and Bearer ***" }]);
+    // A push the coordinator makes logs nothing, and asks GitHub nothing.
+    const boss = { cwd: CWD, deps: deps(green) };
+    expect(
+      guardAllowLogs(
+        'FLIGHTDECK_PUSH_NOW="a fix after review" git push',
+        { FLIGHTDECK_COORDINATOR: "1" },
+        boss,
+      ),
+    ).toEqual([{ rule: null, decision: "allow" }]);
+    expect(boss.deps.asked).toEqual([]);
   });
 });
 

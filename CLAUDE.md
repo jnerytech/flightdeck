@@ -22,7 +22,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   younger than 20 minutes with no failed job; `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push
   lets it through), and that run
   Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
-  `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Rules per
+  `bun run harness:stats` shows how often each rule blocked and how long the hooks took, and lists
+  each push-wait override with its reason and the cancelled run's age (#741). Rules per
   area live in `.claude/rules/` (ui, protocol, daemon, tests, scripts) and load when a matching file
   is touched; a SessionStart hook states the branch, the tested scopes and the slot, and after a
   compact reminds that those rules come back only with a matching file. Personal settings go to

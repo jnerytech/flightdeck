@@ -309,6 +309,21 @@ function shots(ids: DemoIds): Shot[] {
         await page.locator("[data-slot=board-files]").getByText("app.ts").waitFor();
       },
     },
+    // #117: a content search in that panel, each match as path:line with its line.
+    {
+      name: "board-arquivos-busca",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        const tree = page.locator("[data-slot=project-tree]");
+        const head = tree.locator('[data-project="flightdeck-web"]');
+        if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+        await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
+        const panel = page.locator("[data-slot=board-files]");
+        await panel.getByRole("tab", { name: /^(Conteúdo|Content)$/ }).click();
+        await panel.getByRole("searchbox").fill("export");
+        await panel.getByText("app.ts:1").waitFor();
+      },
+    },
     {
       name: "card",
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },
@@ -354,7 +369,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "sessao-mudancas",
       route: { name: "session", host: ALFA, id: ids.idleSession },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Mudanças|Changes)$/ }).click();
+        await page.getByRole("tab", { name: /^(Mudanças|Changes)$/ }).click();
         await page.waitForTimeout(800);
       },
     },
@@ -560,7 +575,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "sessao-tempo",
       route: { name: "session", host: ALFA, id: ids.idleSession },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Tempo|Time)$/ }).click();
+        await page.getByRole("tab", { name: /^(Tempo|Time)$/ }).click();
         await page.waitForTimeout(800);
       },
     },
@@ -569,7 +584,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "rastro",
       route: { name: "external", host: ALFA, claudeSessionId: ids.traceSession },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Rastro|Trace)$/ }).click();
+        await page.getByRole("tab", { name: /^(Rastro|Trace)$/ }).click();
         await page.waitForTimeout(800);
       },
     },
@@ -577,7 +592,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "rastro-replay",
       route: { name: "external", host: ALFA, claudeSessionId: ids.traceSession },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Rastro|Trace)$/ }).click();
+        await page.getByRole("tab", { name: /^(Rastro|Trace)$/ }).click();
         await page.getByRole("button", { name: "Replay" }).click();
         await page.getByRole("button", { name: /^(Próximo|Next)$/ }).click();
         await page.getByRole("button", { name: /^(Próximo|Next)$/ }).click();
