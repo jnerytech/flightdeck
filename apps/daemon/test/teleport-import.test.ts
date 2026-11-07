@@ -30,7 +30,7 @@ const reason = (run: () => Promise<unknown>) =>
   );
 
 /** The source: a branch two commits past origin, a changed file and a new one; its package. */
-async function packaged(over: Partial<TeleportManifest> = {}) {
+async function packaged(over: Partial<TeleportManifest> = {}, options: { lfs?: boolean } = {}) {
   const { repo, remote, root } = gitRepoWithOrigin();
   git(repo, "checkout", "-q", "-b", "feature");
   await writeFile(join(repo, "f1.txt"), "1\n");
@@ -38,6 +38,11 @@ async function packaged(over: Partial<TeleportManifest> = {}) {
   git(repo, "commit", "-q", "-m", "feat(x): one");
   await writeFile(join(repo, "f1.txt"), "1 changed\n");
   await writeFile(join(repo, "new.txt"), "new\n");
+  // A file the tree says is LFS's: the target's smudge filter would fetch it.
+  if (options.lfs) {
+    await writeFile(join(repo, ".gitattributes"), "*.bin filter=lfs\n");
+    await writeFile(join(repo, "data.bin"), "version https://git-lfs.github.com/spec/v1\n");
+  }
   const folder = tempDir("fd-teleport-pkg-");
   const code = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan: () => [] });
   const transcript = join(folder, "transcript");
@@ -89,7 +94,7 @@ function target(
     },
   };
   const deps: TeleportImportDeps = {
-    inbox: { claim: async () => claim },
+    inbox: holding(claim),
     allowedRoots: [roots],
     historyRoot: history,
     transcriptOf: () => options.local ?? null,
@@ -104,6 +109,12 @@ function target(
 
 /** Where Claude Code keeps the transcripts of a folder. */
 const slug = (path: string) => path.replace(/[^A-Za-z0-9]/g, "-");
+
+/** An inbox that holds one package: read it to check, claim it to import. */
+const holding = (claim: TeleportClaim) => ({
+  received: async () => claim,
+  claim: async () => claim,
+});
 
 const leftovers = (repo: string, history: string) =>
   Promise.all([
@@ -184,7 +195,7 @@ describe("teleport-import: a received package becomes a session on this host (#1
       await leftovers(other, history),
       calls.resumed.length,
       calls.released,
-    ]).toEqual(["teleport_no_project", "cwd_outside_roots", [1, "", "", []], 0, 2]);
+    ]).toEqual(["teleport_no_project", "cwd_outside_roots", [1, "", "", []], 0, 0]);
   });
 
   test("a session this host already has, a ref the manifest made up, or a package with no code is refused", async () => {
@@ -200,14 +211,12 @@ describe("teleport-import: a received package becomes a session on this host (#1
     const local = target(pkg, { local: "/somewhere/else.jsonl" });
     const claimOf = (p: Awaited<ReturnType<typeof packaged>>, code: string | null) => ({
       ...deps,
-      inbox: {
-        claim: async () => ({
-          manifest: p.manifest,
-          transcript: p.transcript,
-          code,
-          release: async () => {},
-        }),
-      },
+      inbox: holding({
+        manifest: p.manifest,
+        transcript: p.transcript,
+        code,
+        release: async () => {},
+      }),
     });
     expect([
       await reason(() => importPackage(local.deps, "in-1", local.repo)),
@@ -229,20 +238,18 @@ describe("teleport-import: a received package becomes a session on this host (#1
     const other = target(forged);
     const wrongHead = {
       ...other.deps,
-      inbox: {
-        claim: async () => ({
-          manifest: {
-            ...forged.manifest,
-            git: {
-              ...(forged.manifest.git as NonNullable<TeleportManifest["git"]>),
-              head: "f".repeat(40),
-            },
+      inbox: holding({
+        manifest: {
+          ...forged.manifest,
+          git: {
+            ...(forged.manifest.git as NonNullable<TeleportManifest["git"]>),
+            head: "f".repeat(40),
           },
-          transcript: forged.transcript,
-          code: forged.code,
-          release: async () => {},
-        }),
-      },
+        },
+        transcript: forged.transcript,
+        code: forged.code,
+        release: async () => {},
+      }),
     };
     expect([
       there,
@@ -250,6 +257,22 @@ describe("teleport-import: a received package becomes a session on this host (#1
       await reason(() => importPackage(wrongHead, "in-1", other.repo)),
       (await leftovers(other.repo, other.history)).slice(0, 3),
     ]).toEqual(["teleport_exists", "this host's own\n", "request_invalid", [1, "", ""]]);
+  });
+
+  test("a mode that asks less arrives as the default, and the bundle's LFS files are never fetched", async () => {
+    const pkg = await packaged({ permissionMode: "acceptEdits" }, { lfs: true });
+    const { repo, deps, calls } = target(pkg);
+    // A smudge filter of this host for LFS: it would reach a server the bundle's files name.
+    const marks = tempDir("fd-teleport-marks-");
+    const smudge = join(marks, "smudge.sh");
+    await writeFile(smudge, `#!/bin/sh\ntouch "${join(marks, "ran")}"\ncat\n`, { mode: 0o755 });
+    git(repo, "config", "filter.lfs.smudge", smudge);
+    git(repo, "config", "filter.lfs.required", "true");
+    await importPackage(deps, "in-1", repo).catch(() => undefined);
+    expect([
+      (calls.resumed[0] as { permissionMode?: string } | undefined)?.permissionMode,
+      (await readdir(marks)).includes("ran"),
+    ]).toEqual(["default", false]);
   });
 
   test("a session that does not start takes its worktree, branch and transcript with it", async () => {
