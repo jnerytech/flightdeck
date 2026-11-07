@@ -56,7 +56,7 @@ const TEXT = {
 } as const;
 
 /** The dialog with a fake run the test drives: the person's answers and the move's end. */
-function open(lang: "en" | "pt-BR") {
+function open(lang: "en" | "pt-BR", summary: TeleportSummary = SUMMARY) {
   const calls = {
     opened: [] as string[][],
     closed: 0,
@@ -81,7 +81,7 @@ function open(lang: "en" | "pt-BR") {
           calls.args.push({ target: args.target, repo: args.repo });
           control.progress = args.onProgress;
           control.signal = args.signal;
-          control.answer = args.confirm(SUMMARY);
+          control.answer = args.confirm(summary);
           return new Promise<TeleportOutcome>((resolve, reject) => {
             control.finish = resolve;
             control.fail = reject;
@@ -194,7 +194,7 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
   }
 
   test("Cancel during the move stops it, Escape on the summary says no, and Escape before it closes", async () => {
-    const escape = async () => {
+    const pressEscape = async () => {
       await act(async () => {
         fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
       });
@@ -209,7 +209,7 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
     await shows("Moving… 10%");
     await click("Cancel");
     const stopped = first.control.signal?.aborted ?? false;
-    await escape();
+    await pressEscape();
     const stoppedByEscape = first.control.signal?.aborted ?? false;
     cleanup();
     const second = open("en");
@@ -219,7 +219,7 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
     void second.control.answer?.then((yes) => {
       answered = yes;
     });
-    await escape();
+    await pressEscape();
     // The answer the run got, if any: a dialog that just closed never answers.
     const declined = await settle(() => answered !== null).then(
       () => answered,
@@ -227,12 +227,21 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
     );
     cleanup();
     const third = open("en");
-    await escape();
+    await pressEscape();
     expect([stopped, stoppedByEscape, declined, third.calls.closed]).toEqual([
       true,
       true,
       false,
       1,
+    ]);
+  });
+
+  test("a session on no branch says so instead of a branch name", async () => {
+    open("en", { ...SUMMARY, branch: null });
+    await start("en");
+    expect([await shows("none (a detached HEAD)"), document.querySelector("bdi")]).toEqual([
+      true,
+      null,
     ]);
   });
 
