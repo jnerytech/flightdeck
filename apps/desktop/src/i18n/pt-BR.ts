@@ -2516,6 +2516,9 @@ export const ptBR = {
     checkFailed: "A verificação não rodou: {reason}",
   },
   welcome: {
+    /** The first-run screen's title, and the Add host screen's once a host exists (#728). */
+    title: "Conecte seu primeiro host",
+    titleMore: "Adicionar um host",
     addHost: "Adicione um host com o endereço e o token do flightdeckd.",
     stepsLabel: "Primeiros passos",
     step1: "No computador que roda o Claude Code, instale e inicie o daemon:",
@@ -3538,6 +3541,8 @@ export const ptBR = {
       "Mudou em outro lugar enquanto você editava: use a versão de lá para vê-la e edite de novo.",
     useTheirs: "Usar a de lá",
     detailsTitle: "Detalhes",
+    /** The card's details as a pane of their own once its conversation shows (#641). */
+    infoPane: "O card, acima da conversa",
     runTitle: "Execução",
     saveDescription: "Salvar descrição",
     title: "Título",

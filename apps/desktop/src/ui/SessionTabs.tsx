@@ -49,7 +49,8 @@ export function SessionTabs(
   return (
     <div className="flex h-full min-h-0 flex-col">
       {bar && (
-        <div className="flex gap-2 border-b px-4 py-2">
+        // The views wrap in a narrow pane instead of running past it (#641).
+        <div data-slot="session-views" className="session-views">
           <Button
             variant="outline"
             size="sm"
