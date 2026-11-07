@@ -10,7 +10,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
-import { SESSION_VIEWS, type SessionView, VIEW_LABEL } from "../lib/session-views.ts";
+import {
+  offeredViews,
+  type SessionView,
+  tabKeyIndex,
+  terminalLaunch,
+  terminalSourceOf,
+  VIEW_LABEL,
+  type ViewKey,
+  viewKeyTarget,
+} from "../lib/session-views.ts";
 import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import type { XtermDeps } from "../lib/xterm-screen.ts";
 import { ChangesPanel } from "./ChangesPanel.tsx";
@@ -20,17 +29,6 @@ import { SessionMessages } from "./SessionMessages.tsx";
 import { SessionTerminal } from "./SessionTerminal.tsx";
 import { TempoPanel } from "./TempoPanel.tsx";
 import { TracePanel } from "./TracePanel.tsx";
-
-/** The part of a key event the page reads for its view keys. */
-interface ViewKey {
-  key: string;
-  code: string;
-  altKey: boolean;
-  ctrlKey: boolean;
-  metaKey: boolean;
-  shiftKey: boolean;
-  preventDefault(): void;
-}
 
 /**
  * A session's screen with the Mudanças tab beside its conversation (phase 11). Without the tab
@@ -69,33 +67,24 @@ export function SessionTabs(
 ) {
   const t = useT();
   const { sessionViews } = props.store;
-  const launched = useLaunchTerminal(
-    props.store,
-    props.hostId,
-    props.terminal && "launch" in props.terminal ? props.terminal.launch : null,
-  );
-  const offered: Record<SessionView, boolean> = {
-    conversation: true,
-    changes: props.enabled && !!props.claudeSessionId,
-    files: !!props.files && !!props.claudeSessionId,
-    time: !!props.telemetry && !!props.claudeSessionId,
-    trace: !!props.trace && !!props.claudeSessionId,
-    messages: !!props.messagingId,
-    terminal: props.terminal ? "session" in props.terminal || launched !== null : false,
-  };
-  const views = SESSION_VIEWS.filter((view) => offered[view]);
+  const launched = useLaunchTerminal(props.store, props.hostId, terminalLaunch(props.terminal));
+  const views = offeredViews({
+    enabled: props.enabled,
+    files: props.files,
+    telemetry: props.telemetry,
+    trace: props.trace,
+    claudeSessionId: props.claudeSessionId,
+    messagingId: props.messagingId,
+    terminal: props.terminal,
+    launched,
+  });
   const viewsKey = views.join(",");
   const [chosen, setChosen] = useState<SessionView>(
     () => (props.viewKey ? sessionViews.last(props.viewKey) : null) ?? "conversation",
   );
   // A view the host does not offer (yet) shows the conversation, and what was chosen is kept.
   const tab = views.includes(chosen) ? chosen : "conversation";
-  const terminalSource =
-    props.terminal && "session" in props.terminal
-      ? { session: props.terminal.session }
-      : launched
-        ? { terminalId: launched }
-        : null;
+  const terminalSource = terminalSourceOf(props.terminal, launched);
   const bar = views.length > 1;
   const viewKey = props.viewKey;
   // The shell is built when the Terminal view is first shown, and kept (hidden) from then on.
@@ -118,18 +107,11 @@ export function SessionTabs(
   const tabs = useRef(new Map<SessionView, HTMLButtonElement>());
   // Alt+1 to Alt+7 (Ctrl+1 to 9 are the app's tabs), and Ctrl+` between the Terminal and the Conversation.
   // `true` when the key was one of them and the view changed.
-  const viewKeyHandler = useRef<((event: ViewKey) => boolean) | null>(null);
+  const viewKeyHandler = useRef<((event: ViewKey & { preventDefault(): void }) => boolean) | null>(
+    null,
+  );
   viewKeyHandler.current = (event) => {
-    if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
-      if (event.key !== "`" || !views.includes("terminal")) return false;
-      event.preventDefault();
-      pick(tab === "terminal" ? "conversation" : "terminal");
-      return true;
-    }
-    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
-    // On a Mac Alt+1 types a symbol: the physical key says which digit it was.
-    const digit = /^Digit(\d)$/.exec(event.code)?.[1] ?? (/^\d$/.test(event.key) ? event.key : "");
-    const view = views[Number(digit) - 1];
+    const view = viewKeyTarget(event, views, tab);
     if (!view) return false;
     event.preventDefault();
     pick(view);
@@ -148,16 +130,7 @@ export function SessionTabs(
   }, []);
   const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
     const at = views.indexOf(tab);
-    const to =
-      event.key === "ArrowRight"
-        ? (at + 1) % views.length
-        : event.key === "ArrowLeft"
-          ? (at - 1 + views.length) % views.length
-          : event.key === "Home"
-            ? 0
-            : event.key === "End"
-              ? views.length - 1
-              : -1;
+    const to = tabKeyIndex(event.key, at, views.length);
     const view = views[to];
     if (!view) return;
     event.preventDefault();
