@@ -292,10 +292,9 @@ function maskCommand(command: string): string {
 
 /** A shell word as the shell reads it, quotes taken out (a `\` escape inside double quotes too). */
 function unquote(word: string): string {
-  return word.replace(
-    /"((?:[^"\\]|\\.)*)"|'([^']*)'/g,
-    (_, double: string | undefined, single: string | undefined) =>
-      double !== undefined ? double.replace(/\\(.)/g, "$1") : (single ?? ""),
+  return word.replace(/"((?:[^"\\]|\\.)*)"|'([^']*)'/g, (_, double?: string, single?: string) =>
+    // In double quotes the shell drops a backslash only before $ ` " \ or a newline.
+    double === undefined ? (single ?? "") : double.replace(/\\([$`"\\\n])/g, "$1"),
   );
 }
 
@@ -327,7 +326,9 @@ interface GitCall {
 
 /** The folder a `cd` or `git -C` goes to; null when it cannot be told (nowhere known, nothing or a quoted word). */
 function enter(dir: string | null, target: string): string | null {
-  return dir === null || !target || target.includes('"') ? null : resolve(dir, target);
+  // A folder the hook cannot read as the shell would (a quote left over, $'...', `...`) is unknown.
+  const unread = /["'`]|\$'/.test(target);
+  return dir === null || !target || unread ? null : resolve(dir, target);
 }
 
 /** Each git invocation in the command, with its directory (each `cd` before it, `git -C`). */
@@ -339,7 +340,9 @@ function gitCalls(command: string, cwd: string): GitCall[] {
       const at = segment.index + t.index;
       // A word reads as its text with the quotes taken out (#759: `git "push"`, `ma"in"`): the mask
       // keeps every length, so the same span of the original command is the word as typed.
-      const value = /["']/.test(t[0]) ? unquote(command.slice(at, at + t[0].length)) : t[0];
+      // $'...' and `...` are not read: such a word stays as typed, which nothing matches (#759 review).
+      const typed = command.slice(at, at + t[0].length);
+      const value = /\$'|`/.test(typed) ? typed : /["']/.test(t[0]) ? unquote(typed) : t[0];
       return { word: t[0], at, value };
     });
     const word = (i: number) => tokens[i]?.word ?? "";
