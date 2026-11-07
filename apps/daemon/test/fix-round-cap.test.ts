@@ -1,80 +1,142 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Automations } from "../src/automations/automations.ts";
+import { ulid } from "../src/ulid.ts";
 import { cleanups, fixture } from "./watch-helpers.ts";
 
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-/**
- * Issue #77, slice D1: every automatic fix of a card counts against one budget, the watch's
- * `maxRounds`: the watch's own rounds and an automation that sends a failure or a review comment to
- * the card. Past it nothing more is sent, and the card goes to "Needs you" with the reason.
- */
-describe("fix-round-cap: one budget of automatic fixes per card (#77)", () => {
-  test("an automation's send counts as a round of the card; past the cap it is refused and the card needs you", async () => {
-    const f = await fixture();
-    const spent = [1, 2, 3, 4].map(() => f.fixer.spend(f.card.id, "checks failed: CI"));
-    expect([
-      spent.map((refusal) => refusal === null),
-      f.fixer.rounds(f.card.id).map((r) => r.status),
-      f.board.getCard(f.card.id).column,
-      f.watcher.status(f.card.id).status,
-      (spent[3] ?? "").startsWith("limit of 3 rounds reached"),
-    ]).toEqual([[true, true, true, false], ["sent", "sent", "sent"], "waiting", "needs_you", true]);
-  });
+type Fixture = Awaited<ReturnType<typeof fixture>>;
 
-  test("the watch's own round past the cap also takes the card to Needs you", async () => {
-    const f = await fixture();
-    for (let i = 0; i < 3; i++) f.fixer.spend(f.card.id, "a review comment");
-    await f.fixer.onTrigger(f.trigger({ conflicts: true }));
-    await f.fixer.idle();
-    expect([
-      f.fixer.rounds(f.card.id).length,
-      f.board.getCard(f.card.id).column,
-      f.watcher.status(f.card.id).status,
-    ]).toEqual([3, "waiting", "needs_you"]);
+/** An automation that sends each failed CI of the project to its card, over the real fixer. */
+function sendToCard(f: Fixture) {
+  const sent: string[] = [];
+  const message = f.board.message.bind(f.board);
+  f.board.message = (cardId, text) => {
+    sent.push(cardId);
+    return message(cardId, text);
+  };
+  const automations = new Automations({
+    db: f.store.db,
+    board: f.board,
+    issues: { list: async () => [], createCard: async () => f.card } as never,
+    prWatch: { claims: (cardId) => f.fixer.claims(cardId) },
   });
-
-  test("an automation sends to a card only while it has rounds left, and says why it did not", async () => {
-    const f = await fixture();
-    const asked: string[] = [];
-    let left = 1;
-    const automations = new Automations({
-      db: f.store.db,
-      board: f.board,
-      issues: { list: async () => [], createCard: async () => f.card } as never,
-      fixRounds: {
-        spend: (cardId, cause) => {
-          asked.push(`${cardId}: ${cause}`);
-          return left-- > 0 ? null : "limit of 3 rounds reached";
-        },
-      },
-    });
-    cleanups.push(() => automations.stop());
-    const saved = automations.save({
-      projectId: f.project.id,
-      name: "CI",
-      trigger: { type: "ci_failed" },
-      action: { type: "send_to_card" },
-    });
-    automations.toggle(saved.id, true, true);
-    await automations.fire({ type: "ci_failed", cardId: f.card.id, key: "k1", summary: "CI" });
-    await automations.fire({ type: "ci_failed", cardId: f.card.id, key: "k2", summary: "CI" });
-    expect([
-      asked.length,
-      asked[0]?.startsWith(f.card.id) ?? false,
+  cleanups.push(() => automations.stop());
+  const saved = automations.save({
+    projectId: f.project.id,
+    name: "CI",
+    trigger: { type: "ci_failed" },
+    action: { type: "send_to_card" },
+  });
+  automations.toggle(saved.id, true, true);
+  let key = 0;
+  return {
+    sent,
+    fire: () =>
+      automations.fire({ type: "ci_failed", cardId: f.card.id, key: `k${++key}`, summary: "CI" }),
+    runs: () =>
       automations
         .runs(saved.id)
         .map((r) => [r.status, r.detail])
         .reverse(),
-    ]).toEqual([
-      2,
-      true,
+  };
+}
+
+/** Rounds the card already had: the watch's budget used up. */
+function spent(f: Fixture, n: number) {
+  const at = new Date().toISOString();
+  for (let i = 1; i <= n; i++) {
+    f.store.db
+      .query(
+        `INSERT INTO pr_watch_rounds (id, card_id, n, status, trigger, summary, started_at, ended_at)
+         VALUES (?, ?, ?, 'pushed', ?, NULL, ?, ?)`,
+      )
+      .run(
+        ulid(),
+        f.card.id,
+        i,
+        JSON.stringify({ failed: [], conflicts: false, comments: [] }),
+        at,
+        at,
+      );
+  }
+}
+
+/**
+ * Issue #77, slice D1: while a card's PR is watched, the watch alone fixes it, within its rounds;
+ * an automation sends it no failure or comment of its own. Out of rounds, the card goes to Needs you.
+ */
+describe("fix-round-cap: the watch alone fixes a watched PR, and hands it over (#77)", () => {
+  test("a card whose PR is not watched gets the automation's send, as before, and no round", async () => {
+    const f = await fixture();
+    f.watcher.setEnabled(f.card.id, false);
+    const auto = sendToCard(f);
+    await auto.fire();
+    expect([
+      auto.runs(),
+      auto.sent,
+      f.fixer.rounds(f.card.id).length,
+      f.watcher.status(f.card.id).status,
+    ]).toEqual([[["ok", `enviado ao card ${f.card.id}`]], [f.card.id], 0, "watching"]);
+  });
+
+  test("a watched card gets nothing from the automation: the watch fixes it", async () => {
+    const f = await fixture();
+    const auto = sendToCard(f);
+    await auto.fire();
+    expect([auto.runs(), auto.sent, f.fixer.rounds(f.card.id).length]).toEqual([
+      [["skipped", "the PR watch fixes this card"]],
+      [],
+      0,
+    ]);
+  });
+
+  test("a card that needs you gets nothing either, with the watch's reason, and stays where it is", async () => {
+    const f = await fixture();
+    f.watcher.markNeedsYou(f.card.id, "2 rounds in a row failed: CI");
+    const auto = sendToCard(f);
+    await auto.fire();
+    await auto.fire();
+    expect([auto.runs(), auto.sent, f.board.getCard(f.card.id).column]).toEqual([
       [
-        ["ok", `enviado ao card ${f.card.id}`],
-        ["skipped", "limit of 3 rounds reached"],
+        ["skipped", "2 rounds in a row failed: CI"],
+        ["skipped", "2 rounds in a row failed: CI"],
       ],
+      [],
+      "review",
+    ]);
+  });
+
+  test("a card in review out of rounds goes to Needs you with each round in the reason", async () => {
+    const f = await fixture();
+    spent(f, 3);
+    await f.fixer.onTrigger(f.trigger({ conflicts: true }));
+    await f.fixer.idle();
+    const status = f.watcher.status(f.card.id);
+    expect([
+      f.fixer.rounds(f.card.id).length,
+      f.board.getCard(f.card.id).column,
+      status.status,
+      status.reason,
+    ]).toEqual([
+      3,
+      "waiting",
+      "needs_you",
+      "limit of 3 rounds reached — round 1: pushed; round 2: pushed; round 3: pushed",
+    ]);
+  });
+
+  test("a card already done stays done when the watch hands it over", async () => {
+    const f = await fixture();
+    spent(f, 3);
+    f.board.moveCard(f.card.id, "done");
+    await f.fixer.onTrigger(f.trigger({ conflicts: true }));
+    await f.fixer.idle();
+    expect([f.board.getCard(f.card.id).column, f.watcher.status(f.card.id).status]).toEqual([
+      "done",
+      "needs_you",
     ]);
   });
 });
