@@ -37,9 +37,10 @@ const DISPATCH = "github.event_name != 'workflow_dispatch' || inputs.only != 'sc
 const SUFFIX = "${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}";
 
 describe("ci-shards", () => {
-  test("Linux runs the whole suite with the exact 100% gate in its own job, and SonarCloud in another (#293)", () => {
+  test("Linux runs the whole suite in shards with the exact merged 100% gate, and SonarCloud in another job (#293, #296)", () => {
     expect(job("test-suite")["runs-on"]).toBe("ubuntu-latest");
-    expect(runs("test-suite")).toContain("bun run test");
+    expect(runs("test-suite")).toContain("bun run scripts/shard-gate.ts merge");
+    expect(runs("test-shard")).toContain("bun run scripts/shard-gate.ts run");
     expect(job("test-suite").steps.some((s) => s.name === "SonarCloud")).toBe(false);
     expect(job("sonar").steps.some((s) => s.name === "SonarCloud")).toBe(true);
   });
