@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -289,6 +290,18 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
       { rg: () => rg.path },
     );
     expect(found.matches.map((m) => m.path)).toEqual(["a\\b.ts"]);
+  });
+
+  test("a file deleted from the working tree is not found, though git still lists it", async () => {
+    const { repo } = await setup();
+    writeFileSync(join(repo, "gone-panel.ts"), "panel\n");
+    Bun.spawnSync(["git", "add", "gone-panel.ts"], { cwd: repo });
+    rmSync(join(repo, "gone-panel.ts"));
+    const found = await searchRepository(repo, { mode: "name", query: "gone-panel" }).then(
+      (result) => result.matches,
+      (error: { reason?: string }) => error.reason ?? "error",
+    );
+    expect(found).toEqual([]);
   });
 
   test("a folder that is no repository is refused by name and by content", async () => {
