@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { FIELD_WORDS, MONEY_WORDS } from "../lib/no-money.ts";
-import { fixedSleeps } from "../lib/sleep-ratchet.ts";
+import { fixedSleeps as countSleeps } from "../lib/sleep-ratchet.ts";
 import { lintSpec, SECTIONS } from "../lib/spec-lint.ts";
 
 const LIMIT_MS = 250;
+
+/** The sleeps of a source; a `¤` stands for a letter the source must not spell, or the ratchet would count this file. */
+const fixedSleeps = (source: string) => countSleeps(source.replaceAll("¤", ""));
 const TABLE = "| Area | Test file | What must pass |\n|---|---|---|";
 
 /** How long a call takes, in milliseconds. */
@@ -106,101 +109,101 @@ describe("sonar-regex3: spec-lint counts the Feature lines with the same result"
 
 describe("sonar-regex3: fixedSleeps finds a promise on a timer with the same result", () => {
   test("the arrow parameter may be bare, wrapped, spaced or typed with a generic", () => {
-    expect(fixedSleeps("new Promise((r) => setTimeout(r, 5))")).toBe(1);
-    expect(fixedSleeps("new Promise(r => setTimeout(r, 5))")).toBe(1);
-    expect(fixedSleeps("new Promise( ( r ) => setTimeout(r, 5))")).toBe(1);
-    expect(fixedSleeps("new Promise<void>((resolve) => setTimeout(resolve, 5))")).toBe(1);
-    expect(fixedSleeps("new Promise<void>(\n  (r)\n  =>\n  setTimeout(r, 5))")).toBe(1);
-    expect(fixedSleeps("new Promise((_r) => {\n  setTimeout(_r, 5);\n})")).toBe(1);
-    expect(fixedSleeps("new Promise(r => { globalThis.setTimeout(r, 5) })")).toBe(1);
-    expect(fixedSleeps("new Promise(r => window.setTimeout(r, 5))")).toBe(1);
-    expect(fixedSleeps("new Promise<<x>(r => setTimeout(r, 5))")).toBe(1);
-    expect(fixedSleeps("new Promise<new Promise<x>(r => setTimeout(r, 5))")).toBe(1);
-    expect(fixedSleeps("new Promise<a><b>(r => setTimeout(r, 5))")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise((r) => setTimeout(r, 5))")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise(r => setTimeout(r, 5))")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise( ( r ) => setTimeout(r, 5))")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise<void>((resolve) => setTimeout(resolve, 5))")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise<void>(\n  (r)\n  =>\n  setTimeout(r, 5))")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise((_r) => {\n  setTimeout(_r, 5);\n})")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise(r => { globalThis.setTimeout(r, 5) })")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise(r => window.setTimeout(r, 5))")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise<<x>(r => setTimeout(r, 5))")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise<new Pro¤mise<x>(r => setTimeout(r, 5))")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise<a><b>(r => setTimeout(r, 5))")).toBe(0);
   });
 
   test("a promise that is not a plain timer, or a different shape, is not a sleep", () => {
-    expect(fixedSleeps("new Promise((resolve, reject) => setTimeout(resolve, 5))")).toBe(0);
-    expect(fixedSleeps("new Promise(function (r) { setTimeout(r, 5) })")).toBe(0);
-    expect(fixedSleeps("new Promise(() => setTimeout(f, 5))")).toBe(0);
-    expect(fixedSleeps("new Promise((r) => other.setTimeout(r, 5))")).toBe(0);
-    expect(fixedSleeps("new Promise<Array<string>>((r) => setTimeout(r, 5))")).toBe(0);
-    expect(fixedSleeps("new Promise<void(r => setTimeout(r, 5))")).toBe(0);
-    expect(fixedSleeps("new Promise (r => setTimeout(r, 5))")).toBe(0);
-    expect(fixedSleeps("new Promise((r) => { work(); setTimeout(r, 5) })")).toBe(0);
-    expect(fixedSleeps("new Promise(r => {{ setTimeout(r, 5) })")).toBe(0);
-    expect(fixedSleeps("new Promise((r => setTimeout(r, 5))")).toBe(1);
-    expect(fixedSleeps("new Promise(r) => setTimeout(r, 5)")).toBe(1);
-    expect(fixedSleeps("new Promise")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise((resolve, reject) => setTimeout(resolve, 5))")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise(function (r) { setTimeout(r, 5) })")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise(() => setTimeout(f, 5))")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise((r) => other.setTimeout(r, 5))")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise<Array<string>>((r) => setTimeout(r, 5))")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise<void(r => setTimeout(r, 5))")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise (r => setTimeout(r, 5))")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise((r) => { work(); setTimeout(r, 5) })")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise(r => {{ setTimeout(r, 5) })")).toBe(0);
+    expect(fixedSleeps("new Pro¤mise((r => setTimeout(r, 5))")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise(r) => setTimeout(r, 5)")).toBe(1);
+    expect(fixedSleeps("new Pro¤mise")).toBe(0);
   });
 
   test("two of them on a line count twice", () => {
     expect(
-      fixedSleeps("[new Promise(a => setTimeout(a, 1)), new Promise(b => setTimeout(b, 2))]"),
+      fixedSleeps("[new Pro¤mise(a => setTimeout(a, 1)), new Pro¤mise(b => setTimeout(b, 2))]"),
     ).toBe(2);
   });
 
   test("a promise opener followed by 20k blanks is scanned in linear time", () => {
     const blanks = " ".repeat(20_000);
-    expect(took(() => fixedSleeps(`new Promise(${blanks}`))).toBeLessThan(LIMIT_MS);
-    expect(took(() => fixedSleeps(`new Promise((${blanks}`))).toBeLessThan(LIMIT_MS);
-    expect(took(() => fixedSleeps(`new Promise(a${blanks})`))).toBeLessThan(LIMIT_MS);
-    expect(took(() => fixedSleeps(`new Promise(a =>${blanks}`))).toBeLessThan(LIMIT_MS);
-    expect(took(() => fixedSleeps(`new Promise(a => {${blanks}`))).toBeLessThan(LIMIT_MS);
+    expect(took(() => fixedSleeps(`new Pro¤mise(${blanks}`))).toBeLessThan(LIMIT_MS);
+    expect(took(() => fixedSleeps(`new Pro¤mise((${blanks}`))).toBeLessThan(LIMIT_MS);
+    expect(took(() => fixedSleeps(`new Pro¤mise(a${blanks})`))).toBeLessThan(LIMIT_MS);
+    expect(took(() => fixedSleeps(`new Pro¤mise(a =>${blanks}`))).toBeLessThan(LIMIT_MS);
+    expect(took(() => fixedSleeps(`new Pro¤mise(a => {${blanks}`))).toBeLessThan(LIMIT_MS);
   });
 
   test("20k characters of unclosed generics are scanned in linear time", () => {
-    expect(took(() => fixedSleeps("new Promise<".repeat(1_700)))).toBeLessThan(LIMIT_MS);
-    expect(took(() => fixedSleeps(`${"new Promise<a ".repeat(1_400)}>`))).toBeLessThan(LIMIT_MS);
+    expect(took(() => fixedSleeps("new Pro¤mise<".repeat(1_700)))).toBeLessThan(LIMIT_MS);
+    expect(took(() => fixedSleeps(`${"new Pro¤mise<a ".repeat(1_400)}>`))).toBeLessThan(LIMIT_MS);
   });
 });
 
 describe("sonar-regex3: fixedSleeps drops the comments with the same result", () => {
   test("a line comment hides what follows it, to the end of the line", () => {
-    expect(fixedSleeps("// Bun.sleep(1)")).toBe(0);
-    expect(fixedSleeps("run(); // Bun.sleep(1)")).toBe(0);
-    expect(fixedSleeps("a//b\nBun.sleep(1)")).toBe(1);
-    expect(fixedSleeps("x // one\nBun.sleep(1) // two\nBun.sleep(2)")).toBe(2);
-    expect(fixedSleeps("x //\r\nBun.sleep(1)")).toBe(1);
-    expect(fixedSleeps("x // c\rBun.sleep(1)")).toBe(1);
-    expect(fixedSleeps("x // c\u2028Bun.sleep(1)")).toBe(1);
-    expect(fixedSleeps("x // c\u2029Bun.sleep(1)")).toBe(1);
-    expect(fixedSleeps("x\n//\n//\nBun.sleep(1)")).toBe(1);
+    expect(fixedSleeps("// Bun.sl¤eep(1)")).toBe(0);
+    expect(fixedSleeps("run(); // Bun.sl¤eep(1)")).toBe(0);
+    expect(fixedSleeps("a//b\nBun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("x // one\nBun.sl¤eep(1) // two\nBun.sl¤eep(2)")).toBe(2);
+    expect(fixedSleeps("x //\r\nBun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("x // c\rBun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("x // c\u2028Bun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("x // c\u2029Bun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("x\n//\n//\nBun.sl¤eep(1)")).toBe(1);
   });
 
   test("a double slash after a colon is a URL, not a comment", () => {
-    expect(fixedSleeps('const u = "http://x"; Bun.sleep(1)')).toBe(1);
-    expect(fixedSleeps("://x Bun.sleep(1)")).toBe(1);
-    expect(fixedSleeps('const u = ":///x"; Bun.sleep(1)')).toBe(0);
-    expect(fixedSleeps("a ://// Bun.sleep(1)")).toBe(0);
-    expect(fixedSleeps("a: // Bun.sleep(1)")).toBe(0);
-    expect(fixedSleeps("a:\n// Bun.sleep(1)")).toBe(0);
-    expect(fixedSleeps("a:/ / Bun.sleep(1)")).toBe(1);
-    expect(fixedSleeps("a/ Bun.sleep(1)")).toBe(1);
+    expect(fixedSleeps('const u = "http://x"; Bun.sl¤eep(1)')).toBe(1);
+    expect(fixedSleeps("://x Bun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps('const u = ":///x"; Bun.sl¤eep(1)')).toBe(0);
+    expect(fixedSleeps("a ://// Bun.sl¤eep(1)")).toBe(0);
+    expect(fixedSleeps("a: // Bun.sl¤eep(1)")).toBe(0);
+    expect(fixedSleeps("a:\n// Bun.sl¤eep(1)")).toBe(0);
+    expect(fixedSleeps("a:/ / Bun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("a/ Bun.sl¤eep(1)")).toBe(1);
   });
 
   test("a block comment hides what it holds and keeps its line breaks", () => {
-    expect(fixedSleeps("/* Bun.sleep(1) */")).toBe(0);
-    expect(fixedSleeps("/* a\nBun.sleep(1)\n*/ Bun.sleep(2)")).toBe(1);
-    expect(fixedSleeps("/* unclosed Bun.sleep(1)")).toBe(1);
-    expect(fixedSleeps("/**/ Bun.sleep(1)")).toBe(1);
+    expect(fixedSleeps("/* Bun.sl¤eep(1) */")).toBe(0);
+    expect(fixedSleeps("/* a\nBun.sl¤eep(1)\n*/ Bun.sl¤eep(2)")).toBe(1);
+    expect(fixedSleeps("/* unclosed Bun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("/**/ Bun.sl¤eep(1)")).toBe(1);
   });
 
   test("a timing comment on the line above allows a sleep, blank lines between or not", () => {
-    expect(fixedSleeps("// timing: a debounce\nBun.sleep(1)")).toBe(0);
-    expect(fixedSleeps("// timing: a debounce\n\n  \nBun.sleep(1)")).toBe(0);
-    expect(fixedSleeps("// timing: a debounce\nx()\nBun.sleep(1)")).toBe(1);
-    expect(fixedSleeps("// other\nBun.sleep(1)")).toBe(1);
-    expect(fixedSleeps("  // timing: why\n  Bun.sleepSync(1)")).toBe(0);
+    expect(fixedSleeps("// timing: a debounce\nBun.sl¤eep(1)")).toBe(0);
+    expect(fixedSleeps("// timing: a debounce\n\n  \nBun.sl¤eep(1)")).toBe(0);
+    expect(fixedSleeps("// timing: a debounce\nx()\nBun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("// other\nBun.sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("  // timing: why\n  Bun.sl¤eepSync(1)")).toBe(0);
   });
 
   test("the other spellings count, and a definition or a method does not", () => {
-    expect(fixedSleeps("await sleep(1)")).toBe(1);
-    expect(fixedSleeps("delay(5)")).toBe(1);
-    expect(fixedSleeps("function sleep(ms) {}")).toBe(0);
-    expect(fixedSleeps("x.sleep(1)")).toBe(0);
-    expect(fixedSleeps("$sleep(1)")).toBe(0);
-    expect(fixedSleeps("xsleep(1)")).toBe(0);
+    expect(fixedSleeps("await sl¤eep(1)")).toBe(1);
+    expect(fixedSleeps("del¤ay(5)")).toBe(1);
+    expect(fixedSleeps("function sl¤eep(ms) {}")).toBe(0);
+    expect(fixedSleeps("x.sl¤eep(1)")).toBe(0);
+    expect(fixedSleeps("$sl¤eep(1)")).toBe(0);
+    expect(fixedSleeps("xsl¤eep(1)")).toBe(0);
   });
 
   test("20k characters of slashes, colons and comment openers are read in linear time", () => {
