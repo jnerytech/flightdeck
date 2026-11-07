@@ -40,6 +40,9 @@ export function TopBarHost(
     t: T;
     onChoose(hostId: string): void;
     onAdd(): void;
+    /** The tab row shows every host's tabs, grouped by host. */
+    allHosts?: boolean;
+    onAllHosts?(on: boolean): void;
   }>,
 ) {
   const { t } = props;

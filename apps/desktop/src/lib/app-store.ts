@@ -183,6 +183,7 @@ import {
   type UiMode,
 } from "./simple-mode.ts";
 import { savePayload } from "./ssh.ts";
+import { TabScopeController } from "./tab-scope.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
@@ -1025,6 +1026,7 @@ export class AppStore {
       browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
     );
     this.tabOrder = new TabOrderController(platform.storage);
+    this.tabScope = new TabScopeController(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
@@ -1115,6 +1117,8 @@ export class AppStore {
   readonly clock: SharedClock;
   /** How Ctrl+Tab orders the tabs (issue #148). */
   readonly tabOrder: TabOrderController;
+  /** Whether the tab row shows one host's tabs or every host's (issue #644). */
+  readonly tabScope: TabScopeController;
   /** The board columns' width, one for all, kept across starts (issue #161). */
   readonly boardWidth: BoardWidth;
   /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */

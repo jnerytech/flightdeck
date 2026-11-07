@@ -103,6 +103,12 @@ interface Parts {
   onShared: boolean;
 }
 
+/** One host's tabs in the all-hosts row: its first area, whose tabs the row shows. */
+export interface HostGroup {
+  hostId: string;
+  tabs: Tabs;
+}
+
 /**
  * The window's tabs, one set per host plus the shared screens (issue #644). Each host keeps its
  * own `Workspace` (its tabs, their histories and its split); the shared screens are one `Tabs`,
@@ -213,6 +219,11 @@ export class HostTabs {
       this.onShared = this.hostId === null && this.shared.tabs.length > 0;
     }
     this.emit();
+  }
+
+  /** Every host's first-area tabs, host by host, for the row that shows all hosts (issue #644). */
+  groups(): HostGroup[] {
+    return [];
   }
 
   /** How many tabs a host's set holds (for "wsl - A: 5 tabs"). */
