@@ -1288,6 +1288,22 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
 
 O host anuncia `review` no `host.info`; um host mais antigo não tem a aba Mudanças.
 
+### As visões da página de uma sessão
+
+A página de uma sessão mostra uma **visão** por vez: Conversa, Mudanças, Arquivos, Tempo, Rastro e
+Mensagens (cada uma só onde o host a oferece). Elas formam uma **barra de abas**: a visão ativa é
+preenchida e tem uma barra embaixo, e a barra rola para o lado num painel estreito.
+
+- **Clique** numa visão, ou use as teclas: **Alt+1** a **Alt+6** escolhem a 1ª a 6ª visão da barra
+  (também de dentro da caixa de mensagem; `Ctrl+1` a `Ctrl+9` continuam sendo as abas do app), e com
+  o foco na barra as **setas**, **Home** e **End** passam de uma visão a outra, dando a volta.
+- A paleta (**Ctrl+K**) lista **Mostrar Mudanças**, **Mostrar Rastro** e as outras da página em que
+  você está, primeiro entre os comandos, e a folha `?` lista as teclas em **Visões da sessão**.
+- A conversa fica onde estava: o que você digitou na caixa continua lá depois de uma visita a outra
+  visão.
+- Cada aba de sessão **lembra a última visão** enquanto o app roda; uma aba que você nunca trocou
+  abre na conversa.
+
 ### `.worktreeinclude`
 
 Uma worktree nova recebe os arquivos rastreados do repositório, mas não os ignorados, como `.env`.
@@ -3139,8 +3155,8 @@ Configurações) e, depois de Enter, **Histórico**.
   de um card tem o ícone do card.
 - Sem nada digitado, uma seção **Recentes** vem primeiro, com até seis das entradas que você abriu
   (guardadas entre execuções): o que espera por você primeiro, depois o que está rodando, depois o
-  resto. Cada uma mostra **Alt+1** a **Alt+6**, que a abrem com a paleta aberta (fora dela não
-  fazem nada). A ordem fica fixa quando a paleta abre, para as linhas não se mexerem sob o cursor.
+  resto. Cada uma mostra **Alt+1** a **Alt+6**, que a abrem com a paleta aberta (fora dela, as
+  mesmas teclas escolhem as visões da página de uma sessão). A ordem fica fixa quando a paleta abre, para as linhas não se mexerem sob o cursor.
 - A paleta abre **restrita ao lugar onde você está**: num board ou card, ao host e ao projeto dele;
   numa sessão ou na página de um host, ao host. Os filtros aparecem como chips sob o campo; clique
   num para tirá-lo, ou em **Limpar todos os filtros**. A mudança dura só até a paleta fechar.
