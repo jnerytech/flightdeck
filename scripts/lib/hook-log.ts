@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { gitCommonDir } from "./claude-hooks.ts";
+import { gitCommonDir, printable } from "./claude-hooks.ts";
 
 /**
  * The decision log of the project's Claude Code hooks (.claude/hooks): one JSON line per call,
@@ -80,19 +80,27 @@ export function summarizeHookLog(text: string): string {
       out.push(`  ${rule.padEnd(ruleWidth)}${n}`);
     }
   }
-  const overrides = entries.filter(
-    (e) => e.rule === "push-wait" && e.decision === "waived" && e.detail,
-  );
-  if (overrides.length > 0) {
-    out.push("", "push-wait overrides:");
-    for (const e of overrides) {
-      const age = e.minutes === undefined ? "no run found" : `run ${e.minutes} min old`;
-      out.push(`  ${e.t.slice(0, 16).replace("T", " ")}  ${age.padEnd(15)}${e.detail}`);
-    }
-  }
+  out.push(...overrideLines(entries));
   const skipped = lines.length - entries.length;
   if (skipped > 0) out.push("", `${skipped} line(s) skipped (not a hook log entry)`);
   return out.join("\n");
+}
+
+/** #741: each push-wait override with its time, the cancelled run's age and its reason. */
+function overrideLines(entries: HookLogEntry[]): string[] {
+  const overrides = entries.filter(
+    (e) => e.rule === "push-wait" && e.decision === "waived" && e.detail,
+  );
+  if (overrides.length === 0) return [];
+  return [
+    "",
+    "push-wait overrides:",
+    ...overrides.map((e) => {
+      const age = e.minutes === undefined ? "no run in progress" : `run ${e.minutes} min old`;
+      const when = `${e.t.slice(0, 16).replace("T", " ")} UTC`;
+      return `  ${when}  ${age.padEnd(20)}${printable(e.detail ?? "")}`;
+    }),
+  ];
 }
 
 /** Nearest-rank percentile of sorted values, rounded to whole milliseconds. */
@@ -106,6 +114,12 @@ function parseEntry(line: string): HookLogEntry | null {
     const ok =
       typeof e?.hook === "string" &&
       typeof e.ms === "number" &&
+      typeof e.t === "string" &&
+      /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(e.t) &&
+      printable(e.hook) === e.hook &&
+      (e.rule === null || (typeof e.rule === "string" && printable(e.rule) === e.rule)) &&
+      (e.detail === undefined || typeof e.detail === "string") &&
+      (e.minutes === undefined || typeof e.minutes === "number") &&
       ["allow", "block", "waived"].includes(e.decision);
     return ok ? (e as HookLogEntry) : null;
   } catch {
