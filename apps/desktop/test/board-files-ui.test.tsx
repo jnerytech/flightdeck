@@ -383,6 +383,23 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     });
   });
 
+  test("Names picked again searches names again, in the same field", async () => {
+    const { pick, searches } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await type("Search names", "only");
+    await mode("Content");
+    await settle(() => searches.includes("card:B|content|only"));
+    const asked = searches.length;
+    await mode("Names");
+    await settle(() => searches.length > asked);
+    expect({
+      last: searches.at(-1),
+      pressed: screen.queryByRole("button", { name: "Names" })?.getAttribute("aria-pressed"),
+      field: screen.queryByRole("searchbox", { name: "Search names" }) !== null,
+    }).toEqual({ last: "card:B|name|only", pressed: "true", field: true });
+  });
+
   // #827 (review of #823): `path:line` lands on that line, as a terminal's link does (#506).
   test("a content match opens the file at its line", async () => {
     const { pick } = setup({ features: SEARCHING });
