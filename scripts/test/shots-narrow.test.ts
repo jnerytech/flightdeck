@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { shotNames } from "../demo-shots.ts";
-import { NARROW_SHOTS, narrowSizes } from "../lib/shots-narrow.ts";
+import { readFileSync } from "node:fs";
+import { NARROW_SHOTS, narrowSizes, unknownNarrowShots } from "../lib/shots-narrow.ts";
 
 describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () => {
   test("a dark print in the list is re-measured at 1024x700, 640x800 and 390x844", () => {
@@ -16,9 +16,17 @@ describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () =>
     expect(narrowSizes("dark", "paleta").length).toBe(0);
   });
 
-  test("#677: every name in the list is a print of demo:shots, so a typo cannot skip one in silence", () => {
-    const prints = shotNames();
-    expect(prints.length).toBeGreaterThan(40);
-    expect(NARROW_SHOTS.filter((name) => !prints.includes(name))).toEqual([]);
+  test("#677: a name in the list that is not a print is named, so a typo cannot skip one in silence", () => {
+    expect(unknownNarrowShots([...NARROW_SHOTS])).toEqual([]);
+    expect(unknownNarrowShots(NARROW_SHOTS.filter((name) => name !== "board"))).toEqual(["board"]);
+    expect(unknownNarrowShots([])).toEqual([...NARROW_SHOTS]);
+  });
+
+  test("#762: demo:shots checks its own print names before Chrome starts, without the test importing it", () => {
+    // Importing scripts/demo-shots.ts would count its untested browser code in the 100% gate.
+    const source = readFileSync("scripts/demo-shots.ts", "utf8");
+    const check = source.indexOf("unknownNarrowShots(shots(ids).map((shot) => shot.name))");
+    expect(check).toBeGreaterThan(-1);
+    expect(check).toBeLessThan(source.indexOf("chromium.launch("));
   });
 });

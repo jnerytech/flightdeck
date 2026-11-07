@@ -679,8 +679,10 @@ html:not(:has([data-slot="status-bar"])) {
   &:hover {
     background: color-mix(in oklch, var(--color-accent) 55%, transparent);
   }
+  /* A pinned tab is its icon: it never shrinks below it, however many tabs share the bar. */
   &[data-pinned="true"] {
     min-width: 0;
+    flex: none;
   }
   &:has([role="tab"][aria-selected="true"]) {
     background: var(--color-background);
@@ -834,6 +836,14 @@ html:not(:has([data-slot="status-bar"])) {
   40% {
     opacity: 1;
   }
+}
+
+/*
+ * A scroller under sticky form buttons (#731) brings a focused field into view above them, not
+ * under them (WCAG 2.4.11, focus not obscured). The viewport is the vendored ScrollArea's.
+ */
+[data-slot="scroll-area-viewport"]:has([data-sticky-actions]) {
+  scroll-padding-bottom: 6rem;
 }
 
 /*
@@ -1333,6 +1343,16 @@ html:not(:has([data-slot="status-bar"])) {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+/* A long page form's buttons (#731): they stay at the bottom of the page's scroller, over the
+   fields that scroll under them, so the primary is in reach without scrolling to the end. */
+@utility form-actions-sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  border-top-width: 1px;
+  background-color: var(--background);
+  padding-block: 0.75rem;
 }
 @utility legend-tight {
   margin-bottom: 0.25rem;

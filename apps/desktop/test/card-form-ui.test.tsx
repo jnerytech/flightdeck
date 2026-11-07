@@ -101,6 +101,43 @@ for (const [lang, t] of [
       expect(add()?.disabled).toBe(false);
     });
 
+    // #732: the reason under Add hung below the button and took no height, so when Add wrapped
+    // under a wide picker it covered the next field's label. In the row's help line it is in the
+    // flow, under the picker.
+    test("the reason under Add a blocker is the row's help line, so it never covers the next field", async () => {
+      await openCard(lang);
+      await settle(() => screen.queryByLabelText(t.deps.addLabel) !== null);
+      const deps = screen.queryByRole("region", { name: t.deps.title }) as HTMLElement;
+      const add = within(deps).queryByRole("button", { name: t.deps.add });
+      const reason = document.getElementById(add?.getAttribute("aria-describedby") ?? "");
+      expect({
+        text: reason?.textContent ?? null,
+        helpLine: reason?.classList.contains("field-help") ?? false,
+        hanging: reason?.closest(".action-with-reason") != null,
+      }).toEqual({ text: t.deps.pickFirst, helpLine: true, hanging: false });
+    });
+
+    // #732: Stop and Open PR are off on a card that has not started, and their reasons hung under
+    // each button, printing over each other and over Discard. They are the Run row's help lines now.
+    test("on a card that has not started, Stop and Open PR say why on lines of their own under the row", async () => {
+      await openCard(lang);
+      await settle(() => screen.queryByRole("button", { name: t.cardUi.stop }) !== null);
+      const run = screen.queryByRole("region", { name: t.cardUi.runTitle }) as HTMLElement;
+      const reasonOf = (name: string) => {
+        const button = within(run).queryByRole("button", { name });
+        const line = document.getElementById(button?.getAttribute("aria-describedby") ?? "");
+        return {
+          text: line?.textContent ?? null,
+          helpLine: line?.classList.contains("field-help") ?? false,
+          hanging: line?.closest(".action-with-reason") != null,
+        };
+      };
+      expect({ stop: reasonOf(t.cardUi.stop), pr: reasonOf(t.cardUi.openPr) }).toEqual({
+        stop: { text: t.cardUi.notRunning, helpLine: true, hanging: false },
+        pr: { text: t.cardUi.needWorktree, helpLine: true, hanging: false },
+      });
+    });
+
     test("the fields sit in a Details section and the start controls in a Run section", async () => {
       await openCard(lang);
       await settle(() => screen.queryByLabelText(t.cardUi.description) !== null);
@@ -146,7 +183,9 @@ for (const [lang, t] of [
 
     // OpenCode branch review M2: the adjust box and the workflow fields had only an aria-label,
     // and the blockers sat above the Details panel.
-    test("every field on the card screen has a visible label, and the panels read Details, Blocked by, Run", async () => {
+    // #732: Run came last, so a card that had not started opened with Start below an 800 px
+    // window. The card's next step comes first now; Details and Blocked by follow it.
+    test("every field on the card screen has a visible label, and the panels read Run, Details, Blocked by", async () => {
       await openCard(lang);
       await settle(() => screen.queryByLabelText(t.cardUi.description) !== null);
       const unlabelled = [
@@ -161,7 +200,7 @@ for (const [lang, t] of [
         .filter((name) =>
           [t.cardUi.detailsTitle, t.deps.title, t.cardUi.runTitle].includes(name ?? ""),
         );
-      expect(order).toEqual([t.cardUi.detailsTitle, t.deps.title, t.cardUi.runTitle]);
+      expect(order).toEqual([t.cardUi.runTitle, t.cardUi.detailsTitle, t.deps.title]);
     });
   });
 }

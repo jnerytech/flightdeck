@@ -38,12 +38,12 @@ export function ActionButton(
   const showReason = Boolean(disabled && !busy && disabledReason);
   const row = useFieldRow();
   const inRow = row !== null;
-  // In a form row the reason is the row's help line, under the first field.
+  // In a form row the reason is a help line of the row, under the first field: its own line (#732).
   React.useEffect(() => {
     if (!row || !showReason) return;
-    row.setReason(disabledReason ?? null);
-    return () => row.setReason(null);
-  }, [row, showReason, disabledReason]);
+    row.setReason(reasonId, disabledReason ?? null);
+    return () => row.setReason(reasonId, null);
+  }, [row, showReason, disabledReason, reasonId]);
   const handle = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (started.current) return;
     const result = onClick?.(event) as unknown;
@@ -62,7 +62,7 @@ export function ActionButton(
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       data-feedback={busy ? stage : undefined}
-      aria-describedby={showReason ? (row?.id ?? reasonId) : rest["aria-describedby"]}
+      aria-describedby={showReason ? reasonId : rest["aria-describedby"]}
       onClick={handle}
     >
       {(stage === "spinner" || stage === "slow") && <Spinner />}

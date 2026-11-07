@@ -57,7 +57,9 @@ describe("terminal-ui: fechar a aba de um terminal", () => {
     expect(inDialog("Encerrar processo")).not.toBeNull();
     await click(inDialog("Cancelar"));
     expect(dialog()).toBeNull();
-    expect(store.tabs.tabs).toHaveLength(2);
+    // The terminal stays in its host's tabs; Home stays in the shared ones.
+    expect(store.tabs.tabs.map((tab) => tab.router.current.name)).toEqual(["terminal"]);
+    expect(store.hostTabs.shared.tabs).toHaveLength(1);
   });
 
   test("the dialog opens with Desanexar focused, so Enter keeps the process running", async () => {

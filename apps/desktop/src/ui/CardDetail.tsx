@@ -175,24 +175,8 @@ export const CardDetail = memo(function CardDetail(props: {
                 }
               />
             ))}
-          <CardFields
-            store={store}
-            hostId={hostId}
-            card={card}
-            {...(props.edit !== undefined ? { edit: props.edit } : {})}
-            withRoi={withRoi}
-            onOpenSettings={props.onOpenSettings}
-          />
-          {/* Details, then what the card waits for, then how it runs (issue #174). */}
-          {withDeps && (
-            <CardDeps
-              store={store}
-              hostId={hostId}
-              card={card}
-              cards={projectCards(state, hostId, card.projectId)}
-              workflows={workflows}
-            />
-          )}
+          {/* How it runs, then the details, then what the card waits for: the card's next step
+              (Start, Stop, Open PR) is the first thing on it, not under the form (#732). */}
           <CardArena
             store={store}
             hostId={hostId}
@@ -232,6 +216,23 @@ export const CardDetail = memo(function CardDetail(props: {
               </>
             )}
           </CardArena>
+          <CardFields
+            store={store}
+            hostId={hostId}
+            card={card}
+            {...(props.edit !== undefined ? { edit: props.edit } : {})}
+            withRoi={withRoi}
+            onOpenSettings={props.onOpenSettings}
+          />
+          {withDeps && (
+            <CardDeps
+              store={store}
+              hostId={hostId}
+              card={card}
+              cards={projectCards(state, hostId, card.projectId)}
+              workflows={workflows}
+            />
+          )}
           <CardAdjustment
             store={store}
             hostId={hostId}

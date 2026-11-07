@@ -34,7 +34,7 @@
   "src/ui/MaintenanceSection.tsx": 2,
   "src/ui/MessagingRulesSection.tsx": 14,
   "src/ui/NeedsYou.tsx": 22,
-  "src/ui/NewSessionForm.tsx": 2,
+  "src/ui/NewSessionForm.tsx": 1,
   "src/ui/PersonasPage.tsx": 8,
   "src/ui/PrComments.tsx": 13,
   "src/ui/ProjectsPage.tsx": 14,

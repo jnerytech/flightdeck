@@ -34,6 +34,9 @@ export const JOURNEYS: readonly string[] = [
   "health-fold",
   "project-tree-cap",
   "board-landing",
+  "sessions-no-host",
+  "nova-sessao-alcance",
+  "tabs-por-host",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
@@ -62,6 +65,12 @@ export function acoesActions(): string[] {
 export const VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
   { width: 1280, height: 800 },
   { width: 800, height: 600 },
+];
+
+/** The windows a screen's main action must be in view and clickable in: a phone's and a desktop's (#754). */
+export const REACH_VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
+  { width: 390, height: 844 },
+  { width: 1280, height: 800 },
 ];
 
 /** The widths the page must never scroll sideways at (issue #103), with 12 tabs and long ids. */

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { seedDemoHosts } from "../src/demo/boot.ts";
 import { tabMenu } from "./aba-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -16,66 +17,72 @@ afterEach(cleanup);
 const names = () =>
   screen.queryAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.textContent);
 
+/**
+ * A store with one host, "alfa", and `count` of its tabs open: its history, Projects and automatic
+ * approvals. The shared Sessões stays pinned at the left of the row and is not part of what moves.
+ */
+async function open(count: number) {
+  const mem = memoryPlatform(false, "pt-BR");
+  seedDemoHosts(mem.win.localStorage, mem.tokens, [
+    { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+  ]);
+  const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+  render(<App store={store} />);
+  await act(async () => {
+    for (const name of ["history", "projects", "auto-approvals"].slice(0, count)) {
+      store.hostTabs.open({ name, host: "ha" } as never);
+    }
+  });
+  return store;
+}
+
 describe("abas: arrastar para reordenar", () => {
   test("dragging a tab onto another puts it there, within its group", async () => {
-    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
-    render(<App store={store} />);
-    await act(async () => {
-      store.tabs.open({ name: "needs-you" });
-      store.tabs.open({ name: "settings" });
-    });
-    expect(names()).toEqual(["Sessões", "Precisa de você", "Configurações"]);
-    const [first, , last] = screen.queryAllByRole("tab");
+    await open(3);
+    expect(names()).toEqual(["Sessões", "alfa", "Projetos", "Aprovações automáticas"]);
+    const [first, , last] = screen.queryAllByRole("tab").slice(1);
     expect(first?.getAttribute("draggable")).toBe("true");
     await act(async () => {
       fireEvent.dragStart(first as HTMLElement);
       fireEvent.dragOver(last as HTMLElement);
       fireEvent.drop(last as HTMLElement);
     });
-    expect(names()).toEqual(["Precisa de você", "Configurações", "Sessões"]);
+    expect(names()).toEqual(["Sessões", "Projetos", "Aprovações automáticas", "alfa"]);
   });
 
   test("a drop with nothing being dragged changes nothing", async () => {
-    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
-    render(<App store={store} />);
+    await open(1);
     await act(async () => {
-      store.tabs.open({ name: "needs-you" });
+      fireEvent.drop(screen.queryAllByRole("tab")[1] as HTMLElement);
     });
-    await act(async () => {
-      fireEvent.drop(screen.queryAllByRole("tab")[0] as HTMLElement);
-    });
-    expect(names()).toEqual(["Sessões", "Precisa de você"]);
+    expect(names()).toEqual(["Sessões", "alfa"]);
   });
 
   test("the buttons Mover para a esquerda e para a direita reordenam a aba ativa, desligados nas pontas do grupo", async () => {
-    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
-    render(<App store={store} />);
-    await act(async () => {
-      store.tabs.open({ name: "needs-you" });
-      store.tabs.open({ name: "settings" });
-    });
-    const left = "Mover a aba Configurações para a esquerda";
-    const right = "Mover a aba Configurações para a direita";
+    await open(3);
+    const left = "Mover a aba Aprovações automáticas para a esquerda";
+    const right = "Mover a aba Aprovações automáticas para a direita";
     const disabled = (name: string) => menu.item(name)?.getAttribute("aria-disabled") === "true";
-    await menu.open("Configurações");
+    await menu.open("Aprovações automáticas");
     expect(disabled(left)).toBe(false);
     expect(disabled(right)).toBe(true);
     await act(async () => {
       fireEvent.click(menu.item(left) as HTMLElement);
     });
-    expect(names()).toEqual(["Sessões", "Configurações", "Precisa de você"]);
-    await menu.open("Configurações");
+    expect(names()).toEqual(["Sessões", "alfa", "Aprovações automáticas", "Projetos"]);
+    await menu.open("Aprovações automáticas");
     expect(disabled(right)).toBe(false);
     await act(async () => {
       fireEvent.click(menu.item(left) as HTMLElement);
     });
-    expect(names()).toEqual(["Configurações", "Sessões", "Precisa de você"]);
-    await menu.open("Configurações");
+    // The first tab of the host: the shared tabs on its left are another group.
+    expect(names()).toEqual(["Sessões", "Aprovações automáticas", "alfa", "Projetos"]);
+    await menu.open("Aprovações automáticas");
     expect(disabled(left)).toBe(true);
     await act(async () => {
       fireEvent.click(menu.item(right) as HTMLElement);
     });
-    expect(names()).toEqual(["Sessões", "Configurações", "Precisa de você"]);
+    expect(names()).toEqual(["Sessões", "alfa", "Aprovações automáticas", "Projetos"]);
     // The menu closes with the focus back on the tab's own button or the tab, never on the page.
     // The menu hands the focus back after it closes, a beat later on a slow runner: wait for it,
     // and fail with a short message (a failed `expect` on the element dumps the whole page).
@@ -85,16 +92,14 @@ describe("abas: arrastar para reordenar", () => {
   });
 
   test("a pinned tab keeps its group: the unpinned tab next to it cannot go left past it", async () => {
-    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
-    render(<App store={store} />);
+    const store = await open(2);
     await act(async () => {
-      store.tabs.open({ name: "needs-you" });
       store.tabs.pin(store.tabs.tabs[0]?.id ?? "", true);
     });
-    expect(names()).toEqual(["Sessões", "Precisa de você"]);
-    await menu.open("Precisa de você");
-    expect(
-      menu.item("Mover a aba Precisa de você para a esquerda")?.getAttribute("aria-disabled"),
-    ).toBe("true");
+    expect(names()).toEqual(["Sessões", "alfa", "Projetos"]);
+    await menu.open("Projetos");
+    expect(menu.item("Mover a aba Projetos para a esquerda")?.getAttribute("aria-disabled")).toBe(
+      "true",
+    );
   });
 });

@@ -6,11 +6,17 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
-import { acoesAction, DANGER_SESSION, OVERFLOW_VIEWPORTS, VIEWPORTS } from "../lib/e2e-journeys.ts";
+import {
+  acoesAction,
+  DANGER_SESSION,
+  OVERFLOW_VIEWPORTS,
+  REACH_VIEWPORTS,
+  VIEWPORTS,
+} from "../lib/e2e-journeys.ts";
 import { ensureOnline } from "../lib/e2e-online.ts";
 import {
   BARS,
@@ -111,6 +117,32 @@ export async function waitFor(check: () => Promise<boolean>, what: string, timeo
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   throw new Error(`esperava: ${what}`);
+}
+
+/**
+ * The screen's main action is inside the window as the page settles (nothing scrolled it there) and
+ * can take a click: the #731 and #732 class of bug, where it sat below the fold (#754).
+ */
+export async function inReach(c: Context, what: string, button: Locator) {
+  await button.waitFor({ timeout: WAIT });
+  let seen = "";
+  const fits = async () => {
+    const size = c.page.viewportSize();
+    const box = await button.boundingBox();
+    seen = `${JSON.stringify(box)} in ${size?.width}x${size?.height}`;
+    return (
+      size !== null &&
+      box !== null &&
+      box.x >= 0 &&
+      box.y >= 0 &&
+      box.x + box.width <= size.width + 0.5 &&
+      box.y + box.height <= size.height + 0.5
+    );
+  };
+  await waitFor(fits, `${what} dentro da janela`).catch((error) => {
+    throw new Error(`${error.message}: ${seen}`);
+  });
+  await button.click({ trial: true, timeout: WAIT });
 }
 
 export const journeys: Record<string, (c: Context) => Promise<void>> = {
@@ -926,9 +958,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => !(await asleep()), "a sessão acordada", SESSION_WAIT);
   },
 
-  // 26. The tab row (#488): two tabs, only the active one selected and showing its ×, which the
-  // other shows on hover; closing the active one leaves the other active; in a window under 600 px
-  // tall the tabs share the top bar's row.
+  // 26. The tab row (#488, #644): the shared Sessions tab first, with no ×, then the host's own two
+  // tabs, only the active one selected and showing its ×, which the other shows on hover; closing the
+  // active one leaves the other active; in a window under 600 px tall the tabs share the top bar's row.
   "tab-row": async (c) => {
     await open(c, { name: "hub" });
     await c.page
@@ -939,6 +971,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const bar = c.page.getByRole("tablist", { name: c.t("tabs.list"), exact: true });
     const tabs = bar.getByRole("tab");
     await waitFor(async () => (await tabs.count()) === 2, "duas abas");
+    // A new tab is one more Overview of the host in use.
+    await c.page.keyboard.press("Control+t");
+    await c.page.keyboard.press("Escape");
+    await waitFor(async () => (await tabs.count()) === 3, "três abas");
     const selected = async () =>
       (await tabs.evaluateAll((all) => all.map((tab) => tab.getAttribute("aria-selected")))).join();
     // The × of the nth tab is a sibling of the tab in its item, drawn invisible until it is wanted.
@@ -946,11 +982,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       c.page.locator(".tab-item").nth(n).locator("button[tabindex='-1']");
     const shown = async (n: number) =>
       Number(await cross(n).evaluate((el) => getComputedStyle(el).opacity)) > 0.5;
+    // The shared tab belongs to no host: it has no ×.
+    if ((await cross(0).count()) !== 0) throw new Error("a aba compartilhada não devia ter ×");
     const picked = (await selected()).split(",").indexOf("true");
-    if (picked < 0 || (await selected()).split(",").filter((s) => s === "true").length !== 1) {
-      throw new Error(`uma única aba ativa era esperado, veio: ${await selected()}`);
+    if (picked < 1 || (await selected()).split(",").filter((s) => s === "true").length !== 1) {
+      throw new Error(`uma única aba do host ativa era esperado, veio: ${await selected()}`);
     }
-    const other = picked === 0 ? 1 : 0;
+    const other = picked === 1 ? 2 : 1;
     if (!(await shown(picked))) throw new Error("a aba ativa devia mostrar o ×");
     if (await shown(other)) throw new Error("a aba inativa devia esconder o ×");
     await tabs.nth(other).hover();
@@ -960,8 +998,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => (await selected()).split(",")[other] === "true", "a outra aba ativa");
     // Closing the active tab leaves the other one, active.
     await cross(other).click();
-    await waitFor(async () => (await tabs.count()) === 1, "uma aba depois de fechar");
-    if ((await selected()) !== "true") throw new Error("a aba que sobrou devia estar ativa");
+    await waitFor(async () => (await tabs.count()) === 2, "duas abas depois de fechar");
+    if ((await selected()).split(",")[1] !== "true") {
+      throw new Error("a aba do host que sobrou devia estar ativa");
+    }
     // In a window under 600 px tall the area's tabs share the top bar's row.
     // Where the strip sits is read in the page: a locator that finds nothing would wait for the whole test.
     const inHeader = () =>
@@ -1244,6 +1284,80 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await newCard.waitFor({ timeout: WAIT });
     if ((await cards.count()) !== 0) throw new Error("o Board deveria abrir o último quadro");
   },
+
+  // Issue #730: with no host online, Sessions is not a dead end: it says so and offers Add a host.
+  // The demo's other hosts are offline, so removing the two online ones leaves none to list.
+  "sessions-no-host": async (c) => {
+    await open(c, { name: "hub" });
+    for (const host of ["alfa", "beta"]) {
+      await c.page
+        .getByRole("button", { name: c.t("sidebar.hostMenu", { host }), exact: true })
+        .click();
+      await c.page.getByRole("menuitem", { name: c.t("sidebar.removeHost"), exact: true }).click();
+      await c.page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: c.t("sidebar.removeHost"), exact: true })
+        .click();
+      await c.page
+        .getByRole("button", { name: c.t("sidebar.hostMenu", { host }), exact: true })
+        .waitFor({ state: "detached", timeout: WAIT });
+    }
+    await c.page.getByText(c.t("hub.noOnlineHost"), { exact: true }).waitFor({ timeout: WAIT });
+    await c.page.getByRole("button", { name: c.t("hub.addHost"), exact: true }).click();
+    await c.page.getByText(c.t("sidebar.addHostCrumb"), { exact: true }).first().waitFor({
+      timeout: WAIT,
+    });
+  },
+
+  // Issue #731: New session -> Create session. The button is in view and clickable as the form
+  // opens, in a phone-sized window and a desktop one, and it starts the session.
+  "nova-sessao-alcance": async (c) => {
+    const create = c.page.getByRole("button", { name: c.t("newSession.create"), exact: true });
+    const prompt = c.page.getByLabel(c.t("newSession.prompt"), { exact: true });
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "new-session", host: ALFA });
+      await prompt.fill("[bash] ls");
+      await inReach(c, `${c.t("newSession.create")} a ${size.width}x${size.height}`, create);
+    }
+    // At the desktop size it also does what it says: the form leaves and the session opens.
+    await create.click();
+    await create.waitFor({ state: "detached", timeout: WAIT });
+  },
+
+  // Issue #644: each host has its own tabs. The row shows the shared Sessions tab and the host in
+  // use; picking another host in the switcher swaps the row, and the first host's tabs are back
+  // when it is picked again.
+  "tabs-por-host": async (c) => {
+    await open(c, { name: "hub" });
+    const tabs = c.page
+      .getByRole("tablist", { name: c.t("tabs.list"), exact: true })
+      .getByRole("tab");
+    const count = (n: number, what: string) =>
+      waitFor(async () => (await tabs.count()) === n, what);
+    const switcher = (host: string) =>
+      c.page.getByRole("button", { name: c.t("shell.host", { host }) });
+    const sidebar = c.page.locator("aside").first();
+    await sidebar
+      .getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) })
+      .click({ modifiers: ["Control"] });
+    await count(2, "a aba compartilhada e a do alfa");
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    // One more tab of alfa's own (a new tab is the Overview of the host in use).
+    await c.page.keyboard.press("Control+t");
+    await c.page.keyboard.press("Escape");
+    await count(3, "a aba compartilhada e duas do alfa");
+    // Another host in the switcher: the row holds the shared tab and that host's own.
+    await switcher("alfa").click();
+    await c.page.getByRole("menuitemradio", { name: /beta/ }).click();
+    await switcher("beta").waitFor({ timeout: WAIT });
+    await count(2, "a aba compartilhada e a do beta");
+    // Back to the first: its two tabs are still there.
+    await switcher("beta").click();
+    await c.page.getByRole("menuitemradio", { name: /alfa/ }).click();
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    await count(3, "as duas abas do alfa voltaram");
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
@@ -1283,10 +1397,13 @@ async function crumbsProblem(page: Page): Promise<string | null> {
   });
 }
 
-/** Since #488 a tab is as wide as its title, as in VS Code: never under the minimum, never past 13rem. */
+/**
+ * Since #488 a tab is as wide as its title, as in VS Code: never under the minimum, never past 13rem.
+ * The shared tabs are pinned and show only their icon (#644), so they are not counted.
+ */
 async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
   const widths = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>(".tab-item")].map((tab) =>
+    [...document.querySelectorAll<HTMLElement>(".tab-item:not([data-pinned])")].map((tab) =>
       Math.round(tab.getBoundingClientRect().width),
     ),
   );
@@ -1809,8 +1926,9 @@ export async function layout(c: Context, problems: string[]) {
   // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
   // the bars' tablists are counted (a screen may have tabs of its own), and the split is always
   // closed again, so the next language starts with one area.
+  // A split belongs to a host's set of tabs, so the window starts on a host's screen (#644).
   await c.page.setViewportSize({ width: 1280, height: 800 });
-  await open(c, { name: "hub" });
+  await open(c, { name: "host", host: ALFA });
   await c.page.keyboard.press("Control+\\");
   try {
     await waitFor(

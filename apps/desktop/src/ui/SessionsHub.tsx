@@ -304,7 +304,7 @@ export function SessionsHub(
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             onSelect={() => {
-              store.tabs.openNextInNewTab();
+              store.hostTabs.openNextInNewTab();
               props.onOpen(row);
             }}
           >

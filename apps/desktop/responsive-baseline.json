@@ -1,26 +1,26 @@
 {
   "overflow-x|dark en 1024x700 abas-muitas|div.tab-item": {
-    "count": 16,
-    "worst": 1456
+    "count": 15,
+    "worst": 1395
   },
   "overflow-x|dark en 390x844 abas-muitas|div.tab-item": {
-    "count": 20,
-    "worst": 1850
+    "count": 19,
+    "worst": 1789
   },
   "overflow-x|dark en 640x800 abas-muitas|div.tab-item": {
-    "count": 18,
-    "worst": 1656
+    "count": 17,
+    "worst": 1595
   },
   "overflow-x|dark pt-BR 1024x700 abas-muitas|div.tab-item": {
-    "count": 16,
-    "worst": 1456
+    "count": 15,
+    "worst": 1395
   },
   "overflow-x|dark pt-BR 390x844 abas-muitas|div.tab-item": {
-    "count": 20,
-    "worst": 1850
+    "count": 19,
+    "worst": 1789
   },
   "overflow-x|dark pt-BR 640x800 abas-muitas|div.tab-item": {
-    "count": 18,
-    "worst": 1656
+    "count": 17,
+    "worst": 1595
   }
 }

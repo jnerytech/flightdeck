@@ -108,6 +108,8 @@ describe("areas: a tela se adapta à largura da sua área", () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
     render(<App store={store} />);
     await act(async () => {
+      // A split belongs to a host's own window: open one of its screens first.
+      store.hostTabs.open({ name: "history", host: "ha" });
       store.workspace.toggleSplit();
     });
     for (const n of ["1", "2"]) {
