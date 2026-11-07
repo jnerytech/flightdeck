@@ -22,7 +22,7 @@ function readString(bytes: Uint8Array, offset: number): [Uint8Array, number] | n
 }
 
 const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
-const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+const toBase64 = (bytes: Uint8Array) => btoa(String.fromCodePoint(...bytes));
 
 /** The public key is stored in the clear in the OpenSSH private key, even with a passphrase. */
 async function sshInfo(value: string): Promise<SecretInfo> {
@@ -30,7 +30,7 @@ async function sshInfo(value: string): Promise<SecretInfo> {
   if (!body) return {};
   let bytes: Uint8Array;
   try {
-    bytes = Uint8Array.from(atob(body.replace(/\s+/g, "")), (c) => c.charCodeAt(0));
+    bytes = Uint8Array.from(atob(body.replace(/\s+/g, "")), (c) => c.codePointAt(0) ?? 0);
   } catch {
     return {};
   }
@@ -48,7 +48,7 @@ async function sshInfo(value: string): Promise<SecretInfo> {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", blob.slice()));
   return {
     publicKey: `${text(kind)} ${toBase64(blob)}`,
-    fingerprint: `SHA256:${toBase64(digest).replace(/=+$/, "")}`,
+    fingerprint: `SHA256:${toBase64(digest).replaceAll("=", "")}`,
   };
 }
 
