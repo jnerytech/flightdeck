@@ -257,6 +257,7 @@ interface CardRow {
   external_url: string | null;
   external_gone: number;
   estimate_hours: number | null;
+  validation_note: string | null;
   arena_of: string | null;
   variant: string | null;
   unblock_when: UnblockWhen;
@@ -614,6 +615,7 @@ export class Board {
       externalUrl: row.external_url,
       externalGone: row.external_gone === 1,
       estimateHours: row.estimate_hours,
+      validationNote: row.validation_note,
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
       waitingOn: rows.length === 0 ? this.unsatisfied(id, row.unblock_when) : [],
@@ -903,6 +905,8 @@ export class Board {
       description?: string;
       /** Phase 36: `null` removes the estimate. */
       estimateHours?: number | null;
+      /** Issue #78: blank or `null` clears the note. */
+      validationNote?: string | null;
       blockedBy?: string[];
       unblockWhen?: UnblockWhen;
       autoStart?: { workflow: string | null } | null;
@@ -912,13 +916,16 @@ export class Board {
     if (patch.blockedBy) this.checkBlockers(id, card.projectId, patch.blockedBy);
     this.db
       .query(
-        `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, unblock_when = ?, auto_start = ?,
-           updated_at = ? WHERE id = ?`,
+        `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, validation_note = ?, unblock_when = ?,
+           auto_start = ?, updated_at = ? WHERE id = ?`,
       )
       .run(
         patch.title ?? card.title,
         patch.description ?? card.description,
         patch.estimateHours === undefined ? card.estimateHours : patch.estimateHours,
+        patch.validationNote === undefined
+          ? card.validationNote
+          : patch.validationNote?.trim() || null,
         patch.unblockWhen ?? card.unblockWhen,
         autoStartOf(patch.autoStart === undefined ? card.autoStart : patch.autoStart),
         now(),

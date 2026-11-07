@@ -409,9 +409,9 @@ describe("board-contracts-ui: the project's contracts, force and the recorded no
   });
 });
 
-const openMenu = (title: string) =>
+const openMenu = (title: string, label = `Actions for ${title}`) =>
   act(async () => {
-    fireEvent.pointerDown(within(li(title)).getByRole("button", { name: `Actions for ${title}` }), {
+    fireEvent.pointerDown(within(li(title)).getByRole("button", { name: label }), {
       button: 0,
       ctrlKey: false,
       pointerType: "mouse",
@@ -469,7 +469,7 @@ describe("board-contracts-ui: Start asks when the card has no acceptance criteri
   test("it reads in Portuguese too", async () => {
     setup({ language: "pt-BR" });
     await settle(() => screen.queryByRole("heading", { name: "Board de api" }) !== null);
-    await openMenu("A");
+    await openMenu("A", "Ações de A");
     await click(await screen.findByRole("menuitem", { name: "Iniciar card" }));
     const ask = dialog() as HTMLElement;
     expect(ask === null).toBe(false);

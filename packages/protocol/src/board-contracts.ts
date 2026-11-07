@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { BoardColumn, Card } from "./index.ts";
 
 /** What a column can ask of a card before it gets there (issue #78). */
-export const ContractCheck = z.enum(["criteria", "pr", "checks"]);
+export const ContractCheck = z.enum(["criteria", "pr", "checks", "validation"]);
 export type ContractCheck = z.infer<typeof ContractCheck>;
 
 /**
@@ -16,7 +16,7 @@ export const ColumnContract = z.object({
 export type ColumnContract = z.infer<typeof ColumnContract>;
 
 /** What a card still lacks for a column, as a reader would say it. */
-export type ContractNeed = "criteria" | "pr" | "checksPending" | "checksFailing";
+export type ContractNeed = "criteria" | "pr" | "checksPending" | "checksFailing" | "validation";
 
 export type ContractOverrides = Partial<Record<BoardColumn, ColumnContract>>;
 
@@ -44,13 +44,14 @@ const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
 /** What `card` lacks for `column`; nothing when the column asks nothing or the card has it all. */
 export function missingFor(
   column: BoardColumn,
-  card: Pick<Card, "description" | "prUrl" | "checksState">,
+  card: Pick<Card, "description" | "prUrl" | "checksState" | "validationNote">,
   overrides: ContractOverrides = {},
 ): ContractNeed[] {
   const needs: ContractNeed[] = [];
   for (const check of contractOf(column, overrides)?.checks ?? []) {
     if (check === "criteria" && !CHECKLIST_ITEM.test(card.description)) needs.push("criteria");
     if (check === "pr" && !card.prUrl) needs.push("pr");
+    if (check === "validation" && !card.validationNote?.trim()) needs.push("validation");
     // Checks belong to a PR. A repository with none reports no state: that is not the card's fault.
     if (check === "checks" && card.prUrl) {
       if (card.checksState === "pending") needs.push("checksPending");

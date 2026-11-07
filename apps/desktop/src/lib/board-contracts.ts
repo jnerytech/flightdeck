@@ -64,7 +64,11 @@ export function dragNeeds(
   return [...new Set(needs)];
 }
 
-/** What a card lacks for starting. Stub. */
-export function startNeeds(_card: Card, _overrides: ContractOverrides = {}): Need[] {
-  return ["pr"];
+/**
+ * What a card lacks for starting it (issue #78): the acceptance criteria that In progress asks
+ * for. Starting asks about nothing else, and a project that sets In progress with no `criteria`
+ * is never asked.
+ */
+export function startNeeds(card: Card, overrides: ContractOverrides = {}): Need[] {
+  return missingFor("in_progress", card, overrides).filter((need) => need === "criteria");
 }

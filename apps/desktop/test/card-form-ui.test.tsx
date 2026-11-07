@@ -46,7 +46,7 @@ async function openCard(lang: "en" | "pt-BR", options: { alone?: boolean } = {})
       cardId: card.id,
     });
   });
-  return { d, card };
+  return { d, card, store };
 }
 
 /** The visible `<label>` tied to a control found by its name, or why there is none. */
@@ -209,7 +209,7 @@ for (const [lang, t] of [
 // Issue #78, slice 3a: the validation note and the question before starting.
 describe("card-form (en): the validation note and starting a card with no criteria", () => {
   test("the validation note is a labelled field that saves on the card, and clears with empty text", async () => {
-    const { d, card } = await openCard("en");
+    const { d, card, store } = await openCard("en");
     await settle(() => screen.queryByLabelText("Description") !== null);
     expect(screen.queryByLabelText("Validation note") === null).toBe(false);
     const field = screen.getByLabelText("Validation note") as HTMLTextAreaElement;
@@ -221,6 +221,10 @@ describe("card-form (en): the validation note and starting a card with no criter
     });
     await settle(() => d.board.getCard(card.id).validationNote !== null);
     expect(d.board.getCard(card.id).validationNote).toBe("Ran it by hand on the staging data.");
+    // The field follows the card again once the host's update has reached the screen.
+    await settle(() =>
+      Object.values(store.getState().cards).some((c) => c.validationNote !== null),
+    );
     await act(async () => {
       fireEvent.change(field, { target: { value: "" } });
     });
@@ -231,14 +235,20 @@ describe("card-form (en): the validation note and starting a card with no criter
   });
 
   test("Start asks first; Cancel starts nothing, Start anyway starts the card", async () => {
-    const { d, card } = await openCard("en");
-    const started = () =>
-      d.board.getCard(card.id).queued || d.board.getCard(card.id).sessionId !== null;
+    const { card, store } = await openCard("en");
+    // The host is not asked to run a card here: what the app sends is what is checked.
+    const sent: string[] = [];
+    const forward = store.hostCommand.bind(store);
+    store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
+      if (type !== "card.start") return forward(hostId, type as never, payload as never);
+      sent.push((payload as { cardId: string }).cardId);
+      return {};
+    }) as never;
     await settle(() => screen.queryByRole("button", { name: "Start" }) !== null);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Start" }));
     });
-    await settle(() => started() || screen.queryByRole("alertdialog") !== null);
+    await settle(() => sent.length > 0 || screen.queryByRole("alertdialog") !== null);
     expect(screen.queryByRole("alertdialog") === null).toBe(false);
     const dialog = screen.getByRole("alertdialog");
     expect(dialog.textContent).toContain("acceptance criteria");
@@ -246,9 +256,7 @@ describe("card-form (en): the validation note and starting a card with no criter
       fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     });
     expect(screen.queryByRole("alertdialog") === null).toBe(true);
-    expect(d.board.getCard(card.id).queued || d.board.getCard(card.id).sessionId !== null).toBe(
-      false,
-    );
+    expect(sent).toEqual([]);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Start" }));
     });
@@ -258,8 +266,7 @@ describe("card-form (en): the validation note and starting a card with no criter
         within(screen.getByRole("alertdialog")).getByRole("button", { name: "Start anyway" }),
       );
     });
-    await settle(
-      () => d.board.getCard(card.id).queued || d.board.getCard(card.id).sessionId !== null,
-    );
+    await settle(() => sent.length === 1);
+    expect(sent).toEqual([card.id]);
   });
 });
