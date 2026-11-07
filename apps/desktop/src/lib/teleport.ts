@@ -68,6 +68,9 @@ const MARKS = /[\p{Cc}\p{Cf}]/gu;
 export const plainText = (text: string, max: number): string =>
   text.replace(MARKS, "").slice(0, max);
 
+/** A host the app reaches over plain `ws://` and not on this machine: nothing encrypts its traffic. */
+export const isPlainRemote = (_url: string): boolean => false;
+
 export function teleportSummary(manifest: TeleportManifest): TeleportSummary {
   const branch = manifest.git?.branch ? plainText(manifest.git.branch, 255) : null;
   return {
