@@ -10,6 +10,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
+import { DEMO_FAKE_KEY } from "../lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
   acoesAction,
@@ -1651,6 +1652,75 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page
       .getByRole("button", { name: c.t("shell.host", { host: BETA }) })
       .waitFor({ timeout: WAIT });
+  },
+
+  // The board's Files panel (#117, #846): a worktree picked in the sidebar tree opens its files
+  // beside the columns; a name search finds a file and marks a credential as hidden instead of
+  // opening it; a content search finds a key-shaped line without its key (#827, #829) and finds
+  // nothing in a credential file; a match opens its file. Then the panel's search box is in reach
+  // in a phone-sized window and a desktop one.
+  "board-arquivos": async (c) => {
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    const tree = c.page.locator("[data-slot='project-tree']");
+    const head = tree.locator("[data-project='flightdeck-web']");
+    await head.waitFor({ timeout: WAIT });
+    if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+    await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
+    const panel = c.page.locator("[data-slot='board-files']");
+    await panel.getByText("app.ts").first().waitFor({ timeout: WAIT });
+    const results = panel.getByRole("list", { name: c.t("files.results"), exact: true });
+    // By name: the file is found; a credential is listed as hidden and cannot be opened.
+    const names = panel.getByRole("searchbox", { name: c.t("files.searchNames"), exact: true });
+    await names.fill("config");
+    await results.getByRole("button", { name: "config.example.ts", exact: true }).waitFor({
+      timeout: WAIT,
+    });
+    await names.fill(".env");
+    await results
+      .getByText(c.t("files.hidden"), { exact: true })
+      .first()
+      .waitFor({ timeout: WAIT });
+    if ((await results.getByRole("button", { name: ".env", exact: true }).count()) > 0) {
+      throw new Error("um arquivo de credencial devia aparecer como oculto, sem botão para abrir");
+    }
+    // By content: the key-shaped line is found, and nothing of the key shows.
+    await panel.getByRole("tab", { name: c.t("files.byContent"), exact: true }).click();
+    const content = panel.getByRole("searchbox", { name: c.t("files.searchContent"), exact: true });
+    await content.fill("chave de exemplo");
+    await results.getByRole("button", { name: /^config\.example\.ts:\d+$/ }).waitFor({
+      timeout: WAIT,
+    });
+    const shown = (await results.textContent()) ?? "";
+    for (const leak of [DEMO_FAKE_KEY, "demodemo"]) {
+      if (shown.includes(leak)) throw new Error(`a busca por conteúdo mostrou a chave: ${leak}`);
+    }
+    if (!shown.includes("[redacted]")) {
+      throw new Error(`a linha com a chave devia sair mascarada: ${shown.slice(0, 200)}`);
+    }
+    // A credential file's content is never searched.
+    await content.fill("DEMO_MODE");
+    await panel.getByText(c.t("files.nothingFound"), { exact: true }).waitFor({ timeout: WAIT });
+    // A match opens its file.
+    await panel.getByRole("tab", { name: c.t("files.byName"), exact: true }).click();
+    await panel
+      .getByRole("searchbox", { name: c.t("files.searchNames"), exact: true })
+      .fill("app.ts");
+    await results.getByRole("button", { name: "app.ts", exact: true }).click();
+    const viewer = c.page.getByRole("region", { name: c.t("files.viewer", { path: "app.ts" }) });
+    await viewer.locator(".cm-line").first().waitFor({ timeout: WAIT });
+    await viewer.getByRole("button", { name: c.t("files.close"), exact: true }).click();
+    // The panel's search box is in reach in a phone-sized window and a desktop one.
+    const toggle = c.page.getByRole("button", { name: c.t("board.files"), exact: true });
+    const search = panel.getByRole("searchbox").first();
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      if (!(await search.isVisible())) {
+        if ((await toggle.count()) === 0)
+          throw new Error("o botão Arquivos sumiu ao redimensionar");
+        await toggle.click();
+      }
+      await inReach(c, `a busca de arquivos a ${size.width}x${size.height}`, search);
+    }
   },
 };
 
