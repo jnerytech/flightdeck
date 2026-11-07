@@ -41,6 +41,7 @@ export const JOURNEYS: readonly string[] = [
   "orcamento-alcance",
   "modo-simples-alcance",
   "layout-medido",
+  "teleport-mover",
   "time-novo-alcance",
 ];
 
