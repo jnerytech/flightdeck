@@ -34,15 +34,17 @@ const same = (a: WorktreeFilter | null, b: WorktreeFilter) =>
  * per card with a worktree, each with its state dot, branch and the branch it was cut from.
  * Picking one narrows the board and the Sessions list to it and opens the project's board.
  */
-export function ProjectTree(props: {
-  store: AppStore;
-  tree: TreeProject[];
-  filter: WorktreeFilter | null;
-  /** On the Sessions list a pick narrows it in place instead of opening the board. */
-  stay?: boolean;
-  t: T;
-  go(route: Route): void;
-}) {
+export function ProjectTree(
+  props: Readonly<{
+    store: AppStore;
+    tree: TreeProject[];
+    filter: WorktreeFilter | null;
+    /** On the Sessions list a pick narrows it in place instead of opening the board. */
+    stay?: boolean;
+    t: T;
+    go(route: Route): void;
+  }>,
+) {
   const { t, filter } = props;
   const pick = (project: TreeProject, node: TreeNode) => {
     const next: WorktreeFilter = {
@@ -75,11 +77,9 @@ export function ProjectTree(props: {
     if (to !== undefined && to === now) return;
     const toFold = !now;
     const nextFolded = toFold ? [...folded, key] : folded.filter((other) => other !== key);
-    const nextUnfolded = toFold
-      ? unfolded.filter((other) => other !== key)
-      : foldedByDefault(total, key, active)
-        ? [...unfolded, key]
-        : unfolded;
+    let nextUnfolded = unfolded;
+    if (toFold) nextUnfolded = unfolded.filter((other) => other !== key);
+    else if (foldedByDefault(total, key, active)) nextUnfolded = [...unfolded, key];
     setFolded(nextFolded);
     setUnfolded(nextUnfolded);
     props.store.setTreeFolded(nextFolded);

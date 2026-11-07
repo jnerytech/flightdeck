@@ -497,6 +497,7 @@ export const DAEMON_FEATURES = [
   "worktrees",
   "projectTrust",
   "harnessStack",
+  "harnessPreview",
   "keepAwake",
   "autoUpdate",
 ] as const;

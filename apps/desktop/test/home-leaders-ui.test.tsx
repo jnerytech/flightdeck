@@ -179,6 +179,15 @@ describe("home-leaders-ui: where the tokens of the 7 days went", () => {
     expect(routes).toEqual([{ name: "costs", period: "7d", projectKey: APP }]);
   });
 
+  test("a project's row names its folder in a tooltip, and its accessible name stays the short label", async () => {
+    setup();
+    await loaded("Where the tokens went");
+    const open = screen.queryByRole("button", { name: "Open the costs of app" });
+    expect(open === null).toBe(false);
+    expect(open?.getAttribute("title")).toBe("/x/app");
+    expect(open?.textContent).toBe("app");
+  });
+
   test("the trend reads the complete days: days 1-3, then days 4-6, never today", async () => {
     const { ranges } = setup();
     await loaded("Where the tokens went");

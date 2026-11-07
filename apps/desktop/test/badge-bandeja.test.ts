@@ -85,10 +85,10 @@ describe("badge-icon: the taskbar badge (issue #632)", () => {
   test("the picture stays 32 x 32 pixels of 4 bytes, each a whole byte", () => {
     for (const mode of ["count", "dot"] as const) {
       const icon = rgbaOf(3, mode);
-      expect(icon.length).toBe(32 * 32 * 4);
+      expect(icon).toHaveLength(32 * 32 * 4);
       expect(icon.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)).toBe(true);
     }
-    expect(rgbaOf(3).length).toBe(BADGE_SIZE * BADGE_SIZE * 4);
+    expect(rgbaOf(3)).toHaveLength(BADGE_SIZE * BADGE_SIZE * 4);
   });
 
   test("the top-left corner is transparent", () => {
@@ -108,9 +108,9 @@ describe("badge-icon: the taskbar badge (issue #632)", () => {
   test("the badge leaves a margin: nothing is drawn past a 26 px disc", () => {
     for (const count of [1, 10]) {
       const drawn = pixels(rgbaOf(count)).filter((p) => p.a > 0);
-      expect(drawn.length > 0).toBe(true);
-      expect(across(drawn, "x") <= 26).toBe(true);
-      expect(across(drawn, "y") <= 26).toBe(true);
+      expect(drawn.length).toBeGreaterThan(0);
+      expect(across(drawn, "x")).toBeLessThanOrEqual(26);
+      expect(across(drawn, "y")).toBeLessThanOrEqual(26);
       // A pixel the disc only touches has its centre up to half a pixel diagonal outside it.
       expect(drawn.every((p) => fromMiddle(p) <= 13.75)).toBe(true);
     }
@@ -119,26 +119,26 @@ describe("badge-icon: the taskbar badge (issue #632)", () => {
   test("the opaque red area is at most 26 px across, and is a real disc", () => {
     for (const count of [1, 10]) {
       const red = pixels(rgbaOf(count)).filter(isRed);
-      expect(across(red, "x") <= 26).toBe(true);
-      expect(across(red, "y") <= 26).toBe(true);
-      expect(across(red, "x") >= 18).toBe(true);
-      expect(across(red, "y") >= 18).toBe(true);
+      expect(across(red, "x")).toBeLessThanOrEqual(26);
+      expect(across(red, "y")).toBeLessThanOrEqual(26);
+      expect(across(red, "x")).toBeGreaterThanOrEqual(18);
+      expect(across(red, "y")).toBeGreaterThanOrEqual(18);
     }
   });
 
   test("a white ring edges the disc, so it reads on a light taskbar", () => {
     const ring = pixels(rgbaOf(1)).filter((p) => isWhite(p) && fromMiddle(p) >= 11.5);
-    expect(ring.length > 40).toBe(true);
+    expect(ring.length).toBeGreaterThan(40);
     expect(ring.every((p) => fromMiddle(p) <= 13)).toBe(true);
-    expect(pixels(rgbaOf(1)).find((p) => p.x === 16 && p.y === 4 && isWhite(p)) !== undefined).toBe(
-      true,
-    );
+    expect(
+      pixels(rgbaOf(1)).find((p) => p.x === 16 && p.y === 4 && isWhite(p)),
+    ).not.toBeUndefined();
   });
 
   test("the digits are bold: a white stroke at least 3 px wide, drawn inside the disc", () => {
     for (const count of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
       const digit = pixels(rgbaOf(count)).filter((p) => isWhite(p) && fromMiddle(p) < 11);
-      expect(digit.length > 20).toBe(true);
+      expect(digit.length).toBeGreaterThan(20);
       const widest = Math.max(
         ...Array.from({ length: BADGE_SIZE }, (_, y) => {
           const row = digit.filter((p) => p.y === y).map((p) => p.x);
@@ -151,7 +151,7 @@ describe("badge-icon: the taskbar badge (issue #632)", () => {
           return best;
         }),
       );
-      expect(widest >= 3).toBe(true);
+      expect(widest).toBeGreaterThanOrEqual(3);
     }
   });
 
@@ -159,7 +159,7 @@ describe("badge-icon: the taskbar badge (issue #632)", () => {
     for (const count of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
       const white = pixels(rgbaOf(count)).filter(isWhite);
       const digit = white.filter((p) => fromMiddle(p) < 11);
-      expect(digit.length > 0).toBe(true);
+      expect(digit.length).toBeGreaterThan(0);
       expect(white.every((p) => fromMiddle(p) <= 13)).toBe(true);
       expect(digit.every((p) => fromMiddle(p) <= 10.2)).toBe(true);
     }
@@ -172,33 +172,33 @@ describe("badge-icon: the taskbar badge (issue #632)", () => {
       const maxX = Math.max(...digit.map((p) => p.x));
       const minY = Math.min(...digit.map((p) => p.y));
       const maxY = Math.max(...digit.map((p) => p.y));
-      expect(Math.abs(minX + maxX + 1 - BADGE_SIZE) <= 3).toBe(true);
-      expect(Math.abs(minY + maxY + 1 - BADGE_SIZE) <= 3).toBe(true);
+      expect(Math.abs(minX + maxX + 1 - BADGE_SIZE)).toBeLessThanOrEqual(3);
+      expect(Math.abs(minY + maxY + 1 - BADGE_SIZE)).toBeLessThanOrEqual(3);
     }
   });
 
   test("each digit looks different, and past nine it reads 9+ whatever the count", () => {
     const looks = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => rgbaOf(n).join()));
     expect(looks.size).toBe(10);
-    expect(rgbaOf(99).join() === rgbaOf(10).join()).toBe(true);
-    expect(rgbaOf(2.9).join() === rgbaOf(2).join()).toBe(true);
+    expect(rgbaOf(99).join()).toBe(rgbaOf(10).join());
+    expect(rgbaOf(2.9).join()).toBe(rgbaOf(2).join());
   });
 
   test("the dot is under 16 px across, at the bottom-right, with no number and no white", () => {
     const dot = pixels(rgbaOf(7, "dot"));
     const drawn = dot.filter((p) => p.a > 0);
-    expect(across(drawn, "x") < 16).toBe(true);
-    expect(across(drawn, "y") < 16).toBe(true);
-    expect(across(drawn, "x") >= 12).toBe(true);
-    expect(across(drawn, "y") >= 12).toBe(true);
+    expect(across(drawn, "x")).toBeLessThan(16);
+    expect(across(drawn, "y")).toBeLessThan(16);
+    expect(across(drawn, "x")).toBeGreaterThanOrEqual(12);
+    expect(across(drawn, "y")).toBeGreaterThanOrEqual(12);
     expect(dot.some((p) => p.a > 0 && p.r === 255 && p.g === 255 && p.b === 255)).toBe(false);
     expect(drawn.every((p) => p.x >= 16 && p.y >= 16)).toBe(true);
     expect(dot.some(isRed)).toBe(true);
-    expect(rgbaOf(1, "dot").join() === rgbaOf(9, "dot").join()).toBe(true);
-    expect(rgbaOf(1, "dot").join() === rgbaOf(1).join()).toBe(false);
+    expect(rgbaOf(1, "dot").join()).toBe(rgbaOf(9, "dot").join());
+    expect(rgbaOf(1, "dot").join()).not.toBe(rgbaOf(1).join());
   });
 
   test("the count is the default mode", () => {
-    expect(rgbaOf(4).join() === rgbaOf(4, "count").join()).toBe(true);
+    expect(rgbaOf(4).join()).toBe(rgbaOf(4, "count").join());
   });
 });

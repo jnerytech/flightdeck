@@ -970,7 +970,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
   "N contas" quando diferem.
 - **Dados de** (#126): com dois hosts ou mais, a barra do Início tem um menu que diz de quem são os
-  números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
+  números mostrados, **Todos os hosts**, um host ou um projeto do grupo **Projetos** (esse projeto
+  em todos os hosts, com o nome no subtítulo), e os troca; a escolha fica guardada entre
   aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
   abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
   hosts**; um host cujo daemon precisa de atualização diz isso no lugar, e o menu não o oferece. Os

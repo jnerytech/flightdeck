@@ -60,7 +60,7 @@ for (const [lang, dict] of [
       expect(initialOf()?.getAttribute("aria-hidden")).toBe("true");
       cleanup();
       render(<TopBarHost hosts={[]} currentId={null} t={t} onChoose={() => {}} onAdd={() => {}} />);
-      expect(initialOf() === null).toBe(true);
+      expect(initialOf() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     });
 
     test("the drawer opens with the shell's drawerTop above the sidebar, and a wide window never draws it", async () => {
@@ -75,14 +75,14 @@ for (const [lang, dict] of [
         </AppShell>
       );
       render(shell);
-      expect(screen.queryByText("history") === null).toBe(true);
+      expect(screen.queryByText("history") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
       await viewport(500);
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: "Expand" }));
       });
       const drawer = screen.queryByRole("dialog", { name: "Side" });
-      expect(within(drawer as HTMLElement).queryByText("history") !== null).toBe(true);
-      expect(within(drawer as HTMLElement).queryByText("hosts") !== null).toBe(true);
+      expect(within(drawer as HTMLElement).queryByText("history")).not.toBeNull();
+      expect(within(drawer as HTMLElement).queryByText("hosts")).not.toBeNull();
     });
 
     test("in the app, back and forward sit in the top bar, and below 640 px move into the drawer", async () => {
@@ -94,21 +94,21 @@ for (const [lang, dict] of [
       render(<App store={store} />);
       await act(() => store.addHost({ name: "alfa", url: "ws://127.0.0.1:1/v1/ws", token: TOKEN }));
       const bar = () => within(screen.getByRole("banner"));
-      expect(bar().queryByRole("button", { name: dict.nav.back }) !== null).toBe(true);
-      expect(bar().queryByRole("button", { name: dict.nav.forward }) !== null).toBe(true);
+      expect(bar().queryByRole("button", { name: dict.nav.back })).not.toBeNull();
+      expect(bar().queryByRole("button", { name: dict.nav.forward })).not.toBeNull();
 
       await viewport(800);
-      expect(bar().queryByRole("button", { name: dict.nav.back }) !== null).toBe(true);
+      expect(bar().queryByRole("button", { name: dict.nav.back })).not.toBeNull();
 
       await viewport(500);
-      expect(bar().queryByRole("button", { name: dict.nav.back }) === null).toBe(true);
-      expect(bar().queryByRole("button", { name: dict.nav.forward }) === null).toBe(true);
+      expect(bar().queryByRole("button", { name: dict.nav.back }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+      expect(bar().queryByRole("button", { name: dict.nav.forward }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
       await act(async () => {
         fireEvent.click(bar().getByRole("button", { name: dict.shell.expand }));
       });
       const drawer = within(screen.getByRole("dialog", { name: dict.shell.sidebar }));
-      expect(drawer.queryByRole("button", { name: dict.nav.back }) !== null).toBe(true);
-      expect(drawer.queryByRole("button", { name: dict.nav.forward }) !== null).toBe(true);
+      expect(drawer.queryByRole("button", { name: dict.nav.back })).not.toBeNull();
+      expect(drawer.queryByRole("button", { name: dict.nav.forward })).not.toBeNull();
     });
   });
 }

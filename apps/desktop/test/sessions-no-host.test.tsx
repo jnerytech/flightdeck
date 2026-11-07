@@ -84,15 +84,15 @@ for (const lang of ["en", "pt-BR"] as const) {
   describe(`sessions-no-host (${lang}): the Sessions list never ends in a dead end without a host (#730)`, () => {
     test("with no host it says so and offers Add a host, in place of the fold buttons", async () => {
       await mount(lang, { hosts: [] });
-      expect(screen.queryByText(words.noHost) !== null).toBe(true);
-      expect(addButton() !== null).toBe(true);
-      expect(screen.queryByRole("button", { name: words.expandAll }) === null).toBe(true);
+      expect(screen.queryByText(words.noHost)).not.toBeNull();
+      expect(addButton()).not.toBeNull();
+      expect(screen.queryByRole("button", { name: words.expandAll }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     });
 
     test("the Add a host button opens the Add host flow, the one Home and the sidebar use", async () => {
       const store = await mount(lang, { hosts: [] });
       const before = store.router.current.name;
-      expect(addButton() !== null).toBe(true);
+      expect(addButton()).not.toBeNull();
       await act(async () => {
         fireEvent.click(addButton() as HTMLElement);
       });
@@ -101,8 +101,8 @@ for (const lang of ["en", "pt-BR"] as const) {
 
     test("with only an offline host and no session to list it says no host is online and offers Add a host", async () => {
       await mount(lang, { hosts: [host("offline")] as never as State["hosts"], hub: {} });
-      expect(screen.queryByText(words.noOnlineHost) !== null).toBe(true);
-      expect(addButton() !== null).toBe(true);
+      expect(screen.queryByText(words.noOnlineHost)).not.toBeNull();
+      expect(addButton()).not.toBeNull();
     });
 
     test("with an online host and sessions the empty state is absent and the list stays", async () => {
@@ -110,10 +110,10 @@ for (const lang of ["en", "pt-BR"] as const) {
         hosts: [host("online")] as never as State["hosts"],
         hub: { h1: { managed: [], history } } as never as State["hub"],
       });
-      expect(screen.queryByText(words.noHost) === null).toBe(true);
-      expect(screen.queryByText(words.noOnlineHost) === null).toBe(true);
-      expect(addButton() === null).toBe(true);
-      expect(screen.queryByRole("button", { name: words.expandAll }) !== null).toBe(true);
+      expect(screen.queryByText(words.noHost) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+      expect(screen.queryByText(words.noOnlineHost) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+      expect(addButton() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+      expect(screen.queryByRole("button", { name: words.expandAll })).not.toBeNull();
     });
   });
 }
