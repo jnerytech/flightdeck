@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   ALL_SCOPE,
   activeScope,
+  awayKey,
   DATA_SCOPE_KEY,
   DataScopeController,
   parseScope,
@@ -121,5 +122,24 @@ describe("data-scope: whose data the scoped screens show (#126)", () => {
       first: ALL_SCOPE,
       now: { kind: "host", hostId: "a" },
     });
+  });
+});
+
+// #886: the notice says why the scoped host shows nothing, in what the screen lists.
+describe("data-scope: why a scoped host has nothing to show", () => {
+  test("an incompatible daemon needs an update; any other host is offline, numbers or sessions", () => {
+    expect([
+      awayKey("incompatible", "numbers"),
+      awayKey("incompatible", "sessions"),
+      awayKey("offline", "numbers"),
+      awayKey("offline", "sessions"),
+      awayKey("refused", "sessions"),
+    ]).toEqual([
+      "scope.incompatible",
+      "scope.incompatible",
+      "scope.offline",
+      "scope.offlineSessions",
+      "scope.offlineSessions",
+    ]);
   });
 });
