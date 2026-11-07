@@ -176,9 +176,18 @@ describe("personas-ui-tela: a persona row (#588)", () => {
     expect({
       grid: security?.getAttribute("data-slot") ?? null,
       editInActions: Boolean(actions && edit && actions.contains(edit)),
+      // The name has to exist for "outside the actions" to mean anything.
+      nameFound: security?.querySelector("[data-name]") != null,
       textOutside: Boolean(
-        actions && !actions.contains(security?.querySelector("[data-name]") ?? null),
+        actions &&
+          security?.querySelector("[data-name]") &&
+          !actions.contains(security.querySelector("[data-name]")),
       ),
-    }).toEqual({ grid: "persona-row", editInActions: true, textOutside: true });
+    }).toEqual({
+      grid: "persona-row",
+      editInActions: true,
+      nameFound: true,
+      textOutside: true,
+    });
   });
 });
