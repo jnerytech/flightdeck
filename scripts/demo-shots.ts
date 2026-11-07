@@ -309,6 +309,16 @@ function shots(ids: DemoIds): Shot[] {
         await page.locator("[data-slot=board-files]").getByText("app.ts").waitFor();
       },
     },
+    // #812: a pressed toggle (Blocked) looks pressed, in fill and in a ring, beside unpressed ones.
+    {
+      name: "board-bloqueados",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        const blocked = page.getByRole("button", { name: /^(Bloqueados|Blocked)$/ });
+        await blocked.click();
+        await page.locator('[data-slot="button"][aria-pressed="true"]').first().waitFor();
+      },
+    },
     {
       name: "card",
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },

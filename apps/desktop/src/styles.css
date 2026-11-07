@@ -2219,6 +2219,15 @@ html:not(:has([data-slot="status-bar"])) {
   font-weight: var(--weight-label);
 }
 
+/* A pressed toggle (#812), whatever its variant: the accent's fill and a 2 px inset ring, twice
+   the 1 px border, so on and off differ in shape too. Outside the layers, so it beats the
+   variant's own background and its hover. */
+[data-slot="button"][aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+
 /* A disabled button's reason hangs under it without adding height to the row (issue #38). */
 @utility action-reason {
   position: absolute;
