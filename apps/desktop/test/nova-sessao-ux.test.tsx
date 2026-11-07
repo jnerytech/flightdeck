@@ -115,6 +115,28 @@ describe("nova-sessao-ux: the form says what it needs", () => {
     expect(created[1]).toEqual({ cwd: "/work", prompt: "faça isto", permissionMode: "default" });
   });
 
+  // #731: the form was taller than the window inside a pane that does not scroll, so Create
+  // session sat below it and only Tab reached it. It is a page now: its title is the page's, its
+  // body scrolls, and its buttons stay at the bottom of the window.
+  test("the form is a page whose body scrolls, and Create session stays at the bottom of the window", async () => {
+    const { TContext } = await import("../src/i18n/context.tsx");
+    const { translator } = await import("../src/i18n/index.ts");
+    render(
+      <TContext.Provider value={translator("en")}>
+        <NewSessionForm host={host} onCreate={() => {}} />
+      </TContext.Provider>,
+    );
+    const title = screen.queryByRole("heading", { name: "New session on pc" });
+    const form = screen.queryByRole("button", { name: "Create session" })?.closest("form");
+    const create = screen.queryByRole("button", { name: "Create session" });
+    expect({
+      title: title?.closest("[data-slot='page-header']") !== null && title !== null,
+      scrolls:
+        form?.closest("[data-slot='page-body']")?.closest("[data-slot='scroll-area']") != null,
+      sticky: create?.closest("[data-sticky-actions]") != null,
+    }).toEqual({ title: true, scrolls: true, sticky: true });
+  });
+
   test("a Model select sits by the permission mode: the default sends none, a choice sends it", async () => {
     const created: Array<Record<string, unknown>> = [];
     const { TContext } = await import("../src/i18n/context.tsx");
