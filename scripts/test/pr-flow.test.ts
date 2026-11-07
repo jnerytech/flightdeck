@@ -56,6 +56,12 @@ function fake(
     history?: string[];
     /** The version in apps/desktop/package.json at a commit of main, by SHA. */
     versions?: Record<string, string>;
+    /** `gh run list` of a branch's PR runs, by branch (default "[]"); null: gh fails (#741). */
+    prRuns?: Record<string, string | null>;
+    /** `gh pr view <n> --json=mergeable,statusCheckRollup`, by PR number. */
+    prViews?: Record<number, string>;
+    /** The clock, in ms. */
+    now?: number;
     /** The message GitHub's GraphQL answers with when it refuses. */
     graphqlError?: string;
   } = {},
@@ -64,11 +70,23 @@ function fake(
   const writes: string[] = [];
   const gitWrites: string[] = [];
   const lines: string[] = [];
+  /** The gh run list calls, in order (#741). */
+  const asked: string[] = [];
   const ok = (stdout: string) => ({ code: 0, stdout });
   const deps: PrFlowDeps = {
     gh: async (args) => {
       const line = args.join(" ");
       if (opts.fail?.test(line)) return { code: 1, stdout: "" };
+      if (args[0] === "run" && args[1] === "list") {
+        asked.push(line);
+        const branch = args.find((a) => a.startsWith("--branch="))?.slice("--branch=".length) ?? "";
+        const listed = opts.prRuns?.[branch];
+        return listed === null ? { code: 1, stdout: "" } : ok(listed ?? "[]");
+      }
+      if (args[0] === "pr" && args[1] === "view") {
+        const view = opts.prViews?.[Number(args[2])];
+        return ok(view ?? JSON.stringify({ mergeable: "MERGEABLE", statusCheckRollup: [] }));
+      }
       if (args.includes("-X") || args[0] === "workflow") writes.push(line);
       if (args[0] === "workflow") return ok("");
       const path = args.find((a) => a.startsWith("repos/")) ?? "";
@@ -203,8 +221,9 @@ function fake(
     },
     env: opts.env ?? {},
     log: (line) => lines.push(line),
+    ...(opts.now === undefined ? {} : { now: () => opts.now ?? 0 }),
   };
-  return { deps, writes, gitWrites, lines, out: () => lines.join("\n") };
+  return { deps, writes, gitWrites, lines, asked, out: () => lines.join("\n") };
 }
 
 const pr = (number: number, head: string, extra: Partial<FakePr> = {}): FakePr => ({
@@ -601,6 +620,58 @@ describe("pr-flow: update and merge", () => {
     const refused = fake({ prs: [pr(13, "behind")], fail: /update-branch/ });
     expect(await prFlow(["update", "13"], refused.deps)).toBe(1);
     expect(refused.writes.filter((w) => w.includes("enablePullRequestAutoMerge"))).toEqual([]);
+  });
+
+  test("update waits like a push (#741): a young green PR run holds it, naming the run and the override", async () => {
+    const now = Date.parse("2026-11-07T23:10:00Z");
+    const run = (status: string, startedAt: string) =>
+      JSON.stringify([
+        { databaseId: 42, status, startedAt, url: "https://github.com/o/r/actions/runs/42" },
+      ]);
+    const young = {
+      prs: [pr(13, "behind")],
+      now,
+      prRuns: { behind: run("in_progress", "2026-11-07T23:04:00Z") },
+    };
+    const held = fake(young);
+    expect(await prFlow(["update", "13"], held.deps)).toBe(1);
+    expect(held.writes).toEqual([]);
+    expect(held.out()).toContain("CI run 42");
+    expect(held.out()).toContain("6 min old");
+    expect(held.out()).toContain('FLIGHTDECK_PUSH_NOW="<reason>" bun run pr -- update 13');
+    expect(held.asked).toEqual([
+      "run list --branch=behind --event=pull_request --limit=1 --json=databaseId,status,startedAt,url",
+    ]);
+    // The override with a reason, the coordinator, an old run or a failed check: the update goes.
+    for (const f of [
+      fake({ ...young, env: { FLIGHTDECK_PUSH_NOW: "the reviewer needs main in it" } }),
+      fake({ ...young, env: { FLIGHTDECK_COORDINATOR: "1" } }),
+      fake({ ...young, prRuns: { behind: run("in_progress", "2026-11-07T22:40:00Z") } }),
+      fake({
+        ...young,
+        prViews: {
+          13: JSON.stringify({
+            mergeable: "MERGEABLE",
+            statusCheckRollup: [{ conclusion: "FAILURE" }],
+          }),
+        },
+      }),
+    ]) {
+      expect(await prFlow(["update", "13"], f.deps)).toBe(0);
+      expect(f.writes[0]).toBe(`api -X PUT ${R}/pulls/13/update-branch`);
+    }
+    // A reason of fewer than 8 characters is no override.
+    const short = fake({ ...young, env: { FLIGHTDECK_PUSH_NOW: "now" } });
+    expect(await prFlow(["update", "13"], short.deps)).toBe(1);
+  });
+
+  test("update with GitHub unread asks once more, then holds, naming the override (#741)", async () => {
+    const f = fake({ prs: [pr(13, "behind")], now: 0, prRuns: { behind: null } });
+    expect(await prFlow(["update", "13"], f.deps)).toBe(1);
+    expect(f.asked).toHaveLength(2);
+    expect(f.writes).toEqual([]);
+    expect(f.out()).toContain("GitHub could not be read");
+    expect(f.out()).toContain('FLIGHTDECK_PUSH_NOW="<reason>" bun run pr -- update 13');
   });
 
   test("a draft is updated and left without auto-merge, and that is no failure (#613)", async () => {

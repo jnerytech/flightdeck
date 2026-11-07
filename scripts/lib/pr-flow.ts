@@ -24,6 +24,8 @@ export interface PrFlowDeps {
   run?(command: string[]): Promise<GhResult>;
   env: Record<string, string | undefined>;
   log(line: string): void;
+  /** The clock in ms (Date.now when absent): the age of a PR run (#741). */
+  now?: () => number;
 }
 
 export interface Pr {
