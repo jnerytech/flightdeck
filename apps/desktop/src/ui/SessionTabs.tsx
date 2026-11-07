@@ -54,6 +54,7 @@ export function SessionTabs(
     time: !!props.telemetry && !!props.claudeSessionId,
     trace: !!props.trace && !!props.claudeSessionId,
     messages: !!props.messagingId,
+    terminal: false,
   };
   const views = SESSION_VIEWS.filter((view) => offered[view]);
   const viewsKey = views.join(",");

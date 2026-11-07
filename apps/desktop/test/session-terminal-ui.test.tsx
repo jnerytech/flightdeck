@@ -1,0 +1,207 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import type { ExternalSession } from "@flightdeck/protocol";
+import { liveScreen, registerDom } from "./dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { waiter } from "./wait.ts";
+
+registerDom();
+const {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  within,
+  waitFor: rtlWaitFor,
+} = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { App } = await import("../src/ui/App.tsx");
+
+setDefaultTimeout(40_000);
+const settle = waiter(10_000);
+const waitFor = <T,>(fn: () => T | Promise<T>) => rtlWaitFor(fn, { timeout: 5000 });
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+type TheStore = InstanceType<typeof AppStore>;
+
+/** A host with terminals, a managed session in its project, and the app on that session's page. */
+async function onSessionPage() {
+  const d = makeDaemon(cleanups, { terminals: true });
+  const store = new AppStore(memoryPlatform(false, "pt-BR").platform, {
+    baseDelayMs: 10,
+    maxDelayMs: 20,
+  });
+  cleanups.push(() => store.dispose());
+  store.checkHealth = async () => {};
+  render(<App store={store} />);
+  const hostId = await act(() => store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }));
+  await settle(() => store.getState().hosts[0]?.hostInfo != null);
+  // createSession opens the session's page, in its own tab.
+  const sessionId = (await act(() =>
+    store.createSession(hostId, { cwd: d.project, prompt: "go", name: "s1" }),
+  )) as string;
+  expect(sessionId).not.toBeNull();
+  await settle(() => store.getState().sessions[`${hostId}/${sessionId}`]?.status === "idle");
+  return { ...d, store, hostId, sessionId };
+}
+
+const tab = (name: string) => screen.queryByRole("tab", { name });
+const clickTab = async (name: string) => {
+  const target = tab(name);
+  expect(target).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(target as HTMLElement);
+  });
+};
+const terminalShown = () => screen.queryByRole("heading", { name: "Terminal" }) !== null;
+const live = async (store: TheStore, hostId: string) =>
+  (await store.terminalHost(hostId).list()).filter((t) => t.exitCode === null);
+const press = async (init: KeyboardEventInit) => {
+  await act(async () => {
+    fireEvent.keyDown(document.body, init);
+  });
+};
+
+describe("session-terminal-ui: a Terminal view on the session page (issue #107)", () => {
+  test("the view opens a shell in the session's own folder, once, and switching views does not end it", async () => {
+    const { store, hostId, sessionId } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    expect(terminalShown()).toBe(false);
+    await clickTab("Terminal");
+    await settle(() => terminalShown());
+    expect(screen.queryByText("Ao vivo")).not.toBeNull();
+    const [shell] = await live(store, hostId);
+    const cwd = store.getState().sessions[`${hostId}/${sessionId}`]?.cwd;
+    expect(shell?.cwd).toBe(cwd);
+    // Away and back: the shell is hidden, not closed, and nothing opens a second one.
+    await clickTab("Conversa");
+    expect(terminalShown()).toBe(false);
+    expect((await live(store, hostId)).map((t) => t.terminalId)).toEqual([
+      shell?.terminalId as string,
+    ]);
+    await clickTab("Terminal");
+    expect(terminalShown()).toBe(true);
+    expect((await live(store, hostId)).map((t) => t.terminalId)).toEqual([
+      shell?.terminalId as string,
+    ]);
+  });
+
+  test("Ctrl+` toggles between the Terminal and the Conversation, and Alt+7 shows the Terminal", async () => {
+    const { store, hostId } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    await press({ key: "`", ctrlKey: true });
+    await settle(() => terminalShown());
+    await press({ key: "`", ctrlKey: true });
+    expect(terminalShown()).toBe(false);
+    expect(tab("Conversa")?.getAttribute("aria-selected")).toBe("true");
+    await press({ key: "7", altKey: true });
+    await settle(() => terminalShown());
+    expect((await live(store, hostId)).length).toBe(1);
+  });
+
+  test("closing the terminal from the view returns to the conversation, and the view can open a new shell", async () => {
+    const { store, hostId } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    await clickTab("Terminal");
+    await settle(() => terminalShown());
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Fechar terminal" }) as HTMLElement);
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.queryByRole("alertdialog") as HTMLElement).queryByRole("button", {
+          name: "Encerrar processo",
+        }) as HTMLElement,
+      );
+    });
+    await settle(() => tab("Conversa")?.getAttribute("aria-selected") === "true");
+    expect(terminalShown()).toBe(false);
+    expect((await live(store, hostId)).length).toBe(0);
+    await clickTab("Terminal");
+    await settle(() => terminalShown());
+    expect((await live(store, hostId)).length).toBe(1);
+  });
+
+  test("closing the session's tab ends the shell it opened", async () => {
+    const { store, hostId } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    await clickTab("Terminal");
+    await settle(() => terminalShown());
+    expect((await live(store, hostId)).length).toBe(1);
+    const area = store.workspace.areas[0];
+    const sessionTab = area?.tabs.find((t) => t.router.current.name === "session");
+    expect(sessionTab).not.toBeUndefined();
+    await act(async () => {
+      store.closeTab(area as never, sessionTab?.id as string);
+    });
+    await waitFor(async () => expect((await live(store, hostId)).length).toBe(0));
+  });
+
+  test("a host that does not announce shells for sessions has no Terminal view", async () => {
+    const { store } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    const host = store.getState().hosts[0];
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        hosts: [
+          {
+            ...host,
+            hostInfo: {
+              ...host?.hostInfo,
+              features: (host?.hostInfo?.features ?? []).filter((f) => f !== "terminal.session"),
+            },
+          },
+        ],
+      });
+    });
+    await settle(() => tab("Terminal") === null);
+    expect(tab("Conversa")).not.toBeNull();
+  });
+
+  test("the session of a Claude aqui terminal shows that PTY in its Terminal view, without opening another", async () => {
+    const d = makeDaemon(cleanups, { terminals: true });
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, {
+      baseDelayMs: 10,
+      maxDelayMs: 20,
+    });
+    cleanups.push(() => store.dispose());
+    store.checkHealth = async () => {};
+    render(<App store={store} />);
+    const hostId = await act(() =>
+      store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }),
+    );
+    await settle(() => store.getState().hosts[0]?.hostInfo != null);
+    await store.openClaudeHere(hostId, { cwd: d.root, claudeSessionId: null });
+    const [started] = await store.terminalHost(hostId).list();
+    const external: ExternalSession = {
+      claudeSessionId: "claude-1",
+      cwd: "/repo",
+      transcriptPath: null,
+      source: null,
+      status: "idle",
+      statusReason: null,
+      launchId: started?.launchId ?? null,
+      controllable: true,
+      projectKey: null,
+      startedAt: "2026-10-30T12:00:00Z",
+      lastEventAt: "2026-10-30T12:00:00Z",
+      endedAt: null,
+    };
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        externals: { [`${hostId}/claude-1`]: external },
+      });
+      store.router.push({ name: "external", host: hostId, claudeSessionId: "claude-1" });
+    });
+    await settle(() => tab("Terminal") !== null);
+    await clickTab("Terminal");
+    await settle(() => terminalShown());
+    expect((await live(store, hostId)).map((t) => t.terminalId)).toEqual([
+      started?.terminalId as string,
+    ]);
+  });
+});

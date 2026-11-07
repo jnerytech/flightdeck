@@ -65,6 +65,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   def("tab-recent", "tabs", ["Mod", "Tab"], "shortcuts.tabRecent"),
   def("tab-number", "tabs", ["Mod", "1…9"], "shortcuts.tabNumber"),
   def("view-number", "views", ["Alt", "1…6"], "shortcuts.viewNumber"),
+  def("view-terminal", "views", ["Ctrl", "`"], "shortcuts.viewTerminal"),
   def("list-next", "lists", ["j"], "shortcuts.listNext"),
   def("list-previous", "lists", ["k"], "shortcuts.listPrevious"),
   def("list-open", "lists", ["Enter"], "shortcuts.listOpen"),

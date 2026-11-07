@@ -2,6 +2,7 @@ import type { Platform } from "../platform/types.ts";
 import type { Theme } from "./theme.ts";
 
 export type TerminalKeyAction =
+  | "views"
   | "copy"
   | "paste"
   | "search"

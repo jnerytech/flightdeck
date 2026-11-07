@@ -3724,7 +3724,7 @@ export const ptBR = {
     empty: "Nenhum workflow na branch base ainda.",
     failed: "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
   },
-  sessionViews: { label: "Visões da sessão" },
+  sessionViews: { label: "Visões da sessão", terminal: "Terminal" },
   shortcuts: {
     title: "Atalhos de teclado",
     close: "Fechar os atalhos",
@@ -3753,7 +3753,8 @@ export const ptBR = {
     tabClose: "Fechar a aba",
     tabRecent: "Ir para a aba anterior (segure Ctrl e aperte Tab para percorrer)",
     tabNumber: "Ir para a aba 1 a 9",
-    viewNumber: "Mostrar a 1ª a 6ª visão da página da sessão",
+    viewNumber: "Mostrar a 1ª a 7ª visão da página da sessão",
+    viewTerminal: "Alternar entre o Terminal e a Conversa",
     listNext: "Próxima linha",
     listPrevious: "Linha anterior",
     listOpen: "Abrir a linha",
