@@ -58,7 +58,7 @@ describe("teleport-bundle: a daemon that stops kills the git calls (#715)", () =
         signal: AbortSignal.abort(),
       }),
     );
-    expect([refusal, state(repo), await readdir(folder)]).toEqual(["teleport_git", before, []]);
+    expect([refusal, state(repo), await readdir(folder)]).toEqual(["teleport_stopped", before, []]);
   });
 });
 
