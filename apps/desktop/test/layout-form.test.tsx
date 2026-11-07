@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { InstantClock } from "./in-flight-clock.tsx";
 
@@ -254,5 +256,47 @@ describe("form-layout: NativeSelect", () => {
     const classes = classesOf({ inline: true, compact: true });
     expect(classes).toContain("w-auto");
     expect(classes).toContain("h-8");
+  });
+});
+
+// #731: a long page form (New session) put its primary below the window. A sticky FormActions
+// stays at the bottom of the page's scroller, over the fields that scroll under it, and the
+// scroller keeps a focused field clear of it (WCAG 2.4.11, focus not obscured).
+describe("form-layout: actions that stay in reach", () => {
+  const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+  const rule = (head: string) => {
+    const at = css.indexOf(head);
+    return at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
+  };
+
+  test("sticky pins the buttons to the bottom of the scroller; without it they stay in the flow", () => {
+    const wrapper = (sticky: boolean) => {
+      const { container } = render(
+        <Form onSubmit={() => {}}>
+          <FormActions submit="Criar" sticky={sticky} />
+        </Form>,
+      );
+      const box = container.querySelector("[data-actions]")?.parentElement;
+      const out = {
+        marked: box?.hasAttribute("data-sticky-actions") ?? false,
+        utility: box?.className.split(/\s+/).includes("form-actions-sticky") ?? false,
+      };
+      cleanup();
+      return out;
+    };
+    const sticky = rule("@utility form-actions-sticky {");
+    expect({
+      on: wrapper(true),
+      off: wrapper(false),
+      pinned: /position: sticky;/.test(sticky) && /bottom: 0;/.test(sticky),
+      opaque: /background-color: var\(--background\);/.test(sticky),
+      clearsFocus: /:has\(\[data-sticky-actions\]\)\s*\{[^}]*scroll-padding-bottom:/.test(css),
+    }).toEqual({
+      on: { marked: true, utility: true },
+      off: { marked: false, utility: false },
+      pinned: true,
+      opaque: true,
+      clearsFocus: true,
+    });
   });
 });
