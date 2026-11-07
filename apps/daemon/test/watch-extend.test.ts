@@ -77,7 +77,11 @@ describe("watch-extend: more fixing rounds for a card (#77)", () => {
     service(f).extend(f.card.id, 1);
     await f.fixer.onTrigger(f.trigger({ conflicts: true }));
     await f.fixer.idle();
-    expect(f.fixer.rounds(f.card.id).length).toBe(4);
+    const rounds = f.fixer.rounds(f.card.id);
+    expect([
+      rounds.length,
+      f.promptOf(rounds[3]?.sessionId ?? null).includes("(round 4 of at most 4)"),
+    ]).toEqual([4, true]);
   });
 
   test("more rounds do not forgive the money spent: the budget still stops the card", async () => {
