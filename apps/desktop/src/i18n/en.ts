@@ -1949,7 +1949,7 @@ export const en: Dictionary = {
     teleport_no_project:
       "This repository is not the session's project: it does not have the commit the session starts from. Pick the repository of the same project.",
     teleport_exists:
-      "This host already has that Claude session, so it was not moved over it. Open the one here instead.",
+      "This host already has that Claude session, with turns the moved one does not have or still in use here, so it was not moved over it. Open the one here instead, or close it here and move again.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:

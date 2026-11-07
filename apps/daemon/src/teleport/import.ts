@@ -12,6 +12,7 @@ import { constants } from "node:fs";
 import {
   access,
   copyFile,
+  lstat,
   mkdir,
   open,
   readdir,
@@ -172,7 +173,8 @@ const CHUNK = 64 * 1024;
 
 /** Whether every byte of `local` is the first bytes of `incoming`; false when either is unreadable. */
 export async function isPrefix(local: string, incoming: string): Promise<boolean> {
-  const sizes = await Promise.all([stat(local), stat(incoming)]).catch(() => null);
+  // A link is never this host's copy: it would move the link and compare what it points to.
+  const sizes = await Promise.all([lstat(local), stat(incoming)]).catch(() => null);
   if (!sizes) return false;
   const [a, b] = sizes;
   if (!a.isFile() || !b.isFile() || a.size > b.size) return false;
@@ -268,6 +270,13 @@ async function replacing<T>(
   run: () => Promise<T>,
 ): Promise<T> {
   if (!here) return run();
+  // Every record of it here ends first: none writes into the copy while it is set aside. One that
+  // will not end stops the return before the copy is touched.
+  for (const id of mine) {
+    await deps.close(id).catch(() => {
+      throw refuse("invalid_state", "teleport_exists");
+    });
+  }
   const aside = `${here}.replaced-${deps.now().toISOString().replace(/[:.]/g, "-")}`;
   await rename(here, aside);
   let started: T;
@@ -282,9 +291,13 @@ async function replacing<T>(
     );
     throw error;
   }
-  // The old record ends and the session shows again (R2 archives it where it leaves from).
-  for (const id of mine) await deps.close(id).catch(() => {});
-  deps.unarchive(claim.manifest.claudeSessionId);
+  // The session shows again (R2 archives it where it leaves from); a failure here never undoes a
+  // session that started.
+  try {
+    deps.unarchive(claim.manifest.claudeSessionId);
+  } catch {
+    // It stays archived: the person finds it among the archived sessions.
+  }
   return started;
 }
 
