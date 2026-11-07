@@ -27,7 +27,9 @@ automation's send went around the watch's cap.
 - **More rounds (slice D2):** `watch.extend { cardId, rounds }` adds to the card's own
   `extra_rounds`, so its limit is `maxRounds + extra_rounds`. It does not move `round_base`: that
   would also forget the turns and the money of the older rounds, and more rounds must never
-  forgive spent money. It watches the card again, and a card the watch handed over goes from "Needs you" back to review.
+  forgive spent money. It is refused for a card whose PR is not watched, and for one that another
+  limit (turns, money, its branch) would stop anyway. A card the watch handed over is watched
+  again and goes from "Needs you" back to review; on any other card only the limit changes.
   Turning the watch on again resets both.
 - **The hand-over:** the card needs you when its rounds run out, or when enough rounds in a row
   fail. The watch keeps `needs_you` with the reason, which lists each round. A card in `review`

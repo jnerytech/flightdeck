@@ -1041,6 +1041,20 @@ export async function startDaemon(
     store: boardSyncStore,
     timers: { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id as Timer) },
   });
+  // Phase 22: the PRs of the cards are watched and fixed, inside their limits (before the
+  // automations: a watched PR is the watch's alone, #77).
+  const prWatcher = new PrWatcher({
+    db: store.db,
+    board,
+    onTrigger: (trigger) => prFixer.onTrigger(trigger),
+  });
+  const prFixer = new PrFixer({
+    db: store.db,
+    board,
+    watcher: prWatcher,
+    checks: shellCheckRunner(),
+    onUpdate: (cardId) => prWatch.notify(cardId),
+  });
   // Phase 13: they listen to the board's PR polling for `ci_failed`, and run the schedule.
   const automations = new Automations({
     db: store.db,
@@ -1050,7 +1064,7 @@ export async function startDaemon(
     pollMs: config.automations.issuePollIntervalMs,
     log: logger.log.bind(logger),
     // Issue #77: a card whose PR is watched is fixed by the watch alone.
-    prWatch: { claims: (cardId) => prFixer.claims(cardId) },
+    prWatch: prFixer,
   });
   automations.start();
   // Retention at boot and every 24 h (backups join it in the same daily pass).
@@ -1280,19 +1294,6 @@ export async function startDaemon(
   };
   await warmKnown(nameOptions);
   const stopNames = trackNames(nameOptions);
-  // Phase 22: the PRs of the cards are watched and fixed, inside their limits.
-  const prWatcher = new PrWatcher({
-    db: store.db,
-    board,
-    onTrigger: (trigger) => prFixer.onTrigger(trigger),
-  });
-  const prFixer = new PrFixer({
-    db: store.db,
-    board,
-    watcher: prWatcher,
-    checks: shellCheckRunner(),
-    onUpdate: (cardId) => prWatch.notify(cardId),
-  });
   const traces = new Traces({
     scanner: snippetScanner,
     db: store.db,

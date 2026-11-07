@@ -41,6 +41,19 @@ async function outOfRounds(f: Fixture) {
   await f.fixer.idle();
 }
 
+/** Why a call was refused: the reason and its values, or null when it went through. */
+function refusal(
+  call: () => unknown,
+): { reason?: string; params?: Record<string, unknown> } | null {
+  try {
+    call();
+    return null;
+  } catch (error) {
+    const { reason, params } = error as { reason?: string; params?: Record<string, unknown> };
+    return { reason, params };
+  }
+}
+
 const snapshot = (f: Fixture) =>
   f.store.db
     .query<{ snapshot: string | null }, [string]>("SELECT snapshot FROM pr_watch WHERE card_id = ?")
@@ -84,19 +97,31 @@ describe("watch-extend: more fixing rounds for a card (#77)", () => {
     ]).toEqual([4, true]);
   });
 
-  test("more rounds do not forgive the money spent: the budget still stops the card", async () => {
+  test("a card handed over for its budget is refused more rounds, with that reason, and stays handed over", async () => {
     const f = await fixture({ settings: { budgetUsd: 2 } });
     spent(f, 3, 1);
     await f.fixer.onTrigger(f.trigger({ conflicts: true }));
     await f.fixer.idle();
-    service(f).extend(f.card.id, 2);
-    await f.fixer.onTrigger(f.trigger({ conflicts: true }));
-    await f.fixer.idle();
-    const status = f.watcher.status(f.card.id);
-    expect([f.fixer.rounds(f.card.id).length, status.status, status.reason]).toEqual([
-      3,
+    const why = refusal(() => service(f).extend(f.card.id, 2));
+    const info = service(f).info(f.card.id);
+    expect([why, info.status, info.maxRounds, f.board.getCard(f.card.id).column]).toEqual([
+      {
+        reason: "watch_extend_blocked",
+        params: { reason: "US$ 3.00 of US$ 2.00 spent on this PR" },
+      },
       "needs_you",
-      "US$ 3.00 of US$ 2.00 spent on this PR",
+      3,
+      "waiting",
+    ]);
+  });
+
+  test("a card whose PR is not watched is refused more rounds", async () => {
+    const f = await fixture();
+    f.watcher.setEnabled(f.card.id, false);
+    const why = refusal(() => service(f).extend(f.card.id, 2));
+    expect([why, service(f).info(f.card.id).maxRounds]).toEqual([
+      { reason: "watch_off", params: undefined },
+      3,
     ]);
   });
 
@@ -109,17 +134,29 @@ describe("watch-extend: more fixing rounds for a card (#77)", () => {
     expect([twice, again.maxRounds, again.roundsUsed]).toEqual([6, 3, 0]);
   });
 
-  test("a card that waits for you for another reason (its session asks) stays waiting", async () => {
+  test("a card that waits for you for another reason (its session asks) stays waiting, and nothing seen is news again", async () => {
     const f = await fixture();
+    f.watcher.setEnabled(f.card.id, true);
+    f.store.db
+      .query(`UPDATE pr_watch SET snapshot = '{"seen":1}' WHERE card_id = ?`)
+      .run(f.card.id);
     f.board.moveCard(f.card.id, "waiting");
-    service(f).extend(f.card.id, 1);
-    expect(f.board.getCard(f.card.id).column).toBe("waiting");
+    const info = service(f).extend(f.card.id, 1);
+    expect([f.board.getCard(f.card.id).column, snapshot(f), info.maxRounds]).toEqual([
+      "waiting",
+      '{"seen":1}',
+      4,
+    ]);
   });
 
-  test("a card in another column stays where it is", async () => {
+  test("a card in another column stays where it is, and nothing seen is news again", async () => {
     const f = await fixture();
+    f.watcher.setEnabled(f.card.id, true);
+    f.store.db
+      .query(`UPDATE pr_watch SET snapshot = '{"seen":1}' WHERE card_id = ?`)
+      .run(f.card.id);
     f.board.moveCard(f.card.id, "done");
     service(f).extend(f.card.id, 1);
-    expect(f.board.getCard(f.card.id).column).toBe("done");
+    expect([f.board.getCard(f.card.id).column, snapshot(f)]).toEqual(["done", '{"seen":1}']);
   });
 });
