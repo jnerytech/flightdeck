@@ -182,6 +182,8 @@ describe("card-spec: what the daemon learns of a spec file", () => {
       expect(await descriptorInside(root, elsewhere)).toBe(false);
       // A descriptor that does not exist cannot be told apart from one that hides: refused.
       expect(await descriptorInside(root, 999_999)).toBe(false);
+      // A system with no such folder does not tell where a descriptor points: it is not asked.
+      expect(await descriptorInside(root, elsewhere, join(root, "no-proc-here"))).toBe(true);
     } finally {
       closeSync(inside);
       closeSync(elsewhere);
