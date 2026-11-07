@@ -958,6 +958,11 @@ live; the list is the project's, so a session of another project never shows her
   window you already used comes back with its tabs. The account at the foot of the bar is the one
   of the host you are on; with no host open it is the shared account of the online hosts, or "N
   accounts" when they differ.
+- **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
+  it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
+  change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
+  When the chosen host is offline, Home says so and offers **Show all hosts**. Sessions, Costs and
+  the Board follow it in later versions.
 - The tabs have a row of their own under the top bar, over each area (with a split, each area has
   its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
   the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one

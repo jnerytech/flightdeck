@@ -28,6 +28,13 @@ export const ptBR = {
     signOutGithubConfirm:
       "Sair do GitHub em {host}? As sessões de lá perdem o acesso aos seus repositórios até você entrar de novo.",
   },
+  scope: {
+    menu: "Dados de {scope}",
+    all: "Todos os hosts",
+    showing: "Mostrando {scope}",
+    offline: "{host} está offline. Os números voltam quando ele reconectar.",
+    showAll: "Mostrar todos os hosts",
+  },
   home: {
     title: "Início",
     range: "Últimos 7 dias · todos os hosts",

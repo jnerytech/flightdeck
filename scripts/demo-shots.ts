@@ -510,6 +510,18 @@ function shots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(600);
       },
     },
+    // #126: Home with its data scope on one host, from the Data from menu in its toolbar.
+    {
+      name: "inicio-escopo",
+      route: { name: "overview" },
+      prepare: async (page) => {
+        await page.locator(".kpi-card").first().waitFor({ timeout: 8000 });
+        await page.getByRole("button", { name: /^(Dados de|Data from) / }).click();
+        await page.getByRole("menuitemradio", { name: "alfa" }).click();
+        await page.getByRole("button", { name: /^(Dados de|Data from) alfa$/ }).waitFor();
+        await page.waitForTimeout(600);
+      },
+    },
     { name: "custos", route: { name: "costs" } },
     // Issue #151: the Activity board, its columns and cards (axe checks it in both themes).
     { name: "atividade", route: { name: "activity" } },
