@@ -5,6 +5,7 @@ import {
   HostConnection,
   type HostConnectionOptions,
   RequestError,
+  statusLine,
 } from "../src/lib/host-connection.ts";
 import { daemon as makeDaemon, TOKEN, waitFor } from "./fixtures.ts";
 
@@ -353,6 +354,91 @@ describe("desktop: conexão com o host", () => {
     await waitFor(() => statuses.filter((s) => s === "connecting").length >= 2, "retry");
   });
 
+  /** A host that acks `hello`, then closes the link with `code` and `reason`, as the daemon's heartbeat does. */
+  function closingHost(code: number, reason: string) {
+    const server = Bun.serve({
+      port: 0,
+      fetch(request, srv) {
+        return srv.upgrade(request) ? undefined : new Response("no", { status: 400 });
+      },
+      websocket: {
+        message(ws, raw) {
+          const frame = JSON.parse(String(raw)) as { id: string; type: string };
+          if (frame.type !== "hello") return;
+          const data = {
+            hostName: "h",
+            daemonVersion: "0.0.0",
+            protocolVersion: 1,
+            allowedRoots: [],
+          };
+          ws.send(JSON.stringify({ type: "ack", id: frame.id, ok: true, data }));
+          ws.close(code, reason);
+        },
+      },
+    });
+    cleanups.push(() => server.stop(true));
+    return `ws://127.0.0.1:${server.port}/v1/ws`;
+  }
+
+  test("a link the host closes keeps why: its close code and reason (#939)", async () => {
+    const { conn } = connect(closingHost(4408, "heartbeat timeout"));
+    await waitFor(() => conn.retry !== null, "the drop");
+    expect([conn.lastDrop?.code, conn.lastDrop?.reason, conn.lastDrop?.byWatchdog]).toEqual([
+      4408,
+      "heartbeat timeout",
+      false,
+    ]);
+  });
+
+  test("a close reason is one plain line in the log, and a link the app lets go of keeps no old drop (#939)", async () => {
+    const { conn } = connect(closingHost(4408, "evil\nERROR forged\tline"));
+    await waitFor(() => conn.retry !== null, "the drop");
+    const reason = conn.lastDrop?.reason;
+    conn.dispose();
+    expect([reason, conn.lastDrop]).toEqual(["evil ERROR forged line", null]);
+  });
+
+  test("a link the watchdog gives up keeps how long it was silent, and that it was online (#939)", async () => {
+    const hand = handWatchdog();
+    const { conn } = connect(quietHost(), TOKEN, {
+      connectTimeoutMs: 1000,
+      staleMs: 45_000,
+      watchdog: hand.watchdog,
+    });
+    await waitFor(() => conn.status === "online", "online");
+    hand.advance(46_000);
+    hand.tick();
+    hand.tick();
+    expect(conn.lastDrop).toEqual({
+      code: 1006,
+      reason: "",
+      byWatchdog: true,
+      silentMs: 46_000,
+      wasOnline: true,
+    });
+  });
+
+  test("a host that pings every 15 s stays online for 10 minutes, with no drop (#939)", async () => {
+    const hand = handWatchdog();
+    let ping: (frame: unknown) => void = () => {};
+    let pings = 0;
+    const { conn, statuses } = connect(
+      quietHost((send) => {
+        ping = send;
+      }),
+      TOKEN,
+      { watchdog: hand.watchdog, onPing: () => void pings++ },
+    );
+    await waitFor(() => conn.status === "online", "online");
+    for (let step = 1; step <= 40; step++) {
+      hand.advance(15_000);
+      ping({ type: "ping", id: String(step) });
+      await waitFor(() => pings === step, `ping ${step}`);
+      hand.tick();
+    }
+    expect([statuses, conn.lastDrop, pings]).toEqual([["connecting", "online"], null, 40]);
+  });
+
   test("a link that is online is not held to the connect timeout", async () => {
     const hand = handWatchdog();
     const { conn } = connect(quietHost(), TOKEN, {
@@ -365,5 +451,36 @@ describe("desktop: conexão com o host", () => {
     hand.tick();
     hand.tick();
     expect(conn.status).toBe("online");
+  });
+});
+
+describe("desktop: the app log of a host's link (#939)", () => {
+  const drop = {
+    code: 4408,
+    reason: "heartbeat timeout",
+    byWatchdog: false,
+    silentMs: 45_200,
+    wasOnline: true,
+  };
+
+  test("one WARN per drop of a link that was online, with why; the tries after it are INFO", () => {
+    expect([
+      statusLine("pc", "online", null),
+      statusLine("pc", "offline", drop),
+      statusLine("pc", "connecting", drop),
+      statusLine("pc", "offline", { ...drop, code: 1006, reason: "", wasOnline: false }),
+      statusLine("pc", "offline", { ...drop, code: 1006, reason: "", byWatchdog: true }),
+      statusLine("pc", "unauthorized", null),
+    ]).toEqual([
+      { level: "info", text: "pc: online" },
+      {
+        level: "warn",
+        text: "pc: offline, closed by the host (4408 heartbeat timeout), 45 s silent",
+      },
+      { level: "info", text: "pc: connecting" },
+      { level: "info", text: "pc: offline, closed (1006), 45 s silent" },
+      { level: "warn", text: "pc: offline, given up by the app after 45 s silent" },
+      { level: "warn", text: "pc: unauthorized" },
+    ]);
   });
 });

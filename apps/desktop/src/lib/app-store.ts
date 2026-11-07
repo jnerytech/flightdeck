@@ -110,7 +110,12 @@ import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
 import { HomeCache } from "./home-cache.ts";
-import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
+import {
+  type ConnectionStatus,
+  HostConnection,
+  RequestError,
+  statusLine,
+} from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
 import { HostTabs } from "./host-tabs.ts";
@@ -3211,7 +3216,8 @@ export class AppStore {
 
   private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
     const name = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
-    this.appLog.log(status === "online" ? "info" : "warn", "host", `${name}: ${status}`);
+    const line = statusLine(name, status, conn.lastDrop);
+    this.appLog.log(line.level, "host", line.text);
     this.updateHost(hostId, (h) => ({
       ...h,
       status,
