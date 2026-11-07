@@ -58,34 +58,37 @@ export function contractOf(
 /** A checklist item in the description is what the card calls its acceptance criteria. */
 const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
 
+type Lookable = Pick<
+  Card,
+  "description" | "prUrl" | "checksState" | "validationNote" | "specState" | "specPath" | "slug"
+>;
+
+/** A PR's checks only count once there is a PR; a repository with none reports no state at all. */
+function checksNeeds(card: Lookable): ContractNeed[] {
+  if (!card.prUrl) return [];
+  if (card.checksState === "pending") return ["checksPending"];
+  return card.checksState === "failing" ? ["checksFailing"] : [];
+}
+
+/** What each check asks of a card. */
+const LACKING: Record<ContractCheck, (card: Lookable) => ContractNeed[]> = {
+  criteria: (card) => (CHECKLIST_ITEM.test(card.description) ? [] : ["criteria"]),
+  pr: (card) => (card.prUrl ? [] : ["pr"]),
+  checks: checksNeeds,
+  validation: (card) => (card.validationNote?.trim() ? [] : ["validation"]),
+  // What was found counts only for the path the card names now.
+  spec: (card) =>
+    card.specState?.found && card.specState.path === specExpectedPath(card) ? [] : ["spec"],
+};
+
 /** What `card` lacks for `column`; nothing when the column asks nothing or the card has it all. */
 export function missingFor(
   column: BoardColumn,
-  card: Pick<
-    Card,
-    "description" | "prUrl" | "checksState" | "validationNote" | "specState" | "specPath" | "slug"
-  >,
+  card: Lookable,
   overrides: ContractOverrides = {},
 ): ContractNeed[] {
-  const needs: ContractNeed[] = [];
-  for (const check of contractOf(column, overrides)?.checks ?? []) {
-    if (check === "criteria" && !CHECKLIST_ITEM.test(card.description)) needs.push("criteria");
-    if (check === "pr" && !card.prUrl) needs.push("pr");
-    if (check === "validation" && !card.validationNote?.trim()) needs.push("validation");
-    // What was found counts only for the path the card names now.
-    if (
-      check === "spec" &&
-      !(card.specState?.found && card.specState.path === specExpectedPath(card))
-    ) {
-      needs.push("spec");
-    }
-    // Checks belong to a PR. A repository with none reports no state: that is not the card's fault.
-    if (check === "checks" && card.prUrl) {
-      if (card.checksState === "pending") needs.push("checksPending");
-      if (card.checksState === "failing") needs.push("checksFailing");
-    }
-  }
-  return needs;
+  const checks = contractOf(column, overrides)?.checks ?? [];
+  return checks.flatMap((check) => LACKING[check](card));
 }
 
 /**
@@ -94,7 +97,12 @@ export function missingFor(
  */
 function isDeviceName(part: string): boolean {
   const stem = part.split(".")[0] ?? "";
-  return stem !== stem.trimEnd() || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(stem);
+  return (
+    stem !== stem.trimEnd() ||
+    /^(con|prn|aux|nul|com[1-9\u00b9\u00b2\u00b3]|lpt[1-9\u00b9\u00b2\u00b3]|conin\$|conout\$)$/i.test(
+      stem,
+    )
+  );
 }
 
 /** The longest path a card can name for its spec. */

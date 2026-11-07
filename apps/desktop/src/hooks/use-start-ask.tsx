@@ -35,7 +35,7 @@ export function useStartAsk(options: { restoreFocus?: (cardId: string) => void; 
     if (needs.length === 0) go();
     else setPending({ lacking: { card, needs }, go });
   };
-  const dialog = pending ? (
+  const dialog = pending && (
     <ContractDialog
       t={t}
       start
@@ -48,8 +48,8 @@ export function useStartAsk(options: { restoreFocus?: (cardId: string) => void; 
         setPending(null);
         go();
       }}
-      {...(restoreFocus ? { onRestoreFocus: restoreFocus } : {})}
+      onRestoreFocus={restoreFocus}
     />
-  ) : null;
+  );
   return { ask, dialog };
 }
