@@ -38,6 +38,10 @@ function useModes(store: AppStore, hostId: string) {
 }
 const MODES_KEYS = ["hosts"] as const;
 
+/** A choice the host no longer offers (Bypass after its switch went off) is the default again. */
+const offeredChoice = (value: PermissionChoice, allowBypass: boolean): PermissionChoice =>
+  value === "bypassPermissions" && !allowBypass ? "" : value;
+
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
 function NewTeam(
   props: Readonly<{
@@ -86,7 +90,9 @@ function NewTeam(
   const inFlight = useRef(false);
   const create = async (confirmed = false) => {
     if (inFlight.current) return;
-    const asked = modes.offered ? [permission, ...rows.map((row) => row.permission)] : [];
+    const coordinator = offeredChoice(permission, modes.allowBypass);
+    const workers = rows.map((row) => offeredChoice(row.permission, modes.allowBypass));
+    const asked = modes.offered ? [coordinator, ...workers] : [];
     if (asked.includes("bypassPermissions") && !confirmed) {
       setAsking(true);
       return;
@@ -105,9 +111,9 @@ function NewTeam(
       ...(rows.some((row) => row.model)
         ? { workerModels: rows.map((row) => row.model || null) }
         : {}),
-      ...(modes.offered && permission ? { coordinatorPermission: permission } : {}),
-      ...(modes.offered && rows.some((row) => row.permission)
-        ? { workerPermissions: rows.map((row) => row.permission || null) }
+      ...(modes.offered && coordinator ? { coordinatorPermission: coordinator } : {}),
+      ...(modes.offered && workers.some(Boolean)
+        ? { workerPermissions: workers.map((mode) => mode || null) }
         : {}),
     });
     inFlight.current = false;
@@ -189,7 +195,7 @@ function NewTeam(
       {modes.offered && (
         <PermissionSelect
           label={t("teamsUi.coordinatorPermission")}
-          value={permission}
+          value={offeredChoice(permission, modes.allowBypass)}
           allowBypass={modes.allowBypass}
           onChange={setPermission}
         />
@@ -220,7 +226,7 @@ function NewTeam(
             {modes.offered && (
               <PermissionSelect
                 label={t("teamsUi.workerPermission", { n: i + 1 })}
-                value={row.permission}
+                value={offeredChoice(row.permission, modes.allowBypass)}
                 allowBypass={modes.allowBypass}
                 onChange={(value) => setRow(i, { permission: value })}
               />
@@ -457,7 +463,7 @@ function NewMember(
       {modes.offered && (
         <PermissionSelect
           label={t("teamsUi.newMemberPermission", { name: team.name })}
-          value={permission}
+          value={offeredChoice(permission, modes.allowBypass)}
           allowBypass={modes.allowBypass}
           onChange={setPermission}
         />
@@ -465,7 +471,9 @@ function NewMember(
       <Button
         size="sm"
         aria-label={t("teamsUi.addMember", { name: team.name })}
-        onClick={() => props.onAdd({ persona, model, permission })}
+        onClick={() =>
+          props.onAdd({ persona, model, permission: offeredChoice(permission, modes.allowBypass) })
+        }
       >
         {t("teamsUi.addMemberButton")}
       </Button>
