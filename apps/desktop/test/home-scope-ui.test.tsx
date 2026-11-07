@@ -118,6 +118,17 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     });
   });
 
+  // #126 slice 4: Home does not read projects yet, so a project scope there is every host, said so.
+  test("a kept project scope shows every host on Home, and the menu and subtitle say so", async () => {
+    setup({ kept: '{"kind":"project","projectKey":"github.com/x/y"}' });
+    await settleMaybe(() => /\$7\.00/.test(spend()));
+    expect({
+      spend: /\$7\.00/.test(spend()),
+      subtitle: screen.queryByText("Last 7 days · all hosts") !== null,
+      menu: screen.queryByRole("button", { name: "Data from All hosts" }) !== null,
+    }).toEqual({ spend: true, subtitle: true, menu: true });
+  });
+
   // Review of #837: a kept host missing from a list not read yet is not gone, so Home asks
   // nobody for numbers the person chose not to see; once the list is read without it, it is.
   test("a kept host not listed yet asks no host; once the list is read without it, Home adds up all", async () => {
