@@ -672,6 +672,11 @@ describe("pr-flow: update and merge", () => {
     expect(f.writes).toEqual([]);
     expect(f.out()).toContain("GitHub could not be read");
     expect(f.out()).toContain('FLIGHTDECK_PUSH_NOW="<reason>" bun run pr -- update 13');
+    // A PR that cannot be read has no branch to ask about: held the same way, and no run is listed.
+    const unread = fake({ prs: [], now: 0 });
+    expect(await prFlow(["update", "99"], unread.deps)).toBe(1);
+    expect(unread.asked).toEqual([]);
+    expect(unread.out()).toContain("#99: GitHub could not be read");
   });
 
   test("a draft is updated and left without auto-merge, and that is no failure (#613)", async () => {
