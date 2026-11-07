@@ -51,4 +51,9 @@ describe("hook-slot-guard", () => {
       "is heavy",
     );
   });
+
+  test("a heavy run named only in a heredoc's body is data, not a run; one after the heredoc still counts", () => {
+    expect(outside("cat > notes.md <<'EOF'\nbun run test\nEOF")).toBeNull();
+    expect(outside("cat > notes.md <<'EOF'\nnotes\nEOF\nbun run test") ?? "").toContain("is heavy");
+  });
 });
