@@ -203,11 +203,11 @@ describe("snippets-historico: varredura de segredos", () => {
     const flagged = candidates.filter((c) => c.hidden);
     expect(flagged.map((c) => c.flagged.join(" + ")).sort()).toEqual(
       [
-        "chave da AWS",
-        "chave sk- + senha na linha",
-        "senha na linha",
-        "token Bearer + cabeçalho de autorização",
-        "token do GitHub + senha na linha",
+        "aws_key",
+        "sk_key + password_line",
+        "password_line",
+        "bearer_token + authorization_header",
+        "github_token + password_line",
       ].sort(),
     );
     for (const candidate of flagged) {
@@ -247,7 +247,7 @@ describe("snippets-historico: varredura de segredos", () => {
     const { candidates } = await importer.preview({});
     expect(candidates.map((c) => [c.command, c.flagged])).toEqual([
       ["git status", []],
-      [null, ["valor do cofre"]],
+      [null, ["vault_value"]],
     ]);
   });
 });

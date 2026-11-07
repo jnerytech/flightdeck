@@ -121,6 +121,9 @@ const AUTHORIZATION_HEADER = new RegExp(
   "gi",
 );
 
+/** What the scanner can name: stable kinds, named in the person's language by the app. */
+export const SECRET_KINDS: readonly string[] = [];
+
 /** One secret found in a text: where it starts and what it is. */
 interface SecretHit {
   index: number;
