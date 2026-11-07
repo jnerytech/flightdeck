@@ -184,6 +184,18 @@ describe("teleport-bundle: the code of a session as one git bundle (#100)", () =
     expect([refused, objects()]).toEqual(["teleport_too_large", before]);
   });
 
+  test("a large file staged and not changed since is weighed too", async () => {
+    const { repo, folder } = await working();
+    await writeFile(join(repo, "staged.bin"), Buffer.alloc(4096, 1));
+    git(repo, "add", "staged.bin");
+    const objects = () => git(repo, "count-objects").trim();
+    const before = objects();
+    const refused = await reason(() =>
+      bundleCode({ cwd: repo, folder, id: "p", scan: () => [], maxBytes: 2048 }),
+    );
+    expect([refused, objects()]).toEqual(["teleport_too_large", before]);
+  });
+
   test("history whose text is past the limit is refused, never scanned in part", async () => {
     const { repo, folder } = await working();
     await writeFile(join(repo, "log.txt"), "a line that repeats\n".repeat(20_000));
