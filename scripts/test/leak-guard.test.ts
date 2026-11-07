@@ -144,52 +144,53 @@ async function runFiles(dir: string, files: string[]) {
   return { log: `${out}${err}`, code };
 }
 
-describe.skipIf(process.platform !== "linux")(
-  "leak-guard: the preload names the file that leaves something running",
-  () => {
-    const SERVER = `
+describe("leak-guard: the preload names the file that leaves something running", () => {
+  // The preload looks at /proc, which only Linux has: elsewhere it looks at nothing.
+  const linux = process.platform === "linux";
+  const SERVER = `
 import { test } from "bun:test";
 test("starts a server and leaves it", () => {
   (globalThis as { leaked?: unknown }).leaked = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response("") });
 });
 `;
-    const CHILD = `
+  const CHILD = `
 import { test } from "bun:test";
 test("starts a child and leaves it", () => {
   Bun.spawn(["sleep", "5"], { stdout: "ignore", stderr: "ignore" });
 });
 `;
-    const PLAIN = `
+  const PLAIN = `
 import { expect, test } from "bun:test";
 test("does nothing", () => { expect(1).toBe(1); });
 `;
 
-    test("a server left listening fails the run and names the file and the port", async () => {
-      const dir = realTempDir("fd-leak-server-");
-      writeFileSync(join(dir, "a.test.ts"), SERVER);
-      writeFileSync(join(dir, "b.test.ts"), PLAIN);
-      const { log, code } = await runFiles(dir, ["a.test.ts", "b.test.ts"]);
-      expect(log).toContain("a.test.ts left running: a server listening on port ");
-      expect(code).not.toBe(0);
-    }, 60_000);
+  test("a server left listening fails the run and names the file and the port", async () => {
+    if (!linux) return;
+    const dir = realTempDir("fd-leak-server-");
+    writeFileSync(join(dir, "a.test.ts"), SERVER);
+    writeFileSync(join(dir, "b.test.ts"), PLAIN);
+    const { log, code } = await runFiles(dir, ["a.test.ts", "b.test.ts"]);
+    expect(log).toContain("a.test.ts left running: a server listening on port ");
+    expect(code).not.toBe(0);
+  }, 60_000);
 
-    test("a child left alive is named as a warning and does not fail the run", async () => {
-      const dir = realTempDir("fd-leak-child-");
-      writeFileSync(join(dir, "a.test.ts"), CHILD);
-      writeFileSync(join(dir, "b.test.ts"), PLAIN);
-      const { log, code } = await runFiles(dir, ["a.test.ts", "b.test.ts"]);
-      expect(log).toContain("isolation (warning): ");
-      expect(log).toContain("a.test.ts left running: child process ");
-      expect(code).toBe(0);
-    }, 60_000);
+  test("a child left alive is named as a warning and does not fail the run", async () => {
+    if (!linux) return;
+    const dir = realTempDir("fd-leak-child-");
+    writeFileSync(join(dir, "a.test.ts"), CHILD);
+    writeFileSync(join(dir, "b.test.ts"), PLAIN);
+    const { log, code } = await runFiles(dir, ["a.test.ts", "b.test.ts"]);
+    expect(log).toContain("isolation (warning): ");
+    expect(log).toContain("a.test.ts left running: child process ");
+    expect(code).toBe(0);
+  }, 60_000);
 
-    test("two files that leave nothing are not reported", async () => {
-      const dir = realTempDir("fd-leak-clean-");
-      writeFileSync(join(dir, "a.test.ts"), PLAIN);
-      writeFileSync(join(dir, "b.test.ts"), PLAIN);
-      const { log, code } = await runFiles(dir, ["a.test.ts", "b.test.ts"]);
-      expect(log).not.toContain("left running");
-      expect(code).toBe(0);
-    }, 60_000);
-  },
-);
+  test("two files that leave nothing are not reported", async () => {
+    const dir = realTempDir("fd-leak-clean-");
+    writeFileSync(join(dir, "a.test.ts"), PLAIN);
+    writeFileSync(join(dir, "b.test.ts"), PLAIN);
+    const { log, code } = await runFiles(dir, ["a.test.ts", "b.test.ts"]);
+    expect(log).not.toContain("left running");
+    expect(code).toBe(0);
+  }, 60_000);
+});
