@@ -21,6 +21,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "card",
   "custos",
   "abas-muitas",
+  // #784: simple mode's home scrolled sideways at 640 and 390.
+  "simples-inicio",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
