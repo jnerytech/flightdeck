@@ -4113,7 +4113,9 @@ export const ptBR = {
       summary: "{n} de {total} partes encontradas",
       found: "Encontrado",
       missing: "Faltando",
-      rules: "{n} regras de permissão",
+      rules: "Regras de permissão: {n}",
+      unreadable:
+        "Alguns arquivos do projeto não puderam ser lidos: uma parte marcada como faltando pode existir.",
       parts: {
         claudeMd: "CLAUDE.md",
         hooks: "Hooks",
@@ -4123,9 +4125,9 @@ export const ptBR = {
         mcp: "Servidores MCP",
       },
       kinds: {
-        format: "formatador após edições",
-        gitAdd: "proteção do git add",
-        secrets: "arquivos de segredo protegidos",
+        format: "um formatador após edições",
+        gitAdd: "uma verificação antes do git add",
+        secrets: "uma verificação de arquivos de segredo",
       },
     },
     trust: {

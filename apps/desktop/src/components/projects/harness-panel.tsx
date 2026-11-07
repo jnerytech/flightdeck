@@ -1,5 +1,4 @@
 import type { ProjectLoad } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
 import type { AppStore } from "@/lib/app-store";
@@ -7,36 +6,38 @@ import { type HarnessItem, harnessParts } from "@/lib/harness";
 
 type T = AppStore["i18n"]["t"];
 
+const PART = {
+  claudeMd: "projectPage.harness.parts.claudeMd",
+  hooks: "projectPage.harness.parts.hooks",
+  skills: "projectPage.harness.parts.skills",
+  agents: "projectPage.harness.parts.agents",
+  permissions: "projectPage.harness.parts.permissions",
+  mcp: "projectPage.harness.parts.mcp",
+} as const;
+
+const KIND = {
+  format: "projectPage.harness.kinds.format",
+  gitAdd: "projectPage.harness.kinds.gitAdd",
+  secrets: "projectPage.harness.kinds.secrets",
+} as const;
+
 /** What shows a part: its names, the kinds of its hooks, or how many allow rules it has. */
 function detail(item: HarnessItem, t: T): string {
-  if (item.part === "hooks")
-    return item.detail.map((kind) => t(`projectPage.harness.kinds.${kind}` as never)).join(", ");
-  if (item.part === "permissions")
-    return item.detail.map((n) => t("projectPage.harness.rules", { n })).join("");
+  if (item.part === "hooks") {
+    return item.detail.map((kind) => t(KIND[kind as keyof typeof KIND])).join(", ");
+  }
+  if (item.part === "permissions" && item.found) {
+    return t("projectPage.harness.rules", { n: item.detail[0] ?? "0" });
+  }
   return item.detail.join(", ");
 }
 
 /**
- * Issue #75, slice S1: the project's Claude Code setup as a checklist, read from the listing the
- * trust panel already asks for (#196). Read-only: it says what is there and what is missing.
+ * Issue #75, slice S1: the project's Claude Code setup as a checklist, from the listing the trust
+ * panel read (#196): one read for both. Read-only: it says what is there and what is missing.
  */
-export function HarnessPanel(props: Readonly<{ store: AppStore; hostId: string; path: string }>) {
-  const { store, hostId, path } = props;
-  const { t } = store.i18n;
-  const [load, setLoad] = useState<ProjectLoad | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    void store.hostCommand(hostId, "project.trust.inspect", { path }).then((read) => {
-      if (live) setLoad(read ?? null);
-    });
-    return () => {
-      live = false;
-    };
-  }, [store, hostId, path]);
-
-  // No listing (an old host, or one the connection may not ask): no card.
-  if (!load) return null;
+export function HarnessPanel(props: Readonly<{ load: ProjectLoad; t: T }>) {
+  const { load, t } = props;
   const items = harnessParts(load);
   const found = items.filter((item) => item.found).length;
   return (
@@ -45,9 +46,12 @@ export function HarnessPanel(props: Readonly<{ store: AppStore; hostId: string; 
       <p className="font-medium text-sm">
         {t("projectPage.harness.summary", { n: found, total: items.length })}
       </p>
+      {load.unreadable.length > 0 && (
+        <p className="text-sm">{t("projectPage.harness.unreadable")}</p>
+      )}
       <Stack as="ul" gap={1} className="text-sm">
         {items.map((item) => {
-          const name = t(`projectPage.harness.parts.${item.part}` as never);
+          const name = t(PART[item.part]);
           const shows = detail(item, t);
           return (
             <li key={item.part} aria-label={name}>

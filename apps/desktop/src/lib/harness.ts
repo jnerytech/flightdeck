@@ -17,19 +17,25 @@ export interface HarnessItem {
   detail: string[];
 }
 
-/** Commands that show what a hook is for; anything else is still a hook, of no named kind. */
-const KINDS: ReadonlyArray<[HookKind, RegExp]> = [
-  ["format", /\b(biome|prettier|eslint --fix|ruff format|black|gofmt|rustfmt|dotnet format)\b/],
-  ["gitAdd", /\bgit add\b/],
-  ["secrets", /(\.env\b|credentials|secrets?\b|\.pem\b|id_rsa)/],
+/**
+ * Commands that show what a hook is for, on the event it acts on: a formatter after a tool runs, a
+ * check on `git add` or on secret files before one. Anything else is still a hook, of no named kind.
+ */
+const KINDS: ReadonlyArray<[HookKind, string, RegExp]> = [
+  [
+    "format",
+    "PostToolUse",
+    /\b(biome|prettier|eslint --fix|ruff format|black|gofmt|rustfmt|dotnet format)\b/,
+  ],
+  ["gitAdd", "PreToolUse", /\bgit add\b/],
+  ["secrets", "PreToolUse", /(\.env\b|credentials|secrets?\b|\.pem\b|id_rsa)/],
 ];
 
 /** The six parts, in the order the card lists them. */
 export function harnessParts(load: ProjectLoad): HarnessItem[] {
-  const commands = load.hooks.flatMap((hook) => hook.commands);
-  const kinds = KINDS.filter(([, pattern]) => commands.some((c) => pattern.test(c))).map(
-    ([kind]) => kind,
-  );
+  const kinds = KINDS.filter(([, event, pattern]) =>
+    load.hooks.some((hook) => hook.event === event && hook.commands.some((c) => pattern.test(c))),
+  ).map(([kind]) => kind);
   const item = (part: HarnessPart, found: boolean, detail: string[] = []): HarnessItem => ({
     part,
     found,

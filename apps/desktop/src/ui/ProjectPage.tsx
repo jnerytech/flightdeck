@@ -4,7 +4,6 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { NAV_ICONS } from "@/components/nav-icons";
-import { HarnessPanel } from "@/components/projects/harness-panel";
 import { SessionTiles } from "@/components/projects/session-tiles";
 import { TrustPanel } from "@/components/projects/trust-panel";
 import type { Key } from "../i18n/index.ts";
@@ -133,16 +132,13 @@ export function ProjectPage(
         ))}
       </ul>
       {hasFeature(host?.hostInfo?.features, "projectTrust", false) && (
-        <>
-          <TrustPanel
-            store={store}
-            hostId={hostId}
-            hostName={host?.name ?? hostId}
-            projectName={project.name}
-            path={project.path}
-          />
-          <HarnessPanel store={store} hostId={hostId} path={project.path} />
-        </>
+        <TrustPanel
+          store={store}
+          hostId={hostId}
+          hostName={host?.name ?? hostId}
+          projectName={project.name}
+          path={project.path}
+        />
       )}
       <SessionTiles
         store={store}

@@ -4110,7 +4110,9 @@ export const en: Dictionary = {
       summary: "{n} of {total} parts found",
       found: "Found",
       missing: "Missing",
-      rules: "{n} allow rules",
+      rules: "Allow rules: {n}",
+      unreadable:
+        "Some of the project's files could not be read: a part shown as missing may be there.",
       parts: {
         claudeMd: "CLAUDE.md",
         hooks: "Hooks",
@@ -4120,9 +4122,9 @@ export const en: Dictionary = {
         mcp: "MCP servers",
       },
       kinds: {
-        format: "formatter after edits",
-        gitAdd: "guard on git add",
-        secrets: "secret files protected",
+        format: "a formatter after edits",
+        gitAdd: "a check before git add",
+        secrets: "a check on secret files",
       },
     },
     trust: {
