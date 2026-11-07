@@ -601,6 +601,7 @@ export function guardAllowLogs(
   command: string | undefined,
   env: Record<string, string | undefined>,
   push?: { cwd: string; deps: PushWaitDeps },
+  _passes: PushWaitPass[] = [],
 ): Array<{ rule: string | null; decision: "allow" | "waived"; detail?: string; minutes?: number }> {
   const waived: Array<{ rule: string; decision: "waived"; detail?: string; minutes?: number }> = [];
   if (typeof command === "string") {
@@ -722,8 +723,24 @@ export interface PrRun {
 }
 
 export interface PushWaitDeps extends PushGuardDeps {
-  /** The branch's latest PR run, read in `dir`; null when it has none or GitHub cannot be read (fail open). */
-  prRun: (branch: string, dir: string) => PrRun | null;
+  /** The branch's latest PR run, read in `dir`: "none" when it has none, null when GitHub cannot be read. */
+  prRun: (branch: string, dir: string) => PrRun | "none" | null;
+}
+
+/** Why push-wait let a push through to one branch (#741: logged, so the passes can be read). */
+export interface PushWaitPass {
+  reason: string;
+  /** The age of an old run. */
+  minutes?: number;
+}
+
+/** The push-wait decision of a command: the refusal, or why each pushed branch may go (#741). */
+export function pushWaitCheck(
+  command: string,
+  cwd: string,
+  deps: PushWaitDeps,
+): { violation: string | null; passes: PushWaitPass[] } {
+  return { violation: pushWaitViolation(command, cwd, deps), passes: [] };
 }
 
 /**
@@ -731,7 +748,11 @@ export interface PushWaitDeps extends PushGuardDeps {
  * conflict and failed checks from `gh pr view --json mergeable,statusCheckRollup`; null when there
  * is none or the output does not read.
  */
-export function prRunFrom(runs: string | null, pr: string | null, now: number): PrRun | null {
+export function prRunFrom(
+  runs: string | null,
+  pr: string | null,
+  now: number,
+): PrRun | "none" | null {
   try {
     const latest = (JSON.parse(runs ?? "") as Array<Record<string, unknown>>)[0];
     if (!latest || typeof latest.databaseId !== "number") return null;
@@ -763,7 +784,10 @@ export type Gh = (args: string[], dir: string) => string | null;
  * The guard's reader of a branch's latest PR run (#756 review: the gh calls are tested here, not
  * left as glue): `gh run list`, then `gh pr view` only when there is a run.
  */
-export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: string) => PrRun | null {
+export function prRunVia(
+  gh: Gh,
+  now: () => number,
+): (branch: string, dir: string) => PrRun | "none" | null {
   return (branch, dir) => {
     // The branch goes as one `--branch=` word, so no name reads as a flag.
     const runs = gh(
@@ -814,7 +838,8 @@ export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDe
     for (const branch of pushedBranches(call, (args) => deps.git(args, dir))) {
       const run = deps.prRun(branch, dir);
       // A failed check or a conflict makes the push a fix that must go out (#756 review).
-      if (!run?.inProgress || run.failed || run.conflicting) continue;
+      if (run === null || run === "none" || !run.inProgress || run.failed || run.conflicting)
+        continue;
       if (run.minutes >= PUSH_WAIT_MINUTES) continue;
       // Only GitHub's own https address; the echoed push hides credentials (security review).
       const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
@@ -924,7 +949,7 @@ function pushNowOverride(
     if (!push || dir === null) return { detail };
     const ages = pushedBranches(call, (args) => push.deps.git(args, dir)).flatMap((branch) => {
       const run = push.deps.prRun(branch, dir);
-      return run?.inProgress ? [run.minutes] : [];
+      return run && run !== "none" && run.inProgress ? [run.minutes] : [];
     });
     return ages.length > 0 ? { detail, minutes: Math.min(...ages) } : { detail };
   }

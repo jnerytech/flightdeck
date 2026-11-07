@@ -5,6 +5,7 @@ import {
   type PrRun,
   prRunFrom,
   prRunVia,
+  pushWaitCheck,
   pushWaitViolation,
   withBudget,
 } from "../lib/claude-hooks.ts";
@@ -13,7 +14,7 @@ import {
 const CWD = resolve("/repos/flightdeck-fix");
 
 /** A checkout on `fix-x` whose PR run is `run`; records which branches were asked about. */
-function deps(run: PrRun | null, env: Record<string, string | undefined> = {}) {
+function deps(run: PrRun | "none" | null, env: Record<string, string | undefined> = {}) {
   const asked: string[] = [];
   return {
     asked,
@@ -63,7 +64,7 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     const full = deps(green);
     pushWaitViolation("git push origin HEAD:refs/heads/fix-z", CWD, full);
     expect(full.asked).toEqual([`fix-z in ${CWD}`]);
-    const both = deps(null);
+    const both = deps("none");
     expect(pushWaitViolation("git push -o ci.skip origin fix-a fix-b", CWD, both)).toBeNull();
     expect(both.asked).toEqual([`fix-a in ${CWD}`, `fix-b in ${CWD}`]);
     // A delete starts no run, and a release-v* target never waits.
@@ -80,7 +81,7 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
       { ...green, conflicting: true },
       { ...green, inProgress: false },
       { ...green, minutes: 20 },
-      null,
+      "none" as const,
     ]) {
       expect(pushWaitViolation("git push origin fix-x", CWD, deps(run))).toBeNull();
     }
@@ -150,6 +151,62 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     expect(outside.asked).toEqual([]);
   });
 
+  test("GitHub that cannot be read is asked once more, then the push holds, naming the override (#741)", () => {
+    const down = deps(null);
+    const why = pushWaitViolation("git push origin fix-x", CWD, down) ?? "";
+    expect(why).toContain("GitHub could not be read");
+    expect(why).toContain('FLIGHTDECK_PUSH_NOW="<reason>" git push origin fix-x');
+    expect(down.asked).toEqual([`fix-x in ${CWD}`, `fix-x in ${CWD}`]);
+    // The second answer decides: a green run still holds, no run lets the push through.
+    const answers = (...runs: Array<PrRun | "none" | null>) => ({
+      ...deps(null),
+      prRun: () => runs.shift() ?? null,
+    });
+    expect(pushWaitViolation("git push origin fix-x", CWD, answers(null, green)) ?? "").toContain(
+      "run 42",
+    );
+    expect(pushWaitViolation("git push origin fix-x", CWD, answers(null, "none"))).toBeNull();
+  });
+
+  test("each push the rule lets through says why: a failed check, a conflict, a run that ended or is old, no run (#741)", () => {
+    const passes = (run: PrRun | "none") => pushWaitCheck("git push origin fix-x", CWD, deps(run));
+    expect(passes({ ...green, failed: true })).toEqual({
+      violation: null,
+      passes: [{ reason: "failed check" }],
+    });
+    expect(passes({ ...green, conflicting: true }).passes).toEqual([{ reason: "conflicts" }]);
+    expect(passes({ ...green, inProgress: false }).passes).toEqual([{ reason: "run ended" }]);
+    expect(passes({ ...green, minutes: 25 }).passes).toEqual([{ reason: "old run", minutes: 25 }]);
+    expect(passes("none").passes).toEqual([{ reason: "no run" }]);
+    expect(passes(green)).toEqual({
+      violation: pushWaitViolation("git push origin fix-x", CWD, deps(green)),
+      passes: [],
+    });
+    // A delete, a release-v* branch and an override are no pass of the rule: nothing is asked.
+    for (const command of [
+      "git push origin --delete fix-x",
+      "git push origin HEAD:release-v1.2.3",
+      'FLIGHTDECK_PUSH_NOW="a fix after review" git push',
+    ]) {
+      expect(pushWaitCheck(command, CWD, deps(green)).passes).toEqual([]);
+    }
+  });
+
+  test("the guard logs a pass as a push-wait allow with its reason, in place of the plain allow (#741)", () => {
+    expect(
+      guardAllowLogs("git push", {}, undefined, [
+        { reason: "old run", minutes: 25 },
+        { reason: "no run" },
+      ]),
+    ).toEqual([
+      { rule: "push-wait", decision: "allow", detail: "old run", minutes: 25 },
+      { rule: "push-wait", decision: "allow", detail: "no run" },
+    ]);
+    expect(guardAllowLogs("git push", {}, undefined, [])).toEqual([
+      { rule: null, decision: "allow" },
+    ]);
+  });
+
   test("an override with a reason logs a push-wait waiver, not an allow", () => {
     expect(guardAllowLogs('FLIGHTDECK_PUSH_NOW="the reviewer waits on it" git push', {})).toEqual([
       { rule: "push-wait", decision: "waived", detail: "the reviewer waits on it" },
@@ -160,7 +217,10 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
 
 describe("push-wait: what an override logs (#741, #821 review)", () => {
   /** The same checkout, with a run per branch and, if given, which folders are the project's. */
-  function runsBy(runs: Record<string, PrRun | null>, inProject?: (dir: string) => boolean) {
+  function runsBy(
+    runs: Record<string, PrRun | "none" | null>,
+    inProject?: (dir: string) => boolean,
+  ) {
     const base = deps(null);
     return {
       ...base,
@@ -353,9 +413,10 @@ describe("push-wait: the run and the PR as gh prints them (#741)", () => {
     ).toBe(false);
   });
 
-  test("no run, output gh could not give, or output that does not parse is no run (the hook fails open)", () => {
+  test("an empty list is no run; output gh could not give, or that does not parse, is GitHub unread (null, #741)", () => {
+    expect(prRunFrom("[]", pr("MERGEABLE"), now)).toBe("none");
+    expect(prRunFrom("[]\n", null, now)).toBe("none");
     for (const [runs, detail] of [
-      ["[]", pr("MERGEABLE")],
       [null, pr("MERGEABLE")],
       ["{ nope", pr("MERGEABLE")],
       [list("in_progress"), null],
@@ -387,14 +448,17 @@ describe("push-wait: the gh calls the guard makes (#756 review)", () => {
     ]);
   });
 
-  test("no run, or gh failing, is no run, and the PR is not read then", () => {
-    for (const listed of ["[]\n", null]) {
+  test("no run is none and gh failing is null (#741), and the PR is not read then", () => {
+    for (const [listed, read] of [
+      ["[]\n", "none"],
+      [null, null],
+    ] as const) {
       const calls: string[][] = [];
       const gh = (args: string[]) => {
         calls.push(args);
         return args[0] === "run" ? listed : view;
       };
-      expect(prRunVia(gh, () => now)("fix-x", CWD)).toBeNull();
+      expect(prRunVia(gh, () => now)("fix-x", CWD)).toBe(read);
       expect(calls.length).toBe(1);
     }
     expect(
