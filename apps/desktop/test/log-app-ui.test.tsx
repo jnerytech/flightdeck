@@ -130,7 +130,11 @@ describe("log-app-ui: the app's own events reach the log", () => {
       fail(error: unknown): void;
     };
     internals.update({ hosts: [{ id: "h1", name: "pc", status: "online", sessions: [] }] });
-    internals.onStatus("h1", { info: null, incompatibility: null, retry: null }, "offline");
+    internals.onStatus(
+      "h1",
+      { info: null, incompatibility: null, retry: null, lastDrop: null },
+      "offline",
+    );
     internals.fail(new Error("the host refused: token=0123456789abcdef0123456789abcdef"));
     w.mem.platform.updater.check = async () => null;
     await w.store.checkAppUpdate();
