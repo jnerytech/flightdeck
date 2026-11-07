@@ -3,11 +3,14 @@ import { inSequence, isWatchCheck } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { type CommandResult, git as realGit } from "../board/command.ts";
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, prProvider, tail } from "../board/pr.ts";
+import { refArg } from "../board/ref-arg.ts";
 import type { PrProviderKind } from "../board/types.ts";
+import { FlightdeckError } from "../errors.ts";
 import { settled } from "../settled.ts";
 import { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import type { CheckRunner } from "../workflows/check-runner.ts";
+import { type Drift, type FileChange, measureDrift, parseNumstat } from "./drift.ts";
 import { REMOVED_LINE } from "./trace.ts";
 import type { PrWatcher, WatchSettings, WatchTrigger } from "./watch.ts";
 
@@ -16,7 +19,8 @@ export interface FixRound {
   id: string;
   cardId: string;
   n: number;
-  status: "running" | "pushed" | "failed" | "stopped";
+  /** `held`: the round drifted from its PR (#77); its commits wait for you. */
+  status: "running" | "pushed" | "failed" | "stopped" | "held";
   /** What started it: the failed checks, the conflict, the comments. */
   trigger: { failed: string[]; conflicts: boolean; comments: string[] };
   summary: string | null;
@@ -25,6 +29,8 @@ export interface FixRound {
   turns: number;
   startedAt: string;
   endedAt: string | null;
+  /** A held round's files outside the PR and its churn (#77). */
+  drift: Drift | null;
 }
 
 export interface PrFixerOptions {
@@ -53,6 +59,8 @@ interface RoundRow {
   turns: number;
   started_at: string;
   ended_at: string | null;
+  held_sha: string | null;
+  drift: string | null;
 }
 
 const toRound = (row: RoundRow): FixRound => ({
@@ -67,6 +75,7 @@ const toRound = (row: RoundRow): FixRound => ({
   turns: row.turns,
   startedAt: row.started_at,
   endedAt: row.ended_at,
+  drift: row.drift ? JSON.parse(row.drift) : null,
 });
 
 /** What a comment of a person keeps in the prompt, and how many comments go in. */
@@ -78,6 +87,26 @@ const masked = (text: string) =>
     .split("\n")
     .map((line) => (scanner.scan(line).length === 0 ? line : REMOVED_LINE))
     .join("\n");
+
+/** A commit id as git prints it (SHA-1 or SHA-256): the only form a stored one goes back into git as. */
+const COMMIT_ID = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
+
+/** What a diff reads, whatever the repository's config: no fsmonitor hook, no external diff or text filter. */
+const SAFE_GIT = ["-c", "core.fsmonitor=false"];
+const SAFE_DIFF = ["diff", "--numstat", "-z", "--no-renames", "--no-ext-diff", "--no-textconv"];
+
+/** A held round's summary, also the reason the card needs you. */
+function heldSummary(measured: { drift: Drift } | { error: string }): string {
+  if ("error" in measured) return `held: the drift could not be measured (${measured.error})`;
+  const { outside, churn, limit } = measured.drift;
+  const shown = outside.slice(0, 5).map((path) => path.replace(/\p{Cc}/gu, "?"));
+  const more = outside.length > shown.length ? ` and ${outside.length - shown.length} more` : "";
+  const files =
+    outside.length > 0
+      ? `${outside.length} file(s) outside the PR: ${shown.join(", ")}${more}; `
+      : "";
+  return `held: ${files}${churn} of at most ${limit} lines changed`;
+}
 
 const COMMENT_CHARS = 2000;
 const COMMENTS_MAX = 20;
@@ -176,6 +205,129 @@ export class PrFixer {
     if (!watcher.enabled(cardId)) return null;
     const { status, reason } = watcher.status(cardId);
     return status === "needs_you" ? (reason ?? "the PR needs you") : "the PR watch fixes this card";
+  }
+
+  /**
+   * Issue #77: the person pushes a held round as it is (`push`), or drops its commits (`drop`).
+   * Refused when the round is not the card's held one, or when the branch moved since the hold.
+   */
+  async resolveHeld(cardId: string, roundId: string, action: "push" | "drop"): Promise<void> {
+    const { db, board } = this.opts;
+    const card = board.getCard(cardId);
+    const last = db
+      .query<RoundRow, [string]>(
+        "SELECT * FROM pr_watch_rounds WHERE card_id = ? ORDER BY n DESC LIMIT 1",
+      )
+      .get(cardId);
+    if (last?.id !== roundId || last.status !== "held" || this.running.has(cardId)) {
+      throw new FlightdeckError("invalid_state", "that round is not held", "watch_round_not_held");
+    }
+    const worktree = card.worktreePath as string;
+    const branch = refArg(card.branch as string);
+    const sha = last.held_sha ?? "";
+    const head = await this.git(worktree, "rev-parse", "HEAD");
+    if (!COMMIT_ID.test(sha) || head.stdout.trim() !== sha) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the branch has new commits since the round was held",
+        "watch_held_moved",
+      );
+    }
+    const done =
+      action === "push"
+        ? // git-arg: the held commit id (checked hex) to the card's own branch (refArg), never forced
+          await this.git(worktree, "push", "origin", `${sha}:refs/heads/${branch}`)
+        : // git-arg: back to what was pushed (refArg); --keep refuses to lose uncommitted changes
+          await this.git(worktree, "reset", "--keep", refArg(`origin/${branch}`));
+    if (done.code !== 0) {
+      throw new FlightdeckError(
+        "internal",
+        `git ${action === "push" ? "push" : "reset"} failed`,
+        "command_failed",
+        {
+          what: `git ${action === "push" ? "push" : "reset"}`,
+          output: `exit ${done.code}`,
+        },
+      );
+    }
+    const [status, summary] =
+      action === "push"
+        ? ["pushed", `pushed by you after the hold: ${last.summary ?? ""}`]
+        : ["stopped", `dropped by you: the branch is back at origin/${branch}`];
+    db.query("UPDATE pr_watch_rounds SET status = ?, summary = ?, ended_at = ? WHERE id = ?").run(
+      status,
+      summary,
+      new Date(this.now).toISOString(),
+      roundId,
+    );
+    this.opts.onUpdate?.(cardId);
+  }
+
+  /**
+   * Whether the commits about to be pushed drift from the PR (#77), measured against what is
+   * pushed: the PR as it stands (`merge-base(origin/<base>, origin/<branch>)..origin/<branch>`) is
+   * the footprint, and the round is `origin/<branch>..HEAD` over the files the PR changes after it,
+   * so a merge of the base adds nothing. `{ error }` when git cannot tell; `null` in scope.
+   */
+  private async measure(
+    worktree: string,
+    branch: string,
+    base: string,
+    trigger: WatchTrigger,
+    allow: string[],
+  ): Promise<{ drift: Drift } | { error: string } | null> {
+    const pushed = refArg(`origin/${branch}`);
+    const target = refArg(`origin/${base}`);
+    const firstLine = (text: string) => text.trim().split("\n")[0] ?? "";
+    const read = async (...args: string[]): Promise<string> => {
+      // git-arg: refArg'd refs, commit ids or HEAD, after fixed options; a diff ends with `--`
+      const out = await this.git(worktree, ...SAFE_GIT, ...args);
+      if (out.code !== 0) throw new Error(firstLine(out.stderr) || `git ${args[0]} failed`);
+      return out.stdout;
+    };
+    const commit = async (...revs: string[]): Promise<string> => {
+      const id = (await read("merge-base", ...revs)).trim();
+      return COMMIT_ID.test(id) ? id : Promise.reject(new Error("git merge-base found no commit"));
+    };
+    const numstat = async (from: string, to: string): Promise<FileChange[]> =>
+      parseNumstat(await read(...SAFE_DIFF, from, to, "--"));
+    try {
+      const before = await numstat(await commit(target, pushed), pushed);
+      const after = await numstat(await commit(target, "HEAD"), "HEAD");
+      const inPr = new Set(after.map((file) => file.path));
+      const round = (await numstat(pushed, "HEAD")).filter((file) => inPr.has(file.path));
+      const named = trigger.comments.flatMap((comment) => (comment.path ? [comment.path] : []));
+      const drift = measureDrift({ footprint: before, round, named, allow });
+      return drift ? { drift } : null;
+    } catch (error) {
+      return { error: masked((error as Error).message).replace(/\p{Cc}/gu, " ") };
+    }
+  }
+
+  /** The round's commits stay here, held at HEAD, until the person pushes or drops them. */
+  private async hold(
+    cardId: string,
+    roundId: string,
+    worktree: string,
+    measured: { drift: Drift } | { error: string },
+    end: (
+      status: "held",
+      summary: string,
+      spent?: { sessionId?: string | null; costUsd?: number; turns?: number },
+    ) => void,
+    spent: { sessionId?: string | null; costUsd?: number; turns?: number },
+  ): Promise<void> {
+    const head = (await this.git(worktree, "rev-parse", "HEAD")).stdout.trim();
+    this.opts.db
+      .query("UPDATE pr_watch_rounds SET held_sha = ?, drift = ? WHERE id = ?")
+      .run(
+        COMMIT_ID.test(head) ? head : null,
+        "drift" in measured ? JSON.stringify(measured.drift) : null,
+        roundId,
+      );
+    const summary = heldSummary(measured);
+    end("held", summary, spent);
+    this.needsYou(cardId, summary);
   }
 
   /** The watcher's trigger: starts a round, one at a time per card, unless a limit says stop. */
@@ -345,7 +497,7 @@ export class PrFixer {
     };
 
     try {
-      await this.play({ trigger, n, branch, worktree, settings, project, card, provider, end });
+      await this.play({ id, trigger, n, branch, worktree, settings, project, card, provider, end });
     } catch (error) {
       if (this.stopped) return;
       const message = `unexpected error: ${error instanceof Error ? error.message : String(error)}`;
@@ -376,6 +528,7 @@ export class PrFixer {
   }
 
   private async play(input: {
+    id: string;
     trigger: WatchTrigger;
     n: number;
     branch: string;
@@ -391,7 +544,7 @@ export class PrFixer {
     ) => void;
   }): Promise<void> {
     const { board, watcher } = this.opts;
-    const { trigger, n, branch, worktree, settings, project, card, provider, end } = input;
+    const { id, trigger, n, branch, worktree, settings, project, card, provider, end } = input;
     const { cardId } = trigger;
     const logs = await this.logs(provider, card.prUrl as string, project.path, trigger);
     const fixed = await board
@@ -429,6 +582,16 @@ export class PrFixer {
       return end("stopped", "Vigiar was turned off: nothing was pushed", spent);
     const state = (await provider?.status({ cwd: project.path, url: card.prUrl as string }))?.state;
     if (state !== "open") return end("stopped", `the PR is ${state}: nothing was pushed`, spent);
+    // Issue #77: a round that leaves its PR is held for the person, not pushed.
+    const measured = await this.measure(
+      worktree,
+      branch,
+      project.baseBranch,
+      trigger,
+      settings.driftAllow,
+    );
+    if (measured) return this.hold(cardId, id, worktree, measured, end, spent);
+    if (this.stopped) return;
     // Only the card's own branch, from HEAD, never forced: a refused push is a failed round.
     const pushed = await this.git(worktree, "push", "origin", `HEAD:refs/heads/${branch}`);
     if (pushed.code !== 0) {
