@@ -7,6 +7,7 @@ import {
   type AssistantResult,
   AssistantRunPayload,
 } from "./assistant.ts";
+import { ColumnContract } from "./board-contracts.ts";
 import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 import {
@@ -736,6 +737,8 @@ export const Project = z.object({
   issues: IssuesConfig.nullable().default(null),
   /** The persona a card opens its session in when it starts from that column (phase 20). */
   personaByColumn: z.partialRecord(BoardColumn, z.string()).default({}),
+  /** Issue #78: what each column asks of a card; a column left out keeps the app's default. */
+  contractByColumn: z.partialRecord(BoardColumn, ColumnContract).default({}),
   /** The personas offered as `persona-<id>` subagents in this project (phase 20). */
   personaSubagents: PersonaSubagentsMode.default("all"),
   /** Phase 36: the hours a done card is worth when it has no estimate of its own. */
@@ -2390,6 +2393,8 @@ export const ProjectUpdatePayload = z.object({
   ...ProjectFields,
   /** The default persona by column; `null` removes the one of a column. */
   personaByColumn: z.partialRecord(BoardColumn, z.string().nullable()).optional(),
+  /** Issue #78: `null` gives a column back to the default contract. */
+  contractByColumn: z.partialRecord(BoardColumn, ColumnContract.nullable()).optional(),
   personaSubagents: PersonaSubagentsMode.optional(),
   /** Phase 36: `null` removes the default. */
   defaultHours: z.number().min(0).max(1000).nullable().optional(),
@@ -3138,7 +3143,13 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd(
     "card.move",
-    z.object({ cardId: z.string(), column: BoardColumn, position: z.number().optional() }),
+    z.object({
+      cardId: z.string(),
+      column: BoardColumn,
+      position: z.number().optional(),
+      /** Issue #78: move although the column's contract is not met; the card keeps a notice. */
+      force: z.boolean().optional(),
+    }),
   ),
   cmd("card.start", CardStartPayload),
   cmd("card.get", CardIdPayload),
@@ -5215,6 +5226,8 @@ export const ErrorCode = z.enum([
   "persona_untrusted",
   /** A snippet with a secret in it; the app offers "Transformar em ação" (phase 18). */
   "snippet_secret",
+  /** A person's move to a column whose contract the card does not meet (issue #78). */
+  "contract_unmet",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

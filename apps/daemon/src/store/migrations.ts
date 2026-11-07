@@ -910,4 +910,9 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE pr_watch_rounds ADD COLUMN held_sha TEXT;
   ALTER TABLE pr_watch_rounds ADD COLUMN drift TEXT;
   `,
+  // Issue #78: what each board column of a project asks of a card (a JSON object by column; NULL
+  // keeps the defaults).
+  `
+  ALTER TABLE projects ADD COLUMN contract_by_column TEXT;
+  `,
 ];

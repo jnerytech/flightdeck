@@ -20,20 +20,42 @@ export type ContractNeed = "criteria" | "pr" | "checksPending" | "checksFailing"
 
 export type ContractOverrides = Partial<Record<BoardColumn, ColumnContract>>;
 
-/** The contracts of the columns when a project sets none; a column not listed asks nothing. */
-export const DEFAULT_CONTRACTS: ContractOverrides = {};
+/**
+ * The contracts of the columns when a project sets none; a column not listed asks nothing.
+ * Starting a card is one move, so In progress only says what is missing. Done asks nothing yet:
+ * many cards end with no PR.
+ */
+export const DEFAULT_CONTRACTS: ContractOverrides = {
+  in_progress: { enforce: "hint", checks: ["criteria"] },
+  review: { enforce: "confirm", checks: ["pr", "checks"] },
+};
 
+/** The contract a column holds cards to: the project's own, else the default, else none. */
 export function contractOf(
-  _column: BoardColumn,
-  _overrides: ContractOverrides = {},
+  column: BoardColumn,
+  overrides: ContractOverrides = {},
 ): ColumnContract | null {
-  return { enforce: "hint", checks: [] };
+  return overrides[column] ?? DEFAULT_CONTRACTS[column] ?? null;
 }
 
+/** A checklist item in the description is what the card calls its acceptance criteria. */
+const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
+
+/** What `card` lacks for `column`; nothing when the column asks nothing or the card has it all. */
 export function missingFor(
-  _column: BoardColumn,
-  _card: Pick<Card, "description" | "prUrl" | "checksState">,
-  _overrides: ContractOverrides = {},
+  column: BoardColumn,
+  card: Pick<Card, "description" | "prUrl" | "checksState">,
+  overrides: ContractOverrides = {},
 ): ContractNeed[] {
-  return ["criteria"];
+  const needs: ContractNeed[] = [];
+  for (const check of contractOf(column, overrides)?.checks ?? []) {
+    if (check === "criteria" && !CHECKLIST_ITEM.test(card.description)) needs.push("criteria");
+    if (check === "pr" && !card.prUrl) needs.push("pr");
+    // Checks belong to a PR. A repository with none reports no state: that is not the card's fault.
+    if (check === "checks" && card.prUrl) {
+      if (card.checksState === "pending") needs.push("checksPending");
+      if (card.checksState === "failing") needs.push("checksFailing");
+    }
+  }
+  return needs;
 }

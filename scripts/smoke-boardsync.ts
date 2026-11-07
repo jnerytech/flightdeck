@@ -296,7 +296,7 @@ async function run(work: string): Promise<void> {
 
     step = "sem envio com o push desligado";
     const card1 = first.find((c) => c.title === "Item 1") as Card;
-    await client.call("card.move", { cardId: card1.id, column: "review" });
+    await client.call("card.move", { cardId: card1.id, column: "review", force: true });
     await client.call("boardsync.syncNow", { projectId: project.id });
     if (mutations().length !== 0) throw new Error("nada devia ser enviado com o push desligado");
     log("mover um card aqui não mudou nada no quadro");
@@ -343,7 +343,7 @@ async function run(work: string): Promise<void> {
 
     step = "a mudança mais nova do quadro vence";
     const card2 = first.find((c) => c.title === "Item 2") as Card;
-    await client.call("card.move", { cardId: card2.id, column: "review" });
+    await client.call("card.move", { cardId: card2.id, column: "review", force: true });
     items[1] = { id: "PVTI_2", number: 2, status: "Done", updatedAt: "2099-01-01T00:00:00Z" };
     gh.respond(rules(items, ["repo", "read:project", "project"]));
     const conflict = await client.call<{ report: { conflicts: number } }>("boardsync.syncNow", {
