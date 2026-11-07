@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { AppStore } from "../src/lib/app-store.ts";
+import { HostConnection } from "../src/lib/host-connection.ts";
 import { projectTree } from "../src/lib/project-tree.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { settlePlain as settle, settleMaybe, stays } from "./wait.ts";
@@ -27,12 +28,16 @@ async function setup() {
     maxDelayMs: 20,
   });
   cleanups.push(() => store.dispose());
+  // Every `project.list` that leaves the app, whoever asks (the screens' list or the setup probe).
   const asked: string[] = [];
-  const real = store.loadProjects.bind(store);
-  store.loadProjects = (hostId: string) => {
-    asked.push(hostId);
-    return real(hostId);
-  };
+  const real = HostConnection.prototype.request;
+  HostConnection.prototype.request = function (this: HostConnection, type: string, ...rest) {
+    if (type === "project.list") asked.push(type);
+    return (real as (...args: unknown[]) => unknown).call(this, type, ...rest) as never;
+  } as typeof real;
+  cleanups.push(() => {
+    HostConnection.prototype.request = real;
+  });
   return { d, server, store, shop, asked };
 }
 
@@ -51,7 +56,7 @@ describe("tree-on-connect: the sidebar project tree fills when a host comes onli
     expect(await settleMaybe(() => names(store, hostId).length > 0)).toBe(true);
     expect(names(store, hostId)).toEqual(["shop"]);
     expect(treeNames(store)).toEqual([`${hostId}:shop`]);
-    await stays(() => asked.length === 1, 300, "one project load for the connect");
+    await stays(() => asked.length === 1, 300, "one project.list for the connect");
   });
 
   test("a reconnect reloads the host's projects without duplicating them", async () => {
@@ -67,7 +72,7 @@ describe("tree-on-connect: the sidebar project tree fills when a host comes onli
     expect(await settleMaybe(() => names(store, hostId).length === 2)).toBe(true);
     expect(names(store, hostId).sort()).toEqual(["docs", "shop"]);
     expect(treeNames(store).sort()).toEqual([`${hostId}:docs`, `${hostId}:shop`]);
-    expect(asked).toEqual([hostId, hostId]);
+    expect(asked).toEqual(["project.list", "project.list"]);
   });
 
   test("a host that goes offline keeps its projects in the state and leaves the tree", async () => {
