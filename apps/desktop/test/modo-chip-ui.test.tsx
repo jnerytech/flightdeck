@@ -335,10 +335,11 @@ describe("modo-chip: the chip shows the session's real mode (#935)", () => {
     const { show } = live();
     await show("default");
     await open();
-    await click(row(/^Accept edits/));
+    // Plan, stricter than the start: a host without bypass lets it through.
+    await click(row(/^Plan/));
     const picked = chip()?.textContent ?? "";
-    await show("plan", "h/s2");
-    expect([picked.includes("Accept edits"), chip()?.textContent?.includes("Plan")]).toEqual([
+    await show("acceptEdits", "h/s2");
+    expect([picked.includes("Plan"), chip()?.textContent?.includes("Accept edits")]).toEqual([
       true,
       true,
     ]);
