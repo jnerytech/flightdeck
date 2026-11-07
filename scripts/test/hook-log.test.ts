@@ -104,15 +104,34 @@ describe("hook-log", () => {
     const text = [
       override("2026-11-07T02:10:05.000Z", "a fix after review", 6),
       override("2026-11-07T03:01:00.000Z", "the reviewer waits"),
+      // A line written by hand: control and bidi characters never reach the terminal.
+      override("2026-11-07T03:05:00.000Z", "a\u001b[2Jb\u202ec"),
     ]
       .map((e) => JSON.stringify(e))
       .join("\n");
-    expect(summarizeHookLog(text).split("\n").slice(-4)).toEqual([
+    expect(summarizeHookLog(text).split("\n").slice(-5)).toEqual([
       "",
       "push-wait overrides:",
-      "  2026-11-07 02:10  run 6 min old  a fix after review",
-      "  2026-11-07 03:01  no run found   the reviewer waits",
+      "  2026-11-07 02:10 UTC  run 6 min old       a fix after review",
+      "  2026-11-07 03:01 UTC  no run in progress  the reviewer waits",
+      "  2026-11-07 03:05 UTC  no run in progress  a[2Jbc",
     ]);
+  });
+
+  test("#821 review: a line with a time or a reason that is not text is skipped, not a crash", () => {
+    const bad = (over: Record<string, unknown>) =>
+      JSON.stringify({
+        ...entry("guard", 40),
+        rule: "push-wait",
+        decision: "waived",
+        detail: "x",
+        ...over,
+      });
+    const text = [bad({ t: 5 }), bad({ detail: 7 })].join("\n");
+    expect(() => summarizeHookLog(text)).not.toThrow();
+    expect(summarizeHookLog(text)).toBe(
+      "no hook calls logged yet\n\n2 line(s) skipped (not a hook log entry)",
+    );
   });
 
   test("waived commits are counted apart from blocks, per rule", () => {

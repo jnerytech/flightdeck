@@ -153,45 +153,125 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     ]);
     expect(guardAllowLogs("git push", {})).toEqual([{ rule: null, decision: "allow" }]);
   });
+});
 
-  test("#741: the waiver keeps the reason, with secrets hidden, and the age of the run the push cancels", () => {
-    const push = { cwd: CWD, deps: deps(green) };
+describe("push-wait: what an override logs (#741, #821 review)", () => {
+  /** The same checkout, with a run per branch and, if given, which folders are the project's. */
+  function runsBy(runs: Record<string, PrRun | null>, inProject?: (dir: string) => boolean) {
+    const base = deps(null);
+    return {
+      ...base,
+      inProject,
+      prRun: (branch: string, dir: string) => {
+        base.asked.push(`${branch} in ${dir}`);
+        return runs[branch] ?? null;
+      },
+    };
+  }
+  const log = (command: string, d: ReturnType<typeof runsBy>, cwd = CWD) =>
+    guardAllowLogs(command, {}, { cwd, deps: d });
+  const waiver = (detail: string, minutes?: number) => [
+    {
+      rule: "push-wait",
+      decision: "waived",
+      detail,
+      ...(minutes === undefined ? {} : { minutes }),
+    },
+  ];
+
+  test("the reason and the age of the run the push cancels, asked in the push's own checkout", () => {
+    const d = runsBy({ "fix-x": green });
+    expect(log('FLIGHTDECK_PUSH_NOW="a fix after review" git push origin fix-x', d)).toEqual(
+      waiver("a fix after review", 6),
+    );
+    expect(d.asked).toEqual([`fix-x in ${CWD}`]);
+  });
+
+  test("with two pushed branches, the youngest run in progress", () => {
+    const d = runsBy({ a: { ...green, minutes: 12 }, b: { ...green, minutes: 4 } });
+    expect(log('FLIGHTDECK_PUSH_NOW="both need the fix" git push origin a b', d)).toEqual(
+      waiver("both need the fix", 4),
+    );
+    expect(d.asked).toEqual([`a in ${CWD}`, `b in ${CWD}`]);
+  });
+
+  test("a run that ended, no run, a delete or an unknown folder: the reason alone", () => {
     expect(
-      guardAllowLogs('FLIGHTDECK_PUSH_NOW="a fix after review" git push origin fix-x', {}, push),
-    ).toEqual([
-      { rule: "push-wait", decision: "waived", detail: "a fix after review", minutes: 6 },
-    ]);
-    expect(push.deps.asked).toEqual([`fix-x in ${CWD}`]);
-    // No run in progress: the reason alone. A token in the reason is hidden; a long one is cut.
-    const quiet = { cwd: CWD, deps: deps(null) };
-    expect(
-      guardAllowLogs(
-        `FLIGHTDECK_PUSH_NOW="GH_TOKEN=abc123 ${"x".repeat(300)}" git push`,
-        {},
-        quiet,
-      ),
-    ).toEqual([
-      { rule: "push-wait", decision: "waived", detail: `GH_TOKEN=*** ${"x".repeat(187)}` },
-    ]);
-    // A bare token in free text, a Bearer header and control characters never reach the log.
-    const loose = { cwd: CWD, deps: deps(null) };
-    expect(
-      guardAllowLogs(
-        'FLIGHTDECK_PUSH_NOW="retry with ghp_abcdefghijklmnopqrstuvwxyz0123456789 and Bearer xyz.123\u001b[2J" git push',
-        {},
-        loose,
-      ),
-    ).toEqual([{ rule: "push-wait", decision: "waived", detail: "retry with *** and Bearer ***" }]);
-    // A push the coordinator makes logs nothing, and asks GitHub nothing.
-    const boss = { cwd: CWD, deps: deps(green) };
-    expect(
-      guardAllowLogs(
+      log(
         'FLIGHTDECK_PUSH_NOW="a fix after review" git push',
-        { FLIGHTDECK_COORDINATOR: "1" },
-        boss,
+        runsBy({ "fix-x": { ...green, inProgress: false } }),
       ),
-    ).toEqual([{ rule: null, decision: "allow" }]);
-    expect(boss.deps.asked).toEqual([]);
+    ).toEqual(waiver("a fix after review"));
+    expect(log('FLIGHTDECK_PUSH_NOW="a fix after review" git push', runsBy({}))).toEqual(
+      waiver("a fix after review"),
+    );
+    const gone = runsBy({ "fix-x": green });
+    expect(
+      log('FLIGHTDECK_PUSH_NOW="drop the old branch" git push origin --delete fix-x', gone),
+    ).toEqual(waiver("drop the old branch"));
+    expect(gone.asked).toEqual([]);
+    const quoted = runsBy({ "fix-x": green });
+    expect(
+      log('cd "/repos/flight deck" && FLIGHTDECK_PUSH_NOW="a fix after review" git push', quoted),
+    ).toEqual(waiver("a fix after review"));
+    expect(quoted.asked).toEqual([]);
+  });
+
+  test("a push in a checkout outside the project is not the rule's: no waiver, and GitHub is not asked", () => {
+    const d = runsBy({ "fix-x": green }, (dir) => dir === CWD);
+    expect(log('FLIGHTDECK_PUSH_NOW="a fix after review" git push', d, "/elsewhere")).toEqual([
+      { rule: null, decision: "allow" },
+    ]);
+    expect(d.asked).toEqual([]);
+  });
+
+  test("the coordinator logs nothing and asks nothing, with an override or without", () => {
+    for (const command of ['FLIGHTDECK_PUSH_NOW="a fix after review" git push', "git push"]) {
+      const d = runsBy({ "fix-x": green });
+      expect(
+        guardAllowLogs(command, { FLIGHTDECK_COORDINATOR: "1" }, { cwd: CWD, deps: d }),
+      ).toEqual([{ rule: null, decision: "allow" }]);
+      expect(d.asked).toEqual([]);
+    }
+  });
+
+  test("a long reason is cut at 200 characters after its secrets are hidden", () => {
+    expect(
+      log(`FLIGHTDECK_PUSH_NOW="GH_TOKEN=abc123 ${"x".repeat(300)}" git push`, runsBy({})),
+    ).toEqual(waiver(`GH_TOKEN=*** ${"x".repeat(187)}`));
+  });
+
+  test("control, C1, bidi and line-separator characters go first, so a secret split by one is still hidden", () => {
+    expect(
+      log(
+        'FLIGHTDECK_PUSH_NOW="a\u001b[2Jb\u0007c\u0085d\u202ee\u2028f\u2066g\u200bh" git push',
+        runsBy({}),
+      ),
+    ).toEqual(waiver("a[2Jbcdefgh"));
+    expect(
+      log('FLIGHTDECK_PUSH_NOW="see ghp_ab\u0000cdefghijklmnop now" git push', runsBy({})),
+    ).toEqual(waiver("see *** now"));
+  });
+
+  test("the token shapes of common services, an Authorization header and a --token flag are hidden", () => {
+    const reason = [
+      "x_ghp_abc123def456",
+      "glpat-abcdefghij1234567890",
+      "npm_abcdefghijklmnopqrstuvwxyz0123456789",
+      "xoxb-123-456-abc",
+      "sk-abcdefghijklmnopqrstuv",
+      "AKIAABCDEFGHIJKLMNOP",
+      "eyJhbGciOi.eyJzdWIi.c2lnbmF0dXJl",
+      "Authorization: Basic dXNlcjpwYXNz",
+      "--token abc123",
+      "--password=hunter2",
+      "Bearer xyz",
+    ].join(" ");
+    expect(log(`FLIGHTDECK_PUSH_NOW="${reason}" git push`, runsBy({}))).toEqual(
+      waiver(
+        "x_*** *** *** *** *** *** *** Authorization: *** --token *** --password=*** Bearer ***",
+      ),
+    );
   });
 });
 

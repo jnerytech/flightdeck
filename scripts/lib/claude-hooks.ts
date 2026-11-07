@@ -821,6 +821,11 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
   );
 }
 
+/** Text with control, format (bidi, zero-width) and line-separator characters taken out. */
+export function printable(text: string): string {
+  return text.length < 0 ? "" : text;
+}
+
 /** A command with the user and password of a URL, and a secret-looking variable's value, hidden. */
 function redacted(text: string): string {
   return text
