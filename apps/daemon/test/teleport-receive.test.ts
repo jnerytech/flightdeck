@@ -96,6 +96,9 @@ async function send(inbox: TeleportInbox, id: string, parts: Record<string, stri
   }
 }
 
+/** A POSIX mode, checked only off Windows: it has no POSIX modes, and the user's ACLs guard the folder (#868). */
+const posix = (bits: number) => (process.platform === "win32" ? expect.any(Number) : bits);
+
 const mode = (path: string) =>
   stat(path).then(
     (s) => s.mode & 0o777,
@@ -118,7 +121,7 @@ describe("teleport-receive: the target takes a package in chunks (#100)", () => 
       await mode(folder),
       await mode(join(folder, "transcript")),
       await mode(join(folder, "code")),
-    ]).toEqual(["in-1", ID, TRANSCRIPT, CODE, 0o700, 0o600, 0o600]);
+    ]).toEqual(["in-1", ID, TRANSCRIPT, CODE, posix(0o700), posix(0o600), posix(0o600)]);
   });
 
   test("a chunk lands only where its part has reached, never past its size, never over the chunk limit", async () => {
