@@ -360,4 +360,49 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       ["teleport_corrupt", []],
     ]);
   });
+
+  test("a cancel while the source prepares, or the target opens its inbox, ends the move, and what answers late is freed", async () => {
+    const late = async (where: "prepare" | "receive") => {
+      const h = hosts();
+      let answer: ((value: unknown) => void) | null = null;
+      const held = (async (type: string, payload: never) => {
+        if (type === `teleport.${where}`) {
+          return new Promise((resolve) => {
+            answer = resolve;
+          });
+        }
+        return (where === "prepare" ? h.source : h.target)(type as "teleport.cancel", payload);
+      }) as TeleportRequest;
+      const stop = new AbortController();
+      let outcome: unknown = "still waiting";
+      void run(h, {
+        ...(where === "prepare" ? { source: held } : { target: held }),
+        signal: stop.signal,
+      }).then((done) => {
+        outcome = done;
+      });
+      await settleMaybe(() => answer !== null);
+      stop.abort();
+      await settleMaybe(() => outcome !== "still waiting", 2000);
+      const calls = h.calls.length;
+      // The host answers after the move ended: its package goes.
+      (answer as unknown as (value: unknown) => void)(
+        where === "prepare" ? MANIFEST : { id: "in-late" },
+      );
+      await settleMaybe(() => h.calls.length > calls, 2000);
+      return [outcome, h.calls.slice(calls)];
+    };
+    expect([await late("prepare"), await late("receive")]).toEqual([
+      [{ kind: "cancelled" }, ["source:teleport.cancel"]],
+      [{ kind: "cancelled" }, ["target:teleport.abort"]],
+    ]);
+  });
+
+  test("a session on no branch shows none", () => {
+    const summary = teleportSummary({
+      ...MANIFEST,
+      git: { ...(MANIFEST.git as NonNullable<TeleportManifest["git"]>), branch: null },
+    });
+    expect(summary.branch).toBeNull();
+  });
 });
