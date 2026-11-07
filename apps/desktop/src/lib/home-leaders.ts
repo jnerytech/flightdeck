@@ -4,7 +4,7 @@ import type { CostsSummary } from "@flightdeck/protocol";
 export type LeaderSource = Pick<CostsSummary, "byProject" | "byModel" | "byPersona">;
 
 export interface Trend {
-  /** `new`: nothing in the first half, something in the second. */
+  /** `new`: nothing in the first half (its tokens are in the second, or only today). */
   direction: "up" | "down" | "flat" | "new";
   /** The change between the halves, in whole percent; `null` for `new`. */
   percent: number | null;
@@ -45,8 +45,8 @@ function tokensOf(rows: Array<{ key: Key; tokens: number }>): Tokens {
 const sumOf = (sums: Tokens, keys: Key[]) => keys.reduce((n, key) => n + (sums.get(key) ?? 0), 0);
 
 function trend(first: number, second: number): Trend {
-  if (first === 0)
-    return second === 0 ? { direction: "flat", percent: 0 } : { direction: "new", percent: null };
+  // A listed item has tokens: none in days 1-3 means it is new, in days 4-6 or only today.
+  if (first === 0) return { direction: "new", percent: null };
   const change = (second - first) / first;
   const percent = Math.round(Math.abs(change) * 100);
   if (Math.abs(change) < FLAT) return { direction: "flat", percent };
