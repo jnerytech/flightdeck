@@ -80,7 +80,8 @@ export const REACH_VIEWPORTS: ReadonlyArray<{ width: number; height: number }> =
 
 /** The widths the page must never scroll sideways at (issue #103), with 12 tabs and long ids. */
 export const OVERFLOW_VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
-  // 760 is just above the smallest window the app allows (720).
+  // 360 is the smallest window the app allows (tauri.conf.json); 760 sits just above the old floor.
+  { width: 360, height: 600 },
   { width: 760, height: 600 },
   { width: 1024, height: 768 },
   { width: 1919, height: 1080 },
