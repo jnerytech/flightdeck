@@ -151,6 +151,19 @@ describe("ci-shards", () => {
     }
   });
 
+  test("SonarCloud reads the merged lcov of a full run of main, never a main push's partial one; a PR keeps its own (#296)", () => {
+    // A main push uploads only the related tests' lcov: main's coverage read 76% to 95% from it.
+    // The schedule and a dispatch of main run the whole suite in shards; a dispatch of a branch
+    // (ci:branch) is no analysis of main.
+    expect(job("sonar").if).toBe(
+      "!cancelled() && needs.test-suite.result == 'success' && (github.event_name == 'pull_request' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))",
+    );
+    // The required check: on a PR SonarCloud must run, never skip silently (it did on every PR once).
+    expect(runs("test")).toContain(
+      'if [ "${{ github.event_name }}" = pull_request ]; then test "${{ needs.sonar.result }}" = success; fi',
+    );
+  });
+
   test("a PR skips the shards, and every job after them still runs: each states its own status check (#296)", () => {
     // GitHub skips a job whose needs chain holds a skipped job unless its `if` names a status
     // function, so without one SonarCloud stopped running on every PR and main push.
