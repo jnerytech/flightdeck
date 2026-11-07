@@ -36,10 +36,30 @@ function paramsOf(
   why: { reason?: string; params?: Record<string, string | number> },
   t: T,
 ): Record<string, string | number> | undefined {
+  if (why.reason && CONTRACT_REASONS.has(why.reason)) return contractNamed(why.params, t);
   const feature = why.params?.feature;
   if (why.reason !== "feature_off" || typeof feature !== "string") return kindsNamed(why, t);
   const named = feature in ptBR.daemonFeature ? t(`daemonFeature.${feature}` as Key) : feature;
   return { ...why.params, feature: named };
+}
+
+/** The reasons about a column's contract (issue #78): they name a column and what a card lacks. */
+const CONTRACT_REASONS = new Set(["card_contract_unmet", "card_moved_anyway", "contract_invalid"]);
+
+/** The column and what the card lacks (`pr,checksFailing`), named in the app's language. */
+function contractNamed(
+  params: Record<string, string | number> | undefined,
+  t: T,
+): Record<string, string | number> {
+  const column = String(params?.column ?? "");
+  const named = column in ptBR.kanban.columns ? t(`kanban.columns.${column}` as Key) : column;
+  const needs = String(params?.needs ?? "")
+    .split(",")
+    .filter(Boolean)
+    .map((need) =>
+      need in ptBR.board.contract.needs ? t(`board.contract.needs.${need}` as Key) : need,
+    );
+  return { ...params, column: named, needs: needs.join(", ") };
 }
 
 /** The param that holds the kinds of secret a refusal names: the scanner's ids, named here (#714). */
