@@ -371,8 +371,10 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       const finishing = await shows(finishingText);
       const cancel =
         screen.queryByRole("button", { name: lang === "en" ? "Cancel" : "Cancelar" }) !== null;
-      // A host that never answers the import: the person is never stuck in the dialog.
-      const close = screen.queryByRole("button", { name: closeLabel });
+      // A host that never answers the import: the person is never stuck in the dialog. The form's
+      // own Close, not the dialog's X.
+      const form = screen.queryByRole("status")?.closest("form") ?? null;
+      const close = form ? within(form).queryByRole("button", { name: closeLabel }) : null;
       expect(close).not.toBeNull();
       await act(async () => {
         fireEvent.click(close as HTMLElement);
