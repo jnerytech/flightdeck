@@ -33,6 +33,8 @@ export function AppShell(
     status?: ReactNode;
     sidebar: (collapsed: boolean) => ReactNode;
     labels: AppShellLabels;
+    /** What the top bar gave up at a compact width, drawn above the sidebar in the drawer. */
+    drawerTop?: ReactNode;
     /** Changes when the person navigates: the overlay or the drawer closes. */
     navKey?: unknown;
     children: ReactNode;
