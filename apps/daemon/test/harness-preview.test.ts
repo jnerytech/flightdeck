@@ -31,7 +31,11 @@ const DENY = [
   "Bash(git add --all:*)",
   "Bash(git add .)",
 ];
-const FORMAT_HOOK = { event: "PostToolUse", matcher: "Edit|MultiEdit|Write", command: "bun run format" };
+const FORMAT_HOOK = {
+  event: "PostToolUse",
+  matcher: "Edit|MultiEdit|Write",
+  command: "bun run format",
+};
 
 function repo(files: Record<string, string>) {
   const root = tempDir("fd-preview-");
@@ -46,7 +50,9 @@ function repo(files: Record<string, string>) {
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const json = (value: unknown, indent = 2) => `${JSON.stringify(value, null, indent)}\n`;
 const bunProject = {
-  "package.json": JSON.stringify({ scripts: { test: "bun test", format: "biome format --write ." } }),
+  "package.json": JSON.stringify({
+    scripts: { test: "bun test", format: "biome format --write ." },
+  }),
   "bun.lock": "",
 };
 
@@ -98,7 +104,9 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
     const text = json({
       env: { API_TOKEN: "s3cr3t-value" },
       hooks: {
-        PostToolUse: [{ matcher: "Edit", hooks: [{ type: "command", command: "prettier --write ." }] }],
+        PostToolUse: [
+          { matcher: "Edit", hooks: [{ type: "command", command: "prettier --write ." }] },
+        ],
       },
       permissions: { deny: ["Read(./.env)"], allow: ["Bash(ls)"] },
     });
@@ -108,7 +116,9 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
     expect([
       preview.settings,
       preview.files.map((file) => file.path),
-      ["s3cr3t-value", "API_TOKEN", "Bash(ls)", "prettier", "# Mine"].filter((s) => sent.includes(s)),
+      ["s3cr3t-value", "API_TOKEN", "Bash(ls)", "prettier", "# Mine"].filter((s) =>
+        sent.includes(s),
+      ),
     ]).toEqual([
       {
         path: SETTINGS,
@@ -146,7 +156,10 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
       ...bunProject,
       [SETTINGS]: json({ hooks: { PostToolUse: { matcher: "x" } }, permissions: "ask" }),
     });
-    const deny = repo({ ...bunProject, [SETTINGS]: json({ hooks: "none", permissions: { deny: "x" } }) });
+    const deny = repo({
+      ...bunProject,
+      [SETTINGS]: json({ hooks: "none", permissions: { deny: "x" } }),
+    });
     const pick = async (root: string) => {
       const settings = (await previewHarness(root, ["hooks", "permissions"])).settings;
       return [settings?.hooks, settings?.denyRules, settings?.conflicts];
@@ -194,7 +207,11 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
       const root = repo(bunProject);
       symlinkSync(outside, join(root, ".claude"));
       const preview = await previewHarness(root, ALL);
-      expect([preview.settings, preview.files.map((file) => file.path), preview.unreadable]).toEqual([
+      expect([
+        preview.settings,
+        preview.files.map((file) => file.path),
+        preview.unreadable,
+      ]).toEqual([
         null,
         ["CLAUDE.md"],
         [SETTINGS, ".claude/agents/reviewer.md", ".claude/skills/tdd/SKILL.md"],
@@ -214,7 +231,10 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
       join(root, SETTINGS),
       json({
         hooks: Object.fromEntries(
-          hooks.map((h) => [h.event, [{ matcher: h.matcher, hooks: [{ type: "command", command: h.command }] }]]),
+          hooks.map((h) => [
+            h.event,
+            [{ matcher: h.matcher, hooks: [{ type: "command", command: h.command }] }],
+          ]),
         ),
         permissions: { deny: first.settings?.denyRules },
       }),
@@ -256,7 +276,10 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
     expect([
       data(await client.request("project.harness.preview", { path: root, ...asked })),
       error(
-        await client.request("project.harness.preview", { path: tempDir("fd-elsewhere-"), ...asked }),
+        await client.request("project.harness.preview", {
+          path: tempDir("fd-elsewhere-"),
+          ...asked,
+        }),
       )?.reason,
       error(await bare.request("project.harness.preview", { path: root, ...asked }))?.params,
     ]).toEqual([DENY, "cwd_outside_roots", { feature: "harnessPreview" }]);
