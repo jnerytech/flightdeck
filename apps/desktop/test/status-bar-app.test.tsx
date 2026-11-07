@@ -89,13 +89,19 @@ for (const [lang, dict] of [
       });
       expect(routes).toEqual([{ name: "host", host: "a" }]);
 
-      const opened = store.workspace.tabs.open(
-        { name: "terminal", host: "a", terminalId: "t1" },
-        { background: true },
-      );
+      // The terminal opens in its host's own set, which is the window's now.
+      await act(async () => {
+        store.hostTabs.open({ name: "terminal", host: "a", terminalId: "t1" });
+      });
+      const opened = store.workspace.tabs.active;
+      // Another tab of the host takes the focus, so bringing the terminal forward is a real move.
+      await act(async () => {
+        store.hostTabs.open({ name: "projects", host: "a" });
+      });
+      expect(store.workspace.tabs.activeId === opened.id).toBe(false);
       const brought: string[] = [];
       store.workspace.focusArea = ((area: number) => brought.push(`area:${area}`)) as never;
-      store.workspace.tabs.activate = ((id: string) => brought.push(`tab:${id}`)) as never;
+      store.hostTabs.activate = ((id: string) => brought.push(`tab:${id}`)) as never;
       await settle(
         () => screen.queryByRole("button", { name: dict.statusBar.terminalsOne }) !== null,
       );

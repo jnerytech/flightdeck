@@ -55,7 +55,7 @@ export function TabSwitcherHost(props: Readonly<{ store: AppStore }>) {
     const onKeyUp = (e: KeyboardEvent) => {
       const current = open.current;
       if (current && e.key === "Control") {
-        store.tabs.activate(pickedId(current));
+        store.hostTabs.activate(pickedId(current));
         show(null);
       }
     };

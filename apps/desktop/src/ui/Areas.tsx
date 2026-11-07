@@ -35,15 +35,20 @@ export function Areas(
   const { store, state } = props;
   const { workspace } = store;
   const { t } = store.i18n;
-  useSyncExternalStore(workspace.subscribe, () => workspace.version);
-  const { split, fraction } = workspace;
+  const { hostTabs } = store;
+  useSyncExternalStore(hostTabs.subscribe, () => hostTabs.version);
+  // With no host the shared tabs are the window's only area.
+  const hostless = hostTabs.workspace === null;
+  const areas = hostless ? [hostTabs.shared] : workspace.areas;
+  const { fraction } = workspace;
+  const split = hostless ? null : workspace.split;
   const box = useRef<HTMLDivElement>(null);
   // Issue #488: each area's tabs have a row of their own, as in VS Code and Orca. In a window under
   // 600 px tall the one area's strip goes back to the top bar's row: a 720x480 window keeps its
   // conversation at least 150 px tall.
   const slot = useHeaderSlot();
   const short = useMediaQuery(SHORT_WINDOW);
-  const inHeader = short && !split && workspace.areas.length === 1 ? slot : null;
+  const inHeader = short && !split && areas.length === 1 ? slot : null;
   const dragging = useRef(false);
 
   useEffect(() => {
@@ -102,7 +107,7 @@ export function Areas(
 
   return (
     <div ref={box} className="grid min-h-0 flex-1" style={gridStyle(split, template)}>
-      {workspace.areas.flatMap((area, i) => {
+      {areas.flatMap((area, i) => {
         const pane = (
           <section
             key={area.id}
@@ -112,20 +117,35 @@ export function Areas(
           >
             {inHeader ? (
               createPortal(
-                <TabBar store={store} state={state} tabs={area}>
+                <TabBar
+                  store={store}
+                  state={state}
+                  tabs={area}
+                  {...(i === 0 && !hostless ? { shared: hostTabs.shared } : {})}
+                >
                   {i === 0 && buttons}
                 </TabBar>,
                 inHeader,
               )
             ) : (
-              <TabBar store={store} state={state} tabs={area}>
+              <TabBar
+                store={store}
+                state={state}
+                tabs={area}
+                {...(i === 0 && !hostless ? { shared: hostTabs.shared } : {})}
+              >
                 {i === 0 && buttons}
               </TabBar>
             )}
             {/* Screens that are a Page scroll by themselves; the others scroll here. The area is the
                 container its screens lay out against. */}
             <div className="@container min-h-0 flex-1 overflow-y-auto">
-              <Screen {...props.screen} route={area.router.current as Route} />
+              <Screen
+                {...props.screen}
+                route={
+                  (i === 0 && hostTabs.onShared ? hostTabs.shared : area).router.current as Route
+                }
+              />
             </div>
           </section>
         );

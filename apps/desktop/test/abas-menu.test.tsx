@@ -61,7 +61,9 @@ describe("abas: Abrir em nova aba nos menus", () => {
   test("the host's menu opens its page in a new tab", async () => {
     const { store, hostId } = await setup();
     await menu("Menu de alfa", "Abrir em nova aba");
-    expect(store.tabs.tabs).toHaveLength(2);
+    // The host's page is a tab of the host's own set; Home stays in the shared one.
+    expect(store.hostTabs.shared.tabs).toHaveLength(1);
+    expect(store.hostTabs.tabCount(hostId)).toBe(1);
     expect(store.router.current).toEqual({ name: "host", host: hostId });
   });
 

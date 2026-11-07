@@ -65,9 +65,11 @@ describe("abas: acessibilidade da barra de abas", () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
     render(<App store={store} />);
     await act(async () => {
-      store.tabs.open({ name: "needs-you" });
-      store.tabs.open({ name: "costs" });
+      store.hostTabs.open({ name: "history", host: "ha" });
+      store.hostTabs.open({ name: "projects", host: "ha" });
+      store.hostTabs.open({ name: "auto-approvals", host: "ha" });
     });
+    // The shared Sessões is pinned and has no ×; each of the host's three tabs has its own.
     expect(screen.queryAllByLabelText(/^Fechar aba /)).toHaveLength(3);
     expect(await violations()).toEqual([]);
   });
