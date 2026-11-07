@@ -304,17 +304,16 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
     expect([over, await shows("Moving… 0%")]).toEqual([true, true]);
   });
 
-  test("a second Continue while the host prepares starts no second move, and Cancel then frees the package", async () => {
+  test("a second Continue while the host prepares starts no second move, and Cancel then frees the package and closes once", async () => {
     const { calls, control } = open("en", SUMMARY, true);
     await start("en");
     const preparing = await shows("Getting the session ready…");
-    // A double-click or a second Enter: whatever form is on screen is sent again.
+    // A double-click or a second Enter: the form on screen is sent again.
     const form = document.querySelector("form");
-    if (form) {
-      await act(async () => {
-        fireEvent.submit(form);
-      });
-    }
+    expect(form).not.toBeNull();
+    await act(async () => {
+      fireEvent.submit(form as HTMLFormElement);
+    });
     const runs = calls.args.length;
     await click("Cancel");
     let answered: boolean | null = null;
@@ -325,7 +324,11 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       answered = yes;
     });
     await settleMaybe(() => answered !== null, 2000);
-    expect([preparing, runs, calls.closed >= 1, answered]).toEqual([true, 1, true, false]);
+    // The run ends as declined after the dialog already closed: it does not close it again.
+    await act(async () => {
+      control.finish?.({ kind: "declined" });
+    });
+    expect([preparing, runs, answered, calls.closed]).toEqual([true, 1, false, 1]);
   });
 
   test("Enter or a second click on Move never cancels the move it just started", async () => {
@@ -338,37 +341,70 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
     });
     await shows("Moving… 10%");
     const form = screen.queryByRole("status")?.closest("form") ?? null;
-    if (form) {
-      await act(async () => {
-        fireEvent.submit(form);
-      });
-    }
+    expect(form).not.toBeNull();
+    await act(async () => {
+      fireEvent.submit(form as HTMLFormElement);
+    });
     const move = screen.queryByRole("button", { name: TEXT.en.move });
-    if (move) {
-      await act(async () => {
-        fireEvent.click(move);
-      });
-    }
+    expect(move).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(move as HTMLElement);
+    });
     expect([
       control.signal?.aborted ?? null,
       screen.queryByRole("button", { name: "Cancel" }) !== null,
     ]).toEqual([false, true]);
   });
 
-  test("once every byte is sent the move cannot be cancelled, and the dialog says it is finishing", async () => {
-    const { control } = open("en");
+  for (const [lang, finishingText, closeLabel] of [
+    ["en", "Finishing on pi…", "Close"],
+    ["pt-BR", "Finalizando em pi…", "Fechar"],
+  ] as const) {
+    test(`${lang}: once every byte is sent the move cannot be cancelled, but the dialog can close while the host finishes`, async () => {
+      const { calls, control } = open(lang);
+      await start(lang);
+      await shows(TEXT[lang].secrets);
+      await click(TEXT[lang].move);
+      await act(async () => {
+        control.progress?.(2048, 2048);
+      });
+      const finishing = await shows(finishingText);
+      const cancel =
+        screen.queryByRole("button", { name: lang === "en" ? "Cancel" : "Cancelar" }) !== null;
+      // A host that never answers the import: the person is never stuck in the dialog.
+      const close = screen.queryByRole("button", { name: closeLabel });
+      expect(close).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(close as HTMLElement);
+      });
+      expect([finishing, cancel, calls.closed, control.signal?.aborted ?? null]).toEqual([
+        true,
+        false,
+        1,
+        false,
+      ]);
+    });
+  }
+
+  test("Escape while the host finishes closes the dialog, and the move goes on", async () => {
+    const { calls, control } = open("en");
     await start("en");
     await shows(TEXT.en.secrets);
     await click(TEXT.en.move);
     await act(async () => {
       control.progress?.(2048, 2048);
     });
-    const finishing = await shows("Finishing on pi…");
-    const cancel = screen.queryByRole("button", { name: "Cancel" }) !== null;
+    await shows("Finishing on pi…");
     await act(async () => {
       fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     });
-    expect([finishing, cancel, control.signal?.aborted ?? null]).toEqual([true, false, false]);
+    expect([calls.closed, control.signal?.aborted ?? null]).toEqual([1, false]);
+  });
+
+  test("pt-BR: the dialog says it is getting the session ready while the host prepares", async () => {
+    open("pt-BR", SUMMARY, true);
+    await start("pt-BR");
+    expect(await shows("Preparando a sessão…")).toBe(true);
   });
 
   test("a repository of spaces does not continue, and the one typed goes without its spaces", async () => {
