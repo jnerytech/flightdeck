@@ -290,6 +290,15 @@ function maskCommand(command: string): string {
     );
 }
 
+/** A shell word as the shell reads it, quotes taken out (a `\` escape inside double quotes too). */
+function unquote(word: string): string {
+  return word.replace(
+    /"((?:[^"\\]|\\.)*)"|'([^']*)'/g,
+    (_, double: string | undefined, single: string | undefined) =>
+      double !== undefined ? double.replace(/\\(.)/g, "$1") : (single ?? ""),
+  );
+}
+
 /** The value of an option that starts at `at` in the original command. */
 function optionValue(command: string, at: number): string | null {
   if (command.startsWith('"$(', at)) {
@@ -328,14 +337,15 @@ function gitCalls(command: string, cwd: string): GitCall[] {
   for (const segment of maskCommand(command).matchAll(/[^;&|\n]+/g)) {
     const tokens = [...segment[0].matchAll(/\S+/g)].map((t) => {
       const at = segment.index + t.index;
-      // A word that is all one quoted string reads as its text (#759: `git "push"`).
-      const value = /^(["'])_*\1$/.test(t[0]) ? (optionValue(command, at) ?? t[0]) : t[0];
+      // A word reads as its text with the quotes taken out (#759: `git "push"`, `ma"in"`): the mask
+      // keeps every length, so the same span of the original command is the word as typed.
+      const value = /["']/.test(t[0]) ? unquote(command.slice(at, at + t[0].length)) : t[0];
       return { word: t[0], at, value };
     });
     const word = (i: number) => tokens[i]?.word ?? "";
     const value = (i: number) => tokens[i]?.value ?? "";
     if (word(0) === "cd") {
-      dir = enter(dir, word(1));
+      dir = enter(dir, value(1));
       continue;
     }
     const found = tokens.findIndex((t) => t.word === "git");
