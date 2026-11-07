@@ -9,7 +9,7 @@
  * `git add` (Git LFS needs them).
  */
 import { copyFile, lstat, readFile, rm, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, normalize } from "node:path";
 import { gitLimitedFor } from "../board/command.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -62,19 +62,69 @@ const ID = /^[A-Za-z0-9-]{1,64}$/;
 const refuse = (reason: string, params?: Record<string, string | number>) =>
   new FlightdeckError("invalid_state", reason.replaceAll("_", " "), reason, params);
 
+/** Whether `dir` (inside `top`) and every folder above it up to `top` are real folders, not links. */
+async function realFolders(
+  top: string,
+  dir: string,
+  known: Map<string, boolean>,
+): Promise<boolean> {
+  if (dir === top || dir === dirname(dir)) return true;
+  const cached = known.get(dir);
+  if (cached !== undefined) return cached;
+  const real =
+    (await realFolders(top, dirname(dir), known)) &&
+    (await lstat(dir).then(
+      (info) => info.isDirectory(),
+      () => false,
+    ));
+  known.set(dir, real);
+  return real;
+}
+
 /** Whether the files the working tree changes or adds are, together, past `max` bytes. */
 async function pastLimit(top: string, names: string, max: number): Promise<boolean> {
   let total = 0;
+  const known = new Map<string, boolean>();
+  // Git prints `C:/x` on Windows where `join` gives `C:\x`: the folders are compared in one form.
+  const root = normalize(top);
   for (const name of names.split("\0")) {
     if (!name) continue;
+    const path = join(top, name);
+    // A name below a folder that was swapped for a link would be read at the link's target,
+    // somewhere outside the repository: only its size would show, but that is still a probe.
+    if (!(await realFolders(root, dirname(path), known))) continue;
     // A deleted file has no size; a link counts as itself, never as what it points at.
-    total += await lstat(join(top, name)).then(
+    total += await lstat(path).then(
       (info) => (info.isFile() ? info.size : 0),
       () => 0,
     );
     if (total > max) return true;
   }
   return false;
+}
+
+/**
+ * The lines a `git log -p --cc` adds, headers left out. A combined diff (a merge) has one column
+ * per parent before each line: a line is added when any column holds a `+`, so a line only the
+ * resolution of a conflict wrote (`++`) counts. Only real file headers are skipped, not an added
+ * line that happens to start with `++`.
+ */
+export function addedText(diff: string): string {
+  const added: string[] = [];
+  let columns = 0;
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("diff --")) {
+      columns = 0;
+      continue;
+    }
+    const hunk = /^(@{2,}) /.exec(line);
+    if (hunk) {
+      columns = (hunk[1] as string).length - 1;
+      continue;
+    }
+    if (columns > 0 && line.slice(0, columns).includes("+")) added.push(line.slice(columns));
+  }
+  return added.join("\n");
 }
 
 /** What the bundle starts from: the branch's upstream on origin, else origin's default branch. */
@@ -179,7 +229,12 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
   }
   const bytes = await readFile(file);
   const ahead = Number(await must(top, ["rev-list", "--count", `${base}..${head}`], {}, signal));
-  const names = await must(top, ["diff", "--no-ext-diff", "--name-only", head, wip], {}, signal);
+  const names = await must(
+    top,
+    ["diff", "--no-ext-diff", "--name-only", "-z", head, wip],
+    {},
+    signal,
+  );
   // Everything that moves, commit by commit: a secret one commit added and a later one removed
   // still travels in the bundle. Only added lines.
   // The text is read up to `max`: past it, the scan would count only part of what moves.
@@ -191,6 +246,9 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
       ...SAFE,
       "log",
       "-p",
+      "--cc",
+      // A `-diff` or `binary` attribute (a session can write one) would print "Binary files differ".
+      "--text",
       "--no-ext-diff",
       "--no-textconv",
       "--no-color",
@@ -202,10 +260,7 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
   if (moved.truncated) throw refuse("teleport_too_large", { max });
   // A git that failed or ran out of time (killed at TIMEOUT_MS).
   if (moved.code !== 0) throw new FlightdeckError("internal", "git log failed", "teleport_git");
-  const added = moved.stdout
-    .split("\n")
-    .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
-    .join("\n");
+  const added = addedText(moved.stdout);
   return {
     file,
     ref,
@@ -216,7 +271,7 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
     base,
     baseSha,
     ahead,
-    changed: names ? names.split("\n").length : 0,
+    changed: names.split("\0").filter(Boolean).length,
     secrets: await secretLines(added, input.scan),
   };
 }

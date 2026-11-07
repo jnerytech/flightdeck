@@ -866,7 +866,7 @@ Uma sessão ociosa pode continuar em outro host: a conversa, os commits e as mud
 3. Leia o que vai: a branch, os commits ainda fora do origin, os arquivos alterados, o tamanho e quantas linhas parecem segredos. Os segredos em si nunca aparecem, e eles vão como estão.
 4. Aperte **Mover** e depois **Abrir lá**. Depois que todos os bytes foram enviados, você pode fechar a janela: quando a mudança termina, um aviso diz isso, com **Abrir lá**, ou diz por que foi recusada.
 
-No outro host o código fica numa worktree nova desse repositório, numa branch própria, e a sessão continua de onde parou. A sessão daqui fica como estava. Arquivos guardados no Git LFS chegam como ponteiros: rode `git lfs pull` na worktree para buscá-los.
+No outro host o código fica numa worktree nova desse repositório, numa branch própria, e a sessão continua de onde parou. A sessão daqui fica como estava. Arquivos guardados no Git LFS chegam como ponteiros: rode `git lfs pull` na worktree para buscá-los. Links simbólicos no código chegam como links, como em qualquer clone do repositório de outra pessoa: uma escrita através de um deles pode cair fora da worktree, então mova sessões só entre hosts em que você confia.
 
 ### Dormir sessões ociosas
 
@@ -965,7 +965,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
   aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
   abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
-  hosts**. Sessões, Custos e o Board passam a segui-lo em versões seguintes.
+  hosts**. Os Custos também o seguem (veja **Custos e orçamentos**); Sessões e o Board passam a
+  segui-lo em versões seguintes.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
   tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
   (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
@@ -1027,6 +1028,16 @@ aparece mascarado e como **Oculto**, e não abre.
 - **A barra de seleção** acima do board mostra "3 selecionados" com **Mover para…** (uma coluna),
   **Descartar…** e **Limpar seleção**. Arrastar um card selecionado arrasta a seleção toda para a
   coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.
+- **O que uma coluna pede de um card** (#78). **Em revisão** pede um link de PR e verificações
+  passando; **Em andamento** pede critérios de aceite, um item de checklist (`- [ ] …`) na
+  descrição do card. As outras colunas não pedem nada. Um card que não tem algo diz isso nele mesmo
+  ("Precisa de: um link de PR"), e enquanto você arrasta um card as colunas que pedem algo dizem o
+  quê, com a borda tracejada. Mover um card para **Em revisão** à mão (arrastar, o menu do card ou a
+  barra de seleção) pergunta antes e diz o que falta; **Mover mesmo assim** o move, e com vários
+  cards uma só janela lista cada card que não tem algo, com **Mover só os que atendem**. **Em
+  andamento** só mostra o aviso, nunca pergunta, então começar o trabalho continua sendo um
+  movimento. Os movimentos que o app faz sozinho (um PR abre ou é mesclado, uma sessão falha)
+  nunca são perguntados.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
@@ -2805,9 +2816,16 @@ sempre aparecem, e uma linha conta os escondidos), Custos e o Cofre. Nunca filtr
 você**, a bandeja, as notificações, os alertas de orçamento nem a busca global, e cada pedido ali
 leva o selo do cliente. A tela **Projetos** do próprio host sempre lista todos os projetos.
 
-**Custos e orçamentos.** Em **Custos**, **Todos os hosts** soma os hosts, **Por cliente** divide o
-gasto (com **Sem cliente**) e um cliente escolhido restringe tudo; um host que está offline, não
-tem custos ou não responde é citado. A exportação CSV e os gráficos de cota ficam por host. Cada
+**Custos e orçamentos.** Em **Custos**, o menu **Dados de** na barra de ferramentas (o mesmo do
+Início, guardado entre aberturas) escolhe **Todos os hosts**, que é como os Custos abrem e soma os
+hosts, ou um host. Um link que nomeia um host (um alerta, um cartão do Início) mostra esse host
+naquela visita e não mexe na escolha do menu. Se o host escolhido está offline ou não informa
+custos, os Custos dizem isso e oferecem **Mostrar todos os hosts**. **Por cliente** divide o gasto
+(com **Sem cliente**) e um cliente escolhido restringe tudo; um host que está offline, não tem
+custos ou não responde é citado. A exportação CSV cobre todos os hosts em **Todos os hosts**, com o
+nome do host na primeira coluna (um host que não responde fica de fora). Os gráficos de cota são
+por host: em **Todos os hosts** há uma linha, **Escolha um host para ver a cota**, com um botão por
+host. Cada
 cliente pode ter um **limite mensal** (US$): o app confere quando um host com custos entra no ar,
 quando você muda o limite e a cada dez minutos, avisa uma vez por mês em 50%, 80% e 100% (uma
 notificação e uma linha em **Precisa de você**) e **não segura cards**: os limites de cada host e

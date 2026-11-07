@@ -38,6 +38,25 @@ const choose = async (label: string, value: string) => {
   });
 };
 
+/** Picks a host in the data scope menu of the Costs toolbar (#126). */
+const pickScope = async (name: string) => {
+  const trigger = screen
+    .getAllByRole("button")
+    .find((b) => (b.getAttribute("aria-label") ?? "").startsWith("Dados de "));
+  expect(trigger).not.toBeUndefined();
+  await act(async () => {
+    fireEvent.pointerDown(trigger as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+  });
+  const item = await screen.findByRole("menuitemradio", { name });
+  await act(async () => {
+    fireEvent.click(item);
+  });
+};
+
 /** 2026-10-15 12:00 UTC; days counted in UTC so the test does not depend on the machine. */
 const START = Date.UTC(2026, 9, 15, 12);
 const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -434,10 +453,14 @@ describe("custos-ui", () => {
     });
     await settle(() => store.getState().hosts[1]?.hostInfo !== null);
     await click("Custos");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
-    await choose("Host dos custos", store.getState().hosts[1]?.id ?? "");
+    // The data scope is every host until one is picked (#126).
+    await settle(() => text("Custo estimado") === "US$ 11.00");
+    await pickScope("beta");
     await settle(() => text("Custo estimado") === "US$ 7.00");
     expect(text("Custo estimado")).toBe("US$ 7.00");
+    await pickScope("alfa");
+    await settle(() => text("Custo estimado") === "US$ 4.00");
+    expect(text("Custo estimado")).toBe("US$ 4.00");
   });
 
   test("a session that two hosts both report is two rows of the top, and React sees no repeated key", async () => {
@@ -451,7 +474,6 @@ describe("custos-ui", () => {
     });
     await settle(() => store.getState().hosts[1]?.hostInfo !== null);
     await click("Custos");
-    await choose("Host dos custos", "__all__");
     await settle(() => text("Custo estimado") === "US$ 7.00");
     await settle(() => (region("Top sessões")?.querySelectorAll("li").length ?? 0) === 2);
   });

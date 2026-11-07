@@ -63,7 +63,7 @@ function NewTeam(
   }, [store, hostId]);
   const [goal, setGoal] = useState("");
   const [name, setName] = useState("");
-  const [picked, setProjectId] = useState("");
+  const [picked, setPicked] = useState("");
   // The first project until another is chosen; a project just added is chosen at once.
   const projectId = projects.some((p) => p.id === picked) ? picked : (projects[0]?.id ?? "");
   const [persona, setPersona] = useState("");
@@ -158,7 +158,7 @@ function NewTeam(
       {projects.length === 0 && asked && (
         <div className="flex flex-col items-start gap-2">
           <p className="text-muted-foreground">{t("teamsUi.noProjects")}</p>
-          <AddProject store={store} hostId={hostId} onAdded={(added) => setProjectId(added.id)} />
+          <AddProject store={store} hostId={hostId} onAdded={(added) => setPicked(added.id)} />
         </div>
       )}
       {projects.length > 0 && (
@@ -167,7 +167,7 @@ function NewTeam(
             <NativeSelect
               {...control}
               value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
+              onChange={(e) => setPicked(e.target.value)}
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -205,7 +205,7 @@ function NewTeam(
         {rows.map((row, i) => (
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: a row has no identity besides its number
-            key={i}
+            key={i} // NOSONAR: a row has no identity besides its number
             data-slot="worker-row"
             className={modes.offered ? "worker-row" : "worker-row worker-row-lean"}
           >
@@ -649,7 +649,7 @@ function Team(
             >
               {t("teamsUi.sendAll")}
             </Button>
-            {sent && <span role="status">{t("teamsUi.sentAll", sent)}</span>}
+            {sent && <output>{t("teamsUi.sentAll", sent)}</output>}
           </div>
         </div>
       )}

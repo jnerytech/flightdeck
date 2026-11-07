@@ -13,7 +13,7 @@ import { Changes } from "../src/review/changes.ts";
 import { ReviewFiles } from "../src/review/files.ts";
 import { findRg, searchRepository } from "../src/review/search.ts";
 import { startServer } from "../src/server.ts";
-import { newBoard } from "./board-helpers.ts";
+import { git, newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { insertSession } from "./usage-helpers.ts";
@@ -116,7 +116,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     ]);
   });
 
-  test("by content without rg: git grep finds the lines, cut to 200 characters, never a credential's", async () => {
+  test("by content without rg: git grep finds the lines of new files too, cut to 200 characters, never a credential's or an ignored file's (#869)", async () => {
     const { repo } = await setup();
     const found = await searchRepository(
       repo,
@@ -124,10 +124,13 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
       { rg: () => null },
     );
     expect([
+      // Every file setup writes is new: none was ever added, so git grep reads untracked files.
+      git(repo, "ls-files", "--", "src", "ignored").trim(),
       found.matches.map((m) => [m.path, m.line, m.text?.length]),
       found.matches.find((m) => m.line === 2)?.text ?? null,
       found.truncated,
     ]).toEqual([
+      "",
       [
         ["src/long.ts", 1, 200],
         ["src/panel.ts", 1, 23],
