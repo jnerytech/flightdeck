@@ -37,6 +37,22 @@ describe("git-limited: a capped git read with a time limit (#100)", () => {
     expect(result.timedOut).toBe(true);
   });
 
+  test("a program that writes far more to stderr than a pipe holds still ends, with its stdout and a capped stderr (#806)", async () => {
+    // 200 000 bytes on stderr first: read after stdout, the pipe would fill and the program stall.
+    const result = await gitLimitedFor(
+      tempDir("fd-git-limited-"),
+      1024,
+      ["-c", "alias.noisy=!head -c 200000 /dev/zero >&2; echo done", "noisy"],
+      3_000,
+    );
+    expect([
+      result.stdout,
+      result.timedOut,
+      result.stderr.length > 0,
+      result.stderr.length <= 64 * 1024,
+    ]).toEqual(["done\n", undefined, true, true]);
+  });
+
   test("a git that ends in time gives its output and no time-out", async () => {
     const result = await gitLimitedFor(tempDir("fd-git-limited-"), 1024, ["--version"], 10_000);
     expect([

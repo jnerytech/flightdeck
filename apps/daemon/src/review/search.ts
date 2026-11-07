@@ -38,6 +38,9 @@ interface Found {
   truncated: boolean;
 }
 
+/** At most this many searches run at once (#806). */
+export const MAX_SEARCHES = 4;
+
 const DEFAULT_LIMIT = 100;
 const TIMEOUT_MS = 5_000;
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -113,11 +116,27 @@ function failed(program: string, code: number): FlightdeckError {
   });
 }
 
+/** Searches running now (#806). */
+let running = 0;
+
+/** At most `MAX_SEARCHES` at once: a client cannot start a crowd of git and rg processes. */
 export async function searchRepository(
   root: string,
   input: Search,
   opts: SearchOptions = {},
 ): Promise<FileSearchResult> {
+  if (running >= MAX_SEARCHES) {
+    throw new FlightdeckError("invalid_state", "too many searches at once", "search_busy");
+  }
+  running += 1;
+  try {
+    return await search(root, input, opts);
+  } finally {
+    running -= 1;
+  }
+}
+
+async function search(root: string, input: Search, opts: SearchOptions): Promise<FileSearchResult> {
   const realRoot = await realpath(root);
   // A repository only, whatever the mode: rg would search any folder, the home's included.
   const top = await gitLimitedFor(
@@ -128,6 +147,10 @@ export async function searchRepository(
     opts.timeoutMs ?? TIMEOUT_MS,
   );
   if (top.code !== 0) throw notRepository(root);
+  // A `core.worktree` in the repository's config sends git to another tree: its files are not
+  // this folder's. The folder must be inside the tree git works on (#806).
+  const tree = await realpath(top.stdout.trim()).catch(() => null);
+  if (tree === null || !isInside(tree, realRoot)) throw notRepository(root);
   const found =
     input.mode === "name"
       ? await byName(realRoot, input.query, opts)

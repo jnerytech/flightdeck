@@ -376,6 +376,18 @@ describe("worktrees-seguranca: files git does not show are not lost (F5)", () =>
     expect(existsSync(join(notes, "notes.local"))).toBe(true);
   });
 
+  test("Flightdeck's own ignored settings.local.json is no loss, though the file is a credential for reads (#806)", async () => {
+    const where = gitRepo();
+    writeFileSync(join(where.repo, ".gitignore"), ".claude/settings.local.json\n");
+    git(where.repo, "add", ".gitignore");
+    git(where.repo, ...ID, "commit", "-q", "-m", "ignore settings");
+    const s = setup({}, where);
+    const own = s.add("own");
+    mkdirSync(join(own, ".claude"));
+    writeFileSync(join(own, ".claude", "settings.local.json"), "{}\n");
+    expect((await blockersOf(s))["fd/own"]).toEqual([]);
+  });
+
   test("the removal asks git to look at untracked files whatever the config says", async () => {
     const calls: string[][] = [];
     const s = setup({

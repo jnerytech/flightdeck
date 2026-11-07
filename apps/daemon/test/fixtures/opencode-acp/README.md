@@ -22,6 +22,9 @@ entries. Nothing else was edited.
   `api-agent.json` was recorded again on 2026-11-06 (issue #449), with the same environment and a scratch `HOME`, when
   the read rules for secret paths began to come from the one list in `permissions/sensitive-paths.ts`: only the
   `permissions` of our two agents changed.
+  `api-agent.json` got the read rules for `.mcp.json` and `.claude/settings.local.json` on 2026-11-07 (issue #806), inserted
+  by hand where the one list puts them, in every agent's `permissions`: OpenCode only echoes the rules it is given, so this
+  is what a new recording would hold; record it again with the next change of that list.
 - `api-permission-saved.json`: the answer of `GET /api/permission/saved --standalone` with one saved rule, recorded on
   2026-11-04 (DECISIONS, "two probes before the runtime"); its ids were replaced by zeros.
 - `resume.jsonl`: `initialize` and `session/resume` in a new process, recorded on 2026-11-05: the answer carries

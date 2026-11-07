@@ -11,7 +11,7 @@ import {
 import { join } from "node:path";
 import { Changes } from "../src/review/changes.ts";
 import { ReviewFiles } from "../src/review/files.ts";
-import { findRg, searchRepository } from "../src/review/search.ts";
+import { findRg, MAX_SEARCHES, searchRepository } from "../src/review/search.ts";
 import { startServer } from "../src/server.ts";
 import { git, newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
@@ -436,6 +436,79 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
         searchRepository(plain, { mode: "content", query: "panel" }, { rg: () => null }),
       ),
     ]).toEqual(["repo_not_git", "repo_not_git"]);
+  });
+
+  test("a repository whose own config points git at another tree is refused, by name and by content (#806)", async () => {
+    const { repo } = await setup();
+    // `core.worktree` sends git to a tree that is not the folder: its files must never be searched.
+    const other = tempDir("fd-other-tree-");
+    writeFileSync(join(other, "panel.ts"), "panel from the other tree\n");
+    git(repo, "config", "core.worktree", other);
+    expect([
+      await failure(searchRepository(repo, { mode: "name", query: "panel" })),
+      await failure(
+        searchRepository(repo, { mode: "content", query: "panel" }, { rg: () => null }),
+      ),
+    ]).toEqual(["repo_not_git", "repo_not_git"]);
+  });
+
+  test("a core.worktree that is not there is refused too (#806)", async () => {
+    const { repo } = await setup();
+    git(repo, "config", "core.worktree", join(tempDir("fd-gone-tree-"), "gone"));
+    expect(await failure(searchRepository(repo, { mode: "name", query: "panel" }))).toBe(
+      "repo_not_git",
+    );
+  });
+
+  test("searches running at once are limited: the one past the limit is refused with a reason, and a slot comes back when one ends (#806)", async () => {
+    const { repo } = await setup();
+    const gate = Promise.withResolvers<void>();
+    const slow = {
+      rg: () => "rg",
+      run: async (cmd: string[]) => {
+        // Only the searches for "held" wait for the gate: one past them must not hang a red.
+        if (cmd.includes("held")) await gate.promise;
+        return { code: 1, stdout: "", stderr: "", truncated: false };
+      },
+    };
+    const held = { mode: "content", query: "held" } as const;
+    const extra = { mode: "content", query: "extra" } as const;
+    const running = Array.from({ length: MAX_SEARCHES }, () => searchRepository(repo, held, slow));
+    const refused = await failure(searchRepository(repo, extra, slow));
+    gate.resolve();
+    await Promise.all(running);
+    // A refusal holds no slot, and an ended search gave its slot back.
+    const after = await failure(searchRepository(repo, extra, slow));
+    expect([refused, after]).toEqual(["search_busy", "ok"]);
+  });
+
+  test("a search that fails gives its slot back too (#806)", async () => {
+    const plain = tempDir("fd-plain-slot-");
+    // One after the other, more than the limit allows at once: each failure must free its slot.
+    const failed: string[] = [];
+    for (let i = 0; i < MAX_SEARCHES * 2; i += 1) {
+      failed.push(await failure(searchRepository(plain, { mode: "name", query: "x" })));
+    }
+    expect(failed.every((reason) => reason === "repo_not_git")).toBe(true);
+  });
+
+  test("an untracked .mcp.json and .claude/settings.local.json keep their lines on the host, and are marked by name (#806)", async () => {
+    const { repo } = await setup();
+    mkdirSync(join(repo, ".claude"));
+    writeFileSync(join(repo, ".mcp.json"), '{"note":"panel secret"}\n');
+    writeFileSync(join(repo, ".claude", "settings.local.json"), '{"note":"panel secret"}\n');
+    const content = await searchRepository(
+      repo,
+      { mode: "content", query: "panel secret" },
+      { rg: () => null },
+    );
+    const byName = await searchRepository(repo, { mode: "name", query: "mcp" });
+    const local = await searchRepository(repo, { mode: "name", query: "settings.local" });
+    expect([content.matches, byName.matches, local.matches]).toEqual([
+      [],
+      [{ path: ".mcp.json", secret: true }],
+      [{ path: ".claude/settings.local.json", secret: true }],
+    ]);
   });
 
   test("a search runs on a repository inside the allowed roots, never a terminal's folder or a session's elsewhere", async () => {
