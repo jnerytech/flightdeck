@@ -158,8 +158,8 @@ const show = (value: unknown): string => {
 };
 
 /** React's own errors: the minified production message, or the development one for a render loop. */
-export function isReactError(_reason: unknown): boolean {
-  return false;
+export function isReactError(reason: unknown): boolean {
+  return reason instanceof Error && /React error|Maximum update depth/i.test(reason.message);
 }
 
 /** What React reports for a component tree error: the component stack, when it gives one. */
@@ -167,25 +167,67 @@ export interface ReactErrorInfo {
   componentStack?: string | null | undefined;
 }
 
+/** How many frames and components a React error's line keeps, and how long each may be. */
+const FRAMES = 6;
+const COMPONENTS = 8;
+const FRAME_CHARS = 100;
+
+/** `Wi (assets/index.js:40:1200)`: the origin says nothing the path does not, so it is cut off. */
+const frame = (name: string, where: string): string =>
+  `${name} (${where.replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]*\//i, "")})`.slice(0, FRAME_CHARS);
+
+/** A frame from a V8 line (`at Wi (https://host/assets/index.js:40:1200)`) or a JavaScriptCore one (`Wi@https://host/assets/index.js:40:1200`). */
+function frameOf(line: string): string | null {
+  const v8 = /^\s*at\s+(?:(\S+)\s+\()?([^()]+?)\)?\s*$/.exec(line);
+  if (v8) return frame(v8[1] ?? "<anonymous>", v8[2] ?? "");
+  const jsc = /^([^@\s]*)@(.+)$/.exec(line.trim());
+  return jsc ? frame(jsc[1] || "<anonymous>", jsc[2] ?? "") : null;
+}
+
 /**
  * One line that places a React error (issue #938): the first frames of its stack, the components
  * React names, and the screen the person was on. Names of functions, files of the app and the
  * route's name only; the log scrubs secrets from it anyway.
  */
-export function reactErrorLine(_error: unknown, _info: ReactErrorInfo, _screen: string): string {
-  return "";
+export function reactErrorLine(error: unknown, info: ReactErrorInfo, screen: string): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error && typeof error.stack === "string" ? error.stack : "";
+  const frames = stack
+    .split("\n")
+    .map(frameOf)
+    .filter((frame): frame is string => frame !== null)
+    .slice(0, FRAMES);
+  const components = (info.componentStack ?? "")
+    .split("\n")
+    .map((line) => /^\s*at\s+(\S+)/.exec(line)?.[1])
+    .filter((name): name is string => name !== undefined)
+    .slice(0, COMPONENTS);
+  return [
+    message,
+    `screen: ${screen}`,
+    ...(frames.length > 0 ? [`frames: ${frames.join(" < ")}`] : []),
+    ...(components.length > 0 ? [`components: ${components.join(" < ")}`] : []),
+  ].join(" | ");
+}
+
+/** The screen's name, or "unknown" when the route cannot be read (the app is not up yet). */
+function screenOf(screen: () => string): string {
+  try {
+    return screen();
+  } catch {
+    return "unknown";
+  }
 }
 
 /** The `createRoot` options that log the errors React catches in a tree (its error boundaries). */
-export function reactRootErrorHandlers(
-  _log: AppLog,
-  _screen: () => string,
-): {
-  onUncaughtError(error: unknown, info: ReactErrorInfo): void;
-  onCaughtError(error: unknown, info: ReactErrorInfo): void;
-  onRecoverableError(error: unknown, info: ReactErrorInfo): void;
-} {
-  return { onUncaughtError: () => {}, onCaughtError: () => {}, onRecoverableError: () => {} };
+export function reactRootErrorHandlers(log: AppLog, screen: () => string) {
+  const report = (kind: string) => (error: unknown, info: ReactErrorInfo) =>
+    log.log("error", "react", `${kind}: ${reactErrorLine(error, info, screenOf(screen))}`);
+  return {
+    onUncaughtError: report("uncaught"),
+    onCaughtError: report("caught"),
+    onRecoverableError: report("recoverable"),
+  };
 }
 
 /** The consoles the log is installed on: a second install would forward each call twice. */
@@ -203,16 +245,22 @@ export function installGlobalLog(
   },
   log: AppLog,
   console_: { error: (...args: unknown[]) => void; warn: (...args: unknown[]) => void } = console,
-  _screen: () => string = () => "unknown",
+  screen: () => string = () => "unknown",
 ): () => void {
   if (installed.has(console_)) return () => {};
   installed.add(console_);
+  const placed = (reason: unknown) => {
+    if (isReactError(reason)) {
+      log.log("error", "react", reactErrorLine(reason, {}, screenOf(screen)));
+    }
+  };
   const onError = (event: { message?: string; filename?: string; lineno?: number }) => {
     const where = event.filename ? ` (${event.filename}:${event.lineno ?? 0})` : "";
     log.log("error", "window", `${event.message ?? "error"}${where}`);
   };
   const onRejection = (event: { reason?: unknown }) => {
     log.log("error", "rejection", show(event.reason));
+    placed(event.reason);
   };
   target.addEventListener("error", onError as (event: never) => void);
   target.addEventListener("unhandledrejection", onRejection as (event: never) => void);
