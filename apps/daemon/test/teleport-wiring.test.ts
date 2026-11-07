@@ -266,6 +266,27 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
     ]).toEqual([true, true, root, true, null, { sessionId: "t1" }, [opts], undefined]);
   });
 
+  test("a transcript the indexer has not seen yet still counts: the history folders are read too (#715)", async () => {
+    const first = projectsRoot();
+    const second = projectsRoot();
+    const file = writeTranscript(second, "-other-app", ID, [
+      userLine({ uuid: "u1", text: "just created", cwd: "/other/app" }),
+    ]);
+    const unseen = { transcriptFile: () => null };
+    const deps = teleportImportDeps({
+      inbox: { received: async () => ({}) as never, claim: async () => ({}) as never },
+      allowedRoots: [],
+      historyRoots: [first, second],
+      indexer: unseen,
+      manager: { createResumed: async () => ({ sessionId: "t1" }) },
+    }) as TeleportImportDeps;
+    expect([
+      deps.transcriptOf(ID),
+      deps.transcriptOf("11111111-1111-4111-8111-111111111111"),
+      deps.transcriptOf("../escape"),
+    ]).toEqual([file, null, null]);
+  });
+
   test("the server finishes a teleport on this host; without it, finish is off", async () => {
     const { manager } = newManager();
     const inbox = new TeleportInbox({
