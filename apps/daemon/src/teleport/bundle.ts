@@ -201,7 +201,7 @@ async function sweepRefs(top: string, signal?: AbortSignal): Promise<void> {
   // A folder that is a link would lead the sweep into someone else's files.
   const [folder] = await Promise.allSettled([lstat(dir)]);
   if (folder?.status !== "fulfilled" || !folder.value.isDirectory()) return;
-  for (const name of await readdir(dir).catch(() => [])) {
+  for (const name of await readdir(dir)) {
     // A ref a bundle in progress takes off meanwhile is no error here.
     const [looked] = await Promise.allSettled([lstat(join(dir, name))]);
     const info = looked?.status === "fulfilled" ? looked.value : null;
