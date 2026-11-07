@@ -491,7 +491,7 @@ describe("board-contracts-ui: a column that asks for a spec", () => {
   const found = { path: "docs/specs/s.md", found: true, heading: "S" };
   const cards = [
     card("A", "backlog", 1),
-    card("S", "backlog", 2, { specState: found }),
+    card("S", "backlog", 2, { specState: found, slug: "s" }),
     card("M", "review", 1),
   ];
 

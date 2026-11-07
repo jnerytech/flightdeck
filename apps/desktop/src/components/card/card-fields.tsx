@@ -1,6 +1,7 @@
-import type { Card } from "@flightdeck/protocol";
+import { type Card, specPathProblem } from "@flightdeck/protocol";
 import { type AssistControl, AssistField } from "@/components/assistant/assist-field";
 import type { WandBinding } from "@/components/assistant/use-wand";
+import { CardSpec } from "@/components/card/card-spec";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
@@ -33,6 +34,10 @@ function CardTextField(
     stored(text: string): string;
     /** Whether the text is worth saving, besides being an edit. */
     savable(text: string): boolean;
+    /** Why the text cannot be saved at all, when it cannot: said under the disabled Save. */
+    problem?(text: string): string | null;
+    /** What the empty field stands for. */
+    placeholder?: string;
     /** True once the host took it. */
     save(stored: string): Promise<unknown>;
   }>,
@@ -42,6 +47,7 @@ function CardTextField(
   const [value, setValue, saved, { stale, saving, drop }] = useDraft(source);
   // Typing the card's own text back is no edit any more: the field follows the card again.
   const edit = (text: string) => (text === source ? drop() : setValue(text));
+  const problem = props.problem?.(value) ?? null;
   return (
     <Field label={props.label}>
       {(control) => {
@@ -81,8 +87,9 @@ function CardTextField(
             )}
             <ActionButton
               variant="outline"
-              disabled={!props.savable(value) || stale || saving}
+              disabled={!props.savable(value) || stale || saving || problem !== null}
               {...(stale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
+              {...(!stale && problem ? { disabledReason: problem } : {})}
               onClick={async () => {
                 const sent = value;
                 const stored = props.stored(sent);
@@ -121,7 +128,11 @@ export function CardFields(
   const t = useT();
   const { store, hostId, card } = props;
   const update = (
-    patch: { title: string } | { description: string } | { validationNote: string | null },
+    patch:
+      | { title: string }
+      | { description: string }
+      | { validationNote: string | null }
+      | { specPath: string | null },
   ) => store.hostCommand(hostId, "card.update", { cardId: card.id, ...patch });
   return (
     <Panel title={t("cardUi.detailsTitle")} label={t("cardUi.detailsTitle")} slot="card-details">
@@ -167,6 +178,21 @@ export function CardFields(
         savable={(text) => text.trim() !== (card.validationNote ?? "")}
         save={(text) => update({ validationNote: text === "" ? null : text })}
       />
+      <CardTextField
+        label={t("cardUi.specFile")}
+        saveLabel={t("cardUi.saveSpec")}
+        source={card.specPath ?? ""}
+        placeholder={card.slug ? `docs/specs/${card.slug}.md` : "docs/specs/<card>.md"}
+        stored={(text) => text.trim()}
+        savable={(text) => text.trim() !== (card.specPath ?? "")}
+        problem={(text) =>
+          text.trim() !== "" && specPathProblem(text.trim()) !== null
+            ? t("cardUi.specPathInvalid")
+            : null
+        }
+        save={(text) => update({ specPath: text === "" ? null : text })}
+      />
+      <CardSpec store={store} hostId={hostId} card={card} />
       {props.withRoi && <CardHours store={store} hostId={hostId} card={card} />}
     </Panel>
   );
