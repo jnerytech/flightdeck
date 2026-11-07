@@ -127,6 +127,7 @@ describe("plain-notify: the tray and the list of what waits", () => {
       externalRequests: {},
       externals: {},
       runs: {},
+      vaultApprovals: [],
     };
     expect(needsYou(state as never, en)[0]?.plain).toEqual(plain);
   });

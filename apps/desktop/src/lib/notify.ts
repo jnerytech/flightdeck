@@ -27,6 +27,8 @@ export function summaryNotifications(
   linkFor?: (requestId: string) => string,
   t: T = translator("pt-BR"),
   names?: { subject: string; host: string; group: string },
+  /** The host is in simple mode: a request with its wording is told in the plain sentence (issue #88). */
+  simple = false,
 ): AboutNotification[] {
   if (focused || !prev) return [];
   const known = new Set(prev.pendingPermissions.map((p) => p.requestId));
@@ -34,8 +36,12 @@ export function summaryNotifications(
     .filter((p) => !known.has(p.requestId))
     .map((p) => ({
       event: "needs-you" as const,
-      title: t("notify.waiting", { label }),
-      body: t("notify.allow", { tool: p.toolName }),
+      ...(simple && p.plain
+        ? { title: t("notify.plainWaiting", { label }), body: p.plain.sentence[t.lang] }
+        : {
+            title: t("notify.waiting", { label }),
+            body: t("notify.allow", { tool: p.toolName }),
+          }),
       ...(linkFor ? { link: linkFor(p.requestId) } : {}),
       ...(names
         ? {
