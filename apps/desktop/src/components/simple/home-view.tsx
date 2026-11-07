@@ -139,13 +139,14 @@ export function HomeView(props: Readonly<HomeViewProps>) {
 
   const taskRow = (task: HomeTask) => (
     <li key={task.sessionId} className="home-task">
-      <Button
-        variant="ghost"
+      <button
+        type="button"
+        className="home-task-open"
         aria-label={t("simple.home.open", { title: task.title })}
         onClick={() => props.onOpenTask(task.sessionId)}
       >
         {task.title}
-      </Button>
+      </button>
       <span className="task-chip" data-state={task.state}>
         {t(`simple.state.${task.state}`)}
       </span>
