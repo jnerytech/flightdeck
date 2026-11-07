@@ -927,7 +927,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
   a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
   e o id do host dessa conta, cada um copiado ao ser escolhido; **Linhas compactas**, uma chave
-  guardada neste computador (a mesma densidade das Configurações); **Configurações**; **Novidades** (os
+  guardada neste computador (a mesma densidade das Configurações); mais três chaves guardadas neste
+  computador, **Ocultar os selos Novo e Beta** (os selinhos dos itens recentes da barra), **Ocultar as
+  novidades** (o ponto e o item logo abaixo) e **Esconder a lista de configuração inicial** (o
+  mesmo do botão de esconder na linha dela; **Mostrar a lista de configuração inicial** nas
+  Configurações a traz de volta); **Configurações**; **Novidades** (os
   destaques das últimas versões, lidos do GitHub por um host que consiga; a linha da conta e este item
   ganham um ponto, e o nome da linha avisa, depois que o app foi atualizado, até você abrir; em tela
   cheia numa janela estreita; **Ver todas as versões** abre o GitHub); **Procurar
@@ -2340,6 +2344,17 @@ A rodada para, e o card vai para **Precisa de você** com o resumo, quando bate 
 rodadas por PR, US$ 5 por PR, 30 turnos, US$ 20 por dia e projeto, duas rodadas seguidas que
 falham, ou a fila por cota. Para sozinha quando o PR é concluído ou fechado, ou quando você desliga
 a vigia. **Voltar a vigiar** a liga de novo.
+
+O card mostra **Rodadas usadas: 2 de 3**. Quando as rodadas acabam, **Permitir mais 2 rodadas** dá ao
+card mais duas sem esquecer o que ele já gastou; o host recusa quando outro limite (turnos, custo, a
+branch do card) pararia a próxima rodada de qualquer jeito. Enquanto o PR de um card é vigiado, uma
+automação que manda checks com falha ou comentários de revisão ao card deixa isso para a vigia.
+
+Antes do push, o host confere se a rodada ficou dentro do PR: uma rodada que mexe num arquivo que o
+PR não muda (e que nenhum comentário de revisão cita), ou que muda mais linhas que
+`max(200, as do PR)`, fica **retida para você** em vez de ir. A rodada lista os arquivos fora do PR e
+as linhas que mudou. **Enviar assim mesmo** envia esses commits como estão; **Descartar a rodada** os
+desfaz, mantendo o que havia antes da rodada. Lockfiles e `*.snap` nunca contam.
 
 **Configurações** tem **Vigiar e consertar PRs · <host>**, um bloco por projeto: vigiar por padrão,
 rodadas por PR, limite de custo por PR e por dia (vazio é sem limite), o tempo limite por check (1 a

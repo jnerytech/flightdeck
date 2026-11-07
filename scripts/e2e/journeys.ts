@@ -1801,6 +1801,64 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await inReach(c, `a busca de arquivos a ${size.width}x${size.height}`, search);
     }
   },
+
+  // Home's leaderboard (#124, #846): where the tokens of the last 7 days went, by project, model and
+  // persona. Every row says its share, its tokens and its trend in words; a project's row opens Costs
+  // on that project; the panel does not run past the window at a phone's size or a desktop's. The
+  // notice for a host that does not answer is not here: the demo has no priced host that fails.
+  "ranking-home": async (c) => {
+    const loaded = c.page.getByRole("tablist", { name: c.t("home.leadersBy"), exact: true });
+    const rows = c.page.locator(".leader-row");
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "overview" });
+      await loaded.waitFor({ timeout: SESSION_WAIT });
+      await rows.first().waitFor({ timeout: WAIT });
+      // No row runs past the window sideways.
+      const wide = await c.page.evaluate(() => {
+        const limit = document.documentElement.clientWidth;
+        const over = [...document.querySelectorAll(".leader-panel *")].filter(
+          (el) => el.getBoundingClientRect().right > limit + 1,
+        );
+        return over.length;
+      });
+      if (wide > 0) throw new Error(`${wide} itens do ranking passam da janela a ${size.width}px`);
+    }
+    // Each grouping lists rows with a share, its tokens and its trend in words.
+    for (const tab of ["home.byProject", "home.byModel", "home.byPersona"] as const) {
+      await loaded.getByRole("tab", { name: c.t(tab), exact: true }).click();
+      const panel = c.page.getByRole("tabpanel").filter({ has: c.page.locator(".leader-row") });
+      await panel.first().waitFor({ timeout: WAIT });
+      const parts = await panel
+        .first()
+        .locator(".leader-row")
+        .first()
+        .evaluate((row) =>
+          [".leader-share", ".leader-tokens", ".leader-trend"].map(
+            (sel) => row.querySelector(sel)?.textContent?.trim() ?? "",
+          ),
+        );
+      if (parts.some((text) => text === "")) {
+        throw new Error(`uma linha de ${c.t(tab)} sem parte do texto: ${JSON.stringify(parts)}`);
+      }
+    }
+    // A project's row opens Costs on that project.
+    await loaded.getByRole("tab", { name: c.t("home.byProject"), exact: true }).click();
+    const open_ = c.page.getByRole("button", {
+      name: new RegExp(`^${c.t("home.openProject", { name: "§" }).replace("§", ".+")}$`),
+    });
+    await open_.first().waitFor({ timeout: WAIT });
+    const label = (await open_.first().textContent())?.trim() ?? "";
+    await open_.first().click();
+    const project = c.page.getByLabel(c.t("costsUi.project"), { exact: true });
+    await project.waitFor({ timeout: WAIT });
+    await waitFor(
+      async () =>
+        (await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ===
+        label,
+      `o filtro de Custos no projeto ${label}`,
+    );
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
