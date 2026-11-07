@@ -104,6 +104,8 @@ export interface DemoIds {
   traceSession: string;
   /** A folder of the first host that simple mode's tasks may work in (phase 33). */
   notesFolder: string;
+  /** A git repository of the first host that is no project yet: the New project journey adds it (issue #931). */
+  freshRepo: string;
   /** A long conversation with a code block and a summary: where it opens and what keeps it still (issue #112). */
   scrollSession: string;
   /** A session in a folder with a long path, whose first message holds a long unbroken id (issue #103). */
@@ -702,6 +704,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     path: join(alfa.projects, "vazio"),
   });
   // Issue #689: seven projects in all, so the sidebar tree shows its five and hides the rest.
+  // A repository nobody registered: the Projects page adds it (issue #931).
+  repo(join(alfa.projects, "fresh-app"), { "README.md": "# fresh-app\n" });
   for (const name of ["mobile-app", "infra", "design-system", "billing", "analytics"]) {
     repo(join(alfa.projects, name), { "README.md": `# ${name}\n` });
     await client.call("project.add", { path: join(alfa.projects, name) });
@@ -1085,6 +1089,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       telemetrySession,
       traceSession: TRACE_SESSION,
       notesFolder: join(alfa.projects, "notes"),
+      freshRepo: join(alfa.projects, "fresh-app"),
       scrollSession: long.sessionId,
       longSession: longSession.sessionId,
       longTitleSession: longTitle.sessionId,

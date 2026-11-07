@@ -9,6 +9,7 @@ const { act, cleanup, fireEvent, render, screen, within, waitFor } = await impor
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { ProjectsOverview } = await import("../src/ui/ProjectsOverview.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -52,15 +53,17 @@ function setup(
   } as never as ReturnType<InstanceType<typeof AppStore>["getState"]>;
   const added: Array<[string, string]> = [];
   const view = () => (
-    <TooltipProvider>
-      <ProjectsOverview
-        store={store}
-        state={state}
-        onOpen={() => {}}
-        onAdded={(hostId, project) => added.push([hostId, project.id])}
-        {...(options.scoped ? { host: options.scoped } : {})}
-      />
-    </TooltipProvider>
+    <TContext.Provider value={store.i18n.t}>
+      <TooltipProvider>
+        <ProjectsOverview
+          store={store}
+          state={state}
+          onOpen={() => {}}
+          onAdded={(hostId, project) => added.push([hostId, project.id])}
+          {...(options.scoped ? { host: options.scoped } : {})}
+        />
+      </TooltipProvider>
+    </TContext.Provider>
   );
   return { sent, added, view };
 }

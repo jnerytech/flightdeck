@@ -1860,6 +1860,23 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one
   // host, the choice is kept when the page is opened again, a host that is offline says so and
   // offers all hosts, and the menu is in reach in a phone-sized window and a desktop one.
+  // Issue #931: the Projects page adds a project. Two hosts are online, so it asks which first.
+  "projeto-novo": async (c) => {
+    await open(c, { name: "all-projects" });
+    await c.page
+      .getByRole("button", { name: c.t("projectsOverview.newProject"), exact: true })
+      .click();
+    await c.page
+      .getByRole("menuitem", { name: c.t("projectsOverview.newOn", { host: "alfa" }), exact: true })
+      .click();
+    const dialog = c.page.getByRole("dialog", { name: c.t("addProject.title"), exact: true });
+    await dialog.getByLabel(c.t("addProject.folder"), { exact: true }).fill(c.ids.freshRepo);
+    await dialog.getByRole("button", { name: c.t("addProject.add"), exact: true }).click();
+    // The project is added, and the Projects page lists it.
+    await open(c, { name: "all-projects" });
+    await c.page.locator('li[data-project="fresh-app"]').waitFor({ timeout: WAIT });
+  },
+
   "escopo-dados": async (c) => {
     const menuOf = (scope: string) =>
       c.page.getByRole("button", { name: c.t("scope.menu", { scope }), exact: true });

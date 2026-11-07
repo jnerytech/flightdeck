@@ -815,6 +815,9 @@ function filteredScreen(props: ScreenProps): ReactNode | undefined {
           {...(route.host ? { host: route.host } : {})}
           onClearHost={() => go({ name: "all-projects" })}
           onOpen={(card) => go({ name: "project", host: card.hostId, projectId: card.projectId })}
+          onAdded={(hostId, project) =>
+            go({ name: "project", host: hostId, projectId: project.id })
+          }
         />
       );
     case "costs":
