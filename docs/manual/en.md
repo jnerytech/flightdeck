@@ -546,15 +546,16 @@ one place, grouped by project and ordered by last activity.
   Opened, a project shows its live sessions first (the ones that need you on top). The
   ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
   also matches project names, and any filter (text, origin, state, persona, pinned) opens
-  everything it keeps. A **Hosts** chip only narrows the list to that host: the projects stay as
-  folded or open as you left them. The fold of a project is remembered under a key that does not
+  everything it keeps. Picking a host in **Data from** only narrows the list to that host: the
+  projects stay as folded or open as you left them. The fold of a project is remembered under a key that does not
   change when a host goes offline or folders merge. A pinned session always stays with the live ones. **The same project on two
   hosts is one group** with both host chips, and each row keeps its own host chip. A project
   without a git remote is matched by its folder name across hosts, but never when one host has two
   folders with that name: those stay separate groups everywhere. Groups that share a name show a
   short **path hint** (the folder above the project, for example `work`) beside the heading and in
-  its name for screen readers. A row of **Hosts** chips under
-  the hosts banner shows one host's sessions only (press it again to clear).
+  its name for screen readers. **Data from** in the toolbar (with two hosts or more) lists one
+  host's sessions or every host's, the same choice as on Home; **See all sessions** on a host page
+  looks at that host for the visit without changing it.
 - **Titles.** A session is called by its name, else the title its host gives it (the summary Claude
   Code wrote, or its first prompt), else the persona with the task, else its folder. System wrappers (`<task-notification>`,
   "Another Claude session sent a message:", local-command output) never appear in a title.
@@ -965,8 +966,9 @@ live; the list is the project's, so a session of another project never shows her
 - **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
   it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
   change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
-  When the chosen host is offline, Home says so and offers **Show all hosts**. Sessions, Costs and
-  the Board follow it in later versions.
+  When the chosen host is offline, Home says so and offers **Show all hosts**. Sessions follows it
+  too (the hub's own host filter, if you had one, becomes the choice once); Costs and the Board
+  follow it in later versions.
 - The tabs have a row of their own under the top bar, over each area (with a split, each area has
   its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
   the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
