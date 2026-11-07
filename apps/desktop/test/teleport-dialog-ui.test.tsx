@@ -165,6 +165,20 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       ]);
     });
 
+    test(`${lang}: Open it there opens the session and closes the dialog, once (#842)`, async () => {
+      const { calls, control } = open(lang);
+      await start(lang);
+      await shows(t.secrets);
+      await click(t.move);
+      await control.answer;
+      await act(async () => {
+        control.finish?.({ kind: "moved", sessionId: "t1", worktree: "/w", branch: "fd/x" });
+      });
+      await shows(t.done);
+      await click(t.open);
+      expect([calls.opened, calls.closed]).toEqual([[["h2", "t1"]], 1]);
+    });
+
     test(`${lang}: going back says no to the move, and the dialog closes`, async () => {
       const { calls, control } = open(lang);
       await start(lang);
