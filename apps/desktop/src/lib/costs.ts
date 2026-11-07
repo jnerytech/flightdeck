@@ -41,6 +41,11 @@ export function periodRange(
 /** `US$ 1.23`. */
 export const usd = (value: number) => `US$ ${value.toFixed(2)}`;
 
+/** The folder a project key names, for the tooltip. Stub. */
+export function projectPath(_key: string): string | null {
+  return null;
+}
+
 /** A project key as a person reads it: a folder's key (`host:alfa:C:\x\app`) shows as `app`. */
 export function projectLabel(key: string): string {
   const folder = /^host:[^:]+:(.+)$/.exec(key)?.[1];
