@@ -201,9 +201,9 @@ describe("drift-gate: a round that leaves its PR is held, not pushed (#77)", () 
   test("a push or a reset git refuses is an error, and the round stays held", async () => {
     const f = await strict();
     const r = await round(f);
-    // The remote is gone, and so is what the branch was pushed as.
+    // The remote is gone; and the round's file has changes not committed, which --keep keeps.
     git(f.worktree, "remote", "set-url", "origin", join(f.root, "gone.git"));
-    git(f.worktree, "update-ref", "-d", `refs/remotes/origin/${f.branch}`);
+    writeFileSync(join(f.worktree, "fake-1.txt"), "changed after the hold, not committed\n");
     expect([
       await refusal(service(f).resolveHeld(f.card.id, r?.id ?? "", "push")),
       await refusal(service(f).resolveHeld(f.card.id, r?.id ?? "", "drop")),
