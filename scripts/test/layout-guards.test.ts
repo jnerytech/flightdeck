@@ -870,6 +870,55 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
     ).toEqual([]);
   });
 
+  test("#724: a worst that dropped by more than 2 px is for the baseline to lower, like a count", () => {
+    const over = (path: string, excess: number) => ({
+      rule: "overflow-x" as const,
+      path,
+      group: "card > table",
+      detail: `${excess} px past the right of card`,
+      excess,
+    });
+    const key = `overflow-x|${S}|card > table`;
+    const better = fresh({ [key]: { count: 2, worst: 76 } });
+    expect(
+      ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 70)], better),
+    ).toEqual([]);
+    expect(better.gone).toEqual([`${key}: worst 70 px where the baseline has 76: lower it`]);
+    // Within the rendering tolerance, the baseline stays.
+    const close = fresh({ [key]: { count: 2, worst: 76 } });
+    ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 74)], close);
+    expect(close.gone).toEqual([]);
+    // A plain count, or a key with no px (nested-scroll), has no worst to lower.
+    const plain = fresh({ [key]: 2 });
+    ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 10)], plain);
+    expect(plain.gone).toEqual([]);
+  });
+
+  test("#724: a negative or fractional count, a negative or infinite worst, or a baseline that is not an object is refused by file name", () => {
+    const read = (text: string) => {
+      try {
+        return loadCounts(() => text, "responsive-baseline.json");
+      } catch (error) {
+        return String(error);
+      }
+    };
+    for (const text of [
+      '{"a|s|p": -1}',
+      '{"a|s|p": 1.5}',
+      '{"a|s|p": {"count": -1}}',
+      '{"a|s|p": {"count": 2, "worst": -5}}',
+      '{"a|s|p": {"count": 2, "worst": 1e999}}',
+    ]) {
+      expect(read(text)).toBe("Error: responsive-baseline.json: a|s|p is not a count of findings");
+    }
+    for (const text of ["null", "[1]", "3"]) {
+      expect(read(text)).toBe("Error: responsive-baseline.json is not an object of counts");
+    }
+    expect(read('{"a|s|p": {"count": 0, "worst": 0}}')).toEqual({
+      "a|s|p": { count: 0, worst: 0 },
+    });
+  });
+
   test("#637: each spacing and narrow finding says how many px it is past its rule's limit", () => {
     page(`
       <div data-slot="page-body" data-rect="0,0,1000,800">
