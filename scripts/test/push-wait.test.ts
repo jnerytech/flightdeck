@@ -168,6 +168,19 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     expect(pushWaitViolation("git push origin fix-x", CWD, answers(null, "none"))).toBeNull();
   });
 
+  test("a branch name with control characters reaches neither refusal raw (#945 security review)", () => {
+    for (const run of [green, null]) {
+      const d = {
+        ...deps(run),
+        git: (args: string[]) =>
+          args.join(" ") === "symbolic-ref --short HEAD" ? "fix-\u001b[2Jx\n" : null,
+      };
+      const why = pushWaitViolation("git push", CWD, d) ?? "";
+      expect(why).toContain("fix-[2Jx");
+      expect(why).not.toContain("\u001b");
+    }
+  });
+
   test("each push the rule lets through says why: a failed check, a conflict, a run that ended or is old, no run (#741)", () => {
     const passes = (run: PrRun | "none") => pushWaitCheck("git push origin fix-x", CWD, deps(run));
     expect(passes({ ...green, failed: true })).toEqual({
