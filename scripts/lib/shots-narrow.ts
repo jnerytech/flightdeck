@@ -23,6 +23,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "abas-muitas",
   // #784: simple mode's home scrolled sideways at 640 and 390.
   "simples-inicio",
+  // #117: the board with the files panel; narrow, it gives the row back to the columns.
+  "board-arquivos",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

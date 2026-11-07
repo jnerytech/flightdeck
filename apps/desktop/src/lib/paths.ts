@@ -11,7 +11,7 @@ export function trimTrailingSeparators(path: string): string {
 
 /** Whether `path` is `root` or inside it; ignores case and treats `\` as `/`. */
 export const isInside = (path: string, root: string): boolean => {
-  const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const norm = (p: string) => trimTrailingSeparators(p.replaceAll("\\", "/")).toLowerCase();
   const [a, r] = [norm(path), norm(root)];
   return a === r || a.startsWith(`${r}/`);
 };
@@ -23,7 +23,7 @@ export function breadcrumbSteps(path: string, root: string): Array<{ name: strin
   const rest = path.slice(trimTrailingSeparators(root).length).split(/[\\/]/).filter(Boolean);
   const steps = [{ name: basename(root), path: root }];
   for (const part of rest) {
-    const above = steps[steps.length - 1]?.path ?? root;
+    const above = steps.at(-1)?.path ?? root;
     steps.push({ name: part, path: `${trimTrailingSeparators(above)}${sep}${part}` });
   }
   return steps;

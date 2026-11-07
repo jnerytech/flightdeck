@@ -1288,6 +1288,22 @@ conversation. It is where you check what the agent did and send it back what to 
 
 The host announces `review` in `host.info`; an older host has no Changes tab.
 
+### The views of a session page
+
+A session page shows one **view** at a time: Conversation, Changes, Files, Time, Trace and
+Messages (each only where the host offers it). They are one **tab bar**: the active view is
+filled and has a bar under it, and the bar scrolls sideways in a narrow pane.
+
+- **Click** a view, or use the keys: **Alt+1** to **Alt+6** pick the 1st to 6th view of the bar
+  (from the message box too; `Ctrl+1` to `Ctrl+9` stay with the app's tabs), and with the focus on
+  the bar the **arrow keys**, **Home** and **End** move between views, wrapping around.
+- The palette (**Ctrl+K**) lists **Show Changes**, **Show Trace** and the others for the page you
+  are on, first among its commands, and the `?` sheet lists the keys under **Session views**.
+- The conversation stays where it was: what you typed in its box is still there after a visit to
+  another view.
+- Each session tab **remembers its last view** while the app runs; a tab you never switched opens
+  on the conversation.
+
 ### `.worktreeinclude`
 
 A new worktree gets the repository's tracked files, but not the ignored ones, such as `.env`. To
@@ -2479,7 +2495,7 @@ window resets.
   - Crossing `pauseAt` raises a notification, once per window.
 - **In the status bar** (the slim line at the bottom of the window, below): a small meter shows the
   window under most pressure across the online hosts, with its percentage and the time left until it
-  resets (the window's name shows from 960 px wide), and a **Refresh the plan usage** button that
+  resets (the window's name shows from 1024 px wide), and a **Refresh the plan usage** button that
   asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
   from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
   host and the time left. Clicking it opens that host's page. With no reading, neither the meter
@@ -2871,6 +2887,12 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   all tabs across the width of the window, where a tap goes to a tab. **+** still opens a new tab; the
   split buttons are not offered. A screen reader hears it as "All tabs (5), current: Board, host alfa".
 
+- **Tabs of all hosts:** the host switcher has an entry, **Tabs of all hosts**, for people who work
+  across hosts at once. Checked, the row lists every host's tabs after the shared ones, in a group
+  headed by the host's name and dot, each tab in its host's color. A tab of another host switches to
+  that host when you pick it, and the switcher follows. Unchecked, the row is the current host's
+  again. The choice is kept. The entry appears with two hosts or more.
+
 - **Host colors:** each host has one of eight colors, the same wherever the host shows. It is a dot
   next to the host's name in the top bar's switcher and in the list of all tabs, and a 2 px line over
   the top of each of the host's tabs. The color is never the only sign: the host's name stands beside
@@ -3154,7 +3176,8 @@ their English equivalents.
   has the card icon.
 - With nothing typed, a **Recent** section comes first with up to six of the entries you opened
   (kept between runs): what waits for you first, then what runs, then the rest. Each shows
-  **Alt+1** to **Alt+6**, which open it while the palette is open (they do nothing outside it).
+  **Alt+1** to **Alt+6**, which open it while the palette is open (outside it, the same keys pick
+  the views of a session page).
   The order is fixed when the palette opens, so rows do not move under the cursor.
 - The palette opens **narrowed to where you are**: on a board or a card, to its host and project;
   on a session or a host page, to the host. The filters show as chips under the field; click one to
@@ -3202,7 +3225,7 @@ Hover one for its name.
 
 - **Sidebar:** logo, navigation (Sessions, Needs you with its counter, Board, Workflows, Costs,
   History), the hosts, the pinned sessions and, at the bottom, search (`Ctrl K`), Settings and
-  the theme. It collapses to a 56 px icon rail, by itself below 960 px.
+  the theme. It collapses to a 56 px icon rail, by itself below 1024 px, and below 640 px it becomes a drawer.
 - **Three columns** in Sessions, Needs you and History: the list on the left (adjustable,
   remembered width), the session, request or transcript on the right. Board, Costs, Settings and
   the host pages use the full width. The header shows the path (Sessions > session, History >

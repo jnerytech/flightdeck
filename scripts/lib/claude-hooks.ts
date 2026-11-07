@@ -579,17 +579,17 @@ export function heavyRunWaived(command: string): boolean {
 export function guardAllowLogs(
   command: string | undefined,
   env: Record<string, string | undefined>,
-): Array<{ rule: string | null; decision: "allow" | "waived" }> {
-  const waived: Array<{ rule: string; decision: "waived" }> = [];
+  push?: { cwd: string; deps: PushWaitDeps },
+): Array<{ rule: string | null; decision: "allow" | "waived"; detail?: string; minutes?: number }> {
+  const waived: Array<{ rule: string; decision: "waived"; detail?: string; minutes?: number }> = [];
   if (typeof command === "string") {
     // The coordinator passes the heavy-run rule without an override: there is no waiver to count.
     if (!env.FLIGHTDECK_COORDINATOR && heavyRunWaived(command)) {
       waived.push({ rule: "slot-heavy", decision: "waived" });
     }
     if (commitWaived(command)) waived.push({ rule: "commit", decision: "waived" });
-    if (!env.FLIGHTDECK_COORDINATOR && pushNowWaived(command)) {
-      waived.push({ rule: "push-wait", decision: "waived" });
-    }
+    const override = env.FLIGHTDECK_COORDINATOR ? null : pushNowOverride(command, push);
+    if (override) waived.push({ rule: "push-wait", decision: "waived", ...override });
   }
   return waived.length > 0 ? waived : [{ rule: null, decision: "allow" }];
 }
@@ -825,6 +825,8 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
 function redacted(text: string): string {
   return text
     .replace(/:\/\/[^/@\s]+@/g, "://***@")
+    .replace(/\b(?:gh[pousr]_|github_pat_)\w+/g, "***")
+    .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
     .replace(
       /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
       "$1=***",
@@ -832,17 +834,31 @@ function redacted(text: string): string {
 }
 
 /**
- * Whether a push goes ahead on a FLIGHTDECK_PUSH_NOW override with its reason (#741). The log counts
- * every such push, also one the rule would have let through: harness:stats shows an upper bound.
+ * A push that goes ahead on a FLIGHTDECK_PUSH_NOW override (#741), or null: its reason, with
+ * secrets hidden and cut at 200 characters, and, given the push's folder and deps, the age of the
+ * pushed branch's PR run (#741: logged so the overrides can be read). The log counts every such
+ * push, also one the rule would have let through: harness:stats shows an upper bound.
  */
-function pushNowWaived(command: string): boolean {
-  return gitCalls(command, "/").some(
-    (call) =>
-      call.sub === "push" &&
-      heavyReasonGiven(
-        prefixAssignment(command.slice(call.start, call.end), "FLIGHTDECK_PUSH_NOW"),
-      ),
-  );
+function pushNowOverride(
+  command: string,
+  push?: { cwd: string; deps: PushWaitDeps },
+): { detail: string; minutes?: number } | null {
+  for (const call of gitCalls(command, push?.cwd ?? "/")) {
+    if (call.sub !== "push") continue;
+    const reason = prefixAssignment(command.slice(call.start, call.end), "FLIGHTDECK_PUSH_NOW");
+    if (!heavyReasonGiven(reason)) continue;
+    // Control characters out first, so none reaches the terminal through harness:stats.
+    const printable = Array.from(reason ?? "")
+      .filter((c) => c.charCodeAt(0) >= 32 && c.charCodeAt(0) !== 127)
+      .join("");
+    const detail = redacted(printable.trim()).slice(0, 200);
+    const dir = call.dir;
+    if (!push || dir === null) return { detail };
+    const branch = pushedBranches(call, (args) => push.deps.git(args, dir))[0];
+    const run = branch ? push.deps.prRun(branch, dir) : null;
+    return run?.inProgress ? { detail, minutes: run.minutes } : { detail };
+  }
+  return null;
 }
 
 const OWN_BRANCHES =
