@@ -1291,12 +1291,21 @@ The host announces `review` in `host.info`; an older host has no Changes tab.
 ### The views of a session page
 
 A session page shows one **view** at a time: Conversation, Changes, Files, Time, Trace and
-Messages (each only where the host offers it). They are one **tab bar**: the active view is
+Messages, plus **Terminal** (each only where the host offers it). They are one **tab bar**: the active view is
 filled and has a bar under it, and the bar scrolls sideways in a narrow pane.
 
-- **Click** a view, or use the keys: **Alt+1** to **Alt+6** pick the 1st to 6th view of the bar
+- **Click** a view, or use the keys: **Alt+1** to **Alt+7** pick the 1st to 7th view of the bar
   (from the message box too; `Ctrl+1` to `Ctrl+9` stay with the app's tabs), and with the focus on
   the bar the **arrow keys**, **Home** and **End** move between views, wrapping around.
+- **Terminal** is a shell on the session's host, opened in the session's own folder (its worktree,
+  for a card): the host decides the folder, the app only says which session. It opens the first
+  time you show the view and lives as long as the session's tab, or until you close it from the
+  view (**Close terminal**); switching views only hides it, and a tab that comes back finds the same
+  shell. Closing the session's tab ends its shell. It has the terminal's search, copy and paste
+  and links. A session started from a terminal ("Claude aqui") shows that terminal instead, and
+  closing the tab leaves it running. **Ctrl+\`** switches between the Terminal and the Conversation
+  (the shell never receives it). The view needs the host's terminal turned on; an older host has
+  none.
 - The palette (**Ctrl+K**) lists **Show Changes**, **Show Trace** and the others for the page you
   are on, first among its commands, and the `?` sheet lists the keys under **Session views**.
 - The conversation stays where it was: what you typed in its box is still there after a visit to
