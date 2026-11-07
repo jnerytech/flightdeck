@@ -177,6 +177,28 @@ describe("vigiar-ui: watching and fixing a card's PR", () => {
   });
 });
 
+/** The card's watch with round 1 held for drift, on a host that resolves held rounds. */
+async function held() {
+  const mem = await open({}, ["watch.resolveHeld"]);
+  mem.daemon.watch.info = {
+    cardId: "c1",
+    enabled: true,
+    status: "needs_you",
+    reason: "held: 1 file(s) outside the PR",
+    rounds: [
+      {
+        ...round(1, "held", "held: 1 file(s) outside the PR"),
+        drift: { outside: ["src/billing.ts"], churn: 7, limit: 200 },
+      },
+    ],
+  } as typeof mem.daemon.watch.info;
+  await act(async () => {
+    mem.daemon.push({ type: "watch.updated", watch: mem.daemon.watch.info });
+  });
+  await settle(() => screen.queryByText(/Rodada 1/) !== null);
+  return mem;
+}
+
 describe("vigiar-ui: rounds used, more rounds and a held round (#77)", () => {
   test("the card says its rounds used and the limit, and Allow 2 more rounds asks the host", async () => {
     const mem = await open({}, ["watch.extend"]);
@@ -218,34 +240,73 @@ describe("vigiar-ui: rounds used, more rounds and a held round (#77)", () => {
     ]).toEqual([true, true]);
   });
 
-  test("a held round shows the files outside the PR and its lines; Push anyway and Drop ask the host", async () => {
-    const mem = await open({}, ["watch.resolveHeld"]);
+  test("a held round shows the files outside the PR and its lines; Push anyway asks first, and Drop waits while it runs", async () => {
+    const mem = await held();
+    expect(screen.queryByText("Rodada 1 · retida para você")).not.toBeNull();
+    expect(screen.queryByText("Fora do PR: src/billing.ts")).not.toBeNull();
+    expect(screen.queryByText("7 de no máximo 200 linhas mudadas")).not.toBeNull();
+    // timing: the host holds its answer, so the push is still running when Drop is looked at
+    mem.daemon.ackDelay.set("watch.resolveHeld", 1500);
+    await click("Enviar assim mesmo");
+    const dialog = screen.queryByRole("alertdialog");
+    expect(dialog).not.toBeNull();
+    expect(within(dialog as HTMLElement).queryByText(/src\/billing\.ts/)).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(
+        within(dialog as HTMLElement).getByRole("button", { name: "Enviar assim mesmo" }),
+      );
+    });
+    const drop = screen.queryByRole("button", { name: "Descartar a rodada" });
+    expect((drop as HTMLButtonElement | null)?.disabled).toBe(true);
+    await settle(() => sent(mem.daemon, "watch.resolveHeld").length > 0);
+    expect(sent(mem.daemon, "watch.resolveHeld")).toEqual([
+      { cardId: "c1", roundId: "r1", action: "push" },
+    ]);
+  });
+
+  test("Drop asks first: Cancelar sends nothing, the confirmation drops the round", async () => {
+    const mem = await held();
+    await click("Descartar a rodada");
+    await click("Cancelar");
+    await click("Descartar a rodada");
+    const dialog = screen.queryByRole("alertdialog");
+    expect(dialog).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(
+        within(dialog as HTMLElement).getByRole("button", { name: "Descartar a rodada" }),
+      );
+    });
+    await settle(() => sent(mem.daemon, "watch.resolveHeld").length > 0);
+    expect(sent(mem.daemon, "watch.resolveHeld")).toEqual([
+      { cardId: "c1", roundId: "r1", action: "drop" },
+    ]);
+  });
+
+  test("a refused request for more rounds offers no retry: it would be refused again", async () => {
+    const mem = await open({}, ["watch.extend"]);
+    mem.daemon.refuse.set("watch.extend", "more rounds would not help");
     mem.daemon.watch.info = {
       cardId: "c1",
       enabled: true,
       status: "needs_you",
-      reason: "held: 1 file(s) outside the PR",
-      rounds: [
-        {
-          ...round(1, "held", "held: 1 file(s) outside the PR"),
-          drift: { outside: ["src/billing.ts"], churn: 7, limit: 200 },
-        },
-      ],
-    } as typeof mem.daemon.watch.info;
+      reason: "limit of 3 rounds reached",
+      rounds: [round(1, "pushed", "a")],
+    };
     await act(async () => {
       mem.daemon.push({ type: "watch.updated", watch: mem.daemon.watch.info });
     });
-    await settle(() => screen.queryByText(/Rodada 1/) !== null);
-    expect(screen.queryByText("Rodada 1 · retida para você")).not.toBeNull();
-    expect(screen.queryByText("Fora do PR: src/billing.ts")).not.toBeNull();
-    expect(screen.queryByText("7 de no máximo 200 linhas mudadas")).not.toBeNull();
-    await click("Enviar assim mesmo");
-    await click("Descartar a rodada");
-    await settle(() => sent(mem.daemon, "watch.resolveHeld").length > 1);
-    expect(sent(mem.daemon, "watch.resolveHeld")).toEqual([
-      { cardId: "c1", roundId: "r1", action: "push" },
-      { cardId: "c1", roundId: "r1", action: "drop" },
-    ]);
+    await settle(() => screen.queryByText(/limit of 3 rounds reached/) !== null);
+    // What the banner is given to offer again: nothing, for a refusal that would come back.
+    const retries: unknown[] = [];
+    const store = mem.store as unknown as { fail(e: unknown, t?: string, retry?: unknown): void };
+    const fail = store.fail.bind(store);
+    store.fail = (e, t, retry) => {
+      retries.push(retry);
+      fail(e, t, retry);
+    };
+    await click("Permitir mais 2 rodadas");
+    await settle(() => retries.length > 0);
+    expect(retries).toEqual([undefined]);
   });
 });
 
