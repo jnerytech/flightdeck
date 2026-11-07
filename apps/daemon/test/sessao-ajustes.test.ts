@@ -226,4 +226,15 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
       await code(fromAccept.manager.setPermissionMode(fromAccept.sessionId, "acceptEdits")),
     ).toBe("ok");
   });
+
+  test("a mode change the run took is told as a session.mode event, so every app and a reload show it (#935)", async () => {
+    const { manager, store, sessionId } = await liveSession();
+    await manager.setPermissionMode(sessionId, "plan");
+    await code(manager.setPermissionMode(sessionId, "acceptEdits"));
+    const modes = store
+      .eventsSince(sessionId)
+      .filter((e) => e.event.type === "session.mode")
+      .map((e) => (e.event as { permissionMode?: string }).permissionMode);
+    expect(modes).toEqual(["plan"]);
+  });
 });
