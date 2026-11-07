@@ -10,14 +10,14 @@ import { memoryPlatform } from "./fixtures.ts";
 const WEEK = 7 * 24 * 3_600_000;
 const RESET = Date.UTC(2026, 10, 12, 18, 0, 0);
 
-const reading = (utilization: number, resetsAt: number, status = "allowed") => ({
+const reading = (utilization: number, resetsAt: number | null, status = "allowed") => ({
   pauseAt: 0.95,
   windows: [
     {
       window: "seven_day",
       utilization,
       status,
-      resetsAt: new Date(resetsAt).toISOString(),
+      resetsAt: resetsAt === null ? null : new Date(resetsAt).toISOString(),
       readAt: "2026-11-07T12:00:00.000Z",
     },
   ],
@@ -97,6 +97,20 @@ describe("quota-notices: one notice per account, window and level (#933)", () =>
     utilization = 0.4;
     await refresh();
     utilization = 0.97;
+    await refresh();
+    expect(notices()).toBe(2);
+    store.dispose();
+  });
+
+  test("a window with no reset time is one window: it notifies once, and apart from a dated one", async () => {
+    let dated = false;
+    const { store, refresh, notices } = hosts((host) =>
+      reading(0.98, dated && host === "c" ? RESET : null),
+    );
+    await refresh();
+    await refresh();
+    expect(notices()).toBe(1);
+    dated = true;
     await refresh();
     expect(notices()).toBe(2);
     store.dispose();
