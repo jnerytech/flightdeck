@@ -1,4 +1,4 @@
-import { parsePairingLink } from "@flightdeck/protocol";
+import { type Card, type ContractOverrides, parsePairingLink } from "@flightdeck/protocol";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
@@ -12,6 +12,7 @@ import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
+import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { boardShortcut } from "../lib/board-shortcut.ts";
@@ -227,7 +228,12 @@ function appKey(
 export function runPaletteTarget(
   store: AppStore,
   target: PaletteTarget,
-  ui: { lang: string; go(route: Route): void; showHelp(): void },
+  ui: {
+    lang: string;
+    go(route: Route): void;
+    showHelp(): void;
+    askStart(card: Card, contracts: ContractOverrides, go: () => void): void;
+  },
 ): void {
   switch (target.kind) {
     case "terminal":
@@ -282,9 +288,15 @@ export function runPaletteTarget(
       });
       return;
     }
-    case "start-card":
-      void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
+    case "start-card": {
+      // The same question as the card's own Start (issue #78): only where In progress confirms.
+      const start = () =>
+        void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
+      const card = store.getState().cards[`${target.hostId}/${target.cardId}`];
+      if (card) ui.askStart(card, projectContracts(store, target.hostId, card.projectId), start);
+      else start();
       return;
+    }
     case "shortcuts":
       ui.showHelp();
       return;
@@ -311,6 +323,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const { router } = store;
   const route = useSyncExternalStore(router.subscribe, () => router.current);
   const { t } = store.i18n;
+  /** The palette's Start card asks the same question as the card's own Start (issue #78). */
+  const startAsk = useStartAsk({ t });
   // The `?` sheet, and the first key of a go-to chord waiting for its second.
   const [help, setHelp] = useState(false);
   const [whatsNew, setWhatsNew] = useState(false);
@@ -497,7 +511,12 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   /** An entry or action of the Ctrl+K palette: its screen, or an action in place. */
   const goTo = (target: PaletteTarget) => {
     store.closeSearch();
-    runPaletteTarget(store, target, { lang, go, showHelp: () => setHelp(true) });
+    runPaletteTarget(store, target, {
+      lang,
+      go,
+      showHelp: () => setHelp(true),
+      askStart: startAsk.ask,
+    });
   };
 
   // A host set to simple (or chosen so) shows simple mode in place of the full frame.
@@ -656,6 +675,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
           )}
           <AskpassPrompt store={store} />
+          {startAsk.dialog}
           {state.snippetChoice && (
             <SnippetUse
               store={store}

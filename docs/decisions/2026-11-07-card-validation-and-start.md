@@ -14,11 +14,13 @@ security review.
   project's contract. No default asks for it: this slice adds the ability, not a new gate.
 - **Edited on the card page.** A labelled field with its own Save in the Details section, built on
   the same draft field as the title and the description, without a wand.
-- **Start asks about criteria.** The question is the same dialog as a move's, with **Start
-  anyway**. It asks for `criteria` when the project's In progress contract has it (the default
-  does) and for nothing else, whatever more the project asks of In progress. It is in the app only:
-  the board's card menu and the card page's Start and Start in the background. The host's
-  `card.start` is unchanged, so what starts cards on its own (dependencies, the queue, the
-  manager) is never asked and never refused.
-- **Not covered.** The command palette's "start card" still starts with no question; it has no
-  card in hand to look at. The In progress column still never asks on a move.
+- **Start follows In progress's contract.** The approved design makes In progress a hint, and an
+  always-ask Start broke nine tests and three journeys, so it was dropped. Start asks only where
+  the project's In progress contract is `confirm` and has the `criteria` check, and only about
+  criteria (whatever more the project asks of In progress). The default is a hint, so Start asks
+  nothing. The question is the same dialog as a move's, with **Start anyway**. It is in the app
+  only: the board's card menu, the card page's Start and Start in the background, and the
+  command palette's Start card. The host's `card.start` is unchanged, so what starts cards on its
+  own (dependencies, the queue, the manager) is never asked and never refused.
+- **Not covered.** A move to In progress by hand still never asks, even where the contract
+  confirms: only Start does.

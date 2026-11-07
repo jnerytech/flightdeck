@@ -7,7 +7,7 @@ import { PersonaPicker, useSuggestedPersona } from "@/components/personas/person
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
-import { useStartAsk } from "@/hooks/use-start-ask";
+import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
@@ -56,9 +56,7 @@ export function CardRunForm(
   const suggested = useSuggestedPersona(store, hostId, "dev");
   const persona = picked ?? suggested;
   /** The project's contracts decide whether a card with no criteria is asked about (issue #78). */
-  const contracts =
-    store.getState().projects[hostId]?.find((project) => project.id === card.projectId)
-      ?.contractByColumn ?? {};
+  const contracts = projectContracts(store, hostId, card.projectId);
   const startAsk = useStartAsk();
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [finishing, setFinishing] = useState(false);

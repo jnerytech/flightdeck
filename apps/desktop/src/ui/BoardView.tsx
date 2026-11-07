@@ -289,9 +289,10 @@ export const BoardView = memo(function BoardView(props: {
   const [project, setProject] = useState<Project | null>(null);
   const contracts: ContractOverrides = project?.contractByColumn ?? {};
   /** Starting a card with no acceptance criteria asks first (issue #78). */
-  const startAsk = useStartAsk((cardId) =>
-    document.querySelector<HTMLElement>(`[data-card="${cardId}"] [data-card-open]`)?.focus(),
-  );
+  const startAsk = useStartAsk({
+    restoreFocus: (cardId) =>
+      document.querySelector<HTMLElement>(`[data-card="${cardId}"] [data-card-open]`)?.focus(),
+  });
   const [filter, setFilter] = useState("");
   /** Phase 31: only the cards that wait for a blocker. */
   const [onlyBlocked, setOnlyBlocked] = useState(false);
