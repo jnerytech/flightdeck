@@ -2181,9 +2181,24 @@ export class AppStore {
   /** Closes a tab; a terminal's waits in `closingTerminal` for detach or end. */
   closeTab(area: Tabs, tabId: string): void {
     const tab = area.tabs.find((candidate) => candidate.id === tabId);
-    if (tab?.router.current.name === "terminal") {
+    const route = tab?.router.current;
+    if (route?.name === "terminal") {
       this.update({ closingTerminal: { areaId: area.id, tabId } });
-    } else area.close(tabId);
+      return;
+    }
+    // Issue #107: the shell a session page opened lives as long as its tab.
+    if (route?.name === "session" || route?.name === "external") {
+      const key =
+        route.name === "session"
+          ? sessionKey(route.host, route.id)
+          : `${route.host}/${route.claudeSessionId}`;
+      const terminalId = this.sessionViews.terminalOf(key);
+      if (terminalId) {
+        this.sessionViews.setTerminal(key, null);
+        void this.hostCommand(route.host, "terminal.close", { terminalId, kill: true });
+      }
+    }
+    area.close(tabId);
   }
 
   /** Ends the pending close of a terminal tab: `kill` ends the process, false detaches, null keeps it. */

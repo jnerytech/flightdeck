@@ -37,6 +37,7 @@ export interface SessionViewsEntry {
  */
 export class SessionViews {
   private readonly lastViews = new Map<string, SessionView>();
+  private readonly terminals = new Map<string, string>();
   private current: SessionViewsEntry | null = null;
 
   /** The view `key` was last on, or `null` when it has none yet. */
@@ -49,11 +50,14 @@ export class SessionViews {
   }
 
   /** The shell this tab opened (`terminalId`), so a page that comes back finds it; `null` when none. */
-  terminalOf(_key: string): string | null {
-    return null;
+  terminalOf(key: string): string | null {
+    return this.terminals.get(key) ?? null;
   }
 
-  setTerminal(_key: string, _terminalId: string | null): void {}
+  setTerminal(key: string, terminalId: string | null): void {
+    if (terminalId === null) this.terminals.delete(key);
+    else this.terminals.set(key, terminalId);
+  }
 
   /** Puts `entry` on screen; the returned function takes it off (only if it is still the one). */
   register(entry: SessionViewsEntry): () => void {

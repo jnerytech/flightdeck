@@ -60,6 +60,8 @@ export function terminalKeyAction(
     return "newline";
   }
   if (event.altKey || event.metaKey || !event.ctrlKey) return "pass";
+  // Ctrl+` is the session page's (issue #107): it switches Terminal and Conversation, and the process never sees it.
+  if (event.key === "`") return event.shiftKey ? "pass" : "views";
   // Zoom, as in Windows Terminal and VS Code: Ctrl with =/+, -/_ or 0, Shift or not (#476).
   const zoom = ZOOM_KEYS[event.key];
   if (zoom) return zoom;

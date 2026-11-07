@@ -11,10 +11,13 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { SESSION_VIEWS, type SessionView, VIEW_LABEL } from "../lib/session-views.ts";
+import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
+import type { XtermDeps } from "../lib/xterm-screen.ts";
 import { ChangesPanel } from "./ChangesPanel.tsx";
 import { FileExplorer } from "./FileExplorer.tsx";
 import { SessionFiles } from "./SessionFiles.tsx";
 import { SessionMessages } from "./SessionMessages.tsx";
+import { SessionTerminal } from "./SessionTerminal.tsx";
 import { TempoPanel } from "./TempoPanel.tsx";
 import { TracePanel } from "./TracePanel.tsx";
 
@@ -42,11 +45,24 @@ export function SessionTabs(
     files?: boolean;
     /** Issue #107: which session tab this is (`<host>/<session>`); its last view is kept under it. */
     viewKey?: string;
+    /**
+     * Issue #107: the Terminal view. `session`: a shell the host opens in this managed session's
+     * folder; `launch`: the session started from a terminal, whose PTY the view shows (none while
+     * its launch is unknown or its terminal gone). Absent: no Terminal view.
+     */
+    terminal?: { session: string } | { launch: string | null };
+    /** xterm's pieces; the real ones when absent (a test hands in fakes). */
+    terminalDeps?: XtermDeps;
     children: ReactNode;
   }>,
 ) {
   const t = useT();
   const { sessionViews } = props.store;
+  const launched = useLaunchTerminal(
+    props.store,
+    props.hostId,
+    props.terminal && "launch" in props.terminal ? props.terminal.launch : null,
+  );
   const offered: Record<SessionView, boolean> = {
     conversation: true,
     changes: props.enabled && !!props.claudeSessionId,
@@ -54,7 +70,7 @@ export function SessionTabs(
     time: !!props.telemetry && !!props.claudeSessionId,
     trace: !!props.trace && !!props.claudeSessionId,
     messages: !!props.messagingId,
-    terminal: false,
+    terminal: props.terminal ? "session" in props.terminal || launched !== null : false,
   };
   const views = SESSION_VIEWS.filter((view) => offered[view]);
   const viewsKey = views.join(",");
@@ -63,8 +79,17 @@ export function SessionTabs(
   );
   // A view the host does not offer (yet) shows the conversation, and what was chosen is kept.
   const tab = views.includes(chosen) ? chosen : "conversation";
+  const terminalSource =
+    props.terminal && "session" in props.terminal
+      ? { session: props.terminal.session }
+      : launched
+        ? { terminalId: launched }
+        : null;
   const bar = views.length > 1;
   const viewKey = props.viewKey;
+  // The shell is built when the Terminal view is first shown, and kept (hidden) from then on.
+  const [terminalOpened, setTerminalOpened] = useState(false);
+  if (tab === "terminal" && !terminalOpened) setTerminalOpened(true);
   const pick = useCallback(
     (view: SessionView) => {
       setChosen(view);
@@ -80,25 +105,32 @@ export function SessionTabs(
   );
   const root = useRef<HTMLDivElement>(null);
   const tabs = useRef(new Map<SessionView, HTMLButtonElement>());
-  // Alt+1 to Alt+6 (Ctrl+1 to 9 are the app's tabs): from anywhere in the page, the message box too.
+  // Alt+1 to Alt+7 (Ctrl+1 to 9 are the app's tabs), and Ctrl+` between the Terminal and the Conversation:
+  // from anywhere in the page, the message box and the terminal too.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `viewsKey` stands for the `views` list
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
+      // Only when the key came from this page (or from nowhere): the palette's own Alt keys stay its own.
+      const target = event.target as Node | null;
+      if (!(target === document.body || (target && root.current?.contains(target)))) return;
+      if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+        if (event.key !== "`" || !views.includes("terminal")) return;
+        event.preventDefault();
+        pick(tab === "terminal" ? "conversation" : "terminal");
+        return;
+      }
       if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       // On a Mac Alt+1 types a symbol: the physical key says which digit it was.
       const digit =
         /^Digit(\d)$/.exec(event.code)?.[1] ?? (/^\d$/.test(event.key) ? event.key : "");
       const view = views[Number(digit) - 1];
       if (!view) return;
-      // Only when the key came from this page (or from nowhere): the palette's own Alt keys stay its own.
-      const target = event.target as Node | null;
-      if (!(target === document.body || (target && root.current?.contains(target)))) return;
       event.preventDefault();
       pick(view);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [viewsKey, pick]);
+  }, [viewsKey, pick, tab]);
   const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
     const at = views.indexOf(tab);
     const to =
@@ -162,6 +194,21 @@ export function SessionTabs(
       <div hidden={tab !== "conversation"} className="min-h-0 flex-1" {...panel("conversation")}>
         {props.children}
       </div>
+      {terminalOpened && props.viewKey && terminalSource && (
+        <div hidden={tab !== "terminal"} className="min-h-0 flex-1" {...panel("terminal")}>
+          <SessionTerminal
+            store={props.store}
+            hostId={props.hostId}
+            viewKey={props.viewKey}
+            source={terminalSource}
+            onClosed={() => {
+              setTerminalOpened(false);
+              pick("conversation");
+            }}
+            {...(props.terminalDeps ? { deps: props.terminalDeps } : {})}
+          />
+        </div>
+      )}
       {(tab === "messages" || tab === "time" || tab === "trace" || tab === "files") && (
         <div className="min-h-0 flex-1 overflow-y-auto p-4" {...panel(tab)}>
           {tab === "files" && props.claudeSessionId && (
