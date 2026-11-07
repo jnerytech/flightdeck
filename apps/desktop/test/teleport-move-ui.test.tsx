@@ -103,12 +103,21 @@ describe("teleport-move-ui: the entry that moves a session, behind the preview (
       ...((screen.queryByRole("combobox", { name: "Host" }) as HTMLSelectElement | null)?.options ??
         []),
     ].map((o) => o.textContent ?? "");
+    const cancel = screen.queryByRole("button", { name: "Cancel" });
+    expect(cancel).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(cancel as HTMLElement);
+    });
+    const closed = await seen(
+      () => screen.queryByRole("dialog", { name: "Move to another host" }) === null,
+    );
     expect([
       before.includes("Move to another host…"),
       after.includes("Move to another host…"),
       opened,
       hosts,
-    ]).toEqual([false, true, true, ["Pick a host", "beta"]]);
+      closed,
+    ]).toEqual([false, true, true, ["Pick a host", "beta"], true]);
   });
 
   test("the preview is a switch in Settings, off until the person turns it on", async () => {
