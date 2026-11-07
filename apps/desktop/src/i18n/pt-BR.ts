@@ -38,6 +38,7 @@ export const ptBR = {
   home: {
     title: "Início",
     range: "Últimos 7 dias · todos os hosts",
+    rangeHost: "Últimos 7 dias · {host}",
     spend: "Gasto",
     noBudget: "Sem orçamento definido",
     ofBudget: "{spent} de {limit} de orçamento no mês",

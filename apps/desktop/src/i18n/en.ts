@@ -36,6 +36,7 @@ export const en: Dictionary = {
   home: {
     title: "Home",
     range: "Last 7 days · all hosts",
+    rangeHost: "Last 7 days · {host}",
     spend: "Spend",
     noBudget: "No budget set",
     ofBudget: "{spent} of {limit} budget this month",
