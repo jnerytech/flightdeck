@@ -64,6 +64,7 @@ import { EventStore } from "../../daemon/src/store/event-store.ts";
 import { SummaryService } from "../../daemon/src/summary/service.ts";
 import { TelemetryOptIn } from "../../daemon/src/telemetry/optin.ts";
 import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
+import { TeleportInbox } from "../../daemon/src/teleport/receive.ts";
 import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/builtin.ts";
 import { TaskTracker } from "../../daemon/src/templates/tasks.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
@@ -121,6 +122,8 @@ export function daemon(
     bg?: BgService;
     /** Project trust (#196): the host announces it, over this daemon's database, with nothing trusted yet. */
     trust?: boolean;
+    /** Teleport (#100): the host takes packages from other hosts, in this daemon's root. */
+    teleport?: boolean;
     /** Budgets (phase 8), built over this daemon's database. */
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
@@ -504,6 +507,16 @@ export function daemon(
       ...(features ? { features } : {}),
       // The folder picker is on, like in the real daemon.
       fsDirs: true,
+      ...(options.teleport
+        ? {
+            teleportInbox: new TeleportInbox({
+              dir: join(root, "teleport-in"),
+              now: Date.now,
+              newId: () => crypto.randomUUID(),
+              timers: globalThis,
+            }),
+          }
+        : {}),
       ...firstRunOptions,
       ...(options.ui ? { ui: { ...options.ui }, onUiSettings: async () => {} } : {}),
       ...(options.deps

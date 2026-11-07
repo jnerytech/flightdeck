@@ -856,6 +856,17 @@ Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às
 **Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
 configurações de projetos do host, onde se editam pasta, branch base, setup e personas) do projeto.
 
+### Mover uma sessão para outro host (prévia)
+
+Uma sessão ociosa pode continuar em outro host: a conversa, os commits e as mudanças ainda não commitadas vão junto. É uma prévia, desligada por padrão: ligue em Configurações, Janela, "Prévia: mover uma sessão para outro host".
+
+1. No menu da sessão (o "…" na linha dela), escolha **Mover para outro host…**.
+2. Escolha o host e digite o repositório lá. Tem de ser o mesmo projeto, então esse host já precisa ter um clone dele.
+3. Leia o que vai: a branch, os commits ainda fora do origin, os arquivos alterados, o tamanho e quantas linhas parecem segredos. Os segredos em si nunca aparecem, e eles vão como estão.
+4. Aperte **Mover** e depois **Abrir lá**.
+
+No outro host o código fica numa worktree nova desse repositório, numa branch própria, e a sessão continua de onde parou. A sessão daqui fica como estava. Arquivos guardados no Git LFS chegam como ponteiros: rode `git lfs pull` na worktree para buscá-los.
+
 ### Dormir sessões ociosas
 
 Uma sessão ociosa mantém seu processo do Claude Code, e a memória dele, até terminar. Na página do

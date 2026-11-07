@@ -80,6 +80,7 @@ import type {
   WebhookRequest,
   WebhookResponse,
 } from "../platform/types.ts";
+import type { TeleportRunArgs } from "../ui/TeleportDialog.tsx";
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
@@ -185,6 +186,7 @@ import {
 import { savePayload } from "./ssh.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
+import { type TeleportOutcome, type TeleportRequest, teleportSession } from "./teleport.ts";
 import {
   isLocalUrl,
   type TerminalEnv,
@@ -564,6 +566,8 @@ export interface Settings {
   /** Issue #280: a newer version downloads by itself, to install on a restart (on by default). */
   autoUpdate: boolean;
   updaterSupported: boolean;
+  /** Issue #100: the preview of moving a session to another host (off by default). */
+  teleportPreview: boolean;
 }
 
 export interface AppStoreOptions {
@@ -823,6 +827,8 @@ const PALETTE_RECENTS_KEPT = 12;
 export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
 /** Issue #280: the app downloads a newer version by itself; "false" turns it off. */
 export const AUTO_UPDATE_KEY = "flightdeck.autoUpdate";
+/** Issue #100: "true" turns on the preview of moving a session to another host. */
+export const TELEPORT_PREVIEW_KEY = "flightdeck.teleportPreview";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
@@ -1082,6 +1088,7 @@ export class AppStore {
         notifyUpdates: true,
         autoUpdate: true,
         updaterSupported: platform.updater.supported,
+        teleportPreview: false,
       },
     };
   }
@@ -1275,6 +1282,8 @@ export class AppStore {
     const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
     const notifyUpdates = this.platform.storage.getItem(NOTIFY_UPDATES_KEY) !== "false";
     const autoUpdate = this.platform.storage.getItem(AUTO_UPDATE_KEY) !== "false";
+    // A preview: on only when the person turned it on.
+    const teleportPreview = this.platform.storage.getItem(TELEPORT_PREVIEW_KEY) === "true";
     this.update({
       settings: {
         ...this.state.settings,
@@ -1283,6 +1292,7 @@ export class AppStore {
         globalShortcut,
         notifyUpdates,
         autoUpdate,
+        teleportPreview,
       },
     });
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
@@ -2979,6 +2989,45 @@ export class AppStore {
     this.platform.storage.setItem(AUTO_UPDATE_KEY, String(enabled));
     this.update({ settings: { ...this.state.settings, autoUpdate: enabled } });
   }
+
+  setTeleportPreview(enabled: boolean): void {
+    this.platform.storage.setItem(TELEPORT_PREVIEW_KEY, String(enabled));
+    this.update({ settings: { ...this.state.settings, teleportPreview: enabled } });
+  }
+
+  /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
+  teleportRequest(hostId: string): TeleportRequest {
+    // Straight to the connection: a host's teleport answer is checked by the relay, and never
+    // reaches the board's card or run state on the way.
+    return ((type, payload) => {
+      const conn = this.connections.get(hostId);
+      if (!conn) return Promise.reject(new RequestError("offline", "unknown host"));
+      return conn.request(type, payload);
+    }) as TeleportRequest;
+  }
+
+  /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
+  moveSession(
+    sourceHost: string,
+    sessionId: string,
+    args: TeleportRunArgs,
+  ): Promise<TeleportOutcome> {
+    return teleportSession({
+      source: this.teleportRequest(sourceHost),
+      target: this.teleportRequest(args.target),
+      sessionId,
+      repo: args.repo,
+      confirm: args.confirm,
+      onProgress: args.onProgress,
+      signal: args.signal,
+    });
+  }
+
+  /** The session a move made, opened on its new host. */
+  readonly openMovedSession = (hostId: string, sessionId: string): void => {
+    this.select(hostId, sessionId);
+    this.router.push({ name: "session", host: hostId, id: sessionId });
+  };
 
   setNotifyUpdates(enabled: boolean): void {
     this.platform.storage.setItem(NOTIFY_UPDATES_KEY, String(enabled));

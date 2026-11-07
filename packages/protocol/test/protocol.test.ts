@@ -14,6 +14,8 @@ import {
   ServerMessage,
   SessionEvent,
   SessionInterruptedResult,
+  TELEPORT_PART_MAX_BYTES,
+  TeleportManifestSchema,
 } from "../src/index.ts";
 
 /** A manifest as the source host sends it (issue #100). */
@@ -637,6 +639,17 @@ describe("protocolo", () => {
       model: "claude-haiku-5-5",
       lowWithoutAi: true,
     });
+  });
+
+  test("a manifest part is at most TELEPORT_PART_MAX_BYTES, and one at the cap is taken", () => {
+    const part = TELEPORT_MANIFEST.parts[0];
+    const sized = (size: number) =>
+      TeleportManifestSchema.safeParse({ ...TELEPORT_MANIFEST, parts: [{ ...part, size }] })
+        .success;
+    expect([sized(TELEPORT_PART_MAX_BYTES), sized(TELEPORT_PART_MAX_BYTES + 1)]).toEqual([
+      true,
+      false,
+    ]);
   });
 
   test("teleport.receive and teleport.write refuse a part they do not know, a bad sha256 or a chunk too big", () => {

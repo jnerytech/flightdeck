@@ -77,12 +77,16 @@ const refused = (reason: "teleport_corrupt" | "teleport_incomplete") =>
 
 export async function teleportSession(run: TeleportRun): Promise<TeleportOutcome> {
   const { source, target } = run;
-  const manifest = await source("teleport.prepare", { sessionId: run.sessionId });
+  // The source's manifest is checked as the target would: sizes, parts, names. One that is not a
+  // manifest is refused before anything uses it, its id included.
+  const checked = TeleportManifestSchema.safeParse(
+    await source("teleport.prepare", { sessionId: run.sessionId }),
+  );
+  if (!checked.success) throw refused("teleport_corrupt");
+  const manifest = checked.data as TeleportManifest;
   let id: string | null = null;
   let landed = false;
   try {
-    // The source's manifest is checked as the target would: sizes, parts, names.
-    if (!TeleportManifestSchema.safeParse(manifest).success) throw refused("teleport_corrupt");
     if (!(await run.confirm(teleportSummary(manifest)))) return { kind: "declined" };
     if (run.signal?.aborted) return { kind: "cancelled" };
     id = (await target("teleport.receive", { manifest })).id;

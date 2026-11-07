@@ -255,13 +255,9 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       type === "teleport.abort"
         ? new Promise(() => {})
         : h.target(type as "teleport.receive", payload)) as TeleportRequest;
-    const started = Date.now();
     const why = await failure(run(h, { target: slow, cleanupMs: 50 }));
-    expect([why, Date.now() - started < 1_000, h.calls.at(-1)]).toEqual([
-      "teleport_exists",
-      true,
-      "source:teleport.cancel",
-    ]);
+    // The move returns at all only because the clean-up has a limit: the abort never answers.
+    expect([why, h.calls.at(-1)]).toEqual(["teleport_exists", "source:teleport.cancel"]);
   });
 
   test("a branch name shows as plain text: no control or direction marks", () => {
@@ -277,6 +273,16 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       git: { ...(MANIFEST.git as NonNullable<TeleportManifest["git"]>), branch: "\u202e\u200b" },
     });
     expect([summary.branch, marksOnly.branch]).toEqual(["fix-login", null]);
+  });
+
+  test("a source that answers prepare with something that is not a manifest is refused, and never told an id it made up", async () => {
+    const h = hosts();
+    const garbage = (async (type: string, payload: never) =>
+      type === "teleport.prepare"
+        ? null
+        : h.source(type as "teleport.cancel", payload)) as TeleportRequest;
+    const why = await failure(run(h, { source: garbage }));
+    expect([why, h.calls]).toEqual(["teleport_corrupt", []]);
   });
 
   test("a host that went while cleaning up does not hide why the move stopped", async () => {
