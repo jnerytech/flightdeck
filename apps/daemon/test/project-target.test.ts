@@ -45,7 +45,7 @@ describe("project-target: a project's own checkout, read only (#797)", () => {
       diff?.root ?? null,
       diff ? diff.base : "no diff",
       diff?.files.map((f) => f.path) ?? [],
-    ]).toEqual([true, "export const panel = 1;\n", realpathSync(repo), null, ["panel.ts"]]);
+    ]).toEqual([true, "export const panel = 1;\n", realpathSync.native(repo), null, ["panel.ts"]]);
   });
 
   test("a project never takes a write or a revert", async () => {
