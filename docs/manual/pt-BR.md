@@ -926,7 +926,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
   a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
   e o id do host dessa conta, cada um copiado ao ser escolhido; **Linhas compactas**, uma chave
-  guardada neste computador (a mesma densidade das Configurações); **Configurações**; **Novidades** (os
+  guardada neste computador (a mesma densidade das Configurações); mais três chaves guardadas neste
+  computador, **Ocultar os selos Novo e Beta** (os selinhos dos itens recentes da barra), **Ocultar as
+  novidades** (o ponto e o item logo abaixo) e **Esconder a lista de configuração inicial** (o
+  mesmo do botão de esconder na linha dela; **Mostrar a lista de configuração inicial** nas
+  Configurações a traz de volta); **Configurações**; **Novidades** (os
   destaques das últimas versões, lidos do GitHub por um host que consiga; a linha da conta e este item
   ganham um ponto, e o nome da linha avisa, depois que o app foi atualizado, até você abrir; em tela
   cheia numa janela estreita; **Ver todas as versões** abre o GitHub); **Procurar

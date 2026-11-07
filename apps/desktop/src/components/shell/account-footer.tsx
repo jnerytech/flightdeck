@@ -146,20 +146,40 @@ export function AccountFooter(
         >
           {t("sidebarAccount.compact")}
         </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={props.hideBadges}
+          onCheckedChange={(on) => props.onHideBadges(on === true)}
+        >
+          {t("sidebarAccount.hideBadges")}
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={props.hideWhatsNew}
+          onCheckedChange={(on) => props.onHideWhatsNew(on === true)}
+        >
+          {t("sidebarAccount.hideWhatsNew")}
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={props.hideSetup}
+          onCheckedChange={(on) => props.onHideSetup(on === true)}
+        >
+          {t("setup.hide")}
+        </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => props.go({ name: "settings" })}>
           <Settings aria-hidden="true" />
           {t("sidebar.settings")}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={props.onWhatsNew}>
-          <Sparkles aria-hidden="true" />
-          {t("sidebarAccount.whatsNew")}
-          {props.hasNew && (
-            <span className="ml-auto rounded-full bg-status-needs-you/20 px-1.5 text-xs">
-              {t("sidebarAccount.whatsNewBadge")}
-            </span>
-          )}
-        </DropdownMenuItem>
+        {!props.hideWhatsNew && (
+          <DropdownMenuItem onSelect={props.onWhatsNew}>
+            <Sparkles aria-hidden="true" />
+            {t("sidebarAccount.whatsNew")}
+            {props.hasNew && (
+              <span className="ml-auto rounded-full bg-status-needs-you/20 px-1.5 text-xs">
+                {t("sidebarAccount.whatsNewBadge")}
+              </span>
+            )}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={props.onCheckUpdates}>
           <RefreshCw aria-hidden="true" />
           {t("sidebarAccount.checkUpdates")}
