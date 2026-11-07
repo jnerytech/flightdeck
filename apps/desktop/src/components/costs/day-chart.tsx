@@ -70,32 +70,30 @@ export function DayChart(
       <div className="flex h-40 items-end gap-1">
         {days.map((day, index) => (
           <IconTip key={day} label={dayText(day)}>
-            {/* biome-ignore lint/a11y/useSemanticElements: a column of the chart, not a form group */}
-            <div
+            <fieldset
               data-day={day}
-              role="group"
               aria-label={dayText(day)}
               tabIndex={index === current ? 0 : -1}
               onKeyDown={walk}
               onFocus={() => setAt(index)}
-              className="flex h-full min-w-2 flex-1 flex-col justify-end rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="m-0 flex h-full min-w-2 flex-1 flex-col justify-end rounded-sm border-0 p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {byDay
                 .filter((row) => row.day === day)
                 .map((row) => (
-                  <div
+                  <svg
                     key={row.projectKey}
                     data-project={row.projectKey}
                     role="img"
                     aria-label={`${day} · ${projectLabel(row.projectKey)}: ${usd(row.costUsd)}`}
                     className={cn(
-                      "border-card border-t first:rounded-t-sm",
+                      "w-full border-card border-t first:rounded-t-sm",
                       SEGMENTS[tintOf(row.projectKey)],
                     )}
                     style={{ height: `${highest > 0 ? (row.costUsd / highest) * 100 : 0}%` }}
                   />
                 ))}
-            </div>
+            </fieldset>
           </IconTip>
         ))}
       </div>
