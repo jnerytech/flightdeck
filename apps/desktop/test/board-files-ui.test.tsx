@@ -3,7 +3,7 @@ import type { FileListing } from "@flightdeck/protocol";
 import { NARROW_SHOTS } from "../../../scripts/lib/shots-narrow.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, settleMaybe, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -59,6 +59,10 @@ const VAULT = `vault-${"v".repeat(12)}`;
 
 /** What the host finds, by mode and query; anything else finds nothing. */
 const SEARCH: Record<string, { matches: object[]; truncated: boolean }> = {
+  "name|keyfile": {
+    matches: [{ path: `keys/${TOKEN}.txt` }, { path: "src/keyfile.ts" }],
+    truncated: false,
+  },
   "name|only": {
     matches: [{ path: "src/b-only.ts" }, { path: ".env.only", secret: true }],
     truncated: false,
@@ -123,7 +127,9 @@ function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {})
     }
     if (type === "file.read") {
       const { path } = payload as { path: string };
-      return { ok: true, data: { path, text: "export const only = 1;\n", hash: "h", size: 23 } };
+      // Line 3 is the one the content search for "hello" finds.
+      const text = "export const only = 1;\n\nconst hello = 1;\n";
+      return { ok: true, data: { path, text, hash: "h", size: text.length } };
     }
     if (type === "file.search") {
       const { mode, query } = payload as { mode: "name" | "content"; query: string };
@@ -304,10 +310,15 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
       fireEvent.change(field, { target: { value } });
     });
   };
+  /** The mode's button (#827); the tab it replaced, until the fix lands. */
+  const modeControl = (name: string) =>
+    screen.queryByRole("button", { name }) ?? screen.queryByRole("tab", { name });
   const tab = async (name: string) => {
-    const trigger = screen.queryByRole("tab", { name });
-    if (!trigger) throw new Error(`no tab named ${name}`);
+    const trigger = modeControl(name);
+    if (!trigger) throw new Error(`no mode control named ${name}`);
     await act(async () => {
+      // A browser moves focus to what is clicked; happy-dom's click does not.
+      trigger.focus();
       fireEvent.mouseDown(trigger);
       fireEvent.click(trigger);
     });
@@ -343,6 +354,82 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
       more: shows("Files · fd/b", "More matches than shown here. Narrow the search."),
       asked: searches.includes("card:B|content|hello"),
     }).toEqual({ place: true, line: true, more: true, asked: true });
+  });
+
+  // #827 (review of #823): one field for both modes, so a pick never drops it, its text or focus.
+  test("Names and Content are two pressed buttons over one search field that keeps its text and focus", async () => {
+    const { pick, searches } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await type("Search names", "only");
+    await settle(() => searches.includes("card:B|name|only"));
+    const field = screen.queryByRole("searchbox", { name: "Search names" });
+    const names = screen.queryByRole("button", { name: "Names" });
+    const before = names?.getAttribute("aria-pressed") ?? null;
+    await tab("Content");
+    await settle(() => searches.includes("card:B|content|only"));
+    const now = screen.queryByRole("searchbox", { name: "Search contents" });
+    expect({
+      before,
+      pressed: screen.queryByRole("button", { name: "Content" })?.getAttribute("aria-pressed"),
+      tabs: screen.queryAllByRole("tab").length,
+      same: now !== null && now === field,
+      text: (now as HTMLInputElement | null)?.value ?? null,
+      focused: now !== null && document.activeElement === now,
+    }).toEqual({
+      before: "true",
+      pressed: "true",
+      tabs: 0,
+      same: true,
+      text: "only",
+      focused: true,
+    });
+  });
+
+  // #827 (review of #823): `path:line` lands on that line, as a terminal's link does (#506).
+  test("a content match opens the file at its line", async () => {
+    const { pick } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await tab("Content");
+    await type("Search contents", "hello");
+    await settle(() => shows("Files · fd/b", "src/b-only.ts:3"));
+    await press("src/b-only.ts:3");
+    await settle(() => screen.queryByRole("region", { name: "File src/b-only.ts" }) !== null);
+    const atLine = () =>
+      document.querySelector(".cm-activeLine")?.textContent === "const hello = 1;";
+    await settleMaybe(atLine);
+    expect(atLine()).toBe(true);
+  });
+
+  // #827 (review of #830): the host leaves such a path out (#829); an older host may not, so the
+  // app masks it too, and a masked path opens nothing (the viewer would name the real one).
+  test("a match whose path holds a token shows it masked, as hidden, and never opens", async () => {
+    const { pick } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await type("Search names", "keyfile");
+    await settle(() => shows("Files · fd/b", "src/keyfile.ts"));
+    const region = panel("Files · fd/b");
+    const text = region?.textContent ?? "";
+    const buttons = region ? within(region).queryAllByRole("button") : [];
+    expect({
+      token: text.includes(TOKEN),
+      masked: text.includes("keys/[redacted].txt"),
+      opens: buttons.some((button) => (button.textContent ?? "").includes("keys/")),
+      plain: buttons.some((button) => button.textContent === "src/keyfile.ts"),
+    }).toEqual({ token: false, masked: true, opens: false, plain: true });
+  });
+
+  // The wait before a search (#823): a word typed fast is one search, for its last text.
+  test("typing fast sends one search, for the last text", async () => {
+    const { pick, searches } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    for (const text of ["o", "on", "onl", "only"]) await type("Search names", text);
+    await settle(() => searches.length > 0);
+    await stays(() => searches.length === 1, 400);
+    expect(searches).toEqual(["card:B|name|only"]);
   });
 
   test("a match opens the file in the viewer", async () => {
@@ -436,16 +523,21 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     }).toEqual({ files: true, hint: false });
   });
 
-  test("em português, as abas e a busca por nome", async () => {
+  test("em português, os modos, a busca por nome e o que ela diz", async () => {
     const { pick, searches } = setup({ features: SEARCHING, language: "pt-BR" });
     await pick("worktree", "/wt/b", "fd/b");
     await settle(() => shows("Arquivos · fd/b", "b-readme.md"));
-    const tabs = ["Nomes", "Conteúdo"].map((name) => screen.queryByRole("tab", { name }) !== null);
+    const modes = ["Nomes", "Conteúdo"].map(
+      (name) => screen.queryByRole("button", { name }) !== null,
+    );
     await type("Buscar nomes", "only");
     await settle(() => searches.includes("card:B|name|only"));
-    expect({ tabs, asked: searches.includes("card:B|name|only") }).toEqual({
-      tabs: [true, true],
-      asked: true,
-    });
+    await type("Buscar nomes", "zzz");
+    await settle(() => shows("Arquivos · fd/b", "Nada encontrado."));
+    expect({
+      modes,
+      group: screen.queryByRole("group", { name: "Buscar por" }) !== null,
+      none: shows("Arquivos · fd/b", "Nada encontrado."),
+    }).toEqual({ modes: [true, true], group: true, none: true });
   });
 });
