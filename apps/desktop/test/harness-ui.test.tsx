@@ -87,7 +87,7 @@ describe("harness-ui: the project's Claude Code setup as a checklist (#75)", () 
       row("Hooks").includes("formatter after edits"),
       row("Skills").includes("Missing"),
       row("Subagents").includes("reviewer"),
-      row("Permissions").includes("Allow rules: 2"),
+      row("Permissions").includes("Allow rules: 2; deny rules: 0"),
       row("MCP servers").includes("Missing"),
       // Names of environment variables are for the trust panel, never this card.
       (screen.queryByRole("region", { name: "Claude Code setup" })?.textContent ?? "").includes(
