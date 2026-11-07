@@ -24,7 +24,11 @@ export interface TeleportClaim extends TeleportReceived {
 }
 
 export interface TeleportImportDeps {
-  inbox: { claim(id: string): Promise<TeleportClaim> };
+  inbox: {
+    /** The package, checked, still in the inbox: a refusal leaves it there to try again. */
+    received(id: string): Promise<TeleportReceived>;
+    claim(id: string): Promise<TeleportClaim>;
+  };
   allowedRoots: readonly string[];
   /** Where Claude Code keeps its transcripts on this host (`~/.claude/projects`). */
   historyRoot: string;
@@ -45,6 +49,21 @@ export interface TeleportImported {
 }
 
 const ID = /^[A-Za-z0-9-]{1,64}$/;
+/** The bundle's objects are checked as they come in: they land in the repository's own store. */
+const FSCK = ["-c", "transfer.fsckObjects=true", "-c", "fetch.fsckObjects=true"];
+/**
+ * The bundle's files are written without LFS: its smudge filter would fetch from a server the
+ * bundle's own files name. The person runs `git lfs pull` in the worktree if they want them.
+ */
+const NO_LFS = [
+  "-c",
+  "filter.lfs.smudge=",
+  "-c",
+  "filter.lfs.process=",
+  "-c",
+  "filter.lfs.required=false",
+];
+const SKIP_LFS = { GIT_LFS_SKIP_SMUDGE: "1" };
 
 const refuse = (code: "invalid_state" | "bad_request", reason: string) =>
   new FlightdeckError(code, reason.replaceAll("_", " "), reason);
@@ -57,25 +76,29 @@ export async function importPackage(
   id: string,
   repo: string,
 ): Promise<TeleportImported> {
+  // Every check runs on the package still in the inbox: a wrong repository can be fixed and
+  // tried again without the source sending it anew.
+  const target = await check(deps, await deps.inbox.received(id), repo);
   const claim = await deps.inbox.claim(id);
   try {
-    return await land(deps, claim, repo);
+    return await land(deps, claim, target);
   } finally {
     await claim.release();
   }
 }
 
-async function land(
+/** The repository the person picked, if it can take this package: its top and the base. */
+async function check(
   deps: TeleportImportDeps,
-  claim: TeleportClaim,
+  received: TeleportReceived,
   repo: string,
-): Promise<TeleportImported> {
-  const { manifest } = claim;
+): Promise<{ top: string; base: string }> {
+  const { manifest } = received;
   const code = manifest.git;
   // The ref is the one the source makes for this package: never a ref the manifest picks.
   if (
     !code ||
-    !claim.code ||
+    !received.code ||
     !ID.test(manifest.id) ||
     code.ref !== `refs/flightdeck/teleport/${manifest.id}`
   ) {
@@ -90,14 +113,25 @@ async function land(
   const base = refArg(code.baseSha);
   // git-arg: base is the manifest's sha through refArg
   const known = await git(top, ["rev-parse", "--verify", "--quiet", `${base}^{commit}`]);
-  const verified = await git(top, ["bundle", "verify", "--quiet", claim.code]);
+  const verified = await git(top, ["bundle", "verify", "--quiet", received.code]);
   if (!known || verified === null) {
     throw refuse("invalid_state", "teleport_no_project");
   }
+  return { top, base };
+}
+
+async function land(
+  deps: TeleportImportDeps,
+  claim: TeleportClaim,
+  { top, base }: { top: string; base: string },
+): Promise<TeleportImported> {
+  const { manifest } = claim;
+  // Checked before the claim: the claim reads the same package.
+  const code = manifest.git as NonNullable<typeof manifest.git>;
   const worktree = await addWorktree(top, `teleport ${code.branch ?? manifest.id}`, base);
   try {
     const path = await realpath(worktree.path);
-    await restore(path, claim.code, code.ref, code.head, manifest.id);
+    await restore(path, claim.code as string, code.ref, code.head, manifest.id);
     return { ...(await start(deps, claim, path)), worktree: path, branch: worktree.branch };
   } catch (error) {
     await git(top, ["worktree", "remove", "--force", worktree.path]);
@@ -116,13 +150,24 @@ async function restore(
 ): Promise<void> {
   const into = `refs/flightdeck/teleport-in/${id}`;
   // git-arg: ref is refs/flightdeck/teleport/<id> (checked against ID), into is made here
-  await must(path, ["fetch", "--quiet", "--no-recurse-submodules", bundle, `${ref}:${into}`]);
+  await must(path, [
+    ...FSCK,
+    "fetch",
+    "--quiet",
+    "--no-recurse-submodules",
+    bundle,
+    `${ref}:${into}`,
+  ]);
   try {
     const parent = await must(path, ["rev-parse", "--verify", `${into}^`]);
     if (parent !== head) throw refuse("bad_request", "request_invalid");
-    await must(path, ["reset", "--quiet", "--hard", "--no-recurse-submodules", parent]);
+    await must(
+      path,
+      [...NO_LFS, "reset", "--quiet", "--hard", "--no-recurse-submodules", parent],
+      SKIP_LFS,
+    );
     // git-arg: into is made here, from a package id checked against ID
-    await must(path, ["read-tree", "-u", "--reset", into]);
+    await must(path, [...NO_LFS, "read-tree", "-u", "--reset", into], SKIP_LFS);
     await must(path, ["reset", "--quiet", parent]);
   } finally {
     // git-arg: into is made here, from a package id checked against ID
@@ -141,18 +186,21 @@ async function start(
   // The first folder made here, if any: a failed start takes it with the transcript.
   const made = await mkdir(folder, { recursive: true, mode: 0o700 });
   const file = join(folder, `${manifest.claudeSessionId}.jsonl`);
-  // Never over a transcript this host has.
-  await copyFile(claim.transcript, file, constants.COPYFILE_EXCL).catch(() => {
-    throw refuse("invalid_state", "teleport_exists");
+  // Never over a transcript this host has; any other failure (a full disk) is itself.
+  await copyFile(claim.transcript, file, constants.COPYFILE_EXCL).catch(async (error) => {
+    if (made) await rm(made, { recursive: true, force: true });
+    throw (error as { code?: string }).code === "EEXIST"
+      ? refuse("invalid_state", "teleport_exists")
+      : error;
   });
   try {
     return await deps.resume({
       cwd: path,
       claudeSessionId: manifest.claudeSessionId,
       name: null,
-      // A package from another host does not skip this host's prompts.
-      permissionMode:
-        manifest.permissionMode === "bypassPermissions" ? "default" : manifest.permissionMode,
+      // A package from another host asks no less here than the default: only plan, which asks
+      // more, comes along.
+      permissionMode: manifest.permissionMode === "plan" ? "plan" : "default",
     });
   } catch (error) {
     await rm(made ?? file, { recursive: true, force: true });
@@ -170,13 +218,16 @@ export interface TeleportImportWiring {
 }
 
 /** The real deps of an import. */
-export function teleportImportDeps(wiring: TeleportImportWiring): TeleportImportDeps {
+export function teleportImportDeps(wiring: TeleportImportWiring): TeleportImportDeps | undefined {
+  // No place for the transcript on this host: no import (never a folder relative to the daemon).
+  const historyRoot = wiring.historyRoots[0];
+  if (!historyRoot) return undefined;
   return {
     inbox: wiring.inbox,
     // The same array the daemon keeps: a root added later counts at once.
     allowedRoots: wiring.allowedRoots,
     // Where Claude Code writes on this host: the first history root (`~/.claude/projects`).
-    historyRoot: wiring.historyRoots[0] ?? "",
+    historyRoot,
     transcriptOf: (claudeSessionId) => wiring.indexer?.transcriptFile(claudeSessionId) ?? null,
     resume: (opts) => wiring.manager.createResumed(opts),
   };
