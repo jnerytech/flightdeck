@@ -46,8 +46,8 @@ export interface TeleportImportDeps {
   historyRoot: string;
   /** The transcript of that Claude session this host already has, or null. */
   transcriptOf(claudeSessionId: string): string | null | Promise<string | null>;
-  /** This host's managed session of that Claude session, or null (#870). */
-  sessionOf(claudeSessionId: string): { id: string; status: SessionStatus } | null;
+  /** This host's managed records of that Claude session: a resume can leave more than one (#870). */
+  sessionsOf(claudeSessionId: string): { id: string; status: SessionStatus }[];
   /** Ends this host's old record of a session that came back with more turns (#870). */
   close(sessionId: string): Promise<void>;
   /** Shows the session again: its copy here may have been archived when it left (#870). */
@@ -132,8 +132,8 @@ async function check(
   // #870: a copy here is replaced only when the session came back with more turns (every byte of
   // this host's copy is in the incoming one) and nothing here is working on it.
   const here = await deps.transcriptOf(manifest.claudeSessionId);
-  const mine = here ? deps.sessionOf(manifest.claudeSessionId) : null;
-  if (here && (!idle(mine) || !(await isPrefix(here, received.transcript))))
+  const mine = here ? deps.sessionsOf(manifest.claudeSessionId) : [];
+  if (here && (!mine.every(idle) || !(await isPrefix(here, received.transcript))))
     throw refuse("invalid_state", "teleport_exists");
   const found = await git(cwd, ["rev-parse", "--show-toplevel"]);
   if (!found) throw refuse("invalid_state", "teleport_no_git");
@@ -153,7 +153,7 @@ async function check(
   if (!known || verified === null) {
     throw refuse("invalid_state", "teleport_no_project");
   }
-  return { top, base, here, mine: mine?.id ?? null };
+  return { top, base, here, mine: mine.map((session) => session.id) };
 }
 
 /** The repository that takes the package, and this host's copy of the session it replaces. */
@@ -161,12 +161,12 @@ interface Target {
   top: string;
   base: string;
   here: string | null;
-  mine: string | null;
+  mine: string[];
 }
 
-/** A session that is not working on its transcript: none here, idle or ended. */
-const idle = (session: { status: SessionStatus } | null) =>
-  !session || session.status === "idle" || session.status === "ended";
+/** A record that is not working on its transcript: idle or ended. */
+const idle = (session: { status: SessionStatus }) =>
+  session.status === "idle" || session.status === "ended";
 
 const CHUNK = 64 * 1024;
 
@@ -264,7 +264,7 @@ async function replacing<T>(
   deps: TeleportImportDeps,
   claim: TeleportClaim,
   here: string | null,
-  mine: string | null,
+  mine: string[],
   run: () => Promise<T>,
 ): Promise<T> {
   if (!here) return run();
@@ -283,7 +283,7 @@ async function replacing<T>(
     throw error;
   }
   // The old record ends and the session shows again (R2 archives it where it leaves from).
-  if (mine) await deps.close(mine).catch(() => {});
+  for (const id of mine) await deps.close(id).catch(() => {});
   deps.unarchive(claim.manifest.claudeSessionId);
   return started;
 }
@@ -374,10 +374,11 @@ export function teleportImportDeps(wiring: TeleportImportWiring): TeleportImport
       wiring.indexer?.transcriptFile(claudeSessionId) ??
       (await onDisk(wiring.historyRoots, claudeSessionId)),
     resume: (opts) => wiring.manager.createResumed(opts),
-    sessionOf: (claudeSessionId) => {
-      const found = wiring.manager.list().find((s) => s.claudeSessionId === claudeSessionId);
-      return found ? { id: found.id, status: found.status } : null;
-    },
+    sessionsOf: (claudeSessionId) =>
+      wiring.manager
+        .list()
+        .filter((s) => s.claudeSessionId === claudeSessionId)
+        .map((s) => ({ id: s.id, status: s.status })),
     close: (sessionId) => wiring.manager.close(sessionId),
     unarchive: (claudeSessionId) => {
       wiring.meta?.set(claudeSessionId, { archived: false });

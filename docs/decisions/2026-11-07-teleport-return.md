@@ -13,7 +13,8 @@ to B could never move back to A. The teleport decision
   copy is a byte prefix of the incoming transcript: the same session came back with more turns, and
   every turn here is in what arrives. It refuses (`teleport_exists`, as before) when:
   - the copy here has bytes the incoming one lacks: it diverged;
-  - this host's managed session of it is not idle or ended: something here is working on it;
+  - any of this host's managed records of it (a resume can leave several) is not idle or ended:
+    something here is working on it;
   - either file cannot be read.
 
   A refusal runs on the package still in the inbox, so it stays to try again.
@@ -23,7 +24,7 @@ to B could never move back to A. The teleport decision
   - Any failure from there (a copy that grew, a session that does not start) copies it back to
     `<id>.jsonl`, never over a file that appeared there meanwhile: then it stays set aside.
 - **After the session starts:**
-  - this host's old managed record of it is closed;
+  - every managed record of it on this host is closed;
   - its `archived` flag is cleared. `session_meta` is per host and keyed by the Claude session id,
     and slice R2 archives the copy a session leaves from, so without this a returning session would
     stay hidden.
@@ -50,4 +51,6 @@ to B could never move back to A. The teleport decision
   against this host's copy as it would be packaged.
 - A Claude Code process outside Flightdeck that still has the old file open writes to the
   set-aside file. Its turns are kept there, not in the session that came back.
+- A set-aside copy stays until the person deletes it. It is a whole transcript, with whatever
+  secrets it holds, under the permissions it had.
 - The real check is a manual A → B → A move (fd-qa's script, #14): tests never run the real Claude.
