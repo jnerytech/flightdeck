@@ -1,6 +1,6 @@
 /** The coverage rule of `test:related`: every changed source file is 100% covered by the related tests. */
 
-import { hasRuntimeCode, isCoverageSource } from "./coverage-check.ts";
+import { ENTRY_POINTS, hasRuntimeCode, isCoverageSource } from "./coverage-check.ts";
 
 export { isCoverageSource };
 
@@ -11,6 +11,27 @@ export function coverageTargets(
 ): string[] {
   return changed.filter((path) => {
     if (!isCoverageSource(path)) return false;
+    const code = read(path);
+    return code !== null && hasRuntimeCode(code, path.endsWith(".tsx") ? "tsx" : "ts");
+  });
+}
+
+/** bunfig.toml's `coveragePathIgnorePatterns`, as one test: the files the full suite's gate skips. */
+export const WHOLE_SUITE_IGNORED = /(?:^|\/)(?:test\/|components\/ui\/|scripts\/demo-seed\.ts$)/;
+
+/**
+ * #762: of the files a changed test newly loads, the ones the full suite's 100% gate counts. That
+ * gate takes every loaded file outside its ignore patterns, not only the sources of
+ * `coverageTargets` (a `scripts/` entry file counts once a test imports it).
+ */
+export function loadedTargets(
+  paths: readonly string[],
+  read: (path: string) => string | null,
+): string[] {
+  return paths.filter((path) => {
+    // Entry points and declarations are waived as in isCoverageSource (#770 review).
+    if (!/\.tsx?$/.test(path) || path.endsWith(".d.ts") || ENTRY_POINTS.has(path)) return false;
+    if (WHOLE_SUITE_IGNORED.test(path)) return false;
     const code = read(path);
     return code !== null && hasRuntimeCode(code, path.endsWith(".tsx") ? "tsx" : "ts");
   });

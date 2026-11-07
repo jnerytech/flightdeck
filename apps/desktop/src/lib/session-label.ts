@@ -4,13 +4,13 @@ import type { T } from "../i18n/index.ts";
 /** What a session may be called, from every place a name comes from. */
 export interface LabelInput {
   /** The name the person gave it in Flightdeck (the session's meta). */
-  metaName?: string | null | undefined;
+  metaName?: string | null;
   /** The name it was created with (`SessionSummary.name`). */
-  createdName?: string | null | undefined;
+  createdName?: string | null;
   /** Its name record on the host (`names.list`). */
-  names?: SessionNameInfo | null | undefined;
+  names?: SessionNameInfo | null;
   /** The host's personas, in the app's language (`personas.list`). */
-  personas?: ReadonlyArray<{ id: string; name: string }> | undefined;
+  personas?: ReadonlyArray<{ id: string; name: string }>;
 }
 
 /**
@@ -28,21 +28,34 @@ export function sessionLabel(input: LabelInput, t?: T): string | null {
   if (input.metaName) return input.metaName;
   if (names && names.standard === false) return names.display;
   // Without the dictionaries (a caller with no language), a team session keeps its plain name.
-  if (names?.team && t) {
-    const { team } = names;
-    const persona = input.personas?.find((p) => p.id === names.persona)?.name;
-    const member = persona
-      ? team.role === "worker" && team.number !== null
-        ? t("sessionLabel.persona", { persona, n: team.number })
-        : persona
-      : team.role === "worker"
-        ? t("sessionLabel.worker", { n: team.number ?? "" }).trim()
-        : t("sessionLabel.coordinator");
-    return t("sessionLabel.team", { team: team.name, member });
-  }
+  if (names?.team && t) return teamLabel(names, names.team, input.personas, t);
   if (input.createdName) return input.createdName;
   if (names?.standard === true && t) return standardLabel(names, input.personas, t);
   return names?.display ?? null;
+}
+
+type Team = NonNullable<SessionNameInfo["team"]>;
+
+/** The team and the member's persona in the app's language and its number ("md-server · Arquiteto 2"). */
+function teamLabel(
+  names: SessionNameInfo,
+  team: Team,
+  personas: LabelInput["personas"],
+  t: T,
+): string {
+  const persona = personas?.find((p) => p.id === names.persona)?.name;
+  return t("sessionLabel.team", { team: team.name, member: memberLabel(team, persona, t) });
+}
+
+/** The member's persona and number, or its role when the host lists no persona for it. */
+function memberLabel(team: Team, persona: string | undefined, t: T): string {
+  if (persona) {
+    return team.role === "worker" && team.number !== null
+      ? t("sessionLabel.persona", { persona, n: team.number })
+      : persona;
+  }
+  if (team.role === "worker") return t("sessionLabel.worker", { n: team.number ?? "" }).trim();
+  return t("sessionLabel.coordinator");
 }
 
 /**

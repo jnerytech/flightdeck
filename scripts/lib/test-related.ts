@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import { testArgs } from "../test/timeout.ts";
-import { coverageTargets } from "./related-coverage.ts";
+import { coverageTargets, loadedTargets } from "./related-coverage.ts";
 import { auditBase } from "./tdd-audit.ts";
 
 export interface Related {
@@ -76,6 +76,29 @@ export function selectRelated(
     .filter(([path]) => TEST_FILE.test(path))
     .map(([path, from]) => ({ path, why: changedSet.has(path) ? "changed" : `imports ${from}` }))
     .sort((a, b) => (a.path < b.path ? -1 : 1));
+}
+
+/**
+ * #762: the tracked files a changed test imports now and did not import at the base (`before`
+ * gives a file's text there, or null for a new file). Loading a file puts it in the whole-repo
+ * coverage report, so the changed-file gate covers it too, even when the same diff edits it.
+ */
+export function newImports(
+  changed: string[],
+  sources: Map<string, string>,
+  before: (path: string) => string | null,
+): string[] {
+  const known = new Set(sources.keys());
+  const found = new Set<string>();
+  for (const test of changed.filter((path) => TEST_FILE.test(path) && sources.has(path))) {
+    const targets = (source: string) =>
+      importsOf(source).flatMap((spec) => resolveImport(test, spec, known) ?? []);
+    const old = new Set(targets(before(test) ?? ""));
+    for (const path of targets(sources.get(test) as string)) {
+      if (!old.has(path)) found.add(path);
+    }
+  }
+  return [...found].sort((a, b) => (a < b ? -1 : 1));
 }
 
 export interface PlanDeps {
@@ -255,7 +278,22 @@ export function planRelated({
     .map((path) => `warning: ${path} affects every test, run the full suite`);
   const whole = pyramid ? wholeSuitePlan(changed, sources, slot) : null;
   if (whole) return whole;
-  const byImport = selectRelated(changed, sources, { direct: fast });
+  // #762: a file a changed test starts to load enters the coverage report, so it is gated too,
+  // and the tests that import it themselves run to cover it (not a hub's whole tree). The test is
+  // read at the merge-base, the same point the diff compares with.
+  const at = coverageDir ? git(["merge-base", ref, "HEAD"])?.trim() || ref : ref;
+  const added = coverageDir
+    ? newImports(changed, sources, (path) => git(["show", `${at}:${path}`]))
+    : [];
+  for (const path of added) {
+    warnings.push(`${path}: newly imported by a changed test, so it is held to 100% too (#762)`);
+  }
+  const byChange = selectRelated(changed, sources, { direct: fast });
+  const seen = new Set(byChange.map((r) => r.path));
+  const byImport = [
+    ...byChange,
+    ...selectRelated(added, sources, { direct: true }).filter((r) => !seen.has(r.path)),
+  ];
   const imported = new Set(byImport.map((r) => r.path));
   const selected = [
     ...byImport,
@@ -270,7 +308,12 @@ export function planRelated({
   const warning = tierWarning(tiers, selected, related, tierOf);
   if (warning) warnings.push(warning);
   const targets = coverageDir
-    ? coverageTargets(changed, (path) => sources.get(path) ?? null)
+    ? [
+        ...new Set([
+          ...coverageTargets(changed, (path) => sources.get(path) ?? null),
+          ...loadedTargets(added, (path) => sources.get(path) ?? null),
+        ]),
+      ]
     : undefined;
   const nothing = related.length === 0;
   if (nothing && (targets?.length || !pyramid)) {
