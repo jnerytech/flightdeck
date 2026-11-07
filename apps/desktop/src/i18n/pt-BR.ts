@@ -1510,6 +1510,8 @@ export const ptBR = {
     project_no_issues:
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
     card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",
+    spec_path_invalid:
+      "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como docs/specs/nome.md.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
     contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
