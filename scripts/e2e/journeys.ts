@@ -1738,8 +1738,9 @@ export async function layout(c: Context, problems: string[]) {
   // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
   // the bars' tablists are counted (a screen may have tabs of its own), and the split is always
   // closed again, so the next language starts with one area.
+  // A split belongs to a host's set of tabs, so the window starts on a host's screen (#644).
   await c.page.setViewportSize({ width: 1280, height: 800 });
-  await open(c, { name: "hub" });
+  await open(c, { name: "host", host: ALFA });
   await c.page.keyboard.press("Control+\\");
   try {
     await waitFor(
