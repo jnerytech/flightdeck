@@ -110,6 +110,9 @@ describe("push-guard", () => {
       'git --config-env "core.askPass=ASK" push origin main',
       'git "push" origin main',
       "git -C . -c x='a; b' push origin HEAD:main",
+      // The refspec and the folder may be quoted too.
+      'git push origin "main"',
+      `git -C "${CWD}" push origin 'rc/0363'`,
     ]) {
       expect(push(command) ?? "").toContain("is blocked");
     }
