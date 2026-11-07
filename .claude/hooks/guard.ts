@@ -18,7 +18,7 @@ import {
   guardAllowLogs,
   heavyRunViolation,
   prMergeViolation,
-  prRunFrom,
+  prRunVia,
   pushViolation,
   pushWaitViolation,
   slotViolation,
@@ -53,9 +53,10 @@ if (typeof command === "string") {
   block("commit", commitViolation(command, cwd, repo));
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
   // #741: gh is asked only for a push without an override, in the push's own checkout; any
-  // failure reads as no run. The branch goes as one `--branch=` word, so no name reads as a flag.
+  // failure reads as no run (prRunVia in scripts/lib/claude-hooks.ts makes the calls).
   const gh = (args: string[], dir: string) => {
-    // 3 s each: two calls stay inside the hook's 10 s with the git calls; gh never prompts.
+    // 3 s each: two calls stay inside the hook's 10 s with the git calls; gh never prompts. Past
+    // the 10 s, Claude Code lets the command through, so a slow GitHub fails open too.
     const proc = spawnSync("gh", args, {
       cwd: dir,
       encoding: "utf8",
@@ -64,23 +65,7 @@ if (typeof command === "string") {
     });
     return proc.status === 0 ? proc.stdout : null;
   };
-  const prRun = (branch: string, dir: string) => {
-    const runs = gh(
-      [
-        "run",
-        "list",
-        `--branch=${branch}`,
-        "--event=pull_request",
-        "--limit=1",
-        "--json=databaseId,status,startedAt,url",
-      ],
-      dir,
-    );
-    if (!runs || runs.trim() === "[]") return null;
-    // `--` ends the flags, so the branch is always the PR to view.
-    const pr = gh(["pr", "view", "--json=mergeable,statusCheckRollup", "--", branch], dir);
-    return prRunFrom(runs, pr, Date.now());
-  };
+  const prRun = prRunVia(gh, Date.now);
   block("push-wait", pushWaitViolation(command, cwd, { ...repo, env: process.env, prRun }));
 }
 if (typeof filePath === "string") {

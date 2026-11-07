@@ -743,7 +743,24 @@ export type Gh = (args: string[], dir: string) => string | null;
  * left as glue): `gh run list`, then `gh pr view` only when there is a run.
  */
 export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: string) => PrRun | null {
-  return (branch, dir) => (gh([branch], dir) === null && now() < 0 ? null : null);
+  return (branch, dir) => {
+    // The branch goes as one `--branch=` word, so no name reads as a flag.
+    const runs = gh(
+      [
+        "run",
+        "list",
+        `--branch=${branch}`,
+        "--event=pull_request",
+        "--limit=1",
+        "--json=databaseId,status,startedAt,url",
+      ],
+      dir,
+    );
+    if (!runs || runs.trim() === "[]") return null;
+    // `--` ends the flags, so the branch is always the PR to view.
+    const pr = gh(["pr", "view", "--json=mergeable,statusCheckRollup", "--", branch], dir);
+    return prRunFrom(runs, pr, now());
+  };
 }
 
 /** The check conclusions (a check run's) and states (a commit status's) that mean it failed. */
@@ -772,18 +789,36 @@ export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDe
     if (deps.inProject && !deps.inProject(call.dir)) continue;
     const segment = command.slice(call.start, call.end);
     if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) continue;
-    const branch = deps.git(["symbolic-ref", "--short", "HEAD"], call.dir)?.trim();
-    // A release never waits (#756 review).
-    if (!branch || branch.startsWith("release-v")) continue;
-    const run = deps.prRun(branch, call.dir);
-    // A failed check or a conflict makes the push a fix that must go out (#756 review).
-    if (!run?.inProgress || run.failed || run.conflicting) continue;
-    if (run.minutes >= PUSH_WAIT_MINUTES) continue;
-    // Only GitHub's own https address; the echoed push hides credentials (security review).
-    const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
-    return `a push now cancels CI run ${run.id} on this branch's PR, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(segment.trim())}`;
+    const dir = call.dir;
+    for (const branch of pushedBranches(call, (args) => deps.git(args, dir))) {
+      const run = deps.prRun(branch, dir);
+      // A failed check or a conflict makes the push a fix that must go out (#756 review).
+      if (!run?.inProgress || run.failed || run.conflicting) continue;
+      if (run.minutes >= PUSH_WAIT_MINUTES) continue;
+      // Only GitHub's own https address; the echoed push hides credentials (security review).
+      const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
+      return `a push now cancels CI run ${run.id} on the PR of ${branch}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(segment.trim())}`;
+    }
   }
   return null;
+}
+
+/**
+ * The branches a push updates (#756 review): each refspec's destination, or HEAD's branch for a
+ * bare push. None for a delete; a tag and a release-v* branch never wait.
+ */
+function pushedBranches(call: GitCall, git: (args: string[]) => string | null): string[] {
+  const words = readPushWords(call.args.map((a) => a.word));
+  if (words.deleting) return [];
+  const current = git(["symbolic-ref", "--short", "HEAD"])?.trim() || null;
+  const refspecs = words.positional.slice(1);
+  const targets: PushTarget[] =
+    refspecs.length === 0
+      ? [{ dst: current, tag: false, plus: false }]
+      : refspecs.map((spec) => pushTarget(spec, false, current, git));
+  return targets.flatMap(({ dst, tag }) =>
+    dst && !tag && !dst.startsWith("release-v") ? [dst] : [],
+  );
 }
 
 /** A command with the user and password of a URL, and a secret-looking variable's value, hidden. */
@@ -796,7 +831,10 @@ function redacted(text: string): string {
     );
 }
 
-/** Whether a push goes ahead on a FLIGHTDECK_PUSH_NOW override with its reason (#741). */
+/**
+ * Whether a push goes ahead on a FLIGHTDECK_PUSH_NOW override with its reason (#741). The log counts
+ * every such push, also one the rule would have let through: harness:stats shows an upper bound.
+ */
 function pushNowWaived(command: string): boolean {
   return gitCalls(command, "/").some(
     (call) =>
