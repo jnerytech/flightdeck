@@ -7,3 +7,18 @@
 export function entryHtml(html: string, entry: string | undefined): string {
   return entry === "web" ? html.replace("/src/main.tsx", "/src/main.web.tsx") : html;
 }
+
+/**
+ * The Vite plugin that serves the web entry when `entry` is `web`. "pre": `vite build` reads
+ * index.html's module scripts before a later hook runs, so the swap must come first or the build
+ * bundles the Tauri entry (#444).
+ */
+export function entryPlugin(entry: string | undefined) {
+  return {
+    name: "flightdeck-entry",
+    transformIndexHtml: {
+      order: undefined as "pre" | undefined,
+      handler: (html: string) => entryHtml(html, entry),
+    },
+  };
+}
