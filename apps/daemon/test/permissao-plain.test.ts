@@ -85,5 +85,11 @@ describe("permissao-plain: the fake runtime can raise a vault request (issue #88
     expect(pending).toHaveLength(1);
     expect(pending[0]?.plain?.outcome).toBe("needs_full_access");
     expect(JSON.stringify(pending[0]?.plain)).not.toContain("vault get");
+    // Allowed, the turn goes on to its tool result and ends.
+    manager.respondPermission({ requestId: pending[0]?.requestId ?? "", decision: "allow" });
+    await waitFor(() => (manager.get(sessionId).status === "idle" ? true : null), {
+      label: "the turn to end after the answer",
+    });
+    expect(manager.pendingPermissions(sessionId)).toHaveLength(0);
   });
 });
