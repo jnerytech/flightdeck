@@ -221,13 +221,15 @@ jobs:
           retention-days: 1
 
   # SonarCloud, with the lcov report of the suite. The product version marks the new-code period
-  # ("previous version"). Skipped on a dispatch, and where the secret is not available (pull requests
-  # from forks). The status check is explicit: a PR skips the shards, and GitHub would skip this job
-  # after them too.
+  # ("previous version"). On a PR, and on a full run of main (the schedule, or a dispatch of main),
+  # whose lcov is the merged shards' (#296). Never on a main push: its lcov holds only the related
+  # tests, and main's coverage read 76% to 95% from it. Not on a branch's dispatch (ci:branch), nor
+  # where the secret is not available (pull requests from forks). The status check is explicit: a PR
+  # skips the shards, and GitHub would skip this job after them too.
   sonar:
     name: sonarcloud
     needs: [test-suite]
-    if: "!cancelled() && needs.test-suite.result == 'success' && github.event_name != 'workflow_dispatch'"
+    if: "!cancelled() && needs.test-suite.result == 'success' && (github.event_name == 'pull_request' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -407,8 +409,9 @@ jobs:
           echo "suite: ${{ needs.test-suite.result }}, sonar: ${{ needs.sonar.result }}, fast coverage: ${{ needs.fast-coverage.result }}, checks: ${{ needs.checks-linux.result }}"
           test "${{ needs.test-suite.result }}" = success
           test "${{ needs.fast-coverage.result }}" = success
-          # SonarCloud skips on a dispatch.
+          # SonarCloud skips on a main push and a branch's dispatch, never on a PR (#296).
           case "${{ needs.sonar.result }}" in success|skipped) ;; *) exit 1 ;; esac
+          if [ "${{ github.event_name }}" = pull_request ]; then test "${{ needs.sonar.result }}" = success; fi
           # The checks skip when the plan asks for no smoke and no cargo.
           if [ "${{ needs.quick.outputs.smokes }}" = true ] || [ "${{ needs.quick.outputs.cargo }}" = true ]; then
             test "${{ needs.checks-linux.result }}" = success
