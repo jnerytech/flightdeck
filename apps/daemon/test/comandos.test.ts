@@ -29,7 +29,8 @@ describe("comandos", () => {
       {},
       stop.signal,
     );
-    setTimeout(() => stop.abort(), 100);
+    // The command is spawned by now: the signal reaches a live process.
+    stop.abort();
     const result = await running;
     expect([result.aborted, result.code === 0]).toEqual([true, false]);
   });

@@ -6,8 +6,8 @@
  * repository, the transcript next to the other transcripts of that worktree (never over one this
  * host has), and the session resumes there. A failure leaves no worktree, branch or transcript.
  */
-import { constants, existsSync, readdirSync } from "node:fs";
-import { copyFile, mkdir, realpath, rm } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, copyFile, mkdir, readdir, realpath, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { PermissionMode } from "@flightdeck/protocol";
 import { refArg } from "../board/ref-arg.ts";
@@ -33,7 +33,7 @@ export interface TeleportImportDeps {
   /** Where Claude Code keeps its transcripts on this host (`~/.claude/projects`). */
   historyRoot: string;
   /** The transcript of that Claude session this host already has, or null. */
-  transcriptOf(claudeSessionId: string): string | null;
+  transcriptOf(claudeSessionId: string): string | null | Promise<string | null>;
   resume(opts: {
     cwd: string;
     claudeSessionId: string;
@@ -109,7 +109,8 @@ async function check(
     throw refuse("bad_request", "request_invalid");
   }
   const cwd = await resolveAllowedCwd(repo, deps.allowedRoots);
-  if (deps.transcriptOf(manifest.claudeSessionId)) throw refuse("invalid_state", "teleport_exists");
+  if (await deps.transcriptOf(manifest.claudeSessionId))
+    throw refuse("invalid_state", "teleport_exists");
   const found = await git(cwd, ["rev-parse", "--show-toplevel"]);
   if (!found) throw refuse("invalid_state", "teleport_no_git");
   // The worktree, its branch and the exclude line go in the repository itself: it is in the roots too.
@@ -229,21 +230,22 @@ export interface TeleportImportWiring {
 }
 
 /** The transcript of a session in any project folder of the history roots, or null. */
-function onDisk(roots: readonly string[], claudeSessionId: string): string | null {
+async function onDisk(roots: readonly string[], claudeSessionId: string): Promise<string | null> {
   // A session id is a UUID: a name with a separator or a dot never reaches the path.
   if (!/^[0-9a-f-]{36}$/i.test(claudeSessionId)) return null;
   for (const root of roots) {
     // A root that is not there (yet) holds no transcript.
-    const folders = (() => {
-      try {
-        return readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory());
-      } catch {
-        return [];
-      }
-    })();
+    const folders = await readdir(root, { withFileTypes: true }).catch(() => []);
     for (const folder of folders) {
+      if (!folder.isDirectory()) continue;
       const file = join(root, folder.name, `${claudeSessionId}.jsonl`);
-      if (existsSync(file)) return file;
+      if (
+        await access(file).then(
+          () => true,
+          () => false,
+        )
+      )
+        return file;
     }
   }
   return null;
@@ -262,9 +264,9 @@ export function teleportImportDeps(wiring: TeleportImportWiring): TeleportImport
     historyRoot,
     // The indexer scans every 10 s or more: a session created moments ago is on disk before it is
     // in the index, so the history folders are read too (#715).
-    transcriptOf: (claudeSessionId) =>
+    transcriptOf: async (claudeSessionId) =>
       wiring.indexer?.transcriptFile(claudeSessionId) ??
-      onDisk(wiring.historyRoots, claudeSessionId),
+      (await onDisk(wiring.historyRoots, claudeSessionId)),
     resume: (opts) => wiring.manager.createResumed(opts),
   };
 }

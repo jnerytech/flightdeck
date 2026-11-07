@@ -252,8 +252,8 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       deps.inbox === inbox,
       deps.allowedRoots === allowedRoots,
       deps.historyRoot,
-      deps.transcriptOf(ID) !== null,
-      deps.transcriptOf("11111111-1111-4111-8111-111111111111"),
+      (await deps.transcriptOf(ID)) !== null,
+      await deps.transcriptOf("11111111-1111-4111-8111-111111111111"),
       await deps.resume(opts),
       resumed,
       teleportImportDeps({
@@ -281,9 +281,9 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       manager: { createResumed: async () => ({ sessionId: "t1" }) },
     }) as TeleportImportDeps;
     expect([
-      deps.transcriptOf(ID),
-      deps.transcriptOf("11111111-1111-4111-8111-111111111111"),
-      deps.transcriptOf("../escape"),
+      await deps.transcriptOf(ID),
+      await deps.transcriptOf("11111111-1111-4111-8111-111111111111"),
+      await deps.transcriptOf("../escape"),
     ]).toEqual([file, null, null]);
   });
 
