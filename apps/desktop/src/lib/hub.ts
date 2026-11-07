@@ -71,10 +71,14 @@ export const DEFAULT_HUB_FILTER: HubFilter = {
 const ORIGINS: readonly string[] = ["", "flightdeck", "terminal", "history", "background"];
 const STATES: readonly string[] = ["", "running", "needs_you", "idle", "ended"];
 
-/** The hub's kept filter as stored, or nothing when it is not JSON. */
+/** The hub's kept filter as stored, or nothing when it is not a JSON object. */
 function storedFilter(storage: { getItem(key: string): string | null }): Record<string, unknown> {
   try {
-    return JSON.parse(storage.getItem(HUB_FILTER_KEY) ?? "{}") as Record<string, unknown>;
+    const stored: unknown = JSON.parse(storage.getItem(HUB_FILTER_KEY) ?? "{}");
+    // A stored null, number or list is no filter.
+    return typeof stored === "object" && stored !== null && !Array.isArray(stored)
+      ? (stored as Record<string, unknown>)
+      : {};
   } catch {
     return {};
   }

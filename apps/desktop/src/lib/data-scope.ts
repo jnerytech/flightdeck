@@ -1,4 +1,5 @@
 import type { Platform } from "../platform/types.ts";
+import type { ConnectionStatus } from "./host-connection.ts";
 
 /** Where the data scope is kept across starts (#126). */
 export const DATA_SCOPE_KEY = "flightdeck.dataScope";
@@ -113,7 +114,7 @@ export class DataScopeController {
  * host is offline. Sessions lists sessions, the other screens numbers.
  */
 export function awayKey(
-  status: string,
+  status: ConnectionStatus,
   listing: "numbers" | "sessions",
 ): "scope.offline" | "scope.offlineSessions" | "scope.incompatible" {
   if (status === "incompatible") return "scope.incompatible";

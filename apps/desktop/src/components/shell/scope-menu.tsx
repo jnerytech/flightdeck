@@ -19,7 +19,10 @@ import { ALL_SCOPE, type DataScope, scopeOfValue, scopeValue } from "../../lib/d
 export function ScopeMenu(
   props: Readonly<{
     store: AppStore;
-    /** An incompatible host is not offered (#886): it has nothing to show until its daemon is updated. */
+    /**
+     * An incompatible host is not offered (#886): it has nothing to show until its daemon is
+     * updated. The scoped one stays, checked, so the menu says what is chosen.
+     */
     hosts: readonly { id: string; name: string; status?: string }[];
     scope: DataScope;
     /** Called when the person picks from the menu, so a screen can end a route's own choice. */
@@ -56,7 +59,11 @@ export function ScopeMenu(
               {t("scope.all")}
             </DropdownMenuRadioItem>
             {hosts
-              .filter((host) => host.status !== "incompatible")
+              .filter(
+                (host) =>
+                  host.status !== "incompatible" ||
+                  scopeValue(scope) === scopeValue({ kind: "host", hostId: host.id }),
+              )
               .map((host) => (
                 <DropdownMenuRadioItem
                   key={host.id}
