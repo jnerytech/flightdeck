@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FileChange, measureDrift, parseNumstat } from "../src/watch/drift.ts";
+import { heldSummary } from "../src/watch/fix.ts";
 import { PrWatch } from "../src/watch/service.ts";
 import { git } from "./board-helpers.ts";
 import { cleanups, fixture, work } from "./watch-helpers.ts";
@@ -69,6 +70,21 @@ describe("drift-gate: whether a fixing round drifted from its PR (#77)", () => {
       null,
       { outside: [], churn: 301, limit: 300 },
       { outside: [], churn: 201, limit: 200 },
+    ]);
+  });
+});
+
+describe("drift-gate: what a held round says (#77)", () => {
+  test("the files outside the PR, five at most, and the lines against the limit", () => {
+    const files = ["a.ts", "b.ts", "c.ts", "d.ts", "e.ts", "f.ts", "g.ts"];
+    expect([
+      heldSummary({ drift: { outside: files, churn: 9, limit: 200 } }),
+      heldSummary({ drift: { outside: [], churn: 301, limit: 300 } }),
+      heldSummary({ error: "fatal: no remote" }),
+    ]).toEqual([
+      "held: 7 file(s) outside the PR: a.ts, b.ts, c.ts, d.ts, e.ts and 2 more; 9 of at most 200 lines changed",
+      "held: 301 of at most 300 lines changed",
+      "held: the drift could not be measured (fatal: no remote)",
     ]);
   });
 });
