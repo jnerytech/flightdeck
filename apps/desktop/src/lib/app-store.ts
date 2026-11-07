@@ -110,6 +110,7 @@ import { HomeCache } from "./home-cache.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
+import { HostTabs } from "./host-tabs.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import {
   type HubFilter,
@@ -948,19 +949,21 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.workspace = Workspace.restore(
+    this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
       undefined,
       options.startRoute,
     );
-    this.router = this.workspace.router;
-    this.workspace.subscribe(() => {
-      platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot()));
+    this.router = this.hostTabs.router;
+    // A set kept for a host that is not configured any more (removed before, or gone from the list).
+    const configured = new Set(loadHosts(platform.storage).map((host) => host.id));
+    for (const id of Object.keys(this.hostTabs.snapshot().hosts)) {
+      if (!configured.has(id)) this.hostTabs.removeHost(id);
+    }
+    this.hostTabs.subscribe(() => {
+      platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.hostTabs.snapshot()));
       this.clearShownUnread();
     });
-    this.workspace.subscribe(() =>
-      platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot())),
-    );
     this.vault = new Vault(platform);
     this.rules = new VaultRules(platform.storage);
     this.homeCache = new HomeCache(platform.storage);
@@ -1109,12 +1112,22 @@ export class AppStore {
   /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
   readonly appLog: AppLog;
   /** The screen in use and its history (phase 10). */
-  readonly workspace: Workspace;
   readonly router: Navigation;
+  /** Each host's own tabs and the shared screens (issue #644). */
+  readonly hostTabs: HostTabs;
+  /** What the window shows while there is no host and no shared tab: never kept. */
+  private readonly noHost = new Workspace({ name: "start" });
 
-  /** The focused area's tabs. */
+  /** The current host's window (its tabs and split); an empty one with no host. */
+  get workspace(): Workspace {
+    return this.hostTabs.workspace ?? this.noHost;
+  }
+
+  /** The tabs in use: the shared ones while a shared tab is active or with no host, else the host's focused area. */
   get tabs(): Tabs {
-    return this.workspace.tabs;
+    return this.hostTabs.onShared || !this.hostTabs.workspace
+      ? this.hostTabs.shared
+      : this.workspace.tabs;
   }
 
   /** When the page last asked each host for an update check on its own. */
@@ -1323,6 +1336,7 @@ export class AppStore {
   }
 
   async removeHost(hostId: string): Promise<void> {
+    this.hostTabs.removeHost(hostId);
     this.connections.get(hostId)?.dispose();
     this.connections.delete(hostId);
     await this.platform.secrets.delete(hostId);
@@ -1784,6 +1798,25 @@ export class AppStore {
   uiMode(hostId: string): ModeAnswer {
     const host = this.state.hosts.find((h) => h.id === hostId);
     return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
+  }
+
+  /** The host the switcher shows: the active tab's, or the last one used on a shared tab. */
+  activeHostId(): string | null {
+    return this.hostTabs.hostId;
+  }
+
+  /** A new tab: the Overview of a host; with no host at all, the one Home tab is brought forward. */
+  openNewTab(): void {
+    const { hosts } = this.state;
+    const host =
+      this.hostTabs.hostId ?? hosts.find((h) => h.status === "online")?.id ?? hosts[0]?.id ?? null;
+    if (host) this.hostTabs.open({ name: "host", host });
+    else this.hostTabs.show({ name: "home" });
+  }
+
+  /** The switcher picked a host: its tabs replace the row. */
+  pickHost(hostId: string): void {
+    this.hostTabs.switchHost(hostId);
   }
 
   /** The host whose mode the window shows: the selected one, else the first that is online. */
@@ -2447,7 +2480,7 @@ export class AppStore {
       rows: 24,
     });
     if (!opened) return null;
-    this.tabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
+    this.hostTabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
     return opened.terminalId;
   }
 
@@ -2467,7 +2500,7 @@ export class AppStore {
       },
     });
     if (!opened) return null;
-    this.tabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
+    this.hostTabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
     return opened.terminalId;
   }
 
@@ -3380,6 +3413,7 @@ export class AppStore {
   /** The sessions an area shows right now (the active tab of each area), by session key. */
   private shownSessions(): Set<string> {
     const shown = new Set<string>();
+    if (this.hostTabs.onShared) return shown;
     for (const area of this.workspace.areas) {
       const route = area.router.current;
       if (route.name === "session") shown.add(sessionKey(route.host, route.id));
@@ -3676,7 +3710,7 @@ export class AppStore {
       rows: 24,
     });
     if (!opened) return null;
-    this.tabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
+    this.hostTabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
     return opened.terminalId;
   }
 

@@ -93,13 +93,25 @@ export function TabBar(
     store: AppStore;
     state: AppState;
     tabs: Tabs;
+    /** The shared screens, pinned at the left of this bar's tabs (issue #644). */
+    shared?: Tabs;
     /** The split's own buttons, at the end of the bar of the first area. */
     children?: ReactNode;
   }>,
 ) {
-  const { store, state, tabs } = props;
+  const { store, state, tabs, shared } = props;
   const { t } = store.i18n;
   useSyncExternalStore(tabs.subscribe, () => tabs.version);
+  useSyncExternalStore(store.hostTabs.subscribe, () => store.hostTabs.version);
+  /** The row: the shared tabs, then this area's. */
+  const row = [...(shared?.tabs ?? []), ...tabs.tabs];
+  /** The set a tab belongs to, for what acts on the tab itself (close, pin, move). */
+  const setOf = (tab: Tab): Tabs => (shared?.tabs.includes(tab) ? shared : tabs);
+  const sharedActive = shared !== undefined && store.hostTabs.onShared;
+  const selectedTab = (tab: Tab) =>
+    shared?.tabs.includes(tab)
+      ? sharedActive && tab.id === shared.activeId
+      : !sharedActive && tab.id === tabs.activeId;
   /** The tab being dragged to a new place. */
   const dragged = useRef<string | null>(null);
   /** The tab a drag is over and the side the dragged one will land on, to mark the place. */
@@ -108,7 +120,7 @@ export function TabBar(
   const [announcement, setAnnouncement] = useState("");
   /** The tab a keyboard move just went off with: the focus goes back to it. */
   const focusTab = useRef<string | null>(null);
-  const active = tabs.tabs.find((tab) => tab.id === tabs.activeId);
+  const active = sharedActive ? undefined : tabs.tabs.find((tab) => tab.id === tabs.activeId);
   /** A move button just went off with the focus on it: the focus goes to the tab instead. */
   const refocusTab = useRef(false);
   const tablist = useRef<HTMLDivElement>(null);
@@ -127,7 +139,7 @@ export function TabBar(
     if (box) box.scrollLeft += delta;
     measure();
   };
-  const compact = tabs.tabs.length > COMPACT_AT;
+  const compact = row.length > COMPACT_AT;
   // The active tab is always in view; the strip is measured again when the tabs change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the active tab and the count are the triggers
   useEffect(() => {
@@ -135,7 +147,7 @@ export function TabBar(
       ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
       ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
     measure();
-  }, [tabs.activeId, tabs.tabs.length, measure]);
+  }, [tabs.activeId, row.length, sharedActive, shared?.activeId, measure]);
   useEffect(() => {
     if (focusTab.current) {
       const id = focusTab.current;
@@ -147,21 +159,22 @@ export function TabBar(
     tablist.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
   });
   // No tab, no strip: the area shows the start screen alone.
-  if (tabs.tabs.length === 0) return null;
+  if (row.length === 0) return null;
   const shift = (id: string, delta: -1 | 1) => {
     tabs.shift(id, delta);
     refocusTab.current = !tabs.canShift(id, delta);
   };
   /** Moves a tab one place with the keyboard and says where it went. */
   const moveByKey = (tab: Tab, delta: -1 | 1) => {
-    if (!tabs.canShift(tab.id, delta)) return;
-    tabs.shift(tab.id, delta);
+    const own = setOf(tab);
+    if (!own.canShift(tab.id, delta)) return;
+    own.shift(tab.id, delta);
     focusTab.current = tab.id;
     setAnnouncement(
       t("tabs.moved", {
         title: title(tab, state, store),
-        n: tabs.tabs.findIndex((other) => other.id === tab.id) + 1,
-        total: tabs.tabs.length,
+        n: own.tabs.findIndex((other) => other.id === tab.id) + 1,
+        total: own.tabs.length,
       }),
     );
   };
@@ -189,11 +202,12 @@ export function TabBar(
         }}
       >
         <div ref={tablist} role="tablist" aria-label={t("tabs.list")} className="tab-strip">
-          {tabs.tabs.map((tab) => {
+          {row.map((tab) => {
+            const own = setOf(tab);
             const label = title(tab, state, store);
             const kind = tabKind(tab.router.current);
             const Icon = ICONS[kind];
-            const selected = tab.id === tabs.activeId;
+            const selected = selectedTab(tab);
             const badge = tabBadge(tab.router.current, state);
             const cacheSince = tabIdleSince(tab.router.current, state);
             const badgeWords = badge ? t(`tabs.badge.${badge}`) : "";
@@ -230,10 +244,10 @@ export function TabBar(
                     // A pinned tab shows no title, so its name is set here, with the badge's words.
                     {...(tab.pinned ? { "aria-label": pinnedLabel } : {})}
                     className="tab-button"
-                    onClick={() => tabs.activate(tab.id)}
-                    onDoubleClick={() => tabs.commit(tab.id)}
+                    onClick={() => store.hostTabs.activate(tab.id)}
+                    onDoubleClick={() => own.commit(tab.id)}
                     onKeyDown={(e) => {
-                      if (e.key === "Delete") store.closeTab(tabs, tab.id);
+                      if (e.key === "Delete") store.closeTab(own, tab.id);
                       else if (
                         e.ctrlKey &&
                         e.shiftKey &&
@@ -248,7 +262,7 @@ export function TabBar(
                       // The middle button closes a tab (App opens items in a new tab with it).
                       if (e.button !== 1) return;
                       e.stopPropagation();
-                      store.closeTab(tabs, tab.id);
+                      store.closeTab(own, tab.id);
                     }}
                     draggable
                     onDragStart={() => {
@@ -256,11 +270,11 @@ export function TabBar(
                     }}
                     onDragOver={(e) => {
                       e.preventDefault();
-                      const from = tabs.tabs.findIndex((other) => other.id === dragged.current);
-                      if (from < 0 || tabs.tabs[from]?.id === tab.id) return setDropOn(null);
+                      const from = own.tabs.findIndex((other) => other.id === dragged.current);
+                      if (from < 0 || own.tabs[from]?.id === tab.id) return setDropOn(null);
                       setDropOn({
                         id: tab.id,
-                        side: from < tabs.tabs.indexOf(tab) ? "after" : "before",
+                        side: from < own.tabs.indexOf(tab) ? "after" : "before",
                       });
                     }}
                     onDragEnd={() => {
@@ -271,7 +285,8 @@ export function TabBar(
                       const id = dragged.current;
                       dragged.current = null;
                       setDropOn(null);
-                      if (id) tabs.move(id, tabs.tabs.indexOf(tab));
+                      if (id && own.tabs.some((other) => other.id === id))
+                        own.move(id, own.tabs.indexOf(tab));
                     }}
                   >
                     <Icon data-icon={kind} className="size-3.5 shrink-0" aria-hidden />
@@ -303,7 +318,7 @@ export function TabBar(
                       !selected &&
                         "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
                     )}
-                    onClick={() => store.closeTab(tabs, tab.id)}
+                    onClick={() => store.closeTab(own, tab.id)}
                   >
                     <X className="size-3.5" aria-hidden />
                   </button>
@@ -327,7 +342,7 @@ export function TabBar(
       {compact && (
         <TabOverflow
           t={t}
-          rows={tabs.tabs.map((tab) => {
+          rows={row.map((tab) => {
             const route = tab.router.current;
             const kind = tabKind(route);
             const host = "host" in route ? route.host : undefined;
@@ -337,12 +352,15 @@ export function TabBar(
               host: state.hosts.find((h) => h.id === host)?.name ?? "",
               icon: ICONS[kind],
               kind,
-              current: tab.id === tabs.activeId,
+              current: selectedTab(tab),
               pinned: tab.pinned,
             };
           })}
-          onPick={(id) => tabs.activate(id)}
-          onClose={(id) => store.closeTab(tabs, id)}
+          onPick={(id) => store.hostTabs.activate(id)}
+          onClose={(id) => {
+            const tab = row.find((candidate) => candidate.id === id);
+            if (tab) store.closeTab(setOf(tab), id);
+          }}
         />
       )}
       {active && (
@@ -389,7 +407,7 @@ export function TabBar(
         className="mb-0.5 size-7"
         aria-label={t("tabs.newTab")}
         onClick={() => {
-          tabs.open({ name: "home" });
+          store.openNewTab();
           store.openSearch();
         }}
       >

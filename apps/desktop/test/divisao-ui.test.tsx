@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { seedDemoHosts } from "../src/demo/boot.ts";
 import { tabMenu } from "./aba-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -13,8 +14,14 @@ const { App } = await import("../src/ui/App.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
+/** A split belongs to a host's own window: one host, "alfa", with its History open. */
 function setup() {
-  const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+  const mem = memoryPlatform(false, "pt-BR");
+  seedDemoHosts(mem.win.localStorage, mem.tokens, [
+    { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+  ]);
+  const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+  store.hostTabs.open({ name: "history", host: "ha" });
   render(<App store={store} />);
   return store;
 }
@@ -92,21 +99,23 @@ describe("divisao: a tela dividida", () => {
       if (first) fireEvent.pointerDown(first);
     });
     expect(store.workspace.focus).toBe(0);
-    await press("Precisa de você");
-    expect(store.workspace.areas[0]?.router.current).toEqual({ name: "needs-you" });
-    expect(store.workspace.areas[1]?.router.current).toEqual({ name: "home" });
+    await act(async () => {
+      store.router.push({ name: "projects", host: "ha" });
+    });
+    expect(store.workspace.areas[0]?.router.current).toEqual({ name: "projects", host: "ha" });
+    expect(store.workspace.areas[1]?.router.current).toEqual({ name: "history", host: "ha" });
   });
 
   test("Mover para a outra área sends the tab across; the area left empty closes", async () => {
     const store = setup();
     await act(async () => {
-      store.tabs.open({ name: "needs-you" });
+      store.hostTabs.open({ name: "projects", host: "ha" });
     });
-    await menu.choose("Precisa de você", "Mover a aba Precisa de você para a outra área");
+    await menu.choose("Projetos", "Mover a aba Projetos para a outra área");
     expect(store.workspace.split).toBe("vertical");
     expect(store.workspace.areas[1]?.tabs).toHaveLength(1);
-    expect(store.workspace.areas[1]?.router.current).toEqual({ name: "needs-you" });
-    await menu.choose("Precisa de você", "Mover a aba Precisa de você para a outra área");
+    expect(store.workspace.areas[1]?.router.current).toEqual({ name: "projects", host: "ha" });
+    await menu.choose("Projetos", "Mover a aba Projetos para a outra área");
     expect(store.workspace.split).toBeNull();
     expect(bars()).toHaveLength(1);
   });

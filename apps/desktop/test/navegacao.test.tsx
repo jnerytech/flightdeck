@@ -138,39 +138,65 @@ describe("navegacao", () => {
   });
 
   test("abrir um pedido fecha Configurações (sem beco sem saída); Alt+←, Alt+→, botões do mouse e Voltar", async () => {
-    await setup();
+    const { store } = await setup();
     await chooseFromAccountMenu("Configurações");
     // Settings is a lazy screen: its chunk may still be loading when the click returns.
     await settle(() => heading("Configurações"));
     expect(heading("Configurações")).toBe(true);
-    // The queue shows the request; "Abrir sessão" opens it (and leaves Settings).
+    // The queue shows the request; "Abrir sessão" opens it in its host's own tab, so Settings
+    // keeps its shared tab and the window has no dead end.
     await sidebar.queueItem(/^alfa · Pedinte: Bash/);
     await click("Abrir sessão");
     expect(heading("Configurações")).toBe(false);
     expect(heading("Pedinte")).toBe(true);
+    const settingsTab = screen.queryByRole("tab", { name: "Configurações" });
+    expect(settingsTab === null).toBe(false);
+    await act(async () => {
+      if (settingsTab) fireEvent.click(settingsTab);
+    });
+    await settle(() => heading("Configurações"));
+    expect(heading("Configurações")).toBe(true);
+    await act(async () => {
+      store.hostTabs.activate(store.hostTabs.workspace?.tabs.activeId as string);
+    });
+    expect(heading("Pedinte")).toBe(true);
 
+    // Back and forward walk the history of the tab in use: a second screen in the session's tab.
+    const session = store.router.current;
+    const hostId = store.activeHostId() ?? "";
+    await act(async () => {
+      store.router.push({ name: "host", host: hostId });
+    });
+    const here = () => store.router.current.name;
+    expect(here()).toBe("host");
     await act(async () => {
       fireEvent.keyDown(window, { key: "ArrowLeft", altKey: true });
     });
-    expect(heading("Precisa de você")).toBe(true);
+    expect(here()).toBe("session");
+    expect(heading("Pedinte")).toBe(true);
     await act(async () => {
       fireEvent.keyDown(window, { key: "ArrowRight", altKey: true });
     });
-    expect(heading("Pedinte")).toBe(true);
+    expect(here()).toBe("host");
+    expect(heading("Pedinte")).toBe(false);
     // The mouse's back (3) and forward (4) buttons.
     await act(async () => {
       fireEvent.mouseUp(window, { button: 3 });
     });
-    expect(heading("Precisa de você")).toBe(true);
+    expect(here()).toBe("session");
+    expect(heading("Pedinte")).toBe(true);
     await act(async () => {
       fireEvent.mouseUp(window, { button: 4 });
     });
-    expect(heading("Pedinte")).toBe(true);
+    expect(here()).toBe("host");
+    expect(heading("Pedinte")).toBe(false);
     // The header's own buttons.
     await click("Voltar");
-    expect(heading("Precisa de você")).toBe(true);
-    await click("Avançar");
+    expect(store.router.current).toEqual(session);
     expect(heading("Pedinte")).toBe(true);
+    await click("Avançar");
+    expect(here()).toBe("host");
+    expect(heading("Pedinte")).toBe(false);
   });
 
   test("abrir um item fecha a paleta; um deep link de pedido vira rota", async () => {

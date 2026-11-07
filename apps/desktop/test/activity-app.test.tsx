@@ -44,25 +44,27 @@ async function setup() {
 }
 
 describe("activity-app: the board inside the app", () => {
-  test("a click on a card opens its session in the same tab", async () => {
-    const { store, sessionId, card } = await setup();
-    const tabs = store.tabs.tabs.length;
+  // The board is a shared screen, so a session opened from it lands in its host's own tabs and the
+  // board keeps its tab: there is no "same tab" or "new tab" to choose between from a shared tab.
+  const opensInHostTabs = async (
+    { store, sessionId, card }: Awaited<ReturnType<typeof setup>>,
+    init: { ctrlKey?: boolean },
+  ) => {
     await act(async () => {
-      fireEvent.click(card() as HTMLElement);
+      fireEvent.click(card() as HTMLElement, init);
     });
     await settle(() => store.router.current.name === "session");
     expect(store.router.current).toMatchObject({ name: "session", id: sessionId });
-    expect(store.tabs.tabs.length).toBe(tabs);
+    expect(store.hostTabs.onShared).toBe(false);
+    expect(store.hostTabs.shared.tabs.map((tab) => tab.router.current.name)).toContain("activity");
+    expect(store.tabs.tabs.map((tab) => tab.router.current.name)).toEqual(["session"]);
+  };
+
+  test("a click on a card opens its session in its host's tabs, and the board keeps its tab", async () => {
+    await opensInHostTabs(await setup(), {});
   });
 
-  test("Ctrl-click on a card opens its session in a new tab", async () => {
-    const { store, sessionId, card } = await setup();
-    const tabs = store.tabs.tabs.length;
-    await act(async () => {
-      fireEvent.click(card() as HTMLElement, { ctrlKey: true });
-    });
-    await settle(() => store.router.current.name === "session");
-    expect(store.router.current).toMatchObject({ name: "session", id: sessionId });
-    expect(store.tabs.tabs.length).toBe(tabs + 1);
+  test("Ctrl-click on a card opens its session in its host's tabs too", async () => {
+    await opensInHostTabs(await setup(), { ctrlKey: true });
   });
 });

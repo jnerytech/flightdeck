@@ -55,6 +55,10 @@ describe("abas-uma-linha: the tabs have a row of their own under the top bar", (
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
     render(<App store={store} />);
     const header = document.querySelector("header") as HTMLElement;
+    // A split belongs to a host's own window: open one of its screens first.
+    await act(async () => {
+      store.hostTabs.open({ name: "history", host: "ha" });
+    });
     await key("\\");
     const strips = screen.getAllByRole("tablist", { name: "Abas" });
     expect(strips).toHaveLength(2);
