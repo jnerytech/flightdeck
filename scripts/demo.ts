@@ -77,6 +77,7 @@ for await (const chunk of vite.stdout) {
 if (!banner.includes("Local:")) {
   // Typically the port is taken: never print another server's screens.
   await seed.stop();
+  rmSync(outDir, { recursive: true, force: true });
   throw new Error(`o Vite não subiu na porta ${PORT}:
 ${banner}`);
 }
