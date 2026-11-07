@@ -10,6 +10,7 @@ import {
   shardGate,
   shardRun,
 } from "../lib/shard-gate.ts";
+import { importsOf } from "../lib/test-related.ts";
 
 /** One file's record as Bun writes it: function counts, then one DA line per executable line. */
 const record = (path: string, fn: [number, number], lines: Array<[number, number]>) =>
@@ -369,5 +370,18 @@ describe("shard-gate: how a shard job runs (#296)", () => {
       preload: ["./scripts/test/coverage-funcs-preload.ts", ...(related.test.preload as string[])],
       coverage: false,
     });
+  });
+});
+
+describe("shard-gate: istanbul sees every source (#296)", () => {
+  test("the coverage:funcs preload loads no repo source before its plugin: it imports only the hooks module, which imports only istanbul", () => {
+    // Validation run 42336750162: six scripts/lib files the preload imported were never instrumented,
+    // and two of them could not be settled by Bun's counts.
+    const preload = importsOf(readFileSync("scripts/test/coverage-funcs-preload.ts", "utf8"));
+    expect(preload.filter((spec) => spec.startsWith("."))).toEqual([
+      "../lib/coverage-funcs-hooks.ts",
+    ]);
+    const hooks = importsOf(readFileSync("scripts/lib/coverage-funcs-hooks.ts", "utf8"));
+    expect(hooks).toEqual(["istanbul-lib-instrument"]);
   });
 });
