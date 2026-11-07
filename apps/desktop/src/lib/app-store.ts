@@ -104,6 +104,7 @@ import {
 } from "./client-vault.ts";
 import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
+import { DataScopeController } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
@@ -1030,6 +1031,7 @@ export class AppStore {
     this.tabOrder = new TabOrderController(platform.storage);
     this.tabScope = new TabScopeController(platform.storage);
     this.sidebarFold = new SidebarFoldController(platform.storage);
+    this.dataScope = new DataScopeController(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
@@ -1125,6 +1127,8 @@ export class AppStore {
   /** Whether the tab row shows one host's tabs or every host's (issue #644). */
   readonly tabScope: TabScopeController;
   readonly sidebarFold: SidebarFoldController;
+  /** Whose data Home (and later Sessions, Costs, Board) show: every host or one (#126). */
+  readonly dataScope: DataScopeController;
   /** The board columns' width, one for all, kept across starts (issue #161). */
   readonly boardWidth: BoardWidth;
   /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */

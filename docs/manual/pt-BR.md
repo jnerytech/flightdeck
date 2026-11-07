@@ -956,6 +956,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
   barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
   "N contas" quando diferem.
+- **Dados de** (#126): com dois hosts ou mais, a barra do Início tem um menu que diz de quem são os
+  números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
+  aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
+  abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
+  hosts**. Sessões, Custos e o Board passam a segui-lo em versões seguintes.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
   tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
   (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
