@@ -25,6 +25,8 @@ export interface CodeBundleInput {
   id: string;
   scan(text: string): string[];
   maxBytes?: number;
+  /** Fires when the daemon stops: the git calls under way are killed with what they started. */
+  signal?: AbortSignal;
 }
 
 export interface CodeBundle {

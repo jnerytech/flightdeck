@@ -431,6 +431,34 @@ describe("teleport-package: the code travels in the same package (#100)", () => 
   });
 });
 
+describe("teleport-package: stop does not wait for git (#715)", () => {
+  test("stop fires the kill of the code part, and the package that was being made is stopped", async () => {
+    let fired = false;
+    // A git that never ends on its own: only the signal (or, in a stub, the timer) ends it.
+    const hanging: NonNullable<TeleportDeps["code"]> = (input) =>
+      new Promise((_, reject) => {
+        input.signal?.addEventListener("abort", () => {
+          fired = true;
+          reject(new FlightdeckError("invalid_state", "killed", "git_killed"));
+        });
+        setTimeout(() => reject(new FlightdeckError("invalid_state", "x", "no_signal")), 300);
+      });
+    const { packages, deps } = await setup({ code: hanging });
+    const making = packages.prepare("s1").then(
+      (m) => m.id,
+      (e: FlightdeckError) => e.reason,
+    );
+    // The package reaches its code part before the daemon stops.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await packages.stop();
+    expect([fired, await making, await readdir(deps.dir).catch(() => ["no folder"])]).toEqual([
+      true,
+      "teleport_stopped",
+      ["no folder"],
+    ]);
+  });
+});
+
 describe("teleport-package: a big transcript does not hold the daemon (#100)", () => {
   test("the secret scan gives the event loop back between slices, and counts the same", async () => {
     const lines = Array.from({ length: 50 }, (_, n) =>

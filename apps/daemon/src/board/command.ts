@@ -6,6 +6,8 @@ export interface CommandResult {
   stderr: string;
   /** The command ran out of time and was killed. */
   timedOut?: boolean;
+  /** The caller's signal fired and the command was killed. */
+  aborted?: boolean;
 }
 
 /** Kills a process and everything it started: `taskkill /T` on Windows, the process group elsewhere. */
@@ -41,6 +43,7 @@ export async function runCommand(
   kill: (pid: number) => Promise<void> = killTree,
   /** Variables to add to the process's environment. */
   extraEnv: Record<string, string> = {},
+  _signal?: AbortSignal,
 ): Promise<CommandResult> {
   // `env` explicitly: without it Bun passes the environment the process started with. Its own
   // process group (outside Windows), so the whole tree can be killed at the limit.

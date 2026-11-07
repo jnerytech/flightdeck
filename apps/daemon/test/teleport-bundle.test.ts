@@ -45,6 +45,23 @@ const reason = (run: () => Promise<unknown>) =>
     (error: { reason?: string }) => error.reason ?? String(error),
   );
 
+describe("teleport-bundle: a daemon that stops kills the git calls (#715)", () => {
+  test("a signal that has fired stops the bundle, and the person's repo is as it was", async () => {
+    const { repo, folder } = await working();
+    const before = state(repo);
+    const refusal = await reason(() =>
+      bundleCode({
+        cwd: repo,
+        folder,
+        id: "pkg-1",
+        scan: () => [],
+        signal: AbortSignal.abort(),
+      }),
+    );
+    expect([refusal, state(repo), await readdir(folder)]).toEqual(["teleport_git", before, []]);
+  });
+});
+
 describe("teleport-bundle: the code of a session as one git bundle (#100)", () => {
   test("the bundle holds the commits past origin and the working tree; the person's repo is as it was", async () => {
     const { repo, remote, folder } = await working();

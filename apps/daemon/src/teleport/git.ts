@@ -8,10 +8,12 @@ import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 
 export const TIMEOUT_MS = 120_000;
+/** The `core.hooksPath` that holds no hook, on this platform. */
+export const hooksOff = (_platform: NodeJS.Platform = process.platform): string => "/dev/null";
 /** No hook, fsmonitor or signature check (gpg.program) of the repository runs. */
 export const SAFE = [
   "-c",
-  "core.hooksPath=/dev/null",
+  `core.hooksPath=${hooksOff()}`,
   "-c",
   "core.fsmonitor=false",
   "-c",
