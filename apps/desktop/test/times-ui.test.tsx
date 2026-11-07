@@ -744,24 +744,20 @@ describe("times-ui: the teams of a host", () => {
   test("a member row links to its session and to its card", async () => {
     const { store, project } = await open();
     await create("links", "1");
-    const item = row("links") as HTMLElement;
-    await settle(
-      () =>
-        within(item).queryByRole("button", { name: "Abrir a sessão de links · coordenadora" }) !==
-        null,
-    );
-    await click("Abrir a sessão de links · coordenadora", item);
+    // The row is looked up again at each check: the list remounts when the route returns, and a
+    // row read before that is null (or a detached one that never shows the button).
+    const memberButton = (name: string) => {
+      const item = row("links");
+      return item ? within(item).queryByRole("button", { name }) : null;
+    };
+    await settle(() => memberButton("Abrir a sessão de links · coordenadora") !== null);
+    await click("Abrir a sessão de links · coordenadora", row("links") as HTMLElement);
     expect(store.router.current).toMatchObject({ name: "session" });
     await act(async () => {
       store.router.push({ name: "teams" });
     });
-    const again = row("links") as HTMLElement;
-    await settle(
-      () =>
-        within(again).queryByRole("button", { name: "Abrir o card de links · executora 1" }) !==
-        null,
-    );
-    await click("Abrir o card de links · executora 1", again);
+    await settle(() => memberButton("Abrir o card de links · executora 1") !== null);
+    await click("Abrir o card de links · executora 1", row("links") as HTMLElement);
     expect(store.router.current).toMatchObject({
       name: "card",
       projectId: project?.id,
