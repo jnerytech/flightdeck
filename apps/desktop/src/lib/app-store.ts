@@ -3261,27 +3261,38 @@ export class AppStore {
     }
     const key = sessionKey(hostId, envelope.sessionId);
     const known = this.state.sessions[key] ?? emptySession();
-    let current = known;
-    if (!EPHEMERAL_EVENTS.has(envelope.event.type) && known.lastSeq > 0) {
-      if (envelope.seq === known.lastSeq + 1) this.resyncing.delete(key);
-      else if (envelope.seq > known.lastSeq + 1) {
-        // A frame was lost on the way: this one is not applied (it would leave a hole). The
-        // daemon replays from the last seq we have, once per hole.
-        const asked = this.resyncing.get(key);
-        if (asked === undefined) {
-          this.resyncing.set(key, "asked");
-          this.connections.get(hostId)?.resync(envelope.sessionId);
-          return;
-        }
-        if (asked === "asked") return;
-        // The host answered and the hole is still there (its retention cut it): go on from
-        // here and say so in the conversation.
-        this.resyncing.delete(key);
-        current = markGap(known);
-      }
-    }
+    const current = this.afterLostFrames(hostId, key, envelope, known);
+    if (!current) return;
     const session = applyEnvelope(current, envelope);
     this.update({ sessions: { ...this.state.sessions, [key]: session } });
+  }
+
+  /**
+   * The state an event applies on: `known`, or `known` marked with a gap when the host could not
+   * replay what was lost; null when the frame must wait for that replay.
+   */
+  private afterLostFrames(
+    hostId: string,
+    key: string,
+    envelope: EventEnvelope,
+    known: SessionState,
+  ): SessionState | null {
+    if (EPHEMERAL_EVENTS.has(envelope.event.type) || known.lastSeq <= 0) return known;
+    if (envelope.seq === known.lastSeq + 1) this.resyncing.delete(key);
+    if (envelope.seq <= known.lastSeq + 1) return known;
+    // A frame was lost on the way: this one is not applied (it would leave a hole). The
+    // daemon replays from the last seq we have, once per hole.
+    const asked = this.resyncing.get(key);
+    if (asked === undefined) {
+      this.resyncing.set(key, "asked");
+      this.connections.get(hostId)?.resync(envelope.sessionId);
+      return null;
+    }
+    if (asked === "asked") return null;
+    // The host answered and the hole is still there (its retention cut it): go on from
+    // here and say so in the conversation.
+    this.resyncing.delete(key);
+    return markGap(known);
   }
 
   /** Sidebar, queue, tray and notifications all come from `session.summary`. */

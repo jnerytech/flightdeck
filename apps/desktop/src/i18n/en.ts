@@ -1886,6 +1886,14 @@ export const en: Dictionary = {
       "This move is no longer on the host: it was cancelled or its time ran out. Start it again.",
     teleport_too_many:
       "This host is already moving two sessions. Wait for one to finish, or cancel it.",
+    teleport_no_git:
+      "The session's folder is not a git repository with a commit: its code cannot move.",
+    teleport_no_remote:
+      "The session's repository has no origin branch to start from: the other host could not fetch the code.",
+    teleport_git:
+      "Git could not pack the session's code. Try again; if it fails again, check the repository.",
+    teleport_stopped:
+      "The host is stopping, so the session was not packed. Try again once it is back.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:

@@ -11,7 +11,7 @@
   "src/ui/AutoApprovalsPage.tsx": 20,
   "src/ui/AutomationForm.tsx": 9,
   "src/ui/AutomationsPage.tsx": 21,
-  "src/ui/BoardView.tsx": 21,
+  "src/ui/BoardView.tsx": 20,
   "src/ui/CardDetail.tsx": 4,
   "src/ui/CardReview.tsx": 10,
   "src/ui/ChangesPanel.tsx": 17,
