@@ -856,10 +856,12 @@ export function pushWaitCheck(
     const dir = call.dir;
     const override = `FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(segment.trim())}`;
     for (const branch of pushedBranches(call, (args) => deps.git(args, dir))) {
+      // The name comes from the command or from git: unprintable characters out first (so none splits a secret), then secrets hidden (#945 review).
+      const shown = redacted(printable(branch));
       // One more try: a gh call can time out once on a busy machine.
       const run = deps.prRun(branch, dir) ?? deps.prRun(branch, dir);
       if (run === null) {
-        const violation = `GitHub could not be read to check the PR run of ${branch}, twice (#741). Push again in a minute, or push now with:\n  ${override}`;
+        const violation = `GitHub could not be read to check the PR run of ${shown}, twice (#741). Push again in a minute, or push now with:\n  ${override}`;
         return { violation, passes };
       }
       if (run === "none") {
@@ -873,7 +875,7 @@ export function pushWaitCheck(
       }
       // Only GitHub's own https address; the echoed push hides credentials (security review).
       const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
-      const violation = `a push now cancels CI run ${run.id} on the PR of ${branch}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  ${override}`;
+      const violation = `a push now cancels CI run ${run.id} on the PR of ${shown}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  ${override}`;
       return { violation, passes };
     }
   }
