@@ -504,6 +504,28 @@ describe("log-app: a React error says where it came from (issue #938)", () => {
     expect(lines[2]).toBe("ERROR rejection nope");
   });
 
+  test("installed with no screen to name, a React rejection says the screen is unknown", async () => {
+    const written: string[] = [];
+    const s: LogSink = {
+      write: async (lines) => void written.push(...lines),
+      tail: async () => [],
+      openFolder: async () => {},
+    };
+    const log = new AppLog({ sink: s, now: () => NOW });
+    const listeners = new Map<string, (event: never) => void>();
+    installGlobalLog(
+      {
+        addEventListener: (type, fn) => void listeners.set(type, fn),
+        removeEventListener: (type) => void listeners.delete(type),
+      },
+      log,
+      { error: () => {}, warn: () => {} },
+    );
+    (listeners.get("unhandledrejection") as (e: unknown) => void)({ reason: reactError() });
+    await log.flush();
+    expect(written.some((line) => line.includes("screen: unknown"))).toBe(true);
+  });
+
   test("the root's handlers log what React caught in a tree, with its component stack and the screen", async () => {
     const written: string[] = [];
     const s: LogSink = {
