@@ -249,6 +249,34 @@ describe("costs-scope: a project scope", () => {
     });
   });
 
+  // Review of #914: a route's project keeps the kept host's notice, and an empty project says so.
+  test("a route's project on a kept host with no costs still says so and offers every host", async () => {
+    const { store } = await setup({ kind: "host", hostId: "hc" });
+    await act(async () => store.router.push({ name: "costs", projectKey: Y }));
+    const notice = () =>
+      screen.queryByText(fill(ptBR.scope.noCosts, { host: "gama" }), { exact: false }) !== null;
+    await settleMaybe(notice);
+    expect({
+      notice: notice(),
+      all: screen.queryByRole("button", { name: ptBR.scope.showAll }) !== null,
+    }).toEqual({ notice: true, all: true });
+  });
+
+  test("a kept project with no costs in the period says so, and Show all hosts brings them back", async () => {
+    const { store } = await setup({ kind: "project", projectKey: "github.com/x/none" });
+    await act(async () => store.router.push({ name: "costs" }));
+    const said = fill(ptBR.scope.projectEmpty, { project: "github.com/x/none" });
+    await settleMaybe(() => screen.queryByText(said, { exact: false }) !== null);
+    const notice = screen.queryByText(said, { exact: false }) !== null;
+    const all = screen.queryByRole("button", { name: ptBR.scope.showAll });
+    expect({ notice, offered: all !== null }).toEqual({ notice: true, offered: true });
+    await act(async () => {
+      fireEvent.click(all as HTMLElement);
+    });
+    await settle(() => total() === "US$ 7.00");
+    expect(store.dataScope.value).toEqual({ kind: "all" });
+  });
+
   test("Costs has no project select of its own", async () => {
     const { store } = await setup();
     await act(async () => store.router.push({ name: "costs" }));

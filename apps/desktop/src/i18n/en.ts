@@ -38,6 +38,7 @@ export const en: Dictionary = {
     incompatible: "{host} needs a daemon update before its data shows here.",
     showAll: "Show all hosts",
     noCosts: "{host} does not report costs.",
+    projectEmpty: "{project} has no costs in this period.",
   },
   home: {
     title: "Home",

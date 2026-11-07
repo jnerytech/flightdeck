@@ -157,7 +157,7 @@ export const CostsPage = memo(function CostsPage(props: {
   const { acrossHosts, hostId, hostIds } = hostScope(hostSide, hosts);
   /** The scoped host when it has no numbers to show: offline, or not reporting costs. */
   const scopedHost =
-    dataScope.kind === "host" ? state.hosts.find((h) => h.id === dataScope.hostId) : null;
+    hostSide.kind === "host" ? state.hosts.find((h) => h.id === hostSide.hostId) : null;
   const away =
     scopedHost && !hosts.some((h) => h.id === scopedHost.id) && scopedHost.status !== "connecting"
       ? scopedHost
@@ -488,7 +488,15 @@ export const CostsPage = memo(function CostsPage(props: {
           />
         )}
         {loading && <LoadingState label={t("costsUi.loading")} shape="tiles" />}
-        {empty && (
+        {empty && projectKey && (
+          <InlineNotice tone="info">
+            <span>{t("scope.projectEmpty", { project: projectName(projectKey) })} </span>
+            <Button variant="outline" size="sm" onClick={showAllHosts}>
+              {t("scope.showAll")}
+            </Button>
+          </InlineNotice>
+        )}
+        {empty && !projectKey && (
           <EmptyState
             icon={Coins}
             title={t("costsUi.empty")}
