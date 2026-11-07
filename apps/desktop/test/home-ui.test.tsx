@@ -196,14 +196,19 @@ describe("home-ui: four cards with the last seven days of every host", () => {
     expect(average.textContent).toContain("100% success rate");
   });
 
-  test("every online host is asked once for its costs and its usage", async () => {
+  // #124: the costs come three times, for the week and for the leaderboard's two halves.
+  test("every online host is asked once for its usage, and for its costs of the week and of each half", async () => {
     const { view, asked } = setup({ hosts: 2 });
     render(view);
     await screen.findByRole("button", { name: "Open Spend" });
-    await waitFor(() => expect(asked.length).toBe(4));
+    await waitFor(() => expect(asked.length).toBe(8));
     expect(asked.sort()).toEqual([
       "h1:costs.summary",
+      "h1:costs.summary",
+      "h1:costs.summary",
       "h1:usage.summary",
+      "h2:costs.summary",
+      "h2:costs.summary",
       "h2:costs.summary",
       "h2:usage.summary",
     ]);
