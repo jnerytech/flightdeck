@@ -12,7 +12,7 @@ import { useT } from "../i18n/context.tsx";
 import { translateError } from "../i18n/errors.ts";
 import { formatBytes } from "../lib/format-bytes.ts";
 import { RequestError } from "../lib/host-connection.ts";
-import type { TeleportOutcome, TeleportSummary } from "../lib/teleport.ts";
+import { plainText, type TeleportOutcome, type TeleportSummary } from "../lib/teleport.ts";
 
 export interface TeleportRunArgs {
   target: string;
@@ -34,20 +34,32 @@ export interface TeleportDialogProps {
 
 type Phase =
   | { at: "pick" }
+  /** The source builds the package: one move per dialog, whatever is clicked again. */
+  | { at: "preparing" }
   | { at: "confirm"; summary: TeleportSummary }
-  | { at: "moving"; percent: number }
+  /** `finishing`: every byte is on the target, which imports it; past the point of cancel. */
+  | { at: "moving"; percent: number; finishing: boolean }
   | { at: "done"; sessionId: string }
   | { at: "failed"; text: string };
 
 /** The refusals a move can meet: only these fill their text with what the host sent. */
 const KNOWN = /^(teleport_|feature_off$|cwd_outside_roots$|cwd_missing$|session_not_found$)/;
 
+/** A host's values in the app's text: plain and short, like the branch in the summary. */
+const plainParams = (params: Record<string, string | number>) =>
+  Object.fromEntries(
+    Object.entries(params).map(([key, value]) => [
+      key,
+      typeof value === "string" ? plainText(value, 64) : value,
+    ]),
+  );
+
 /** The app's own text for why the move stopped: never the host's message, nor its words elsewhere. */
 function failureText(error: unknown, t: ReturnType<typeof useT>): string {
   const refusal = error instanceof RequestError ? error : new RequestError("internal", "");
   const why =
     refusal.reason && KNOWN.test(refusal.reason)
-      ? { reason: refusal.reason, params: refusal.params ?? {} }
+      ? { reason: refusal.reason, params: plainParams(refusal.params ?? {}) }
       : {};
   return translateError(refusal.code, "", t, why).title;
 }
@@ -66,19 +78,30 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
   const host = props.targets.find((h) => h.id === target)?.name ?? "";
 
   const begin = () => {
+    // One move per dialog: a double-click or a second Enter never starts another.
+    if (stop.current) return;
     const controller = new AbortController();
     stop.current = controller;
+    setPhase({ at: "preparing" });
     props
       .run({
         target,
-        repo,
+        repo: repo.trim(),
         signal: controller.signal,
+        // A dialog closed while the source prepared says no, so the source's package goes.
         confirm: (summary) =>
-          new Promise<boolean>((resolve) => {
-            answer.current = resolve;
-            setPhase({ at: "confirm", summary });
+          controller.signal.aborted
+            ? Promise.resolve(false)
+            : new Promise<boolean>((resolve) => {
+                answer.current = resolve;
+                setPhase({ at: "confirm", summary });
+              }),
+        onProgress: (sent, total) =>
+          setPhase({
+            at: "moving",
+            percent: percentOf(sent, total),
+            finishing: total > 0 && sent === total,
           }),
-        onProgress: (sent, total) => setPhase({ at: "moving", percent: percentOf(sent, total) }),
       })
       .then(
         (outcome) => {
@@ -96,13 +119,21 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
   const reply = (yes: boolean) => {
     answer.current?.(yes);
     answer.current = null;
-    if (yes) setPhase({ at: "moving", percent: 0 });
+    if (yes) setPhase({ at: "moving", percent: 0, finishing: false });
+  };
+
+  /** Closing while the source prepares stops the move: its package goes once the source answers. */
+  const leave = () => {
+    stop.current?.abort();
+    props.onClose();
   };
 
   const dismiss = () => {
     if (phase.at === "confirm") reply(false);
-    else if (phase.at === "moving") stop.current?.abort();
-    else props.onClose();
+    else if (phase.at === "moving") {
+      // Once the target imports, the move ends there: the dialog waits for it.
+      if (!phase.finishing) stop.current?.abort();
+    } else leave();
   };
 
   return (
@@ -111,10 +142,11 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
         <DialogHeader>
           <DialogTitle>{t("teleportUi.title")}</DialogTitle>
         </DialogHeader>
-        {phase.at === "pick" && (
+        {(phase.at === "pick" || phase.at === "preparing") && (
           <Form variant="dialog" onSubmit={begin}>
             <NativeSelect
               aria-label={t("teleportUi.host")}
+              disabled={phase.at === "preparing"}
               value={target}
               onChange={(e) => setTarget(e.target.value)}
             >
@@ -131,11 +163,13 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
                 {props.repoField(target, repo, setRepo)}
               </>
             )}
+            {phase.at === "preparing" && <p role="status">{t("teleportUi.preparing")}</p>}
             <FormActions
               submit={t("teleportUi.next")}
-              disabled={!target || !repo}
+              disabled={!target || !repo.trim()}
+              busy={phase.at === "preparing"}
               cancel={t("teleportUi.cancel")}
-              onCancel={props.onClose}
+              onCancel={leave}
             />
           </Form>
         )}
@@ -161,9 +195,20 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
           </Form>
         )}
         {phase.at === "moving" && (
-          <Form variant="dialog" onSubmit={() => stop.current?.abort()}>
-            <p role="status">{t("teleportUi.moving", { percent: phase.percent })}</p>
-            <FormActions submit={t("teleportUi.cancel")} />
+          // Move stays where it was, busy: a double-click or Enter never lands on Cancel.
+          <Form variant="dialog" onSubmit={() => {}}>
+            <p role="status">
+              {phase.finishing
+                ? t("teleportUi.finishing", { host })
+                : t("teleportUi.moving", { percent: phase.percent })}
+            </p>
+            <FormActions
+              submit={t("teleportUi.move")}
+              busy
+              {...(phase.finishing
+                ? {}
+                : { cancel: t("teleportUi.cancel"), onCancel: () => stop.current?.abort() })}
+            />
           </Form>
         )}
         {phase.at === "done" && (
