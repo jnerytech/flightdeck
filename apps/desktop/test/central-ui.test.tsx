@@ -41,11 +41,29 @@ const click = async (name: string) => {
 };
 
 const change = async (label: string, value: string) => {
-  if (["Host", "Origem", "Estado"].includes(label)) await sidebar.openFilters();
+  if (["Origem", "Estado"].includes(label)) await sidebar.openFilters();
   const field = screen.queryByLabelText(label) as HTMLInputElement | null;
   expect(field).not.toBeNull();
   await act(async () => {
     fireEvent.change(field as HTMLInputElement, { target: { value } });
+  });
+};
+
+/** Whose sessions the hub lists: the Dados de menu (#126); Radix opens on pointer down. */
+const scopeTo = async (item: string) => {
+  const trigger = screen.queryByRole("button", { name: /^Dados de / });
+  expect(trigger).not.toBeNull();
+  await act(async () => {
+    fireEvent.pointerDown(trigger as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+  });
+  const entry = screen.queryByRole("menuitemradio", { name: item });
+  expect(entry).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(entry as HTMLElement);
   });
 };
 
@@ -173,9 +191,9 @@ describe("central-ui", () => {
     await change("Filtrar sessões", "gerenc");
     expect(group("central")).toEqual(["Gerenciada"]);
     await change("Filtrar sessões", "");
-    await change("Host", "beta");
+    await scopeTo("beta");
     expect(group("central")).toEqual(["Do histórico"]);
-    await change("Host", "");
+    await scopeTo("Todos os hosts");
     await change("Origem", "terminal");
     expect(group("central")).toEqual(["repo"]);
     await change("Origem", "");
