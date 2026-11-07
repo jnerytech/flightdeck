@@ -85,6 +85,16 @@ describe("teleport-bundle: what the scan and the counts read of the code (#715)"
   test("an added line that starts with two plus signs is still scanned", async () => {
     const { repo, folder, scan } = branched();
     await writeFile(join(repo, "plus.txt"), `++${TOKEN}\nplain line\n`);
+    // A tracked folder the person deleted: its files have no size and no folder to look in.
+    await mkdir(join(repo, "gone"));
+    await writeFile(join(repo, "gone", "old.txt"), "old\n");
+    git(repo, "add", "gone/old.txt");
+    git(repo, "commit", "-q", "-m", "feat(x): gone");
+    await rm(join(repo, "gone"), { recursive: true });
+    // Two files in one new folder: the folder is checked once.
+    await mkdir(join(repo, "sub"));
+    await writeFile(join(repo, "sub", "a.txt"), "a\n");
+    await writeFile(join(repo, "sub", "b.txt"), "b\n");
     const code = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan });
     expect(code.secrets.lines).toBe(1);
   });

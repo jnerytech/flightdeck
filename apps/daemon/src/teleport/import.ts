@@ -201,12 +201,15 @@ async function start(
   const made = await mkdir(folder, { recursive: true, mode: 0o700 });
   const file = join(folder, `${manifest.claudeSessionId}.jsonl`);
   // Never over a transcript this host has; any other failure (a full disk) is itself.
-  await copyFile(claim.transcript, file, constants.COPYFILE_EXCL).catch(async (error) => {
-    if (made) await rm(made, { recursive: true, force: true });
-    throw (error as { code?: string }).code === "EEXIST"
-      ? refuse("invalid_state", "teleport_exists")
-      : error;
-  });
+  const exists = (error: unknown) => (error as { code?: string }).code === "EEXIST";
+  await (deps.copyFile ?? copyFile)(claim.transcript, file, constants.COPYFILE_EXCL).catch(
+    async (error) => {
+      if (made) await rm(made, { recursive: true, force: true });
+      // Not the host's own file (that is the EEXIST): a copy that stopped halfway left this one.
+      else if (!exists(error)) await rm(file, { force: true });
+      throw exists(error) ? refuse("invalid_state", "teleport_exists") : error;
+    },
+  );
   try {
     return await deps.resume({
       cwd: path,
