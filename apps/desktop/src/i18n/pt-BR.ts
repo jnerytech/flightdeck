@@ -1806,6 +1806,7 @@ export const ptBR = {
     column_unknown: "A coluna {column} não existe.",
     persona_id_invalid: "O id de persona não é válido.",
     repo_not_git: "{path} não é um repositório git.",
+    search_busy: "Há buscas demais em andamento: tente de novo em instantes.",
     project_exists: "{path} já é um projeto.",
     card_not_found: "O card {id} não existe.",
     arena_variants: "Uma arena tem de 2 a 4 variantes.",

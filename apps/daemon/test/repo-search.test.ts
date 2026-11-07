@@ -452,6 +452,14 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     ]).toEqual(["repo_not_git", "repo_not_git"]);
   });
 
+  test("a core.worktree that is not there is refused too (#806)", async () => {
+    const { repo } = await setup();
+    git(repo, "config", "core.worktree", join(tempDir("fd-gone-tree-"), "gone"));
+    expect(await failure(searchRepository(repo, { mode: "name", query: "panel" }))).toBe(
+      "repo_not_git",
+    );
+  });
+
   test("searches running at once are limited: the one past the limit is refused with a reason, and a slot comes back when one ends (#806)", async () => {
     const { repo } = await setup();
     const gate = Promise.withResolvers<void>();
@@ -476,11 +484,11 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
 
   test("a search that fails gives its slot back too (#806)", async () => {
     const plain = tempDir("fd-plain-slot-");
-    const failed = await Promise.all(
-      Array.from({ length: MAX_SEARCHES * 2 }, () =>
-        failure(searchRepository(plain, { mode: "name", query: "x" })),
-      ),
-    );
+    // One after the other, more than the limit allows at once: each failure must free its slot.
+    const failed: string[] = [];
+    for (let i = 0; i < MAX_SEARCHES * 2; i += 1) {
+      failed.push(await failure(searchRepository(plain, { mode: "name", query: "x" })));
+    }
     expect(failed.every((reason) => reason === "repo_not_git")).toBe(true);
   });
 

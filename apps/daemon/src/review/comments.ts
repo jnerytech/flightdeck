@@ -293,7 +293,9 @@ export class ReviewComments {
       (this.opts.board as Board).message(resolved.cardId, text);
       return "card";
     }
-    const id = resolved.claudeSessionId as string;
+    // A target with no session and no card (a project's checkout) has nobody to send it to.
+    const id = resolved.claudeSessionId;
+    if (id === null) return "copy";
     const managed = this.db
       .query<{ id: string }, [string]>(
         "SELECT id FROM sessions WHERE claude_session_id = ? ORDER BY updated_at DESC LIMIT 1",
