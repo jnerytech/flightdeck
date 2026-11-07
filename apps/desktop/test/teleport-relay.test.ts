@@ -367,7 +367,7 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       let answer: ((value: unknown) => void) | null = null;
       const held = (async (type: string, payload: never) => {
         if (type === `teleport.${where}`) {
-          return new Promise((resolve) => {
+          return new Promise<unknown>((resolve) => {
             answer = resolve;
           });
         }
