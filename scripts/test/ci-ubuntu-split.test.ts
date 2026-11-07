@@ -59,7 +59,7 @@ describe("ci-ubuntu-split (#293)", () => {
   test("SonarCloud is its own job, reading the suite's lcov, with the history it blames", () => {
     const sonar = job("sonar");
     expect(sonar.needs).toEqual(["test-suite"]);
-    expect(sonar.if ?? "").toContain("github.event_name != 'workflow_dispatch'");
+    expect(sonar.if ?? "").toContain("github.event_name == 'pull_request'");
     // Full history for the blame; no GITHUB_TOKEN left in .git/config for the third-party scan.
     expect(sonar.steps[0]?.with).toEqual({ "fetch-depth": 0, "persist-credentials": false });
     const download = sonar.steps.findIndex((s) =>
@@ -93,7 +93,8 @@ describe("ci-ubuntu-split (#293)", () => {
     expect(quick).toBeLessThan(check.indexOf("needs.test-suite.result"));
     expect(check).toContain('test "${{ needs.test-suite.result }}" = success');
     expect(check).toContain('test "${{ needs.fast-coverage.result }}" = success');
-    // SonarCloud skips on a dispatch; the checks skip only when the plan needs no smoke or cargo.
+    // SonarCloud skips on a main push and a branch's dispatch, never on a PR (#296); the checks skip
+    // only when the plan needs no smoke or cargo.
     expect(check).toContain('case "${{ needs.sonar.result }}" in success|skipped)');
     expect(check).toContain('test "${{ needs.checks-linux.result }}" = success');
     expect(check).toContain("needs.quick.outputs.smokes");
