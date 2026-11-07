@@ -36,7 +36,7 @@ const project = (id: string, name: string, hostName: string) => ({
 });
 
 /** The Projects page, with the switcher on `picked` (or none). */
-function setup(picked: string | null, scope: "host" | "all" = "host") {
+function setup(picked: string | null, scope: "host" | "all" = "host", offline = false) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   store.loadPalette = async () => {};
@@ -45,7 +45,7 @@ function setup(picked: string | null, scope: "host" | "all" = "host") {
   store.tabScope.set(scope);
   const state = {
     ...store.getState(),
-    hosts: [host("h1", "alfa"), host("h2", "beta")],
+    hosts: [{ ...host("h1", "alfa"), status: offline ? "offline" : "online" }, host("h2", "beta")],
     projects: {
       h1: [project("p-api", "api", "alfa"), project("p-web", "web", "alfa")],
       h2: [project("p-docs", "docs", "beta")],
@@ -71,7 +71,9 @@ describe("projects-switcher: the project lists follow the host switcher (#932)",
       switcherHosts(hosts, "host", "h1").map((h) => h.id),
       switcherHosts(hosts, "all", "h1").map((h) => h.id),
       switcherHosts(hosts, "host", null).map((h) => h.id),
-    ]).toEqual([["h1"], ["h1", "h2"], ["h1", "h2"]]);
+      // A host the list no longer has (removed elsewhere) is no host chosen: every host.
+      switcherHosts(hosts, "host", "gone").map((h) => h.id),
+    ]).toEqual([["h1"], ["h1", "h2"], ["h1", "h2"], ["h1", "h2"]]);
   });
 
   test("with alfa chosen in the switcher, Projects lists alfa's projects only", async () => {
@@ -84,6 +86,19 @@ describe("projects-switcher: the project lists follow the host switcher (#932)",
     setup("h1", "all");
     await settleMaybe(() => names().length === 3);
     expect(names()).toEqual(["api", "docs", "web"]);
+  });
+
+  // Review of #948: the page says whose projects these are, and why there are none.
+  test("the subtitle names the chosen host, and an offline one says why its projects are missing", async () => {
+    setup("h1", "host", true);
+    const offline = () =>
+      screen.queryByText("alfa is offline. Its projects show again when it reconnects.") !== null;
+    await settleMaybe(offline);
+    expect({
+      offline: offline(),
+      subtitle: screen.queryByText("The projects of alfa, with what is running in them.") !== null,
+      empty: screen.queryByText("No projects yet.") !== null,
+    }).toEqual({ offline: true, subtitle: true, empty: false });
   });
 
   test("a switch to beta lists beta's projects", async () => {
