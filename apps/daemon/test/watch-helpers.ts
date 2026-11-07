@@ -131,7 +131,12 @@ export async function fixture(options: FixtureOptions = {}) {
   store.db.query("UPDATE cards SET pr_url = ?, pr_state = 'open' WHERE id = ?").run(PR, card.id);
 
   const watcher = new PrWatcher({ db: store.db, board, provider: () => provider });
-  watcher.setSettings(project.id, { enabled: true, ...options.settings });
+  // The fake runtime commits fake-N.txt: outside any PR, so it is allowed unless a test says not (#77).
+  watcher.setSettings(project.id, {
+    enabled: true,
+    driftAllow: ["fake-*.txt"],
+    ...options.settings,
+  });
   const ran: Array<{ command: string; cwd: string }> = [];
   /** The time limit each local check was given, in order. */
   const timeouts: Array<number | undefined> = [];

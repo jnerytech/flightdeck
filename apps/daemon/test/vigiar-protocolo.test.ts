@@ -211,6 +211,28 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     );
   });
 
+  test("a held round is resolved over the protocol; a round that is not held is refused (#77)", async () => {
+    const { client, cardId } = await boot();
+    const info = await client.data<{ features?: string[] }>("host.info", {});
+    expect(info?.features).toContain("watch.resolveHeld");
+    expect(
+      await client.request("watch.resolveHeld", { cardId, roundId: "nope", action: "push" }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state", reason: "watch_round_not_held" },
+    });
+    for (const payload of [
+      { cardId, roundId: "r", action: "force" },
+      { cardId, roundId: "", action: "drop" },
+      { cardId, roundId: "r", action: "drop", extra: 1 },
+    ]) {
+      expect(await client.request("watch.resolveHeld", payload)).toMatchObject({
+        ok: false,
+        error: { code: "bad_request" },
+      });
+    }
+  });
+
   test("with the build red, the daemon watches by itself: it fixes, finds no commit, and the card asks for you", async () => {
     const { az, client, cardId } = await boot();
     await client.request("watch.watch", {});

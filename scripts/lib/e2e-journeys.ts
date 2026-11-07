@@ -45,6 +45,7 @@ export const JOURNEYS: readonly string[] = [
   "time-novo-alcance",
   "board-arquivos",
   "sessao-vistas",
+  "ranking-home",
   "escopo-dados",
 ];
 

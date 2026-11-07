@@ -931,7 +931,10 @@ live; the list is the project's, so a session of another project never shows her
   account (its email and plan, read from the host's account card; the rail shows only its initial)
   opens a menu. Its header names the app and its version. Then come the plan, the account and the id
   of the host whose account it is, each copied when chosen; **Compact rows**, a switch kept on this
-  computer (the same density as in Settings); **Settings**; **What's new** (the highlights of the latest
+  computer (the same density as in Settings); three more switches kept on this computer, **Hide New
+  and Beta badges** (the small badges on the sidebar's recent items), **Hide What's new** (the dot and
+  the item below) and **Hide the setup checklist** (the same as the hide button on its row; **Show the
+  setup checklist** in Settings brings it back); **Settings**; **What's new** (the highlights of the latest
   releases, read from GitHub through a host that can; the account row and this item carry a dot, and
   the row's name says so, after the app was updated, until you open it; full-screen in a narrow
   window; **View all releases** opens GitHub); **Check for updates** (it opens Settings,
@@ -2340,6 +2343,17 @@ A round stops, and the card goes to **Needs you** with the summary, when a limit
 rounds per PR, US$ 5 per PR, 30 turns, US$ 20 per day and project, two failed rounds in a row, or
 the quota queue. It also stops by itself when the PR is merged or closed, or when you turn the
 watch off. **Watch again** puts it back.
+
+The card shows **Fix rounds used: 2 of 3**. When the rounds run out, **Allow 2 more rounds** gives the
+card two more without forgetting what it spent; the host refuses it when another limit (turns, cost,
+the card's branch) would stop the next round anyway. While a card's PR is watched, an automation that
+sends failed checks or review comments to the card leaves it to the watch.
+
+Before it pushes, the host checks that the round stayed inside the PR: a round that touches a file
+the PR does not change (and that no review comment names), or that changes more lines than
+`max(200, the PR's)`, is **held for you** instead of pushed. The round lists the files outside the PR
+and the lines it changed. **Push anyway** pushes those commits as they are; **Drop the round** takes
+them back, keeping what was there before the round. Lockfiles and `*.snap` never count.
 
 **Settings** has **Watch and fix PRs · <host>**, one block per project: watch by default, rounds per
 PR, cost limit per PR and per day (empty is no limit), the time limit per check (1 to 60 minutes,

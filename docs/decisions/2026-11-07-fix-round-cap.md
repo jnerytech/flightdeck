@@ -35,12 +35,29 @@ automation's send went around the watch's cap.
   fail. The watch keeps `needs_you` with the reason, which lists each round. A card in `review`
   then moves to the `waiting` column, which the board shows as "Needs you". A card in any other
   column stays: done is done, and a running card belongs to its session.
-- **Drift is measured at the push gate,** deterministically, with git only (slice D3). A round
-  drifts when:
-  - it touches files outside the PR's footprint that its trigger does not name;
-  - or its churn passes `max(200, footprint churn)`.
+- **Drift is measured at the push gate (slice D3),** deterministically, with git only, against
+  what is pushed:
+  - the footprint is the PR as it stands: `merge-base(origin/<base>, origin/<branch>)..origin/<branch>`;
+  - the round is `origin/<branch>..HEAD`, over the files the PR changes after it, so a merge of the
+    base into the branch adds nothing;
+  - a round drifts when it touches a file outside the footprint that its review comments do not
+    name, or when its churn passes `max(200, the footprint's churn)`. Files matching the project's
+    `driftAllow` globs (lockfiles and `*.snap` by default) never count.
 
-  Such a round is held, not pushed, until the person pushes it or drops it.
+  This differs from the design posted on #77, which recorded a `round_start` per round and kept
+  the first round's footprint. Measuring against what is pushed needs no new column, includes
+  every unpushed commit (a held round's commits cannot slip out with the next round), and is
+  right after a merge of the base. A held round the person pushes widens the footprint: pushing
+  it is how the person accepts it.
+- **A held round** keeps its commits and the HEAD it was held at (`held_sha`). The card goes to
+  "Needs you" with the files and the churn. A round git cannot measure is held too (fail closed),
+  with git's first error line. `watch.resolveHeld` pushes exactly the held commit (never forced)
+  or resets the branch with `--keep` to the HEAD the round started from (`base_sha`), so work
+  committed before the round stays. It is refused when the branch moved
+  since the hold, so neither unmeasured commits are pushed nor later work dropped.
+- **More rounds while a round is held** start a new round on top of the held commits. That round
+  is measured with them, so it is held again. This is safe, but it spends a session: resolve the
+  held round first.
 
 ## Discarded alternatives
 
