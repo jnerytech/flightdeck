@@ -22,7 +22,7 @@ const COLUMNS: RoiColumn[] = [
 ];
 const DASH = "—";
 /** The first column stays in view while the table scrolls sideways. */
-const STICKY = " table-sticky-col";
+const STICKY = " sticky left-0 z-1 bg-background";
 const money = (n: number | null) => (n === null ? DASH : usd(n));
 const REFRESH_MS = 30_000;
 

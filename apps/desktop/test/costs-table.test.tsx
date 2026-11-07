@@ -142,11 +142,11 @@ describe("costs-table: the sort headers are 24 px targets and a table that scrol
   test("the first column (header, rows, footer) is sticky so the project stays in view", async () => {
     const { store } = await table();
     const rows = Array.from(document.querySelectorAll("table tr"));
-    const firsts = rows.map((row) => row.firstElementChild?.classList.contains("table-sticky-col"));
+    const firsts = rows.map((row) => row.firstElementChild?.classList.contains("sticky"));
     const others = rows.flatMap((row) =>
       Array.from(row.children)
         .slice(1)
-        .map((cell) => cell.classList.contains("table-sticky-col")),
+        .map((cell) => cell.classList.contains("sticky")),
     );
     expect({
       rows: rows.length,
@@ -156,16 +156,27 @@ describe("costs-table: the sort headers are 24 px targets and a table that scrol
     store.dispose();
   });
 
-  test("the styles: an opaque sticky cell, a fade from the surface token to transparent", () => {
-    const at = css.indexOf("@utility table-sticky-col {");
-    const sticky = at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
-    const fadeAt = css.indexOf('[data-slot="table-wide-fade"] {');
-    const fade = fadeAt < 0 ? "" : css.slice(fadeAt, css.indexOf("\n}", fadeAt));
+  test("the styles live with the component: an opaque sticky cell, a fade from the surface token", async () => {
+    const { store, frame } = await table();
+    const cell = document.querySelector("tbody th") as HTMLElement;
+    const fade = frame.nextElementSibling as HTMLElement;
+    const shown = () => fade.classList.contains("opacity-100");
     expect({
-      sticks: sticky.includes("position: sticky") && sticky.includes("left: 0"),
-      opaque: sticky.includes("background-color: var(--background)"),
-      fades: fade.includes("linear-gradient(to left, var(--background), transparent)"),
-      shownByClass: css.includes('.table-wide-more + [data-slot="table-wide-fade"]'),
-    }).toEqual({ sticks: true, opaque: true, fades: true, shownByClass: true });
+      sticks: cell.classList.contains("sticky") && cell.classList.contains("left-0"),
+      opaque: cell.classList.contains("bg-background"),
+      fades: ["bg-linear-to-l", "from-background", "to-transparent"].every((c) =>
+        fade.classList.contains(c),
+      ),
+      noClicks: fade.classList.contains("pointer-events-none"),
+      hiddenAtStart: !shown(),
+    }).toEqual({ sticks: true, opaque: true, fades: true, noClicks: true, hiddenAtStart: true });
+    size(frame, { left: 0, client: 560, scroll: 957 });
+    await act(async () => {
+      fireEvent.scroll(frame);
+    });
+    expect(shown()).toBe(true);
+    expect(css).not.toContain("table-wide-fade");
+    expect(css).not.toContain("table-sticky-col");
+    store.dispose();
   });
 });

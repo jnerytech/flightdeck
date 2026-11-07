@@ -2,6 +2,10 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
 import { canScrollRight } from "@/lib/scroll-edge";
 
+/** The fade: an overlay beside the frame, from the surface to transparent, that never takes a click. */
+const FADE =
+  "pointer-events-none absolute inset-y-0 end-0 w-10 rounded-e-md bg-linear-to-l from-background to-transparent";
+
 /**
  * The frame of a table whose columns only mean something side by side (responsive spec, `wide`):
  * it scrolls sideways by itself instead of pushing the page, the keyboard can reach and scroll it,
@@ -28,7 +32,7 @@ export function WideTable(props: Readonly<{ name: string; children: ReactNode }>
   });
 
   return (
-    <div className="table-wide-frame">
+    <div className="relative max-w-full">
       <section
         ref={frame}
         data-slot="table-wide"
@@ -39,7 +43,11 @@ export function WideTable(props: Readonly<{ name: string; children: ReactNode }>
       >
         {props.children}
       </section>
-      <span data-slot="table-wide-fade" aria-hidden="true" />
+      <span
+        data-slot="table-wide-fade"
+        aria-hidden="true"
+        className={`${FADE}${more ? " opacity-100" : " opacity-0"}`}
+      />
     </div>
   );
 }
