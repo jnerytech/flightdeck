@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import {
   checkChanged,
   coverageTargets,
   isCoverageSource,
   lineRanges,
+  loadedTargets,
+  WHOLE_SUITE_IGNORED,
 } from "../lib/related-coverage.ts";
 import { planRelated } from "../lib/test-related.ts";
 
@@ -173,5 +176,34 @@ describe("related-coverage: the plan of test:related with coverage", () => {
     expect(result.command).not.toContain("--coverage-dir=/tmp/cov");
     expect(result.command?.[1]).toBe("--config=bunfig.area.toml");
     expect(result.targets).toBeUndefined();
+  });
+});
+
+describe("loadedTargets (#762)", () => {
+  const code: Record<string, string> = {
+    "scripts/demo-shots.ts": "export function names() { return []; }",
+    "scripts/lib/a.ts": "export const a = () => 1;",
+    "scripts/test/helper.ts": "export const h = () => 1;",
+    "apps/desktop/src/components/ui/button.tsx": "export const B = () => null;",
+    "scripts/demo-seed.ts": "export const seed = () => 1;",
+    "packages/protocol/src/types.ts": "export type T = string;",
+    "docs/notes.md": "text",
+  };
+  const read = (path: string) => code[path] ?? null;
+
+  test("counts a newly loaded file the way the full suite's gate does: a scripts/ entry file too", () => {
+    expect(loadedTargets(Object.keys(code), read)).toEqual([
+      "scripts/demo-shots.ts",
+      "scripts/lib/a.ts",
+    ]);
+  });
+
+  test("the ignore rule matches bunfig.toml's coveragePathIgnorePatterns", () => {
+    const bunfig = readFileSync("bunfig.toml", "utf8");
+    expect(bunfig).toContain(
+      'coveragePathIgnorePatterns = ["**/test/**", "**/components/ui/**", "**/scripts/demo-seed.ts"]',
+    );
+    expect(WHOLE_SUITE_IGNORED.test("apps/daemon/test/x.ts")).toBe(true);
+    expect(WHOLE_SUITE_IGNORED.test("scripts/latest/x.ts")).toBe(false);
   });
 });
