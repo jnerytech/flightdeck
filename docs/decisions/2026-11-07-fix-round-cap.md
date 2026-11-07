@@ -17,7 +17,9 @@ automation's send went around the watch's cap.
 
 - **While a card's PR is watched, the watch alone fixes it.** An automation's `send_to_card` for
   that card is skipped, and its run records why: "the PR watch fixes this card", or the watch's
-  reason when the card needs you. Nothing is written for a skipped send.
+  reason when the card needs you. Nothing is written for a skipped send. A watched card the watch
+  cannot fix (no worktree of its own, or its branch is the base) gets nothing either: the watch
+  hands it to the person at once, with that reason.
 - **A card whose PR is not watched gets the automation's send as before,** with no cap. Turning
   Vigiar on is how a person bounds the automatic fixes of a card.
 - **The cap stays a project setting** (`maxRounds`), counted per card since the watch was last
@@ -25,7 +27,7 @@ automation's send went around the watch's cap.
 - **More rounds (slice D2):** `watch.extend { cardId, rounds }` adds to the card's own
   `extra_rounds`, so its limit is `maxRounds + extra_rounds`. It does not move `round_base`: that
   would also forget the turns and the money of the older rounds, and more rounds must never
-  forgive spent money. It watches the card again and moves a card in "Needs you" back to review.
+  forgive spent money. It watches the card again, and a card the watch handed over goes from "Needs you" back to review.
   Turning the watch on again resets both.
 - **The hand-over:** the card needs you when its rounds run out, or when enough rounds in a row
   fail. The watch keeps `needs_you` with the reason, which lists each round. A card in `review`
