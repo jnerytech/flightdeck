@@ -317,6 +317,98 @@ describe("review-secrets: an MCP config shows what it runs, with its values mask
     ]).toEqual([true, false, false, true]);
   });
 
+  test("a file that is a link to .mcp.json is quoted masked, not raw", async () => {
+    const { repo, review } = setup();
+    writeFileSync(join(repo, ".mcp.json"), MCP);
+    await symlink(".mcp.json", join(repo, "notes.txt"));
+    const comment = await review
+      .add({
+        target: "session:s-1",
+        path: "notes.txt",
+        side: "new",
+        lineStart: 5,
+        lineEnd: 8,
+        body: "?",
+      })
+      .catch(() => ({ quote: "" }));
+    expect(comment.quote.includes("hunter2-not-a-token-shape")).toBe(false);
+  });
+
+  test("a .mcp.json renamed to another name keeps its values masked", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, ".mcp.json"), MCP);
+    git(repo, "add", ".");
+    git(repo, "commit", "-q", "-m", "mcp");
+    git(repo, "mv", ".mcp.json", "servers.json");
+    writeFileSync(join(repo, "servers.json"), MCP.replace('"sh"', '"bash"'));
+    git(repo, "add", "servers.json");
+    const file = (await workingDiff(repo)).find((f) => f.path === "servers.json");
+    const text = shown(file).join("\n");
+    expect([file?.oldPath, text.includes('"command": "bash"'), text.includes("hunter2")]).toEqual([
+      ".mcp.json",
+      true,
+      false,
+    ]);
+  });
+
+  test("a hunk that starts far below the env line still masks every value but the command's", async () => {
+    const { repo } = gitRepo();
+    const filler = Array.from({ length: 8 }, (_, i) => `      "note${i}": true,`);
+    const config = (value: string) =>
+      [
+        "{",
+        '  "mcpServers": { "helper": {',
+        '      "command": "node",',
+        '      "env": {',
+        '        "FIRST": "one",',
+        ...filler,
+        `        "STRIPE": "${value}"`,
+        "      }",
+        "  } }",
+        "}",
+        "",
+      ].join("\n");
+    writeFileSync(join(repo, ".mcp.json"), config("old-private"));
+    git(repo, "add", ".");
+    git(repo, "commit", "-q", "-m", "mcp");
+    writeFileSync(join(repo, ".mcp.json"), config("new-private"));
+    const text = shown((await workingDiff(repo)).find((f) => f.path === ".mcp.json")).join("\n");
+    expect([
+      text.includes('"STRIPE"'),
+      text.includes("old-private"),
+      text.includes("new-private"),
+    ]).toEqual([true, false, false]);
+  });
+
+  test("compact JSON and arguments that follow a secret flag are masked", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(
+      join(repo, ".mcp.json"),
+      [
+        '{"command":"node","apiKey":"compact-private","env":{"A":"env-private"},"url":"https://h.example/mcp?key=query-private",',
+        '"args":["--token","flag-private","--name","visible-name"]}',
+        "",
+      ].join("\n"),
+    );
+    const text = shown((await workingDiff(repo)).find((f) => f.path === ".mcp.json")).join("\n");
+    expect([
+      text.includes('"command":"node"'),
+      text.includes("visible-name"),
+      text.includes("h.example/mcp"),
+      /compact-private|env-private|flag-private|query-private/.test(text),
+    ]).toEqual([true, true, true, false]);
+  });
+
+  test("a .mcp.json inside a credential folder is still a credential", async () => {
+    const { repo } = gitRepo();
+    mkdirSync(join(repo, ".aws"));
+    writeFileSync(join(repo, ".aws", ".mcp.json"), MCP);
+    expect((await workingDiff(repo)).find((f) => f.path === ".aws/.mcp.json")).toMatchObject({
+      secret: true,
+      hunks: [],
+    });
+  });
+
   test("file.read still refuses it, and its other kin stay credentials", async () => {
     const { repo, files } = setup();
     writeFileSync(join(repo, ".mcp.json"), MCP);
