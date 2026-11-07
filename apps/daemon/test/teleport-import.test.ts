@@ -342,6 +342,26 @@ describe("teleport-import: a received package becomes a session on this host (#1
     ]).toEqual([true, [], ""]);
   });
 
+  test("a copy that fails on its source never removes a transcript the host has", async () => {
+    const pkg = await packaged();
+    const { repo, deps } = target(pkg);
+    let own = "";
+    const lost: TeleportImportDeps = {
+      ...deps,
+      copyFile: async (_from, to) => {
+        // The host's own file shows up while the copy is reading the package's.
+        own = String(to);
+        await writeFile(own, "mine\n");
+        throw Object.assign(new Error("no such file"), { code: "ENOENT" });
+      },
+    };
+    const failed = await reason(() => importPackage(lost, "in-1", repo));
+    expect([failed.includes("no such file"), own ? await readFile(own, "utf8") : ""]).toEqual([
+      true,
+      "mine\n",
+    ]);
+  });
+
   test("a session that does not start takes its worktree, branch and transcript with it", async () => {
     const pkg = await packaged();
     const { repo, history, deps, calls } = target(pkg, { failResume: true });

@@ -122,6 +122,15 @@ describe("teleport-bundle: what the scan and the counts read of the code (#715)"
     expect(code.secrets.lines).toBe(1);
   });
 
+  test("a file the repository marks as binary is still scanned", async () => {
+    const { repo, folder, scan } = branched();
+    // `-diff` makes git print "Binary files differ" for a match, a line a session can add itself.
+    await writeFile(join(repo, ".gitattributes"), "*.env -diff\n");
+    await writeFile(join(repo, "app.env"), `KEY=${TOKEN}\n`);
+    const code = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan });
+    expect(code.secrets.lines).toBe(1);
+  });
+
   test("a folder swapped for a link to somewhere else adds nothing to the size", async () => {
     const { repo, folder, scan } = branched();
     await mkdir(join(repo, "dir"));
