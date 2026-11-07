@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "../i18n/context.tsx";
 import type { AppStore, HostView } from "../lib/app-store.ts";
+import { isPlainRemote, plainText } from "../lib/teleport.ts";
 import { useStoreSlice } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { FolderPicker } from "./FolderPicker.tsx";
@@ -85,6 +86,11 @@ export const TeleportMove = memo(function TeleportMove(
         />
       )}
       run={(args) => store.moveSession(props.hostId, props.sessionId, args)}
+      plain={(target) =>
+        state.hosts
+          .filter((h) => (h.id === props.hostId || h.id === target) && isPlainRemote(h.url))
+          .map((h) => plainText(h.name, 64))
+      }
       onOpen={store.openMovedSession}
       onClose={props.onClose}
     />

@@ -31,16 +31,18 @@ const waitFor = <T,>(fn: () => T) => rtlWaitFor(fn, { timeout: 3000 });
 
 describe("teleport-plainws: which hosts are plain and remote (#100)", () => {
   test("ws:// off this machine is plain; wss://, loopback and a bad address are not", () => {
-    expect([
-      "ws://192.168.1.5:7420/v1/ws",
-      "ws://pi.lan:7420/v1/ws",
-      "ws://100.64.0.9:7420/v1/ws",
-      "wss://pi.example.com/v1/ws",
-      "ws://127.0.0.1:7420/v1/ws",
-      "ws://localhost:7420/v1/ws",
-      "ws://[::1]:7420/v1/ws",
-      "not a url",
-    ].map(isPlainRemote)).toEqual([true, true, true, false, false, false, false, false]);
+    expect(
+      [
+        "ws://192.168.1.5:7420/v1/ws",
+        "ws://pi.lan:7420/v1/ws",
+        "ws://100.64.0.9:7420/v1/ws",
+        "wss://pi.example.com/v1/ws",
+        "ws://127.0.0.1:7420/v1/ws",
+        "ws://localhost:7420/v1/ws",
+        "ws://[::1]:7420/v1/ws",
+        "not a url",
+      ].map(isPlainRemote),
+    ).toEqual([true, true, true, false, false, false, false, false]);
   });
 });
 
@@ -53,7 +55,9 @@ async function setup(urls: { from?: string; to?: string }) {
   cleanups.push(() => store.dispose());
   const from = await store.addHost({ name: "alfa", url: alfa.listen().url, token: TOKEN });
   const to = await store.addHost({ name: "beta", url: beta.listen().url, token: TOKEN });
-  await waitFor(() => expect(store.getState().hosts.every((h) => h.status === "online")).toBe(true));
+  await waitFor(() =>
+    expect(store.getState().hosts.every((h) => h.status === "online")).toBe(true),
+  );
   // The address the person typed is what the warning reads; the connection is already up.
   for (const [id, url] of [
     [from, urls.from],

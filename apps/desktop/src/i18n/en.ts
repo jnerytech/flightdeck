@@ -2756,6 +2756,11 @@ export const en: Dictionary = {
     done: "The session is on {host} now. The one here stays as it was.",
     open: "Open it there",
     close: "Close",
+    plainWs: {
+      one: "{hosts} connects without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
+      other:
+        "{hosts} connect without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
+    },
     preview: "Preview: move a session to another host",
   },
   automationsUi: {
