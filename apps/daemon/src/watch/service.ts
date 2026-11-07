@@ -6,6 +6,7 @@ import type {
   WatchUpdatedFrame,
 } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
+import { FlightdeckError } from "../errors.ts";
 import type { PrFixer } from "./fix.ts";
 import type { Traces } from "./trace.ts";
 import type { PrWatcher } from "./watch.ts";
@@ -51,16 +52,33 @@ export class PrWatch {
   }
 
   /**
-   * Issue #77: `rounds` more fixing rounds for the card, which is watched again. A card the watch
-   * handed over (in "Needs you") goes back to review, where its PR is; one that waits for you for
-   * another reason (its session asks) stays.
+   * Issue #77: `rounds` more fixing rounds for a watched card. Refused when another limit (turns,
+   * money, the card's branch) would stop the next round anyway. A card the watch handed over is
+   * watched again and goes from "Needs you" back to review; one that waits for you for another
+   * reason (its session asks) stays, and what the watch saw is not news again.
    */
   extend(cardId: string, rounds: number): WatchInfo {
-    const { board, watcher } = this.opts;
+    const { board, watcher, fixer } = this.opts;
     const card = board.getCard(cardId);
-    const handedOver = watcher.status(cardId).status === "needs_you";
+    if (!watcher.enabled(cardId)) {
+      throw new FlightdeckError("invalid_state", "the card's PR is not watched", "watch_off");
+    }
+    const blocked = fixer.blockedBesidesRounds(cardId);
+    if (blocked) {
+      throw new FlightdeckError(
+        "invalid_state",
+        `more rounds would not help: ${blocked}`,
+        "watch_extend_blocked",
+        {
+          reason: blocked,
+        },
+      );
+    }
     watcher.extend(cardId, rounds);
-    if (handedOver && card.column === "waiting") board.moveCard(cardId, "review");
+    if (watcher.status(cardId).status === "needs_you") {
+      watcher.resume(cardId);
+      if (card.column === "waiting") board.moveCard(cardId, "review");
+    }
     this.notify(cardId);
     return this.info(cardId);
   }

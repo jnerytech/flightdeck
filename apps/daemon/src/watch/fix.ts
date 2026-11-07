@@ -225,7 +225,12 @@ export class PrFixer {
   }
 
   /** Why no round may start for the card now, or `null`: the limits, before a session is paid for. */
-  private limit(cardId: string): string | null {
+  /** Issue #77: a limit other than the rounds that keeps the card from a new round, or null. */
+  blockedBesidesRounds(cardId: string): string | null {
+    return this.limit(cardId, false);
+  }
+
+  private limit(cardId: string, rounds = true): string | null {
     const { board, watcher, db } = this.opts;
     const card = board.getCard(cardId);
     const project = board.getProject(card.projectId);
@@ -236,8 +241,8 @@ export class PrFixer {
       return `the card's branch is the target branch (${project.baseBranch}): nothing is pushed to it`;
     }
     const settings = watcher.settings(card.projectId);
-    const rounds = this.roundLimit(cardId);
-    if (rounds) return rounds;
+    const reached = rounds ? this.roundLimit(cardId) : null;
+    if (reached) return reached;
     const done = this.counted(cardId);
     const turns = done.reduce((sum, r) => sum + r.turns, 0);
     if (settings.maxTurns !== null && turns >= settings.maxTurns) {

@@ -127,16 +127,26 @@ export class PrWatcher {
       .run(cardId, enabled === null ? null : Number(enabled), new Date().toISOString());
   }
 
-  /** Issue #77: the person allows the card `rounds` more fixing rounds, and it is watched again. */
+  /** Issue #77: the person allows the card `rounds` more fixing rounds. */
   extend(cardId: string, rounds: number): void {
     this.opts.db
       .query(
         `INSERT INTO pr_watch (card_id, enabled, snapshot, status, reason, extra_rounds, updated_at)
          VALUES (?1, NULL, NULL, 'watching', NULL, ?2, ?3)
          ON CONFLICT (card_id) DO UPDATE SET extra_rounds = extra_rounds + excluded.extra_rounds,
-           snapshot = NULL, status = 'watching', reason = NULL, updated_at = excluded.updated_at`,
+           updated_at = excluded.updated_at`,
       )
       .run(cardId, rounds, new Date().toISOString());
+  }
+
+  /** A card handed over is watched again: what the last look saw is news again. */
+  resume(cardId: string): void {
+    this.opts.db
+      .query(
+        `UPDATE pr_watch SET snapshot = NULL, status = 'watching', reason = NULL, updated_at = ?
+         WHERE card_id = ?`,
+      )
+      .run(new Date().toISOString(), cardId);
   }
 
   /** The rounds allowed on top of the project's maximum, since the watch was last turned on. */
