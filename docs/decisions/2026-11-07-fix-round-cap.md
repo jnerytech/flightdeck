@@ -56,9 +56,12 @@ automation's send went around the watch's cap.
   committed before the round stays. It is refused when the branch moved
   since the hold, so neither unmeasured commits are pushed nor later work dropped.
 - **The round's prompt states the same rule (slice P1):** change only the files the PR already
-  changes and the files the review comments name, keep the change small, and say in the last
-  message when the fix needs another file. A round that does otherwise is held. The prompt asks;
-  the gate enforces, so a session that ignores the rule still pushes nothing out of scope.
+  changes and the files the review comments are attached to, keep the change small, and say in
+  the last message when the fix needs another file. It lists the project's `driftAllow` globs as
+  allowed, and on a conflict it says that what the rebase brings in from the base does not count,
+  so the prompt asks for what the gate measures. A round that does otherwise is held. The prompt
+  asks; the gate enforces, with the exceptions above (`driftAllow`, the attached files), so a
+  session that ignores the rule still pushes nothing else.
 - **More rounds while a round is held** start a new round on top of the held commits. That round
   is measured with them, so it is held again. This is safe, but it spends a session: resolve the
   held round first.
