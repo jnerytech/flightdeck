@@ -735,6 +735,17 @@ export function prRunFrom(runs: string | null, pr: string | null, now: number): 
   }
 }
 
+/** Runs gh with these arguments in a folder; its output, or null when it fails. */
+export type Gh = (args: string[], dir: string) => string | null;
+
+/**
+ * The guard's reader of a branch's latest PR run (#756 review: the gh calls are tested here, not
+ * left as glue): `gh run list`, then `gh pr view` only when there is a run.
+ */
+export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: string) => PrRun | null {
+  return (branch, dir) => (gh([branch], dir) === null && now() < 0 ? null : null);
+}
+
 /** The check conclusions (a check run's) and states (a commit status's) that mean it failed. */
 const FAILED_CHECK = new Set([
   "FAILURE",

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { guardAllowLogs, type PrRun, prRunFrom, pushWaitViolation } from "../lib/claude-hooks.ts";
+import {
+  guardAllowLogs,
+  type PrRun,
+  prRunFrom,
+  prRunVia,
+  pushWaitViolation,
+} from "../lib/claude-hooks.ts";
 
 const CWD = "/repos/flightdeck-fix";
 
@@ -44,6 +50,24 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
       pushWaitViolation("cd /repos/flightdeck-fix && git push -q", "/repos", elsewhere),
     ).not.toBeNull();
     expect(elsewhere.asked).toEqual([`fix-x in ${CWD}`]);
+  });
+
+  test("the run checked is the one of the branch the push updates, not HEAD's (#756 review)", () => {
+    const other = deps(green);
+    const why = pushWaitViolation("git push origin other:fix-y", CWD, other) ?? "";
+    expect(other.asked).toEqual([`fix-y in ${CWD}`]);
+    expect(why).toContain("on the PR of fix-y");
+    const full = deps(green);
+    pushWaitViolation("git push origin HEAD:refs/heads/fix-z", CWD, full);
+    expect(full.asked).toEqual([`fix-z in ${CWD}`]);
+    const both = deps(null);
+    expect(pushWaitViolation("git push -o ci.skip origin fix-a fix-b", CWD, both)).toBeNull();
+    expect(both.asked).toEqual([`fix-a in ${CWD}`, `fix-b in ${CWD}`]);
+    // A delete starts no run, and a release-v* target never waits.
+    const gone = deps(green);
+    expect(pushWaitViolation("git push origin --delete fix-x", CWD, gone)).toBeNull();
+    expect(pushWaitViolation("git push origin HEAD:release-v1.2.3", CWD, gone)).toBeNull();
+    expect(gone.asked).toEqual([]);
   });
 
   test("a red run (the push is a fix), an ended or old run, or no run at all lets the push through", () => {
@@ -187,5 +211,44 @@ describe("push-wait: the run and the PR as gh prints them (#741)", () => {
     ] as const) {
       expect(prRunFrom(runs, detail, now)).toBeNull();
     }
+  });
+});
+
+describe("push-wait: the gh calls the guard makes (#756 review)", () => {
+  const now = Date.parse("2026-11-07T01:10:00Z");
+  const runs = JSON.stringify([
+    { databaseId: 42, status: "in_progress", startedAt: "2026-11-07T01:04:00Z", url: URL },
+  ]);
+  const view = JSON.stringify({ mergeable: "MERGEABLE", statusCheckRollup: [] });
+
+  test("lists the branch's latest PR run, then reads its PR, both in the push's folder", () => {
+    const calls: string[] = [];
+    const gh = (args: string[], dir: string) => {
+      calls.push(`${dir}: ${args.join(" ")}`);
+      return args[0] === "run" ? runs : view;
+    };
+    expect(prRunVia(gh, () => now)("fix-x", CWD)).toEqual(green);
+    expect(calls).toEqual([
+      `${CWD}: run list --branch=fix-x --event=pull_request --limit=1 --json=databaseId,status,startedAt,url`,
+      `${CWD}: pr view --json=mergeable,statusCheckRollup -- fix-x`,
+    ]);
+  });
+
+  test("no run, or gh failing, is no run, and the PR is not read then", () => {
+    for (const listed of ["[]\n", null]) {
+      const calls: string[][] = [];
+      const gh = (args: string[]) => {
+        calls.push(args);
+        return args[0] === "run" ? listed : view;
+      };
+      expect(prRunVia(gh, () => now)("fix-x", CWD)).toBeNull();
+      expect(calls.length).toBe(1);
+    }
+    expect(
+      prRunVia(
+        (args) => (args[0] === "run" ? runs : null),
+        () => now,
+      )("fix-x", CWD),
+    ).toBeNull();
   });
 });
