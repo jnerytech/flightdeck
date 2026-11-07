@@ -1,76 +1,26 @@
 {
-  "nested-scroll|dark en 1024x700 card|page > page-body > timeline": {
-    "count": 1
-  },
-  "nested-scroll|dark en 390x844 card|page > page-body > timeline": {
-    "count": 1
-  },
-  "nested-scroll|dark en 640x800 card|page > page-body > timeline": {
-    "count": 1
-  },
-  "nested-scroll|dark pt-BR 1024x700 card|page > page-body > timeline": {
-    "count": 1
-  },
-  "nested-scroll|dark pt-BR 390x844 card|page > page-body > timeline": {
-    "count": 1
-  },
-  "nested-scroll|dark pt-BR 640x800 card|page > page-body > timeline": {
-    "count": 1
-  },
   "overflow-x|dark en 1024x700 abas-muitas|div.tab-item": {
     "count": 16,
     "worst": 1456
-  },
-  "overflow-x|dark en 1024x700 projeto-blocos|scroll-area-viewport > page-body > session-tile > fieldset.session-tile-request": {
-    "count": 1,
-    "worst": 24
-  },
-  "overflow-x|dark en 1024x700 sessao|button": {
-    "count": 1,
-    "worst": 78
   },
   "overflow-x|dark en 390x844 abas-muitas|div.tab-item": {
     "count": 20,
     "worst": 1850
   },
-  "overflow-x|dark en 390x844 sessao|button": {
-    "count": 2,
-    "worst": 119
-  },
   "overflow-x|dark en 640x800 abas-muitas|div.tab-item": {
     "count": 18,
     "worst": 1656
-  },
-  "overflow-x|dark en 640x800 sessao|button": {
-    "count": 3,
-    "worst": 188
   },
   "overflow-x|dark pt-BR 1024x700 abas-muitas|div.tab-item": {
     "count": 16,
     "worst": 1456
   },
-  "overflow-x|dark pt-BR 1024x700 projeto-blocos|scroll-area-viewport > page-body > session-tile > fieldset.session-tile-request": {
-    "count": 1,
-    "worst": 45
-  },
-  "overflow-x|dark pt-BR 1024x700 sessao|button": {
-    "count": 2,
-    "worst": 115
-  },
   "overflow-x|dark pt-BR 390x844 abas-muitas|div.tab-item": {
     "count": 20,
     "worst": 1850
   },
-  "overflow-x|dark pt-BR 390x844 sessao|button": {
-    "count": 2,
-    "worst": 156
-  },
   "overflow-x|dark pt-BR 640x800 abas-muitas|div.tab-item": {
     "count": 18,
     "worst": 1656
-  },
-  "overflow-x|dark pt-BR 640x800 sessao|button": {
-    "count": 3,
-    "worst": 225
   }
 }

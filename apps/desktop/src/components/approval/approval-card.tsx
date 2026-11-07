@@ -72,7 +72,7 @@ function Body({
         {view.cwd && (
           <p className="flex items-center gap-1 text-muted-foreground text-xs">
             {t("approval.cwd")}:{" "}
-            <span data-folder title={view.cwd} className="font-mono">
+            <span data-folder title={view.cwd} className="min-w-0 break-all font-mono">
               {shortPath(view.cwd)}
             </span>
             {onCopyPath && (

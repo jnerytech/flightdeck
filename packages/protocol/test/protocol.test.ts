@@ -16,6 +16,32 @@ import {
   SessionInterruptedResult,
 } from "../src/index.ts";
 
+/** A manifest as the source host sends it (issue #100). */
+const TELEPORT_MANIFEST = {
+  id: "p1",
+  sessionId: "s1",
+  claudeSessionId: "0b6f5c2e-6f0a-4c39-9a51-7c4f1d2e3a4b",
+  cwd: "/work/app",
+  model: null,
+  permissionMode: "default",
+  persona: null,
+  expiresAt: "2026-11-06T12:30:00.000Z",
+  parts: [
+    { name: "transcript", size: 10, sha256: "a".repeat(64) },
+    { name: "code", size: 20, sha256: "b".repeat(64) },
+  ],
+  secrets: { lines: 0, labels: [] },
+  git: {
+    branch: "feature",
+    head: "c".repeat(40),
+    base: "origin/main",
+    baseSha: "d".repeat(40),
+    ref: "refs/flightdeck/teleport/p1",
+    ahead: 1,
+    changed: 2,
+  },
+};
+
 const validCommands: Record<CommandType, unknown> = {
   hello: { token: "t".repeat(20), client: "test" },
   "session.list": {},
@@ -97,6 +123,9 @@ const validCommands: Record<CommandType, unknown> = {
   "teleport.prepare": { sessionId: "s1" },
   "teleport.read": { id: "p1", part: "transcript", offset: 0 },
   "teleport.cancel": { id: "p1" },
+  "teleport.receive": { manifest: TELEPORT_MANIFEST },
+  "teleport.write": { id: "in-1", part: "code", offset: 0, data: "aGk=" },
+  "teleport.abort": { id: "in-1" },
   "assistant.record": {
     id: "r1",
     at: "2026-11-05T10:00:00.000Z",
@@ -607,6 +636,22 @@ describe("protocolo", () => {
       model: "claude-haiku-5-5",
       lowWithoutAi: true,
     });
+  });
+
+  test("teleport.receive and teleport.write refuse a part they do not know, a bad sha256 or a chunk too big", () => {
+    const part = TELEPORT_MANIFEST.parts[0];
+    const receive = (manifest: unknown) =>
+      Command.safeParse({ id: "1", type: "teleport.receive", payload: { manifest } }).success;
+    const write = (payload: unknown) =>
+      Command.safeParse({ id: "1", type: "teleport.write", payload }).success;
+    expect([
+      receive({ ...TELEPORT_MANIFEST, parts: [{ ...part, name: "../etc" }] }),
+      receive({ ...TELEPORT_MANIFEST, parts: [{ ...part, sha256: "zz" }] }),
+      receive({ ...TELEPORT_MANIFEST, permissionMode: "everything" }),
+      receive({ ...TELEPORT_MANIFEST, git: { ...TELEPORT_MANIFEST.git, baseSha: "origin/main" } }),
+      write({ id: "in-1", part: "other", offset: 0, data: "" }),
+      write({ id: "in-1", part: "code", offset: 0, data: "A".repeat(200_000) }),
+    ]).toEqual([false, false, false, false, false, false]);
   });
 
   test.each(Object.entries(validCommands))("comando %s válido passa no schema", (type, payload) => {

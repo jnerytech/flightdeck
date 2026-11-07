@@ -8,9 +8,9 @@
  * turns them off. The repository's clean filters do run on `add`, as they do on the person's own
  * `git add` (Git LFS needs them).
  */
-import { copyFile, readFile, rm, stat } from "node:fs/promises";
+import { copyFile, lstat, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { killTree, runCommand } from "../board/command.ts";
+import { gitLimitedFor, killTree, runCommand } from "../board/command.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
@@ -38,6 +38,8 @@ export interface CodeBundle {
   head: string;
   /** What the bundle starts from: the target fetches it from its own origin. */
   base: string;
+  /** The commit `base` named here: the target checks its origin has it. */
+  baseSha: string;
   /** Commits of HEAD past the base. */
   ahead: number;
   /** Files the working tree changes against HEAD (untracked ones included). */
@@ -54,6 +56,15 @@ const AUTHOR = {
   GIT_COMMITTER_EMAIL: "teleport@flightdeck.invalid",
 };
 const TIMEOUT_MS = 120_000;
+/** No hook, fsmonitor or signature check (gpg.program) of the repository runs. */
+const SAFE = [
+  "-c",
+  "core.hooksPath=/dev/null",
+  "-c",
+  "core.fsmonitor=false",
+  "-c",
+  "log.showSignature=false",
+];
 const ID = /^[A-Za-z0-9-]{1,64}$/;
 
 const refuse = (reason: string, params?: Record<string, string | number>) =>
@@ -67,16 +78,7 @@ async function git(
 ): Promise<string | null> {
   // git-arg: a forwarder: every caller passes a checked revision (refArg/HEAD) or a value git gave
   const result = await runCommand(
-    [
-      whichOnPath("git") ?? "git",
-      "-c",
-      "core.hooksPath=/dev/null",
-      "-c",
-      "core.fsmonitor=false",
-      "-c",
-      "log.showSignature=false",
-      ...args,
-    ],
+    [whichOnPath("git") ?? "git", ...SAFE, ...args],
     cwd,
     undefined,
     TIMEOUT_MS,
@@ -95,6 +97,21 @@ async function must(
   const out = await git(cwd, args, env);
   if (out === null) throw new FlightdeckError("internal", `git ${args[0]} failed`, "teleport_git");
   return out;
+}
+
+/** Whether the files the working tree changes or adds are, together, past `max` bytes. */
+async function pastLimit(top: string, names: string, max: number): Promise<boolean> {
+  let total = 0;
+  for (const name of names.split("\0")) {
+    if (!name) continue;
+    // A deleted file has no size; a link counts as itself, never as what it points at.
+    total += await lstat(join(top, name)).then(
+      (info) => (info.isFile() ? info.size : 0),
+      () => 0,
+    );
+    if (total > max) return true;
+  }
+  return false;
 }
 
 /** What the bundle starts from: the branch's upstream on origin, else origin's default branch. */
@@ -123,6 +140,14 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
   if (!ID.test(input.id))
     throw new FlightdeckError("bad_request", "bad package id", "request_invalid");
   const base = refArg(found);
+  const baseSha = await must(top, ["rev-parse", "--verify", "--quiet", `${base}^{commit}`]);
+  const max = input.maxBytes ?? TELEPORT_MAX_BYTES;
+  // Before git writes a thing: the files changed against HEAD (staged or not) and the new ones.
+  const changed = await must(top, ["diff", "--no-ext-diff", "--name-only", "-z", HEAD]);
+  const untracked = await must(top, ["ls-files", "-z", "--others", "--exclude-standard"]);
+  if (await pastLimit(top, `${changed}\0${untracked}`, max)) {
+    throw refuse("teleport_too_large", { max });
+  }
   const branch = await git(top, ["symbolic-ref", "--quiet", "--short", HEAD]);
   // The working tree as a commit, through a copy of the index: the person's index stays as it is.
   const index = join(input.folder, "index");
@@ -146,7 +171,6 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
     // git-arg: the ref is made here, from a package id checked against ID
     await git(top, ["update-ref", "-d", ref]);
   }
-  const max = input.maxBytes ?? TELEPORT_MAX_BYTES;
   const { size } = await stat(file);
   if (size > max) {
     await rm(file, { force: true });
@@ -157,16 +181,27 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
   const names = await must(top, ["diff", "--no-ext-diff", "--name-only", head, wip]);
   // Everything that moves, commit by commit: a secret one commit added and a later one removed
   // still travels in the bundle. Only added lines.
-  const moved = await must(top, [
-    "log",
-    "-p",
-    "--no-ext-diff",
-    "--no-textconv",
-    "--no-color",
-    "--format=",
-    `${base}..${wip}`,
-  ]);
-  const added = moved
+  // The text is read up to `max`: past it, the scan would count only part of what moves.
+  // git-arg: base comes from refArg, wip from commit-tree
+  const moved = await gitLimitedFor(
+    top,
+    max,
+    [
+      ...SAFE,
+      "log",
+      "-p",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--no-color",
+      "--format=",
+      `${base}..${wip}`,
+    ],
+    TIMEOUT_MS,
+  );
+  if (moved.truncated) throw refuse("teleport_too_large", { max });
+  // A git that failed or ran out of time (killed at TIMEOUT_MS).
+  if (moved.code !== 0) throw new FlightdeckError("internal", "git log failed", "teleport_git");
+  const added = moved.stdout
     .split("\n")
     .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
     .join("\n");
@@ -178,6 +213,7 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
     branch,
     head,
     base,
+    baseSha,
     ahead,
     changed: names ? names.split("\n").length : 0,
     secrets: await secretLines(added, input.scan),

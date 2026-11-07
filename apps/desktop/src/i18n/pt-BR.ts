@@ -1893,7 +1893,11 @@ export const ptBR = {
     teleport_git:
       "O git não conseguiu empacotar o código da sessão. Tente de novo; se falhar outra vez, confira o repositório.",
     teleport_stopped:
-      "O host está parando, por isso a sessão não foi empacotada. Tente de novo quando ele voltar.",
+      "O host está parando, por isso a sessão não mudou de host. Tente de novo quando ele voltar.",
+    teleport_incomplete:
+      "Parte da sessão ainda não chegou a este host, por isso ela não pode começar aqui. Tente mudar de novo.",
+    teleport_corrupt:
+      "O que chegou a este host não bate com o que o outro host mandou, por isso foi descartado. Tente mudar de novo.",
     runtime_unavailable: "O OpenCode não está disponível neste host.",
     runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
     opencode_unsafe_global:
@@ -2512,6 +2516,9 @@ export const ptBR = {
     checkFailed: "A verificação não rodou: {reason}",
   },
   welcome: {
+    /** The first-run screen's title, and the Add host screen's once a host exists (#728). */
+    title: "Conecte seu primeiro host",
+    titleMore: "Adicionar um host",
     addHost: "Adicione um host com o endereço e o token do flightdeckd.",
     stepsLabel: "Primeiros passos",
     step1: "No computador que roda o Claude Code, instale e inicie o daemon:",
@@ -3534,6 +3541,8 @@ export const ptBR = {
       "Mudou em outro lugar enquanto você editava: use a versão de lá para vê-la e edite de novo.",
     useTheirs: "Usar a de lá",
     detailsTitle: "Detalhes",
+    /** The card's details as a pane of their own once its conversation shows (#641). */
+    infoPane: "O card, acima da conversa",
     runTitle: "Execução",
     saveDescription: "Salvar descrição",
     title: "Título",

@@ -1896,7 +1896,11 @@ export const en: Dictionary = {
     teleport_git:
       "Git could not pack the session's code. Try again; if it fails again, check the repository.",
     teleport_stopped:
-      "The host is stopping, so the session was not packed. Try again once it is back.",
+      "The host is stopping, so the session did not move. Try again once it is back.",
+    teleport_incomplete:
+      "Part of the session has not arrived on this host yet, so it cannot start here. Try the move again.",
+    teleport_corrupt:
+      "What arrived on this host does not match what the other host sent, so it was thrown away. Try the move again.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:
@@ -2511,6 +2515,9 @@ export const en: Dictionary = {
     checkFailed: "The check did not run: {reason}",
   },
   welcome: {
+    /** The first-run screen's title, and the Add host screen's once a host exists (#728). */
+    title: "Connect your first host",
+    titleMore: "Add a host",
     addHost: "Add a host with the flightdeckd address and token.",
     stepsLabel: "First steps",
     step1: "On the computer that runs Claude Code, install and start the daemon:",
@@ -3528,6 +3535,8 @@ export const en: Dictionary = {
     changedElsewhere: "Changed elsewhere while you edited: Use theirs to see it, then edit again.",
     useTheirs: "Use theirs",
     detailsTitle: "Details",
+    /** The card's details as a pane of their own once its conversation shows (#641). */
+    infoPane: "The card, above its conversation",
     runTitle: "Run",
     saveDescription: "Save description",
     title: "Title",

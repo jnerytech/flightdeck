@@ -267,6 +267,24 @@ html:not(:has([data-slot="status-bar"])) {
   min-height: 0;
 }
 
+/* A card's details; once its conversation shows, a pane above it that scrolls by itself (#641). */
+@utility card-info {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 1.25rem;
+  &[data-split="true"] {
+    /* It keeps its share (up to 30%) and the conversation takes the rest. */
+    flex: 0 0 auto;
+    max-height: 30%;
+    overflow-y: auto;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
 /* A button that floats over the bottom end of a scroller. */
 @utility float-end {
   position: absolute;
@@ -606,6 +624,20 @@ html:not(:has([data-slot="status-bar"])) {
   display: inline-flex;
 }
 
+/* A session's views (#641): one row that scrolls sideways in a narrow pane, with the app's thin
+   scrollbar showing there is more, instead of a second row taken from the conversation. */
+@utility session-views {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+  & > * {
+    flex-shrink: 0;
+  }
+}
+
 /* The tab strip: the tabs keep their width and the strip scrolls sideways, with no scrollbar. */
 @utility tab-scroller {
   min-width: 0;
@@ -679,7 +711,8 @@ html:not(:has([data-slot="status-bar"])) {
 /* The card's conversation: it takes the rest of the pane, and scrolls inside itself only. */
 @utility card-chat {
   flex: 1 1 0;
-  min-height: 24rem;
+  /* It takes what the details pane leaves; 12 rem keeps a few messages and the composer (#641). */
+  min-height: 12rem;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
@@ -984,6 +1017,8 @@ html:not(:has([data-slot="status-bar"])) {
 /* Under the conversation: queue, thumbnails, activity line, the floating box and its state line. */
 @utility composer-dock {
   position: relative;
+  /* The composer lays itself out by the dock's width: a narrow pane, not the window (#641). */
+  container-type: inline-size;
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
@@ -1006,6 +1041,14 @@ html:not(:has([data-slot="status-bar"])) {
   box-shadow: 0 1px 6px oklch(0 0 0 / 0.08);
   &:focus-within {
     border-color: var(--color-ring);
+  }
+  /* A narrow dock: the box takes its own line above the buttons, which keep their row (#641). */
+  @container (width < 20rem) {
+    flex-wrap: wrap;
+    & .composer-box {
+      order: -1;
+      flex-basis: 100%;
+    }
   }
 }
 @utility composer-box {
@@ -1156,6 +1199,9 @@ html:not(:has([data-slot="status-bar"])) {
   border-radius: 0.5rem;
   padding: 0.5rem;
   font-size: 0.8125rem;
+  /* A fieldset will not shrink below its content by default: this one shrinks with its tile (#641). */
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
 }
 @utility tile-count {
   display: flex;
