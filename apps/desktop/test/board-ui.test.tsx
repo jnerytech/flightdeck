@@ -541,6 +541,37 @@ describe("board-ui", () => {
     });
   });
 
+  // #641: the board's columns scrolled sideways inside the page's own scroller, and their
+  // scrollbar sat under the tallest column, below the window. The board fills the page now: the
+  // columns row takes the rest of the height and is the sideways scroller at the window's bottom,
+  // and each column's cards scroll by themselves. A narrow board snaps one column at a time.
+  test("the board fills its page: the columns row scrolls sideways, each column's cards scroll by themselves", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Coluna", "faça");
+    const row = document.querySelector("[data-slot='board-columns']");
+    const body = row?.closest("[data-slot='page-body']");
+    const lists = [
+      ...document.querySelectorAll("[data-slot='board-columns'] section[data-column] > ul"),
+    ];
+    const classes = (el: Element | null | undefined) => el?.className.split(/\s+/) ?? [];
+    expect({
+      fill:
+        body !== null && body !== undefined && body.closest("[data-slot='scroll-area']") === null,
+      // A 12 rem floor: an empty board's notice above never squeezes the columns to nothing.
+      row: ["min-h-48", "flex-1", "@max-[40rem]:snap-x", "@max-[40rem]:snap-mandatory"].filter(
+        (c) => !classes(row).includes(c),
+      ),
+      lists: lists.length,
+      scroll: lists.filter(
+        (ul) => !["min-h-0", "flex-1", "overflow-y-auto"].every((c) => classes(ul).includes(c)),
+      ).length,
+      snap: [
+        ...document.querySelectorAll("[data-slot='board-columns'] section[data-column]"),
+      ].filter((column) => !classes(column).includes("snap-start")).length,
+    }).toEqual({ fill: true, row: [], lists: 5, scroll: 0, snap: 0 });
+  });
+
   test("detalhe: descrição editável, execuções, conversa, ajuste, diff lado a lado ou unificado", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);
