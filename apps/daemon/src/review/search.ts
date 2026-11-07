@@ -6,7 +6,12 @@
  */
 import { realpath } from "node:fs/promises";
 import { join, relative } from "node:path";
-import type { FileSearchMatch, FileSearchPayload, FileSearchResult } from "@flightdeck/protocol";
+import {
+  type FileSearchMatch,
+  type FileSearchPayload,
+  type FileSearchResult,
+  SecretScanner,
+} from "@flightdeck/protocol";
 import { type CommandResult, gitLimitedFor, runLimited } from "../board/command.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
@@ -50,8 +55,25 @@ export function findRg(): string | null {
   return whichOnPath("rg");
 }
 
+/** Token shapes and private keys; the vault's values are the app's to mask (it has them). */
+const scanner = new SecretScanner();
+
+/** What is read past the cut before the mask: a token across the cut is masked whole (#829). */
+const MASK_WINDOW = 1024;
+
+/**
+ * A matched line as it leaves the host: secrets masked, then cut to 200 characters. Masked before
+ * the cut, so a token the cut would split is still seen whole and masked whole.
+ */
 const clip = (text: string) =>
-  Array.from(text.replace(/\r?\n$/, ""))
+  Array.from(
+    scanner.redact(
+      Array.from(text.replace(/\r?\n$/, ""))
+        .slice(0, TEXT_MAX + MASK_WINDOW)
+        .join(""),
+      false,
+    ),
+  )
     .slice(0, TEXT_MAX)
     .join("");
 
