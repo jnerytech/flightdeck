@@ -899,4 +899,8 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE session_names ADD COLUMN team_role TEXT;
   ALTER TABLE session_names ADD COLUMN team_number INTEGER;
   `,
+  // Issue #77: the rounds the person allowed a card's watch on top of the project's maximum.
+  `
+  ALTER TABLE pr_watch ADD COLUMN extra_rounds INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

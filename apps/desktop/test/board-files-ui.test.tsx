@@ -64,6 +64,22 @@ const SEARCH: Record<string, { matches: object[]; truncated: boolean }> = {
   },
 };
 const NONE = { matches: [], truncated: false };
+/** A token's shape, built here so no real-looking key sits in the source. */
+const TOKEN = `sk-${"x".repeat(24)}`;
+SEARCH["content|key"] = {
+  matches: [
+    { path: "config.ts", line: 2, text: `const key = "${TOKEN}";` },
+    // The host never sends a credential's line; if one came anyway, it stays unseen.
+    { path: ".env.only", line: 1, text: "DEPLOY=plain-words", secret: true },
+  ],
+  truncated: false,
+};
+/** A value of the vault (or a host's token): the app knows it, the patterns do not. */
+const VAULT = `vault-${"v".repeat(12)}`;
+SEARCH["content|vault"] = {
+  matches: [{ path: "deploy.sh", line: 4, text: `curl -u ${VAULT} https://x` }],
+  truncated: false,
+};
 
 function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {}) {
   const searches: string[] = [];
@@ -343,6 +359,48 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     const viewer = () => screen.queryByRole("region", { name: "File src/b-only.ts" }) !== null;
     await settleMaybe(viewer);
     expect(viewer()).toBe(true);
+  });
+
+  // #827 (review of #823): a match's line goes through the app's secret masker, and a
+  // credential's line never shows at all.
+  test("a content match never shows a secret: a token is masked, a credential's line is not shown", async () => {
+    const { pick } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await tab("Content");
+    await type("Search contents", "key");
+    await settleMaybe(() => shows("Files · fd/b", "config.ts:2"));
+    const text = panel("Files · fd/b")?.textContent ?? "";
+    expect({
+      place: text.includes("config.ts:2"),
+      masked: text.includes("[redacted]"),
+      token: text.includes(TOKEN),
+      credential: text.includes(".env.only:1"),
+      credentialLine: text.includes("plain-words"),
+    }).toEqual({
+      place: true,
+      masked: true,
+      token: false,
+      credential: true,
+      credentialLine: false,
+    });
+  });
+
+  // Security review of #827: the masker also knows the vault's values and the hosts' tokens.
+  test("a content match never shows a value of the vault or a host's token", async () => {
+    const { store, pick } = setup({ features: SEARCHING });
+    store.scanValues = () => [VAULT];
+    await pick("worktree", "/wt/b", "fd/b");
+    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await tab("Content");
+    await type("Search contents", "vault");
+    await settleMaybe(() => shows("Files · fd/b", "deploy.sh:4"));
+    const text = panel("Files · fd/b")?.textContent ?? "";
+    expect({
+      place: text.includes("deploy.sh:4"),
+      masked: text.includes("[redacted]"),
+      value: text.includes(VAULT),
+    }).toEqual({ place: true, masked: true, value: false });
   });
 
   test("nothing found says so; a search the host refuses says why", async () => {

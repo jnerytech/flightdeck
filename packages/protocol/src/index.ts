@@ -2910,6 +2910,9 @@ export const WatchInfo = z.object({
   status: z.enum(["watching", "needs_you"]),
   reason: z.string().nullable(),
   rounds: z.array(FixRoundInfo),
+  /** Issue #77: the rounds that count against the limit, and the limit with the rounds allowed on top. Absent from older daemons. */
+  roundsUsed: z.number().int().min(0).optional(),
+  maxRounds: z.number().int().min(1).optional(),
 });
 export type WatchInfo = z.infer<typeof WatchInfo>;
 
@@ -3470,6 +3473,11 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("watch.set", z.object({ cardId: z.string().min(1), enabled: z.boolean().nullable() })),
   cmd("watch.get", z.object({ cardId: z.string().min(1) })),
+  // Issue #77: the person allows a card N more fixing rounds; the card is watched again.
+  cmd(
+    "watch.extend",
+    z.object({ cardId: z.string().min(1), rounds: z.number().int().min(1).max(10) }).strict(),
+  ),
   cmd("watch.trace", z.object({ cardId: z.string().min(1) })),
   /** The PR description made from the card's sessions, for the person to edit: nothing is opened. */
   cmd("watch.describe", z.object({ cardId: z.string().min(1) })),
@@ -4954,6 +4962,7 @@ export interface CommandResults {
   "watch.settings": WatchSettings;
   "watch.set": WatchInfo;
   "watch.get": WatchInfo;
+  "watch.extend": WatchInfo;
   "watch.trace": CardTraceInfo;
   "watch.describe": { text: string; redacted: number };
   "watch.byUrl": UrlTraceInfo;

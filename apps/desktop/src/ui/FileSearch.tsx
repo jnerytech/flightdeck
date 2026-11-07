@@ -1,5 +1,5 @@
-import type { FileSearchResult } from "@flightdeck/protocol";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type FileSearchResult, SecretScanner } from "@flightdeck/protocol";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -87,15 +87,24 @@ export function FileSearch(
           </TabsContent>
         ))}
       </Tabs>
-      {found === null ? props.children : <Matches found={found} onOpen={props.onOpen} />}
+      {found === null ? (
+        props.children
+      ) : (
+        <Matches store={store} found={found} onOpen={props.onOpen} />
+      )}
     </Stack>
   );
 }
 
 /** The matches of a search, or what stands in for them. */
-function Matches(props: Readonly<{ found: Exclude<Found, null>; onOpen(path: string): void }>) {
+function Matches(
+  props: Readonly<{ store: AppStore; found: Exclude<Found, null>; onOpen(path: string): void }>,
+) {
   const t = useT();
-  const { found } = props;
+  const { store, found } = props;
+  // The masker the app log uses, with what the app knows: its token shapes, the hosts' tokens
+  // and the vault's values (#827). A match's line never shows any of them.
+  const scanner = useMemo(() => new SecretScanner(() => store.scanValues()), [store]);
   if (found === "searching") {
     return <p className="text-muted-foreground text-xs">{t("files.searching")}</p>;
   }
@@ -129,7 +138,10 @@ function Matches(props: Readonly<{ found: Exclude<Found, null>; onOpen(path: str
                   {place}
                 </button>
               )}
-              {match.text !== undefined && <code className="file-hit-line">{match.text}</code>}
+              {/* A credential's line is never shown; any other goes through the masker (#827). */}
+              {match.text !== undefined && !match.secret && (
+                <code className="file-hit-line">{scanner.redact(match.text, false)}</code>
+              )}
             </li>
           );
         })}

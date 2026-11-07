@@ -408,6 +408,9 @@ export const DAEMON_REASONS = [
   "opencode_missing",
   "opencode_version_failed",
   "opencode_v1",
+  // Issue #77: more fixing rounds for a card.
+  "watch_off",
+  "watch_extend_blocked",
   "opencode_project_config_not_disabled",
   "opencode_canary_failed",
   "opencode_scope_mismatch",
