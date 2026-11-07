@@ -553,6 +553,11 @@ describe("times: deleting a team", () => {
       10_000,
     );
     ctx.teams.close(created.id, true);
+    // The notice that the team closed gives each member a short turn: none is at work after it.
+    await poll(
+      () => ctx.teams.get(created.id).members.every((m) => m.sessionState === "idle") || null,
+      10_000,
+    );
     return { ...ctx, team: ctx.teams.get(created.id) };
   }
 

@@ -2510,6 +2510,12 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - take a member out: its session is stopped, the coordinator is told, and its card stays on the
     board;
   - close the team, with a confirmation.
+- **Deleting a closed team:** a closed team keeps its card until you delete it. Its card's **⋯**
+  menu has **Delete team**: off on an open team (it says "Close the team first"), and on a closed
+  one it asks first, naming the team. What goes is the team record and its card on the Teams page.
+  What stays is every member's session, with its transcript and history, and their board cards:
+  they are only taken out of the team. The host refuses while a member is at work (running, or
+  waiting for an answer); try again once they rest. Every connected app drops the card.
 - **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
   itself. You get a notification, and the row says "paused by the quota". When the window
   restarts, the team resumes and tells you.

@@ -1573,6 +1573,9 @@ export const ptBR = {
     team_session_foreign: "Esta sessão não faz parte do time {team}.",
     team_close_confirm: "Encerrar o time {name} pede a sua confirmação.",
     team_coordinator_stays: "A coordenadora não sai do time: encerre o time.",
+    team_delete_open: "O time {name} ainda está aberto: encerre-o primeiro.",
+    team_delete_live:
+      "O time {name} ainda tem {members} membro(s) trabalhando: espere até que descansem e exclua depois.",
     team_closed: "O time {name} está encerrado.",
     agentcfg_file_missing: "{path} não existe neste projeto.",
     agentcfg_path_invalid: "{path} não é um caminho válido para este tipo de arquivo ({kind}).",
@@ -3309,6 +3312,11 @@ export const ptBR = {
     close: "Encerrar {name}",
     closeButton: "Encerrar",
     closeMessage: "Encerrar o time {name}? As sessões recebem o aviso para parar.",
+    menu: "Ações de {name}",
+    delete: "Excluir time",
+    deleteOpen: "Encerre o time primeiro",
+    deleteMessage:
+      "Excluir o time {name}? O registro do time e o card dele nesta página saem. As sessões dos membros ficam, com as transcrições e o histórico, e os cards delas no board também: só deixam de ser do time.",
   },
   clients: {
     title: "Clientes",

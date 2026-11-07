@@ -3513,6 +3513,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("teams.pause", z.object({ team: z.string().min(1) })),
   cmd("teams.resume", z.object({ team: z.string().min(1) })),
   cmd("teams.close", z.object({ team: z.string().min(1), confirm: z.boolean().optional() })),
+  /** Issue #934: deletes a closed team whose members are not at work; its sessions stay. */
+  cmd("teams.delete", z.object({ team: z.string().min(1) })),
   /** A message from Flightdeck to every member ("mandar a todos"). */
   cmd("teams.message", z.object({ team: z.string().min(1), text: z.string().min(1) })),
   /** With `as`, only a member of the team may ask (the MCP tool does). */
@@ -5077,6 +5079,7 @@ export interface CommandResults {
   "teams.pause": TeamInfo;
   "teams.resume": TeamInfo;
   "teams.close": TeamInfo;
+  "teams.delete": TeamInfo;
   "teams.message": { delivered: number; refused: number };
   "teams.status": TeamStatus;
   "teams.watch": undefined;

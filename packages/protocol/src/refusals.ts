@@ -25,6 +25,8 @@ export const DAEMON_REASONS = [
   "messaging_policy_invalid",
   "project_no_issues",
   "card_contract_unmet",
+  "team_delete_open",
+  "team_delete_live",
   "contract_invalid",
   "card_moved_anyway",
   "project_no_origin",
