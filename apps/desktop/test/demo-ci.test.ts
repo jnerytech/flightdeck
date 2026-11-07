@@ -161,6 +161,7 @@ describe("demo-prints: axe e CI", () => {
       "card-start-alcance",
       "orcamento-alcance",
       "modo-simples-alcance",
+      "layout-medido",
       "time-novo-alcance",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
