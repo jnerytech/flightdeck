@@ -11,23 +11,71 @@ export const SLEEP_ROOTS: readonly string[] = [
 
 /**
  * A wait of a guessed time, in each of its spellings: `Bun.sleep(…)`, `Bun.sleepSync(…)`, a promise
- * that resolves from a timer (the body may sit on the next line), and a call to a helper named
- * `sleep` or `delay` (its definition, `function sleep(`, is not a call).
+ * that resolves from a timer (see `timerPromises`), and a call to a helper named `sleep` or `delay`
+ * (its definition, `function sleep(`, is not a call).
  */
-const FIXED_SLEEP = [
-  /Bun\.sleep(?:Sync)?\(/g,
-  /new Promise(?:<[^>]*>)?\(\s*\(?\s*\w+\s*\)?\s*=>\s*(?:\{\s*)?(?:globalThis\.|window\.)?setTimeout\(/g,
-  /(?<![\w$.])(?<!function\s)(?:sleep|delay)\(/g,
-];
+const BARE_SLEEPS = [/Bun\.sleep(?:Sync)?\(/g, /(?<![\w$.])(?<!function\s)(?:sleep|delay)\(/g];
+
+const PROMISE = "new Promise";
+
+/** What follows `new Promise` (and its generic) in a timer: the arrow, its body and `setTimeout(`. */
+const TIMER_TAIL =
+  /\(\s*(?:\(\s*)?\w+\s*(?:\)\s*)?=>\s*(?:\{\s*)?(?:globalThis\.|window\.)?setTimeout\(/y;
+
+/**
+ * Where a promise that resolves from a timer starts (the body may sit on the next line). The generic
+ * `<…>` ends at the first `>`, found once for all the openers before it, so the scan stays linear.
+ */
+function timerPromises(code: string): number[] {
+  const sites: number[] = [];
+  let close = 0;
+  let from = 0;
+  for (let at = code.indexOf(PROMISE); at >= 0; at = code.indexOf(PROMISE, from)) {
+    let tail = at + PROMISE.length;
+    from = tail;
+    if (code[tail] === "<") {
+      if (close !== -1 && close <= tail) close = code.indexOf(">", tail + 1);
+      if (close === -1) continue;
+      tail = close + 1;
+    }
+    TIMER_TAIL.lastIndex = tail;
+    const match = TIMER_TAIL.exec(code);
+    if (match) {
+      sites.push(at);
+      from = tail + match[0].length;
+    }
+  }
+  return sites;
+}
 
 /** The comment that says why the clock is the thing under test (a hold, a debounce). */
 const TIMING_COMMENT = /^\s*\/\/ timing:/;
 
+const LINE_END = /[\n\r\u2028\u2029]/g;
+
+/** The source with each `//` comment cut to the end of its line; a `//` right after a colon is a URL. */
+function withoutLineComments(source: string): string {
+  let out = "";
+  let kept = 0;
+  let scan = 0;
+  for (let at = source.indexOf("//"); at >= 0; at = source.indexOf("//", scan)) {
+    if (source[at - 1] === ":") {
+      scan = at + 1;
+      continue;
+    }
+    out += source.slice(kept, at);
+    LINE_END.lastIndex = at;
+    kept = LINE_END.exec(source)?.index ?? source.length;
+    scan = kept;
+  }
+  return out + source.slice(kept);
+}
+
 /** The source without its comments, with every line break kept so a match keeps its line. */
 function withoutComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ""))
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  return withoutLineComments(
+    source.replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, "")),
+  );
 }
 
 /**
@@ -40,13 +88,15 @@ export function fixedSleeps(source: string): number {
   const lines = source.split("\n");
   const code = withoutComments(source);
   let sites = 0;
-  for (const pattern of FIXED_SLEEP) {
-    for (const match of code.matchAll(pattern)) {
-      const line = code.slice(0, match.index).split("\n").length - 1;
-      let above = line - 1;
-      while (above >= 0 && (lines[above] ?? "").trim() === "") above -= 1;
-      if (above < 0 || !TIMING_COMMENT.test(lines[above] ?? "")) sites += 1;
-    }
+  const starts = [
+    ...BARE_SLEEPS.flatMap((pattern) => [...code.matchAll(pattern)].map((match) => match.index)),
+    ...timerPromises(code),
+  ];
+  for (const start of starts) {
+    const line = code.slice(0, start).split("\n").length - 1;
+    let above = line - 1;
+    while (above >= 0 && (lines[above] ?? "").trim() === "") above -= 1;
+    if (above < 0 || !TIMING_COMMENT.test(lines[above] ?? "")) sites += 1;
   }
   return sites;
 }
