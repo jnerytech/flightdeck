@@ -1630,8 +1630,15 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await go.waitFor({ timeout: SESSION_WAIT });
     // Counts only: what changed and how big, never a word of the conversation or the code.
     const text = (await dialog.textContent()) ?? "";
-    if (!text.includes(c.t("teleportUi.changed", { n: 2 }))) {
-      throw new Error(`o resumo devia contar 2 arquivos: ${text.slice(0, 300)}`);
+    // How many files changed depends on the demo's repository, which other journeys edit: a count.
+    const counted = new RegExp(
+      c
+        .t("teleportUi.changed", { n: "§" })
+        .replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        .replace("§", "[1-9]\\d*"),
+    );
+    if (!counted.test(text)) {
+      throw new Error(`o resumo devia contar os arquivos alterados: ${text.slice(0, 300)}`);
     }
     for (const leak of ["Ajuste", "revise", "export const"]) {
       if (text.includes(leak))
