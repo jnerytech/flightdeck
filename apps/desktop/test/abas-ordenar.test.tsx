@@ -75,7 +75,10 @@ describe("abas-ordenar: reordenar pelo teclado", () => {
 
   test("a move is announced to a screen reader with the new place", async () => {
     await three();
-    expect(screen.queryByRole("status", { name: "Posição das abas" })?.textContent ?? "").toBe("");
+    // Choosing the host spoke its name and tabs; nothing about a move yet.
+    expect(screen.queryByRole("status", { name: "Posição das abas" })?.textContent).toBe(
+      "alfa: 3 abas",
+    );
     await press(tab("Aprovações automáticas"), "ArrowLeft");
     expect(screen.queryByRole("status", { name: "Posição das abas" })?.textContent).toBe(
       "Aba Aprovações automáticas movida para a posição 2 de 3",

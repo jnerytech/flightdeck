@@ -110,7 +110,9 @@ export function Areas(
       {areas.flatMap((area, i) => {
         const pane = (
           <section
-            key={area.id}
+            // The first area is one pane for every host: its tab row lives on across a switch of
+            // host, so it can say which host it switched to (issue #644).
+            key={i === 0 ? "first" : area.id}
             aria-label={t("tabs.area", { n: String(i + 1) })}
             className="flex min-h-0 min-w-0 flex-col"
             onPointerDownCapture={() => workspace.focusArea(i as 0 | 1)}

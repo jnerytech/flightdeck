@@ -130,17 +130,23 @@ export function TabBar(
   const [dropOn, setDropOn] = useState<{ id: string; side: "before" | "after" } | null>(null);
   /** What a screen reader is told about the last move or the host the row switched to. */
   const [announcement, setAnnouncement] = useState("");
-  // The first area's row says which host it switched to and how many tabs it has.
+  // The first area's row says which host it switched to and how many tabs it has, once, by its name.
+  // A window that opens on a host says nothing, and neither does a host not loaded yet: the id is
+  // not a name a person knows.
   const rowHost = shared ? store.hostTabs.hostId : null;
+  const rowName = state.hosts.find((h) => h.id === rowHost)?.name ?? null;
   const hostTabCount = rowHost ? store.hostTabs.tabCount(rowHost) : 0;
-  const hostLabel = state.hosts.find((h) => h.id === rowHost)?.name ?? rowHost;
-  const announcedHost = useRef<string | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only a change of host speaks, not a new tab
+  const announcedHost = useRef<string | null | undefined>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new tab in the same host does not speak
   useEffect(() => {
-    if (!rowHost || announcedHost.current === rowHost) return;
+    if (announcedHost.current === undefined) {
+      announcedHost.current = rowHost;
+      return;
+    }
+    if (!rowHost || rowName === null || announcedHost.current === rowHost) return;
     announcedHost.current = rowHost;
-    setAnnouncement(t("tabs.hostCount", { host: hostLabel ?? rowHost, n: hostTabCount }));
-  }, [rowHost]);
+    setAnnouncement(t("tabs.hostCount", { host: rowName, n: hostTabCount }));
+  }, [rowHost, rowName]);
   /** The tab a keyboard move just went off with: the focus goes back to it. */
   const focusTab = useRef<string | null>(null);
   const active = sharedActive ? undefined : tabs.tabs.find((tab) => tab.id === tabs.activeId);
@@ -244,6 +250,11 @@ export function TabBar(
             const hostName = tabHost
               ? (state.hosts.find((h) => h.id === tabHost)?.name ?? tabHost)
               : undefined;
+            const ariaLabel = hostName
+              ? t("tabs.named", { title: pinnedLabel, host: hostName })
+              : tab.pinned
+                ? pinnedLabel
+                : undefined;
             return (
               // The wrapper is invisible to the tablist: the tab and its × are siblings inside it.
               <div
@@ -273,12 +284,9 @@ export function TabBar(
                     {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
                     data-tab-id={tab.id}
                     aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
-                    // A pinned tab shows no title, so its name is set here, with the badge's words.
-                    {...(tab.pinned ? { "aria-label": pinnedLabel } : {})}
-                    // A host's tab is named with its host: its title no longer carries the name.
-                    {...(hostName
-                      ? { "aria-label": t("tabs.named", { title: pinnedLabel, host: hostName }) }
-                      : {})}
+                    // A pinned tab shows no title, and a host's tab no longer carries its host's name
+                    // in it: the name is set here, with the badge's words.
+                    {...(ariaLabel ? { "aria-label": ariaLabel } : {})}
                     className="tab-button"
                     onClick={() => store.hostTabs.activate(tab.id)}
                     onDoubleClick={() => own.commit(tab.id)}
@@ -451,7 +459,7 @@ export function TabBar(
         <Plus />
       </Button>
       {props.children}
-      <div role="status" aria-live="polite" aria-label={t("tabs.position")} className="sr-only">
+      <div role="status" aria-label={t("tabs.position")} className="sr-only">
         {announcement}
       </div>
     </div>
