@@ -123,4 +123,18 @@ describe("host-tabs-store: each host has its own tabs in the app's store (issue 
     expect(store.router.current).toEqual({ name: "history", host: "ha" });
     expect(store.hostTabs.onShared).toBe(false);
   });
+  test("closing a terminal tab of another host waits for the answer, then closes that host's tab", async () => {
+    const { store } = twoHosts();
+    store.router.push({ name: "terminal", host: "ha", terminalId: "t1" } as never);
+    store.router.push({ name: "history", host: "hb" });
+    const group = store.hostTabs.groups().find((g) => g.hostId === "ha");
+    const tab = group?.tabs.tabs[0];
+    expect(tab?.router.current.name).toBe("terminal");
+    (store as unknown as { hostCommand: () => Promise<unknown> }).hostCommand = async () => ({});
+    store.closeTab(group?.tabs as never, tab?.id ?? "");
+    expect(store.getState().closingTerminal?.tabId).toBe(tab?.id);
+    await store.finishCloseTerminal(false);
+    const after = store.hostTabs.groups().find((g) => g.hostId === "ha");
+    expect(after?.tabs.tabs.some((other) => other.id === tab?.id)).toBe(false);
+  });
 });
