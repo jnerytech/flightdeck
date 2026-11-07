@@ -42,6 +42,8 @@ const FULL: ProjectLoad = {
   skills: ["tdd-area", "new-phase"],
   agents: ["spec-verifier", "security-reviewer"],
   allowRules: ["Bash(bun test:*)", "Bash(bun run lint)"],
+  // Three more rules were cut from the listing: they still count.
+  omitted: { hooks: 0, mcpServers: 0, allowRules: 3, envKeys: 0 },
   mcpServers: [{ name: "db", file: ".mcp.json", command: "node db.js" }],
   envKeys: ["SONAR_TOKEN"],
 };
@@ -64,29 +66,34 @@ describe("harness: a project's Claude Code setup as a checklist (#75)", () => {
       { part: "hooks", found: true, detail: ["format", "gitAdd", "secrets"] },
       { part: "skills", found: true, detail: ["tdd-area", "new-phase"] },
       { part: "agents", found: true, detail: ["spec-verifier", "security-reviewer"] },
-      { part: "permissions", found: true, detail: ["2"] },
+      { part: "permissions", found: true, detail: ["5"] },
       { part: "mcp", found: true, detail: ["db"] },
     ]);
   });
 
-  test("a hook is found whatever it does; its kinds come only from commands that say so", () => {
-    const hooks = (commands: string[]) =>
-      harnessParts({
-        ...EMPTY,
-        hooks: [{ event: "PostToolUse", file: ".claude/settings.json", commands }],
-      })[1];
+  test("a hook is found whatever it does; a kind needs a command that says so, on the event it acts on", () => {
+    const hooks = (event: string, commands: string[]) =>
+      harnessParts({ ...EMPTY, hooks: [{ event, file: ".claude/settings.json", commands }] })[1];
     expect([
-      hooks(["./notify.sh"]),
-      hooks(["prettier --write ."]),
-      hooks(["ruff format"]),
-      hooks(["git diff --stat"]),
-      hooks(["cat ~/.aws/credentials"]),
+      hooks("PostToolUse", ["./notify.sh"]),
+      hooks("PostToolUse", ["prettier --write ."]),
+      hooks("PostToolUse", ["ruff format"]),
+      // A formatter runs after an edit; before one it formats nothing the agent wrote.
+      hooks("PreToolUse", ["prettier --write ."]),
+      // A check on git add or on secret files acts before the tool runs; after it, it guards nothing.
+      hooks("PreToolUse", ["./guard.sh git add"]),
+      hooks("PostToolUse", ["git add -A"]),
+      hooks("PreToolUse", ["./deny.sh .env credentials"]),
+      hooks("PostToolUse", ["cat ~/.aws/credentials"]),
     ]).toEqual([
       { part: "hooks", found: true, detail: [] },
       { part: "hooks", found: true, detail: ["format"] },
       { part: "hooks", found: true, detail: ["format"] },
       { part: "hooks", found: true, detail: [] },
+      { part: "hooks", found: true, detail: ["gitAdd"] },
+      { part: "hooks", found: true, detail: [] },
       { part: "hooks", found: true, detail: ["secrets"] },
+      { part: "hooks", found: true, detail: [] },
     ]);
   });
 

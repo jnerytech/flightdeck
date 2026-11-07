@@ -35,7 +35,9 @@ const LOAD: ProjectLoad = {
   omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
 };
 
-function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {}) {
+function setup(
+  options: { language?: "en" | "pt-BR"; features?: string[]; load?: ProjectLoad | null } = {},
+) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
   });
@@ -45,7 +47,7 @@ function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {})
   store.hostCommand = (async (_host: string, type: string) => {
     if (type === "project.trust.state")
       return { items: [{ path: "/work/api", trusted: false, via: null }] };
-    if (type === "project.trust.inspect") return LOAD;
+    if (type === "project.trust.inspect") return options.load === undefined ? LOAD : options.load;
     return null;
   }) as never;
   const appState = {
@@ -85,7 +87,7 @@ describe("harness-ui: the project's Claude Code setup as a checklist (#75)", () 
       row("Hooks").includes("formatter after edits"),
       row("Skills").includes("Missing"),
       row("Subagents").includes("reviewer"),
-      row("Permissions").includes("2 allow rules"),
+      row("Permissions").includes("Allow rules: 2"),
       row("MCP servers").includes("Missing"),
       // Names of environment variables are for the trust panel, never this card.
       (screen.queryByRole("region", { name: "Claude Code setup" })?.textContent ?? "").includes(
@@ -113,5 +115,30 @@ describe("harness-ui: the project's Claude Code setup as a checklist (#75)", () 
     render(setup({ features: [] }));
     await stays(() => screen.queryByRole("region", { name: "Claude Code setup" }) === null);
     expect(screen.queryByText("4 of 6 parts found")).toBeNull();
+  });
+
+  test("a listing the host refuses shows no card; one with unreadable files says parts may be missing", async () => {
+    render(setup({ load: null }));
+    await settle(
+      () => screen.queryByText("Project configuration") !== null,
+      5000,
+      "the trust panel",
+    );
+    await uiIdle();
+    const refused = screen.queryByRole("region", { name: "Claude Code setup" }) === null;
+    cleanup();
+    render(setup({ load: { ...LOAD, unreadable: [".claude/settings.json"] } }));
+    await settle(
+      () => screen.queryByText("What this project would load") !== null,
+      5000,
+      "the listing",
+    );
+    await uiIdle();
+    expect([
+      refused,
+      screen.queryByText(
+        "Some of the project's files could not be read: a part shown as missing may be there.",
+      ) !== null,
+    ]).toEqual([true, true]);
   });
 });
