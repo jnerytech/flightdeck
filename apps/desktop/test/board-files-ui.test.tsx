@@ -10,6 +10,8 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { BoardView } = await import("../src/ui/BoardView.tsx");
+// The app gives its screens the language through this context (App.tsx); the panel reads it.
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -40,6 +42,7 @@ const TREES: Record<string, Record<string, FileListing["entries"]>> = {
     ],
     src: [{ name: "b-only.ts", kind: "file" }],
   },
+  "project:p1": { "": [{ name: "api-readme.md", kind: "file" }] },
   "card:C": {
     "": [
       { name: "src", kind: "dir" },
@@ -49,7 +52,21 @@ const TREES: Record<string, Record<string, FileListing["entries"]>> = {
   },
 };
 
+/** What the host finds, by mode and query; anything else finds nothing. */
+const SEARCH: Record<string, { matches: object[]; truncated: boolean }> = {
+  "name|only": {
+    matches: [{ path: "src/b-only.ts" }, { path: ".env.only", secret: true }],
+    truncated: false,
+  },
+  "content|hello": {
+    matches: [{ path: "src/b-only.ts", line: 3, text: "const hello = 1;" }],
+    truncated: true,
+  },
+};
+const NONE = { matches: [], truncated: false };
+
 function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {}) {
+  const searches: string[] = [];
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
   });
@@ -86,22 +103,30 @@ function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {})
       const entries = TREES[target]?.[dir] ?? [];
       return { ok: true, data: { dir, entries, truncated: false } };
     }
+    if (type === "file.search") {
+      const { mode, query } = payload as { mode: "name" | "content"; query: string };
+      searches.push(`${target}|${mode}|${query}`);
+      if (query === "boom") return { ok: false, code: "command_failed", message: "rg failed" };
+      return { ok: true, data: { mode, query, ...(SEARCH[`${mode}|${query}`] ?? NONE) } };
+    }
     return { ok: true, data: {} };
   }) as never;
   render(
-    <BoardView
-      store={store}
-      hostId="h1"
-      projectId="p1"
-      onOpenCard={() => {}}
-      onOpenSettings={() => {}}
-    />,
+    <TContext.Provider value={store.i18n.t}>
+      <BoardView
+        store={store}
+        hostId="h1"
+        projectId="p1"
+        onOpenCard={() => {}}
+        onOpenSettings={() => {}}
+      />
+    </TContext.Provider>,
   );
   const pick = (kind: "primary" | "worktree", path: string, branch: string) =>
     act(async () => {
       store.setWorktreeFilter({ hostId: "h1", projectId: "p1", kind, path, branch });
     });
-  return { store, pick };
+  return { store, pick, searches };
 }
 
 /** A ResizeObserver whose callbacks the test fires with the width it wants. */
@@ -245,5 +270,96 @@ describe("board-files-ui: the files of the picked worktree beside the board (#11
   // The prints check the panel's contrast and overflow (#98, #103) at every narrow size too.
   test("the prints measure the board with its files at the narrow sizes", () => {
     expect(NARROW_SHOTS.includes("board-arquivos")).toBe(true);
+  });
+});
+
+describe("board-files-ui: search over the whole tree, on a host with file.search (#117, #797)", () => {
+  const SEARCHING = ["file.list", "file.search"];
+  const type = async (label: string, value: string) => {
+    const field = screen.queryByRole("searchbox", { name: label });
+    if (!field) return;
+    await act(async () => {
+      fireEvent.change(field, { target: { value } });
+    });
+  };
+  const tab = async (name: string) => {
+    const trigger = screen.queryByRole("tab", { name });
+    if (!trigger) return;
+    await act(async () => {
+      fireEvent.mouseDown(trigger);
+      fireEvent.click(trigger);
+    });
+  };
+
+  test("by name it finds files in folders never opened, and a credential's name shows as hidden", async () => {
+    const { pick, searches } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await type("Search names", "only");
+    await settleMaybe(() => shows("Files · fd/b", "src/b-only.ts"));
+    const region = panel("Files · fd/b");
+    expect({
+      found: region
+        ? within(region).queryByRole("button", { name: "src/b-only.ts" }) !== null
+        : false,
+      secret: shows("Files · fd/b", ".env.only") && shows("Files · fd/b", "Hidden"),
+      tree: shows("Files · fd/b", "b-readme.md"),
+      asked: searches.includes("card:B|name|only"),
+    }).toEqual({ found: true, secret: true, tree: false, asked: true });
+  });
+
+  test("by content it lists each match as path:line with the line, and says when there are more", async () => {
+    const { pick, searches } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await tab("Content");
+    await type("Search contents", "hello");
+    await settleMaybe(() => shows("Files · fd/b", "src/b-only.ts:3"));
+    expect({
+      place: shows("Files · fd/b", "src/b-only.ts:3"),
+      line: shows("Files · fd/b", "const hello = 1;"),
+      more: shows("Files · fd/b", "More matches than shown here. Narrow the search."),
+      asked: searches.includes("card:B|content|hello"),
+    }).toEqual({ place: true, line: true, more: true, asked: true });
+  });
+
+  test("nothing found says so; a search the host refuses says why", async () => {
+    const { pick } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await type("Search names", "zzz");
+    await settleMaybe(() => shows("Files · fd/b", "Nothing found."));
+    const none = shows("Files · fd/b", "Nothing found.");
+    await type("Search names", "boom");
+    await settleMaybe(
+      () => (panel("Files · fd/b")?.querySelector("[role=alert]") ?? null) !== null,
+    );
+    expect({
+      none,
+      refused: (panel("Files · fd/b")?.querySelector("[role=alert]") ?? null) !== null,
+    }).toEqual({ none: true, refused: true });
+  });
+
+  test("the main checkout shows the project's own files", async () => {
+    const { pick } = setup({ features: SEARCHING });
+    await pick("primary", "/x/api", "main");
+    await settleMaybe(() => shows("Files · main", "api-readme.md"));
+    expect({
+      files: shows("Files · main", "api-readme.md"),
+      hint: shows("Files · main", "Files show for a worktree. Pick one in the sidebar."),
+    }).toEqual({ files: true, hint: false });
+  });
+
+  test("em português, as abas e a busca por nome", async () => {
+    const { pick, searches } = setup({ features: SEARCHING, language: "pt-BR" });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settleMaybe(() => shows("Arquivos · fd/b", "b-readme.md"));
+    const tabs = ["Nomes", "Conteúdo"].map((name) => screen.queryByRole("tab", { name }) !== null);
+    await type("Buscar nomes", "only");
+    await settleMaybe(() => searches.includes("card:B|name|only"));
+    expect({ tabs, asked: searches.includes("card:B|name|only") }).toEqual({
+      tabs: [true, true],
+      asked: true,
+    });
   });
 });
