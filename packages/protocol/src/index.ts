@@ -2880,6 +2880,17 @@ export const WatchSettings = z.object({
   maxFailures: z.number().int().min(1).max(10),
   /** Cost of every round of the project in a day, in US$; `null` for no limit. */
   dailyUsd: z.number().positive().nullable(),
+  /** Issue #77: globs of files a round may change outside its PR (lockfiles); absent from older daemons. */
+  driftAllow: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .max(200)
+        .regex(/^[^\p{Cc}]+$/u, "a glob has no control characters"),
+    )
+    .max(50)
+    .optional(),
 });
 export type WatchSettings = z.infer<typeof WatchSettings>;
 
@@ -2887,7 +2898,8 @@ export const FixRoundInfo = z.object({
   id: z.string(),
   cardId: z.string(),
   n: z.number().int(),
-  status: z.enum(["running", "pushed", "failed", "stopped"]),
+  /** `held`: the round drifted from its PR (#77): its commits wait for you to push or drop them. */
+  status: z.enum(["running", "pushed", "failed", "stopped", "held"]),
   trigger: z.object({
     failed: z.array(z.string()),
     conflicts: z.boolean(),
@@ -2899,6 +2911,11 @@ export const FixRoundInfo = z.object({
   turns: z.number().int(),
   startedAt: z.string(),
   endedAt: z.string().nullable(),
+  /** A held round's files outside the PR and its churn against the limit (#77). */
+  drift: z
+    .object({ outside: z.array(z.string()), churn: z.number().int(), limit: z.number().int() })
+    .nullable()
+    .optional(),
 });
 export type FixRoundInfo = z.infer<typeof FixRoundInfo>;
 
@@ -3477,6 +3494,17 @@ export const Command = z.discriminatedUnion("type", [
   cmd(
     "watch.extend",
     z.object({ cardId: z.string().min(1), rounds: z.number().int().min(1).max(10) }).strict(),
+  ),
+  // Issue #77: the person pushes a held round as it is, or drops its commits.
+  cmd(
+    "watch.resolveHeld",
+    z
+      .object({
+        cardId: z.string().min(1),
+        roundId: z.string().min(1),
+        action: z.enum(["push", "drop"]),
+      })
+      .strict(),
   ),
   cmd("watch.trace", z.object({ cardId: z.string().min(1) })),
   /** The PR description made from the card's sessions, for the person to edit: nothing is opened. */
@@ -4963,6 +4991,7 @@ export interface CommandResults {
   "watch.set": WatchInfo;
   "watch.get": WatchInfo;
   "watch.extend": WatchInfo;
+  "watch.resolveHeld": WatchInfo;
   "watch.trace": CardTraceInfo;
   "watch.describe": { text: string; redacted: number };
   "watch.byUrl": UrlTraceInfo;
