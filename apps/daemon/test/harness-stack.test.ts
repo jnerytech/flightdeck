@@ -133,6 +133,11 @@ describe("harness-stack: what a project is built with, read from its manifests (
     expect(await detectStack(root)).toEqual({ stacks: [], commands: none });
   });
 
+  test("a folder that is gone is a project with nothing, not an error", async () => {
+    const gone = join(tempDir("fd-stack-"), "gone");
+    expect(await detectStack(gone).catch(() => "threw")).toEqual({ stacks: [], commands: none });
+  });
+
   test("the server answers project.harness.stack inside the allowed roots only, and a host without it says so", async () => {
     const root = repo({ "go.mod": "module x\n" });
     const { manager } = newManager();
