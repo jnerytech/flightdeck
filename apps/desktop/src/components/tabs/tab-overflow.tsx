@@ -12,6 +12,8 @@ export interface TabRow {
   title: string;
   /** The host it is on, in muted text; empty when the screen is not a host's. */
   host: string;
+  /** The id of that host, for its color; absent when the screen is not a host's. */
+  hostId?: string;
   icon: LucideIcon;
   kind: string;
   /** The tab on screen. */
