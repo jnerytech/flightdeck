@@ -294,28 +294,25 @@ describe("planRelated", () => {
 
   test("#762: a scripts/ entry file changed in the same diff as its new importer is gated, once", () => {
     const repo: Record<string, string> = {
-      "scripts/demo-shots.ts": "export const names = 1;",
-      "scripts/test/narrow.test.ts": `import "../demo-shots.ts";`,
+      "scripts/entry.ts": "export const names = 1;",
+      "scripts/test/narrow.test.ts": `import "../entry.ts";`,
     };
-    const base = fakeGit(
-      ["scripts/demo-shots.ts", "scripts/test/narrow.test.ts"],
-      Object.keys(repo),
-    );
+    const base = fakeGit(["scripts/entry.ts", "scripts/test/narrow.test.ts"], Object.keys(repo));
     const plan = planRelated({
       platform: "linux",
       git: (args) => (args[0] === "show" ? "" : base(args)),
       readFile: (path) => repo[path] ?? "",
       coverageDir: "/tmp/cov",
     });
-    expect(plan.targets).toEqual(["scripts/demo-shots.ts"]);
+    expect(plan.targets).toEqual(["scripts/entry.ts"]);
   });
 
   test("#762: a file a changed test newly imports joins the changed-file gate, with its own tests", () => {
     const repo: Record<string, string> = {
-      "scripts/demo-shots.ts": "export const names = 1;",
+      "scripts/entry.ts": "export const names = 1;",
       "scripts/lib/narrow.ts": "export const narrow = 1;",
-      "scripts/test/narrow.test.ts": `import "../lib/narrow.ts";\nimport "../demo-shots.ts";`,
-      "scripts/test/demo-shots.test.ts": `import "../demo-shots.ts";`,
+      "scripts/test/narrow.test.ts": `import "../lib/narrow.ts";\nimport "../entry.ts";`,
+      "scripts/test/entry.test.ts": `import "../entry.ts";`,
     };
     const base = fakeGit(["scripts/test/narrow.test.ts"], Object.keys(repo));
     const calls: string[][] = [];
@@ -332,13 +329,13 @@ describe("planRelated", () => {
       readFile: (path) => repo[path] ?? "",
       coverageDir: "/tmp/cov",
     });
-    expect(plan.targets).toEqual(["scripts/demo-shots.ts"]);
+    expect(plan.targets).toEqual(["scripts/entry.ts"]);
     expect(plan.command?.filter((arg) => arg.endsWith(".test.ts"))).toEqual([
-      "./scripts/test/demo-shots.test.ts",
+      "./scripts/test/entry.test.ts",
       "./scripts/test/narrow.test.ts",
     ]);
     expect(plan.output).toContain(
-      "scripts/demo-shots.ts: newly imported by a changed test, so it is held to 100% too (#762)",
+      "scripts/entry.ts: newly imported by a changed test, so it is held to 100% too (#762)",
     );
     // Without the coverage gate there is nothing to hold it to, and git is not asked.
     calls.length = 0;
