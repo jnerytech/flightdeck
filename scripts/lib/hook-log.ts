@@ -80,20 +80,27 @@ export function summarizeHookLog(text: string): string {
       out.push(`  ${rule.padEnd(ruleWidth)}${n}`);
     }
   }
-  const overrides = entries.filter(
-    (e) => e.rule === "push-wait" && e.decision === "waived" && e.detail,
-  );
-  if (overrides.length > 0) {
-    out.push("", "push-wait overrides:");
-    for (const e of overrides) {
-      const age = e.minutes === undefined ? "no run in progress" : `run ${e.minutes} min old`;
-      const when = `${e.t.slice(0, 16).replace("T", " ")} UTC`;
-      out.push(`  ${when}  ${age.padEnd(20)}${printable(e.detail ?? "")}`);
-    }
-  }
+  out.push(...overrideLines(entries));
   const skipped = lines.length - entries.length;
   if (skipped > 0) out.push("", `${skipped} line(s) skipped (not a hook log entry)`);
   return out.join("\n");
+}
+
+/** #741: each push-wait override with its time, the cancelled run's age and its reason. */
+function overrideLines(entries: HookLogEntry[]): string[] {
+  const overrides = entries.filter(
+    (e) => e.rule === "push-wait" && e.decision === "waived" && e.detail,
+  );
+  if (overrides.length === 0) return [];
+  return [
+    "",
+    "push-wait overrides:",
+    ...overrides.map((e) => {
+      const age = e.minutes === undefined ? "no run in progress" : `run ${e.minutes} min old`;
+      const when = `${e.t.slice(0, 16).replace("T", " ")} UTC`;
+      return `  ${when}  ${age.padEnd(20)}${printable(e.detail ?? "")}`;
+    }),
+  ];
 }
 
 /** Nearest-rank percentile of sorted values, rounded to whole milliseconds. */
