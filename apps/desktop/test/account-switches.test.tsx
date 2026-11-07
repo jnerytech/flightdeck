@@ -94,7 +94,10 @@ for (const [lang, dict] of [
       expect(item(labels.badges)?.getAttribute("aria-checked")).toBe("true");
       expect(item(labels.whatsNew)?.getAttribute("aria-checked")).toBe("false");
       expect(item(labels.setup)?.getAttribute("aria-checked")).toBe("false");
-      await choose(labels.badges);
+      // The menu is open: pick the first switch from it, then open it again for each of the others.
+      await act(async () => {
+        fireEvent.click(item(labels.badges) as HTMLElement);
+      });
       await choose(labels.whatsNew);
       await choose(labels.setup);
       expect(calls).toEqual(["badges false", "whatsNew true", "setup true"]);
