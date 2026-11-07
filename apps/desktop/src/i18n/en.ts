@@ -3696,6 +3696,7 @@ export const en: Dictionary = {
     failed:
       "Could not read the workflows. Check that the host is connected, then open the page again.",
   },
+  sessionViews: { label: "Session views" },
   shortcuts: {
     title: "Keyboard shortcuts",
     close: "Close the shortcuts",

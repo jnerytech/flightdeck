@@ -3703,6 +3703,7 @@ export const ptBR = {
     empty: "Nenhum workflow na branch base ainda.",
     failed: "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
   },
+  sessionViews: { label: "Visões da sessão" },
   shortcuts: {
     title: "Atalhos de teclado",
     close: "Fechar os atalhos",
