@@ -157,7 +157,7 @@ import { basename, isInside } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
-import { isHot } from "./quota.ts";
+import { QuotaNotices } from "./quota-notices.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
 import {
@@ -944,7 +944,7 @@ export class AppStore {
   private searchSeq = 0;
   private noticeSeq = 0;
   /** Quota windows already notified, by host, window and reset. */
-  private readonly quotaNotified = new Set<string>();
+  private readonly quotaNotices = new QuotaNotices();
   /** The sessions that belong to a team, by session key (issue #149: workers are folded). */
   private readonly teamOf = new Map<
     string,
@@ -3644,14 +3644,12 @@ export class AppStore {
   }
 
   /** A discarded card leaves; any other replaces what the app had. */
-  /** Crossing `pauseAt` notifies once per host, window and reset. */
+  /** Crossing `pauseAt` (and 95%, and the plan's refusal) notifies once per account, window and reset. */
   private onQuota(hostId: string, state: QuotaState): void {
     this.update({ quota: { ...this.state.quota, [hostId]: state } });
     const host = this.state.hosts.find((h) => h.id === hostId);
     for (const window of state.windows) {
-      const key = `${hostId}/${window.window}/${window.resetsAt}`;
-      if (!host || !isHot(window, state.pauseAt) || this.quotaNotified.has(key)) continue;
-      this.quotaNotified.add(key);
+      if (!host || !this.quotaNotices.check(window, state.pauseAt, this.now())) continue;
       const { t } = this.i18n;
       const known = window.window === "five_hour" || window.window === "seven_day";
       const label = known ? t(`quota.windows.${window.window}` as Key) : window.window;
