@@ -62,6 +62,22 @@ describe("board-sync-gaps: the Sync dialog", () => {
     await waitFor(() => expect(screen.queryByText(t.never)).not.toBeNull());
   });
 
+  // The "no boards" line also shows for a frame while the list loads, so the tests that list
+  // boards reach it only by timing (the release gate saw line 164 uncovered once, #747): this
+  // one waits for the host's answer and asserts the line on purpose.
+  test("not linked and the host has no board to offer: the dialog says so, with nothing to pick", async () => {
+    const { store, asked } = stubStore({ linked: false });
+    render(<BoardSyncControl store={store} hostId="h" projectId="p" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: t.button }));
+    });
+    await waitFor(() => expect(asked).toContain("boardsync.boards"));
+    const dialog = within(screen.getByRole("dialog"));
+    await waitFor(() => expect(dialog.queryByText(t.noBoards)).not.toBeNull());
+    expect(dialog.queryAllByRole("radio")).toHaveLength(0);
+    expect(dialog.getByRole("button", { name: t.link }).hasAttribute("disabled")).toBe(true);
+  });
+
   test("turning push on asks first, and Cancel takes the question back", async () => {
     await open(linked);
     const dialog = within(screen.getByRole("dialog"));
