@@ -579,17 +579,17 @@ export function heavyRunWaived(command: string): boolean {
 export function guardAllowLogs(
   command: string | undefined,
   env: Record<string, string | undefined>,
-): Array<{ rule: string | null; decision: "allow" | "waived" }> {
-  const waived: Array<{ rule: string; decision: "waived" }> = [];
+  push?: { cwd: string; deps: PushWaitDeps },
+): Array<{ rule: string | null; decision: "allow" | "waived"; detail?: string; minutes?: number }> {
+  const waived: Array<{ rule: string; decision: "waived"; detail?: string; minutes?: number }> = [];
   if (typeof command === "string") {
     // The coordinator passes the heavy-run rule without an override: there is no waiver to count.
     if (!env.FLIGHTDECK_COORDINATOR && heavyRunWaived(command)) {
       waived.push({ rule: "slot-heavy", decision: "waived" });
     }
     if (commitWaived(command)) waived.push({ rule: "commit", decision: "waived" });
-    if (!env.FLIGHTDECK_COORDINATOR && pushNowWaived(command)) {
-      waived.push({ rule: "push-wait", decision: "waived" });
-    }
+    const override = env.FLIGHTDECK_COORDINATOR ? null : pushNowOverride(command, push);
+    if (override) waived.push({ rule: "push-wait", decision: "waived", ...override });
   }
   return waived.length > 0 ? waived : [{ rule: null, decision: "allow" }];
 }
@@ -821,10 +821,49 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
   );
 }
 
+/**
+ * `fn`, made only while `now()` is at or before `limit` (#826 review); past it, null with no call.
+ * The guard wraps its gh and git calls so each starts early enough to end inside the hook's 10 s.
+ */
+export function withBudget<A extends unknown[], R>(
+  fn: (...args: A) => R | null,
+  now: () => number,
+  limit: number,
+): (...args: A) => R | null {
+  return (...args) => (now() > limit ? null : fn(...args));
+}
+
+/** Text with control, format (bidi, zero-width), surrogate, private-use and line-separator characters out. */
+export function printable(text: string): string {
+  return text.replace(/[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Zl}\p{Zp}]/gu, "");
+}
+
+/**
+ * Token shapes of common services (#821 review): GitHub (also after a `_`), GitLab, npm, Slack,
+ * OpenAI-style keys, AWS access keys and JWTs. Best effort: a reason is not a place for a secret.
+ */
+const TOKEN_SHAPES: readonly RegExp[] = [
+  /(?:gh[pousr]_|github_pat_)\w+/g,
+  /glpat-[\w-]+/g,
+  /\bnpm_\w+/g,
+  /xox[abprs]-[\w-]+/g,
+  /\bsk-[\w-]{16,}/g,
+  /AKIA[0-9A-Z]{16}/g,
+  /eyJ[\w-]+\.[\w-]+\.[\w-]+/g,
+];
+
 /** A command with the user and password of a URL, and a secret-looking variable's value, hidden. */
 function redacted(text: string): string {
-  return text
-    .replace(/:\/\/[^/@\s]+@/g, "://***@")
+  return TOKEN_SHAPES.reduce(
+    (out, shape) => out.replace(shape, "***"),
+    text.replace(/:\/\/[^/@\s]+@/g, "://***@"),
+  )
+    .replace(/\b(Authorization:)\s*(?:(?:Basic|Bearer|Token)\s+)?\S+/gi, "$1 ***")
+    .replace(
+      /--((?:\w+-)*(?:token|password|passwd|secret|key))([= ])(?:"[^"]*"|'[^']*'|\S+)/gi,
+      "--$1$2***",
+    )
+    .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
     .replace(
       /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
       "$1=***",
@@ -832,17 +871,43 @@ function redacted(text: string): string {
 }
 
 /**
- * Whether a push goes ahead on a FLIGHTDECK_PUSH_NOW override with its reason (#741). The log counts
- * every such push, also one the rule would have let through: harness:stats shows an upper bound.
+ * A push that goes ahead on a FLIGHTDECK_PUSH_NOW override (#741), or null: its reason, with
+ * secrets hidden and cut at 200 characters, and, given the push's folder and deps, the age of the
+ * pushed branch's PR run (#741: logged so the overrides can be read). The log counts every such
+ * push, also one the rule would have let through: harness:stats shows an upper bound.
  */
-function pushNowWaived(command: string): boolean {
-  return gitCalls(command, "/").some(
-    (call) =>
-      call.sub === "push" &&
-      heavyReasonGiven(
-        prefixAssignment(command.slice(call.start, call.end), "FLIGHTDECK_PUSH_NOW"),
+function pushNowOverride(
+  command: string,
+  push?: { cwd: string; deps: PushWaitDeps },
+): { detail: string; minutes?: number } | null {
+  for (const call of gitCalls(command, push?.cwd ?? "/")) {
+    if (call.sub !== "push") continue;
+    const reason = prefixAssignment(command.slice(call.start, call.end), "FLIGHTDECK_PUSH_NOW");
+    if (!heavyReasonGiven(reason)) continue;
+    const dir = call.dir;
+    // A checkout outside the project is not the rule's: no waiver, and gh is not asked there. A
+    // folder the parse cannot tell (dir null) still logs the reason alone: an upper bound.
+    if (dir !== null && push?.deps.inProject && !push.deps.inProject(dir)) continue;
+    // Unprintable characters go first, so none reaches the terminal and none splits a secret.
+    // Cut before the redaction too, so its regexes never scan an unbounded reason; the last cut
+    // counts characters, never splitting one in two.
+    const detail = Array.from(
+      redacted(
+        printable(reason ?? "")
+          .trim()
+          .slice(0, 2000),
       ),
-  );
+    )
+      .slice(0, 200)
+      .join("");
+    if (!push || dir === null) return { detail };
+    const ages = pushedBranches(call, (args) => push.deps.git(args, dir)).flatMap((branch) => {
+      const run = push.deps.prRun(branch, dir);
+      return run?.inProgress ? [run.minutes] : [];
+    });
+    return ages.length > 0 ? { detail, minutes: Math.min(...ages) } : { detail };
+  }
+  return null;
 }
 
 const OWN_BRANCHES =

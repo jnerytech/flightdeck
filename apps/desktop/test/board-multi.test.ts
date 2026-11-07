@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
+import { translator } from "../src/i18n/index.ts";
 import { positionsBefore } from "../src/lib/board.ts";
 import {
   BoardWidth,
@@ -7,6 +8,9 @@ import {
   COLUMN_WIDTH_KEY,
   clampWidth,
   columnCount,
+  countLabel,
+  filteredColumnCount,
+  filteredCountLabel,
   moveMany,
   pruneSelection,
   rangeSelection,
@@ -136,12 +140,21 @@ describe("board-multi: the column width (issue #161)", () => {
 
 describe("board-multi: the counts (issue #161)", () => {
   test("a number, or n / total while a filter hides some", () => {
-    expect(columnCount(3, 3, false)).toBe("3");
-    expect(columnCount(2, 5, true)).toBe("2 / 5");
-    expect(columnCount(0, 4, true)).toBe("0 / 4");
-    expect(columnCount(3, 3, true)).toBe("3 / 3");
-    expect(columnCount(0, 0, false)).toBe("0");
-    expect(columnCount(0, 0, true)).toBe("0");
+    expect(columnCount(3)).toBe("3");
+    expect(columnCount(0)).toBe("0");
+    expect(filteredColumnCount(2, 5)).toBe("2 / 5");
+    expect(filteredColumnCount(0, 4)).toBe("0 / 4");
+    expect(filteredColumnCount(3, 3)).toBe("3 / 3");
+    expect(filteredColumnCount(0, 0)).toBe("0");
+  });
+
+  test("the same counts in words, for a screen reader", () => {
+    const t = translator("en");
+    expect(countLabel(t, 1)).toBe("1 card");
+    expect(countLabel(t, 3)).toBe("3 cards");
+    expect(filteredCountLabel(t, 1, 3)).toBe("1 of 3 cards");
+    expect(filteredCountLabel(t, 0, 0)).toBe("0 cards");
+    expect(filteredCountLabel(t, 1, 0)).toBe("1 card");
   });
 });
 

@@ -104,4 +104,37 @@ describe("host-tabs-store: each host has its own tabs in the app's store (issue 
     expect(Object.keys(store.hostTabs.snapshot().hosts)).toEqual(["ha"]);
     expect(store.activeHostId()).toBe("ha");
   });
+  test("the groups are each host's tabs, host by host, and a tab of another host can be activated", () => {
+    const { store } = twoHosts();
+    store.router.push({ name: "history", host: "ha" });
+    store.hostTabs.open({ name: "projects", host: "ha" });
+    store.router.push({ name: "history", host: "hb" });
+    const groups = store.hostTabs.groups();
+    expect(groups.map((g) => g.hostId)).toEqual(["ha", "hb"]);
+    expect(groups.map((g) => g.tabs.tabs.map((tab) => tab.router.current.name))).toEqual([
+      ["history", "projects"],
+      ["history"],
+    ]);
+    // The tab is of the other host: activating it switches the host and shows the tab.
+    const first = groups[0]?.tabs.tabs[0];
+    expect(store.hostTabs.hostId).toBe("hb");
+    store.hostTabs.activate(first?.id ?? "");
+    expect(store.hostTabs.hostId).toBe("ha");
+    expect(store.router.current).toEqual({ name: "history", host: "ha" });
+    expect(store.hostTabs.onShared).toBe(false);
+  });
+  test("closing a terminal tab of another host waits for the answer, then closes that host's tab", async () => {
+    const { store } = twoHosts();
+    store.router.push({ name: "terminal", host: "ha", terminalId: "t1" } as never);
+    store.router.push({ name: "history", host: "hb" });
+    const group = store.hostTabs.groups().find((g) => g.hostId === "ha");
+    const tab = group?.tabs.tabs[0];
+    expect(tab?.router.current.name).toBe("terminal");
+    (store as unknown as { hostCommand: () => Promise<unknown> }).hostCommand = async () => ({});
+    store.closeTab(group?.tabs as never, tab?.id ?? "");
+    expect(store.getState().closingTerminal?.tabId).toBe(tab?.id);
+    await store.finishCloseTerminal(false);
+    const after = store.hostTabs.groups().find((g) => g.hostId === "ha");
+    expect(after?.tabs.tabs.some((other) => other.id === tab?.id)).toBe(false);
+  });
 });

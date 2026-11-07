@@ -38,7 +38,7 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
   const needle = query.trim().toLowerCase();
 
   if (options === null) {
-    return <p role="status">{t("modelPicker.loading")}</p>;
+    return <output className="block">{t("modelPicker.loading")}</output>;
   }
   if (props.error !== undefined) {
     return (
@@ -102,7 +102,7 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
       ) : (
         <div
           id={`${base}-list`}
-          role="listbox"
+          role="listbox" // NOSONAR: custom listbox with grouped options and search; a native select cannot render it (ARIA APG listbox)
           aria-label={props.label}
           className="max-h-56 overflow-y-auto rounded-md border"
         >
@@ -136,7 +136,11 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
               items
             ) : (
               // biome-ignore lint/a11y/useSemanticElements: a listbox holds options and role=group, not a fieldset
-              <div key={group.name} role="group" aria-label={group.name}>
+              <div
+                key={group.name}
+                role="group" // NOSONAR: the group lives inside the listbox, where a fieldset's legend would be a child that is not an option (ARIA APG grouped listbox)
+                aria-label={group.name}
+              >
                 <p
                   aria-hidden="true"
                   className="px-3 pt-2 font-medium text-muted-foreground text-xs"
