@@ -7,6 +7,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
+const { TContext } = await import("../src/i18n/context.tsx");
 const { BoardView } = await import("../src/ui/BoardView.tsx");
 
 setDefaultTimeout(30_000);
@@ -84,13 +85,15 @@ function setup(options: { cards?: object[]; language?: "en" | "pt-BR" } = {}) {
     return { ok: true, data: {} };
   }) as never;
   render(
-    <BoardView
-      store={store}
-      hostId="h1"
-      projectId="p1"
-      onOpenCard={() => {}}
-      onOpenSettings={() => {}}
-    />,
+    <TContext.Provider value={store.i18n.t}>
+      <BoardView
+        store={store}
+        hostId="h1"
+        projectId="p1"
+        onOpenCard={() => {}}
+        onOpenSettings={() => {}}
+      />
+    </TContext.Provider>,
   );
   const moves = () => commands.filter(([, type]) => type === "card.move");
   return { store, commands, requests, moves };
@@ -133,6 +136,8 @@ describe("board-contracts-ui: Review asks for a PR and passing checks", () => {
     await click(within(dialog() as HTMLElement).getByRole("button", { name: "Cancel" }));
     expect(dialog() === null).toBe(true);
     expect(w.moves()).toEqual([]);
+    // The keyboard goes back to the card it asked about.
+    await settle(() => li("A").contains(document.activeElement));
     await dragTo("A", "In review");
     await click(within(dialog() as HTMLElement).getByRole("button", { name: "Move anyway" }));
     await settle(() => w.moves().length === 1);
@@ -292,7 +297,7 @@ describe("board-contracts-ui: a card says what it lacks, and a column says what 
       fireEvent.dragEnd(li("A"));
     });
     expect(lane("In review").getAttribute("data-needs")).toBeNull();
-    expect(lane("In review").textContent?.includes("Needs: a PR link while") ?? false).toBe(false);
+    expect(lane("In review").querySelector(".column-hint") === null).toBe(true);
   });
 
   test("it all reads in Portuguese too", async () => {

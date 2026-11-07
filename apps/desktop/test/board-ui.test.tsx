@@ -92,6 +92,15 @@ async function createCard(title: string, description = "faça") {
   await settle(() => cardItem(title) !== null);
 }
 
+/** Em revisão asks for a PR before a card goes there (#78): these cards have none, so go on anyway. */
+async function moveAnyway() {
+  const ask = await screen.findByRole("alertdialog");
+  expect(ask.textContent).toContain("não tem: um link de PR");
+  await act(async () => {
+    fireEvent.click(within(ask).getByRole("button", { name: "Mover mesmo assim" }));
+  });
+}
+
 async function drag(title: string, target: HTMLElement | null) {
   const item = cardItem(title);
   expect(item).not.toBeNull();
@@ -283,6 +292,7 @@ describe("board-ui", () => {
     await settle(() => column("Backlog")[1] === "B");
     expect(column("Backlog")).toEqual(["C", "B", "A"]);
     await drag("A", screen.queryByRole("region", { name: "Em revisão" }));
+    await moveAnyway();
     await settle(() => column("Em revisão").length === 1);
     expect(column("Em revisão")).toEqual(["A"]);
     expect(column("Backlog")).toEqual(["C", "B"]);
@@ -325,6 +335,7 @@ describe("board-ui", () => {
     await act(async () => {
       fireEvent.click(menuEntry("Mover para Em revisão") as HTMLElement);
     });
+    await moveAnyway();
     await settle(() => column("Em revisão").length === 1);
     expect(column("Em revisão")).toEqual(["A"]);
     expect(column("Backlog")).toEqual(["B"]);
