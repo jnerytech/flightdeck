@@ -135,7 +135,7 @@ describe("card-page-ask-ui: Start asks only where In progress confirms criteria"
     const w = setup();
     form(w);
     await click(screen.getByRole("button", { name: "Start" }));
-    expect(ask() === null).toBe(true);
+    expect(ask() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(starts(w)).toEqual([["h1", "card.start", { cardId: "c1" }]]);
   });
 
@@ -143,10 +143,10 @@ describe("card-page-ask-ui: Start asks only where In progress confirms criteria"
     const w = setup({ projects: [ASKING] });
     form(w);
     await click(screen.getByRole("button", { name: "Start" }));
-    expect(ask() === null).toBe(false);
+    expect(ask()).not.toBeNull();
     expect((ask() as HTMLElement).textContent).toContain("Start Cart screen anyway?");
     await click(within(ask() as HTMLElement).getByRole("button", { name: "Cancel" }));
-    expect(ask() === null).toBe(true);
+    expect(ask() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(starts(w)).toEqual([]);
     await click(screen.getByRole("button", { name: "Start" }));
     await click(within(ask() as HTMLElement).getByRole("button", { name: "Start anyway" }));
@@ -157,15 +157,15 @@ describe("card-page-ask-ui: Start asks only where In progress confirms criteria"
     const w = setup({ projects: [ASKING] });
     form(w, { description: "Goal\n- [ ] it works" });
     await click(screen.getByRole("button", { name: "Start" }));
-    expect(ask() === null).toBe(true);
-    expect(starts(w).length).toBe(1);
+    expect(ask() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+    expect(starts(w)).toHaveLength(1);
   });
 
   test("Start in the background follows the same rule", async () => {
     const w = setup({ projects: [ASKING] });
     form(w);
     await click(screen.getByRole("button", { name: "Start in the background" }));
-    expect(ask() === null).toBe(false);
+    expect(ask()).not.toBeNull();
     expect(w.background).toEqual([]);
     await click(within(ask() as HTMLElement).getByRole("button", { name: "Start anyway" }));
     await settle(() => w.background.length === 1);
@@ -176,7 +176,7 @@ describe("card-page-ask-ui: Start asks only where In progress confirms criteria"
     const w = setup();
     form(w);
     await click(screen.getByRole("button", { name: "Start in the background" }));
-    expect(ask() === null).toBe(true);
+    expect(ask() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => w.background.length === 1);
   });
 });
