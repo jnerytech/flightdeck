@@ -46,6 +46,7 @@ export const ptBR = {
     range: "Últimos 7 dias · todos os hosts",
     rangeHost: "Últimos 7 dias · {host}",
     rangeDays: "Últimos 7 dias",
+    rangeProject: "Últimos 7 dias · {project}",
     spend: "Gasto",
     noBudget: "Sem orçamento definido",
     ofBudget: "{spent} de {limit} de orçamento no mês",

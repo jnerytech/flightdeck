@@ -18,14 +18,19 @@ export interface HomeHostData {
 export type HomeSnapshot = Record<string, HomeHostData>;
 
 /** One entry per period and set of hosts: the same hosts in another order are the same entry. */
-export const homeKey = (period: string, hostIds: string[]): string =>
-  `${period}|${[...hostIds].sort((a, b) => a.localeCompare(b)).join(",")}`;
+export const homeKey = (period: string, hostIds: string[], projectKey?: string): string =>
+  `${period}|${[...hostIds].sort((a, b) => a.localeCompare(b)).join(",")}${
+    // A project's numbers are an entry of their own (#126 slice 4).
+    projectKey ? `|project:${projectKey}` : ""
+  }`;
 
 /** The numbers Home draws from a host's answers, and nothing else of what the host sent. */
 export function homeHostData(
   costs: CostsSummary | null,
   usage: UsageSummary | null,
   at: number,
+  /** With a project scope (#126 slice 4), only its usage rows: costs come filtered by the host. */
+  projectKey?: string,
 ): HomeHostData {
   return {
     at,
@@ -34,13 +39,15 @@ export function homeHostData(
       byDay: costs.byDay.map(({ day, costUsd, tokens }) => ({ day, costUsd, tokens })),
     },
     usage: usage && {
-      rows: usage.rows.map(({ day, costUsd, turns, failedTurns, durationMs }) => ({
-        day,
-        costUsd,
-        turns,
-        ...(failedTurns === undefined ? {} : { failedTurns }),
-        ...(durationMs === undefined ? {} : { durationMs }),
-      })),
+      rows: usage.rows
+        .filter((row) => !projectKey || row.projectKey === projectKey)
+        .map(({ day, costUsd, turns, failedTurns, durationMs }) => ({
+          day,
+          costUsd,
+          turns,
+          ...(failedTurns === undefined ? {} : { failedTurns }),
+          ...(durationMs === undefined ? {} : { durationMs }),
+        })),
     },
   };
 }

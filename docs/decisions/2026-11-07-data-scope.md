@@ -40,7 +40,8 @@ The host switcher at the top is about tabs. Since #644 it names the active tab's
 - **Menu values:** `project:<key>`, beside `host:<id>` and `all`. The prefix is read before anything
   else, so a folder key, which starts with `host:`, never parses as a host.
 - **Not checked against a list:** projects load per host and late (the #860 trap). A kept project is
-  never dropped at start; a screen with nothing for it says so and offers **Show all hosts**.
+  never dropped at start; a screen with nothing for it shows its own empty state, with the project
+  named in the menu, and the menu offers **All hosts**.
 - **The menu** adds a labelled **Projects** group after the hosts, with every project the app knows
   (`knownProjectKeys` and the keys the screens have read), labelled by `useProjectLabels` so a name
   on two hosts carries its host. The live region names the project.
@@ -49,7 +50,9 @@ The host switcher at the top is about tabs. Since #644 it names the active tab's
 - **Route overrides stay visit-only:** Costs opened on a project (a Home card, an alert) and the
   hub's project route win for the visit and never rewrite the scope.
 - **Costs:** its own Project select goes; the scope is the one control for whose numbers.
-- **Later PRs:** Home, then Sessions (the hub merges folder projects by name, so a project scope
+- **Home** (second PR) asks each host's costs for the project and keeps the project's usage rows;
+  its cache entry carries the project, and the subtitle names it.
+- **Later PRs:** Sessions (the hub merges folder projects by name, so a project scope
   there keeps the merged group's rows by key and says it), then the Board, which has no project key
   and does not follow the host scope yet.
 - A host renamed after a folder project was chosen leaves a key no screen has: the screens say so
