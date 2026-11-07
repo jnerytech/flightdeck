@@ -247,17 +247,55 @@ export function TabBar(
       <Plus />
     </Button>
   );
+  /** The current tab's menu: move, pin and the rest, at the end of the strip and of the narrow row. */
+  const activeMenu = active && (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mb-0.5 size-7"
+          aria-label={t("tabs.actions", { title: activeLabel })}
+        >
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          disabled={!tabs.canShift(active.id, -1)}
+          onSelect={() => shift(active.id, -1)}
+        >
+          <ArrowLeft aria-hidden="true" />
+          {t("tabs.moveLeft", { title: activeLabel })}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!tabs.canShift(active.id, 1)}
+          onSelect={() => shift(active.id, 1)}
+        >
+          <ArrowRight aria-hidden="true" />
+          {t("tabs.moveRight", { title: activeLabel })}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => store.workspace.moveToOtherArea(active.id)}>
+          <ArrowLeftRight aria-hidden="true" />
+          {t("tabs.moveToOther", { title: activeLabel })}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => tabs.pin(active.id, !active.pinned)}>
+          {active.pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+          {t(active.pinned ? "tabs.unpin" : "tabs.pin", { title: activeLabel })}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   if (narrow) {
     // One button: the current tab (icon, title, its host's dot) and how many there are; it opens
     // the list of all tabs across the window. No strip to scroll, no split.
-    const now = row.find(selectedTab) as Tab;
+    const now = row.find(selectedTab) ?? (row[0] as Tab);
     const nowHost = ownHost(now);
     const nowTitle = title(now, state, store);
-    const nowName = nowHost
-      ? t("tabs.named", {
-          title: nowTitle,
-          host: state.hosts.find((h) => h.id === nowHost)?.name ?? nowHost,
-        })
+    // A host not loaded yet is not named by its id: the title stands alone.
+    const nowHostName = state.hosts.find((h) => h.id === nowHost)?.name;
+    const nowName = nowHostName
+      ? t("tabs.named", { title: nowTitle, host: nowHostName })
       : nowTitle;
     const NowIcon = ICONS[tabKind(now.router.current)];
     return (
@@ -272,7 +310,6 @@ export function TabBar(
             <button
               type="button"
               aria-label={t("tabs.currentTab", { n: row.length, title: nowName })}
-              aria-haspopup="dialog"
               className="tab-current"
             >
               <NowIcon aria-hidden="true" />
@@ -283,7 +320,10 @@ export function TabBar(
             </button>
           }
         />
+        {activeMenu}
         {newTab}
+        {/* Only a window already split offers its buttons here: to join the areas again. */}
+        {store.workspace.split && props.children}
         <div role="status" aria-label={t("tabs.position")} className="sr-only">
           {announcement}
         </div>
@@ -473,44 +513,7 @@ export function TabBar(
           onClose={closeFromList}
         />
       )}
-      {active && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="mb-0.5 size-7"
-              aria-label={t("tabs.actions", { title: activeLabel })}
-            >
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              disabled={!tabs.canShift(active.id, -1)}
-              onSelect={() => shift(active.id, -1)}
-            >
-              <ArrowLeft aria-hidden="true" />
-              {t("tabs.moveLeft", { title: activeLabel })}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={!tabs.canShift(active.id, 1)}
-              onSelect={() => shift(active.id, 1)}
-            >
-              <ArrowRight aria-hidden="true" />
-              {t("tabs.moveRight", { title: activeLabel })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => store.workspace.moveToOtherArea(active.id)}>
-              <ArrowLeftRight aria-hidden="true" />
-              {t("tabs.moveToOther", { title: activeLabel })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => tabs.pin(active.id, !active.pinned)}>
-              {active.pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
-              {t(active.pinned ? "tabs.unpin" : "tabs.pin", { title: activeLabel })}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      {activeMenu}
       {newTab}
       {props.children}
       <div role="status" aria-label={t("tabs.position")} className="sr-only">

@@ -11,9 +11,11 @@ overflows and a thumb has to find the one it wants.
   title of a host's tab. That keeps the visible text inside the name, and keeps the scripts that look
   for the "All tabs" button working with a prefix match.
 - The tablist is not drawn at this width, so its keyboard handling (arrows between tabs, move and
-  close keys) is not either; the list's own keyboard (arrows, Enter, Delete) and the window's shortcuts
-  (Ctrl+Tab, Ctrl+W) are what is left. The split is not offered: two areas under 640 px leave neither
-  one a screen. A window already split keeps its areas, each with its own button.
+  close keys) and drag are not either; the list's own keyboard (arrows, Enter, Delete) and the
+  window's shortcuts (Ctrl+Tab, Ctrl+W) are what is left. The current tab keeps its menu beside the
+  button, so a tab can still be pinned, unpinned and moved. The split is not offered: two areas under
+  640 px leave neither one a screen. A window already split keeps its areas, each with its own button,
+  and the first one keeps the buttons to join them again or turn the split.
 - **+** stays beside the button. The overflow baseline for the strip at 390 px goes: the strip is gone
   there.
 - Still to come in #644: the All hosts row.
