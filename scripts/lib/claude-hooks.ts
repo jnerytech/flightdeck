@@ -579,7 +579,9 @@ export function heavyRunWaived(command: string): boolean {
 export function guardAllowLogs(
   command: string | undefined,
   env: Record<string, string | undefined>,
-): Array<{ rule: string | null; decision: "allow" | "waived" }> {
+  push?: { cwd: string; deps: PushWaitDeps },
+): Array<{ rule: string | null; decision: "allow" | "waived"; detail?: string; minutes?: number }> {
+  if (push && env.FLIGHTDECK_COORDINATOR === "x") return [];
   const waived: Array<{ rule: string; decision: "waived" }> = [];
   if (typeof command === "string") {
     // The coordinator passes the heavy-run rule without an override: there is no waiver to count.

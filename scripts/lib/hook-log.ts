@@ -17,6 +17,10 @@ export interface HookLogEntry {
   decision: "allow" | "block" | "waived";
   /** Milliseconds from the hook process start to the decision. */
   ms: number;
+  /** A waiver's reason, as given (#741: push-wait overrides). */
+  detail?: string;
+  /** The age in minutes of the PR run a push-wait override cancels. */
+  minutes?: number;
 }
 
 export interface HookLogDeps {
