@@ -2256,6 +2256,8 @@ export const ptBR = {
     modeLabel: "Modo de permissão",
     modeChip: "Modo de permissão: {mode}",
     modeMenuTitle: "Modo",
+    modeUnknown: "Desconhecido",
+    modeUnknownExplain: "A sessão ainda não disse em que modo está",
     modeBypassOff: "Desligado neste host",
     modeBypassHow: "Ligue nas configurações do host",
     modelChip: "Modelo: {model}",

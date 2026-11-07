@@ -275,3 +275,99 @@ describe("modo-chip: Shift+Tab", () => {
     expect(chip()?.getAttribute("aria-keyshortcuts")).toBe("Shift+Tab");
   });
 });
+
+/** A view that stays mounted while the session's state arrives or another session takes its place (#935). */
+function live(lang: "en" | "pt-BR" = "en") {
+  const calls: string[] = [];
+  const t = translator(lang);
+  const ui = (mode: string | undefined, key: string) => (
+    <TContext.Provider value={t}>
+      <SessionView
+        title="refactor"
+        t={t}
+        scrollKey={key}
+        session={{
+          ...emptySession(),
+          status: "idle",
+          ...(mode ? { permissionMode: mode as never } : {}),
+        }}
+        actions={{
+          send: async () => {},
+          interrupt: async () => {},
+          close: async () => {},
+          resume: async () => {},
+          respond: async () => {},
+          setMode: async (next) => void calls.push(next),
+        }}
+        settings
+        runtime="claude"
+      />
+    </TContext.Provider>
+  );
+  const { rerender } = render(ui(undefined, "h/s1"));
+  return {
+    calls,
+    show: (mode: string | undefined, key = "h/s1") => act(() => rerender(ui(mode, key))),
+  };
+}
+
+describe("modo-chip: the chip shows the session's real mode (#935)", () => {
+  test("before the session says its mode, the chip says it is unknown, never Default", () => {
+    live();
+    expect(chip()?.getAttribute("aria-label") ?? "").toBe("Permission mode: Unknown");
+  });
+
+  test("a session a persona opened in plan shows Plan once its mode arrives, in both languages", async () => {
+    const en = live();
+    await en.show("plan");
+    const english = chip()?.getAttribute("aria-label") ?? "";
+    cleanup();
+    const pt = live("pt-BR");
+    expect(chip()?.getAttribute("aria-label") ?? "").toBe("Modo de permissão: Desconhecido");
+    await pt.show("plan");
+    expect([english, chip()?.getAttribute("aria-label") ?? ""]).toEqual([
+      "Permission mode: Plan",
+      "Modo de permissão: Planejar",
+    ]);
+  });
+
+  test("each session keeps its own pick: another session of the same start shows its own, and the first keeps its pick", async () => {
+    const { show } = live();
+    const pick = async (name: RegExp) => {
+      await open();
+      await click(row(name));
+    };
+    await show("acceptEdits");
+    await pick(/^Default/);
+    await show("acceptEdits", "h/s2");
+    const other = chip()?.textContent ?? "";
+    await pick(/^Plan/);
+    await show("acceptEdits", "h/s1");
+    expect([other.includes("Accept edits"), chip()?.textContent?.includes("Default")]).toEqual([
+      true,
+      true,
+    ]);
+  });
+
+  test("while the mode is unknown, no mode is blocked as looser than the start", async () => {
+    live();
+    await open();
+    expect([row(/^Accept edits/)?.getAttribute("aria-disabled") ?? "false", rows().length]).toEqual(
+      ["false", 4],
+    );
+  });
+
+  test("a mode picked in one session does not follow the view to another session", async () => {
+    const { show } = live();
+    await show("default");
+    await open();
+    // Plan, stricter than the start: a host without bypass lets it through.
+    await click(row(/^Plan/));
+    const picked = chip()?.textContent ?? "";
+    await show("acceptEdits", "h/s2");
+    expect([picked.includes("Plan"), chip()?.textContent?.includes("Accept edits")]).toEqual([
+      true,
+      true,
+    ]);
+  });
+});
