@@ -18,6 +18,13 @@ import { FrameClient, projectsRoot, userLine, writeTranscript } from "./history-
 const ID = "0b6f5c2e-6f0a-4c39-9a51-7c4f1d2e3a4b";
 const TOKEN = "t".repeat(24);
 
+/** A manager for an import whose sessions do not matter to the test. */
+const stubManager = {
+  createResumed: async () => ({ sessionId: "t1" }),
+  list: () => [],
+  close: async () => {},
+};
+
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
@@ -228,6 +235,8 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
   test("the import reads the inbox, the roots, the history and the sessions from the daemon", async () => {
     const { indexer, root } = await indexed();
     const resumed: unknown[] = [];
+    const closed: string[] = [];
+    const shown: unknown[] = [];
     const inbox = { received: async () => ({}) as never, claim: async () => ({}) as never };
     const allowedRoots = ["/work"];
     const deps = teleportImportDeps({
@@ -239,6 +248,19 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
         createResumed: async (opts) => {
           resumed.push(opts);
           return { sessionId: "t1" };
+        },
+        // #870: an ended record of another session, then this session's own.
+        list: () => [
+          { id: "other", claudeSessionId: "11111111-1111-4111-8111-111111111111", status: "idle" },
+          { id: "old", claudeSessionId: ID, status: "idle" },
+        ],
+        close: async (sessionId) => {
+          closed.push(sessionId);
+        },
+      },
+      meta: {
+        set: (claudeSessionId, patch) => {
+          shown.push([claudeSessionId, patch]);
         },
       },
     }) as TeleportImportDeps;
@@ -256,14 +278,34 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       await deps.transcriptOf("11111111-1111-4111-8111-111111111111"),
       await deps.resume(opts),
       resumed,
+      deps.sessionOf(ID),
+      deps.sessionOf("22222222-2222-4222-8222-222222222222"),
+      await deps.close("old").then(() => closed),
+      (deps.unarchive(ID), shown),
+      deps.now() instanceof Date && Math.abs(deps.now().getTime() - Date.now()) < 60_000,
       teleportImportDeps({
         inbox,
         allowedRoots,
         historyRoots: [],
         indexer,
-        manager: { createResumed: async () => ({ sessionId: "t1" }) },
+        manager: stubManager,
+        meta: undefined,
       }),
-    ]).toEqual([true, true, root, true, null, { sessionId: "t1" }, [opts], undefined]);
+    ]).toEqual([
+      true,
+      true,
+      root,
+      true,
+      null,
+      { sessionId: "t1" },
+      [opts],
+      { id: "old", status: "idle" },
+      null,
+      ["old"],
+      [[ID, { archived: false }]],
+      true,
+      undefined,
+    ]);
   });
 
   test("a transcript the indexer has not seen yet still counts: the history folders are read too (#715)", async () => {
@@ -278,7 +320,8 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       allowedRoots: [],
       historyRoots: [first, second],
       indexer: unseen,
-      manager: { createResumed: async () => ({ sessionId: "t1" }) },
+      manager: stubManager,
+      meta: undefined,
     }) as TeleportImportDeps;
     expect([
       await deps.transcriptOf(ID),
@@ -314,6 +357,7 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
         historyRoots: [tempDir("fd-history-")],
         indexer: undefined,
         manager,
+        meta: undefined,
       }),
     });
     const off = startServer(base);

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { TeleportManifest } from "@flightdeck/protocol";
+import type { SessionStatus, TeleportManifest } from "@flightdeck/protocol";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import {
   importPackage,
@@ -78,13 +78,22 @@ async function packaged(over: Partial<TeleportManifest> = {}, options: { lfs?: b
 /** The target: its own clone of origin, under its allowed root, and the fakes around the import. */
 function target(
   pkg: Awaited<ReturnType<typeof packaged>>,
-  options: { local?: string | null; failResume?: boolean } = {},
+  options: {
+    local?: string | null;
+    failResume?: boolean;
+    mine?: { id: string; status: SessionStatus } | null;
+  } = {},
 ) {
   const roots = tempDir("fd-teleport-target-");
   const repo = join(roots, "app");
   git(roots, "clone", "-q", pkg.remote, repo);
   const history = tempDir("fd-teleport-history-");
-  const calls = { released: 0, resumed: [] as unknown[] };
+  const calls = {
+    released: 0,
+    resumed: [] as unknown[],
+    closed: [] as string[],
+    unarchived: [] as string[],
+  };
   const claim: TeleportClaim = {
     manifest: pkg.manifest,
     transcript: pkg.transcript,
@@ -103,6 +112,14 @@ function target(
       if (options.failResume) throw new Error("claude would not start");
       return { sessionId: "t1" };
     },
+    sessionOf: () => options.mine ?? null,
+    close: async (sessionId) => {
+      calls.closed.push(sessionId);
+    },
+    unarchive: (claudeSessionId) => {
+      calls.unarchived.push(claudeSessionId);
+    },
+    now: () => new Date("2026-11-07T12:00:00.000Z"),
   };
   return { repo, roots, history, deps, calls };
 }
@@ -328,5 +345,121 @@ describe("teleport-import: a received package becomes a session on this host (#1
       [1, "", "", []],
       1,
     ]);
+  });
+
+  /** This host's own copy of the session, in the folder of the checkout it ran in. */
+  async function localCopy(history: string, text: string) {
+    const folder = join(history, "-work-app");
+    await mkdir(folder, { recursive: true });
+    const file = join(folder, `${ID}.jsonl`);
+    await writeFile(file, text);
+    return { folder, file };
+  }
+
+  test("a session that comes back with more turns replaces this host's copy, kept aside, and shows again (#870)", async () => {
+    const pkg = await packaged();
+    const history = tempDir("fd-teleport-history-");
+    // The copy it left here: the first bytes of the transcript that comes back.
+    const { folder, file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
+    const { repo, deps, calls } = target(pkg, { local: file, mine: { id: "old", status: "idle" } });
+    const done = await importPackage({ ...deps, historyRoot: history }, "in-1", repo);
+    expect([
+      done.sessionId,
+      (await readdir(folder)).sort(),
+      await readFile(join(folder, `${ID}.jsonl.replaced-2026-11-07T12-00-00-000Z`), "utf8").catch(
+        () => "missing",
+      ),
+      await readFile(join(history, slug(done.worktree), `${ID}.jsonl`), "utf8").catch(
+        () => "missing",
+      ),
+      calls.closed,
+      calls.unarchived,
+    ]).toEqual([
+      "t1",
+      [`${ID}.jsonl.replaced-2026-11-07T12-00-00-000Z`],
+      TRANSCRIPT.slice(0, 20),
+      TRANSCRIPT,
+      ["old"],
+      [ID],
+    ]);
+  });
+
+  test("a copy here with turns the incoming one lacks, or one still at work, is refused and stays as it is (#870)", async () => {
+    const pkg = await packaged();
+    const history = tempDir("fd-teleport-history-");
+    const diverged = await localCopy(history, "this host's own turn\n");
+    const other = tempDir("fd-teleport-history-");
+    const busy = await localCopy(other, TRANSCRIPT.slice(0, 20));
+    const a = target(pkg, { local: diverged.file });
+    const b = target(pkg, { local: busy.file, mine: { id: "old", status: "running" } });
+    expect([
+      await reason(() => importPackage({ ...a.deps, historyRoot: history }, "in-1", a.repo)),
+      await reason(() => importPackage({ ...b.deps, historyRoot: other }, "in-1", b.repo)),
+      await readFile(diverged.file, "utf8"),
+      await readFile(busy.file, "utf8"),
+      [...a.calls.closed, ...b.calls.closed, ...a.calls.unarchived, ...b.calls.unarchived],
+      a.calls.released + b.calls.released,
+    ]).toEqual([
+      "teleport_exists",
+      "teleport_exists",
+      "this host's own turn\n",
+      TRANSCRIPT.slice(0, 20),
+      [],
+      0,
+    ]);
+  });
+
+  test("a copy that grew after the checks is put back and refused; nothing was moved over it (#870)", async () => {
+    const pkg = await packaged();
+    const history = tempDir("fd-teleport-history-");
+    const { folder, file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
+    const { repo, deps, calls } = target(pkg, { local: file });
+    // The session wrote here between the checks and the claim.
+    const claim = deps.inbox.claim;
+    const growing = {
+      ...deps,
+      historyRoot: history,
+      inbox: {
+        ...deps.inbox,
+        claim: async (id: string) => {
+          await writeFile(file, `${TRANSCRIPT.slice(0, 20)} and a turn here\n`);
+          return claim(id);
+        },
+      },
+    };
+    expect([
+      await reason(() => importPackage(growing, "in-1", repo)),
+      await readdir(folder),
+      await readFile(file, "utf8"),
+      calls.resumed.length + calls.closed.length + calls.unarchived.length,
+      await leftovers(repo, history),
+    ]).toEqual([
+      "teleport_exists",
+      [`${ID}.jsonl`],
+      `${TRANSCRIPT.slice(0, 20)} and a turn here\n`,
+      0,
+      [1, "", "", ["-work-app"]],
+    ]);
+  });
+
+  test("a returning session that does not start puts this host's copy back as it was (#870)", async () => {
+    const pkg = await packaged();
+    const history = tempDir("fd-teleport-history-");
+    const { folder, file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
+    const { repo, deps, calls } = target(pkg, {
+      local: file,
+      failResume: true,
+      mine: { id: "old", status: "ended" },
+    });
+    const failed = await reason(() =>
+      importPackage({ ...deps, historyRoot: history }, "in-1", repo),
+    );
+    expect([
+      failed.includes("claude would not start"),
+      await readdir(folder),
+      await readFile(file, "utf8"),
+      [...calls.closed, ...calls.unarchived],
+      await leftovers(repo, history),
+    ]).toEqual([true, [`${ID}.jsonl`], TRANSCRIPT.slice(0, 20), [], [1, "", "", ["-work-app"]]]);
   });
 });
