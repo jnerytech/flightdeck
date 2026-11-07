@@ -257,6 +257,48 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     expect(split()).toEqual([]);
   });
 
+  // #785: the user saw two scrollbars on the Host page. A Page scrolls by itself, so the area that
+  // holds it must not scroll too, or any overflow of the page shows a second bar beside its own.
+  test("an area that holds a Page and scrolls itself is a finding; one that holds another screen may scroll", () => {
+    const around = () =>
+      layoutFindings({ pageArea: "area-screen" })
+        .filter((f) => f.rule === "scroll-split")
+        .map((f) => `${f.path}: ${f.detail}`);
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow-y: auto">
+        <section data-slot="page" data-rect="0,0,800,600"></section>
+      </div>`);
+    const auto = around();
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow-x: auto">
+        <section data-slot="page" data-rect="0,0,800,600"></section>
+      </div>`);
+    const sideways = around();
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow: hidden">
+        <section data-slot="page" data-rect="0,0,800,600"></section>
+      </div>`);
+    const hidden = around();
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow-y: auto">
+        <div data-rect="0,0,800,600" style="overflow: hidden">
+          <section data-slot="page" data-rect="0,0,400,600"></section>
+        </div>
+      </div>`);
+    const split = around();
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow-y: auto">
+        <div data-slot="terminal" data-rect="0,0,800,600"></div>
+      </div>`);
+    expect({ auto, sideways, hidden, split, other: around() }).toEqual({
+      auto: ["area-screen: scrolls around a page that scrolls by itself"],
+      sideways: ["area-screen: scrolls around a page that scrolls by itself"],
+      hidden: [],
+      split: ["area-screen: scrolls around a page that scrolls by itself"],
+      other: [],
+    });
+  });
+
   const spacing = () =>
     layoutFindings({ spacing: SPACING })
       .filter((f) => SPACING_RULES.includes(f.rule))
@@ -612,7 +654,7 @@ describe("layout-guards: what the findings mean for the build", () => {
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { KEY_REGIONS, SINGLE_SCROLL } from "../lib/layout-guards.ts";
+import { KEY_REGIONS, PAGE_AREA, SINGLE_SCROLL } from "../lib/layout-guards.ts";
 
 describe("layout-guards: the key regions carry the data-slot the guards look for (a cheap guard on the source)", () => {
   const sources = [
@@ -626,6 +668,25 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
     for (const { slot } of KEY_REGIONS) {
       expect(sources.some((text) => text.includes(`data-slot="${slot}"`))).toBe(true);
     }
+  });
+
+  // #785: the area around a screen scrolls only for a screen that is not a Page.
+  test("the area that holds a screen is named, and stops scrolling when the screen is a Page", () => {
+    const areas = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src/ui/Areas.tsx"),
+      "utf8",
+    );
+    const css = readFileSync(join(import.meta.dir, "../../apps/desktop/src/styles.css"), "utf8");
+    const rule = css.split(`@utility ${PAGE_AREA} {`)[1]?.split(/\n}\n/)[0] ?? "";
+    const journeys = readFileSync(join(import.meta.dir, "../e2e/journeys.ts"), "utf8");
+    expect({
+      named:
+        areas.includes(`data-slot="${PAGE_AREA}"`) &&
+        areas.includes(`className="@container ${PAGE_AREA}"`),
+      scrolls: rule.includes("overflow-y: auto"),
+      notAroundPage: /&:has\(\[data-slot="page"\]\) \{\s*overflow: hidden;/.test(rule),
+      guarded: journeys.includes("pageArea: PAGE_AREA"),
+    }).toEqual({ named: true, scrolls: true, notAroundPage: true, guarded: true });
   });
 
   test("each region that scrolls as one is named in the shell (#567)", () => {

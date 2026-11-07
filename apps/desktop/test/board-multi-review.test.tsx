@@ -238,6 +238,8 @@ describe("board-multi-review: Esc clears the selection only from where it belong
       fireEvent.keyDown(item, { key: "Escape" });
     });
     expect(selected()).toEqual(["A"]);
+    // The menu itself is gone: its items are not in the page any more.
+    expect(screen.queryAllByRole("menuitem", { name: /Move to/ }).length).toBe(0);
   });
 
   test("Esc on the selection bar clears the selection", async () => {

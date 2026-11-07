@@ -20,7 +20,7 @@ afterEach(async () => {
 });
 
 /** `files`: the host reads a terminal's files (#506); without it a path is shown or copied. */
-async function setup(listFails = false, files = true) {
+async function setup(listFails = false, files = true, launch: string | null = null) {
   const d = makeDaemon(cleanups, { terminals: true, review: files });
   const server = d.listen();
   const mem = memoryPlatform(false, "pt-BR");
@@ -41,6 +41,13 @@ async function setup(listFails = false, files = true) {
       list: async () => {
         throw new Error("recusado");
       },
+    });
+  } else if (launch) {
+    // A "Claude aqui" terminal: the host's list carries the launch its session also carries.
+    const real = store.terminalHost.bind(store);
+    store.terminalHost = (id) => ({
+      ...real(id),
+      list: async () => (await real(id).list()).map((t) => ({ ...t, launchId: launch })),
     });
   }
   const x = fakeXterm();
@@ -320,6 +327,37 @@ describe("terminal-ui: the terminal screen", () => {
     });
     expect(state("Ao vivo")).not.toBeNull();
     expect(button("Ver como sessão")).toBeNull();
+  });
+
+  test("a terminal opened by Claude aqui offers Ver como sessão, which shows the session of its launch", async () => {
+    const { store, hostId } = await setup(false, true, "L1");
+    await settle(() => state("Ao vivo"));
+    expect(button("Ver como sessão")).toBeNull();
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        externals: {
+          [`${hostId}/c1`]: {
+            claudeSessionId: "c1",
+            cwd: "/p",
+            transcriptPath: null,
+            source: null,
+            status: "idle",
+            statusReason: null,
+            launchId: "L1",
+            controllable: true,
+            projectKey: null,
+            startedAt: "2026-10-30T12:00:00Z",
+            lastEventAt: "2026-10-30T12:00:00Z",
+            endedAt: null,
+          },
+        },
+      });
+    });
+    await waitFor(() => button("Ver como sessão"), "the button of the launch's session");
+    const shown: unknown[] = [];
+    store.hostTabs.show = ((tab: unknown) => void shown.push(tab)) as never;
+    await click("Ver como sessão");
+    expect(shown).toEqual([{ name: "external", host: hostId, claudeSessionId: "c1" }]);
   });
 
   test("a new size of xterm reaches the host, debounced", async () => {

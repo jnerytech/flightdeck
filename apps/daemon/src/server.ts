@@ -450,7 +450,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.personas, "personas"),
     // Phase 21: messages between sessions, teams and the standard session names.
     ...when(opts.messaging, "messaging"),
-    ...when(opts.teams, "teams"),
+    // Issue #93: `teams.create` and `addMember` take a permission mode per member.
+    ...when(opts.teams, "teams", "teams.permissions"),
     // Phase 22: watching a card's PR and fixing it.
     ...when(opts.watch, "watch"),
     ...when(opts.names, "names"),
@@ -1021,6 +1022,8 @@ export function startServer(opts: ServerOptions): RunningServer {
           features: [
             ...(opts.features ?? features),
             ...(opts.terminals?.enabled ? ["terminal"] : []),
+            // Issue #107: `terminal.openSession` opens a shell in a session's folder.
+            ...(opts.terminals?.enabled ? ["terminal.session"] : []),
             // Issue #506: a path a terminal printed opens in the Files viewer, from its folder.
             ...(opts.terminals?.enabled && opts.files ? ["file.terminal"] : []),
             ...(opts.ui ? ["ui.mode"] : []),

@@ -2,6 +2,15 @@ import { type KeyboardEvent, useEffect, useRef } from "react";
 import type { T } from "../../i18n/index.ts";
 import { COLUMN_WIDTH } from "../../lib/board-select.ts";
 
+/** The width a key asks for, or null when the key is not one the handle answers to. */
+function widthForKey(key: string, width: number): number | null {
+  if (key === "ArrowRight") return width + COLUMN_WIDTH.step;
+  if (key === "ArrowLeft") return width - COLUMN_WIDTH.step;
+  if (key === "Home") return COLUMN_WIDTH.min;
+  if (key === "End") return COLUMN_WIDTH.max;
+  return null;
+}
+
 /**
  * The edge of a column that resizes them all: drag it, or focus it and use the arrows (20 px a
  * step), Home and End. It announces the width and its limits as a slider does. One width drives
@@ -9,16 +18,18 @@ import { COLUMN_WIDTH } from "../../lib/board-select.ts";
  * change: the drag shares the distance among the columns to follow the pointer. Only the last
  * handle takes a tab stop (they are all the same control).
  */
-export function ColumnHandle(props: {
-  t: T;
-  width: number;
-  index: number;
-  last: boolean;
-  /** The width while a drag or a key moves it. */
-  onChange(width: number): void;
-  /** The drag is over: keep the width. */
-  onCommit(): void;
-}) {
+export function ColumnHandle(
+  props: Readonly<{
+    t: T;
+    width: number;
+    index: number;
+    last: boolean;
+    /** The width while a drag or a key moves it. */
+    onChange(width: number): void;
+    /** The drag is over: keep the width. */
+    onCommit(): void;
+  }>,
+) {
   const { t, width } = props;
   const start = useRef<{ x: number; width: number } | null>(null);
   const latest = useRef(props);
@@ -45,16 +56,7 @@ export function ColumnHandle(props: {
   }, []);
 
   const onKeyDown = (e: KeyboardEvent) => {
-    const to =
-      e.key === "ArrowRight"
-        ? width + COLUMN_WIDTH.step
-        : e.key === "ArrowLeft"
-          ? width - COLUMN_WIDTH.step
-          : e.key === "Home"
-            ? COLUMN_WIDTH.min
-            : e.key === "End"
-              ? COLUMN_WIDTH.max
-              : null;
+    const to = widthForKey(e.key, width);
     if (to === null) return;
     e.preventDefault();
     props.onChange(to);
@@ -63,7 +65,7 @@ export function ColumnHandle(props: {
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: a window splitter that moves has no native element (WAI-ARIA)
-    <div
+    <div // NOSONAR: a window splitter has no native element; the keys it answers are the keyboard way to move it
       role="separator"
       aria-orientation="vertical"
       aria-label={t("board.resize")}

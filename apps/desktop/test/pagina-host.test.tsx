@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DAEMON_VERSION } from "../../daemon/src/server.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
@@ -76,10 +76,11 @@ describe("pagina-host", () => {
     expect(
       within(tabs).getByRole("tab", { name: "Visão geral" }).getAttribute("aria-selected"),
     ).toBe("true");
-    // Sessions, then projects, then the information; the settings are on their own tab.
+    // #785: the host's status (here the information) comes first, then the sessions and the
+    // projects; the settings are on their own tab.
     const order = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
+    expect(order.indexOf("Informações")).toBeLessThan(order.indexOf("Sessões de pc"));
     expect(order.indexOf("Sessões de pc")).toBeLessThan(order.indexOf("Projetos de pc"));
-    expect(order.indexOf("Projetos de pc")).toBeLessThan(order.indexOf("Informações"));
     // The settings are on a tab of their own: closed, its panel is hidden.
     const settings = [...document.querySelectorAll("[role='tabpanel']")].find((panel) =>
       panel.textContent?.includes("Reconectar"),
@@ -244,5 +245,41 @@ describe("pagina-host", () => {
       fireEvent.click(open as HTMLElement);
     });
     await waitFor(() => expect(text()).toContain("informações indisponíveis"));
+  });
+
+  // #785: Health sat below Sessions and Projects (y=1087 at 1280x800) in one column 770 px wide.
+  // The host's status (health, resources, information) is one column, first; its work the other.
+  test("a visão geral põe o estado do host numa coluna, primeiro, e o trabalho do host na outra", async () => {
+    await setup();
+    const region = (name: string) => screen.queryByRole("region", { name });
+    await waitFor(() => expect(region("Sessões de pc")).not.toBeNull());
+    // The test daemon has no health check or resources: Information stands for the status column.
+    await waitFor(() => expect(region("Informações")).not.toBeNull());
+    const status = document.querySelector("[data-slot='host-overview-status']");
+    const work = document.querySelector("[data-slot='host-overview-work']");
+    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    const rule = (name: string) => css.split(`@utility ${name} {`)[1]?.split(/\n}\n/)[0] ?? "";
+    expect({
+      statusFirst:
+        status !== null &&
+        work !== null &&
+        (status.compareDocumentPosition(work) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      status: [region("Informações")].map((r) => r !== null && (status?.contains(r) ?? false)),
+      work: [region("Sessões de pc"), region("Projetos de pc")].map(
+        (r) => r !== null && (work?.contains(r) ?? false),
+      ),
+      // Two columns once the area is 64rem wide; each column is the container its cards lay out against.
+      twoColumns:
+        /@container \(width >= 64rem\) \{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/.test(
+          rule("host-overview"),
+        ),
+      columnsAreContainers: rule("host-overview-column").includes("container-type: inline-size"),
+    }).toEqual({
+      statusFirst: true,
+      status: [true],
+      work: [true, true],
+      twoColumns: true,
+      columnsAreContainers: true,
+    });
   });
 });

@@ -31,6 +31,15 @@ export const terminalHandlers = {
       rows,
     });
   },
+  "terminal.openSession": async (payload, { server }) => {
+    // Issue #107: the folder is the daemon's own record of the session, not a path from the app.
+    // `open` then checks it like any other: allowedRoots by real path, folder locks, terminal on.
+    return await server.need("terminals").open({
+      cwd: server.opts.manager.get(payload.session).cwd,
+      cols: payload.cols,
+      rows: payload.rows,
+    });
+  },
   "terminal.write": (payload, { server }) => {
     server.need("terminals").write(payload.terminalId, payload.data);
   },

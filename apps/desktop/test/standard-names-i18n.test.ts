@@ -81,7 +81,7 @@ describe("standard-names-i18n: a standard name in the person's language (#668)",
 });
 
 describe("standard-names-i18n: the sessions list sorts by the label it shows (#668)", () => {
-  test("in English, general sorts before Zeta, though the host's geral comes after aaa", () => {
+  test("in English, general sorts before Zeta, though the host's geral comes after aaa (listed Zeta first, so a sort that does nothing fails)", () => {
     const session = (id: string) => ({
       id,
       name: null,
@@ -91,18 +91,18 @@ describe("standard-names-i18n: the sessions list sorts by the label it shows (#6
     });
     const state = {
       hosts: [
-        { id: "h1", name: "alfa", status: "online", sessions: [session("s1"), session("s2")] },
+        { id: "h1", name: "alfa", status: "online", sessions: [session("s2"), session("s1")] },
       ],
       sessions: {},
-      hub: { h1: { managed: [session("s1"), session("s2")], history: [] } },
+      hub: { h1: { managed: [session("s2"), session("s1")], history: [] } },
       externals: {},
       background: {},
       meta: {},
       personas: { h1: [{ id: "aaa", name: "Zeta" }] },
       names: {
         h1: [
-          info({ sessionId: "s1", display: "app · geral · 1", number: 1 }),
           info({ sessionId: "s2", display: "app · aaa · 1", persona: "aaa", number: 1 }),
+          info({ sessionId: "s1", display: "app · geral · 1", number: 1 }),
         ],
       },
     } as unknown as AppState;
