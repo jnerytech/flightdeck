@@ -225,7 +225,12 @@ export class PrFixer {
   }
 
   /** Why no round may start for the card now, or `null`: the limits, before a session is paid for. */
-  private limit(cardId: string): string | null {
+  /** Issue #77: a limit other than the rounds that keeps the card from a new round, or null. */
+  blockedBesidesRounds(cardId: string): string | null {
+    return this.limit(cardId, false);
+  }
+
+  private limit(cardId: string, rounds = true): string | null {
     const { board, watcher, db } = this.opts;
     const card = board.getCard(cardId);
     const project = board.getProject(card.projectId);
@@ -236,8 +241,8 @@ export class PrFixer {
       return `the card's branch is the target branch (${project.baseBranch}): nothing is pushed to it`;
     }
     const settings = watcher.settings(card.projectId);
-    const rounds = this.roundLimit(cardId);
-    if (rounds) return rounds;
+    const reached = rounds ? this.roundLimit(cardId) : null;
+    if (reached) return reached;
     const done = this.counted(cardId);
     const turns = done.reduce((sum, r) => sum + r.turns, 0);
     if (settings.maxTurns !== null && turns >= settings.maxTurns) {
@@ -259,15 +264,25 @@ export class PrFixer {
     return null;
   }
 
+  /** The rounds that count against the card's limit, and the limit with the rounds allowed on top. */
+  roundBudget(cardId: string): { used: number; max: number } {
+    const { watcher, board } = this.opts;
+    const settings = watcher.settings(board.getCard(cardId).projectId);
+    return {
+      used: this.counted(cardId).length,
+      max: settings.maxRounds + watcher.extraRounds(cardId),
+    };
+  }
+
   /** The card's rounds used up: the reason with each round, or null while some are left. */
   private roundLimit(cardId: string): string | null {
-    const settings = this.opts.watcher.settings(this.opts.board.getCard(cardId).projectId);
+    const { max } = this.roundBudget(cardId);
     const done = this.counted(cardId);
-    if (done.length < settings.maxRounds) return null;
+    if (done.length < max) return null;
     const list = done.map(
       (r) => `round ${r.n}: ${r.status}` + (r.summary ? " (" + r.summary.split("\n")[0] + ")" : ""),
     );
-    return `limit of ${settings.maxRounds} rounds reached — ${list.join("; ")}`;
+    return `limit of ${max} rounds reached — ${list.join("; ")}`;
   }
 
   /**
@@ -383,7 +398,7 @@ export class PrFixer {
       .fixCard(cardId, {
         prompt: buildPrompt({
           n,
-          maxRounds: settings.maxRounds,
+          maxRounds: this.roundBudget(cardId).max,
           branch,
           base: project.baseBranch,
           settings,

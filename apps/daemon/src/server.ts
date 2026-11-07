@@ -456,6 +456,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.teams, "teams", "teams.permissions"),
     // Phase 22: watching a card's PR and fixing it.
     ...when(opts.watch, "watch"),
+    // Issue #77: a card's watch takes more rounds.
+    ...when(opts.watch, "watch.extend"),
     ...when(opts.names, "names"),
   ];
 }
@@ -914,6 +916,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, watching().set(command.payload.cardId, command.payload.enabled));
       case "watch.get":
         return ok(command.type, watching().info(command.payload.cardId));
+      case "watch.extend":
+        return ok(command.type, watching().extend(command.payload.cardId, command.payload.rounds));
       case "watch.trace":
         return ok(command.type, watching().trace(command.payload.cardId));
       case "watch.describe":

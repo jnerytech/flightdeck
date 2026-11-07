@@ -178,6 +178,39 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     });
   });
 
+  test("more rounds are allowed over the protocol, within 1 to 10 at a time (#77)", async () => {
+    const { client, cardId } = await boot();
+    const info = await client.data<{ features?: string[] }>("host.info", {});
+    expect(info?.features).toContain("watch.extend");
+    expect(await client.request("watch.extend", { cardId, rounds: 2 })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state", reason: "watch_off" },
+    });
+    await client.data("watch.set", { cardId, enabled: true });
+    expect(
+      await client.data<{ maxRounds: number; roundsUsed: number }>("watch.extend", {
+        cardId,
+        rounds: 2,
+      }),
+    ).toMatchObject({ cardId, status: "watching", roundsUsed: 0, maxRounds: 5 });
+    for (const rounds of [0, 11, 1.5]) {
+      expect(await client.request("watch.extend", { cardId, rounds })).toMatchObject({
+        ok: false,
+        error: { code: "bad_request" },
+      });
+    }
+    expect(await client.request("watch.extend", { cardId, rounds: 1, extra: 1 })).toMatchObject({
+      ok: false,
+      error: { code: "bad_request" },
+    });
+    expect(await client.request("watch.extend", { cardId: "nao-existe", rounds: 1 })).toMatchObject(
+      {
+        ok: false,
+        error: { code: "not_found" },
+      },
+    );
+  });
+
   test("with the build red, the daemon watches by itself: it fixes, finds no commit, and the card asks for you", async () => {
     const { az, client, cardId } = await boot();
     await client.request("watch.watch", {});
