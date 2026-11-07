@@ -205,7 +205,7 @@ export class TerminalManager {
     if (!this.on)
       throw new FlightdeckError(
         "terminal_disabled",
-        "terminal desligado neste host",
+        "the terminal is off on this host",
         "terminal_disabled",
       );
   }
@@ -289,7 +289,7 @@ export class TerminalManager {
       if (!claude) {
         throw new FlightdeckError(
           "invalid_state",
-          "Claude aqui indisponível neste host",
+          "Claude here is not available on this host",
           "claude_here_unavailable",
         );
       }
