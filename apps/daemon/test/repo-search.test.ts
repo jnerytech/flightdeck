@@ -15,6 +15,7 @@ import { startServer } from "../src/server.ts";
 import { newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
+import { insertSession } from "./usage-helpers.ts";
 
 const TOKEN = "repo-search-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];
@@ -41,23 +42,28 @@ async function setup() {
   writeFileSync(join(repo, ".env"), "PANEL_KEY=abc\n");
   writeFileSync(join(repo, ".gitignore"), "ignored/\n");
   writeFileSync(join(repo, "ignored", "panel.txt"), "panel\n");
-  // A link whose name matches and which leads out of the repository.
+  // A link whose name matches and which leads out of the repository, and one to a credential.
+  // Windows may refuse links without its developer mode: those files are then simply not there.
   const outside = tempDir("fd-outside-");
   writeFileSync(join(outside, "out.ts"), "panel outside\n");
-  symlinkSync(join(outside, "out.ts"), join(repo, "panel-link.ts"));
+  try {
+    symlinkSync(join(outside, "out.ts"), join(repo, "panel-link.ts"));
+    symlinkSync(".env", join(repo, "keys-link.txt"));
+  } catch {
+    // No links on this host.
+  }
   const project = await ctx.board.addProject({ path: repo, promptTemplate: "" });
   const changes = new Changes({ db: ctx.store.db, board: ctx.board, allowedRoots: [ctx.root] });
   return { ...ctx, project, changes, target: `project:${project.id}` };
 }
 
 /** An `rg` that records its arguments and prints `out` (one JSON event per line), then exits with `code`. */
-function fakeRg(out: string, code = 0, sleepSeconds = 0) {
+function fakeRg(out: string, code = 0) {
   const dir = tempDir("fd-fake-rg-");
   writeFileSync(join(dir, "out.jsonl"), out);
   const script = [
     "#!/bin/sh",
     `printf '%s\\n' "$@" > '${join(dir, "args.txt")}'`,
-    ...(sleepSeconds ? [`sleep ${sleepSeconds}`] : []),
     `cat '${join(dir, "out.jsonl")}'`,
     `exit ${code}`,
   ].join("\n");
@@ -91,8 +97,12 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     const { repo } = await setup();
     const panel = await searchRepository(repo, { mode: "name", query: "PANEL" });
     const env = await searchRepository(repo, { mode: "name", query: ".env" });
+    // A link with a plain name to a credential is one too.
+    const link = onWindows
+      ? [{ path: "keys-link.txt", secret: true }]
+      : (await searchRepository(repo, { mode: "name", query: "keys-link" })).matches;
     const one = await searchRepository(repo, { mode: "name", query: "panel", limit: 1 });
-    expect([panel, env.matches, [one.matches.length, one.truncated]]).toEqual([
+    expect([panel, env.matches, link, [one.matches.length, one.truncated]]).toEqual([
       {
         mode: "name",
         query: "PANEL",
@@ -100,6 +110,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
         truncated: false,
       },
       [{ path: ".env", secret: true }],
+      [{ path: "keys-link.txt", secret: true }],
       [1, true],
     ]);
   });
@@ -176,29 +187,109 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
   );
 
   test.skipIf(onWindows)(
-    "rg's no match is an empty answer, its failure is refused, and one out of time is cut",
+    "rg's no match is an empty answer, and its failure is refused",
     async () => {
       const { repo } = await setup();
       const none = fakeRg("", 1);
       const broken = fakeRg("", 2);
-      const slow = fakeRg(event({ text: "./src/panel.ts" }, 1, { text: "x\n" }), 0, 5);
-      const started = Date.now();
-      const late = await searchRepository(
-        repo,
-        { mode: "content", query: "x" },
-        { rg: () => slow.path, timeoutMs: 100 },
-      );
       expect([
         (await searchRepository(repo, { mode: "content", query: "x" }, { rg: () => none.path }))
           .matches,
         await failure(
           searchRepository(repo, { mode: "content", query: "x" }, { rg: () => broken.path }),
         ),
-        late.truncated,
-        Date.now() - started < 3000,
-      ]).toEqual([[], "command_failed", true, true]);
+      ]).toEqual([[], "command_failed"]);
     },
   );
+
+  test("an rg cut by its time limit keeps what it found and says it was cut", async () => {
+    const { repo } = await setup();
+    const found = await searchRepository(
+      repo,
+      { mode: "content", query: "panel" },
+      {
+        rg: () => "rg",
+        // The runner's answer when the limit killed the program: no real clock, no real process.
+        run: async () => ({
+          code: 137,
+          stdout: `${event({ text: "./src/panel.ts" }, 1, { text: "panel\n" })}\n`,
+          stderr: "",
+          truncated: false,
+          timedOut: true,
+        }),
+      },
+    );
+    expect([found.matches.map((m) => m.path), found.truncated]).toEqual([["src/panel.ts"], true]);
+  });
+
+  test.skipIf(onWindows)(
+    "a git without --max-count still searches content, at most 5 lines of a file, a query that starts with - included",
+    async () => {
+      const { repo } = await setup();
+      writeFileSync(
+        join(repo, "notes", "flags.md"),
+        `${Array.from({ length: 7 }, (_, i) => `use -e here ${i}`).join("\n")}\n`,
+      );
+      // A git older than 2.38: --max-count is an unknown option there.
+      const real = Bun.which("git", { PATH: process.env.PATH ?? "" }) ?? "git";
+      const bin = tempDir("fd-old-git-");
+      writeFileSync(
+        join(bin, "git"),
+        [
+          "#!/bin/sh",
+          'for a in "$@"; do case "$a" in --max-count*) echo "error: unknown option" >&2; exit 129;; esac; done',
+          `exec '${real}' "$@"`,
+          "",
+        ].join("\n"),
+      );
+      chmodSync(join(bin, "git"), 0o755);
+      const path = process.env.PATH;
+      process.env.PATH = `${bin}:${path ?? ""}`;
+      try {
+        const found = await searchRepository(
+          repo,
+          { mode: "content", query: "-e here" },
+          { rg: () => null },
+        ).then(
+          (result) => result.matches.map((m) => [m.path, m.line]),
+          (error: { reason?: string }) => error.reason ?? "error",
+        );
+        expect(found).toEqual([
+          ["notes/flags.md", 1],
+          ["notes/flags.md", 2],
+          ["notes/flags.md", 3],
+          ["notes/flags.md", 4],
+          ["notes/flags.md", 5],
+        ]);
+      } finally {
+        process.env.PATH = path;
+      }
+    },
+  );
+
+  test.skipIf(onWindows)("rg on a folder that is no repository is never run", async () => {
+    const plain = tempDir("fd-plain-rg-");
+    writeFileSync(join(plain, "panel.ts"), "panel\n");
+    const rg = fakeRg(event({ text: "./panel.ts" }, 1, { text: "panel\n" }));
+    expect([
+      await failure(
+        searchRepository(plain, { mode: "content", query: "panel" }, { rg: () => rg.path }),
+      ),
+      rg.args(),
+    ]).toEqual(["repo_not_git", []]);
+  });
+
+  test.skipIf(onWindows)("a backslash is part of a name outside Windows", async () => {
+    const { repo } = await setup();
+    writeFileSync(join(repo, "a\\b.ts"), "panel\n");
+    const rg = fakeRg(event({ text: "./a\\b.ts" }, 1, { text: "panel\n" }));
+    const found = await searchRepository(
+      repo,
+      { mode: "content", query: "panel" },
+      { rg: () => rg.path },
+    );
+    expect(found.matches.map((m) => m.path)).toEqual(["a\\b.ts"]);
+  });
 
   test("a folder that is no repository is refused by name, and its content search without rg fails", async () => {
     const plain = tempDir("fd-plain-");
@@ -211,14 +302,20 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     ]).toEqual(["repo_not_git", "command_failed"]);
   });
 
-  test("a search runs on a repository target, never a terminal's folder", async () => {
-    const { changes, target } = await setup();
-    const files = new ReviewFiles({ changes, dataDir: tempDir("fd-data-"), allowedRoots: [] });
+  test("a search runs on a repository inside the allowed roots, never a terminal's folder or a session's elsewhere", async () => {
+    const { changes, target, root, store } = await setup();
+    const files = new ReviewFiles({ changes, dataDir: tempDir("fd-data-"), allowedRoots: [root] });
+    // A session that ran in a repository outside the roots (an external one, the home's dotfiles).
+    const elsewhere = join(tempDir("fd-elsewhere-"), "dotfiles");
+    mkdirSync(elsewhere);
+    Bun.spawnSync(["git", "init", "-q", elsewhere]);
+    insertSession(store.db, "m-out", "s-out", elsewhere);
     const found = await files.search({ target, mode: "name", query: "panel.ts" }).catch(() => null);
     expect([
       found?.matches ?? null,
       await failure(files.search({ target: "terminal:t1", mode: "name", query: "x" })),
-    ]).toEqual([[{ path: "src/panel.ts" }], "review_target_invalid"]);
+      await failure(files.search({ target: "session:s-out", mode: "content", query: "x" })),
+    ]).toEqual([[{ path: "src/panel.ts" }], "review_target_invalid", "cwd_outside_roots"]);
   });
 
   test.skipIf(onWindows)("rg is looked up on the PATH, and its absence means git grep", () => {

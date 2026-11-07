@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Changes } from "../src/review/changes.ts";
+import { ReviewComments } from "../src/review/comments.ts";
 import { ReviewFiles } from "../src/review/files.ts";
 import { newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
@@ -57,6 +58,23 @@ describe("project-target: a project's own checkout, read only (#797)", () => {
         reason(files.revert(target, "panel.ts", true)),
       ]),
     ).toEqual(["review_target_invalid", "review_target_invalid"]);
+  });
+
+  test("a project takes no review comment: the panel shows files, a review goes through a session or a card", async () => {
+    const { changes, store, target } = await setup();
+    const review = new ReviewComments({ db: store.db, changes, manager: {} as never });
+    expect(
+      await reason(
+        review.add({
+          target,
+          path: "panel.ts",
+          side: "new",
+          lineStart: 1,
+          lineEnd: 1,
+          body: "a note",
+        }),
+      ),
+    ).toBe("review_target_invalid");
   });
 
   test("an unknown project, a daemon with no board, or a project outside the allowed roots is refused", async () => {
