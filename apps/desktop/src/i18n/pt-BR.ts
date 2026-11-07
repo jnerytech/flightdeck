@@ -1467,6 +1467,7 @@ export const ptBR = {
     webhook: "os webhooks",
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
+    harnessStack: "a leitura do stack do projeto",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
@@ -4118,7 +4119,8 @@ export const ptBR = {
       summary: "{n} de {total} partes encontradas",
       found: "Encontrado",
       missing: "Faltando",
-      rules: "Regras de permissão: {n}",
+      rules: "Regras que permitem: {n}; que negam: {m}",
+      rulesAllow: "Regras que permitem: {n}",
       unreadable:
         "Alguns arquivos do projeto não puderam ser lidos: uma parte marcada como faltando pode existir.",
       parts: {
@@ -4149,6 +4151,7 @@ export const ptBR = {
       mcp: "Servidores MCP (programas que iniciam com a sessão)",
       env: "Variáveis de ambiente (só os nomes)",
       allow: "Ferramentas liberadas sem perguntar",
+      deny: "Ferramentas negadas",
       agents: "Agentes",
       skills: "Skills",
       commands: "Comandos",

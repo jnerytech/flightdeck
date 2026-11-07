@@ -13,6 +13,7 @@ import {
   type ExternalStatus,
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
+  type HarnessStack,
   type HostRuntime,
   type KeepAwakeStatus,
   MIN_PROTOCOL_VERSION,
@@ -170,6 +171,8 @@ export interface ServerOptions {
     req: Request,
     server: { requestIP(req: Request): { address: string } | null },
   ) => string;
+  /** #75: a project's stack and commands, read from its manifest files, never run. */
+  harnessStack?: (path: string) => Promise<HarnessStack>;
   projectTrust?: {
     /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
     refresh(): Promise<void>;
@@ -400,6 +403,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.keepAwake, "keepAwake"),
     ...when(opts.deps, "depsCheck"),
     ...when(opts.projectTrust, "projectTrust"),
+    ...when(opts.harnessStack, "harnessStack"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
@@ -1114,6 +1118,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         requireVaultTransport(ws.data.origin, "project.trust.inspect", opts.log);
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.projectTrust.inspect(path));
+      }
+      case "project.harness.stack": {
+        if (!opts.harnessStack) throw featureOff("harnessStack");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.harnessStack(path));
       }
       case "project.trust.set": {
         if (!opts.projectTrust) throw featureOff("projectTrust");

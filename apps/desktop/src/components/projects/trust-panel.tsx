@@ -92,6 +92,10 @@ export function TrustPanel(
         [t("projectPage.trust.otherKeys"), load.otherKeys],
         [t("projectPage.trust.extras"), load.extras.map((x) => `${x.file}: ${x.keys.join(", ")}`)],
         [t("projectPage.trust.allow"), [...load.allowRules, ...more(load.omitted.allowRules)]],
+        [
+          t("projectPage.trust.deny"),
+          [...(load.denyRules ?? []), ...more(load.omitted.denyRules ?? 0)],
+        ],
         [t("projectPage.trust.agents"), load.agents],
         [t("projectPage.trust.skills"), load.skills],
         [t("projectPage.trust.commands"), load.commands],
