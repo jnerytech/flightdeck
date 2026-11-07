@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { en } from "../src/i18n/en.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
@@ -22,7 +22,13 @@ afterEach(async () => {
 const settle = waiter(10_000);
 
 /** A card with a sibling it could wait for, open on a host with costs per card (roi). */
-async function openCard(lang: "en" | "pt-BR", options: { alone?: boolean } = {}) {
+async function openCard(
+  lang: "en" | "pt-BR",
+  options: {
+    alone?: boolean;
+    prepare?: (d: ReturnType<typeof makeDaemon>, cardId: string) => void;
+  } = {},
+) {
   const d = makeDaemon(cleanups, { roi: true });
   const repo = join(d.root, "shop");
   mkdirSync(repo, { recursive: true });
@@ -38,6 +44,7 @@ async function openCard(lang: "en" | "pt-BR", options: { alone?: boolean } = {})
   const project = await store.hostCommand(hostId, "project.add", { path: repo });
   if (!options.alone) d.board.createCard(project?.id ?? "", { title: "Cart API", description: "" });
   const card = d.board.createCard(project?.id ?? "", { title: "Cart screen", description: "" });
+  options.prepare?.(d, card.id);
   await act(async () => {
     store.router.push({
       name: "card",
@@ -288,5 +295,66 @@ describe("card-form (en): the validation note and starting a card with no criter
     });
     await settle(() => sent.length === 1);
     expect(sent).toEqual([card.id]);
+  });
+});
+
+// Issue #78, slice 3b: the card page names the spec file and what the host found of it.
+describe("card-form (en): the spec file", () => {
+  /** A worktree for the card, with its default spec file there or not. */
+  const tree = (withFile: boolean) => (d: ReturnType<typeof makeDaemon>, cardId: string) => {
+    const root = join(d.root, "spec-tree");
+    mkdirSync(join(root, "docs/specs"), { recursive: true });
+    if (withFile) writeFileSync(join(root, "docs/specs/cart-screen.md"), "# Cart screen spec\n");
+    d.eventStore.db
+      .query("UPDATE cards SET worktree_path = ?, slug = ? WHERE id = ?")
+      .run(root, "cart-screen", cardId);
+  };
+  const text = () => document.body.textContent ?? "";
+  /** Whether the page comes to say it: a miss is a false, so the test fails on its expect. */
+  const says = async (what: string) => {
+    try {
+      await settle(() => text().includes(what));
+    } catch {
+      // Judged below.
+    }
+    return text().includes(what);
+  };
+
+  test("the page looks at the spec when it opens, and says what it found", async () => {
+    await openCard("en", { prepare: tree(true) });
+    expect(await says("Spec found: Cart screen spec")).toBe(true);
+  });
+
+  test("with no file it says where the spec is expected, and Check again looks once more", async () => {
+    const { d } = await openCard("en", { prepare: tree(false) });
+    expect(await says("No spec file at docs/specs/cart-screen.md")).toBe(true);
+    writeFileSync(join(d.root, "spec-tree/docs/specs/cart-screen.md"), "# Written meanwhile\n");
+    expect(screen.queryByRole("button", { name: "Check again" }) === null).toBe(false);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Check again" }));
+    });
+    expect(await says("Spec found: Written meanwhile")).toBe(true);
+    expect(text()).not.toContain("No spec file at");
+  });
+
+  test("the spec file path is a labelled field that saves on the card; a path out of the worktree cannot be saved", async () => {
+    const { d, card } = await openCard("en", { prepare: tree(false) });
+    await settle(() => screen.queryByLabelText("Description") !== null);
+    expect(screen.queryByLabelText("Spec file") === null).toBe(false);
+    const field = screen.getByLabelText("Spec file") as HTMLInputElement;
+    const save = () => screen.getByRole("button", { name: "Save spec file" }) as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "../outside.md" } });
+    });
+    expect(save().disabled).toBe(true);
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "notes/mine.md" } });
+    });
+    expect(save().disabled).toBe(false);
+    await act(async () => {
+      fireEvent.click(save());
+    });
+    await settle(() => d.board.getCard(card.id).specPath !== null).catch(() => undefined);
+    expect(d.board.getCard(card.id).specPath).toBe("notes/mine.md");
   });
 });

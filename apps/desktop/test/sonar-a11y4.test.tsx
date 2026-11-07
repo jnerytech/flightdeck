@@ -186,29 +186,29 @@ describe("sonar-a11y4: a session tile keeps its roles, names, keys and click tar
     await waitFor(() => tileEls().length === 4, "four tiles");
     const all = tileEls();
     all[0]?.focus();
-    expect(document.activeElement === all[0]).toBe(true);
+    expect(document.activeElement === all[0]).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
     await act(async () => {
       fireEvent.keyDown(all[0] as HTMLElement, { key: "ArrowRight", altKey: true });
     });
-    expect(document.activeElement === all[1]).toBe(true);
+    expect(document.activeElement === all[1]).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
     const box = within(all[1] as HTMLElement).getByRole("textbox");
     box.focus();
     await act(async () => {
       fireEvent.keyDown(box, { key: "ArrowDown", altKey: true });
     });
-    expect(document.activeElement === all[3]).toBe(true);
+    expect(document.activeElement === all[3]).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
     const open = within(all[3] as HTMLElement).getByRole("button", { name: /^Open / });
     await act(async () => {
       fireEvent.keyDown(open, { key: "ArrowLeft", altKey: true });
     });
-    expect(document.activeElement === all[2]).toBe(true);
+    expect(document.activeElement === all[2]).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
     // No Alt, an unrelated key and the edge of the grid leave the focus where it is.
     await act(async () => {
       fireEvent.keyDown(all[2] as HTMLElement, { key: "ArrowRight" });
       fireEvent.keyDown(all[2] as HTMLElement, { key: "x", altKey: true });
       fireEvent.keyDown(all[2] as HTMLElement, { key: "ArrowDown", altKey: true });
     });
-    expect(document.activeElement === all[2]).toBe(true);
+    expect(document.activeElement === all[2]).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
   });
 
   test("clicking Open opens that session, clicking the tile itself opens nothing, Approve answers without opening", async () => {
@@ -255,7 +255,7 @@ describe("sonar-a11y4: a session tile keeps its roles, names, keys and click tar
     await stream(store, hostId, ids[1] as string, "two\nthree\nfour\nfive");
     await waitFor(() => linesOf(tile)[3]?.textContent === "five", "tail moved");
     expect(linesOf(tile).map((l) => l.textContent)).toEqual(["two", "three", "four", "five"]);
-    expect(linesOf(tile)[1] === three).toBe(true);
+    expect(linesOf(tile)[1] === three).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
     await stream(store, hostId, ids[1] as string, "same\nsame\nsame");
     await waitFor(() => linesOf(tile).length === 3, "repeated lines");
     expect(linesOf(tile).map((l) => l.textContent)).toEqual(["same", "same", "same"]);
@@ -323,16 +323,16 @@ describe("sonar-a11y4: the approval card keeps its roles, names, keys and focus 
     const { calls } = card({});
     const g = group();
     g.focus();
-    expect(document.activeElement === g).toBe(true);
+    expect(document.activeElement === g).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
     await act(async () => {
       fireEvent.keyDown(g, { key: "Escape" });
     });
-    expect(document.activeElement === g).toBe(false);
+    expect(document.activeElement === g).toBe(false); // NOSONAR: toBe would print both DOM nodes on failure
     await act(async () => {
       fireEvent.keyDown(g, { key: "n" });
     });
     const reason = within(g).getByRole("textbox", { name: "Reason (optional)" });
-    expect(document.activeElement === reason).toBe(true);
+    expect(document.activeElement === reason).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
     expect(tabStops(g)).toEqual([
       "fieldset:Request for Bash",
       "input:Reason (optional)",
@@ -433,7 +433,7 @@ describe("sonar-a11y4: the approval card keeps its roles, names, keys and focus 
     const b = diffLines(g)[1] as HTMLElement;
     rerender({ input: { file_path: "/repo/a.txt", content: "b\nc\nd" } });
     expect(diffLines(g).map((d) => d.textContent)).toEqual(["+ b", "+ c", "+ d"]);
-    expect(diffLines(g)[0] === b).toBe(true);
+    expect(diffLines(g)[0] === b).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
     rerender({ input: { file_path: "/repo/a.txt", content: "x\nx\nx" } });
     expect(diffLines(g).map((d) => d.textContent)).toEqual(["+ x", "+ x", "+ x"]);
     expect(errors.mock.calls.map((c) => String(c[0])).filter((m) => m.includes("key"))).toEqual([]);
