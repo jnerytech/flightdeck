@@ -41,7 +41,10 @@ const click = async (name: string) => {
 };
 
 const change = async (label: string, value: string) => {
-  if (["Origem", "Estado"].includes(label)) await sidebar.openFilters();
+  if (["Origem", "Estado"].includes(label)) {
+    await sidebar.openFilters();
+    await settle(() => screen.queryByLabelText(label) !== null);
+  }
   const field = screen.queryByLabelText(label) as HTMLInputElement | null;
   expect(field).not.toBeNull();
   await act(async () => {
@@ -65,6 +68,8 @@ const scopeTo = async (item: string) => {
   await act(async () => {
     fireEvent.click(entry as HTMLElement);
   });
+  // The menu closes before the next control is used: an open one swallows the next click.
+  await settle(() => screen.queryByRole("menuitemradio") === null);
 };
 
 /** A row's action from its menu (phase 10: no loose icons); Radix opens on pointer down. */
