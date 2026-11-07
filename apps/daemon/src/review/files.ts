@@ -182,12 +182,12 @@ export class ReviewFiles {
    * A search over the target's repository (#797), by name or by content. A terminal's folder is not
    * one (it can be the home): the resolve refuses it.
    */
-  async search(input: FileSearchPayload): Promise<FileSearchResult> {
+  async search(input: FileSearchPayload, signal?: AbortSignal): Promise<FileSearchResult> {
     const { root } = await this.opts.changes.resolve(input.target);
     // Only inside the allowed roots: a session's folder is whatever it ran in (#805 review).
     const real = await resolveAllowedCwd(root, this.opts.allowedRoots);
     const { target: _target, ...search } = input;
-    return searchRepository(real, search, this.opts.search);
+    return searchRepository(real, search, { ...this.opts.search, ...(signal ? { signal } : {}) });
   }
 
   /** Writes only when the file still has `expectedHash`; otherwise `file_conflict`. */

@@ -128,6 +128,7 @@ export const DAEMON_REASONS = [
   "persona_id_invalid",
   "repo_not_git",
   "search_busy",
+  "search_superseded",
   "project_exists",
   "card_not_found",
   "arena_variants",

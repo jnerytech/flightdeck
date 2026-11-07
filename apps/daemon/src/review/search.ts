@@ -28,6 +28,8 @@ export interface SearchOptions {
   maxBytes?: number;
   /** Runs `rg`: the capped runner when absent (a test answers for it). */
   run?: typeof runLimited;
+  /** Aborting it stops the search and its programs: it answers `search_superseded` (#905). */
+  signal?: AbortSignal;
 }
 
 type Search = Omit<FileSearchPayload, "target">;
@@ -129,12 +131,35 @@ export async function searchRepository(
     throw new FlightdeckError("invalid_state", "too many searches at once", "search_busy");
   }
   running += 1;
+  // The slot goes back once, when the search ends or at the abort, whichever is first: the newer
+  // search must not be refused while the killed programs are still dying (#905).
+  let held = true;
+  const release = () => {
+    if (held) running -= 1;
+    held = false;
+  };
+  opts.signal?.addEventListener("abort", release, { once: true });
   try {
-    return await search(root, input, opts);
+    if (opts.signal?.aborted) throw superseded();
+    const result = await search(root, input, opts);
+    // Aborted while it ran: what the killed programs left is not an answer.
+    if (opts.signal?.aborted) throw superseded();
+    return result;
+  } catch (error) {
+    throw opts.signal?.aborted ? superseded() : error;
   } finally {
-    running -= 1;
+    opts.signal?.removeEventListener("abort", release);
+    release();
   }
 }
+
+/** A newer search from the same connection replaced this one (#905). */
+const superseded = () =>
+  new FlightdeckError(
+    "invalid_state",
+    "the search was replaced by a newer one",
+    "search_superseded",
+  );
 
 async function search(root: string, input: Search, opts: SearchOptions): Promise<FileSearchResult> {
   const realRoot = await realpath(root);
@@ -145,6 +170,9 @@ async function search(root: string, input: Search, opts: SearchOptions): Promise
     // git-arg: fixed options only
     [...GIT_SAFE, "rev-parse", "--show-toplevel"],
     opts.timeoutMs ?? TIMEOUT_MS,
+    undefined,
+    undefined,
+    opts.signal,
   );
   if (top.code !== 0) throw notRepository(root);
   // A `core.worktree` in the repository's config sends git to another tree: its files are not
@@ -202,6 +230,7 @@ async function byName(root: string, query: string, opts: SearchOptions): Promise
     opts.timeoutMs ?? TIMEOUT_MS,
     undefined,
     NUL,
+    opts.signal,
   );
   if (result.code !== 0 && !cut(result)) throw notRepository(root);
   const wanted = query.toLowerCase();
@@ -244,6 +273,9 @@ async function withRg(rg: string, root: string, query: string, opts: SearchOptio
     root,
     opts.maxBytes ?? MAX_BYTES,
     opts.timeoutMs ?? TIMEOUT_MS,
+    undefined,
+    undefined,
+    opts.signal,
   );
   const matches: FileSearchMatch[] = [];
   for (const line of result.stdout.split("\n")) {
@@ -289,6 +321,9 @@ async function withGitGrep(root: string, query: string, opts: SearchOptions): Pr
       query,
     ],
     opts.timeoutMs ?? TIMEOUT_MS,
+    undefined,
+    undefined,
+    opts.signal,
   );
   if (result.code > 1 && !cut(result)) throw failed("git grep", result.code);
   const matches: FileSearchMatch[] = [];

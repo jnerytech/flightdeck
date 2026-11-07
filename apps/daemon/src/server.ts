@@ -1334,8 +1334,17 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await files().list(command.payload.target, command.payload.dir));
       case "file.read":
         return ok(command.type, await files().read(command.payload.target, command.payload.path));
-      case "file.search":
-        return ok(command.type, await files().search(command.payload));
+      case "file.search": {
+        // One search at a time per connection: a newer one replaces the one before it (#905).
+        ws.data.search?.abort();
+        const mine = new AbortController();
+        ws.data.search = mine;
+        try {
+          return ok(command.type, await files().search(command.payload, mine.signal));
+        } finally {
+          if (ws.data.search === mine) ws.data.search = undefined;
+        }
+      }
       case "file.write": {
         const { target, path, text, expectedHash } = command.payload;
         return ok(command.type, await files().write(target, path, text, expectedHash));
@@ -1523,6 +1532,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchMessages?.();
         ws.data.unwatchTeams?.();
         ws.data.unwatchPrs?.();
+        ws.data.search?.abort();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },
