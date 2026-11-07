@@ -3840,6 +3840,14 @@ export const Command = z.discriminatedUnion("type", [
         message: "command e claude não podem ir juntos",
       }),
   ),
+  /**
+   * Issue #107: a shell in the folder the host holds for a managed session (its worktree), never in
+   * a path the app sends. The host's default shell; `terminal.open` stays for the rest.
+   */
+  cmd(
+    "terminal.openSession",
+    z.object({ session: z.string().min(1), cols: TerminalCols, rows: TerminalRows }).strict(),
+  ),
   /** Keyboard input, UTF-8. */
   cmd("terminal.write", z.object({ terminalId: TerminalId, data: z.string().max(262_144) })),
   cmd(
@@ -4999,6 +5007,7 @@ export interface CommandResults {
   "changes.get": ChangesResult;
   "pr.comments": { comments: PrComment[] };
   "terminal.open": TerminalInfo;
+  "terminal.openSession": TerminalInfo;
   "terminal.write": undefined;
   "terminal.resize": undefined;
   "terminal.attach": TerminalAttachResult;
