@@ -82,6 +82,9 @@ function target(
     local?: string | null;
     failResume?: boolean;
     mine?: { id: string; status: SessionStatus } | null;
+    /** What happens on this host while the session starts, before it answers. */
+    whileStarting?: () => Promise<void>;
+    failClose?: boolean;
   } = {},
 ) {
   const roots = tempDir("fd-teleport-target-");
@@ -109,12 +112,14 @@ function target(
     transcriptOf: () => options.local ?? null,
     resume: async (opts) => {
       calls.resumed.push(opts);
+      await options.whileStarting?.();
       if (options.failResume) throw new Error("claude would not start");
       return { sessionId: "t1" };
     },
     sessionOf: () => options.mine ?? null,
     close: async (sessionId) => {
       calls.closed.push(sessionId);
+      if (options.failClose) throw new Error("the old record would not end");
     },
     unarchive: (claudeSessionId) => {
       calls.unarchived.push(claudeSessionId);
@@ -461,5 +466,43 @@ describe("teleport-import: a received package becomes a session on this host (#1
       [...calls.closed, ...calls.unarchived],
       await leftovers(repo, history),
     ]).toEqual([true, [`${ID}.jsonl`], TRANSCRIPT.slice(0, 20), [], [1, "", "", ["-work-app"]]]);
+  });
+
+  test("an old record that will not end does not undo a session that came back and started (#870)", async () => {
+    const pkg = await packaged();
+    const history = tempDir("fd-teleport-history-");
+    const { file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
+    const { repo, deps, calls } = target(pkg, {
+      local: file,
+      mine: { id: "old", status: "idle" },
+      failClose: true,
+    });
+    const done = await importPackage({ ...deps, historyRoot: history }, "in-1", repo).catch(
+      (e: Error) => ({ sessionId: String(e) }),
+    );
+    expect([done.sessionId, calls.closed, calls.unarchived]).toEqual(["t1", ["old"], [ID]]);
+  });
+
+  test("a copy put back never writes over a file that appeared there meanwhile: it stays set aside (#870)", async () => {
+    const pkg = await packaged();
+    const history = tempDir("fd-teleport-history-");
+    const { folder, file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
+    const { repo, deps } = target(pkg, {
+      local: file,
+      failResume: true,
+      whileStarting: () => writeFile(file, "a new session here\n"),
+    });
+    await reason(() => importPackage({ ...deps, historyRoot: history }, "in-1", repo));
+    expect([
+      (await readdir(folder)).sort(),
+      await readFile(file, "utf8"),
+      await readFile(join(folder, `${ID}.jsonl.replaced-2026-11-07T12-00-00-000Z`), "utf8").catch(
+        () => "missing",
+      ),
+    ]).toEqual([
+      [`${ID}.jsonl`, `${ID}.jsonl.replaced-2026-11-07T12-00-00-000Z`],
+      "a new session here\n",
+      TRANSCRIPT.slice(0, 20),
+    ]);
   });
 });
