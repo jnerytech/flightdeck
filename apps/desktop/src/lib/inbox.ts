@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { T } from "../i18n/index.ts";
+import { basename } from "./paths.ts";
 import type { Route } from "./router.ts";
 
 export const INBOX_KEY = "flightdeck.inbox";
@@ -68,7 +69,8 @@ export function inboxTarget(
   return { kind: "route", route };
 }
 
-export type InboxDay = "today" | "yesterday" | string;
+/** A day heading: "today", "yesterday", or the date. */
+export type InboxDay = string;
 
 /** The newest entry goes first; only the newest `cap` are kept. */
 export function addEntry(
@@ -186,11 +188,12 @@ export function inboxRows(
     sections[section].push(made);
   }
   return (["today", "earlier"] as const)
-    .map((section) => ({
-      section,
+    .map((section) => {
+      const rows = sections[section];
       // Unread first; the sort is stable, so each half stays newest first.
-      rows: sections[section].sort((a, b) => Number(a.entry.read) - Number(b.entry.read)),
-    }))
+      rows.sort((a, b) => Number(a.entry.read) - Number(b.entry.read));
+      return { section, rows };
+    })
     .filter((group) => group.rows.length > 0);
 }
 
@@ -203,7 +206,6 @@ export function unreadRows(list: InboxEntry[], now: Date): number {
 
 const SHORT = 70;
 const cut = (text: string) => (text.length > SHORT ? `${text.slice(0, SHORT - 1)}…` : text);
-const fileName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
 /** A request in plain words, from the tool and its input. */
 export function describeRequest(
@@ -221,7 +223,7 @@ export function describeRequest(
   if (toolName === "Bash" && command) return t("inbox.runs", { command: cut(command) });
   const file = text(input?.file_path ?? input?.notebook_path);
   if (["Edit", "MultiEdit", "Write", "NotebookEdit"].includes(toolName) && file) {
-    return t("inbox.edits", { file: fileName(file) });
+    return t("inbox.edits", { file: basename(file) });
   }
   return t("inbox.uses", { tool: toolName });
 }
