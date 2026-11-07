@@ -119,6 +119,7 @@ describe("drift-gate: a round that leaves its PR is held, not pushed (#77)", () 
     expect([
       r?.status,
       r?.drift,
+      (r?.drift?.churn ?? 0) > 0,
       f.gitCalls.some((args) => args[0] === "push"),
       f.commitsAhead(),
       status.status,
@@ -126,7 +127,9 @@ describe("drift-gate: a round that leaves its PR is held, not pushed (#77)", () 
       f.board.getCard(f.card.id).column,
     ]).toEqual([
       "held",
-      { outside: ["fake-1.txt"], churn: 1, limit: 200 },
+      // The fake session writes its prompt to the file: the churn is that prompt's lines.
+      { outside: ["fake-1.txt"], churn: expect.any(Number), limit: 200 },
+      true,
       false,
       "1",
       "needs_you",
