@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { CostsSummary, UsageSummary } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -197,5 +199,11 @@ describe("home-leaders-ui: where the tokens of the 7 days went", () => {
       empty: { panel: true, says: true },
       withoutCosts: false,
     });
+  });
+
+  // axe target-size (#124 prints): a project's name is a button, at least 24 px tall.
+  test("a project's button is a target of at least 24 px", () => {
+    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    expect(/@utility leader-link \{[^}]*min-height: 1\.5rem/.test(css)).toBe(true);
   });
 });
