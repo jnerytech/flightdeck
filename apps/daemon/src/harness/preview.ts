@@ -6,14 +6,13 @@
  */
 import { createHash } from "node:crypto";
 import { lstat, readFile, realpath } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import {
   type HARNESS_PREVIEW_PARTS,
   type HarnessPreview,
   type HarnessStack,
   HOOK_KINDS,
 } from "@flightdeck/protocol";
-import { isInside } from "../paths.ts";
 import { detectStack } from "./stack.ts";
 import { claudeMd, DENY_RULES, EDIT_MATCHER, reviewerAgent, tddSkill } from "./templates.ts";
 
@@ -47,30 +46,24 @@ const orNull = <T>(promise: Promise<T>): Promise<T | null> =>
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** Whether the nearest folder of a path that exists is, for real, inside the project. */
-async function parentInside(root: string, dir: string): Promise<boolean> {
-  for (let at = dir; ; at = dirname(at)) {
-    const real = await orNull(realpath(at));
-    if (real !== null) return isInside(root, real);
-    if (dirname(at) === at) return false;
-  }
-}
-
 /**
- * A project file as it is now: missing (with a real place inside the project to create it), a plain
- * file inside the project of a sane size, or refused (a link, a folder, too big, or a way out).
+ * A project file as it is now, walked one name at a time from the project's real root: missing (and
+ * every folder above it a real folder of the project, where S4 may create it), a plain file of a sane
+ * size, or refused. A link anywhere on the way is refused, dangling or not, out of the project or
+ * into it: a write must land where the path says.
  */
 async function look(root: string, name: string): Promise<Look> {
-  const full = join(root, name);
-  const info = await orNull(lstat(full));
-  if (info === null) {
-    return (await parentInside(root, dirname(full))) ? { state: "absent" } : { state: "refused" };
+  const names = name.split("/");
+  let at = root;
+  for (const [index, segment] of names.entries()) {
+    at = join(at, segment);
+    const info = await orNull(lstat(at));
+    if (info === null) return { state: "absent" };
+    const last = index === names.length - 1;
+    if (info.isSymbolicLink() || (!last && !info.isDirectory())) return { state: "refused" };
+    if (last && (!info.isFile() || info.size > MAX_FILE)) return { state: "refused" };
   }
-  const real = await orNull(realpath(full));
-  if (!info.isFile() || info.size > MAX_FILE || real === null || !isInside(root, real)) {
-    return { state: "refused" };
-  }
-  const bytes = await orNull(readFile(real));
+  const bytes = await orNull(readFile(at));
   if (bytes === null) return { state: "refused" };
   return {
     state: "file",
