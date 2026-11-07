@@ -315,7 +315,7 @@ export class WorkflowEngine {
           "UPDATE step_runs SET status = 'failed', ended_at = ? WHERE run_id = ? AND ended_at IS NULL",
         )
         .run(now(), run.id);
-      for (const key of [...this.gates.keys()])
+      for (const key of [...this.gates.keys()]) // NOSONAR: the loop deletes from the map it walks; the copy keeps the walk stable
         if (key.startsWith(`${run.id}/`)) this.gates.delete(key);
       this.quotaWaits.delete(run.id);
       this.end(run.id, "failed", why);
@@ -420,6 +420,8 @@ export class WorkflowEngine {
       .query<StepRow, [string]>("SELECT * FROM step_runs WHERE run_id = ? ORDER BY rowid")
       .all(id)
       .map(toStep);
+    const { turns, minutes, costUsd } = JSON.parse(row.usage) as RunSpending;
+    const quotaUntil = this.quotaWaits.get(id);
     return {
       id: row.id,
       cardId: row.card_id,
@@ -430,16 +432,12 @@ export class WorkflowEngine {
       reasonKey: row.status_reason_key,
       reasonParams: row.status_reason_params ? JSON.parse(row.status_reason_params) : null,
       budget: JSON.parse(row.budget),
-      usage: (({ turns, minutes, costUsd }: RunSpending) => ({ turns, minutes, costUsd }))(
-        JSON.parse(row.usage),
-      ),
+      usage: { turns, minutes, costUsd },
       inputs: JSON.parse(row.inputs),
       startedAt: row.started_at,
       endedAt: row.ended_at,
       steps,
-      quotaUntil: ((until) => (until ? new Date(until).toISOString() : null))(
-        this.quotaWaits.get(id),
-      ),
+      quotaUntil: quotaUntil ? new Date(quotaUntil).toISOString() : null,
     };
   }
 

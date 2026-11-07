@@ -59,13 +59,13 @@ describe("tab-compact: below 640 px the tab row is one button for the current ta
   test("it shows the current tab's icon, title, host dot and the tab count, and the strip is gone", async () => {
     await mount();
     await viewport(390);
-    expect(strip() === null).toBe(true);
+    expect(strip() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     const button = current() as HTMLElement;
-    expect(button === undefined).toBe(false);
+    expect(button).not.toBeUndefined();
     expect(button.getAttribute("aria-label")).toBe("Todas as abas (4), atual: Projetos, host alfa");
     expect(button.textContent).toContain("Projetos");
     expect(button.textContent).toContain("4");
-    expect(button.querySelector("svg") === null).toBe(false);
+    expect(button.querySelector("svg")).not.toBeNull();
     const dot = button.querySelector<HTMLElement>("[data-host-dot]");
     expect(dot?.style.backgroundColor).toBe(hostColorVar("ha"));
   });
@@ -73,12 +73,12 @@ describe("tab-compact: below 640 px the tab row is one button for the current ta
   test("it opens the list of all tabs across the window, and picking a tab goes to it and closes the list", async () => {
     const store = await mount();
     await viewport(390);
-    expect(current() === undefined).toBe(false);
+    expect(current()).not.toBeUndefined();
     await act(async () => {
       fireEvent.click(current() as HTMLElement);
     });
     const dialog = screen.queryByRole("dialog", { name: "Todas as abas" }) as HTMLElement;
-    expect(dialog === null).toBe(false);
+    expect(dialog).not.toBeNull();
     const options = screen.queryAllByRole("option");
     expect(options).toHaveLength(4);
     await act(async () => {
@@ -87,7 +87,7 @@ describe("tab-compact: below 640 px the tab row is one button for the current ta
       );
     });
     expect(store.router.current.name).toBe("history");
-    expect(screen.queryByRole("dialog", { name: "Todas as abas" }) === null).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Todas as abas" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(current()?.getAttribute("aria-label")).toBe(
       "Todas as abas (4), atual: Histórico, host alfa",
     );
@@ -100,23 +100,23 @@ describe("tab-compact: below 640 px the tab row is one button for the current ta
       store.hostTabs.activate(store.hostTabs.shared.tabs[0]?.id ?? "");
     });
     expect(current()?.getAttribute("aria-label")).toBe("Todas as abas (4), atual: Sessões");
-    expect(current()?.querySelector("[data-host-dot]") === null).toBe(true);
+    expect(current()?.querySelector("[data-host-dot]") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 
   test("a new tab stays one tap away, and the split's buttons are not offered", async () => {
     await mount();
     await viewport(390);
-    expect(screen.queryByRole("button", { name: "Nova aba" }) === null).toBe(false);
-    expect(screen.queryByRole("button", { name: "Dividir a tela" }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Nova aba" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Dividir a tela" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 
   test("from 640 px the strip is back, and the button is gone", async () => {
     await mount();
     await viewport(390);
     await viewport(700);
-    expect(strip() === null).toBe(false);
-    expect(current() === undefined).toBe(true);
-    expect(screen.queryByRole("button", { name: "Dividir a tela" }) === null).toBe(false);
+    expect(strip()).not.toBeNull();
+    expect(current() === undefined).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+    expect(screen.queryByRole("button", { name: "Dividir a tela" })).not.toBeNull();
   });
   test("a window that was split can still be joined, and the split is not offered otherwise", async () => {
     const store = await mount();
@@ -124,19 +124,19 @@ describe("tab-compact: below 640 px the tab row is one button for the current ta
       store.workspace.toggleSplit();
     });
     await viewport(390);
-    expect(screen.queryByRole("button", { name: "Juntar as áreas" }) === null).toBe(false);
+    expect(screen.queryByRole("button", { name: "Juntar as áreas" })).not.toBeNull();
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Juntar as áreas" }) as HTMLElement);
     });
     expect(store.workspace.split).toBeNull();
-    expect(screen.queryByRole("button", { name: "Dividir a tela" }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Dividir a tela" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 
   test("the current tab keeps its menu: pin, move and the rest", async () => {
     await mount();
     await viewport(390);
     const menu = screen.queryByRole("button", { name: "Ações da aba Projetos" });
-    expect(menu === null).toBe(false);
+    expect(menu).not.toBeNull();
     await act(async () => {
       fireEvent.pointerDown(menu as HTMLElement, {
         button: 0,
@@ -145,7 +145,7 @@ describe("tab-compact: below 640 px the tab row is one button for the current ta
       });
       fireEvent.click(menu as HTMLElement);
     });
-    expect(screen.queryByRole("menuitem", { name: "Fixar aba Projetos" }) === null).toBe(false);
+    expect(screen.queryByRole("menuitem", { name: "Fixar aba Projetos" })).not.toBeNull();
   });
 
   test("a host not known by name is not named by its id", async () => {

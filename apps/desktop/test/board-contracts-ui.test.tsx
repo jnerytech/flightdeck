@@ -408,3 +408,77 @@ describe("board-contracts-ui: the project's contracts, force and the recorded no
     );
   });
 });
+
+const openMenu = (title: string, label = `Actions for ${title}`) =>
+  act(async () => {
+    fireEvent.pointerDown(within(li(title)).getByRole("button", { name: label }), {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+  });
+const startDialog = () => screen.queryByRole("dialog", { name: "Start card" });
+const startFromMenu = async (title: string) => {
+  await openMenu(title);
+  await click(await screen.findByRole("menuitem", { name: "Start card" }));
+};
+
+const ASKING = {
+  contractByColumn: { in_progress: { enforce: "confirm", checks: ["criteria"] } },
+};
+
+// Issue #78, slice 3a: starting asks about criteria only where the project's In progress confirms.
+describe("board-contracts-ui: Start asks only when In progress confirms criteria", () => {
+  test("by default Start goes straight to the start dialog, with no question", async () => {
+    setup();
+    await ready();
+    await startFromMenu("A");
+    expect(dialog() === null).toBe(true);
+    await settle(() => startDialog() !== null);
+  });
+
+  test("a project that confirms criteria asks first, names what is missing and offers Start anyway", async () => {
+    setup({ project: ASKING });
+    await ready();
+    await startFromMenu("A");
+    const ask = dialog() as HTMLElement;
+    expect(ask === null).toBe(false);
+    expect(ask.textContent).toContain("Start A anyway?");
+    expect(ask.textContent).toContain("A lacks: acceptance criteria");
+    expect(startDialog() === null).toBe(true);
+    await click(within(ask).getByRole("button", { name: "Start anyway" }));
+    await settle(() => startDialog() !== null);
+    expect(dialog() === null).toBe(true);
+  });
+
+  test("Cancel starts nothing and gives the card its focus back", async () => {
+    setup({ project: ASKING });
+    await ready();
+    await startFromMenu("A");
+    expect(dialog() === null).toBe(false);
+    await click(within(dialog() as HTMLElement).getByRole("button", { name: "Cancel" }));
+    expect(dialog() === null).toBe(true);
+    expect(startDialog() === null).toBe(true);
+    await settle(() => li("A").contains(document.activeElement));
+  });
+
+  test("a card with criteria goes straight to the start dialog even where it confirms", async () => {
+    setup({ project: ASKING });
+    await ready();
+    await startFromMenu("G");
+    expect(dialog() === null).toBe(true);
+    await settle(() => startDialog() !== null);
+  });
+
+  test("it reads in Portuguese too", async () => {
+    setup({ language: "pt-BR", project: ASKING });
+    await settle(() => screen.queryByRole("heading", { name: "Board de api" }) !== null);
+    await openMenu("A", "Ações de A");
+    await click(await screen.findByRole("menuitem", { name: "Iniciar card" }));
+    const ask = dialog() as HTMLElement;
+    expect(ask === null).toBe(false);
+    expect(ask.textContent).toContain("Iniciar A mesmo assim?");
+    expect(ask.textContent).toContain("A não tem: critérios de aceite");
+    expect(within(ask).getByRole("button", { name: "Iniciar mesmo assim" }) === null).toBe(false);
+  });
+});

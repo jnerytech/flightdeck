@@ -335,7 +335,7 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
 - Logo abaixo, **Configuração do Claude Code** lista, como uma checklist, o que ajuda o Claude
   Code a trabalhar bem no projeto: `CLAUDE.md`, hooks (e se algum roda um formatador após
   edições, ou verifica o `git add` ou arquivos de segredo antes de uma ferramenta rodar), skills, subagentes, permissões
-  (quantas regras de permissão) e servidores MCP. Cada um aparece como **Encontrado** ou
+  (quantas regras permitem e quantas negam) e servidores MCP. Cada um aparece como **Encontrado** ou
   **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
   variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
   avisa: uma parte marcada como faltando pode existir.
@@ -970,7 +970,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
   "N contas" quando diferem.
 - **Dados de** (#126): com dois hosts ou mais, a barra do Início tem um menu que diz de quem são os
-  números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
+  números mostrados, **Todos os hosts**, um host ou um projeto do grupo **Projetos** (esse projeto
+  em todos os hosts, com o nome no subtítulo), e os troca; a escolha fica guardada entre
   aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
   abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
   hosts**; um host cujo daemon precisa de atualização diz isso no lugar, e o menu não o oferece. Os
@@ -1052,6 +1053,13 @@ aparece mascarado e como **Oculto**, e não abre.
   card. **Mover mesmo assim** manda o host seguir, e o card guarda um aviso ("Movido para Em revisão
   mesmo assim; faltava um link de PR"). O host nunca recusa o que move cards sozinho: o gerente, a
   sincronização do quadro, a vigia do PR e os eventos de PR.
+- **Uma nota de validação e iniciar sem critérios** (#78). Um card tem uma **Nota de validação** nos
+  Detalhes: uma ou duas linhas sobre como você conferiu o trabalho. Um projeto pode fazer uma coluna
+  pedir isso (um contrato com a verificação `validation`), e o card passa a dizer "Precisa de: uma
+  nota de validação". **Iniciar** (o menu do card, a seção Executar do card ou a paleta Ctrl+K)
+  pergunta antes só num projeto cujo contrato de Em andamento confirma critérios de aceite, e só
+  para um card sem eles (nenhum item `- [ ] …` na descrição): **Iniciar mesmo assim** segue. Por
+  padrão Em andamento só avisa, então Iniciar não pergunta nada.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
@@ -2644,7 +2652,10 @@ do app, dos cards e dos workflows, subagentes incluídos.
   - No primeiro boot desta versão, o daemon lê em segundo plano os transcripts que já existem e
     continua respondendo enquanto isso.
 - **Período:** hoje, 7 dias, 30 dias, mês atual ou um intervalo, sempre no fuso do host.
-- **Filtros:** host, projeto, modelo e origem (terminal, app, card, workflow, subagent).
+- **Dados de:** todos os hosts, um host ou um projeto. O grupo **Projetos** do menu lista os
+  projetos do período, com o nome que têm no Início; a escolha é a mesma que o Início e as Sessões
+  guardam (#126). Um alerta de orçamento ou um cartão do Início abre um projeto só naquela visita.
+- **Filtros:** modelo e origem (terminal, app, card, workflow, subagent).
 - **O que aparece:**
   - o custo estimado, os tokens e a economia do cache (quanto o cache read custou a menos do que
     o mesmo volume como input normal);

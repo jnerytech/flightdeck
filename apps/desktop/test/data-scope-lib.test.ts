@@ -125,6 +125,45 @@ describe("data-scope: whose data the scoped screens show (#126)", () => {
   });
 });
 
+// #126 slice 4: a project is a scope of its own; its key spans the hosts or pins one already.
+describe("data-scope: a project scope", () => {
+  const FOLDER = "host:alfa:/work/proj";
+  test("a kept project reads back, and one with no key is every host", () => {
+    expect([
+      parseScope('{"kind":"project","projectKey":"github.com/x/y"}'),
+      parseScope(JSON.stringify({ kind: "project", projectKey: FOLDER })),
+      parseScope('{"kind":"project","projectKey":""}'),
+    ]).toEqual([
+      { kind: "project", projectKey: "github.com/x/y" },
+      { kind: "project", projectKey: FOLDER },
+      ALL_SCOPE,
+    ]);
+  });
+
+  test("its menu value reads back as the project, even a folder key that starts like a host's", () => {
+    const folder = { kind: "project", projectKey: FOLDER } as const;
+    expect({
+      value: scopeValue(folder),
+      back: scopeOfValue(scopeValue(folder)),
+      host: scopeOfValue(scopeValue({ kind: "host", hostId: "h1" })),
+    }).toEqual({
+      value: `project:${FOLDER}`,
+      back: folder,
+      host: { kind: "host", hostId: "h1" },
+    });
+  });
+
+  test("it is never checked against a list, and it keeps every host", () => {
+    const project = { kind: "project", projectKey: "github.com/x/y" } as const;
+    const hosts = [{ id: "h1" }, { id: "h2" }];
+    expect({
+      before: activeScope(project, [], false),
+      after: activeScope(project, hosts),
+      hosts: scopeHosts(hosts, project).map((host) => host.id),
+    }).toEqual({ before: project, after: project, hosts: ["h1", "h2"] });
+  });
+});
+
 // #886: the notice says why the scoped host shows nothing, in what the screen lists.
 describe("data-scope: why a scoped host has nothing to show", () => {
   test("an incompatible daemon needs an update; any other host is offline, numbers or sessions", () => {

@@ -102,6 +102,22 @@ const DEEP: ProjectLoad = {
 };
 
 describe("trust-ui: the project page says what a project would load and lets the person decide (#196)", () => {
+  test("what the project denies is listed beside what it allows, with how many were cut (#75)", async () => {
+    const load = {
+      ...LOAD,
+      denyRules: ["Read(./.env)"],
+      omitted: { ...LOAD.omitted, denyRules: 2 },
+    };
+    render(setup({ load }).view);
+    await waitFor(() => expect(screen.queryByText("What this project would load")).not.toBeNull());
+    const text = screen.getByRole("region", { name: "Project configuration" }).textContent ?? "";
+    expect([
+      text.includes("Tools denied"),
+      text.includes("Read(./.env)"),
+      text.includes("+2 more not shown"),
+    ]).toEqual([true, true, true]);
+  });
+
   test("a command is shown whole in a block of its own, with a warning when one is long or has several lines", async () => {
     render(setup({ load: DEEP }).view);
     await waitFor(() => expect(screen.queryByText("What this project would load")).not.toBeNull());

@@ -10,11 +10,12 @@ import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { mergeSummaries } from "../lib/client-costs.ts";
-import { ALL_HOSTS, daysBetween, periodRange } from "../lib/costs.ts";
+import { ALL_HOSTS, daysBetween, periodRange, projectLabel, projectPath } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, scopeHosts } from "../lib/data-scope.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
 import { type HomeLeaders, homeLeaders } from "../lib/home-leaders.ts";
+import { knownProjectKeys } from "../lib/project-keys.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 
@@ -44,17 +45,40 @@ export function HomePage(
   // once the host list is read (before, a kept host is only not listed yet, and Home asks nobody).
   const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
   const scope = activeScope(kept, state.hosts, state.hostsLoaded);
+  /** A project scope (#126 slice 4): that project's numbers, on every host. */
+  const projectKey = scope.kind === "project" ? scope.projectKey : undefined;
   const hosts = useMemo(() => scopeHosts(state.hosts, scope), [state.hosts, scope]);
   /** The scoped host, when it is offline (not still connecting): Home says so and offers all. */
   const away =
     scope.kind === "host"
       ? hosts.find((host) => host.status !== "online" && host.status !== "connecting")
       : undefined;
+  // The projects the app knows, for the Projects group of the scope menu (#126 slice 4).
+  const seen = store.projectKeys.all();
+  const listed = store.getState().projects;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` says when new keys were seen
+  const knownKeys = useMemo(
+    () => [...new Set([...seen, ...knownProjectKeys(listed), ...(projectKey ? [projectKey] : [])])],
+    [store.projectKeys.version, listed, projectKey],
+  );
+  const projectNames = useProjectLabels(store, knownKeys);
+  const projects = useMemo(
+    () =>
+      knownKeys
+        .map((key) => ({ key, label: projectNames.get(key) ?? projectLabel(key) }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [knownKeys, projectNames],
+  );
   /** The subtitle says whose numbers they are, as the scope menu does. */
   const scoped = scope.kind === "host" ? hosts[0]?.name : undefined;
   // A kept host not listed yet has no name: the subtitle names no scope rather than "all hosts".
   const subtitle = (() => {
     if (scope.kind === "all") return t("home.range");
+    if (projectKey) {
+      return t("home.rangeProject", {
+        project: projectNames.get(projectKey) ?? projectLabel(projectKey),
+      });
+    }
     return scoped ? t("home.rangeHost", { host: scoped }) : t("home.rangeDays");
   })();
   const online = hosts.filter((host) => host.status === "online");
@@ -63,7 +87,9 @@ export function HomePage(
   const entry = homeKey(
     PERIOD,
     hosts.map((host) => host.id),
+    projectKey,
   );
+  const only = projectKey ? { projectKey } : {};
   const range = periodRange(PERIOD, store.today());
   const days = useMemo(() => daysBetween(range.from, range.to), [range.from, range.to]);
   /** The last read of this visit: what it found, and which hosts answered. */
@@ -109,10 +135,11 @@ export function HomePage(
             ? store.hostRequest(host.id, "costs.summary", {
                 from: days[from] ?? range.from,
                 to: days[to] ?? range.to,
+                ...only,
               })
             : null;
         const [costs, usage, first, second] = await Promise.all([
-          priced ? store.hostRequest(host.id, "costs.summary", range) : null,
+          priced ? store.hostRequest(host.id, "costs.summary", { ...range, ...only }) : null,
           store.hostRequest(host.id, "usage.summary", { days: 7 }),
           half(0, 2),
           half(3, 5),
@@ -132,6 +159,7 @@ export function HomePage(
             costs?.ok ? costs.data : null,
             usage.ok ? usage.data : null,
             store.now(),
+            projectKey,
           ),
         };
       }),
@@ -190,8 +218,9 @@ export function HomePage(
       costs: answers.flatMap((a) => (a.costs ? [a.costs] : [])),
       usage: answers.flatMap((a) => (a.usage ? [a.usage] : [])),
       budgets: hosts.flatMap((host) => state.budgets[host.id] ?? []),
+      ...(projectKey ? { projectKey } : {}),
     });
-  }, [data, days, state.budgets, hosts]);
+  }, [data, days, state.budgets, hosts, projectKey]);
   const read = fetched?.entry === entry ? fetched : null;
   /** Hosts whose numbers on screen are from an earlier read: the last read did not refresh them. */
   const stale = hosts.filter(
@@ -256,8 +285,8 @@ export function HomePage(
       title={t("home.title")}
       subtitle={subtitle}
       toolbar={
-        state.hostsLoaded && state.hosts.length > 1 ? (
-          <ScopeMenu store={store} hosts={state.hosts} scope={scope} />
+        state.hostsLoaded && (state.hosts.length > 1 || projects.length > 0) ? (
+          <ScopeMenu store={store} hosts={state.hosts} projects={projects} scope={scope} />
         ) : undefined
       }
     >
@@ -387,6 +416,7 @@ export function HomePage(
               leaders={shown}
               unavailable={board !== null && board.leaders === null}
               projectName={(key) => labels.get(key) ?? key}
+              projectTitle={projectPath}
               onOpenProject={openProject}
             />
           )}

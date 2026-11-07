@@ -98,6 +98,8 @@ const validCommands: Record<CommandType, unknown> = {
   "host.keepAwake": { enabled: true },
   "project.trust.state": { paths: ["/work/app"] },
   "project.trust.inspect": { path: "/work/app" },
+  "project.harness.stack": { path: "/work/app" },
+  "project.harness.preview": { path: "/work/app", parts: ["hooks", "permissions"] },
   "project.trust.set": { path: "/work/app", trusted: true },
   "card.manage": { as: { session: "s1" }, action: "move", column: "review" },
   "board.watch": {},

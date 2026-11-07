@@ -2,7 +2,7 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     // The demo scripts (phase 10) import the app's types and drive a browser page.
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "types": ["bun"],
     "paths": { "@/*": ["../apps/desktop/src/*"] }

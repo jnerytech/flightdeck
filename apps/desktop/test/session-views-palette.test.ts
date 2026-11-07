@@ -57,7 +57,12 @@ describe("session-views-palette: the palette switches the view of the page on sc
     runPaletteTarget(
       { sessionViews } as unknown as Parameters<typeof runPaletteTarget>[0],
       { kind: "session-view", view: "trace" },
-      { lang: "en", go: () => {}, showHelp: () => {} },
+      {
+        lang: "en",
+        go: () => {},
+        showHelp: () => {},
+        askStart: (_card: unknown, _contracts: unknown, go: () => void) => go(),
+      },
     );
     expect(shown).toEqual(["trace"]);
   });

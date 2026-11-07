@@ -546,7 +546,7 @@ function shots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await page.locator(".kpi-card").first().waitFor({ timeout: 8000 });
         await page.getByRole("button", { name: /^(Dados de|Data from) / }).click();
-        await page.getByRole("menuitemradio", { name: "alfa" }).click();
+        await page.getByRole("menuitemradio", { name: "alfa", exact: true }).click();
         await page.getByRole("button", { name: /^(Dados de|Data from) alfa$/ }).waitFor();
         await page.waitForTimeout(600);
       },

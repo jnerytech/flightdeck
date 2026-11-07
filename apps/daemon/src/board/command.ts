@@ -122,9 +122,22 @@ export function gitLimitedFor(
   kill: (pid: number) => Promise<void> = killTree,
   /** The byte the output is cut after when it goes past `limit`: a line break, or NUL for `-z`. */
   separator = 10,
+  /** Aborting it kills the program like the time limit does, and the result says `aborted` (#905). */
+  signal?: AbortSignal,
+  /** Added to the process's environment for this call. */
+  env?: Record<string, string>,
 ): Promise<CommandResult & { truncated: boolean }> {
   // git-arg: the capped git helper: its callers are what the git-args ratchet checks
-  return runLimited([whichOnPath("git") ?? "git", ...args], cwd, limit, timeoutMs, kill, separator);
+  return runLimited(
+    [whichOnPath("git") ?? "git", ...args],
+    cwd,
+    limit,
+    timeoutMs,
+    kill,
+    separator,
+    signal,
+    env,
+  );
 }
 
 /** The most stderr `runLimited` keeps; the rest is read and dropped (#806). */
@@ -154,18 +167,28 @@ export async function runLimited(
   timeoutMs?: number,
   kill: (pid: number) => Promise<void> = killTree,
   separator = 10,
+  signal?: AbortSignal,
+  env?: Record<string, string>,
 ): Promise<CommandResult & { truncated: boolean }> {
   const proc = Bun.spawn(cmd, {
     cwd,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     stdout: "pipe",
     stderr: "pipe",
     stdin: "ignore",
     // Its own process group (outside Windows), so the whole tree can be killed at the limit.
-    detached: timeoutMs !== undefined && process.platform !== "win32",
+    detached: (timeoutMs !== undefined || signal !== undefined) && process.platform !== "win32",
   });
   let timedOut = false;
+  let aborted = false;
   let killing: Promise<void> = Promise.resolve();
+  // An abort kills the whole tree like the time limit does (#905).
+  const onAbort = () => {
+    aborted = true;
+    killing = kill(proc.pid).catch(() => {});
+  };
+  if (signal?.aborted) onAbort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
   const timer =
     timeoutMs === undefined
       ? null
@@ -197,6 +220,7 @@ export async function runLimited(
   }
   const [stderr, code] = await Promise.all([errors, proc.exited]);
   if (timer) clearTimeout(timer);
+  signal?.removeEventListener("abort", onAbort);
   await killing;
   const all = Buffer.concat(chunks);
   const kept = truncated ? all.subarray(0, all.subarray(0, limit).lastIndexOf(separator) + 1) : all;
@@ -206,5 +230,6 @@ export async function runLimited(
     stderr,
     truncated,
     ...(timedOut ? { timedOut } : {}),
+    ...(aborted ? { aborted } : {}),
   };
 }

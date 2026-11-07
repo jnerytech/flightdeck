@@ -511,6 +511,117 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     ]);
   });
 
+  test("a search whose signal is already aborted is superseded, and runs nothing (#905)", async () => {
+    const { repo } = await setup();
+    const controller = new AbortController();
+    controller.abort();
+    const ran: string[][] = [];
+    const run: typeof import("../src/board/command.ts").runLimited = async (cmd) => {
+      ran.push(cmd);
+      return { code: 1, stdout: "", stderr: "", truncated: false };
+    };
+    const outcome = await failure(
+      searchRepository(
+        repo,
+        { mode: "content", query: "panel" },
+        { rg: () => "rg", run, signal: controller.signal },
+      ),
+    );
+    expect([outcome, ran]).toEqual(["search_superseded", []]);
+  });
+
+  test("an aborted search frees its slot at once, before its programs have ended (#905)", async () => {
+    const { repo } = await setup();
+    const gate = Promise.withResolvers<void>();
+    // The held searches ignore the abort and end only when the gate opens: a slow kill.
+    const run: typeof import("../src/board/command.ts").runLimited = async (cmd) => {
+      if (cmd.includes("held")) await gate.promise;
+      return { code: 1, stdout: "", stderr: "", truncated: false };
+    };
+    const held = { mode: "content", query: "held" } as const;
+    const extra = { mode: "content", query: "extra" } as const;
+    const controller = new AbortController();
+    const running = Array.from({ length: MAX_SEARCHES }, (_, i) =>
+      searchRepository(repo, held, {
+        rg: () => "rg",
+        run,
+        ...(i === 0 ? { signal: controller.signal } : {}),
+      }).catch((error: { reason?: string }) => error.reason ?? "error"),
+    );
+    controller.abort();
+    const next = await failure(searchRepository(repo, extra, { rg: () => "rg", run }));
+    gate.resolve();
+    const ended = await Promise.all(running);
+    expect([next, ended[0], ended.slice(1).every((r) => typeof r !== "string")]).toEqual([
+      "ok",
+      "search_superseded",
+      true,
+    ]);
+  });
+
+  test("a new search on a connection aborts that connection's earlier one, and another connection's is left alone (#905)", async () => {
+    const ctx = await setup();
+    const started = Promise.withResolvers<void>();
+    const second = Promise.withResolvers<void>();
+    const other = Promise.withResolvers<void>();
+    const answer = { code: 1, stdout: "", stderr: "", truncated: false };
+    // "first" runs until it is aborted or the second search has run; "other" is on its own connection.
+    const run: typeof import("../src/board/command.ts").runLimited = async (
+      cmd,
+      _cwd,
+      _limit,
+      _timeout,
+      _kill,
+      _separator,
+      signal,
+    ) => {
+      if (cmd.includes("first")) {
+        started.resolve();
+        await Promise.race([
+          second.promise,
+          new Promise((resolve) => signal?.addEventListener("abort", resolve, { once: true })),
+        ]);
+        return signal?.aborted ? { ...answer, aborted: true } : answer;
+      }
+      if (cmd.includes("second")) second.resolve();
+      if (cmd.includes("other")) other.resolve();
+      return answer;
+    };
+    const files = new ReviewFiles({
+      changes: ctx.changes,
+      dataDir: tempDir("fd-data-"),
+      allowedRoots: [ctx.root],
+      search: { rg: () => "rg", run },
+    });
+    const server = startServer({
+      manager: ctx.manager,
+      files,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [ctx.root],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    const elsewhere = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    cleanups.push(() => elsewhere.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    await elsewhere.request("hello", { token: TOKEN, client: "t" });
+    const search = (query: string) => ({ target: ctx.target, mode: "content", query });
+    const first = client.request("file.search", search("first"));
+    await started.promise;
+    // Another connection searching does not touch the first one's search.
+    await elsewhere.request("file.search", search("other"));
+    await other.promise;
+    const next = await client.request("file.search", search("second"));
+    const earlier = await first;
+    const why = (ack: Record<string, unknown>) =>
+      (ack.error as { reason?: string } | undefined)?.reason ?? null;
+    expect([earlier.ok, why(earlier), next.ok]).toEqual([false, "search_superseded", true]);
+  });
+
   test("a search runs on a repository inside the allowed roots, never a terminal's folder or a session's elsewhere", async () => {
     const { changes, target, root, store } = await setup();
     const files = new ReviewFiles({ changes, dataDir: tempDir("fd-data-"), allowedRoots: [root] });

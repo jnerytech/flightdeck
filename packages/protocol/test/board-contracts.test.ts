@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
+  Card,
   type ColumnContract,
   Command,
+  type ContractOverrides,
   contractOf,
   DAEMON_REASONS,
   DEFAULT_CONTRACTS,
@@ -11,11 +13,17 @@ import {
 } from "../src/index.ts";
 
 const card = (
-  over: Partial<{ description: string; prUrl: string | null; checksState: never }>,
+  over: Partial<{
+    description: string;
+    prUrl: string | null;
+    checksState: never;
+    validationNote: string | null;
+  }>,
 ) => ({
   description: "",
   prUrl: null,
   checksState: null,
+  validationNote: null,
   ...over,
 });
 
@@ -106,5 +114,64 @@ describe("board-contracts: the wire", () => {
     expect(ErrorCode.options).toContain("contract_unmet");
     expect(DAEMON_REASONS).toContain("card_contract_unmet");
     expect(DAEMON_REASONS).toContain("card_moved_anyway");
+  });
+});
+
+describe("board-contracts: the validation note (issue #78, slice 3a)", () => {
+  const asks: ContractOverrides = { review: { enforce: "confirm", checks: ["validation"] } };
+
+  test("a column can ask for a validation note, and a blank one does not count", () => {
+    expect(missingFor("review", card({}), asks)).toEqual(["validation"]);
+    expect(missingFor("review", card({ validationNote: "   " }), asks)).toEqual(["validation"]);
+    expect(missingFor("review", card({ validationNote: "ran it by hand" }), asks)).toEqual([]);
+    // No column asks for it unless a project says so.
+    expect(missingFor("review", card({ prUrl: "https://x/pr/1" }))).toEqual([]);
+  });
+
+  test("it is asked in the order the contract lists it", () => {
+    const both: ContractOverrides = {
+      review: { enforce: "confirm", checks: ["validation", "pr"] },
+    };
+    expect(missingFor("review", card({}), both)).toEqual(["validation", "pr"]);
+  });
+
+  test("a card carries validationNote, empty for an older daemon, and card.update sets or clears it", () => {
+    const base = {
+      id: "c",
+      projectId: "p",
+      title: "t",
+      description: "",
+      column: "backlog",
+      columnLocked: false,
+      position: 1,
+      slug: null,
+      branch: null,
+      worktreePath: null,
+      prUrl: null,
+      prState: null,
+      checksState: null,
+      queued: false,
+      sessionId: null,
+      sessionStatus: null,
+      notice: null,
+      discarded: false,
+      runs: [],
+      createdAt: "2026-11-07T10:00:00Z",
+      updatedAt: "2026-11-07T10:00:00Z",
+    };
+    expect(Card.safeParse(base).success).toBe(true);
+    expect(Card.parse(base).validationNote).toBeNull();
+    expect(Card.parse({ ...base, validationNote: "done by hand" }).validationNote).toBe(
+      "done by hand",
+    );
+    const update = (validationNote: unknown) =>
+      Command.safeParse({
+        type: "card.update",
+        id: "1",
+        payload: { cardId: "c", validationNote },
+      }).success;
+    expect(update("ran it")).toBe(true);
+    expect(update(null)).toBe(true);
+    expect(update("x".repeat(4001))).toBe(false);
   });
 });

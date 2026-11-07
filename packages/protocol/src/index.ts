@@ -841,6 +841,8 @@ export const Card = z.object({
   externalGone: z.boolean().default(false),
   /** Phase 36: the hours this card is worth, an estimate the person typed. */
   estimateHours: z.number().nullable().default(null),
+  /** Issue #78: what the person did to validate the work, a note a column can ask for. */
+  validationNote: z.string().nullable().default(null),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -3044,6 +3046,15 @@ export const ActionResult = z.object({
 });
 export type ActionResult = z.infer<typeof ActionResult>;
 
+/** #75: the parts the harness preview has a template for (MCP has none: its servers are the person's choice). */
+export const HARNESS_PREVIEW_PARTS = [
+  "claudeMd",
+  "hooks",
+  "skills",
+  "agents",
+  "permissions",
+] as const;
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -3111,6 +3122,17 @@ export const Command = z.discriminatedUnion("type", [
     z.object({ paths: z.array(z.string().min(1).max(4096)).min(1).max(200) }).strict(),
   ),
   cmd("project.trust.inspect", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** #75: the project's stack and its test, lint, format and build commands, read, never run. */
+  cmd("project.harness.stack", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  cmd(
+    "project.harness.preview",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        parts: z.array(z.enum(HARNESS_PREVIEW_PARTS)).min(1).max(HARNESS_PREVIEW_PARTS.length),
+      })
+      .strict(),
+  ),
   cmd(
     "project.trust.set",
     z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
@@ -3138,6 +3160,8 @@ export const Command = z.discriminatedUnion("type", [
       description: z.string().optional(),
       /** Phase 36: `null` removes the estimate. */
       estimateHours: z.number().min(0).max(1000).nullable().optional(),
+      /** Issue #78: the validation note; empty text or `null` clears it. */
+      validationNote: z.string().max(4000).nullable().optional(),
       ...CardDeps,
     }),
   ),
@@ -4660,6 +4684,8 @@ export const ProjectLoad = z.object({
   mcpServers: z.array(z.object({ name: z.string(), file: z.string(), command: z.string() })),
   envKeys: z.array(z.string()),
   allowRules: z.array(z.string()),
+  /** What the settings deny (#75); absent from a host older than it. */
+  denyRules: z.array(z.string()).optional(),
   defaultMode: z.string().nullable(),
   agents: z.array(z.string()),
   skills: z.array(z.string()),
@@ -4681,10 +4707,64 @@ export const ProjectLoad = z.object({
     hooks: z.number().int().min(0),
     mcpServers: z.number().int().min(0),
     allowRules: z.number().int().min(0),
+    denyRules: z.number().int().min(0).optional(),
     envKeys: z.number().int().min(0),
   }),
 });
 export type ProjectLoad = z.infer<typeof ProjectLoad>;
+
+/** #75: what a project is built with, and the fixed commands that test, lint, format and build it. */
+export const HarnessStack = z.object({
+  stacks: z.array(z.enum(["node", "python", "go", "rust", "dotnet"])),
+  commands: z.object({
+    test: z.string().nullable(),
+    lint: z.string().nullable(),
+    format: z.string().nullable(),
+    build: z.string().nullable(),
+  }),
+});
+export type HarnessStack = z.infer<typeof HarnessStack>;
+
+/**
+ * #75, slice S3: what applying the chosen parts would add. For `.claude/settings.json`, only the
+ * entries that would be appended, never the file's text (it may hold `env` values); `conflicts` names
+ * a key already there with another shape, left as it is. A new file is created only when missing.
+ */
+export const HarnessPreview = z.object({
+  settings: z
+    .object({
+      path: z.literal(".claude/settings.json"),
+      /** sha256 of the file as previewed; null when there is none yet. */
+      hash: z.string().nullable(),
+      hooks: z.array(z.object({ event: z.string(), matcher: z.string(), command: z.string() })),
+      denyRules: z.array(z.string()),
+      conflicts: z.array(z.string()),
+      /** Writing the file back would change its layout, not only add entries. */
+      reformats: z.boolean(),
+    })
+    .nullable(),
+  files: z.array(z.object({ path: z.string(), content: z.string() })),
+  unreadable: z.array(z.string()),
+});
+export type HarnessPreview = z.infer<typeof HarnessPreview>;
+
+/** #75: what a hook command is for, when its command says so. */
+export type HookKind = "format" | "gitAdd" | "secrets";
+
+/**
+ * Commands that show what a hook is for, on the event it acts on: a formatter after a tool runs, a
+ * check on `git add` or on secret files before one. The checklist and the preview read hooks with
+ * the same list, so a hook the preview proposed is one the checklist then finds.
+ */
+export const HOOK_KINDS: ReadonlyArray<readonly [HookKind, string, RegExp]> = [
+  [
+    "format",
+    "PostToolUse",
+    /\b(biome|prettier|eslint --fix|ruff format|black|gofmt|rustfmt|cargo fmt|dotnet format|(npm|pnpm|yarn|bun) run (format|fmt)\b)/,
+  ],
+  ["gitAdd", "PreToolUse", /\bgit add\b/],
+  ["secrets", "PreToolUse", /(\.env\b|credentials|secrets?\b|\.pem\b|id_rsa)/],
+];
 
 /** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
 export const SleepResult = z.object({
@@ -4905,6 +4985,8 @@ export interface CommandResults {
   "host.keepAwake": KeepAwakeStatus;
   "project.trust.state": ProjectTrustStates;
   "project.trust.inspect": ProjectLoad;
+  "project.harness.stack": HarnessStack;
+  "project.harness.preview": HarnessPreview;
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;

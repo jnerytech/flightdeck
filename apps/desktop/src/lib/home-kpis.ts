@@ -20,6 +20,8 @@ export interface HomeInput {
   /** One usage summary per host. */
   usage: HomeUsage[];
   budgets: Budget[];
+  /** A project scope (#126 slice 4): the month's budget is that project's own. */
+  projectKey?: string;
 }
 
 export interface HomeKpis {
@@ -65,7 +67,12 @@ export function homeKpis(input: HomeInput): HomeKpis {
     days,
     byDay.map((d) => [d.day, d.costUsd]),
   );
-  const monthly = input.budgets.filter((b) => b.scope === "host" && b.period === "month");
+  const { projectKey } = input;
+  const monthly = input.budgets.filter(
+    (b) =>
+      b.period === "month" &&
+      (projectKey ? b.scope === "project" && b.projectKey === projectKey : b.scope === "host"),
+  );
   const budget =
     monthly.length === 0
       ? null
