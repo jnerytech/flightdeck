@@ -7,7 +7,7 @@ import {
   teleportSession,
   teleportSummary,
 } from "../src/lib/teleport.ts";
-import { settleMaybe } from "./wait.ts";
+import { settleMaybe, stays } from "./wait.ts";
 
 /**
  * Issue #100, slice 3a: the app relays a session's package from the source host to the target.
@@ -404,5 +404,39 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       git: { ...(MANIFEST.git as NonNullable<TeleportManifest["git"]>), branch: null },
     });
     expect(summary.branch).toBeNull();
+  });
+
+  test("a host that refuses after the move was cancelled is not an error anywhere", async () => {
+    const stray: unknown[] = [];
+    const onStray = (reason: unknown) => stray.push(reason);
+    process.on("unhandledRejection", onStray);
+    try {
+      const h = hosts();
+      let refuse: ((error: unknown) => void) | null = null;
+      const held = (async (type: string, payload: never) =>
+        type === "teleport.prepare"
+          ? new Promise((_resolve, reject) => {
+              refuse = reject;
+            })
+          : h.source(type as "teleport.cancel", payload)) as TeleportRequest;
+      const stop = new AbortController();
+      let outcome: unknown = "still waiting";
+      void run(h, { source: held, signal: stop.signal }).then((done) => {
+        outcome = done;
+      });
+      await settleMaybe(() => refuse !== null);
+      stop.abort();
+      await settleMaybe(() => outcome !== "still waiting", 2000);
+      (refuse as unknown as (error: unknown) => void)(
+        new RequestError("invalid_state", "x", "teleport_busy"),
+      );
+      const quiet = await stays(() => stray.length === 0, 200).then(
+        () => true,
+        () => false,
+      );
+      expect([outcome, quiet, h.calls]).toEqual([{ kind: "cancelled" }, true, []]);
+    } finally {
+      process.off("unhandledRejection", onStray);
+    }
   });
 });
