@@ -11,8 +11,8 @@ function deps(run: PrRun | null, env: Record<string, string | undefined> = {}) {
     env,
     git: (args: string[], cwd: string) =>
       cwd === CWD && args.join(" ") === "symbolic-ref --short HEAD" ? "fix-x\n" : null,
-    prRun: (branch: string) => {
-      asked.push(branch);
+    prRun: (branch: string, dir: string) => {
+      asked.push(`${branch} in ${dir}`);
       return run;
     },
   };
@@ -26,11 +26,14 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     expect(why).toContain("run 42");
     expect(why).toContain("6 min");
     expect(why).toContain('FLIGHTDECK_PUSH_NOW="<reason>"');
-    expect(d.asked).toEqual(["fix-x"]);
+    expect(d.asked).toEqual([`fix-x in ${CWD}`]);
     expect(pushWaitViolation("git push", CWD, deps(green)) ?? "").toContain("run 42");
+    // The run is read in the push's own checkout (security review: `cd` or `-C` elsewhere).
+    const elsewhere = deps(green);
     expect(
-      pushWaitViolation("cd /repos/flightdeck-fix && git push -q", "/repos", deps(green)),
+      pushWaitViolation("cd /repos/flightdeck-fix && git push -q", "/repos", elsewhere),
     ).not.toBeNull();
+    expect(elsewhere.asked).toEqual([`fix-x in ${CWD}`]);
   });
 
   test("a red run (the push is a fix), an ended or old run, or no run at all lets the push through", () => {
