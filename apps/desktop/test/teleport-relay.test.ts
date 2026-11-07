@@ -224,7 +224,8 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       return h.source(type as "teleport.prepare", payload);
     }) as TeleportRequest;
     await failure(run(h, { source: stuck }));
-    expect(reads).toBe(1);
+    // One read for each of the two parts, then on.
+    expect(reads).toBe(MANIFEST.parts.length);
   });
 
   test("a host that went while cleaning up does not hide why the move stopped", async () => {
