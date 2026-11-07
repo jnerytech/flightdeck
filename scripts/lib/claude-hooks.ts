@@ -586,6 +586,9 @@ export function guardAllowLogs(
       waived.push({ rule: "slot-heavy", decision: "waived" });
     }
     if (commitWaived(command)) waived.push({ rule: "commit", decision: "waived" });
+    if (!env.FLIGHTDECK_COORDINATOR && pushNowWaived(command)) {
+      waived.push({ rule: "push-wait", decision: "waived" });
+    }
   }
   return waived.length > 0 ? waived : [{ rule: null, decision: "allow" }];
 }
@@ -697,13 +700,48 @@ export interface PushWaitDeps extends PushGuardDeps {
   prRun: (branch: string) => PrRun | null;
 }
 
-/** Why a push would cancel a PR run that is still green (#741), or null. */
-export function pushWaitViolation(
-  _command: string,
-  _cwd: string,
-  _deps: PushWaitDeps,
-): string | null {
+/**
+ * A branch's latest PR run from `gh run list --json databaseId,status,startedAt` and, for one in
+ * progress, `gh run view <id> --json jobs`; null when there is none or the output does not read.
+ */
+export function prRunFrom(_runs: string | null, _jobs: string | null, _now: number): PrRun | null {
   return null;
+}
+
+/** How young a green PR run must be for a push to wait for it (#741). */
+export const PUSH_WAIT_MINUTES = 20;
+
+/**
+ * Why a push would cancel a PR run that is still green (#741), or null. A new push cancels the
+ * branch's run in progress (`cancel-in-progress`); 10% of the PR runner-minutes went to runs a push
+ * cancelled while still green. A red run (the push is a fix), an ended or older run, no run, the
+ * coordinator and `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push pass.
+ */
+export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDeps): string | null {
+  if (deps.env.FLIGHTDECK_COORDINATOR) return null;
+  for (const call of gitCalls(command, cwd)) {
+    if (call.sub !== "push" || call.dir === null) continue;
+    if (deps.inProject && !deps.inProject(call.dir)) continue;
+    const segment = command.slice(call.start, call.end);
+    if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) continue;
+    const branch = deps.git(["symbolic-ref", "--short", "HEAD"], call.dir)?.trim();
+    if (!branch) continue;
+    const run = deps.prRun(branch);
+    if (!run?.inProgress || run.failed || run.minutes >= PUSH_WAIT_MINUTES) continue;
+    return `a push now cancels CI run ${run.id} on this branch's PR: ${run.minutes} min in, with no failure yet (#741). Batch the next commits with this one and push once the run ends, or put FLIGHTDECK_PUSH_NOW="<reason>" in front of the push.`;
+  }
+  return null;
+}
+
+/** Whether a push goes ahead on a FLIGHTDECK_PUSH_NOW override with its reason (#741). */
+function pushNowWaived(command: string): boolean {
+  return gitCalls(command, "/").some(
+    (call) =>
+      call.sub === "push" &&
+      heavyReasonGiven(
+        prefixAssignment(command.slice(call.start, call.end), "FLIGHTDECK_PUSH_NOW"),
+      ),
+  );
 }
 
 const OWN_BRANCHES =

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { guardAllowLogs, type PrRun, pushWaitViolation } from "../lib/claude-hooks.ts";
+import { guardAllowLogs, type PrRun, prRunFrom, pushWaitViolation } from "../lib/claude-hooks.ts";
 
 const CWD = "/repos/flightdeck-fix";
 
@@ -78,5 +78,38 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
       { rule: "push-wait", decision: "waived" },
     ]);
     expect(guardAllowLogs("git push", {})).toEqual([{ rule: null, decision: "allow" }]);
+  });
+});
+
+describe("push-wait: the run as gh prints it (#741)", () => {
+  const now = Date.parse("2026-11-07T01:10:00Z");
+  const list = (status: string, startedAt = "2026-11-07T01:04:00Z") =>
+    JSON.stringify([{ databaseId: 42, status, startedAt }]);
+  const jobs = (...conclusions: string[]) =>
+    JSON.stringify({ jobs: conclusions.map((conclusion) => ({ conclusion })) });
+
+  test("an in-progress run with its minutes, and whether a job failed already", () => {
+    expect(prRunFrom(list("in_progress"), jobs("success", ""), now)).toEqual({
+      id: 42,
+      inProgress: true,
+      failed: false,
+      minutes: 6,
+    });
+    expect(prRunFrom(list("queued"), jobs(""), now)?.inProgress).toBe(true);
+    expect(prRunFrom(list("in_progress"), jobs("success", "failure"), now)?.failed).toBe(true);
+    expect(prRunFrom(list("completed"), null, now)?.inProgress).toBe(false);
+  });
+
+  test("no run, output gh could not give, or output that does not parse is no run (the hook fails open)", () => {
+    for (const [runs, detail] of [
+      ["[]", jobs()],
+      [null, jobs()],
+      ["{ nope", jobs()],
+      [list("in_progress"), null],
+      [list("in_progress"), "{ nope"],
+      [JSON.stringify([{ databaseId: 42, status: "in_progress" }]), jobs()],
+    ] as const) {
+      expect(prRunFrom(runs, detail, now)).toBeNull();
+    }
   });
 });
