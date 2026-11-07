@@ -223,9 +223,56 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       }
       return h.source(type as "teleport.prepare", payload);
     }) as TeleportRequest;
-    await failure(run(h, { source: stuck }));
-    // One read for each of the two parts, then on.
-    expect(reads).toBe(MANIFEST.parts.length);
+    const why = await failure(run(h, { source: stuck }));
+    expect([why, reads]).toEqual(["teleport_incomplete", 1]);
+  });
+
+  test("a source that sends past a part's size, ends a part early or sends a manifest that is not one is refused", async () => {
+    const reader = (chunk: (offset: number) => { data: string; next: number; eof: boolean }) => {
+      const h = hosts();
+      return (async (type: string, payload: { offset?: number }) =>
+        type === "teleport.read"
+          ? chunk(payload.offset ?? 0)
+          : h.source(type as "teleport.prepare", payload as never)) as TeleportRequest;
+    };
+    const past = reader(() => ({ data: "eA==", next: 10_000, eof: true }));
+    const early = reader(() => ({ data: "eA==", next: 1, eof: true }));
+    const bad = (async () => ({
+      ...MANIFEST,
+      parts: [{ name: "transcript", size: -1, sha256: "a" }],
+    })) as TeleportRequest;
+    expect([
+      await failure(run(hosts(), { source: past })),
+      await failure(run(hosts(), { source: early })),
+      await failure(run(hosts(), { source: bad })),
+    ]).toEqual(["teleport_corrupt", "teleport_incomplete", "teleport_corrupt"]);
+  });
+
+  test("a host that never answers the clean-up does not hold the move, and the other host is still cleaned", async () => {
+    const h = hosts({ finish: new RequestError("invalid_state", "x", "teleport_exists") });
+    // An abort that answers only after 2 s: a move that waits for it shows as a slow return.
+    const slow = (async (type: string, payload: never) =>
+      type === "teleport.abort"
+        ? new Promise((resolve) => setTimeout(resolve, 2_000))
+        : h.target(type as "teleport.receive", payload)) as TeleportRequest;
+    const started = Date.now();
+    const why = await failure(run(h, { target: slow, cleanupMs: 50 }));
+    expect([why, Date.now() - started < 1_000, h.calls.at(-1)]).toEqual([
+      "teleport_exists",
+      true,
+      "source:teleport.cancel",
+    ]);
+  });
+
+  test("a branch name shows as plain text: no control or direction marks", () => {
+    const summary = teleportSummary({
+      ...MANIFEST,
+      git: {
+        ...(MANIFEST.git as NonNullable<TeleportManifest["git"]>),
+        branch: "fix\u202e\u0007-login",
+      },
+    });
+    expect(summary.branch).toBe("fix-login");
   });
 
   test("a host that went while cleaning up does not hide why the move stopped", async () => {
