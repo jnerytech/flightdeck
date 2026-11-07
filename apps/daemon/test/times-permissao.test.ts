@@ -129,6 +129,19 @@ describe("times-permissao: a permission mode per member (issue #93)", () => {
     expect(teams.list()).toEqual([]);
   });
 
+  test("a mode asked for a worker the team does not have is ignored, not refused (#93)", async () => {
+    const { teams, project } = await setup({
+      bypassAllowed: () => false,
+      startWorker: async () => {},
+    });
+    const asked = { ...NEW, workers: 1, projectId: project.id };
+    expect(
+      await failure(teams.create({ ...asked, workerPermissions: [null, "bypassPermissions"] })),
+    ).toBe("ok");
+    const [team] = teams.list();
+    expect(team?.members.map((m) => m.permission)).toEqual([null, null]);
+  });
+
   test("a host that allows bypass passes it on to the member", async () => {
     const asked: Array<string | null> = [];
     const { teams, project, manager } = await setup({
