@@ -66,6 +66,7 @@ import { previewHarness } from "./harness/preview.ts";
 import { detectStack } from "./harness/stack.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
+import { listKnowledge } from "./knowledge/list.ts";
 import { linesOf } from "./lines.ts";
 import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
@@ -1433,6 +1434,7 @@ export async function startDaemon(
       },
     },
     harnessStack: detectStack,
+    knowledge: listKnowledge,
     harnessPreview: previewHarness,
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),

@@ -411,6 +411,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.deps, "depsCheck"),
     ...when(opts.projectTrust, "projectTrust"),
     ...when(opts.harnessStack, "harnessStack"),
+    // Issue #76: the project's library of documents, with their lifecycle status.
+    ...when(opts.knowledge, "knowledge"),
     ...when(opts.harnessPreview, "harnessPreview"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
@@ -1129,8 +1131,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "knowledge.list": {
         if (!opts.knowledge) throw featureOff("knowledge");
-        await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, { entries: [], truncated: false });
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.knowledge(path));
       }
       case "project.harness.stack": {
         if (!opts.harnessStack) throw featureOff("harnessStack");
