@@ -1,6 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import type { FunctionCoverage } from "../lib/coverage-funcs.ts";
-import { type GateInput, type ShardJob, type ShardMarker, shardGate } from "../lib/shard-gate.ts";
+import {
+  failedCount,
+  type GateInput,
+  istanbulTargets,
+  type ShardJob,
+  type ShardMarker,
+  shardGate,
+  shardRun,
+} from "../lib/shard-gate.ts";
 
 /** One file's record as Bun writes it: function counts, then one DA line per executable line. */
 const record = (path: string, fn: [number, number], lines: Array<[number, number]>) =>
@@ -298,5 +307,67 @@ describe("shard-gate fails closed: a merged report missing a shard never reads a
     const broken = healthy();
     broken[3] = { marker: marker(1, "istanbul"), data: "{ nope" };
     expect(closed(broken)).toEqual(["shard 1/3 istanbul: its report does not parse"]);
+  });
+});
+
+describe("shard-gate: how a shard job runs (#296)", () => {
+  test("the bun job writes its lcov with the related config, which has no threshold", () => {
+    expect(shardRun("bun", ["a.test.ts", "b.test.ts"], "out", ["x.ts"])).toEqual({
+      argv: [
+        "bun",
+        "--config=bunfig.related.toml",
+        "test",
+        "--timeout=15000",
+        "--coverage-dir=out",
+        "./a.test.ts",
+        "./b.test.ts",
+      ],
+      env: {},
+    });
+  });
+
+  test("the istanbul job loads its preload first and writes the counters of the files it names", () => {
+    expect(shardRun("istanbul", ["a.test.ts"], "out", ["x.ts", "y.tsx"])).toEqual({
+      argv: ["bun", "--config=bunfig.shard.toml", "test", "--timeout=15000", "./a.test.ts"],
+      env: { COVERAGE_FUNCS_FILES: '["x.ts","y.tsx"]', COVERAGE_FUNCS_OUT: "out/funcs.json" },
+    });
+  });
+
+  test("istanbul instruments every tracked source the full gate counts: no test, helper, vendor UI or declaration", () => {
+    expect(
+      istanbulTargets([
+        "apps/daemon/src/a.ts",
+        "apps/daemon/src/bin.ts",
+        "apps/desktop/src/App.tsx",
+        "apps/desktop/src/components/ui/button.tsx",
+        "apps/daemon/test/a.test.ts",
+        "scripts/test/helper.ts",
+        "scripts/demo.ts",
+        "scripts/demo-seed.ts",
+        "packages/protocol/src/env.d.ts",
+        "docs/notes.md",
+      ]),
+    ).toEqual([
+      "apps/daemon/src/a.ts",
+      "apps/daemon/src/bin.ts",
+      "apps/desktop/src/App.tsx",
+      "scripts/demo.ts",
+    ]);
+  });
+
+  test("the failed count comes from bun's summary, and a log with none reads as 0", () => {
+    expect(failedCount(" 3324 pass\n 5 skip\n 2 fail\n")).toBe(2);
+    expect(failedCount("crashed before the summary")).toBe(0);
+  });
+
+  test("bunfig.shard.toml is bunfig.related.toml with istanbul's preload first and Bun's coverage off", () => {
+    type Config = { test: Record<string, unknown> };
+    const related = Bun.TOML.parse(readFileSync("bunfig.related.toml", "utf8")) as Config;
+    const shard = Bun.TOML.parse(readFileSync("bunfig.shard.toml", "utf8")) as Config;
+    expect(shard.test).toEqual({
+      ...related.test,
+      preload: ["./scripts/test/coverage-funcs-preload.ts", ...(related.test.preload as string[])],
+      coverage: false,
+    });
   });
 });

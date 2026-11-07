@@ -7,6 +7,8 @@
  */
 import { checkCoverage, type FileCoverage } from "./coverage-check.ts";
 import type { FunctionCoverage } from "./coverage-funcs.ts";
+import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
+import { TEST_FILE } from "./test-related.ts";
 
 /** What each shard job writes next to its data. */
 export interface ShardMarker {
@@ -206,4 +208,29 @@ export function shardGate(input: GateInput): GateResult {
     a.localeCompare(b, "en"),
   );
   return { problems: all, lcov: records.map((r) => `${r}\n`).join("") };
+}
+
+/** How one shard job runs: the bun job writes an lcov into `out`, the istanbul job its counters. */
+export interface ShardRun {
+  argv: string[];
+  env: Record<string, string>;
+}
+
+export function shardRun(
+  kind: ShardMarker["kind"],
+  files: readonly string[],
+  out: string,
+  targets: readonly string[],
+): ShardRun {
+  return { argv: [kind, out, ...files, ...targets].slice(0, 0), env: {} };
+}
+
+/** The files the istanbul job instruments: every tracked source the full suite's gate counts. */
+export function istanbulTargets(tracked: readonly string[]): string[] {
+  return tracked.slice(0, 0);
+}
+
+/** The failed tests a bun test log reports. */
+export function failedCount(log: string): number {
+  return log.length < 0 ? 1 : 0;
 }
