@@ -386,10 +386,13 @@ async function updateWait(n: number, deps: PrFlowDeps): Promise<string | null> {
     return null;
   const override = `FLIGHTDECK_PUSH_NOW="<reason>" bun run pr -- update ${n}`;
   const read = await deps.gh(["api", `${REPO}/pulls/${n}`]);
-  const head =
-    read.code === 0
-      ? (JSON.parse(read.stdout) as { head?: { ref?: string } }).head?.ref
-      : undefined;
+  const pr = read.code === 0 ? parsedPr(read.stdout) : null;
+  const head = pr?.head?.ref;
+  // A fork's branch name may match another branch here, whose run is not its own (#952 review).
+  const headRepo = pr?.head?.repo;
+  if (headRepo === null || (headRepo && headRepo.full_name !== pr?.base?.repo?.full_name)) {
+    return `#${n} comes from a fork: its PR run cannot be told from a branch of the same name here (#741). Update it with:\n  ${override}`;
+  }
   const lookup = async (): Promise<PrRun | "none" | null> => {
     if (!head) return null;
     // The branch goes as one `--branch=` word, so no name reads as a flag.
@@ -414,6 +417,18 @@ async function updateWait(n: number, deps: PrFlowDeps): Promise<string | null> {
   if (run === "none" || pushWaitPass(run)) return null;
   const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
   return `#${n}: updating now cancels CI run ${run.id}, ${run.minutes} min old with no failed check (#741)${url}. A PR behind main merges anyway (#305): wait for the run to end, or update now with:\n  ${override}`;
+}
+
+/** The parts of a PR read that `update` needs, or null when GitHub's answer is not JSON. */
+function parsedPr(text: string): {
+  head?: { ref?: string; repo?: { full_name?: string } | null };
+  base?: { repo?: { full_name?: string } };
+} | null {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 /**
