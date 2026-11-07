@@ -98,6 +98,7 @@ describe("shard-gate: the merged 100% gate (#296)", () => {
   test("a line or a function covered in any one shard is covered, and the merged lcov holds the union", () => {
     const result = gate(healthy());
     expect(result.problems).toEqual([]);
+    expect(result.closed).toBe(false);
     expect(result.lcov).toBe(
       `${record(
         "a.ts",
@@ -223,8 +224,19 @@ describe("shard-gate fails closed: a merged report missing a shard never reads a
   const closed = (jobs: ShardJob[], over: Partial<GateInput> = {}) => {
     const result = gate(jobs, over);
     expect(result.lcov).toBe("");
+    expect(result.closed).toBe(true);
     return result.problems;
   };
+
+  test("a long list of test files that ran in no shard names 10, then counts the rest", () => {
+    const tests = Array.from({ length: 13 }, (_, i) => `t${i + 1}.test.ts`);
+    expect(closed(healthy(), { tests: [...TESTS, ...tests.slice(3)] })).toEqual([
+      "10 test file(s) ran in no shard: t4.test.ts, t5.test.ts, t6.test.ts, t7.test.ts, t8.test.ts, t9.test.ts, t10.test.ts, t11.test.ts, t12.test.ts, t13.test.ts",
+    ]);
+    expect(closed(healthy(), { tests: [...TESTS, ...tests.slice(3), "t14.test.ts"] })).toEqual([
+      "11 test file(s) ran in no shard: t4.test.ts, t5.test.ts, t6.test.ts, t7.test.ts, t8.test.ts, t9.test.ts, t10.test.ts, t11.test.ts, t12.test.ts, t13.test.ts and 1 more",
+    ]);
+  });
 
   test("a missing, cancelled or doubled shard job", () => {
     expect(closed(healthy().filter((_, i) => i !== 4))).toEqual(["shard 2/3 istanbul: missing"]);

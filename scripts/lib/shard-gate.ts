@@ -44,6 +44,8 @@ export interface GateResult {
   problems: string[];
   /** The shards' Bun lcov merged, for SonarCloud; empty when a shard is missing. */
   lcov: string;
+  /** True when a shard is missing, failed or partial: the problems are about the run, not coverage. */
+  closed: boolean;
 }
 
 interface BunFile {
@@ -169,7 +171,7 @@ function functionsOf(
 /** The merged verdict and lcov, or the problems that leave the gate closed. */
 export function shardGate(input: GateInput): GateResult {
   const { shards, problems: closed } = collect(input);
-  if (closed.length > 0) return { problems: closed, lcov: "" };
+  if (closed.length > 0) return { problems: closed, lcov: "", closed: false };
   const paths = [...new Set(shards.flatMap((s) => [...s.lcov.keys()]))];
   const problems: string[] = [];
   const report = new Map<string, FileCoverage>();
@@ -209,7 +211,7 @@ export function shardGate(input: GateInput): GateResult {
   const all = [...problems, ...checkCoverage(report, checked)].sort((a, b) =>
     a.localeCompare(b, "en"),
   );
-  return { problems: all, lcov: records.map((r) => `${r}\n`).join("") };
+  return { problems: all, lcov: records.map((r) => `${r}\n`).join(""), closed: false };
 }
 
 /** How one shard job runs: the bun job writes an lcov into `out`, the istanbul job its counters. */
