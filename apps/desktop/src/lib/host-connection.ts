@@ -485,6 +485,8 @@ export class HostConnection {
     if (this.timer) clearTimeout(this.timer);
     this.stopWatchdog();
     this.ws?.close();
+    // Letting go of the link is no drop: the log must not tell the last one again.
+    this.lastDrop = null;
     this.setStatus("offline");
   }
 
@@ -550,7 +552,8 @@ export class HostConnection {
     if (ws !== this.ws) return;
     this.lastDrop = {
       code,
-      reason,
+      // The host chooses the reason: one plain line, so it cannot forge lines in the log.
+      reason: reason.replaceAll(/\p{Cc}+/gu, " ").slice(0, 123),
       byWatchdog: this.gaveUp,
       silentMs: (this.opts.watchdog ?? REAL_WATCHDOG).now() - this.lastHeard,
       wasOnline: this.status === "online",
