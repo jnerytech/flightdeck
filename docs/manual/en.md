@@ -968,6 +968,10 @@ live; the list is the project's, so a session of another project never shows her
 - The path in the top bar names every step in a window 1024 px wide or more. From 640 to 1023 px
   it shows only the step you are on (the whole path is in its tooltip and read by a screen reader);
   under 640 px it is not drawn, because the page's own header carries the title.
+- The host switcher in the top bar shows the host's name in a window 1024 px wide or more. Under
+  1024 px it shows the host's color dot and the first letter of its name (a screen reader still
+  reads the full name). Under 640 px **Back** and **Forward** leave the top bar and sit at the top
+  of the sidebar's drawer, which a navigation closes.
 - While a request waits for you in a session, the session's header, the not-trusted notice and the
   summary each take one line, so the request is whole on screen; **More actions** and the summary's
   own button open the rest.

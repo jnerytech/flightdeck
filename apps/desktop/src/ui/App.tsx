@@ -1,5 +1,4 @@
 import { parsePairingLink } from "@flightdeck/protocol";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
@@ -7,12 +6,12 @@ import { ResumeOfferDialog } from "@/components/hosts/resume-offer-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatusBarSlot } from "@/components/shell/status-bar";
-import { TopBarActions, TopBarHost } from "@/components/shell/top-bar";
+import { HistoryButtons, TopBarActions, TopBarHost } from "@/components/shell/top-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
-import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { boardShortcut } from "../lib/board-shortcut.ts";
@@ -303,6 +302,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const resolvedTheme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const tabScope = useSyncExternalStore(store.tabScope.subscribe, () => store.tabScope.value);
+  const compact = useBreakpoint() === "compact";
   const density = useSyncExternalStore(store.density.subscribe, () => store.density.value);
   const { router } = store;
   const route = useSyncExternalStore(router.subscribe, () => router.current);
@@ -513,6 +513,15 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
     );
   }
 
+  const history = (
+    <HistoryButtons
+      t={t}
+      canBack={router.canBack}
+      canForward={router.canForward}
+      onBack={() => router.back()}
+      onForward={() => router.forward()}
+    />
+  );
   return (
     <TContext.Provider value={t}>
       <TooltipProvider>
@@ -523,6 +532,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             expand: t("shell.expand"),
           }}
           navKey={route}
+          drawerTop={compact ? history : undefined}
           header={
             <>
               <TopBarHost
@@ -543,24 +553,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
                 allHosts={tabScope === "all"}
                 onAllHosts={(on) => store.tabScope.set(on ? "all" : "host")}
               />
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t("nav.back")}
-                disabled={!router.canBack}
-                onClick={() => router.back()}
-              >
-                <ArrowLeft />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t("nav.forward")}
-                disabled={!router.canForward}
-                onClick={() => router.forward()}
-              >
-                <ArrowRight />
-              </Button>
+              {!compact && history}
               <Breadcrumb
                 crumbs={breadcrumb(route, state, t)}
                 label={t("shell.breadcrumb")}
