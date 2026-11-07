@@ -34,7 +34,7 @@ import {
   usd,
 } from "../lib/costs.ts";
 import { mergeHostCsv } from "../lib/costs-csv.ts";
-import { ALL_SCOPE, activeScope, type DataScope } from "../lib/data-scope.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../lib/data-scope.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
@@ -457,7 +457,7 @@ export const CostsPage = memo(function CostsPage(props: {
         {away && (
           <InlineNotice tone="info">
             <span>
-              {t(away.status === "online" ? "scope.noCosts" : "scope.offline", {
+              {t(away.status === "online" ? "scope.noCosts" : awayKey(away.status, "numbers"), {
                 host: away.name,
               })}{" "}
             </span>

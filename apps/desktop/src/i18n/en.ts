@@ -33,6 +33,8 @@ export const en: Dictionary = {
     all: "All hosts",
     showing: "Showing {scope}",
     offline: "{host} is offline. Its numbers come back when it reconnects.",
+    offlineSessions: "{host} is offline. Its sessions show again when it reconnects.",
+    incompatible: "{host} needs a daemon update before its data shows here.",
     showAll: "Show all hosts",
     noCosts: "{host} does not report costs.",
   },

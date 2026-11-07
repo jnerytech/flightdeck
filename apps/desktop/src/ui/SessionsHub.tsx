@@ -36,7 +36,7 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import { ALL_CLIENTS } from "../lib/client-scope.ts";
 import { UNASSIGNED } from "../lib/clients.ts";
 import { usd } from "../lib/costs.ts";
-import { ALL_SCOPE, activeScope, type DataScope, scopeHosts } from "../lib/data-scope.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope, scopeHosts } from "../lib/data-scope.ts";
 import type { Density } from "../lib/density.ts";
 import {
   capGroups,
@@ -526,7 +526,7 @@ export function SessionsHub(
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
         {away && (
           <InlineNotice tone="info">
-            <span>{t("scope.offline", { host: away.name })} </span>
+            <span>{t(awayKey(away.status, "sessions"), { host: away.name })} </span>
             <Button
               variant="outline"
               size="sm"

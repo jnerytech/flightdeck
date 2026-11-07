@@ -10,7 +10,7 @@ import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { mergeSummaries } from "../lib/client-costs.ts";
 import { ALL_HOSTS, daysBetween, periodRange, projectLabels } from "../lib/costs.ts";
-import { ALL_SCOPE, activeScope, scopeHosts } from "../lib/data-scope.ts";
+import { ALL_SCOPE, activeScope, awayKey, scopeHosts } from "../lib/data-scope.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
 import { type HomeLeaders, homeLeaders } from "../lib/home-leaders.ts";
@@ -208,7 +208,7 @@ export function HomePage(
   const busy = !kpis && (online.length === 0 ? connecting : true);
   const message = (() => {
     if (kpis) return t("home.ready");
-    if (away && !connecting) return t("scope.offline", { host: away.name });
+    if (away && !connecting) return t(awayKey(away.status, "numbers"), { host: away.name });
     if (online.length === 0) return connecting ? t("home.connecting") : t("home.noHosts");
     return t("home.loading");
   })();
@@ -262,7 +262,7 @@ export function HomePage(
       {away && (
         <InlineNotice tone="info">
           {/* Without numbers the line above says it; with older numbers on screen, this one does. */}
-          {kpis && <span>{t("scope.offline", { host: away.name })} </span>}
+          {kpis && <span>{t(awayKey(away.status, "numbers"), { host: away.name })} </span>}
           <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>
             {t("scope.showAll")}
           </Button>

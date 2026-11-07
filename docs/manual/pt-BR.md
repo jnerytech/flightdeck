@@ -966,7 +966,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
   aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
   abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
-  hosts**. Os Custos também o seguem (veja **Custos e orçamentos**), e as Sessões também (o filtro
+  hosts**; um host cujo daemon precisa de atualização diz isso no lugar, e o menu não o oferece. Os
+  Custos também o seguem (veja **Custos e orçamentos**), e as Sessões também (o filtro
   de host próprio delas, se você tinha um, vira a escolha uma vez); o Board passa a segui-lo numa
   versão seguinte.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área

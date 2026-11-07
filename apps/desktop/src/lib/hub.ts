@@ -71,14 +71,18 @@ export const DEFAULT_HUB_FILTER: HubFilter = {
 const ORIGINS: readonly string[] = ["", "flightdeck", "terminal", "history", "background"];
 const STATES: readonly string[] = ["", "running", "needs_you", "idle", "ended"];
 
+/** The hub's kept filter as stored, or nothing when it is not JSON. */
+function storedFilter(storage: { getItem(key: string): string | null }): Record<string, unknown> {
+  try {
+    return JSON.parse(storage.getItem(HUB_FILTER_KEY) ?? "{}") as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
 /** The stored filters, field by field: anything unreadable falls back to its default. */
 export function loadHubFilter(storage: { getItem(key: string): string | null }): HubFilter {
-  let stored: Record<string, unknown> = {};
-  try {
-    stored = JSON.parse(storage.getItem(HUB_FILTER_KEY) ?? "{}") as Record<string, unknown>;
-  } catch {
-    // Not JSON: the defaults.
-  }
+  const stored = storedFilter(storage);
   const text = (key: string, allowed?: readonly string[]) => {
     const value = stored[key];
     return typeof value === "string" && (!allowed || allowed.includes(value)) ? value : "";
@@ -111,11 +115,14 @@ export function takeHubHost(storage: {
 }
 
 export function saveHubFilter(
-  storage: { setItem(key: string, value: string): void },
+  storage: { getItem(key: string): string | null; setItem(key: string, value: string): void },
   filter: HubFilter,
 ): void {
   const { text: _typed, ...kept } = filter;
-  storage.setItem(HUB_FILTER_KEY, JSON.stringify(kept));
+  // A host kept by an older version that takeHubHost has not read yet stays for it (#886).
+  const legacy = storedFilter(storage).host;
+  const host = typeof legacy === "string" && legacy !== "" ? { host: legacy } : {};
+  storage.setItem(HUB_FILTER_KEY, JSON.stringify({ ...kept, ...host }));
 }
 
 /** How the hub draws its sessions: one line each, or one card each. */
