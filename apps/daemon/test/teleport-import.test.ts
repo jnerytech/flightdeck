@@ -275,6 +275,25 @@ describe("teleport-import: a received package becomes a session on this host (#1
     ]).toEqual(["default", false]);
   });
 
+  test("a transcript that cannot be copied is that failure, not a session already here, and nothing is left", async () => {
+    const pkg = await packaged();
+    const { repo, history, deps } = target(pkg);
+    const gone = {
+      ...deps,
+      inbox: holding({
+        manifest: pkg.manifest,
+        transcript: join(tempDir("fd-teleport-gone-"), "transcript"),
+        code: pkg.code,
+        release: async () => {},
+      }),
+    };
+    const failed = await reason(() => importPackage(gone, "in-1", repo));
+    expect([failed.includes("ENOENT"), await leftovers(repo, history)]).toEqual([
+      true,
+      [1, "", "", []],
+    ]);
+  });
+
   test("a session that does not start takes its worktree, branch and transcript with it", async () => {
     const pkg = await packaged();
     const { repo, history, deps, calls } = target(pkg, { failResume: true });
