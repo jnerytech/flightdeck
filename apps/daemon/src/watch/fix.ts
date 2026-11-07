@@ -259,15 +259,25 @@ export class PrFixer {
     return null;
   }
 
+  /** The rounds that count against the card's limit, and the limit with the rounds allowed on top. */
+  roundBudget(cardId: string): { used: number; max: number } {
+    const { watcher, board } = this.opts;
+    const settings = watcher.settings(board.getCard(cardId).projectId);
+    return {
+      used: this.counted(cardId).length,
+      max: settings.maxRounds + watcher.extraRounds(cardId),
+    };
+  }
+
   /** The card's rounds used up: the reason with each round, or null while some are left. */
   private roundLimit(cardId: string): string | null {
-    const settings = this.opts.watcher.settings(this.opts.board.getCard(cardId).projectId);
+    const { max } = this.roundBudget(cardId);
     const done = this.counted(cardId);
-    if (done.length < settings.maxRounds) return null;
+    if (done.length < max) return null;
     const list = done.map(
       (r) => `round ${r.n}: ${r.status}` + (r.summary ? " (" + r.summary.split("\n")[0] + ")" : ""),
     );
-    return `limit of ${settings.maxRounds} rounds reached — ${list.join("; ")}`;
+    return `limit of ${max} rounds reached — ${list.join("; ")}`;
   }
 
   /**

@@ -17,7 +17,7 @@ export class PrWatch {
 
   constructor(
     private readonly opts: {
-      board: Pick<Board, "getCard" | "getProject" | "onPrRound">;
+      board: Pick<Board, "getCard" | "getProject" | "onPrRound" | "moveCard">;
       watcher: PrWatcher;
       fixer: PrFixer;
       traces: Traces;
@@ -39,12 +39,28 @@ export class PrWatch {
   info(cardId: string): WatchInfo {
     this.opts.board.getCard(cardId);
     const { watcher, fixer } = this.opts;
+    const budget = fixer.roundBudget(cardId);
     return {
       cardId,
       enabled: watcher.enabled(cardId),
       ...watcher.status(cardId),
       rounds: fixer.rounds(cardId),
+      roundsUsed: budget.used,
+      maxRounds: budget.max,
     };
+  }
+
+  /**
+   * Issue #77: `rounds` more fixing rounds for the card, which is watched again. A card the watch
+   * handed over (in "Needs you") goes back to review, where its PR is.
+   */
+  extend(cardId: string, rounds: number): WatchInfo {
+    const { board, watcher } = this.opts;
+    const card = board.getCard(cardId);
+    watcher.extend(cardId, rounds);
+    if (card.column === "waiting") board.moveCard(cardId, "review");
+    this.notify(cardId);
+    return this.info(cardId);
   }
 
   set(cardId: string, enabled: boolean | null): WatchInfo {
