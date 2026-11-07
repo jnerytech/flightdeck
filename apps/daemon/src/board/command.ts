@@ -6,6 +6,8 @@ export interface CommandResult {
   stderr: string;
   /** The command ran out of time and was killed. */
   timedOut?: boolean;
+  /** The caller's signal fired and the command was killed. */
+  aborted?: boolean;
 }
 
 /** Kills a process and everything it started: `taskkill /T` on Windows, the process group elsewhere. */
@@ -41,6 +43,8 @@ export async function runCommand(
   kill: (pid: number) => Promise<void> = killTree,
   /** Variables to add to the process's environment. */
   extraEnv: Record<string, string> = {},
+  /** Kills the command and its tree when it fires (the daemon stopping). */
+  signal?: AbortSignal,
 ): Promise<CommandResult> {
   // `env` explicitly: without it Bun passes the environment the process started with. Its own
   // process group (outside Windows), so the whole tree can be killed at the limit.
@@ -50,7 +54,7 @@ export async function runCommand(
     stdout: "pipe",
     stderr: "pipe",
     stdin: input === undefined ? "ignore" : new TextEncoder().encode(input),
-    detached: timeoutMs !== undefined && process.platform !== "win32",
+    detached: (timeoutMs !== undefined || signal !== undefined) && process.platform !== "win32",
   });
   let timedOut = false;
   let killing: Promise<void> = Promise.resolve();
@@ -61,16 +65,30 @@ export async function runCommand(
           timedOut = true;
           killing = kill(proc.pid).catch(() => {});
         }, timeoutMs);
+  let aborted = false;
+  const onAbort = () => {
+    aborted = true;
+    killing = killing.then(() => kill(proc.pid)).catch(() => {});
+  };
+  if (signal?.aborted) onAbort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
   const [stdout, stderr, code] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
     proc.exited,
   ]);
   if (timer) clearTimeout(timer);
+  signal?.removeEventListener("abort", onAbort);
   // A command that ran out of time is not given back before its tree is gone: its caller may
   // remove the folder it ran in.
   await killing;
-  return { code, stdout, stderr, ...(timedOut ? { timedOut } : {}) };
+  return {
+    code,
+    stdout,
+    stderr,
+    ...(timedOut ? { timedOut } : {}),
+    ...(aborted ? { aborted } : {}),
+  };
 }
 
 /** `git` from the current PATH, always with an explicit working directory. */

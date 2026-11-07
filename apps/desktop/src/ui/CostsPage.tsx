@@ -1,6 +1,6 @@
 import type { CostsFilter, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
 import { Coins } from "lucide-react";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useState, useSyncExternalStore } from "react";
 import { DayChart } from "@/components/costs/day-chart";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
@@ -11,6 +11,7 @@ import { EmptyState, LoadingState } from "@/components/layout/states";
 import { RoiPeople } from "@/components/roi/roi-people";
 import { RoiSettingsPanel } from "@/components/roi/roi-settings-panel";
 import { RoiTable } from "@/components/roi/roi-table";
+import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
@@ -32,6 +33,8 @@ import {
   projectLabels,
   usd,
 } from "../lib/costs.ts";
+import { mergeHostCsv } from "../lib/costs-csv.ts";
+import { ALL_SCOPE, activeScope, type DataScope } from "../lib/data-scope.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
@@ -87,13 +90,25 @@ const COSTSPAGE_KEYS = [
   "clientSelection",
   "clientList",
   "clientOverrides",
+  "hostsLoaded",
 ] as const;
 
-/** Which host(s) the screen reads: all of them, the one picked, or the first that has costs. */
-function hostScope(chosen: string, hosts: Array<{ id: string }>) {
-  const acrossHosts = chosen === ALL_HOSTS && hosts.length > 1;
+/**
+ * Which host(s) the screen reads (#126): every one that has costs, or the scoped one. A scoped host
+ * that is offline or has no costs reads nothing, rather than another host's numbers.
+ */
+function hostScope(scope: DataScope, hosts: Array<{ id: string }>) {
+  if (scope.kind === "host") {
+    const there = hosts.some((h) => h.id === scope.hostId);
+    return {
+      acrossHosts: false,
+      hostId: there ? scope.hostId : "",
+      hostIds: there ? [scope.hostId] : [],
+    };
+  }
+  const acrossHosts = hosts.length > 1;
   if (acrossHosts) return { acrossHosts, hostId: ALL_HOSTS, hostIds: hosts.map((h) => h.id) };
-  const hostId = hosts.some((h) => h.id === chosen) ? chosen : (hosts[0]?.id ?? "");
+  const hostId = hosts[0]?.id ?? "";
   return { acrossHosts, hostId, hostIds: hostId ? [hostId] : [] };
 }
 
@@ -119,9 +134,30 @@ export const CostsPage = memo(function CostsPage(props: {
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
   );
-  /** The host the user picked; until then (or if it left), the first one that announces costs. */
-  const [chosen, setChosen] = useState(props.host ?? "");
-  const { acrossHosts, hostId, hostIds } = hostScope(chosen, hosts);
+  // The data scope (#126) says whose costs these are. A route's own host (an alert, a Home card)
+  // wins for this visit and never rewrites it; choosing in the scope menu ends that choice.
+  const keptScope = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
+  const [routeHost, setRouteHost] = useState<string | null>(props.host ?? null);
+  // Home opens Costs with `__all__` when several hosts have costs: every host, for this visit.
+  const routeScope: DataScope | null =
+    routeHost === null
+      ? null
+      : routeHost === ALL_HOSTS
+        ? ALL_SCOPE
+        : { kind: "host", hostId: routeHost };
+  const dataScope = routeScope ?? activeScope(keptScope, state.hosts, state.hostsLoaded);
+  const { acrossHosts, hostId, hostIds } = hostScope(dataScope, hosts);
+  /** The scoped host when it has no numbers to show: offline, or not reporting costs. */
+  const scopedHost =
+    dataScope.kind === "host" ? state.hosts.find((h) => h.id === dataScope.hostId) : null;
+  const away =
+    scopedHost && !hosts.some((h) => h.id === scopedHost.id) && scopedHost.status !== "connecting"
+      ? scopedHost
+      : null;
+  const showAllHosts = () => {
+    setRouteHost(null);
+    store.dataScope.set({ kind: "all" });
+  };
   const personaHosts = hosts.filter(
     (h) => hostIds.includes(h.id) && hasFeature(h.hostInfo?.features, "personas", false),
   );
@@ -153,7 +189,7 @@ export const CostsPage = memo(function CostsPage(props: {
   // A later alert opens another host, project or client while the screen is already up.
   const { host: alertHost, projectKey: alertProject, client: alertClient } = props;
   useEffect(() => {
-    if (alertHost) setChosen(alertHost);
+    if (alertHost) setRouteHost(alertHost);
     setFilters(alertProject ? { projectKey: alertProject } : {});
     if (alertClient) store.setClientSelection(alertClient);
   }, [store, alertHost, alertProject, alertClient]);
@@ -172,7 +208,12 @@ export const CostsPage = memo(function CostsPage(props: {
   const key = JSON.stringify([hostIds, filter, selection, placed]);
   useEffect(() => {
     const [ids, asked] = JSON.parse(key) as [string[], CostsFilter];
-    if (ids.length === 0) return;
+    if (ids.length === 0) {
+      // No host to read (the scoped one is away): no numbers, not the last host's.
+      setSummary(null);
+      setAll(null);
+      return;
+    }
     let live = true;
     void askCosts(store, ids, asked, selection).then((loaded) => {
       if (!live) return;
@@ -209,8 +250,25 @@ export const CostsPage = memo(function CostsPage(props: {
     setFilters(value ? { ...rest, [name]: value } : rest);
   };
   const exportCsv = async () => {
-    const file = await store.hostCommand(hostId, "costs.export", filter);
-    if (file) await store.saveFile(file.filename, file.csv);
+    if (!acrossHosts) {
+      const file = await store.hostCommand(hostId, "costs.export", filter);
+      if (file) await store.saveFile(file.filename, file.csv);
+      return;
+    }
+    // Every host, one file with the host as its first column; a host that does not answer is left out.
+    const answers = await Promise.allSettled(
+      hosts.map(async (h) => ({
+        host: h.name,
+        file: await store.hostCommand(h.id, "costs.export", filter),
+      })),
+    );
+    const files = answers.flatMap((answer) => {
+      if (answer.status !== "fulfilled" || !answer.value.file) return [];
+      return [{ host: answer.value.host, ...answer.value.file }];
+    });
+    const csv = mergeHostCsv(files);
+    const first = files[0];
+    if (first && csv !== "") await store.saveFile(first.filename, csv);
   };
   const byDay = summary?.byDay ?? [];
   // The same session can come from two hosts: each row needs a key of its own.
@@ -248,29 +306,21 @@ export const CostsPage = memo(function CostsPage(props: {
           >
             {t("costsUi.setBudget")}
           </Button>
-          {!acrossHosts && (
-            <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
-              {t("costsUi.export")}
-            </Button>
-          )}
+          <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
+            {t("costsUi.export")}
+          </Button>
         </>
       }
       toolbar={
         <Toolbar label={t("costsUi.filters")}>
-          <NativeSelect
-            inline
-            compact
-            aria-label={t("costsUi.host")}
-            value={hostId}
-            onChange={(e) => setChosen(e.target.value)}
-          >
-            {hosts.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.name}
-              </option>
-            ))}
-            {hosts.length > 1 && <option value={ALL_HOSTS}>{t("costsUi.allHosts")}</option>}
-          </NativeSelect>
+          {state.hosts.length > 1 && (
+            <ScopeMenu
+              store={store}
+              hosts={state.hosts}
+              scope={dataScope}
+              onPick={() => setRouteHost(null)}
+            />
+          )}
           {PERIODS.map((p) => (
             <Button
               key={p}
@@ -404,6 +454,18 @@ export const CostsPage = memo(function CostsPage(props: {
             })}
           </InlineNotice>
         )}
+        {away && (
+          <InlineNotice tone="info">
+            <span>
+              {t(away.status === "online" ? "scope.noCosts" : "scope.offline", {
+                host: away.name,
+              })}{" "}
+            </span>
+            <Button variant="outline" size="sm" onClick={showAllHosts}>
+              {t("scope.showAll")}
+            </Button>
+          </InlineNotice>
+        )}
         {hosts.length === 0 && (
           <EmptyState
             icon={Coins}
@@ -512,7 +574,27 @@ export const CostsPage = memo(function CostsPage(props: {
                 />
               )}
             </div>
-            {!acrossHosts && <QuotaCharts key={`quota-${hostId}`} store={store} hostId={hostId} />}
+            {acrossHosts ? (
+              <InlineNotice tone="info">
+                {/* Quota is per host by nature: on every host there is one line, and the way to pick. */}
+                <span>{t("costsUi.quotaPick")} </span>
+                {hosts.map((h) => (
+                  <Button
+                    key={h.id}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setRouteHost(null);
+                      store.dataScope.set({ kind: "host", hostId: h.id });
+                    }}
+                  >
+                    {h.name}
+                  </Button>
+                ))}
+              </InlineNotice>
+            ) : (
+              <QuotaCharts key={`quota-${hostId}`} store={store} hostId={hostId} />
+            )}
             {withTelemetry && (
               <TimingBreakdown
                 key={`timing-${hostId}`}

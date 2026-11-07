@@ -3,7 +3,7 @@ import type { FileListing } from "@flightdeck/protocol";
 import { NARROW_SHOTS } from "../../../scripts/lib/shots-narrow.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe } from "./wait.ts";
+import { settle, settleMaybe, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -52,8 +52,17 @@ const TREES: Record<string, Record<string, FileListing["entries"]>> = {
   },
 };
 
+/** A token's shape, built here so no real-looking key sits in the source. */
+const TOKEN = `sk-${"x".repeat(24)}`;
+/** A value of the vault (or a host's token): the app knows it, the patterns do not. */
+const VAULT = `vault-${"v".repeat(12)}`;
+
 /** What the host finds, by mode and query; anything else finds nothing. */
 const SEARCH: Record<string, { matches: object[]; truncated: boolean }> = {
+  "name|keyfile": {
+    matches: [{ path: `keys/${TOKEN}.txt` }, { path: "src/keyfile.ts" }],
+    truncated: false,
+  },
   "name|only": {
     matches: [{ path: "src/b-only.ts" }, { path: ".env.only", secret: true }],
     truncated: false,
@@ -62,24 +71,21 @@ const SEARCH: Record<string, { matches: object[]; truncated: boolean }> = {
     matches: [{ path: "src/b-only.ts", line: 3, text: "const hello = 1;" }],
     truncated: true,
   },
+  "content|key": {
+    matches: [{ path: "config.ts", line: 2, text: `const key = "${TOKEN}";` }],
+    truncated: false,
+  },
+  // The host never sends a credential's line; if one came anyway, it stays unseen.
+  "content|deploy": {
+    matches: [{ path: ".env.only", line: 1, text: "DEPLOY=plain-words", secret: true }],
+    truncated: false,
+  },
+  "content|vault": {
+    matches: [{ path: "deploy.sh", line: 4, text: `curl -u ${VAULT} https://x` }],
+    truncated: false,
+  },
 };
 const NONE = { matches: [], truncated: false };
-/** A token's shape, built here so no real-looking key sits in the source. */
-const TOKEN = `sk-${"x".repeat(24)}`;
-SEARCH["content|key"] = {
-  matches: [
-    { path: "config.ts", line: 2, text: `const key = "${TOKEN}";` },
-    // The host never sends a credential's line; if one came anyway, it stays unseen.
-    { path: ".env.only", line: 1, text: "DEPLOY=plain-words", secret: true },
-  ],
-  truncated: false,
-};
-/** A value of the vault (or a host's token): the app knows it, the patterns do not. */
-const VAULT = `vault-${"v".repeat(12)}`;
-SEARCH["content|vault"] = {
-  matches: [{ path: "deploy.sh", line: 4, text: `curl -u ${VAULT} https://x` }],
-  truncated: false,
-};
 
 function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {}) {
   const searches: string[] = [];
@@ -121,7 +127,9 @@ function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {})
     }
     if (type === "file.read") {
       const { path } = payload as { path: string };
-      return { ok: true, data: { path, text: "export const only = 1;\n", hash: "h", size: 23 } };
+      // Line 3 is the one the content search for "hello" finds.
+      const text = "export const only = 1;\n\nconst hello = 1;\n";
+      return { ok: true, data: { path, text, hash: "h", size: text.length } };
     }
     if (type === "file.search") {
       const { mode, query } = payload as { mode: "name" | "content"; query: string };
@@ -181,7 +189,7 @@ const shows = (name: string, text: string) => {
 };
 const press = async (name: string) => {
   const button = screen.queryByRole("button", { name });
-  if (!button) return;
+  if (!button) throw new Error(`no button named ${name}`);
   await act(async () => {
     fireEvent.click(button);
   });
@@ -191,7 +199,7 @@ describe("board-files-ui: the files of the picked worktree beside the board (#11
   test("a worktree picked in the sidebar shows its files beside the columns, and Files hides them", async () => {
     const { pick } = setup();
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
     const shown = shows("Files · fd/b", "b-readme.md");
     const pressed = screen.queryByRole("button", { name: "Files" })?.getAttribute("aria-pressed");
     await press("Files");
@@ -205,12 +213,12 @@ describe("board-files-ui: the files of the picked worktree beside the board (#11
   test("another worktree shows its own files, never the folders the last one had open", async () => {
     const { pick } = setup();
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Files · fd/b", "src"));
+    await settle(() => shows("Files · fd/b", "src"));
     await press("src");
-    await settleMaybe(() => shows("Files · fd/b", "b-only.ts"));
+    await settle(() => shows("Files · fd/b", "b-only.ts"));
     const before = shows("Files · fd/b", "b-only.ts");
     await pick("worktree", "/wt/c", "fd/c");
-    await settleMaybe(() => shows("Files · fd/c", "c-readme.md"));
+    await settle(() => shows("Files · fd/c", "c-readme.md"));
     expect({
       before,
       own: shows("Files · fd/c", "c-readme.md"),
@@ -222,7 +230,7 @@ describe("board-files-ui: the files of the picked worktree beside the board (#11
     const { pick } = setup();
     await pick("primary", "/x/api", "main");
     const hint = "Files show for a worktree. Pick one in the sidebar.";
-    await settleMaybe(() => shows("Files · main", hint));
+    await settle(() => shows("Files · main", hint));
     expect(shows("Files · main", hint)).toBe(true);
   });
 
@@ -247,7 +255,7 @@ describe("board-files-ui: the files of the picked worktree beside the board (#11
   test("em português", async () => {
     const { pick } = setup({ language: "pt-BR" });
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Arquivos · fd/b", "b-readme.md"));
+    await settle(() => shows("Arquivos · fd/b", "b-readme.md"));
     expect({
       shown: shows("Arquivos · fd/b", "b-readme.md"),
       button: screen.queryByRole("button", { name: "Arquivos" }) !== null,
@@ -270,7 +278,7 @@ describe("board-files-ui: the files of the picked worktree beside the board (#11
         columns: columns(),
       };
       await press("Files");
-      await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+      await settle(() => shows("Files · fd/b", "b-readme.md"));
       const opened = { panel: shows("Files · fd/b", "b-readme.md"), columns: columns() };
       await press("Files");
       expect({
@@ -297,16 +305,18 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
   const SEARCHING = ["file.list", "file.search"];
   const type = async (label: string, value: string) => {
     const field = screen.queryByRole("searchbox", { name: label });
-    if (!field) return;
+    if (!field) throw new Error(`no searchbox named ${label}`);
     await act(async () => {
       fireEvent.change(field, { target: { value } });
     });
   };
-  const tab = async (name: string) => {
-    const trigger = screen.queryByRole("tab", { name });
-    if (!trigger) return;
+  /** Picks a search mode by its button (#827). */
+  const mode = async (name: string) => {
+    const trigger = screen.queryByRole("button", { name });
+    if (!trigger) throw new Error(`no mode button named ${name}`);
     await act(async () => {
-      fireEvent.mouseDown(trigger);
+      // A browser moves focus to what is clicked; happy-dom's click does not.
+      trigger.focus();
       fireEvent.click(trigger);
     });
   };
@@ -314,9 +324,9 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
   test("by name it finds files in folders never opened, and a credential's name shows as hidden", async () => {
     const { pick, searches } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
     await type("Search names", "only");
-    await settleMaybe(() => shows("Files · fd/b", "src/b-only.ts"));
+    await settle(() => shows("Files · fd/b", "src/b-only.ts"));
     const region = panel("Files · fd/b");
     expect({
       found: region
@@ -331,10 +341,10 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
   test("by content it lists each match as path:line with the line, and says when there are more", async () => {
     const { pick, searches } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
-    await tab("Content");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await mode("Content");
     await type("Search contents", "hello");
-    await settleMaybe(() => shows("Files · fd/b", "src/b-only.ts:3"));
+    await settle(() => shows("Files · fd/b", "src/b-only.ts:3"));
     expect({
       place: shows("Files · fd/b", "src/b-only.ts:3"),
       line: shows("Files · fd/b", "const hello = 1;"),
@@ -343,12 +353,105 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     }).toEqual({ place: true, line: true, more: true, asked: true });
   });
 
+  // #827 (review of #823): one field for both modes, so a pick never drops it, its text or focus.
+  test("Names and Content are two pressed buttons over one search field that keeps its text and focus", async () => {
+    const { pick, searches } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await type("Search names", "only");
+    await settle(() => searches.includes("card:B|name|only"));
+    const field = screen.queryByRole("searchbox", { name: "Search names" });
+    const names = screen.queryByRole("button", { name: "Names" });
+    const before = names?.getAttribute("aria-pressed") ?? null;
+    await mode("Content");
+    await settle(() => searches.includes("card:B|content|only"));
+    const now = screen.queryByRole("searchbox", { name: "Search contents" });
+    expect({
+      before,
+      pressed: screen.queryByRole("button", { name: "Content" })?.getAttribute("aria-pressed"),
+      tabs: screen.queryAllByRole("tab").length,
+      same: now !== null && now === field,
+      text: (now as HTMLInputElement | null)?.value ?? null,
+      focused: now !== null && document.activeElement === now,
+    }).toEqual({
+      before: "true",
+      pressed: "true",
+      tabs: 0,
+      same: true,
+      text: "only",
+      focused: true,
+    });
+  });
+
+  test("Names picked again searches names again, in the same field", async () => {
+    const { pick, searches } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await type("Search names", "only");
+    await mode("Content");
+    await settle(() => searches.includes("card:B|content|only"));
+    const asked = searches.length;
+    await mode("Names");
+    await settle(() => searches.length > asked);
+    expect({
+      last: searches.at(-1),
+      pressed: screen.queryByRole("button", { name: "Names" })?.getAttribute("aria-pressed"),
+      field: screen.queryByRole("searchbox", { name: "Search names" }) !== null,
+    }).toEqual({ last: "card:B|name|only", pressed: "true", field: true });
+  });
+
+  // #827 (review of #823): `path:line` lands on that line, as a terminal's link does (#506).
+  test("a content match opens the file at its line", async () => {
+    const { pick } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await mode("Content");
+    await type("Search contents", "hello");
+    await settle(() => shows("Files · fd/b", "src/b-only.ts:3"));
+    await press("src/b-only.ts:3");
+    await settle(() => screen.queryByRole("region", { name: "File src/b-only.ts" }) !== null);
+    const atLine = () =>
+      document.querySelector(".cm-activeLine")?.textContent === "const hello = 1;";
+    await settleMaybe(atLine);
+    expect(atLine()).toBe(true);
+  });
+
+  // #827 (review of #830): the host leaves such a path out (#829); an older host may not, so the
+  // app masks it too, and a masked path opens nothing (the viewer would name the real one).
+  test("a match whose path holds a token shows it masked, as hidden, and never opens", async () => {
+    const { pick } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await type("Search names", "keyfile");
+    await settle(() => shows("Files · fd/b", "src/keyfile.ts"));
+    const region = panel("Files · fd/b");
+    const text = region?.textContent ?? "";
+    const buttons = region ? within(region).queryAllByRole("button") : [];
+    expect({
+      token: text.includes(TOKEN),
+      masked: text.includes("keys/[redacted].txt"),
+      opens: buttons.some((button) => (button.textContent ?? "").includes("keys/")),
+      plain: buttons.some((button) => button.textContent === "src/keyfile.ts"),
+    }).toEqual({ token: false, masked: true, opens: false, plain: true });
+  });
+
+  // The wait before a search (#823): a word typed fast is one search, for its last text.
+  test("typing fast sends one search, for the last text", async () => {
+    const { pick, searches } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    for (const text of ["o", "on", "onl", "only"]) await type("Search names", text);
+    await settle(() => searches.length > 0);
+    await stays(() => searches.length === 1, 400);
+    expect(searches).toEqual(["card:B|name|only"]);
+  });
+
   test("a match opens the file in the viewer", async () => {
     const { pick } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
     await type("Search names", "only");
-    await settleMaybe(() => shows("Files · fd/b", "src/b-only.ts"));
+    await settle(() => shows("Files · fd/b", "src/b-only.ts"));
     const region = panel("Files · fd/b");
     const match = region ? within(region).queryByRole("button", { name: "src/b-only.ts" }) : null;
     if (match) {
@@ -357,32 +460,38 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
       });
     }
     const viewer = () => screen.queryByRole("region", { name: "File src/b-only.ts" }) !== null;
-    await settleMaybe(viewer);
+    await settle(viewer);
     expect(viewer()).toBe(true);
   });
 
-  // #827 (review of #823): a match's line goes through the app's secret masker, and a
-  // credential's line never shows at all.
-  test("a content match never shows a secret: a token is masked, a credential's line is not shown", async () => {
+  // #827 (review of #823): a match's line goes through the app's secret masker (the fix of #830).
+  test("a content match never shows a token: its line is masked", async () => {
     const { pick } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
-    await tab("Content");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await mode("Content");
     await type("Search contents", "key");
-    await settleMaybe(() => shows("Files · fd/b", "config.ts:2"));
+    await settle(() => shows("Files · fd/b", "config.ts:2"));
     const text = panel("Files · fd/b")?.textContent ?? "";
     expect({
       place: text.includes("config.ts:2"),
       masked: text.includes("[redacted]"),
       token: text.includes(TOKEN),
-      credential: text.includes(".env.only:1"),
-      credentialLine: text.includes("plain-words"),
-    }).toEqual({
+    }).toEqual({ place: true, masked: true, token: false });
+  });
+
+  // A credential's line never shows at all: this held before #830, through the `secret` flag.
+  test("a credential's content match shows its place, never its line", async () => {
+    const { pick } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await mode("Content");
+    await type("Search contents", "deploy");
+    await settle(() => shows("Files · fd/b", ".env.only:1"));
+    const text = panel("Files · fd/b")?.textContent ?? "";
+    expect({ place: text.includes(".env.only:1"), line: text.includes("plain-words") }).toEqual({
       place: true,
-      masked: true,
-      token: false,
-      credential: true,
-      credentialLine: false,
+      line: false,
     });
   });
 
@@ -391,10 +500,10 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     const { store, pick } = setup({ features: SEARCHING });
     store.scanValues = () => [VAULT];
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
-    await tab("Content");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await mode("Content");
     await type("Search contents", "vault");
-    await settleMaybe(() => shows("Files · fd/b", "deploy.sh:4"));
+    await settle(() => shows("Files · fd/b", "deploy.sh:4"));
     const text = panel("Files · fd/b")?.textContent ?? "";
     expect({
       place: text.includes("deploy.sh:4"),
@@ -403,17 +512,37 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     }).toEqual({ place: true, masked: true, value: false });
   });
 
+  // Review of #850: the vault's values load after the app starts; a value learned after the answer
+  // came must hide in the matches already on screen, with nothing typed.
+  test("a vault value the app learns after the answer hides in the matches on screen", async () => {
+    const { store, pick } = setup({ features: SEARCHING });
+    let learned: string[] = [];
+    store.scanValues = () => learned;
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await mode("Content");
+    await type("Search contents", "vault");
+    await settle(() => shows("Files · fd/b", "deploy.sh:4"));
+    const before = (panel("Files · fd/b")?.textContent ?? "").includes(VAULT);
+    learned = [VAULT];
+    // The vault changed: the store reads its values again, as it does for the log.
+    await act(async () => {
+      (store as unknown as { update(p: object): void }).update({ secrets: [] });
+    });
+    const hidden = () => !(panel("Files · fd/b")?.textContent ?? "").includes(VAULT);
+    await settleMaybe(hidden);
+    expect({ before, after: hidden() }).toEqual({ before: true, after: true });
+  });
+
   test("nothing found says so; a search the host refuses says why", async () => {
     const { pick } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
     await type("Search names", "zzz");
-    await settleMaybe(() => shows("Files · fd/b", "Nothing found."));
+    await settle(() => shows("Files · fd/b", "Nothing found."));
     const none = shows("Files · fd/b", "Nothing found.");
     await type("Search names", "boom");
-    await settleMaybe(
-      () => (panel("Files · fd/b")?.querySelector("[role=alert]") ?? null) !== null,
-    );
+    await settle(() => (panel("Files · fd/b")?.querySelector("[role=alert]") ?? null) !== null);
     expect({
       none,
       refused: (panel("Files · fd/b")?.querySelector("[role=alert]") ?? null) !== null,
@@ -423,23 +552,28 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
   test("the main checkout shows the project's own files", async () => {
     const { pick } = setup({ features: SEARCHING });
     await pick("primary", "/x/api", "main");
-    await settleMaybe(() => shows("Files · main", "api-readme.md"));
+    await settle(() => shows("Files · main", "api-readme.md"));
     expect({
       files: shows("Files · main", "api-readme.md"),
       hint: shows("Files · main", "Files show for a worktree. Pick one in the sidebar."),
     }).toEqual({ files: true, hint: false });
   });
 
-  test("em português, as abas e a busca por nome", async () => {
+  test("em português, os modos, a busca por nome e o que ela diz", async () => {
     const { pick, searches } = setup({ features: SEARCHING, language: "pt-BR" });
     await pick("worktree", "/wt/b", "fd/b");
-    await settleMaybe(() => shows("Arquivos · fd/b", "b-readme.md"));
-    const tabs = ["Nomes", "Conteúdo"].map((name) => screen.queryByRole("tab", { name }) !== null);
+    await settle(() => shows("Arquivos · fd/b", "b-readme.md"));
+    const modes = ["Nomes", "Conteúdo"].map(
+      (name) => screen.queryByRole("button", { name }) !== null,
+    );
     await type("Buscar nomes", "only");
-    await settleMaybe(() => searches.includes("card:B|name|only"));
-    expect({ tabs, asked: searches.includes("card:B|name|only") }).toEqual({
-      tabs: [true, true],
-      asked: true,
-    });
+    await settle(() => searches.includes("card:B|name|only"));
+    await type("Buscar nomes", "zzz");
+    await settle(() => shows("Arquivos · fd/b", "Nada encontrado."));
+    expect({
+      modes,
+      group: screen.queryByRole("group", { name: "Buscar por" }) !== null,
+      none: shows("Arquivos · fd/b", "Nada encontrado."),
+    }).toEqual({ modes: [true, true], group: true, none: true });
   });
 });

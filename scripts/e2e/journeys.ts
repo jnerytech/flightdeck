@@ -1763,7 +1763,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       throw new Error("um arquivo de credencial devia aparecer como oculto, sem botão para abrir");
     }
     // By content: the key-shaped line is found, and nothing of the key shows.
-    await panel.getByRole("tab", { name: c.t("files.byContent"), exact: true }).click();
+    await panel.getByRole("button", { name: c.t("files.byContent"), exact: true }).click();
     const content = panel.getByRole("searchbox", { name: c.t("files.searchContent"), exact: true });
     await content.fill("chave de exemplo");
     await results.getByRole("button", { name: /^config\.example\.ts:\d+$/ }).waitFor({
@@ -1780,7 +1780,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await content.fill("DEMO_MODE");
     await panel.getByText(c.t("files.nothingFound"), { exact: true }).waitFor({ timeout: WAIT });
     // A match opens its file.
-    await panel.getByRole("tab", { name: c.t("files.byName"), exact: true }).click();
+    await panel.getByRole("button", { name: c.t("files.byName"), exact: true }).click();
     await panel
       .getByRole("searchbox", { name: c.t("files.searchNames"), exact: true })
       .fill("app.ts");
@@ -1858,6 +1858,42 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         label,
       `o filtro de Custos no projeto ${label}`,
     );
+  },
+
+  // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one
+  // host, the choice is kept when the page is opened again, a host that is offline says so and
+  // offers all hosts, and the menu is in reach in a phone-sized window and a desktop one.
+  "escopo-dados": async (c) => {
+    const menuOf = (scope: string) =>
+      c.page.getByRole("button", { name: c.t("scope.menu", { scope }), exact: true });
+    const all = c.t("scope.all");
+    const pick = async (from: string, host: string) => {
+      await menuOf(from).click();
+      await c.page.getByRole("menuitemradio", { name: host, exact: true }).click();
+    };
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "overview" });
+      await inReach(c, `o menu Dados de a ${size.width}x${size.height}`, menuOf(all));
+    }
+    // One host: the trigger and the subtitle say whose numbers they are.
+    const subtitle = (host: string) =>
+      c.page.getByText(c.t("home.rangeHost", { host }), { exact: true });
+    await pick(all, "alfa");
+    await menuOf("alfa").waitFor({ timeout: WAIT });
+    await subtitle("alfa").waitFor({ timeout: WAIT });
+    // Kept: the page opened again is still on alfa.
+    await open(c, { name: "overview" });
+    await menuOf("alfa").waitFor({ timeout: WAIT });
+    await subtitle("alfa").waitFor({ timeout: WAIT });
+    // A host that is offline: Home says so and offers all hosts, which brings them back.
+    await pick("alfa", "notebook");
+    await menuOf("notebook").waitFor({ timeout: WAIT });
+    const showAll = c.page.getByRole("button", { name: c.t("scope.showAll"), exact: true });
+    await showAll.waitFor({ timeout: SESSION_WAIT });
+    await showAll.click();
+    await menuOf(all).waitFor({ timeout: WAIT });
+    await c.page.getByText(c.t("home.range"), { exact: true }).waitFor({ timeout: WAIT });
   },
 };
 

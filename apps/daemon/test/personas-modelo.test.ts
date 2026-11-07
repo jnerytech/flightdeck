@@ -195,7 +195,7 @@ describe("personas-modelo: o corpo", () => {
         return "ok";
       } catch (error) {
         const e = error as { code: string; message: string };
-        return `${e.code}|${e.message.includes(token)}|${/token do GitHub/.test(e.message)}`;
+        return `${e.code}|${e.message.includes(token)}|${/github_token/.test(e.message)}`;
       }
     };
     expect(refused({ body: `Use o token ${token} nas chamadas.` })).toBe(

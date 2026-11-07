@@ -1,6 +1,7 @@
 import type { RuleIssue } from "@flightdeck/protocol";
 import type { Key, T } from "./index.ts";
 import { ptBR } from "./pt-BR.ts";
+import { secretKindsText } from "./secret-kinds.ts";
 
 /**
  * A daemon (or connection) error for the user: the translated title by `code`, with the daemon's
@@ -23,7 +24,7 @@ export function translateError(
     return { title: t(`daemonRefusal.${reason}` as Key, paramsOf(why, t)), detail: "" };
   }
   if (reason && reason in ptBR.snippetRefusal) {
-    return { title: t(`snippetRefusal.${reason}` as Key, why?.params), detail: "" };
+    return { title: t(`snippetRefusal.${reason}` as Key, kindsNamed(why, t)), detail: "" };
   }
   if (code === "") return { title: message, detail: "" };
   const known = code in ptBR.errors && code !== "unknown";
@@ -36,9 +37,28 @@ function paramsOf(
   t: T,
 ): Record<string, string | number> | undefined {
   const feature = why.params?.feature;
-  if (why.reason !== "feature_off" || typeof feature !== "string") return why.params;
+  if (why.reason !== "feature_off" || typeof feature !== "string") return kindsNamed(why, t);
   const named = feature in ptBR.daemonFeature ? t(`daemonFeature.${feature}` as Key) : feature;
   return { ...why.params, feature: named };
+}
+
+/** The param that holds the kinds of secret a refusal names: the scanner's ids, named here (#714). */
+const KINDS_PARAM: Record<string, string> = {
+  persona_has_secret: "kinds",
+  pr_secret: "found",
+  pr_title_secret: "found",
+  merge_message_secret: "found",
+  secret: "kinds",
+};
+
+function kindsNamed(
+  why: { reason?: string; params?: Record<string, string | number> } | undefined,
+  t: T,
+): Record<string, string | number> | undefined {
+  const key = why?.reason ? KINDS_PARAM[why.reason] : undefined;
+  const kinds = key ? why?.params?.[key] : undefined;
+  if (!key || typeof kinds !== "string") return why?.params;
+  return { ...why?.params, [key]: secretKindsText(t, kinds) };
 }
 
 /** One line for a form or a panel: the translated text, then the daemon's message when it has one. */

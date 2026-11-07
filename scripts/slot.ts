@@ -19,6 +19,7 @@ import {
 } from "node:fs";
 import { constants, getPriority, setPriority, tmpdir, userInfo } from "node:os";
 import { basename, join } from "node:path";
+import { logHook } from "../.claude/hooks/log.ts";
 import { offerToOomKiller } from "./lib/oom-guard.ts";
 import { type ProcessInfo, type ProcReader, parseStat, run, type SlotEnv } from "./lib/slot.ts";
 
@@ -139,6 +140,14 @@ const env: SlotEnv = {
   },
   holder: Number(process.env.FLIGHTDECK_SLOT_HOLDER) || undefined,
   detached: process.env.FLIGHTDECK_SLOT_DETACHED === "1",
+  // #833: a run over the file limit gives its reason here; refusals, waivers and long holds go to
+  // the hook log that harness:stats reads.
+  heavyReason: process.env.FLIGHTDECK_SLOT_HEAVY,
+  record: (rule, decision, extra) => logHook("slot", rule, decision, extra),
+  after: (ms, fn) => {
+    const timer = setTimeout(fn, ms);
+    return () => clearTimeout(timer);
+  },
   ...(proc
     ? {
         proc,

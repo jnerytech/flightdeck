@@ -126,8 +126,8 @@ describe("slot-orphans", () => {
     );
     expect(status(f.env).split("\n")).toEqual([
       "held by kiwi: bun run e2e (pid 20, 4s)",
-      "waiting 1: sessproj: bun run test (pid 30, 4s) in /repos/flightdeck-sessproj",
-      "waiting 2: glyphs: bun run demo:shots (pid 31, 4s) in ? ORPHAN",
+      "waiting 1: sessproj: bun run test (pid 30, 4s) in /repos/flightdeck-sessproj; waits on kiwi (pid 20)",
+      "waiting 2: glyphs: bun run demo:shots (pid 31, 4s) in ? ORPHAN; waits on kiwi (pid 20)",
     ]);
   });
 
@@ -287,7 +287,7 @@ describe("slot-orphans", () => {
     expect(await run(f.env, ["--status"])).toBe(0);
     expect(f.logs).toEqual([
       "held by kiwi waiting 1: coordinator: cancelled (pid 1, 0s): bun run e2e (pid 20, 4s)",
-      "waiting 1: sessproj: bun run [2J test (pid 30, 4s) in /repos/evil waiting 9: forged",
+      "waiting 1: sessproj: bun run [2J test (pid 30, 4s) in /repos/evil waiting 9: forged; waits on kiwi waiting 1: coordinator: cancelled (pid 1, 0s) (pid 20)",
     ]);
   });
 

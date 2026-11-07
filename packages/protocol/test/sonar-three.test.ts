@@ -9,9 +9,9 @@ const timed = <T>(run: () => T): { value: T; ms: number } => {
 };
 
 const scanner = new SecretScanner();
-const BEARER = "token Bearer";
-const CURL = "senha do curl";
-const AUTHORIZATION = "cabeçalho de autorização";
+const BEARER = "bearer_token";
+const CURL = "curl_password";
+const AUTHORIZATION = "authorization_header";
 
 describe("sonar-three: a Bearer token is found whatever the case of its words (#363)", () => {
   test("the word and the token match in either case, from sixteen characters", () => {
@@ -135,7 +135,7 @@ describe("sonar-three: an Authorization header is a secret with a scheme or a lo
       ["Authorization: Bearer abc.def", [AUTHORIZATION], "[redacted]"],
       [
         "Proxy-Authorization: Basic dXNlcjpwYXNz",
-        [AUTHORIZATION, "credencial Basic"],
+        [AUTHORIZATION, "basic_credential"],
         "[redacted]",
       ],
       ['Authorization: "Token abcdef"', [AUTHORIZATION], '[redacted]"'],

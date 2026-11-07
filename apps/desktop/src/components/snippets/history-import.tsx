@@ -4,13 +4,14 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { secretKindsText } from "@/i18n/secret-kinds";
 import type { AppStore } from "@/lib/app-store";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 // The daemon's tag for imported lines (data, not text on screen), so both tag the same way.
 const IMPORT_TAG = "hist\u00f3rico";
 /** The vault's kind in the hidden-line note; the daemon names the pattern kinds. */
-const VAULT_KIND = "valor do cofre";
+const VAULT_KIND = "vault_value";
 
 /** A line as shown: the daemon's verdict plus the app's own check against the vault's values. */
 interface Line {
@@ -49,7 +50,9 @@ function HiddenLine(
   }
   return (
     <span className="text-muted-foreground">
-      {props.t("snippets.history.hidden", { kinds: props.kinds.join(", ") })}
+      {props.t("snippets.history.hidden", {
+        kinds: secretKindsText(props.t, props.kinds.join(", ")),
+      })}
     </span>
   );
 }

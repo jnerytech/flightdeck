@@ -87,6 +87,8 @@ export class TeleportPackages {
   private queue: Promise<unknown> = Promise.resolve();
   /** The daemon is stopping: no package is made any more. */
   private stopped = false;
+  /** Fires when the daemon stops: the git calls of the package being made are killed. */
+  private readonly stopping = new AbortController();
 
   constructor(readonly deps: TeleportDeps) {}
 
@@ -131,6 +133,11 @@ export class TeleportPackages {
       // The daemon began to stop while this package was made: nothing of it stays.
       if (this.stopped) throw refuse("invalid_state", "teleport_stopped");
     } catch (error) {
+      // Whatever ended it, the stop is why.
+      if (this.stopped) {
+        await rm(folder, { recursive: true, force: true });
+        throw refuse("invalid_state", "teleport_stopped");
+      }
       // Nothing of a package that failed half-way stays on disk.
       const entry = this.entries.get(id);
       if (entry) this.deps.timers.clearTimeout(entry.timer);
@@ -159,6 +166,7 @@ export class TeleportPackages {
           folder,
           id,
           scan: this.deps.scan,
+          signal: this.stopping.signal,
           ...(this.deps.maxBytes ? { maxBytes: this.deps.maxBytes } : {}),
         })
       : null;
@@ -241,6 +249,8 @@ export class TeleportPackages {
   /** The daemon stops: every package goes now, and no timer is left. */
   async stop(): Promise<void> {
     this.stopped = true;
+    // Its git calls are killed, not waited for (up to 120 s each).
+    this.stopping.abort();
     // A package being made sees the stop when it is done, and removes itself.
     await this.queue;
     for (const entry of this.entries.values()) this.deps.timers.clearTimeout(entry.timer);
