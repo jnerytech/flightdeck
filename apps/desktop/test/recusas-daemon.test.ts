@@ -39,6 +39,7 @@ const REASONS = [
   "card_id_needed",
   "card_manage_args",
   "card_contract_unmet",
+  "spec_path_invalid",
   "card_moved_anyway",
   "contract_invalid",
   "cwd_missing",

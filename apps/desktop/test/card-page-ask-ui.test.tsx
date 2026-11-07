@@ -41,9 +41,14 @@ function setup(options: { projects?: never[] } = {}) {
   if (options.projects) store.rememberProjects("h1", options.projects);
   const commands: Call[] = [];
   const background: unknown[] = [];
+  const requests: Call[] = [];
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
     commands.push([hostId, type, payload]);
     return {};
+  }) as never;
+  store.hostRequest = (async (hostId: string, type: string, payload: unknown) => {
+    requests.push([hostId, type, payload]);
+    return { ok: true, data: {} };
   }) as never;
   store.startBackground = (async (_hostId: string, payload: unknown) => {
     background.push(payload);
@@ -51,7 +56,7 @@ function setup(options: { projects?: never[] } = {}) {
   }) as never;
   const t = store.i18n.t;
   const wrap = (child: React.ReactNode) => <TContext.Provider value={t}>{child}</TContext.Provider>;
-  return { store, commands, background, wrap };
+  return { store, commands, requests, background, wrap };
 }
 
 const click = (el: Element) =>
@@ -178,5 +183,112 @@ describe("card-page-ask-ui: Start asks only where In progress confirms criteria"
     await click(screen.getByRole("button", { name: "Start in the background" }));
     expect(ask() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => w.background.length === 1);
+  });
+});
+
+// Issue #78, slice 3b: the spec file on the card page.
+describe("card-page-ask-ui: the spec file", () => {
+  const fields = (w: ReturnType<typeof setup>, over: object = {}) =>
+    render(
+      w.wrap(
+        <CardFields
+          store={w.store}
+          hostId="h1"
+          card={card({ slug: "cart-screen", ...over })}
+          withRoi={false}
+          onOpenSettings={() => {}}
+        />,
+      ),
+    );
+  const said = () => document.body.textContent ?? "";
+  const state = (found: boolean, heading: string | null = null) => ({
+    specState: { path: "docs/specs/cart-screen.md", found, heading },
+  });
+
+  test("the path field offers the default as its placeholder and saves a path inside the worktree", async () => {
+    const w = setup();
+    fields(w);
+    const field = screen.getByLabelText("Spec file") as HTMLInputElement;
+    expect(field.placeholder).toBe("docs/specs/cart-screen.md");
+    const save = () => screen.getByRole("button", { name: "Save spec file" }) as HTMLButtonElement;
+    expect(save().disabled).toBe(true);
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "notes/mine.md" } });
+    });
+    expect(save().disabled).toBe(false);
+    await click(save());
+    await settle(() => w.commands.length === 1);
+    expect(w.commands).toEqual([
+      ["h1", "card.update", { cardId: "c1", specPath: "notes/mine.md" }],
+    ]);
+  });
+
+  test("a path that leaves the worktree cannot be saved, and says why", async () => {
+    const w = setup();
+    fields(w);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Spec file"), { target: { value: "../out.md" } });
+    });
+    expect(
+      (screen.getByRole("button", { name: "Save spec file" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(said()).toContain("Use a path to a Markdown file inside the worktree");
+  });
+
+  test("clearing the field gives the card back its default path", async () => {
+    const w = setup();
+    fields(w, { specPath: "notes/mine.md" });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Spec file"), { target: { value: "" } });
+    });
+    await click(screen.getByRole("button", { name: "Save spec file" }));
+    await settle(() => w.commands.length === 1);
+    expect(w.commands).toEqual([["h1", "card.update", { cardId: "c1", specPath: null }]]);
+  });
+
+  test("a card with no slug has no default to show", () => {
+    const w = setup();
+    fields(w, { slug: null });
+    expect((screen.getByLabelText("Spec file") as HTMLInputElement).placeholder).toBe(
+      "docs/specs/<card>.md",
+    );
+  });
+
+  test("the page asks the host quietly when it opens, and says what was found", async () => {
+    const w = setup();
+    fields(w, { worktreePath: "/w", ...state(true, "Cart screen spec") });
+    await settle(() => w.requests.length === 1);
+    expect(w.requests).toEqual([["h1", "card.spec", { cardId: "c1" }]]);
+    expect(w.commands).toEqual([]);
+    expect(said()).toContain("Spec found: Cart screen spec");
+  });
+
+  test("a spec with no heading is found all the same; a missing one says where it is expected", () => {
+    const plain = setup();
+    fields(plain, { worktreePath: "/w", ...state(true) });
+    expect(said()).toContain("Spec found");
+    expect(said()).not.toContain("Spec found:");
+    cleanup();
+    const missing = setup();
+    fields(missing, { worktreePath: "/w", ...state(false) });
+    expect(said()).toContain("No spec file at docs/specs/cart-screen.md");
+  });
+
+  test("before there is a worktree it says so, and once there is one it says nothing until it looked", () => {
+    const w = setup();
+    fields(w);
+    expect(said()).toContain("which it has not got yet");
+    cleanup();
+    const there = setup();
+    fields(there, { worktreePath: "/w" });
+    expect(said()).not.toContain("which it has not got yet");
+  });
+
+  test("Check again asks the host, and the answer is a command the person sees fail or not", async () => {
+    const w = setup();
+    fields(w, { worktreePath: "/w", ...state(false) });
+    await click(screen.getByRole("button", { name: "Check again" }));
+    await settle(() => w.commands.length === 1);
+    expect(w.commands).toEqual([["h1", "card.spec", { cardId: "c1" }]]);
   });
 });

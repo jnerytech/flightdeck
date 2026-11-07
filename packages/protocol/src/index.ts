@@ -7,7 +7,7 @@ import {
   type AssistantResult,
   AssistantRunPayload,
 } from "./assistant.ts";
-import { ColumnContract } from "./board-contracts.ts";
+import { ColumnContract, SPEC_PATH_MAX, SpecState, specPathProblem } from "./board-contracts.ts";
 import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 import {
@@ -843,6 +843,10 @@ export const Card = z.object({
   estimateHours: z.number().nullable().default(null),
   /** Issue #78: what the person did to validate the work, a note a column can ask for. */
   validationNote: z.string().nullable().default(null),
+  /** Issue #78: the spec file the card names in its worktree; `null` is `docs/specs/<slug>.md`. */
+  specPath: z.string().nullable().default(null),
+  /** Issue #78: what the host last found of the spec file; `null` until it looked. */
+  specState: SpecState.nullable().default(null),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -3162,6 +3166,13 @@ export const Command = z.discriminatedUnion("type", [
       estimateHours: z.number().min(0).max(1000).nullable().optional(),
       /** Issue #78: the validation note; empty text or `null` clears it. */
       validationNote: z.string().max(4000).nullable().optional(),
+      /** Issue #78: the spec file in the worktree, relative; `null` goes back to the default. */
+      specPath: z
+        .string()
+        .max(SPEC_PATH_MAX)
+        .refine((path) => specPathProblem(path) === null)
+        .nullable()
+        .optional(),
       ...CardDeps,
     }),
   ),
@@ -3177,6 +3188,8 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("card.start", CardStartPayload),
   cmd("card.get", CardIdPayload),
+  /** Issue #78: looks at the card's spec file again and answers the card. */
+  cmd("card.spec", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
   /** Issue #100: teleport, the source side (feature `teleport`). */
@@ -5129,6 +5142,7 @@ export interface CommandResults {
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;
   "card.get": Card;
+  "card.spec": Card;
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.validate": WorkflowInfo;
   "workflow.trust": WorkflowInfo;

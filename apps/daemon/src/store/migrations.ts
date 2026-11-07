@@ -919,4 +919,12 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE cards ADD COLUMN validation_note TEXT;
   `,
+  // Issue #78: the spec file a card names in its worktree (NULL: docs/specs/<slug>.md), and what
+  // the host last found of it (the path it looked at, whether a file was there, its first heading).
+  `
+  ALTER TABLE cards ADD COLUMN spec_path TEXT;
+  ALTER TABLE cards ADD COLUMN spec_checked_path TEXT;
+  ALTER TABLE cards ADD COLUMN spec_found INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE cards ADD COLUMN spec_heading TEXT;
+  `,
 ];
