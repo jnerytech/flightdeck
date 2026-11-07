@@ -43,7 +43,7 @@ export function pickedIn(
   hostId: string,
   projectId: string,
 ): WorktreeFilter | null {
-  return filter && filter.hostId === hostId && filter.projectId === projectId ? filter : null;
+  return filter?.hostId === hostId && filter.projectId === projectId ? filter : null;
 }
 
 /** Projects the tree lists before "All projects (N)" holds the rest. */
@@ -127,7 +127,7 @@ export function foldedByDefault(total: number, key: string, active: string | nul
 
 /** The tone that earns a folded project its dot: a needs-you first, then running, else none. */
 export function liveTone(project: TreeProject): "needs-you" | "running" | null {
-  const tones = project.nodes.map((node) => node.tone);
-  if (tones.includes("needs-you")) return "needs-you";
-  return tones.includes("running") ? "running" : null;
+  const tones = new Set(project.nodes.map((node) => node.tone));
+  if (tones.has("needs-you")) return "needs-you";
+  return tones.has("running") ? "running" : null;
 }
