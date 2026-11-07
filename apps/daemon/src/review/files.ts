@@ -11,7 +11,13 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
-import { type FileEntry, type FileListing, inSequence } from "@flightdeck/protocol";
+import {
+  type FileEntry,
+  type FileListing,
+  type FileSearchPayload,
+  type FileSearchResult,
+  inSequence,
+} from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
@@ -22,6 +28,7 @@ import { readRegularSized } from "../read-regular.ts";
 import { ulid } from "../ulid.ts";
 import type { Changes } from "./changes.ts";
 import { firstStep, isGitDir, type Located, located, refuseCredential } from "./paths.ts";
+import { type SearchOptions, searchRepository } from "./search.ts";
 
 /** What a path that cannot be looked at reads as. */
 const absent = () => null;
@@ -69,6 +76,8 @@ export interface ReviewFilesOptions {
   /** Reverting and writing only inside these (reading works for any target). */
   allowedRoots: readonly string[];
   now?: () => number;
+  /** How `file.search` finds `rg` and how long it waits (#797); the defaults when absent. */
+  search?: SearchOptions;
 }
 
 export interface FileContent {
@@ -167,6 +176,16 @@ export class ReviewFiles {
     });
     entries.sort(folderOrder);
     return { dir, entries: entries.slice(0, LIST_CAP), truncated: entries.length > LIST_CAP };
+  }
+
+  /**
+   * A search over the target's repository (#797), by name or by content. A terminal's folder is not
+   * one (it can be the home): the resolve refuses it.
+   */
+  async search(input: FileSearchPayload): Promise<FileSearchResult> {
+    const { root } = await this.opts.changes.resolve(input.target);
+    const { target: _target, ...search } = input;
+    return searchRepository(root, search, this.opts.search);
   }
 
   /** Writes only when the file still has `expectedHash`; otherwise `file_conflict`. */
