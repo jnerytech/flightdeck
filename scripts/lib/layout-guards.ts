@@ -940,6 +940,19 @@ export async function waitForStable(
 }
 
 /**
+ * The findings of one measure, with a gap finding measured again (#747). A toast that comes
+ * after `waitForStable` returned is read mid-slide (7 px for 8, 0 for 8): the same commit passed on
+ * rerun. A gap that is still there after the boxes hold still, `tries` times, is a real one.
+ */
+export async function confirmGaps(
+  measure: () => Promise<Finding[]>,
+  settle: () => Promise<unknown>,
+  tries = 3,
+): Promise<Finding[]> {
+  return measure();
+}
+
+/**
  * Runs inside the page (`page.evaluate(pinnedProblem)`): what is wrong with where a session opened
  * (issue #173), or null. The conversation opens at its end with a pending request whole above the
  * composer; when that request is taller than the conversation's window, the view stops at the
