@@ -234,20 +234,42 @@ describe("card-form (en): the validation note and starting a card with no criter
     await settle(() => d.board.getCard(card.id).validationNote === null);
   });
 
-  test("Start asks first; Cancel starts nothing, Start anyway starts the card", async () => {
-    const { card, store } = await openCard("en");
-    // The host is not asked to run a card here: what the app sends is what is checked.
+  /** The app's view of the host with the card's project asking (or not) about criteria on Start. */
+  async function watchStarts(asking: boolean) {
+    const { d, card, store } = await openCard("en");
     const sent: string[] = [];
+    // The host is not asked to run a card here: what the app sends is what is checked.
     const forward = store.hostCommand.bind(store);
     store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
       if (type !== "card.start") return forward(hostId, type as never, payload as never);
       sent.push((payload as { cardId: string }).cardId);
       return {};
     }) as never;
+    if (asking) {
+      const project = d.board.updateProject(card.projectId, {
+        contractByColumn: { in_progress: { enforce: "confirm", checks: ["criteria"] } },
+      });
+      store.rememberProjects(store.getState().hosts[0]?.id ?? "", [project]);
+    }
     await settle(() => screen.queryByRole("button", { name: "Start" }) !== null);
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start" }));
-    });
+    const start = () =>
+      act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Start" }));
+      });
+    return { card, sent, start };
+  }
+
+  test("by default Start asks nothing: the card starts at once", async () => {
+    const { card, sent, start } = await watchStarts(false);
+    await start();
+    await settle(() => sent.length > 0 || screen.queryByRole("alertdialog") !== null);
+    expect(screen.queryByRole("alertdialog") === null).toBe(true);
+    expect(sent).toEqual([card.id]);
+  });
+
+  test("where In progress confirms criteria, Start asks first; Cancel starts nothing, Start anyway starts the card", async () => {
+    const { card, sent, start } = await watchStarts(true);
+    await start();
     await settle(() => sent.length > 0 || screen.queryByRole("alertdialog") !== null);
     expect(screen.queryByRole("alertdialog") === null).toBe(false);
     const dialog = screen.getByRole("alertdialog");
@@ -257,9 +279,7 @@ describe("card-form (en): the validation note and starting a card with no criter
     });
     expect(screen.queryByRole("alertdialog") === null).toBe(true);
     expect(sent).toEqual([]);
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start" }));
-    });
+    await start();
     await settle(() => screen.queryByRole("alertdialog") !== null);
     await act(async () => {
       fireEvent.click(

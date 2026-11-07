@@ -85,18 +85,28 @@ describe("board-contracts: a project's own contracts", () => {
 });
 
 describe("board-contracts: what a card lacks for starting (issue #78, slice 3a)", () => {
-  test("a card with no acceptance criteria lacks them, and a checklist item is enough", () => {
-    expect(startNeeds(card({ description: "Just words." }))).toEqual(["criteria"]);
-    expect(startNeeds(card({ description: "Goal\n- [ ] it works" }))).toEqual([]);
+  const confirm = (...checks: Array<"criteria" | "pr">) => ({
+    in_progress: { enforce: "confirm" as const, checks },
   });
 
-  test("a project can switch the question off, and only criteria are asked when starting", () => {
-    expect(startNeeds(card(), { in_progress: { enforce: "hint", checks: [] } })).toEqual([]);
-    const more = {
-      in_progress: { enforce: "hint" as const, checks: ["criteria" as const, "pr" as const] },
-    };
-    expect(startNeeds(card(), more)).toEqual(["criteria"]);
-    expect(startNeeds(card({ description: "- [ ] a" }), more)).toEqual([]);
+  test("by default In progress only hints, so starting asks nothing", () => {
+    expect(startNeeds(card({ description: "Just words." }))).toEqual([]);
+    expect(startNeeds(card({ description: "Just words." }), {})).toEqual([]);
+  });
+
+  test("a project whose In progress confirms criteria asks for them, and a checklist item is enough", () => {
+    expect(startNeeds(card({ description: "Just words." }), confirm("criteria"))).toEqual([
+      "criteria",
+    ]);
+    expect(startNeeds(card({ description: "Goal\n- [ ] it works" }), confirm("criteria"))).toEqual(
+      [],
+    );
+  });
+
+  test("a confirming In progress with no criteria check asks nothing, and only criteria are asked when starting", () => {
+    expect(startNeeds(card(), confirm())).toEqual([]);
+    expect(startNeeds(card(), confirm("criteria", "pr"))).toEqual(["criteria"]);
+    expect(startNeeds(card({ description: "- [ ] a" }), confirm("criteria", "pr"))).toEqual([]);
   });
 
   test("a validation note is a need like the others", () => {

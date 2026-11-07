@@ -97,7 +97,7 @@ describe("workflows-ui", () => {
     const plan =
       "inputs: [task]\nsteps:\n  - id: plan\n    agent: { prompt: 'plano de {{inputs.task}}' }\n";
     const { board, project } = await online({ plan, outro: FEATURE }, ["plan"]);
-    const card = board.createCard(project.id, { title: "Somar", description: "x\n- [ ] ok" });
+    const card = board.createCard(project.id, { title: "Somar", description: "x" });
     await click("Abrir board de repo");
     await settle(() => screen.queryByLabelText("Card Somar") !== null);
     const open = screen.queryByLabelText("Card Somar")?.querySelector("button") ?? null;
@@ -128,7 +128,7 @@ describe("workflows-ui", () => {
     const plan =
       "inputs: [task]\nsteps:\n  - id: plan\n    agent: { prompt: 'plano de {{inputs.task}}' }\n";
     const { board, project } = await online({ plan, outro: FEATURE }, ["plan"]);
-    const card = board.createCard(project.id, { title: "Somar", description: "x\n- [ ] ok" });
+    const card = board.createCard(project.id, { title: "Somar", description: "x" });
     await click("Abrir board de repo");
     await settle(() => screen.queryByLabelText("Card Somar") !== null);
     const trigger = screen.getByRole("button", { name: "Ações de Somar" });
@@ -174,7 +174,7 @@ describe("workflows-ui", () => {
 
   test("Cancelar in the Start dialog closes it and starts nothing", async () => {
     const { board, project } = await online({}, []);
-    const card = board.createCard(project.id, { title: "Somar", description: "x\n- [ ] ok" });
+    const card = board.createCard(project.id, { title: "Somar", description: "x" });
     await click("Abrir board de repo");
     await settle(() => screen.queryByLabelText("Card Somar") !== null);
     const trigger = screen.getByRole("button", { name: "Ações de Somar" });

@@ -423,10 +423,22 @@ const startFromMenu = async (title: string) => {
   await click(await screen.findByRole("menuitem", { name: "Start card" }));
 };
 
-// Issue #78, slice 3a: starting a card with no acceptance criteria asks first.
-describe("board-contracts-ui: Start asks when the card has no acceptance criteria", () => {
-  test("the card's Start card names what is missing and offers Start anyway", async () => {
+const ASKING = {
+  contractByColumn: { in_progress: { enforce: "confirm", checks: ["criteria"] } },
+};
+
+// Issue #78, slice 3a: starting asks about criteria only where the project's In progress confirms.
+describe("board-contracts-ui: Start asks only when In progress confirms criteria", () => {
+  test("by default Start goes straight to the start dialog, with no question", async () => {
     setup();
+    await ready();
+    await startFromMenu("A");
+    expect(dialog() === null).toBe(true);
+    await settle(() => startDialog() !== null);
+  });
+
+  test("a project that confirms criteria asks first, names what is missing and offers Start anyway", async () => {
+    setup({ project: ASKING });
     await ready();
     await startFromMenu("A");
     const ask = dialog() as HTMLElement;
@@ -440,7 +452,7 @@ describe("board-contracts-ui: Start asks when the card has no acceptance criteri
   });
 
   test("Cancel starts nothing and gives the card its focus back", async () => {
-    setup();
+    setup({ project: ASKING });
     await ready();
     await startFromMenu("A");
     expect(dialog() === null).toBe(false);
@@ -450,24 +462,16 @@ describe("board-contracts-ui: Start asks when the card has no acceptance criteri
     await settle(() => li("A").contains(document.activeElement));
   });
 
-  test("a card with criteria goes straight to the start dialog", async () => {
-    setup();
+  test("a card with criteria goes straight to the start dialog even where it confirms", async () => {
+    setup({ project: ASKING });
     await ready();
     await startFromMenu("G");
     expect(dialog() === null).toBe(true);
     await settle(() => startDialog() !== null);
   });
 
-  test("a project that asks for no criteria is never asked", async () => {
-    setup({ project: { contractByColumn: { in_progress: { enforce: "hint", checks: [] } } } });
-    await ready();
-    await startFromMenu("A");
-    expect(dialog() === null).toBe(true);
-    await settle(() => startDialog() !== null);
-  });
-
   test("it reads in Portuguese too", async () => {
-    setup({ language: "pt-BR" });
+    setup({ language: "pt-BR", project: ASKING });
     await settle(() => screen.queryByRole("heading", { name: "Board de api" }) !== null);
     await openMenu("A", "Ações de A");
     await click(await screen.findByRole("menuitem", { name: "Iniciar card" }));

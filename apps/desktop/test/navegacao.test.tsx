@@ -77,7 +77,7 @@ async function setup() {
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "inicial");
   const project = await d.board.addProject({ path: repo, promptTemplate: "" });
-  const card = d.board.createCard(project.id, { title: "Ajuste", description: "faça\n- [ ] ok" });
+  const card = d.board.createCard(project.id, { title: "Ajuste", description: "faça" });
   const { sessionId } = await d.manager.create({
     cwd: d.project,
     prompt: "[bash]",
@@ -265,10 +265,7 @@ describe("navegacao", () => {
     await poll(() => d.board.getCard(card.id).runs.length > 0, 8000);
     expect(d.board.getCard(card.id).runs).toHaveLength(1);
 
-    const second = d.board.createCard(card.projectId, {
-      title: "Outro",
-      description: "faça\n- [ ] ok",
-    });
+    const second = d.board.createCard(card.projectId, { title: "Outro", description: "faça" });
     await act(async () => {
       fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     });
@@ -289,6 +286,41 @@ describe("navegacao", () => {
     expect(chosen?.getAttribute("aria-label")).toBe("Iniciar card");
     await act(async () => {
       fireEvent.keyDown(input as HTMLInputElement, { key: "Enter" });
+    });
+    await poll(() => d.board.getCard(second.id).runs.length > 0, 8000);
+    expect(d.board.getCard(second.id).runs).toHaveLength(1);
+  });
+
+  // Issue #78, slice 3a: the palette follows the same rule as the card's own Start.
+  test("Iniciar card pela paleta pergunta antes onde o In progress do projeto confirma critérios", async () => {
+    const { d, store, card } = await setup();
+    const project = d.board.updateProject(card.projectId, {
+      contractByColumn: { in_progress: { enforce: "confirm", checks: ["criteria"] } },
+    });
+    store.rememberProjects(store.getState().hosts[0]?.id ?? "", [project]);
+    const second = d.board.createCard(card.projectId, { title: "Outro", description: "faça" });
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    });
+    const input = screen.queryByLabelText("Buscar no histórico") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "Outro" } });
+    });
+    for (const key of ["ArrowDown", "Tab", "ArrowDown", "Enter"]) {
+      await act(async () => {
+        fireEvent.keyDown(input, { key });
+      });
+    }
+    await settle(
+      () =>
+        screen.queryByRole("alertdialog") !== null || d.board.getCard(second.id).runs.length > 0,
+    );
+    expect(screen.queryByRole("alertdialog") === null).toBe(false);
+    const ask = screen.getByRole("alertdialog");
+    expect(ask.textContent).toContain("Iniciar Outro mesmo assim?");
+    expect(d.board.getCard(second.id).runs).toHaveLength(0);
+    await act(async () => {
+      fireEvent.click(within(ask).getByRole("button", { name: "Iniciar mesmo assim" }));
     });
     await poll(() => d.board.getCard(second.id).runs.length > 0, 8000);
     expect(d.board.getCard(second.id).runs).toHaveLength(1);
