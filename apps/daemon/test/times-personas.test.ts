@@ -117,3 +117,60 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
     });
   });
 });
+
+describe("times: the permission modes of issue #93 reach the team's sessions", () => {
+  test("the daemon built by main opens the coordinator in the mode asked and refuses bypass its host forbids", async () => {
+    const { root, repo } = gitRepo();
+    const dir = tempDir("fd-times-permissao-");
+    const file = join(dir, "config.json");
+    await Bun.write(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        hooks: { port: 0 },
+        allowedRoots: [root],
+      }),
+    );
+    const daemon = await runCli(["--config", file, "--runtime", "fake"], {
+      env: {},
+      log: { log: () => {}, error: () => {} },
+      exit: () => {},
+      onSignal: () => {},
+    });
+    cleanups.push(() => daemon?.stop());
+    const client = new FrameClient(daemon?.url ?? "");
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const project = await client.data<{ id: string }>("project.add", { path: repo });
+    // The host does not allow bypass (the default): the team is refused and nothing starts.
+    expect(
+      await client.request("teams.create", {
+        projectId: project?.id,
+        goal: "sem perguntas",
+        workers: 1,
+        workerPermissions: ["bypassPermissions"],
+      }),
+    ).toMatchObject({ ok: false, error: { reason: "bypass_not_allowed" } });
+    type Listed = {
+      sessions: Array<{ name: string | null; permissionMode: string }>;
+    };
+    expect((await client.data<Listed>("session.list", {}))?.sessions).toEqual([]);
+    const team = await client.data<{ id: string }>("teams.create", {
+      projectId: project?.id,
+      goal: "só planejar",
+      workers: 1,
+      coordinatorPermission: "plan",
+      workerPermissions: ["acceptEdits"],
+    });
+    expect(team?.id).toBeTruthy();
+    const modeOf = (suffix: string) =>
+      until(async () => {
+        const listed = await client.data<Listed>("session.list", {});
+        return listed?.sessions.find((s) => s.name?.endsWith(suffix))?.permissionMode;
+      });
+    expect(await modeOf("coordenadora")).toBe("plan");
+    expect(await modeOf("executora 1")).toBe("acceptEdits");
+  });
+});
