@@ -54,7 +54,8 @@ function rateLimitWindows(text: string) {
  * `[commit]`, fails the run on `[fail]` and honors `interrupt`. `[cost:x]` adds `x` to the
  * session's cumulative cost, which every `turn.result` reports (like `total_cost_usd`).
  * `[ratelimit:<window>=<fraction>@<epoch seconds>]` reports a plan quota reading, and
- * `[bash]` asks permission for a Bash command, with suggestions. `[result:<path>]` writes a
+ * `[bash]` asks permission for a Bash command, with suggestions. `[vault]` asks for a secret
+ * from the vault (a command only someone with full access may approve). `[result:<path>]` writes a
  * small Markdown file at `<path>` under the cwd, as a task that made a result would.
  */
 /** `count` fake slash commands in every shape a session lists: plain, plugin skills, MCP prompts. */
@@ -316,6 +317,7 @@ class FakeRun implements AgentRun {
       if (text.includes("[fail]")) throw new Error("falha simulada do runtime");
       if (text.includes("[tool]")) await this.toolCall(abort.signal);
       if (text.includes("[bash]")) await this.bashCall(abort.signal);
+      if (text.includes("[vault]")) await this.vaultCall(abort.signal);
       if (text.includes("[commit]")) await this.commit(text);
       await inSequence(text.matchAll(/\[result:([^\]]+)\]/g), async ([, path]) => {
         await this.writeResult(path ?? "");
@@ -418,6 +420,18 @@ class FakeRun implements AgentRun {
           destination: "session",
         },
       ],
+      done: () => `comando executado: ${command}`,
+    });
+  }
+
+  /** `[vault]`: a command that opens the vault, which the host words as needing full access. */
+  private vaultCall(signal: AbortSignal): Promise<void> {
+    const command = "flightdeckd vault get deploy-key";
+    return this.permissionCall(signal, {
+      preface: "Vou pedir um segredo.",
+      toolName: "Bash",
+      input: { command },
+      suggestions: [],
       done: () => `comando executado: ${command}`,
     });
   }
