@@ -14,9 +14,23 @@ function localFile(specifier: string, from: string, srcRoot: string): string | n
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
-const IMPORT =
-  /^[ \t]*(import|export)\s+(type\s+)?(?:([\w*{}$,]+(?:\s+[\w*{}$,]+)*?)\s+from\s+)?["']([^"']+)["']/gm;
-const ONLY_TYPES = /^\{\s*(?:type\s+[\w$]+(?:\s+as\s+[\w$]+)?\s*,?\s*)+\}$/;
+/** The pieces of the import pattern, small enough to read apart. */
+const PART = {
+  /** A word of an import clause (`{`, `type`, `a,`, `*`), but not a statement's own keyword at the start of a line. */
+  name: /(?!(?:import|export)\b(?<=^[ \t]*\w+))[\w*{}$,]+/.source,
+  /** The names an import binds, as words apart by whitespace, up to the one before `from`. */
+  clause: (name: string) => `(${name}(?:\\s+${name})*?)\\s+from\\s+`,
+  /** One `type A` or `type A as B` entry of a type-only import. */
+  typed: /type\s+[\w$]+(?:\s+as\s+[\w$]+)?/.source,
+};
+
+const IMPORT = new RegExp(
+  `^[ \\t]*(import|export)\\s+(type\\s+)?(?:${PART.clause(PART.name)})?["']([^"']+)["']`,
+  "gm",
+);
+// Whitespace and the optional comma are tried in that order, never both ways, so an entry's end
+// has one reading and a failing match is not retried for every split of a run of spaces.
+const ONLY_TYPES = new RegExp(`^\\{\\s*(?:${PART.typed}(?:\\s*,)?\\s*)+\\}$`);
 
 /** The module specifiers a source file imports at load time (type-only imports do not load). */
 export function staticImports(source: string): string[] {

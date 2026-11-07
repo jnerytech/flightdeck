@@ -1,6 +1,6 @@
 import type { FsDirsResult, FsFilesResult } from "@flightdeck/protocol";
 import { ArrowUp, ChevronRight, File, Folder } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
@@ -20,8 +20,8 @@ import { breadcrumbSteps, isInside } from "../lib/paths.ts";
 import { isLocalUrl } from "../lib/terminal.ts";
 
 /** Arrow keys move through the folder buttons, Enter opens the focused one; false for any other key. */
-function moveByKey(event: React.KeyboardEvent<HTMLUListElement>): boolean {
-  const entries = [...event.currentTarget.querySelectorAll<HTMLElement>("button")];
+function moveByKey(event: KeyboardEvent, list: HTMLElement): boolean {
+  const entries = [...list.querySelectorAll<HTMLElement>("button")];
   const at = entries.indexOf(document.activeElement as HTMLElement);
   if (event.key === "ArrowDown") entries[Math.min(at + 1, entries.length - 1)]?.focus();
   else if (event.key === "ArrowUp") entries[Math.max(at - 1, 0)]?.focus();
@@ -121,12 +121,21 @@ export function FolderPicker(
     else if (!result.ok) setError(describe(result.code, result.message));
   };
 
-  const onKeyDown = (event: React.KeyboardEvent<HTMLUListElement>) => {
-    const moved = moveByKey(event);
-    if (!moved && event.key !== "Backspace") return;
-    if (!moved) void open(listing?.parent ?? undefined);
-    event.preventDefault();
-  };
+  const parentRef = useRef<string | undefined>(undefined);
+  parentRef.current = listing?.parent ?? undefined;
+
+  // The keys of the folder buttons, caught on the list they bubble to. The list is not itself
+  // interactive, so the listener goes on the element and not on a React prop of a `<ul>`.
+  const listRef = useCallback((list: HTMLUListElement) => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const moved = moveByKey(event, list);
+      if (!moved && event.key !== "Backspace") return;
+      if (!moved) void openRef.current(parentRef.current);
+      event.preventDefault();
+    };
+    list.addEventListener("keydown", onKeyDown);
+    return () => list.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <Dialog open onOpenChange={(isOpen) => !isOpen && props.onClose()}>
@@ -181,22 +190,18 @@ export function FolderPicker(
             )}
             {listing.dirs.length === 0 && allowed.length === 0 && (
               <>
-                <p role="status" className="font-medium text-sm">
-                  {t("folderPicker.noRoots")}
-                </p>
+                <output className="font-medium text-sm">{t("folderPicker.noRoots")}</output>
                 <AllowedFolders store={store} host={host} />
               </>
             )}
             {loading && (
-              <p role="status" className="text-muted-foreground text-sm">
-                {t("folderPicker.loading")}
-              </p>
+              <output className="text-muted-foreground text-sm">{t("folderPicker.loading")}</output>
             )}
             <ul
               aria-label={t("folderPicker.list")}
               aria-busy={loading}
               className="flex max-h-72 min-w-0 flex-col overflow-y-auto aria-busy:opacity-60"
-              onKeyDown={onKeyDown}
+              ref={listRef}
             >
               {listing.dirs.map((dir) => (
                 <li key={dir.path}>
