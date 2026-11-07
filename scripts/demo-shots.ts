@@ -693,10 +693,8 @@ function shots(ids: DemoIds): Shot[] {
       name: "custos-por-cliente",
       route: { name: "costs" },
       clients: {},
+      // The data scope is every host by default (#126), so this is the all-hosts view as it opens.
       prepare: async (page) => {
-        await page
-          .getByRole("combobox", { name: /^(Host dos custos|Costs host)/ })
-          .selectOption("__all__");
         await page.waitForTimeout(1500);
       },
     },
@@ -862,6 +860,8 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.inbox",
       // The "barra-recolhida" print folds the sidebar, and the fold is kept: not into the next print.
       "flightdeck.sidebarFolded",
+      // Every scoped screen reads the data scope (#126): a print that picks a host does not scope the next.
+      "flightdeck.dataScope",
     ]) {
       localStorage.removeItem(key);
     }

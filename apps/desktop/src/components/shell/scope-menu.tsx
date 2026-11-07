@@ -36,6 +36,7 @@ export function ScopeMenu(
   const choose = (value: string) => {
     const next = scopeOfValue(value);
     store.dataScope.set(next);
+    props.onPick?.();
     setSaid(t("scope.showing", { scope: nameOf(next) }));
   };
   return (
