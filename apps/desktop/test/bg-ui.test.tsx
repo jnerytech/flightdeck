@@ -268,6 +268,10 @@ describe("bg-ui: Iniciar em segundo plano", () => {
 
   test("with the background option and no prompt, Criar sessão is off and says why, and no bg.start leaves (#940)", async () => {
     const { daemon } = await newSession();
+    // Without the option an empty prompt is fine.
+    expect(
+      (screen.queryByRole("button", { name: "Criar sessão" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
     await act(async () => {
       fireEvent.click(screen.queryByLabelText("Iniciar em segundo plano") as HTMLInputElement);
     });
