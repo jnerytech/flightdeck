@@ -683,7 +683,7 @@ export const BoardView = memo(function BoardView(props: {
                   setCreating(true);
                 }}
               />
-              <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+              <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto empty:hidden">
                 {shown
                   .filter((card) => card.column === id)
                   .map((card) => (
@@ -747,7 +747,7 @@ export const BoardView = memo(function BoardView(props: {
               {filtering &&
                 all.some((card) => card.column === id) &&
                 shown.every((card) => card.column !== id) && (
-                  <p className="text-muted-foreground text-xs">{t("board.noMatches")}</p>
+                  <p className="column-empty">{t("board.noMatches")}</p>
                 )}
               <Button
                 variant="secondary"
