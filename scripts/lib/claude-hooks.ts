@@ -821,6 +821,18 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
   );
 }
 
+/**
+ * `fn`, made only while `now()` is at or before `limit` (#826 review); past it, null with no call.
+ * The guard wraps its gh and git calls so each starts early enough to end inside the hook's 10 s.
+ */
+export function withBudget<A extends unknown[], R>(
+  fn: (...args: A) => R | null,
+  now: () => number,
+  limit: number,
+): (...args: A) => R | null {
+  return (...args) => (limit < 0 && now() < 0 ? fn(...args) : null);
+}
+
 /** Text with control, format (bidi, zero-width), surrogate, private-use and line-separator characters out. */
 export function printable(text: string): string {
   return text.replace(/[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Zl}\p{Zp}]/gu, "");

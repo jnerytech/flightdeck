@@ -5,6 +5,7 @@ import {
   prRunFrom,
   prRunVia,
   pushWaitViolation,
+  withBudget,
 } from "../lib/claude-hooks.ts";
 
 const CWD = "/repos/flightdeck-fix";
@@ -253,26 +254,55 @@ describe("push-wait: what an override logs (#741, #821 review)", () => {
     ).toEqual(waiver("see *** now"));
   });
 
-  test("the token shapes of common services, an Authorization header and a --token flag are hidden", () => {
-    const reason = [
-      "x_ghp_abc123def456",
-      "glpat-abcdefghij1234567890",
-      "npm_abcdefghijklmnopqrstuvwxyz0123456789",
-      "xoxb-123-456-abc",
-      "sk-abcdefghijklmnopqrstuv",
-      "AKIAABCDEFGHIJKLMNOP",
-      "eyJhbGciOi.eyJzdWIi.c2lnbmF0dXJl",
-      "Authorization: Basic dXNlcjpwYXNz",
-      "--token abc123",
-      "--password=hunter2",
-      "--secret 'two words'",
-      "Bearer xyz",
-    ].join(" ");
-    expect(log(`FLIGHTDECK_PUSH_NOW="${reason}" git push`, runsBy({}))).toEqual(
-      waiver(
-        "x_*** *** *** *** *** *** *** Authorization: *** --token *** --password=*** --secret *** Bearer ***",
-      ),
+  test.each([
+    ["x_ghp_abc123def456", "x_***"],
+    ["glpat-abcdefghij1234567890", "***"],
+    ["npm_abcdefghijklmnopqrstuvwxyz0123456789", "***"],
+    ["xoxb-123-456-abc", "***"],
+    ["sk-abcdefghijklmnopqrstuv", "***"],
+    ["AKIAABCDEFGHIJKLMNOP", "***"],
+    ["eyJhbGciOi.eyJzdWIi.c2lnbmF0dXJl", "***"],
+    ["Authorization: Basic dXNlcjpwYXNz", "Authorization: ***"],
+    ["--token abc123", "--token ***"],
+    ["--password=hunter2", "--password=***"],
+    ["--secret 'two words'", "--secret ***"],
+    ["--api-key abc123", "--api-key ***"],
+    ["--github-token=abc123", "--github-token=***"],
+    ["Bearer xyz", "Bearer ***"],
+    // Ordinary words stay readable (#826 review).
+    ["--token-count 5", "--token-count 5"],
+    ["desk-abcdefghijklmnopqrstuv", "desk-abcdefghijklmnopqrstuv"],
+  ])("a reason with %p logs %p", (secret, shown) => {
+    expect(log(`FLIGHTDECK_PUSH_NOW="see ${secret} now" git push`, runsBy({}))).toEqual(
+      waiver(`see ${shown} now`),
     );
+  });
+
+  test("the 200-character cut never splits a character in two", () => {
+    expect(log(`FLIGHTDECK_PUSH_NOW="${"x".repeat(199)}\u{1F600}y" git push`, runsBy({}))).toEqual(
+      waiver(`${"x".repeat(199)}\u{1F600}`),
+    );
+  });
+});
+
+describe("push-wait: withBudget, the guard's time limit for its gh and git calls (#826 review)", () => {
+  test("a call starts only before the limit; past it, the answer is null and the call is not made", () => {
+    let clock = 0;
+    const calls: string[] = [];
+    const budgeted = withBudget(
+      (what: string) => {
+        calls.push(what);
+        return `done ${what}`;
+      },
+      () => clock,
+      6000,
+    );
+    expect(budgeted("first")).toBe("done first");
+    clock = 6000;
+    expect(budgeted("at the limit")).toBe("done at the limit");
+    clock = 6001;
+    expect(budgeted("late")).toBeNull();
+    expect(calls).toEqual(["first", "at the limit"]);
   });
 });
 

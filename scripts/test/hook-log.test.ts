@@ -127,10 +127,18 @@ describe("hook-log", () => {
         detail: "x",
         ...over,
       });
-    const text = [bad({ t: 5 }), bad({ detail: 7 })].join("\n");
+    const text = [
+      bad({ t: 5 }),
+      bad({ detail: 7 }),
+      // #826 review: every field the summary prints is checked, so none carries a control character.
+      bad({ minutes: "\u001b[2J" }),
+      bad({ t: "\u001b[2J" }),
+      bad({ hook: "gu\u001bard" }),
+      bad({ rule: "push\u202ewait" }),
+    ].join("\n");
     expect(() => summarizeHookLog(text)).not.toThrow();
     expect(summarizeHookLog(text)).toBe(
-      "hook  calls  blocks  p50 ms  p95 ms\n\n2 line(s) skipped (not a hook log entry)",
+      "hook  calls  blocks  p50 ms  p95 ms\n\n6 line(s) skipped (not a hook log entry)",
     );
   });
 
