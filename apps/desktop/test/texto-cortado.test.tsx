@@ -96,9 +96,7 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
         />
       </TContext.Provider>,
     );
-    const columns = Array.from(document.querySelectorAll<HTMLElement>("[data-day]")).filter(
-      (el) => el.getAttribute("role") === "group",
-    );
+    const columns = screen.getAllByRole("group", { name: /^2026-11-0\d: / });
     expect(columns).toHaveLength(3);
     expect(columns.every((c) => c.getAttribute("title") === null)).toBe(true);
     expect(columns.map((c) => c.tabIndex)).toEqual([0, -1, -1]);
