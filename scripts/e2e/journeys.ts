@@ -1453,15 +1453,21 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
-  // Simple mode (#754, #784): the host menu switches to it, and its first screen keeps the
+  // Simple mode (#754, #784): the palette switches to it, and its first screen keeps the
   // templates in reach at a phone's, a narrow window's and a desktop's size, without the page
   // scrolling sideways at the first two.
   "modo-simples-alcance": async (c) => {
     await open(c, { name: "hub" });
+    // The palette's "Switch to simple mode" is how a person who can switch does it.
+    await c.page.keyboard.press("Control+K");
+    const input = c.page.getByLabel(c.t("searchUi.input"), { exact: true });
+    await input.fill(c.t("palette.switchToSimple"));
     await c.page
-      .getByRole("button", { name: c.t("sidebar.hostMenu", { host: "alfa" }), exact: true })
+      .getByRole("button", {
+        name: new RegExp(c.t("palette.switchToSimple").replaceAll(/[()]/g, "\\$&")),
+      })
+      .first()
       .click();
-    await c.page.getByRole("menuitem", { name: c.t("sidebar.hostSimple"), exact: true }).click();
     const templates = c.page.getByRole("region", { name: c.t("simple.home.templates") });
     const first = templates.getByRole("button").first();
     await first.waitFor({ timeout: WAIT });
