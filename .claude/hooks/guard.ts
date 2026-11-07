@@ -55,7 +55,13 @@ if (typeof command === "string") {
   // #741: gh is asked only for a push without an override, in the push's own checkout; any
   // failure reads as no run. The branch goes as one `--branch=` word, so no name reads as a flag.
   const gh = (args: string[], dir: string) => {
-    const proc = spawnSync("gh", args, { cwd: dir, encoding: "utf8", timeout: 4000 });
+    // 3 s each: two calls stay inside the hook's 10 s with the git calls; gh never prompts.
+    const proc = spawnSync("gh", args, {
+      cwd: dir,
+      encoding: "utf8",
+      timeout: 3000,
+      env: { ...process.env, GH_PROMPT_DISABLED: "1" },
+    });
     return proc.status === 0 ? proc.stdout : null;
   };
   const prRun = (branch: string, dir: string) => {

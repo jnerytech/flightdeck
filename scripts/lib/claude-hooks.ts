@@ -768,9 +768,18 @@ export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDe
     // A failed check or a conflict makes the push a fix that must go out (#756 review).
     if (!run?.inProgress || run.failed || run.conflicting) continue;
     if (run.minutes >= PUSH_WAIT_MINUTES) continue;
-    return `a push now cancels CI run ${run.id} on this branch's PR, ${run.minutes} min old with no failed check (#741): ${run.url}. Batch the next commits with this one and push once the run ends, or push now with:\n  FLIGHTDECK_PUSH_NOW="<reason>" ${segment.trim()}`;
+    // Only GitHub's own https address; the echoed push hides credentials (security review).
+    const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
+    return `a push now cancels CI run ${run.id} on this branch's PR, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(segment.trim())}`;
   }
   return null;
+}
+
+/** A command with the user and password of a URL, and a secret-looking variable's value, hidden. */
+function redacted(text: string): string {
+  return text
+    .replace(/:\/\/[^/@\s]+@/g, "://***@")
+    .replace(/\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY)\w*)=\S+/gi, "$1=***");
 }
 
 /** Whether a push goes ahead on a FLIGHTDECK_PUSH_NOW override with its reason (#741). */
