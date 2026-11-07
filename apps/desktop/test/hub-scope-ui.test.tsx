@@ -161,6 +161,40 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     });
   });
 
+  // #207: a visit never rewrites the scope, even through the offline notice.
+  test("a visited host that is offline offers every host for the visit, and the scope stays", async () => {
+    const { store } = setup({
+      kept: '{"kind":"host","hostId":"h2"}',
+      route: "alfa",
+      offline: "h1",
+    });
+    const all = () => screen.queryByRole("button", { name: "Show all hosts" });
+    await settleMaybe(() => all() !== null);
+    const said = screen.queryByText(/alfa is offline/) !== null;
+    const button = all();
+    if (button) {
+      await act(async () => {
+        fireEvent.click(button);
+      });
+    }
+    await settleMaybe(() => shown("on alfa") && shown("on beta"));
+    expect({
+      said,
+      offered: button !== null,
+      alfa: shown("on alfa"),
+      beta: shown("on beta"),
+      menu: screen.queryByRole("button", { name: "Data from All hosts" }) !== null,
+      scope: store.dataScope.value,
+    }).toEqual({
+      said: true,
+      offered: true,
+      alfa: true,
+      beta: true,
+      menu: true,
+      scope: { kind: "host", hostId: "h2" },
+    });
+  });
+
   // One control for whose sessions: the Filters popover and the row above the groups had their own.
   test("the hub has no host filter of its own any more", async () => {
     setup();
@@ -182,5 +216,13 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     setup({ language: "pt-BR" });
     await settle(() => shown("on alfa"));
     expect(screen.queryByRole("button", { name: "Dados de Todos os hosts" }) !== null).toBe(true);
+  });
+
+  test("em português, o host fora do ar oferece todos os hosts", async () => {
+    setup({ language: "pt-BR", kept: '{"kind":"host","hostId":"h1"}', offline: "h1" });
+    await settleMaybe(
+      () => screen.queryByRole("button", { name: "Mostrar todos os hosts" }) !== null,
+    );
+    expect(screen.queryByRole("button", { name: "Mostrar todos os hosts" }) !== null).toBe(true);
   });
 });
