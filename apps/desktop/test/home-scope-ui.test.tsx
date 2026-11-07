@@ -113,6 +113,20 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     });
   });
 
+  // Home already has one status region, read by its tests and by a screen reader as Home's state
+  // (#212): the menu's announcement is a polite live region of its own, not a second status.
+  test("the menu's announcement is not a second status region", async () => {
+    setup();
+    await settle(() => /\$7\.00/.test(spend()));
+    await pick("Data from All hosts", "alfa");
+    await settle(() => screen.queryByText("Showing alfa") !== null);
+    const said = screen.queryByText("Showing alfa");
+    expect({
+      statuses: screen.queryAllByRole("status").length,
+      live: said?.getAttribute("aria-live") ?? null,
+    }).toEqual({ statuses: 1, live: "polite" });
+  });
+
   test("with a single host there is no scope to pick", async () => {
     setup({ hosts: ["h1"] });
     await settle(() => /\$2\.00/.test(spend()));
