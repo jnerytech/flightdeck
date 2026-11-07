@@ -66,6 +66,7 @@ function CardTextField(
               {...assist}
               className="w-full"
               value={value}
+              {...(props.placeholder ? { placeholder: props.placeholder } : {})}
               autoFocus={props.autoFocus === true}
               onChange={(e) => edit(e.target.value)}
             />
