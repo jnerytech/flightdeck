@@ -1408,6 +1408,17 @@ html:not(:has([data-slot="status-bar"])) {
   align-items: center;
   gap: 0.5rem;
 }
+/* Issue #93: a worker row of the new-team form: persona | model | permissions | remove, in columns of the same width in every row. */
+@utility worker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7rem 10rem auto;
+  align-items: end;
+  gap: 0.5rem;
+}
+/* A host that does not take the permission modes has no such column. */
+@utility worker-row-lean {
+  grid-template-columns: minmax(0, 1fr) 7rem auto;
+}
 @utility row-end-wrap {
   display: flex;
   flex-wrap: wrap;

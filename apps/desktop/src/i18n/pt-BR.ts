@@ -3173,6 +3173,13 @@ export const ptBR = {
     workersLegend: "Executoras",
     workerPersona: "Persona da executora {n} (opcional)",
     workerModel: "Modelo da executora {n}",
+    coordinatorPermission: "Permissões da coordenadora",
+    workerPermission: "Permissões da executora {n}",
+    newMemberPermission: "Permissões da nova executora de {name}",
+    bypassMessage:
+      "Em {host}, os membros em Ignorar permissões executam tudo sem perguntar antes: podem editar e apagar arquivos e rodar comandos. Nada os para depois que começam.",
+    bypassConfirm: "Criar sem pedidos de permissão",
+    bypassAddConfirm: "Adicionar sem pedidos de permissão",
     addRow: "Adicionar executora ao novo time",
     removeRow: "Remover a executora {n}",
     newMemberPersona: "Persona da nova executora de {name} (opcional)",

@@ -43,7 +43,7 @@ describe("recursos-fase21: host.info announces messaging, teams and names", () =
   test("each only when the daemon has the service, so the app shows its screens only there", async () => {
     expect(await features({})).toEqual([]);
     expect(await features({ messaging: true })).toEqual(["messaging"]);
-    expect(await features({ teams: true })).toEqual(["teams"]);
+    expect(await features({ teams: true })).toEqual(["teams", "teams.permissions"]);
     expect(await features({ names: true })).toEqual(["names"]);
   });
 });

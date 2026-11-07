@@ -75,6 +75,16 @@ async function connect(url: string) {
 }
 
 describe("times-protocolo", () => {
+  test("the host announces that its teams take a permission mode per member, and only with the service on (issue #93)", async () => {
+    const featuresOf = async (options: { teams?: boolean }) => {
+      const { server } = await boot(options);
+      const client = await connect(server.url);
+      return (await client.data<{ features: string[] }>("host.info", {}))?.features ?? [];
+    };
+    expect(await featuresOf({})).toContain("teams.permissions");
+    expect(await featuresOf({ teams: false })).not.toContain("teams.permissions");
+  });
+
   test("sem o serviço de times o daemon responde invalid_state", async () => {
     const { server } = await boot({ teams: false });
     const client = await connect(server.url);
