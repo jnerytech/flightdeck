@@ -244,10 +244,10 @@ describe("push-wait: what an override logs (#741, #821 review)", () => {
   test("control, C1, bidi and line-separator characters go first, so a secret split by one is still hidden", () => {
     expect(
       log(
-        'FLIGHTDECK_PUSH_NOW="a\u001b[2Jb\u0007c\u0085d\u202ee\u2028f\u2066g\u200bh" git push',
+        'FLIGHTDECK_PUSH_NOW="a\u001b[2Jb\u0007c\u0085d\u202ee\u2028f\u2066g\u200bh\ue000i" git push',
         runsBy({}),
       ),
-    ).toEqual(waiver("a[2Jbcdefgh"));
+    ).toEqual(waiver("a[2Jbcdefghi"));
     expect(
       log('FLIGHTDECK_PUSH_NOW="see ghp_ab\u0000cdefghijklmnop now" git push', runsBy({})),
     ).toEqual(waiver("see *** now"));
@@ -265,11 +265,12 @@ describe("push-wait: what an override logs (#741, #821 review)", () => {
       "Authorization: Basic dXNlcjpwYXNz",
       "--token abc123",
       "--password=hunter2",
+      "--secret 'two words'",
       "Bearer xyz",
     ].join(" ");
     expect(log(`FLIGHTDECK_PUSH_NOW="${reason}" git push`, runsBy({}))).toEqual(
       waiver(
-        "x_*** *** *** *** *** *** *** Authorization: *** --token *** --password=*** Bearer ***",
+        "x_*** *** *** *** *** *** *** Authorization: *** --token *** --password=*** --secret *** Bearer ***",
       ),
     );
   });
