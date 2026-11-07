@@ -624,6 +624,21 @@ html:not(:has([data-slot="status-bar"])) {
   display: inline-flex;
 }
 
+/* A session's views (#641): one row that scrolls sideways in a narrow pane, like the tab strip,
+   instead of a second row taken from the conversation. */
+@utility session-views {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+  & > * {
+    flex-shrink: 0;
+  }
+}
+
 /* The tab strip: the tabs keep their width and the strip scrolls sideways, with no scrollbar. */
 @utility tab-scroller {
   min-width: 0;
@@ -1020,7 +1035,7 @@ html:not(:has([data-slot="status-bar"])) {
     border-color: var(--color-ring);
   }
   /* A narrow dock: the box takes its own line above the buttons, which keep their row (#641). */
-  @container (width < 28rem) {
+  @container (width < 20rem) {
     flex-wrap: wrap;
     & .composer-box {
       order: -1;
