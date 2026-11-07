@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import { maskConfig, maskedConfig } from "../permissions/mask-config.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { readRegularSized } from "../read-regular.ts";
 import { git, gitLimited } from "./command.ts";
@@ -119,13 +120,33 @@ const secretFile = (file: DiffFile): DiffFile => ({
   hunks: [],
 });
 
-/** The files of a diff, with the content of every credential file, old path or new, left out. */
+/** A credential file that is shown anyway, its private values masked (#806): `.mcp.json`. */
+const unlisted = (path: string) => credential(path) && !maskedConfig(path);
+
+/** A config's hunks with their private values masked; the command it runs stays readable. */
+const maskedFile = (file: DiffFile): DiffFile => ({
+  ...file,
+  hunks: file.hunks.map((hunk) => {
+    const texts = maskConfig(hunk.lines.map((line) => line.text));
+    return {
+      ...hunk,
+      header: maskConfig([hunk.header])[0] ?? hunk.header,
+      lines: hunk.lines.map((line, i) => ({ ...line, text: texts[i] ?? line.text })),
+    };
+  }),
+});
+
+/**
+ * The files of a diff, with the content of every credential file, old path or new, left out; a
+ * config shown masked keeps its lines, masked.
+ */
 const withoutSecrets = (files: DiffFile[]) =>
-  files.map((file) =>
-    credential(file.path) || (file.oldPath !== null && credential(file.oldPath))
-      ? secretFile(file)
-      : file,
-  );
+  files.map((file) => {
+    if (unlisted(file.path) || (file.oldPath !== null && unlisted(file.oldPath))) {
+      return secretFile(file);
+    }
+    return maskedConfig(file.path) ? maskedFile(file) : file;
+  });
 
 /**
  * A file git does not track yet, shown as entirely added. A link or a pipe is listed without
@@ -133,7 +154,7 @@ const withoutSecrets = (files: DiffFile[]) =>
  * `tooLarge` marker and its size, and is never read past `max` (issue #329).
  */
 async function untrackedFile(worktree: string, path: string, max: number): Promise<DiffFile> {
-  if (credential(path)) return secretFile(newFile(path, false));
+  if (unlisted(path)) return secretFile(newFile(path, false));
   const read = await readRegularSized(join(worktree, path), max + 1);
   const content = read?.data ?? null;
   const file = newFile(path, !content);
@@ -143,7 +164,7 @@ async function untrackedFile(worktree: string, path: string, max: number): Promi
   }
   if (content.includes(0)) return { ...file, binary: true };
   const lines = content.toString("utf8").replace(/\n$/, "").split("\n");
-  return {
+  const added = {
     ...file,
     additions: lines.length,
     hunks: [
@@ -153,6 +174,7 @@ async function untrackedFile(worktree: string, path: string, max: number): Promi
       },
     ],
   };
+  return maskedConfig(path) ? maskedFile(added) : added;
 }
 
 /**

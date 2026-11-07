@@ -6,6 +6,7 @@ import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { type Central, messageExternal } from "../central/central.ts";
 import { FlightdeckError } from "../errors.ts";
+import { maskConfig, maskedConfig } from "../permissions/mask-config.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { readRegular } from "../read-regular.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
@@ -144,15 +145,18 @@ export class ReviewComments {
    */
   private async content(resolved: ResolvedTarget, path: string, side: "new" | "old") {
     const where = await located(resolved.root, await realpath(resolved.root), path);
-    refuseCredential(where, path);
+    refuseCredential(where, path, true);
+    // The config shown masked (`.mcp.json`, #806): the quote a comment keeps has its values masked.
+    const masked = (lines: string[] | null) =>
+      lines && maskedConfig(path) ? maskConfig(lines) : lines;
     if (side === "new") {
       // Opened without following a link, as `file.read` does: one swapped in after the check is not read.
       const bytes = where.real ? await readRegular(where.real, Number.POSITIVE_INFINITY) : null;
-      return bytes ? linesOf(bytes.toString("utf8")) : null;
+      return masked(bytes ? linesOf(bytes.toString("utf8")) : null);
     }
     const object = `${refArg(resolved.base ?? "HEAD")}:${path.replaceAll("\\", "/")}`;
     const shown = await git(resolved.root, "show", "--end-of-options", object);
-    return shown.code === 0 ? linesOf(shown.stdout) : null;
+    return masked(shown.code === 0 ? linesOf(shown.stdout) : null);
   }
 
   /** The target's comments, oldest first, each one moved to where its quote is now. */
@@ -167,7 +171,7 @@ export class ReviewComments {
     const comments: ReviewComment[] = [];
     await inSequence(rows, async (row) => {
       // One saved on a credential file before issue #509 lists without its quote, as outdated.
-      const secret = credential(row.path);
+      const secret = credential(row.path) && !maskedConfig(row.path);
       const lines =
         resolved && !secret
           ? await this.content(resolved, row.path, row.side).catch(() => null)
