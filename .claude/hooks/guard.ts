@@ -37,6 +37,8 @@ function block(rule: string, reason: string | null) {
 
 const input = await Bun.stdin.json().catch(() => null);
 const { command, file_path: filePath } = input?.tool_input ?? {};
+// #741: the push context of the log, so a push-wait override records the run's age.
+let push: Parameters<typeof guardAllowLogs>[2];
 if (typeof command === "string") {
   block("command", commandViolation(command));
   block("slot", slotViolation(command, process.env));
@@ -52,8 +54,8 @@ if (typeof command === "string") {
   };
   block("commit", commitViolation(command, cwd, repo));
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
-  // #741: gh is asked only for a push without an override, in the push's own checkout; any
-  // failure reads as no run (prRunVia in scripts/lib/claude-hooks.ts makes the calls).
+  // #741: gh is asked for a push, in the push's own checkout: without an override to decide, with
+  // one to log the run's age. Any failure reads as no run (prRunVia in scripts/lib/claude-hooks.ts).
   const gh = (args: string[], dir: string) => {
     // 3 s each: two calls stay inside the hook's 10 s with the git calls; gh never prompts. Past
     // the 10 s, Claude Code lets the command through, so a slow GitHub fails open too.
@@ -66,7 +68,8 @@ if (typeof command === "string") {
     return proc.status === 0 ? proc.stdout : null;
   };
   const prRun = prRunVia(gh, Date.now);
-  block("push-wait", pushWaitViolation(command, cwd, { ...repo, env: process.env, prRun }));
+  push = { cwd, deps: { ...repo, env: process.env, prRun } };
+  block("push-wait", pushWaitViolation(command, cwd, push.deps));
 }
 if (typeof filePath === "string") {
   const root = checkoutRoot(filePath, ROOT);
@@ -82,7 +85,7 @@ if (typeof filePath === "string") {
     }),
   );
 }
-for (const { rule, decision } of guardAllowLogs(command, process.env)) {
-  logHook("guard", rule, decision);
+for (const { rule, decision, detail, minutes } of guardAllowLogs(command, process.env, push)) {
+  logHook("guard", rule, decision, { detail, minutes });
 }
 process.exit(0);

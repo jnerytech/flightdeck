@@ -80,6 +80,16 @@ export function summarizeHookLog(text: string): string {
       out.push(`  ${rule.padEnd(ruleWidth)}${n}`);
     }
   }
+  const overrides = entries.filter(
+    (e) => e.rule === "push-wait" && e.decision === "waived" && e.detail,
+  );
+  if (overrides.length > 0) {
+    out.push("", "push-wait overrides:");
+    for (const e of overrides) {
+      const age = e.minutes === undefined ? "no run found" : `run ${e.minutes} min old`;
+      out.push(`  ${e.t.slice(0, 16).replace("T", " ")}  ${age.padEnd(15)}${e.detail}`);
+    }
+  }
   const skipped = lines.length - entries.length;
   if (skipped > 0) out.push("", `${skipped} line(s) skipped (not a hook log entry)`);
   return out.join("\n");

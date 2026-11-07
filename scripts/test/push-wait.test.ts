@@ -149,7 +149,7 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
 
   test("an override with a reason logs a push-wait waiver, not an allow", () => {
     expect(guardAllowLogs('FLIGHTDECK_PUSH_NOW="the reviewer waits on it" git push', {})).toEqual([
-      { rule: "push-wait", decision: "waived" },
+      { rule: "push-wait", decision: "waived", detail: "the reviewer waits on it" },
     ]);
     expect(guardAllowLogs("git push", {})).toEqual([{ rule: null, decision: "allow" }]);
   });
