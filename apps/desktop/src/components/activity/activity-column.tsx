@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 
 /** One column of the Activity board: its name, how many cards, and the cards or "None". */
-export function ActivityColumnView(props: {
-  name: string;
-  count: number;
-  none: string;
-  children: ReactNode;
-}) {
+export function ActivityColumnView(
+  props: Readonly<{
+    name: string;
+    count: number;
+    none: string;
+    children: ReactNode;
+  }>,
+) {
   return (
     <section data-slot="activity-column" aria-label={props.name} className="activity-column">
       <div className="activity-column-head">
