@@ -230,7 +230,7 @@ export class SecretScanner {
   scan(text: string): string[] {
     const found: string[] = [];
     for (const [label, pattern] of SECRET_PATTERNS) {
-      const hit = hitsOf(pattern, text).some(({ text: found }) => !found.includes("{{"));
+      const hit = hitsOf(pattern, text).some((hit) => !hit.text.includes("{{"));
       if (hit) found.push(label);
     }
     if (
