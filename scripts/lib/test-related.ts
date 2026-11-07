@@ -98,7 +98,7 @@ export function newImports(
       if (!old.has(path)) found.add(path);
     }
   }
-  return [...found].sort();
+  return [...found].sort((a, b) => (a < b ? -1 : 1));
 }
 
 export interface PlanDeps {
