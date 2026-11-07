@@ -59,6 +59,8 @@ export class TeleportInbox {
   private readonly entries = new Map<string, Entry>();
   private readonly pending = new Set<Promise<void>>();
   private stopped = false;
+  /** One package is opened at a time: the caps are checked and taken with nothing in between. */
+  private opening: Promise<unknown> = Promise.resolve();
 
   constructor(readonly deps: TeleportInboxDeps) {}
 
@@ -68,7 +70,13 @@ export class TeleportInbox {
     await mkdir(this.deps.dir, { recursive: true, mode: 0o700 });
   }
 
-  async receive(manifest: TeleportManifest): Promise<{ id: string }> {
+  receive(manifest: TeleportManifest): Promise<{ id: string }> {
+    const run = this.opening.then(() => this.open(manifest));
+    this.opening = run.catch(() => {});
+    return run;
+  }
+
+  private async open(manifest: TeleportManifest): Promise<{ id: string }> {
     if (this.stopped) throw refuse("invalid_state", "teleport_stopped");
     this.check(manifest);
     // A session has one package under way: a new one replaces the old.
@@ -132,6 +140,8 @@ export class TeleportInbox {
   /** The daemon stops: every package goes now, and no timer is left. */
   async stop(): Promise<void> {
     this.stopped = true;
+    // A package being opened finishes first: its folder is not made again after the removal.
+    await this.opening;
     const writes = [...this.entries.values()].map((entry) => entry.queue);
     for (const entry of this.entries.values()) this.deps.timers.clearTimeout(entry.timer);
     this.entries.clear();
