@@ -956,6 +956,8 @@ export class SessionManager {
       );
     }
     await run.setPermissionMode(mode);
+    // Told to every app, and kept for a reload (#935); the start mode stays the session's limit.
+    this.emit(sessionId, { type: "session.mode", permissionMode: mode });
   }
 
   /** Changes the model of a live managed session, for its next turn; null is the default. */

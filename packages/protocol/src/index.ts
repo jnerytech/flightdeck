@@ -386,6 +386,11 @@ export const SessionEvent = z.discriminatedUnion("type", [
     status: SessionStatus,
     reason: z.string().optional(),
   }),
+  /** #935: the mode the session runs in now, after a change the run took (the start mode stays the limit). */
+  z.object({
+    type: z.literal("session.mode"),
+    permissionMode: PermissionMode,
+  }),
   z.object({
     type: z.literal("session.init"),
     claudeSessionId: z.string(),
