@@ -61,9 +61,9 @@ export function summarizeHookLog(text: string): string {
   for (const e of entries) {
     // The slot is no hook: its entries take no time to decide, so they stay out of the timings (#833).
     if (e.hook !== SLOT) byHook.set(e.hook, [...(byHook.get(e.hook) ?? []), e]);
-    // Only a block or a waiver counts under a rule: a long hold is neither.
+    // A long hold is no block and no waiver: it has its own section (#865 review: only it).
     const counts = e.decision === "waived" ? waivedByRule : byRule;
-    if (e.rule && e.decision !== "allow") counts.set(e.rule, (counts.get(e.rule) ?? 0) + 1);
+    if (e.rule && e.rule !== "long-hold") counts.set(e.rule, (counts.get(e.rule) ?? 0) + 1);
   }
   const hookWidth = Math.max(4, ...[...byHook.keys()].map((h) => h.length)) + 2;
   const out = [`${"hook".padEnd(hookWidth)}calls  blocks  p50 ms  p95 ms`];

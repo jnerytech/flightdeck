@@ -76,7 +76,7 @@ export interface SlotEnv {
   heavyReason?: string;
   /** Appends a refusal, a waiver or a long hold to the hook log, for harness:stats (#833). */
   record?(
-    rule: "slot-heavy" | "long-hold",
+    rule: "slot-files" | "long-hold",
     decision: "allow" | "block" | "waived",
     extra: { detail?: string; minutes?: number },
   ): void;
@@ -535,6 +535,9 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     for (const line of status(env, args.maxAgeMs).split("\n")) env.log(line);
     return 0;
   }
+  // #833: before anything runs, nested or not: `slot -- bun run test:related` names its files only
+  // in the nested call (#865 review).
+  if (refusedOverLimit(env, args.command)) return 2;
   // Before anything is spawned, so the command and all it starts inherit the score.
   env.protect?.();
   const state: { signal: number | null; child: SlotChild | null } = { signal: null, child: null };
@@ -560,7 +563,6 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
       env.log(ORPHANED);
       return 1;
     }
-    if (refusedOverLimit(env, args.command)) return 2;
     const stopped = () => state.signal !== null || orphaned();
     if (!(await acquire(env, args.command.join(" "), stopped, args.maxAgeMs))) {
       if (state.signal === null) env.log(ORPHANED);
@@ -634,13 +636,13 @@ function refusedOverLimit(env: SlotEnv, command: string[]): boolean {
   if (count <= SLOT_TEST_FILES) return false;
   const reason = (env.heavyReason ?? "").trim();
   if (heavyReasonGiven(reason)) {
-    env.record?.("slot-heavy", "waived", { detail: reason.slice(0, 200) });
+    env.record?.("slot-files", "waived", { detail: reason.slice(0, 200) });
     return false;
   }
   env.log(
     `slot: ${count} test files would hold the slot for 20 minutes or more while others wait; more than ${SLOT_TEST_FILES} need a reason (#833). Run fewer: each touched test with \`bun --config=bunfig.area.toml test <file>\`, or \`bun run test:related -- --fast --tier unit,component\` on a smaller change; CI runs the rest. For a real need, put FLIGHTDECK_SLOT_HEAVY="<reason>" in front of the command (of \`bun run test:related\` too).`,
   );
-  env.record?.("slot-heavy", "block", {});
+  env.record?.("slot-files", "block", {});
   return true;
 }
 
