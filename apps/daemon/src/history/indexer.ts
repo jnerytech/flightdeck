@@ -141,7 +141,12 @@ const isDirectory = (path: string): Promise<boolean> =>
     () => false,
   );
 
-const trimSlashes = (path: string) => path.replace(/[\\/]+$/, "");
+/** The path without the slashes (either kind) at its end: a loop, since a pattern backtracks on a long run. */
+function trimSlashes(path: string): string {
+  let end = path.length;
+  while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) end--;
+  return path.slice(0, end);
+}
 const offsetOf = (cursor?: string) => Math.max(0, Number.parseInt(cursor ?? "0", 10) || 0);
 const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -173,7 +178,7 @@ const caseInsensitive = process.platform === "win32" || process.platform === "da
 
 /** Comparable form of a folder: forward slashes, no trailing slash, case folded where the OS does. */
 export function normalizeCwd(path: string): string {
-  const slashes = path.replaceAll("\\", "/").replace(/\/+$/, "");
+  const slashes = trimSlashes(path.replaceAll("\\", "/"));
   return caseInsensitive ? slashes.toLowerCase() : slashes;
 }
 
@@ -803,7 +808,10 @@ export class HistoryIndexer {
     const existing = this.db
       .query("SELECT title FROM history_sessions WHERE claude_session_id = ?")
       .get(claudeSessionId) as { title: string | null } | null;
-    const summary = records.filter((r) => r.kind === "summary").at(-1)?.text;
+    const summary = records
+      .slice()
+      .reverse()
+      .find((r) => r.kind === "summary")?.text;
     const firstUser = records
       .filter((r) => r.kind === "message" && r.role === "user")
       .map((r) => promptText(r.text))
