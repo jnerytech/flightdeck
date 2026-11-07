@@ -10,6 +10,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
+import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
   acoesAction,
   DANGER_SESSION,
@@ -1564,6 +1565,65 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       });
       if (problem) throw new Error(`a barra de status a ${width}px: ${problem}`);
     }
+  },
+
+  // Issue #790: a session moves from alfa to beta. The preview is switched on, the demo's movable
+  // transcript is resumed on alfa and moved to beta's clone, the dialog shows only counts (none of
+  // the conversation's words), and "Open it there" lands on the session on beta.
+  "teleport-mover": async (c) => {
+    const claudeSessionId = DEMO_TELEPORT_SESSIONS[c.lang];
+    await open(c, { name: "settings", section: "window" });
+    const preview = c.page.getByLabel(c.t("teleportUi.preview"), { exact: true });
+    await preview.waitFor({ timeout: WAIT });
+    if (!(await preview.isChecked())) await preview.check();
+    // Resume the transcript on alfa through the reader.
+    await open(c, { name: "external", host: ALFA, claudeSessionId });
+    await c.page.getByRole("button", { name: c.t("reader.continue"), exact: true }).click();
+    const anyway = c.page.getByRole("button", { name: c.t("reader.continueAnyway"), exact: true });
+    await anyway.click({ timeout: 3000 }).catch(() => undefined);
+    // The session is on alfa's list, idle once the fake runtime answered: its menu offers the move.
+    await open(c, { name: "hub" });
+    const mark = c.lang === "en" ? "Ajuste 1: " : "Ajuste 2: ";
+    const actions = c.page.getByRole("button", {
+      name: new RegExp(
+        c.t("hub.actions", { title: "§" }).replace("§", `${mark}.*`).replaceAll(/[()]/g, "\\$&"),
+      ),
+    });
+    const move = c.page.getByRole("menuitem", { name: c.t("teleportUi.menu"), exact: true });
+    await waitFor(
+      async () => {
+        await actions.first().click();
+        if (await move.isVisible()) return true;
+        await c.page.keyboard.press("Escape");
+        return false;
+      },
+      "o menu da sessão oferecer mover para outro host",
+      SESSION_WAIT,
+    );
+    await move.click();
+    const dialog = c.page.getByRole("dialog", { name: c.t("teleportUi.title") });
+    await dialog.getByLabel(c.t("teleportUi.host"), { exact: true }).selectOption({ label: BETA });
+    await dialog.getByLabel(c.t("teleportUi.repo"), { exact: true }).fill(c.ids.teleportRepo);
+    await dialog.getByRole("button", { name: c.t("teleportUi.next"), exact: true }).click();
+    const go = dialog.getByRole("button", { name: c.t("teleportUi.move"), exact: true });
+    await go.waitFor({ timeout: SESSION_WAIT });
+    // Counts only: what changed and how big, never a word of the conversation or the code.
+    const text = (await dialog.textContent()) ?? "";
+    if (!text.includes(c.t("teleportUi.changed", { n: 2 }))) {
+      throw new Error(`o resumo devia contar 2 arquivos: ${text.slice(0, 300)}`);
+    }
+    for (const leak of ["Ajuste", "revise", "export const"]) {
+      if (text.includes(leak))
+        throw new Error(`o resumo mostrou texto da conversa ou do código: ${leak}`);
+    }
+    await go.click();
+    await dialog
+      .getByRole("button", { name: c.t("teleportUi.open"), exact: true })
+      .click({ timeout: SESSION_WAIT });
+    // The session is now on beta: the host in use is beta.
+    await c.page
+      .getByRole("button", { name: c.t("shell.host", { host: BETA }) })
+      .waitFor({ timeout: WAIT });
   },
 };
 
