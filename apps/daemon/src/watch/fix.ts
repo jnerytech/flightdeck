@@ -16,8 +16,7 @@ export interface FixRound {
   id: string;
   cardId: string;
   n: number;
-  /** `sent`: an automation sent the failure or the comment to the card's session (#77). */
-  status: "running" | "pushed" | "failed" | "stopped" | "sent";
+  status: "running" | "pushed" | "failed" | "stopped";
   /** What started it: the failed checks, the conflict, the comments. */
   trigger: { failed: string[]; conflicts: boolean; comments: string[] };
   summary: string | null;
@@ -169,32 +168,14 @@ export class PrFixer {
   }
 
   /**
-   * An automation's send to the card (#77): a round of the same budget as the watch's own. Past
-   * the cap it is refused, the card needs you, and the reason comes back; otherwise null.
+   * Why an automation must not send a failure or a comment to the card (#77), or null: while its
+   * PR is watched, the watch alone fixes it, and a card that needs you gets nothing more.
    */
-  spend(cardId: string, cause: string): string | null {
-    const stop = this.roundLimit(cardId);
-    if (stop) {
-      this.needsYou(cardId, stop);
-      return stop;
-    }
-    const at = new Date(this.now).toISOString();
-    this.opts.db
-      .query(
-        `INSERT INTO pr_watch_rounds (id, card_id, n, status, trigger, summary, started_at, ended_at)
-         VALUES (?, ?, ?, 'sent', ?, ?, ?, ?)`,
-      )
-      .run(
-        ulid(),
-        cardId,
-        this.rounds(cardId).length + 1,
-        JSON.stringify({ failed: [], conflicts: false, comments: [] }),
-        cause,
-        at,
-        at,
-      );
-    this.opts.onUpdate?.(cardId);
-    return null;
+  claims(cardId: string): string | null {
+    const { watcher } = this.opts;
+    if (!watcher.enabled(cardId)) return null;
+    const { status, reason } = watcher.status(cardId);
+    return status === "needs_you" ? (reason ?? "the PR needs you") : "the PR watch fixes this card";
   }
 
   /** The watcher's trigger: starts a round, one at a time per card, unless a limit says stop. */
@@ -289,15 +270,15 @@ export class PrFixer {
     return `limit of ${settings.maxRounds} rounds reached — ${list.join("; ")}`;
   }
 
-  /** Hands the card to the person: the watch says why, and the card goes to "Needs you" (#77). */
+  /**
+   * Hands the card to the person: the watch says why, and a card in review (its PR open) goes to
+   * "Needs you" (#77). A card elsewhere stays: done is done, and a running one is the session's.
+   */
   private needsYou(cardId: string, reason: string): void {
     if (this.stopped) return;
     this.opts.watcher.markNeedsYou(cardId, reason);
-    try {
-      this.opts.board.moveCard(cardId, "waiting");
-    } catch {
-      // A card that went meanwhile (discarded) has no column to go to: the reason stays.
-    }
+    const { board } = this.opts;
+    if (board.getCard(cardId).column === "review") board.moveCard(cardId, "waiting");
     this.opts.onUpdate?.(cardId);
   }
 

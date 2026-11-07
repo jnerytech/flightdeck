@@ -53,8 +53,8 @@ export interface AutomationsOptions {
   /** The issue search's interval (5 minutes when absent). */
   pollMs?: number;
   log?: (message: string) => void;
-  /** Issue #77: a send to a card is an automatic fix, under the card's round budget. */
-  fixRounds?: { spend(cardId: string, cause: string): string | null };
+  /** Issue #77: a card whose PR is watched is fixed by the watch alone; why, or null. */
+  prWatch?: { claims(cardId: string): string | null };
 }
 
 interface Row {
@@ -497,9 +497,9 @@ export class Automations {
       }
     }
     if (!("cardId" in event)) return { status: "skipped", detail: "o evento não é de um card" };
-    // An automatic fix of the card (#77): past its rounds, nothing more is sent.
-    const refused = this.opts.fixRounds?.spend(event.cardId, causeOf(event)) ?? null;
-    if (refused) return { status: "skipped", detail: refused };
+    // The watch fixes a watched PR (#77): a second fix of the same failure would race it.
+    const claimed = this.opts.prWatch?.claims(event.cardId) ?? null;
+    if (claimed) return { status: "skipped", detail: claimed };
     const external = isExternal(event);
     const text = external ? `${UNTRUSTED_MARK}\n\n${contentOf(event)}` : contentOf(event);
     board.message(event.cardId, text);

@@ -1049,8 +1049,8 @@ export async function startDaemon(
     autoApprove,
     pollMs: config.automations.issuePollIntervalMs,
     log: logger.log.bind(logger),
-    // Issue #77: a send to a card spends the card's fix rounds, as the watch's own rounds do.
-    fixRounds: { spend: (cardId, cause) => prFixer.spend(cardId, cause) },
+    // Issue #77: a card whose PR is watched is fixed by the watch alone.
+    prWatch: { claims: (cardId) => prFixer.claims(cardId) },
   });
   automations.start();
   // Retention at boot and every 24 h (backups join it in the same daily pass).
