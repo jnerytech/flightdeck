@@ -59,7 +59,7 @@ describe("ci-ubuntu-split (#293)", () => {
   test("SonarCloud is its own job, reading the suite's lcov, with the history it blames", () => {
     const sonar = job("sonar");
     expect(sonar.needs).toEqual(["test-suite"]);
-    expect(sonar.if ?? "").toContain("github.event_name == 'pull_request'");
+    // Its condition is pinned exactly in ci-shards.test.ts (#296).
     // Full history for the blame; no GITHUB_TOKEN left in .git/config for the third-party scan.
     expect(sonar.steps[0]?.with).toEqual({ "fetch-depth": 0, "persist-credentials": false });
     const download = sonar.steps.findIndex((s) =>
