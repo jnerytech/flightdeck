@@ -1395,6 +1395,22 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await inReach(c, `${c.t("teamsUi.create")} a ${size.width}x${size.height}`, create);
     }
   },
+
+  // Costs (#754): Set a budget is in reach on the Costs page, and on the budgets section it opens
+  // Create budget is too once a limit is typed, in a phone-sized window and a desktop one. Nothing
+  // is created, so the demo's spending rules stay as they were.
+  "orcamento-alcance": async (c) => {
+    const setBudget = c.page.getByRole("button", { name: c.t("costsUi.setBudget"), exact: true });
+    const create = c.page.getByRole("button", { name: c.t("budgetsUi.create"), exact: true });
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "costs" });
+      await inReach(c, `${c.t("costsUi.setBudget")} a ${size.width}x${size.height}`, setBudget);
+      await setBudget.click();
+      await c.page.getByLabel(c.t("budgetsUi.limit"), { exact: true }).fill("5");
+      await inReach(c, `${c.t("budgetsUi.create")} a ${size.width}x${size.height}`, create);
+    }
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
