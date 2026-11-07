@@ -17,6 +17,7 @@ import {
   type HarnessStack,
   type HostRuntime,
   type KeepAwakeStatus,
+  type KnowledgeListResult,
   MIN_PROTOCOL_VERSION,
   Pong,
   PROTOCOL_VERSION,
@@ -175,6 +176,8 @@ export interface ServerOptions {
   ) => string;
   /** #75: a project's stack and commands, read from its manifest files, never run. */
   harnessStack?: (path: string) => Promise<HarnessStack>;
+  /** Issue #76: the library of documents of a project, read only. */
+  knowledge?: (path: string) => Promise<KnowledgeListResult>;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
   projectTrust?: {
@@ -1123,6 +1126,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         requireVaultTransport(ws.data.origin, "project.trust.inspect", opts.log);
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.projectTrust.inspect(path));
+      }
+      case "knowledge.list": {
+        if (!opts.knowledge) throw featureOff("knowledge");
+        await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, { entries: [], truncated: false });
       }
       case "project.harness.stack": {
         if (!opts.harnessStack) throw featureOff("harnessStack");

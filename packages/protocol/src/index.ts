@@ -969,6 +969,36 @@ export const ReviewTarget = z
     "alvo session:<id>, card:<id>, terminal:<id> ou project:<id>",
   );
 
+/** Issue #76: a project's library of PRDs, RFCs, ADRs and specs, each with a lifecycle status. */
+export const KnowledgeStatus = z.enum(["valid", "transitional", "obsolete"]);
+export type KnowledgeStatus = z.infer<typeof KnowledgeStatus>;
+export const KnowledgeType = z.enum(["prd", "rfc", "adr", "spec"]);
+export type KnowledgeType = z.infer<typeof KnowledgeType>;
+
+export interface KnowledgeEntry {
+  /** Relative to the project, with `/`. */
+  path: string;
+  title: string;
+  type: KnowledgeType | null;
+  /** `unclassified`: no status in its front matter, so agents are not given it. */
+  status: KnowledgeStatus | "unclassified";
+  /** The document this one replaces, as a project path. */
+  supersedes: string | null;
+  bytes: number;
+  /** ISO time of the last change. */
+  changedAt: string;
+  /** What is wrong with the document itself, as codes (`status_unknown`, `supersedes_missing`, ...). */
+  problems: string[];
+  /** A valid document that points at an obsolete one: `references_obsolete:<path>`. */
+  warnings: string[];
+}
+
+export interface KnowledgeListResult {
+  entries: KnowledgeEntry[];
+  /** More documents than the list holds. */
+  truncated: boolean;
+}
+
 /** Issue #797: a search over a repository, by path or by content; a fixed string, never a pattern. */
 export const FileSearchPayload = z
   .object({
@@ -4407,6 +4437,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("file.list", z.object({ target: ReviewTarget, dir: z.string() })),
   /** Issue #797: a search over the target's repository, by name or by content. */
   cmd("file.search", FileSearchPayload),
+  /** Issue #76: the library of documents of the project at `path`, read only. */
+  cmd("knowledge.list", z.object({ path: z.string().min(1).max(4096) }).strict()),
   /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
   cmd(
     "file.write",
@@ -5289,6 +5321,7 @@ export interface CommandResults {
   "file.read": { path: string; text: string; hash: string; size: number };
   "file.list": FileListing;
   "file.search": FileSearchResult;
+  "knowledge.list": KnowledgeListResult;
   "file.write": { path: string; hash: string; size: number };
 }
 
