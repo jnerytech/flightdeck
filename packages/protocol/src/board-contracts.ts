@@ -60,3 +60,8 @@ export function missingFor(
   }
   return needs;
 }
+
+/** Why a spec path is refused, or null when it may be looked up in a worktree. Stub. */
+export function specPathProblem(_path: string): string | null {
+  return null;
+}

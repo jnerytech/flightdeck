@@ -482,3 +482,56 @@ describe("board-contracts-ui: Start asks only when In progress confirms criteria
     expect(within(ask).getByRole("button", { name: "Iniciar mesmo assim" }) === null).toBe(false);
   });
 });
+
+// Issue #78, slice 3b: a column can ask for the spec file the card's worktree has.
+describe("board-contracts-ui: a column that asks for a spec", () => {
+  const ASKS_SPEC = {
+    contractByColumn: { review: { enforce: "confirm", checks: ["spec"] } },
+  };
+  const found = { path: "docs/specs/s.md", found: true, heading: "S" };
+  const cards = [
+    card("A", "backlog", 1),
+    card("S", "backlog", 2, { specState: found }),
+    card("M", "review", 1),
+  ];
+
+  test("dropping a card with no spec on that column asks first and names what it lacks", async () => {
+    const w = setup({ cards, project: ASKS_SPEC });
+    await ready();
+    await dragTo("A", "In review");
+    expect((dialog() as HTMLElement | null)?.textContent ?? "").toContain("A lacks: a spec");
+    expect(w.moves()).toEqual([]);
+  });
+
+  test("a card whose worktree has its spec moves with no question", async () => {
+    const w = setup({ cards, project: ASKS_SPEC });
+    await ready();
+    await dragTo("S", "In review");
+    expect(dialog() === null).toBe(true);
+    await settle(() => w.moves().length === 1);
+  });
+
+  test("a card in the column without a spec wears what it lacks", async () => {
+    setup({ cards, project: ASKS_SPEC });
+    await ready();
+    expect(within(li("M")).queryByText("Needs: a spec") === null).toBe(false);
+  });
+
+  test("it reads in Portuguese too", async () => {
+    setup({ cards, project: ASKS_SPEC, language: "pt-BR" });
+    await settle(() => screen.queryByRole("heading", { name: "Board de api" }) !== null);
+    expect(within(li("M")).queryByText("Precisa de: uma especificação") === null).toBe(false);
+  });
+
+  test("the host's refusal names the spec in both languages", async () => {
+    const { translateError } = await import("../src/i18n/errors.ts");
+    const { translator } = await import("../src/i18n/index.ts");
+    const why = { reason: "card_contract_unmet", params: { column: "review", needs: "spec" } };
+    expect(translateError("contract_unmet", "raw", translator("en"), why).title).toBe(
+      "This card isn't ready for In review: it lacks a spec.",
+    );
+    expect(translateError("contract_unmet", "raw", translator("pt-BR"), why).title).toBe(
+      "Este card não está pronto para Em revisão: falta uma especificação.",
+    );
+  });
+});

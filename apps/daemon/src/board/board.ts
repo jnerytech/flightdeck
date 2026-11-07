@@ -1481,7 +1481,12 @@ export class Board {
    * its contract asks, unless `force`, which records what the card lacked (issue #78). Every other
    * caller of the board moves with `moveCard`, which asks nothing.
    */
-  moveByHand(id: string, column: BoardColumn, position: number | undefined, force: boolean): Card {
+  async moveByHand(
+    id: string,
+    column: BoardColumn,
+    position: number | undefined,
+    force: boolean,
+  ): Promise<Card> {
     const card = this.getCard(id);
     const overrides = this.getProject(card.projectId).contractByColumn;
     // A card already in the column is only reordered; a column that hints never holds a card back.
@@ -1505,6 +1510,11 @@ export class Board {
     );
     this.setNotice(id, lacked.message, lacked);
     return this.changed(id);
+  }
+
+  /** Looks at the card's spec file again and keeps what it finds. Stub. */
+  async refreshSpec(id: string): Promise<Card> {
+    return this.getCard(id);
   }
 
   private clearNotice(id: string): void {
