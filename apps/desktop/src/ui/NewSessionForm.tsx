@@ -46,6 +46,8 @@ export function NewSessionForm(
     onCreate(payload: CommandPayload<"session.create">): void | Promise<unknown>;
     /** The first prompt, filled in (a snippet, phase 18). */
     prompt?: string;
+    /** The session cannot start without a first prompt (a background session, #940). */
+    promptRequired?: boolean;
     /** More fields above Criar sessão: the persona picker (phase 20). */
     extra?: React.ReactNode;
     /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
@@ -114,6 +116,8 @@ export function NewSessionForm(
     setMode("default");
   };
   const [prompt, setPrompt] = useState(props.prompt ?? "");
+  /** A required prompt is still empty; OpenCode sessions are not started in the background. */
+  const promptMissing = props.promptRequired === true && !opencode && prompt.trim() === "";
   /** The session is being created: the button is busy and a second press does nothing. */
   const [creating, setCreating] = useState(false);
   /** Bypass asks again each time the session is created. */
@@ -124,7 +128,7 @@ export function NewSessionForm(
   );
   const models = opencode ? openCodeModels : MODELS;
   const submit = (confirmed = false) => {
-    if (!root || creating) return;
+    if (!root || creating || promptMissing) return;
     if (mode === "bypassPermissions" && !confirmed) {
       setAsking(true);
       return;
@@ -325,16 +329,20 @@ export function NewSessionForm(
           sticky
           submit={t("newSession.create")}
           busy={creating}
-          disabled={!root}
+          disabled={!root || promptMissing}
           disabledReason={
-            <span>
-              {t("newSession.needFolder")}{" "}
-              {props.onAddFolder && (
-                <Button type="button" variant="link" onClick={props.onAddFolder}>
-                  {t("newSession.addFolder", { host: props.host.name })}
-                </Button>
-              )}
-            </span>
+            root ? (
+              t("newSession.needPrompt")
+            ) : (
+              <span>
+                {t("newSession.needFolder")}{" "}
+                {props.onAddFolder && (
+                  <Button type="button" variant="link" onClick={props.onAddFolder}>
+                    {t("newSession.addFolder", { host: props.host.name })}
+                  </Button>
+                )}
+              </span>
+            )
           }
         />
       </Form>

@@ -1057,6 +1057,13 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   in a project whose In progress contract confirms acceptance criteria and only for a card with
   none (no `- [ ] …` item in its description): **Start anyway** goes on. By default In progress
   only hints, so Start asks nothing.
+- **A spec file** (#78). A project can make a column ask for a **spec**: the card's worktree must
+  have the spec file the card names, `docs/specs/<card name>.md` unless you set another path in the
+  card's **Spec file** field (a relative path to a `.md` file inside the worktree). The card page
+  says what the host found ("Spec found: <first heading>" or "No spec file at <path>") and **Check
+  again** looks once more; a move to a column that asks for it looks at the file first. The host
+  checks only that the file is there (a plain, non-empty file, not a link, inside the worktree) and
+  reads its first heading: it never reads or sends the rest.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
 - **Discard…** shows one dialog with every selected card, and says what goes with each: a

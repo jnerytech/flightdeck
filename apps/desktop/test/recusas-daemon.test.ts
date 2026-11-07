@@ -41,6 +41,7 @@ const REASONS = [
   "card_contract_unmet",
   "team_delete_open",
   "team_delete_live",
+  "spec_path_invalid",
   "card_moved_anyway",
   "contract_invalid",
   "cwd_missing",

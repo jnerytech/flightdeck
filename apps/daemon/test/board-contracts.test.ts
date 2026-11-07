@@ -36,41 +36,53 @@ function refusal(call: () => unknown): FlightdeckError {
   throw new Error("it did not refuse");
 }
 
+/** The refusal of a call that may be asynchronous. */
+async function refused(call: () => unknown): Promise<FlightdeckError> {
+  try {
+    await call();
+  } catch (error) {
+    expect(error).toBeInstanceOf(FlightdeckError);
+    return error as FlightdeckError;
+  }
+  throw new Error("it did not refuse");
+}
+
 describe("board-contracts: a person's move to a column that confirms", () => {
-  test("a card with no PR is refused Review, with its own code and what it lacks", () => {
-    return withCard().then(({ board, card }) => {
-      const error = refusal(() => board.moveByHand(card.id, "review", undefined, false));
-      expect(error.code).toBe("contract_unmet");
-      expect(error.reason).toBe("card_contract_unmet");
-      expect(error.params).toEqual({ column: "review", needs: "pr" });
-      expect(board.getCard(card.id).column).toBe("backlog");
-    });
+  test("a card with no PR is refused Review, with its own code and what it lacks", async () => {
+    const { board, card } = await withCard();
+    const error = await refused(() => board.moveByHand(card.id, "review", undefined, false));
+    expect(error.code).toBe("contract_unmet");
+    expect(error.reason).toBe("card_contract_unmet");
+    expect(error.params).toEqual({ column: "review", needs: "pr" });
+    expect(board.getCard(card.id).column).toBe("backlog");
   });
 
   test("failing or pending checks refuse it too, each with its own need", async () => {
     const { board, card, setPr } = await withCard();
     setPr("https://github.com/a/b/pull/1", "failing");
-    expect(refusal(() => board.moveByHand(card.id, "review", undefined, false)).params).toEqual({
+    expect(
+      (await refused(() => board.moveByHand(card.id, "review", undefined, false))).params,
+    ).toEqual({
       column: "review",
       needs: "checksFailing",
     });
     setPr("https://github.com/a/b/pull/1", "pending");
-    expect(refusal(() => board.moveByHand(card.id, "review", undefined, false)).params?.needs).toBe(
-      "checksPending",
-    );
+    expect(
+      (await refused(() => board.moveByHand(card.id, "review", undefined, false))).params?.needs,
+    ).toBe("checksPending");
   });
 
   test("a card with a PR and no failing checks moves, with no notice", async () => {
     const { board, card, setPr } = await withCard();
     setPr("https://github.com/a/b/pull/1", "passing");
-    const moved = board.moveByHand(card.id, "review", undefined, false);
+    const moved = await board.moveByHand(card.id, "review", undefined, false);
     expect(moved.column).toBe("review");
     expect(moved.notice).toBeNull();
   });
 
   test("force moves it and records on the card what it lacked", async () => {
     const { board, card } = await withCard();
-    const moved = board.moveByHand(card.id, "review", 3, true);
+    const moved = await board.moveByHand(card.id, "review", 3, true);
     expect(moved.column).toBe("review");
     expect(moved.notice).toBe("Moved to review anyway: it lacked pr.");
     expect(moved.noticeReason).toBe("card_moved_anyway");
@@ -80,27 +92,27 @@ describe("board-contracts: a person's move to a column that confirms", () => {
   test("force on a card that lacks nothing records nothing", async () => {
     const { board, card, setPr } = await withCard();
     setPr("https://github.com/a/b/pull/1", "passing");
-    expect(board.moveByHand(card.id, "review", undefined, true).notice).toBeNull();
+    expect((await board.moveByHand(card.id, "review", undefined, true)).notice).toBeNull();
   });
 
   test("a column that only hints never refuses, and records nothing", async () => {
     const { board, card } = await withCard();
-    const moved = board.moveByHand(card.id, "in_progress", undefined, false);
+    const moved = await board.moveByHand(card.id, "in_progress", undefined, false);
     expect(moved.column).toBe("in_progress");
     expect(moved.notice).toBeNull();
   });
 
   test("the notice goes when the person moves the card on", async () => {
     const { board, card } = await withCard();
-    board.moveByHand(card.id, "review", undefined, true);
-    const later = board.moveByHand(card.id, "waiting", undefined, false);
+    await board.moveByHand(card.id, "review", undefined, true);
+    const later = await board.moveByHand(card.id, "waiting", undefined, false);
     expect(later.notice).toBeNull();
   });
 
   test("a card already in the column is only reordered, with no question", async () => {
     const { board, card } = await withCard();
-    board.moveByHand(card.id, "review", undefined, true);
-    expect(board.moveByHand(card.id, "review", 9, false).position).toBe(9);
+    await board.moveByHand(card.id, "review", undefined, true);
+    expect((await board.moveByHand(card.id, "review", 9, false)).position).toBe(9);
   });
 });
 
@@ -113,19 +125,21 @@ describe("board-contracts: contracts per project", () => {
     });
     expect(set.contractByColumn).toEqual({ done: { enforce: "confirm", checks: ["pr"] } });
     expect(board.getProject(project.id).contractByColumn.done?.checks).toEqual(["pr"]);
-    expect(refusal(() => board.moveByHand(card.id, "done", undefined, false)).params).toEqual({
+    expect(
+      (await refused(() => board.moveByHand(card.id, "done", undefined, false))).params,
+    ).toEqual({
       column: "done",
       needs: "pr",
     });
     const off = board.updateProject(project.id, {
       contractByColumn: { review: { enforce: "confirm", checks: [] } },
     });
-    expect(board.moveByHand(card.id, "review", undefined, false).column).toBe("review");
+    expect((await board.moveByHand(card.id, "review", undefined, false)).column).toBe("review");
     expect(off.contractByColumn.review?.checks).toEqual([]);
     const back = board.updateProject(project.id, { contractByColumn: { done: null } });
     expect(back.contractByColumn.done).toBeUndefined();
     expect(back.contractByColumn.review?.checks).toEqual([]);
-    expect(board.moveByHand(card.id, "done", undefined, false).column).toBe("done");
+    expect((await board.moveByHand(card.id, "done", undefined, false)).column).toBe("done");
   });
 
   test("a column that does not exist, or a check that does not, is refused", async () => {
@@ -170,11 +184,11 @@ describe("board-contracts: the validation note (issue #78, slice 3a)", () => {
     board.updateProject(project.id, {
       contractByColumn: { done: { enforce: "confirm", checks: ["validation"] } },
     });
-    const error = refusal(() => board.moveByHand(card.id, "done", undefined, false));
+    const error = await refused(() => board.moveByHand(card.id, "done", undefined, false));
     expect(error.reason).toBe("card_contract_unmet");
     expect(error.params).toEqual({ column: "done", needs: "validation" });
     board.updateCard(card.id, { validationNote: "checked" });
-    expect(board.moveByHand(card.id, "done", undefined, false).column).toBe("done");
+    expect((await board.moveByHand(card.id, "done", undefined, false)).column).toBe("done");
   });
 
   test("forcing past a missing note records it on the card", async () => {
@@ -182,7 +196,7 @@ describe("board-contracts: the validation note (issue #78, slice 3a)", () => {
     board.updateProject(project.id, {
       contractByColumn: { done: { enforce: "confirm", checks: ["validation"] } },
     });
-    const moved = board.moveByHand(card.id, "done", undefined, true);
+    const moved = await board.moveByHand(card.id, "done", undefined, true);
     expect(moved.noticeParams).toEqual({ column: "done", needs: "validation" });
   });
 });

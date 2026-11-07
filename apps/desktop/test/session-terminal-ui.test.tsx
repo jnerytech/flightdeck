@@ -105,7 +105,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
       .map((t) => t.textContent);
     await press({ key: String(names.indexOf("Terminal") + 1), altKey: true });
     await settle(() => terminalShown());
-    expect((await live(store, hostId)).length).toBe(1);
+    expect(await live(store, hostId)).toHaveLength(1);
   });
 
   test("closing the terminal from the view returns to the conversation, and the view can open a new shell", async () => {
@@ -125,10 +125,10 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     });
     await settle(() => tab("Conversa")?.getAttribute("aria-selected") === "true");
     expect(terminalShown()).toBe(false);
-    expect((await live(store, hostId)).length).toBe(0);
+    expect(await live(store, hostId)).toHaveLength(0);
     await clickTab("Terminal");
     await settle(() => terminalShown());
-    expect((await live(store, hostId)).length).toBe(1);
+    expect(await live(store, hostId)).toHaveLength(1);
   });
 
   test("a session page that comes back finds its shell and its view, and opens no second shell", async () => {
@@ -172,7 +172,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     expect(store.sessionViews.terminalOf(`${hostId}/${sessionId}`)).toBe(
       first?.terminalId as string,
     );
-    expect((await live(store, hostId)).length).toBe(1);
+    expect(await live(store, hostId)).toHaveLength(1);
   });
 
   test("a shell the host refuses sends the person back to the conversation, and the view stays offered", async () => {
@@ -191,7 +191,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     await settle(() => tab("Conversa")?.getAttribute("aria-selected") === "true");
     expect(terminalShown()).toBe(false);
     expect(tab("Terminal")).not.toBeNull();
-    expect((await live(store, hostId)).length).toBe(0);
+    expect(await live(store, hostId)).toHaveLength(0);
   });
 
   test("Alt numbers and Ctrl+` pressed inside the terminal switch the view and send nothing to the shell", async () => {
@@ -242,8 +242,8 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
       store.closeTab(area as never, sessionTab?.id as string);
     });
     release();
-    await waitFor(() => expect(ptys.spawned.length).toBe(1));
-    await waitFor(async () => expect((await live(store, hostId)).length).toBe(0));
+    await waitFor(() => expect(ptys.spawned).toHaveLength(1));
+    await waitFor(async () => expect(await live(store, hostId)).toHaveLength(0));
   });
 
   test("a shell the host refuses to open says why, with no Retry that would open it unseen", async () => {
@@ -264,14 +264,14 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     await settle(() => tab("Terminal") !== null);
     await clickTab("Terminal");
     await settle(() => terminalShown());
-    expect((await live(store, hostId)).length).toBe(1);
+    expect(await live(store, hostId)).toHaveLength(1);
     const area = store.workspace.areas[0];
     const sessionTab = area?.tabs.find((t) => t.router.current.name === "session");
     expect(sessionTab).not.toBeUndefined();
     await act(async () => {
       store.closeTab(area as never, sessionTab?.id as string);
     });
-    await waitFor(async () => expect((await live(store, hostId)).length).toBe(0));
+    await waitFor(async () => expect(await live(store, hostId)).toHaveLength(0));
   });
 
   test("a host that does not announce shells for sessions has no Terminal view", async () => {
