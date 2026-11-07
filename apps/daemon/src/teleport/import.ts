@@ -64,6 +64,8 @@ const NO_LFS = [
   "filter.lfs.required=false",
 ];
 const SKIP_LFS = { GIT_LFS_SKIP_SMUDGE: "1" };
+/** A fetch never waits on a password prompt: it fails instead. */
+const NO_PROMPT = { GIT_TERMINAL_PROMPT: "0" };
 
 const refuse = (code: "invalid_state" | "bad_request", reason: string) =>
   new FlightdeckError(code, reason.replaceAll("_", " "), reason);
@@ -79,6 +81,8 @@ export async function importPackage(
   // Every check runs on the package still in the inbox: a wrong repository can be fixed and
   // tried again without the source sending it anew.
   const target = await check(deps, await deps.inbox.received(id), repo);
+  // Past the checks the import is final: a failure (Claude would not start, a full disk) takes
+  // the package with it, and the source sends it again. Nothing half-made stays on either side.
   const claim = await deps.inbox.claim(id);
   try {
     return await land(deps, claim, target);
@@ -106,13 +110,20 @@ async function check(
   }
   const cwd = await resolveAllowedCwd(repo, deps.allowedRoots);
   if (deps.transcriptOf(manifest.claudeSessionId)) throw refuse("invalid_state", "teleport_exists");
-  const top = await git(cwd, ["rev-parse", "--show-toplevel"]);
-  if (!top) throw refuse("invalid_state", "teleport_no_git");
-  // The same project: the base is a commit of this repository's origin, and the bundle verifies.
-  await git(top, ["fetch", "--quiet", "--no-recurse-submodules", "origin"]);
+  const found = await git(cwd, ["rev-parse", "--show-toplevel"]);
+  if (!found) throw refuse("invalid_state", "teleport_no_git");
+  // The worktree, its branch and the exclude line go in the repository itself: it is in the roots too.
+  const top = await resolveAllowedCwd(found, deps.allowedRoots);
+  // The same project: the base is a commit of this repository (fetched from its own origin when
+  // it is not there yet, with no prompt), and the bundle verifies.
   const base = refArg(code.baseSha);
   // git-arg: base is the manifest's sha through refArg
-  const known = await git(top, ["rev-parse", "--verify", "--quiet", `${base}^{commit}`]);
+  const has = () => git(top, ["rev-parse", "--verify", "--quiet", `${base}^{commit}`]);
+  let known = await has();
+  if (!known) {
+    await git(top, ["fetch", "--quiet", "--no-recurse-submodules", "origin"], NO_PROMPT);
+    known = await has();
+  }
   const verified = await git(top, ["bundle", "verify", "--quiet", received.code]);
   if (!known || verified === null) {
     throw refuse("invalid_state", "teleport_no_project");
