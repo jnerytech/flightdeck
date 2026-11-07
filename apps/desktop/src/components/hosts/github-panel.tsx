@@ -59,9 +59,7 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
       <p className="text-muted-foreground text-xs">{t("github.hint")}</p>
       {status && !status.installed && (
         <>
-          <p role="status" className="text-sm">
-            {t("github.notInstalled")}
-          </p>
+          <output className="text-sm">{t("github.notInstalled")}</output>
           <div>
             <ActionButton
               variant="outline"
@@ -77,9 +75,7 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
       )}
       {status?.installed && status.loggedIn && (
         <>
-          <p role="status" className="text-sm">
-            {t("github.signedIn", { login: status.login ?? "" })}
-          </p>
+          <output className="text-sm">{t("github.signedIn", { login: status.login ?? "" })}</output>
           <p className="text-muted-foreground text-xs">
             {status.source ? t(`github.source.${status.source}`) : ""}
             {status.scopes.length > 0 &&
@@ -100,9 +96,7 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
       )}
       {status?.installed && !status.loggedIn && !device && (
         <>
-          <p role="status" className="text-sm">
-            {t("github.signedOut")}
-          </p>
+          <output className="text-sm">{t("github.signedOut")}</output>
           <div>
             <ActionButton size="sm" onClick={signIn}>
               {t("github.signIn")}
@@ -128,9 +122,7 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
               {t("github.cancel")}
             </ActionButton>
           </div>
-          <p role="status" className="text-muted-foreground text-xs">
-            {t("github.waiting")}
-          </p>
+          <output className="text-muted-foreground text-xs">{t("github.waiting")}</output>
         </>
       )}
     </Panel>

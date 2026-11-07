@@ -13,7 +13,7 @@ import { refusalText } from "./refusal-text.ts";
 import type { Wand } from "./use-wand.ts";
 
 /** The wand's button for a toolbar (issue #158). */
-export function WandButton(props: { wand: Wand; t: T }) {
+export function WandButton(props: Readonly<{ wand: Wand; t: T }>) {
   const { wand, t } = props;
   // A short window (720x480) keeps its message box as narrow as it was: the conversation keeps its room (#232).
   // Ctrl+I still reaches the wand there.
@@ -37,7 +37,7 @@ export function WandButton(props: { wand: Wand; t: T }) {
 }
 
 /** What changed in a text of several lines: what stayed muted, what went struck, what came in marked. */
-function Changes(props: { before: string; after: string; t: T }) {
+function Changes(props: Readonly<{ before: string; after: string; t: T }>) {
   const { before, after, t } = props;
   const parts = useMemo(() => {
     let at = 0;
@@ -66,12 +66,12 @@ function Changes(props: { before: string; after: string; t: T }) {
 }
 
 /** The wand's progress, failure and preview, above the field (issue #158). */
-export function WandPanel(props: { wand: Wand; t: T }) {
+export function WandPanel(props: Readonly<{ wand: Wand; t: T }>) {
   const { wand, t } = props;
   const { state } = wand;
   if (state.kind === "running") {
     return (
-      <div role="status">
+      <output className="block">
         <Inline>
           <Spinner />
           <span className="text-sm">{t("assistantWand.running")}</span>
@@ -79,7 +79,7 @@ export function WandPanel(props: { wand: Wand; t: T }) {
             {t("common.cancel")}
           </Button>
         </Inline>
-      </div>
+      </output>
     );
   }
   if (state.kind === "failed") {
@@ -114,20 +114,19 @@ export function WandPanel(props: { wand: Wand; t: T }) {
   }
   if (state.kind === "undo") {
     return (
-      <div role="status">
+      <output className="block">
         <Inline>
           <span className="text-sm">{t("assistantWand.replaced")}</span>
           <Button type="button" variant="outline" size="sm" onClick={wand.undo}>
             {t("assistantWand.undo")}
           </Button>
         </Inline>
-      </div>
+      </output>
     );
   }
   if (state.kind !== "preview") return null;
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: Esc closes the non-modal preview from any control in it
-    <div
+    <div // NOSONAR: a non-modal preview; <dialog> would bring the browser's own box and focus rules, and Esc is the keyboard way out
       role="dialog"
       aria-label={t("assistantWand.preview")}
       onKeyDown={(event) => {
