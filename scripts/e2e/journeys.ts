@@ -29,6 +29,7 @@ import {
   KEY_REGIONS,
   layoutFindings,
   loadBaseline,
+  PAGE_AREA,
   pinnedProblem,
   SCROLL_SIZES,
   SINGLE_SCROLL,
@@ -1986,13 +1987,21 @@ export async function layout(c: Context, problems: string[]) {
   // they find is named by data-slot path; the heuristic rules fail only when new against the baseline.
   if (c.lang === "pt-BR") await geometryGuards(c, screens, problems);
   // Issue #567: the sidebar scrolls as one area between its fixed header and footer, at the
-  // usual window and at a short one, where it has to scroll at all.
+  // usual window and at a short one, where it has to scroll at all. #785: the area around a Page
+  // (the Host page, where the user saw two bars) does not scroll beside the page's own bar.
   for (const size of SCROLL_SIZES) {
     await c.page.setViewportSize(size);
-    await open(c, { name: "hub" });
-    const found: Finding[] = await c.page.evaluate(layoutFindings, { single: SINGLE_SCROLL });
-    for (const split of found.filter((f) => f.rule === "scroll-split")) {
-      problems.push(`${c.lang} ${size.width}x${size.height}: ${split.path} ${split.detail}`);
+    for (const route of [{ name: "hub" }, { name: "host", host: ALFA }] as Route[]) {
+      await open(c, route);
+      const found: Finding[] = await c.page.evaluate(layoutFindings, {
+        single: SINGLE_SCROLL,
+        pageArea: PAGE_AREA,
+      });
+      for (const split of found.filter((f) => f.rule === "scroll-split")) {
+        problems.push(
+          `${c.lang} ${size.width}x${size.height} ${route.name}: ${split.path} ${split.detail}`,
+        );
+      }
     }
   }
   for (const viewport of VIEWPORTS) {

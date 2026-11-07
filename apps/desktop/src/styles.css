@@ -742,6 +742,38 @@ html:not(:has([data-slot="status-bar"])) {
   border-radius: 0.5rem;
 }
 
+/* The area that holds a screen, which its screens lay out against. A screen that is not a Page
+   scrolls here; a Page scrolls by itself (alone or in a split view's pane), so around one the
+   area scrolls on neither axis and never shows a second bar beside the page's own (#785). */
+@utility area-screen {
+  min-height: 0;
+  flex: 1 1 0%;
+  overflow-y: auto;
+  &:has([data-slot="page"]) {
+    overflow: hidden;
+  }
+}
+
+/* The Host page's Overview (#785): the host's status and its work, side by side once the area is
+   64rem wide. Each column is the container its cards lay out against, so a grid of project cards
+   fits half the width. */
+@utility host-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  @container (width >= 64rem) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+@utility host-overview-column {
+  container-type: inline-size;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 /* The board's toolbar and its selection bar in one cell: the cell is as tall as the taller one,
    so the bar covering the toolbar moves nothing below (#760). */
 @utility selection-stack {
