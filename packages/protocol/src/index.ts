@@ -5554,6 +5554,7 @@ export function parseServerMessage(raw: string): ServerMessage {
 export * from "./activity.ts";
 export * from "./assistant.ts";
 export * from "./assistant-prompts.ts";
+export * from "./board-contracts.ts";
 export * from "./compare.ts";
 export * from "./fix-safe.ts";
 export * from "./git-ref.ts";

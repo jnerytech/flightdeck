@@ -1428,6 +1428,15 @@ export class Board {
   }
 
   /**
+   * A person's move (the app's `card.move`): a column that confirms refuses a card that lacks what
+   * its contract asks, unless `force`, which records what the card lacked (issue #78). Every other
+   * caller of the board moves with `moveCard`, which asks nothing.
+   */
+  moveByHand(id: string, column: BoardColumn, position: number | undefined, _force: boolean): Card {
+    return this.moveCard(id, column, position);
+  }
+
+  /**
    * A queued card leaves the queue and goes back to the Backlog. A running one has its turn
    * interrupted, and the interrupted turn sends it to Esperando você.
    */
