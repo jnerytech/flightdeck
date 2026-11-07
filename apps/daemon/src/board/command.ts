@@ -96,15 +96,34 @@ export function gitLimited(
  * Like `gitLimited`, with a time limit (issue #100): a git still running at `timeoutMs` is killed
  * with everything it started, and the result says `timedOut`.
  */
-export async function gitLimitedFor(
+export function gitLimitedFor(
   cwd: string,
   limit: number,
   args: string[],
   timeoutMs?: number,
   kill: (pid: number) => Promise<void> = killTree,
+  /** The byte the output is cut after when it goes past `limit`: a line break, or NUL for `-z`. */
+  separator = 10,
 ): Promise<CommandResult & { truncated: boolean }> {
   // git-arg: the capped git helper: its callers are what the git-args ratchet checks
-  const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
+  return runLimited([whichOnPath("git") ?? "git", ...args], cwd, limit, timeoutMs, kill, separator);
+}
+
+/**
+ * Runs a program, never through a shell, and reads at most `limit` bytes of its output: past it the
+ * program is killed and the result says `truncated`, cut after the last `separator`. With
+ * `timeoutMs`, a program still running at the limit is killed with everything it started and the
+ * result says `timedOut`.
+ */
+export async function runLimited(
+  cmd: string[],
+  cwd: string,
+  limit: number,
+  timeoutMs?: number,
+  kill: (pid: number) => Promise<void> = killTree,
+  separator = 10,
+): Promise<CommandResult & { truncated: boolean }> {
+  const proc = Bun.spawn(cmd, {
     cwd,
     env: { ...process.env },
     stdout: "pipe",
@@ -139,14 +158,14 @@ export async function gitLimitedFor(
       }
     }
   } finally {
-    // Past the limit, or when reading failed: git does not go on writing to nobody.
+    // Past the limit, or when reading failed: the program does not go on writing to nobody.
     proc.kill();
   }
   const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
   if (timer) clearTimeout(timer);
   await killing;
   const all = Buffer.concat(chunks);
-  const kept = truncated ? all.subarray(0, all.subarray(0, limit).lastIndexOf(10) + 1) : all;
+  const kept = truncated ? all.subarray(0, all.subarray(0, limit).lastIndexOf(separator) + 1) : all;
   return {
     code,
     stdout: kept.toString("utf8"),

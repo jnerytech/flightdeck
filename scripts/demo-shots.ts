@@ -280,7 +280,7 @@ function shots(ids: DemoIds): Shot[] {
           await page.keyboard.press("Control+t");
           await page.keyboard.press("Escape");
         }
-        await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
+        await page.getByRole("button", { name: /^(Todas as abas|All tabs)( \(|$)/ }).waitFor();
       },
     },
     // The list of all tabs open over that strip (#576): icons, hosts, the active one marked.
@@ -292,11 +292,23 @@ function shots(ids: DemoIds): Shot[] {
           await page.keyboard.press("Control+t");
           await page.keyboard.press("Escape");
         }
-        await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).click();
+        await page.getByRole("button", { name: /^(Todas as abas|All tabs)( \(|$)/ }).click();
         await page.getByRole("listbox", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
       },
     },
     { name: "board", route: { name: "board", host: ALFA, projectId: ids.project } },
+    // #117: the files of a worktree picked in the sidebar tree, in a panel beside the columns.
+    {
+      name: "board-arquivos",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        const tree = page.locator("[data-slot=project-tree]");
+        const head = tree.locator('[data-project="flightdeck-web"]');
+        if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+        await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
+        await page.locator("[data-slot=board-files]").getByText("app.ts").waitFor();
+      },
+    },
     {
       name: "card",
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },

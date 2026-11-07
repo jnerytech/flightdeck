@@ -9,6 +9,7 @@ import { aheadBehind } from "../board/merge.ts";
 import { HEAD, type Rev, refArg } from "../board/ref-arg.ts";
 import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
+import { resolveAllowedCwd } from "../paths.ts";
 import type { Timers } from "../quota/quota.ts";
 
 /** Watches a folder recursively; `filename` is relative to it (`null` when the OS does not say). */
@@ -29,6 +30,8 @@ export interface ChangesOptions {
   log?: (message: string) => void;
   /** The folders terminals were opened in (`terminal:<id>` targets, #506). */
   terminals?: { cwdOf(terminalId: string): string | null };
+  /** A project's checkout (`project:<id>` targets, #797) is a target only inside these. */
+  allowedRoots?: readonly string[];
 }
 
 /** What a target (`session:<claudeSessionId>` or `card:<id>`) points at. */
@@ -90,7 +93,7 @@ export class Changes {
 
   /** `terminal`: the caller only reads files (`file.read`, `file.list`), the one use of a terminal's folder (#506). */
   async resolve(target: string, opts: { terminal?: boolean } = {}): Promise<ResolvedTarget> {
-    const match = /^(session|card|terminal):(.+)$/.exec(target);
+    const match = /^(session|card|terminal|project):(.+)$/.exec(target);
     if (!match)
       throw new FlightdeckError(
         "bad_request",
@@ -98,7 +101,12 @@ export class Changes {
         "review_target_invalid",
         { target },
       );
-    const [, kind, id] = match as unknown as [string, "session" | "card" | "terminal", string];
+    const [, kind, id] = match as unknown as [
+      string,
+      "session" | "card" | "terminal" | "project",
+      string,
+    ];
+    if (kind === "project") return this.projectTarget(target, id);
     if (kind === "terminal") return this.terminalTarget(target, id, opts.terminal === true);
     if (kind === "card") return this.cardTarget(target, id);
     const row = this.opts.db.query(SESSION_CWD).get({ id }) as { cwd: string } | null;
@@ -148,6 +156,21 @@ export class Changes {
       });
     }
     return { target, root: resolve(cwd), base: null, cardId: null, claudeSessionId: null };
+  }
+
+  /**
+   * A project's own checkout (#797), against `HEAD` like a session: the folder is the project's
+   * record, never one the client names, and only inside the allowed roots.
+   */
+  private async projectTarget(target: string, id: string): Promise<ResolvedTarget> {
+    if (!this.opts.board) {
+      throw new FlightdeckError("not_found", `project ${id} does not exist`, "project_not_found", {
+        id,
+      });
+    }
+    const { path } = this.opts.board.getProject(id);
+    const root = await resolveAllowedCwd(path, this.opts.allowedRoots ?? []);
+    return { target, root, base: null, cardId: null, claudeSessionId: null };
   }
 
   /** A card's worktree against its project's base branch. */

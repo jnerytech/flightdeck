@@ -66,13 +66,13 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50);
+    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
   /** What arrived as `terminal.data`, decoded, by terminal. */
   output = new Map<string, string>();
@@ -158,7 +158,7 @@ const fingerprintOf = (key: string) =>
   `SHA256:${createHash("sha256")
     .update(Buffer.from(key.split(" ")[1] ?? "", "base64"))
     .digest("base64")
-    .replace(/=+$/, "")}`;
+    .replaceAll("=", "")}`;
 
 interface FakeCall {
   tool: string;
@@ -174,6 +174,206 @@ function readLog(file: string): FakeCall[] {
     .split(/\r?\n/)
     .filter(Boolean)
     .map((line) => JSON.parse(line) as FakeCall);
+}
+
+/** What the steps of the run share: the daemon's client, the folders, the host keys it serves and the two targets. */
+interface Ctx {
+  client: Client;
+  work: string;
+  fakeLog: string;
+  keys: Record<string, string>;
+  publishKeys(): void;
+  vault: { id: string; name: string };
+  pw: { id: string; name: string };
+}
+
+/** The ssh config import: two named targets, saved with their auth. */
+async function importTargets(client: Client): Promise<Pick<Ctx, "vault" | "pw">> {
+  step = "importar o ssh config";
+  const preview = await client.call<{
+    entries: Array<{ alias: string; port: number; identityFile: string | null }>;
+  }>("ssh.import.preview", {});
+  const aliases = preview.entries.map((e) => e.alias);
+  if (aliases.join(",") !== "smoke-vault,smoke-pw") {
+    throw new Error(`a prévia devia ter os dois nomes concretos: ${aliases.join(",")}`);
+  }
+  if (
+    preview.entries[0]?.port !== 2200 ||
+    preview.entries[0]?.identityFile !== "~/.ssh/smoke_vault"
+  ) {
+    throw new Error(`a prévia leu mal o primeiro: ${JSON.stringify(preview.entries[0])}`);
+  }
+  const applied = await client.call<{
+    created: Array<{ id: string; name: string }>;
+    skipped: unknown[];
+  }>("ssh.import.apply", { aliases });
+  if (applied.created.length !== 2 || applied.skipped.length !== 0) {
+    throw new Error(`a importação devia criar os dois: ${JSON.stringify(applied)}`);
+  }
+  log("config importado: smoke-vault e smoke-pw (o curinga não virou destino)");
+  const vault = applied.created.find((t) => t.name === "smoke-vault");
+  const pw = applied.created.find((t) => t.name === "smoke-pw");
+  if (!vault || !pw) throw new Error("faltou um destino importado");
+  await client.call("ssh.save", {
+    id: vault.id,
+    name: "smoke-vault",
+    host: "vault.example.test",
+    port: 2200,
+    user: "deploy",
+    auth: "vault-key",
+    secretRef: "chave-do-cofre",
+  });
+  await client.call("ssh.save", {
+    id: pw.id,
+    name: "smoke-pw",
+    host: "pw.example.test",
+    user: "me",
+    auth: "password",
+    secretRef: "senha-do-cofre",
+  });
+  return { vault, pw };
+}
+
+/** A first connection asks for the host key to be confirmed, and the ssh never ran; then it is shown and confirmed. */
+async function needsConfirmation(ctx: Ctx): Promise<void> {
+  const { client, fakeLog, vault } = ctx;
+  step = "primeira conexão pede confirmação";
+  const refused = await client
+    .call("ssh.connect", { targetId: vault.id, cols: 100, rows: 30, privateKey: PRIVATE_KEY })
+    .then(() => "conectou")
+    .catch((error: Error) => error.message);
+  if (!refused.includes("hostkey_unconfirmed")) {
+    throw new Error(`devia pedir a confirmação da chave: ${refused}`);
+  }
+  if (readLog(fakeLog).some((e) => e.tool === "ssh"))
+    throw new Error("o ssh rodou sem confirmação");
+  const check = await client.call<{ status: string; fingerprint: string }>("ssh.hostkey.check", {
+    targetId: vault.id,
+  });
+  if (check.status !== "unknown" || check.fingerprint !== FINGERPRINT_VAULT) {
+    throw new Error(`fingerprint inesperado: ${JSON.stringify(check)}`);
+  }
+  await client.call("ssh.hostkey.confirm", {
+    targetId: vault.id,
+    fingerprint: check.fingerprint,
+  });
+  log(`fingerprint ${check.fingerprint} mostrado e confirmado`);
+}
+
+/** A connection with a vault key: the fake ssh got the key, the argv is a list with the target after `--`, and the key is nowhere else. */
+async function connectWithVaultKey(ctx: Ctx): Promise<void> {
+  const { client, fakeLog, vault } = ctx;
+  step = "conectar com vault-key";
+  const opened = await client.call<{ terminalId: string; command: string }>("ssh.connect", {
+    targetId: vault.id,
+    cols: 100,
+    rows: 30,
+    privateKey: PRIVATE_KEY,
+  });
+  await client.call("terminal.attach", { terminalId: opened.terminalId });
+  await until(() => client.exited.get(opened.terminalId) !== undefined, "o ssh falso terminar");
+  const output = client.output.get(opened.terminalId) ?? "";
+  const wanted = WIN ? "KEY-FILE-OK" : "AGENT-OK";
+  if (!output.includes(wanted) || !output.includes("FAKE-SSH-CONNECTED")) {
+    throw new Error(`o ssh devia ter recebido a chave (${wanted}): ${output.slice(0, 300)}`);
+  }
+  const argv: string[] = readLog(fakeLog).find((e) => e.tool === "ssh")?.argv ?? [];
+  const joined = argv.join(" ");
+  for (const part of [
+    "BatchMode=no",
+    "StrictHostKeyChecking=yes",
+    WIN ? "IdentitiesOnly=yes" : "IdentitiesOnly=no",
+  ]) {
+    if (!joined.includes(part)) throw new Error(`faltou ${part} no argv: ${joined}`);
+  }
+  if (argv.at(-2) !== "--" || argv.at(-1) !== "deploy@vault.example.test") {
+    throw new Error(`o destino devia vir depois de --: ${joined}`);
+  }
+  if (joined.includes(KEY_MARKER) || output.includes(KEY_MARKER)) {
+    throw new Error("a chave privada apareceu no argv ou na saída");
+  }
+  log(`o ssh falso recebeu a chave (${wanted}) e o argv é uma lista com o destino depois de --`);
+}
+
+/** The key of the connection is gone: its temp file on Windows, its agent and the socket elsewhere. */
+async function keyIsGone(ctx: Ctx): Promise<void> {
+  const { work, fakeLog } = ctx;
+  step = "a chave sumiu";
+  if (WIN) {
+    const keysDir = join(work, "data", "ssh", "keys");
+    const left = existsSync(keysDir) ? readdirSync(keysDir) : [];
+    if (left.length > 0) throw new Error(`sobrou arquivo de chave: ${left.join(",")}`);
+    log("o arquivo temporário da chave foi apagado");
+  } else {
+    const agent = readLog(fakeLog).find((e) => e.tool === "agent");
+    if (!agent) throw new Error("o ssh-agent da conexão não subiu");
+    await until(() => {
+      try {
+        process.kill(agent.pid as number, 0);
+        return false;
+      } catch {
+        return true;
+      }
+    }, "o ssh-agent da conexão encerrar");
+    if (existsSync(agent.sock as string)) throw new Error("o socket do agent sobrou");
+    log("o ssh-agent da conexão foi encerrado");
+  }
+}
+
+/** A password through askpass: the app is asked, answers, and the secret is in neither argv nor output. */
+async function passwordViaAskpass(ctx: Ctx): Promise<void> {
+  const { client, fakeLog, pw } = ctx;
+  step = "senha pelo askpass";
+  const pwCheck = await client.call<{ fingerprint: string }>("ssh.hostkey.check", {
+    targetId: pw.id,
+  });
+  await client.call("ssh.hostkey.confirm", { targetId: pw.id, fingerprint: pwCheck.fingerprint });
+  await client.call("askpass.watch", {});
+  const pwTerminal = await client.call<{ terminalId: string }>("ssh.connect", {
+    targetId: pw.id,
+    cols: 100,
+    rows: 30,
+  });
+  await client.call("terminal.attach", { terminalId: pwTerminal.terminalId });
+  const request = await until(() => client.asked[0], "o pedido de senha chegar ao app");
+  if (request.kind !== "password" || request.secretRef !== "senha-do-cofre") {
+    throw new Error(`pedido inesperado: ${JSON.stringify(request)}`);
+  }
+  await client.call("askpass.answer", { requestId: request.requestId, secret: SECRET });
+  await until(() => client.exited.get(pwTerminal.terminalId) !== undefined, "o ssh falso terminar");
+  const pwOutput = client.output.get(pwTerminal.terminalId) ?? "";
+  if (!pwOutput.includes("PASSWORD-OK")) {
+    throw new Error(`o helper devia ter devolvido a senha: ${pwOutput.slice(0, 300)}`);
+  }
+  const pwArgv = (readLog(fakeLog).filter((e) => e.tool === "ssh")[1]?.argv ?? []).join(" ");
+  if (pwArgv.includes(SECRET) || pwOutput.includes(SECRET)) {
+    throw new Error("a senha apareceu no argv ou na saída");
+  }
+  log("a senha veio do app pelo flightdeckd askpass, sem passar por argv nem pela saída");
+}
+
+/** A host key that changed blocks the connection, shows both fingerprints, and the ssh never ran. */
+async function changedKeyBlocks(ctx: Ctx): Promise<void> {
+  const { client, fakeLog, vault, keys, publishKeys } = ctx;
+  step = "fingerprint diferente bloqueia";
+  keys["vault.example.test"] = KEY_CHANGED;
+  publishKeys();
+  const before = readLog(fakeLog).filter((e) => e.tool === "ssh").length;
+  const blocked = await client
+    .call("ssh.connect", { targetId: vault.id, cols: 100, rows: 30, privateKey: PRIVATE_KEY })
+    .then(() => "conectou")
+    .catch((error: Error) => error.message);
+  if (
+    !blocked.includes("hostkey_changed") ||
+    !blocked.includes(FINGERPRINT_VAULT) ||
+    !blocked.includes(fingerprintOf(KEY_CHANGED))
+  ) {
+    throw new Error(`devia bloquear mostrando os dois fingerprints: ${blocked}`);
+  }
+  if (readLog(fakeLog).filter((e) => e.tool === "ssh").length !== before) {
+    throw new Error("o ssh rodou com a chave trocada");
+  }
+  log("a chave trocada foi bloqueada, com o fingerprint antigo e o novo");
 }
 
 async function run(work: string): Promise<void> {
@@ -247,174 +447,13 @@ async function run(work: string): Promise<void> {
     const client = new Client(url);
     await client.open(token);
 
-    step = "importar o ssh config";
-    const preview = await client.call<{
-      entries: Array<{ alias: string; port: number; identityFile: string | null }>;
-    }>("ssh.import.preview", {});
-    const aliases = preview.entries.map((e) => e.alias);
-    if (aliases.join(",") !== "smoke-vault,smoke-pw") {
-      throw new Error(`a prévia devia ter os dois nomes concretos: ${aliases.join(",")}`);
-    }
-    if (
-      preview.entries[0]?.port !== 2200 ||
-      preview.entries[0]?.identityFile !== "~/.ssh/smoke_vault"
-    ) {
-      throw new Error(`a prévia leu mal o primeiro: ${JSON.stringify(preview.entries[0])}`);
-    }
-    const applied = await client.call<{
-      created: Array<{ id: string; name: string }>;
-      skipped: unknown[];
-    }>("ssh.import.apply", { aliases });
-    if (applied.created.length !== 2 || applied.skipped.length !== 0) {
-      throw new Error(`a importação devia criar os dois: ${JSON.stringify(applied)}`);
-    }
-    log("config importado: smoke-vault e smoke-pw (o curinga não virou destino)");
-    const vault = applied.created.find((t) => t.name === "smoke-vault");
-    const pw = applied.created.find((t) => t.name === "smoke-pw");
-    if (!vault || !pw) throw new Error("faltou um destino importado");
-    await client.call("ssh.save", {
-      id: vault.id,
-      name: "smoke-vault",
-      host: "vault.example.test",
-      port: 2200,
-      user: "deploy",
-      auth: "vault-key",
-      secretRef: "chave-do-cofre",
-    });
-    await client.call("ssh.save", {
-      id: pw.id,
-      name: "smoke-pw",
-      host: "pw.example.test",
-      user: "me",
-      auth: "password",
-      secretRef: "senha-do-cofre",
-    });
-
-    step = "primeira conexão pede confirmação";
-    const refused = await client
-      .call("ssh.connect", { targetId: vault.id, cols: 100, rows: 30, privateKey: PRIVATE_KEY })
-      .then(() => "conectou")
-      .catch((error: Error) => error.message);
-    if (!refused.includes("hostkey_unconfirmed")) {
-      throw new Error(`devia pedir a confirmação da chave: ${refused}`);
-    }
-    if (readLog(fakeLog).some((e) => e.tool === "ssh"))
-      throw new Error("o ssh rodou sem confirmação");
-    const check = await client.call<{ status: string; fingerprint: string }>("ssh.hostkey.check", {
-      targetId: vault.id,
-    });
-    if (check.status !== "unknown" || check.fingerprint !== FINGERPRINT_VAULT) {
-      throw new Error(`fingerprint inesperado: ${JSON.stringify(check)}`);
-    }
-    await client.call("ssh.hostkey.confirm", {
-      targetId: vault.id,
-      fingerprint: check.fingerprint,
-    });
-    log(`fingerprint ${check.fingerprint} mostrado e confirmado`);
-
-    step = "conectar com vault-key";
-    const opened = await client.call<{ terminalId: string; command: string }>("ssh.connect", {
-      targetId: vault.id,
-      cols: 100,
-      rows: 30,
-      privateKey: PRIVATE_KEY,
-    });
-    await client.call("terminal.attach", { terminalId: opened.terminalId });
-    await until(() => client.exited.get(opened.terminalId) !== undefined, "o ssh falso terminar");
-    const output = client.output.get(opened.terminalId) ?? "";
-    const wanted = WIN ? "KEY-FILE-OK" : "AGENT-OK";
-    if (!output.includes(wanted) || !output.includes("FAKE-SSH-CONNECTED")) {
-      throw new Error(`o ssh devia ter recebido a chave (${wanted}): ${output.slice(0, 300)}`);
-    }
-    const ssh = readLog(fakeLog).filter((e) => e.tool === "ssh");
-    const argv: string[] = ssh[0]?.argv ?? [];
-    const joined = argv.join(" ");
-    for (const part of [
-      "BatchMode=no",
-      "StrictHostKeyChecking=yes",
-      WIN ? "IdentitiesOnly=yes" : "IdentitiesOnly=no",
-    ]) {
-      if (!joined.includes(part)) throw new Error(`faltou ${part} no argv: ${joined}`);
-    }
-    if (argv.at(-2) !== "--" || argv.at(-1) !== "deploy@vault.example.test") {
-      throw new Error(`o destino devia vir depois de --: ${joined}`);
-    }
-    if (joined.includes(KEY_MARKER) || output.includes(KEY_MARKER)) {
-      throw new Error("a chave privada apareceu no argv ou na saída");
-    }
-    log(`o ssh falso recebeu a chave (${wanted}) e o argv é uma lista com o destino depois de --`);
-
-    step = "a chave sumiu";
-    if (WIN) {
-      const keysDir = join(work, "data", "ssh", "keys");
-      const left = existsSync(keysDir) ? readdirSync(keysDir) : [];
-      if (left.length > 0) throw new Error(`sobrou arquivo de chave: ${left.join(",")}`);
-      log("o arquivo temporário da chave foi apagado");
-    } else {
-      const agent = readLog(fakeLog).find((e) => e.tool === "agent");
-      if (!agent) throw new Error("o ssh-agent da conexão não subiu");
-      await until(() => {
-        try {
-          process.kill(agent.pid as number, 0);
-          return false;
-        } catch {
-          return true;
-        }
-      }, "o ssh-agent da conexão encerrar");
-      if (existsSync(agent.sock as string)) throw new Error("o socket do agent sobrou");
-      log("o ssh-agent da conexão foi encerrado");
-    }
-
-    step = "senha pelo askpass";
-    const pwCheck = await client.call<{ fingerprint: string }>("ssh.hostkey.check", {
-      targetId: pw.id,
-    });
-    await client.call("ssh.hostkey.confirm", { targetId: pw.id, fingerprint: pwCheck.fingerprint });
-    await client.call("askpass.watch", {});
-    const pwTerminal = await client.call<{ terminalId: string }>("ssh.connect", {
-      targetId: pw.id,
-      cols: 100,
-      rows: 30,
-    });
-    await client.call("terminal.attach", { terminalId: pwTerminal.terminalId });
-    const request = await until(() => client.asked[0], "o pedido de senha chegar ao app");
-    if (request.kind !== "password" || request.secretRef !== "senha-do-cofre") {
-      throw new Error(`pedido inesperado: ${JSON.stringify(request)}`);
-    }
-    await client.call("askpass.answer", { requestId: request.requestId, secret: SECRET });
-    await until(
-      () => client.exited.get(pwTerminal.terminalId) !== undefined,
-      "o ssh falso terminar",
-    );
-    const pwOutput = client.output.get(pwTerminal.terminalId) ?? "";
-    if (!pwOutput.includes("PASSWORD-OK")) {
-      throw new Error(`o helper devia ter devolvido a senha: ${pwOutput.slice(0, 300)}`);
-    }
-    const pwArgv = (readLog(fakeLog).filter((e) => e.tool === "ssh")[1]?.argv ?? []).join(" ");
-    if (pwArgv.includes(SECRET) || pwOutput.includes(SECRET)) {
-      throw new Error("a senha apareceu no argv ou na saída");
-    }
-    log("a senha veio do app pelo flightdeckd askpass, sem passar por argv nem pela saída");
-
-    step = "fingerprint diferente bloqueia";
-    keys["vault.example.test"] = KEY_CHANGED;
-    publishKeys();
-    const before = readLog(fakeLog).filter((e) => e.tool === "ssh").length;
-    const blocked = await client
-      .call("ssh.connect", { targetId: vault.id, cols: 100, rows: 30, privateKey: PRIVATE_KEY })
-      .then(() => "conectou")
-      .catch((error: Error) => error.message);
-    if (
-      !blocked.includes("hostkey_changed") ||
-      !blocked.includes(FINGERPRINT_VAULT) ||
-      !blocked.includes(fingerprintOf(KEY_CHANGED))
-    ) {
-      throw new Error(`devia bloquear mostrando os dois fingerprints: ${blocked}`);
-    }
-    if (readLog(fakeLog).filter((e) => e.tool === "ssh").length !== before) {
-      throw new Error("o ssh rodou com a chave trocada");
-    }
-    log("a chave trocada foi bloqueada, com o fingerprint antigo e o novo");
+    const { vault, pw } = await importTargets(client);
+    const ctx: Ctx = { client, work, fakeLog, keys, publishKeys, vault, pw };
+    await needsConfirmation(ctx);
+    await connectWithVaultKey(ctx);
+    await keyIsGone(ctx);
+    await passwordViaAskpass(ctx);
+    await changedKeyBlocks(ctx);
     client.close();
   } finally {
     daemon.kill();
