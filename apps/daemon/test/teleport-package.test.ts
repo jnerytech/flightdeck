@@ -45,7 +45,7 @@ async function setup(
     scan?: (text: string) => string[];
     team?: boolean;
     lines?: string[];
-    transcript?: "file" | "link" | "outside" | "none" | "gone";
+    transcript?: "file" | "link" | "outside" | "renamed" | "none" | "gone";
     maxBytes?: number;
     chunkBytes?: number;
     code?: TeleportDeps["code"];
@@ -64,6 +64,8 @@ async function setup(
   const kind = options.transcript ?? "file";
   if (kind === "file") await writeFile(file, `${(options.lines ?? LINES).join("\n")}\n`);
   if (kind === "link") await symlink(outside, file);
+  // Another session's transcript, a real file in the same project folder: never read for this one.
+  if (kind === "renamed") await writeFile(join(project, "renamed.jsonl"), "{}\n");
   const timers: Array<{ fn: () => void; ms: number; live: boolean; unref: boolean }> = [];
   const logs: string[] = [];
   let ids = 0;
@@ -78,6 +80,7 @@ async function setup(
     transcriptOf: () => {
       if (kind === "none") return null;
       if (kind === "gone") return join(history, "-gone", `${ID}.jsonl`);
+      if (kind === "renamed") return join(project, "renamed.jsonl");
       return kind === "outside" ? outside : file;
     },
     // A root that does not exist on this host is skipped.
@@ -179,7 +182,7 @@ describe("teleport-package: an idle session's transcript becomes a package (#100
     ]);
   });
 
-  test("a transcript that is a link, lies outside the history, has a bad id or a folder that is gone is never read", async () => {
+  test("a transcript that is a link, lies outside the history, has a bad id, another name or a folder that is gone is never read", async () => {
     const reasons = [];
     const copied = [];
     for (const options of [
@@ -187,6 +190,7 @@ describe("teleport-package: an idle session's transcript becomes a package (#100
       { transcript: "outside" as const },
       { session: { claudeSessionId: "../../.credentials" } },
       { transcript: "gone" as const },
+      { transcript: "renamed" as const },
     ]) {
       const { packages, deps } = await setup(options);
       reasons.push(await reason(() => packages.prepare("s1")));
@@ -198,8 +202,9 @@ describe("teleport-package: an idle session's transcript becomes a package (#100
         "teleport_unsafe_transcript",
         "teleport_unsafe_transcript",
         "teleport_unsafe_transcript",
+        "teleport_unsafe_transcript",
       ],
-      [[], [], [], []],
+      [[], [], [], [], []],
     ]);
   });
 
