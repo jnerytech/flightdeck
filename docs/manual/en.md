@@ -970,7 +970,8 @@ live; the list is the project's, so a session of another project never shows her
   of the host you are on; with no host open it is the shared account of the online hosts, or "N
   accounts" when they differ.
 - **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
-  it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
+  it shows, **All hosts**, one host, or one project from its **Projects** group (that project on
+  every host, named in the subtitle), and changes them; the choice is kept across starts, and a
   change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
   When the chosen host is offline, Home says so and offers **Show all hosts**; a host whose daemon
   needs an update says that instead, and the menu does not offer it. Costs follows it too

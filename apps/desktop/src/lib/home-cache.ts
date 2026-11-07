@@ -3,6 +3,8 @@ import type { Platform } from "../platform/types.ts";
 import type { HomeCosts, HomeUsage } from "./home-kpis.ts";
 
 const KEY = "flightdeck.home.v1";
+/** What a project's entry carries after its hosts (#126 slice 4). */
+const PROJECT_ENTRY = "|project:";
 /** How many host sets and periods are kept: the newest ones. */
 const MAX_ENTRIES = 8;
 
@@ -18,14 +20,19 @@ export interface HomeHostData {
 export type HomeSnapshot = Record<string, HomeHostData>;
 
 /** One entry per period and set of hosts: the same hosts in another order are the same entry. */
-export const homeKey = (period: string, hostIds: string[]): string =>
-  `${period}|${[...hostIds].sort((a, b) => a.localeCompare(b)).join(",")}`;
+export const homeKey = (period: string, hostIds: string[], projectKey?: string): string =>
+  `${period}|${[...hostIds].sort((a, b) => a.localeCompare(b)).join(",")}${
+    // A project's numbers are an entry of their own (#126 slice 4).
+    projectKey ? `${PROJECT_ENTRY}${projectKey}` : ""
+  }`;
 
 /** The numbers Home draws from a host's answers, and nothing else of what the host sent. */
 export function homeHostData(
   costs: CostsSummary | null,
   usage: UsageSummary | null,
   at: number,
+  /** With a project scope (#126 slice 4), only its usage rows: costs come filtered by the host. */
+  projectKey?: string,
 ): HomeHostData {
   return {
     at,
@@ -34,13 +41,15 @@ export function homeHostData(
       byDay: costs.byDay.map(({ day, costUsd, tokens }) => ({ day, costUsd, tokens })),
     },
     usage: usage && {
-      rows: usage.rows.map(({ day, costUsd, turns, failedTurns, durationMs }) => ({
-        day,
-        costUsd,
-        turns,
-        ...(failedTurns === undefined ? {} : { failedTurns }),
-        ...(durationMs === undefined ? {} : { durationMs }),
-      })),
+      rows: usage.rows
+        .filter((row) => !projectKey || row.projectKey === projectKey)
+        .map(({ day, costUsd, turns, failedTurns, durationMs }) => ({
+          day,
+          costUsd,
+          turns,
+          ...(failedTurns === undefined ? {} : { failedTurns }),
+          ...(durationMs === undefined ? {} : { durationMs }),
+        })),
     },
   };
 }
@@ -94,8 +103,13 @@ export class HomeCache {
         .sort(([, a], [, b]) => newest(b) - newest(a))
         .slice(0, MAX_ENTRIES),
     );
+    // A project's entry names the project (its key can hold a host and a path): memory only, as the
+    // leaderboard is (#124, review of #917).
+    const kept = Object.fromEntries(
+      Object.entries(this.entries).filter(([entry]) => !entry.includes(PROJECT_ENTRY)),
+    );
     try {
-      this.storage.setItem(KEY, JSON.stringify(this.entries));
+      this.storage.setItem(KEY, JSON.stringify(kept));
     } catch {
       // A full or refused storage: the numbers stay in memory.
     }

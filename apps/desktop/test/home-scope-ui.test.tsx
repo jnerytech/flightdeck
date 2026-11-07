@@ -17,6 +17,8 @@ afterEach(cleanup);
 
 /** What each host spent on the last day of the week. */
 const SPENT: Record<string, number> = { h1: 2, h2: 5 };
+/** Of that, what github.com/x/z took on each host (#126 slice 4). */
+const ON_Z: Record<string, number> = { h1: 1, h2: 3 };
 const usage: UsageSummary = { days: 7, rows: [] };
 
 function setup(
@@ -29,6 +31,8 @@ function setup(
     hosts?: string[];
     /** Whether the host list was read yet (#212); read by default. */
     loaded?: boolean;
+    /** Usage rows on github.com/x/y (3 turns) and github.com/x/z (4 turns), per host. */
+    withUsage?: boolean;
   } = {},
 ) {
   const platform = memoryPlatform(false, options.language ?? "en").platform;
@@ -36,12 +40,26 @@ function setup(
   const store = new AppStore(platform, { baseDelayMs: 600_000, day: () => "2026-10-10" });
   store.i18n.start();
   const asked: string[] = [];
+  /** Every costs.summary payload, in order. */
+  const costsAsked: Array<{ projectKey?: string }> = [];
+  const turnsOn = (projectKey: string, turns: number) => ({
+    day: "2026-10-10",
+    projectKey,
+    costUsd: 0,
+    inputTokens: 1,
+    outputTokens: 1,
+    turns,
+  });
+  const rows = options.withUsage
+    ? [turnsOn("github.com/x/y", 3), turnsOn("github.com/x/z", 4)]
+    : [];
   store.hostRequest = (async (hostId: string, command: string, payload: unknown) => {
     asked.push(hostId);
-    if (command === "usage.summary") return { ok: true, data: usage };
-    const { from, to } = payload as { from: string; to: string };
+    if (command === "usage.summary") return { ok: true, data: { ...usage, rows } };
+    costsAsked.push(payload as { projectKey?: string });
+    const { from, to, projectKey } = payload as { from: string; to: string; projectKey?: string };
     const summary = emptySummary(from, to);
-    const spent = SPENT[hostId] ?? 0;
+    const spent = (projectKey === "github.com/x/z" ? ON_Z[hostId] : SPENT[hostId]) ?? 0;
     summary.byDay = [{ day: "2026-10-10", projectKey: "p", costUsd: spent, tokens: 10 }];
     summary.totals.costUsd = spent;
     return { ok: true, data: summary };
@@ -68,7 +86,7 @@ function setup(
     budgets: {},
   } as never as ReturnType<typeof store.getState>;
   render(<HomePage store={store} state={state} go={() => {}} />);
-  return { store, asked, storage: platform.storage };
+  return { store, asked, costsAsked, storage: platform.storage };
 }
 
 /** The Spend card's text, or "" before it is there. */
@@ -125,15 +143,82 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     });
   });
 
-  // #126 slice 4: Home does not read projects yet, so a project scope there is every host, said so.
-  test("a kept project scope shows every host on Home, and the menu and subtitle say so", async () => {
-    setup({ kept: '{"kind":"project","projectKey":"github.com/x/y"}' });
-    await settleMaybe(() => /\$7\.00/.test(spend()));
+  // #126 slice 4: Home follows a project scope, on every host, and names it.
+  test("a kept project scope adds up that project on every host, named in the subtitle and the menu", async () => {
+    const { store } = setup({ kept: '{"kind":"project","projectKey":"github.com/x/z"}' });
+    act(() => store.projectKeys.note(["github.com/x/y", "github.com/x/z"]));
+    await settleMaybe(() => /\$4\.00/.test(spend()));
     expect({
-      spend: /\$7\.00/.test(spend()),
-      subtitle: screen.queryByText("Last 7 days · all hosts") !== null,
-      menu: screen.queryByRole("button", { name: "Data from All hosts" }) !== null,
+      spend: /\$4\.00/.test(spend()),
+      subtitle: screen.queryByText("Last 7 days · github.com/x/z") !== null,
+      menu: screen.queryByRole("button", { name: "Data from github.com/x/z" }) !== null,
     }).toEqual({ spend: true, subtitle: true, menu: true });
+  });
+
+  // Review of #917: every costs read carries the project, and the usage rows are the project's.
+  test("in a project scope every costs read asks for the project, and the turns are the project's", async () => {
+    const { costsAsked } = setup({
+      kept: '{"kind":"project","projectKey":"github.com/x/z"}',
+      withUsage: true,
+    });
+    const turns = () => screen.queryByRole("button", { name: "Open Turns" })?.textContent ?? "";
+    await settleMaybe(() => /\$4\.00/.test(spend()) && /8/.test(turns()));
+    expect({
+      asked: costsAsked.length >= 6,
+      all: costsAsked.every((payload) => payload.projectKey === "github.com/x/z"),
+      turns: /8/.test(turns()) && !/14/.test(turns()),
+    }).toEqual({ asked: true, all: true, turns: true });
+  });
+
+  test("with one host, a known project still offers the menu, and picking it scopes Home", async () => {
+    const { store } = setup({ hosts: ["h1"] });
+    act(() => store.projectKeys.note(["github.com/x/z"]));
+    await settle(() => /\$2\.00/.test(spend()));
+    const trigger = screen.queryByRole("button", { name: "Data from All hosts" });
+    expect(trigger !== null).toBe(true);
+    await act(async () => {
+      fireEvent.pointerDown(trigger as HTMLElement, {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
+    const entry = screen.queryByRole("menuitemradio", { name: "github.com/x/z" });
+    expect(entry !== null).toBe(true);
+    await act(async () => {
+      fireEvent.click(entry as HTMLElement);
+    });
+    await settleMaybe(() => /\$1\.00/.test(spend()));
+    expect(/\$1\.00/.test(spend())).toBe(true);
+  });
+
+  test("the Projects group of Data from scopes Home to a project", async () => {
+    const { store } = setup();
+    act(() => store.projectKeys.note(["github.com/x/y", "github.com/x/z"]));
+    await settle(() => /\$7\.00/.test(spend()));
+    const trigger = screen.queryByRole("button", { name: "Data from All hosts" });
+    expect(trigger !== null).toBe(true);
+    await act(async () => {
+      fireEvent.pointerDown(trigger as HTMLElement, {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
+    const group = screen.queryByRole("group", { name: "Projects" });
+    expect(group !== null).toBe(true);
+    const entry = within(group as HTMLElement).queryByRole("menuitemradio", {
+      name: "github.com/x/z",
+    });
+    expect(entry !== null).toBe(true);
+    await act(async () => {
+      fireEvent.click(entry as HTMLElement);
+    });
+    await settleMaybe(() => /\$4\.00/.test(spend()));
+    expect({ spend: /\$4\.00/.test(spend()), scope: store.dataScope.value }).toEqual({
+      spend: true,
+      scope: { kind: "project", projectKey: "github.com/x/z" },
+    });
   });
 
   // Review of #837: a kept host missing from a list not read yet is not gone, so Home asks
