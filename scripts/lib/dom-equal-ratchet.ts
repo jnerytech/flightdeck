@@ -33,16 +33,18 @@ function commentEnd(src: string, i: number): number {
 /** Index just past the bracket that closes the one at `open`, skipping strings and comments. */
 function closing(src: string, open: number): number {
   let depth = 0;
-  for (let i = open; i < src.length; i++) {
-    const c = src[i] as string;
-    const comment = commentEnd(src, i);
-    if (c === '"' || c === "'" || c === "`") i = stringEnd(src, i);
-    else if (comment >= 0) i = comment;
+  let at = open;
+  while (at < src.length) {
+    const c = src[at] as string;
+    const comment = commentEnd(src, at);
+    if (c === '"' || c === "'" || c === "`") at = stringEnd(src, at);
+    else if (comment >= 0) at = comment;
     else if ("([{".includes(c)) depth++;
     else if (")]}".includes(c)) {
       depth--;
-      if (depth === 0) return i + 1;
+      if (depth === 0) return at + 1;
     }
+    at++;
   }
   return src.length;
 }
@@ -56,10 +58,24 @@ function blanked(code: string): string {
 }
 
 /** A Testing Library or DOM query, or one of the document's own elements. */
-const QUERY =
-  /\b(?:(?:get|query|find)(?:All)?By[A-Z]\w*|querySelector(?:All)?|getElementById|closest)\s*\(|\bdocument\.(?:activeElement|body|documentElement)\b/g;
+const QUERY_CALL = String.raw`(?:get|query|find)(?:All)?By[A-Z]\w*|querySelector(?:All)?|getElementById|closest`;
+const DOCUMENT_ELEMENT = String.raw`document\.(?:activeElement|body|documentElement)`;
+const QUERY = new RegExp(String.raw`\b(?:${QUERY_CALL})\s*\(|\b${DOCUMENT_ELEMENT}\b`, "g");
 /** What may follow a query and still leave the element itself: `!`, an index, `?? null`, `)`. */
 const STILL_ELEMENT = /^(?:\s*(?:!(?!=)|\[\d+\]|\?\?\s*null|\)))*\s*$/;
+
+/**
+ * An object literal's key and its colon: whitespace, then key characters (a space counts as one),
+ * then an optional `]`, whitespace and `:`. The key is the text before the first colon, so the
+ * three forms below are told apart by what that text holds, and none of them backtracks:
+ * a key with a character other than a space, a lone space before the `]`, and only whitespace
+ * with a space in it.
+ */
+const KEY_CHAR = String.raw`[\w$"'[]`;
+const KEY_WITH_CHARS = String.raw`\s*${KEY_CHAR}(?: *${KEY_CHAR})*(?: *\])?\s*`;
+const KEY_SPACE_BRACKET = String.raw`\s* \]\s*`;
+const KEY_SPACE_ONLY = String.raw`(?=\s*:)[^\S ]* \s*`;
+const OBJECT_KEY = new RegExp(`^(?:${KEY_WITH_CHARS}|${KEY_SPACE_BRACKET}|${KEY_SPACE_ONLY}):`);
 
 /** The top-level parts of a literal (`[a, b]`; `{ k: v }` gives v), each split again; else the code. */
 function parts(code: string): string[] {
@@ -69,17 +85,19 @@ function parts(code: string): string[] {
   if (!literal) return [text.replace(/^\.\.\./, "")];
   const out: string[] = [];
   let start = 1;
-  for (let i = 1; i < text.length - 1; i++) {
-    const c = text[i] as string;
-    if ("([{".includes(c)) i = closing(text, i) - 1;
+  let at = 1;
+  while (at < text.length - 1) {
+    const c = text[at] as string;
+    if ("([{".includes(c)) at = closing(text, at) - 1;
     else if (c === ",") {
-      out.push(text.slice(start, i));
-      start = i + 1;
+      out.push(text.slice(start, at));
+      start = at + 1;
     }
+    at++;
   }
   out.push(text.slice(start, text.length - 1));
   return out
-    .map((part) => (text.startsWith("{") ? part.replace(/^\s*[\w$"' []+\]?\s*:/, "") : part))
+    .map((part) => (text.startsWith("{") ? part.replace(OBJECT_KEY, "") : part))
     .filter((part) => part.trim() !== "")
     .flatMap(parts);
 }
