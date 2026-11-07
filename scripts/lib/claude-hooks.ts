@@ -601,7 +601,7 @@ export function guardAllowLogs(
   command: string | undefined,
   env: Record<string, string | undefined>,
   push?: { cwd: string; deps: PushWaitDeps },
-  _passes: PushWaitPass[] = [],
+  passes: PushWaitPass[] = [],
 ): Array<{ rule: string | null; decision: "allow" | "waived"; detail?: string; minutes?: number }> {
   const waived: Array<{ rule: string; decision: "waived"; detail?: string; minutes?: number }> = [];
   if (typeof command === "string") {
@@ -613,7 +613,17 @@ export function guardAllowLogs(
     const override = env.FLIGHTDECK_COORDINATOR ? null : pushNowOverride(command, push);
     if (override) waived.push({ rule: "push-wait", decision: "waived", ...override });
   }
-  return waived.length > 0 ? waived : [{ rule: null, decision: "allow" }];
+  if (waived.length > 0) return waived;
+  // #741: a push the rule let through logs why, in place of the plain allow.
+  if (passes.length > 0) {
+    return passes.map(({ reason, minutes }) => ({
+      rule: "push-wait",
+      decision: "allow" as const,
+      detail: reason,
+      ...(minutes === undefined ? {} : { minutes }),
+    }));
+  }
+  return [{ rule: null, decision: "allow" }];
 }
 
 /** The package scripts that run only through the slot (CLAUDE.md). */
@@ -734,19 +744,10 @@ export interface PushWaitPass {
   minutes?: number;
 }
 
-/** The push-wait decision of a command: the refusal, or why each pushed branch may go (#741). */
-export function pushWaitCheck(
-  command: string,
-  cwd: string,
-  deps: PushWaitDeps,
-): { violation: string | null; passes: PushWaitPass[] } {
-  return { violation: pushWaitViolation(command, cwd, deps), passes: [] };
-}
-
 /**
  * A branch's latest PR run from `gh run list --json databaseId,status,startedAt,url`, with its PR's
- * conflict and failed checks from `gh pr view --json mergeable,statusCheckRollup`; null when there
- * is none or the output does not read.
+ * conflict and failed checks from `gh pr view --json mergeable,statusCheckRollup`: "none" when
+ * the list is empty, null when gh gave no output or it does not read (#741: GitHub unread).
  */
 export function prRunFrom(
   runs: string | null,
@@ -754,7 +755,9 @@ export function prRunFrom(
   now: number,
 ): PrRun | "none" | null {
   try {
-    const latest = (JSON.parse(runs ?? "") as Array<Record<string, unknown>>)[0];
+    const list = JSON.parse(runs ?? "") as Array<Record<string, unknown>>;
+    if (Array.isArray(list) && list.length === 0) return "none";
+    const latest = list[0];
     if (!latest || typeof latest.databaseId !== "number") return null;
     const started = Date.parse(String(latest.startedAt));
     if (Number.isNaN(started)) return null;
@@ -801,7 +804,8 @@ export function prRunVia(
       ],
       dir,
     );
-    if (!runs || runs.trim() === "[]") return null;
+    if (runs === null) return null;
+    if (runs.trim() === "[]") return "none";
     // `--` ends the flags, so the branch is always the PR to view.
     const pr = gh(["pr", "view", "--json=mergeable,statusCheckRollup", "--", branch], dir);
     return prRunFrom(runs, pr, now());
@@ -825,27 +829,64 @@ export const PUSH_WAIT_MINUTES = 20;
  * branch's run in progress (`cancel-in-progress`); 10% of the PR runner-minutes went to runs a push
  * cancelled while still green. A PR with a failed check or a conflict (the push is a fix), an
  * ended or older run, no run, a release-v* branch, the coordinator and
- * `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push pass.
+ * `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push pass. When GitHub cannot be read, twice,
+ * the push holds too, with the same override line: a silent pass let green runs be cancelled.
  */
 export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDeps): string | null {
-  if (deps.env.FLIGHTDECK_COORDINATOR) return null;
+  return pushWaitCheck(command, cwd, deps).violation;
+}
+
+/**
+ * The push-wait decision of a command (#741): the refusal, or, for each pushed branch the rule
+ * looked at and let go, why. A delete, a release-v* branch, an override and the coordinator are
+ * not looked at, so they log no pass.
+ */
+export function pushWaitCheck(
+  command: string,
+  cwd: string,
+  deps: PushWaitDeps,
+): { violation: string | null; passes: PushWaitPass[] } {
+  const passes: PushWaitPass[] = [];
+  if (deps.env.FLIGHTDECK_COORDINATOR) return { violation: null, passes };
   for (const call of gitCalls(command, cwd)) {
     if (call.sub !== "push" || call.dir === null) continue;
     if (deps.inProject && !deps.inProject(call.dir)) continue;
     const segment = command.slice(call.start, call.end);
     if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) continue;
     const dir = call.dir;
+    const override = `FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(segment.trim())}`;
     for (const branch of pushedBranches(call, (args) => deps.git(args, dir))) {
-      const run = deps.prRun(branch, dir);
-      // A failed check or a conflict makes the push a fix that must go out (#756 review).
-      if (run === null || run === "none" || !run.inProgress || run.failed || run.conflicting)
+      // One more try: a gh call can time out once on a busy machine.
+      const run = deps.prRun(branch, dir) ?? deps.prRun(branch, dir);
+      if (run === null) {
+        const violation = `GitHub could not be read to check the PR run of ${branch}, twice (#741). Push again in a minute, or push now with:\n  ${override}`;
+        return { violation, passes };
+      }
+      if (run === "none") {
+        passes.push({ reason: "no run" });
         continue;
-      if (run.minutes >= PUSH_WAIT_MINUTES) continue;
+      }
+      const pass = pushWaitPass(run);
+      if (pass) {
+        passes.push(pass);
+        continue;
+      }
       // Only GitHub's own https address; the echoed push hides credentials (security review).
       const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
-      return `a push now cancels CI run ${run.id} on the PR of ${branch}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(segment.trim())}`;
+      const violation = `a push now cancels CI run ${run.id} on the PR of ${branch}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  ${override}`;
+      return { violation, passes };
     }
   }
+  return { violation: null, passes };
+}
+
+/** Why a push may go past this run, or null when it would cancel it while young and green. */
+function pushWaitPass(run: PrRun): PushWaitPass | null {
+  // A failed check or a conflict makes the push a fix that must go out (#756 review).
+  if (run.failed) return { reason: "failed check" };
+  if (run.conflicting) return { reason: "conflicts" };
+  if (!run.inProgress) return { reason: "run ended" };
+  if (run.minutes >= PUSH_WAIT_MINUTES) return { reason: "old run", minutes: run.minutes };
   return null;
 }
 

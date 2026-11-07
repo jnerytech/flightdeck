@@ -374,6 +374,11 @@ describe("push-wait: the run and the PR as gh prints them (#741)", () => {
     JSON.stringify([{ databaseId: 42, status, startedAt, url: URL }]);
   const pr = (mergeable: string, ...checks: Array<Record<string, string>>) =>
     JSON.stringify({ mergeable, statusCheckRollup: checks });
+  /** The run read, or null when there is none (the field checks below read a run). */
+  const read = (runs: string, view: string) => {
+    const run = prRunFrom(runs, view, now);
+    return run === "none" ? null : run;
+  };
   const check = (conclusion: string) => ({
     __typename: "CheckRun",
     status: "COMPLETED",
@@ -389,9 +394,9 @@ describe("push-wait: the run and the PR as gh prints them (#741)", () => {
       conflicting: false,
       minutes: 6,
     });
-    expect(prRunFrom(list("queued"), pr("UNKNOWN"), now)?.inProgress).toBe(true);
-    expect(prRunFrom(list("completed"), pr("MERGEABLE"), now)?.inProgress).toBe(false);
-    expect(prRunFrom(list("in_progress"), pr("CONFLICTING"), now)?.conflicting).toBe(true);
+    expect(read(list("queued"), pr("UNKNOWN"))?.inProgress).toBe(true);
+    expect(read(list("completed"), pr("MERGEABLE"))?.inProgress).toBe(false);
+    expect(read(list("in_progress"), pr("CONFLICTING"))?.conflicting).toBe(true);
     // Any failed check counts, a check run's or a commit status's, SonarCloud's included.
     for (const failed of [
       check("FAILURE"),
@@ -400,16 +405,13 @@ describe("push-wait: the run and the PR as gh prints them (#741)", () => {
       { __typename: "StatusContext", state: "FAILURE" },
       { __typename: "StatusContext", state: "ERROR" },
     ]) {
-      expect(
-        prRunFrom(list("in_progress"), pr("MERGEABLE", check("SUCCESS"), failed), now)?.failed,
-      ).toBe(true);
+      expect(read(list("in_progress"), pr("MERGEABLE", check("SUCCESS"), failed))?.failed).toBe(
+        true,
+      );
     }
     expect(
-      prRunFrom(
-        list("in_progress"),
-        pr("MERGEABLE", { __typename: "CheckRun", status: "IN_PROGRESS" }),
-        now,
-      )?.failed,
+      read(list("in_progress"), pr("MERGEABLE", { __typename: "CheckRun", status: "IN_PROGRESS" }))
+        ?.failed,
     ).toBe(false);
   });
 

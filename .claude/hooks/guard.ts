@@ -17,10 +17,11 @@ import {
   generatedViolation,
   guardAllowLogs,
   heavyRunViolation,
+  type PushWaitPass,
   prMergeViolation,
   prRunVia,
   pushViolation,
-  pushWaitViolation,
+  pushWaitCheck,
   slotViolation,
   testEditViolation,
   withBudget,
@@ -40,6 +41,8 @@ const input = await Bun.stdin.json().catch(() => null);
 const { command, file_path: filePath } = input?.tool_input ?? {};
 // #741: the push context of the log, so a push-wait override records the run's age.
 let push: Parameters<typeof guardAllowLogs>[2];
+// #741: why push-wait let each pushed branch go, for the log.
+let passes: PushWaitPass[] = [];
 if (typeof command === "string") {
   block("command", commandViolation(command));
   block("slot", slotViolation(command, process.env));
@@ -56,10 +59,11 @@ if (typeof command === "string") {
   block("commit", commitViolation(command, cwd, repo));
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
   // #741: gh is asked for a push, in the push's own checkout: without an override to decide, with
-  // one to log the run's age. Any failure reads as no run (prRunVia in scripts/lib/claude-hooks.ts).
+  // one to log the run's age. A failure reads as GitHub unread: asked once more, then the push holds
+  // with the override line (prRunVia and pushWaitCheck in scripts/lib/claude-hooks.ts).
   const gh = (args: string[], dir: string) => {
-    // 3 s each: two calls stay inside the hook's 10 s with the git calls; gh never prompts. Past
-    // the 10 s, Claude Code lets the command through, so a slow GitHub fails open too.
+    // 3 s each, and each starts only in the first 6 s (withBudget), so the retry never takes the
+    // hook past its 10 s; one that cannot start reads as GitHub unread. gh never prompts.
     const proc = spawnSync("gh", args, {
       cwd: dir,
       encoding: "utf8",
@@ -73,7 +77,9 @@ if (typeof command === "string") {
     Date.now,
   );
   push = { cwd, deps: { ...repo, env: process.env, prRun } };
-  block("push-wait", pushWaitViolation(command, cwd, push.deps));
+  const decision = pushWaitCheck(command, cwd, push.deps);
+  passes = decision.passes;
+  block("push-wait", decision.violation);
 }
 if (typeof filePath === "string") {
   const root = checkoutRoot(filePath, ROOT);
@@ -95,7 +101,12 @@ const logged = push && {
   ...push,
   deps: { ...push.deps, git: withBudget(push.deps.git, () => performance.now(), 6000) },
 };
-for (const { rule, decision, detail, minutes } of guardAllowLogs(command, process.env, logged)) {
+for (const { rule, decision, detail, minutes } of guardAllowLogs(
+  command,
+  process.env,
+  logged,
+  passes,
+)) {
   logHook("guard", rule, decision, { detail, minutes });
 }
 process.exit(0);
