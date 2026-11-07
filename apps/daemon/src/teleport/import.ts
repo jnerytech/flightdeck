@@ -6,7 +6,7 @@
  * repository, the transcript next to the other transcripts of that worktree (never over one this
  * host has), and the session resumes there. A failure leaves no worktree, branch or transcript.
  */
-import { constants } from "node:fs";
+import { constants, existsSync, readdirSync } from "node:fs";
 import { copyFile, mkdir, realpath, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { PermissionMode } from "@flightdeck/protocol";
@@ -228,6 +228,27 @@ export interface TeleportImportWiring {
   manager: { createResumed: TeleportImportDeps["resume"] };
 }
 
+/** The transcript of a session in any project folder of the history roots, or null. */
+function onDisk(roots: readonly string[], claudeSessionId: string): string | null {
+  // A session id is a UUID: a name with a separator or a dot never reaches the path.
+  if (!/^[0-9a-f-]{36}$/i.test(claudeSessionId)) return null;
+  for (const root of roots) {
+    // A root that is not there (yet) holds no transcript.
+    const folders = (() => {
+      try {
+        return readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory());
+      } catch {
+        return [];
+      }
+    })();
+    for (const folder of folders) {
+      const file = join(root, folder.name, `${claudeSessionId}.jsonl`);
+      if (existsSync(file)) return file;
+    }
+  }
+  return null;
+}
+
 /** The real deps of an import. */
 export function teleportImportDeps(wiring: TeleportImportWiring): TeleportImportDeps | undefined {
   // No place for the transcript on this host: no import (never a folder relative to the daemon).
@@ -239,7 +260,11 @@ export function teleportImportDeps(wiring: TeleportImportWiring): TeleportImport
     allowedRoots: wiring.allowedRoots,
     // Where Claude Code writes on this host: the first history root (`~/.claude/projects`).
     historyRoot,
-    transcriptOf: (claudeSessionId) => wiring.indexer?.transcriptFile(claudeSessionId) ?? null,
+    // The indexer scans every 10 s or more: a session created moments ago is on disk before it is
+    // in the index, so the history folders are read too (#715).
+    transcriptOf: (claudeSessionId) =>
+      wiring.indexer?.transcriptFile(claudeSessionId) ??
+      onDisk(wiring.historyRoots, claudeSessionId),
     resume: (opts) => wiring.manager.createResumed(opts),
   };
 }
