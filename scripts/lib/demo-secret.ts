@@ -4,10 +4,10 @@
  */
 
 /** A fake key the host's scanner masks; built from pieces so no source file holds a key-shaped text. */
-export const DEMO_FAKE_KEY = "not-a-key";
+export const DEMO_FAKE_KEY = ["sk", "demo".repeat(6)].join("-");
 
 /** The file with that line, as the demo commits it to alfa's repository. */
 export const DEMO_SECRET_FILE: { name: string; text: string } = {
-  name: "wrong.txt",
-  text: "",
+  name: "config.example.ts",
+  text: `export const apiKey = "${DEMO_FAKE_KEY}"; // chave de exemplo\nexport const retries = 3;\n`,
 };
