@@ -25,7 +25,8 @@ const TITLE = "Flightdeck";
  * the web build asks for them again after a reload. Deep links arrive as `#link=<encoded url>`.
  */
 /** The web build has no shell: an API provider is "not configured", as a refusal the app already translates. */
-const NOT_HERE = { reason: "assistant_not_configured" };
+const notHere = () =>
+  Object.assign(new Error("assistant_not_configured"), { reason: "assistant_not_configured" });
 
 export function createWebPlatform(
   win: WebWindow = window as unknown as WebWindow,
@@ -39,11 +40,11 @@ export function createWebPlatform(
     assistant: {
       supported: false,
       keyStatus: async () => ({ saved: false }),
-      setKey: () => Promise.reject(NOT_HERE),
+      setKey: () => Promise.reject(notHere()),
       deleteKey: async () => {},
-      test: () => Promise.reject(NOT_HERE),
+      test: () => Promise.reject(notHere()),
       models: async () => [],
-      run: () => Promise.reject(NOT_HERE),
+      run: () => Promise.reject(notHere()),
       cancel: async () => {},
       vaultHits: async () => [],
     },

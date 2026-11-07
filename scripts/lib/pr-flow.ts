@@ -528,6 +528,12 @@ function runFailed(run: MainRun): boolean {
   );
 }
 
+/**
+ * The job a dispatched full run must pass: since #296 it merges the six shard jobs into the 100%
+ * gate, and fails closed when one is missing (ci-shards.test.ts pins the pairing).
+ */
+export const FULL_SUITE_JOB = "test suite (ubuntu-latest)";
+
 /** Every CI run of a commit on main, of any event: a push's, the schedule's, a dispatch's. */
 async function mainRuns(sha: string, deps: PrFlowDeps): Promise<MainRun[]> {
   const listed = await deps.gh([
@@ -556,11 +562,7 @@ async function fullGreen(runs: MainRun[], deps: PrFlowDeps): Promise<boolean> {
       ".jobs[] | {name, conclusion}",
     ]);
     const list = jsonLines<{ name: string; conclusion: string | null }>(jobs.stdout);
-    if (
-      list.some(
-        (j) => j.name.startsWith("test suite (ubuntu-latest)") && j.conclusion === "success",
-      )
-    ) {
+    if (list.some((j) => j.name.startsWith(FULL_SUITE_JOB) && j.conclusion === "success")) {
       return true;
     }
   }

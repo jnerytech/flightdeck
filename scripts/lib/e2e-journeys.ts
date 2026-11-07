@@ -44,6 +44,7 @@ export const JOURNEYS: readonly string[] = [
   "teleport-mover",
   "time-novo-alcance",
   "board-arquivos",
+  "sessao-vistas",
   "ranking-home",
 ];
 
