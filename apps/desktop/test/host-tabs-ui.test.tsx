@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { tabName } from "./tab-names.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -33,17 +34,17 @@ const tabs = () => {
   const row = screen.queryByRole("tablist", { name: "Abas" });
   return row ? within(row).queryAllByRole("tab") : [];
 };
-const names = () => tabs().map((tab) => tab.getAttribute("aria-label") ?? tab.textContent);
+const names = () => tabs().map((tab) => tabName(tab));
 const selected = () =>
   tabs()
     .filter((tab) => tab.getAttribute("aria-selected") === "true")
-    .map((tab) => tab.getAttribute("aria-label") ?? tab.textContent);
+    .map((tab) => tabName(tab));
 const switcher = () => document.querySelector<HTMLElement>(".top-bar-host");
 
 describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
   test("the shared tabs sit first, then the active host's own", async () => {
     const store = await mount();
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos"]);
     expect(selected()).toEqual(["Projetos"]);
     // The shared tab has no ×: it belongs to no host.
     expect(screen.queryByLabelText("Fechar aba Sessões")).toBeNull();
@@ -59,12 +60,12 @@ describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
     expect(selected()).toEqual(["Sessões"]);
     expect(store.hostTabs.onShared).toBe(true);
     // The host's tabs stay in the row, none of them selected, and the switcher keeps the last host.
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos"]);
     expect(store.activeHostId()).toBe("ha");
     await act(async () => {
       fireEvent.click(tabs()[1] as HTMLElement);
     });
-    expect(selected()).toEqual(["alfa"]);
+    expect(selected()).toEqual(["Histórico"]);
     expect(store.hostTabs.onShared).toBe(false);
   });
 
@@ -74,13 +75,13 @@ describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
       store.router.push({ name: "history", host: "hb" });
     });
     expect(store.activeHostId()).toBe("hb");
-    expect(names()).toEqual(["Sessões", "beta"]);
+    expect(names()).toEqual(["Sessões", "Histórico"]);
     expect(switcher()?.getAttribute("aria-label") ?? "").toContain("beta");
     // alfa kept its own tabs.
     await act(async () => {
       store.pickHost("ha");
     });
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos"]);
     expect(selected()).toEqual(["Projetos"]);
   });
 
@@ -100,7 +101,7 @@ describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
     });
     expect(store.activeHostId()).toBe("hb");
     expect(store.router.current).toEqual({ name: "host", host: "hb" });
-    expect(names()).toEqual(["Sessões", "beta"]);
+    expect(names()).toEqual(["Sessões", "Visão geral"]);
   });
 
   test("a new tab is the active host's Overview, one more each time", async () => {

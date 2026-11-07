@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { tabName } from "./tab-names.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
@@ -12,8 +13,7 @@ const { App } = await import("../src/ui/App.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
-const names = () =>
-  screen.queryAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.textContent);
+const names = () => screen.queryAllByRole("tab").map((tab) => tabName(tab));
 const tab = (name: string) =>
   screen.queryAllByRole("tab").find((el) => (el.textContent ?? "").includes(name)) as HTMLElement;
 
@@ -48,34 +48,37 @@ describe("abas-ordenar: reordenar pelo teclado", () => {
     const middle = tab("Projetos");
     middle.focus();
     await press(middle, "ArrowRight");
-    expect(names()).toEqual(["Sessões", "alfa", "Aprovações automáticas", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Aprovações automáticas", "Projetos"]);
     expect(document.activeElement).toBe(tab("Projetos"));
     await press(tab("Projetos"), "ArrowLeft");
     await press(tab("Projetos"), "ArrowLeft");
-    expect(names()).toEqual(["Sessões", "Projetos", "alfa", "Aprovações automáticas"]);
+    expect(names()).toEqual(["Sessões", "Projetos", "Histórico", "Aprovações automáticas"]);
     expect(document.activeElement).toBe(tab("Projetos"));
   });
 
   test("at the end of the group the key does nothing; without Ctrl and Shift it is not a move", async () => {
     await three();
     // The first tab of the host does not cross into the shared tabs on its left.
-    await press(tab("alfa"), "ArrowLeft");
+    await press(tab("Histórico"), "ArrowLeft");
     await press(tab("Aprovações automáticas"), "ArrowRight");
-    await press(tab("alfa"), "ArrowRight", { ctrlKey: false });
-    await press(tab("alfa"), "ArrowRight", { shiftKey: false });
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos", "Aprovações automáticas"]);
+    await press(tab("Histórico"), "ArrowRight", { ctrlKey: false });
+    await press(tab("Histórico"), "ArrowRight", { shiftKey: false });
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos", "Aprovações automáticas"]);
   });
 
   test("a pinned tab does not cross the unpinned ones", async () => {
     const { store } = await three();
     await act(async () => store.tabs.pin(store.tabs.tabs[0]?.id ?? "", true));
     await press(tab("Projetos"), "ArrowLeft");
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos", "Aprovações automáticas"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos", "Aprovações automáticas"]);
   });
 
   test("a move is announced to a screen reader with the new place", async () => {
     await three();
-    expect(screen.queryByRole("status", { name: "Posição das abas" })?.textContent ?? "").toBe("");
+    // Choosing the host spoke its name and tabs; nothing about a move yet.
+    expect(screen.queryByRole("status", { name: "Posição das abas" })?.textContent).toBe(
+      "alfa: 3 abas",
+    );
     await press(tab("Aprovações automáticas"), "ArrowLeft");
     expect(screen.queryByRole("status", { name: "Posição das abas" })?.textContent).toBe(
       "Aba Aprovações automáticas movida para a posição 2 de 3",
@@ -101,7 +104,7 @@ describe("abas-ordenar: arrastar e guardar", () => {
       fireEvent.drop(last as HTMLElement);
     });
     expect(document.querySelector("[data-drop]")).toBeNull();
-    expect(names()).toEqual(["Sessões", "Projetos", "Aprovações automáticas", "alfa"]);
+    expect(names()).toEqual(["Sessões", "Projetos", "Aprovações automáticas", "Histórico"]);
   });
 
   test("a tab dragged leftwards marks the drop place before the tab it is over, and drops there", async () => {
@@ -118,7 +121,7 @@ describe("abas-ordenar: arrastar e guardar", () => {
     await act(async () => {
       fireEvent.drop(first as HTMLElement);
     });
-    expect(names()).toEqual(["Sessões", "Aprovações automáticas", "alfa", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Aprovações automáticas", "Histórico", "Projetos"]);
   });
 
   test("a drag that ends elsewhere clears the mark", async () => {
@@ -133,19 +136,19 @@ describe("abas-ordenar: arrastar e guardar", () => {
       fireEvent.dragEnd(first as HTMLElement);
     });
     expect(document.querySelector("[data-drop]")).toBeNull();
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos", "Aprovações automáticas"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos", "Aprovações automáticas"]);
   });
 
   test("the order is kept: a new window opens the tabs as they were left", async () => {
     const { platform } = await three();
     await press(tab("Aprovações automáticas"), "ArrowLeft");
     await press(tab("Aprovações automáticas"), "ArrowLeft");
-    expect(names()).toEqual(["Sessões", "Aprovações automáticas", "alfa", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Aprovações automáticas", "Histórico", "Projetos"]);
     cleanup();
     render(<App store={new AppStore(platform.platform, { baseDelayMs: 600_000 })} />);
     // The host's name arrives once the hosts are loaded; the order is what was kept.
     await waitFor(() =>
-      expect(names().join("|")).toBe("Sessões|Aprovações automáticas|alfa|Projetos"),
+      expect(names().join("|")).toBe("Sessões|Aprovações automáticas|Histórico|Projetos"),
     );
   });
 });
