@@ -234,7 +234,7 @@ export function FieldRow(
     slot?: string;
   }>,
 ) {
-  // One line per disabled button, in the order they first said why (#732): two buttons off at
+  // One line per disabled button, in the order they said why (#732): two buttons off at
   // once each keep their own reason, and enabling one drops only its line.
   const [reasons, setReasons] = useState<ReadonlyArray<RowReason>>([]);
   const setReason = useCallback((id: string, text: string | null) => {
@@ -265,16 +265,17 @@ interface RowReason {
   text: string;
 }
 
-/** The row's reasons with the one of `id` set, replaced or removed; the same list when unchanged. */
+/**
+ * The row's reasons with the one of `id` taken out and, when it has a text, put back at the end. A
+ * button's changed reason comes as its old one taken out (the effect's cleanup), then the new one.
+ */
 function withReason(
   list: ReadonlyArray<RowReason>,
   id: string,
   text: string | null,
 ): ReadonlyArray<RowReason> {
-  const at = list.findIndex((reason) => reason.id === id);
-  if (text === null) return at < 0 ? list : list.filter((reason) => reason.id !== id);
-  if (at < 0) return [...list, { id, text }];
-  return list[at]?.text === text ? list : list.map((r, i) => (i === at ? { id, text } : r));
+  const rest = list.filter((reason) => reason.id !== id);
+  return text === null ? rest : [...rest, { id, text }];
 }
 
 interface FieldRowSlot {
