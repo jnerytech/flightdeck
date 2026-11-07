@@ -130,7 +130,10 @@ function collect(input: GateInput): { shards: Shard[]; problems: string[] } {
   }
   const missing = input.tests.filter((t) => !ran.includes(t));
   if (missing.length > 0) {
-    problems.push(`${missing.length} test file(s) ran in no shard: ${missing.join(", ")}`);
+    const more = missing.length > 10 ? ` and ${missing.length - 10} more` : "";
+    problems.push(
+      `${missing.length} test file(s) ran in no shard: ${missing.slice(0, 10).join(", ")}${more}`,
+    );
   }
   const twice = [...new Set(ran.filter((t, k) => ran.indexOf(t) !== k))];
   if (twice.length > 0) {
@@ -171,7 +174,7 @@ function functionsOf(
 /** The merged verdict and lcov, or the problems that leave the gate closed. */
 export function shardGate(input: GateInput): GateResult {
   const { shards, problems: closed } = collect(input);
-  if (closed.length > 0) return { problems: closed, lcov: "", closed: false };
+  if (closed.length > 0) return { problems: closed, lcov: "", closed: true };
   const paths = [...new Set(shards.flatMap((s) => [...s.lcov.keys()]))];
   const problems: string[] = [];
   const report = new Map<string, FileCoverage>();

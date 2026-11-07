@@ -92,6 +92,13 @@ function merge(dir: string, count: number, lcovOut: string): number {
     mkdirSync(resolve(lcovOut, ".."), { recursive: true });
     writeFileSync(lcovOut, result.lcov);
   }
+  if (result.closed) {
+    console.error(
+      `the sharded run has no coverage verdict (${result.problems.length} problem(s)):`,
+    );
+    for (const problem of result.problems) console.error(`  - ${problem}`);
+    return 1;
+  }
   if (result.problems.length > 0) {
     console.error(`cobertura abaixo de 100% em ${result.problems.length} arquivo(s):`);
     for (const problem of result.problems) console.error(`  - ${problem}`);
