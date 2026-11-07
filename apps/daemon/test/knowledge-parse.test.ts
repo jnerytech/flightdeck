@@ -92,4 +92,33 @@ describe("knowledge-parse: the status, type and title of one document (#76)", ()
       "Phase thing",
     );
   });
+
+  test("front matter that is a text, a number or a list is a problem, not a crash", () => {
+    for (const front of ["hello", "42", "- a\n- b"]) {
+      expect(parseKnowledge("docs/adr/a.md", doc(front, "# Kept\n"))).toMatchObject({
+        title: "Kept",
+        status: "unclassified",
+        problems: ["frontmatter_invalid"],
+      });
+    }
+  });
+
+  test("a heading of a long run of spaces is read in linear time", () => {
+    const started = Date.now();
+    parseKnowledge("docs/adr/a.md", `# a${" ".repeat(30_000)}x\n`);
+    parseKnowledge("docs/adr/a.md", `# a${" ".repeat(30_000)}`);
+    expect(Date.now() - started < 500).toBe(true);
+  });
+
+  test("a title longer than 200 characters and a supersedes longer than 512 are cut or refused", () => {
+    const parsed = parseKnowledge(
+      "docs/adr/a.md",
+      doc(`status: valid\nsupersedes: ${"d/".repeat(300)}x.md`, `# ${"t".repeat(5_000)}\n`),
+    );
+    expect([parsed.title.length, parsed.supersedes, parsed.problems]).toEqual([
+      200,
+      null,
+      ["supersedes_invalid"],
+    ]);
+  });
 });

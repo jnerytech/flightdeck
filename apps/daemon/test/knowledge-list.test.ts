@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, symlink, writeFile } from "node:fs/promises";
+import { link, mkdir, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { listKnowledge } from "../src/knowledge/list.ts";
 import { startServer } from "../src/server.ts";
@@ -58,6 +58,22 @@ describe("knowledge-list: the library of a project, read only (#76)", () => {
     await put(root, "docs/adr/.env.md", front("valid"));
     const { entries } = await listKnowledge(root);
     expect(entries.map((e) => e.path)).toEqual(["docs/adr/ok.md"]);
+  });
+
+  test("a docs folder that is a link to somewhere outside is not walked", async () => {
+    const root = tempDir("fd-knowledge-");
+    const outside = tempDir("fd-knowledge-out-");
+    await put(outside, "adr/outside.md", front("valid", "# Outside\n"));
+    await symlink(outside, join(root, "docs"));
+    expect((await listKnowledge(root)).entries.map((e) => e.path)).toEqual([]);
+  });
+
+  test("a hard link to a file elsewhere is left out, and a plain document beside it stays", async () => {
+    const root = tempDir("fd-knowledge-");
+    await put(root, "private/notes.md", "# Private note\n");
+    await put(root, "docs/adr/ok.md", front("valid"));
+    await link(join(root, "private/notes.md"), join(root, "docs/adr/hard.md"));
+    expect((await listKnowledge(root)).entries.map((e) => e.path)).toEqual(["docs/adr/ok.md"]);
   });
 
   test("more documents than the cap are cut and the list says so", async () => {
