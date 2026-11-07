@@ -1,0 +1,312 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { liveScreen, registerDom } from "./dom.ts";
+import { memoryPlatform } from "./fixtures.ts";
+import { settle } from "./wait.ts";
+
+registerDom();
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { BoardView } = await import("../src/ui/BoardView.tsx");
+
+setDefaultTimeout(30_000);
+afterEach(cleanup);
+
+const host = {
+  id: "h1",
+  name: "alfa",
+  url: "ws://x",
+  token: "",
+  status: "online",
+  info: null,
+  hostInfo: { daemonVersion: "x", features: [] },
+  incompatibility: null,
+  daemonUpdate: null,
+  sessions: [],
+};
+
+const PR = { prUrl: "https://github.com/x/y/pull/1", prState: "open" };
+
+const card = (id: string, column: string, position: number, over: object = {}) => ({
+  id,
+  projectId: "p1",
+  title: id,
+  description: `about ${id}`,
+  column,
+  position,
+  createdAt: `2026-11-04T10:0${position}:00Z`,
+  waitingOn: [],
+  blocking: [],
+  branch: null,
+  worktreePath: null,
+  sessionId: null,
+  sessionStatus: null,
+  queued: false,
+  ...over,
+});
+
+const CARDS = [
+  card("A", "backlog", 1),
+  card("C", "backlog", 2),
+  // Ready for Review: a PR and passing checks.
+  card("P", "backlog", 3, { ...PR, checksState: "passing" }),
+  // In progress with no PR, and with criteria.
+  card("D", "in_progress", 1),
+  card("G", "in_progress", 2, { description: "Goal\n- [ ] it works" }),
+  // Already in Review with a PR whose checks fail, and with none at all.
+  card("F", "review", 1, { ...PR, checksState: "failing" }),
+  card("N", "review", 2),
+  card("E", "done", 1),
+];
+
+type Call = [string, string, unknown];
+
+function setup(options: { cards?: object[]; language?: "en" | "pt-BR" } = {}) {
+  const mem = memoryPlatform(false, options.language ?? "en");
+  const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+  store.i18n.start();
+  const internals = store as unknown as { update(p: object): void };
+  internals.update({ hosts: [host] });
+  internals.update({
+    cards: Object.fromEntries(
+      (options.cards ?? CARDS).map((c) => [`h1/${(c as { id: string }).id}`, c]),
+    ),
+  });
+  const commands: Call[] = [];
+  const requests: Call[] = [];
+  store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
+    commands.push([hostId, type, payload]);
+    if (type === "board.get") return { project: { id: "p1", name: "api" }, cards: [] };
+    return {};
+  }) as never;
+  store.hostRequest = (async (hostId: string, type: string, payload: unknown) => {
+    requests.push([hostId, type, payload]);
+    return { ok: true, data: {} };
+  }) as never;
+  render(
+    <BoardView
+      store={store}
+      hostId="h1"
+      projectId="p1"
+      onOpenCard={() => {}}
+      onOpenSettings={() => {}}
+    />,
+  );
+  const moves = () => commands.filter(([, type]) => type === "card.move");
+  return { store, commands, requests, moves };
+}
+
+const li = (title: string) => screen.getByLabelText(`Card ${title}`);
+const lane = (name: string) => screen.getByRole("region", { name });
+const click = (el: Element, init: object = {}) =>
+  act(async () => {
+    fireEvent.click(el, init);
+  });
+const ready = () => settle(() => screen.queryByRole("heading", { name: "Board of api" }) !== null);
+const dialog = () => screen.queryByRole("alertdialog");
+const dragTo = async (title: string, column: string) => {
+  await act(async () => {
+    fireEvent.dragStart(li(title));
+  });
+  await act(async () => {
+    fireEvent.drop(lane(column));
+  });
+};
+
+// Issue #78, slice 1: a column asks for what a card already carries; a person can go on anyway.
+describe("board-contracts-ui: Review asks for a PR and passing checks", () => {
+  test("dropping a card with no PR on Review asks first and names what it lacks", async () => {
+    const w = setup();
+    await ready();
+    await dragTo("A", "In review");
+    const ask = dialog();
+    expect(ask === null).toBe(false);
+    expect(within(ask as HTMLElement).getByText("Move to In review anyway?") === null).toBe(false);
+    expect((ask as HTMLElement).textContent).toContain("A lacks: a PR link");
+    expect(w.moves()).toEqual([]);
+  });
+
+  test("Move anyway moves it, and Cancel leaves it where it was", async () => {
+    const w = setup();
+    await ready();
+    await dragTo("A", "In review");
+    await click(within(dialog() as HTMLElement).getByRole("button", { name: "Cancel" }));
+    expect(dialog() === null).toBe(true);
+    expect(w.moves()).toEqual([]);
+    await dragTo("A", "In review");
+    await click(within(dialog() as HTMLElement).getByRole("button", { name: "Move anyway" }));
+    await settle(() => w.moves().length === 1);
+    expect(w.moves()).toEqual([["h1", "card.move", { cardId: "A", column: "review" }]]);
+  });
+
+  test("a card with a PR and passing checks moves with no question", async () => {
+    const w = setup();
+    await ready();
+    await dragTo("P", "In review");
+    expect(dialog() === null).toBe(true);
+    expect(w.moves()).toEqual([["h1", "card.move", { cardId: "P", column: "review" }]]);
+  });
+
+  test("running checks and failing checks are said as what they are", async () => {
+    const w = setup({
+      cards: [
+        card("R", "backlog", 1, { ...PR, checksState: "pending" }),
+        card("X", "backlog", 2, { ...PR, checksState: "failing" }),
+      ],
+    });
+    await ready();
+    await dragTo("R", "In review");
+    expect((dialog() as HTMLElement).textContent).toContain("R lacks: checks to finish");
+    await click(within(dialog() as HTMLElement).getByRole("button", { name: "Cancel" }));
+    await dragTo("X", "In review");
+    expect((dialog() as HTMLElement).textContent).toContain("X lacks: passing checks");
+    expect(w.moves()).toEqual([]);
+  });
+
+  test("the card's own Move to Review asks the same, by keyboard too", async () => {
+    const w = setup();
+    await ready();
+    await act(async () => {
+      fireEvent.pointerDown(within(li("A")).getByRole("button", { name: "Actions for A" }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
+    await click(await screen.findByRole("menuitem", { name: "Move to In review" }));
+    expect((dialog() as HTMLElement).textContent).toContain("A lacks: a PR link");
+    expect(w.moves()).toEqual([]);
+  });
+
+  test("moving within the column, or to a column that asks nothing, is never asked", async () => {
+    const w = setup();
+    await ready();
+    await dragTo("N", "In review");
+    await dragTo("A", "Done");
+    expect(dialog() === null).toBe(true);
+    expect(w.moves().length).toBe(2);
+  });
+});
+
+describe("board-contracts-ui: many cards, one question", () => {
+  const pick = async (...titles: string[]) => {
+    for (const title of titles) await click(li(title), { ctrlKey: true });
+  };
+  const moveSelectedToReview = async () => {
+    await act(async () => {
+      fireEvent.pointerDown(
+        within(screen.getByRole("group", { name: "Selection" })).getByRole("button", {
+          name: "Move to…",
+        }),
+        { button: 0, ctrlKey: false, pointerType: "mouse" },
+      );
+    });
+    await click(await screen.findByRole("menuitem", { name: "In review" }));
+  };
+
+  test("one dialog lists every card that lacks something, and what each lacks", async () => {
+    const w = setup();
+    await ready();
+    await pick("A", "C", "P");
+    await moveSelectedToReview();
+    const ask = dialog() as HTMLElement;
+    expect(ask === null).toBe(false);
+    expect(screen.queryAllByRole("alertdialog").length).toBe(1);
+    expect(ask.textContent).toContain("2 cards lack something In review needs");
+    expect(
+      within(ask)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["A — a PR link", "C — a PR link"]);
+    expect(w.requests).toEqual([]);
+  });
+
+  test("Move only the ones that qualify sends the card that has it all", async () => {
+    const w = setup();
+    await ready();
+    await pick("A", "C", "P");
+    await moveSelectedToReview();
+    await click(
+      within(dialog() as HTMLElement).getByRole("button", {
+        name: "Move only the ones that qualify",
+      }),
+    );
+    await settle(() => w.requests.length === 1);
+    expect(w.requests.map((r) => (r[2] as { cardId: string }).cardId)).toEqual(["P"]);
+  });
+
+  test("Move anyway sends them all, in the board's order", async () => {
+    const w = setup();
+    await ready();
+    await pick("A", "C", "P");
+    await moveSelectedToReview();
+    await click(within(dialog() as HTMLElement).getByRole("button", { name: "Move anyway" }));
+    await settle(() => w.requests.length === 3);
+    expect(w.requests.map((r) => (r[2] as { cardId: string }).cardId)).toEqual(["A", "C", "P"]);
+  });
+
+  test("when every card qualifies there is no question", async () => {
+    const w = setup({
+      cards: [
+        card("P", "backlog", 1, { ...PR, checksState: "passing" }),
+        card("Q", "backlog", 2, { ...PR, checksState: "passing" }),
+      ],
+    });
+    await ready();
+    await pick("P", "Q");
+    await moveSelectedToReview();
+    expect(dialog() === null).toBe(true);
+    await settle(() => w.requests.length === 2);
+  });
+});
+
+describe("board-contracts-ui: a card says what it lacks, and a column says what it asks", () => {
+  test("In progress never asks, and a card there without criteria wears Needs: acceptance criteria", async () => {
+    const w = setup();
+    await ready();
+    expect(within(li("D")).queryByText("Needs: acceptance criteria") === null).toBe(false);
+    expect(within(li("G")).queryByText("Needs: acceptance criteria") === null).toBe(true);
+    await dragTo("A", "In progress");
+    expect(dialog() === null).toBe(true);
+    expect(w.moves()).toEqual([["h1", "card.move", { cardId: "A", column: "in_progress" }]]);
+  });
+
+  test("a card in Review without a PR, or with failing checks, wears what it lacks", async () => {
+    setup();
+    await ready();
+    expect(within(li("N")).queryByText("Needs: a PR link") === null).toBe(false);
+    expect(within(li("F")).queryByText("Needs: passing checks") === null).toBe(false);
+  });
+
+  test("while a card is dragged, the columns that ask something say what; they stop when it lets go", async () => {
+    setup();
+    await ready();
+    await act(async () => {
+      fireEvent.dragStart(li("A"));
+    });
+    expect(lane("In review").textContent).toContain("Needs: a PR link");
+    expect(lane("In review").getAttribute("data-needs")).toBe("true");
+    expect(lane("In progress").textContent).toContain("Needs: acceptance criteria");
+    expect(lane("Done").getAttribute("data-needs")).toBeNull();
+    await act(async () => {
+      fireEvent.dragEnd(li("A"));
+    });
+    expect(lane("In review").getAttribute("data-needs")).toBeNull();
+    expect(lane("In review").textContent?.includes("Needs: a PR link while") ?? false).toBe(false);
+  });
+
+  test("it all reads in Portuguese too", async () => {
+    setup({ language: "pt-BR" });
+    await settle(() => screen.queryByRole("heading", { name: "Board de api" }) !== null);
+    await act(async () => {
+      fireEvent.dragStart(screen.getByLabelText("Card A"));
+    });
+    await act(async () => {
+      fireEvent.drop(screen.getByRole("region", { name: "Em revisão" }));
+    });
+    const ask = dialog() as HTMLElement;
+    expect(ask === null).toBe(false);
+    expect(ask.textContent).toContain("A não tem: um link de PR");
+    expect(within(ask).getByRole("button", { name: "Mover mesmo assim" }) === null).toBe(false);
+  });
+});
