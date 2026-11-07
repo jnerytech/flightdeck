@@ -17,7 +17,7 @@ describe("setup-live: the checklist learns from a real host (issue #164)", () =>
     const d = makeDaemon(cleanups);
     const asked: string[] = [];
     const real = HostConnection.prototype.request;
-    HostConnection.prototype.request = function (this: HostConnection, type: string, ...rest) {
+    HostConnection.prototype.request = function (this: unknown, type: string, ...rest) {
       if (type === "project.list") asked.push(type);
       return (real as (...args: unknown[]) => unknown).call(this, type, ...rest) as never;
     } as typeof real;
@@ -34,9 +34,10 @@ describe("setup-live: the checklist learns from a real host (issue #164)", () =>
     // The projects land in the probe, and the list the screens use (the sidebar tree reads it on
     // any page, #721) is filled from that same answer: one request, not two.
     await settle(() => store.getState().setupProbes[hostId]?.projects !== undefined);
-    expect(store.getState().projects[hostId]).toEqual(
-      store.getState().setupProbes[hostId]?.projects,
+    expect(store.getState().setupProbes[hostId]?.projects).toEqual(
+      store.getState().projects[hostId],
     );
+    expect(store.getState().projects[hostId]).toBeDefined();
     expect(asked).toEqual(["project.list"]);
     expect(store.getState().setupProbes[hostId]?.hooks).toBe("absent");
   });

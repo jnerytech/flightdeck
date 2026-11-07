@@ -3128,11 +3128,7 @@ export class AppStore {
   }
 
   /** Daemons without `host.info` (phase 1) answer with an error: the page says so. */
-  private async loadHostInfo(
-    hostId: string,
-    conn: HostConnection,
-    connect = false,
-  ): Promise<void> {
+  private async loadHostInfo(hostId: string, conn: HostConnection, connect = false): Promise<void> {
     const hostInfo = await conn.request("host.info", {}).catch(() => null);
     this.updateHost(hostId, (h) => {
       // Back on the version it was updating to: the update is over.

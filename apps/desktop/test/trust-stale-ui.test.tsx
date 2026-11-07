@@ -94,9 +94,9 @@ describe("trust-stale-ui: a live session says its trust was revoked and offers t
   test("the Restart link sits on the text line: it does not set a button's height of its own", async () => {
     const { store } = setup("en", false);
     render(notice(store, { stale: true }));
-    const classes = (await screen.findByRole("button", { name: "Restart session" })).className.split(
-      /\s+/,
-    );
+    const classes = (
+      await screen.findByRole("button", { name: "Restart session" })
+    ).className.split(/\s+/);
     expect(classes).toContain("h-auto");
     expect(classes).not.toContain("h-8");
     expect(classes).toContain("py-0");
