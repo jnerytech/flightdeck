@@ -89,9 +89,9 @@ const SENSITIVE: string[][] = [
 const segmentGlob = (segment: string) =>
   new RegExp(
     `^${segment
-      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/[.+^${}()|[\]\\]/g, String.raw`\$&`)
       .replace(/\*+/g, "[^/]*")
-      .replace(/\?/g, "[^/]")}$`,
+      .replaceAll("?", "[^/]")}$`,
     "i",
   );
 /** What a `?` may stand for, one character at a time. */
@@ -242,7 +242,7 @@ function pathLevel(
   // be made a folder once the rule is saved) are read with their subtree too (issue #395).
   const readings = pairs.flatMap(([reading, of]) =>
     !WILD.test(reading) && (reading.endsWith("/") || kind(of) !== "file")
-      ? [reading, `${reading.replace(/\/+$/, "")}/**`]
+      ? [reading, `${withoutTrailingSlashes(reading)}/**`]
       : [reading],
   );
   const wild = readings.some((reading) => WILD.test(reading));
@@ -278,11 +278,19 @@ export function ruleLevel(
   return classify(toolName, {});
 }
 
+/** A path as it is when absolute, else under the folder. */
+const underFolder = (cwd: string, path: string) => (isAbsolute(path) ? path : join(cwd, path));
+
+/** The path without the slashes at its end (a loop: a `/\/+$/` pattern backtracks on a long run). */
+function withoutTrailingSlashes(path: string): string {
+  let end = path.length;
+  while (end > 0 && path[end - 1] === "/") end--;
+  return path.slice(0, end);
+}
+
 /** Where a rule's path is: `~` and `~/` under the home, a relative path under the folder. */
 const place = (path: string, cwd: string, home: string) =>
-  normalize(
-    /^~(?=$|\/)/.test(path) ? join(home, path.slice(1)) : isAbsolute(path) ? path : join(cwd, path),
-  );
+  normalize(/^~(?=$|\/)/.test(path) ? join(home, path.slice(1)) : underFolder(cwd, path));
 
 /** A network path (`//host/share`, `\\host\share`): looking it up would reach another host. */
 const network = (path: string) => /^(?:\/\/|\\\\)/.test(path);
@@ -318,8 +326,7 @@ export async function pathKinds(
   const { timeoutMs = LOOKUP_MS, target } = options;
   const at = (path: string) => place(path, cwd, home);
   // A tool writes a relative path under its folder: the target never gets the `~/` reading.
-  const created =
-    target === undefined ? undefined : normalize(isAbsolute(target) ? target : join(cwd, target));
+  const created = target === undefined ? undefined : normalize(underFolder(cwd, target));
   const timed = (where: string) => within(stat(where), timeoutMs, "dir" as const);
   const looked = await Promise.all(
     [...new Set(paths)].slice(0, MAX_LOOKUPS).map(async (path) => {
@@ -371,7 +378,7 @@ export async function realPaths(
       const wild = segments.findIndex((segment) => WILD.test(segment));
       const fixed = (wild === -1 ? segments : segments.slice(0, wild)).join("/");
       const rest = wild === -1 ? "" : segments.slice(wild).join("/");
-      const trimmed = fixed.replace(/\/+$/, "");
+      const trimmed = withoutTrailingSlashes(fixed);
       // A leading wildcard starts at the folder itself; a network path is never looked up.
       if (trimmed === "" || network(reading)) return [reading, undefined] as const;
       const where = place(trimmed, cwd, home);
