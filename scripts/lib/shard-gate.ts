@@ -6,12 +6,13 @@
  * verdict at all, never 100%.
  */
 
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { testArgs } from "../test/timeout.ts";
 import { checkCoverage, type FileCoverage } from "./coverage-check.ts";
 import type { FunctionCoverage } from "./coverage-funcs.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
 import { TEST_FILE } from "./test-related.ts";
-import type { Timings } from "./test-shards.ts";
+import { splitShards, type Timings, testFiles } from "./test-shards.ts";
 
 /** What each shard job writes next to its data. */
 export interface ShardMarker {
@@ -154,7 +155,12 @@ function functionsOf(
   const first = maps[0];
   if (first) {
     const ids = Object.keys(first.fnMap);
-    if (maps.some((m) => Object.keys(m.fnMap).join() !== ids.join())) {
+    // Each function by id, name and line: the same count of other functions is not the same file.
+    const shape = (m: FunctionCoverage) =>
+      Object.entries(m.fnMap)
+        .map(([id, fn]) => `${id}:${fn.name}:${fn.line}`)
+        .join();
+    if (maps.some((m) => shape(m) !== shape(first))) {
       problems.push(`${path}: the shards disagree on its functions; run the suite whole`);
       return null;
     }
@@ -281,7 +287,45 @@ export async function runShard(
   out: string,
   deps: RunShardDeps,
 ): Promise<number> {
-  return spec.length + kind.length + out.length + deps.tracked.length < 0 ? 0 : 9;
+  const usage = "usage: bun run scripts/shard-gate.ts run <i>/<n> <bun|istanbul> <out>";
+  const parsed = /^(\d+)\/(\d+)$/.exec(spec);
+  const index = Number(parsed?.[1]);
+  const count = Number(parsed?.[2]);
+  if (!parsed || index < 1 || index > count || (kind !== "bun" && kind !== "istanbul")) {
+    deps.print(usage);
+    return 2;
+  }
+  // The istanbul preload writes its counters after each test file, and the repo guard fails a run
+  // that leaves a file in the checkout.
+  const inside = relative(deps.root, resolve(out));
+  if (!inside.startsWith("..") && !isAbsolute(inside)) {
+    deps.print(`shard-gate: write the shard's output outside the checkout, not in ${out}`);
+    return 2;
+  }
+  const files = splitShards(testFiles([...deps.tracked]), deps.timings, count)[index - 1] ?? [];
+  // A bun test with no file runs the whole suite.
+  if (files.length === 0) {
+    deps.print(`shard-gate: shard ${index}/${count} has no test files`);
+    return 2;
+  }
+  deps.mkdir(out);
+  const plan = shardRun(kind, files, out, istanbulTargets(deps.tracked));
+  const { exit, log } = await deps.spawn(plan.argv, plan.env);
+  deps.write(join(out, "test.log"), log);
+  const marker: ShardMarker = {
+    shard: index,
+    of: count,
+    kind,
+    files,
+    exit,
+    fail: failedCount(log),
+  };
+  deps.write(join(out, "marker.json"), JSON.stringify(marker));
+  for (const line of log.split("\n").filter((l) => /^\s*\d+ (pass|fail|skip)$|^Ran /.test(l))) {
+    deps.print(line);
+  }
+  deps.print(`shard ${index}/${count} ${kind}: ${files.length} test file(s), exit ${exit}`);
+  return exit;
 }
 
 /** What `mergeShards` touches: the artifact folders, the tracked files, the sources, the output. */
@@ -305,5 +349,36 @@ export function mergeShards(
   lcovOut: string,
   deps: MergeShardsDeps,
 ): number {
-  return dir.length + count + lcovOut.length + deps.sources.length < 0 ? 0 : 9;
+  const jobs: ShardJob[] = deps.folders(dir).map((name) => {
+    const at = join(dir, name);
+    let marker: ShardMarker | null = null;
+    try {
+      marker = JSON.parse(deps.read(join(at, "marker.json")) ?? "null") as ShardMarker | null;
+    } catch {
+      // A torn marker (a job killed while writing it) counts as none: the gate names it.
+    }
+    // The istanbul job leaves its counters, the bun job its lcov; a folder with no marker still counts.
+    const lcov = deps.read(join(at, "lcov.info"));
+    const funcs = deps.read(join(at, "funcs.json"));
+    if (!marker) return { marker: null, data: lcov ?? funcs };
+    return { marker, data: marker.kind === "istanbul" ? funcs : lcov };
+  });
+  const result = shardGate({
+    shards: count,
+    tests: testFiles([...deps.tracked]),
+    jobs,
+    sources: deps.sources,
+  });
+  if (result.lcov) deps.write(lcovOut, result.lcov);
+  if (result.problems.length === 0) {
+    deps.print(`cobertura 100% em ${deps.sources.length} arquivos-fonte, de ${count} shards`);
+    return 0;
+  }
+  deps.error(
+    result.closed
+      ? `the sharded run has no coverage verdict (${result.problems.length} problem(s)):`
+      : `cobertura abaixo de 100% em ${result.problems.length} arquivo(s):`,
+  );
+  for (const problem of result.problems) deps.error(`  - ${problem}`);
+  return 1;
 }
