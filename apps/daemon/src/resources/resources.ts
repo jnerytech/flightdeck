@@ -76,7 +76,10 @@ const BATCH = 32;
 const MAX_NAME = 32;
 const cleanName = (name: string) =>
   [...name]
-    .filter((ch) => ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) !== 127)
+    .filter((ch) => {
+      const code = ch.codePointAt(0) ?? 0;
+      return code >= 32 && code !== 127;
+    })
     .join("")
     .slice(0, MAX_NAME);
 
@@ -297,18 +300,17 @@ export class Resources {
     for (const session of active) push(sessionsByCwd, session.cwd, session);
     for (const [cwd, sessions] of sessionsByCwd) {
       const candidates = byCwd.get(cwd) ?? [];
-      sessions
-        .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
-        .forEach((session, index) => {
-          const root = candidates[index];
-          rows.push({
-            kind: "session",
-            id: session.id,
-            name: session.name,
-            cwd: session.cwd,
-            ...(root ? measure(tree(root)) : empty),
-          });
+      sessions.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+      sessions.forEach((session, index) => {
+        const root = candidates[index];
+        rows.push({
+          kind: "session",
+          id: session.id,
+          name: session.name,
+          cwd: session.cwd,
+          ...(root ? measure(tree(root)) : empty),
         });
+      });
     }
 
     const uptime = await proc.uptimeSec();
@@ -350,8 +352,7 @@ export class Resources {
     if (!listed || !this.opts.proc) throw refuse();
     const again = await this.opts.proc.stat(pid);
     if (
-      !again ||
-      again.startTicks !== startTicks ||
+      again?.startTicks !== startTicks ||
       again.ppid !== this.opts.ownPid ||
       cleanName(again.name) !== listed.name
     ) {
