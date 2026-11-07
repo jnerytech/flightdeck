@@ -109,8 +109,9 @@ function isSlotProcess(argv: string[]): boolean {
 
 /** Text from a lock or waiter file, or from /proc, kept to one plain line: control characters become spaces. */
 function oneLine(text: string): string {
+  // C1 too (#833 review): U+009B is CSI on the terminals that honor it.
   // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
-  return text.replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, " ");
+  return text.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, " ");
 }
 
 export type SlotArgs =
