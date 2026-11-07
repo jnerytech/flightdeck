@@ -3541,6 +3541,8 @@ export const ptBR = {
       "Mudou em outro lugar enquanto você editava: use a versão de lá para vê-la e edite de novo.",
     useTheirs: "Usar a de lá",
     detailsTitle: "Detalhes",
+    /** The card's details as a pane of their own once its conversation shows (#641). */
+    infoPane: "O card, acima da conversa",
     runTitle: "Execução",
     saveDescription: "Salvar descrição",
     title: "Título",
