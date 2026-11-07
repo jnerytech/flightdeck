@@ -189,6 +189,19 @@ describe("drift-gate: a round that leaves its PR is held, not pushed (#77)", () 
     ]).toEqual(["watch_held_moved", "watch_held_moved", "1", true]);
   });
 
+  test("a push or a reset git refuses is an error, and the round stays held", async () => {
+    const f = await strict();
+    const r = await round(f);
+    // The remote is gone, and so is what the branch was pushed as.
+    git(f.worktree, "remote", "set-url", "origin", join(f.root, "gone.git"));
+    git(f.worktree, "update-ref", "-d", `refs/remotes/origin/${f.branch}`);
+    expect([
+      await refusal(service(f).resolveHeld(f.card.id, r?.id ?? "", "push")),
+      await refusal(service(f).resolveHeld(f.card.id, r?.id ?? "", "drop")),
+      f.fixer.rounds(f.card.id).at(-1)?.status,
+    ]).toEqual(["command_failed", "command_failed", "held"]);
+  });
+
   test("a round that is not held is refused", async () => {
     const f = await fixture();
     const r = await round(f);
