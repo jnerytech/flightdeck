@@ -1669,6 +1669,8 @@ async function crumbsProblem(page: Page): Promise<string | null> {
   return page.evaluate(() => {
     const slot = document.querySelector<HTMLElement>(".header-crumbs");
     const nav = slot?.querySelector<HTMLElement>("nav");
+    // Under 640 px the page's own header carries the title: the bar draws no path (#641).
+    if (window.innerWidth < 640) return nav ? "a path is drawn under 640 px" : null;
     if (!slot || !nav) return "no breadcrumb";
     const limit = slot.getBoundingClientRect().right + 1;
     // Where the person is must stay readable: the current step never shrinks to nothing.
@@ -1696,6 +1698,11 @@ async function crumbsProblem(page: Page): Promise<string | null> {
  * The shared tabs are pinned and show only their icon (#644), so they are not counted.
  */
 async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
+  // Under 640 px the row is one button, the current tab's, that opens the list (#641).
+  if ((page.viewportSize()?.width ?? Number.POSITIVE_INFINITY) < 640) {
+    const button = page.getByRole("button", { name: /^(Todas as abas|All tabs) \(/ });
+    return (await button.count()) === 1 ? null : "no compact tab button";
+  }
   const widths = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>(".tab-item:not([data-pinned])")].map((tab) =>
       Math.round(tab.getBoundingClientRect().width),

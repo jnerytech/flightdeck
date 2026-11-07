@@ -16,7 +16,7 @@
         "title": "Flightdeck",
         "width": 1200,
         "height": 800,
-        "minWidth": 720,
+        "minWidth": 360,
         "minHeight": 480,
         "label": "main",
         "dragDropEnabled": false
