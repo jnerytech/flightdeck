@@ -331,6 +331,32 @@ describe("modo-chip: the chip shows the session's real mode (#935)", () => {
     ]);
   });
 
+  test("each session keeps its own pick: another session of the same start shows its own, and the first keeps its pick", async () => {
+    const { show } = live();
+    const pick = async (name: RegExp) => {
+      await open();
+      await click(row(name));
+    };
+    await show("acceptEdits");
+    await pick(/^Default/);
+    await show("acceptEdits", "h/s2");
+    const other = chip()?.textContent ?? "";
+    await pick(/^Plan/);
+    await show("acceptEdits", "h/s1");
+    expect([other.includes("Accept edits"), chip()?.textContent?.includes("Default")]).toEqual([
+      true,
+      true,
+    ]);
+  });
+
+  test("while the mode is unknown, no mode is blocked as looser than the start", async () => {
+    live();
+    await open();
+    expect([row(/^Accept edits/)?.getAttribute("aria-disabled") ?? "false", rows().length]).toEqual(
+      ["false", 4],
+    );
+  });
+
   test("a mode picked in one session does not follow the view to another session", async () => {
     const { show } = live();
     await show("default");
