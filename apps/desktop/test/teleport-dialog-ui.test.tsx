@@ -239,10 +239,9 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
   test("a session on no branch says so instead of a branch name", async () => {
     open("en", { ...SUMMARY, branch: null });
     await start("en");
-    expect([await shows("none (a detached HEAD)"), document.querySelector("bdi")]).toEqual([
-      true,
-      null,
-    ]);
+    expect([await shows("none (a detached HEAD)"), document.querySelector("bdi") === null]).toEqual(
+      [true, true],
+    );
   });
 
   test("progress past the total or with nothing to send stays between 0% and 100%", async () => {
