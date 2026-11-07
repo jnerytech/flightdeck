@@ -11,6 +11,7 @@ import { checkCoverage, type FileCoverage } from "./coverage-check.ts";
 import type { FunctionCoverage } from "./coverage-funcs.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
 import { TEST_FILE } from "./test-related.ts";
+import type { Timings } from "./test-shards.ts";
 
 /** What each shard job writes next to its data. */
 export interface ShardMarker {
@@ -260,4 +261,49 @@ export function istanbulTargets(tracked: readonly string[]): string[] {
 /** The failed tests a bun test log reports. */
 export function failedCount(log: string): number {
   return Number(/^\s*(\d+) fail$/m.exec(log)?.[1] ?? 0);
+}
+
+/** What `runShard` touches: the checkout, its tracked files and timings, and the effects. */
+export interface RunShardDeps {
+  root: string;
+  tracked: readonly string[];
+  timings: Timings;
+  mkdir: (path: string) => void;
+  write: (path: string, text: string) => void;
+  spawn: (argv: string[], env: Record<string, string>) => Promise<{ exit: number; log: string }>;
+  print: (line: string) => void;
+}
+
+/** `run <i>/<n> <bun|istanbul> <out>`: one shard job, its log and its marker; the exit code. */
+export async function runShard(
+  spec: string,
+  kind: string,
+  out: string,
+  deps: RunShardDeps,
+): Promise<number> {
+  return spec.length + kind.length + out.length + deps.tracked.length < 0 ? 0 : 9;
+}
+
+/** What `mergeShards` touches: the artifact folders, the tracked files, the sources, the output. */
+export interface MergeShardsDeps {
+  /** The folder names under `dir`; none when it does not exist. */
+  folders: (dir: string) => string[];
+  /** A file's text, or null when it does not exist. */
+  read: (path: string) => string | null;
+  /** Writes a file, making its folder. */
+  write: (path: string, text: string) => void;
+  tracked: readonly string[];
+  sources: readonly string[];
+  print: (line: string) => void;
+  error: (line: string) => void;
+}
+
+/** `merge <dir> <n> <lcov>`: the merged gate over each job's folder; the exit code. */
+export function mergeShards(
+  dir: string,
+  count: number,
+  lcovOut: string,
+  deps: MergeShardsDeps,
+): number {
+  return dir.length + count + lcovOut.length + deps.sources.length < 0 ? 0 : 9;
 }

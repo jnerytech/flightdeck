@@ -65,6 +65,11 @@ describe("ci-pyramid (#309)", () => {
     expect(shard?.name).toBe(
       "test shard ${{ matrix.shard }}/3 ${{ matrix.kind }} (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}",
     );
+    // The shards never use the token after checkout (#828 review).
+    const checkout = shard?.steps.find((s) =>
+      ((s as { uses?: string }).uses ?? "").startsWith("actions/checkout@"),
+    ) as { with?: Record<string, unknown> } | undefined;
+    expect(checkout?.with?.["persist-credentials"]).toBe(false);
     const run = shard?.steps.find((s) => (s.run ?? "").includes("shard-gate.ts run"));
     // Outside the checkout: the repo guard fails a test run that leaves a file in it.
     expect(run?.run).toBe(

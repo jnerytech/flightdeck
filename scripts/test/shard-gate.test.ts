@@ -5,6 +5,8 @@ import {
   failedCount,
   type GateInput,
   istanbulTargets,
+  mergeShards,
+  runShard,
   type ShardJob,
   type ShardMarker,
   shardGate,
@@ -217,6 +219,14 @@ describe("shard-gate: the merged 100% gate (#296)", () => {
     expect(gate(fns).problems).toEqual([
       "a.ts: the shards disagree on its functions; run the suite whole",
     ]);
+    // The same ids, but another function on another line (#828 review): not one file either.
+    const renamed = healthy();
+    const moved = functions([0, 0]);
+    moved.fnMap["1"] = { name: "other", line: 9 };
+    renamed[4] = ist(2, { "a.ts": moved });
+    expect(gate(renamed).problems).toEqual([
+      "a.ts: the shards disagree on its functions; run the suite whole",
+    ]);
   });
 });
 
@@ -373,6 +383,17 @@ describe("shard-gate: how a shard job runs (#296)", () => {
     expect(failedCount("crashed before the summary")).toBe(0);
   });
 
+  test("the istanbul job's file list fits one environment string with room to grow (#828 review)", () => {
+    // Linux caps one environment string at 128 KB (MAX_ARG_STRLEN); keep today's list under half.
+    const tracked = Bun.spawnSync(["git", "ls-files"])
+      .stdout.toString()
+      .split("\n")
+      .filter(Boolean);
+    const env = shardRun("istanbul", [], "/tmp/out", istanbulTargets(tracked)).env;
+    expect((env.COVERAGE_FUNCS_FILES ?? "").length).toBeGreaterThan(1000);
+    expect((env.COVERAGE_FUNCS_FILES ?? "").length).toBeLessThan(64 * 1024);
+  });
+
   test("bunfig.shard.toml is bunfig.related.toml with istanbul's preload first and Bun's coverage off", () => {
     type Config = { test: Record<string, unknown> };
     const related = Bun.TOML.parse(readFileSync("bunfig.related.toml", "utf8")) as Config;
@@ -395,5 +416,165 @@ describe("shard-gate: istanbul sees every source (#296)", () => {
     ]);
     const hooks = importsOf(readFileSync("scripts/lib/coverage-funcs-hooks.ts", "utf8"));
     expect(hooks).toEqual(["istanbul-lib-instrument"]);
+  });
+});
+
+describe("shard-gate run: one shard job (#296, #828 review)", () => {
+  const TRACKED = ["a.test.ts", "b.test.ts", "c.test.ts", "src/x.ts"];
+  function fakes(result = { exit: 0, log: " 1 pass\n 0 fail\nRan 1 test across 1 file." }) {
+    const written = new Map<string, string>();
+    const spawned: Array<{ argv: string[]; env: Record<string, string> }> = [];
+    const printed: string[] = [];
+    return {
+      written,
+      spawned,
+      printed,
+      deps: {
+        root: "/repo",
+        tracked: TRACKED,
+        timings: { "a.test.ts": 1, "b.test.ts": 1, "c.test.ts": 1 },
+        mkdir: () => {},
+        write: (path: string, text: string) => written.set(path, text),
+        spawn: async (argv: string[], env: Record<string, string>) => {
+          spawned.push({ argv, env });
+          return result;
+        },
+        print: (line: string) => printed.push(line),
+      },
+    };
+  }
+
+  test("runs the shard's test files, keeps the log, and writes the marker the merge reads", async () => {
+    const f = fakes();
+    expect(await runShard("2/3", "bun", "/tmp/out", f.deps)).toBe(0);
+    expect(f.spawned).toEqual([shardRun("bun", ["b.test.ts"], "/tmp/out", ["src/x.ts"])]);
+    expect(f.written.get("/tmp/out/test.log")).toContain("1 pass");
+    expect(JSON.parse(f.written.get("/tmp/out/marker.json") ?? "")).toEqual({
+      shard: 2,
+      of: 3,
+      kind: "bun",
+      files: ["b.test.ts"],
+      exit: 0,
+      fail: 0,
+    });
+    expect(f.printed.at(-1)).toBe("shard 2/3 bun: 1 test file(s), exit 0");
+  });
+
+  test("a failed test run keeps its exit code and failed count in the marker", async () => {
+    const f = fakes({ exit: 1, log: " 0 pass\n 2 fail\n" });
+    expect(await runShard("1/3", "istanbul", "/tmp/out", f.deps)).toBe(1);
+    expect(JSON.parse(f.written.get("/tmp/out/marker.json") ?? "")).toMatchObject({
+      exit: 1,
+      fail: 2,
+    });
+  });
+
+  test("a shard that is not one of n, an unknown kind, or an empty shard is refused before anything runs", async () => {
+    for (const [spec, kind] of [
+      ["0/3", "bun"],
+      ["4/3", "bun"],
+      ["1.5/3", "bun"],
+      ["x", "bun"],
+      ["1/3", "jest"],
+    ] as const) {
+      const f = fakes();
+      expect(await runShard(spec, kind, "/tmp/out", f.deps)).toBe(2);
+      expect(f.spawned).toEqual([]);
+    }
+    // Four shards of three test files: the fourth is empty, and an empty bun test runs everything.
+    const empty = fakes();
+    expect(await runShard("4/4", "bun", "/tmp/out", empty.deps)).toBe(2);
+    expect(empty.printed).toEqual(["shard-gate: shard 4/4 has no test files"]);
+    expect(empty.spawned).toEqual([]);
+  });
+
+  test("an output folder inside the checkout, or the checkout itself, is refused", async () => {
+    for (const out of ["out", "/repo/out", "/repo", "."]) {
+      const f = fakes();
+      f.deps.root = process.cwd();
+      const at = out.startsWith("/repo") ? out.replace("/repo", process.cwd()) : out;
+      expect(await runShard("1/3", "bun", at, f.deps)).toBe(2);
+      expect(f.printed[0]).toContain("write the shard's output outside the checkout");
+      expect(f.spawned).toEqual([]);
+    }
+  });
+});
+
+describe("shard-gate merge: the six job folders into the gate (#296, #828 review)", () => {
+  /** The healthy jobs as folders on disk: marker.json plus lcov.info or funcs.json. */
+  function disk(jobs: ShardJob[], extra: Record<string, string> = {}) {
+    const files = new Map<string, string>(Object.entries(extra));
+    jobs.forEach((job, i) => {
+      const name = `/art/job-${i}`;
+      if (job.marker) files.set(`${name}/marker.json`, JSON.stringify(job.marker));
+      if (job.data !== null) {
+        files.set(
+          `${name}/${job.marker?.kind === "istanbul" ? "funcs.json" : "lcov.info"}`,
+          job.data,
+        );
+      }
+    });
+    const written = new Map<string, string>();
+    const printed: string[] = [];
+    const errors: string[] = [];
+    const folders = () => [...new Set([...files.keys()].map((p) => p.split("/")[2] as string))];
+    return {
+      written,
+      printed,
+      errors,
+      deps: {
+        folders: (dir: string) => (dir === "/art" ? folders() : []),
+        read: (path: string) => files.get(path) ?? null,
+        write: (path: string, text: string) => written.set(path, text),
+        tracked: TESTS,
+        sources: ["a.ts"],
+        print: (line: string) => printed.push(line),
+        error: (line: string) => errors.push(line),
+      },
+    };
+  }
+
+  test("six healthy jobs pass, and the merged lcov is written for SonarCloud", () => {
+    const d = disk(healthy());
+    expect(mergeShards("/art", 3, "/out/lcov.info", d.deps)).toBe(0);
+    expect(d.written.get("/out/lcov.info")).toBe(gate(healthy()).lcov);
+    expect(d.printed).toEqual(["cobertura 100% em 1 arquivos-fonte, de 3 shards"]);
+  });
+
+  test("a coverage gap fails with check-coverage.ts's header, and the lcov is still written", () => {
+    const jobs = healthy();
+    jobs[2] = bun(
+      3,
+      record(
+        "a.ts",
+        [0, 2],
+        [
+          [1, 0],
+          [2, 0],
+        ],
+      ),
+    );
+    jobs[5] = ist(3, { "a.ts": functions([0, 0]) });
+    const d = disk(jobs);
+    expect(mergeShards("/art", 3, "/out/lcov.info", d.deps)).toBe(1);
+    expect(d.errors).toEqual([
+      "cobertura abaixo de 100% em 1 arquivo(s):",
+      "  - a.ts: funções 1/2, linhas 1/2",
+    ]);
+    expect(d.written.has("/out/lcov.info")).toBe(true);
+  });
+
+  test("no folder at all, or a truncated marker, gives no verdict and names why", () => {
+    const none = disk([]);
+    none.deps.folders = () => [];
+    expect(mergeShards("/art", 3, "/out/lcov.info", none.deps)).toBe(1);
+    expect(none.errors[0]).toBe("the sharded run has no coverage verdict (7 problem(s)):");
+    expect(none.written.size).toBe(0);
+    const torn = disk(healthy(), { "/art/torn/marker.json": '{"shard": 1, "of"' });
+    expect(mergeShards("/art", 3, "/out/lcov.info", torn.deps)).toBe(1);
+    expect(torn.errors).toEqual([
+      "the sharded run has no coverage verdict (1 problem(s)):",
+      "  - a shard job left a report with no marker",
+    ]);
   });
 });
