@@ -682,6 +682,30 @@ export function pushViolation(command: string, cwd: string, deps: PushGuardDeps)
   return null;
 }
 
+/** The latest pull-request CI run of a branch, as the push-wait rule reads it (#741). */
+export interface PrRun {
+  id: number;
+  inProgress: boolean;
+  /** A job of the run has failed already. */
+  failed: boolean;
+  /** Minutes since the run started. */
+  minutes: number;
+}
+
+export interface PushWaitDeps extends PushGuardDeps {
+  /** The branch's latest PR run, or null when it has none or GitHub cannot be read (fail open). */
+  prRun: (branch: string) => PrRun | null;
+}
+
+/** Why a push would cancel a PR run that is still green (#741), or null. */
+export function pushWaitViolation(
+  _command: string,
+  _cwd: string,
+  _deps: PushWaitDeps,
+): string | null {
+  return null;
+}
+
 const OWN_BRANCHES =
   "sessions push only their own work branches; the coordinator pushes main, rc/* and tags (CLAUDE.md).";
 /** `git push` options that take their value as the next word. */
