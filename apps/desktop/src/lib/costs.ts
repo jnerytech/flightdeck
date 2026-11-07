@@ -51,7 +51,7 @@ export function projectLabel(key: string): string {
  * The label of each project key, told apart when two read the same: the host when the hosts
  * differ (`docs-site · alfa`), else the parent folder (`b/docs-site`), both when neither is enough.
  */
-export function projectLabels(keys: string[]): Map<string, string> {
+export function projectLabels(keys: string[], _known: readonly string[] = []): Map<string, string> {
   const byLabel = new Map<string, string[]>();
   for (const key of keys)
     byLabel.set(projectLabel(key), [...(byLabel.get(projectLabel(key)) ?? []), key]);
