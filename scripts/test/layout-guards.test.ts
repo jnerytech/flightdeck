@@ -681,7 +681,8 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
     const journeys = readFileSync(join(import.meta.dir, "../e2e/journeys.ts"), "utf8");
     expect({
       named:
-        areas.includes(`data-slot="${PAGE_AREA}"`) && areas.includes(`className="${PAGE_AREA}"`),
+        areas.includes(`data-slot="${PAGE_AREA}"`) &&
+        areas.includes(`className="@container ${PAGE_AREA}"`),
       scrolls: rule.includes("overflow-y: auto"),
       notAroundPage: /&:has\(\[data-slot="page"\]\) \{\s*overflow: hidden;/.test(rule),
       guarded: journeys.includes("pageArea: PAGE_AREA"),
