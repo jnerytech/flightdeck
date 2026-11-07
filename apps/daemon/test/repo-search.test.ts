@@ -530,6 +530,35 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     expect([outcome, ran]).toEqual(["search_superseded", []]);
   });
 
+  test("an aborted search frees its slot at once, before its programs have ended (#905)", async () => {
+    const { repo } = await setup();
+    const gate = Promise.withResolvers<void>();
+    // The held searches ignore the abort and end only when the gate opens: a slow kill.
+    const run: typeof import("../src/board/command.ts").runLimited = async (cmd) => {
+      if (cmd.includes("held")) await gate.promise;
+      return { code: 1, stdout: "", stderr: "", truncated: false };
+    };
+    const held = { mode: "content", query: "held" } as const;
+    const extra = { mode: "content", query: "extra" } as const;
+    const controller = new AbortController();
+    const running = Array.from({ length: MAX_SEARCHES }, (_, i) =>
+      searchRepository(repo, held, {
+        rg: () => "rg",
+        run,
+        ...(i === 0 ? { signal: controller.signal } : {}),
+      }).catch((error: { reason?: string }) => error.reason ?? "error"),
+    );
+    controller.abort();
+    const next = await failure(searchRepository(repo, extra, { rg: () => "rg", run }));
+    gate.resolve();
+    const ended = await Promise.all(running);
+    expect([next, ended[0], ended.slice(1).every((r) => typeof r !== "string")]).toEqual([
+      "ok",
+      "search_superseded",
+      true,
+    ]);
+  });
+
   test("a new search on a connection aborts that connection's earlier one, and another connection's is left alone (#905)", async () => {
     const ctx = await setup();
     const started = Promise.withResolvers<void>();
