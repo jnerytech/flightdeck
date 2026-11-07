@@ -259,6 +259,21 @@ describe("teleport-import: a received package becomes a session on this host (#1
     ]).toEqual(["teleport_exists", "this host's own\n", "request_invalid", [1, "", ""]]);
   });
 
+  test("a folder inside the roots whose repository is outside them is refused before git writes a thing", async () => {
+    const pkg = await packaged();
+    const { repo, history, deps } = target(pkg);
+    const sub = join(repo, "sub");
+    await mkdir(sub);
+    const narrow = { ...deps, allowedRoots: [sub] };
+    expect([
+      await reason(() => importPackage(narrow, "in-1", sub)),
+      await leftovers(repo, history),
+      await readFile(join(repo, ".git", "info", "exclude"), "utf8")
+        .then((text) => text.includes(".flightdeck"))
+        .catch(() => false),
+    ]).toEqual(["cwd_outside_roots", [1, "", "", []], false]);
+  });
+
   test("a mode that asks less arrives as the default, and the bundle's LFS files are never fetched", async () => {
     const pkg = await packaged({ permissionMode: "acceptEdits" }, { lfs: true });
     const { repo, deps, calls } = target(pkg);
@@ -268,11 +283,16 @@ describe("teleport-import: a received package becomes a session on this host (#1
     await writeFile(smudge, `#!/bin/sh\ntouch "${join(marks, "ran")}"\ncat\n`, { mode: 0o755 });
     git(repo, "config", "filter.lfs.smudge", smudge);
     git(repo, "config", "filter.lfs.required", "true");
-    await importPackage(deps, "in-1", repo).catch(() => undefined);
+    const done = await importPackage(deps, "in-1", repo).catch((e: Error) => ({
+      sessionId: String(e),
+      worktree: "",
+    }));
     expect([
+      done.sessionId,
+      await readFile(join(done.worktree, "data.bin"), "utf8").catch(() => "missing"),
       (calls.resumed[0] as { permissionMode?: string } | undefined)?.permissionMode,
       (await readdir(marks)).includes("ran"),
-    ]).toEqual(["default", false]);
+    ]).toEqual(["t1", "version https://git-lfs.github.com/spec/v1\n", "default", false]);
   });
 
   test("a transcript that cannot be copied is that failure, not a session already here, and nothing is left", async () => {
