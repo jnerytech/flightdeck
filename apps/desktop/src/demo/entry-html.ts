@@ -17,7 +17,7 @@ export function entryPlugin(entry: string | undefined) {
   return {
     name: "flightdeck-entry",
     transformIndexHtml: {
-      order: undefined as "pre" | undefined,
+      order: "pre" as const,
       handler: (html: string) => entryHtml(html, entry),
     },
   };

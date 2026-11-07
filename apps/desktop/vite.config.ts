@@ -2,22 +2,14 @@ import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { entryHtml } from "./src/demo/entry-html.ts";
+import { entryPlugin } from "./src/demo/entry-html.ts";
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     // FLIGHTDECK_ENTRY=web serves the browser entry (the demo and its prints); the app's is Tauri's.
-    {
-      name: "flightdeck-entry",
-      // "pre": the build reads the module scripts from index.html before a later hook runs, so
-      // the swap must come first or `vite build` bundles the Tauri entry (#444).
-      transformIndexHtml: {
-        order: "pre",
-        handler: (html) => entryHtml(html, process.env.FLIGHTDECK_ENTRY),
-      },
-    },
+    entryPlugin(process.env.FLIGHTDECK_ENTRY),
   ],
   // `@/` is src/ (shadcn/ui's generated code imports through it); tsconfig has the same path.
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
