@@ -211,6 +211,19 @@ describe("hook-commit-gate", () => {
     expect(quoted.calls[0]).toBe(`${resolve(CWD, "../my dir")}: rev-parse HEAD`);
   });
 
+  test("#759 review: a quoted cd folder reads as the shell reads it; one the hook cannot read is skipped", () => {
+    // In double quotes the shell drops a backslash only before $ ` " \ or a newline.
+    const kept = repo([]);
+    commitViolation('cd "../a\\b\\$c" && git commit -m "feat(a): x (#1)"', CWD, kept);
+    expect(kept.calls[0]).toBe(`${resolve(CWD, "../a\\b$c")}: rev-parse HEAD`);
+    // ANSI-C quoting and a command substitution are not read: the commit is not checked there.
+    for (const cd of ["cd $'../x'", "cd `pwd`"]) {
+      const skipped = repo([]);
+      expect(commitViolation(`${cd} && git commit -m "feat(a): x (#1)"`, CWD, skipped)).toBeNull();
+      expect(skipped.calls).toEqual([]);
+    }
+  });
+
   test("a commit in a repository that is not this project's is never checked", () => {
     // Resolved as the gate resolves it, so the case holds on Windows too.
     const foreign = { ...repo([]), inProject: (dir: string) => dir !== resolve("/tmp/poc") };
