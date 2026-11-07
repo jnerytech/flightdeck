@@ -399,7 +399,11 @@ export class Teams {
     });
     const coordinatorModel = input.coordinatorModel ?? null;
     const coordinatorPermission = input.coordinatorPermission ?? null;
-    this.checkPermissions([coordinatorPermission, ...(input.workerPermissions ?? [])]);
+    // Only the modes of workers the team has: a longer list is not used, so it is not refused either.
+    this.checkPermissions([
+      coordinatorPermission,
+      ...(input.workerPermissions ?? []).slice(0, input.workers),
+    ]);
     const name = input.name ?? input.goal.slice(0, 40);
     const checks = input.checks ?? [];
     const id = ulid((this.opts.clock ?? Date.now)());
