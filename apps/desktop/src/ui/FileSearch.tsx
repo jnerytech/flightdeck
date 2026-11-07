@@ -137,23 +137,29 @@ function Matches(
   // The masker the app log uses, with what the app knows: its token shapes, the hosts' tokens
   // and the vault's values (#827). A match's line never shows any of them, nor does its path.
   const scanner = useMemo(() => new SecretScanner(() => store.scanValues()), [store]);
-  const hits = useMemo<Hit[]>(() => {
-    if (typeof found === "string" || "refused" in found) return [];
-    return found.matches.map((match) => {
-      const path = scanner.redact(match.path, false);
-      // A credential, or a path with a secret in it: shown masked, never opened (the viewer would
-      // name the real path), and its line is not shown.
-      const hidden = match.secret === true || path !== match.path;
-      return {
-        key: `${match.path}:${match.line ?? ""}`,
-        path: match.path,
-        line: match.line,
-        place: match.line === undefined ? path : `${path}:${match.line}`,
-        hidden,
-        text: match.text === undefined || hidden ? undefined : scanner.redact(match.text, false),
-      };
-    });
-  }, [found, scanner]);
+  // Masked on every render, not memoised: the vault's values arrive late, and a value the masker
+  // learns after the answer came must still hide (security review of #827). At most 200
+  // characters a line, so the cost stays small.
+  const hits: Hit[] =
+    typeof found === "string" || "refused" in found
+      ? []
+      : found.matches.map((match, index) => {
+          const path = scanner.redact(match.path, false);
+          // A credential, or a path with a secret in it: shown masked, never opened (the viewer
+          // would name the real path), and its line is not shown.
+          const hidden = match.secret === true || path !== match.path;
+          const place = match.line === undefined ? path : `${path}:${match.line}`;
+          return {
+            // Never the real path: a duplicate-key warning would print it.
+            key: `${index}:${place}`,
+            path: match.path,
+            line: match.line,
+            place,
+            hidden,
+            text:
+              match.text === undefined || hidden ? undefined : scanner.redact(match.text, false),
+          };
+        });
   if (found === "searching") {
     return <p className="text-muted-foreground text-xs">{t("files.searching")}</p>;
   }
