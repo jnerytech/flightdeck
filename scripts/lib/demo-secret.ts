@@ -11,3 +11,9 @@ export const DEMO_SECRET_FILE: { name: string; text: string } = {
   name: "config.example.ts",
   text: `export const apiKey = "${DEMO_FAKE_KEY}"; // chave de exemplo\nexport const retries = 3;\n`,
 };
+
+/** A credential file (the host never sends a line of one): searching its content finds nothing. */
+export const DEMO_CREDENTIAL_FILE: { name: string; text: string } = {
+  name: "wrong.txt",
+  text: "",
+};
