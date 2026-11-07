@@ -151,6 +151,38 @@ describe("wrapper", () => {
     expect(starts.map((e) => e.args)).toEqual([["-c"], ["-c"]]);
   });
 
+  test("a config do canal que não pode ser gravada tira os dois flags: o claude abre sem canal e sem aviso (#936)", async () => {
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    const { file, dataDir } = config({ receptor: receptor() });
+    // `channels` is a file: the folder for the config cannot be made.
+    writeFileSync(join(dataDir, "channels"), "not a folder");
+    const result = await wrapper(["-c"], file).catch((error: unknown) => ({
+      code: "threw" as const,
+      out: [String(error)],
+    }));
+    const starts = fake.events().filter((e) => e.type === "start");
+    expect([result.code, result.out.join("\n").includes("configuração do canal")]).toEqual([
+      0,
+      true,
+    ]);
+    expect(starts.map((e) => e.args)).toEqual([["-c"]]);
+  });
+
+  test("the argv keeps a config path with spaces and accents as one argument (#936)", () => {
+    const path = "C:\\Users\\João Silva\\AppData\\Roaming\\Flightdeck\\channels\\L 1.json";
+    const argv = buildClaudeLaunch({
+      claude: "C:\\npm\\claude.cmd",
+      args: ["-c"],
+      mcpConfigPath: path,
+    });
+    expect([argv[1], argv[2], argv.slice(3)]).toEqual([
+      "--mcp-config",
+      path,
+      ["--dangerously-load-development-channels", "server:flightdeck", "-c"],
+    ]);
+  });
+
   test("usa claude.executablePath da config antes do PATH", async () => {
     const fake = installFakeClaude([{ do: "exit", code: 3 }]);
     cleanups.push(fake.restore);

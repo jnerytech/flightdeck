@@ -16,8 +16,10 @@ import type { T } from "../../i18n/index.ts";
 import type { ModeRow } from "../../lib/mode-menu.ts";
 
 /** The chip's words for a mode: its name and what it does, from the dictionaries. */
-const nameOf = (t: T, mode: PermissionMode) => t(`modes.${mode}.name`);
-const explainOf = (t: T, mode: PermissionMode) => t(`modes.${mode}.explain`);
+const nameOf = (t: T, mode: PermissionMode | null) =>
+  mode ? t(`modes.${mode}.name`) : t("session.modeUnknown");
+const explainOf = (t: T, mode: PermissionMode | null) =>
+  mode ? t(`modes.${mode}.explain`) : t("session.modeUnknownExplain");
 
 /**
  * The permission mode under the message box, as a chip that opens the Mode menu: one row per mode
@@ -28,7 +30,8 @@ const explainOf = (t: T, mode: PermissionMode) => t(`modes.${mode}.explain`);
 export function ModeChip(
   props: Readonly<{
     t: T;
-    mode: PermissionMode;
+    /** Null while the session has not said its mode (#935). */
+    mode: PermissionMode | null;
     rows: ModeRow[];
     onPick(mode: SettableMode): void;
     /** Opens the host's page, where the bypass switch is. */
@@ -70,7 +73,7 @@ export function ModeChip(
         }}
       >
         <DropdownMenuLabel>{t("session.modeMenuTitle")}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={mode}>
+        <DropdownMenuRadioGroup value={mode ?? ""}>
           {rows.map((row, index) => (
             <DropdownMenuRadioItem
               key={row.mode}

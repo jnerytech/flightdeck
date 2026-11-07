@@ -1193,16 +1193,23 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.update": {
         const { cardId, ...patch } = command.payload;
-        return ok(command.type, board().updateCard(cardId, patch));
+        const updated = board().updateCard(cardId, patch);
+        // A new spec path is looked at at once, so the card says what was found there.
+        return ok(
+          command.type,
+          patch.specPath === undefined ? updated : await board().refreshSpec(cardId),
+        );
       }
       case "card.dismissUnblocked":
         return ok(command.type, board().dismissUnblocked(command.payload.cardId));
       case "card.move": {
         const { cardId, column, position, force } = command.payload;
-        return ok(command.type, board().moveByHand(cardId, column, position, force === true));
+        return ok(command.type, await board().moveByHand(cardId, column, position, force === true));
       }
       case "card.get":
         return ok(command.type, board().getCard(command.payload.cardId));
+      case "card.spec":
+        return ok(command.type, await board().refreshSpec(command.payload.cardId));
       case "gate.respond": {
         const { runId, stepId, attempt, decision, note } = command.payload;
         board().workflows.respond(runId, stepId, attempt, decision, note);
@@ -1483,7 +1490,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       if (error instanceof FlightdeckError)
         return ackError(ws, id, error.code, error.message, error);
       console.error(`[flightdeckd] erro em ${parsed.data.type}:`, error);
-      ackError(ws, id, "internal", "erro interno do daemon");
+      ackError(ws, id, "internal", "internal daemon error");
     }
   }
 
@@ -1525,7 +1532,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           frame = decode(raw);
         } catch {
           if (!ws.data.authed) return unauthorized(ws);
-          return ackError(ws, "", "bad_request", "JSON inválido");
+          return ackError(ws, "", "bad_request", "invalid JSON");
         }
         // Before hello every frame, a pong included, goes to onHello (non-hello closes 4401).
         if (!ws.data.authed) return onHello(ws, frame);
