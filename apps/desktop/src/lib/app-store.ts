@@ -175,6 +175,7 @@ import {
 import { SessionViews } from "./session-views.ts";
 import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
+import { SidebarFoldController } from "./sidebar-fold.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
   effectiveMode,
@@ -1028,6 +1029,7 @@ export class AppStore {
     );
     this.tabOrder = new TabOrderController(platform.storage);
     this.tabScope = new TabScopeController(platform.storage);
+    this.sidebarFold = new SidebarFoldController(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
@@ -1122,6 +1124,7 @@ export class AppStore {
   readonly tabOrder: TabOrderController;
   /** Whether the tab row shows one host's tabs or every host's (issue #644). */
   readonly tabScope: TabScopeController;
+  readonly sidebarFold: SidebarFoldController;
   /** The board columns' width, one for all, kept across starts (issue #161). */
   readonly boardWidth: BoardWidth;
   /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */

@@ -3239,6 +3239,8 @@ Hover one for its name.
 - **Sidebar:** logo, navigation (Sessions, Needs you with its counter, Board, Workflows, Costs,
   History), the hosts, the pinned sessions and, at the bottom, search (`Ctrl K`), Settings and
   the theme. It collapses to a 56 px icon rail, by itself below 1024 px, and below 640 px it becomes a drawer.
+  In a wide window the button folds it to the rail and back, and the app remembers the choice for
+  the next time it opens wide.
 - **Three columns** in Sessions, Needs you and History: the list on the left (adjustable,
   remembered width), the session, request or transcript on the right. Board, Costs, Settings and
   the host pages use the full width. The header shows the path (Sessions > session, History >

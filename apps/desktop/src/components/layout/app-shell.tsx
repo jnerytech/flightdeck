@@ -46,8 +46,13 @@ export function AppShell(
   const breakpoint = useBreakpoint();
   const wide = breakpoint === "wide";
   const compact = breakpoint === "compact";
-  /** The button's choice on a wide window: folded to the rail, or not. */
-  const [folded, setFolded] = useState(false);
+  /** The button's choice on a wide window: folded to the rail, or not (kept by the caller, if it gives it). */
+  const [ownFold, setOwnFold] = useState(false);
+  const folded = props.folded ?? ownFold;
+  const setFolded = (value: boolean) => {
+    setOwnFold(value);
+    props.onFold?.(value);
+  };
   /** The overlay (medium) or the drawer (compact) is open. */
   const [sheet, setSheet] = useState(false);
   const { labels, navKey } = props;
