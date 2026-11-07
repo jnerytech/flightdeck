@@ -30,3 +30,11 @@ export function narrowSizes(
 ): ReadonlyArray<{ width: number; height: number }> {
   return theme === "dark" && NARROW_SHOTS.includes(shot) ? NARROW_SIZES : [];
 }
+
+/**
+ * #677: the names in NARROW_SHOTS that are not prints of demo:shots, so a typo cannot skip one in
+ * silence. demo:shots stops before Chrome starts when any is left.
+ */
+export function unknownNarrowShots(prints: readonly string[]): string[] {
+  return NARROW_SHOTS.filter((name) => !prints.includes(name));
+}
