@@ -24,11 +24,7 @@ export interface Resources {
 }
 
 /** Ports this process listens on, from the TCP tables and the sockets it holds open. */
-export function listeningPorts(_proc: ProcReader): number[] {
-  return [];
-}
-
-function listeningPortsReal(proc: ProcReader): number[] {
+export function listeningPorts(proc: ProcReader): number[] {
   const own = new Set<string>();
   for (const fd of proc.list("/proc/self/fd")) {
     const target = proc.link(`/proc/self/fd/${fd}`) ?? "";
@@ -48,11 +44,7 @@ function listeningPortsReal(proc: ProcReader): number[] {
 }
 
 /** The live children of this process: `/proc/<pid>/stat` names the parent and the state. */
-export function liveChildren(_proc: ProcReader): Resources["children"] {
-  return [];
-}
-
-function liveChildrenReal(proc: ProcReader): Resources["children"] {
+export function liveChildren(proc: ProcReader): Resources["children"] {
   const found: Resources["children"] = [];
   for (const entry of proc.list("/proc")) {
     if (!/^\d+$/.test(entry)) continue;
@@ -68,7 +60,7 @@ function liveChildrenReal(proc: ProcReader): Resources["children"] {
 }
 
 export function captureResources(proc: ProcReader): Resources {
-  return { ports: listeningPortsReal(proc), children: liveChildrenReal(proc) };
+  return { ports: listeningPorts(proc), children: liveChildren(proc) };
 }
 
 /**
@@ -77,8 +69,15 @@ export function captureResources(proc: ProcReader): Resources {
  * did not wait for, such as the git of a card start that was still running when the test ended.
  */
 export function newResources(
-  _known: Resources,
-  _now: Resources,
+  known: Resources,
+  now: Resources,
 ): { servers: string[]; children: string[] } {
-  return { servers: [], children: [] };
+  return {
+    servers: now.ports
+      .filter((port) => !known.ports.includes(port))
+      .map((port) => `a server listening on port ${port}`),
+    children: now.children
+      .filter((child) => !known.children.some((c) => c.pid === child.pid))
+      .map((child) => `child process ${child.pid} (${child.cmd})`),
+  };
 }
