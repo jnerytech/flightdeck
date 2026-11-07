@@ -883,6 +883,40 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
+/* A search match in the files panel (#117): its place wraps instead of pushing the panel sideways. */
+@utility file-hit {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+@utility file-hit-place {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+@utility file-hit-open {
+  min-height: 1.5rem;
+  border-radius: var(--radius-sm);
+  padding: 0.125rem 0.5rem;
+  &:hover {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
+}
+@utility file-hit-line {
+  padding-left: 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* A column under a dragged card: it shows where the card would land. */
 /* A board column: a thin top line and a faint tint of the column's own tone. */
 @utility board-column {

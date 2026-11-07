@@ -309,6 +309,21 @@ function shots(ids: DemoIds): Shot[] {
         await page.locator("[data-slot=board-files]").getByText("app.ts").waitFor();
       },
     },
+    // #117: a content search in that panel, each match as path:line with its line.
+    {
+      name: "board-arquivos-busca",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        const tree = page.locator("[data-slot=project-tree]");
+        const head = tree.locator('[data-project="flightdeck-web"]');
+        if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+        await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
+        const panel = page.locator("[data-slot=board-files]");
+        await panel.getByRole("tab", { name: /^(Conteúdo|Content)$/ }).click();
+        await panel.getByRole("searchbox").fill("export");
+        await panel.getByText("app.ts:1").waitFor();
+      },
+    },
     {
       name: "card",
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },
