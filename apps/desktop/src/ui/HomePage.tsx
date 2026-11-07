@@ -10,7 +10,7 @@ import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { mergeSummaries } from "../lib/client-costs.ts";
-import { ALL_HOSTS, daysBetween, periodRange, projectLabel } from "../lib/costs.ts";
+import { ALL_HOSTS, daysBetween, periodRange, projectLabel, projectPath } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, scopeHosts } from "../lib/data-scope.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
@@ -416,6 +416,7 @@ export function HomePage(
               leaders={shown}
               unavailable={board !== null && board.leaders === null}
               projectName={(key) => labels.get(key) ?? key}
+              projectTitle={projectPath}
               onOpenProject={openProject}
             />
           )}
