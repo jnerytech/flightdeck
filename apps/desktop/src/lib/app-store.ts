@@ -175,6 +175,7 @@ import {
 } from "./session-state.ts";
 import { SessionViews } from "./session-views.ts";
 import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
+import { ShellPrefs } from "./shell-prefs.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
@@ -1030,6 +1031,7 @@ export class AppStore {
     this.tabOrder = new TabOrderController(platform.storage);
     this.tabScope = new TabScopeController(platform.storage);
     this.dataScope = new DataScopeController(platform.storage);
+    this.shellPrefs = new ShellPrefs(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
@@ -1126,6 +1128,8 @@ export class AppStore {
   readonly tabScope: TabScopeController;
   /** Whose data Home (and later Sessions, Costs, Board) show: every host or one (#126). */
   readonly dataScope: DataScopeController;
+  /** What the shell hides: the New and Beta badges, What's new (issue #282). */
+  readonly shellPrefs: ShellPrefs;
   /** The board columns' width, one for all, kept across starts (issue #161). */
   readonly boardWidth: BoardWidth;
   /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */

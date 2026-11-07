@@ -55,6 +55,13 @@ export function AccountFooter(
     density: Density;
     onDensity(density: Density): void;
     onCopy(text: string): void;
+    /** The switches kept on this computer: what the shell hides (issue #282). */
+    hideBadges: boolean;
+    onHideBadges(hide: boolean): void;
+    hideWhatsNew: boolean;
+    onHideWhatsNew(hide: boolean): void;
+    hideSetup: boolean;
+    onHideSetup(hide: boolean): void;
     onCheckUpdates(): void;
     /** There are release notes the person has not opened since the update (issue #125). */
     hasNew: boolean;

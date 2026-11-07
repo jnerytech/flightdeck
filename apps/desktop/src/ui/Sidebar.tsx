@@ -830,6 +830,12 @@ export function Sidebar(
           density={density}
           onDensity={(next) => props.store.density.set(next)}
           onCopy={(text) => void props.store.copyText(text)}
+          hideBadges={false}
+          onHideBadges={() => {}}
+          hideWhatsNew={false}
+          onHideWhatsNew={() => {}}
+          hideSetup={false}
+          onHideSetup={() => {}}
           onCheckUpdates={() => {
             go({ name: "settings" });
             void props.store.checkAppUpdate();
