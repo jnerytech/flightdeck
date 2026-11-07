@@ -571,24 +571,14 @@ function Team(
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="ml-auto"
-              aria-label={t("teamsUi.menu", { name: team.name })}
-            >
+            <Button variant="ghost" size="icon" aria-label={t("teamsUi.menu", { name: team.name })}>
               <MoreHorizontal aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {/* Only a closed team can be deleted; an open one says what to do first. */}
             <DropdownMenuItem disabled={open} onSelect={() => setConfirm({ kind: "delete" })}>
-              <span className="flex flex-col">
-                {t("teamsUi.delete")}
-                {open && (
-                  <span className="text-muted-foreground text-xs">{t("teamsUi.deleteOpen")}</span>
-                )}
-              </span>
+              {open ? `${t("teamsUi.delete")} · ${t("teamsUi.deleteOpen")}` : t("teamsUi.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
