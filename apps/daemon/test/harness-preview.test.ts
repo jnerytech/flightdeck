@@ -124,6 +124,23 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
     ]);
   });
 
+  test("hook entries of another shape are passed over, and a project with no commands gets a CLAUDE.md that says so", async () => {
+    const odd = repo({
+      ...bunProject,
+      [SETTINGS]: json({ hooks: { PostToolUse: ["junk", { matcher: "x" }, { hooks: [7, {}] }] } }),
+    });
+    const hooks = await previewHarness(odd, ["hooks"]).then(
+      (preview) => preview.settings?.hooks,
+      () => "threw",
+    );
+    const bare = (await previewHarness(repo({}), ["claudeMd"])).files[0]?.content ?? "";
+    expect([hooks, bare.includes("(none found yet"), bare.includes("`")]).toEqual([
+      [FORMAT_HOOK],
+      true,
+      true,
+    ]);
+  });
+
   test("a key already there with another shape is left as it is and reported, never replaced", async () => {
     const strings = repo({
       ...bunProject,
