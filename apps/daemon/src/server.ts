@@ -1021,6 +1021,8 @@ export function startServer(opts: ServerOptions): RunningServer {
           features: [
             ...(opts.features ?? features),
             ...(opts.terminals?.enabled ? ["terminal"] : []),
+            // Issue #107: `terminal.openSession` opens a shell in a session's folder.
+            ...(opts.terminals?.enabled ? ["terminal.session"] : []),
             // Issue #506: a path a terminal printed opens in the Files viewer, from its folder.
             ...(opts.terminals?.enabled && opts.files ? ["file.terminal"] : []),
             ...(opts.ui ? ["ui.mode"] : []),
