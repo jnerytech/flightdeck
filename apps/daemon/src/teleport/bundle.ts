@@ -3,12 +3,15 @@
  * HEAD has beyond its base on origin, and a WIP commit of the working tree (changed and untracked
  * files, never ignored ones) built in a temporary index: the person's index and stash are never
  * touched. `git bundle` takes only refs, so the WIP commit is named by a ref of Flightdeck's own
- * (`refs/flightdeck/teleport/<id>`) for the time of the bundle, then the ref goes. No hook,
+ * (`refs/flightdeck/teleport/<id>`) for the time of the bundle, then the ref goes; one a dead daemon
+ * left is swept at the next bundle. The new objects (blobs, tree, commit) are written to a folder of
+ * the package, with the person's own store read as an alternate: none stays in their repository
+ * (#715). No hook,
  * fsmonitor, external diff or signature check (gpg.program) of the repository runs: every call
  * turns them off. The repository's clean filters do run on `add`, as they do on the person's own
  * `git add` (Git LFS needs them).
  */
-import { copyFile, lstat, readFile, rm, stat } from "node:fs/promises";
+import { copyFile, lstat, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
 import { gitLimitedFor } from "../board/command.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
@@ -161,6 +164,37 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
   } catch (error) {
     if (input.signal?.aborted) throw refuse("teleport_stopped");
     throw error;
+  } finally {
+    // The objects the bundle was built from: they never reach the person's repository (#715).
+    await rm(join(input.folder, OBJECTS), { recursive: true, force: true });
+  }
+}
+
+/** The temporary object folder inside the package's folder. */
+const OBJECTS = "objects";
+/** A leftover ref younger than this may belong to a bundle still being made. */
+const STALE_MS = 60 * 60 * 1000;
+
+/**
+ * Takes off the refs a daemon that died left (#715): only `refs/flightdeck/teleport/<id>`, only
+ * loose ones older than an hour, whatever object they name (the temporary folder went with the
+ * daemon, so the object may be gone).
+ */
+async function sweepRefs(top: string, signal?: AbortSignal): Promise<void> {
+  const dir = await git(
+    top,
+    ["rev-parse", "--path-format=absolute", "--git-path", "refs/flightdeck/teleport"],
+    {},
+    signal,
+  );
+  if (!dir) return;
+  for (const name of await readdir(dir).catch(() => [])) {
+    // A ref a bundle in progress takes off meanwhile is no error here.
+    const [looked] = await Promise.allSettled([lstat(join(dir, name))]);
+    const info = looked?.status === "fulfilled" ? looked.value : null;
+    if (!info?.isFile() || !ID.test(name) || Date.now() - info.mtimeMs < STALE_MS) continue;
+    // git-arg: the name was read from the ref folder and checked against ID
+    await git(top, ["update-ref", "-d", `refs/flightdeck/teleport/${name}`], {}, signal);
   }
 }
 
@@ -173,6 +207,7 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
   if (!found) throw refuse("teleport_no_remote");
   if (!ID.test(input.id))
     throw new FlightdeckError("bad_request", "bad package id", "request_invalid");
+  await sweepRefs(top, signal);
   const base = refArg(found);
   const baseSha = await must(
     top,
@@ -202,22 +237,35 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
     signal,
   );
   await copyFile(real, index).catch(() => {});
-  const env = { GIT_INDEX_FILE: index, ...AUTHOR };
+  // New objects (the blobs, the tree, the WIP commit) go to a folder of the package; the person's
+  // own store is only read, as an alternate. Nothing of the bundle stays in their repository.
+  const objects = join(input.folder, OBJECTS);
+  await mkdir(objects, { recursive: true });
+  const scratch = {
+    GIT_OBJECT_DIRECTORY: objects,
+    GIT_ALTERNATE_OBJECT_DIRECTORIES: await must(
+      top,
+      ["rev-parse", "--path-format=absolute", "--git-path", "objects"],
+      {},
+      signal,
+    ),
+  };
+  const env = { GIT_INDEX_FILE: index, ...AUTHOR, ...scratch };
   await must(top, ["add", "-A"], env, signal);
   const tree = await must(top, ["write-tree"], env, signal);
   await rm(index, { force: true });
   const wip = await must(
     top,
     ["commit-tree", tree, "-p", head, "-m", "flightdeck teleport: the working tree"],
-    AUTHOR,
+    { ...AUTHOR, ...scratch },
     signal,
   );
   const ref = `refs/flightdeck/teleport/${input.id}`;
   const file = join(input.folder, "code");
   try {
     // Inside the try: an abort that kills update-ref after the ref is in place still removes it.
-    await must(top, ["update-ref", ref, wip], {}, signal);
-    await must(top, ["bundle", "create", "-q", file, ref, `^${base}`], {}, signal);
+    await must(top, ["update-ref", ref, wip], scratch, signal);
+    await must(top, ["bundle", "create", "-q", file, ref, `^${base}`], scratch, signal);
   } finally {
     // git-arg: the ref is made here, from a package id checked against ID
     await git(top, ["update-ref", "-d", ref]);
@@ -232,7 +280,7 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
   const names = await must(
     top,
     ["diff", "--no-ext-diff", "--name-only", "-z", head, wip],
-    {},
+    scratch,
     signal,
   );
   // Everything that moves, commit by commit: a secret one commit added and a later one removed
@@ -256,6 +304,10 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
       `${base}..${wip}`,
     ],
     TIMEOUT_MS,
+    undefined,
+    undefined,
+    signal,
+    scratch,
   );
   if (moved.truncated) throw refuse("teleport_too_large", { max });
   // A git that failed or ran out of time (killed at TIMEOUT_MS).

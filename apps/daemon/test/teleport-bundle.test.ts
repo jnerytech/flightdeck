@@ -79,11 +79,18 @@ describe("teleport-bundle: the person's repository keeps no object of the bundle
     const code = await bundleCode({ cwd: repo, folder, id: "pkg-1", scan: () => [] });
     const wip = git(repo, "bundle", "list-heads", code.file).split(" ")[0] ?? "";
     // The bundle holds the file all the same: a clone of it restores it.
-    const verified = git(repo, "bundle", "verify", code.file);
+    const verified = (() => {
+      try {
+        git(repo, "bundle", "verify", code.file);
+        return true;
+      } catch {
+        return false;
+      }
+    })();
     expect([
       has(repo, blob),
       wip.length === 40 && has(repo, wip),
-      verified.includes("okay"),
+      verified,
       await readdir(folder),
     ]).toEqual([false, false, true, ["code"]]);
   });
