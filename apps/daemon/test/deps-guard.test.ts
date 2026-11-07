@@ -42,7 +42,18 @@ function sentinelProbes(): string[] {
  * process, such as a daemon a previous test file left running (issue #747).
  */
 function checkCalls(fake: FakeCli, from: number): string[][] {
-  return fake.calls().slice(from);
+  const folders = fake.cwds().slice(from);
+  return fake
+    .calls()
+    .slice(from)
+    .filter((_, at) => sameFolder(folders[at] ?? "", process.cwd()));
+}
+
+/** Folders compared the way the platform does: Windows ignores case and the kind of slash. */
+function sameFolder(a: string, b: string): boolean {
+  const plain = (path: string) =>
+    process.platform === "win32" ? path.toLowerCase().replaceAll("\\", "/") : path;
+  return plain(a) === plain(b);
 }
 
 describe("deps-guard: a plain daemon asked for its dependencies runs no real program", () => {
