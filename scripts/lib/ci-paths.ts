@@ -1,6 +1,7 @@
 /**
  * Which CI jobs a pull request needs, from the paths it changes (issue #264). Docs or scripts only
- * run the Linux tests and lint; the daemon adds the smokes; the app, the protocol, the
+ * run the Linux tests and lint; the daemon adds the smokes; the demo and the print guards add the
+ * prints (#637); the app, the protocol, the
  * dependencies or the workflow itself run everything; the Tauri shell adds cargo. Windows is not
  * planned for a PR or a push to main (#534); the schedule and a run by hand run everything,
  * Windows included, as a signal that gates nothing.
@@ -43,10 +44,19 @@ const TAURI = /^apps\/desktop\/src-tauri\//;
 /**
  * The journeys, their Playwright config and the demo they drive (#399). The demo seed starts the
  * real daemon and uses the scripts' test helpers (fake CLIs, temp folders), so those count too
- * (#410 review); ci-paths.test.ts checks every file the seed imports.
+ * (#410 review); ci-paths.test.ts checks every file the seed imports, and every script file the
+ * journeys import, such as the layout guards (#637).
  */
 const E2E =
-  /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
+  /^(?:scripts\/e2e\/|scripts\/lib\/(?:(?:e2e|demo)[^/]*|browser|layout-guards)\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
+
+/**
+ * demo:shots and what it runs (#637): the demo, the print guards, their ratchets and axe. A change
+ * to a guard must run the prints it guards; ci-paths.test.ts checks every local file demo-shots
+ * imports.
+ */
+const SHOTS =
+  /^scripts\/(?:demo[^/]*\.ts|lib\/(?:axe|browser|layout-guards|print-theme|shots-[^/]*|visual)\.ts)$/;
 
 /**
  * Above this many selected integration and e2e test files, a PR's Windows tests take three shards
@@ -73,7 +83,7 @@ export function ciPlan(
   return {
     windows: false,
     smokes: daemon,
-    screenshots: everything,
+    screenshots: everything || any(SHOTS),
     cargo: any(TAURI),
     e2e: everything || any(E2E),
     windowsShards:
