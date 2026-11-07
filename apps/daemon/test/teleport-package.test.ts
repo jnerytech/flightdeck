@@ -9,7 +9,7 @@ import {
   type TeleportSession,
 } from "../src/teleport/package.ts";
 import { secretLines } from "../src/teleport/secrets.ts";
-import { tempDir } from "./helpers.ts";
+import { poll, tempDir } from "./helpers.ts";
 
 /**
  * Issue #100, slice 1: the source side of a teleport. An idle Claude Code session's transcript is
@@ -428,6 +428,36 @@ describe("teleport-package: the code travels in the same package (#100)", () => 
       await readdir(deps.dir).catch(() => ["no folder"]),
       await reason(() => packages.read("pkg-1", "transcript", 0)),
     ]).toEqual(["teleport_stopped", ["no folder"], "teleport_not_found"]);
+  });
+});
+
+describe("teleport-package: stop does not wait for git (#715)", () => {
+  test("stop fires the kill of the code part, and the package that was being made is stopped", async () => {
+    let fired = false;
+    let started = false;
+    // A git that never ends on its own: only the signal (or, in a stub, the timer) ends it.
+    const hanging: NonNullable<TeleportDeps["code"]> = (input) =>
+      new Promise((_, reject) => {
+        started = true;
+        input.signal?.addEventListener("abort", () => {
+          fired = true;
+          reject(new FlightdeckError("invalid_state", "killed", "git_killed"));
+        });
+        setTimeout(() => reject(new FlightdeckError("invalid_state", "x", "no_signal")), 300);
+      });
+    const { packages, deps } = await setup({ code: hanging });
+    const making = packages.prepare("s1").then(
+      (m) => m.id,
+      (e: FlightdeckError) => e.reason,
+    );
+    // The package reaches its code part before the daemon stops.
+    await poll(() => started);
+    await packages.stop();
+    expect([fired, await making, await readdir(deps.dir).catch(() => ["no folder"])]).toEqual([
+      true,
+      "teleport_stopped",
+      ["no folder"],
+    ]);
   });
 });
 

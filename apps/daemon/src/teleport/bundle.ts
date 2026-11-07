@@ -25,6 +25,8 @@ export interface CodeBundleInput {
   id: string;
   scan(text: string): string[];
   maxBytes?: number;
+  /** Fires when the daemon stops: the git calls under way are killed with what they started. */
+  signal?: AbortSignal;
 }
 
 export interface CodeBundle {
@@ -76,58 +78,96 @@ async function pastLimit(top: string, names: string, max: number): Promise<boole
 }
 
 /** What the bundle starts from: the branch's upstream on origin, else origin's default branch. */
-async function baseOf(top: string): Promise<string | null> {
-  const upstream = await git(top, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
+async function baseOf(top: string, signal?: AbortSignal): Promise<string | null> {
+  const upstream = await git(
+    top,
+    ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+    {},
+    signal,
+  );
   if (upstream?.startsWith("origin/")) return upstream;
-  const fallback = await git(top, [
-    "symbolic-ref",
-    "--quiet",
-    "--short",
-    "refs/remotes/origin/HEAD",
-  ]);
+  const fallback = await git(
+    top,
+    ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"],
+    {},
+    signal,
+  );
   if (fallback) return fallback;
   for (const name of ["origin/main", "origin/master"]) {
-    if (await git(top, ["rev-parse", "--verify", "--quiet", `refs/remotes/${name}`])) return name;
+    if (await git(top, ["rev-parse", "--verify", "--quiet", `refs/remotes/${name}`], {}, signal)) {
+      return name;
+    }
   }
   return null;
 }
 
+/**
+ * The code of the session as a bundle. The daemon stopping (`input.signal`) kills the git calls
+ * under way and ends the bundle as `teleport_stopped`, with the temporary ref taken off.
+ */
 export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
-  const top = await git(input.cwd, ["rev-parse", "--show-toplevel"]);
-  const head = top ? await git(top, ["rev-parse", "--verify", "--quiet", HEAD]) : null;
+  try {
+    return await bundle(input);
+  } catch (error) {
+    if (input.signal?.aborted) throw refuse("teleport_stopped");
+    throw error;
+  }
+}
+
+async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
+  const { signal } = input;
+  const top = await git(input.cwd, ["rev-parse", "--show-toplevel"], {}, signal);
+  const head = top ? await git(top, ["rev-parse", "--verify", "--quiet", HEAD], {}, signal) : null;
   if (!top || !head) throw refuse("teleport_no_git");
-  const found = await baseOf(top);
+  const found = await baseOf(top, signal);
   if (!found) throw refuse("teleport_no_remote");
   if (!ID.test(input.id))
     throw new FlightdeckError("bad_request", "bad package id", "request_invalid");
   const base = refArg(found);
-  const baseSha = await must(top, ["rev-parse", "--verify", "--quiet", `${base}^{commit}`]);
+  const baseSha = await must(
+    top,
+    ["rev-parse", "--verify", "--quiet", `${base}^{commit}`],
+    {},
+    signal,
+  );
   const max = input.maxBytes ?? TELEPORT_MAX_BYTES;
   // Before git writes a thing: the files changed against HEAD (staged or not) and the new ones.
-  const changed = await must(top, ["diff", "--no-ext-diff", "--name-only", "-z", HEAD]);
-  const untracked = await must(top, ["ls-files", "-z", "--others", "--exclude-standard"]);
+  const changed = await must(top, ["diff", "--no-ext-diff", "--name-only", "-z", HEAD], {}, signal);
+  const untracked = await must(
+    top,
+    ["ls-files", "-z", "--others", "--exclude-standard"],
+    {},
+    signal,
+  );
   if (await pastLimit(top, `${changed}\0${untracked}`, max)) {
     throw refuse("teleport_too_large", { max });
   }
-  const branch = await git(top, ["symbolic-ref", "--quiet", "--short", HEAD]);
+  const branch = await git(top, ["symbolic-ref", "--quiet", "--short", HEAD], {}, signal);
   // The working tree as a commit, through a copy of the index: the person's index stays as it is.
   const index = join(input.folder, "index");
-  const real = await must(top, ["rev-parse", "--path-format=absolute", "--git-path", "index"]);
+  const real = await must(
+    top,
+    ["rev-parse", "--path-format=absolute", "--git-path", "index"],
+    {},
+    signal,
+  );
   await copyFile(real, index).catch(() => {});
   const env = { GIT_INDEX_FILE: index, ...AUTHOR };
-  await must(top, ["add", "-A"], env);
-  const tree = await must(top, ["write-tree"], env);
+  await must(top, ["add", "-A"], env, signal);
+  const tree = await must(top, ["write-tree"], env, signal);
   await rm(index, { force: true });
   const wip = await must(
     top,
     ["commit-tree", tree, "-p", head, "-m", "flightdeck teleport: the working tree"],
     AUTHOR,
+    signal,
   );
   const ref = `refs/flightdeck/teleport/${input.id}`;
   const file = join(input.folder, "code");
-  await must(top, ["update-ref", ref, wip]);
   try {
-    await must(top, ["bundle", "create", "-q", file, ref, `^${base}`]);
+    // Inside the try: an abort that kills update-ref after the ref is in place still removes it.
+    await must(top, ["update-ref", ref, wip], {}, signal);
+    await must(top, ["bundle", "create", "-q", file, ref, `^${base}`], {}, signal);
   } finally {
     // git-arg: the ref is made here, from a package id checked against ID
     await git(top, ["update-ref", "-d", ref]);
@@ -138,8 +178,8 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
     throw refuse("teleport_too_large", { max });
   }
   const bytes = await readFile(file);
-  const ahead = Number(await must(top, ["rev-list", "--count", `${base}..${head}`]));
-  const names = await must(top, ["diff", "--no-ext-diff", "--name-only", head, wip]);
+  const ahead = Number(await must(top, ["rev-list", "--count", `${base}..${head}`], {}, signal));
+  const names = await must(top, ["diff", "--no-ext-diff", "--name-only", head, wip], {}, signal);
   // Everything that moves, commit by commit: a secret one commit added and a later one removed
   // still travels in the bundle. Only added lines.
   // The text is read up to `max`: past it, the scan would count only part of what moves.

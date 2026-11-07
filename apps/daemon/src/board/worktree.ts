@@ -252,6 +252,13 @@ async function create(
     await git(repo, "worktree", "add", path, "-b", refArg(branch), refArg(base)),
     "git worktree add",
   );
-  const { skipped } = await copyIncluded(repo, path, includeLimit);
-  return { slug, branch, path, skipped };
+  try {
+    const { skipped } = await copyIncluded(repo, path, includeLimit);
+    return { slug, branch, path, skipped };
+  } catch (error) {
+    // Half made: the worktree and its branch go, so the caller has nothing to clean up (#715).
+    await git(repo, "worktree", "remove", "--force", path);
+    await git(repo, "branch", "-D", refArg(branch));
+    throw error;
+  }
 }

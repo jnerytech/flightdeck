@@ -8,10 +8,13 @@ import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 
 export const TIMEOUT_MS = 120_000;
+/** The `core.hooksPath` that holds no hook, on this platform. */
+export const hooksOff = (platform: NodeJS.Platform = process.platform): string =>
+  platform === "win32" ? "NUL" : "/dev/null";
 /** No hook, fsmonitor or signature check (gpg.program) of the repository runs. */
 export const SAFE = [
   "-c",
-  "core.hooksPath=/dev/null",
+  `core.hooksPath=${hooksOff()}`,
   "-c",
   "core.fsmonitor=false",
   "-c",
@@ -23,6 +26,7 @@ export async function git(
   cwd: string,
   args: string[],
   env: Record<string, string> = {},
+  signal?: AbortSignal,
 ): Promise<string | null> {
   // git-arg: a forwarder: every caller passes a checked revision (refArg/HEAD) or a value git gave
   const result = await runCommand(
@@ -32,6 +36,7 @@ export async function git(
     TIMEOUT_MS,
     killTree,
     env,
+    signal,
   );
   return result.code === 0 ? result.stdout.trim() : null;
 }
@@ -41,8 +46,9 @@ export async function must(
   cwd: string,
   args: string[],
   env: Record<string, string> = {},
+  signal?: AbortSignal,
 ): Promise<string> {
-  const out = await git(cwd, args, env);
+  const out = await git(cwd, args, env, signal);
   if (out === null) throw new FlightdeckError("internal", `git ${args[0]} failed`, "teleport_git");
   return out;
 }
