@@ -72,6 +72,7 @@ export const ptBR = {
     trendNew: "Novo",
     openProject: "Abrir os custos de {name}",
     noTokens: "Nenhum token nos últimos 7 dias.",
+    leadersUnavailable: "Não foi possível ler para onde foram os tokens. O Início tenta de novo em um minuto.",
   },
   hosts: {
     status: {

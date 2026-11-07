@@ -70,6 +70,7 @@ export const en: Dictionary = {
     trendNew: "New",
     openProject: "Open the costs of {name}",
     noTokens: "No tokens in the last 7 days.",
+    leadersUnavailable: "Could not read where the tokens went. Home tries again in a minute.",
   },
   hosts: {
     status: {

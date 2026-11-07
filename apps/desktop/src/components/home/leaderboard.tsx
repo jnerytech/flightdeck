@@ -29,6 +29,8 @@ export function Leaderboard(
     lang: Lang;
     /** `null` until the hosts answered: the names are never kept, so there is nothing to show before. */
     leaders: HomeLeaders | null;
+    /** The last read did not give every host's costs, and there is no earlier leaderboard to keep. */
+    unavailable: boolean;
     projectName(key: string): string;
     onOpenProject(key: string): void;
   }>,
@@ -59,7 +61,11 @@ export function Leaderboard(
         {t("home.leaders")}
       </h2>
       <p className="leader-hint">{t("home.leadersHint")}</p>
-      {leaders === null && <p className="leader-hint">{t("home.loading")}</p>}
+      {leaders === null && (
+        <p className="leader-hint">
+          {props.unavailable ? t("home.leadersUnavailable") : t("home.loading")}
+        </p>
+      )}
       {empty && <p className="leader-hint">{t("home.noTokens")}</p>}
       {leaders !== null && !empty && (
         <Tabs defaultValue="project">

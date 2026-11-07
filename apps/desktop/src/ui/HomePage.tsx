@@ -57,7 +57,10 @@ export function HomePage(
   } | null>(null);
   const [tick, setTick] = useState(0);
   /** The leaderboard of the last read: in memory only, since it names projects (#124). */
-  const [leaders, setLeaders] = useState<{ entry: string; leaders: HomeLeaders } | null>(null);
+  // `leaders` is null after a read in which a host with costs did not give all of them.
+  const [leaders, setLeaders] = useState<{ entry: string; leaders: HomeLeaders | null } | null>(
+    null,
+  );
   // What is on screen at once: this visit's read, or else the last one of the same hosts and period.
   const data = fetched?.entry === entry ? fetched.hosts : (store.homeCache.get(entry) ?? null);
 
@@ -97,6 +100,7 @@ export function HomePage(
         const answered = (costs === null || costs.ok) && usage.ok;
         return {
           id: host.id,
+          priced,
           answered,
           // A host whose three costs came is in the leaderboard; the others are in the notices.
           shares:
@@ -126,10 +130,19 @@ export function HomePage(
           range.from,
           range.to,
         ).summary;
-      setLeaders({
-        entry,
-        leaders: homeLeaders(merged("week"), merged("first"), merged("second")),
-      });
+      // Shares from only some hosts would read as the whole: until every host with costs gave
+      // its three answers, the last whole leaderboard of these hosts stays, or the panel says so.
+      const priced = results.filter((r) => r.priced);
+      if (priced.length > 0 && shares.length === priced.length) {
+        setLeaders({
+          entry,
+          leaders: homeLeaders(merged("week"), merged("first"), merged("second")),
+        });
+      } else {
+        setLeaders((last) =>
+          last?.entry === entry && last.leaders ? last : { entry, leaders: null },
+        );
+      }
       setFetched({
         entry,
         hosts,
@@ -198,7 +211,8 @@ export function HomePage(
       ...(withCosts.length > 1 ? { host: ALL_HOSTS } : {}),
       projectKey,
     });
-  const shown = leaders?.entry === entry ? leaders.leaders : null;
+  const board = leaders?.entry === entry ? leaders : null;
+  const shown = board?.leaders ?? null;
   const labels = projectLabels(shown?.project.flatMap((row) => (row.key ? [row.key] : [])) ?? []);
   const openTurns = () => {
     const only = online.length === 1 ? online[0] : undefined;
@@ -323,6 +337,7 @@ export function HomePage(
               t={t}
               lang={lang}
               leaders={shown}
+              unavailable={board !== null && board.leaders === null}
               projectName={(key) => labels.get(key) ?? key}
               onOpenProject={openProject}
             />
