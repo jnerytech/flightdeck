@@ -61,12 +61,7 @@ export function TerminalPage(
   });
   const [searching, setSearching] = useState(false);
   /** A file of the terminal's folder open in the Files viewer, from a clicked `path:line` (#506). */
-  const [viewing, setViewing] = useState<{
-    path: string;
-    full: string;
-    line: number | undefined;
-    col: number | undefined;
-  } | null>(null);
+  const [viewing, setViewing] = useState<Viewing | null>(null);
   const [needle, setNeedle] = useState("");
   /** Match case, whole word, regular expression (#476); the ref has the latest for a key and a change in one go. */
   const [flags, setFlags] = useState<FindFlags>({});
@@ -81,7 +76,7 @@ export function TerminalPage(
   const problem = needle === "" ? null : findPatternProblem(needle, flags);
   const [closing, setClosing] = useState(false);
   /** A paste of several lines waiting for the OK: how many lines, and the answer to give xterm. */
-  const [pasting, setPasting] = useState<{ lines: number; answer(ok: boolean): void } | null>(null);
+  const [pasting, setPasting] = useState<Pasting | null>(null);
   /** Where the right button opened the copy and paste menu. */
   const [menu, setMenu] = useState<{ x: number; y: number; canCopy: boolean } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -132,28 +127,8 @@ export function TerminalPage(
         onFindResults: setResults,
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
-        onPath: (path, at) =>
-          void (async () => {
-            const cwd = await folder;
-            const full = cwd ? resolvePath(cwd, path) : path;
-            const inside = cwd ? insideFolder(cwd, full) : null;
-            const host = store.getState().hosts.find((h) => h.id === hostId);
-            // A path inside the terminal's folder opens in the Files viewer at its line (#506).
-            if (inside && hasFeature(host?.hostInfo?.features, "file.terminal", false)) {
-              setViewing({ path: inside, full, line: at?.line, col: at?.col });
-            } else await showPath(store, hostId, path, folder);
-          })(),
-        confirmPaste: (text) =>
-          new Promise<boolean>((resolve) =>
-            setPasting({
-              lines: pasteLines(text),
-              answer: (ok) => {
-                setPasting(null);
-                resolve(ok);
-                xterm.focus();
-              },
-            }),
-          ),
+        onPath: (path, at) => void openPath(store, hostId, folder, path, at, setViewing),
+        confirmPaste: (text) => askPaste(text, setPasting, () => xterm.focus()),
         onZoom: (step) => store.terminalFont.zoom(step),
       });
       const current = new TerminalSession({
@@ -169,8 +144,8 @@ export function TerminalPage(
       // to the host through the session's debounced resize.
       const observer = new ResizeObserver(() => xterm.fit());
       observer.observe(parent);
-      stops.push(() => observer.disconnect());
       stops.push(
+        () => observer.disconnect(),
         store.followTerminal(hostId, terminalId, {
           data: (base64) => current.data(base64),
           exited: (code) => current.exited(code),
@@ -243,7 +218,7 @@ export function TerminalPage(
     <Page
       fill
       title={t("terminalUi.title")}
-      subtitle={<span role="status">{status}</span>}
+      subtitle={<output>{status}</output>}
       actions={
         <>
           {(state.state === "detached" || state.state === "ended") && (
@@ -311,11 +286,11 @@ export function TerminalPage(
                 </Button>
               </IconTip>
             ))}
-            <span role="status" className="text-xs text-muted-foreground">
+            <output className="text-xs text-muted-foreground">
               {problem
-                ? t(problem === "invalid" ? "terminalUi.badPattern" : "terminalUi.emptyPattern")
+                ? t(PATTERN_PROBLEM[problem])
                 : needle !== "" && results && findStatus(results)}
-            </span>
+            </output>
             <Button size="sm" variant="ghost" onClick={() => find(needle, "previous")}>
               {t("terminalUi.findPrevious")}
             </Button>
@@ -441,6 +416,51 @@ const FIND_TOGGLES = [
   ["wholeWord", "terminalUi.wholeWord", "ab", "Alt+W"],
   ["regex", "terminalUi.useRegex", ".*", "Alt+R"],
 ] as const;
+
+/** What the search box says about a pattern that cannot be searched. */
+const PATTERN_PROBLEM = {
+  invalid: "terminalUi.badPattern",
+  empty: "terminalUi.emptyPattern",
+} as const;
+
+type Viewing = { path: string; full: string; line: number | undefined; col: number | undefined };
+type Pasting = { lines: number; answer(ok: boolean): void };
+
+/** A path clicked in the output: in the Files viewer when the terminal's folder holds it (#506), else `showPath`. */
+async function openPath(
+  store: AppStore,
+  hostId: string,
+  folder: Promise<string | null>,
+  path: string,
+  at: { line: number; col?: number } | undefined,
+  view: (next: Viewing) => void,
+): Promise<void> {
+  const cwd = await folder;
+  const full = cwd ? resolvePath(cwd, path) : path;
+  const inside = cwd ? insideFolder(cwd, full) : null;
+  const host = store.getState().hosts.find((h) => h.id === hostId);
+  if (inside && hasFeature(host?.hostInfo?.features, "file.terminal", false)) {
+    view({ path: inside, full, line: at?.line, col: at?.col });
+  } else await showPath(store, hostId, path, folder);
+}
+
+/** Asks for the OK of a multi-line paste: `ask` shows the question, the answer clears it and refocuses. */
+function askPaste(
+  text: string,
+  ask: (next: Pasting | null) => void,
+  refocus: () => void,
+): Promise<boolean> {
+  return new Promise<boolean>((resolve) =>
+    ask({
+      lines: pasteLines(text),
+      answer: (ok) => {
+        ask(null);
+        resolve(ok);
+        refocus();
+      },
+    }),
+  );
+}
 
 /**
  * A path clicked in a terminal's output (#476): on a host of this computer the file is shown in its
