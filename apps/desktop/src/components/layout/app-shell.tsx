@@ -35,6 +35,9 @@ export function AppShell(
     labels: AppShellLabels;
     /** What the top bar gave up at a compact width, drawn above the sidebar in the drawer. */
     drawerTop?: ReactNode;
+    /** The wide window's fold, kept by the caller; without it the shell keeps its own. */
+    folded?: boolean;
+    onFold?(folded: boolean): void;
     /** Changes when the person navigates: the overlay or the drawer closes. */
     navKey?: unknown;
     children: ReactNode;
