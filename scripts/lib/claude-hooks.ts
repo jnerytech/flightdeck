@@ -821,9 +821,9 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
   );
 }
 
-/** Text with control, format (bidi, zero-width) and line-separator characters taken out. */
+/** Text with control, format (bidi, zero-width), surrogate, private-use and line-separator characters out. */
 export function printable(text: string): string {
-  return text.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, "");
+  return text.replace(/[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Zl}\p{Zp}]/gu, "");
 }
 
 /**
@@ -839,7 +839,7 @@ function redacted(text: string): string {
     .replace(/:\/\/[^/@\s]+@/g, "://***@")
     .replace(TOKEN_SHAPES, "***")
     .replace(/\b(Authorization:)\s*(?:(?:Basic|Bearer|Token)\s+)?\S+/gi, "$1 ***")
-    .replace(/--(token|password|secret)([= ])\S+/gi, "--$1$2***")
+    .replace(/--(token|password|secret)([= ])(?:"[^"]*"|'[^']*'|\S+)/gi, "--$1$2***")
     .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
     .replace(
       /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
