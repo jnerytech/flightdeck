@@ -755,6 +755,26 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
+/* The Host page's Overview (#785): the host's status and its work, side by side once the area is
+   64rem wide. Each column is the container its cards lay out against, so a grid of project cards
+   fits half the width. */
+@utility host-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  @container (width >= 64rem) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+@utility host-overview-column {
+  container-type: inline-size;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 /* The board's toolbar and its selection bar in one cell: the cell is as tall as the taller one,
    so the bar covering the toolbar moves nothing below (#760). */
 @utility selection-stack {
