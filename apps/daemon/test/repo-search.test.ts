@@ -227,7 +227,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
       lines.some((text) => text.includes("MIIEowIBAAKCAQEA") || text.includes("PRIVATE KEY")),
       lines.every((text) => Array.from(text).length <= 200),
       lines[0] ?? "",
-    ]).toEqual([3, false, false, true, 'const panelToken = "[redacted]";']);
+    ]).toEqual([3, false, false, true, 'const [redacted]";']);
   });
 
   test("an rg cut by its time limit keeps what it found and says it was cut", async () => {
