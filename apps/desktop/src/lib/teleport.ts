@@ -56,10 +56,10 @@ const CLEANUP_MS = 5_000;
 const MARKS = /[\p{Cc}\p{Cf}]/gu;
 
 export function teleportSummary(manifest: TeleportManifest): TeleportSummary {
-  const branch = manifest.git?.branch;
+  // The source's text: shown as the plain text it is, with no mark that could disguise it.
+  const branch = manifest.git?.branch?.replace(MARKS, "").slice(0, 255);
   return {
-    // The source's text: shown as the plain text it is, with no mark that could disguise it.
-    branch: branch ? branch.replace(MARKS, "").slice(0, 255) : null,
+    branch: branch || null,
     ahead: manifest.git?.ahead ?? 0,
     changed: manifest.git?.changed ?? 0,
     bytes: manifest.parts.reduce((sum, part) => sum + part.size, 0),
