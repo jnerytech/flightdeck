@@ -1854,10 +1854,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await project.waitFor({ timeout: WAIT });
     await waitFor(
       async () =>
-        // Two hosts can share a project's name: either screen may then add whose it is.
-        (
-          (await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ?? ""
-        ).split(" · ")[0] === label.split(" · ")[0],
+        // One project, one label (#881): both screens name it the same way.
+        ((await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ??
+          "") === label,
       `o filtro de Custos no projeto ${label}`,
     );
   },
