@@ -1244,6 +1244,30 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await newCard.waitFor({ timeout: WAIT });
     if ((await cards.count()) !== 0) throw new Error("o Board deveria abrir o último quadro");
   },
+
+  // Issue #730: with no host online, Sessions is not a dead end: it says so and offers Add a host.
+  // The demo's other hosts are offline, so removing the two online ones leaves none to list.
+  "sessions-no-host": async (c) => {
+    await open(c, { name: "hub" });
+    for (const host of ["alfa", "beta"]) {
+      await c.page
+        .getByRole("button", { name: c.t("sidebar.hostMenu", { host }), exact: true })
+        .click();
+      await c.page.getByRole("menuitem", { name: c.t("sidebar.removeHost"), exact: true }).click();
+      await c.page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: c.t("sidebar.removeHost"), exact: true })
+        .click();
+      await c.page
+        .getByRole("button", { name: c.t("sidebar.hostMenu", { host }), exact: true })
+        .waitFor({ state: "detached", timeout: WAIT });
+    }
+    await c.page.getByText(c.t("hub.noOnlineHost"), { exact: true }).waitFor({ timeout: WAIT });
+    await c.page.getByRole("button", { name: c.t("hub.addHost"), exact: true }).click();
+    await c.page.getByText(c.t("sidebar.addHostCrumb"), { exact: true }).first().waitFor({
+      timeout: WAIT,
+    });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
