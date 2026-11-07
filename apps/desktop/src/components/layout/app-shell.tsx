@@ -33,6 +33,8 @@ export function AppShell(
     status?: ReactNode;
     sidebar: (collapsed: boolean) => ReactNode;
     labels: AppShellLabels;
+    /** What the top bar gave up at a compact width, drawn above the sidebar in the drawer. */
+    drawerTop?: ReactNode;
     /** Changes when the person navigates: the overlay or the drawer closes. */
     navKey?: unknown;
     children: ReactNode;
@@ -121,6 +123,7 @@ export function AppShell(
             >
               <X />
             </Button>
+            {props.drawerTop && <div className="drawer-top">{props.drawerTop}</div>}
             <div className="min-h-0 flex-1 overflow-hidden">{props.sidebar(false)}</div>
           </SheetContent>
         </Sheet>

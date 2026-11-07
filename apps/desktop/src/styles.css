@@ -1996,6 +1996,25 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
+/* Below 1024 px the name hides, and the switcher is the host's dot and its initial (issue #641). */
+@utility top-bar-host-initial {
+  display: none;
+  @media (width < 1024px) {
+    display: block;
+    font-size: 0.75rem;
+  }
+}
+
+/* The drawer's top row: back and forward, clear of the close button at its right edge. */
+@utility drawer-top {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 3rem 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
 /* A daemon's version in the host switcher's list (issue #281); one that is not the app's is marked. */
 @utility top-bar-host-version {
   margin-left: auto;
