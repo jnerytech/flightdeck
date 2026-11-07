@@ -1,0 +1,10 @@
+# The istanbul job of a sharded suite run (#296): the coverage:funcs preload goes before the repo's,
+# so no source loads before istanbul instruments it. Bun's own coverage is off: the bun job of the
+# same shard gives the lines. Otherwise the same as bunfig.related.toml (shard-gate.test.ts).
+[test]
+preload = ["./scripts/test/coverage-funcs-preload.ts", "./scripts/test/preload.ts"]
+coverage = false
+coverageSkipTestFiles = true
+coverageReporter = ["lcov"]
+coveragePathIgnorePatterns = ["**/test/**", "**/components/ui/**", "**/scripts/demo-seed.ts"]
+pathIgnorePatterns = ["mods/**"]

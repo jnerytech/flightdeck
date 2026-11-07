@@ -3,7 +3,11 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { bundleCode } from "../../apps/daemon/src/teleport/bundle.ts";
-import { DEMO_TELEPORT_SESSION, teleportReady } from "../lib/demo-teleport.ts";
+import {
+  DEMO_TELEPORT_SESSION,
+  DEMO_TELEPORT_SESSIONS,
+  teleportReady,
+} from "../lib/demo-teleport.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 const cleanups: string[] = [];
@@ -44,6 +48,20 @@ describe("demo-teleport: the demo has a session that can move to the other host 
     expect(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(DEMO_TELEPORT_SESSION),
     ).toBe(true);
+  });
+
+  test("each language has its own movable transcript, since a session already on beta cannot be imported twice (#790)", () => {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const { en, "pt-BR": pt } = DEMO_TELEPORT_SESSIONS;
+    expect({
+      en: en === DEMO_TELEPORT_SESSION,
+      uuids: uuid.test(en) && uuid.test(pt),
+      apart: en !== pt,
+    }).toEqual({
+      en: true,
+      uuids: true,
+      apart: true,
+    });
   });
 
   test("alfa's repository bundles from origin/main, and beta's clone has that commit", async () => {

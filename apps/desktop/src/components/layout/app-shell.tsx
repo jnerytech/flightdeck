@@ -33,6 +33,11 @@ export function AppShell(
     status?: ReactNode;
     sidebar: (collapsed: boolean) => ReactNode;
     labels: AppShellLabels;
+    /** What the top bar gave up at a compact width, drawn above the sidebar in the drawer. */
+    drawerTop?: ReactNode;
+    /** The wide window's fold, kept by the caller; without it the shell keeps its own. */
+    folded?: boolean;
+    onFold?(folded: boolean): void;
     /** Changes when the person navigates: the overlay or the drawer closes. */
     navKey?: unknown;
     children: ReactNode;
@@ -41,8 +46,13 @@ export function AppShell(
   const breakpoint = useBreakpoint();
   const wide = breakpoint === "wide";
   const compact = breakpoint === "compact";
-  /** The button's choice on a wide window: folded to the rail, or not. */
-  const [folded, setFolded] = useState(false);
+  /** The button's choice on a wide window: folded to the rail, or not (kept by the caller, if it gives it). */
+  const [ownFold, setOwnFold] = useState(false);
+  const folded = props.folded ?? ownFold;
+  const setFolded = (value: boolean) => {
+    setOwnFold(value);
+    props.onFold?.(value);
+  };
   /** The overlay (medium) or the drawer (compact) is open. */
   const [sheet, setSheet] = useState(false);
   const { labels, navKey } = props;
@@ -121,6 +131,7 @@ export function AppShell(
             >
               <X />
             </Button>
+            {props.drawerTop && <div className="drawer-top">{props.drawerTop}</div>}
             <div className="min-h-0 flex-1 overflow-hidden">{props.sidebar(false)}</div>
           </SheetContent>
         </Sheet>

@@ -411,6 +411,9 @@ export const DAEMON_REASONS = [
   // Issue #77: more fixing rounds for a card.
   "watch_off",
   "watch_extend_blocked",
+  "watch_round_not_held",
+  "watch_held_moved",
+  "watch_pr_not_open",
   "opencode_project_config_not_disabled",
   "opencode_canary_failed",
   "opencode_scope_mismatch",

@@ -109,13 +109,60 @@ jobs:
         run: bun run scripts/unstable-issues.ts
 
   # Linux (#293): the suite, SonarCloud, and the smokes and cargo run as jobs of their own, the
-  # suite and the checks in parallel. The suite stays whole: bun's lcov counts functions per file
-  # but does not name them, so shards could not merge the exact 100% function gate. The required
-  # check `test (ubuntu-latest)` is the aggregate below.
+  # suite and the checks in parallel. The required check `test (ubuntu-latest)` is the aggregate
+  # below.
+  # The whole suite in three shards (#296), each run twice: Bun's coverage gives the lines (and the
+  # lcov SonarCloud reads), istanbul's function maps give the functions, since Bun's lcov counts
+  # functions but does not name them. The suite job merges the six, failing closed.
+  test-shard:
+    name: test shard ${{ matrix.shard }}/3 ${{ matrix.kind }} (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: [quick]
+    if: needs.quick.outputs.base == '' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+        kind: [bun, istanbul]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # Outside the checkout: the repo guard fails a test run that leaves a file in it.
+      - name: Shard ${{ matrix.shard }}/3 (${{ matrix.kind }})
+        run: bun run scripts/shard-gate.ts run ${{ matrix.shard }}/3 ${{ matrix.kind }} "$RUNNER_TEMP/shard"
+
+      - name: Relatório do shard
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: shard-${{ matrix.shard }}-${{ matrix.kind }}
+          path: ${{ runner.temp }}/shard
+          retention-days: 1
+
   test-suite:
     name: test suite (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [quick]
-    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    needs: [quick, test-shard]
+    # After the shards, even when one failed: the merge then fails closed and names it.
+    if: "!cancelled() && needs.quick.result == 'success' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # bash everywhere: stops at the first failing command of a step.
@@ -151,10 +198,19 @@ jobs:
           BASE: ${{ needs.quick.outputs.base }}
         run: bun run test:related -- --pr --base "$BASE" --keep-coverage coverage
 
-      # The schedule (every 3 hours) and a dispatch: the whole suite and the whole-repo 100% gate.
-      - name: Testes (cobertura 100%)
+      # The schedule (every 3 hours) and a dispatch: the whole suite and the whole-repo 100% gate,
+      # merged from the shard jobs (#296). A missing report reaches the merge, which names it.
+      - name: Relatórios dos shards
         if: needs.quick.outputs.base == ''
-        run: bun run test
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: shard-*
+          path: ${{ runner.temp }}/shards
+
+      - name: Testes (cobertura 100%, 3 shards)
+        if: needs.quick.outputs.base == ''
+        run: bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info
 
       # SonarCloud reads it in its own job.
       - name: Relatório lcov para o SonarCloud
@@ -166,11 +222,12 @@ jobs:
 
   # SonarCloud, with the lcov report of the suite. The product version marks the new-code period
   # ("previous version"). Skipped on a dispatch, and where the secret is not available (pull requests
-  # from forks).
+  # from forks). The status check is explicit: a PR skips the shards, and GitHub would skip this job
+  # after them too.
   sonar:
     name: sonarcloud
     needs: [test-suite]
-    if: github.event_name != 'workflow_dispatch'
+    if: "!cancelled() && needs.test-suite.result == 'success' && github.event_name != 'workflow_dispatch'"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

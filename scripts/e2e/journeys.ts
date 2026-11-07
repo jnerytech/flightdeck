@@ -10,6 +10,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
+import { DEMO_FAKE_KEY } from "../lib/demo-secret.ts";
+import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
   acoesAction,
   DANGER_SESSION,
@@ -1563,6 +1565,242 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       if (problem) throw new Error(`a barra de status a ${width}px: ${problem}`);
     }
   },
+
+  // Issue #790: a session moves from alfa to beta. The preview is switched on, the demo's movable
+  // transcript is resumed on alfa and moved to beta's clone, the dialog shows only counts (none of
+  // the conversation's words), and "Open it there" lands on the session on beta.
+  "teleport-mover": async (c) => {
+    const claudeSessionId = DEMO_TELEPORT_SESSIONS[c.lang];
+    await open(c, { name: "settings", section: "window" });
+    const preview = c.page.getByLabel(c.t("teleportUi.preview"), { exact: true });
+    await preview.waitFor({ timeout: WAIT });
+    if (!(await preview.isChecked())) await preview.check();
+    // Resume the transcript on alfa through the reader.
+    await open(c, { name: "external", host: ALFA, claudeSessionId });
+    await c.page.getByRole("button", { name: c.t("reader.continue"), exact: true }).click();
+    const anyway = c.page.getByRole("button", { name: c.t("reader.continueAnyway"), exact: true });
+    await anyway.click({ timeout: 3000 }).catch(() => undefined);
+    // Continuing lands on the hub with the new session open. The row is not titled by the
+    // transcript: a host with standard names calls it "app · geral · N", so it is found by what
+    // marks it, the open session (aria-current), never by its title.
+    await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
+    const row = c.page.getByRole("main").locator("li[aria-current='true']");
+    const actions = row.getByRole("button", {
+      name: new RegExp(
+        c.t("hub.actions", { title: "§" }).replace("§", ".*").replaceAll(/[()]/g, "\\$&"),
+      ),
+    });
+    const move = c.page.getByRole("menuitem", { name: c.t("teleportUi.menu"), exact: true });
+    const menus: string[][] = [];
+    await waitFor(
+      async () => {
+        // The row may not be listed yet: a missed click is another turn of the wait, not a failure.
+        const clicked = await actions
+          .first()
+          .click({ timeout: 2000 })
+          .then(
+            () => true,
+            () => false,
+          );
+        if (!clicked) return false;
+        if (await move.isVisible()) return true;
+        menus.push(await c.page.getByRole("menuitem").allTextContents());
+        await c.page.keyboard.press("Escape");
+        return false;
+      },
+      "o menu da sessão aberta oferecer mover para outro host",
+      SESSION_WAIT,
+    ).catch(async (error: Error) => {
+      // What the page showed, so a red run says why without a second one.
+      const rows = await c.page
+        .getByRole("main")
+        .locator("li[aria-label]")
+        .evaluateAll((els) => els.map((e) => `${e.ariaLabel}${e.ariaCurrent ? " (aberta)" : ""}`));
+      throw new Error(
+        `${error.message} (linhas: ${JSON.stringify(rows)}; itens do menu: ${JSON.stringify(menus.at(-1))})`,
+      );
+    });
+    await move.click();
+    const dialog = c.page.getByRole("dialog", { name: c.t("teleportUi.title") });
+    await dialog.getByLabel(c.t("teleportUi.host"), { exact: true }).selectOption({ label: BETA });
+    await dialog.getByLabel(c.t("teleportUi.repo"), { exact: true }).fill(c.ids.teleportRepo);
+    await dialog.getByRole("button", { name: c.t("teleportUi.next"), exact: true }).click();
+    const go = dialog.getByRole("button", { name: c.t("teleportUi.move"), exact: true });
+    await go.waitFor({ timeout: SESSION_WAIT });
+    // Counts only: what changed and how big, never a word of the conversation or the code.
+    const text = (await dialog.textContent()) ?? "";
+    // How many files changed depends on the demo's repository, which other journeys edit: a count.
+    const counted = new RegExp(
+      c
+        .t("teleportUi.changed", { n: "§" })
+        .replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        .replace("§", "[1-9]\\d*"),
+    );
+    if (!counted.test(text)) {
+      throw new Error(`o resumo devia contar os arquivos alterados: ${text.slice(0, 300)}`);
+    }
+    for (const leak of ["Ajuste", "revise", "export const"]) {
+      if (text.includes(leak))
+        throw new Error(`o resumo mostrou texto da conversa ou do código: ${leak}`);
+    }
+    await go.click();
+    await dialog
+      .getByRole("button", { name: c.t("teleportUi.open"), exact: true })
+      .click({ timeout: SESSION_WAIT });
+    // The dialog leaves with the click (#842), and the session is on beta: the host in use is beta.
+    await dialog.waitFor({ state: "hidden", timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("shell.host", { host: BETA }) })
+      .waitFor({ timeout: WAIT });
+  },
+
+  // A session page's views (#107, #846): the tablist and Alt+1..7 switch them, the Terminal view
+  // opens a shell in the session's folder and keeps it while another view shows, and closing the
+  // terminal ends the shell (opening the view again starts a new one). The Terminal tab is in
+  // reach in a phone-sized window and a desktop one.
+  "sessao-vistas": async (c) => {
+    const route: Route = { name: "session", host: ALFA, id: c.ids.idleSession };
+    const list = c.page.getByRole("tablist", { name: c.t("sessionViews.label"), exact: true });
+    const tabs = list.getByRole("tab");
+    const terminalTab = list.getByRole("tab", { name: c.t("sessionViews.terminal"), exact: true });
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, route);
+      await terminalTab.waitFor({ timeout: WAIT });
+      if (size.width >= 800) {
+        // The strip fits: the tab is in the window with nothing scrolled.
+        await inReach(c, `a aba Terminal a ${size.width}x${size.height}`, terminalTab);
+      } else {
+        // The strip scrolls sideways by design (its tabs keep their width): the tab comes into
+        // view with the strip scrolled, and the page itself never scrolls sideways.
+        await terminalTab.scrollIntoViewIfNeeded();
+        await terminalTab.click({ trial: true, timeout: WAIT });
+        const sideways = await c.page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        if (sideways > 0)
+          throw new Error(`a página rola ${sideways}px para o lado a ${size.width}px`);
+      }
+    }
+    // Alt+1..7 pick the views in the order of the tabs; the tab picked says so.
+    const count = await tabs.count();
+    if (count < 2) throw new Error(`a página da sessão devia ter várias vistas, tem ${count}`);
+    const selected = async () => {
+      const marks = await tabs.evaluateAll((els) => els.map((e) => e.ariaSelected === "true"));
+      return marks.indexOf(true);
+    };
+    await tabs.first().click();
+    for (let i = 1; i < Math.min(count, 7); i++) {
+      await c.page.keyboard.press(`Alt+${i + 1}`);
+      await waitFor(async () => (await selected()) === i, `Alt+${i + 1} escolher a vista ${i + 1}`);
+    }
+    await c.page.keyboard.press("Alt+1");
+    await waitFor(async () => (await selected()) === 0, "Alt+1 voltar à conversa");
+    // The Terminal view: a shell in the session's folder, kept while the conversation shows.
+    const marker = `fd-${c.lang}-${Date.now()}`;
+    const rows = c.page.locator(".xterm-rows");
+    const screen = async () => ((await rows.first().textContent()) ?? "").trim();
+    await terminalTab.click();
+    await c.page
+      .getByText(c.t("terminalUi.state.live"), { exact: true })
+      .waitFor({ timeout: WAIT * 2 });
+    await waitFor(async () => (await screen()) !== "", "o prompt do shell");
+    await c.page.locator(".xterm").first().click();
+    await c.page.keyboard.type("PS1='$ '\n");
+    await c.page.keyboard.type(`echo ${marker}\n`);
+    const echoes = async () => (await screen()).split(marker).length - 1;
+    await waitFor(async () => (await echoes()) >= 2, "o eco do terminal", WAIT * 2);
+    // Ctrl+` goes back to the conversation and to the same shell, which kept what was typed.
+    await c.page.keyboard.press("Control+Backquote");
+    await waitFor(async () => (await selected()) === 0, "Ctrl+` voltar à conversa");
+    await c.page.keyboard.press("Control+Backquote");
+    await waitFor(async () => (await echoes()) >= 2, "o mesmo shell, com o que foi digitado");
+    // Closing the terminal ends the shell and returns to the conversation.
+    const end = async () => {
+      await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
+      await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
+      await waitFor(async () => (await selected()) === 0, "a conversa depois de encerrar");
+    };
+    await end();
+    // A new shell, not the one that ended: what was typed is not there.
+    await terminalTab.click();
+    await c.page
+      .getByText(c.t("terminalUi.state.live"), { exact: true })
+      .waitFor({ timeout: WAIT * 2 });
+    await waitFor(async () => (await screen()) !== "", "o prompt do novo shell");
+    if ((await echoes()) !== 0) throw new Error("o terminal encerrado voltou com o shell antigo");
+    // The demo keeps its state: leave no shell running.
+    await end();
+  },
+
+  // The board's Files panel (#117, #846): a worktree picked in the sidebar tree opens its files
+  // beside the columns; a name search finds a file and marks a credential as hidden instead of
+  // opening it; a content search finds a key-shaped line without its key (#827, #829) and finds
+  // nothing in a credential file; a match opens its file. Then the panel's search box is in reach
+  // in a phone-sized window and a desktop one.
+  "board-arquivos": async (c) => {
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    const tree = c.page.locator("[data-slot='project-tree']");
+    const head = tree.locator("[data-project='flightdeck-web']");
+    await head.waitFor({ timeout: WAIT });
+    if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+    await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
+    const panel = c.page.locator("[data-slot='board-files']");
+    await panel.getByText("app.ts").first().waitFor({ timeout: WAIT });
+    const results = panel.getByRole("list", { name: c.t("files.results"), exact: true });
+    // By name: the file is found; a credential is listed as hidden and cannot be opened.
+    const names = panel.getByRole("searchbox", { name: c.t("files.searchNames"), exact: true });
+    await names.fill("config");
+    await results.getByRole("button", { name: "config.example.ts", exact: true }).waitFor({
+      timeout: WAIT,
+    });
+    await names.fill(".env");
+    await results
+      .getByText(c.t("files.hidden"), { exact: true })
+      .first()
+      .waitFor({ timeout: WAIT });
+    if ((await results.getByRole("button", { name: ".env", exact: true }).count()) > 0) {
+      throw new Error("um arquivo de credencial devia aparecer como oculto, sem botão para abrir");
+    }
+    // By content: the key-shaped line is found, and nothing of the key shows.
+    await panel.getByRole("tab", { name: c.t("files.byContent"), exact: true }).click();
+    const content = panel.getByRole("searchbox", { name: c.t("files.searchContent"), exact: true });
+    await content.fill("chave de exemplo");
+    await results.getByRole("button", { name: /^config\.example\.ts:\d+$/ }).waitFor({
+      timeout: WAIT,
+    });
+    const shown = (await results.textContent()) ?? "";
+    for (const leak of [DEMO_FAKE_KEY, "demodemo"]) {
+      if (shown.includes(leak)) throw new Error(`a busca por conteúdo mostrou a chave: ${leak}`);
+    }
+    if (!shown.includes("[redacted]")) {
+      throw new Error(`a linha com a chave devia sair mascarada: ${shown.slice(0, 200)}`);
+    }
+    // A credential file's content is never searched.
+    await content.fill("DEMO_MODE");
+    await panel.getByText(c.t("files.nothingFound"), { exact: true }).waitFor({ timeout: WAIT });
+    // A match opens its file.
+    await panel.getByRole("tab", { name: c.t("files.byName"), exact: true }).click();
+    await panel
+      .getByRole("searchbox", { name: c.t("files.searchNames"), exact: true })
+      .fill("app.ts");
+    await results.getByRole("button", { name: "app.ts", exact: true }).click();
+    const viewer = c.page.getByRole("region", { name: c.t("files.viewer", { path: "app.ts" }) });
+    await viewer.locator(".cm-line").first().waitFor({ timeout: WAIT });
+    await viewer.getByRole("button", { name: c.t("files.close"), exact: true }).click();
+    // The panel's search box is in reach in a phone-sized window and a desktop one.
+    const toggle = c.page.getByRole("button", { name: c.t("board.files"), exact: true });
+    const search = panel.getByRole("searchbox").first();
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      if (!(await search.isVisible())) {
+        if ((await toggle.count()) === 0)
+          throw new Error("o botão Arquivos sumiu ao redimensionar");
+        await toggle.click();
+      }
+      await inReach(c, `a busca de arquivos a ${size.width}x${size.height}`, search);
+    }
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
@@ -1580,6 +1818,8 @@ async function crumbsProblem(page: Page): Promise<string | null> {
   return page.evaluate(() => {
     const slot = document.querySelector<HTMLElement>(".header-crumbs");
     const nav = slot?.querySelector<HTMLElement>("nav");
+    // Under 640 px the page's own header carries the title: the bar draws no path (#641).
+    if (window.innerWidth < 640) return nav ? "a path is drawn under 640 px" : null;
     if (!slot || !nav) return "no breadcrumb";
     const limit = slot.getBoundingClientRect().right + 1;
     // Where the person is must stay readable: the current step never shrinks to nothing.
@@ -1607,6 +1847,11 @@ async function crumbsProblem(page: Page): Promise<string | null> {
  * The shared tabs are pinned and show only their icon (#644), so they are not counted.
  */
 async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
+  // Under 640 px the row is one button, the current tab's, that opens the list (#641).
+  if ((page.viewportSize()?.width ?? Number.POSITIVE_INFINITY) < 640) {
+    const button = page.getByRole("button", { name: /^(Todas as abas|All tabs) \(/ });
+    return (await button.count()) === 1 ? null : "no compact tab button";
+  }
   const widths = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>(".tab-item:not([data-pinned])")].map((tab) =>
       Math.round(tab.getBoundingClientRect().width),

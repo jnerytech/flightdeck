@@ -2,7 +2,8 @@ import { inSequence } from "@flightdeck/protocol";
 /**
  * `bun run pr -- <open|next|update|merge> …` (issue #260, GitHub Flow): one PR per branch to main,
  * each merged on its own when its required checks are green on its HEAD. All of it through REST
- * (`gh api`): `open` titles the PR after the branch's issue and closes it, `next` lists the open PRs
+ * (`gh api`): `open` titles the PR after the branch's issue and closes it (`--refs <n>` only
+ * references it, for a PR that is one slice of the issue, #839), `next` lists the open PRs
  * in the order to merge them (a stacked PR after its parent) with what each still needs, `update`
  * brings a PR up to date with its base, `auto` (any session, #271) turns on GitHub's auto-merge
  * (or, for a PR already clean and green, merges it as auto-merge would, #374), and `merge` (the
@@ -37,7 +38,7 @@ export interface Pr {
 const REPO = "repos/{owner}/{repo}";
 const MAIN = "main";
 const USAGE =
-  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n>] | next | update <n> | auto <n> | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
+  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n> | --refs <n>] | next | update <n> | auto <n> | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
 /** A required check passes as GitHub counts it: a success, or a run it skipped or left neutral. */
 const PASSED = new Set(["success", "skipped", "neutral"]);
 
@@ -215,6 +216,10 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
   const branch = args[0];
   if (!branch || branch.startsWith("--")) return usage(deps);
   const option = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+  if (args.includes("--issue") && args.includes("--refs")) {
+    deps.log("--issue and --refs cannot be used together: pick one");
+    return 2;
+  }
   const base = option("--base") ?? MAIN;
   if ((await deps.git(["rev-parse", "--verify", "--quiet", `origin/${branch}`])).code !== 0) {
     deps.log(`${branch} is not on origin: push it first`);
@@ -233,7 +238,7 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
   }
   const log = await deps.git(["log", "--format=%s", `origin/${base}..origin/${branch}`]);
   const subjects = log.stdout.split("\n").filter(Boolean);
-  const issue = Number(option("--issue")) || issueOf(subjects);
+  const issue = Number(option("--issue") ?? option("--refs")) || issueOf(subjects);
   if (!issue) {
     deps.log(`no (#N) in the subjects of ${branch}'s commits: name the issue with --issue <n>`);
     return 2;
@@ -243,7 +248,8 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     deps.log(`#${issue}: the issue cannot be read`);
     return 1;
   }
-  const body = [`Closes #${issue}`, "", ...subjects.map((s) => `- ${s}`)].join("\n");
+  const link = args.includes("--refs") ? "Refs" : "Closes";
+  const body = [`${link} #${issue}`, "", ...subjects.map((s) => `- ${s}`)].join("\n");
   const created = await deps.gh([
     "api",
     "-X",
@@ -522,6 +528,12 @@ function runFailed(run: MainRun): boolean {
   );
 }
 
+/**
+ * The job a dispatched full run must pass: since #296 it merges the six shard jobs into the 100%
+ * gate, and fails closed when one is missing (ci-shards.test.ts pins the pairing).
+ */
+export const FULL_SUITE_JOB = "test suite (ubuntu-latest)";
+
 /** Every CI run of a commit on main, of any event: a push's, the schedule's, a dispatch's. */
 async function mainRuns(sha: string, deps: PrFlowDeps): Promise<MainRun[]> {
   const listed = await deps.gh([
@@ -550,11 +562,7 @@ async function fullGreen(runs: MainRun[], deps: PrFlowDeps): Promise<boolean> {
       ".jobs[] | {name, conclusion}",
     ]);
     const list = jsonLines<{ name: string; conclusion: string | null }>(jobs.stdout);
-    if (
-      list.some(
-        (j) => j.name.startsWith("test suite (ubuntu-latest)") && j.conclusion === "success",
-      )
-    ) {
+    if (list.some((j) => j.name.startsWith(FULL_SUITE_JOB) && j.conclusion === "success")) {
       return true;
     }
   }

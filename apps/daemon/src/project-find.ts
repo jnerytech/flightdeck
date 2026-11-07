@@ -138,9 +138,15 @@ const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 function nameOf(url: string): string | null {
   let path = URL.canParse(url) ? new URL(url).pathname : "";
   if (/^[\w.-]+@[\w.-]+:/.test(url)) path = url.slice(url.indexOf(":") + 1);
-  const last = path.split("/").filter(Boolean).pop();
+  const last = path.split("/").reverse().find(Boolean);
   return last ? last.replace(/\.git$/i, "") : null;
 }
+
+/** A control character: below the space, or DEL. */
+const isControl = (ch: string) => {
+  const code = ch.codePointAt(0) ?? 0;
+  return code < 32 || code === 127;
+};
 
 /** Lets only an https or ssh address through: no option, no local path, no transport helper. */
 function checkUrl(url: string): void {
@@ -150,7 +156,7 @@ function checkUrl(url: string): void {
   if (!SCHEMES.some((scheme) => scheme.test(url))) {
     throw refuse("bad_request", "clone_url_scheme", "only https:// and ssh addresses are cloned");
   }
-  if (/\s/.test(url) || [...url].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)) {
+  if (/\s/.test(url) || [...url].some(isControl)) {
     throw refuse(
       "bad_request",
       "clone_url_invalid",
@@ -177,8 +183,8 @@ const lastLine = (text: string) =>
   text
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean)
-    .pop()
+    .reverse()
+    .find(Boolean)
     ?.slice(0, 300) ?? "";
 
 /** Clones into a folder inside the roots; refuses with a reason the app can translate. */

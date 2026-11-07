@@ -71,7 +71,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (#444). The e2e journeys run when the change touches what they read (the screens, the journeys,
   the demo, the daemon). Windows is not part of a PR's or a push's run (#534): the person tests it
   by hand. The schedule (every 3 hours) and a run by hand run the whole suite with the whole-repo
-  100% gate, Windows included as a signal that gates nothing (`test:shards`, 30 s per test there);
+  100% gate (on Linux, 3 shards × Bun lines and istanbul functions, merged fail-closed by
+  `scripts/shard-gate.ts`, #296), Windows included as a signal that gates nothing (`test:shards`, 30 s per test there);
   `pr tag` tags only a commit with such a full green run. `bun run test:tiers` prints the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
@@ -134,7 +135,8 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - Never read credentials, tokens, `~/.claude/.credentials.json`, SSH keys or shell history, not
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
 - Delivery is GitHub Flow (#260, #271): one PR per branch to `main`. A session pushes its own
-  branch, opens its PR (`bun run pr -- open <branch>`) and turns on auto-merge
+  branch, opens its PR (`bun run pr -- open <branch>`, with `--refs <n>` for a slice of an issue so
+  it does not close it, #839) and turns on auto-merge
   (`bun run pr -- auto <n>`): GitHub merges it with a merge commit once its required checks are
   green on its HEAD, even when it is behind `main` (#305: the ruleset is not strict; `main`'s push
   CI checks the result). Only a PR that conflicts with `main` waits: merge `main` into it.

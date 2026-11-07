@@ -201,6 +201,15 @@ describe("vigiar-ado: the watcher", () => {
       persona: "revisor",
       maxFailures: 2,
       dailyUsd: 20,
+      driftAllow: [
+        "bun.lock",
+        "bun.lockb",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "Cargo.lock",
+        "*.snap",
+      ],
     });
     watcher.setSettings(project.id, { enabled: true, maxRounds: 2 });
     expect(watcher.settings(project.id)).toMatchObject({ enabled: true, maxRounds: 2 });
