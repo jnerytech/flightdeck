@@ -61,8 +61,19 @@ const scanner = new SecretScanner();
 /** What is read past the cut before the mask: a token across the cut is masked whole (#829). */
 const MASK_WINDOW = 1024;
 
-/** A line that is one run of base64, mixed case and digits: a key's body or a token on its own (#829). */
-const BASE64_RUN = /^(?=[^\s]*[A-Z])(?=[^\s]*[a-z])(?=[^\s]*\d)[A-Za-z0-9+/=]{24,}$/;
+/**
+ * A line that is one run of base64 inside quotes, a comment mark or a list's punctuation: a key's
+ * body, which has no header on its line (#829). A heuristic: a long run needs mixed case and a
+ * digit (so a word or a hex hash is not taken); a short one counts only with its `=` padding, as a
+ * key's last line has.
+ */
+const BASE64_LINE = /^[\s"'`#/*,;:[\]-]*([A-Za-z0-9+/]+={0,2})[\s"'`,;\]]*$/;
+
+function keyBody(line: string): boolean {
+  const run = BASE64_LINE.exec(line.replaceAll("\r", ""))?.[1] ?? "";
+  const mixed = /[A-Z]/.test(run) && /[a-z]/.test(run) && /\d/.test(run);
+  return (run.length >= 24 && mixed) || (run.length >= 8 && run.endsWith("="));
+}
 
 /** A matched line as it is kept until it leaves: bounded in size, not masked yet. */
 const bounded = (text: string) => text.replace(/\r?\n$/, "").slice(0, (TEXT_MAX + MASK_WINDOW) * 2);
@@ -75,7 +86,7 @@ function shown(text: string): string {
   const window = Array.from(text)
     .slice(0, TEXT_MAX + MASK_WINDOW)
     .join("");
-  const masked = BASE64_RUN.test(window.trim()) ? "[redacted]" : scanner.redact(window, false);
+  const masked = keyBody(window) ? "[redacted]" : scanner.redact(window, false);
   return Array.from(masked).slice(0, TEXT_MAX).join("");
 }
 
