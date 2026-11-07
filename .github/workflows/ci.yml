@@ -641,7 +641,10 @@ jobs:
       - name: Prints (${{ matrix.theme }}, ${{ matrix.lang }}) e axe
         # record: the prints are the candidates for apps/desktop/visual-baseline. Once the
         # baselines are committed this becomes compare (docs/DECISIONS.md, "Visual baselines").
+        # DEMO_BUILD (#444): a production build served by vite preview, not the dev server, which
+        # sends every module again on each of the run's page loads.
         env:
+          DEMO_BUILD: "1"
           VISUAL: record
           SHOTS_THEME: ${{ matrix.theme }}
           SHOTS_LANG: ${{ matrix.lang }}
@@ -699,7 +702,10 @@ jobs:
       - name: Jornadas e2e (2 idiomas)
         # A failed journey leaves its trace, print and the text of the terminal in the e2e-failures
         # artifact (E2E_FAILURES); the HTML report is its own artifact. CI retries a failure once.
+        # DEMO_BUILD (#444): the built bundle, like the prints; the layout journey alone reloads
+        # the page about 120 times.
         env:
+          DEMO_BUILD: "1"
           E2E_FAILURES: apps/desktop/screenshots/e2e-failures
         run: bun run e2e -- --shard=${{ matrix.shard }}/3
 

@@ -8,6 +8,7 @@ import {
   parseDemoHosts,
   seedDemoHosts,
 } from "../src/demo/boot.ts";
+import { entryPlugin } from "../src/demo/entry-html.ts";
 import { LANG_KEY } from "../src/i18n/index.ts";
 import { loadHosts } from "../src/lib/hosts.ts";
 import { THEME_KEY } from "../src/lib/theme.ts";
@@ -109,6 +110,15 @@ describe("demo-prints", () => {
     expect(entryHtml(html, "web")).toBe('<script type="module" src="/src/main.web.tsx"></script>');
     expect(entryHtml(html, undefined)).toBe(html);
     expect(entryHtml(html, "tauri")).toBe(html);
+  });
+
+  test("the entry plugin swaps before vite build reads index.html's scripts (#444)", () => {
+    const html = '<script type="module" src="/src/main.tsx"></script>';
+    const plugin = entryPlugin("web");
+    expect(plugin.name).toBe("flightdeck-entry");
+    expect(plugin.transformIndexHtml.order).toBe("pre");
+    expect(plugin.transformIndexHtml.handler(html)).toContain("/src/main.web.tsx");
+    expect(entryPlugin(undefined).transformIndexHtml.handler(html)).toBe(html);
   });
 
   test("no demo, um host que não responde fica offline (ou reconectando) tempo bastante para o print", () => {

@@ -3,15 +3,18 @@
  * `bun run demo` (phase 10): seeds two fake-runtime daemons (scripts/demo-seed.ts) and serves the
  * app's web entry with Vite, already paired with them, at http://localhost:1420 (`DEMO_PORT` picks
  * another; the e2e run and the prints take a free one, so no session's demo blocks another's run).
- * Ctrl+C stops it.
+ * Ctrl+C stops it. With `DEMO_BUILD=1` (CI's e2e and prints jobs, #444) it serves a production
+ * build with `vite preview` instead of the dev server, which sends every module on each page load.
  * `--shots` takes the prints (scripts/demo-shots.ts) into apps/desktop/screenshots/ and exits.
  */
-import { renameSync, writeFileSync } from "node:fs";
+import { mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { seedDemo } from "./demo-seed.ts";
 import { SHOTS_DIR, takeShots } from "./demo-shots.ts";
 import { runVisual } from "./demo-visual.ts";
 import { demoPort, freePort } from "./lib/demo-port.ts";
+import { viteCommands } from "./lib/demo-vite.ts";
 import { stateFile } from "./lib/e2e-demo.ts";
 import { visualMode } from "./lib/visual.ts";
 
@@ -25,9 +28,38 @@ const browserEnv = { ...process.env } as Record<string, string>;
 const seed = await seedDemo(log);
 // Vite itself under this Bun (one process, so stopping it leaves no server behind).
 const VITE = join(DESKTOP, "node_modules/vite/bin/vite.js");
-const vite = Bun.spawn([process.execPath, VITE, "--port", String(PORT), "--strictPort"], {
+const viteEnv = {
+  ...process.env,
+  FLIGHTDECK_ENTRY: "web",
+  VITE_DEMO_HOSTS: JSON.stringify(seed.hosts),
+};
+// A folder of its own, never apps/desktop/dist, which the Tauri build reads.
+const outDir = mkdtempSync(join(tmpdir(), "flightdeck-demo-dist-"));
+const commands = viteCommands({
+  env: process.env,
+  bun: process.execPath,
+  vite: VITE,
+  port: PORT,
+  outDir,
+});
+if (commands.build) {
+  const started = Date.now();
+  const build = Bun.spawnSync(commands.build, {
+    cwd: DESKTOP,
+    env: viteEnv,
+    stdout: "ignore",
+    stderr: "inherit",
+  });
+  if (build.exitCode !== 0) {
+    await seed.stop();
+    rmSync(outDir, { recursive: true, force: true });
+    throw new Error(`the demo build failed (exit ${build.exitCode})`);
+  }
+  log(`built the web entry in ${Math.round((Date.now() - started) / 1000)} s`);
+}
+const vite = Bun.spawn(commands.serve, {
   cwd: DESKTOP,
-  env: { ...process.env, FLIGHTDECK_ENTRY: "web", VITE_DEMO_HOSTS: JSON.stringify(seed.hosts) },
+  env: viteEnv,
   stdout: "pipe",
   stderr: "inherit",
 });
@@ -45,6 +77,7 @@ for await (const chunk of vite.stdout) {
 if (!banner.includes("Local:")) {
   // Typically the port is taken: never print another server's screens.
   await seed.stop();
+  rmSync(outDir, { recursive: true, force: true });
   throw new Error(`o Vite não subiu na porta ${PORT}:
 ${banner}`);
 }
@@ -52,6 +85,7 @@ ${banner}`);
 const stop = async () => {
   vite.kill();
   await seed.stop();
+  rmSync(outDir, { recursive: true, force: true });
 };
 
 if (process.argv.includes("--shots")) {
