@@ -26,6 +26,8 @@ const REASONS = [
   "opencode_v1",
   "watch_off",
   "watch_extend_blocked",
+  "watch_round_not_held",
+  "watch_held_moved",
   "opencode_project_config_not_disabled",
   "opencode_canary_failed",
   "opencode_scope_mismatch",
