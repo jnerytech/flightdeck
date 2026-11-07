@@ -624,14 +624,13 @@ html:not(:has([data-slot="status-bar"])) {
   display: inline-flex;
 }
 
-/* A session's views (#641): one row that scrolls sideways in a narrow pane, like the tab strip,
-   instead of a second row taken from the conversation. */
+/* A session's views (#641): one row that scrolls sideways in a narrow pane, with the app's thin
+   scrollbar showing there is more, instead of a second row taken from the conversation. */
 @utility session-views {
   display: flex;
   flex-shrink: 0;
   gap: 0.5rem;
   overflow-x: auto;
-  scrollbar-width: none;
   border-bottom: 1px solid var(--border);
   padding: 0.5rem 1rem;
   & > * {
