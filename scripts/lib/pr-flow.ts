@@ -1,4 +1,6 @@
 import { inSequence } from "@flightdeck/protocol";
+import { type PrRun, prRunFrom, pushWaitPass } from "./claude-hooks.ts";
+import { heavyReasonGiven } from "./slot-heavy.ts";
 /**
  * `bun run pr -- <open|next|update|merge> …` (issue #260, GitHub Flow): one PR per branch to main,
  * each merged on its own when its required checks are green on its HEAD. All of it through REST
@@ -374,11 +376,57 @@ async function nextPrs(deps: PrFlowDeps): Promise<number> {
 }
 
 /**
+ * Why `update` must wait (#741), or null. GitHub's update-branch makes a new head, which cancels
+ * the PR's run in progress like a push does, and the guard hook never sees it. The same rule as
+ * push-wait: a young green run holds it; GitHub unread twice holds it too; the coordinator and
+ * `FLIGHTDECK_PUSH_NOW="<reason>"` go.
+ */
+async function updateWait(n: number, deps: PrFlowDeps): Promise<string | null> {
+  if (deps.env.FLIGHTDECK_COORDINATOR || heavyReasonGiven(deps.env.FLIGHTDECK_PUSH_NOW))
+    return null;
+  const override = `FLIGHTDECK_PUSH_NOW="<reason>" bun run pr -- update ${n}`;
+  const read = await deps.gh(["api", `${REPO}/pulls/${n}`]);
+  const head =
+    read.code === 0
+      ? (JSON.parse(read.stdout) as { head?: { ref?: string } }).head?.ref
+      : undefined;
+  const lookup = async (): Promise<PrRun | "none" | null> => {
+    if (!head) return null;
+    // The branch goes as one `--branch=` word, so no name reads as a flag.
+    const runs = await deps.gh([
+      "run",
+      "list",
+      `--branch=${head}`,
+      "--event=pull_request",
+      "--limit=1",
+      "--json=databaseId,status,startedAt,url",
+    ]);
+    if (runs.code !== 0) return null;
+    if (runs.stdout.trim() === "[]") return "none";
+    const view = await deps.gh(["pr", "view", String(n), "--json=mergeable,statusCheckRollup"]);
+    return prRunFrom(runs.stdout, view.code === 0 ? view.stdout : null, (deps.now ?? Date.now)());
+  };
+  // One more try: a gh call can fail once on a busy machine.
+  const run = (await lookup()) ?? (await lookup());
+  if (run === null) {
+    return `#${n}: GitHub could not be read to check its PR run, twice (#741). Try again in a minute, or update now with:\n  ${override}`;
+  }
+  if (run === "none" || pushWaitPass(run)) return null;
+  const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
+  return `#${n}: updating now cancels CI run ${run.id}, ${run.minutes} min old with no failed check (#741)${url}. A PR behind main merges anyway (#305): wait for the run to end, or update now with:\n  ${override}`;
+}
+
+/**
  * Brings a PR up to date with its base, then turns its auto-merge back on (#613): GitHub turns it
  * off when the PR conflicts, and nothing turned it back on after the merge. A draft, or a PR onto a
  * parent main does not have yet, stays updated without it, which is no failure.
  */
 async function updatePr(n: number, deps: PrFlowDeps): Promise<number> {
+  const held = await updateWait(n, deps);
+  if (held) {
+    deps.log(held);
+    return 1;
+  }
   const { code } = await deps.gh(["api", "-X", "PUT", `${REPO}/pulls/${n}/update-branch`]);
   deps.log(code === 0 ? `#${n} updated with its base` : `GitHub refused to update #${n}`);
   if (code !== 0) return 1;
