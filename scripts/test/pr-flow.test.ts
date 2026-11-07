@@ -27,6 +27,10 @@ interface FakePr extends Pr {
   state: "open" | "closed";
   /** GitHub's mergeable_state: "dirty" when the PR conflicts with its base. */
   mergeableState?: string;
+  /** The head's repository (null: a deleted fork); absent, the same repository as the base. */
+  headRepo?: string | null;
+  /** What `gh api` prints for this PR in place of its JSON. */
+  raw?: string;
 }
 
 /** A fake GitHub behind `gh api`, and a fake git; every write is recorded. */
@@ -127,6 +131,7 @@ function fake(
         const pr = prs.find((p) => p.number === Number(m?.[1]));
         if (!pr) return { code: 1, stdout: "" };
         if (m[2]) return ok("{}");
+        if (pr.raw !== undefined) return ok(pr.raw);
         return ok(
           JSON.stringify({
             number: pr.number,
@@ -134,8 +139,14 @@ function fake(
             title: pr.title,
             state: pr.state,
             draft: pr.draft,
-            head: { ref: pr.head, sha: pr.sha },
-            base: { ref: pr.base },
+            head: {
+              ref: pr.head,
+              sha: pr.sha,
+              ...(pr.headRepo === undefined
+                ? {}
+                : { repo: pr.headRepo === null ? null : { full_name: pr.headRepo } }),
+            },
+            base: { ref: pr.base, repo: { full_name: "o/r" } },
             mergeable_state: pr.mergeableState ?? "clean",
           }),
         );
@@ -672,11 +683,28 @@ describe("pr-flow: update and merge", () => {
     expect(f.writes).toEqual([]);
     expect(f.out()).toContain("GitHub could not be read");
     expect(f.out()).toContain('FLIGHTDECK_PUSH_NOW="<reason>" bun run pr -- update 13');
+    // GitHub's answer that is not JSON reads as unread too, never a crash (#952 security review).
+    const garbled = fake({ prs: [pr(13, "behind", { raw: "<html>" })], now: 0 });
+    expect(await prFlow(["update", "13"], garbled.deps).catch(() => "crashed")).toBe(1);
+    expect(garbled.out()).toContain("#13: GitHub could not be read");
     // A PR that cannot be read has no branch to ask about: held the same way, and no run is listed.
     const unread = fake({ prs: [], now: 0 });
     expect(await prFlow(["update", "99"], unread.deps)).toBe(1);
     expect(unread.asked).toEqual([]);
     expect(unread.out()).toContain("#99: GitHub could not be read");
+  });
+
+  test("a fork's PR holds without a lookup: a branch of the same name here is not its run (#952 security review)", async () => {
+    for (const headRepo of ["someone/flightdeck", null]) {
+      const f = fake({ prs: [pr(13, "behind", { headRepo })], now: 0 });
+      expect(await prFlow(["update", "13"], f.deps)).toBe(1);
+      expect(f.asked).toEqual([]);
+      expect(f.writes).toEqual([]);
+      expect(f.out()).toContain("#13 comes from a fork");
+      expect(f.out()).toContain('FLIGHTDECK_PUSH_NOW="<reason>" bun run pr -- update 13');
+    }
+    const same = fake({ prs: [pr(13, "behind", { headRepo: "o/r" })], now: 0 });
+    expect(await prFlow(["update", "13"], same.deps)).toBe(0);
   });
 
   test("a draft is updated and left without auto-merge, and that is no failure (#613)", async () => {
