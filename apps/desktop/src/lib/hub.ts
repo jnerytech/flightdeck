@@ -97,6 +97,23 @@ export function loadHubFilter(storage: { getItem(key: string): string | null }):
   };
 }
 
+/** The host the hub kept in its own filter before #126, taken out of it: "" when there is none. */
+export function takeHubHost(storage: {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}): string {
+  try {
+    const stored = JSON.parse(storage.getItem(HUB_FILTER_KEY) ?? "{}") as Record<string, unknown>;
+    const { host, ...rest } = stored;
+    if (typeof host !== "string" || host === "") return "";
+    storage.setItem(HUB_FILTER_KEY, JSON.stringify(rest));
+    return host;
+  } catch {
+    // Not JSON, or a storage that refuses: nothing to take.
+    return "";
+  }
+}
+
 export function saveHubFilter(
   storage: { setItem(key: string, value: string): void },
   filter: HubFilter,

@@ -60,9 +60,19 @@ export function scopeHosts<T extends { id: string }>(hosts: readonly T[], scope:
   return scope.kind === "all" ? [...hosts] : hosts.filter((host) => host.id === scope.hostId);
 }
 
+/** The scope the hub's own host filter (a host's name, before #126) stands for. */
+export function hubHostScope(
+  name: string,
+  hosts: readonly { id: string; name: string }[],
+): DataScope {
+  const host = name === "" ? undefined : hosts.find((each) => each.name === name);
+  return host ? { kind: "host", hostId: host.id } : ALL_SCOPE;
+}
+
 /** The data scope of the app, kept in storage; a storage that refuses is not fatal. */
 export class DataScopeController {
   value: DataScope;
+  private picked: boolean;
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly storage: Platform["storage"]) {
@@ -73,6 +83,7 @@ export class DataScopeController {
       // A storage that cannot be read (a private window): every host.
     }
     this.value = parseScope(kept);
+    this.picked = kept !== null;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -80,8 +91,14 @@ export class DataScopeController {
     return () => this.listeners.delete(listener);
   };
 
+  /** Whether a scope was ever chosen (kept in storage), not only the default. */
+  get chosen(): boolean {
+    return this.picked;
+  }
+
   set(value: DataScope): void {
     this.value = value;
+    this.picked = true;
     try {
       this.storage.setItem(DATA_SCOPE_KEY, JSON.stringify(value));
     } catch {
