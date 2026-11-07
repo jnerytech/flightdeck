@@ -1,8 +1,8 @@
 import { constants } from "node:fs";
 import { open, readdir, realpath } from "node:fs/promises";
-import { posix } from "node:path";
+import { join, posix } from "node:path";
 import type { KnowledgeEntry, KnowledgeListResult } from "@flightdeck/protocol";
-import { isInside } from "../paths.ts";
+import { samePath } from "../paths.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { parseKnowledge } from "./parse.ts";
 
@@ -98,9 +98,10 @@ export async function listKnowledge(
   const seen = { n: 0 };
   const real = await realpath(root);
   for (const folder of FOLDERS) {
-    // A folder, or a folder above it, that is a link must still lead inside the project.
+    // The folder must be where its name says it is: a link above it, out of the project or to another
+    // folder of it (a credential folder), would list what the name does not show.
     const [at] = await Promise.allSettled([realpath(`${root}/${folder}`)]);
-    if (at.status === "fulfilled" && isInside(real, at.value)) {
+    if (at.status === "fulfilled" && samePath(at.value, join(real, folder))) {
       await walk(root, folder, 0, found, seen);
     }
   }
