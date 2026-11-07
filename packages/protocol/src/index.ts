@@ -3106,6 +3106,8 @@ export const Command = z.discriminatedUnion("type", [
     z.object({ paths: z.array(z.string().min(1).max(4096)).min(1).max(200) }).strict(),
   ),
   cmd("project.trust.inspect", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** #75: the project's stack and its test, lint, format and build commands, read, never run. */
+  cmd("project.harness.stack", z.object({ path: z.string().min(1).max(4096) }).strict()),
   cmd(
     "project.trust.set",
     z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
@@ -4678,6 +4680,18 @@ export const ProjectLoad = z.object({
 });
 export type ProjectLoad = z.infer<typeof ProjectLoad>;
 
+/** #75: what a project is built with, and the fixed commands that test, lint, format and build it. */
+export const HarnessStack = z.object({
+  stacks: z.array(z.enum(["node", "python", "go", "rust", "dotnet"])),
+  commands: z.object({
+    test: z.string().nullable(),
+    lint: z.string().nullable(),
+    format: z.string().nullable(),
+    build: z.string().nullable(),
+  }),
+});
+export type HarnessStack = z.infer<typeof HarnessStack>;
+
 /** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
 export const SleepResult = z.object({
   /** What came of it: `slept`, `already` (nothing was alive), or why it was not allowed. */
@@ -4897,6 +4911,7 @@ export interface CommandResults {
   "host.keepAwake": KeepAwakeStatus;
   "project.trust.state": ProjectTrustStates;
   "project.trust.inspect": ProjectLoad;
+  "project.harness.stack": HarnessStack;
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;
