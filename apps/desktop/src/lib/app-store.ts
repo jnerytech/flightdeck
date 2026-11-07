@@ -80,7 +80,6 @@ import type {
   WebhookRequest,
   WebhookResponse,
 } from "../platform/types.ts";
-import type { TeleportRunArgs } from "../ui/TeleportDialog.tsx";
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
@@ -186,7 +185,12 @@ import {
 import { savePayload } from "./ssh.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
-import { type TeleportOutcome, type TeleportRequest, teleportSession } from "./teleport.ts";
+import {
+  type TeleportOutcome,
+  type TeleportRequest,
+  type TeleportRunArgs,
+  teleportSession,
+} from "./teleport.ts";
 import {
   isLocalUrl,
   type TerminalEnv,

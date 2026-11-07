@@ -12,15 +12,12 @@ import { useT } from "../i18n/context.tsx";
 import { translateError } from "../i18n/errors.ts";
 import { formatBytes } from "../lib/format-bytes.ts";
 import { RequestError } from "../lib/host-connection.ts";
-import { plainText, type TeleportOutcome, type TeleportSummary } from "../lib/teleport.ts";
-
-export interface TeleportRunArgs {
-  target: string;
-  repo: string;
-  confirm(summary: TeleportSummary): Promise<boolean>;
-  onProgress(sent: number, total: number): void;
-  signal: AbortSignal;
-}
+import {
+  plainText,
+  type TeleportOutcome,
+  type TeleportRunArgs,
+  type TeleportSummary,
+} from "../lib/teleport.ts";
 
 export interface TeleportDialogProps {
   /** The hosts the session can go to: online, with teleport, not its own. */

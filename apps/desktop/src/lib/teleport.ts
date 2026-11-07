@@ -45,6 +45,15 @@ export interface TeleportRun {
   cleanupMs?: number;
 }
 
+/** What the app's dialog hands the store for a move: the target, the repository, the person's say. */
+export interface TeleportRunArgs {
+  target: string;
+  repo: string;
+  confirm(summary: TeleportSummary): Promise<boolean>;
+  onProgress(sent: number, total: number): void;
+  signal: AbortSignal;
+}
+
 export type TeleportOutcome =
   | { kind: "moved"; sessionId: string; worktree: string; branch: string }
   | { kind: "declined" }
