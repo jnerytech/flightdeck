@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { KpiCard } from "@/components/home/kpi-card";
+import { Leaderboard } from "@/components/home/leaderboard";
 import { Page } from "@/components/layout/page";
 import { Grid, Stack } from "@/components/layout/stack";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import { ALL_HOSTS, daysBetween, periodRange } from "../lib/costs.ts";
+import { mergeSummaries } from "../lib/client-costs.ts";
+import { ALL_HOSTS, daysBetween, periodRange, projectLabels } from "../lib/costs.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
+import { type HomeLeaders, homeLeaders } from "../lib/home-leaders.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 
@@ -53,6 +56,8 @@ export function HomePage(
     failed: string[];
   } | null>(null);
   const [tick, setTick] = useState(0);
+  /** The leaderboard of the last read: in memory only, since it names projects (#124). */
+  const [leaders, setLeaders] = useState<{ entry: string; leaders: HomeLeaders } | null>(null);
   // What is on screen at once: this visit's read, or else the last one of the same hosts and period.
   const data = fetched?.entry === entry ? fetched.hosts : (store.homeCache.get(entry) ?? null);
 
@@ -73,17 +78,31 @@ export function HomePage(
     let current = true;
     void Promise.all(
       online.map(async (host) => {
-        const [costs, usage] = await Promise.all([
-          hasFeature(host.hostInfo?.features, "costs", false)
-            ? store.hostRequest(host.id, "costs.summary", range)
-            : null,
+        const priced = hasFeature(host.hostInfo?.features, "costs", false);
+        // The leaderboard's trend compares days 1-3 with days 4-6: today is not over.
+        const half = (from: number, to: number) =>
+          priced
+            ? store.hostRequest(host.id, "costs.summary", {
+                from: days[from] ?? range.from,
+                to: days[to] ?? range.to,
+              })
+            : null;
+        const [costs, usage, first, second] = await Promise.all([
+          priced ? store.hostRequest(host.id, "costs.summary", range) : null,
           store.hostRequest(host.id, "usage.summary", { days: 7 }),
+          half(0, 2),
+          half(3, 5),
         ]);
         // A host that has costs but did not give them, or did not give its usage, did not answer.
         const answered = (costs === null || costs.ok) && usage.ok;
         return {
           id: host.id,
           answered,
+          // A host whose three costs came is in the leaderboard; the others are in the notices.
+          shares:
+            costs?.ok && first?.ok && second?.ok
+              ? { week: costs.data, first: first.data, second: second.data }
+              : null,
           data: homeHostData(
             costs?.ok ? costs.data : null,
             usage.ok ? usage.data : null,
@@ -100,6 +119,17 @@ export function HomePage(
         if (result.answered || !before[result.id]) hosts[result.id] = result.data;
       }
       store.homeCache.set(entry, hosts);
+      const shares = results.flatMap((r) => (r.shares ? [{ hostId: r.id, ...r.shares }] : []));
+      const merged = (part: "week" | "first" | "second") =>
+        mergeSummaries(
+          shares.map((s) => ({ hostId: s.hostId, summary: s[part] })),
+          range.from,
+          range.to,
+        ).summary;
+      setLeaders({
+        entry,
+        leaders: homeLeaders(merged("week"), merged("first"), merged("second")),
+      });
       setFetched({
         entry,
         hosts,
@@ -161,6 +191,15 @@ export function HomePage(
       ...(withCosts.length > 1 ? { host: ALL_HOSTS } : {}),
     });
   // History is one host's: with several, the screen that adds them up is Costs.
+  const openProject = (projectKey: string) =>
+    go({
+      name: "costs",
+      period: "7d",
+      ...(withCosts.length > 1 ? { host: ALL_HOSTS } : {}),
+      projectKey,
+    });
+  const shown = leaders?.entry === entry ? leaders.leaders : null;
+  const labels = projectLabels(shown?.project.flatMap((row) => (row.key ? [row.key] : [])) ?? []);
   const openTurns = () => {
     const only = online.length === 1 ? online[0] : undefined;
     if (only) go({ name: "history", host: only.id, from: range.from, to: range.to });
@@ -279,6 +318,15 @@ export function HomePage(
               onOpen={openCosts}
             />
           </Grid>
+          {withCosts.length > 0 && (
+            <Leaderboard
+              t={t}
+              lang={lang}
+              leaders={shown}
+              projectName={(key) => labels.get(key) ?? key}
+              onOpenProject={openProject}
+            />
+          )}
         </Stack>
       )}
     </Page>
