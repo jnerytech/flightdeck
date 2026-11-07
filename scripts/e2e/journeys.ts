@@ -1584,6 +1584,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // The session is on alfa's list, idle once the fake runtime answered: its menu offers the move.
     await open(c, { name: "hub" });
     const mark = c.lang === "en" ? "Ajuste 1: " : "Ajuste 2: ";
+    // The hub folds a project with nothing live and caps its rows: a filter shows what it keeps.
+    await c.page.getByRole("textbox", { name: c.t("hub.filterLabel"), exact: true }).fill(mark);
     const actions = c.page.getByRole("button", {
       name: new RegExp(
         c.t("hub.actions", { title: "§" }).replace("§", `${mark}.*`).replaceAll(/[()]/g, "\\$&"),
@@ -1592,7 +1594,15 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const move = c.page.getByRole("menuitem", { name: c.t("teleportUi.menu"), exact: true });
     await waitFor(
       async () => {
-        await actions.first().click();
+        // The row may not be listed yet: a missed click is another turn of the wait, not a failure.
+        const clicked = await actions
+          .first()
+          .click({ timeout: 2000 })
+          .then(
+            () => true,
+            () => false,
+          );
+        if (!clicked) return false;
         if (await move.isVisible()) return true;
         await c.page.keyboard.press("Escape");
         return false;
