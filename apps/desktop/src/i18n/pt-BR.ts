@@ -4104,6 +4104,29 @@ export const ptBR = {
     placeholder: "Digite uma mensagem",
   },
   projectPage: {
+    harness: {
+      title: "Configuração do Claude Code",
+      hint: "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Só leitura: nada aqui muda o projeto.",
+      summary: "{n} de {total} partes encontradas",
+      found: "Encontrado",
+      missing: "Faltando",
+      rules: "Regras de permissão: {n}",
+      unreadable:
+        "Alguns arquivos do projeto não puderam ser lidos: uma parte marcada como faltando pode existir.",
+      parts: {
+        claudeMd: "CLAUDE.md",
+        hooks: "Hooks",
+        skills: "Skills",
+        agents: "Subagentes",
+        permissions: "Permissões",
+        mcp: "Servidores MCP",
+      },
+      kinds: {
+        format: "um formatador após edições",
+        gitAdd: "uma verificação antes do git add",
+        secrets: "uma verificação de arquivos de segredo",
+      },
+    },
     trust: {
       title: "Configuração do projeto",
       hint: "Um projeto pode trazer hooks, servidores MCP, configurações, agentes e skills próprios. Eles só carregam em uma sessão quando você confia no projeto.",

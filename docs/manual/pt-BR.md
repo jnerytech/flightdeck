@@ -332,6 +332,13 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **Confiar neste projeto**. Ele pergunta antes, citando o projeto e o host, porque hooks e
   servidores MCP com confiança rodam comandos naquele computador sem perguntar a você. **Revogar a
   confiança** não pergunta. Confiar vale para as pastas dentro do projeto, não para as ao redor.
+- Logo abaixo, **Configuração do Claude Code** lista, como uma checklist, o que ajuda o Claude
+  Code a trabalhar bem no projeto: `CLAUDE.md`, hooks (e se algum roda um formatador após
+  edições, ou verifica o `git add` ou arquivos de segredo antes de uma ferramenta rodar), skills, subagentes, permissões
+  (quantas regras de permissão) e servidores MCP. Cada um aparece como **Encontrado** ou
+  **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
+  variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
+  avisa: uma parte marcada como faltando pode existir.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.

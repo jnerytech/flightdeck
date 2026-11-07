@@ -341,6 +341,12 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   trusting, and **Trust this project**. It asks first, naming the project and the host, because
   trusted hooks and MCP servers run commands on that computer without asking you. **Revoke trust**
   asks nothing. Trusting covers the folders inside the project, not the ones around it.
+- Below it, **Claude Code setup** lists, as a checklist, what helps Claude Code work well in the
+  project: `CLAUDE.md`, hooks (and whether one runs a formatter after edits, or checks `git add` or
+  secret files before a tool runs), skills, subagents, permissions (how many allow rules) and MCP servers.
+  Each is **Found** or **Missing**, and the card says how many of the six are there. It only reads:
+  nothing in the project changes, and environment variables are never shown in it. When some of
+  the project's files cannot be read, it says so: a part shown as missing may be there.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
