@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
-import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
+import { type FakeCli, installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { logLines } from "../../../scripts/test/log-lines.ts";
 import { startDaemon } from "../src/main.ts";
 import { poll, tempDir } from "./helpers.ts";
@@ -33,6 +33,26 @@ function sentinelProbes(): string[] {
     const log = join(dir, "versions.log");
     return existsSync(log) ? logLines(readFileSync(log, "utf8")) : [];
   });
+}
+
+/**
+ * The calls of `fake` since call number `from` that the dependency check made. The daemon runs the
+ * check in this process's folder, so a call from another folder came from other activity in the
+ * process, such as a daemon a previous test file left running (issue #747).
+ */
+function checkCalls(fake: FakeCli, from: number): string[][] {
+  const folders = fake.cwds().slice(from);
+  return fake
+    .calls()
+    .slice(from)
+    .filter((_, at) => sameFolder(folders[at] ?? "", process.cwd()));
+}
+
+/** Folders compared the way the platform does: Windows ignores case and the kind of slash. */
+function sameFolder(a: string, b: string): boolean {
+  const plain = (path: string) =>
+    process.platform === "win32" ? path.toLowerCase().replaceAll("\\", "/") : path;
+  return plain(a) === plain(b);
 }
 
 describe("deps-guard: a plain daemon asked for its dependencies runs no real program", () => {
@@ -98,9 +118,27 @@ describe("deps-guard: a plain daemon asked for its dependencies runs no real pro
     // The other programs found on the PATH are the stand-ins, asked for nothing but a version.
     for (const { name, fake } of others) {
       if (name === "pwsh" && process.platform !== "win32") continue;
-      const calls = fake.calls().slice(asked.get(name) ?? 0);
+      const calls = checkCalls(fake, asked.get(name) ?? 0);
       expect(calls.length).toBeGreaterThan(0);
-      for (const call of calls) expect(call).toHaveLength(1);
+      expect(calls.filter((call) => call.length !== 1)).toEqual([]);
     }
+  });
+});
+
+describe("deps-guard: the calls the check made are told from other activity (issue #747)", () => {
+  test("a call from another folder is not the check's: a 3-argument call elsewhere does not fail the guard", async () => {
+    const fake = installFakeCli("git", [{ args: ["--version"], stdout: "git 9.9.9" }]);
+    stops.push(async () => fake.restore());
+    await fake.run(["git", "worktree", "list", "--porcelain"], tempDir("fd-elsewhere-"));
+    await fake.run(["git", "--version"], process.cwd());
+    expect(checkCalls(fake, 0)).toEqual([["--version"]]);
+  });
+
+  test("calls before the snapshot are not counted, and the check's own calls in this folder are", async () => {
+    const fake = installFakeCli("git", [{ args: ["--version"], stdout: "git 9.9.9" }]);
+    stops.push(async () => fake.restore());
+    await fake.run(["git", "--version"], process.cwd());
+    await fake.run(["git", "status", "--short"], process.cwd());
+    expect(checkCalls(fake, 1)).toEqual([["status", "--short"]]);
   });
 });
