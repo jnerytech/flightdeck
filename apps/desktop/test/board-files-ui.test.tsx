@@ -103,6 +103,10 @@ function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {})
       const entries = TREES[target]?.[dir] ?? [];
       return { ok: true, data: { dir, entries, truncated: false } };
     }
+    if (type === "file.read") {
+      const { path } = payload as { path: string };
+      return { ok: true, data: { path, text: "export const only = 1;\n", hash: "h", size: 23 } };
+    }
     if (type === "file.search") {
       const { mode, query } = payload as { mode: "name" | "content"; query: string };
       searches.push(`${target}|${mode}|${query}`);
@@ -321,6 +325,24 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
       more: shows("Files · fd/b", "More matches than shown here. Narrow the search."),
       asked: searches.includes("card:B|content|hello"),
     }).toEqual({ place: true, line: true, more: true, asked: true });
+  });
+
+  test("a match opens the file in the viewer", async () => {
+    const { pick } = setup({ features: SEARCHING });
+    await pick("worktree", "/wt/b", "fd/b");
+    await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+    await type("Search names", "only");
+    await settleMaybe(() => shows("Files · fd/b", "src/b-only.ts"));
+    const region = panel("Files · fd/b");
+    const match = region ? within(region).queryByRole("button", { name: "src/b-only.ts" }) : null;
+    if (match) {
+      await act(async () => {
+        fireEvent.click(match);
+      });
+    }
+    const viewer = () => screen.queryByRole("region", { name: "File src/b-only.ts" }) !== null;
+    await settleMaybe(viewer);
+    expect(viewer()).toBe(true);
   });
 
   test("nothing found says so; a search the host refuses says why", async () => {
