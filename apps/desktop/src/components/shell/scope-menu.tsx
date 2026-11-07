@@ -24,6 +24,8 @@ export function ScopeMenu(
     store: AppStore;
     hosts: readonly { id: string; name: string }[];
     scope: DataScope;
+    /** Called when the person picks from the menu, so a screen can end a route's own choice. */
+    onPick?(): void;
   }>,
 ) {
   const { store, hosts, scope } = props;

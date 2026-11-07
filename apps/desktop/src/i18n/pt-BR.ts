@@ -34,6 +34,7 @@ export const ptBR = {
     showing: "Mostrando {scope}",
     offline: "{host} está offline. Os números voltam quando ele reconectar.",
     showAll: "Mostrar todos os hosts",
+    noCosts: "{host} não informa custos.",
   },
   home: {
     title: "Início",
@@ -4250,6 +4251,7 @@ export const ptBR = {
     title: "Custos",
     subtitle: "equivalente em API, estimado; em assinatura, não é cobrado",
     filters: "Filtros dos custos",
+    quotaPick: "Escolha um host para ver a cota",
     host: "Host dos custos",
     from: "De",
     to: "Até",

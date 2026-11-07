@@ -32,6 +32,7 @@ export const en: Dictionary = {
     showing: "Showing {scope}",
     offline: "{host} is offline. Its numbers come back when it reconnects.",
     showAll: "Show all hosts",
+    noCosts: "{host} does not report costs.",
   },
   home: {
     title: "Home",
@@ -4241,6 +4242,7 @@ export const en: Dictionary = {
     title: "Costs",
     subtitle: "API-equivalent and estimated; on a subscription it is not charged",
     filters: "Cost filters",
+    quotaPick: "Pick a host to see its quota",
     host: "Costs host",
     from: "From",
     to: "To",
