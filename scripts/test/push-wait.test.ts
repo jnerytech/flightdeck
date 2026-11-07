@@ -173,6 +173,15 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     ).toEqual([
       { rule: "push-wait", decision: "waived", detail: `GH_TOKEN=*** ${"x".repeat(187)}` },
     ]);
+    // A bare token in free text, a Bearer header and control characters never reach the log.
+    const loose = { cwd: CWD, deps: deps(null) };
+    expect(
+      guardAllowLogs(
+        'FLIGHTDECK_PUSH_NOW="retry with ghp_abcdefghijklmnopqrstuvwxyz0123456789 and Bearer xyz.123\u001b[2J" git push',
+        {},
+        loose,
+      ),
+    ).toEqual([{ rule: "push-wait", decision: "waived", detail: "retry with *** and Bearer ***" }]);
     // A push the coordinator makes logs nothing, and asks GitHub nothing.
     const boss = { cwd: CWD, deps: deps(green) };
     expect(
