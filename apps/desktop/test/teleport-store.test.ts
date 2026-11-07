@@ -37,4 +37,30 @@ describe("teleport-store: the preview switch and the hosts' channels (#100)", ()
       );
     expect(answer).toBe("offline");
   });
+
+  test("a move between hosts the app does not reach is refused as offline", async () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform);
+    const answer = await store
+      .moveSession("alfa", "s1", {
+        target: "beta",
+        repo: "/work/app",
+        confirm: async () => true,
+        onProgress: () => {},
+        signal: new AbortController().signal,
+      })
+      .then(
+        () => "moved",
+        (error: { code?: string }) => error.code ?? String(error),
+      );
+    expect(answer).toBe("offline");
+  });
+
+  test("the moved session opens on its new host", () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform);
+    store.openMovedSession("beta", "t1");
+    expect([store.router.current, store.getState().selected]).toEqual([
+      { name: "session", host: "beta", id: "t1" },
+      { hostId: "beta", sessionId: "t1" },
+    ]);
+  });
 });
