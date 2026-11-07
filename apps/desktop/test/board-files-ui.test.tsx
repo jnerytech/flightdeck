@@ -310,16 +310,13 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
       fireEvent.change(field, { target: { value } });
     });
   };
-  /** The mode's button (#827); the tab it replaced, until the fix lands. */
-  const modeControl = (name: string) =>
-    screen.queryByRole("button", { name }) ?? screen.queryByRole("tab", { name });
-  const tab = async (name: string) => {
-    const trigger = modeControl(name);
-    if (!trigger) throw new Error(`no mode control named ${name}`);
+  /** Picks a search mode by its button (#827). */
+  const mode = async (name: string) => {
+    const trigger = screen.queryByRole("button", { name });
+    if (!trigger) throw new Error(`no mode button named ${name}`);
     await act(async () => {
       // A browser moves focus to what is clicked; happy-dom's click does not.
       trigger.focus();
-      fireEvent.mouseDown(trigger);
       fireEvent.click(trigger);
     });
   };
@@ -345,7 +342,7 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     const { pick, searches } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
     await settle(() => shows("Files · fd/b", "b-readme.md"));
-    await tab("Content");
+    await mode("Content");
     await type("Search contents", "hello");
     await settle(() => shows("Files · fd/b", "src/b-only.ts:3"));
     expect({
@@ -366,7 +363,7 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     const field = screen.queryByRole("searchbox", { name: "Search names" });
     const names = screen.queryByRole("button", { name: "Names" });
     const before = names?.getAttribute("aria-pressed") ?? null;
-    await tab("Content");
+    await mode("Content");
     await settle(() => searches.includes("card:B|content|only"));
     const now = screen.queryByRole("searchbox", { name: "Search contents" });
     expect({
@@ -391,7 +388,7 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     const { pick } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
     await settle(() => shows("Files · fd/b", "b-readme.md"));
-    await tab("Content");
+    await mode("Content");
     await type("Search contents", "hello");
     await settle(() => shows("Files · fd/b", "src/b-only.ts:3"));
     await press("src/b-only.ts:3");
@@ -455,7 +452,7 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     const { pick } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
     await settle(() => shows("Files · fd/b", "b-readme.md"));
-    await tab("Content");
+    await mode("Content");
     await type("Search contents", "key");
     await settle(() => shows("Files · fd/b", "config.ts:2"));
     const text = panel("Files · fd/b")?.textContent ?? "";
@@ -471,7 +468,7 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     const { pick } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
     await settle(() => shows("Files · fd/b", "b-readme.md"));
-    await tab("Content");
+    await mode("Content");
     await type("Search contents", "deploy");
     await settle(() => shows("Files · fd/b", ".env.only:1"));
     const text = panel("Files · fd/b")?.textContent ?? "";
@@ -487,7 +484,7 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     store.scanValues = () => [VAULT];
     await pick("worktree", "/wt/b", "fd/b");
     await settle(() => shows("Files · fd/b", "b-readme.md"));
-    await tab("Content");
+    await mode("Content");
     await type("Search contents", "vault");
     await settle(() => shows("Files · fd/b", "deploy.sh:4"));
     const text = panel("Files · fd/b")?.textContent ?? "";
