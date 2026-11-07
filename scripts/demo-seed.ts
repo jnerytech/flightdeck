@@ -20,6 +20,7 @@ import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
+import { DEMO_TELEPORT_SESSION, teleportReady } from "./lib/demo-teleport.ts";
 import { acoesActions, DANGER_SESSION } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
@@ -259,8 +260,12 @@ function writeTraceSession(dir: string, cwd: string): void {
   }
 }
 
-/** Transcripts of finished terminal sessions: many short ones, a long one and two with usage. */
-export function writeHistory(history: string, cwd: string): void {
+/**
+ * Transcripts of finished terminal sessions: many short ones, a long one and two with usage. With
+ * `movable`, the newest has a UUID name: resumed, it is a session that can move to the other host
+ * (issue #100), and the count stays the same.
+ */
+export function writeHistory(history: string, cwd: string, movable = false): void {
   const dir = join(history, "-demo");
   mkdirSync(dir, { recursive: true });
   const topics = ["testes", "build", "deploy", "migração", "lint", "docs", "cache", "fila", "logs"];
@@ -268,7 +273,12 @@ export function writeHistory(history: string, cwd: string): void {
     const ts = new Date(Date.now() - (i + 1) * 3_600_000).toISOString();
     const topic = topics[i % topics.length];
     writeFileSync(
-      join(dir, `hist-${String(i).padStart(3, "0")}.jsonl`),
+      join(
+        dir,
+        movable && i === 0
+          ? `${DEMO_TELEPORT_SESSION}.jsonl`
+          : `hist-${String(i).padStart(3, "0")}.jsonl`,
+      ),
       `${[
         userLine(`h${i}u`, `Ajuste ${i + 1}: revise ${topic} do módulo ${i % 7}`, cwd, ts),
         assistantLine(`h${i}a`, `Feito: ${topic} revisado.`, cwd, ts),
@@ -373,7 +383,8 @@ async function host(work: string, name: string): Promise<HostRun> {
   const history = join(base, "claude-projects");
   mkdirSync(projects, { recursive: true });
   mkdirSync(history, { recursive: true });
-  writeHistory(history, join(projects, "flightdeck-web"));
+  // Only alfa's: on beta the same session would already be there, and a move refuses it.
+  writeHistory(history, join(projects, "flightdeck-web"), name === "alfa");
   mkdirSync(join(projects, "notes"), { recursive: true });
   // A host's own task for simple mode's Home (phase 33): a Markdown file in the templates folder.
   mkdirSync(join(base, "data", "templates"), { recursive: true });
@@ -672,6 +683,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   git(web, "remote", "add", "origin", "git@github.com:Acme/App.git");
   repo(join(alfa.projects, "vazio"), { "README.md": "# vazio\n" });
   commitWorkflow(web, "feature", WORKFLOW);
+  // Issue #100: a session here can move to beta, which gets a clone with this commit.
+  teleportReady(git, web, beta.projects);
   const project = await client.call<{ id: string }>("project.add", { path: web });
   await client.call("workflow.trust", {
     projectId: project.id,
