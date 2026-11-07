@@ -47,4 +47,19 @@ describe("comandos", () => {
     );
     expect([result.aborted, result.code === 0]).toEqual([true, false]);
   });
+
+  test("a kill that fails when the signal fires still gives an answer that says it was aborted", async () => {
+    const result = await runCommand(
+      [process.execPath, "-e", "setTimeout(() => {}, 300)"],
+      tempDir(),
+      undefined,
+      30_000,
+      async () => {
+        throw new Error("the kill failed");
+      },
+      {},
+      AbortSignal.abort(),
+    );
+    expect([result.aborted, result.code]).toEqual([true, 0]);
+  });
 });
