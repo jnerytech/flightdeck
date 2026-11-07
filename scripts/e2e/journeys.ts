@@ -1854,10 +1854,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await project.waitFor({ timeout: WAIT });
     await waitFor(
       async () =>
-        // On All hosts two hosts can share a project's name: the option then says whose it is.
+        // Two hosts can share a project's name: either screen may then add whose it is.
         (
           (await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ?? ""
-        ).split(" · ")[0] === label,
+        ).split(" · ")[0] === label.split(" · ")[0],
       `o filtro de Custos no projeto ${label}`,
     );
   },
