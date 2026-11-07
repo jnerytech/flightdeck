@@ -222,22 +222,22 @@ describe("snippets-modelo: segredos", () => {
       // What was found is named, never repeated.
       expect(JSON.stringify(labels)).not.toContain("0123456789abcdef");
     };
-    secret("token do GitHub", "curl -H 'X: ghp_0123456789abcdef0123456789abcdef0123'");
+    secret("github_token", "curl -H 'X: ghp_0123456789abcdef0123456789abcdef0123'");
     secret(
-      "token do GitHub",
+      "github_token",
       "git clone https://github_pat_0123456789abcdef0123456789abcdef@github.com/a/b",
     );
-    secret("chave sk-", "export OPENAI_API_KEY=sk-proj-0123456789abcdef0123456789abcdef");
-    secret("chave da AWS", "aws configure set key AKIA0123456789ABCDEF");
-    secret("chave privada", "echo '-----BEGIN OPENSSH PRIVATE KEY-----'");
-    secret("chave privada", "-----BEGIN RSA PRIVATE KEY-----");
-    secret("token Bearer", 'curl -H "Authorization: Bearer abcdefghijklmnop0123456789"');
-    secret("senha na linha", "mysql -u root password=hunter2hunter2");
-    secret("senha na linha", "export TOKEN=0123456789abcdef");
-    secret("senha na linha", "deploy --token=0123456789abcdef");
-    secret("senha na linha", "curl 'https://api.example.com?api_key=0123456789abcdef'");
-    secret("credencial em URL", "psql postgres://admin:s3cr3tpass@db.example.com/app");
-    secret("token do Slack", "curl -d token=xoxb-0123456789-abcdefghij https://slack.com/api");
+    secret("sk_key", "export OPENAI_API_KEY=sk-proj-0123456789abcdef0123456789abcdef");
+    secret("aws_key", "aws configure set key AKIA0123456789ABCDEF");
+    secret("private_key", "echo '-----BEGIN OPENSSH PRIVATE KEY-----'");
+    secret("private_key", "-----BEGIN RSA PRIVATE KEY-----");
+    secret("bearer_token", 'curl -H "Authorization: Bearer abcdefghijklmnop0123456789"');
+    secret("password_line", "mysql -u root password=hunter2hunter2");
+    secret("password_line", "export TOKEN=0123456789abcdef");
+    secret("password_line", "deploy --token=0123456789abcdef");
+    secret("password_line", "curl 'https://api.example.com?api_key=0123456789abcdef'");
+    secret("url_credential", "psql postgres://admin:s3cr3tpass@db.example.com/app");
+    secret("slack_token", "curl -d token=xoxb-0123456789-abcdefghij https://slack.com/api");
   });
 
   test("não confunde com texto comum nem com uma variável que vai receber o valor", () => {
@@ -259,7 +259,7 @@ describe("snippets-modelo: segredos", () => {
 
   test("os valores do cofre, quando houver, também valem: uma extensão que a Fase 16 preenche", () => {
     const vaulted = new SecretScanner(() => ["correct-horse-battery", "ab"]);
-    expect(vaulted.scan("echo correct-horse-battery")).toEqual(["valor do cofre"]);
+    expect(vaulted.scan("echo correct-horse-battery")).toEqual(["vault_value"]);
     // Too short to be told from ordinary text.
     expect(vaulted.scan("echo ab abc")).toEqual([]);
     expect(new SecretScanner().scan("echo correct-horse-battery")).toEqual([]);
@@ -273,7 +273,7 @@ describe("snippets-modelo: segredos", () => {
         return "ok";
       } catch (error) {
         const e = error as { code: string; message: string };
-        return `${e.code}|${e.message.includes(token)}|${/token do GitHub/.test(e.message)}`;
+        return `${e.code}|${e.message.includes(token)}|${/github_token/.test(e.message)}`;
       }
     };
     expect(refused(command(`gh auth login --with-token ${token}`))).toBe(

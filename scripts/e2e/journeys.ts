@@ -1763,7 +1763,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       throw new Error("um arquivo de credencial devia aparecer como oculto, sem botão para abrir");
     }
     // By content: the key-shaped line is found, and nothing of the key shows.
-    await panel.getByRole("tab", { name: c.t("files.byContent"), exact: true }).click();
+    await panel.getByRole("button", { name: c.t("files.byContent"), exact: true }).click();
     const content = panel.getByRole("searchbox", { name: c.t("files.searchContent"), exact: true });
     await content.fill("chave de exemplo");
     await results.getByRole("button", { name: /^config\.example\.ts:\d+$/ }).waitFor({
@@ -1780,7 +1780,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await content.fill("DEMO_MODE");
     await panel.getByText(c.t("files.nothingFound"), { exact: true }).waitFor({ timeout: WAIT });
     // A match opens its file.
-    await panel.getByRole("tab", { name: c.t("files.byName"), exact: true }).click();
+    await panel.getByRole("button", { name: c.t("files.byName"), exact: true }).click();
     await panel
       .getByRole("searchbox", { name: c.t("files.searchNames"), exact: true })
       .fill("app.ts");
@@ -1800,6 +1800,100 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       }
       await inReach(c, `a busca de arquivos a ${size.width}x${size.height}`, search);
     }
+  },
+
+  // Home's leaderboard (#124, #846): where the tokens of the last 7 days went, by project, model and
+  // persona. Every row says its share, its tokens and its trend in words; a project's row opens Costs
+  // on that project; the panel does not run past the window at a phone's size or a desktop's. The
+  // notice for a host that does not answer is not here: the demo has no priced host that fails.
+  "ranking-home": async (c) => {
+    const loaded = c.page.getByRole("tablist", { name: c.t("home.leadersBy"), exact: true });
+    const rows = c.page.locator(".leader-row");
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "overview" });
+      await loaded.waitFor({ timeout: SESSION_WAIT });
+      await rows.first().waitFor({ timeout: WAIT });
+      // No row runs past the window sideways.
+      const wide = await c.page.evaluate(() => {
+        const limit = document.documentElement.clientWidth;
+        const over = [...document.querySelectorAll(".leader-panel *")].filter(
+          (el) => el.getBoundingClientRect().right > limit + 1,
+        );
+        return over.length;
+      });
+      if (wide > 0) throw new Error(`${wide} itens do ranking passam da janela a ${size.width}px`);
+    }
+    // Each grouping lists rows with a share, its tokens and its trend in words.
+    for (const tab of ["home.byProject", "home.byModel", "home.byPersona"] as const) {
+      await loaded.getByRole("tab", { name: c.t(tab), exact: true }).click();
+      const panel = c.page.getByRole("tabpanel").filter({ has: c.page.locator(".leader-row") });
+      await panel.first().waitFor({ timeout: WAIT });
+      const parts = await panel
+        .first()
+        .locator(".leader-row")
+        .first()
+        .evaluate((row) =>
+          [".leader-share", ".leader-tokens", ".leader-trend"].map(
+            (sel) => row.querySelector(sel)?.textContent?.trim() ?? "",
+          ),
+        );
+      if (parts.some((text) => text === "")) {
+        throw new Error(`uma linha de ${c.t(tab)} sem parte do texto: ${JSON.stringify(parts)}`);
+      }
+    }
+    // A project's row opens Costs on that project.
+    await loaded.getByRole("tab", { name: c.t("home.byProject"), exact: true }).click();
+    const open_ = c.page.getByRole("button", {
+      name: new RegExp(`^${c.t("home.openProject", { name: "§" }).replace("§", ".+")}$`),
+    });
+    await open_.first().waitFor({ timeout: WAIT });
+    const label = (await open_.first().textContent())?.trim() ?? "";
+    await open_.first().click();
+    const project = c.page.getByLabel(c.t("costsUi.project"), { exact: true });
+    await project.waitFor({ timeout: WAIT });
+    await waitFor(
+      async () =>
+        (await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ===
+        label,
+      `o filtro de Custos no projeto ${label}`,
+    );
+  },
+
+  // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one
+  // host, the choice is kept when the page is opened again, a host that is offline says so and
+  // offers all hosts, and the menu is in reach in a phone-sized window and a desktop one.
+  "escopo-dados": async (c) => {
+    const menuOf = (scope: string) =>
+      c.page.getByRole("button", { name: c.t("scope.menu", { scope }), exact: true });
+    const all = c.t("scope.all");
+    const pick = async (from: string, host: string) => {
+      await menuOf(from).click();
+      await c.page.getByRole("menuitemradio", { name: host, exact: true }).click();
+    };
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "overview" });
+      await inReach(c, `o menu Dados de a ${size.width}x${size.height}`, menuOf(all));
+    }
+    // One host: the trigger and the subtitle say whose numbers they are.
+    const subtitle = (host: string) =>
+      c.page.getByText(c.t("home.rangeHost", { host }), { exact: true });
+    await pick(all, "alfa");
+    await menuOf("alfa").waitFor({ timeout: WAIT });
+    await subtitle("alfa").waitFor({ timeout: WAIT });
+    // Kept: the page opened again is still on alfa.
+    await open(c, { name: "overview" });
+    await menuOf("alfa").waitFor({ timeout: WAIT });
+    await subtitle("alfa").waitFor({ timeout: WAIT });
+    // A host that is offline: Home says so and offers all hosts, which brings them back.
+    await pick("alfa", "notebook");
+    await menuOf("notebook").waitFor({ timeout: WAIT });
+    const showAll = c.page.getByRole("button", { name: c.t("scope.showAll"), exact: true });
+    await showAll.waitFor({ timeout: SESSION_WAIT });
+    await showAll.click();
+    await menuOf(all).waitFor({ timeout: WAIT });
+    await c.page.getByText(c.t("home.range"), { exact: true }).waitFor({ timeout: WAIT });
   },
 };
 

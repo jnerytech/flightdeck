@@ -121,6 +121,30 @@ const AUTHORIZATION_HEADER = new RegExp(
   "gi",
 );
 
+/** What the scanner can name: stable kinds, named in the person's language by the app. */
+export const SECRET_KINDS = [
+  "github_token",
+  "sk_key",
+  "aws_key",
+  "private_key",
+  "bearer_token",
+  "slack_token",
+  "password_line",
+  "url_credential",
+  "password_option",
+  "curl_password",
+  "authorization_header",
+  "cookie",
+  "basic_credential",
+  "jwt",
+  "service_key",
+  "webhook",
+  "signed_url",
+  "url_token",
+  "vault_value",
+] as const;
+export type SecretKind = (typeof SECRET_KINDS)[number];
+
 /** One secret found in a text: where it starts and what it is. */
 interface SecretHit {
   index: number;
@@ -160,42 +184,42 @@ const curlCredentials: SecretFinder = (text) => {
   return hits;
 };
 
-const SECRET_PATTERNS: Array<[string, RegExp | SecretFinder]> = [
-  ["token do GitHub", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,})/g],
-  ["chave sk-", /\bsk-[A-Za-z0-9_-]{16,}/g],
-  ["chave da AWS", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
+const SECRET_PATTERNS: Array<[SecretKind, RegExp | SecretFinder]> = [
+  ["github_token", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,})/g],
+  ["sk_key", /\bsk-[A-Za-z0-9_-]{16,}/g],
+  ["aws_key", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
   // The whole block, body and END line; a block cut short (a capped message) goes to the end.
   [
-    "chave privada",
+    "private_key",
     /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
   ],
-  ["token Bearer", /\bBearer\s+[a-z0-9._~+/=-]{16,}/gi],
-  ["token do Slack", /\bxox[abprs]-[A-Za-z0-9-]{10,}/g],
+  ["bearer_token", /\bBearer\s+[a-z0-9._~+/=-]{16,}/gi],
+  ["slack_token", /\bxox[abprs]-[A-Za-z0-9-]{10,}/g],
   // A name with the word anywhere in it, quoted or not (JSON, escaped JSON), then `=` or `:` and the value.
   [
-    "senha na linha",
+    "password_line",
     new RegExp(
       String.raw`(?:\b${anyCase("pass")}|(?<![A-Za-z0-9])[A-Za-z0-9_.-]*?${SECRET_WORD}${NAME_TAIL})\\?["']?\s*[=:]\s*\\?["']?[^\s"'\\&;,}]{3,}`,
       "g",
     ),
   ],
-  ["credencial em URL", /:\/\/[^\s/:@]+:[^\s/@]+@/g],
-  ["senha em opção", new RegExp(String.raw`--(?:${SECRET_WORDS})(?:=|\s+)[^\s]+`, "gi")],
-  ["senha do curl", curlCredentials],
-  ["cabeçalho de autorização", AUTHORIZATION_HEADER],
+  ["url_credential", /:\/\/[^\s/:@]+:[^\s/@]+@/g],
+  ["password_option", new RegExp(String.raw`--(?:${SECRET_WORDS})(?:=|\s+)[^\s]+`, "gi")],
+  ["curl_password", curlCredentials],
+  ["authorization_header", AUTHORIZATION_HEADER],
   ["cookie", /\b(?:Set-)?Cookie\s*:\s*[^\r\n]+/gi],
-  ["credencial Basic", /\bBasic\s+[A-Za-z0-9+/=]{8,}/g],
-  ["JWT", /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g],
+  ["basic_credential", /\bBasic\s+[A-Za-z0-9+/=]{8,}/g],
+  ["jwt", /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g],
   [
-    "chave de serviço",
+    "service_key",
     /\b(?:AIza[0-9A-Za-z_-]{30,}|[sr]k_(?:live|test)_[0-9A-Za-z]{16,}|npm_[A-Za-z0-9]{30,}|glpat-[A-Za-z0-9_-]{16,})/g,
   ],
   [
     "webhook",
     /\b(?:hooks\.slack\.com\/services\/[A-Za-z0-9/]+|discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+)/g,
   ],
-  ["URL assinada", /[?&](?:sig|signature|x-amz-signature|x-goog-signature)=[^\s&]+/gi],
-  ["token em URL", /:\/\/[A-Za-z0-9_-]{20,}@/g],
+  ["signed_url", /[?&](?:sig|signature|x-amz-signature|x-goog-signature)=[^\s&]+/gi],
+  ["url_token", /:\/\/[A-Za-z0-9_-]{20,}@/g],
 ];
 
 /** Every hit of a pattern in a text, whether it is a regex or a finder. */
@@ -228,15 +252,15 @@ export class SecretScanner {
   constructor(private readonly vaultValues: () => string[] = () => []) {}
 
   scan(text: string): string[] {
-    const found: string[] = [];
-    for (const [label, pattern] of SECRET_PATTERNS) {
+    const found: SecretKind[] = [];
+    for (const [kind, pattern] of SECRET_PATTERNS) {
       const hit = hitsOf(pattern, text).some((hit) => !hit.text.includes("{{"));
-      if (hit) found.push(label);
+      if (hit) found.push(kind);
     }
     if (
       this.vaultValues().some((value) => value.length >= MIN_VAULT_VALUE && text.includes(value))
     ) {
-      found.push("valor do cofre");
+      found.push("vault_value");
     }
     return found;
   }

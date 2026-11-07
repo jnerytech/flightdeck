@@ -79,3 +79,91 @@ export class SessionViews {
     return true;
   }
 }
+
+/** The part of a key event the page reads for its view keys. */
+export interface ViewKey {
+  key: string;
+  code: string;
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+}
+
+/** How a session page gets its terminal: a shell in its folder, or the PTY of a launch. */
+export type TerminalProp = { session: string } | { launch: string | null };
+
+/** What a page knows when it works out which views it offers. */
+export interface OfferedFlags {
+  /** The host announces `review`. */
+  enabled: boolean;
+  files: boolean | undefined;
+  telemetry: boolean | undefined;
+  trace: boolean | undefined;
+  claudeSessionId: string | null | undefined;
+  messagingId: string | null | undefined;
+  terminal: TerminalProp | undefined;
+  /** The terminal id of a launched session, once found. */
+  launched: string | null;
+}
+
+/** The views a page offers, in the order of `SESSION_VIEWS`. */
+export function offeredViews(flags: OfferedFlags): SessionView[] {
+  const named = !!flags.claudeSessionId;
+  const offered: Record<SessionView, boolean> = {
+    conversation: true,
+    changes: flags.enabled && named,
+    files: !!flags.files && named,
+    time: !!flags.telemetry && named,
+    trace: !!flags.trace && named,
+    messages: !!flags.messagingId,
+    terminal: !!flags.terminal && ("session" in flags.terminal || flags.launched !== null),
+  };
+  return SESSION_VIEWS.filter((view) => offered[view]);
+}
+
+/** The launch whose terminal the page follows, `null` for a shell in the folder or no terminal. */
+export function terminalLaunch(terminal: TerminalProp | undefined): string | null {
+  return terminal && "launch" in terminal ? terminal.launch : null;
+}
+
+/** The source the terminal view reads: a session's shell, a launched terminal, or none yet. */
+export function terminalSourceOf(
+  terminal: TerminalProp | undefined,
+  launched: string | null,
+): { session: string } | { terminalId: string } | null {
+  if (terminal && "session" in terminal) return { session: terminal.session };
+  return launched ? { terminalId: launched } : null;
+}
+
+/** The view a view key (Alt+digit, Ctrl+`) asks for, `null` when the key is not one of them. */
+export function viewKeyTarget(
+  event: ViewKey,
+  views: readonly SessionView[],
+  tab: SessionView,
+): SessionView | null {
+  if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+    if (event.key !== "`" || !views.includes("terminal")) return null;
+    return tab === "terminal" ? "conversation" : "terminal";
+  }
+  if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return null;
+  // On a Mac Alt+1 types a symbol: the physical key says which digit it was.
+  const digit = /^Digit(\d)$/.exec(event.code)?.[1] ?? (/^\d$/.test(event.key) ? event.key : "");
+  return views[Number(digit) - 1] ?? null;
+}
+
+/** The index of the tab an arrow, Home or End key moves to, `-1` for any other key. */
+export function tabKeyIndex(key: string, at: number, count: number): number {
+  switch (key) {
+    case "ArrowRight":
+      return (at + 1) % count;
+    case "ArrowLeft":
+      return (at - 1 + count) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return -1;
+  }
+}

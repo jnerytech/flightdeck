@@ -966,9 +966,9 @@ live; the list is the project's, so a session of another project never shows her
 - **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
   it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
   change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
-  When the chosen host is offline, Home says so and offers **Show all hosts**. Sessions follows it
-  too (the hub's own host filter, if you had one, becomes the choice once); Costs and the Board
-  follow it in later versions.
+  When the chosen host is offline, Home says so and offers **Show all hosts**. Costs follows it too
+  (see **Costs and budgets**), and so does Sessions (the hub's own host filter, if you had one,
+  becomes the choice once); the Board follows it in a later version.
 - The tabs have a row of their own under the top bar, over each area (with a split, each area has
   its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
   the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
@@ -1011,6 +1011,13 @@ Each column has its own tint and a thin line on top (Backlog neutral, In progres
 orange, In review green, Done muted), its status icon, the number of cards as a pill and a **+**
 that adds a card straight into that column. An empty column shows a quiet dashed box that says
 "Empty" and also adds a card when pressed.
+
+A worktree picked in the sidebar shows its files beside the columns (**Files** hides or shows
+them; on a narrow board the files take the columns' place). On a host that searches files, the
+panel searches the whole repository: **Names** finds the files whose path holds the text, and
+**Content** lists each line that holds it as `path:line`. One search field serves both, so a
+pick keeps what you typed. A match opens the file, a content match at its line. A credential, or
+a path or line with a token or a vault value in it, shows masked and as **Hidden**, and does not open.
 
 ### Working with many cards
 
@@ -2346,6 +2353,17 @@ rounds per PR, US$ 5 per PR, 30 turns, US$ 20 per day and project, two failed ro
 the quota queue. It also stops by itself when the PR is merged or closed, or when you turn the
 watch off. **Watch again** puts it back.
 
+The card shows **Fix rounds used: 2 of 3**. When the rounds run out, **Allow 2 more rounds** gives the
+card two more without forgetting what it spent; the host refuses it when another limit (turns, cost,
+the card's branch) would stop the next round anyway. While a card's PR is watched, an automation that
+sends failed checks or review comments to the card leaves it to the watch.
+
+Before it pushes, the host checks that the round stayed inside the PR: a round that touches a file
+the PR does not change (and that no review comment names), or that changes more lines than
+`max(200, the PR's)`, is **held for you** instead of pushed. The round lists the files outside the PR
+and the lines it changed. **Push anyway** pushes those commits as they are; **Drop the round** takes
+them back, keeping what was there before the round. Lockfiles and `*.snap` never count.
+
 **Settings** has **Watch and fix PRs · <host>**, one block per project: watch by default, rounds per
 PR, cost limit per PR and per day (empty is no limit), the time limit per check (1 to 60 minutes,
 10 by default) and the **local checks**, one per line. A check is a command with its arguments, with
@@ -2783,9 +2801,15 @@ ones hidden), Costs, and the Vault. It never filters **Needs you**, the tray, no
 budget alerts or the global search, and each request there wears its client's chip. A host's own
 **Projects** screen always lists every project.
 
-**Costs and budgets.** On **Costs**, **All hosts** adds the hosts up, **By client** splits the
-spend (with **No client**), and a selected client narrows everything; a host that is offline, has
-no costs or does not answer is named. The CSV export and the quota charts stay per host. Each
+**Costs and budgets.** On **Costs**, the **Data from** menu in the toolbar (the same as Home's, and
+kept across starts) picks **All hosts**, which is how Costs opens and adds the hosts up, or one host.
+A link that names a host (an alert, a card on Home) shows that host for that visit and leaves the
+menu's choice alone. If the chosen host is offline or does not report costs, Costs says so and
+offers **Show all hosts**. **By client** splits the spend (with **No client**), and a selected client
+narrows everything; a host that is offline, has no costs or does not answer is named. The CSV export
+covers every host on **All hosts**, with the host's name as the first column (a host that does not
+answer is left out). The quota charts are per host: on **All hosts** one line, **Pick a host to see
+its quota**, has a button for each host. Each
 client can have a **monthly limit** (US$): the app looks at it when a host with costs comes online,
 when you change it and every ten minutes, warns once a month at 50%, 80% and 100% (a notification
 and a line in **Needs you**), and **does not hold cards**: the limits of each host and project stay

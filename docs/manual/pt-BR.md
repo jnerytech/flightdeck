@@ -966,8 +966,9 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
   aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
   abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
-  hosts**. As Sessões também o seguem (o filtro de host próprio delas, se você tinha um, vira a
-  escolha uma vez); Custos e o Board passam a segui-lo em versões seguintes.
+  hosts**. Os Custos também o seguem (veja **Custos e orçamentos**), e as Sessões também (o filtro
+  de host próprio delas, se você tinha um, vira a escolha uma vez); o Board passa a segui-lo numa
+  versão seguinte.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
   tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
   (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
@@ -1010,6 +1011,14 @@ Cada coluna tem a sua cor de fundo e uma linha fina no topo (Backlog neutro, Em 
 Esperando você laranja, Em revisão verde, Concluído apagado), o ícone do status, o número de cards
 numa pílula e um **+** que põe um card direto nessa coluna. Uma coluna vazia mostra uma caixa
 tracejada e discreta que diz "Vazio" e também cria um card quando você a aperta.
+
+Uma worktree escolhida na barra lateral mostra os arquivos dela ao lado das colunas (**Arquivos**
+esconde ou mostra; num board estreito os arquivos tomam o lugar das colunas). Num host que busca
+arquivos, o painel busca no repositório inteiro: **Nomes** acha os arquivos cujo caminho tem o
+texto, e **Conteúdo** lista cada linha que o tem como `caminho:linha`. Um só campo de busca serve
+aos dois, então trocar de modo mantém o que você digitou. Um resultado abre o arquivo, e um de
+conteúdo abre na linha. Uma credencial, ou um caminho ou linha com um token ou um valor do cofre,
+aparece mascarado e como **Oculto**, e não abre.
 
 ### Trabalhar com vários cards
 
@@ -2347,6 +2356,17 @@ rodadas por PR, US$ 5 por PR, 30 turnos, US$ 20 por dia e projeto, duas rodadas 
 falham, ou a fila por cota. Para sozinha quando o PR é concluído ou fechado, ou quando você desliga
 a vigia. **Voltar a vigiar** a liga de novo.
 
+O card mostra **Rodadas usadas: 2 de 3**. Quando as rodadas acabam, **Permitir mais 2 rodadas** dá ao
+card mais duas sem esquecer o que ele já gastou; o host recusa quando outro limite (turnos, custo, a
+branch do card) pararia a próxima rodada de qualquer jeito. Enquanto o PR de um card é vigiado, uma
+automação que manda checks com falha ou comentários de revisão ao card deixa isso para a vigia.
+
+Antes do push, o host confere se a rodada ficou dentro do PR: uma rodada que mexe num arquivo que o
+PR não muda (e que nenhum comentário de revisão cita), ou que muda mais linhas que
+`max(200, as do PR)`, fica **retida para você** em vez de ir. A rodada lista os arquivos fora do PR e
+as linhas que mudou. **Enviar assim mesmo** envia esses commits como estão; **Descartar a rodada** os
+desfaz, mantendo o que havia antes da rodada. Lockfiles e `*.snap` nunca contam.
+
 **Configurações** tem **Vigiar e consertar PRs · <host>**, um bloco por projeto: vigiar por padrão,
 rodadas por PR, limite de custo por PR e por dia (vazio é sem limite), o tempo limite por check (1 a
 60 minutos, 10 por padrão) e os **checks locais**, um por linha. Um check é um comando com os seus
@@ -2788,9 +2808,16 @@ sempre aparecem, e uma linha conta os escondidos), Custos e o Cofre. Nunca filtr
 você**, a bandeja, as notificações, os alertas de orçamento nem a busca global, e cada pedido ali
 leva o selo do cliente. A tela **Projetos** do próprio host sempre lista todos os projetos.
 
-**Custos e orçamentos.** Em **Custos**, **Todos os hosts** soma os hosts, **Por cliente** divide o
-gasto (com **Sem cliente**) e um cliente escolhido restringe tudo; um host que está offline, não
-tem custos ou não responde é citado. A exportação CSV e os gráficos de cota ficam por host. Cada
+**Custos e orçamentos.** Em **Custos**, o menu **Dados de** na barra de ferramentas (o mesmo do
+Início, guardado entre aberturas) escolhe **Todos os hosts**, que é como os Custos abrem e soma os
+hosts, ou um host. Um link que nomeia um host (um alerta, um cartão do Início) mostra esse host
+naquela visita e não mexe na escolha do menu. Se o host escolhido está offline ou não informa
+custos, os Custos dizem isso e oferecem **Mostrar todos os hosts**. **Por cliente** divide o gasto
+(com **Sem cliente**) e um cliente escolhido restringe tudo; um host que está offline, não tem
+custos ou não responde é citado. A exportação CSV cobre todos os hosts em **Todos os hosts**, com o
+nome do host na primeira coluna (um host que não responde fica de fora). Os gráficos de cota são
+por host: em **Todos os hosts** há uma linha, **Escolha um host para ver a cota**, com um botão por
+host. Cada
 cliente pode ter um **limite mensal** (US$): o app confere quando um host com custos entra no ar,
 quando você muda o limite e a cada dez minutos, avisa uma vez por mês em 50%, 80% e 100% (uma
 notificação e uma linha em **Precisa de você**) e **não segura cards**: os limites de cada host e

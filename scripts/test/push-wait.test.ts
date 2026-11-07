@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { resolve } from "node:path";
 import {
   guardAllowLogs,
   type PrRun,
@@ -8,7 +9,8 @@ import {
   withBudget,
 } from "../lib/claude-hooks.ts";
 
-const CWD = "/repos/flightdeck-fix";
+// resolve: on Windows a `cd /repos/...` lands in D:\repos\..., and so must the expected folder (#534).
+const CWD = resolve("/repos/flightdeck-fix");
 
 /** A checkout on `fix-x` whose PR run is `run`; records which branches were asked about. */
 function deps(run: PrRun | null, env: Record<string, string | undefined> = {}) {
@@ -48,7 +50,7 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     // The run is read in the push's own checkout (security review: `cd` or `-C` elsewhere).
     const elsewhere = deps(green);
     expect(
-      pushWaitViolation("cd /repos/flightdeck-fix && git push -q", "/repos", elsewhere),
+      pushWaitViolation("cd /repos/flightdeck-fix && git push -q", resolve("/repos"), elsewhere),
     ).not.toBeNull();
     expect(elsewhere.asked).toEqual([`fix-x in ${CWD}`]);
   });

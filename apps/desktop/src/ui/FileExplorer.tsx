@@ -36,8 +36,8 @@ export function FileExplorer(
   const [changes, setChanges] = useState<DiffFile[]>([]);
   /** The repository's folder on the host, from the diff: what makes a path whole. */
   const [root, setRoot] = useState<string | null>(null);
-  /** The file open in the viewer. */
-  const [viewing, setViewing] = useState<string | null>(null);
+  /** The file open in the viewer, at a line when a content match opened it (#827). */
+  const [viewing, setViewing] = useState<{ path: string; line?: number | undefined } | null>(null);
 
   const load = useCallback(
     async (dir: string) => {
@@ -131,7 +131,7 @@ export function FileExplorer(
                 <span data-name="">{entry.name}</span>
               </Button>
             ) : (
-              <FileName entry={entry} onOpen={() => setViewing(path)} />
+              <FileName entry={entry} onOpen={() => setViewing({ path })} />
             )}
             {entry.secret && <Badge variant="outline">{t("files.hidden")}</Badge>}
             {mark && <Badge variant="outline">{t(`changes.status.${mark}`)}</Badge>}
@@ -176,7 +176,12 @@ export function FileExplorer(
     <section aria-label={t("files.region")}>
       <Stack gap={2}>
         {props.search ? (
-          <FileSearch store={store} hostId={hostId} target={target} onOpen={setViewing}>
+          <FileSearch
+            store={store}
+            hostId={hostId}
+            target={target}
+            onOpen={(path, line) => setViewing({ path, line })}
+          >
             <Stack as="ul" gap={1}>
               {folder("")}
             </Stack>
@@ -198,13 +203,14 @@ export function FileExplorer(
         {viewing && (
           <Suspense fallback={null}>
             <FileViewer
-              key={viewing}
+              key={viewing.path}
               store={store}
               hostId={hostId}
               target={target}
-              path={viewing}
-              diff={changes.find((file) => file.path === viewing)}
-              full={root === null ? null : `${root}/${viewing}`}
+              path={viewing.path}
+              line={viewing.line}
+              diff={changes.find((file) => file.path === viewing.path)}
+              full={root === null ? null : `${root}/${viewing.path}`}
               onClose={() => setViewing(null)}
             />
           </Suspense>

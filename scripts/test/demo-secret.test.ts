@@ -23,8 +23,8 @@ describe("demo-secret: the key the demo's repository holds for the Files panel (
   test("no source file holds the key as one piece, so a secret scan of the repository stays quiet", () => {
     const source = readFileSync(join(import.meta.dir, "../lib/demo-secret.ts"), "utf8");
     // The key's own shape, not the line's `apiKey = ` (that is the file's text, not a token).
-    expect(scanner.scan(DEMO_FAKE_KEY)).toContain("chave sk-");
-    expect(scanner.scan(source)).not.toContain("chave sk-");
+    expect(scanner.scan(DEMO_FAKE_KEY)).toContain("sk_key");
+    expect(scanner.scan(source)).not.toContain("sk_key");
   });
 
   test("the credential file is a .env with a word to search for, and no token", () => {

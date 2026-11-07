@@ -1372,7 +1372,7 @@ export class AppStore {
     url: string;
     token: string;
   }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
-    this.hostTokens.add(input.token);
+    this.rememberToken(input.token);
     const probe = await probeHost(input.url, input.token, this.i18n.t);
     if (!probe.ok) return probe;
     return { ok: true, hostId: await this.addHost(input) };
@@ -3102,7 +3102,7 @@ export class AppStore {
   }
 
   private connect(config: HostConfig, token: string): void {
-    this.hostTokens.add(token);
+    this.rememberToken(token);
     const conn = new HostConnection({
       url: config.url,
       token,
@@ -4238,9 +4238,32 @@ export class AppStore {
   private readonly hostTokens = new Set<string>();
   private vaultPieces: string[] = [];
 
+  /**
+   * Goes up each time `scanValues` may give more (#827): what masks text already on screen, such
+   * as the files search's matches, renders again through `subscribeScan`.
+   */
+  scanVersion = 0;
+  private readonly scanListeners = new Set<() => void>();
+
+  subscribeScan = (listener: () => void): (() => void) => {
+    this.scanListeners.add(listener);
+    return () => this.scanListeners.delete(listener);
+  };
+
+  private rememberToken(token: string): void {
+    this.hostTokens.add(token);
+    this.scanChanged();
+  }
+
+  private scanChanged(): void {
+    this.scanVersion++;
+    for (const listener of this.scanListeners) listener();
+  }
+
   private async rememberVaultValues(): Promise<void> {
     try {
       this.vaultPieces = await this.vaultValuesForScan();
+      this.scanChanged();
     } catch {
       // The log's cache is a convenience: a vault that cannot be read leaves the last one.
     }
@@ -4369,6 +4392,35 @@ export class AppStore {
   /** Phase 22: turns the watch of a card's PR on or off (`null`: the project's default). */
   async setWatch(hostId: string, cardId: string, enabled: boolean | null): Promise<void> {
     const watch = await this.hostCommand(hostId, "watch.set", { cardId, enabled });
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
+  /** Issue #77: the person allows a card's watch `rounds` more fixing rounds. */
+  async extendWatch(hostId: string, cardId: string, rounds: number): Promise<void> {
+    // A refusal (no watch, another limit) would come back: nothing to retry.
+    const watch = await this.hostCommand(
+      hostId,
+      "watch.extend",
+      { cardId, rounds },
+      { retry: false },
+    );
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
+  /** Issue #77: a round held for drift, pushed as it is or dropped. */
+  async resolveHeld(
+    hostId: string,
+    cardId: string,
+    roundId: string,
+    action: "push" | "drop",
+  ): Promise<void> {
+    // Repeated later, a push or drop would act on a round that may be settled already.
+    const watch = await this.hostCommand(
+      hostId,
+      "watch.resolveHeld",
+      { cardId, roundId, action },
+      { retry: false },
+    );
     if (watch) this.keepWatch(hostId, watch);
   }
 

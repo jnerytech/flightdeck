@@ -3,6 +3,7 @@
  * builds), so two sessions never run them at once. Every effect (files, clock, processes) comes
  * in through `SlotEnv`, so the tests run nothing real and wait for nothing.
  */
+import { heavyReasonGiven } from "./slot-heavy.ts";
 
 /** Who holds the slot, as written in the lock file. */
 export interface SlotHolder {
@@ -71,6 +72,16 @@ export interface SlotEnv {
    * exits at once), so a gone parent does not make it give up its place (#236).
    */
   detached?: boolean;
+  /** FLIGHTDECK_SLOT_HEAVY in this process's environment: the reason a run over the file limit gives (#833). */
+  heavyReason?: string;
+  /** Appends a refusal, a waiver or a long hold to the hook log, for harness:stats (#833). */
+  record?(
+    rule: "slot-files" | "long-hold",
+    decision: "allow" | "block" | "waived",
+    extra: { detail?: string; minutes?: number },
+  ): void;
+  /** Calls `fn` once after `ms`; returns the way to cancel it (#833: the holder's LONG line). */
+  after?(ms: number, fn: () => void): () => void;
 }
 
 export interface ProcReader {
@@ -98,8 +109,9 @@ function isSlotProcess(argv: string[]): boolean {
 
 /** Text from a lock or waiter file, or from /proc, kept to one plain line: control characters become spaces. */
 function oneLine(text: string): string {
+  // C1 too (#833 review): U+009B is CSI on the terminals that honor it.
   // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
-  return text.replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, " ");
+  return text.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, " ");
 }
 
 export type SlotArgs =
@@ -118,6 +130,10 @@ export const RENICE_MS = 5000;
 export const NICE_OTHERS = 15;
 /** A holder older than this is reported as suspicious (never taken over). */
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
+/** A hold past this is LONG: the holder, its waiters and `--status` say so, and the hook log keeps it (#833). */
+export const LONG_HOLD_MS = 20 * 60_000;
+/** The most test files a slot run may name without a reason (#833); `test:related` takes the slot above it. */
+export const SLOT_TEST_FILES = 60;
 export const USAGE =
   "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel | bun run slot -- --reap";
 
@@ -210,6 +226,11 @@ export function parseHolder(text: string | null): SlotHolder | null {
   return { pid, label, command, startedAt };
 }
 
+/** A command of hundreds of test files, cut to one readable line (#236). */
+function clip(command: string): string {
+  return oneLine(command.length > 80 ? `${command.slice(0, 80)}…` : command);
+}
+
 export function describeHolder(holder: SlotHolder, now: number): string {
   const seconds = Math.max(0, Math.floor((now - holder.startedAt) / 1000));
   const minutes = Math.floor(seconds / 60);
@@ -217,8 +238,7 @@ export function describeHolder(holder: SlotHolder, now: number): string {
   if (minutes >= 60) held = `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
   else if (minutes > 0) held = `${minutes}m ${seconds % 60}s`;
   // A holder or waiter of hundreds of test files stays one line (#236).
-  const command = holder.command.length > 80 ? `${holder.command.slice(0, 80)}…` : holder.command;
-  return `${oneLine(holder.label)}: ${oneLine(command)} (pid ${holder.pid}, ${held})`;
+  return `${oneLine(holder.label)}: ${clip(holder.command)} (pid ${holder.pid}, ${held})`;
 }
 
 /**
@@ -311,7 +331,9 @@ async function waitForSlot(
 ): Promise<boolean> {
   let named = "";
   let queue = "";
+  let warned = "";
   while (!stopped()) {
+    warned = warnLong(env, maxAgeMs, warned);
     const before = ahead(env, { pid: env.pid, startedAt: queuedAt });
     const [first] = before;
     if (first) {
@@ -341,6 +363,28 @@ async function waitForSlot(
   return false;
 }
 
+/** The live holder of the slot, or null when it is free or its lock is stale. */
+function liveHolder(env: SlotEnv): SlotHolder | null {
+  const holder = parseHolder(env.fs.read(env.path));
+  return holder && env.alive(holder.pid) ? holder : null;
+}
+
+/**
+ * Tells a waiter once that the holder passed `LONG_HOLD_MS` (#833); past the max age the stronger
+ * warning above says it instead. Returns the holder it has told about.
+ */
+function warnLong(env: SlotEnv, maxAgeMs: number, warned: string): string {
+  const holder = liveHolder(env);
+  if (!holder) return warned;
+  const key = `${holder.pid}@${holder.startedAt}`;
+  const age = env.now() - holder.startedAt;
+  if (key === warned || age <= LONG_HOLD_MS || age > maxAgeMs) return warned;
+  env.log(
+    `slot warning: ${oneLine(holder.label)} (pid ${holder.pid}) has held the slot for over ${LONG_HOLD_MS / 60_000}m (LONG); waiting`,
+  );
+  return key;
+}
+
 /** Gives the slot back, only if this process holds it. */
 export function release(env: SlotEnv): void {
   if (parseHolder(env.fs.read(env.path))?.pid === env.pid) env.fs.remove(env.path);
@@ -349,11 +393,14 @@ export function release(env: SlotEnv): void {
 /** Who holds the slot, then each live waiter in queue order with how long it has waited. */
 export function status(env: SlotEnv, maxAgeMs = DEFAULT_MAX_AGE_MS): string {
   const lines = [holderStatus(env, maxAgeMs)];
+  const holder = liveHolder(env);
+  // #833: who each waiter waits on, so a LONG holder is named on every line.
+  const on = holder ? `; waits on ${oneLine(holder.label)} (pid ${holder.pid})` : "";
   waiters(env).forEach((waiter, index) => {
     // Where the process table can be read: the waiter's folder, and whether its shell is gone (#236).
     const where = env.proc ? ` in ${oneLine(env.proc.cwd(waiter.pid) ?? "?")}` : "";
     const orphan = env.proc?.ppid(waiter.pid) === 1 ? " ORPHAN" : "";
-    lines.push(`waiting ${index + 1}: ${describeHolder(waiter, env.now())}${where}${orphan}`);
+    lines.push(`waiting ${index + 1}: ${describeHolder(waiter, env.now())}${where}${orphan}${on}`);
   });
   return lines.join("\n");
 }
@@ -365,8 +412,11 @@ function holderStatus(env: SlotEnv, maxAgeMs: number): string {
   if (!holder) return "free (stale lock)";
   if (!env.alive(holder.pid)) return `free (stale lock of pid ${holder.pid})`;
   const held = `held by ${describeHolder(holder, env.now())}`;
-  if (env.now() - holder.startedAt <= maxAgeMs) return held;
-  return `${held}; WARNING: older than ${Math.floor(maxAgeMs / 60_000)}m, check if it is stuck`;
+  const age = env.now() - holder.startedAt;
+  if (age > maxAgeMs) {
+    return `${held}; WARNING: older than ${Math.floor(maxAgeMs / 60_000)}m, check if it is stuck`;
+  }
+  return age > LONG_HOLD_MS ? `${held}; LONG: over ${LONG_HOLD_MS / 60_000}m` : held;
 }
 
 /**
@@ -485,6 +535,9 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     for (const line of status(env, args.maxAgeMs).split("\n")) env.log(line);
     return 0;
   }
+  // #833: before anything runs, nested or not: `slot -- bun run test:related` names its files only
+  // in the nested call (#865 review).
+  if (refusedOverLimit(env, args.command)) return 2;
   // Before anything is spawned, so the command and all it starts inherit the score.
   env.protect?.();
   const state: { signal: number | null; child: SlotChild | null } = { signal: null, child: null };
@@ -515,6 +568,12 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
       if (state.signal === null) env.log(ORPHANED);
       return state.signal ?? 1;
     }
+    const heldAt = env.now();
+    const stopWarning = env.after?.(LONG_HOLD_MS, () =>
+      env.log(
+        `slot: this run has held the slot for over ${LONG_HOLD_MS / 60_000}m (LONG); ${waiters(env).length} waiting for it`,
+      ),
+    );
     try {
       state.child = env.spawn(args.command, args.nice, true);
       const finished = { done: false };
@@ -524,6 +583,8 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
       await lowering;
       return state.signal ?? code;
     } finally {
+      stopWarning?.();
+      recordLongHold(env, heldAt, args.command.join(" "));
       release(env);
     }
   } finally {
@@ -557,6 +618,42 @@ export async function lowerOthers(env: SlotEnv): Promise<number[]> {
     lowered.push(p.pid);
   }
   return lowered;
+}
+
+/** How many test files a `bun ... test` command names; 0 for any other command (#833). */
+export function testFileCount(command: string[]): number {
+  if (!isBunTest(command.join(" "))) return 0;
+  return command.filter((arg) => /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(arg)).length;
+}
+
+/**
+ * #833: a run of more than `SLOT_TEST_FILES` test files holds the slot 20 minutes or more while
+ * others wait, so it needs FLIGHTDECK_SLOT_HEAVY with a reason. The refusal and the waiver both go
+ * to the hook log. True when the run is refused.
+ */
+function refusedOverLimit(env: SlotEnv, command: string[]): boolean {
+  const count = testFileCount(command);
+  if (count <= SLOT_TEST_FILES) return false;
+  const reason = (env.heavyReason ?? "").trim();
+  if (heavyReasonGiven(reason)) {
+    env.record?.("slot-files", "waived", { detail: reason.slice(0, 200) });
+    return false;
+  }
+  env.log(
+    `slot: ${count} test files would hold the slot for 20 minutes or more while others wait; more than ${SLOT_TEST_FILES} need a reason (#833). Run fewer: each touched test with \`bun --config=bunfig.area.toml test <file>\`, or \`bun run test:related -- --fast --tier unit,component\` on a smaller change; CI runs the rest. For a real need, put FLIGHTDECK_SLOT_HEAVY="<reason>" in front of the command (of \`bun run test:related\` too).`,
+  );
+  env.record?.("slot-files", "block", {});
+  return true;
+}
+
+/** #833: a hold past `LONG_HOLD_MS` goes to the hook log when the slot is given back. */
+function recordLongHold(env: SlotEnv, heldAt: number, command: string): void {
+  const held = env.now() - heldAt;
+  if (held <= LONG_HOLD_MS) return;
+  env.record?.("long-hold", "allow", {
+    minutes: Math.floor(held / 60_000),
+    detail: `${oneLine(env.label)}: ${clip(command)}`,
+  });
 }
 
 /** `bun test ...`, `bun --config=x test ...` or a path to bun: its first plain argument is `test`. */
