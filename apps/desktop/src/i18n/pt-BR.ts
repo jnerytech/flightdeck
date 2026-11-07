@@ -1344,6 +1344,7 @@ export const ptBR = {
   },
   daemonFeature: {
     assistant: "o assistente de IA",
+    teleport: "mudar uma sessão de host",
     github: "o login do GitHub",
     boardsync: "a sincronização do quadro",
     roi: "a visão de retorno",
@@ -1754,6 +1755,9 @@ export const ptBR = {
     rule_remove_confirm: "Confirme a remoção da regra.",
     card_no_worktree: "O card ainda não tem worktree.",
     pr_secret: "A descrição parece ter um segredo ({found}): tire-o antes de abrir o PR.",
+    pr_title_secret: "O título parece ter um segredo ({found}): tire-o antes de abrir o PR.",
+    merge_message_secret:
+      "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider: "O projeto não tem provedor de PR.",
     card_no_pr: "O card não tem PR.",
     pr_no_comment: "Nenhum comentário foi escolhido.",
@@ -1867,6 +1871,18 @@ export const ptBR = {
     cwd_outside_roots:
       "A pasta {cwd} está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
     session_not_found: "A sessão {id} não existe neste host.",
+    teleport_busy:
+      "Esta sessão está trabalhando ou espera uma resposta. Mova-a quando estiver parada.",
+    teleport_team:
+      "Uma sessão de time ainda não pode mudar de host: mova uma sessão de cada vez, fora de um time.",
+    teleport_runtime: "Só uma sessão do Claude Code pode mudar de host.",
+    teleport_no_transcript: "Este host não tem a transcrição da sessão para mover.",
+    teleport_unsafe_transcript:
+      "A transcrição da sessão não é um arquivo comum dentro do histórico do Claude Code, por isso não é lida.",
+    teleport_too_large: "A transcrição passa de {max} bytes, o máximo que uma mudança leva.",
+    teleport_not_found:
+      "Esta mudança não está mais no host: foi cancelada ou o tempo acabou. Comece de novo.",
+    teleport_too_many: "Este host já está movendo duas sessões. Espere uma terminar, ou cancele-a.",
     runtime_unavailable: "O OpenCode não está disponível neste host.",
     runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
     opencode_unsafe_global:
@@ -1933,6 +1949,15 @@ export const ptBR = {
     undo: "Desfazer",
     dismiss: "Dispensar",
     stale: "O texto mudou enquanto isto era escrito.",
+    notes: "Observações",
+    notice: {
+      diff_truncated: "O diff era longo demais, então só parte dele foi lida.",
+      lines_redacted: "Algumas linhas ficaram de fora porque pareciam segredos.",
+      subject_too_long: "A primeira linha tem mais de 72 caracteres.",
+      subject_trailing_period: "A primeira linha termina com ponto.",
+      subject_not_conventional: "O repositório pede Conventional Commits: tipo(escopo): texto.",
+      body_needs_blank_line: "Deixe uma linha em branco depois da primeira linha.",
+    },
   },
   assistantSettings: {
     title: "Assistente de IA",

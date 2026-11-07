@@ -36,13 +36,15 @@ function setup(
     prefs?: Partial<AssistantPrefs>;
     hosts?: Array<{ id: string; online: boolean; assistant: boolean }>;
     context?: unknown;
+    /** What the API provider answers; the commit message of `RESULT` by default. */
+    answer?: string;
   } = {},
 ) {
   const sent: Array<[string, string, unknown]> = [];
   /** The texts the shell's vault check read. */
   const checked: string[] = [];
   const fake = fakeAssistant({
-    run: () => ({ ...RESULT, provider: "anthropic" }),
+    run: () => ({ ...RESULT, provider: "anthropic", text: options.answer ?? RESULT.text }),
     vaultHits: (text) => {
       checked.push(text);
       return [];
@@ -163,5 +165,49 @@ describe("assistant-repo-source: a message is written from the card's repo (#162
       }),
     );
     expect([reason, sent]).toEqual(["assistant_repo_other_host", []]);
+  });
+});
+
+describe("assistant-repo-source: what the person is told about the message (#681)", () => {
+  /** A commit message written by an API provider from the card's repo. */
+  async function written(options: Parameters<typeof setup>[0] = {}) {
+    const ready = setup({ prefs: { provider: "anthropic" }, ...options });
+    await ready.fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await ready.controller.refreshKeys();
+    const result = await ready.controller.run({
+      requestId: "r1",
+      kind: "commit.message",
+      text: "",
+      fieldHostId: "h1",
+      source: SOURCE,
+    });
+    return { ...ready, result };
+  }
+
+  test("an API provider's message is checked against the repo's rules, as the host's is", async () => {
+    const { result } = await written({ answer: "Added the login." });
+    expect(result.notices).toEqual(["subject_trailing_period", "subject_not_conventional"]);
+  });
+
+  test("a message that follows the rules has no notice", async () => {
+    const { result } = await written();
+    expect(result.notices).toEqual([]);
+  });
+
+  test("the person is told that the diff was cut and that lines were left out", async () => {
+    const { result } = await written({
+      context: { ok: true, data: { ...BUNDLE, truncated: true, redactedLines: 3 } },
+    });
+    expect(result.notices).toEqual(["diff_truncated", "lines_redacted"]);
+  });
+
+  test("a call that names no host is refused before any request is made", async () => {
+    const { controller, sent, fake } = setup({ prefs: { provider: "anthropic" } });
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await controller.refreshKeys();
+    const reason = await refusal(() =>
+      controller.run({ requestId: "r1", kind: "commit.message", text: "", source: SOURCE }),
+    );
+    expect([reason, sent]).toEqual(["assistant_not_configured", []]);
   });
 });

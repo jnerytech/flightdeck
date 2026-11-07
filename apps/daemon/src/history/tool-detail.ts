@@ -100,21 +100,35 @@ export async function toolDetail(
   index: number,
 ): Promise<ToolDetail | null> {
   let found: Call | null = null;
+  // What a line must contain to be worth parsing: the message's uuid, then the call's id.
+  let needle = uuid;
   for await (const line of lines) {
-    // A line that cannot name the message or the call is not parsed at all: most of a long
-    // transcript is skipped with a substring check.
-    if (!line.includes(found ? String(found.id) : uuid)) continue;
-    const { uuid: own, content } = blocks(line);
-    if (!found) {
-      if (own !== uuid) continue;
-      found = callAt(content, index);
-      if (!found) return null;
+    const parsed = parsedIf(line, needle);
+    if (!parsed) continue;
+    if (found) {
+      const result = resultFor(parsed.content, found.id);
+      if (result) return withResult(found, result);
       continue;
     }
-    const result = content.find((b) => b?.type === "tool_result" && b.tool_use_id === found?.id);
-    if (result) return withResult(found, result);
+    if (parsed.uuid !== uuid) continue;
+    found = callAt(parsed.content, index);
+    if (!found) return null;
+    needle = String(found.id);
   }
   return found ? withResult(found, null) : null;
+}
+
+/**
+ * The line parsed, or null when it cannot hold `needle`: a line that cannot name the message or the
+ * call is not parsed at all, so most of a long transcript is skipped with a substring check.
+ */
+function parsedIf(line: string, needle: string): { uuid: unknown; content: Block[] } | null {
+  return line.includes(needle) ? blocks(line) : null;
+}
+
+/** The result block that answers the call `id` among a message's content blocks, if it is there. */
+function resultFor(content: Block[], id: unknown): Block | undefined {
+  return content.find((b) => b?.type === "tool_result" && b.tool_use_id === id);
 }
 
 /** The lines of a file, read as they are asked for: a caller that stops early closes the file. */
