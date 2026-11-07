@@ -131,6 +131,14 @@ export async function searchRepository(
     throw new FlightdeckError("invalid_state", "too many searches at once", "search_busy");
   }
   running += 1;
+  // The slot goes back once, when the search ends or at the abort, whichever is first: the newer
+  // search must not be refused while the killed programs are still dying (#905).
+  let held = true;
+  const release = () => {
+    if (held) running -= 1;
+    held = false;
+  };
+  opts.signal?.addEventListener("abort", release, { once: true });
   try {
     if (opts.signal?.aborted) throw superseded();
     const result = await search(root, input, opts);
@@ -140,7 +148,8 @@ export async function searchRepository(
   } catch (error) {
     throw opts.signal?.aborted ? superseded() : error;
   } finally {
-    running -= 1;
+    opts.signal?.removeEventListener("abort", release);
+    release();
   }
 }
 
