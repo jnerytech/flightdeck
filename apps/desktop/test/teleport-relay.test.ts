@@ -165,7 +165,9 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       progress.at(-1),
       h.calls[0],
       h.calls.filter((c) => c === "target:teleport.write").length,
-      h.calls.slice(-3),
+      h.calls.at(-3),
+      // Both clean-up steps on the source start at once: their order does not matter.
+      h.calls.slice(-2).sort(),
       h.archived,
     ]).toEqual([
       {
@@ -180,7 +182,8 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       "source:teleport.prepare",
       Math.ceil(Buffer.byteLength(TRANSCRIPT) / 16) + Math.ceil(Buffer.byteLength(CODE) / 16),
       // The copy it left is archived on the source (#870): the session now lives on the target.
-      ["target:teleport.finish", "source:teleport.cancel", "source:session.meta.set"],
+      "target:teleport.finish",
+      ["source:session.meta.set", "source:teleport.cancel"],
       [{ claudeSessionId: MANIFEST.claudeSessionId, archived: true }],
     ]);
   });
@@ -195,6 +198,22 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       ["moved", 1],
       ["moved", 1],
     ]);
+  });
+
+  test("a move that does not land never archives the source's copy: a no, a refusal or a cancel (#870)", async () => {
+    const declined = hosts();
+    await run(declined, { confirm: async () => false });
+    const refused = hosts({ finish: new RequestError("invalid_state", "x", "teleport_exists") });
+    await failure(run(refused));
+    const cancelled = hosts();
+    const stop = new AbortController();
+    await run(cancelled, {
+      signal: stop.signal,
+      onProgress: (sent, total) => {
+        if (sent === total) stop.abort();
+      },
+    });
+    expect([declined.archived, refused.archived, cancelled.archived]).toEqual([[], [], []]);
   });
 
   test("a source that refuses to make the package is that refusal, and the target is never asked", async () => {
