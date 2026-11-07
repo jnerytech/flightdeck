@@ -1854,8 +1854,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await project.waitFor({ timeout: WAIT });
     await waitFor(
       async () =>
-        (await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ===
-        label,
+        // One project, one label (#881): both screens name it the same way.
+        ((await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ??
+          "") === label,
       `o filtro de Custos no projeto ${label}`,
     );
   },

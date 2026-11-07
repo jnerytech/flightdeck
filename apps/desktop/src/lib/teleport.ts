@@ -64,10 +64,12 @@ export type TeleportOutcome =
 const CLEANUP_MS = 5_000;
 /** Control and format characters (direction marks among them). */
 const MARKS = /[\p{Cc}\p{Cf}]/gu;
+/** Line and paragraph separators, and every space that is not the plain one: each reads as a space or a break. */
+const SPACES = /[\p{Zl}\p{Zp}]|(?! )\p{Zs}/gu;
 
 /** A host's text shown as the plain text it is: no mark that could disguise it, at most `max` long. */
 export const plainText = (text: string, max: number): string =>
-  text.replace(MARKS, "").slice(0, max);
+  text.replace(MARKS, "").replace(SPACES, " ").replace(/ {2,}/g, " ").trim().slice(0, max);
 
 /** A host the app reaches over plain `ws://` and not on this machine: nothing encrypts its traffic. */
 export function isPlainRemote(url: string): boolean {
@@ -154,18 +156,26 @@ export async function teleportSession(run: TeleportRun): Promise<TeleportOutcome
     if (error instanceof Cancelled) return { kind: "cancelled" };
     throw error;
   } finally {
-    await cleanUp(run, manifest.id, landed ? null : id);
+    await cleanUp(run, manifest.id, landed ? null : id, landed ? manifest.claudeSessionId : null);
   }
 }
 
 /**
  * Both hosts drop what they hold for this move, at once and for a limited time: a host that went or
- * does not answer never hides why the move stopped, nor holds it.
+ * does not answer never hides why the move stopped, nor holds it. A move that landed also archives
+ * the copy it left on the source (#870): the session lives on the target now, and the target
+ * shows it again if it ever comes back.
  */
-async function cleanUp(run: TeleportRun, packageId: string, received: string | null) {
+async function cleanUp(
+  run: TeleportRun,
+  packageId: string,
+  received: string | null,
+  moved: string | null = null,
+) {
   const steps = [
     ...(received ? [run.target("teleport.abort", { id: received })] : []),
     run.source("teleport.cancel", { id: packageId }),
+    ...(moved ? [run.source("session.meta.set", { claudeSessionId: moved, archived: true })] : []),
   ];
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise((resolve) => {

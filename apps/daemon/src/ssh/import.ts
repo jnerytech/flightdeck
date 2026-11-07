@@ -20,7 +20,7 @@ function skipOf(error: unknown): Skip {
 
 /** `Key value` or `Key=value` as a lowercase key and an unquoted value; null for a line with no key. */
 function splitDirective(line: string): { key: string; value: string } | null {
-  const match = /^(\S+?)(?:\s*=\s*|\s+)(.*)$/.exec(line);
+  const match = /^(\S+?)(?:\s*=\s*|\s+)(.*)$/.exec(line); // NOSONAR: one line of an ssh config, not text of any length
   if (!match) return null;
   return { key: (match[1] as string).toLowerCase(), value: unquote((match[2] as string).trim()) };
 }
@@ -53,8 +53,8 @@ const WILDCARD = /[*?]/;
 function patternRegex(pattern: string): RegExp {
   const body = pattern
     .replace(/[.+^${}()|[\]\\]/g, String.raw`\$&`)
-    .replace(/\*/g, ".*")
-    .replace(/\?/g, ".");
+    .replaceAll("*", ".*")
+    .replaceAll("?", ".");
   return new RegExp(`^${body}$`);
 }
 

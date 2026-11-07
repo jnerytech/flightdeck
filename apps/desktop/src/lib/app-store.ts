@@ -150,6 +150,7 @@ import { browserSound, playNotifySound } from "./notify-sound.ts";
 import { pairingErrorText } from "./pairing-text.ts";
 import { basename, isInside } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
+import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
@@ -1132,6 +1133,8 @@ export class AppStore {
   readonly sidebarFold: SidebarFoldController;
   /** Whose data Home (and later Sessions, Costs, Board) show: every host or one (#126). */
   readonly dataScope: DataScopeController;
+  /** The project keys any screen has read, for one label per project everywhere (issue #881). */
+  readonly projectKeys = new ProjectKeys();
   /** What the shell hides: the New and Beta badges, What's new (issue #282). */
   readonly shellPrefs: ShellPrefs;
   /** The board columns' width, one for all, kept across starts (issue #161). */

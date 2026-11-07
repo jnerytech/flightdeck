@@ -19,6 +19,8 @@ import { BoardStatus } from "@/components/board/board-status";
 import { BoardSyncControl } from "@/components/board/board-sync";
 import { BulkDiscardDialog, hasStartedWork } from "@/components/board/bulk-discard-dialog";
 import { ColumnHandle } from "@/components/board/column-handle";
+import { ContractDialog } from "@/components/board/contract-dialog";
+import { NeedsBadge, needsText } from "@/components/board/needs-badge";
 import { SelectionBar, SelectionSlot } from "@/components/board/selection-bar";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -58,6 +60,7 @@ import {
   positionsBefore,
   projectCards,
 } from "../lib/board.ts";
+import { askAbout, dragNeeds, type Lacking, missingFor } from "../lib/board-contracts.ts";
 import { boardFiles } from "../lib/board-files.ts";
 import {
   answerOf,
@@ -127,6 +130,7 @@ function CardTile(
     /** Asks to delete the card (a card that already started is offered Discard instead). */
     onDelete(): void;
     onDragStart(): void;
+    onDragEnd(): void;
     /** A batch is running: the card cannot be dragged. */
     locked: boolean;
     onDropOn(): void;
@@ -141,6 +145,8 @@ function CardTile(
   const { card } = props;
   /** The workflow (when its run is known) and the branch, when there are any. */
   const meta = [props.workflow, card.branch].filter(Boolean).join(" · ");
+  /** What its column asks and it lacks (issue #78): said on the card, whether or not it was asked. */
+  const needs = missingFor(card.column, card);
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Ctrl/Shift-click is the mouse's way to select; the card's menu has Select card for the keyboard
     <li // NOSONAR: Ctrl/Shift-click is the mouse's way to select; the card's menu has Select card for the keyboard
@@ -157,6 +163,7 @@ function CardTile(
         else if (e.shiftKey) props.onRangeSelect();
       }}
       onDragStart={props.onDragStart}
+      onDragEnd={props.onDragEnd}
       onDrop={(e) => {
         e.stopPropagation();
         props.onDropOn();
@@ -247,6 +254,7 @@ function CardTile(
         {card.checksState && (
           <Badge variant="outline">{t(`checks.${card.checksState}` as Key)}</Badge>
         )}
+        {needs.length > 0 && <NeedsBadge t={t} needs={needs} />}
       </div>
       {card.notice && (
         <InlineNotice>
@@ -296,6 +304,15 @@ export const BoardView = memo(function BoardView(props: {
   const [createIn, setCreateIn] = useState<BoardColumn>("backlog");
   /** The column a dragged card is over. */
   const [over, setOver] = useState<string | null>(null);
+  /** The cards being dragged: the columns that ask for something say what, until they let go. */
+  const [dragCards, setDragCards] = useState<Card[]>([]);
+  /** A move waiting on the person's answer: the cards lack something its column asks (issue #78). */
+  const [ask, setAsk] = useState<{
+    column: BoardColumn;
+    targetId?: string;
+    cards: Card[];
+    lacking: Lacking[];
+  } | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
   const [issuesOpen, setIssuesOpen] = useState(false);
   /** The selected cards (Ctrl-click), the last one picked (the anchor of a Shift range) and what a bulk action left to say. */
@@ -379,20 +396,30 @@ export const BoardView = memo(function BoardView(props: {
   const acting = shownSelection(selection, boardOrder);
   const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
   /** Moves the shown selected cards, quietly; the host's refusals are named afterwards. */
-  const moveSelected = async (column: BoardColumn, targetId?: string) => {
+  const moveSelected = async (column: BoardColumn, targetId?: string, only?: Card[]) => {
     if (busy) return;
+    // One question for the whole group; a group already asked about (`only`) goes straight on.
+    if (!only) {
+      const lacking = askAbout(column, actingCards);
+      if (lacking.length > 0) {
+        setAsk({ column, targetId, cards: actingCards, lacking });
+        return;
+      }
+    }
+    const cards = only ?? actingCards;
+    const ids = cards.map((card) => card.id);
     setBusy(true);
     // Dropped on a card, the group lands before it, in the board's order.
     const positions =
-      targetId && !acting.includes(targetId)
+      targetId && !ids.includes(targetId)
         ? positionsBefore(
-            columnOf(column).filter((card) => !acting.includes(card.id)),
+            columnOf(column).filter((card) => !ids.includes(card.id)),
             targetId,
-            actingCards.length,
+            cards.length,
           )
         : undefined;
     const refused = await moveMany(
-      actingCards,
+      cards,
       column,
       async (cardId, to, position) => {
         const answer = await store.hostRequest(hostId, "card.move", {
@@ -405,7 +432,7 @@ export const BoardView = memo(function BoardView(props: {
       positions,
     );
     const stayed = refused.map((r) => r.card.id);
-    setPicked((before) => before.filter((id) => stayed.includes(id) || !acting.includes(id)));
+    setPicked((before) => before.filter((id) => stayed.includes(id) || !ids.includes(id)));
     setNotice(
       refused.length === 0
         ? null
@@ -471,7 +498,7 @@ export const BoardView = memo(function BoardView(props: {
   const refocus = useRef<{ cardId: string; column: BoardColumn; index: number } | null>(null);
   const columnOf = (column: BoardColumn) =>
     all.filter((card) => card.column === column).sort((a, b) => a.position - b.position);
-  const move = (cardId: string, column: BoardColumn, targetId?: string) => {
+  const runMove = (cardId: string, column: BoardColumn, targetId?: string) => {
     const others = columnOf(column).filter((card) => card.id !== cardId);
     const position = targetId ? positionBefore(others, targetId) : undefined;
     void store.hostCommand(hostId, "card.move", {
@@ -480,10 +507,18 @@ export const BoardView = memo(function BoardView(props: {
       ...(position !== undefined ? { position } : {}),
     });
   };
+  /** A person's move of one card: a column that asks for something asks first (issue #78). */
+  const move = (cardId: string, column: BoardColumn, targetId?: string) => {
+    const card = all.find((other) => other.id === cardId);
+    const lacking = card ? askAbout(column, [card]) : [];
+    if (card && lacking.length > 0) setAsk({ column, targetId, cards: [card], lacking });
+    else runMove(cardId, column, targetId);
+  };
   const drop = (column: BoardColumn, targetId?: string) => {
     const cardId = dragging.current;
     if (!cardId || busy) return;
     dragging.current = null;
+    setDragCards([]);
     // A card dragged out of a selection takes the whole selection with it.
     if (draggingMany.current) {
       draggingMany.current = null;
@@ -688,127 +723,141 @@ export const BoardView = memo(function BoardView(props: {
               if (selection.length > 0) clearSelection();
             }}
           >
-            {COLUMNS.map(({ id }) => (
-              <section
-                key={id}
-                aria-label={t(`kanban.columns.${id}` as Key)}
-                data-column={id}
-                className={cn(
-                  "board-column group/lane relative snap-start",
-                  over === id && "drop-over",
-                )}
-                onDragOver={(e) => e.preventDefault()}
-                onDragEnter={() => setOver(id)}
-                onDragLeave={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
-                }}
-                onDrop={() => {
-                  setOver(null);
-                  drop(id);
-                }}
-              >
-                <ColumnHeader
-                  id={id}
-                  title={t(`kanban.columns.${id}` as Key)}
-                  {...counts(
-                    shown.filter((card) => card.column === id).length,
-                    all.filter((card) => card.column === id).length,
+            {COLUMNS.map(({ id }) => {
+              /** What the dragged cards would lack here: said by the column until they let go. */
+              const asking = dragNeeds(id, dragCards);
+              return (
+                <section
+                  key={id}
+                  aria-label={t(`kanban.columns.${id}` as Key)}
+                  aria-describedby={asking.length > 0 ? `needs-${id}` : undefined}
+                  data-column={id}
+                  data-needs={asking.length > 0 ? "true" : undefined}
+                  className={cn(
+                    "board-column group/lane relative snap-start",
+                    over === id && "drop-over",
+                    asking.length > 0 && "column-needs",
                   )}
-                  addLabel={t("kanban.addCardTo", { column: t(`kanban.columns.${id}` as Key) })}
-                  onAdd={() => {
-                    setCreateIn(id);
-                    setCreating(true);
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnter={() => setOver(id)}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
                   }}
-                />
-                <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto empty:hidden">
-                  {shown
-                    .filter((card) => card.column === id)
-                    .map((card) => (
-                      <CardTile
-                        key={card.id}
-                        card={card}
-                        workflow={
-                          card.workflowRunId
-                            ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
-                            : undefined
-                        }
-                        formatTime={(iso) => store.formatTime(iso)}
-                        labels={{
-                          actions: store.i18n.t("board.cardActions", { title: card.title }),
-                          start: store.i18n.t("board.startCard"),
-                          edit: store.i18n.t("board.edit"),
-                          delete: store.i18n.t("board.delete"),
-                          select: t("board.selectCard"),
-                          deselect: t("board.deselectCard"),
-                          selected: t("board.selectedCard"),
-                        }}
-                        startOff={startOffText(cardStartBlock(card), store.i18n.t)}
-                        deps={{
-                          waiting: titlesOf(card.waitingOn),
-                          holding: titlesOf(card.blocking),
-                        }}
-                        moves={movesOf(card)}
-                        onOpen={() => props.onOpenCard(card.id)}
-                        onEdit={() => props.onOpenCard(card.id, true)}
-                        onDelete={() => setDeleting(card)}
-                        onStart={() => setStarting(card)}
-                        locked={busy}
-                        selected={selection.includes(card.id)}
-                        onToggleSelect={() => select(card)}
-                        onRangeSelect={() => selectRange(card)}
-                        onDragStart={() => {
-                          dragging.current = card.id;
-                          draggingMany.current =
-                            acting.includes(card.id) && acting.length > 1 ? acting : null;
-                        }}
-                        onDropOn={() => {
-                          setOver(null);
-                          drop(id, card.id);
-                        }}
-                      />
-                    ))}
-                </ul>
-                {all.every((card) => card.column !== id) && (
-                  <BoardColumnEmpty
-                    label={t("kanban.emptyName", {
-                      empty: t("kanban.empty"),
-                      action: t("kanban.addCard"),
-                    })}
-                    text={t("kanban.empty")}
+                  onDrop={() => {
+                    setOver(null);
+                    drop(id);
+                  }}
+                >
+                  <ColumnHeader
+                    id={id}
+                    title={t(`kanban.columns.${id}` as Key)}
+                    {...counts(
+                      shown.filter((card) => card.column === id).length,
+                      all.filter((card) => card.column === id).length,
+                    )}
+                    addLabel={t("kanban.addCardTo", { column: t(`kanban.columns.${id}` as Key) })}
                     onAdd={() => {
                       setCreateIn(id);
                       setCreating(true);
                     }}
                   />
-                )}
-                {filtering &&
-                  all.some((card) => card.column === id) &&
-                  shown.every((card) => card.column !== id) && (
-                    <p className="column-empty">{t("board.noMatches")}</p>
+                  {asking.length > 0 && (
+                    <p id={`needs-${id}`} className="column-hint">
+                      {t("board.contract.hint", { needs: needsText(t, asking) })}
+                    </p>
                   )}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  aria-label={t("board.quickAdd", { column: t(`kanban.columns.${id}` as Key) })}
-                  className="w-full focus-visible:opacity-100 group-hover/lane:opacity-100 [@media(hover:hover)]:opacity-0"
-                  onClick={() => {
-                    setCreateIn(id);
-                    setCreating(true);
-                  }}
-                >
-                  <Plus aria-hidden="true" />
-                  {t("kanban.newCard")}
-                </Button>
-                <ColumnHandle
-                  t={t}
-                  width={width}
-                  index={COLUMNS.findIndex((column) => column.id === id) + 1}
-                  last={id === COLUMNS[COLUMNS.length - 1]?.id}
-                  onChange={(next) => store.boardWidth.set(next, false)}
-                  onCommit={() => store.boardWidth.persist()}
-                />
-              </section>
-            ))}
+                  <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto empty:hidden">
+                    {shown
+                      .filter((card) => card.column === id)
+                      .map((card) => (
+                        <CardTile
+                          key={card.id}
+                          card={card}
+                          workflow={
+                            card.workflowRunId
+                              ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
+                              : undefined
+                          }
+                          formatTime={(iso) => store.formatTime(iso)}
+                          labels={{
+                            actions: store.i18n.t("board.cardActions", { title: card.title }),
+                            start: store.i18n.t("board.startCard"),
+                            edit: store.i18n.t("board.edit"),
+                            delete: store.i18n.t("board.delete"),
+                            select: t("board.selectCard"),
+                            deselect: t("board.deselectCard"),
+                            selected: t("board.selectedCard"),
+                          }}
+                          startOff={startOffText(cardStartBlock(card), store.i18n.t)}
+                          deps={{
+                            waiting: titlesOf(card.waitingOn),
+                            holding: titlesOf(card.blocking),
+                          }}
+                          moves={movesOf(card)}
+                          onOpen={() => props.onOpenCard(card.id)}
+                          onEdit={() => props.onOpenCard(card.id, true)}
+                          onDelete={() => setDeleting(card)}
+                          onStart={() => setStarting(card)}
+                          locked={busy}
+                          selected={selection.includes(card.id)}
+                          onToggleSelect={() => select(card)}
+                          onRangeSelect={() => selectRange(card)}
+                          onDragStart={() => {
+                            dragging.current = card.id;
+                            draggingMany.current =
+                              acting.includes(card.id) && acting.length > 1 ? acting : null;
+                            setDragCards(draggingMany.current ? actingCards : [card]);
+                          }}
+                          onDragEnd={() => setDragCards([])}
+                          onDropOn={() => {
+                            setOver(null);
+                            drop(id, card.id);
+                          }}
+                        />
+                      ))}
+                  </ul>
+                  {all.every((card) => card.column !== id) && (
+                    <BoardColumnEmpty
+                      label={t("kanban.emptyName", {
+                        empty: t("kanban.empty"),
+                        action: t("kanban.addCard"),
+                      })}
+                      text={t("kanban.empty")}
+                      onAdd={() => {
+                        setCreateIn(id);
+                        setCreating(true);
+                      }}
+                    />
+                  )}
+                  {filtering &&
+                    all.some((card) => card.column === id) &&
+                    shown.every((card) => card.column !== id) && (
+                      <p className="column-empty">{t("board.noMatches")}</p>
+                    )}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    aria-label={t("board.quickAdd", { column: t(`kanban.columns.${id}` as Key) })}
+                    className="w-full focus-visible:opacity-100 group-hover/lane:opacity-100 [@media(hover:hover)]:opacity-0"
+                    onClick={() => {
+                      setCreateIn(id);
+                      setCreating(true);
+                    }}
+                  >
+                    <Plus aria-hidden="true" />
+                    {t("kanban.newCard")}
+                  </Button>
+                  <ColumnHandle
+                    t={t}
+                    width={width}
+                    index={COLUMNS.findIndex((column) => column.id === id) + 1}
+                    last={id === COLUMNS[COLUMNS.length - 1]?.id}
+                    onChange={(next) => store.boardWidth.set(next, false)}
+                    onCommit={() => store.boardWidth.persist()}
+                  />
+                </section>
+              );
+            })}
           </div>
           {filesShown && <BoardFilesPanel store={store} hostId={hostId} files={files} />}
         </div>
@@ -831,6 +880,36 @@ export const BoardView = memo(function BoardView(props: {
               cardId: card.id,
               confirm: true,
             });
+          }}
+        />
+      )}
+      {ask && (
+        <ContractDialog
+          t={t}
+          column={t(`kanban.columns.${ask.column}` as Key)}
+          lacking={ask.lacking}
+          qualifying={ask.cards.length - ask.lacking.length}
+          onRestoreFocus={(cardId) =>
+            document.querySelector<HTMLElement>(`[data-card="${cardId}"] [data-card-open]`)?.focus()
+          }
+          onCancel={() => {
+            setAsk(null);
+            refocus.current = null;
+          }}
+          onMoveAll={() => {
+            setAsk(null);
+            const [only] = ask.cards;
+            if (only && ask.cards.length === 1) runMove(only.id, ask.column, ask.targetId);
+            else void moveSelected(ask.column, ask.targetId, ask.cards);
+          }}
+          onMoveQualifying={() => {
+            setAsk(null);
+            const lacks = ask.lacking.map((l) => l.card.id);
+            void moveSelected(
+              ask.column,
+              ask.targetId,
+              ask.cards.filter((card) => !lacks.includes(card.id)),
+            );
           }}
         />
       )}

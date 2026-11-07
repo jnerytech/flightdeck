@@ -128,6 +128,31 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
     expect(selected()).toEqual(["Conversa"]);
   });
 
+  test("the view keys work right after a session opens from the list, with the focus still on the list row (#885)", async () => {
+    mount();
+    const row = document.createElement("button");
+    document.body.appendChild(row);
+    row.focus();
+    await press(row, { key: "3", altKey: true });
+    expect(selected()).toEqual(["Arquivos"]);
+    row.remove();
+  });
+
+  test("the view keys stay out of a text field or a dialog elsewhere in the app (#885)", async () => {
+    mount();
+    const field = document.createElement("input");
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    const inside = document.createElement("button");
+    dialog.appendChild(inside);
+    document.body.append(field, dialog);
+    await press(field, { key: "3", altKey: true });
+    await press(inside, { key: "3", altKey: true });
+    expect(selected()).toEqual(["Conversa"]);
+    field.remove();
+    dialog.remove();
+  });
+
   test("a view the host does not offer has no tab and no number", async () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());

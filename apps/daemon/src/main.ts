@@ -1398,6 +1398,7 @@ export async function startDaemon(
       historyRoots: config.history.roots,
       indexer: history,
       manager,
+      meta: central.meta,
     }),
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),

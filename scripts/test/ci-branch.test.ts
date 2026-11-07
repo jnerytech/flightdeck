@@ -279,13 +279,15 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     expect(workflow.jobs["screenshots-e2e"]?.if).toBe("needs.quick.outputs.e2e == 'true'");
   });
 
-  test("a dispatched run never cancels the branch's push or pull request run, and skips SonarCloud", () => {
+  test("a dispatched run never cancels the branch's push or pull request run, and a branch's skips SonarCloud", () => {
     // The job choice is in the key too: a screenshots-only dispatch must not cancel a full one.
     expect(workflow.concurrency.group).toBe(
       "ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}",
     );
-    // SonarCloud is its own job since #293, skipped as a whole on a dispatch.
-    expect(workflow.jobs.sonar?.if ?? "").toContain("github.event_name != 'workflow_dispatch'");
+    // SonarCloud is its own job since #293; a dispatch runs it only on main (#296: a full run).
+    expect(workflow.jobs.sonar?.if ?? "").toContain(
+      "(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')",
+    );
   });
 
   test("a dispatched run's test jobs never carry the names the branch rules require (a skipped copy must not stand in for the real check)", () => {

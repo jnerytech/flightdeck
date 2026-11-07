@@ -833,6 +833,21 @@ export const ptBR = {
     selectedCard: "selecionado",
     stayedOne: "1 card ficou onde estava: {names}",
     stayed: "{count} cards ficaram onde estavam: {names}",
+    contract: {
+      needs: {
+        criteria: "critérios de aceite",
+        pr: "um link de PR",
+        checksPending: "verificações concluídas",
+        checksFailing: "verificações passando",
+      },
+      hint: "Precisa de: {needs}",
+      title: "Mover para {column} mesmo assim?",
+      lacksOne: "{title} não tem: {needs}.",
+      lacksMany: "{count} cards não têm algo de que {column} precisa:",
+      item: "{title} — {needs}",
+      moveAnyway: "Mover mesmo assim",
+      moveQualifying: "Mover só os que atendem",
+    },
     files: "Arquivos",
     filesOf: "Arquivos · {branch}",
     filesPrimary: "Os arquivos aparecem para um worktree. Escolha um na barra lateral.",
@@ -1947,7 +1962,7 @@ export const ptBR = {
     teleport_no_project:
       "Este repositório não é o projeto da sessão: ele não tem o commit de onde a sessão parte. Escolha o repositório do mesmo projeto.",
     teleport_exists:
-      "Este host já tem essa sessão do Claude, por isso ela não foi movida por cima. Abra a que está aqui.",
+      "Este host já tem essa sessão do Claude, com turnos que a movida não tem ou ainda em uso aqui, por isso ela não foi movida por cima. Abra a que está aqui, ou feche-a aqui e mova de novo.",
     runtime_unavailable: "O OpenCode não está disponível neste host.",
     runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
     opencode_unsafe_global:

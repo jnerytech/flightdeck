@@ -15,6 +15,7 @@ import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
+import { useProjectLabels } from "@/hooks/use-project-labels";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { uniqueKeys } from "@/lib/unique-keys";
 import { useStoreSlice } from "@/lib/use-store";
@@ -30,7 +31,6 @@ import {
   type Period,
   periodRange,
   projectLabel,
-  projectLabels,
   usd,
 } from "../lib/costs.ts";
 import { mergeHostCsv } from "../lib/costs-csv.ts";
@@ -217,6 +217,7 @@ export const CostsPage = memo(function CostsPage(props: {
     let live = true;
     void askCosts(store, ids, asked, selection).then((loaded) => {
       if (!live) return;
+      store.projectKeys.note(loaded.summary?.byProject.map((p) => p.projectKey) ?? []);
       setSummary(loaded.summary);
       if (Object.keys(asked).length === 2) setAll(loaded.summary);
       setSessionHost(loaded.sessionHost);
@@ -235,7 +236,9 @@ export const CostsPage = memo(function CostsPage(props: {
     if (ids.length === 0) return;
     let live = true;
     void askCosts(store, ids, asked, selection).then((loaded) => {
-      if (live) setAll(loaded.summary);
+      if (!live) return;
+      store.projectKeys.note(loaded.summary?.byProject.map((p) => p.projectKey) ?? []);
+      setAll(loaded.summary);
     });
     return () => {
       live = false;
@@ -275,7 +278,8 @@ export const CostsPage = memo(function CostsPage(props: {
   const topKeys = uniqueKeys((summary?.topSessions ?? []).map((s) => s.claudeSessionId));
   // One set of labels for the whole screen, so a project reads the same in the list, the chart
   // and the table; two that share a folder name are told apart.
-  const labels = projectLabels([
+  // They are told apart against every project the app knows, as on Home (issue #881).
+  const labels = useProjectLabels(store, [
     ...new Set([
       ...(all?.byProject ?? []).map((p) => p.projectKey),
       ...(summary?.byProject ?? []).map((p) => p.projectKey),

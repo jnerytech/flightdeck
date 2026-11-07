@@ -271,15 +271,12 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
 
   const found = await Promise.all(config.allowedRoots.map(async (root) => deps.isDirectory(root)));
   const gone = config.allowedRoots.filter((_, index) => !found[index]);
-  checks.push(foldersCheck(config.allowedRoots, gone));
-  checks.push(serviceCheck(await deps.serviceInstalled()));
+  checks.push(foldersCheck(config.allowedRoots, gone), serviceCheck(await deps.serviceInstalled()));
 
   const address = `${config.bind}:${config.port}`;
   const healthy = await deps.healthy();
   const refused = healthy ? null : ((await deps.refused?.()) ?? null);
-  checks.push(daemonCheck(healthy, refused, address));
-
-  checks.push(claudeCheck(deps.claudePath()));
+  checks.push(daemonCheck(healthy, refused, address), claudeCheck(deps.claudePath()));
 
   const opencode = await deps.opencode?.();
   if (opencode) checks.push(opencodeCheck(opencode));
@@ -303,8 +300,10 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   const linger = await deps.linger?.();
   if (linger) checks.push(lingerCheck(linger));
 
-  checks.push(hooksCheck(await deps.hooks()));
-  checks.push(tailscaleCheck(await deps.tailscaleIp(), config.bind));
+  checks.push(
+    hooksCheck(await deps.hooks()),
+    tailscaleCheck(await deps.tailscaleIp(), config.bind),
+  );
 
   if (deps.version) checks.push(versionCheck(deps.version));
 

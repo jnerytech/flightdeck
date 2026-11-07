@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { TeleportManifest } from "@flightdeck/protocol";
 import { RequestError } from "../src/lib/host-connection.ts";
 import {
+  plainText,
   type TeleportRequest,
   type TeleportSummary,
   teleportSession,
@@ -46,12 +47,26 @@ const MANIFEST: TeleportManifest = {
 const PARTS: Record<string, string> = { transcript: TRANSCRIPT, code: CODE };
 
 /** Two fake hosts: the source serves its package in 16-byte chunks, the target keeps what lands. */
-function hosts(options: { finish?: Error; abortFails?: boolean; cancelFails?: boolean } = {}) {
+function hosts(
+  options: {
+    finish?: Error;
+    abortFails?: boolean;
+    cancelFails?: boolean;
+    /** The source's archive of its copy: refused, or never answered. */
+    archive?: "fails" | "hangs";
+    /** The source refuses to make the package. */
+    prepare?: Error;
+  } = {},
+) {
   const calls: string[] = [];
+  const archived: unknown[] = [];
   const landed: Record<string, string> = {};
   const source = (async (type: string, payload: Record<string, unknown>) => {
     calls.push(`source:${type}`);
-    if (type === "teleport.prepare") return MANIFEST;
+    if (type === "teleport.prepare") {
+      if (options.prepare) throw options.prepare;
+      return MANIFEST;
+    }
     if (type === "teleport.read") {
       const bytes = Buffer.from(PARTS[payload.part as string] ?? "");
       const offset = payload.offset as number;
@@ -63,6 +78,11 @@ function hosts(options: { finish?: Error; abortFails?: boolean; cancelFails?: bo
       };
     }
     if (type === "teleport.cancel" && options.cancelFails) throw new Error("source went");
+    if (type === "session.meta.set") {
+      archived.push(payload);
+      if (options.archive === "fails") throw new Error("source went");
+      if (options.archive === "hangs") return new Promise(() => {});
+    }
     return undefined;
   }) as TeleportRequest;
   const target = (async (type: string, payload: Record<string, unknown>) => {
@@ -85,7 +105,7 @@ function hosts(options: { finish?: Error; abortFails?: boolean; cancelFails?: bo
     if (type === "teleport.abort" && options.abortFails) throw new Error("target went");
     return undefined;
   }) as TeleportRequest;
-  return { source, target, calls, landed };
+  return { source, target, calls, landed, archived };
 }
 
 const run = (
@@ -146,7 +166,10 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       progress.at(-1),
       h.calls[0],
       h.calls.filter((c) => c === "target:teleport.write").length,
-      h.calls.slice(-2),
+      h.calls.at(-3),
+      // Both clean-up steps on the source start at once: their order does not matter.
+      h.calls.slice(-2).sort(),
+      h.archived,
     ]).toEqual([
       {
         kind: "moved",
@@ -159,7 +182,46 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       0,
       "source:teleport.prepare",
       Math.ceil(Buffer.byteLength(TRANSCRIPT) / 16) + Math.ceil(Buffer.byteLength(CODE) / 16),
-      ["target:teleport.finish", "source:teleport.cancel"],
+      // The copy it left is archived on the source (#870): the session now lives on the target.
+      "target:teleport.finish",
+      ["source:session.meta.set", "source:teleport.cancel"],
+      [{ claudeSessionId: MANIFEST.claudeSessionId, archived: true }],
+    ]);
+  });
+
+  test("a source that refuses or never answers the archive does not hold or fail a move that landed (#870)", async () => {
+    const outcomes = [];
+    for (const archive of ["fails", "hangs"] as const) {
+      const h = hosts({ archive });
+      outcomes.push([(await run(h, { cleanupMs: 50 })).kind, h.archived.length]);
+    }
+    expect(outcomes).toEqual([
+      ["moved", 1],
+      ["moved", 1],
+    ]);
+  });
+
+  test("a move that does not land never archives the source's copy: a no, a refusal or a cancel (#870)", async () => {
+    const declined = hosts();
+    await run(declined, { confirm: async () => false });
+    const refused = hosts({ finish: new RequestError("invalid_state", "x", "teleport_exists") });
+    await failure(run(refused));
+    const cancelled = hosts();
+    const stop = new AbortController();
+    await run(cancelled, {
+      signal: stop.signal,
+      onProgress: (sent, total) => {
+        if (sent === total) stop.abort();
+      },
+    });
+    expect([declined.archived, refused.archived, cancelled.archived]).toEqual([[], [], []]);
+  });
+
+  test("a source that refuses to make the package is that refusal, and the target is never asked", async () => {
+    const h = hosts({ prepare: new RequestError("invalid_state", "x", "teleport_busy") });
+    expect([await failure(run(h)), h.calls]).toEqual([
+      "teleport_busy",
+      ["source:teleport.prepare"],
     ]);
   });
 
@@ -274,6 +336,16 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       git: { ...(MANIFEST.git as NonNullable<TeleportManifest["git"]>), branch: "\u202e\u200b" },
     });
     expect([summary.branch, marksOnly.branch]).toEqual(["fix-login", null]);
+  });
+
+  test("line and paragraph separators and look-alike spaces show as one plain space (#100)", () => {
+    expect([
+      plainText("fix\u2028login\u2029now", 64),
+      plainText("a\u00a0b\u2003c\u3000d\u202fe\u2009f", 64),
+      plainText("a\u00a0\u00a0 b", 64),
+      plainText("\u2028\u00a0 ", 64),
+      plainText("two  spaces", 64),
+    ]).toEqual(["fix login now", "a b c d e f", "a b", "", "two spaces"]);
   });
 
   test("a source that answers prepare with something that is not a manifest is refused, and never told an id it made up", async () => {

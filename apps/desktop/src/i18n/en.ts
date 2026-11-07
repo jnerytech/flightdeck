@@ -836,6 +836,22 @@ export const en: Dictionary = {
     selectedCard: "selected",
     stayedOne: "1 card stayed where it was: {names}",
     stayed: "{count} cards stayed where they were: {names}",
+    /** What a column asks of a card before it gets there (issue #78). */
+    contract: {
+      needs: {
+        criteria: "acceptance criteria",
+        pr: "a PR link",
+        checksPending: "checks to finish",
+        checksFailing: "passing checks",
+      },
+      hint: "Needs: {needs}",
+      title: "Move to {column} anyway?",
+      lacksOne: "{title} lacks: {needs}.",
+      lacksMany: "{count} cards lack something {column} needs:",
+      item: "{title} — {needs}",
+      moveAnyway: "Move anyway",
+      moveQualifying: "Move only the ones that qualify",
+    },
     files: "Files",
     filesOf: "Files · {branch}",
     filesPrimary: "Files show for a worktree. Pick one in the sidebar.",
@@ -1949,7 +1965,7 @@ export const en: Dictionary = {
     teleport_no_project:
       "This repository is not the session's project: it does not have the commit the session starts from. Pick the repository of the same project.",
     teleport_exists:
-      "This host already has that Claude session, so it was not moved over it. Open the one here instead.",
+      "This host already has that Claude session, with turns the moved one does not have or still in use here, so it was not moved over it. Open the one here instead, or close it here and move again.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:
