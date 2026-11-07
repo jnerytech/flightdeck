@@ -8,7 +8,7 @@
  * scripts/lib/claude-hooks.ts, with their tests.
  */
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import {
   budgetedGh,
@@ -76,6 +76,7 @@ if (typeof command === "string") {
       const missing = (proc.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT";
       return { stdout: proc.status === 0 ? proc.stdout : null, missing };
     },
+    existsSync,
     () => performance.now(),
     6000,
   );

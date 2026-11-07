@@ -427,6 +427,7 @@ describe("push-wait: budgetedGh, the guard's gh with its time limit (#945 review
     expect(late.whyUnread()).toBe("no time");
     // Read once: the next branch's lookups start with no reason left over (#945 security review).
     expect(late.whyUnread()).toBeNull();
+    expect(ran).toEqual(["run", "fail", "missing"]);
     // ENOENT in a folder that does not exist is that folder, not gh: no reason to pass (high).
     const gone = budgetedGh(
       spawn,
@@ -436,7 +437,6 @@ describe("push-wait: budgetedGh, the guard's gh with its time limit (#945 review
     );
     expect(gone.gh(["missing"], "/nowhere")).toBeNull();
     expect(gone.whyUnread()).toBeNull();
-    expect(ran).toEqual(["run", "fail", "missing"]);
   });
 });
 

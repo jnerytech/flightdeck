@@ -874,6 +874,8 @@ export function pushWaitCheck(
     for (const branch of pushedBranches(call, (args) => deps.git(args, dir))) {
       // The name comes from the command or from git: unprintable characters out first (so none splits a secret), then secrets hidden (#945 review).
       const shown = redacted(printable(branch));
+      // A reason an earlier branch's lookups left is not this branch's (#945 security review).
+      deps.whyUnread?.();
       // One more try: a gh call can time out once on a busy machine.
       const run = deps.prRun(branch, dir) ?? deps.prRun(branch, dir);
       if (run === null) {
@@ -936,7 +938,7 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
 /** The guard's gh for push-wait (#945 review): calls start only before `limit`; why nothing answered. */
 export function budgetedGh(
   spawn: (args: string[], dir: string) => { stdout: string | null; missing: boolean },
-  _exists: (dir: string) => boolean,
+  exists: (dir: string) => boolean,
   now: () => number,
   limit: number,
 ): { gh: Gh; whyUnread: () => string | null } {
@@ -948,10 +950,17 @@ export function budgetedGh(
         return null;
       }
       const ran = spawn(args, dir);
-      if (ran.missing) why ??= "gh missing";
+      // spawn says ENOENT for a folder that does not exist too: only an existing one means gh is
+      // missing (#945 security review: `cd nowhere; git push` must not pass).
+      if (ran.missing && exists(dir)) why ??= "gh missing";
       return ran.stdout;
     },
-    whyUnread: () => why,
+    // Read once: the next branch's lookups start with no reason left over (#945 security review).
+    whyUnread: () => {
+      const said = why;
+      why = null;
+      return said;
+    },
   };
 }
 
