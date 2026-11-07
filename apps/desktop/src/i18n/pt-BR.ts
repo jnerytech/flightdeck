@@ -2392,6 +2392,7 @@ export const ptBR = {
     effortDefault: "Esforço padrão",
     create: "Criar sessão",
     needFolder: "Este host não tem pasta permitida.",
+    needPrompt: "Escreva o primeiro prompt para iniciar em segundo plano.",
     addFolder: "Adicionar uma pasta na página de {host}",
     host: "Host",
   },
