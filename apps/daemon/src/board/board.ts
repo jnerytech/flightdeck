@@ -332,6 +332,8 @@ export class Board {
   private ruleWrites: Promise<void> = Promise.resolve();
   private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
   private readonly follows = new Map<string, () => void>();
+  /** Card id → the number of the last look at its spec file, so an older look writes nothing. */
+  private readonly specLooks = new Map<string, number>();
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
   private readonly running = new Set<string>();
   /** Workflow turns waiting for the plan quota to free up. */
@@ -934,7 +936,8 @@ export class Board {
     const card = this.getCard(id);
     if (patch.blockedBy) this.checkBlockers(id, card.projectId, patch.blockedBy);
     const specPath = patch.specPath === undefined ? card.specPath : patch.specPath;
-    if (specPath !== null && specPathProblem(specPath) !== null) {
+    // Only a path that comes in the patch is judged: one stored earlier does not block an edit.
+    if (typeof patch.specPath === "string" && specPathProblem(patch.specPath) !== null) {
       throw new FlightdeckError(
         "bad_request",
         "the spec path must be a relative path to a Markdown file inside the worktree",
@@ -1556,15 +1559,19 @@ export class Board {
   async refreshSpec(id: string): Promise<Card> {
     const card = this.getCard(id);
     const path = specExpectedPath(card);
+    const look = (this.specLooks.get(id) ?? 0) + 1;
+    this.specLooks.set(id, look);
     const seen: SpecState | null =
       card.worktreePath && path ? { path, ...(await readSpec(card.worktreePath, path)) } : null;
     // The card may have been discarded, or the board stopped, while the files were read.
     if (this.stopped || this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id) === null) {
       return card;
     }
-    // A look that ended after the card named another path says nothing about the new one.
+    // A look that ended after the card named another path or got another worktree says nothing
+    // about the new one, and an older look never writes over a newer one.
     const now = this.getCard(id);
-    if (specExpectedPath(now) !== path) return now;
+    if (specExpectedPath(now) !== path || now.worktreePath !== card.worktreePath) return now;
+    if (this.specLooks.get(id) !== look) return now;
     if (JSON.stringify(seen) === JSON.stringify(now.specState)) return now;
     this.db
       .query(

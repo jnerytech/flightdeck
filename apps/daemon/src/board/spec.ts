@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { lstat, open, realpath } from "node:fs/promises";
+import { lstat, open, realpath, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { specPathProblem } from "@flightdeck/protocol";
 import { isInside } from "../paths.ts";
@@ -40,8 +40,9 @@ export async function readSpec(
   try {
     const realRoot = await realpath(root);
     const target = resolve(realRoot, path);
-    const info = await lstat(target);
-    if (!info.isFile() || info.size === 0 || info.nlink > 1) return NOTHING;
+    // BigInt: a 64-bit file id does not survive a Number.
+    const info = await lstat(target, { bigint: true });
+    if (!info.isFile() || info.size === 0n || info.nlink > 1n) return NOTHING;
     // A folder on the way may be a link: where the file really is must still be inside.
     if (!isInside(realRoot, await realpath(target))) return NOTHING;
     await hooks.beforeOpen?.();
@@ -51,11 +52,15 @@ export async function readSpec(
       constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0),
     );
     try {
-      const opened = await handle.stat();
+      const opened = await handle.stat({ bigint: true });
       // A folder on the way swapped for a link after the check leads to another file.
-      if (!opened.isFile() || opened.dev !== info.dev || opened.ino !== info.ino) return NOTHING;
+      if (!opened.isFile() || opened.nlink !== 1n) return NOTHING;
+      if (opened.dev !== info.dev || opened.ino !== info.ino) return NOTHING;
       if (!(await descriptorInside(realRoot, handle.fd))) return NOTHING;
       const { bytesRead, buffer } = await handle.read(Buffer.alloc(LOOKED_AT), 0, LOOKED_AT, 0);
+      // Where the system cannot say where the descriptor points, the path says it once more,
+      // after the open: it must still be inside and still be the file that was opened.
+      if (!(await stillThere(realRoot, target, opened))) return NOTHING;
       const text = buffer.subarray(0, bytesRead);
       return { found: true, heading: firstHeading(text, bytesRead === LOOKED_AT) };
     } finally {
@@ -66,11 +71,32 @@ export async function readSpec(
   }
 }
 
-/** Where an open descriptor really points, where the system tells (Linux): still inside the root. */
+/**
+ * Where an open descriptor really points, where the system tells (Linux): still inside the root.
+ * A system that does not tell (no `/proc`, another system) is not asked; one that tells and fails
+ * to answer for this descriptor is refused.
+ */
 export async function descriptorInside(realRoot: string, fd: number): Promise<boolean> {
-  if (process.platform !== "linux") return true;
+  if (
+    !(await stat("/proc/self/fd").then(
+      () => true,
+      () => false,
+    ))
+  )
+    return true;
   const where = await realpath(`/proc/self/fd/${fd}`).catch(() => null);
-  return where === null || isInside(realRoot, where);
+  return where !== null && isInside(realRoot, where);
+}
+
+/** The path still leads, inside the root, to the very file that was opened. */
+async function stillThere(
+  realRoot: string,
+  target: string,
+  opened: { dev: bigint; ino: bigint },
+): Promise<boolean> {
+  const now = await lstat(target, { bigint: true }).catch(() => null);
+  if (now === null || now.dev !== opened.dev || now.ino !== opened.ino) return false;
+  return isInside(realRoot, await realpath(target));
 }
 
 /** What a heading must not carry: controls, invisible and direction-changing characters, breaks. */
@@ -85,7 +111,11 @@ function firstHeading(bytes: Buffer, cut: boolean): string | null {
     // `.` stops at U+2028 and U+2029; a line here ends only at a line feed.
     const match = /^ {0,3}#{1,6}[ \t]+([^\n]*)$/.exec(line);
     if (!match) continue;
-    const text = withoutClosing(match[1] ?? "").replace(NOT_FOR_A_HEADING, "");
+    // A tab separates words; the other controls and invisible characters just go.
+    const text = withoutClosing((match[1] ?? "").replace(/\t/g, " ")).replace(
+      NOT_FOR_A_HEADING,
+      "",
+    );
     if (text !== "") return Array.from(text).slice(0, HEADING_MAX).join("");
   }
   return null;
