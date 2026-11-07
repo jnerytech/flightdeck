@@ -188,6 +188,11 @@ describe("loadedTargets (#762)", () => {
     "scripts/demo-seed.ts": "export const seed = () => 1;",
     "packages/protocol/src/types.ts": "export type T = string;",
     "docs/notes.md": "text",
+    "apps/desktop/src/app.tsx": "export const App = () => null;",
+    "apps/desktop/src/types.tsx": "export type P = { a: string };",
+    // The full suite waives these, as isCoverageSource does (#762 review).
+    "apps/daemon/src/bin.ts": "export const main = () => 1;",
+    "packages/protocol/src/env.d.ts": "declare const x: number;",
   };
   const read = (path: string) => code[path] ?? null;
 
@@ -195,14 +200,19 @@ describe("loadedTargets (#762)", () => {
     expect(loadedTargets(Object.keys(code), read)).toEqual([
       "scripts/demo-shots.ts",
       "scripts/lib/a.ts",
+      "apps/desktop/src/app.tsx",
     ]);
   });
 
   test("the ignore rule matches bunfig.toml's coveragePathIgnorePatterns", () => {
-    const bunfig = readFileSync("bunfig.toml", "utf8");
-    expect(bunfig).toContain(
-      'coveragePathIgnorePatterns = ["**/test/**", "**/components/ui/**", "**/scripts/demo-seed.ts"]',
-    );
+    const bunfig = Bun.TOML.parse(readFileSync("bunfig.toml", "utf8")) as {
+      test: { coveragePathIgnorePatterns: string[] };
+    };
+    expect([...bunfig.test.coveragePathIgnorePatterns].sort()).toEqual([
+      "**/components/ui/**",
+      "**/scripts/demo-seed.ts",
+      "**/test/**",
+    ]);
     expect(WHOLE_SUITE_IGNORED.test("apps/daemon/test/x.ts")).toBe(true);
     expect(WHOLE_SUITE_IGNORED.test("scripts/latest/x.ts")).toBe(false);
   });
