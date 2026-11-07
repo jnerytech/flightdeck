@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { realpath } from "node:fs/promises";
+import { relative } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
@@ -147,8 +148,11 @@ export class ReviewComments {
     const where = await located(resolved.root, await realpath(resolved.root), path);
     refuseCredential(where, path, true);
     // The config shown masked (`.mcp.json`, #806): the quote a comment keeps has its values masked.
-    const masked = (lines: string[] | null) =>
-      lines && maskedConfig(path) ? maskConfig(lines) : lines;
+    // A link named otherwise that leads to it is quoted masked too.
+    const shownMasked =
+      maskedConfig(path) ||
+      (where.real !== null && maskedConfig(relative(where.realRoot, where.real)));
+    const masked = (lines: string[] | null) => (lines && shownMasked ? maskConfig(lines) : lines);
     if (side === "new") {
       // Opened without following a link, as `file.read` does: one swapped in after the check is not read.
       const bytes = where.real ? await readRegular(where.real, Number.POSITIVE_INFINITY) : null;

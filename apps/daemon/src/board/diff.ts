@@ -145,7 +145,8 @@ const withoutSecrets = (files: DiffFile[]) =>
     if (unlisted(file.path) || (file.oldPath !== null && unlisted(file.oldPath))) {
       return secretFile(file);
     }
-    return maskedConfig(file.path) ? maskedFile(file) : file;
+    const shown = maskedConfig(file.path) || (file.oldPath !== null && maskedConfig(file.oldPath));
+    return shown ? maskedFile(file) : file;
   });
 
 /**
