@@ -403,6 +403,43 @@ describe("board-multi-review: what a screen reader and a mouse get from the bar"
     expect(document.querySelector("[data-slot='selection-slot']")?.contains(bar())).toBe(true);
   });
 
+  // #760: the slot was a 48 px row of the board's body, kept blank while nothing was selected
+  // (an 80 px band above the columns). It is now the toolbar's own row: the bar covers it.
+  test("the bar takes the toolbar's row in the page header, and the toolbar comes back once the selection is cleared", async () => {
+    setup({ language: "pt-BR" });
+    await settle(() => screen.queryByRole("heading", { name: "Board de api" }) !== null);
+    const slot = () => document.querySelector("[data-slot='selection-slot']");
+    const toolbar = () => screen.queryByRole("toolbar", { name: "Filtros" });
+    const look = () => ({
+      inHeader: slot()?.closest("[data-slot='page-header']") != null,
+      inBody: slot()?.closest("[data-slot='page-body']") != null,
+      holdsToolbar: slot()?.contains(toolbar()) ?? false,
+      toolbarInert: toolbar()?.closest("[inert]") != null,
+      bar: screen.queryByRole("group", { name: "Seleção" }) !== null,
+    });
+    const idle = look();
+    await ctrl("A");
+    const picked = look();
+    await click(
+      within(screen.getByRole("group", { name: "Seleção" })).getByRole("button", {
+        name: "Limpar seleção",
+      }),
+    );
+    const cleared = look();
+    const resting = {
+      inHeader: true,
+      inBody: false,
+      holdsToolbar: true,
+      toolbarInert: false,
+      bar: false,
+    };
+    expect({ idle, picked, cleared }).toEqual({
+      idle: resting,
+      picked: { ...resting, toolbarInert: true, bar: true },
+      cleared: resting,
+    });
+  });
+
   test("one live region says how many are selected and what a refusal left", async () => {
     setup({ refuse: { A: { message: "no" } } });
     await ready();
