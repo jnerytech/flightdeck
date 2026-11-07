@@ -861,7 +861,7 @@ configurações de projetos do host, onde se editam pasta, branch base, setup e 
 Uma sessão ociosa pode continuar em outro host: a conversa, os commits e as mudanças ainda não commitadas vão junto. É uma prévia, desligada por padrão: ligue em Configurações, Janela, "Prévia: mover uma sessão para outro host".
 
 1. No menu da sessão (o "…" na linha dela), escolha **Mover para outro host…**.
-2. Escolha o host e digite o repositório lá. Tem de ser o mesmo projeto, então esse host já precisa ter um clone dele.
+2. Escolha o host e o repositório lá: aperte **Procurar…** para escolher entre as pastas que esse host permite, ou digite o caminho. Tem de ser o mesmo projeto, então esse host já precisa ter um clone dele.
 3. Leia o que vai: a branch, os commits ainda fora do origin, os arquivos alterados, o tamanho e quantas linhas parecem segredos. Os segredos em si nunca aparecem, e eles vão como estão.
 4. Aperte **Mover** e depois **Abrir lá**.
 
@@ -3237,6 +3237,9 @@ encerrada é um anel esmaecido. Passe o mouse para ver o nome.
   Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 1024 px, e abaixo de 640 px vira uma gaveta.
   Numa janela larga o botão a recolhe para o trilho e a abre de novo, e o app lembra a escolha na
   próxima vez que abrir larga.
+- **Tamanho da janela:** a janela abre em 1200 x 800 e pode encolher até 360 x 480, estreita como um
+  celular, para ficar ao lado de um editor. Estreita, a barra lateral vira uma gaveta e as abas viram
+  um botão só.
 - **Três colunas** em Sessões, Precisa de você e Histórico: a lista à esquerda (largura
   ajustável e guardada), a sessão, o pedido ou a transcrição à direita. Board, Custos,
   Configurações e as páginas do host usam a largura toda. O cabeçalho mostra o caminho

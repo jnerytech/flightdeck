@@ -625,8 +625,12 @@ export function compareToBaseline(
   };
 }
 
-/** The windows the geometry is checked at: the smallest the app allows, the usual one, a big one. */
+/**
+ * The windows the geometry is checked at: the smallest the app allows (the floor in
+ * `tauri.conf.json`), the old 720 px floor, the usual one, a big one.
+ */
 export const GUARD_SIZES: ReadonlyArray<{ width: number; height: number }> = [
+  { width: 360, height: 480 },
   { width: 720, height: 480 },
   { width: 1280, height: 800 },
   { width: 1920, height: 1080 },

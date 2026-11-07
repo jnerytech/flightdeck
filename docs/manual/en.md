@@ -867,7 +867,7 @@ settings, where the folder, base branch, setup and personas are edited).
 An idle session can continue on another host: its conversation, its commits and its uncommitted changes go with it. It is a preview, off by default: turn it on in Settings, Window, "Preview: move a session to another host".
 
 1. In the session's menu (the "…" on its row), pick **Move to another host…**.
-2. Pick the host and type the repository there. It must be the same project, so that host must already have a clone of it.
+2. Pick the host and the repository there: press **Browse…** to choose among the folders that host allows, or type the path. It must be the same project, so that host must already have a clone of it.
 3. Read what moves: the branch, the commits not on origin yet, the files changed, the size, and how many lines look like secrets. The secrets themselves are never shown, and they move as they are.
 4. Press **Move**, then **Open it there**.
 
@@ -3241,6 +3241,8 @@ Hover one for its name.
   the theme. It collapses to a 56 px icon rail, by itself below 1024 px, and below 640 px it becomes a drawer.
   In a wide window the button folds it to the rail and back, and the app remembers the choice for
   the next time it opens wide.
+- **Window size:** the window opens at 1200 x 800 and can shrink to 360 x 480, as narrow as a phone,
+  to sit beside an editor. Narrow, the sidebar is a drawer and the tabs are one button.
 - **Three columns** in Sessions, Needs you and History: the list on the left (adjustable,
   remembered width), the session, request or transcript on the right. Board, Costs, Settings and
   the host pages use the full width. The header shows the path (Sessions > session, History >
