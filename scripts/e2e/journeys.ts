@@ -1763,7 +1763,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       throw new Error("um arquivo de credencial devia aparecer como oculto, sem botão para abrir");
     }
     // By content: the key-shaped line is found, and nothing of the key shows.
-    await panel.getByRole("tab", { name: c.t("files.byContent"), exact: true }).click();
+    await panel.getByRole("button", { name: c.t("files.byContent"), exact: true }).click();
     const content = panel.getByRole("searchbox", { name: c.t("files.searchContent"), exact: true });
     await content.fill("chave de exemplo");
     await results.getByRole("button", { name: /^config\.example\.ts:\d+$/ }).waitFor({
@@ -1780,7 +1780,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await content.fill("DEMO_MODE");
     await panel.getByText(c.t("files.nothingFound"), { exact: true }).waitFor({ timeout: WAIT });
     // A match opens its file.
-    await panel.getByRole("tab", { name: c.t("files.byName"), exact: true }).click();
+    await panel.getByRole("button", { name: c.t("files.byName"), exact: true }).click();
     await panel
       .getByRole("searchbox", { name: c.t("files.searchNames"), exact: true })
       .fill("app.ts");
