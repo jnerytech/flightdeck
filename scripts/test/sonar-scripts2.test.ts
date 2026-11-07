@@ -143,7 +143,7 @@ describe("sonar-scripts2: the grader finds a fail count with the same matches", 
     ];
     let red: boolean[] = [];
     const elapsed = took(() => {
-      red = outputs.map(isRed);
+      red = outputs.map((output) => isRed(output) === true);
     });
     expect(red).toEqual([false, false, false, false]);
     expect(isRed(`${outputs[1]}1 fail`)).toBe(true);
