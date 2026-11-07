@@ -43,7 +43,7 @@ describe("project-target: a project's own checkout, read only (#797)", () => {
       listing?.entries.some((entry) => entry.name === "panel.ts") ?? false,
       file?.text ?? null,
       diff?.root ?? null,
-      diff?.base ?? "none",
+      diff ? diff.base : "no diff",
       diff?.files.map((f) => f.path) ?? [],
     ]).toEqual([true, "export const panel = 1;\n", realpathSync(repo), null, ["panel.ts"]]);
   });
