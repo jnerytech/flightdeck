@@ -1898,6 +1898,10 @@ export const ptBR = {
       "Parte da sessão ainda não chegou a este host, por isso ela não pode começar aqui. Tente mudar de novo.",
     teleport_corrupt:
       "O que chegou a este host não bate com o que o outro host mandou, por isso foi descartado. Tente mudar de novo.",
+    teleport_no_project:
+      "Este repositório não é o projeto da sessão: ele não tem o commit de onde a sessão parte. Escolha o repositório do mesmo projeto.",
+    teleport_exists:
+      "Este host já tem essa sessão do Claude, por isso ela não foi movida por cima. Abra a que está aqui.",
     runtime_unavailable: "O OpenCode não está disponível neste host.",
     runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
     opencode_unsafe_global:
