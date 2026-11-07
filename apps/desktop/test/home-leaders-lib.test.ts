@@ -103,6 +103,17 @@ describe("home-leaders: the trend compares days 1-3 with days 4-6", () => {
     });
   });
 
+  // OpenCode review of #780: tokens only today are in the share but in neither half; "Steady"
+  // read as nothing new for something that just appeared.
+  test("an item with tokens only today is new, not steady", () => {
+    const week = projects(["today", 50], ["old", 50]);
+    const halves = projects(["old", 10]);
+    const trends = Object.fromEntries(
+      homeLeaders(week, halves, halves).project.map((r) => [r.key, r.trend.direction]),
+    );
+    expect(trends).toEqual({ today: "new", old: "flat" });
+  });
+
   test("the rest row's trend adds up what it stands for", () => {
     const week = projects(["a", 9], ["b", 8], ["c", 7], ["d", 6], ["e", 5], ["f", 4], ["g", 3]);
     const first = projects(["f", 10], ["g", 10]);
