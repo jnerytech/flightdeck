@@ -572,6 +572,25 @@ describe("times-ui: the teams of a host", () => {
     expect(added?.permission).toBe("plan");
   });
 
+  test("a worker added with Bypass asks first, and cancelling adds nothing (#93)", async () => {
+    const { teams } = await open({ bypass: true });
+    await create("ab", "1");
+    await click("Adicionar executora a ab", row("ab"));
+    await settle(() => screen.queryByLabelText("Permissões da nova executora de ab") !== null);
+    await change("Permissões da nova executora de ab", "bypassPermissions");
+    await click("Adicionar a ab", row("ab"));
+    await settle(() => screen.queryByRole("alertdialog") !== null);
+    await click("Cancelar", screen.queryByRole("alertdialog"));
+    await settle(() => screen.queryByRole("alertdialog") === null);
+    expect((await teams())[0]?.members.length).toBe(2);
+    await click("Adicionar a ab", row("ab"));
+    await settle(() => screen.queryByRole("alertdialog") !== null);
+    await click("Adicionar sem pedidos de permissão", screen.queryByRole("alertdialog"));
+    await settle(() => (row("ab")?.textContent ?? "").includes("ab · executora 2"));
+    const added = (await teams())[0]?.members.find((m) => m.name === "ab · executora 2");
+    expect(added?.permission).toBe("bypassPermissions");
+  });
+
   test("the worker rows are a grid of fixed columns: persona, model, permissions, remove (#93)", async () => {
     await open();
     await click("Novo time");
