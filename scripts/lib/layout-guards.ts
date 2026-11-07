@@ -737,10 +737,13 @@ export const WORSE_TOLERANCE = 2;
 
 /** Whether a baseline entry is a count, or a count with its worst excess (#637). */
 function isCountEntry(value: unknown): value is CountEntry {
-  if (Number.isInteger(value)) return true;
+  const isCount = (n: unknown) => Number.isInteger(n) && (n as number) >= 0;
+  if (isCount(value)) return true;
   if (typeof value !== "object" || value === null) return false;
   const { count, worst } = value as { count?: unknown; worst?: unknown };
-  return Number.isInteger(count) && (worst === undefined || typeof worst === "number");
+  // #724: a worst is a finite number of px, never below the limit.
+  const isWorst = typeof worst === "number" && Number.isFinite(worst) && worst >= 0;
+  return isCount(count) && (worst === undefined || isWorst);
 }
 
 /** A baseline of counts, or `null` when there is none yet; refuses one that is not counts, by name (#677). */
@@ -755,6 +758,9 @@ export function loadCounts(
     parsed = JSON.parse(text) as Record<string, unknown>;
   } catch {
     throw new Error(`${file} is not valid JSON`);
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`${file} is not an object of counts`);
   }
   const wrong = Object.entries(parsed).find(([, value]) => !isCountEntry(value));
   if (wrong) throw new Error(`${file}: ${wrong[0]} is not a count of findings`);
@@ -815,11 +821,24 @@ export function ratchetScreen(screen: string, findings: Finding[], ratchet: Ratc
   }
   const here = `|${screen}|`;
   for (const [key, value] of Object.entries(baseline)) {
-    const allowed = entryOf(value).count;
+    if (!key.includes(here)) continue;
+    const { count: allowed, worst: allowedWorst } = entryOf(value);
     const now = counted.get(key)?.length ?? 0;
-    if (key.includes(here) && now < allowed) {
+    if (now < allowed) {
       ratchet.gone.push(
         `${key}: ${now} where the baseline has ${allowed}: ${now === 0 ? "remove it" : "lower it"}`,
+      );
+      continue;
+    }
+    // #724: a fixed worst occurrence lowers the baseline too, or a regression back to it would pass.
+    const worst = ratchet.seen[key]?.worst;
+    if (
+      allowedWorst !== undefined &&
+      worst !== undefined &&
+      worst < allowedWorst - WORSE_TOLERANCE
+    ) {
+      ratchet.gone.push(
+        `${key}: worst ${worst} px where the baseline has ${allowedWorst}: lower it`,
       );
     }
   }

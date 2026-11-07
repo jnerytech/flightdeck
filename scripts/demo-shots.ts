@@ -1047,7 +1047,7 @@ export async function takeShots(
   for (const [file, , { gone }] of ratchets) {
     if (gone.length > 0) {
       problems.push(
-        `${basename(file)} holds more findings than this run saw: lower or remove\n${gone.join("\n")}`,
+        `${basename(file)} holds more findings, or a worse worst px, than this run saw: lower or remove\n${gone.join("\n")}`,
       );
     }
   }
