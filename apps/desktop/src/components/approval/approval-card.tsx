@@ -21,6 +21,7 @@ import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import { type ApprovalView, approvalView, shortPath } from "@/lib/approval";
 import { type AskPick, answeredInput, buildAnswers, parseQuestions } from "@/lib/ask-question";
+import { uniqueKeys } from "@/lib/unique-keys";
 import { cn } from "@/lib/utils";
 import { AlwaysAllow } from "../../ui/AlwaysAllow.tsx";
 import { Markdown } from "../../ui/Markdown.tsx";
@@ -93,13 +94,14 @@ function Body({
   }
   if (view.kind === "file") {
     const shown = view.lines.slice(0, MAX_LINES);
+    const ids = uniqueKeys(shown.map((line) => `${line.op} ${line.text}`));
+    const keyed = shown.map((line, at) => ({ id: ids[at], line }));
     return (
       <div className="flex flex-col gap-2">
         <p className="break-all font-mono text-sm">{view.path}</p>
         <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">
-          {shown.map((line, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: diff lines are positional and immutable
-            <div key={i} className={LINE_TONE[line.op]}>{`${line.op} ${line.text}`}</div>
+          {keyed.map(({ id, line }) => (
+            <div key={id} className={LINE_TONE[line.op]}>{`${line.op} ${line.text}`}</div>
           ))}
           {view.lines.length > MAX_LINES && <div className="text-muted-foreground">…</div>}
         </pre>
@@ -368,12 +370,12 @@ export function ApprovalCard(
   }
 
   return (
-    <fieldset
+    <fieldset // NOSONAR: the card is the focus target of its A/N/Esc keys; a button inside would put them on the wrong element and change the focus order
       aria-label={t("approval.label", { tool: request.toolName })}
       data-slot="approval-card"
       data-request-id={request.requestId}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the card takes focus for its A/N/Esc keys
-      tabIndex={0}
+      tabIndex={0} // NOSONAR: same reason: the card itself takes the focus
       onKeyDown={onKeyDown}
       className={cn(
         "m-0 flex min-w-0 flex-col gap-3 rounded-lg border bg-card p-4 text-card-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring",
