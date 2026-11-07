@@ -3,6 +3,7 @@ import { seedDemoHosts } from "../src/demo/boot.ts";
 import { tabMenu } from "./aba-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { tabName } from "./tab-names.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
@@ -14,12 +15,7 @@ const { App } = await import("../src/ui/App.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
-const names = () =>
-  screen
-    .queryAllByRole("tab")
-    .map((tab) =>
-      (tab.getAttribute("aria-label") ?? tab.textContent ?? "").replace(/, host .*$/, ""),
-    );
+const names = () => screen.queryAllByRole("tab").map((tab) => tabName(tab));
 
 /**
  * A store with one host, "alfa", and `count` of its tabs open: its history, Projects and automatic

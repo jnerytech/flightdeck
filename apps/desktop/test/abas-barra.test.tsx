@@ -4,6 +4,7 @@ import type { Route } from "../src/lib/router.ts";
 import { tabMenu } from "./aba-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { tabName } from "./tab-names.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -37,10 +38,7 @@ const tabs = () => {
   const row = screen.queryByRole("tablist", { name: "Abas" });
   return row ? within(row).queryAllByRole("tab") : [];
 };
-const names = () =>
-  tabs().map((tab) =>
-    (tab.getAttribute("aria-label") ?? tab.textContent ?? "").replace(/, host .*$/, ""),
-  );
+const names = () => tabs().map((tab) => tabName(tab));
 const press = async (name: string) => {
   const button = screen.queryByRole("button", { name });
   expect(button).not.toBeNull();

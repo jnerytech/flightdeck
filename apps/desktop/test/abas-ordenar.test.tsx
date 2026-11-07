@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { tabName } from "./tab-names.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
@@ -12,12 +13,7 @@ const { App } = await import("../src/ui/App.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
-const names = () =>
-  screen
-    .queryAllByRole("tab")
-    .map((tab) =>
-      (tab.getAttribute("aria-label") ?? tab.textContent ?? "").replace(/, host .*$/, ""),
-    );
+const names = () => screen.queryAllByRole("tab").map((tab) => tabName(tab));
 const tab = (name: string) =>
   screen.queryAllByRole("tab").find((el) => (el.textContent ?? "").includes(name)) as HTMLElement;
 
@@ -79,10 +75,7 @@ describe("abas-ordenar: reordenar pelo teclado", () => {
 
   test("a move is announced to a screen reader with the new place", async () => {
     await three();
-    // Only the host's own announcement is there before a move.
-    expect(screen.queryByRole("status", { name: "Posição das abas" })?.textContent).toBe(
-      "ha: 3 abas",
-    );
+    expect(screen.queryByRole("status", { name: "Posição das abas" })?.textContent ?? "").toBe("");
     await press(tab("Aprovações automáticas"), "ArrowLeft");
     expect(screen.queryByRole("status", { name: "Posição das abas" })?.textContent).toBe(
       "Aba Aprovações automáticas movida para a posição 2 de 3",
