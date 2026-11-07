@@ -4,6 +4,7 @@ import { HistoryIndexer } from "../src/history/indexer.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { TeleportPackages, type TeleportSession, teleportDeps } from "../src/teleport/package.ts";
+import { teleportImportDeps } from "../src/teleport/import.ts";
 import { TeleportInbox } from "../src/teleport/receive.ts";
 import { newManager, tempDir } from "./helpers.ts";
 import { FrameClient, projectsRoot, userLine, writeTranscript } from "./history-helpers.ts";
@@ -222,5 +223,87 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       aborted,
       (refused.error as { params?: unknown } | undefined)?.params,
     ]).toEqual(["in-1", 5, "whole", true, { feature: "teleport" }]);
+  });
+
+  test("the import reads the inbox, the roots, the history and the sessions from the daemon", async () => {
+    const { indexer, root } = await indexed();
+    const resumed: unknown[] = [];
+    const inbox = { claim: async () => ({}) as never };
+    const allowedRoots = ["/work"];
+    const deps = teleportImportDeps({
+      inbox,
+      allowedRoots,
+      historyRoots: [root, "/second"],
+      indexer,
+      manager: {
+        createResumed: async (opts) => {
+          resumed.push(opts);
+          return { sessionId: "t1" };
+        },
+      },
+    });
+    const opts = {
+      cwd: "/work/app",
+      claudeSessionId: ID,
+      name: null,
+      permissionMode: "default" as const,
+    };
+    expect([
+      deps.inbox === inbox,
+      deps.allowedRoots === allowedRoots,
+      deps.historyRoot,
+      deps.transcriptOf(ID) !== null,
+      deps.transcriptOf("11111111-1111-4111-8111-111111111111"),
+      await deps.resume(opts),
+      resumed,
+    ]).toEqual([true, true, root, true, null, { sessionId: "t1" }, [opts]]);
+  });
+
+  test("the server finishes a teleport on this host; without it, finish is off", async () => {
+    const { manager } = newManager();
+    const inbox = new TeleportInbox({
+      dir: tempDir("fd-teleport-in-"),
+      now: () => 0,
+      newId: () => "in-1",
+      timers: globalThis,
+    });
+    await inbox.start();
+    cleanups.push(() => inbox.stop());
+    const base = {
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    };
+    const server = startServer({
+      ...base,
+      teleportInbox: inbox,
+      teleportImport: teleportImportDeps({
+        inbox,
+        allowedRoots: [],
+        historyRoots: [tempDir("fd-history-")],
+        indexer: undefined,
+        manager,
+      }),
+    });
+    const off = startServer(base);
+    const client = new FrameClient(server.url);
+    const bare = new FrameClient(off.url);
+    cleanups.push(async () => {
+      client.close();
+      bare.close();
+      await server.stop();
+      await off.stop();
+    });
+    for (const c of [client, bare]) await c.request("hello", { token: TOKEN, client: "test" });
+    const why = (answer: { error?: unknown }) =>
+      (answer.error as { reason?: string; params?: unknown } | undefined) ?? null;
+    const finish = { id: "in-9", repo: "/work/app" };
+    expect([
+      why(await client.request("teleport.finish", finish))?.reason,
+      why(await bare.request("teleport.finish", finish))?.params,
+    ]).toEqual(["teleport_not_found", { feature: "teleport" }]);
   });
 });
