@@ -117,6 +117,9 @@ async function setup(
   return { packages, deps, base, file, timers, logs };
 }
 
+/** A POSIX mode, checked only off Windows: it has no POSIX modes, and the user's ACLs guard the folder (#868). */
+const posix = (bits: number) => (process.platform === "win32" ? expect.any(Number) : bits);
+
 const reason = (run: () => Promise<unknown>) =>
   run().then(
     () => "no refusal",
@@ -154,8 +157,8 @@ describe("teleport-package: an idle session's transcript becomes a package (#100
         parts: [{ name: "transcript", size: Buffer.byteLength(text), sha256: sha256(text) }],
         secrets: { lines: 0, labels: [] },
       },
-      0o700,
-      0o600,
+      posix(0o700),
+      posix(0o600),
     ]);
   });
 
