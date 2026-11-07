@@ -209,14 +209,14 @@ export class Vault {
 
   /** How many secrets are in memory (never which, nor their values). */
   held(): number {
-    for (const id of [...this.values.keys()]) this.live(id);
+    for (const id of [...this.values.keys()]) this.live(id); // NOSONAR: the call removes entries from the map it walks; the copy keeps the walk stable
     return this.values.size;
   }
 
   /** Drops everything: nothing outlives the daemon. */
   stop(): void {
-    for (const id of [...this.values.keys()]) this.drop(id);
-    for (const waiter of [...this.waiters])
+    for (const id of [...this.values.keys()]) this.drop(id); // NOSONAR: the call removes entries from the map it walks; the copy keeps the walk stable
+    for (const waiter of [...this.waiters]) // NOSONAR: reject() settles waiters that take themselves out of the set; the copy keeps the walk stable
       waiter.reject(invalid("the vault was closed", "vault_closed"));
   }
 

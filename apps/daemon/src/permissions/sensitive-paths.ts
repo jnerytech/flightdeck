@@ -10,6 +10,8 @@ export const SECRET_PREFIXES: readonly string[] = [".env", "id_"];
 /** Files that hold a token, a password or a history of commands (issue #439). */
 export const SECRET_NAMES: ReadonlySet<string> = new Set([
   ".claude.json",
+  // A project's MCP servers carry their tokens in `env` and `headers` (#806).
+  ".mcp.json",
   ".npmrc",
   ".netrc",
   "_netrc",
@@ -61,6 +63,8 @@ export const SECRET_DIRS: readonly string[] = [".ssh", ".aws", ".gnupg", ".kube"
 export const SECRET_PAIRS: ReadonlyArray<readonly [string, string]> = [
   [".config", "gh"],
   [".claude", ".credentials.json"],
+  // The person's own permissions and environment for the project (#806).
+  [".claude", "settings.local.json"],
   [".flightdeck", "config.json"],
   [".docker", "config.json"],
   [".config", "gcloud"],

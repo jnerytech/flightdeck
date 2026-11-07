@@ -104,7 +104,7 @@ import {
 } from "./client-vault.ts";
 import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
-import { DataScopeController } from "./data-scope.ts";
+import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
@@ -125,6 +125,7 @@ import {
   saveHubFilter,
   saveHubOpen,
   saveHubView,
+  takeHubHost,
 } from "./hub.ts";
 import {
   addEntry,
@@ -149,6 +150,7 @@ import { browserSound, playNotifySound } from "./notify-sound.ts";
 import { pairingErrorText } from "./pairing-text.ts";
 import { basename, isInside } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
+import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
@@ -1131,6 +1133,8 @@ export class AppStore {
   readonly sidebarFold: SidebarFoldController;
   /** Whose data Home (and later Sessions, Costs, Board) show: every host or one (#126). */
   readonly dataScope: DataScopeController;
+  /** The project keys any screen has read, for one label per project everywhere (issue #881). */
+  readonly projectKeys = new ProjectKeys();
   /** What the shell hides: the New and Beta badges, What's new (issue #282). */
   readonly shellPrefs: ShellPrefs;
   /** The board columns' width, one for all, kept across starts (issue #161). */
@@ -1342,6 +1346,12 @@ export class AppStore {
       if (token) this.connect(config, token);
     });
     this.update({ hostsLoaded: true });
+    // #126 slice 2: the hub's own host filter (a name) becomes the data scope once, unless one
+    // was chosen already; either way it leaves the hub, which now follows the scope.
+    const hubHost = takeHubHost(this.platform.storage);
+    if (hubHost && !this.dataScope.chosen) {
+      this.dataScope.set(hubHostScope(hubHost, this.state.hosts));
+    }
     // Last: the saved hosts must not wait for it.
     if (this.platform.terminal.supported) {
       this.update({ terminalEnv: await this.platform.terminal.probe() });

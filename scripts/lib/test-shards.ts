@@ -32,7 +32,7 @@ const byName = (a: string, b: string) => {
   return a > b ? 1 : 0;
 };
 
-const TEST_FILE = /(\.|_)(test|spec)\.[cm]?[jt]sx?$/;
+const TEST_FILE = /[._](test|spec)\.[cm]?[jt]sx?$/;
 const SHARD = /^([1-9]\d*)\/([1-9]\d*)$/;
 const USAGE =
   "usage: bun run test:shards -- plan|run <i>/<n> [--tier <tier>,...] [--files <list>] [--junit <file>] | record <junit.xml>...";
@@ -111,7 +111,8 @@ export function splitShards(files: string[], timings: Timings, count: number): s
     split[lightest]?.push(file);
     load[lightest] = (load[lightest] ?? 0) + (weight.get(file) ?? 0);
   }
-  return split.map((shard) => shard.sort(byName));
+  for (const shard of split) shard.sort(byName);
+  return split;
 }
 
 /** `1/3` as an index (1-based) and a count, or null. */

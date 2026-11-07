@@ -112,6 +112,13 @@ function addBlocks(steps: EvalStep[], byId: Map<string, EvalStep>, blocks: Strea
   }
 }
 
+/**
+ * A `N fail` line of bun test's summary. The white space before the count stops at a line break:
+ * `^` already matches after each one, and a `\s*` that crossed them rescanned the same blank run
+ * from every line start (quadratic).
+ */
+const FAIL_COUNT = /^[^\S\n\r\u2028\u2029]*[1-9]\d* fail$/m;
+
 const GRADERS = ["test-file", "test-first", "red-by-assertion", "audit", "coverage", "no-error"];
 
 /** Each grader's verdict on one run. */
@@ -130,7 +137,7 @@ export function grade(task: EvalTask, facts: RunFacts): Record<string, boolean> 
       /\bbun\b.*\btest\b/.test(s.command) &&
       s.command.includes(task.area) &&
       /error: expect\(/.test(s.output) &&
-      /^\s*[1-9]\d* fail$/m.test(s.output),
+      FAIL_COUNT.test(s.output),
   );
   return {
     "test-file": facts.commits.some((c) => isTest(c) && c.files.includes(task.testFile)),
@@ -207,6 +214,13 @@ const ALLOWED_TOOLS = [
 /** What a sample may never do, even when an allowed pattern matches it. */
 const DENIED_TOOLS = ["Bash(git push *)", "Bash(git remote *)", "Bash(git * --output*)"];
 
+/** The path without its trailing slashes and backslashes (a regex on a long run of them is quadratic). */
+function trimSeparators(path: string): string {
+  let end = path.length;
+  while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) end--;
+  return path.slice(0, end);
+}
+
 /**
  * The `claude -p` arguments of one sample. Read, Edit and Write are scoped to the clone (the
  * session's working directory); when the clone is outside `home`, the home folder is denied too,
@@ -217,7 +231,7 @@ export function sessionArgs(
   options: Pick<EvalOptions, "model" | "budget">,
   places: { dir: string; home: string },
 ): string[] {
-  const home = places.home.replace(/[\\/]+$/, "");
+  const home = trimSeparators(places.home);
   const inHome =
     places.dir === home ||
     (places.dir.startsWith(home) && /^[\\/]/.test(places.dir.slice(home.length)));

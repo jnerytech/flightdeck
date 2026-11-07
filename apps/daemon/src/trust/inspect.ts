@@ -14,6 +14,8 @@ export interface ProjectLoad {
   /** Names only: a value may be a secret. */
   envKeys: string[];
   allowRules: string[];
+  /** What the project's settings deny (#75): rules, never a value of the settings. */
+  denyRules: string[];
   defaultMode: string | null;
   agents: string[];
   skills: string[];
@@ -27,7 +29,13 @@ export interface ProjectLoad {
   /** Files that exist and could not be read as JSON, or are not what they seem. */
   unreadable: string[];
   /** How many entries of each list were left out because the list is capped. */
-  omitted: { hooks: number; mcpServers: number; allowRules: number; envKeys: number };
+  omitted: {
+    hooks: number;
+    mcpServers: number;
+    allowRules: number;
+    denyRules: number;
+    envKeys: number;
+  };
 }
 
 const MAX_FILE = 256 * 1024;
@@ -273,10 +281,11 @@ function readSettings(
     }
   }
   if (isObject(settings.permissions)) {
-    const { allow, defaultMode } = settings.permissions;
-    if (Array.isArray(allow)) {
-      load.allowRules.push(...allow.filter((r): r is string => typeof r === "string").map(show));
-    }
+    const { allow, deny, defaultMode } = settings.permissions;
+    const rules = (list: unknown) =>
+      Array.isArray(list) ? list.filter((r): r is string => typeof r === "string").map(show) : [];
+    load.allowRules.push(...rules(allow));
+    load.denyRules.push(...rules(deny));
     if (typeof defaultMode === "string") load.defaultMode = defaultMode;
   }
 }
@@ -291,6 +300,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
     mcpServers: [],
     envKeys: [],
     allowRules: [],
+    denyRules: [],
     defaultMode: null,
     agents: [],
     skills: [],
@@ -302,7 +312,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
     otherKeys: [],
     extras: [],
     unreadable,
-    omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
+    omitted: { hooks: 0, mcpServers: 0, allowRules: 0, denyRules: 0, envKeys: 0 },
   };
   const shown = { hooks: 0 };
   const otherKeys = new Set<string>();
@@ -325,6 +335,8 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
   load.envKeys = keys.slice(0, MAX_ITEMS);
   load.omitted.allowRules = Math.max(0, load.allowRules.length - MAX_ITEMS);
   load.allowRules = load.allowRules.slice(0, MAX_ITEMS);
+  load.omitted.denyRules = Math.max(0, load.denyRules.length - MAX_ITEMS);
+  load.denyRules = load.denyRules.slice(0, MAX_ITEMS);
   load.otherKeys = [...otherKeys].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   load.extras = [
     ...(await headers(root, ".claude/agents", false, unreadable)),

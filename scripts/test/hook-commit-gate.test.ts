@@ -196,7 +196,7 @@ describe("hook-commit-gate", () => {
     expect(elsewhere.calls.every((call) => call.startsWith(`${CWD}:`))).toBe(true);
   });
 
-  test("git failing, no base or a quoted directory lets the commit through", () => {
+  test("git failing or no base lets the commit through; a quoted directory is read as typed (#759)", () => {
     const broken = { git: () => null };
     expect(commitViolation('git commit -m "feat(a): x (#1)"', CWD, broken)).toBeNull();
     const noBase = {
@@ -207,7 +207,21 @@ describe("hook-commit-gate", () => {
     expect(
       commitViolation('cd "../my dir" && git commit -m "feat(a): x (#1)"', CWD, quoted),
     ).toBeNull();
-    expect(quoted.calls).toEqual([]);
+    // The folder is read as typed (#759), so its own checkout answers; it has no repo here.
+    expect(quoted.calls[0]).toBe(`${resolve(CWD, "../my dir")}: rev-parse HEAD`);
+  });
+
+  test("#759 review: a quoted cd folder reads as the shell reads it; one the hook cannot read is skipped", () => {
+    // In double quotes the shell drops a backslash only before $ ` " \ or a newline.
+    const kept = repo([]);
+    commitViolation('cd "../a\\b\\$c" && git commit -m "feat(a): x (#1)"', CWD, kept);
+    expect(kept.calls[0]).toBe(`${resolve(CWD, "../a\\b$c")}: rev-parse HEAD`);
+    // ANSI-C quoting and a command substitution are not read: the commit is not checked there.
+    for (const cd of ["cd $'../x'", "cd `pwd`"]) {
+      const skipped = repo([]);
+      expect(commitViolation(`${cd} && git commit -m "feat(a): x (#1)"`, CWD, skipped)).toBeNull();
+      expect(skipped.calls).toEqual([]);
+    }
   });
 
   test("a commit in a repository that is not this project's is never checked", () => {
@@ -223,5 +237,17 @@ describe("hook-commit-gate", () => {
     const quiet = repo([]);
     expect(commitViolation("bun run test && git add a.ts", CWD, quiet)).toBeNull();
     expect(quiet.calls).toEqual([]);
+  });
+
+  test("#759: a quoted git option value, or a quoted subcommand, does not hide the commit", () => {
+    for (const command of [
+      'git -c user.name="A B" commit -m "wip"',
+      "git -c 'core.editor=vim -f' commit -m 'wip'",
+      'git "commit" -m "wip"',
+    ]) {
+      expect(gate(command) ?? "").toContain("type(scope): text");
+    }
+    // A commit named only inside a quoted value is no commit.
+    expect(gate('git -c alias.c="commit -m wip" status')).toBeNull();
   });
 });

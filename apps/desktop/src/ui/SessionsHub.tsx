@@ -1,19 +1,13 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio, Server, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { AsleepMark } from "@/components/hub/asleep-mark";
 import { CacheTimer } from "@/components/hub/cache-timer";
 import { CardGrid } from "@/components/hub/card-grid";
-import {
-  CountChip,
-  FoldAll,
-  HostChip,
-  HostFilterRow,
-  ProjectHeader,
-} from "@/components/hub/project-header";
+import { CountChip, FoldAll, HostChip, ProjectHeader } from "@/components/hub/project-header";
 import { SessionCard, STATE_TONES } from "@/components/hub/session-card";
 import { ViewToggle } from "@/components/hub/view-toggle";
 import { NativeSelect } from "@/components/layout/form";
@@ -22,6 +16,7 @@ import { Toolbar } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
 import { WorktreeChip } from "@/components/projects/worktree-chip";
 import { RuntimeBadge } from "@/components/session/runtime-badge";
+import { ScopeMenu } from "@/components/shell/scope-menu";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,11 +30,13 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { InlineNotice } from "../components/feedback/inline-notice.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { ALL_CLIENTS } from "../lib/client-scope.ts";
 import { UNASSIGNED } from "../lib/clients.ts";
 import { usd } from "../lib/costs.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope, scopeHosts } from "../lib/data-scope.ts";
 import type { Density } from "../lib/density.ts";
 import {
   capGroups,
@@ -101,16 +98,36 @@ export function SessionsHub(
   useEffect(() => {
     if (props.project) setOnly(props.project);
   }, [askedKey]);
-  // A host asked for by the route ("See all" on its page) becomes the hub's host filter.
-  const askedHost = props.host;
-  const routeHost = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only a different host asked for by the route applies
+  // The data scope (#126): the hub lists the sessions of its hosts. A host asked for by the route
+  // ("See all" on its page, a name) wins for this visit and never rewrites the scope (#207); any
+  // pick in the Data from menu ends the visit. Showing every host from a visit widens the visit.
+  const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
+  const [visit, setVisit] = useState(props.host);
+  const [visitAll, setVisitAll] = useState(false);
   useEffect(() => {
-    if (askedHost === undefined) return;
-    // For this visit only: the filter kept for the next one is not rewritten (issue #207).
-    routeHost.current = true;
-    setFilter({ ...store.hubFilter(), host: askedHost });
-  }, [askedHost]);
+    if (props.host === undefined) return;
+    setVisit(props.host);
+    setVisitAll(false);
+  }, [props.host]);
+  useEffect(
+    () =>
+      store.dataScope.subscribe(() => {
+        setVisit(undefined);
+        setVisitAll(false);
+      }),
+    [store],
+  );
+  const visiting = visit === undefined ? undefined : state.hosts.find((h) => h.name === visit);
+  let hostScope: DataScope = activeScope(kept, state.hosts, state.hostsLoaded);
+  if (visitAll) hostScope = ALL_SCOPE;
+  else if (visiting) hostScope = { kind: "host", hostId: visiting.id };
+  const scoped = hostScope.kind === "host" ? hostScope.hostId : "";
+  /** The scoped host, when it is offline (not still connecting): the hub says so and offers all. */
+  const away = scoped
+    ? scopeHosts(state.hosts, hostScope).find(
+        (h) => h.status !== "online" && h.status !== "connecting",
+      )
+    : undefined;
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   /** Issue #100: the session being moved to another host (the preview's dialog). */
   const [moving, setMoving] = useState<HubRow | null>(null);
@@ -173,6 +190,7 @@ export function SessionsHub(
       store
         .clientScope()
         .filter(hubRows(state, t), state.clientSelection, (row) => row.projectKey)
+        .filter((row) => !scoped || row.hostId === scoped)
         .filter(
           (row) => !only || (row.hostId === only.hostId && row.projectKey === only.projectKey),
         )
@@ -183,6 +201,7 @@ export function SessionsHub(
         }),
     [
       store,
+      scoped,
       only,
       state.hosts,
       state.hub,
@@ -278,10 +297,7 @@ export function SessionsHub(
   const set = (patch: Partial<HubFilter>) => {
     const next = { ...filter, ...patch };
     setFilter(next);
-    // A host that came from the route is not the person's choice: keep what was saved for it,
-    // until they pick a host themselves.
-    if (patch.host !== undefined) routeHost.current = false;
-    store.saveHubFilter(routeHost.current ? { ...next, host: store.hubFilter().host } : next);
+    store.saveHubFilter(next);
   };
   const meta = (row: HubRow, patch: Partial<SessionMeta>) =>
     void store.setMeta(row.hostId, row.claudeSessionId as string, patch);
@@ -382,7 +398,6 @@ export function SessionsHub(
     };
   };
   const active = [
-    filter.host !== "",
     filter.origin !== "",
     filter.state !== "",
     filter.persona !== "",
@@ -396,6 +411,9 @@ export function SessionsHub(
     (rows.length === 0 && !state.hosts.some((h) => h.status === "online"));
   const toolbar = (
     <Toolbar label={t("hub.filters")}>
+      {state.hostsLoaded && state.hosts.length > 1 && (
+        <ScopeMenu store={store} hosts={state.hosts} scope={hostScope} />
+      )}
       <ViewToggle
         view={view}
         label={t("hub.view")}
@@ -426,21 +444,6 @@ export function SessionsHub(
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="flex w-64 flex-col gap-2">
-          <NativeSelect
-            compact
-            aria-label={t("hub.host")}
-            value={filter.host}
-            onChange={(e) => set({ host: e.target.value })}
-          >
-            <option value="">{t("hub.allHosts")}</option>
-            {state.hosts
-              .filter((h) => h.status !== "incompatible")
-              .map((h) => (
-                <option key={h.id} value={h.name}>
-                  {h.name}
-                </option>
-              ))}
-          </NativeSelect>
           <NativeSelect
             compact
             aria-label={t("hub.origin")}
@@ -521,6 +524,18 @@ export function SessionsHub(
     >
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
+        {away && (
+          <InlineNotice tone="info">
+            <span>{t(awayKey(away.status, "sessions"), { host: away.name })} </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (visiting ? setVisitAll(true) : store.dataScope.set(ALL_SCOPE))}
+            >
+              {t("scope.showAll")}
+            </Button>
+          </InlineNotice>
+        )}
         {hostless ? (
           <EmptyState
             icon={Server}
@@ -537,14 +552,6 @@ export function SessionsHub(
             collapseLabel={t("hub.collapseAll")}
             onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, true])))}
             onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, false])))}
-          />
-        )}
-        {state.hosts.length > 1 && (
-          <HostFilterRow
-            label={t("hub.hostsLabel")}
-            hosts={state.hosts.filter((h) => h.status !== "incompatible").map((h) => h.name)}
-            selected={filter.host}
-            onSelect={(host) => set({ host })}
           />
         )}
         {only && (

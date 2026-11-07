@@ -114,6 +114,24 @@ describe("assistant-context", () => {
     expect(isCredentialPath).toBe(credential);
   });
 
+  test("a staged rename away from .mcp.json shows no lines to the model (#806)", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(
+      join(repo, ".mcp.json"),
+      `${Array.from({ length: 12 }, (_, i) => `line ${i}`).join("\n")}\n`,
+    );
+    git(repo, "add", ".");
+    git(repo, "commit", "-q", "-m", "mcp");
+    git(repo, "mv", ".mcp.json", "servers.json");
+    writeFileSync(
+      join(repo, "servers.json"),
+      `${Array.from({ length: 12 }, (_, i) => `line ${i === 3 ? "three" : i}`).join("\n")}\n`,
+    );
+    git(repo, "add", "servers.json");
+    const bundle = await repoContext({ kind: "staged", cwd: repo }, deps(repo));
+    expect(bundle.diff.includes("line three")).toBe(false);
+  });
+
   test("a line that looks like a secret is replaced and counted", async () => {
     const { repo } = gitRepo();
     writeFileSync(

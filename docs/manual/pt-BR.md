@@ -332,6 +332,13 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **Confiar neste projeto**. Ele pergunta antes, citando o projeto e o host, porque hooks e
   servidores MCP com confiança rodam comandos naquele computador sem perguntar a você. **Revogar a
   confiança** não pergunta. Confiar vale para as pastas dentro do projeto, não para as ao redor.
+- Logo abaixo, **Configuração do Claude Code** lista, como uma checklist, o que ajuda o Claude
+  Code a trabalhar bem no projeto: `CLAUDE.md`, hooks (e se algum roda um formatador após
+  edições, ou verifica o `git add` ou arquivos de segredo antes de uma ferramenta rodar), skills, subagentes, permissões
+  (quantas regras permitem e quantas negam) e servidores MCP. Cada um aparece como **Encontrado** ou
+  **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
+  variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
+  avisa: uma parte marcada como faltando pode existir.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
@@ -533,15 +540,16 @@ lugar só, agrupadas por projeto e ordenadas pela última atividade.
   escolha é lembrada por projeto. **Expandir tudo** e **Recolher tudo**, no topo, fazem isso com
   todos. Aberto, o projeto mostra primeiro as sessões ao vivo (as que precisam de você no topo). As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
   nova para a mais antiga. Digitar no filtro também casa com o nome do projeto, e qualquer filtro (texto, origem,
-  estado, persona, fixadas) abre tudo o que ele mantém. Um chip de **Hosts** só restringe a lista a
-  esse host: os projetos ficam abertos ou dobrados como você os deixou. A dobra de um projeto é
+  estado, persona, fixadas) abre tudo o que ele mantém. Escolher um host em **Dados de** só restringe
+  a lista a esse host: os projetos ficam abertos ou dobrados como você os deixou. A dobra de um projeto é
   lembrada sob uma chave que não muda quando um host fica offline ou pastas se juntam. Uma sessão fixada fica sempre com as ao
   vivo. **O mesmo projeto em dois hosts é um só grupo**, com os dois chips de host, e cada linha
   mantém o seu chip de host. Um projeto sem remote git é reconhecido pelo nome da pasta entre
   hosts, mas nunca quando um host tem duas pastas com esse nome: essas ficam em grupos separados em
   todo lugar. Grupos que repetem o nome mostram uma **dica de caminho** curta (a pasta acima do
-  projeto, por exemplo `work`) ao lado do título e no nome dele para leitores de tela. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host
-  (aperte de novo para limpar).
+  projeto, por exemplo `work`) ao lado do título e no nome dele para leitores de tela. **Dados de**
+  na barra (com dois hosts ou mais) lista as sessões de um host ou de todos, a mesma escolha do
+  Início; **Ver todas as sessões** na página de um host olha esse host na visita sem mudá-la.
 - **Títulos.** A sessão se chama pelo nome, senão pelo título que o host dá a ela (o resumo que o
   Claude Code escreveu, ou o primeiro prompt), senão pela persona com a tarefa, senão pela pasta. Os invólucros do
   sistema (`<task-notification>`, "Another Claude session sent a message:", saída de comando
@@ -866,7 +874,7 @@ Uma sessão ociosa pode continuar em outro host: a conversa, os commits e as mud
 3. Leia o que vai: a branch, os commits ainda fora do origin, os arquivos alterados, o tamanho e quantas linhas parecem segredos. Os segredos em si nunca aparecem, e eles vão como estão.
 4. Aperte **Mover** e depois **Abrir lá**. Depois que todos os bytes foram enviados, você pode fechar a janela: quando a mudança termina, um aviso diz isso, com **Abrir lá**, ou diz por que foi recusada.
 
-No outro host o código fica numa worktree nova desse repositório, numa branch própria, e a sessão continua de onde parou. A sessão daqui fica como estava. Arquivos guardados no Git LFS chegam como ponteiros: rode `git lfs pull` na worktree para buscá-los. Links simbólicos no código chegam como links, como em qualquer clone do repositório de outra pessoa: uma escrita através de um deles pode cair fora da worktree, então mova sessões só entre hosts em que você confia.
+No outro host o código fica numa worktree nova desse repositório, numa branch própria, e a sessão continua de onde parou. A sessão daqui é arquivada, com a conversa guardada: agora ela vive no outro host. Dá para movê-la de volta depois: este host a aceita quando a cópia que ficou aqui não tem nada que a sessão movida não tenha e não está em uso, e guarda essa cópia ao lado como `<id>.jsonl.replaced-<data>`, sem apagá-la. Se você continuou a cópia daqui depois da mudança, a volta é recusada: abra a que está aqui. Arquivos guardados no Git LFS chegam como ponteiros: rode `git lfs pull` na worktree para buscá-los. Links simbólicos no código chegam como links, como em qualquer clone do repositório de outra pessoa: uma escrita através de um deles pode cair fora da worktree, então mova sessões só entre hosts em que você confia.
 
 ### Dormir sessões ociosas
 
@@ -965,8 +973,10 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
   aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
   abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
-  hosts**. Os Custos também o seguem (veja **Custos e orçamentos**); Sessões e o Board passam a
-  segui-lo em versões seguintes.
+  hosts**; um host cujo daemon precisa de atualização diz isso no lugar, e o menu não o oferece. Os
+  Custos também o seguem (veja **Custos e orçamentos**), e as Sessões também (o filtro
+  de host próprio delas, se você tinha um, vira a escolha uma vez); o Board passa a segui-lo numa
+  versão seguinte.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
   tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
   (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
@@ -2650,7 +2660,10 @@ do app, dos cards e dos workflows, subagentes incluídos.
   - No primeiro boot desta versão, o daemon lê em segundo plano os transcripts que já existem e
     continua respondendo enquanto isso.
 - **Período:** hoje, 7 dias, 30 dias, mês atual ou um intervalo, sempre no fuso do host.
-- **Filtros:** host, projeto, modelo e origem (terminal, app, card, workflow, subagent).
+- **Dados de:** todos os hosts, um host ou um projeto. O grupo **Projetos** do menu lista os
+  projetos do período, com o nome que têm no Início; a escolha é a mesma que o Início e as Sessões
+  guardam (#126). Um alerta de orçamento ou um cartão do Início abre um projeto só naquela visita.
+- **Filtros:** modelo e origem (terminal, app, card, workflow, subagent).
 - **O que aparece:**
   - o custo estimado, os tokens e a economia do cache (quanto o cache read custou a menos do que
     o mesmo volume como input normal);
@@ -2845,7 +2858,9 @@ custos, os Custos dizem isso e oferecem **Mostrar todos os hosts**. **Por client
 custos ou não responde é citado. A exportação CSV cobre todos os hosts em **Todos os hosts**, com o
 nome do host na primeira coluna (um host que não responde fica de fora). Os gráficos de cota são
 por host: em **Todos os hosts** há uma linha, **Escolha um host para ver a cota**, com um botão por
-host. Cada
+host. Um projeto cujo nome também é de um projeto em outro host aparece com o host
+(`docs-site · alfa`), igual no Início e nos Custos, mesmo quando só um deles está na lista da
+tela. Cada
 cliente pode ter um **limite mensal** (US$): o app confere quando um host com custos entra no ar,
 quando você muda o limite e a cada dez minutos, avisa uma vez por mês em 50%, 80% e 100% (uma
 notificação e uma linha em **Precisa de você**) e **não segura cards**: os limites de cada host e

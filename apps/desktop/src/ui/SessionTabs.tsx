@@ -30,6 +30,9 @@ import { SessionTerminal } from "./SessionTerminal.tsx";
 import { TempoPanel } from "./TempoPanel.tsx";
 import { TracePanel } from "./TracePanel.tsx";
 
+/** Where the view keys are not for the page: a field being typed in, a dialog (the palette). */
+const TYPING_OR_DIALOG = "input, textarea, select, [contenteditable], [role=dialog]";
+
 /**
  * A session's screen with the Mudanças tab beside its conversation (phase 11). Without the tab
  * (a host that does not announce the review, or a session Claude Code has not named yet) the
@@ -120,9 +123,11 @@ export function SessionTabs(
   // From anywhere in the page, the message box too (the terminal has its own, below).
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
-      // Only when the key came from this page (or from nowhere): the palette's own Alt keys stay its own.
-      const target = event.target as Node | null;
-      if (!(target === document.body || (target && root.current?.contains(target)))) return;
+      // From this page, from nowhere, or from the list row that opened it (the focus stays there, #885).
+      // Not from a text field or a dialog: the palette's own Alt keys stay its own.
+      const target = event.target as Element | null;
+      const here = target === document.body || (target && root.current?.contains(target));
+      if (!here && target?.closest?.(TYPING_OR_DIALOG) !== null) return;
       viewKeyHandler.current?.(event);
     };
     window.addEventListener("keydown", onKey);

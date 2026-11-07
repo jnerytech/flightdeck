@@ -263,10 +263,10 @@ export class Worktrees {
       const listed = line.slice(3);
       const folder = listed.endsWith("/");
       const rel = folder ? listed.slice(0, -1) : listed;
+      // Flightdeck's own file, written into every worktree (a credential for reads, no loss here).
+      if (rel === LOCAL_SETTINGS) continue;
       // A credential-looking name at any depth: never.
       if (credential(rel) || rel.split("/").some(credentialName)) return true;
-      // Flightdeck's own file, written into every worktree.
-      if (rel === LOCAL_SETTINGS) continue;
       // A rebuildable folder, at the root.
       if (folder && !rel.includes("/") && REBUILDABLE.has(rel)) continue;
       // A copy of the project's own ignored file (what `.worktreeinclude` puts there), unedited.

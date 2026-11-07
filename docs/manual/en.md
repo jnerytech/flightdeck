@@ -341,6 +341,12 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   trusting, and **Trust this project**. It asks first, naming the project and the host, because
   trusted hooks and MCP servers run commands on that computer without asking you. **Revoke trust**
   asks nothing. Trusting covers the folders inside the project, not the ones around it.
+- Below it, **Claude Code setup** lists, as a checklist, what helps Claude Code work well in the
+  project: `CLAUDE.md`, hooks (and whether one runs a formatter after edits, or checks `git add` or
+  secret files before a tool runs), skills, subagents, permissions (how many allow and deny rules) and MCP servers.
+  Each is **Found** or **Missing**, and the card says how many of the six are there. It only reads:
+  nothing in the project changes, and environment variables are never shown in it. When some of
+  the project's files cannot be read, it says so: a part shown as missing may be there.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
@@ -546,15 +552,16 @@ one place, grouped by project and ordered by last activity.
   Opened, a project shows its live sessions first (the ones that need you on top). The
   ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
   also matches project names, and any filter (text, origin, state, persona, pinned) opens
-  everything it keeps. A **Hosts** chip only narrows the list to that host: the projects stay as
-  folded or open as you left them. The fold of a project is remembered under a key that does not
+  everything it keeps. Picking a host in **Data from** only narrows the list to that host: the
+  projects stay as folded or open as you left them. The fold of a project is remembered under a key that does not
   change when a host goes offline or folders merge. A pinned session always stays with the live ones. **The same project on two
   hosts is one group** with both host chips, and each row keeps its own host chip. A project
   without a git remote is matched by its folder name across hosts, but never when one host has two
   folders with that name: those stay separate groups everywhere. Groups that share a name show a
   short **path hint** (the folder above the project, for example `work`) beside the heading and in
-  its name for screen readers. A row of **Hosts** chips under
-  the hosts banner shows one host's sessions only (press it again to clear).
+  its name for screen readers. **Data from** in the toolbar (with two hosts or more) lists one
+  host's sessions or every host's, the same choice as on Home; **See all sessions** on a host page
+  looks at that host for the visit without changing it.
 - **Titles.** A session is called by its name, else the title its host gives it (the summary Claude
   Code wrote, or its first prompt), else the persona with the task, else its folder. System wrappers (`<task-notification>`,
   "Another Claude session sent a message:", local-command output) never appear in a title.
@@ -872,7 +879,7 @@ An idle session can continue on another host: its conversation, its commits and 
 3. Read what moves: the branch, the commits not on origin yet, the files changed, the size, and how many lines look like secrets. The secrets themselves are never shown, and they move as they are.
 4. Press **Move**, then **Open it there**. Once every byte is sent you can close the window: when the move ends, a toast says so, with **Open it there**, or says why it was refused.
 
-On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here stays as it was. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them. Symbolic links in the code arrive as links, as in any clone of someone else's repository: a write through one can land outside the worktree, so move sessions only between hosts you trust.
+On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here is archived, with its conversation kept: it lives on the other host now. You can move it back later: this host takes it when the copy it kept has nothing the moved session lacks and is not in use, and sets that copy aside as `<id>.jsonl.replaced-<date>` next to it, never deleting it. If you went on with the copy here after the move, the move back is refused: open the one here instead. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them. Symbolic links in the code arrive as links, as in any clone of someone else's repository: a write through one can land outside the worktree, so move sessions only between hosts you trust.
 
 ### Sleeping idle sessions
 
@@ -965,8 +972,10 @@ live; the list is the project's, so a session of another project never shows her
 - **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
   it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
   change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
-  When the chosen host is offline, Home says so and offers **Show all hosts**. Costs follows it too
-  (see **Costs and budgets**); Sessions and the Board follow it in later versions.
+  When the chosen host is offline, Home says so and offers **Show all hosts**; a host whose daemon
+  needs an update says that instead, and the menu does not offer it. Costs follows it too
+  (see **Costs and budgets**), and so does Sessions (the hub's own host filter, if you had one,
+  becomes the choice once); the Board follows it in a later version.
 - The tabs have a row of their own under the top bar, over each area (with a split, each area has
   its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
   the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
@@ -2641,7 +2650,10 @@ app, cards and workflows, subagents included.
   - On the first boot of this version, the daemon reads the existing transcripts in the
     background and keeps answering meanwhile.
 - **Period:** today, 7 days, 30 days, current month or a range, always in the host's timezone.
-- **Filters:** host, project, model and origin (terminal, app, card, workflow, subagent).
+- **Data from:** every host, one host, or one project. The **Projects** group of the menu lists the
+  period's projects, named as on Home; the choice is the same one Home and Sessions keep (#126). A
+  budget alert or a Home card opens a project for that visit only.
+- **Filters:** model and origin (terminal, app, card, workflow, subagent).
 - **What it shows:**
   - the estimated cost, the tokens and the cache savings (how much less the cache read cost than
     the same volume as normal input);
@@ -2834,7 +2846,9 @@ offers **Show all hosts**. **By client** splits the spend (with **No client**), 
 narrows everything; a host that is offline, has no costs or does not answer is named. The CSV export
 covers every host on **All hosts**, with the host's name as the first column (a host that does not
 answer is left out). The quota charts are per host: on **All hosts** one line, **Pick a host to see
-its quota**, has a button for each host. Each
+its quota**, has a button for each host. A project whose name is also a project on another host
+shows with its host (`docs-site · alfa`), the same on Home and on Costs, even when only one of
+them is in the list on screen. Each
 client can have a **monthly limit** (US$): the app looks at it when a host with costs comes online,
 when you change it and every ten minutes, warns once a month at 50%, 80% and 100% (a notification
 and a line in **Needs you**), and **does not hold cards**: the limits of each host and project stay

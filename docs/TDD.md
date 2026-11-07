@@ -220,6 +220,10 @@ em vez de depender de cuidado.
   test`): while it runs, the slot raises the niceness of the other bun test processes of the
   same user to 15 every few seconds. It only raises (never lowers a niceness), skips its own
   process tree, restores nothing (those processes finish niced) and does nothing on Windows.
+  A slot run that names more than 60 test files, nested or not, is refused without
+  `FLIGHTDECK_SLOT_HEAVY="<reason>"` (#833): `test:related` takes the slot above 60 files, and such
+  a run held it 30 minutes. Past 20 minutes a hold is LONG: the holder and its waiters get a line,
+  `--status` marks it, and `harness:stats` lists it.
 - **No floating promises.** Biome's `noFloatingPromises` (nursery, type-aware) is an error for
   `apps/` and `scripts/`: TypeScript does not flag a call whose promise nobody awaits, and in a
   test that call races the next line (an assertion runs before the work, a cleanup before the
@@ -266,7 +270,9 @@ em vez de depender de cuidado.
 
 - Every branch reaches `main` through its own PR: `bun run pr -- open <branch>` titles it after the
   branch's issue and closes it (`--refs <n>` writes `Refs #n` instead, for a PR that is only one
-  slice of the issue: GitHub keeps the closing link of a first body even after an edit, #839). A branch stacked on another opens with `--base <parent>`. When
+  slice of the issue: GitHub keeps the closing link of a first body even after an edit, #839), and
+  then titles it after the branch's first commit, without its `type(scope): ` (#909).
+  `--title <text>` names it by hand. A branch stacked on another opens with `--base <parent>`. When
   `FLIGHTDECK_PR_OPENED` is set (words split on spaces, or a JSON array of strings for a path with
   spaces), `open` runs it with the new PR's number, branch and base (the coordinator's tooling
   queues an OpenCode review there, #273). A hook that fails, or runs past two minutes, leaves the
@@ -290,6 +296,9 @@ em vez de depender de cuidado.
   draft, and a stacked PR whose parent
   `main` does not have yet; once the parent is in `main`, it retargets the PR onto `main` first.
 - A session keeps at most 2 branches open (pushed and not merged yet).
+- A push that would cancel its PR's CI run while it is still green (younger than 20 minutes, no
+  failed job, no conflict) is refused by the guard hook (#741): wait for the run, or put
+  `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push. `harness:stats` lists each override.
 - `bun run pr -- next` lists the open PRs in merge order with what each still needs; a PR that
   conflicts with its base (GitHub's mergeable state) waits until `main` is merged into it and the
   conflicts resolved. `bun run pr -- update <n>` brings a PR up to date with its base when there is
@@ -305,9 +314,12 @@ em vez de depender de cuidado.
   Windows (#534): its jobs run in the schedule's and a run by hand's full runs only, as a signal
   that gates nothing (`continue-on-error`), and a release does not wait for them. See
   `docs/decisions/2026-11-06-windows-off-the-pr-path.md`.
-- A release is a tag on a green `main`, and on a commit whose full run (its push to `main`) is
-  green; there is no rc branch to assemble. `bun run pr -- tag vX` (the coordinator) tags main's
-  HEAD only after that run passed, and pushes the tag alone as `refs/tags/vX`.
+- A release is a tag on a green `main`; there is no rc branch to assemble. `bun run pr -- tag vX`
+  (the coordinator) tags main's HEAD only after a full run of that commit passed (the schedule's,
+  or one by hand), and pushes the tag alone as `refs/tags/vX`.
+- The full run's Linux suite runs in 3 shards, each twice: Bun's coverage gives the lines (and
+  SonarCloud's lcov), istanbul gives the functions (#296). `scripts/shard-gate.ts` merges the six
+  into the 100% gate and fails closed: a missing or failed shard is a red gate, never 100%.
 
 ## Evidência para o /goal
 

@@ -82,8 +82,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   A worker session runs it over at most 20 test files (#674): more is refused, by the guard hook
   for `--tests` and by the script for the tests it picks, with the same override. The script refuses
   for every session, the coordinator too (#725): its environment is the command's, which a worker can set.
-- Sonar: SonarCloud Code Analysis on the PR is the only Sonar check (#283); there is no local copy
-  to run before a push. `// NOSONAR: <reason>` on the flagged line suppresses a reviewed false
+- Sonar: SonarCloud analyses each PR and each full run of main, never a main push (#283, #296);
+  there is no local copy to run before a push. `// NOSONAR: <reason>` on the flagged line suppresses a reviewed false
   positive there. `sonar-project.properties` keeps SonarCloud's coverage on exactly the files of
   the 100% gate (`sonar-coverage.test.ts`).
 - Before hand-off from a session: `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit`
@@ -138,7 +138,7 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
 - Delivery is GitHub Flow (#260, #271): one PR per branch to `main`. A session pushes its own
   branch, opens its PR (`bun run pr -- open <branch>`, with `--refs <n>` for a slice of an issue so
-  it does not close it, #839) and turns on auto-merge
+  it does not close it, #839, titled after the first commit, #909) and turns on auto-merge
   (`bun run pr -- auto <n>`): GitHub merges it with a merge commit once its required checks are
   green on its HEAD, even when it is behind `main` (#305: the ruleset is not strict; `main`'s push
   CI checks the result). Only a PR that conflicts with `main` waits: merge `main` into it.

@@ -25,6 +25,7 @@ function setup(
     kept?: string;
     offline?: string;
     connecting?: string;
+    incompatible?: string;
     hosts?: string[];
     /** Whether the host list was read yet (#212); read by default. */
     loaded?: boolean;
@@ -50,7 +51,13 @@ function setup(
     id,
     name: names[id],
     status:
-      options.offline === id ? "offline" : options.connecting === id ? "connecting" : "online",
+      (
+        [
+          [options.offline, "offline"],
+          [options.connecting, "connecting"],
+          [options.incompatible, "incompatible"],
+        ] as const
+      ).find(([which]) => which === id)?.[1] ?? "online",
     hostInfo: { daemonVersion: "x", features: ["costs"] },
     sessions: [],
   }));
@@ -118,6 +125,17 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     });
   });
 
+  // #126 slice 4: Home does not read projects yet, so a project scope there is every host, said so.
+  test("a kept project scope shows every host on Home, and the menu and subtitle say so", async () => {
+    setup({ kept: '{"kind":"project","projectKey":"github.com/x/y"}' });
+    await settleMaybe(() => /\$7\.00/.test(spend()));
+    expect({
+      spend: /\$7\.00/.test(spend()),
+      subtitle: screen.queryByText("Last 7 days · all hosts") !== null,
+      menu: screen.queryByRole("button", { name: "Data from All hosts" }) !== null,
+    }).toEqual({ spend: true, subtitle: true, menu: true });
+  });
+
   // Review of #837: a kept host missing from a list not read yet is not gone, so Home asks
   // nobody for numbers the person chose not to see; once the list is read without it, it is.
   test("a kept host not listed yet asks no host; once the list is read without it, Home adds up all", async () => {
@@ -153,6 +171,17 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
       offered: offered(),
       menu: screen.queryByRole("button", { name: "Data from alfa" }) !== null,
     }).toEqual({ offered: false, menu: true });
+  });
+
+  // #886: an incompatible daemon is not offline; it needs an update.
+  test("a kept scope whose host is incompatible asks for a daemon update", async () => {
+    setup({ kept: '{"kind":"host","hostId":"h1"}', incompatible: "h1" });
+    const update = () => screen.queryByText(/alfa needs a daemon update/) !== null;
+    await settleMaybe(update);
+    expect({ update: update(), offline: screen.queryByText(/alfa is offline/) !== null }).toEqual({
+      update: true,
+      offline: false,
+    });
   });
 
   test("a kept scope whose host is offline says so and offers every host", async () => {

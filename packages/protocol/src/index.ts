@@ -3117,6 +3117,8 @@ export const Command = z.discriminatedUnion("type", [
     z.object({ paths: z.array(z.string().min(1).max(4096)).min(1).max(200) }).strict(),
   ),
   cmd("project.trust.inspect", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** #75: the project's stack and its test, lint, format and build commands, read, never run. */
+  cmd("project.harness.stack", z.object({ path: z.string().min(1).max(4096) }).strict()),
   cmd(
     "project.trust.set",
     z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
@@ -4677,6 +4679,8 @@ export const ProjectLoad = z.object({
   mcpServers: z.array(z.object({ name: z.string(), file: z.string(), command: z.string() })),
   envKeys: z.array(z.string()),
   allowRules: z.array(z.string()),
+  /** What the settings deny (#75); absent from a host older than it. */
+  denyRules: z.array(z.string()).optional(),
   defaultMode: z.string().nullable(),
   agents: z.array(z.string()),
   skills: z.array(z.string()),
@@ -4698,10 +4702,23 @@ export const ProjectLoad = z.object({
     hooks: z.number().int().min(0),
     mcpServers: z.number().int().min(0),
     allowRules: z.number().int().min(0),
+    denyRules: z.number().int().min(0).optional(),
     envKeys: z.number().int().min(0),
   }),
 });
 export type ProjectLoad = z.infer<typeof ProjectLoad>;
+
+/** #75: what a project is built with, and the fixed commands that test, lint, format and build it. */
+export const HarnessStack = z.object({
+  stacks: z.array(z.enum(["node", "python", "go", "rust", "dotnet"])),
+  commands: z.object({
+    test: z.string().nullable(),
+    lint: z.string().nullable(),
+    format: z.string().nullable(),
+    build: z.string().nullable(),
+  }),
+});
+export type HarnessStack = z.infer<typeof HarnessStack>;
 
 /** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
 export const SleepResult = z.object({
@@ -4922,6 +4939,7 @@ export interface CommandResults {
   "host.keepAwake": KeepAwakeStatus;
   "project.trust.state": ProjectTrustStates;
   "project.trust.inspect": ProjectLoad;
+  "project.harness.stack": HarnessStack;
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;

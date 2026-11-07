@@ -15,6 +15,7 @@ import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
+import { useProjectLabels } from "@/hooks/use-project-labels";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { uniqueKeys } from "@/lib/unique-keys";
 import { useStoreSlice } from "@/lib/use-store";
@@ -30,11 +31,10 @@ import {
   type Period,
   periodRange,
   projectLabel,
-  projectLabels,
   usd,
 } from "../lib/costs.ts";
 import { mergeHostCsv } from "../lib/costs-csv.ts";
-import { ALL_SCOPE, activeScope, type DataScope } from "../lib/data-scope.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../lib/data-scope.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
@@ -134,10 +134,12 @@ export const CostsPage = memo(function CostsPage(props: {
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
   );
-  // The data scope (#126) says whose costs these are. A route's own host (an alert, a Home card)
-  // wins for this visit and never rewrites it; choosing in the scope menu ends that choice.
+  // The data scope (#126) says whose costs these are: every host, one, or one project (slice 4). A
+  // route's own host or project (an alert, a Home card) wins for this visit and never rewrites it;
+  // choosing in the scope menu ends that choice.
   const keptScope = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
   const [routeHost, setRouteHost] = useState<string | null>(props.host ?? null);
+  const [routeProject, setRouteProject] = useState<string | null>(props.projectKey ?? null);
   // Home opens Costs with `__all__` when several hosts have costs: every host, for this visit.
   const routeScope: DataScope | null =
     routeHost === null
@@ -145,17 +147,27 @@ export const CostsPage = memo(function CostsPage(props: {
       : routeHost === ALL_HOSTS
         ? ALL_SCOPE
         : { kind: "host", hostId: routeHost };
-  const dataScope = routeScope ?? activeScope(keptScope, state.hosts, state.hostsLoaded);
-  const { acrossHosts, hostId, hostIds } = hostScope(dataScope, hosts);
+  const kept = activeScope(keptScope, state.hosts, state.hostsLoaded);
+  /** The project whose costs these are, if one: the route's, else the kept scope's. */
+  const projectKey =
+    routeProject ?? (routeScope === null && kept.kind === "project" ? kept.projectKey : null);
+  // A project keeps every host; the route's host still narrows an alert to its host.
+  const hostSide = routeScope ?? (kept.kind === "project" ? ALL_SCOPE : kept);
+  const dataScope: DataScope = projectKey ? { kind: "project", projectKey } : hostSide;
+  const { acrossHosts, hostId, hostIds } = hostScope(hostSide, hosts);
   /** The scoped host when it has no numbers to show: offline, or not reporting costs. */
   const scopedHost =
-    dataScope.kind === "host" ? state.hosts.find((h) => h.id === dataScope.hostId) : null;
+    hostSide.kind === "host" ? state.hosts.find((h) => h.id === hostSide.hostId) : null;
   const away =
     scopedHost && !hosts.some((h) => h.id === scopedHost.id) && scopedHost.status !== "connecting"
       ? scopedHost
       : null;
-  const showAllHosts = () => {
+  const endVisit = () => {
     setRouteHost(null);
+    setRouteProject(null);
+  };
+  const showAllHosts = () => {
+    endVisit();
     store.dataScope.set({ kind: "all" });
   };
   const personaHosts = hosts.filter(
@@ -183,14 +195,13 @@ export const CostsPage = memo(function CostsPage(props: {
   const [period, setPeriod] = useState<Period>(props.period ?? "7d");
   const today = store.today();
   const [range, setRange] = useState(periodRange(props.period ?? "7d", today));
-  const [filters, setFilters] = useState<Omit<CostsFilter, "from" | "to">>(
-    props.projectKey ? { projectKey: props.projectKey } : {},
-  );
+  const [filters, setFilters] = useState<Omit<CostsFilter, "from" | "to" | "projectKey">>({});
   // A later alert opens another host, project or client while the screen is already up.
   const { host: alertHost, projectKey: alertProject, client: alertClient } = props;
   useEffect(() => {
     if (alertHost) setRouteHost(alertHost);
-    setFilters(alertProject ? { projectKey: alertProject } : {});
+    setRouteProject(alertProject ?? null);
+    setFilters({});
     if (alertClient) store.setClientSelection(alertClient);
   }, [store, alertHost, alertProject, alertClient]);
   const [summary, setSummary] = useState<CostsSummary | null>(null);
@@ -198,7 +209,7 @@ export const CostsPage = memo(function CostsPage(props: {
   const [all, setAll] = useState<CostsSummary | null>(null);
   const [status, setStatus] = useState<CostsStatus | null>(null);
   const days = period === "range" ? range : periodRange(period, today);
-  const filter: CostsFilter = { ...days, ...filters };
+  const filter: CostsFilter = { ...days, ...filters, ...(projectKey ? { projectKey } : {}) };
   const selection = state.clientSelection;
   const [sessionHost, setSessionHost] = useState<Record<string, string>>({});
   const [failed, setFailed] = useState<string[]>([]);
@@ -217,6 +228,7 @@ export const CostsPage = memo(function CostsPage(props: {
     let live = true;
     void askCosts(store, ids, asked, selection).then((loaded) => {
       if (!live) return;
+      store.projectKeys.note(loaded.summary?.byProject.map((p) => p.projectKey) ?? []);
       setSummary(loaded.summary);
       if (Object.keys(asked).length === 2) setAll(loaded.summary);
       setSessionHost(loaded.sessionHost);
@@ -228,14 +240,16 @@ export const CostsPage = memo(function CostsPage(props: {
   }, [store, key, selection]);
   // The filters offer every project and model of the period: with no filter set, that is the
   // summary itself, and it is not asked for twice.
-  const unfiltered = Object.keys(filters).length === 0;
+  const unfiltered = Object.keys(filters).length === 0 && !projectKey;
   const daysKey = JSON.stringify([unfiltered ? [] : hostIds, days, selection, placed]);
   useEffect(() => {
     const [ids, asked] = JSON.parse(daysKey) as [string[], CostsFilter];
     if (ids.length === 0) return;
     let live = true;
     void askCosts(store, ids, asked, selection).then((loaded) => {
-      if (live) setAll(loaded.summary);
+      if (!live) return;
+      store.projectKeys.note(loaded.summary?.byProject.map((p) => p.projectKey) ?? []);
+      setAll(loaded.summary);
     });
     return () => {
       live = false;
@@ -275,14 +289,23 @@ export const CostsPage = memo(function CostsPage(props: {
   const topKeys = uniqueKeys((summary?.topSessions ?? []).map((s) => s.claudeSessionId));
   // One set of labels for the whole screen, so a project reads the same in the list, the chart
   // and the table; two that share a folder name are told apart.
-  const labels = projectLabels([
+  // They are told apart against every project the app knows, as on Home (issue #881).
+  const labels = useProjectLabels(store, [
     ...new Set([
       ...(all?.byProject ?? []).map((p) => p.projectKey),
       ...(summary?.byProject ?? []).map((p) => p.projectKey),
       ...(summary?.topSessions ?? []).map((s) => s.projectKey),
+      ...(projectKey ? [projectKey] : []),
     ]),
   ]);
   const projectName = (key: string) => labels.get(key) ?? projectLabel(key);
+  /** The period's projects, for the scope menu; the chosen one stays listed (slice 4). */
+  const projects = [
+    ...new Set([
+      ...(all?.byProject ?? []).map((p) => p.projectKey),
+      ...(projectKey ? [projectKey] : []),
+    ]),
+  ].map((key) => ({ key, label: projectName(key) }));
   // The split by client is the whole spend of the period: it is not shown for one client.
   const scope = store.clientScope();
   const byClient =
@@ -313,12 +336,13 @@ export const CostsPage = memo(function CostsPage(props: {
       }
       toolbar={
         <Toolbar label={t("costsUi.filters")}>
-          {state.hosts.length > 1 && (
+          {(state.hosts.length > 1 || projects.length > 0) && (
             <ScopeMenu
               store={store}
               hosts={state.hosts}
+              projects={projects}
               scope={dataScope}
-              onPick={() => setRouteHost(null)}
+              onPick={endVisit}
             />
           )}
           {PERIODS.map((p) => (
@@ -351,20 +375,6 @@ export const CostsPage = memo(function CostsPage(props: {
               />
             </>
           )}
-          <NativeSelect
-            inline
-            compact
-            aria-label={t("costsUi.project")}
-            value={filters.projectKey ?? ""}
-            onChange={(e) => setFilter("projectKey", e.target.value)}
-          >
-            <option value="">{t("costsUi.allProjects")}</option>
-            {(all?.byProject ?? []).map((p) => (
-              <option key={p.projectKey} value={p.projectKey}>
-                {projectName(p.projectKey)}
-              </option>
-            ))}
-          </NativeSelect>
           <NativeSelect
             inline
             compact
@@ -457,7 +467,7 @@ export const CostsPage = memo(function CostsPage(props: {
         {away && (
           <InlineNotice tone="info">
             <span>
-              {t(away.status === "online" ? "scope.noCosts" : "scope.offline", {
+              {t(away.status === "online" ? "scope.noCosts" : awayKey(away.status, "numbers"), {
                 host: away.name,
               })}{" "}
             </span>
@@ -478,7 +488,15 @@ export const CostsPage = memo(function CostsPage(props: {
           />
         )}
         {loading && <LoadingState label={t("costsUi.loading")} shape="tiles" />}
-        {empty && (
+        {empty && projectKey && (
+          <InlineNotice tone="info">
+            <span>{t("scope.projectEmpty", { project: projectName(projectKey) })} </span>
+            <Button variant="outline" size="sm" onClick={showAllHosts}>
+              {t("scope.showAll")}
+            </Button>
+          </InlineNotice>
+        )}
+        {empty && !projectKey && (
           <EmptyState
             icon={Coins}
             title={t("costsUi.empty")}

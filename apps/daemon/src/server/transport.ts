@@ -81,6 +81,8 @@ export interface Connection {
   unwatchTeams?: () => void;
   /** Stops the `watch.watch` stream, when active. */
   unwatchPrs?: () => void;
+  /** The connection's search in flight (#905): a new one aborts it. */
+  search?: AbortController;
   lastRttMs?: number;
 }
 

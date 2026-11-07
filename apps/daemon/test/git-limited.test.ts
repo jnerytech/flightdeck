@@ -37,6 +37,76 @@ describe("git-limited: a capped git read with a time limit (#100)", () => {
     expect(result.timedOut).toBe(true);
   });
 
+  test("a program that writes far more to stderr than a pipe holds still ends, with its stdout and a capped stderr (#806)", async () => {
+    // 200 000 bytes on stderr first: read after stdout, the pipe would fill and the program stall.
+    const result = await gitLimitedFor(
+      tempDir("fd-git-limited-"),
+      1024,
+      ["-c", "alias.noisy=!head -c 200000 /dev/zero >&2; echo done", "noisy"],
+      3_000,
+    );
+    expect([
+      result.stdout,
+      result.timedOut,
+      result.stderr.length > 0,
+      result.stderr.length <= 64 * 1024,
+    ]).toEqual(["done\n", undefined, true, true]);
+  });
+
+  test("a signal aborts a running git: it is killed with what it started and the result says aborted (#905)", async () => {
+    const controller = new AbortController();
+    const started = Date.now();
+    const running = gitLimitedFor(
+      tempDir("fd-git-limited-"),
+      1024,
+      ["-c", "alias.hang=!sleep 3", "hang"],
+      10_000,
+      undefined,
+      undefined,
+      controller.signal,
+    );
+    controller.abort();
+    const result = await running;
+    expect([result.aborted, result.timedOut, Date.now() - started < 2_500]).toEqual([
+      true,
+      undefined,
+      true,
+    ]);
+  });
+
+  test("an abort whose kill fails still answers, and says aborted (#905)", async () => {
+    const controller = new AbortController();
+    const running = gitLimitedFor(
+      tempDir("fd-git-limited-"),
+      1024,
+      ["-c", "alias.wait=!sleep 1", "wait"],
+      10_000,
+      async () => {
+        throw new Error("the process was already gone");
+      },
+      undefined,
+      controller.signal,
+    );
+    controller.abort();
+    expect((await running).aborted).toBe(true);
+  });
+
+  test("a signal that is already aborted kills the program as it starts (#905)", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const started = Date.now();
+    const result = await gitLimitedFor(
+      tempDir("fd-git-limited-"),
+      1024,
+      ["-c", "alias.hang=!sleep 3", "hang"],
+      10_000,
+      undefined,
+      undefined,
+      controller.signal,
+    );
+    expect([result.aborted, Date.now() - started < 2_500]).toEqual([true, true]);
+  });
+
   test("a git that ends in time gives its output and no time-out", async () => {
     const result = await gitLimitedFor(tempDir("fd-git-limited-"), 1024, ["--version"], 10_000);
     expect([

@@ -78,29 +78,3 @@ export function FoldAll(
     </div>
   );
 }
-
-/** One toggle per host, to show the sessions of that host only. */
-export function HostFilterRow(
-  props: Readonly<{
-    label: string;
-    hosts: string[];
-    selected: string;
-    onSelect(host: string): void;
-  }>,
-) {
-  return (
-    <fieldset aria-label={props.label} className="flex flex-wrap items-center gap-2">
-      {props.hosts.map((name) => (
-        <Button
-          key={name}
-          variant="outline"
-          size="sm"
-          aria-pressed={props.selected === name}
-          onClick={() => props.onSelect(props.selected === name ? "" : name)}
-        >
-          {name}
-        </Button>
-      ))}
-    </fieldset>
-  );
-}

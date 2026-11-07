@@ -30,6 +30,7 @@ describe("trust-inspect: what a project would load, read without running anythin
       mcpServers: [],
       envKeys: [],
       allowRules: [],
+      denyRules: [],
       defaultMode: null,
       agents: [],
       skills: [],
@@ -41,7 +42,7 @@ describe("trust-inspect: what a project would load, read without running anythin
       otherKeys: [],
       extras: [],
       unreadable: [],
-      omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
+      omitted: { hooks: 0, mcpServers: 0, allowRules: 0, denyRules: 0, envKeys: 0 },
     });
   });
 
@@ -97,6 +98,10 @@ describe("trust-inspect: what a project would load, read without running anythin
         env: { API_KEY: "sk-another-secret", DEBUG: "1" },
         permissions: { allow: ["Bash(git:*)", "Read"], defaultMode: "acceptEdits" },
       }),
+      // #75: what the project denies, from either settings file, is listed too.
+      ".claude/settings.local.json": JSON.stringify({
+        permissions: { deny: ["Read(./.env)", 7, "Read(~/.ssh/**)"] },
+      }),
     });
     const load = await inspectProject(root);
     expect(load.mcpServers).toEqual([
@@ -105,6 +110,7 @@ describe("trust-inspect: what a project would load, read without running anythin
     ]);
     expect(load.envKeys).toEqual(["API_KEY", "DEBUG"]);
     expect(load.allowRules).toEqual(["Bash(git:*)", "Read"]);
+    expect(load.denyRules).toEqual(["Read(./.env)", "Read(~/.ssh/**)"]);
     expect(load.defaultMode).toBe("acceptEdits");
     // No value of any env ever reaches the listing.
     expect(JSON.stringify(load)).not.toContain("sk-secret-value");
@@ -178,7 +184,13 @@ describe("trust-inspect: what a project would load, read without running anythin
     const load = await inspectProject(root);
     expect(load.hooks[0]?.commands[0]).toBe(`${"y".repeat(4096)}\n[+904 more characters]`);
     expect(load.mcpServers).toHaveLength(100);
-    expect(load.omitted).toEqual({ hooks: 0, mcpServers: 50, allowRules: 0, envKeys: 0 });
+    expect(load.omitted).toEqual({
+      hooks: 0,
+      mcpServers: 50,
+      allowRules: 0,
+      denyRules: 0,
+      envKeys: 0,
+    });
   });
 
   test("every capped list says how many entries it left out, so a hidden one cannot pass for a clean project", async () => {
@@ -187,14 +199,24 @@ describe("trust-inspect: what a project would load, read without running anythin
       ".claude/settings.json": JSON.stringify({
         hooks: { Stop: [{ hooks }] },
         env: Object.fromEntries(Array.from({ length: 120 }, (_, i) => [`K${i}`, "v"])),
-        permissions: { allow: Array.from({ length: 105 }, (_, i) => `Tool${i}`) },
+        permissions: {
+          allow: Array.from({ length: 105 }, (_, i) => `Tool${i}`),
+          deny: Array.from({ length: 103 }, (_, i) => `Read(./secret${i})`),
+        },
       }),
     });
     const load = await inspectProject(root);
     expect(load.hooks[0]?.commands).toHaveLength(100);
     expect(load.envKeys).toHaveLength(100);
     expect(load.allowRules).toHaveLength(100);
-    expect(load.omitted).toEqual({ hooks: 30, mcpServers: 0, allowRules: 5, envKeys: 20 });
+    expect(load.denyRules).toHaveLength(100);
+    expect(load.omitted).toEqual({
+      hooks: 30,
+      mcpServers: 0,
+      allowRules: 5,
+      denyRules: 3,
+      envKeys: 20,
+    });
   });
 
   test("settings that name a program to run are listed with the whole command", async () => {

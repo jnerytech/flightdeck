@@ -22,6 +22,7 @@ import {
 import { ensureOnline } from "../lib/e2e-online.ts";
 import {
   BARS,
+  confirmGaps,
   type Finding,
   findingKey,
   GAP_BOXES,
@@ -1850,16 +1851,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open_.first().waitFor({ timeout: WAIT });
     const label = (await open_.first().textContent())?.trim() ?? "";
     await open_.first().click();
-    const project = c.page.getByLabel(c.t("costsUi.project"), { exact: true });
-    await project.waitFor({ timeout: WAIT });
-    await waitFor(
-      async () =>
-        // Two hosts can share a project's name: either screen may then add whose it is.
-        (
-          (await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ?? ""
-        ).split(" · ")[0] === label.split(" · ")[0],
-      `o filtro de Custos no projeto ${label}`,
-    );
+    // One project, one label (#881): Costs' Data from menu names it as Home does (#126 slice 4).
+    await c.page
+      .getByRole("button", { name: c.t("scope.menu", { scope: label }), exact: true })
+      .waitFor({ timeout: WAIT });
   },
 
   // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one
@@ -2545,12 +2540,17 @@ async function geometryGuards(c: Context, screens: Array<[string, Route]>, probl
     for (const [name, route] of screens) {
       await open(c, route);
       const screen = `${name}@${size.width}`;
-      const found: Finding[] = await c.page.evaluate(layoutFindings, {
-        // The key regions are a contract at the usual window: the smallest one is #135's business.
-        regions: size.width >= 1280 ? KEY_REGIONS : [],
-        bars: BARS,
-        gaps: GAPS,
-      });
+      const found: Finding[] = await confirmGaps(
+        () =>
+          c.page.evaluate(layoutFindings, {
+            // The key regions are a contract at the usual window: the smallest one is #135's business.
+            regions: size.width >= 1280 ? KEY_REGIONS : [],
+            bars: BARS,
+            gaps: GAPS,
+          }),
+        // A toast that came after the page settled is still sliding: wait for it, then read again (#747).
+        () => c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES }),
+      );
       for (const finding of found) seen[findingKey(screen, finding)] = finding.detail;
       const verdict = judge(screen, found, baseline);
       problems.push(...verdict.failures);

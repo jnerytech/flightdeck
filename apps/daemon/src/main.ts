@@ -62,6 +62,7 @@ import { buildChildEnv } from "./env.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
+import { detectStack } from "./harness/stack.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
 import { linesOf } from "./lines.ts";
@@ -1398,6 +1399,7 @@ export async function startDaemon(
       historyRoots: config.history.roots,
       indexer: history,
       manager,
+      meta: central.meta,
     }),
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),
@@ -1429,6 +1431,7 @@ export async function startDaemon(
         keepAwake.setEnabled(enabled);
       },
     },
+    harnessStack: detectStack,
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) => paths.map(trustState),

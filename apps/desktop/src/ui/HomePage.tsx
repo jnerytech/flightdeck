@@ -6,11 +6,12 @@ import { Page } from "@/components/layout/page";
 import { Grid, Stack } from "@/components/layout/stack";
 import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
+import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { mergeSummaries } from "../lib/client-costs.ts";
-import { ALL_HOSTS, daysBetween, periodRange, projectLabels } from "../lib/costs.ts";
-import { ALL_SCOPE, activeScope, scopeHosts } from "../lib/data-scope.ts";
+import { ALL_HOSTS, daysBetween, periodRange } from "../lib/costs.ts";
+import { ALL_SCOPE, activeScope, awayKey, scopeHosts } from "../lib/data-scope.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
 import { type HomeLeaders, homeLeaders } from "../lib/home-leaders.ts";
@@ -42,7 +43,9 @@ export function HomePage(
   // The data scope (#126): Home adds up only the hosts in it; a host no longer there means all,
   // once the host list is read (before, a kept host is only not listed yet, and Home asks nobody).
   const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
-  const scope = activeScope(kept, state.hosts, state.hostsLoaded);
+  const active = activeScope(kept, state.hosts, state.hostsLoaded);
+  // Home does not read projects yet (#126 slice 4): a project scope is every host here.
+  const scope = active.kind === "project" ? ALL_SCOPE : active;
   const hosts = useMemo(() => scopeHosts(state.hosts, scope), [state.hosts, scope]);
   /** The scoped host, when it is offline (not still connecting): Home says so and offers all. */
   const away =
@@ -150,6 +153,11 @@ export function HomePage(
           range.from,
           range.to,
         ).summary;
+      // The week names every project of the hosts that answered, not only the ones listed here:
+      // the labels of every screen are told apart against them.
+      if (shares.length > 0) {
+        store.projectKeys.note(merged("week").byProject.map((row) => row.projectKey));
+      }
       // Shares from only some hosts would read as the whole: until every host with costs gave
       // its three answers, the last whole leaderboard of these hosts stays, or the panel says so.
       const priced = results.filter((r) => r.priced);
@@ -208,7 +216,7 @@ export function HomePage(
   const busy = !kpis && (online.length === 0 ? connecting : true);
   const message = (() => {
     if (kpis) return t("home.ready");
-    if (away && !connecting) return t("scope.offline", { host: away.name });
+    if (away && !connecting) return t(awayKey(away.status, "numbers"), { host: away.name });
     if (online.length === 0) return connecting ? t("home.connecting") : t("home.noHosts");
     return t("home.loading");
   })();
@@ -234,7 +242,11 @@ export function HomePage(
     });
   const board = leaders?.entry === entry ? leaders : null;
   const shown = board?.leaders ?? null;
-  const labels = projectLabels(shown?.project.flatMap((row) => (row.key ? [row.key] : [])) ?? []);
+  // One label per project on every screen: told apart against all the keys known, not only these rows.
+  const labels = useProjectLabels(
+    store,
+    shown?.project.flatMap((row) => (row.key ? [row.key] : [])) ?? [],
+  );
   const openTurns = () => {
     const only = online.length === 1 ? online[0] : undefined;
     if (only) go({ name: "history", host: only.id, from: range.from, to: range.to });
@@ -262,7 +274,7 @@ export function HomePage(
       {away && (
         <InlineNotice tone="info">
           {/* Without numbers the line above says it; with older numbers on screen, this one does. */}
-          {kpis && <span>{t("scope.offline", { host: away.name })} </span>}
+          {kpis && <span>{t(awayKey(away.status, "numbers"), { host: away.name })} </span>}
           <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>
             {t("scope.showAll")}
           </Button>

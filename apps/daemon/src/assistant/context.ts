@@ -76,7 +76,8 @@ function hidden(file: DiffFile): boolean {
     LOCKFILES.has(name) ||
     /\.min\.(js|css)$|\.map$|\.generated\./.test(name) ||
     /(^|\/)(dist|build)\//.test(path) ||
-    isCredentialPath(path)
+    isCredentialPath(path) ||
+    (file.oldPath !== null && isCredentialPath(file.oldPath.replaceAll("\\", "/")))
   );
 }
 

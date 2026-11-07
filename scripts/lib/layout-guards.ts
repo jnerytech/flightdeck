@@ -107,7 +107,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       ...(excess === undefined ? {} : { excess: Math.round(excess) }),
     });
   };
-  const slotOf = (el: Element) => el.getAttribute("data-slot");
+  const slotOf = (el: Element) => (el as HTMLElement | SVGElement).dataset.slot;
   /** An element with no data-slot: its tag and first class. */
   const plainName = (el: Element) => {
     const first = String(el.getAttribute("class") ?? "")
@@ -793,31 +793,32 @@ function entryOf(value: CountEntry | undefined): { count: number; worst?: number
   return typeof value === "number" ? { count: value } : value;
 }
 
-/** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */
-export function ratchetScreen(screen: string, findings: Finding[], ratchet: Ratchet): string[] {
-  const failures = findings
-    .filter((finding) => CONTRACT.has(finding.rule))
-    .map((finding) => `${screen}: ${finding.rule} ${finding.path} (${finding.detail})`);
+/** The worst finding of a list by its excess px: the first of equals; none when no finding has one. */
+function worstOf(list: Finding[]): Finding | undefined {
+  const all = list.flatMap((finding) => (finding.excess === undefined ? [] : [finding]));
+  return all.reduce<Finding | undefined>(
+    (top, next) => (top && (top.excess ?? 0) >= (next.excess ?? 0) ? top : next),
+    undefined,
+  );
+}
+
+/** The findings of one screen that are not a contract, by key (rule, screen, path with no numbers). */
+function countedFindings(screen: string, findings: Finding[]): Map<string, Finding[]> {
   const counted = new Map<string, Finding[]>();
   for (const finding of findings.filter((f) => !CONTRACT.has(f.rule))) {
     const key = `${finding.rule}|${screen}|${finding.group ?? finding.path}`;
     counted.set(key, [...(counted.get(key) ?? []), finding]);
-    ratchet.occurrences[findingKey(screen, finding)] = finding.detail;
   }
-  const worstOf = (list: Finding[]) => {
-    const all = list.flatMap((finding) => (finding.excess === undefined ? [] : [finding]));
-    return all.reduce<Finding | undefined>(
-      (top, next) => (top && (top.excess ?? 0) >= (next.excess ?? 0) ? top : next),
-      undefined,
-    );
-  };
-  for (const [key, list] of counted) {
-    const worst = worstOf(list)?.excess;
-    ratchet.seen[key] =
-      worst === undefined ? { count: list.length } : { count: list.length, worst };
-  }
-  const baseline = ratchet.baseline;
-  if (!baseline) return failures;
+  return counted;
+}
+
+/** The failures of the keys that grew past their baseline count, or got worse past its worst excess. */
+function baselineFailures(
+  screen: string,
+  counted: Map<string, Finding[]>,
+  baseline: Record<string, CountEntry>,
+): string[] {
+  const failures: string[] = [];
   for (const [key, list] of counted) {
     const allowed = entryOf(baseline[key]);
     const [rule, , group] = key.split("|");
@@ -839,28 +840,53 @@ export function ratchetScreen(screen: string, findings: Finding[], ratchet: Ratc
       );
     }
   }
+  return failures;
+}
+
+/** What to do with a baseline entry of this screen that the run saw fewer of, or none when it holds. */
+function goneNote(
+  key: string,
+  value: CountEntry,
+  now: number,
+  seenWorst: number | undefined,
+): string | undefined {
+  const { count: allowed, worst: allowedWorst } = entryOf(value);
+  if (now < allowed) {
+    return `${key}: ${now} where the baseline has ${allowed}: ${now === 0 ? "remove it" : "lower it"}`;
+  }
+  // #724: a fixed worst occurrence lowers the baseline too, or a regression back to it would pass.
+  if (
+    allowedWorst !== undefined &&
+    seenWorst !== undefined &&
+    seenWorst < allowedWorst - WORSE_TOLERANCE
+  ) {
+    return `${key}: worst ${seenWorst} px where the baseline has ${allowedWorst}: lower it`;
+  }
+  return undefined;
+}
+
+/** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */
+export function ratchetScreen(screen: string, findings: Finding[], ratchet: Ratchet): string[] {
+  const failures = findings
+    .filter((finding) => CONTRACT.has(finding.rule))
+    .map((finding) => `${screen}: ${finding.rule} ${finding.path} (${finding.detail})`);
+  const counted = countedFindings(screen, findings);
+  for (const finding of findings.filter((f) => !CONTRACT.has(f.rule))) {
+    ratchet.occurrences[findingKey(screen, finding)] = finding.detail;
+  }
+  for (const [key, list] of counted) {
+    const worst = worstOf(list)?.excess;
+    ratchet.seen[key] =
+      worst === undefined ? { count: list.length } : { count: list.length, worst };
+  }
+  const baseline = ratchet.baseline;
+  if (!baseline) return failures;
+  failures.push(...baselineFailures(screen, counted, baseline));
   const here = `|${screen}|`;
   for (const [key, value] of Object.entries(baseline)) {
     if (!key.includes(here)) continue;
-    const { count: allowed, worst: allowedWorst } = entryOf(value);
-    const now = counted.get(key)?.length ?? 0;
-    if (now < allowed) {
-      ratchet.gone.push(
-        `${key}: ${now} where the baseline has ${allowed}: ${now === 0 ? "remove it" : "lower it"}`,
-      );
-      continue;
-    }
-    // #724: a fixed worst occurrence lowers the baseline too, or a regression back to it would pass.
-    const worst = ratchet.seen[key]?.worst;
-    if (
-      allowedWorst !== undefined &&
-      worst !== undefined &&
-      worst < allowedWorst - WORSE_TOLERANCE
-    ) {
-      ratchet.gone.push(
-        `${key}: worst ${worst} px where the baseline has ${allowedWorst}: lower it`,
-      );
-    }
+    const note = goneNote(key, value, counted.get(key)?.length ?? 0, ratchet.seen[key]?.worst);
+    if (note !== undefined) ratchet.gone.push(note);
   }
   return failures;
 }
@@ -911,6 +937,24 @@ export async function waitForStable(
     if (still >= wanted) return { stable: true, frames: still };
   }
   return { stable: false, frames: still };
+}
+
+/**
+ * The findings of one measure, with a gap finding measured again (#747). A toast that comes
+ * after `waitForStable` returned is read mid-slide (7 px for 8, 0 for 8): the same commit passed on
+ * rerun. A gap that is still there after the boxes hold still, `tries` times, is a real one.
+ */
+export async function confirmGaps(
+  measure: () => Promise<Finding[]>,
+  settle: () => Promise<unknown>,
+  tries = 3,
+): Promise<Finding[]> {
+  let found = await measure();
+  for (let n = 0; n < tries && found.some((finding) => finding.rule === "gap"); n++) {
+    await settle();
+    found = await measure();
+  }
+  return found;
 }
 
 /**

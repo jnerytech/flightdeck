@@ -223,7 +223,7 @@ describe("sessoes-projetos: two folders of one host never merge, and say where t
       at(2, "alfa", "/home/a/play/api", { title: "other" }),
       at(3, "beta", "/srv/api"),
     ];
-    const groups = hubGroups(rows, { ...DEFAULT_HUB_FILTER, host: "beta" });
+    const groups = hubGroups(rows, { ...DEFAULT_HUB_FILTER, text: "/srv" });
     expect(groups).toHaveLength(1);
     expect(groups[0]?.rows).toHaveLength(1);
   });

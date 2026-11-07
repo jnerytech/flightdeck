@@ -39,7 +39,7 @@ jobs:
   # (scripts/lib/ci-paths.ts); a push to main and a run by hand need everything. A job skipped by
   # path still reports under the ruleset's name through its aggregate.
   # The checks that take minutes, first (#272): typecheck, Biome, the TDD order and every ratchet
-  # test. Sonar is SonarCloud's own check on the PR only (#283). The heavy jobs need it, so a count that went up fails the run
+  # test. Sonar runs in its own job, on a PR and on a full run of main (#283, #296). The heavy jobs need it, so a count that went up fails the run
   # in minutes instead of after the 20-minute suites.
   # It also computes the path plan first (#264), the jobs this run needs: one job less than a
   # plan job of its own (#444), and the heavy jobs wait for this one anyway.
@@ -221,13 +221,15 @@ jobs:
           retention-days: 1
 
   # SonarCloud, with the lcov report of the suite. The product version marks the new-code period
-  # ("previous version"). Skipped on a dispatch, and where the secret is not available (pull requests
-  # from forks). The status check is explicit: a PR skips the shards, and GitHub would skip this job
-  # after them too.
+  # ("previous version"). On a PR, and on a full run of main (the schedule, or a dispatch of main),
+  # whose lcov is the merged shards' (#296). Never on a main push: its lcov holds only the related
+  # tests, and main's coverage read 76% to 95% from it. Not on a branch's dispatch (ci:branch), nor
+  # where the secret is not available (pull requests from forks). The status check is explicit: a PR
+  # skips the shards, and GitHub would skip this job after them too.
   sonar:
     name: sonarcloud
     needs: [test-suite]
-    if: "!cancelled() && needs.test-suite.result == 'success' && github.event_name != 'workflow_dispatch'"
+    if: "!cancelled() && needs.test-suite.result == 'success' && (github.event_name == 'pull_request' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -251,13 +253,19 @@ jobs:
         id: sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          PR_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
         shell: bash
         run: |
           version="$(bun -e 'console.log(require("./apps/daemon/package.json").version)')"
           # The branch controls the file: only a plain version reaches $GITHUB_ENV and the scan's args.
           [[ "$version" =~ ^[0-9A-Za-z.+-]+$ ]] || { echo "not a plain version: $version"; exit 1; }
           echo "FD_VERSION=$version" >> "$GITHUB_ENV"
-          if [ -n "$SONAR_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; fi
+          # No token means no scan, so no verdict (#895 review): that fails, except on a fork's PR,
+          # which gets no secrets.
+          if [ -n "$SONAR_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "$PR_REPO" ] && [ "$PR_REPO" != "$REPO" ]; then echo "a fork's PR: no SONAR_TOKEN, no scan"
+          else echo "SONAR_TOKEN is empty: no scan, so no SonarCloud verdict"; exit 1; fi
 
       - name: SonarCloud
         if: steps.sonar.outputs.enabled == 'true'
@@ -402,13 +410,18 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: The suite, SonarCloud, the fast-coverage ratchet and the checks passed
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
         run: |
           test "${{ needs.quick.result }}" = success
           echo "suite: ${{ needs.test-suite.result }}, sonar: ${{ needs.sonar.result }}, fast coverage: ${{ needs.fast-coverage.result }}, checks: ${{ needs.checks-linux.result }}"
           test "${{ needs.test-suite.result }}" = success
           test "${{ needs.fast-coverage.result }}" = success
-          # SonarCloud skips on a dispatch.
+          # SonarCloud skips on a main push and a branch's dispatch (#296); on a PR and a full run of
+          # main it must have run: skipped is no verdict (#895 review).
           case "${{ needs.sonar.result }}" in success|skipped) ;; *) exit 1 ;; esac
+          case "$EVENT/$REF" in pull_request/*|schedule/*|workflow_dispatch/refs/heads/main) test "${{ needs.sonar.result }}" = success ;; esac
           # The checks skip when the plan asks for no smoke and no cargo.
           if [ "${{ needs.quick.outputs.smokes }}" = true ] || [ "${{ needs.quick.outputs.cargo }}" = true ]; then
             test "${{ needs.checks-linux.result }}" = success
