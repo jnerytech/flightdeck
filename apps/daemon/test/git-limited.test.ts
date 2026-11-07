@@ -24,6 +24,19 @@ describe("git-limited: a capped git read with a time limit (#100)", () => {
     ]);
   });
 
+  test("a kill that fails at the limit still gives an answer that says it timed out", async () => {
+    const result = await gitLimitedFor(
+      tempDir("fd-git-limited-"),
+      1024,
+      ["-c", "alias.wait=!sleep 1", "wait"],
+      100,
+      async () => {
+        throw new Error("the process was already gone");
+      },
+    );
+    expect(result.timedOut).toBe(true);
+  });
+
   test("a git that ends in time gives its output and no time-out", async () => {
     const result = await gitLimitedFor(tempDir("fd-git-limited-"), 1024, ["--version"], 10_000);
     expect([
