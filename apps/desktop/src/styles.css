@@ -2860,6 +2860,8 @@ html:not(:has([data-slot="status-bar"])) {
   white-space: nowrap;
 }
 @utility leader-link {
+  /* axe target-size: 24 px, the row's height grows by a few pixels. */
+  min-height: 1.5rem;
   border-radius: var(--radius-sm);
   text-underline-offset: 2px;
   cursor: pointer;
