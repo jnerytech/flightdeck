@@ -739,6 +739,8 @@ html:not(:has([data-slot="status-bar"])) {
   padding: 0.5rem;
   border-radius: 0.5rem;
   --column-tone: var(--column-backlog);
+  /* A quiet border around the lane, and its status on top (#114, Orca's lane). */
+  border: 1px solid var(--border);
   border-top: 2px solid var(--column-tone);
   background: color-mix(in oklab, var(--column-tone) 8%, var(--background));
   &[data-column="in_progress"] {
@@ -763,20 +765,27 @@ html:not(:has([data-slot="status-bar"])) {
 
 /* The empty box of a column: dashed, quiet, and still a button that adds a card. */
 @utility column-empty {
-  padding: 1.25rem 0.75rem;
+  display: grid;
+  place-items: center;
+  min-height: 5rem;
+  padding: 0.75rem;
   border: 1px dashed var(--border);
   border-radius: 0.375rem;
   text-align: center;
   font-size: 0.75rem;
   color: var(--muted-foreground);
-  &:hover {
+  /* The Empty box adds a card; the same box for "no matches" is only a note. */
+  &:is(button):hover {
     background: color-mix(in oklch, var(--accent) 40%, transparent);
   }
 }
 
 /* A column's head: icon, name, count, and the + pushed to the end. */
 @utility column-head {
-  padding-inline: 0.25rem;
+  /* A line under the head, across the lane, between the status and its cards (#114). */
+  margin-inline: -0.5rem;
+  padding: 0 0.75rem 0.5rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   & > button {
     margin-inline-start: auto;
   }
