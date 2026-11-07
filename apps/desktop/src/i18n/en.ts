@@ -2515,6 +2515,9 @@ export const en: Dictionary = {
     checkFailed: "The check did not run: {reason}",
   },
   welcome: {
+    /** The first-run screen's title, and the Add host screen's once a host exists (#728). */
+    title: "Connect your first host",
+    titleMore: "Add a host",
     addHost: "Add a host with the flightdeckd address and token.",
     stepsLabel: "First steps",
     step1: "On the computer that runs Claude Code, install and start the daemon:",
@@ -3532,6 +3535,8 @@ export const en: Dictionary = {
     changedElsewhere: "Changed elsewhere while you edited: Use theirs to see it, then edit again.",
     useTheirs: "Use theirs",
     detailsTitle: "Details",
+    /** The card's details as a pane of their own once its conversation shows (#641). */
+    infoPane: "The card, above its conversation",
     runTitle: "Run",
     saveDescription: "Save description",
     title: "Title",
