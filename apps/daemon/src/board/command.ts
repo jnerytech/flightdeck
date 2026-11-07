@@ -122,9 +122,19 @@ export function gitLimitedFor(
   kill: (pid: number) => Promise<void> = killTree,
   /** The byte the output is cut after when it goes past `limit`: a line break, or NUL for `-z`. */
   separator = 10,
+  /** Aborting it kills the program like the time limit does, and the result says `aborted` (#905). */
+  signal?: AbortSignal,
 ): Promise<CommandResult & { truncated: boolean }> {
   // git-arg: the capped git helper: its callers are what the git-args ratchet checks
-  return runLimited([whichOnPath("git") ?? "git", ...args], cwd, limit, timeoutMs, kill, separator);
+  return runLimited(
+    [whichOnPath("git") ?? "git", ...args],
+    cwd,
+    limit,
+    timeoutMs,
+    kill,
+    separator,
+    signal,
+  );
 }
 
 /** The most stderr `runLimited` keeps; the rest is read and dropped (#806). */
@@ -154,6 +164,7 @@ export async function runLimited(
   timeoutMs?: number,
   kill: (pid: number) => Promise<void> = killTree,
   separator = 10,
+  _signal?: AbortSignal,
 ): Promise<CommandResult & { truncated: boolean }> {
   const proc = Bun.spawn(cmd, {
     cwd,

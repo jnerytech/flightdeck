@@ -53,6 +53,27 @@ describe("git-limited: a capped git read with a time limit (#100)", () => {
     ]).toEqual(["done\n", undefined, true, true]);
   });
 
+  test("a signal aborts a running git: it is killed with what it started and the result says aborted (#905)", async () => {
+    const controller = new AbortController();
+    const started = Date.now();
+    const running = gitLimitedFor(
+      tempDir("fd-git-limited-"),
+      1024,
+      ["-c", "alias.hang=!sleep 3", "hang"],
+      10_000,
+      undefined,
+      undefined,
+      controller.signal,
+    );
+    controller.abort();
+    const result = await running;
+    expect([result.aborted, result.timedOut, Date.now() - started < 2_500]).toEqual([
+      true,
+      undefined,
+      true,
+    ]);
+  });
+
   test("a git that ends in time gives its output and no time-out", async () => {
     const result = await gitLimitedFor(tempDir("fd-git-limited-"), 1024, ["--version"], 10_000);
     expect([

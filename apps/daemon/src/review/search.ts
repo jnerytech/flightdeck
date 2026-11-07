@@ -28,6 +28,8 @@ export interface SearchOptions {
   maxBytes?: number;
   /** Runs `rg`: the capped runner when absent (a test answers for it). */
   run?: typeof runLimited;
+  /** Aborting it stops the search and its programs: it answers `search_superseded` (#905). */
+  signal?: AbortSignal;
 }
 
 type Search = Omit<FileSearchPayload, "target">;
