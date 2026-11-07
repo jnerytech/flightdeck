@@ -124,6 +124,8 @@ export async function searchRepository(
   const matches: FileSearchMatch[] = [];
   let more = false;
   for (const match of found.matches) {
+    // A path that holds a secret is left out: masked, it would name no file to open (#829).
+    if (scanner.scan(match.path).length > 0) continue;
     const real = await inside(realRoot, match.path, stays);
     if (real === null) continue;
     // A credential's lines never leave the host; its name may, marked. A link counts by what it is.
