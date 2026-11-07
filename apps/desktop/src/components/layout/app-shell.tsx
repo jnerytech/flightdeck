@@ -123,6 +123,7 @@ export function AppShell(
             >
               <X />
             </Button>
+            {props.drawerTop && <div className="drawer-top">{props.drawerTop}</div>}
             <div className="min-h-0 flex-1 overflow-hidden">{props.sidebar(false)}</div>
           </SheetContent>
         </Sheet>
