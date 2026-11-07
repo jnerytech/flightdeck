@@ -1,5 +1,5 @@
 import type { Card } from "@flightdeck/protocol";
-import { AssistField } from "@/components/assistant/assist-field";
+import { type AssistControl, AssistField } from "@/components/assistant/assist-field";
 import type { WandBinding } from "@/components/assistant/use-wand";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field } from "@/components/layout/form";
@@ -27,8 +27,8 @@ function CardTextField(
     source: string;
     multiline?: boolean;
     autoFocus?: boolean;
-    /** The wand of the field: what it writes (issue #160). */
-    assist: WandBinding;
+    /** The wand of the field: what it writes (issue #160); a field with no wand has none. */
+    assist?: WandBinding;
     /** What the host keeps of a sent text (the title is trimmed). */
     stored(text: string): string;
     /** Whether the text is worth saving, besides being an edit. */
@@ -44,57 +44,63 @@ function CardTextField(
   const edit = (text: string) => (text === source ? drop() : setValue(text));
   return (
     <Field label={props.label}>
-      {(control) => (
-        <div className="field-with-action">
-          <AssistField
-            binding={props.assist}
-            value={value}
-            onChange={edit}
-            t={t}
-            className="min-w-0 flex-1"
-          >
-            {(assist) =>
-              props.multiline ? (
-                <Textarea
-                  {...control}
-                  {...assist}
-                  value={value}
-                  className="min-h-20 w-full"
-                  onChange={(e) => edit(e.target.value)}
-                />
-              ) : (
-                <Input
-                  {...control}
-                  {...assist}
-                  className="w-full"
-                  value={value}
-                  autoFocus={props.autoFocus === true}
-                  onChange={(e) => edit(e.target.value)}
-                />
-              )
-            }
-          </AssistField>
-          <ActionButton
-            variant="outline"
-            disabled={!props.savable(value) || stale || saving}
-            {...(stale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
-            onClick={async () => {
-              const sent = value;
-              const stored = props.stored(sent);
-              // A refused save keeps the edit (the banner says why), and so does a newer edit
-              // typed while this one was on its way (it now starts from what was saved).
-              if (await props.save(stored)) saved(sent, stored);
-            }}
-          >
-            {props.saveLabel}
-          </ActionButton>
-          {stale && (
-            <Button variant="ghost" size="sm" onClick={drop}>
-              {t("cardUi.useTheirs")}
-            </Button>
-          )}
-        </div>
-      )}
+      {(control) => {
+        const input = (assist?: AssistControl) =>
+          props.multiline ? (
+            <Textarea
+              {...control}
+              {...assist}
+              value={value}
+              className="min-h-20 w-full"
+              onChange={(e) => edit(e.target.value)}
+            />
+          ) : (
+            <Input
+              {...control}
+              {...assist}
+              className="w-full"
+              value={value}
+              autoFocus={props.autoFocus === true}
+              onChange={(e) => edit(e.target.value)}
+            />
+          );
+        return (
+          <div className="field-with-action">
+            {props.assist ? (
+              <AssistField
+                binding={props.assist}
+                value={value}
+                onChange={edit}
+                t={t}
+                className="min-w-0 flex-1"
+              >
+                {input}
+              </AssistField>
+            ) : (
+              <div className="min-w-0 flex-1">{input()}</div>
+            )}
+            <ActionButton
+              variant="outline"
+              disabled={!props.savable(value) || stale || saving}
+              {...(stale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
+              onClick={async () => {
+                const sent = value;
+                const stored = props.stored(sent);
+                // A refused save keeps the edit (the banner says why), and so does a newer edit
+                // typed while this one was on its way (it now starts from what was saved).
+                if (await props.save(stored)) saved(sent, stored);
+              }}
+            >
+              {props.saveLabel}
+            </ActionButton>
+            {stale && (
+              <Button variant="ghost" size="sm" onClick={drop}>
+                {t("cardUi.useTheirs")}
+              </Button>
+            )}
+          </div>
+        );
+      }}
     </Field>
   );
 }
@@ -114,8 +120,9 @@ export function CardFields(
 ) {
   const t = useT();
   const { store, hostId, card } = props;
-  const update = (patch: { title: string } | { description: string }) =>
-    store.hostCommand(hostId, "card.update", { cardId: card.id, ...patch });
+  const update = (
+    patch: { title: string } | { description: string } | { validationNote: string | null },
+  ) => store.hostCommand(hostId, "card.update", { cardId: card.id, ...patch });
   return (
     <Panel title={t("cardUi.detailsTitle")} label={t("cardUi.detailsTitle")} slot="card-details">
       <CardTextField
@@ -150,6 +157,15 @@ export function CardFields(
         stored={(text) => text}
         savable={(text) => text !== card.description}
         save={(description) => update({ description })}
+      />
+      <CardTextField
+        label={t("cardUi.validation")}
+        saveLabel={t("cardUi.saveValidation")}
+        source={card.validationNote ?? ""}
+        multiline
+        stored={(text) => text.trim()}
+        savable={(text) => text.trim() !== (card.validationNote ?? "")}
+        save={(text) => update({ validationNote: text === "" ? null : text })}
       />
       {props.withRoi && <CardHours store={store} hostId={hostId} card={card} />}
     </Panel>

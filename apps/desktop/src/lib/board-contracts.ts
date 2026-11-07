@@ -63,3 +63,13 @@ export function dragNeeds(
     .flatMap((card) => missingFor(column, card, overrides));
   return [...new Set(needs)];
 }
+
+/**
+ * What a card lacks for starting it (issue #78): the acceptance criteria, asked only where the
+ * project's In progress contract confirms. The default is a hint, so starting asks nothing; a
+ * project that confirms with no `criteria` check is never asked, and nothing else is asked.
+ */
+export function startNeeds(card: Card, overrides: ContractOverrides = {}): Need[] {
+  if (contractOf("in_progress", overrides)?.enforce !== "confirm") return [];
+  return missingFor("in_progress", card, overrides).filter((need) => need === "criteria");
+}

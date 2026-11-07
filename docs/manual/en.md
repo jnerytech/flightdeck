@@ -1049,6 +1049,13 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   **Move anyway** tells the host to go on, and the card keeps a notice ("Moved to In review anyway;
   it lacked a PR link"). The host never refuses what moves cards by itself: the manager, the board
   sync, the PR watch and PR events.
+- **A validation note and starting without criteria** (#78). A card has a **Validation note** in
+  its Details: a line or two on how you checked the work. A project can make a column ask for it
+  (a contract with the `validation` check), and the card then says "Needs: a validation note".
+  **Start** (the card's menu, the Run section of the card, or the Ctrl+K palette) asks first only
+  in a project whose In progress contract confirms acceptance criteria and only for a card with
+  none (no `- [ ] …` item in its description): **Start anyway** goes on. By default In progress
+  only hints, so Start asks nothing.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
 - **Discard…** shows one dialog with every selected card, and says what goes with each: a

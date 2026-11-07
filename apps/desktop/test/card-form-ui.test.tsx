@@ -46,6 +46,7 @@ async function openCard(lang: "en" | "pt-BR", options: { alone?: boolean } = {})
       cardId: card.id,
     });
   });
+  return { d, card, store };
 }
 
 /** The visible `<label>` tied to a control found by its name, or why there is none. */
@@ -204,3 +205,88 @@ for (const [lang, t] of [
     });
   });
 }
+
+// Issue #78, slice 3a: the validation note and the question before starting.
+describe("card-form (en): the validation note and starting a card with no criteria", () => {
+  test("the validation note is a labelled field that saves on the card, and clears with empty text", async () => {
+    const { d, card, store } = await openCard("en");
+    await settle(() => screen.queryByLabelText("Description") !== null);
+    expect(screen.queryByLabelText("Validation note") === null).toBe(false);
+    const field = screen.getByLabelText("Validation note") as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "  Ran it by hand on the staging data.  " } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save validation note" }));
+    });
+    await settle(() => d.board.getCard(card.id).validationNote !== null);
+    expect(d.board.getCard(card.id).validationNote).toBe("Ran it by hand on the staging data.");
+    // The field follows the card again once the host's update has reached the screen.
+    await settle(() =>
+      Object.values(store.getState().cards).some((c) => c.validationNote !== null),
+    );
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save validation note" }));
+    });
+    await settle(() => d.board.getCard(card.id).validationNote === null);
+  });
+
+  /** The app's view of the host with the card's project asking (or not) about criteria on Start. */
+  async function watchStarts(asking: boolean) {
+    const { d, card, store } = await openCard("en");
+    const sent: string[] = [];
+    // The host is not asked to run a card here: what the app sends is what is checked.
+    const forward = store.hostCommand.bind(store);
+    store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
+      if (type !== "card.start") return forward(hostId, type as never, payload as never);
+      sent.push((payload as { cardId: string }).cardId);
+      return {};
+    }) as never;
+    if (asking) {
+      const project = d.board.updateProject(card.projectId, {
+        contractByColumn: { in_progress: { enforce: "confirm", checks: ["criteria"] } },
+      });
+      store.rememberProjects(store.getState().hosts[0]?.id ?? "", [project]);
+    }
+    await settle(() => screen.queryByRole("button", { name: "Start" }) !== null);
+    const start = () =>
+      act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Start" }));
+      });
+    return { card, sent, start };
+  }
+
+  test("by default Start asks nothing: the card starts at once", async () => {
+    const { card, sent, start } = await watchStarts(false);
+    await start();
+    await settle(() => sent.length > 0 || screen.queryByRole("alertdialog") !== null);
+    expect(screen.queryByRole("alertdialog") === null).toBe(true);
+    expect(sent).toEqual([card.id]);
+  });
+
+  test("where In progress confirms criteria, Start asks first; Cancel starts nothing, Start anyway starts the card", async () => {
+    const { card, sent, start } = await watchStarts(true);
+    await start();
+    await settle(() => sent.length > 0 || screen.queryByRole("alertdialog") !== null);
+    expect(screen.queryByRole("alertdialog") === null).toBe(false);
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.textContent).toContain("acceptance criteria");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    });
+    expect(screen.queryByRole("alertdialog") === null).toBe(true);
+    expect(sent).toEqual([]);
+    await start();
+    await settle(() => screen.queryByRole("alertdialog") !== null);
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Start anyway" }),
+      );
+    });
+    await settle(() => sent.length === 1);
+    expect(sent).toEqual([card.id]);
+  });
+});

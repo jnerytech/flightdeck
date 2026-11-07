@@ -43,6 +43,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
+import { useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
@@ -287,6 +288,11 @@ export const BoardView = memo(function BoardView(props: {
   const state = useStoreSlice(store, BOARDVIEW_KEYS);
   const [project, setProject] = useState<Project | null>(null);
   const contracts: ContractOverrides = project?.contractByColumn ?? {};
+  /** Starting a card with no acceptance criteria asks first (issue #78). */
+  const startAsk = useStartAsk({
+    restoreFocus: (cardId) =>
+      document.querySelector<HTMLElement>(`[data-card="${cardId}"] [data-card-open]`)?.focus(),
+  });
   const [filter, setFilter] = useState("");
   /** Phase 31: only the cards that wait for a blocker. */
   const [onlyBlocked, setOnlyBlocked] = useState(false);
@@ -808,7 +814,7 @@ export const BoardView = memo(function BoardView(props: {
                           onOpen={() => props.onOpenCard(card.id)}
                           onEdit={() => props.onOpenCard(card.id, true)}
                           onDelete={() => setDeleting(card)}
-                          onStart={() => setStarting(card)}
+                          onStart={() => startAsk.ask(card, contracts, () => setStarting(card))}
                           locked={busy}
                           selected={selection.includes(card.id)}
                           onToggleSelect={() => select(card)}
@@ -944,6 +950,7 @@ export const BoardView = memo(function BoardView(props: {
           onOpenCard={props.onOpenCard}
         />
       )}
+      {startAsk.dialog}
       {starting && (
         <CardStartDialog
           store={store}

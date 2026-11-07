@@ -33,11 +33,13 @@ function recorder(
       return Promise.resolve(opts.answers?.[type] ?? null);
     },
     decideOldest: (decision: string, key: string) => void calls.push(`decide ${decision} ${key}`),
+    getState: () => ({ cards: {}, projects: {} }),
   } as unknown as Store;
   const ui = (lang = "pt-BR") => ({
     lang,
     go: (route: Route) => void calls.push(`go ${JSON.stringify(route)}`),
     showHelp: () => void calls.push("help"),
+    askStart: (_card: unknown, _contracts: unknown, go: () => void) => go(),
   });
   return { calls, store, ui };
 }

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { BoardColumn, Card } from "./index.ts";
 
 /** What a column can ask of a card before it gets there (issue #78). */
-export const ContractCheck = z.enum(["criteria", "pr", "checks"]);
+export const ContractCheck = z.enum(["criteria", "pr", "checks", "validation"]);
 export type ContractCheck = z.infer<typeof ContractCheck>;
 
 /**
@@ -16,7 +16,7 @@ export const ColumnContract = z.object({
 export type ColumnContract = z.infer<typeof ColumnContract>;
 
 /** What a card still lacks for a column, as a reader would say it. */
-export type ContractNeed = "criteria" | "pr" | "checksPending" | "checksFailing";
+export type ContractNeed = "criteria" | "pr" | "checksPending" | "checksFailing" | "validation";
 
 export type ContractOverrides = Partial<Record<BoardColumn, ColumnContract>>;
 
@@ -41,21 +41,29 @@ export function contractOf(
 /** A checklist item in the description is what the card calls its acceptance criteria. */
 const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
 
+type Lookable = Pick<Card, "description" | "prUrl" | "checksState" | "validationNote">;
+
+/** A PR's checks only count once there is a PR; a repository with none reports no state at all. */
+function checksNeeds(card: Lookable): ContractNeed[] {
+  if (!card.prUrl) return [];
+  if (card.checksState === "pending") return ["checksPending"];
+  return card.checksState === "failing" ? ["checksFailing"] : [];
+}
+
+/** What each check asks of a card. */
+const LACKING: Record<ContractCheck, (card: Lookable) => ContractNeed[]> = {
+  criteria: (card) => (CHECKLIST_ITEM.test(card.description) ? [] : ["criteria"]),
+  pr: (card) => (card.prUrl ? [] : ["pr"]),
+  checks: checksNeeds,
+  validation: (card) => (card.validationNote?.trim() ? [] : ["validation"]),
+};
+
 /** What `card` lacks for `column`; nothing when the column asks nothing or the card has it all. */
 export function missingFor(
   column: BoardColumn,
-  card: Pick<Card, "description" | "prUrl" | "checksState">,
+  card: Lookable,
   overrides: ContractOverrides = {},
 ): ContractNeed[] {
-  const needs: ContractNeed[] = [];
-  for (const check of contractOf(column, overrides)?.checks ?? []) {
-    if (check === "criteria" && !CHECKLIST_ITEM.test(card.description)) needs.push("criteria");
-    if (check === "pr" && !card.prUrl) needs.push("pr");
-    // Checks belong to a PR. A repository with none reports no state: that is not the card's fault.
-    if (check === "checks" && card.prUrl) {
-      if (card.checksState === "pending") needs.push("checksPending");
-      if (card.checksState === "failing") needs.push("checksFailing");
-    }
-  }
-  return needs;
+  const checks = contractOf(column, overrides)?.checks ?? [];
+  return checks.flatMap((check) => LACKING[check](card));
 }

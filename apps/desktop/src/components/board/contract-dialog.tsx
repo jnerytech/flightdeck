@@ -27,9 +27,15 @@ export function ContractDialog(
     qualifying: number;
     onCancel(): void;
     onMoveAll(): void;
-    onMoveQualifying(): void;
-    /** The dialog closed: the card it asked about gets the focus, the menu it came from is gone. */
-    onRestoreFocus(cardId: string): void;
+    /** Left out when there is nothing to split (a start asks about one card). */
+    onMoveQualifying?(): void;
+    /**
+     * The dialog closed: the card it asked about gets the focus, the menu it came from is gone.
+     * Left out, the focus goes back to the control that opened it.
+     */
+    onRestoreFocus?: ((cardId: string) => void) | undefined;
+    /** The question is about starting the card, not moving it (issue #78, slice 3a). */
+    start?: boolean;
   }>,
 ) {
   const { t, lacking } = props;
@@ -44,12 +50,17 @@ export function ContractDialog(
     <AlertDialog open onOpenChange={(open) => !open && !acted.current && props.onCancel()}>
       <AlertDialogContent
         onCloseAutoFocus={(event) => {
+          if (!props.onRestoreFocus) return;
           event.preventDefault();
           if (first) props.onRestoreFocus(first.card.id);
         }}
       >
         <AlertDialogHeader>
-          <AlertDialogTitle>{t("board.contract.title", { column: props.column })}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {props.start && first
+              ? t("board.contract.startTitle", { title: first.card.title })
+              : t("board.contract.title", { column: props.column })}
+          </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="flex flex-col gap-2 text-left">
               {lacking.length === 1 && first ? (
@@ -84,13 +95,13 @@ export function ContractDialog(
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-          {props.qualifying > 0 && (
+          {props.onMoveQualifying && props.qualifying > 0 && (
             <AlertDialogAction variant="outline" onClick={act(props.onMoveQualifying)}>
               {t("board.contract.moveQualifying")}
             </AlertDialogAction>
           )}
           <AlertDialogAction onClick={act(props.onMoveAll)}>
-            {t("board.contract.moveAnyway")}
+            {t(props.start ? "board.contract.startAnyway" : "board.contract.moveAnyway")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

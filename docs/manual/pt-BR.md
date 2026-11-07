@@ -1052,6 +1052,13 @@ aparece mascarado e como **Oculto**, e não abre.
   card. **Mover mesmo assim** manda o host seguir, e o card guarda um aviso ("Movido para Em revisão
   mesmo assim; faltava um link de PR"). O host nunca recusa o que move cards sozinho: o gerente, a
   sincronização do quadro, a vigia do PR e os eventos de PR.
+- **Uma nota de validação e iniciar sem critérios** (#78). Um card tem uma **Nota de validação** nos
+  Detalhes: uma ou duas linhas sobre como você conferiu o trabalho. Um projeto pode fazer uma coluna
+  pedir isso (um contrato com a verificação `validation`), e o card passa a dizer "Precisa de: uma
+  nota de validação". **Iniciar** (o menu do card, a seção Executar do card ou a paleta Ctrl+K)
+  pergunta antes só num projeto cujo contrato de Em andamento confirma critérios de aceite, e só
+  para um card sem eles (nenhum item `- [ ] …` na descrição): **Iniciar mesmo assim** segue. Por
+  padrão Em andamento só avisa, então Iniciar não pergunta nada.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
