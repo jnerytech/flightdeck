@@ -117,6 +117,27 @@ for (const [lang, t] of [
       }).toEqual({ text: t.deps.pickFirst, helpLine: true, hanging: false });
     });
 
+    // #732: Stop and Open PR are off on a card that has not started, and their reasons hung under
+    // each button, printing over each other and over Discard. They are the Run row's help lines now.
+    test("on a card that has not started, Stop and Open PR say why on lines of their own under the row", async () => {
+      await openCard(lang);
+      await settle(() => screen.queryByRole("button", { name: t.cardUi.stop }) !== null);
+      const run = screen.queryByRole("region", { name: t.cardUi.runTitle }) as HTMLElement;
+      const reasonOf = (name: string) => {
+        const button = within(run).queryByRole("button", { name });
+        const line = document.getElementById(button?.getAttribute("aria-describedby") ?? "");
+        return {
+          text: line?.textContent ?? null,
+          helpLine: line?.classList.contains("field-help") ?? false,
+          hanging: line?.closest(".action-with-reason") != null,
+        };
+      };
+      expect({ stop: reasonOf(t.cardUi.stop), pr: reasonOf(t.cardUi.openPr) }).toEqual({
+        stop: { text: t.cardUi.notRunning, helpLine: true, hanging: false },
+        pr: { text: t.cardUi.needWorktree, helpLine: true, hanging: false },
+      });
+    });
+
     test("the fields sit in a Details section and the start controls in a Run section", async () => {
       await openCard(lang);
       await settle(() => screen.queryByLabelText(t.cardUi.description) !== null);
