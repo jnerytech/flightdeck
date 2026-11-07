@@ -7,6 +7,7 @@ import {
   teleportSession,
   teleportSummary,
 } from "../src/lib/teleport.ts";
+import { settleMaybe } from "./wait.ts";
 
 /**
  * Issue #100, slice 3a: the app relays a session's package from the source host to the target.
@@ -292,5 +293,71 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       cancelFails: true,
     });
     expect(await failure(run(h))).toBe("teleport_exists");
+  });
+
+  test("a cancel while a host does not answer a chunk ends the move, and both hosts are told", async () => {
+    const h = hosts();
+    let waiting = false;
+    // A read that never answers: a move that waits for it cannot be cancelled.
+    const hung = (async (type: string, payload: never) => {
+      if (type === "teleport.read") {
+        waiting = true;
+        return new Promise(() => {});
+      }
+      return h.source(type as "teleport.prepare", payload);
+    }) as TeleportRequest;
+    const stop = new AbortController();
+    let outcome: unknown = "still waiting";
+    void run(h, { source: hung, signal: stop.signal }).then((done) => {
+      outcome = done;
+    });
+    await settleMaybe(() => waiting);
+    stop.abort();
+    await settleMaybe(() => outcome !== "still waiting", 2000);
+    expect([outcome, h.calls.slice(-2)]).toEqual([
+      { kind: "cancelled" },
+      ["target:teleport.abort", "source:teleport.cancel"],
+    ]);
+  });
+
+  test("a cancel after the last chunk, before the import, never reaches the target's import", async () => {
+    const h = hosts();
+    const stop = new AbortController();
+    const outcome = await run(h, {
+      onProgress: (sent, total) => {
+        if (sent === total) stop.abort();
+      },
+      signal: stop.signal,
+    });
+    expect([outcome, h.calls.includes("target:teleport.finish"), h.calls.slice(-2)]).toEqual([
+      { kind: "cancelled" },
+      false,
+      ["target:teleport.abort", "source:teleport.cancel"],
+    ]);
+  });
+
+  test("a manifest that is not one still frees the source's package when its id is one", async () => {
+    const cancelled = async (manifest: unknown) => {
+      const ids: unknown[] = [];
+      const source = (async (type: string, payload: { id?: unknown }) => {
+        if (type === "teleport.prepare") return manifest;
+        if (type === "teleport.cancel") ids.push(payload.id);
+        return undefined;
+      }) as TeleportRequest;
+      const why = await failure(run(hosts(), { source }));
+      return [why, ids];
+    };
+    const broken = { ...MANIFEST, parts: [{ name: "transcript", size: -1, sha256: "a" }] };
+    expect([
+      await cancelled(broken),
+      await cancelled({ ...broken, id: "" }),
+      await cancelled({ ...broken, id: { not: "an id" } }),
+      await cancelled(null),
+    ]).toEqual([
+      ["teleport_corrupt", ["pkg-1"]],
+      ["teleport_corrupt", []],
+      ["teleport_corrupt", []],
+      ["teleport_corrupt", []],
+    ]);
   });
 });
