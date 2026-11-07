@@ -253,21 +253,19 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     const body = "MIIEowIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gun";
     writeFileSync(
       join(repo, "notes", "keys.js"),
-      [
-        `  "${body}",`,
-        `# ${body}`,
-        `// ${body}`,
-        ` * ${body}`,
-        `MIIEow\rIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOE`,
-        "MIIEpQ0tRgeLe==",
-      ].join("\n") + "\n",
+      [`  "${body}",`, `# ${body}`, `// ${body}`, ` * ${body}`].join("\n") + "\n",
+    );
+    // A second file: a search keeps 5 lines a file.
+    writeFileSync(
+      join(repo, "notes", "keys-end.js"),
+      ["MIIEow\rIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOE", "MIIEpQ0tRgeLe=="].join("\n") + "\n",
     );
     const found = await searchRepository(
       repo,
       { mode: "content", query: "MIIE" },
       { rg: () => null },
     );
-    const lines = found.matches.filter((m) => m.path === "notes/keys.js").map((m) => m.text);
+    const lines = found.matches.filter((m) => m.path.startsWith("notes/keys")).map((m) => m.text);
     expect(lines).toEqual(Array(6).fill("[redacted]"));
   });
 
