@@ -1052,6 +1052,13 @@ aparece mascarado e como **Oculto**, e não abre.
   card. **Mover mesmo assim** manda o host seguir, e o card guarda um aviso ("Movido para Em revisão
   mesmo assim; faltava um link de PR"). O host nunca recusa o que move cards sozinho: o gerente, a
   sincronização do quadro, a vigia do PR e os eventos de PR.
+- **Uma nota de validação e iniciar sem critérios** (#78). Um card tem uma **Nota de validação** nos
+  Detalhes: uma ou duas linhas sobre como você conferiu o trabalho. Um projeto pode fazer uma coluna
+  pedir isso (um contrato com a verificação `validation`), e o card passa a dizer "Precisa de: uma
+  nota de validação". **Iniciar** (o menu do card, a seção Executar do card ou a paleta Ctrl+K)
+  pergunta antes só num projeto cujo contrato de Em andamento confirma critérios de aceite, e só
+  para um card sem eles (nenhum item `- [ ] …` na descrição): **Iniciar mesmo assim** segue. Por
+  padrão Em andamento só avisa, então Iniciar não pergunta nada.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
@@ -2644,7 +2651,10 @@ do app, dos cards e dos workflows, subagentes incluídos.
   - No primeiro boot desta versão, o daemon lê em segundo plano os transcripts que já existem e
     continua respondendo enquanto isso.
 - **Período:** hoje, 7 dias, 30 dias, mês atual ou um intervalo, sempre no fuso do host.
-- **Filtros:** host, projeto, modelo e origem (terminal, app, card, workflow, subagent).
+- **Dados de:** todos os hosts, um host ou um projeto. O grupo **Projetos** do menu lista os
+  projetos do período, com o nome que têm no Início; a escolha é a mesma que o Início e as Sessões
+  guardam (#126). Um alerta de orçamento ou um cartão do Início abre um projeto só naquela visita.
+- **Filtros:** modelo e origem (terminal, app, card, workflow, subagent).
 - **O que aparece:**
   - o custo estimado, os tokens e a economia do cache (quanto o cache read custou a menos do que
     o mesmo volume como input normal);

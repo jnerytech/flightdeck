@@ -7,6 +7,7 @@ import { PersonaPicker, useSuggestedPersona } from "@/components/personas/person
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
+import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
@@ -54,6 +55,9 @@ export function CardRunForm(
   const [picked, setPersona] = useState<string | null>(null);
   const suggested = useSuggestedPersona(store, hostId, "dev");
   const persona = picked ?? suggested;
+  /** The project's contracts decide whether a card with no criteria is asked about (issue #78). */
+  const contracts = projectContracts(store, hostId, card.projectId);
+  const startAsk = useStartAsk();
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [finishing, setFinishing] = useState(false);
   /** Phase 22: the PR description offered for the person to edit, before the PR opens. */
@@ -140,10 +144,12 @@ export function CardRunForm(
           <ActionButton
             onClick={() => {
               const ref = store.personaRef(persona);
-              return store.hostCommand(hostId, "card.start", {
-                cardId,
-                ...(chosen ? { workflow: chosen.name, inputs } : {}),
-                ...(ref ? { persona: ref } : {}),
+              startAsk.ask(card, contracts, () => {
+                void store.hostCommand(hostId, "card.start", {
+                  cardId,
+                  ...(chosen ? { workflow: chosen.name, inputs } : {}),
+                  ...(ref ? { persona: ref } : {}),
+                });
               });
             }}
           >
@@ -152,13 +158,18 @@ export function CardRunForm(
           {features.bg && !card.sessionId && (
             <ActionButton
               variant="outline"
-              onClick={async () => {
-                const started = await store.startBackground(hostId, {
-                  cardId,
-                  ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
-                });
-                if (started) store.router.push({ name: "hub" });
-              }}
+              onClick={() =>
+                startAsk.ask(card, contracts, () => {
+                  void store
+                    .startBackground(hostId, {
+                      cardId,
+                      ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
+                    })
+                    .then((started) => {
+                      if (started) store.router.push({ name: "hub" });
+                    });
+                })
+              }
             >
               {t("bg.start")}
             </ActionButton>
@@ -188,6 +199,7 @@ export function CardRunForm(
           </Button>
         </FieldRow>
       </Panel>
+      {startAsk.dialog}
       {draft && (
         <PrDescriptionDialog
           text={draft.text}

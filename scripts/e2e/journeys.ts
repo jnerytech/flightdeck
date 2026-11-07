@@ -1851,15 +1851,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open_.first().waitFor({ timeout: WAIT });
     const label = (await open_.first().textContent())?.trim() ?? "";
     await open_.first().click();
-    const project = c.page.getByLabel(c.t("costsUi.project"), { exact: true });
-    await project.waitFor({ timeout: WAIT });
-    await waitFor(
-      async () =>
-        // One project, one label (#881): both screens name it the same way.
-        ((await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ??
-          "") === label,
-      `o filtro de Custos no projeto ${label}`,
-    );
+    // One project, one label (#881): Costs' Data from menu names it as Home does (#126 slice 4).
+    await c.page
+      .getByRole("button", { name: c.t("scope.menu", { scope: label }), exact: true })
+      .waitFor({ timeout: WAIT });
   },
 
   // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one

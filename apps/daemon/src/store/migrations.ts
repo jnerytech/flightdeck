@@ -915,4 +915,8 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE projects ADD COLUMN contract_by_column TEXT;
   `,
+  // Issue #78: the note a person writes about how a card's work was validated.
+  `
+  ALTER TABLE cards ADD COLUMN validation_note TEXT;
+  `,
 ];

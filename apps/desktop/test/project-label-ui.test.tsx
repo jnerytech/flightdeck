@@ -5,7 +5,7 @@ import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
-const { cleanup, render, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { emptySummary } = await import("../src/lib/client-costs.ts");
@@ -100,9 +100,24 @@ describe("project-label-ui: Home and Costs name a project the same way", () => {
         <CostsPage store={store} onOpenSession={() => {}} host="ha" period="7d" />
       </TContext.Provider>,
     );
-    const field = () => screen.queryByLabelText("Project") as HTMLSelectElement | null;
-    await settle(() => (field()?.options.length ?? 0) > 1);
-    const options = [...(field()?.options ?? [])].map((option) => option.text);
+    // The projects are in the Data from menu's Projects group (#126 slice 4).
+    const trigger = () =>
+      screen
+        .queryAllByRole("button")
+        .find((b) => (b.getAttribute("aria-label") ?? "").startsWith("Data from "));
+    await settle(() => trigger() !== undefined);
+    await act(async () => {
+      fireEvent.pointerDown(trigger() as HTMLElement, {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
+    const group = () => screen.queryByRole("group", { name: "Projects" });
+    await settle(() => group() !== null);
+    const options = within(group() as HTMLElement)
+      .queryAllByRole("menuitemradio")
+      .map((item) => item.textContent ?? "");
     expect(options).toContain("docs-site · alfa");
     expect(options).not.toContain("docs-site");
   });

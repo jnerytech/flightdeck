@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { askAbout, contractOf, dragNeeds, missingFor } from "../src/lib/board-contracts.ts";
+import {
+  askAbout,
+  contractOf,
+  dragNeeds,
+  missingFor,
+  startNeeds,
+} from "../src/lib/board-contracts.ts";
 
 const card = (over: Partial<Card> = {}) =>
   ({
@@ -75,5 +81,37 @@ describe("board-contracts: a project's own contracts", () => {
     expect(dragNeeds("done", [card()], mine)).toEqual(["pr"]);
     const off = { review: { enforce: "confirm" as const, checks: [] } };
     expect(askAbout("review", [card()], off)).toEqual([]);
+  });
+});
+
+describe("board-contracts: what a card lacks for starting (issue #78, slice 3a)", () => {
+  const confirm = (...checks: Array<"criteria" | "pr">) => ({
+    in_progress: { enforce: "confirm" as const, checks },
+  });
+
+  test("by default In progress only hints, so starting asks nothing", () => {
+    expect(startNeeds(card({ description: "Just words." }))).toEqual([]);
+    expect(startNeeds(card({ description: "Just words." }), {})).toEqual([]);
+  });
+
+  test("a project whose In progress confirms criteria asks for them, and a checklist item is enough", () => {
+    expect(startNeeds(card({ description: "Just words." }), confirm("criteria"))).toEqual([
+      "criteria",
+    ]);
+    expect(startNeeds(card({ description: "Goal\n- [ ] it works" }), confirm("criteria"))).toEqual(
+      [],
+    );
+  });
+
+  test("a confirming In progress with no criteria check asks nothing, and only criteria are asked when starting", () => {
+    expect(startNeeds(card(), confirm())).toEqual([]);
+    expect(startNeeds(card(), confirm("criteria", "pr"))).toEqual(["criteria"]);
+    expect(startNeeds(card({ description: "- [ ] a" }), confirm("criteria", "pr"))).toEqual([]);
+  });
+
+  test("a validation note is a need like the others", () => {
+    const asks = { review: { enforce: "confirm" as const, checks: ["validation" as const] } };
+    expect(missingFor("review", card(), asks)).toEqual(["validation"]);
+    expect(missingFor("review", card({ validationNote: "ran it" }), asks)).toEqual([]);
   });
 });

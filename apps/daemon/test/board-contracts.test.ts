@@ -151,6 +151,42 @@ describe("board-contracts: contracts per project", () => {
   });
 });
 
+describe("board-contracts: the validation note (issue #78, slice 3a)", () => {
+  test("a card keeps a validation note: set, trimmed, cleared, and left alone by other edits", async () => {
+    const { board, card } = await withCard();
+    expect(card.validationNote).toBeNull();
+    expect(board.updateCard(card.id, { validationNote: "  ran it by hand  " }).validationNote).toBe(
+      "ran it by hand",
+    );
+    expect(board.updateCard(card.id, { title: "renamed" }).validationNote).toBe("ran it by hand");
+    expect(board.getCard(card.id).validationNote).toBe("ran it by hand");
+    expect(board.updateCard(card.id, { validationNote: "   " }).validationNote).toBeNull();
+    board.updateCard(card.id, { validationNote: "again" });
+    expect(board.updateCard(card.id, { validationNote: null }).validationNote).toBeNull();
+  });
+
+  test("a column that asks for it refuses a card with no note, and lets one with a note in", async () => {
+    const { board, project, card } = await withCard();
+    board.updateProject(project.id, {
+      contractByColumn: { done: { enforce: "confirm", checks: ["validation"] } },
+    });
+    const error = refusal(() => board.moveByHand(card.id, "done", undefined, false));
+    expect(error.reason).toBe("card_contract_unmet");
+    expect(error.params).toEqual({ column: "done", needs: "validation" });
+    board.updateCard(card.id, { validationNote: "checked" });
+    expect(board.moveByHand(card.id, "done", undefined, false).column).toBe("done");
+  });
+
+  test("forcing past a missing note records it on the card", async () => {
+    const { board, project, card } = await withCard();
+    board.updateProject(project.id, {
+      contractByColumn: { done: { enforce: "confirm", checks: ["validation"] } },
+    });
+    const moved = board.moveByHand(card.id, "done", undefined, true);
+    expect(moved.noticeParams).toEqual({ column: "done", needs: "validation" });
+  });
+});
+
 /** Every column asks everything: the strictest project there is. */
 function strictest() {
   return Object.fromEntries(

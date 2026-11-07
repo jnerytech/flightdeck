@@ -841,6 +841,8 @@ export const Card = z.object({
   externalGone: z.boolean().default(false),
   /** Phase 36: the hours this card is worth, an estimate the person typed. */
   estimateHours: z.number().nullable().default(null),
+  /** Issue #78: what the person did to validate the work, a note a column can ask for. */
+  validationNote: z.string().nullable().default(null),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -3140,6 +3142,8 @@ export const Command = z.discriminatedUnion("type", [
       description: z.string().optional(),
       /** Phase 36: `null` removes the estimate. */
       estimateHours: z.number().min(0).max(1000).nullable().optional(),
+      /** Issue #78: the validation note; empty text or `null` clears it. */
+      validationNote: z.string().max(4000).nullable().optional(),
       ...CardDeps,
     }),
   ),
