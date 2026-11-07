@@ -2501,6 +2501,9 @@ export const ptBR = {
     checkFailed: "A verificação não rodou: {reason}",
   },
   welcome: {
+    /** The first-run screen's title, and the Add host screen's once a host exists (#728). */
+    title: "Conecte seu primeiro host",
+    titleMore: "Adicionar um host",
     addHost: "Adicione um host com o endereço e o token do flightdeckd.",
     stepsLabel: "Primeiros passos",
     step1: "No computador que roda o Claude Code, instale e inicie o daemon:",
