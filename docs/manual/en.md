@@ -868,6 +868,7 @@ An idle session can continue on another host: its conversation, its commits and 
 
 1. In the session's menu (the "…" on its row), pick **Move to another host…**.
 2. Pick the host and the repository there: press **Browse…** to choose among the folders that host allows, or type the path. It must be the same project, so that host must already have a clone of it.
+   If either host is reached over plain `ws://` and is not this machine, a warning names it: the conversation and the code then travel through the app unencrypted, so move only over a network you trust.
 3. Read what moves: the branch, the commits not on origin yet, the files changed, the size, and how many lines look like secrets. The secrets themselves are never shown, and they move as they are.
 4. Press **Move**, then **Open it there**. Once every byte is sent you can close the window: when the move ends, a toast says so, with **Open it there**, or says why it was refused.
 

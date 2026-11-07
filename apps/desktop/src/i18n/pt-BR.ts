@@ -2765,6 +2765,11 @@ export const ptBR = {
     done: "A sessão está agora em {host}. A daqui fica como estava.",
     open: "Abrir lá",
     close: "Fechar",
+    plainWs: {
+      one: "{hosts} se conecta sem TLS (ws:// puro). A conversa e o código da sessão passam por este app sem criptografia: mova só por uma rede em que você confia.",
+      other:
+        "{hosts} se conectam sem TLS (ws:// puro). A conversa e o código da sessão passam por este app sem criptografia: mova só por uma rede em que você confia.",
+    },
     movedToast: "A sessão foi movida para {host}.",
     preview: "Prévia: mover uma sessão para outro host",
   },
