@@ -1963,7 +1963,7 @@ export const ptBR = {
     teleport_no_project:
       "Este repositório não é o projeto da sessão: ele não tem o commit de onde a sessão parte. Escolha o repositório do mesmo projeto.",
     teleport_exists:
-      "Este host já tem essa sessão do Claude, por isso ela não foi movida por cima. Abra a que está aqui.",
+      "Este host já tem essa sessão do Claude, com turnos que a movida não tem ou ainda em uso aqui, por isso ela não foi movida por cima. Abra a que está aqui, ou feche-a aqui e mova de novo.",
     runtime_unavailable: "O OpenCode não está disponível neste host.",
     runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
     opencode_unsafe_global:

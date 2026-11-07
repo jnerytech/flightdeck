@@ -5,11 +5,24 @@
  * verify against it and carry the head the manifest names. The code lands in a new worktree of that
  * repository, the transcript next to the other transcripts of that worktree (never over one this
  * host has), and the session resumes there. A failure leaves no worktree, branch or transcript.
+ * A session this host already has comes back only with more turns than its copy here, which is set
+ * aside, never deleted (#870, docs/decisions/2026-11-07-teleport-return.md).
  */
 import { constants } from "node:fs";
-import { access, copyFile, lstat, mkdir, readdir, realpath, rm } from "node:fs/promises";
+import {
+  access,
+  copyFile,
+  lstat,
+  mkdir,
+  open,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  stat,
+} from "node:fs/promises";
 import { join } from "node:path";
-import type { PermissionMode } from "@flightdeck/protocol";
+import type { PermissionMode, SessionStatus } from "@flightdeck/protocol";
 import { refArg } from "../board/ref-arg.ts";
 import { addWorktree } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -34,6 +47,14 @@ export interface TeleportImportDeps {
   historyRoot: string;
   /** The transcript of that Claude session this host already has, or null. */
   transcriptOf(claudeSessionId: string): string | null | Promise<string | null>;
+  /** This host's managed records of that Claude session: a resume can leave more than one (#870). */
+  sessionsOf(claudeSessionId: string): { id: string; status: SessionStatus }[];
+  /** Ends this host's old record of a session that came back with more turns (#870). */
+  close(sessionId: string): Promise<void>;
+  /** Shows the session again: its copy here may have been archived when it left (#870). */
+  unarchive(claudeSessionId: string): void;
+  /** The time a set-aside transcript is named after. */
+  now(): Date;
   /** Puts the transcript in place (`fs.copyFile`); a test makes it fail halfway. */
   copyFile?: typeof copyFile;
   resume(opts: {
@@ -98,7 +119,7 @@ async function check(
   deps: TeleportImportDeps,
   received: TeleportReceived,
   repo: string,
-): Promise<{ top: string; base: string }> {
+): Promise<Target> {
   const { manifest } = received;
   const code = manifest.git;
   // The ref is the one the source makes for this package: never a ref the manifest picks.
@@ -111,7 +132,11 @@ async function check(
     throw refuse("bad_request", "request_invalid");
   }
   const cwd = await resolveAllowedCwd(repo, deps.allowedRoots);
-  if (await deps.transcriptOf(manifest.claudeSessionId))
+  // #870: a copy here is replaced only when the session came back with more turns (every byte of
+  // this host's copy is in the incoming one) and nothing here is working on it.
+  const here = await deps.transcriptOf(manifest.claudeSessionId);
+  const mine = here ? deps.sessionsOf(manifest.claudeSessionId) : [];
+  if (here && (!mine.every(idle) || !(await isPrefix(here, received.transcript))))
     throw refuse("invalid_state", "teleport_exists");
   const found = await git(cwd, ["rev-parse", "--show-toplevel"]);
   if (!found) throw refuse("invalid_state", "teleport_no_git");
@@ -131,13 +156,56 @@ async function check(
   if (!known || verified === null) {
     throw refuse("invalid_state", "teleport_no_project");
   }
-  return { top, base };
+  return { top, base, here, mine: mine.map((session) => session.id) };
+}
+
+/** The repository that takes the package, and this host's copy of the session it replaces. */
+interface Target {
+  top: string;
+  base: string;
+  here: string | null;
+  mine: string[];
+}
+
+/** A record that is not working on its transcript: idle or ended. */
+const idle = (session: { status: SessionStatus }) =>
+  session.status === "idle" || session.status === "ended";
+
+const CHUNK = 64 * 1024;
+
+/** Whether every byte of `local` is the first bytes of `incoming`; false when either is unreadable. */
+export async function isPrefix(local: string, incoming: string): Promise<boolean> {
+  // A link is never this host's copy: it would move the link and compare what it points to.
+  const sizes = await Promise.all([lstat(local), stat(incoming)]).catch(() => null);
+  if (!sizes) return false;
+  const [a, b] = sizes;
+  if (!a.isFile() || !b.isFile() || a.size > b.size) return false;
+  const x = await open(local, "r");
+  try {
+    const y = await open(incoming, "r");
+    try {
+      const left = Buffer.alloc(CHUNK);
+      const right = Buffer.alloc(CHUNK);
+      for (let at = 0; at < a.size; at += CHUNK) {
+        const n = Math.min(CHUNK, a.size - at);
+        const [r1, r2] = await Promise.all([x.read(left, 0, n, at), y.read(right, 0, n, at)]);
+        // A file that shrank while it was read is not the same copy.
+        if (r1.bytesRead !== n || r2.bytesRead !== n) return false;
+        if (!left.subarray(0, n).equals(right.subarray(0, n))) return false;
+      }
+      return true;
+    } finally {
+      await y.close();
+    }
+  } finally {
+    await x.close();
+  }
 }
 
 async function land(
   deps: TeleportImportDeps,
   claim: TeleportClaim,
-  { top, base }: { top: string; base: string },
+  { top, base, here, mine }: Target,
 ): Promise<TeleportImported> {
   const { manifest } = claim;
   // Checked before the claim: the claim reads the same package.
@@ -146,7 +214,8 @@ async function land(
   try {
     const path = await realpath(worktree.path);
     await restore(path, claim.code as string, code.ref, code.head, manifest.id);
-    return { ...(await start(deps, claim, path)), worktree: path, branch: worktree.branch };
+    const started = await replacing(deps, claim, here, mine, () => start(deps, claim, path));
+    return { ...started, worktree: path, branch: worktree.branch };
   } catch (error) {
     await git(top, ["worktree", "remove", "--force", worktree.path]);
     await git(top, ["branch", "-D", refArg(worktree.branch)]);
@@ -187,6 +256,51 @@ async function restore(
     // git-arg: into is made here, from a package id checked against ID
     await git(path, ["update-ref", "-d", into]);
   }
+}
+
+/**
+ * #870: this host's copy of a session that came back is set aside while the session starts: renamed
+ * to `<id>.jsonl.replaced-<utc>` in its own folder, never deleted. A copy that grew since the checks
+ * is put back and the import refused; a start that fails puts it back too. Putting it back never
+ * writes over a file: if one appeared meanwhile, the copy stays set aside.
+ */
+async function replacing<T>(
+  deps: TeleportImportDeps,
+  claim: TeleportClaim,
+  here: string | null,
+  mine: string[],
+  run: () => Promise<T>,
+): Promise<T> {
+  if (!here) return run();
+  // Every record of it here ends first: none writes into the copy while it is set aside. One that
+  // will not end stops the return before the copy is touched.
+  for (const id of mine) {
+    await deps.close(id).catch(() => {
+      throw refuse("invalid_state", "teleport_exists");
+    });
+  }
+  const aside = `${here}.replaced-${deps.now().toISOString().replace(/[:.]/g, "-")}`;
+  await rename(here, aside);
+  let started: T;
+  try {
+    if (!(await isPrefix(aside, claim.transcript)))
+      throw refuse("invalid_state", "teleport_exists");
+    started = await run();
+  } catch (error) {
+    await copyFile(aside, here, constants.COPYFILE_EXCL).then(
+      () => rm(aside, { force: true }),
+      () => {},
+    );
+    throw error;
+  }
+  // The session shows again (R2 archives it where it leaves from); a failure here never undoes a
+  // session that started.
+  try {
+    deps.unarchive(claim.manifest.claudeSessionId);
+  } catch {
+    // It stays archived: the person finds it among the archived sessions.
+  }
+  return started;
 }
 
 /** The transcript next to the worktree's, then the session; the transcript goes if it fails. */
@@ -236,7 +350,12 @@ export interface TeleportImportWiring {
   allowedRoots: readonly string[];
   historyRoots: readonly string[];
   indexer: { transcriptFile(claudeSessionId: string): string | null } | undefined;
-  manager: { createResumed: TeleportImportDeps["resume"] };
+  manager: {
+    createResumed: TeleportImportDeps["resume"];
+    list(): { id: string; claudeSessionId: string | null; status: SessionStatus }[];
+    close(sessionId: string): Promise<void>;
+  };
+  meta: { set(claudeSessionId: string, patch: { archived: boolean }): unknown } | undefined;
 }
 
 /** The transcript of a session in any project folder of the history roots, or null. */
@@ -278,5 +397,15 @@ export function teleportImportDeps(wiring: TeleportImportWiring): TeleportImport
       wiring.indexer?.transcriptFile(claudeSessionId) ??
       (await onDisk(wiring.historyRoots, claudeSessionId)),
     resume: (opts) => wiring.manager.createResumed(opts),
+    sessionsOf: (claudeSessionId) =>
+      wiring.manager
+        .list()
+        .filter((s) => s.claudeSessionId === claudeSessionId)
+        .map((s) => ({ id: s.id, status: s.status })),
+    close: (sessionId) => wiring.manager.close(sessionId),
+    unarchive: (claudeSessionId) => {
+      wiring.meta?.set(claudeSessionId, { archived: false });
+    },
+    now: () => new Date(),
   };
 }
