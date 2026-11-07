@@ -4108,6 +4108,7 @@ export const en: Dictionary = {
       found: "Found",
       missing: "Missing",
       rules: "Allow rules: {n}; deny rules: {m}",
+      rulesAllow: "Allow rules: {n}",
       unreadable:
         "Some of the project's files could not be read: a part shown as missing may be there.",
       parts: {
@@ -4136,6 +4137,7 @@ export const en: Dictionary = {
       mcp: "MCP servers (programs that start with the session)",
       env: "Environment variables (names only)",
       allow: "Tools allowed without asking",
+      deny: "Tools denied",
       agents: "Agents",
       skills: "Skills",
       commands: "Commands",

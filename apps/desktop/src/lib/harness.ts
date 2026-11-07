@@ -31,14 +31,21 @@ const KINDS: ReadonlyArray<[HookKind, string, RegExp]> = [
   ["secrets", "PreToolUse", /(\.env\b|credentials|secrets?\b|\.pem\b|id_rsa)/],
 ];
 
+/** The allow and deny counts, or the allow count alone from a host that sends no deny rules. */
+function ruleCounts(allow: number, deny: number | null): string[] {
+  if (allow + (deny ?? 0) === 0) return [];
+  if (deny === null) return [String(allow)];
+  return [String(allow), String(deny)];
+}
+
 /** The six parts, in the order the card lists them. */
 export function harnessParts(load: ProjectLoad): HarnessItem[] {
   const kinds = KINDS.filter(([, event, pattern]) =>
     load.hooks.some((hook) => hook.event === event && hook.commands.some((c) => pattern.test(c))),
   ).map(([kind]) => kind);
   const allow = load.allowRules.length + load.omitted.allowRules;
-  // A host older than deny rules (#75) lists none.
-  const deny = (load.denyRules?.length ?? 0) + (load.omitted.denyRules ?? 0);
+  // A host older than deny rules (#75) sends none: then the count is of allow rules only.
+  const deny = load.denyRules ? load.denyRules.length + (load.omitted.denyRules ?? 0) : null;
   const item = (part: HarnessPart, found: boolean, detail: string[] = []): HarnessItem => ({
     part,
     found,
@@ -49,7 +56,7 @@ export function harnessParts(load: ProjectLoad): HarnessItem[] {
     item("hooks", load.hooks.length > 0, kinds),
     item("skills", load.skills.length > 0, load.skills),
     item("agents", load.agents.length > 0, load.agents),
-    item("permissions", allow + deny > 0, allow + deny > 0 ? [String(allow), String(deny)] : []),
+    item("permissions", allow + (deny ?? 0) > 0, ruleCounts(allow, deny)),
     item(
       "mcp",
       load.mcpServers.length > 0,

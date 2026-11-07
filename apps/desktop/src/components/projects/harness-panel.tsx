@@ -27,7 +27,10 @@ function detail(item: HarnessItem, t: T): string {
     return item.detail.map((kind) => t(KIND[kind as keyof typeof KIND])).join(", ");
   }
   if (item.part === "permissions" && item.found) {
-    return t("projectPage.harness.rules", { n: item.detail[0] ?? "0", m: item.detail[1] ?? "0" });
+    const [n = "0", m] = item.detail;
+    return m === undefined
+      ? t("projectPage.harness.rulesAllow", { n })
+      : t("projectPage.harness.rules", { n, m });
   }
   return item.detail.join(", ");
 }
