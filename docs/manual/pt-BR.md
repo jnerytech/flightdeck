@@ -2345,6 +2345,17 @@ rodadas por PR, US$ 5 por PR, 30 turnos, US$ 20 por dia e projeto, duas rodadas 
 falham, ou a fila por cota. Para sozinha quando o PR é concluído ou fechado, ou quando você desliga
 a vigia. **Voltar a vigiar** a liga de novo.
 
+O card mostra **Rodadas usadas: 2 de 3**. Quando as rodadas acabam, **Permitir mais 2 rodadas** dá ao
+card mais duas sem esquecer o que ele já gastou; o host recusa quando outro limite (turnos, custo, a
+branch do card) pararia a próxima rodada de qualquer jeito. Enquanto o PR de um card é vigiado, uma
+automação que manda checks com falha ou comentários de revisão ao card deixa isso para a vigia.
+
+Antes do push, o host confere se a rodada ficou dentro do PR: uma rodada que mexe num arquivo que o
+PR não muda (e que nenhum comentário de revisão cita), ou que muda mais linhas que
+`max(200, as do PR)`, fica **retida para você** em vez de ir. A rodada lista os arquivos fora do PR e
+as linhas que mudou. **Enviar assim mesmo** envia esses commits como estão; **Descartar a rodada** os
+desfaz, mantendo o que havia antes da rodada. Lockfiles e `*.snap` nunca contam.
+
 **Configurações** tem **Vigiar e consertar PRs · <host>**, um bloco por projeto: vigiar por padrão,
 rodadas por PR, limite de custo por PR e por dia (vazio é sem limite), o tempo limite por check (1 a
 60 minutos, 10 por padrão) e os **checks locais**, um por linha. Um check é um comando com os seus

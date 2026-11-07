@@ -4365,6 +4365,35 @@ export class AppStore {
     if (watch) this.keepWatch(hostId, watch);
   }
 
+  /** Issue #77: the person allows a card's watch `rounds` more fixing rounds. */
+  async extendWatch(hostId: string, cardId: string, rounds: number): Promise<void> {
+    // A refusal (no watch, another limit) would come back: nothing to retry.
+    const watch = await this.hostCommand(
+      hostId,
+      "watch.extend",
+      { cardId, rounds },
+      { retry: false },
+    );
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
+  /** Issue #77: a round held for drift, pushed as it is or dropped. */
+  async resolveHeld(
+    hostId: string,
+    cardId: string,
+    roundId: string,
+    action: "push" | "drop",
+  ): Promise<void> {
+    // Repeated later, a push or drop would act on a round that may be settled already.
+    const watch = await this.hostCommand(
+      hostId,
+      "watch.resolveHeld",
+      { cardId, roundId, action },
+      { retry: false },
+    );
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
   /**
    * Phase 22: the screen of a PR link pasted in the palette: the card it belongs to, or else the
    * first session the history knows for it. The hosts that watch PRs are asked in order; when
