@@ -3,6 +3,8 @@ import type { Platform } from "../platform/types.ts";
 import type { HomeCosts, HomeUsage } from "./home-kpis.ts";
 
 const KEY = "flightdeck.home.v1";
+/** What a project's entry carries after its hosts (#126 slice 4). */
+const PROJECT_ENTRY = "|project:";
 /** How many host sets and periods are kept: the newest ones. */
 const MAX_ENTRIES = 8;
 
@@ -21,7 +23,7 @@ export type HomeSnapshot = Record<string, HomeHostData>;
 export const homeKey = (period: string, hostIds: string[], projectKey?: string): string =>
   `${period}|${[...hostIds].sort((a, b) => a.localeCompare(b)).join(",")}${
     // A project's numbers are an entry of their own (#126 slice 4).
-    projectKey ? `|project:${projectKey}` : ""
+    projectKey ? `${PROJECT_ENTRY}${projectKey}` : ""
   }`;
 
 /** The numbers Home draws from a host's answers, and nothing else of what the host sent. */
@@ -101,8 +103,13 @@ export class HomeCache {
         .sort(([, a], [, b]) => newest(b) - newest(a))
         .slice(0, MAX_ENTRIES),
     );
+    // A project's entry names the project (its key can hold a host and a path): memory only, as the
+    // leaderboard is (#124, review of #917).
+    const kept = Object.fromEntries(
+      Object.entries(this.entries).filter(([entry]) => !entry.includes(PROJECT_ENTRY)),
+    );
     try {
-      this.storage.setItem(KEY, JSON.stringify(this.entries));
+      this.storage.setItem(KEY, JSON.stringify(kept));
     } catch {
       // A full or refused storage: the numbers stay in memory.
     }

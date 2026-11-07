@@ -10,7 +10,7 @@ import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { mergeSummaries } from "../lib/client-costs.ts";
-import { ALL_HOSTS, daysBetween, periodRange } from "../lib/costs.ts";
+import { ALL_HOSTS, daysBetween, periodRange, projectLabel } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, scopeHosts } from "../lib/data-scope.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
@@ -54,24 +54,30 @@ export function HomePage(
       ? hosts.find((host) => host.status !== "online" && host.status !== "connecting")
       : undefined;
   // The projects the app knows, for the Projects group of the scope menu (#126 slice 4).
-  const knownKeys = [
-    ...new Set([
-      ...store.projectKeys.all(),
-      ...knownProjectKeys(store.getState().projects),
-      ...(projectKey ? [projectKey] : []),
-    ]),
-  ];
+  const seen = store.projectKeys.all();
+  const listed = store.getState().projects;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` says when new keys were seen
+  const knownKeys = useMemo(
+    () => [...new Set([...seen, ...knownProjectKeys(listed), ...(projectKey ? [projectKey] : [])])],
+    [store.projectKeys.version, listed, projectKey],
+  );
   const projectNames = useProjectLabels(store, knownKeys);
-  const projects = knownKeys
-    .map((key) => ({ key, label: projectNames.get(key) ?? key }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+  const projects = useMemo(
+    () =>
+      knownKeys
+        .map((key) => ({ key, label: projectNames.get(key) ?? projectLabel(key) }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [knownKeys, projectNames],
+  );
   /** The subtitle says whose numbers they are, as the scope menu does. */
   const scoped = scope.kind === "host" ? hosts[0]?.name : undefined;
   // A kept host not listed yet has no name: the subtitle names no scope rather than "all hosts".
   const subtitle = (() => {
     if (scope.kind === "all") return t("home.range");
     if (projectKey) {
-      return t("home.rangeProject", { project: projectNames.get(projectKey) ?? projectKey });
+      return t("home.rangeProject", {
+        project: projectNames.get(projectKey) ?? projectLabel(projectKey),
+      });
     }
     return scoped ? t("home.rangeHost", { host: scoped }) : t("home.rangeDays");
   })();
@@ -212,8 +218,9 @@ export function HomePage(
       costs: answers.flatMap((a) => (a.costs ? [a.costs] : [])),
       usage: answers.flatMap((a) => (a.usage ? [a.usage] : [])),
       budgets: hosts.flatMap((host) => state.budgets[host.id] ?? []),
+      ...(projectKey ? { projectKey } : {}),
     });
-  }, [data, days, state.budgets, hosts]);
+  }, [data, days, state.budgets, hosts, projectKey]);
   const read = fetched?.entry === entry ? fetched : null;
   /** Hosts whose numbers on screen are from an earlier read: the last read did not refresh them. */
   const stale = hosts.filter(

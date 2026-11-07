@@ -53,7 +53,8 @@ The host switcher at the top is about tabs. Since #644 it names the active tab's
   hub's project route win for the visit and never rewrite the scope.
 - **Costs:** its own Project select goes; the scope is the one control for whose numbers.
 - **Home** (second PR) asks each host's costs for the project and keeps the project's usage rows;
-  its cache entry carries the project, and the subtitle names it.
+  its cache entry carries the project and stays in memory only (a key can hold a host and a path),
+  the month's budget is the project's own, and the subtitle names it.
 - **Later PRs:** Sessions (the hub merges folder projects by name, so a project scope
   there keeps the merged group's rows by key and says it), then the Board, which has no project key
   and does not follow the host scope yet.
