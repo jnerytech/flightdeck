@@ -182,6 +182,11 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     const { client, cardId } = await boot();
     const info = await client.data<{ features?: string[] }>("host.info", {});
     expect(info?.features).toContain("watch.extend");
+    expect(await client.request("watch.extend", { cardId, rounds: 2 })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state", reason: "watch_off" },
+    });
+    await client.data("watch.set", { cardId, enabled: true });
     expect(
       await client.data<{ maxRounds: number; roundsUsed: number }>("watch.extend", {
         cardId,
