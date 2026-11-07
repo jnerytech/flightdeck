@@ -7,6 +7,7 @@ import { hostStatusView } from "./host-status.ts";
 import { basename, isInside } from "./paths.ts";
 import type { Route } from "./router.ts";
 import { sessionLabel } from "./session-label.ts";
+import type { SessionView } from "./session-views.ts";
 import { keysLabel, type ShortcutAction, shortcutOf } from "./shortcuts.ts";
 import type { TerminalTarget } from "./terminal.ts";
 import { hasFeature } from "./version.ts";
@@ -36,6 +37,8 @@ export type PaletteTarget =
   | { kind: "go"; to: "hub" | "needs-you" | "all-projects" | "activity" }
   /** The `?` sheet of shortcuts. */
   | { kind: "shortcuts" }
+  /** Issue #107: a view of the session page on screen. */
+  | { kind: "session-view"; view: SessionView }
   /**
    * The oldest request waiting for the person, named in the command (issue #187): an ordinary one
    * is answered; a gate, a vault request or a high-risk one is opened to be seen.
@@ -159,6 +162,8 @@ export function paletteSections(
     oldest?: { text: string; opens: boolean; key: string };
     /** The mode the window could switch to (none when the host is locked). */
     modeSwitch?: "simple" | "full" | null;
+    /** Issue #107: the views of the session page on screen; none off such a page. */
+    views?: readonly SessionView[];
     /** Only what belongs to this host and project (actions, which belong to none, stay). */
     scope?: PaletteScope;
     /** The recents are already in the order to show (the palette froze it when it opened). */

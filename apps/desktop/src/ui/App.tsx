@@ -52,6 +52,7 @@ type InPlace =
   | "pull-link"
   | "switch-client"
   | "shortcuts"
+  | "session-view"
   | "decide-oldest";
 
 /** The screen of a palette target that opens one. */
@@ -237,6 +238,8 @@ export function runPaletteTarget(
       return;
     case "new-terminal":
       void store.openTerminal(target.hostId);
+      return;
+    case "session-view":
       return;
     case "toggle-theme":
       store.theme.toggle();

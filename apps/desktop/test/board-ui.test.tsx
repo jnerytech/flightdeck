@@ -28,7 +28,8 @@ afterEach(async () => {
 const settle = waiter(4000);
 
 const click = async (name: string | RegExp) => {
-  const button = screen.queryByRole("button", { name });
+  // The session's views are tabs; everything else is a button.
+  const button = screen.queryByRole("button", { name }) ?? screen.queryByRole("tab", { name });
   expect(button).not.toBeNull();
   await act(async () => {
     fireEvent.click(button as HTMLElement);

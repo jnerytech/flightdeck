@@ -15,7 +15,7 @@ export type ShortcutAction =
   | "go-activity"
   | "go-settings";
 
-export type ShortcutGroup = "general" | "navigation" | "tabs" | "lists" | "approvals";
+export type ShortcutGroup = "general" | "navigation" | "tabs" | "views" | "lists" | "approvals";
 
 /** One shortcut, for the cheat sheet and for the palette's hints. */
 export interface ShortcutDef {

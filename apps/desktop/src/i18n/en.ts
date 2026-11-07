@@ -1159,6 +1159,7 @@ export const en: Dictionary = {
     approveOldest: "Approve the oldest request: {what}",
     denyOldest: "Deny the oldest request: {what}",
     showShortcuts: "Show the keyboard shortcuts",
+    showView: "Show {view}",
   },
   time: {
     now: "just now",
@@ -3702,6 +3703,7 @@ export const en: Dictionary = {
       general: "General",
       navigation: "Go to",
       tabs: "Tabs",
+      views: "Session views",
       lists: "Lists",
       approvals: "Approvals",
     },
@@ -3722,6 +3724,7 @@ export const en: Dictionary = {
     tabClose: "Close the tab",
     tabRecent: "Switch to the previous tab (hold Ctrl and press Tab to cycle)",
     tabNumber: "Go to tab 1 to 9",
+    viewNumber: "Show the 1st to 6th view of the session page",
     listNext: "Next row",
     listPrevious: "Previous row",
     listOpen: "Open the row",

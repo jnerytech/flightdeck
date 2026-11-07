@@ -31,6 +31,8 @@ export function SessionTabs(
     trace?: boolean;
     /** Issue #506: the host announces `file.list`, so the Files tab can show the repository's tree. */
     files?: boolean;
+    /** Issue #107: which session tab this is (`<host>/<session>`); its last view is kept under it. */
+    viewKey?: string;
     children: ReactNode;
   }>,
 ) {

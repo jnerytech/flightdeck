@@ -106,6 +106,7 @@ import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
+import { SessionViews } from "./session-views.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
 import { HomeCache } from "./home-cache.ts";
@@ -1106,6 +1107,8 @@ export class AppStore {
     this.router.push({ name: "settings", section: "assistant" });
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  /** Issue #107: the view each session tab was on, and the page now on screen. */
+  readonly sessionViews = new SessionViews();
   readonly terminalReader: TerminalReaderSetting;
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;

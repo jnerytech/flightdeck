@@ -36,7 +36,7 @@ describe("sessao-estreita: a session fits a narrow pane", () => {
         <p>conversation</p>
       </SessionTabs>,
     );
-    const row = screen.queryByRole("button", { name: "Conversa" })?.parentElement;
+    const row = screen.queryByRole("tab", { name: "Conversa" })?.parentElement;
     const rule = utility("session-views");
     expect({
       slot: row?.getAttribute("data-slot") ?? null,
