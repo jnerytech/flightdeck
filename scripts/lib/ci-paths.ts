@@ -51,12 +51,12 @@ const E2E =
   /^(?:scripts\/e2e\/|scripts\/lib\/(?:(?:e2e|demo)[^/]*|browser|layout-guards)\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
 
 /**
- * demo:shots and what it runs (#637): the demo, the print guards, their ratchets and axe. A change
- * to a guard must run the prints it guards; ci-paths.test.ts checks every local file demo-shots
- * imports.
+ * demo:shots and what it runs (#637): the demo and the helpers its seed uses, the print guards and
+ * axe. A change to a guard must run the prints it guards; ci-paths.test.ts checks the local files
+ * demo-shots imports, one level down (#724). The daemon stays the e2e journeys'.
  */
 const SHOTS =
-  /^scripts\/(?:demo[^/]*\.ts|lib\/(?:axe|browser|layout-guards|print-theme|shots-[^/]*|visual)\.ts)$/;
+  /^scripts\/(?:demo[^/]*\.ts|lib\/(?:axe|browser|layout-guards|print-theme|shots-[^/]*|visual|(?:e2e|demo)[^/]*)\.ts|test\/(?![^/]*\.test\.ts$)[^/]+\.ts)$/;
 
 /**
  * Above this many selected integration and e2e test files, a PR's Windows tests take three shards
