@@ -39,6 +39,20 @@ describe("importsOf", () => {
   test("a source without imports has none", () => {
     expect(importsOf("export const x = 1;")).toEqual([]);
   });
+
+  test("a long run of spaces after the keyword is scanned in linear time (#363)", () => {
+    const spaces = " ".repeat(20_000);
+    const started = performance.now();
+    const none = importsOf(`import${spaces}x`);
+    const open = importsOf(`import(${spaces}"./a.ts")`);
+    const plain = importsOf(`from${spaces}'./b.ts'`);
+    const elapsed = performance.now() - started;
+    expect(none).toEqual([]);
+    expect(open).toEqual(["./a.ts"]);
+    expect(plain).toEqual(["./b.ts"]);
+    // The nested `\s*\(?\s*` of the old pattern took about 0.7 s here for the first call alone.
+    expect(elapsed).toBeLessThan(250);
+  });
 });
 
 describe("resolveImport", () => {

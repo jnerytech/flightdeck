@@ -774,3 +774,57 @@ describe("assistant-wand-ui: Settings says why it opened (issue #158)", () => {
     expect(screen.queryByRole("note")).toBeNull();
   });
 });
+
+describe("assistant-wand-ui: the preview tells what the answer was checked against (issue #681)", () => {
+  const NOTICES = [
+    "diff_truncated",
+    "lines_redacted",
+    "subject_too_long",
+    "subject_trailing_period",
+    "subject_not_conventional",
+    "body_needs_blank_line",
+  ];
+  const answered = (notices: string[]) => ({
+    run: () => ({ ...ANSWER, text: "Fix the total.", notices }),
+  });
+  const notes = (name: string) => {
+    const dialog = screen.queryByRole("dialog", { name: "AI suggestion" });
+    const list = dialog ? within(dialog).queryByRole("list", { name }) : null;
+    return list ? within(list).queryAllByRole("listitem") : [];
+  };
+
+  test("each notice shows in words, beside the suggestion, and Accept still works", async () => {
+    await make(answered(NOTICES));
+    type("fix the totl");
+    await click("Improve with AI");
+    await settle(() => screen.queryByRole("dialog", { name: "AI suggestion" }) !== null);
+    expect(notes("Notes").map((item) => item.textContent)).toEqual([
+      "The diff was too long, so only part of it was read.",
+      "Some lines were left out because they looked like secrets.",
+      "The first line is longer than 72 characters.",
+      "The first line ends with a period.",
+      "The repository asks for Conventional Commits: type(scope): text.",
+      "Leave a blank line after the first line.",
+    ]);
+    await click("Accept");
+    expect(box().value).toBe("Fix the total.");
+  });
+
+  test("a notice the app does not know is not shown as a raw code, and no notice shows no list", async () => {
+    await make(answered(["something_new"]));
+    type("fix the totl");
+    await click("Improve with AI");
+    await settle(() => screen.queryByRole("dialog", { name: "AI suggestion" }) !== null);
+    expect(notes("Notes")).toHaveLength(0);
+    expect(document.body.textContent).not.toContain("something_new");
+  });
+
+  test("it reads in Portuguese", async () => {
+    await make(answered(["diff_truncated"]), { language: "pt-BR" });
+    type("conserte o totl");
+    await click("Melhorar com IA");
+    await settle(() => screen.queryByRole("dialog", { name: "Sugestão da IA" }) !== null);
+    const dialog = screen.getByRole("dialog", { name: "Sugestão da IA" });
+    expect(within(dialog).queryByRole("list", { name: "Observações" })).not.toBeNull();
+  });
+});

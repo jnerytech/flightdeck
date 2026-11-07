@@ -1,6 +1,6 @@
 import { createInstrumenter as createIstanbulInstrumenter } from "istanbul-lib-instrument";
 import { testArgs } from "../test/timeout.ts";
-import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./claude-hooks.ts";
+import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
 import { type Plan, SLOT_ABOVE, selectRelated } from "./test-related.ts";
 
 /** The slice of istanbul's file coverage this tool reads. */

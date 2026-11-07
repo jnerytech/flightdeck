@@ -14,10 +14,9 @@ import {
   checkoutRoot,
   commandViolation,
   commitViolation,
-  commitWaived,
   generatedViolation,
+  guardAllowLogs,
   heavyRunViolation,
-  heavyRunWaived,
   prMergeViolation,
   pushViolation,
   slotViolation,
@@ -66,8 +65,7 @@ if (typeof filePath === "string") {
     }),
   );
 }
-if (typeof command === "string" && heavyRunWaived(command))
-  logHook("guard", "slot-heavy", "waived");
-if (typeof command === "string" && commitWaived(command)) logHook("guard", "commit", "waived");
-else logHook("guard", null);
+for (const { rule, decision } of guardAllowLogs(command, process.env)) {
+  logHook("guard", rule, decision);
+}
 process.exit(0);
