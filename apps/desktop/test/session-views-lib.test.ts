@@ -10,6 +10,7 @@ describe("session-views-lib: the views of the page on screen (issue #107)", () =
       "time",
       "trace",
       "messages",
+      "terminal",
     ]);
   });
 
@@ -23,6 +24,16 @@ describe("session-views-lib: the views of the page on screen (issue #107)", () =
       "trace",
       null,
     ]);
+  });
+
+  test("a tab keeps the shell it opened, so a page that comes back finds it, until it is cleared", () => {
+    const views = new SessionViews();
+    expect(views.terminalOf("pc/a")).toBeNull();
+    views.setTerminal("pc/a", "t-1");
+    views.setTerminal("pc/b", "t-2");
+    expect([views.terminalOf("pc/a"), views.terminalOf("pc/b")]).toEqual(["t-1", "t-2"]);
+    views.setTerminal("pc/a", null);
+    expect([views.terminalOf("pc/a"), views.terminalOf("pc/b")]).toEqual([null, "t-2"]);
   });
 
   test("the page on screen offers its views and takes a switch; a view it lacks is refused", () => {

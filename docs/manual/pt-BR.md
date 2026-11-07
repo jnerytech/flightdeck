@@ -1291,12 +1291,20 @@ O host anuncia `review` no `host.info`; um host mais antigo não tem a aba Mudan
 ### As visões da página de uma sessão
 
 A página de uma sessão mostra uma **visão** por vez: Conversa, Mudanças, Arquivos, Tempo, Rastro e
-Mensagens (cada uma só onde o host a oferece). Elas formam uma **barra de abas**: a visão ativa é
+Mensagens, mais **Terminal** (cada uma só onde o host a oferece). Elas formam uma **barra de abas**: a visão ativa é
 preenchida e tem uma barra embaixo, e a barra rola para o lado num painel estreito.
 
-- **Clique** numa visão, ou use as teclas: **Alt+1** a **Alt+6** escolhem a 1ª a 6ª visão da barra
+- **Clique** numa visão, ou use as teclas: **Alt+1** a **Alt+7** escolhem a 1ª a 7ª visão da barra
   (também de dentro da caixa de mensagem; `Ctrl+1` a `Ctrl+9` continuam sendo as abas do app), e com
   o foco na barra as **setas**, **Home** e **End** passam de uma visão a outra, dando a volta.
+- **Terminal** é um shell no host da sessão, aberto na pasta da própria sessão (a worktree, num
+  card): quem decide a pasta é o host, o app só diz qual sessão. Ele abre na primeira vez que você
+  mostra a visão e vive enquanto a aba da sessão existir, ou até você fechá-lo na visão (**Fechar
+  terminal**); trocar de visão só o esconde, e uma aba que volta encontra o mesmo shell. Fechar a
+  aba da sessão encerra o shell dela. Ele tem a busca, copiar e colar e os links do terminal. Uma
+  sessão iniciada num terminal ("Claude aqui") mostra aquele terminal, e fechar a aba o deixa
+  rodando. **Ctrl+\`** alterna entre o Terminal e a Conversa (o shell nunca a recebe). A visão
+  precisa do terminal ligado no host; um host antigo não tem.
 - A paleta (**Ctrl+K**) lista **Mostrar Mudanças**, **Mostrar Rastro** e as outras da página em que
   você está, primeiro entre os comandos, e a folha `?` lista as teclas em **Visões da sessão**.
 - A conversa fica onde estava: o que você digitou na caixa continua lá depois de uma visita a outra

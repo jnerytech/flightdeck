@@ -3717,7 +3717,7 @@ export const en: Dictionary = {
     failed:
       "Could not read the workflows. Check that the host is connected, then open the page again.",
   },
-  sessionViews: { label: "Session views" },
+  sessionViews: { label: "Session views", terminal: "Terminal" },
   shortcuts: {
     title: "Keyboard shortcuts",
     close: "Close the shortcuts",
@@ -3746,7 +3746,8 @@ export const en: Dictionary = {
     tabClose: "Close the tab",
     tabRecent: "Switch to the previous tab (hold Ctrl and press Tab to cycle)",
     tabNumber: "Go to tab 1 to 9",
-    viewNumber: "Show the 1st to 6th view of the session page",
+    viewNumber: "Show the 1st to 7th view of the session page",
+    viewTerminal: "Switch between the Terminal and the Conversation",
     listNext: "Next row",
     listPrevious: "Previous row",
     listOpen: "Open the row",

@@ -8,6 +8,7 @@ export const SESSION_VIEWS = [
   "time",
   "trace",
   "messages",
+  "terminal",
 ] as const;
 export type SessionView = (typeof SESSION_VIEWS)[number];
 
@@ -19,6 +20,7 @@ export const VIEW_LABEL: Record<SessionView, Key> = {
   time: "telemetry.tab",
   trace: "trace.tab",
   messages: "sessionMessages.tab",
+  terminal: "sessionViews.terminal",
 };
 
 /** What the page on screen offers: which views it has, and how to show one. */
@@ -35,6 +37,7 @@ export interface SessionViewsEntry {
  */
 export class SessionViews {
   private readonly lastViews = new Map<string, SessionView>();
+  private readonly terminals = new Map<string, string>();
   private current: SessionViewsEntry | null = null;
 
   /** The view `key` was last on, or `null` when it has none yet. */
@@ -44,6 +47,16 @@ export class SessionViews {
 
   remember(key: string, view: SessionView): void {
     this.lastViews.set(key, view);
+  }
+
+  /** The shell this tab opened (`terminalId`), so a page that comes back finds it; `null` when none. */
+  terminalOf(key: string): string | null {
+    return this.terminals.get(key) ?? null;
+  }
+
+  setTerminal(key: string, terminalId: string | null): void {
+    if (terminalId === null) this.terminals.delete(key);
+    else this.terminals.set(key, terminalId);
   }
 
   /** Puts `entry` on screen; the returned function takes it off (only if it is still the one). */
