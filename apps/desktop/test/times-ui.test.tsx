@@ -618,6 +618,19 @@ describe("times-ui: the teams of a host", () => {
   });
 });
 
+describe("times-ui: the new team form keeps its action in reach (issue #769)", () => {
+  test("Create and start sits in sticky actions, so a short window does not hide it", async () => {
+    await open();
+    await click("Novo time");
+    await change("Objetivo", "objetivo de alcance");
+    const create = screen.queryByRole("button", { name: "Criar e iniciar" });
+    expect(
+      create?.closest("[data-sticky-actions]") != null,
+      "the button is in sticky actions",
+    ).toBe(true);
+  });
+});
+
 describe("times-ui: the wand on the goal of a new team (issue #160)", () => {
   const answer = {
     model: "claude-haiku-5-5",

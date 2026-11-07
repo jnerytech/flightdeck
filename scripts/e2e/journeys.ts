@@ -1376,6 +1376,25 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await inReach(c, `${c.t("cardUi.start")} a ${size.width}x${size.height}`, start);
     }
   },
+
+  // Teams (#754): the form of a new team ends in Create and start, which must be in view and
+  // clickable once the goal is written, in a phone-sized window and a desktop one. Nothing is
+  // created: the demo keeps no team behind, so the other journeys' counts stay as they were.
+  "time-novo-alcance": async (c) => {
+    const create = c.page.getByRole("button", { name: c.t("teamsUi.create"), exact: true });
+    const goal = c.page.getByLabel(c.t("teamsUi.goal"), { exact: true });
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "teams" });
+      await c.page
+        .getByRole("button", { name: c.t("teamsUi.new"), exact: true })
+        .or(c.page.getByRole("button", { name: c.t("teamsUi.emptyAction"), exact: true }))
+        .first()
+        .click();
+      await goal.fill(`Objetivo e2e ${Date.now()}`);
+      await inReach(c, `${c.t("teamsUi.create")} a ${size.width}x${size.height}`, create);
+    }
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
