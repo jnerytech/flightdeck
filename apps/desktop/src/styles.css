@@ -742,6 +742,18 @@ html:not(:has([data-slot="status-bar"])) {
   border-radius: 0.5rem;
 }
 
+/* The board's toolbar and its selection bar in one cell: the cell is as tall as the taller one,
+   so the bar covering the toolbar moves nothing below (#760). */
+@utility selection-stack {
+  display: grid;
+
+  /* Each keeps its own height: a bar of one row stays one row over a toolbar of three. */
+  & > * {
+    grid-area: 1 / 1;
+    align-self: start;
+  }
+}
+
 /* The board's body on its fill page: the columns row below takes what is left of the height (#641). */
 @utility board-body {
   display: flex;
