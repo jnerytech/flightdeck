@@ -949,7 +949,12 @@ export async function confirmGaps(
   settle: () => Promise<unknown>,
   tries = 3,
 ): Promise<Finding[]> {
-  return measure();
+  let found = await measure();
+  for (let n = 0; n < tries && found.some((finding) => finding.rule === "gap"); n++) {
+    await settle();
+    found = await measure();
+  }
+  return found;
 }
 
 /**
