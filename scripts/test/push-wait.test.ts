@@ -59,6 +59,22 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     }
   });
 
+  test("the override line hides a token in the remote URL or a secret variable, and a run URL that is not https is left out (security review)", () => {
+    const why =
+      pushWaitViolation(
+        "GH_TOKEN=abc123 git push https://jn:ghp_secret@github.com/jnerytech/flightdeck.git fix-x",
+        CWD,
+        deps(green),
+      ) ?? "";
+    expect(why).not.toContain("ghp_secret");
+    expect(why).not.toContain("abc123");
+    expect(why).toContain("https://***@github.com/jnerytech/flightdeck.git fix-x");
+    expect(why).toContain("GH_TOKEN=***");
+    const odd = pushWaitViolation("git push", CWD, deps({ ...green, url: "\u001b]8;;x" })) ?? "";
+    expect(odd).toContain("run 42");
+    expect(odd).not.toContain("\u001b");
+  });
+
   test("a release-v* branch never waits, and GitHub is not asked (#756 review)", () => {
     const release = {
       ...deps(green),
