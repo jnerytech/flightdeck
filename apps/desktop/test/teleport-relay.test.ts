@@ -53,6 +53,8 @@ function hosts(
     cancelFails?: boolean;
     /** The source's archive of its copy: refused, or never answered. */
     archive?: "fails" | "hangs";
+    /** The source refuses to make the package. */
+    prepare?: Error;
   } = {},
 ) {
   const calls: string[] = [];
@@ -60,7 +62,10 @@ function hosts(
   const landed: Record<string, string> = {};
   const source = (async (type: string, payload: Record<string, unknown>) => {
     calls.push(`source:${type}`);
-    if (type === "teleport.prepare") return MANIFEST;
+    if (type === "teleport.prepare") {
+      if (options.prepare) throw options.prepare;
+      return MANIFEST;
+    }
     if (type === "teleport.read") {
       const bytes = Buffer.from(PARTS[payload.part as string] ?? "");
       const offset = payload.offset as number;
@@ -189,6 +194,14 @@ describe("teleport-relay: the app moves a session from one host to another (#100
     expect(outcomes).toEqual([
       ["moved", 1],
       ["moved", 1],
+    ]);
+  });
+
+  test("a source that refuses to make the package is that refusal, and the target is never asked", async () => {
+    const h = hosts({ prepare: new RequestError("invalid_state", "x", "teleport_busy") });
+    expect([await failure(run(h)), h.calls]).toEqual([
+      "teleport_busy",
+      ["source:teleport.prepare"],
     ]);
   });
 
