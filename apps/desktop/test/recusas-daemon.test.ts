@@ -148,6 +148,8 @@ const REASONS = [
   "teleport_stopped",
   "teleport_incomplete",
   "teleport_corrupt",
+  "teleport_no_project",
+  "teleport_exists",
   "session_ended",
   "session_not_ended",
   "personas_off",

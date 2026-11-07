@@ -62,6 +62,12 @@ export const TeleportWritePayload = z.object({
   data: z.string().max(180_000),
 });
 
+/** `teleport.finish`: the received package becomes a session in a new worktree of `repo`. */
+export const TeleportFinishPayload = z.object({
+  id: z.string().min(1).max(64),
+  repo: z.string().min(1).max(4096),
+});
+
 /** `teleport.abort`: what this host received of a package goes now. */
 export const TeleportAbortPayload = z.object({ id: z.string().min(1).max(64) });
 

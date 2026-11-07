@@ -131,6 +131,20 @@ export class TeleportInbox {
     };
   }
 
+  /**
+   * The package, whole and checked, taken out of the inbox for an import (slice 2b): its time no
+   * longer runs, and no abort or replacement removes it; `release` removes its folder.
+   */
+  async claim(id: string): Promise<TeleportReceived & { release(): Promise<void> }> {
+    const received = await this.received(id);
+    const entry = this.entries.get(id);
+    // Gone while it was being checked (aborted, replaced, its time ran out).
+    if (!entry) throw refuse("not_found", "teleport_not_found");
+    this.deps.timers.clearTimeout(entry.timer);
+    this.entries.delete(id);
+    return { ...received, release: () => rm(entry.folder, { recursive: true, force: true }) };
+  }
+
   async abort(id: string): Promise<void> {
     const entry = this.entries.get(id);
     if (entry) this.deps.timers.clearTimeout(entry.timer);
@@ -206,9 +220,11 @@ export class TeleportInbox {
 
   private async drop(id: string): Promise<void> {
     const entry = this.entries.get(id);
+    // Not in the inbox: unknown, gone already, or claimed by an import that removes it itself.
+    if (!entry) return;
     this.entries.delete(id);
     // A chunk already being written ends first: no file is opened while its folder goes.
-    await entry?.queue;
+    await entry.queue;
     await rm(join(this.deps.dir, id), { recursive: true, force: true });
   }
 

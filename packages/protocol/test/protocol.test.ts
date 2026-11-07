@@ -126,6 +126,7 @@ const validCommands: Record<CommandType, unknown> = {
   "teleport.receive": { manifest: TELEPORT_MANIFEST },
   "teleport.write": { id: "in-1", part: "code", offset: 0, data: "aGk=" },
   "teleport.abort": { id: "in-1" },
+  "teleport.finish": { id: "in-1", repo: "/work/app" },
   "assistant.record": {
     id: "r1",
     at: "2026-11-05T10:00:00.000Z",

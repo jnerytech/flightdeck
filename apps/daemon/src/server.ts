@@ -104,6 +104,7 @@ import type { SummaryService } from "./summary/service.ts";
 import type { Teams } from "./teams/teams.ts";
 import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
+import { importPackage, type TeleportImportDeps } from "./teleport/import.ts";
 import type { TeleportPackages } from "./teleport/package.ts";
 import type { TeleportInbox } from "./teleport/receive.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
@@ -215,6 +216,8 @@ export interface ServerOptions {
   teleport?: TeleportPackages;
   /** Issue #100: the packages other hosts send to this one. */
   teleportInbox?: TeleportInbox;
+  /** Issue #100: what an import on this host reads. */
+  teleportImport?: TeleportImportDeps | undefined;
   /** The run environment of the cards: the run.yaml and the processes (phase 24). */
   runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */
@@ -1350,6 +1353,11 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "teleport.abort":
         await teleportInbox().abort(command.payload.id);
         return ok(command.type);
+      case "teleport.finish": {
+        if (!opts.teleportImport) throw featureOff("teleport");
+        const { id, repo } = command.payload;
+        return ok(command.type, await importPackage(opts.teleportImport, id, repo));
+      }
       case "assistant.context":
         return ok(command.type, await assistant().context(command.payload));
       case "assistant.record":
