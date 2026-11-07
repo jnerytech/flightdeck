@@ -76,10 +76,11 @@ describe("pagina-host", () => {
     expect(
       within(tabs).getByRole("tab", { name: "Visão geral" }).getAttribute("aria-selected"),
     ).toBe("true");
-    // Sessions, then projects, then the information; the settings are on their own tab.
+    // #785: the host's status (here the information) comes first, then the sessions and the
+    // projects; the settings are on their own tab.
     const order = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
+    expect(order.indexOf("Informações")).toBeLessThan(order.indexOf("Sessões de pc"));
     expect(order.indexOf("Sessões de pc")).toBeLessThan(order.indexOf("Projetos de pc"));
-    expect(order.indexOf("Projetos de pc")).toBeLessThan(order.indexOf("Informações"));
     // The settings are on a tab of their own: closed, its panel is hidden.
     const settings = [...document.querySelectorAll("[role='tabpanel']")].find((panel) =>
       panel.textContent?.includes("Reconectar"),
