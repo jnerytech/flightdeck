@@ -1401,13 +1401,18 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // is created, so the demo's spending rules stay as they were.
   "orcamento-alcance": async (c) => {
     const setBudget = c.page.getByRole("button", { name: c.t("costsUi.setBudget"), exact: true });
-    const create = c.page.getByRole("button", { name: c.t("budgetsUi.create"), exact: true });
+    // Settings holds the section of every host, so the form is the first one: the host in use.
+    const form = c.page
+      .locator("form")
+      .filter({ has: c.page.getByRole("button", { name: c.t("budgetsUi.create"), exact: true }) })
+      .first();
+    const create = form.getByRole("button", { name: c.t("budgetsUi.create"), exact: true });
     for (const size of REACH_VIEWPORTS) {
       await c.page.setViewportSize(size);
       await open(c, { name: "costs" });
       await inReach(c, `${c.t("costsUi.setBudget")} a ${size.width}x${size.height}`, setBudget);
       await setBudget.click();
-      await c.page.getByLabel(c.t("budgetsUi.limit"), { exact: true }).fill("5");
+      await form.getByLabel(c.t("budgetsUi.limit"), { exact: true }).fill("5");
       await inReach(c, `${c.t("budgetsUi.create")} a ${size.width}x${size.height}`, create);
     }
   },
