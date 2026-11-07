@@ -390,6 +390,14 @@ describe("desktop: conexão com o host", () => {
     ]);
   });
 
+  test("a close reason is one plain line in the log, and a link the app lets go of keeps no old drop (#939)", async () => {
+    const { conn } = connect(closingHost(4408, "evil\nERROR forged\tline"));
+    await waitFor(() => conn.retry !== null, "the drop");
+    const reason = conn.lastDrop?.reason;
+    conn.dispose();
+    expect([reason, conn.lastDrop]).toEqual(["evil ERROR forged line", null]);
+  });
+
   test("a link the watchdog gives up keeps how long it was silent, and that it was online (#939)", async () => {
     const hand = handWatchdog();
     const { conn } = connect(quietHost(), TOKEN, {
