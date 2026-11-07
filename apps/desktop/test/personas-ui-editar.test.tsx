@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
-import { settle, uiIdle } from "./wait.ts";
+import { settle, settleMaybe, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -17,6 +17,17 @@ afterEach(async () => {
   cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
+
+/**
+ * Waits for the focus to be on an element, then says so as a boolean: a failed `toBe` between two
+ * DOM nodes prints the whole tree (39 s once, gigabytes of memory on the Pi, #854).
+ */
+function focusedOn(get: () => Element | null): Promise<boolean> {
+  return settleMaybe(() => {
+    const element = get();
+    return element !== null && document.activeElement === element;
+  });
+}
 
 /** The elements the page asked to scroll into view, in order. */
 const scrolled: Element[] = [];
@@ -63,7 +74,7 @@ describe("personas-ui-editar: Edit opens where the persona is (issue #134)", () 
     const form = last.querySelector("form") as HTMLElement;
     expect(form).not.toBeNull();
     expect(screen.getAllByRole("textbox", { name: "Nome" })).toHaveLength(1);
-    expect(document.activeElement).toBe(within(form).getByLabelText("Nome"));
+    expect(await focusedOn(() => within(form).queryByLabelText("Nome"))).toBe(true);
     expect(scrolled.some((el) => el.tagName === "FORM" && last.contains(el))).toBe(true);
     // The other cards are still there, with their own Edit buttons.
     expect(items().length).toBeGreaterThan(1);
@@ -78,7 +89,9 @@ describe("personas-ui-editar: Edit opens where the persona is (issue #134)", () 
     viewport().scrollTop = 0;
     await click(within(last).getByRole("button", { name: "Cancelar" }));
     expect(last.querySelector("form")).toBeNull();
-    expect(document.activeElement).toBe(button(`Editar ${name}`));
+    expect(await focusedOn(() => screen.queryByRole("button", { name: `Editar ${name}` }))).toBe(
+      true,
+    );
     expect(viewport().scrollTop).toBe(321);
   });
 
@@ -91,7 +104,9 @@ describe("personas-ui-editar: Edit opens where the persona is (issue #134)", () 
     viewport().scrollTop = 0;
     await click(within(last).getByRole("button", { name: "Salvar persona" }));
     await settle(() => screen.queryByRole("button", { name: `Editar ${name}` }) !== null);
-    expect(document.activeElement).toBe(button(`Editar ${name}`));
+    expect(await focusedOn(() => screen.queryByRole("button", { name: `Editar ${name}` }))).toBe(
+      true,
+    );
     expect(viewport().scrollTop).toBe(200);
   });
 
@@ -99,7 +114,7 @@ describe("personas-ui-editar: Edit opens where the persona is (issue #134)", () 
     await open();
     await click(button("Nova persona"));
     const id = screen.getByLabelText("Id");
-    expect(document.activeElement).toBe(id);
+    expect(await focusedOn(() => id)).toBe(true);
     expect(items().every((li) => li.querySelector("form") === null)).toBe(true);
   });
 });
