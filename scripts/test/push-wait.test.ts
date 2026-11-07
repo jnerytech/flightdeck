@@ -17,7 +17,15 @@ function deps(run: PrRun | null, env: Record<string, string | undefined> = {}) {
     },
   };
 }
-const green: PrRun = { id: 42, inProgress: true, failed: false, minutes: 6 };
+const URL = "https://github.com/jnerytech/flightdeck/actions/runs/42";
+const green: PrRun = {
+  id: 42,
+  url: URL,
+  inProgress: true,
+  failed: false,
+  conflicting: false,
+  minutes: 6,
+};
 
 describe("push-wait: a push does not cancel a PR run that is still green (#741)", () => {
   test("a push while the branch's PR run is in progress, green and younger than 20 min is refused, naming the run", () => {
@@ -25,7 +33,9 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     const why = pushWaitViolation("git push origin fix-x", CWD, d) ?? "";
     expect(why).toContain("run 42");
     expect(why).toContain("6 min");
-    expect(why).toContain('FLIGHTDECK_PUSH_NOW="<reason>"');
+    // The run's age and address, and the exact line that overrides (#756 review by the coordinator).
+    expect(why).toContain(URL);
+    expect(why).toContain('FLIGHTDECK_PUSH_NOW="<reason>" git push origin fix-x');
     expect(d.asked).toEqual([`fix-x in ${CWD}`]);
     expect(pushWaitViolation("git push", CWD, deps(green)) ?? "").toContain("run 42");
     // The run is read in the push's own checkout (security review: `cd` or `-C` elsewhere).
@@ -39,12 +49,24 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
   test("a red run (the push is a fix), an ended or old run, or no run at all lets the push through", () => {
     for (const run of [
       { ...green, failed: true },
+      // A PR that conflicts with main: the merge of main must go out (#756 review).
+      { ...green, conflicting: true },
       { ...green, inProgress: false },
       { ...green, minutes: 20 },
       null,
     ]) {
       expect(pushWaitViolation("git push origin fix-x", CWD, deps(run))).toBeNull();
     }
+  });
+
+  test("a release-v* branch never waits, and GitHub is not asked (#756 review)", () => {
+    const release = {
+      ...deps(green),
+      git: (args: string[], cwd: string) =>
+        cwd === CWD && args.join(" ") === "symbolic-ref --short HEAD" ? "release-v0.40.0\n" : null,
+    };
+    expect(pushWaitViolation("git push", CWD, release)).toBeNull();
+    expect(release.asked).toEqual([]);
   });
 
   test("an override with a reason in front of the push, or the coordinator, passes without asking GitHub", () => {
@@ -84,33 +106,59 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
   });
 });
 
-describe("push-wait: the run as gh prints it (#741)", () => {
+describe("push-wait: the run and the PR as gh prints them (#741)", () => {
   const now = Date.parse("2026-11-07T01:10:00Z");
   const list = (status: string, startedAt = "2026-11-07T01:04:00Z") =>
-    JSON.stringify([{ databaseId: 42, status, startedAt }]);
-  const jobs = (...conclusions: string[]) =>
-    JSON.stringify({ jobs: conclusions.map((conclusion) => ({ conclusion })) });
+    JSON.stringify([{ databaseId: 42, status, startedAt, url: URL }]);
+  const pr = (mergeable: string, ...checks: Array<Record<string, string>>) =>
+    JSON.stringify({ mergeable, statusCheckRollup: checks });
+  const check = (conclusion: string) => ({
+    __typename: "CheckRun",
+    status: "COMPLETED",
+    conclusion,
+  });
 
-  test("an in-progress run with its minutes, and whether a job failed already", () => {
-    expect(prRunFrom(list("in_progress"), jobs("success", ""), now)).toEqual({
+  test("an in-progress run with its age and address, whether a PR check failed, and whether the PR conflicts", () => {
+    expect(prRunFrom(list("in_progress"), pr("MERGEABLE", check("SUCCESS")), now)).toEqual({
       id: 42,
+      url: URL,
       inProgress: true,
       failed: false,
+      conflicting: false,
       minutes: 6,
     });
-    expect(prRunFrom(list("queued"), jobs(""), now)?.inProgress).toBe(true);
-    expect(prRunFrom(list("in_progress"), jobs("success", "failure"), now)?.failed).toBe(true);
-    expect(prRunFrom(list("completed"), null, now)?.inProgress).toBe(false);
+    expect(prRunFrom(list("queued"), pr("UNKNOWN"), now)?.inProgress).toBe(true);
+    expect(prRunFrom(list("completed"), pr("MERGEABLE"), now)?.inProgress).toBe(false);
+    expect(prRunFrom(list("in_progress"), pr("CONFLICTING"), now)?.conflicting).toBe(true);
+    // Any failed check counts, a check run's or a commit status's, SonarCloud's included.
+    for (const failed of [
+      check("FAILURE"),
+      check("TIMED_OUT"),
+      check("STARTUP_FAILURE"),
+      { __typename: "StatusContext", state: "FAILURE" },
+      { __typename: "StatusContext", state: "ERROR" },
+    ]) {
+      expect(
+        prRunFrom(list("in_progress"), pr("MERGEABLE", check("SUCCESS"), failed), now)?.failed,
+      ).toBe(true);
+    }
+    expect(
+      prRunFrom(
+        list("in_progress"),
+        pr("MERGEABLE", { __typename: "CheckRun", status: "IN_PROGRESS" }),
+        now,
+      )?.failed,
+    ).toBe(false);
   });
 
   test("no run, output gh could not give, or output that does not parse is no run (the hook fails open)", () => {
     for (const [runs, detail] of [
-      ["[]", jobs()],
-      [null, jobs()],
-      ["{ nope", jobs()],
+      ["[]", pr("MERGEABLE")],
+      [null, pr("MERGEABLE")],
+      ["{ nope", pr("MERGEABLE")],
       [list("in_progress"), null],
       [list("in_progress"), "{ nope"],
-      [JSON.stringify([{ databaseId: 42, status: "in_progress" }]), jobs()],
+      [JSON.stringify([{ databaseId: 42, status: "in_progress", url: URL }]), pr("MERGEABLE")],
     ] as const) {
       expect(prRunFrom(runs, detail, now)).toBeNull();
     }

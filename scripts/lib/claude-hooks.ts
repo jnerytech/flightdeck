@@ -689,9 +689,13 @@ export function pushViolation(command: string, cwd: string, deps: PushGuardDeps)
 /** The latest pull-request CI run of a branch, as the push-wait rule reads it (#741). */
 export interface PrRun {
   id: number;
+  /** The run's page on GitHub. */
+  url: string;
   inProgress: boolean;
-  /** A job of the run has failed already. */
+  /** A check of the PR has failed already (#756 review: then the push is a fix). */
   failed: boolean;
+  /** The PR conflicts with its base (#756 review: the merge of main must go out). */
+  conflicting: boolean;
   /** Minutes since the run started. */
   minutes: number;
 }
@@ -719,8 +723,10 @@ export function prRunFrom(runs: string | null, jobs: string | null, now: number)
       );
     return {
       id: latest.databaseId,
+      url: "",
       inProgress,
       failed,
+      conflicting: false,
       minutes: Math.floor((now - started) / 60_000),
     };
   } catch {
