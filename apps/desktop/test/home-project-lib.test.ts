@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { UsageSummary } from "@flightdeck/protocol";
-import { homeHostData, homeKey } from "../src/lib/home-cache.ts";
+import { HomeCache, homeHostData, homeKey } from "../src/lib/home-cache.ts";
+import { homeKpis } from "../src/lib/home-kpis.ts";
 
 const row = (projectKey: string, costUsd: number) => ({
   day: "2026-10-10",
@@ -38,5 +39,51 @@ describe("home-cache: a project's numbers on Home", () => {
       all: all.usage?.rows.map((r) => r.costUsd),
       one: one.usage?.rows.map((r) => r.costUsd),
     }).toEqual({ all: [2, 5], one: [5] });
+  });
+});
+
+// Review of #917: a project's name never reaches the storage, and its budget is its own.
+describe("home-cache: a project's numbers stay off the disk, and its budget is its own", () => {
+  const items = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, value: string) => void items.set(key, value),
+    removeItem: (key: string) => void items.delete(key),
+  };
+  const snapshot = { h1: { at: 1, costs: null, usage: null } };
+
+  test("a project entry is kept in memory only; a host entry is written", () => {
+    const cache = new HomeCache(storage);
+    cache.set(homeKey("7d", ["h1"]), snapshot);
+    cache.set(homeKey("7d", ["h1"], "host:alfa:/work/secret"), snapshot);
+    const written = items.get("flightdeck.home.v1") ?? "";
+    expect({
+      host: written.includes("7d|h1"),
+      project: written.includes("secret"),
+      memory: cache.get(homeKey("7d", ["h1"], "host:alfa:/work/secret")) !== undefined,
+    }).toEqual({ host: true, project: false, memory: true });
+  });
+
+  test("in a project scope the month's budget is that project's, not its hosts'", () => {
+    const budget = (scope: "host" | "project", projectKey: string | null, limitUsd: number) => ({
+      id: `${scope}-${limitUsd}`,
+      scope,
+      projectKey,
+      period: "month" as const,
+      limitUsd,
+      action: "notify" as const,
+      createdAt: "2026-10-01",
+      periodKey: "2026-10",
+      spentUsd: 1,
+      fraction: 1 / limitUsd,
+      crossed: [],
+    });
+    const budgets = [budget("host", null, 100), budget("project", "github.com/x/z", 10)];
+    const input = { days: ["2026-10-10"], costs: [], usage: [], budgets };
+    expect({
+      hosts: homeKpis(input).spend.budget?.limitUsd,
+      project: homeKpis({ ...input, projectKey: "github.com/x/z" }).spend.budget?.limitUsd,
+      other: homeKpis({ ...input, projectKey: "github.com/x/y" }).spend.budget,
+    }).toEqual({ hosts: 100, project: 10, other: null });
   });
 });
