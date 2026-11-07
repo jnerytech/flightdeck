@@ -70,6 +70,15 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     expect(why).not.toContain("abc123");
     expect(why).toContain("https://***@github.com/jnerytech/flightdeck.git fix-x");
     expect(why).toContain("GH_TOKEN=***");
+    const quoted =
+      pushWaitViolation(
+        'API_KEY="a b c" git -c http.extraHeader=Authorization:Bearer_xyz push',
+        CWD,
+        deps(green),
+      ) ?? "";
+    expect(quoted).toContain("run 42");
+    expect(quoted).not.toContain("b c");
+    expect(quoted).not.toContain("xyz");
     const odd = pushWaitViolation("git push", CWD, deps({ ...green, url: "\u001b]8;;x" })) ?? "";
     expect(odd).toContain("run 42");
     expect(odd).not.toContain("\u001b");
