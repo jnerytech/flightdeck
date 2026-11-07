@@ -78,7 +78,9 @@ export function statusLine(
   const why = drop.byWatchdog
     ? `given up by the app after ${silent}`
     : `closed${by} (${close}), ${silent}`;
-  return { level: drop.wasOnline ? "warn" : "info", text: `${name}: offline, ${why}` };
+  // A line of the app's own log, not text on a screen: it stays in English, as every log line does.
+  const line = `${name}: offline, ${why}`;
+  return { level: drop.wasOnline ? "warn" : "info", text: line };
 }
 
 /** Silence after which a link counts as dead: three of the daemon's 15 s heartbeats. */
