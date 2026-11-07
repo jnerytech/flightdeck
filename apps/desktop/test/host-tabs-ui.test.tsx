@@ -116,6 +116,15 @@ describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
     expect(store.tabs.tabs.length).toBe(before + 1);
   });
 
+  test("a new-session form for a host that is not configured draws nothing instead of breaking the window", async () => {
+    const store = await mount();
+    await act(async () => {
+      store.router.push({ name: "new-session", host: "gone" });
+    });
+    expect(screen.queryByRole("tablist", { name: "Abas" }) === null).toBe(false);
+    expect(document.querySelector("form") === null).toBe(true);
+  });
+
   test("with no host chosen yet, a new tab is the Overview of the first host, which becomes the active one", async () => {
     const mem = memoryPlatform(false, "pt-BR");
     seedDemoHosts(mem.win.localStorage, mem.tokens, [
