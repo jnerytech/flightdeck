@@ -4104,6 +4104,27 @@ export const en: Dictionary = {
     notHere: "This project is not on this host.",
     baseInvalid:
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
+    harness: {
+      title: "Claude Code setup",
+      hint: "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Read-only: nothing here changes the project.",
+      summary: "{n} of {total} parts found",
+      found: "Found",
+      missing: "Missing",
+      rules: "{n} allow rules",
+      parts: {
+        claudeMd: "CLAUDE.md",
+        hooks: "Hooks",
+        skills: "Skills",
+        agents: "Subagents",
+        permissions: "Permissions",
+        mcp: "MCP servers",
+      },
+      kinds: {
+        format: "formatter after edits",
+        gitAdd: "guard on git add",
+        secrets: "secret files protected",
+      },
+    },
     trust: {
       title: "Project configuration",
       hint: "A project can carry its own hooks, MCP servers, settings, agents and skills. They load into a session only when you trust the project.",
