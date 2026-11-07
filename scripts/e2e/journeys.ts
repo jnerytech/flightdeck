@@ -1581,32 +1581,21 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("reader.continue"), exact: true }).click();
     const anyway = c.page.getByRole("button", { name: c.t("reader.continueAnyway"), exact: true });
     await anyway.click({ timeout: 3000 }).catch(() => undefined);
-    // Continuing lands on the hub with the new session open; no reload, so the list is the app's own.
-    // The hub folds a project with nothing live and caps its rows: a filter shows what it keeps.
-    const mark = c.lang === "en" ? "Ajuste 1: " : "Ajuste 2: ";
-    const filter = c.page.getByRole("textbox", { name: c.t("hub.filterLabel"), exact: true });
-    await filter.fill(mark, { timeout: WAIT });
-    const actions = c.page.getByRole("button", {
+    // Continuing lands on the hub with the new session open. The row is not titled by the
+    // transcript: a host with standard names calls it "app · geral · N", so it is found by what
+    // marks it, the open session (aria-current), never by its title.
+    await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
+    const row = c.page.getByRole("main").locator("li[aria-current='true']");
+    const actions = row.getByRole("button", {
       name: new RegExp(
-        c.t("hub.actions", { title: "§" }).replace("§", `${mark}.*`).replaceAll(/[()]/g, "\\$&"),
+        c.t("hub.actions", { title: "§" }).replace("§", ".*").replaceAll(/[()]/g, "\\$&"),
       ),
     });
     const move = c.page.getByRole("menuitem", { name: c.t("teleportUi.menu"), exact: true });
-    const listed = () =>
-      c.page.locator("li[aria-label]").evaluateAll((els) => els.map((e) => e.ariaLabel));
     const menus: string[][] = [];
-    const started = Date.now();
-    let widened = false;
     await waitFor(
       async () => {
-        // The row may not be listed yet. After a few turns the filter is dropped and every project
-        // opened: if the row shows then, the filter hid it (the report below says which).
-        if ((await actions.count()) === 0 && Date.now() - started > 15_000 && !widened) {
-          widened = true;
-          await filter.fill("");
-          await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
-        }
-        // A missed click is another turn of the wait, not a failure.
+        // The row may not be listed yet: a missed click is another turn of the wait, not a failure.
         const clicked = await actions
           .first()
           .click({ timeout: 2000 })
@@ -1620,12 +1609,16 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         await c.page.keyboard.press("Escape");
         return false;
       },
-      "o menu da sessão oferecer mover para outro host",
+      "o menu da sessão aberta oferecer mover para outro host",
       SESSION_WAIT,
     ).catch(async (error: Error) => {
       // What the page showed, so a red run says why without a second one.
+      const rows = await c.page
+        .getByRole("main")
+        .locator("li[aria-label]")
+        .evaluateAll((els) => els.map((e) => `${e.ariaLabel}${e.ariaCurrent ? " (aberta)" : ""}`));
       throw new Error(
-        `${error.message} (sem filtro: ${widened}; linhas: ${JSON.stringify(await listed())}; itens do menu: ${JSON.stringify(menus.at(-1))}; página: ${JSON.stringify(((await c.page.getByRole("main").textContent()) ?? "").slice(0, 1200))})`,
+        `${error.message} (linhas: ${JSON.stringify(rows)}; itens do menu: ${JSON.stringify(menus.at(-1))})`,
       );
     });
     await move.click();
