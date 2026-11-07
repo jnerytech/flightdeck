@@ -495,6 +495,28 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
     }).toEqual({ place: true, masked: true, value: false });
   });
 
+  // Review of #850: the vault's values load after the app starts; a value learned after the answer
+  // came must hide in the matches already on screen, with nothing typed.
+  test("a vault value the app learns after the answer hides in the matches on screen", async () => {
+    const { store, pick } = setup({ features: SEARCHING });
+    let learned: string[] = [];
+    store.scanValues = () => learned;
+    await pick("worktree", "/wt/b", "fd/b");
+    await settle(() => shows("Files · fd/b", "b-readme.md"));
+    await mode("Content");
+    await type("Search contents", "vault");
+    await settle(() => shows("Files · fd/b", "deploy.sh:4"));
+    const before = (panel("Files · fd/b")?.textContent ?? "").includes(VAULT);
+    learned = [VAULT];
+    // The vault changed: the store reads its values again, as it does for the log.
+    await act(async () => {
+      (store as unknown as { update(p: object): void }).update({ secrets: [] });
+    });
+    const hidden = () => !(panel("Files · fd/b")?.textContent ?? "").includes(VAULT);
+    await settleMaybe(hidden);
+    expect({ before, after: hidden() }).toEqual({ before: true, after: true });
+  });
+
   test("nothing found says so; a search the host refuses says why", async () => {
     const { pick } = setup({ features: SEARCHING });
     await pick("worktree", "/wt/b", "fd/b");
