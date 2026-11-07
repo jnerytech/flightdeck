@@ -735,6 +735,8 @@ export interface PrRun {
 export interface PushWaitDeps extends PushGuardDeps {
   /** The branch's latest PR run, read in `dir`: "none" when it has none, null when GitHub cannot be read. */
   prRun: (branch: string, dir: string) => PrRun | "none" | null;
+  /** Why no lookup could answer (gh missing, no time left), which lets the push go; null holds it. */
+  whyUnread?: () => string | null;
 }
 
 /** Why push-wait let a push through to one branch (#741: logged, so the passes can be read). */
@@ -908,6 +910,18 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
   return targets.flatMap(({ dst, tag }) =>
     dst && !tag && !dst.startsWith("release-v") ? [dst] : [],
   );
+}
+
+/** The guard's gh for push-wait (#945 review): calls start only before `limit`; why nothing answered. */
+export function budgetedGh(
+  spawn: (args: string[], dir: string) => { stdout: string | null; missing: boolean },
+  now: () => number,
+  limit: number,
+): { gh: Gh; whyUnread: () => string | null } {
+  return {
+    gh: (args, dir) => (now() > limit ? null : spawn(args, dir).stdout),
+    whyUnread: () => null,
+  };
 }
 
 /**

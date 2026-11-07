@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import {
+  budgetedGh,
   guardAllowLogs,
   type PrRun,
   prRunFrom,
@@ -166,6 +167,27 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
       "run 42",
     );
     expect(pushWaitViolation("git push origin fix-x", CWD, answers(null, "none"))).toBeNull();
+  });
+
+  test("when no lookup could say anything (gh missing, no time left), the push goes and logs why (#945 review)", () => {
+    for (const why of ["gh missing", "no time"]) {
+      const d = { ...deps(null), whyUnread: () => why };
+      expect(pushWaitCheck("git push origin fix-x", CWD, d)).toEqual({
+        violation: null,
+        passes: [{ reason: why }],
+      });
+    }
+    // GitHub that answered with a failure still holds.
+    const failed = { ...deps(null), whyUnread: () => null };
+    expect(pushWaitViolation("git push origin fix-x", CWD, failed) ?? "").toContain(
+      "GitHub could not be read",
+    );
+  });
+
+  test("the override line in a refusal is printable too (#945 review)", () => {
+    const why = pushWaitViolation("git push origin fix-\u001b[2Jx", CWD, deps(green)) ?? "";
+    expect(why).toContain("FLIGHTDECK_PUSH_NOW");
+    expect(why).not.toContain("\u001b");
   });
 
   test("a branch name with control characters reaches neither refusal raw (#945 security review)", () => {
@@ -360,6 +382,32 @@ describe("push-wait: what an override logs (#741, #821 review)", () => {
   });
 });
 
+describe("push-wait: budgetedGh, the guard's gh with its time limit (#945 review)", () => {
+  test("a call starts only before the limit, and says why GitHub went unread when nothing could answer", () => {
+    let t = 0;
+    const ran: string[] = [];
+    const spawn = (args: string[]) => {
+      ran.push(args[0] ?? "");
+      return args[0] === "missing"
+        ? { stdout: null, missing: true }
+        : { stdout: args[0] === "fail" ? null : "ok", missing: false };
+    };
+    const ok = budgetedGh(spawn, () => t, 6000);
+    expect(ok.gh(["run"], CWD)).toBe("ok");
+    expect(ok.gh(["fail"], CWD)).toBeNull();
+    // A call that ran and failed is GitHub's answer: no reason to pass.
+    expect(ok.whyUnread()).toBeNull();
+    const missing = budgetedGh(spawn, () => t, 6000);
+    expect(missing.gh(["missing"], CWD)).toBeNull();
+    expect(missing.whyUnread()).toBe("gh missing");
+    const late = budgetedGh(spawn, () => t, 6000);
+    t = 6001;
+    expect(late.gh(["run"], CWD)).toBeNull();
+    expect(late.whyUnread()).toBe("no time");
+    expect(ran).toEqual(["run", "fail", "missing"]);
+  });
+});
+
 describe("push-wait: withBudget, the guard's time limit for its gh and git calls (#826 review)", () => {
   test("a call starts only before the limit; past it, the answer is null and the call is not made", () => {
     let clock = 0;
@@ -431,11 +479,20 @@ describe("push-wait: the run and the PR as gh prints them (#741)", () => {
   test("an empty list is no run; output gh could not give, or that does not parse, is GitHub unread (null, #741)", () => {
     expect(prRunFrom("[]", pr("MERGEABLE"), now)).toBe("none");
     expect(prRunFrom("[]\n", null, now)).toBe("none");
+    // A PR that cannot be read leaves the run's age to decide: no failed check, no conflict known (#945 review).
+    for (const view of [null, "{ nope"]) {
+      expect(prRunFrom(list("in_progress"), view, now)).toEqual({
+        id: 42,
+        url: URL,
+        inProgress: true,
+        failed: false,
+        conflicting: false,
+        minutes: 6,
+      });
+    }
     for (const [runs, detail] of [
       [null, pr("MERGEABLE")],
       ["{ nope", pr("MERGEABLE")],
-      [list("in_progress"), null],
-      [list("in_progress"), "{ nope"],
       [JSON.stringify([{ databaseId: 42, status: "in_progress", url: URL }]), pr("MERGEABLE")],
     ] as const) {
       expect(prRunFrom(runs, detail, now)).toBeNull();
@@ -476,11 +533,12 @@ describe("push-wait: the gh calls the guard makes (#756 review)", () => {
       expect(prRunVia(gh, () => now)("fix-x", CWD)).toBe(read);
       expect(calls.length).toBe(1);
     }
+    // The run listed but its PR unread: the run's age decides (#945 review).
     expect(
       prRunVia(
         (args) => (args[0] === "run" ? runs : null),
         () => now,
       )("fix-x", CWD),
-    ).toBeNull();
+    ).toEqual(green);
   });
 });
