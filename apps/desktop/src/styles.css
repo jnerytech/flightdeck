@@ -2219,13 +2219,16 @@ html:not(:has([data-slot="status-bar"])) {
   font-weight: var(--weight-label);
 }
 
-/* A pressed toggle (#812), whatever its variant: the accent's fill and a 2 px inset ring, twice
-   the 1 px border, so on and off differ in shape too. Outside the layers, so it beats the
-   variant's own background and its hover. */
-[data-slot="button"][aria-pressed="true"] {
+/* A pressed toggle (#812): the accent's fill and a 2 px ring, twice the 1 px border, so on and
+   off differ in shape too. The ring is an outline, so the focus-visible ring (a box-shadow) still
+   shows on a pressed button. Only the toggle variants: a default or destructive button keeps its
+   own fill. Outside the layers, so it beats the variant's background and its hover. */
+[data-slot="button"][data-variant="outline"][aria-pressed="true"],
+[data-slot="button"][data-variant="ghost"][aria-pressed="true"] {
   background: var(--accent);
   color: var(--accent-foreground);
-  box-shadow: inset 0 0 0 2px var(--ring);
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }
 
 /* A disabled button's reason hangs under it without adding height to the row (issue #38). */

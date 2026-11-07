@@ -316,7 +316,11 @@ function shots(ids: DemoIds): Shot[] {
       async prepare(page) {
         const blocked = page.getByRole("button", { name: /^(Bloqueados|Blocked)$/ });
         await blocked.click();
-        await page.locator('[data-slot="button"][aria-pressed="true"]').first().waitFor();
+        // Blocked itself, pressed: another toggle on the page (Files) could already be.
+        await page
+          .locator('[data-slot="button"][aria-pressed="true"]')
+          .filter({ hasText: /^(Bloqueados|Blocked)$/ })
+          .waitFor();
       },
     },
     {
