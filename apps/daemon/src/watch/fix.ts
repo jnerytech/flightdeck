@@ -393,7 +393,7 @@ export class PrFixer {
       .fixCard(cardId, {
         prompt: buildPrompt({
           n,
-          maxRounds: settings.maxRounds,
+          maxRounds: this.roundBudget(cardId).max,
           branch,
           base: project.baseBranch,
           settings,
