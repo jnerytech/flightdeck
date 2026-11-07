@@ -3554,6 +3554,12 @@ how a host looks, not what it can do: the sessions, the permissions and the file
 - *Settings* has the language, the theme, the folders tasks may use, notifications and *Show
   everything*, which goes back to the full app after a confirmation.
 
+**Outside the window.** Notifications, the tray and the window title follow the mode of the host that
+raised them (the window title follows the host you are looking at). For a host in simple mode a notification is titled "<host · task>: waiting for your
+answer" and says what the task wants in plain words, instead of "needs you / Allow Write?". When
+that host is in simple mode, the window title becomes "Flightdeck: 2 tasks waiting for your answer";
+the tray tooltip says the same when every waiting host is in simple mode. Hosts in full mode keep the technical wording.
+
 **Safety.** A task never skips questions: it can only read, ask before it changes things, or edit
 the chosen folder. Results go to a *Flightdeck results* folder next to your files. Simple mode hides
 things, it does not protect them: a person in full mode can do everything the host allows.
