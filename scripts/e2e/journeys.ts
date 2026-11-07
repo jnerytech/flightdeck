@@ -1732,7 +1732,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const rows = c.page.locator(".leader-row");
     for (const size of REACH_VIEWPORTS) {
       await c.page.setViewportSize(size);
-      await open(c, { name: "home" });
+      await open(c, { name: "overview" });
       await loaded.waitFor({ timeout: SESSION_WAIT });
       await rows.first().waitFor({ timeout: WAIT });
       // No row runs past the window sideways.
