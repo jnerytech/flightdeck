@@ -22,25 +22,35 @@ export interface SessionViewsEntry {
  * palette can switch its view without the screen being in their hands.
  */
 export class SessionViews {
+  private readonly lastViews = new Map<string, SessionView>();
+  private current: SessionViewsEntry | null = null;
+
   /** The view `key` was last on, or `null` when it has none yet. */
-  last(_key: string): SessionView | null {
-    return null;
+  last(key: string): SessionView | null {
+    return this.lastViews.get(key) ?? null;
   }
 
-  remember(_key: string, _view: SessionView): void {}
+  remember(key: string, view: SessionView): void {
+    this.lastViews.set(key, view);
+  }
 
   /** Puts `entry` on screen; the returned function takes it off (only if it is still the one). */
-  register(_entry: SessionViewsEntry): () => void {
-    return () => {};
+  register(entry: SessionViewsEntry): () => void {
+    this.current = entry;
+    return () => {
+      if (this.current === entry) this.current = null;
+    };
   }
 
   /** The views of the page on screen, none when there is no such page. */
   available(): readonly SessionView[] {
-    return [];
+    return this.current?.views ?? [];
   }
 
   /** Shows `view` on the page on screen; false when there is no such page or it lacks the view. */
-  select(_view: SessionView): boolean {
-    return false;
+  select(view: SessionView): boolean {
+    if (!this.current?.views.includes(view)) return false;
+    this.current.select(view);
+    return true;
   }
 }
