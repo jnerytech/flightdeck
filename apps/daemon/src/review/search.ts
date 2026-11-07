@@ -70,7 +70,7 @@ const MASK_WINDOW = 1024;
  * digit (so a word or a hex hash is not taken); a short one counts only with its `=` padding, as a
  * key's last line has.
  */
-const BASE64_LINE = /^[\s"'`#/*,;:[\]-]*([A-Za-z0-9+/]+={0,2})[\s"'`,;\]]*$/;
+const BASE64_LINE = /^[\s"'`#/*,;:[\]-]*([A-Za-z0-9+/]+={0,2})[\s"'`,;\]]*$/; // NOSONAR: the line is cut to TEXT_MAX + MASK_WINDOW characters first
 
 function keyBody(line: string): boolean {
   const run = BASE64_LINE.exec(line.replaceAll("\r", ""))?.[1] ?? "";
@@ -160,22 +160,33 @@ async function search(root: string, input: Search, opts: SearchOptions): Promise
   const matches: FileSearchMatch[] = [];
   let more = false;
   for (const match of found.matches) {
-    // A path that holds a secret is left out: masked, it would name no file to open (#829).
-    if (scanner.scan(match.path).length > 0) continue;
-    const real = await inside(realRoot, match.path, stays);
-    if (real === null) continue;
-    // A credential's lines never leave the host; its name may, marked. A link counts by what it is.
-    const secret = credential(match.path) || credential(real);
-    if (input.mode === "content" && secret) continue;
+    const leaving = await leaves(realRoot, match, input.mode, stays);
+    if (leaving === null) continue;
     if (matches.length === limit) {
       more = true;
       break;
     }
-    // Masked only now, for the matches that leave (#829).
-    const kept = match.text === undefined ? match : { ...match, text: shown(match.text) };
-    matches.push(secret ? { ...kept, secret } : kept);
+    matches.push(leaving);
   }
   return { mode: input.mode, query: input.query, matches, truncated: found.truncated || more };
+}
+
+/** The match as it leaves the host (masked, marked when a credential), or `null`: it stays. */
+async function leaves(
+  realRoot: string,
+  match: FileSearchMatch,
+  mode: Search["mode"],
+  stays: Map<string, string | null>,
+): Promise<FileSearchMatch | null> {
+  // A path that holds a secret is left out: masked, it would name no file to open (#829).
+  if (scanner.scan(match.path).length > 0) return null;
+  const real = await inside(realRoot, match.path, stays);
+  if (real === null) return null;
+  // A credential's lines never leave the host; its name may, marked. A link counts by what it is.
+  const secret = credential(match.path) || credential(real);
+  if (mode === "content" && secret) return null;
+  const kept = match.text === undefined ? match : { ...match, text: shown(match.text) };
+  return secret ? { ...kept, secret } : kept;
 }
 
 /**
