@@ -68,6 +68,14 @@ describe("knowledge-list: the library of a project, read only (#76)", () => {
     expect((await listKnowledge(root)).entries.map((e) => e.path)).toEqual([]);
   });
 
+  test("a library folder that is a link to another folder of the project is not walked", async () => {
+    const root = tempDir("fd-knowledge-");
+    await put(root, ".aws/notes.md", front("valid", "# Inside a credential folder\n"));
+    await mkdir(join(root, "docs"), { recursive: true });
+    await symlink(join(root, ".aws"), join(root, "docs/adr"));
+    expect((await listKnowledge(root)).entries.map((e) => e.path)).toEqual([]);
+  });
+
   test("a hard link to a file elsewhere is left out, and a plain document beside it stays", async () => {
     const root = tempDir("fd-knowledge-");
     await put(root, "private/notes.md", "# Private note\n");
