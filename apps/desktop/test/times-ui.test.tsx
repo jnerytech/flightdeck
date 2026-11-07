@@ -572,6 +572,31 @@ describe("times-ui: the teams of a host", () => {
     expect(added?.permission).toBe("plan");
   });
 
+  test("a Bypass choice is dropped when the host stops allowing it: no confirm, and nothing sent (#93)", async () => {
+    const { store, teams } = await open({ bypass: true });
+    await click("Novo time");
+    await change("Objetivo", "mudou de ideia");
+    await change("Nome do time", "fl");
+    await workerRows(1);
+    await change("Permissões da executora 1", "bypassPermissions");
+    const host = store.getState().hosts[0];
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        hosts: [{ ...host, hostInfo: { ...host?.hostInfo, allowBypassPermissions: false } }],
+      });
+    });
+    await settle(
+      () =>
+        (screen.queryByLabelText("Permissões da executora 1") as HTMLSelectElement | null)
+          ?.value === "",
+    );
+    await click("Criar e iniciar");
+    await settle(() => row("fl") !== null);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    const members = (await teams())[0]?.members as Array<{ permission: string | null }>;
+    expect(members.map((m) => m.permission)).toEqual([null, null]);
+  });
+
   test("a worker added with Bypass asks first, and cancelling adds nothing (#93)", async () => {
     const { teams } = await open({ bypass: true });
     await create("ab", "1");
