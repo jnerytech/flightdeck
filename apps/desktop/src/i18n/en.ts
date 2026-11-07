@@ -833,6 +833,22 @@ export const en: Dictionary = {
     selectedCard: "selected",
     stayedOne: "1 card stayed where it was: {names}",
     stayed: "{count} cards stayed where they were: {names}",
+    /** What a column asks of a card before it gets there (issue #78). */
+    contract: {
+      needs: {
+        criteria: "acceptance criteria",
+        pr: "a PR link",
+        checksPending: "checks to finish",
+        checksFailing: "passing checks",
+      },
+      hint: "Needs: {needs}",
+      title: "Move to {column} anyway?",
+      lacksOne: "{title} lacks: {needs}.",
+      lacksMany: "{count} cards lack something {column} needs:",
+      item: "{title} — {needs}",
+      moveAnyway: "Move anyway",
+      moveQualifying: "Move only the ones that qualify",
+    },
     files: "Files",
     filesOf: "Files · {branch}",
     filesPrimary: "Files show for a worktree. Pick one in the sidebar.",
