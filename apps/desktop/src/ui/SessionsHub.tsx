@@ -1,5 +1,5 @@
 import type { SessionMeta } from "@flightdeck/protocol";
-import { ListFilter, MoreHorizontal, Radio, X } from "lucide-react";
+import { ListFilter, MoreHorizontal, Radio, Server, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
@@ -19,6 +19,7 @@ import { ViewToggle } from "@/components/hub/view-toggle";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
+import { EmptyState } from "@/components/layout/states";
 import { WorktreeChip } from "@/components/projects/worktree-chip";
 import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { StatusDot } from "@/components/status/status-dot";
@@ -375,6 +376,10 @@ export function SessionsHub(
     filter.showArchived,
   ].filter(Boolean).length;
   const starter = newSessionHost(state.hosts, state.selected);
+  // No host at all, or none online and nothing cached to list: the list would be a dead end.
+  const hostless =
+    state.hosts.length === 0 ||
+    (rows.length === 0 && !state.hosts.some((h) => h.status === "online"));
   const toolbar = (
     <Toolbar label={t("hub.filters")}>
       <ViewToggle
@@ -502,12 +507,24 @@ export function SessionsHub(
     >
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
-        <FoldAll
-          expandLabel={t("hub.expandAll")}
-          collapseLabel={t("hub.collapseAll")}
-          onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, true])))}
-          onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, false])))}
-        />
+        {hostless ? (
+          <EmptyState
+            icon={Server}
+            title={state.hosts.length === 0 ? t("hub.noHost") : t("hub.noOnlineHost")}
+            action={
+              <Button onClick={() => store.router.push({ name: "add-host" })}>
+                {t("hub.addHost")}
+              </Button>
+            }
+          />
+        ) : (
+          <FoldAll
+            expandLabel={t("hub.expandAll")}
+            collapseLabel={t("hub.collapseAll")}
+            onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, true])))}
+            onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, false])))}
+          />
+        )}
         {state.hosts.length > 1 && (
           <HostFilterRow
             label={t("hub.hostsLabel")}

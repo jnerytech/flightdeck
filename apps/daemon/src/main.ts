@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { tmpdir, userInfo } from "node:os";
@@ -158,6 +158,7 @@ import type { TelemetryStatus } from "./telemetry/otlp-env.ts";
 import { startTelemetry } from "./telemetry/service.ts";
 import { TelemetryStore } from "./telemetry/store.ts";
 import { TeleportPackages, teleportDeps } from "./teleport/package.ts";
+import { TeleportInbox } from "./teleport/receive.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
@@ -946,6 +947,14 @@ export async function startDaemon(
     }),
   );
   await teleport.start();
+  // The packages other hosts send to this one (slice 2a); none outlives a run either.
+  const teleportInbox = new TeleportInbox({
+    dir: join(config.dataDir, "teleport-in"),
+    now: Date.now,
+    newId: randomUUID,
+    timers: globalThis,
+  });
+  await teleportInbox.start();
   // Usage of every session of the host, from the transcripts (phase 8): first the ones that
   // already exist, in the background, then whatever the history index sees changing.
   const costs = new Costs({
@@ -1368,6 +1377,7 @@ export async function startDaemon(
     },
     ...(assistant ? { assistant } : {}),
     teleport,
+    teleportInbox,
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
@@ -1707,6 +1717,7 @@ export async function startDaemon(
         await server.stop();
         // Issue #100: no package of a transcript outlives the daemon.
         await teleport.stop();
+        await teleportInbox.stop();
         history.stop();
         await usageIndex.stop();
         budgets.stop();
