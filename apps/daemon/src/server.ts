@@ -13,6 +13,7 @@ import {
   type ExternalStatus,
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
+  type HarnessPreview,
   type HarnessStack,
   type HostRuntime,
   type KeepAwakeStatus,
@@ -51,6 +52,7 @@ import { coalesceDeltas, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
 import { listDirs, listFiles } from "./fs-dirs.ts";
 import type { GithubService } from "./github/service.ts";
+import type { PreviewPart } from "./harness/preview.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
@@ -173,6 +175,8 @@ export interface ServerOptions {
   ) => string;
   /** #75: a project's stack and commands, read from its manifest files, never run. */
   harnessStack?: (path: string) => Promise<HarnessStack>;
+  /** #75: what adding harness parts would add, written nowhere. */
+  harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
   projectTrust?: {
     /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
     refresh(): Promise<void>;
@@ -404,6 +408,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.deps, "depsCheck"),
     ...when(opts.projectTrust, "projectTrust"),
     ...when(opts.harnessStack, "harnessStack"),
+    ...when(opts.harnessPreview, "harnessPreview"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
@@ -1123,6 +1128,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.harnessStack) throw featureOff("harnessStack");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.harnessStack(path));
+      }
+      case "project.harness.preview": {
+        if (!opts.harnessPreview) throw featureOff("harnessPreview");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.harnessPreview(path, command.payload.parts));
       }
       case "project.trust.set": {
         if (!opts.projectTrust) throw featureOff("projectTrust");
