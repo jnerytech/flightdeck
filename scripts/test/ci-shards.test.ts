@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { FULL_SUITE_JOB } from "../lib/pr-flow.ts";
 
 /**
  * #220: the Windows tests run in three shards and the prints apart from e2e, while the four checks
@@ -37,6 +38,13 @@ const DISPATCH = "github.event_name != 'workflow_dispatch' || inputs.only != 'sc
 const SUFFIX = "${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}";
 
 describe("ci-shards", () => {
+  test("pr tag's full-run check names the job that holds the merged shard gate (#296)", () => {
+    // A dispatch counts as a full green run when this job passed: it must be the merge.
+    expect(job("test-suite").name?.startsWith(FULL_SUITE_JOB)).toBe(true);
+    expect(runs("test-suite")).toContain("bun run scripts/shard-gate.ts merge");
+    expect(job("test-suite").needs).toContain("test-shard");
+  });
+
   test("Linux runs the whole suite in shards with the exact merged 100% gate, and SonarCloud in another job (#293, #296)", () => {
     expect(job("test-suite")["runs-on"]).toBe("ubuntu-latest");
     expect(runs("test-suite")).toContain("bun run scripts/shard-gate.ts merge");
