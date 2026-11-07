@@ -1,5 +1,14 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { type FileChange, measureDrift, parseNumstat } from "../src/watch/drift.ts";
+import { PrWatch } from "../src/watch/service.ts";
+import { git } from "./board-helpers.ts";
+import { cleanups, fixture, work } from "./watch-helpers.ts";
+
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
 
 const change = (path: string, added = 1, removed = 0): FileChange => ({ path, added, removed });
 
@@ -61,5 +70,129 @@ describe("drift-gate: whether a fixing round drifted from its PR (#77)", () => {
       { outside: [], churn: 301, limit: 300 },
       { outside: [], churn: 201, limit: 200 },
     ]);
+  });
+});
+
+type Fixture = Awaited<ReturnType<typeof fixture>>;
+
+/** A watched card that drift is measured for: nothing outside its PR is allowed. */
+const strict = () => fixture({ settings: { driftAllow: [] } });
+
+const service = (f: Fixture) =>
+  new PrWatch({ board: f.board, watcher: f.watcher, fixer: f.fixer, traces: {} as never });
+
+/** One round of fixing a review comment, to its end. */
+async function round(f: Fixture) {
+  await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+  await f.fixer.idle();
+  return f.fixer.rounds(f.card.id).at(-1);
+}
+
+/** Why a call was refused: its reason, or null when it went through. */
+async function refusal(call: Promise<unknown>): Promise<string | null> {
+  try {
+    await call;
+    return null;
+  } catch (error) {
+    return (error as { reason?: string }).reason ?? String(error);
+  }
+}
+
+const head = (f: Fixture, ref = "HEAD") => git(f.worktree, "rev-parse", ref);
+
+describe("drift-gate: a round that leaves its PR is held, not pushed (#77)", () => {
+  test("a round that changes only the PR's own files is pushed", async () => {
+    const f = await strict();
+    // The PR already changes fake-1.txt, the file the fake session's commit writes.
+    writeFileSync(join(f.worktree, "fake-1.txt"), "the PR's own line\n");
+    git(f.worktree, "add", "fake-1.txt");
+    git(f.worktree, "commit", "-q", "-m", "the card's work");
+    git(f.worktree, "push", "-q", "origin", `HEAD:refs/heads/${f.branch}`);
+    const r = await round(f);
+    expect([r?.status, r?.drift ?? null, f.commitsAhead()]).toEqual(["pushed", null, "3"]);
+  });
+
+  test("a round that adds a file outside the PR is held: nothing is pushed, and the card needs you", async () => {
+    const f = await strict();
+    const r = await round(f);
+    const status = f.watcher.status(f.card.id);
+    expect([
+      r?.status,
+      r?.drift,
+      f.gitCalls.some((args) => args[0] === "push"),
+      f.commitsAhead(),
+      status.status,
+      status.reason?.includes("fake-1.txt") ?? false,
+      f.board.getCard(f.card.id).column,
+    ]).toEqual([
+      "held",
+      { outside: ["fake-1.txt"], churn: 1, limit: 200 },
+      false,
+      "1",
+      "needs_you",
+      true,
+      "waiting",
+    ]);
+  });
+
+  test("a round whose drift cannot be measured is held with the reason, not pushed", async () => {
+    const f = await strict();
+    git(f.worktree, "update-ref", "-d", "refs/remotes/origin/main");
+    const r = await round(f);
+    expect([
+      r?.status,
+      r?.drift ?? null,
+      r?.summary?.includes("could not be measured") ?? false,
+      f.commitsAhead(),
+    ]).toEqual(["held", null, true, "1"]);
+  });
+
+  test("push anyway pushes the held commits as they are, and the card is watched again", async () => {
+    const f = await strict();
+    const r = await round(f);
+    const held = r?.status;
+    const info = await service(f).resolveHeld(f.card.id, r?.id ?? "", "push");
+    expect([
+      held,
+      info.rounds.at(-1)?.status,
+      f.commitsAhead(),
+      info.status,
+      f.board.getCard(f.card.id).column,
+    ]).toEqual(["held", "pushed", "2", "watching", "review"]);
+  });
+
+  test("drop puts the branch back where it was pushed, and the card is watched again", async () => {
+    const f = await strict();
+    const r = await round(f);
+    const info = await service(f).resolveHeld(f.card.id, r?.id ?? "", "drop");
+    expect([
+      info.rounds.at(-1)?.status,
+      head(f) === head(f, `origin/${f.branch}`),
+      f.commitsAhead(),
+      info.status,
+    ]).toEqual(["stopped", true, "1", "watching"]);
+  });
+
+  test("a branch with new commits since the hold is refused: nothing is pushed or dropped", async () => {
+    const f = await strict();
+    const r = await round(f);
+    git(f.worktree, "commit", "-q", "--allow-empty", "-m", "made after the hold");
+    const moved = head(f);
+    expect([
+      await refusal(service(f).resolveHeld(f.card.id, r?.id ?? "", "push")),
+      await refusal(service(f).resolveHeld(f.card.id, r?.id ?? "", "drop")),
+      f.commitsAhead(),
+      head(f) === moved,
+    ]).toEqual(["watch_held_moved", "watch_held_moved", "1", true]);
+  });
+
+  test("a round that is not held is refused", async () => {
+    const f = await fixture();
+    const r = await round(f);
+    expect([
+      r?.status,
+      await refusal(service(f).resolveHeld(f.card.id, r?.id ?? "", "push")),
+      await refusal(service(f).resolveHeld(f.card.id, "nope", "drop")),
+    ]).toEqual(["pushed", "watch_round_not_held", "watch_round_not_held"]);
   });
 });
