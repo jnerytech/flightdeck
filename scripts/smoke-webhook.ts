@@ -142,12 +142,14 @@ async function run(work: string): Promise<void> {
           },
         },
         vault: {
-          get: async (id: string) => vault.get(id) ?? null,
-          set: async (id: string, v: string) => {
+          get: (id: string) => Promise.resolve(vault.get(id) ?? null),
+          set: (id: string, v: string) => {
             vault.set(id, v);
+            return Promise.resolve();
           },
-          delete: async (id: string) => {
+          delete: (id: string) => {
             vault.delete(id);
+            return Promise.resolve();
           },
         } as never,
       },
