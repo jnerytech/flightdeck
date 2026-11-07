@@ -16,6 +16,7 @@ interface Step {
   if?: string;
   uses?: string;
   with?: Record<string, string>;
+  env?: Record<string, string>;
 }
 interface Job {
   name?: string;
@@ -158,9 +159,31 @@ describe("ci-shards", () => {
     expect(job("sonar").if).toBe(
       "!cancelled() && needs.test-suite.result == 'success' && (github.event_name == 'pull_request' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))",
     );
-    // The required check: on a PR SonarCloud must run, never skip silently (it did on every PR once).
-    expect(runs("test")).toContain(
-      'if [ "${{ github.event_name }}" = pull_request ]; then test "${{ needs.sonar.result }}" = success; fi',
+    // The required check: SonarCloud must run on a PR and on a full run of main, never skip
+    // silently (it skipped on every PR once). The event and ref come in through env, not spliced.
+    const gate = job("test").steps.find((s) => s.run?.includes("needs.sonar.result"));
+    expect(gate?.env).toEqual({ EVENT: "${{ github.event_name }}", REF: "${{ github.ref }}" });
+    expect(gate?.run ?? "").toContain(
+      'case "$EVENT/$REF" in pull_request/*|schedule/*|workflow_dispatch/refs/heads/main) test "${{ needs.sonar.result }}" = success ;; esac',
+    );
+  });
+
+  test("#895 review: a scan that cannot run fails the sonar job, except on a fork's PR, so success means SonarCloud ran", () => {
+    const step = job("sonar").steps.find((s) => s.name === "Versão para o SonarCloud");
+    expect(step?.env).toEqual({
+      SONAR_TOKEN: "${{ secrets.SONAR_TOKEN }}",
+      PR_REPO: "${{ github.event.pull_request.head.repo.full_name }}",
+      REPO: "${{ github.repository }}",
+    });
+    const run = step?.run ?? "";
+    expect(run).toContain('if [ -n "$SONAR_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"');
+    // A fork's PR gets no secrets: no scan, and that is not a failure.
+    expect(run).toContain(
+      'elif [ -n "$PR_REPO" ] && [ "$PR_REPO" != "$REPO" ]; then echo "a fork\'s PR: no SONAR_TOKEN, no scan"',
+    );
+    // A same-repo PR, the schedule or a dispatch of main with no token has no verdict: it fails.
+    expect(run).toContain(
+      'else echo "SONAR_TOKEN is empty: no scan, so no SonarCloud verdict"; exit 1; fi',
     );
   });
 
