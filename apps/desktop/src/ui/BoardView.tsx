@@ -62,6 +62,8 @@ import {
   type BulkRefusal,
   columnCount,
   countLabel,
+  filteredColumnCount,
+  filteredCountLabel,
   moveMany,
   pruneSelection,
   rangeSelection,
@@ -340,6 +342,13 @@ export const BoardView = memo(function BoardView(props: {
     .filter((card) => !onlyBlocked || card.waitingOn.length > 0)
     .filter((card) => !treeBranch || cardInFilter(card, treeBranch));
   const filtering = filter.trim() !== "" || onlyBlocked;
+  const counts = (inColumn: number, ofColumn: number) =>
+    filtering
+      ? {
+          count: filteredColumnCount(inColumn, ofColumn),
+          label: filteredCountLabel(t, inColumn, ofColumn),
+        }
+      : { count: columnCount(inColumn), label: countLabel(t, inColumn) };
   // The board's order: column by column, top to bottom, among the cards a filter leaves.
   const boardOrder = COLUMNS.flatMap(({ id }) =>
     shown.filter((card) => card.column === id).map((card) => card.id),
@@ -667,16 +676,9 @@ export const BoardView = memo(function BoardView(props: {
               <ColumnHeader
                 id={id}
                 title={t(`kanban.columns.${id}` as Key)}
-                count={columnCount(
+                {...counts(
                   shown.filter((card) => card.column === id).length,
                   all.filter((card) => card.column === id).length,
-                  filtering,
-                )}
-                label={countLabel(
-                  t,
-                  shown.filter((card) => card.column === id).length,
-                  all.filter((card) => card.column === id).length,
-                  filtering,
                 )}
                 addLabel={t("kanban.addCardTo", { column: t(`kanban.columns.${id}` as Key) })}
                 onAdd={() => {
