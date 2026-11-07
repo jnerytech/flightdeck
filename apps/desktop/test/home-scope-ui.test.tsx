@@ -45,7 +45,7 @@ function setup(
     summary.totals.costUsd = spent;
     return { ok: true, data: summary };
   }) as never;
-  const names: Record<string, string> = { h1: "alfa", h2: "beta" };
+  const names: Record<string, string> = { h1: "alfa", h2: "beta", h3: "gama" };
   const hosts = (options.hosts ?? ["h1", "h2"]).map((id) => ({
     id,
     name: names[id],
@@ -128,6 +128,20 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     setup({ kept: '{"kind":"host","hostId":"h1"}', hosts: ["h2"] });
     await settle(() => /\$5\.00/.test(spend()));
     expect({ before, after: /\$5\.00/.test(spend()) }).toEqual({ before: [], after: true });
+  });
+
+  // Review of #856: until the list is read, the kept host has no name to show, and "all hosts"
+  // would mislead: the subtitle names no scope, and the menu waits for the list.
+  test("before the host list is read, a kept host's scope is not called all hosts", async () => {
+    setup({ kept: '{"kind":"host","hostId":"h1"}', hosts: ["h2", "h3"], loaded: false });
+    const all = () =>
+      screen.queryByText("Last 7 days · all hosts") !== null ||
+      screen.queryByRole("button", { name: "Data from All hosts" }) !== null;
+    await settleMaybe(all, 300);
+    expect({ all: all(), plain: screen.queryByText("Last 7 days") !== null }).toEqual({
+      all: false,
+      plain: true,
+    });
   });
 
   // Review of #837: a scoped host still connecting is not offline; Home does not offer to leave it.
