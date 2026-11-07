@@ -20,7 +20,8 @@ import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
-import { DEMO_TELEPORT_SESSION, teleportReady } from "./lib/demo-teleport.ts";
+import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
+import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo-teleport.ts";
 import { acoesActions, DANGER_SESSION } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
@@ -109,6 +110,8 @@ export interface DemoIds {
   longSession: string;
   /** A session with a very long title: its crumb is cut with an ellipsis (issue #133). */
   longTitleSession: string;
+  /** The clone of flightdeck-web on beta: where a session moved from alfa lands (issue #790). */
+  teleportRepo: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -262,7 +265,7 @@ function writeTraceSession(dir: string, cwd: string): void {
 
 /**
  * Transcripts of finished terminal sessions: many short ones, a long one and two with usage. With
- * `movable`, the newest has a UUID name: resumed, it is a session that can move to the other host
+ * `movable`, the two newest have a UUID name (one per language): resumed, each is a session that can move to the other host
  * (issue #100), and the count stays the same.
  */
 export function writeHistory(history: string, cwd: string, movable = false): void {
@@ -275,8 +278,8 @@ export function writeHistory(history: string, cwd: string, movable = false): voi
     writeFileSync(
       join(
         dir,
-        movable && i === 0
-          ? `${DEMO_TELEPORT_SESSION}.jsonl`
+        movable && i < 2
+          ? `${Object.values(DEMO_TELEPORT_SESSIONS)[i]}.jsonl`
           : `hist-${String(i).padStart(3, "0")}.jsonl`,
       ),
       `${[
@@ -679,6 +682,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     ".claude/agents/revisor.md": AGENT_MD,
     ".claude/skills/deploy/SKILL.md": SKILL_MD,
     ".flightdeck/actions.yaml": ACTIONS_YAML,
+    // Issue #846: a key-shaped line and a credential file, for the Files panel's search to hide.
+    [DEMO_SECRET_FILE.name]: DEMO_SECRET_FILE.text,
+    [DEMO_CREDENTIAL_FILE.name]: DEMO_CREDENTIAL_FILE.text,
   });
   git(web, "remote", "add", "origin", "git@github.com:Acme/App.git");
   repo(join(alfa.projects, "vazio"), { "README.md": "# vazio\n" });
@@ -1077,6 +1083,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       scrollSession: long.sessionId,
       longSession: longSession.sessionId,
       longTitleSession: longTitle.sessionId,
+      teleportRepo: join(beta.projects, "flightdeck-web"),
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.

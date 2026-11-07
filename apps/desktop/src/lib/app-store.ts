@@ -104,6 +104,7 @@ import {
 } from "./client-vault.ts";
 import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
+import { DataScopeController } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
@@ -174,7 +175,9 @@ import {
 } from "./session-state.ts";
 import { SessionViews } from "./session-views.ts";
 import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
+import { ShellPrefs } from "./shell-prefs.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
+import { SidebarFoldController } from "./sidebar-fold.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
   effectiveMode,
@@ -1028,6 +1031,9 @@ export class AppStore {
     );
     this.tabOrder = new TabOrderController(platform.storage);
     this.tabScope = new TabScopeController(platform.storage);
+    this.sidebarFold = new SidebarFoldController(platform.storage);
+    this.dataScope = new DataScopeController(platform.storage);
+    this.shellPrefs = new ShellPrefs(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
@@ -1122,6 +1128,11 @@ export class AppStore {
   readonly tabOrder: TabOrderController;
   /** Whether the tab row shows one host's tabs or every host's (issue #644). */
   readonly tabScope: TabScopeController;
+  readonly sidebarFold: SidebarFoldController;
+  /** Whose data Home (and later Sessions, Costs, Board) show: every host or one (#126). */
+  readonly dataScope: DataScopeController;
+  /** What the shell hides: the New and Beta badges, What's new (issue #282). */
+  readonly shellPrefs: ShellPrefs;
   /** The board columns' width, one for all, kept across starts (issue #161). */
   readonly boardWidth: BoardWidth;
   /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */
@@ -4351,6 +4362,35 @@ export class AppStore {
   /** Phase 22: turns the watch of a card's PR on or off (`null`: the project's default). */
   async setWatch(hostId: string, cardId: string, enabled: boolean | null): Promise<void> {
     const watch = await this.hostCommand(hostId, "watch.set", { cardId, enabled });
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
+  /** Issue #77: the person allows a card's watch `rounds` more fixing rounds. */
+  async extendWatch(hostId: string, cardId: string, rounds: number): Promise<void> {
+    // A refusal (no watch, another limit) would come back: nothing to retry.
+    const watch = await this.hostCommand(
+      hostId,
+      "watch.extend",
+      { cardId, rounds },
+      { retry: false },
+    );
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
+  /** Issue #77: a round held for drift, pushed as it is or dropped. */
+  async resolveHeld(
+    hostId: string,
+    cardId: string,
+    roundId: string,
+    action: "push" | "drop",
+  ): Promise<void> {
+    // Repeated later, a push or drop would act on a round that may be settled already.
+    const watch = await this.hostCommand(
+      hostId,
+      "watch.resolveHeld",
+      { cardId, roundId, action },
+      { retry: false },
+    );
     if (watch) this.keepWatch(hostId, watch);
   }
 

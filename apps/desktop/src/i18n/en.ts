@@ -19,6 +19,8 @@ export const en: Dictionary = {
     copyAccount: "Copy the account: {value}",
     copyHost: "Copy the host id: {value}",
     compact: "Compact rows",
+    hideBadges: "Hide New and Beta badges",
+    hideWhatsNew: "Hide What's new",
     checkUpdates: "Check for updates",
     shortcuts: "Keyboard shortcuts",
     signOutGithub: "Sign out of GitHub",
@@ -26,9 +28,17 @@ export const en: Dictionary = {
     signOutGithubConfirm:
       "Sign out of GitHub on {host}? Its sessions lose access to your repositories until you sign in again.",
   },
+  scope: {
+    menu: "Data from {scope}",
+    all: "All hosts",
+    showing: "Showing {scope}",
+    offline: "{host} is offline. Its numbers come back when it reconnects.",
+    showAll: "Show all hosts",
+  },
   home: {
     title: "Home",
     range: "Last 7 days · all hosts",
+    rangeHost: "Last 7 days · {host}",
     spend: "Spend",
     noBudget: "No budget set",
     ofBudget: "{spent} of {limit} budget this month",
@@ -1679,6 +1689,10 @@ export const en: Dictionary = {
     branch_invalid: "{name} is not a valid branch name.",
     watch_off: "This card's PR is not watched: turn the watch on first.",
     watch_extend_blocked: "More rounds would not help: {reason}",
+    watch_round_not_held: "That round is not held: there is nothing to push or drop.",
+    watch_pr_not_open: "The card's PR is {state}: nothing is pushed to it.",
+    watch_held_moved:
+      "The branch has new commits since the round was held: look at them before you push or drop.",
     review_file_missing: "The file {path} does not exist.",
     review_file_big: "The file {path} is over 1 MB: edit it outside Flightdeck.",
     review_file_binary: "The file {path} is not text.",
@@ -2756,6 +2770,12 @@ export const en: Dictionary = {
     done: "The session is on {host} now. The one here stays as it was.",
     open: "Open it there",
     close: "Close",
+    plainWs: {
+      one: "{hosts} connects without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
+      other:
+        "{hosts} connect without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
+    },
+    movedToast: "The session moved to {host}.",
     preview: "Preview: move a session to another host",
   },
   automationsUi: {
@@ -3532,8 +3552,24 @@ export const en: Dictionary = {
     needsYou: "Needs you: {reason}",
     rounds: "Fixing rounds",
     round: "Round {n} · {status}",
-    status: { running: "running", pushed: "pushed", failed: "failed", stopped: "stopped" },
+    status: {
+      running: "running",
+      pushed: "pushed",
+      failed: "failed",
+      stopped: "stopped",
+      held: "held for you",
+    },
     resume: "Watch again",
+    roundsUsed: "Fix rounds used: {used} of {max}",
+    extend: "Allow {n} more rounds",
+    outside: "Outside the PR: {files}",
+    churn: "{churn} of at most {limit} lines changed",
+    pushHeld: "Push anyway",
+    dropHeld: "Drop the round",
+    pushHeldConfirm:
+      "Push the round's commits as they are? They change files outside the PR: {files}. A push cannot be taken back.",
+    dropHeldConfirm:
+      "Drop the round's commits? The branch goes back to where the round started; work from before it stays.",
     openCard: "Open the card",
     notifyTitle: "A PR needs you",
     entry: "PR of {card}: {reason}",

@@ -83,6 +83,19 @@ export class PrWatch {
     return this.info(cardId);
   }
 
+  /** Issue #77: a held round pushed as it is, or its commits dropped; the card is watched again. */
+  async resolveHeld(cardId: string, roundId: string, action: "push" | "drop"): Promise<WatchInfo> {
+    const { board, watcher, fixer } = this.opts;
+    board.getCard(cardId);
+    await fixer.resolveHeld(cardId, roundId, action);
+    if (watcher.status(cardId).status === "needs_you") {
+      watcher.resume(cardId);
+      if (board.getCard(cardId).column === "waiting") board.moveCard(cardId, "review");
+    }
+    this.notify(cardId);
+    return this.info(cardId);
+  }
+
   set(cardId: string, enabled: boolean | null): WatchInfo {
     this.opts.board.getCard(cardId);
     this.opts.watcher.setEnabled(cardId, enabled);

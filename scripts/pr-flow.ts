@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n>] | next | update <n> |
+ * `bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n> | --refs <n>] | next | update <n> |
  * auto <n> | merge <n>` (issue #260, GitHub Flow; auto #271). The logic is in lib/pr-flow.ts;
  * merge needs FLIGHTDECK_COORDINATOR=1.
  */

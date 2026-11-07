@@ -52,6 +52,12 @@ function footer(over: { account?: AccountState | null; hostId?: string | null } 
       onSignOutGithub={() => {}}
       onCopy={(text: string) => void calls.push(`copy ${text}`)}
       onDensity={(density: string) => void calls.push(`density ${density}`)}
+      hideBadges={false}
+      onHideBadges={() => {}}
+      hideWhatsNew={false}
+      onHideWhatsNew={() => {}}
+      hideSetup={false}
+      onHideSetup={() => {}}
       onCheckUpdates={() => void calls.push("check updates")}
       onShortcuts={() => void calls.push("shortcuts")}
       hasNew={false}

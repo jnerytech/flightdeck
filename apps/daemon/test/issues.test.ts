@@ -237,6 +237,23 @@ describe("issues", () => {
     });
   });
 
+  test("Azure: a description keeps its text when a tag is never closed, and a field that is not text reads as empty", async () => {
+    fake("az", [
+      { args: ["account", "show"], stdout: "eu@acme.com\n" },
+      {
+        args: ["boards", "query"],
+        stdout: JSON.stringify([
+          azItem(1, { "System.Description": "<p>a</p>x < y <b>z</b> and <i" }),
+          azItem(2, { "System.Title": { not: "text" }, "System.Tags": ["a"] }),
+        ]),
+      },
+    ]);
+    const { service, project } = await setup(AZ_REMOTE, { provider: "azure" });
+    const [first, second] = await service.list(project.id);
+    expect(first?.body).toBe("a\nx z and <i");
+    expect([second?.title, second?.labels]).toEqual(["", []]);
+  });
+
   test("projeto sem a integração, remoto de outro provedor ou gh que falha: invalid_state", async () => {
     const ctx = newBoard();
     cleanups.push(() => ctx.board.stop());

@@ -317,6 +317,50 @@ describe("pr-flow: open", () => {
     expect(post).toContain("(#245)");
   });
 
+  test("--issue writes Closes #n as the first body line, then the commit list (#839)", async () => {
+    const f = fake({
+      pushed: ["slice"],
+      subjects: { slice: ["feat(slice): x (#9)", "test(slice): y (#9)"] },
+      issues: { 117: "A big issue" },
+    });
+    expect(await prFlow(["open", "slice", "--issue", "117"], f.deps)).toBe(0);
+    const post = f.writes[0] ?? "";
+    expect(post).toContain("-f title=A big issue (#117)");
+    expect(post).toContain("-f body=Closes #117\n\n- feat(slice): x (#9)\n- test(slice): y (#9)");
+    expect(post).not.toContain("Refs #");
+  });
+
+  test("--refs writes Refs #n as the first body line, so nothing is linked for closing (#839)", async () => {
+    const f = fake({
+      pushed: ["slice"],
+      subjects: { slice: ["feat(slice): x (#9)", "test(slice): y (#9)"] },
+      issues: { 117: "A big issue" },
+    });
+    expect(await prFlow(["open", "slice", "--refs", "117", "--draft"], f.deps)).toBe(0);
+    const post = f.writes[0] ?? "";
+    expect(post).toContain("-f title=A big issue (#117)");
+    expect(post).toContain("-f body=Refs #117\n\n- feat(slice): x (#9)\n- test(slice): y (#9)");
+    expect(post).toContain("-F draft=true");
+    expect(post).not.toContain("Closes #");
+  });
+
+  test("--issue and --refs together are refused with a clear message and open nothing (#839)", async () => {
+    const f = fake({
+      pushed: ["slice"],
+      subjects: { slice: ["feat(slice): x (#9)"] },
+      issues: { 117: "A big issue" },
+    });
+    expect(await prFlow(["open", "slice", "--issue", "117", "--refs", "117"], f.deps)).toBe(2);
+    expect(f.writes).toEqual([]);
+    expect(f.out()).toBe("--issue and --refs cannot be used together: pick one");
+  });
+
+  test("the usage text names --refs (#839)", async () => {
+    const f = fake();
+    expect(await prFlow(["open"], f.deps)).toBe(2);
+    expect(f.out()).toContain("[--issue <n> | --refs <n>]");
+  });
+
   test("a new PR runs the FLIGHTDECK_PR_OPENED hook with its number, branch and base; a failed hook leaves the PR open (#273)", async () => {
     const setup = (hookCode: number) => {
       const f = fake({

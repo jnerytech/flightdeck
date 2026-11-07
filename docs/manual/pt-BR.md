@@ -862,8 +862,9 @@ Uma sessão ociosa pode continuar em outro host: a conversa, os commits e as mud
 
 1. No menu da sessão (o "…" na linha dela), escolha **Mover para outro host…**.
 2. Escolha o host e o repositório lá: aperte **Procurar…** para escolher entre as pastas que esse host permite, ou digite o caminho. Tem de ser o mesmo projeto, então esse host já precisa ter um clone dele.
+   Se um dos hosts é alcançado por `ws://` puro e não é esta máquina, um aviso o nomeia: a conversa e o código passam pelo app sem criptografia, então mova só por uma rede em que você confia.
 3. Leia o que vai: a branch, os commits ainda fora do origin, os arquivos alterados, o tamanho e quantas linhas parecem segredos. Os segredos em si nunca aparecem, e eles vão como estão.
-4. Aperte **Mover** e depois **Abrir lá**.
+4. Aperte **Mover** e depois **Abrir lá**. Depois que todos os bytes foram enviados, você pode fechar a janela: quando a mudança termina, um aviso diz isso, com **Abrir lá**, ou diz por que foi recusada.
 
 No outro host o código fica numa worktree nova desse repositório, numa branch própria, e a sessão continua de onde parou. A sessão daqui fica como estava. Arquivos guardados no Git LFS chegam como ponteiros: rode `git lfs pull` na worktree para buscá-los.
 
@@ -926,7 +927,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
   a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
   e o id do host dessa conta, cada um copiado ao ser escolhido; **Linhas compactas**, uma chave
-  guardada neste computador (a mesma densidade das Configurações); **Configurações**; **Novidades** (os
+  guardada neste computador (a mesma densidade das Configurações); mais três chaves guardadas neste
+  computador, **Ocultar os selos Novo e Beta** (os selinhos dos itens recentes da barra), **Ocultar as
+  novidades** (o ponto e o item logo abaixo) e **Esconder a lista de configuração inicial** (o
+  mesmo do botão de esconder na linha dela; **Mostrar a lista de configuração inicial** nas
+  Configurações a traz de volta); **Configurações**; **Novidades** (os
   destaques das últimas versões, lidos do GitHub por um host que consiga; a linha da conta e este item
   ganham um ponto, e o nome da linha avisa, depois que o app foi atualizado, até você abrir; em tela
   cheia numa janela estreita; **Ver todas as versões** abre o GitHub); **Procurar
@@ -956,6 +961,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
   barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
   "N contas" quando diferem.
+- **Dados de** (#126): com dois hosts ou mais, a barra do Início tem um menu que diz de quem são os
+  números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
+  aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
+  abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
+  hosts**. Sessões, Custos e o Board passam a segui-lo em versões seguintes.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
   tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
   (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
@@ -2335,6 +2345,17 @@ rodadas por PR, US$ 5 por PR, 30 turnos, US$ 20 por dia e projeto, duas rodadas 
 falham, ou a fila por cota. Para sozinha quando o PR é concluído ou fechado, ou quando você desliga
 a vigia. **Voltar a vigiar** a liga de novo.
 
+O card mostra **Rodadas usadas: 2 de 3**. Quando as rodadas acabam, **Permitir mais 2 rodadas** dá ao
+card mais duas sem esquecer o que ele já gastou; o host recusa quando outro limite (turnos, custo, a
+branch do card) pararia a próxima rodada de qualquer jeito. Enquanto o PR de um card é vigiado, uma
+automação que manda checks com falha ou comentários de revisão ao card deixa isso para a vigia.
+
+Antes do push, o host confere se a rodada ficou dentro do PR: uma rodada que mexe num arquivo que o
+PR não muda (e que nenhum comentário de revisão cita), ou que muda mais linhas que
+`max(200, as do PR)`, fica **retida para você** em vez de ir. A rodada lista os arquivos fora do PR e
+as linhas que mudou. **Enviar assim mesmo** envia esses commits como estão; **Descartar a rodada** os
+desfaz, mantendo o que havia antes da rodada. Lockfiles e `*.snap` nunca contam.
+
 **Configurações** tem **Vigiar e consertar PRs · <host>**, um bloco por projeto: vigiar por padrão,
 rodadas por PR, limite de custo por PR e por dia (vazio é sem limite), o tempo limite por check (1 a
 60 minutos, 10 por padrão) e os **checks locais**, um por linha. Um check é um comando com os seus
@@ -3235,6 +3256,11 @@ encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 - **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
   Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
   Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 1024 px, e abaixo de 640 px vira uma gaveta.
+  Numa janela larga o botão a recolhe para o trilho e a abre de novo, e o app lembra a escolha na
+  próxima vez que abrir larga.
+- **Tamanho da janela:** a janela abre em 1200 x 800 e pode encolher até 360 x 480, estreita como um
+  celular, para ficar ao lado de um editor. Estreita, a barra lateral vira uma gaveta e as abas viram
+  um botão só.
 - **Três colunas** em Sessões, Precisa de você e Histórico: a lista à esquerda (largura
   ajustável e guardada), a sessão, o pedido ou a transcrição à direita. Board, Custos,
   Configurações e as páginas do host usam a largura toda. O cabeçalho mostra o caminho

@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { KpiCard } from "@/components/home/kpi-card";
 import { Leaderboard } from "@/components/home/leaderboard";
 import { Page } from "@/components/layout/page";
 import { Grid, Stack } from "@/components/layout/stack";
+import { ScopeMenu } from "@/components/shell/scope-menu";
+import { Button } from "@/components/ui/button";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { mergeSummaries } from "../lib/client-costs.ts";
 import { ALL_HOSTS, daysBetween, periodRange, projectLabels } from "../lib/costs.ts";
+import { ALL_SCOPE, activeScope, scopeHosts } from "../lib/data-scope.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
 import { type HomeLeaders, homeLeaders } from "../lib/home-leaders.ts";
@@ -36,12 +39,24 @@ export function HomePage(
 ) {
   const { store, state, go } = props;
   const { t, lang } = store.i18n;
-  const online = state.hosts.filter((host) => host.status === "online");
+  // The data scope (#126): Home adds up only the hosts in it; a host no longer there means all,
+  // once the host list is read (before, a kept host is only not listed yet, and Home asks nobody).
+  const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
+  const scope = activeScope(kept, state.hosts, state.hostsLoaded);
+  const hosts = useMemo(() => scopeHosts(state.hosts, scope), [state.hosts, scope]);
+  /** The scoped host, when it is offline (not still connecting): Home says so and offers all. */
+  const away =
+    scope.kind === "host"
+      ? hosts.find((host) => host.status !== "online" && host.status !== "connecting")
+      : undefined;
+  /** The subtitle says whose numbers they are, as the scope menu does. */
+  const scoped = scope.kind === "host" ? hosts[0]?.name : undefined;
+  const online = hosts.filter((host) => host.status === "online");
   const key = online.map((host) => host.id).join(",");
   /** The cache's entry: every host of the set, whether it is online now or not. */
   const entry = homeKey(
     PERIOD,
-    state.hosts.map((host) => host.id),
+    hosts.map((host) => host.id),
   );
   const range = periodRange(PERIOD, store.today());
   const days = useMemo(() => daysBetween(range.from, range.to), [range.from, range.to]);
@@ -163,16 +178,16 @@ export function HomePage(
       days,
       costs: answers.flatMap((a) => (a.costs ? [a.costs] : [])),
       usage: answers.flatMap((a) => (a.usage ? [a.usage] : [])),
-      budgets: Object.values(state.budgets).flat(),
+      budgets: hosts.flatMap((host) => state.budgets[host.id] ?? []),
     });
-  }, [data, days, state.budgets]);
+  }, [data, days, state.budgets, hosts]);
   const read = fetched?.entry === entry ? fetched : null;
   /** Hosts whose numbers on screen are from an earlier read: the last read did not refresh them. */
-  const stale = state.hosts.filter(
+  const stale = hosts.filter(
     (host) => read && !read.answered.includes(host.id) && read.kept.includes(host.id),
   );
   /** Hosts that did not answer and have no numbers at all. */
-  const silent = state.hosts.filter(
+  const silent = hosts.filter(
     (host) => read?.failed.includes(host.id) && !read.kept.includes(host.id),
   );
   /** The oldest numbers on screen: the line says how old the whole picture can be. */
@@ -184,10 +199,11 @@ export function HomePage(
   const series = (card: string, values: number[], format: (v: number) => string) =>
     t("home.chart", { card, values: values.map(format).join(", ") });
   // At start the hosts are still connecting: that is not "no host".
-  const connecting = !state.hostsLoaded || state.hosts.some((host) => host.status === "connecting");
+  const connecting = !state.hostsLoaded || hosts.some((host) => host.status === "connecting");
   const busy = !kpis && (online.length === 0 ? connecting : true);
   const message = (() => {
     if (kpis) return t("home.ready");
+    if (away && !connecting) return t("scope.offline", { host: away.name });
     if (online.length === 0) return connecting ? t("home.connecting") : t("home.noHosts");
     return t("home.loading");
   })();
@@ -221,7 +237,15 @@ export function HomePage(
   };
 
   return (
-    <Page title={t("home.title")} subtitle={t("home.range")}>
+    <Page
+      title={t("home.title")}
+      subtitle={scoped ? t("home.rangeHost", { host: scoped }) : t("home.range")}
+      toolbar={
+        state.hosts.length > 1 ? (
+          <ScopeMenu store={store} hosts={state.hosts} scope={scope} />
+        ) : undefined
+      }
+    >
       {/* One live region from the first word to the numbers: its change is what is announced. */}
       <p
         role="status"
@@ -230,6 +254,15 @@ export function HomePage(
       >
         {message}
       </p>
+      {away && (
+        <InlineNotice tone="info">
+          {/* Without numbers the line above says it; with older numbers on screen, this one does. */}
+          {kpis && <span>{t("scope.offline", { host: away.name })} </span>}
+          <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>
+            {t("scope.showAll")}
+          </Button>
+        </InlineNotice>
+      )}
       {kpis && (
         <Stack gap={4}>
           <p className="text-muted-foreground text-xs">{t("home.updated", { ago })}</p>
