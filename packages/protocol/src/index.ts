@@ -4649,6 +4649,8 @@ export const ProjectLoad = z.object({
   mcpServers: z.array(z.object({ name: z.string(), file: z.string(), command: z.string() })),
   envKeys: z.array(z.string()),
   allowRules: z.array(z.string()),
+  /** What the settings deny (#75); absent from a host older than it. */
+  denyRules: z.array(z.string()).optional(),
   defaultMode: z.string().nullable(),
   agents: z.array(z.string()),
   skills: z.array(z.string()),
@@ -4670,6 +4672,7 @@ export const ProjectLoad = z.object({
     hooks: z.number().int().min(0),
     mcpServers: z.number().int().min(0),
     allowRules: z.number().int().min(0),
+    denyRules: z.number().int().min(0).optional(),
     envKeys: z.number().int().min(0),
   }),
 });

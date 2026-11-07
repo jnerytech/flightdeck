@@ -4110,7 +4110,7 @@ export const ptBR = {
       summary: "{n} de {total} partes encontradas",
       found: "Encontrado",
       missing: "Faltando",
-      rules: "Regras de permissão: {n}",
+      rules: "Regras que permitem: {n}; que negam: {m}",
       unreadable:
         "Alguns arquivos do projeto não puderam ser lidos: uma parte marcada como faltando pode existir.",
       parts: {

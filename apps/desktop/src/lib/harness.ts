@@ -36,6 +36,9 @@ export function harnessParts(load: ProjectLoad): HarnessItem[] {
   const kinds = KINDS.filter(([, event, pattern]) =>
     load.hooks.some((hook) => hook.event === event && hook.commands.some((c) => pattern.test(c))),
   ).map(([kind]) => kind);
+  const allow = load.allowRules.length + load.omitted.allowRules;
+  // A host older than deny rules (#75) lists none.
+  const deny = (load.denyRules?.length ?? 0) + (load.omitted.denyRules ?? 0);
   const item = (part: HarnessPart, found: boolean, detail: string[] = []): HarnessItem => ({
     part,
     found,
@@ -46,11 +49,7 @@ export function harnessParts(load: ProjectLoad): HarnessItem[] {
     item("hooks", load.hooks.length > 0, kinds),
     item("skills", load.skills.length > 0, load.skills),
     item("agents", load.agents.length > 0, load.agents),
-    item(
-      "permissions",
-      load.allowRules.length > 0,
-      load.allowRules.length > 0 ? [String(load.allowRules.length + load.omitted.allowRules)] : [],
-    ),
+    item("permissions", allow + deny > 0, allow + deny > 0 ? [String(allow), String(deny)] : []),
     item(
       "mcp",
       load.mcpServers.length > 0,

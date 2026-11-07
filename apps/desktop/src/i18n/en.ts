@@ -4107,7 +4107,7 @@ export const en: Dictionary = {
       summary: "{n} of {total} parts found",
       found: "Found",
       missing: "Missing",
-      rules: "Allow rules: {n}",
+      rules: "Allow rules: {n}; deny rules: {m}",
       unreadable:
         "Some of the project's files could not be read: a part shown as missing may be there.",
       parts: {
