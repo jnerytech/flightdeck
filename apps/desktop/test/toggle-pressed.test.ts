@@ -34,6 +34,16 @@ describe("toggle-pressed: a pressed toggle button looks pressed (#812)", () => {
     });
   });
 
+  // Re-review of #816: the terminal's find toggles are ghost buttons with a pressed ring of their
+  // own; with this rule too they drew two rings.
+  test("the terminal's find toggles take this ring, not one of their own", () => {
+    const own = css.split("@utility terminal-find-toggle {")[1]?.split(/\n}\n/)[0] ?? "";
+    expect({ found: own !== "", ownPressed: /aria-pressed/.test(own) }).toEqual({
+      found: true,
+      ownPressed: false,
+    });
+  });
+
   test("outside every layer, so it beats the variant's own background and hover", () => {
     expect({ found: at >= 0, depth }).toEqual({ found: true, depth: 0 });
   });
