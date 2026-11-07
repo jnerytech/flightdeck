@@ -1581,17 +1581,20 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("reader.continue"), exact: true }).click();
     const anyway = c.page.getByRole("button", { name: c.t("reader.continueAnyway"), exact: true });
     await anyway.click({ timeout: 3000 }).catch(() => undefined);
-    // The session is on alfa's list, idle once the fake runtime answered: its menu offers the move.
-    await open(c, { name: "hub" });
-    const mark = c.lang === "en" ? "Ajuste 1: " : "Ajuste 2: ";
+    // Continuing lands on the hub with the new session open; no reload, so the list is the app's own.
     // The hub folds a project with nothing live and caps its rows: a filter shows what it keeps.
-    await c.page.getByRole("textbox", { name: c.t("hub.filterLabel"), exact: true }).fill(mark);
+    const mark = c.lang === "en" ? "Ajuste 1: " : "Ajuste 2: ";
+    const filter = c.page.getByRole("textbox", { name: c.t("hub.filterLabel"), exact: true });
+    await filter.fill(mark, { timeout: WAIT });
     const actions = c.page.getByRole("button", {
       name: new RegExp(
         c.t("hub.actions", { title: "§" }).replace("§", `${mark}.*`).replaceAll(/[()]/g, "\\$&"),
       ),
     });
     const move = c.page.getByRole("menuitem", { name: c.t("teleportUi.menu"), exact: true });
+    const listed = () =>
+      c.page.locator("li[aria-label]").evaluateAll((els) => els.map((e) => e.ariaLabel));
+    const menus: string[][] = [];
     await waitFor(
       async () => {
         // The row may not be listed yet: a missed click is another turn of the wait, not a failure.
@@ -1604,12 +1607,18 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
           );
         if (!clicked) return false;
         if (await move.isVisible()) return true;
+        menus.push(await c.page.getByRole("menuitem").allTextContents());
         await c.page.keyboard.press("Escape");
         return false;
       },
       "o menu da sessão oferecer mover para outro host",
       SESSION_WAIT,
-    );
+    ).catch(async (error: Error) => {
+      // What the page showed, so a red run says why without a second one.
+      throw new Error(
+        `${error.message} (linhas: ${JSON.stringify(await listed())}; itens do menu: ${JSON.stringify(menus.at(-1))})`,
+      );
+    });
     await move.click();
     const dialog = c.page.getByRole("dialog", { name: c.t("teleportUi.title") });
     await dialog.getByLabel(c.t("teleportUi.host"), { exact: true }).selectOption({ label: BETA });
