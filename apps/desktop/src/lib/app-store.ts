@@ -877,9 +877,8 @@ function sameJson(a: unknown, b: unknown): boolean {
 
 /**
  * What the setup checklist asks of a host: its hooks, GitHub only when asked, and its projects when
- * they are not read yet. The projects are read for the checklist only: the list the screens use
- * stays unopened, so a screen that reads a project's trust or branch does not change because Setup
- * looked.
+ * they are not read yet. A look from the Setup screen or a host page reads them for the checklist
+ * only; the one at connect also opens the list the screens use (see `refreshSetup`).
  */
 function setupWants(
   features: readonly string[] | undefined,
@@ -2483,12 +2482,15 @@ export class AppStore {
    * `gh auth status` on the host, so it is asked only with `github` (the Setup screen, the GitHub
    * panel); what it said last stays until then.
    */
-  async refreshSetup(hostId: string, options: { github?: boolean } = {}): Promise<void> {
+  async refreshSetup(
+    hostId: string,
+    options: { github?: boolean; connect?: boolean } = {},
+  ): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
     if (host?.status !== "online") return;
     const wants = setupWants(
       host.hostInfo?.features,
-      this.state.projects[hostId] !== undefined,
+      options.connect !== true && this.state.projects[hostId] !== undefined,
       options.github === true,
     );
     const { hooks: wantsHooks, github: wantsGithub, projects: wantsProjects } = wants;
@@ -2505,6 +2507,11 @@ export class AppStore {
     if (wantsGithub)
       githubKnown = github?.ok ? github.data.installed && github.data.loggedIn : null;
     const projectList = wantsProjects && projects?.ok ? projects.data.projects : before?.projects;
+    // At connect the probe's list is also the screens' (the sidebar tree needs it on any page, #721):
+    // one request, not two.
+    if (options.connect === true && wantsProjects && projects?.ok) {
+      this.rememberProjects(hostId, projects.data.projects);
+    }
     const probe: SetupProbe = {
       hooks: hooks?.ok ? hooks.data.status : null,
       github: githubKnown,
@@ -3073,9 +3080,7 @@ export class AppStore {
       retry: conn.retry,
     }));
     if (status === "online") {
-      void this.loadHostInfo(hostId, conn);
-      // The sidebar's project tree reads these on any page, not only on the ones that load them.
-      void this.loadProjects(hostId);
+      void this.loadHostInfo(hostId, conn, true);
       // Daemons before phase 7 have no quota: quietly nothing.
       void conn.request("quota.get", {}).then(
         (state) => this.onQuota(hostId, state),
@@ -3123,7 +3128,11 @@ export class AppStore {
   }
 
   /** Daemons without `host.info` (phase 1) answer with an error: the page says so. */
-  private async loadHostInfo(hostId: string, conn: HostConnection): Promise<void> {
+  private async loadHostInfo(
+    hostId: string,
+    conn: HostConnection,
+    connect = false,
+  ): Promise<void> {
     const hostInfo = await conn.request("host.info", {}).catch(() => null);
     this.updateHost(hostId, (h) => {
       // Back on the version it was updating to: the update is over.
@@ -3131,7 +3140,7 @@ export class AppStore {
       return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
     });
     // The setup checklist reads what this host has: its hooks, GitHub, projects.
-    void this.refreshSetup(hostId);
+    void this.refreshSetup(hostId, { connect });
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);
