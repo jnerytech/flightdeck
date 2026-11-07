@@ -7,7 +7,7 @@
  * host has), and the session resumes there. A failure leaves no worktree, branch or transcript.
  */
 import { constants } from "node:fs";
-import { access, copyFile, mkdir, readdir, realpath, rm } from "node:fs/promises";
+import { access, copyFile, lstat, mkdir, readdir, realpath, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { PermissionMode } from "@flightdeck/protocol";
 import { refArg } from "../board/ref-arg.ts";
@@ -202,11 +202,16 @@ async function start(
   const file = join(folder, `${manifest.claudeSessionId}.jsonl`);
   // Never over a transcript this host has; any other failure (a full disk) is itself.
   const exists = (error: unknown) => (error as { code?: string }).code === "EEXIST";
+  // A file already there is the host's: a failure on the package's side must leave it alone.
+  const there = await lstat(file).then(
+    () => true,
+    () => false,
+  );
   await (deps.copyFile ?? copyFile)(claim.transcript, file, constants.COPYFILE_EXCL).catch(
     async (error) => {
       if (made) await rm(made, { recursive: true, force: true });
-      // Not the host's own file (that is the EEXIST): a copy that stopped halfway left this one.
-      else if (!exists(error)) await rm(file, { force: true });
+      // A copy that stopped halfway left this file, unless the host had it before.
+      else if (!there) await rm(file, { force: true });
       throw exists(error) ? refuse("invalid_state", "teleport_exists") : error;
     },
   );

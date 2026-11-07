@@ -9,7 +9,7 @@
  * `git add` (Git LFS needs them).
  */
 import { copyFile, lstat, readFile, rm, stat } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, normalize } from "node:path";
 import { gitLimitedFor } from "../board/command.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -85,12 +85,14 @@ async function realFolders(
 async function pastLimit(top: string, names: string, max: number): Promise<boolean> {
   let total = 0;
   const known = new Map<string, boolean>();
+  // Git prints `C:/x` on Windows where `join` gives `C:\x`: the folders are compared in one form.
+  const root = normalize(top);
   for (const name of names.split("\0")) {
     if (!name) continue;
     const path = join(top, name);
     // A name below a folder that was swapped for a link would be read at the link's target,
     // somewhere outside the repository: only its size would show, but that is still a probe.
-    if (!(await realFolders(top, dirname(path), known))) continue;
+    if (!(await realFolders(root, dirname(path), known))) continue;
     // A deleted file has no size; a link counts as itself, never as what it points at.
     total += await lstat(path).then(
       (info) => (info.isFile() ? info.size : 0),
@@ -245,6 +247,8 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
       "log",
       "-p",
       "--cc",
+      // A `-diff` or `binary` attribute (a session can write one) would print "Binary files differ".
+      "--text",
       "--no-ext-diff",
       "--no-textconv",
       "--no-color",
