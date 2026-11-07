@@ -7,6 +7,7 @@ import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
@@ -73,6 +74,17 @@ export function TopBarHost(
               ))}
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
+            {props.onAllHosts && props.hosts.length > 1 && (
+              <>
+                <DropdownMenuCheckboxItem
+                  checked={props.allHosts ?? false}
+                  onCheckedChange={(on) => props.onAllHosts?.(on === true)}
+                >
+                  {t("shell.allHostsTabs")}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
           </>
         )}
         <DropdownMenuItem onSelect={() => props.onAdd()}>

@@ -298,6 +298,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
   const resolvedTheme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
+  const tabScope = useSyncExternalStore(store.tabScope.subscribe, () => store.tabScope.value);
   const density = useSyncExternalStore(store.density.subscribe, () => store.density.value);
   const { router } = store;
   const route = useSyncExternalStore(router.subscribe, () => router.current);
@@ -535,6 +536,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
                   store.pickHost(hostId);
                 }}
                 onAdd={() => go({ name: "add-host" })}
+                allHosts={tabScope === "all"}
+                onAllHosts={(on) => store.tabScope.set(on ? "all" : "host")}
               />
               <Button
                 variant="ghost"

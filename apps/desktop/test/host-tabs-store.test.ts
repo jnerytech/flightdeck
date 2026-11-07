@@ -107,7 +107,7 @@ describe("host-tabs-store: each host has its own tabs in the app's store (issue 
   test("the groups are each host's tabs, host by host, and a tab of another host can be activated", () => {
     const { store } = twoHosts();
     store.router.push({ name: "history", host: "ha" });
-    store.router.push({ name: "projects", host: "ha" });
+    store.hostTabs.open({ name: "projects", host: "ha" });
     store.router.push({ name: "history", host: "hb" });
     const groups = store.hostTabs.groups();
     expect(groups.map((g) => g.hostId)).toEqual(["ha", "hb"]);

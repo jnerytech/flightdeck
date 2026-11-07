@@ -2879,6 +2879,12 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
   aba nova; os botões de dividir não são oferecidos. Um leitor de tela ouve "Todas as abas (5), atual:
   Board, host alfa".
 
+- **Abas de todos os hosts:** o seletor de host tem uma entrada, **Abas de todos os hosts**, para quem
+  trabalha em vários hosts ao mesmo tempo. Marcada, a fileira lista as abas de todos os hosts depois
+  das compartilhadas, em um grupo com o nome e o ponto do host, cada aba na cor do seu host. Escolher
+  uma aba de outro host troca para esse host, e o seletor acompanha. Desmarcada, a fileira volta a ser
+  a do host atual. A escolha é guardada. A entrada aparece com dois hosts ou mais.
+
 - **Cores dos hosts:** cada host tem uma de oito cores, a mesma em todo lugar em que ele aparece. É
   um ponto ao lado do nome do host no seletor da barra do topo e na lista de todas as abas, e uma
   linha de 2 px no alto de cada aba do host. A cor nunca é o único sinal: o nome do host fica ao lado

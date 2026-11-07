@@ -223,7 +223,9 @@ export class HostTabs {
 
   /** Every host's first-area tabs, host by host, for the row that shows all hosts (issue #644). */
   groups(): HostGroup[] {
-    return [];
+    return [...this.sets]
+      .map(([hostId, set]) => ({ hostId, tabs: set.areas[0] as Tabs }))
+      .filter((group) => group.tabs.tabs.length > 0);
   }
 
   /** How many tabs a host's set holds (for "wsl - A: 5 tabs"). */
@@ -279,11 +281,16 @@ export class HostTabs {
       this.emit();
       return;
     }
-    const set = this.workspace;
-    const area = set?.areas.findIndex((tabs) => tabs.tabs.some((tab) => tab.id === tabId)) ?? -1;
-    if (!set || area < 0) return;
+    // The current host's set first; a tab of another host (the all-hosts row) switches to that host.
+    const owner = [[this.hostId, this.workspace] as const, ...this.sets].find(([, set]) =>
+      set?.areas.some((tabs) => tabs.tabs.some((tab) => tab.id === tabId)),
+    );
+    const set = owner?.[1];
+    if (!owner || !set) return;
+    const area = set.areas.findIndex((tabs) => tabs.tabs.some((tab) => tab.id === tabId));
     (set.areas[area] as Tabs).activate(tabId);
     set.focusArea(area as 0 | 1);
+    this.hostId = owner[0];
     this.onShared = false;
     this.emit();
   }

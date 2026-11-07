@@ -872,6 +872,7 @@ export const ptBR = {
     quotaLevels: { ok: "tranquila", near: "perto do limite", reached: "no limite" },
     host: "Host: {host}",
     noHost: "Nenhum host ainda",
+    allHostsTabs: "Abas de todos os hosts",
     hostItem: "{host}, {state}",
     hostItemVersion: "{host}, {state}, flightdeckd {version}",
     hostItemDiffers: "{host}, {state}, flightdeckd {version}, diferente do app {app}",

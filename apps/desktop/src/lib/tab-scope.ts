@@ -7,11 +7,11 @@ export const TAB_SCOPE_KEY = "flightdeck.tabScope";
 export type TabScope = "host" | "all";
 
 export class TabScopeController {
-  value: TabScope = "host";
+  value: TabScope;
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly storage: Platform["storage"]) {
-    void this.storage;
+    this.value = storage.getItem(TAB_SCOPE_KEY) === "all" ? "all" : "host";
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -19,5 +19,9 @@ export class TabScopeController {
     return () => this.listeners.delete(listener);
   };
 
-  set(_value: TabScope): void {}
+  set(value: TabScope): void {
+    this.value = value;
+    this.storage.setItem(TAB_SCOPE_KEY, value);
+    for (const listener of this.listeners) listener();
+  }
 }

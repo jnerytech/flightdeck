@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import {
   type CSSProperties,
+  Fragment,
   type ReactNode,
   useCallback,
   useEffect,
@@ -117,18 +118,30 @@ export function TabBar(
   const narrow = useBreakpoint() === "compact";
   useSyncExternalStore(tabs.subscribe, () => tabs.version);
   useSyncExternalStore(store.hostTabs.subscribe, () => store.hostTabs.version);
-  /** The row: the shared tabs, then this area's. */
-  const row = [...(shared?.tabs ?? []), ...tabs.tabs];
+  // The "all hosts" scope lists every host's tabs, grouped by host, after the shared ones (#644).
+  const scope = useSyncExternalStore(store.tabScope.subscribe, () => store.tabScope.value);
+  const groups = shared !== undefined && scope === "all" ? store.hostTabs.groups() : null;
+  /** The row: the shared tabs, then this area's, or every host's in its group. */
+  const row = [
+    ...(shared?.tabs ?? []),
+    ...(groups ? groups.flatMap((group) => group.tabs.tabs) : tabs.tabs),
+  ];
+  /** The host's group a tab is in, in the all-hosts row. */
+  const groupOf = (tab: Tab) => groups?.find((group) => group.tabs.tabs.includes(tab));
   /** The set a tab belongs to, for what acts on the tab itself (close, pin, move). */
-  const setOf = (tab: Tab): Tabs => (shared?.tabs.includes(tab) ? shared : tabs);
+  const setOf = (tab: Tab): Tabs =>
+    shared?.tabs.includes(tab) ? shared : (groupOf(tab)?.tabs ?? tabs);
   const sharedActive = shared !== undefined && store.hostTabs.onShared;
-  const selectedTab = (tab: Tab) =>
-    shared?.tabs.includes(tab)
-      ? sharedActive && tab.id === shared.activeId
-      : !sharedActive && tab.id === tabs.activeId;
+  const selectedTab = (tab: Tab) => {
+    if (shared?.tabs.includes(tab)) return sharedActive && tab.id === shared.activeId;
+    // In the all-hosts row only the tab on screen is selected, whichever host it is of.
+    return !sharedActive && tab.id === (groups ? store.hostTabs.activeId : tabs.activeId);
+  };
   /** The host a tab belongs to: the row's own tabs belong to the host in use, the shared ones to none. */
-  const ownHost = (tab: Tab): string | null =>
-    shared && !shared.tabs.includes(tab) ? store.hostTabs.hostId : null;
+  const ownHost = (tab: Tab): string | null => {
+    if (!shared || shared.tabs.includes(tab)) return null;
+    return groupOf(tab)?.hostId ?? store.hostTabs.hostId;
+  };
   /** The tab being dragged to a new place. */
   const dragged = useRef<string | null>(null);
   /** The tab a drag is over and the side the dragged one will land on, to mark the place. */
@@ -377,119 +390,129 @@ export function TabBar(
               : tab.pinned
                 ? pinnedLabel
                 : undefined;
+            const group = groupOf(tab);
+            const startsGroup = group !== undefined && group.tabs.tabs[0] === tab;
             return (
-              // The wrapper is invisible to the tablist: the tab and its × are siblings inside it.
-              <div
-                key={tab.id}
-                role="presentation"
-                {...(prod === undefined ? {} : { "data-prod": String(prod) })}
-                {...(tab.pinned ? { "data-pinned": "true" } : {})}
-                {...(hostColor
-                  ? { "data-host": "true", style: { "--host-color": hostColor } as CSSProperties }
-                  : {})}
-                {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
-                className={cn(
-                  "tab-item group relative text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
-                  prod && "border-2 border-destructive",
-                  dropOn?.id === tab.id &&
-                    (dropOn.side === "before"
-                      ? "border-l-2 border-l-primary"
-                      : "border-r-2 border-r-primary"),
-                )}
-              >
-                <IconTip label={label}>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    data-preview={tab.preview}
-                    {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
-                    data-tab-id={tab.id}
-                    aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
-                    // A pinned tab shows no title, and a host's tab no longer carries its host's name
-                    // in it: the name is set here, with the badge's words.
-                    {...(ariaLabel ? { "aria-label": ariaLabel } : {})}
-                    className="tab-button"
-                    onClick={() => store.hostTabs.activate(tab.id)}
-                    onDoubleClick={() => own.commit(tab.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Delete") store.closeTab(own, tab.id);
-                      else if (
-                        e.ctrlKey &&
-                        e.shiftKey &&
-                        (e.key === "ArrowLeft" || e.key === "ArrowRight")
-                      ) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        moveByKey(tab, e.key === "ArrowLeft" ? -1 : 1);
-                      }
-                    }}
-                    onAuxClick={(e) => {
-                      // The middle button closes a tab (App opens items in a new tab with it).
-                      if (e.button !== 1) return;
-                      e.stopPropagation();
-                      store.closeTab(own, tab.id);
-                    }}
-                    draggable
-                    onDragStart={() => {
-                      dragged.current = tab.id;
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      const from = own.tabs.findIndex((other) => other.id === dragged.current);
-                      if (from < 0 || own.tabs[from]?.id === tab.id) return setDropOn(null);
-                      setDropOn({
-                        id: tab.id,
-                        side: from < own.tabs.indexOf(tab) ? "after" : "before",
-                      });
-                    }}
-                    onDragEnd={() => {
-                      dragged.current = null;
-                      setDropOn(null);
-                    }}
-                    onDrop={() => {
-                      const id = dragged.current;
-                      dragged.current = null;
-                      setDropOn(null);
-                      if (id && own.tabs.some((other) => other.id === id))
-                        own.move(id, own.tabs.indexOf(tab));
-                    }}
-                  >
-                    <Icon data-icon={kind} className="size-3.5 shrink-0" aria-hidden />
-                    {!tab.pinned && (
-                      <span className={cn("truncate", tab.preview && "italic")}>{label}</span>
-                    )}
-                    {!tab.pinned &&
-                      ssh?.tags.map((tag) => (
-                        <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">
-                          {tag}
-                        </span>
-                      ))}
-                    {badge && <TabBadgeGlyph badge={badge} label={t(`tabs.badge.${badge}`)} />}
-                  </button>
-                </IconTip>
-                {cacheSince && (
-                  <span className="absolute top-0.5 left-0.5">
-                    <CacheTimer store={store} since={cacheSince} compact />
+              <Fragment key={tab.id}>
+                {startsGroup && (
+                  // Only for the eyes: each tab of the group already says its host in its name.
+                  <span data-slot="tab-group" aria-hidden="true" className="tab-group">
+                    <HostDot hostId={group.hostId} />
+                    {state.hosts.find((h) => h.id === group.hostId)?.name ?? ""}
                   </span>
                 )}
-                {!tab.pinned && (
-                  <button
-                    type="button"
-                    aria-hidden="true"
-                    tabIndex={-1}
-                    aria-label={t("tabs.close", { title: label })}
-                    className={cn(
-                      "mr-1 flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring",
-                      !selected &&
-                        "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
-                    )}
-                    onClick={() => store.closeTab(own, tab.id)}
-                  >
-                    <X className="size-3.5" aria-hidden />
-                  </button>
-                )}
-              </div>
+                {/* The wrapper is invisible to the tablist: the tab and its × are siblings inside it. */}
+                <div
+                  role="presentation"
+                  {...(prod === undefined ? {} : { "data-prod": String(prod) })}
+                  {...(tab.pinned ? { "data-pinned": "true" } : {})}
+                  {...(hostColor
+                    ? { "data-host": "true", style: { "--host-color": hostColor } as CSSProperties }
+                    : {})}
+                  {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
+                  className={cn(
+                    "tab-item group relative text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
+                    prod && "border-2 border-destructive",
+                    dropOn?.id === tab.id &&
+                      (dropOn.side === "before"
+                        ? "border-l-2 border-l-primary"
+                        : "border-r-2 border-r-primary"),
+                  )}
+                >
+                  <IconTip label={label}>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      data-preview={tab.preview}
+                      {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
+                      data-tab-id={tab.id}
+                      aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
+                      // A pinned tab shows no title, and a host's tab no longer carries its host's name
+                      // in it: the name is set here, with the badge's words.
+                      {...(ariaLabel ? { "aria-label": ariaLabel } : {})}
+                      className="tab-button"
+                      onClick={() => store.hostTabs.activate(tab.id)}
+                      onDoubleClick={() => own.commit(tab.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Delete") store.closeTab(own, tab.id);
+                        else if (
+                          e.ctrlKey &&
+                          e.shiftKey &&
+                          (e.key === "ArrowLeft" || e.key === "ArrowRight")
+                        ) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          moveByKey(tab, e.key === "ArrowLeft" ? -1 : 1);
+                        }
+                      }}
+                      onAuxClick={(e) => {
+                        // The middle button closes a tab (App opens items in a new tab with it).
+                        if (e.button !== 1) return;
+                        e.stopPropagation();
+                        store.closeTab(own, tab.id);
+                      }}
+                      draggable
+                      onDragStart={() => {
+                        dragged.current = tab.id;
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        const from = own.tabs.findIndex((other) => other.id === dragged.current);
+                        if (from < 0 || own.tabs[from]?.id === tab.id) return setDropOn(null);
+                        setDropOn({
+                          id: tab.id,
+                          side: from < own.tabs.indexOf(tab) ? "after" : "before",
+                        });
+                      }}
+                      onDragEnd={() => {
+                        dragged.current = null;
+                        setDropOn(null);
+                      }}
+                      onDrop={() => {
+                        const id = dragged.current;
+                        dragged.current = null;
+                        setDropOn(null);
+                        if (id && own.tabs.some((other) => other.id === id))
+                          own.move(id, own.tabs.indexOf(tab));
+                      }}
+                    >
+                      <Icon data-icon={kind} className="size-3.5 shrink-0" aria-hidden />
+                      {!tab.pinned && (
+                        <span className={cn("truncate", tab.preview && "italic")}>{label}</span>
+                      )}
+                      {!tab.pinned &&
+                        ssh?.tags.map((tag) => (
+                          <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">
+                            {tag}
+                          </span>
+                        ))}
+                      {badge && <TabBadgeGlyph badge={badge} label={t(`tabs.badge.${badge}`)} />}
+                    </button>
+                  </IconTip>
+                  {cacheSince && (
+                    <span className="absolute top-0.5 left-0.5">
+                      <CacheTimer store={store} since={cacheSince} compact />
+                    </span>
+                  )}
+                  {!tab.pinned && (
+                    <button
+                      type="button"
+                      aria-hidden="true"
+                      tabIndex={-1}
+                      aria-label={t("tabs.close", { title: label })}
+                      className={cn(
+                        "mr-1 flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring",
+                        !selected &&
+                          "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
+                      )}
+                      onClick={() => store.closeTab(own, tab.id)}
+                    >
+                      <X className="size-3.5" aria-hidden />
+                    </button>
+                  )}
+                </div>
+              </Fragment>
             );
           })}
         </div>

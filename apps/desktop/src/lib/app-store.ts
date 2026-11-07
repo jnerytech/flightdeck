@@ -2188,7 +2188,10 @@ export class AppStore {
     const pending = this.state.closingTerminal;
     this.update({ closingTerminal: null });
     if (!pending || kill === null) return;
-    const area = this.workspace.areas.find((candidate) => candidate.id === pending.areaId);
+    // The area is the current host's, or another host's first one (a tab of the all-hosts row).
+    const area = [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)].find(
+      (candidate) => candidate.id === pending.areaId,
+    );
     const route = area?.tabs.find((tab) => tab.id === pending.tabId)?.router.current;
     if (!area || route?.name !== "terminal") return;
     await this.hostCommand(route.host, "terminal.close", { terminalId: route.terminalId, kill });
