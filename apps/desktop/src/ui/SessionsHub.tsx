@@ -1,6 +1,6 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio, Server, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
@@ -100,17 +100,27 @@ export function SessionsHub(
   }, [askedKey]);
   // The data scope (#126): the hub lists the sessions of its hosts. A host asked for by the route
   // ("See all" on its page, a name) wins for this visit and never rewrites the scope (#207); any
-  // pick in the Data from menu ends the visit.
+  // pick in the Data from menu ends the visit. Showing every host from a visit widens the visit.
   const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
   const [visit, setVisit] = useState(props.host);
+  const [visitAll, setVisitAll] = useState(false);
   useEffect(() => {
-    if (props.host !== undefined) setVisit(props.host);
+    if (props.host === undefined) return;
+    setVisit(props.host);
+    setVisitAll(false);
   }, [props.host]);
-  useEffect(() => store.dataScope.subscribe(() => setVisit(undefined)), [store]);
+  useEffect(
+    () =>
+      store.dataScope.subscribe(() => {
+        setVisit(undefined);
+        setVisitAll(false);
+      }),
+    [store],
+  );
   const visiting = visit === undefined ? undefined : state.hosts.find((h) => h.name === visit);
-  const hostScope: DataScope = visiting
-    ? { kind: "host", hostId: visiting.id }
-    : activeScope(kept, state.hosts, state.hostsLoaded);
+  let hostScope: DataScope = activeScope(kept, state.hosts, state.hostsLoaded);
+  if (visitAll) hostScope = ALL_SCOPE;
+  else if (visiting) hostScope = { kind: "host", hostId: visiting.id };
   const scoped = hostScope.kind === "host" ? hostScope.hostId : "";
   /** The scoped host, when it is offline (not still connecting): the hub says so and offers all. */
   const away = scoped
@@ -517,7 +527,11 @@ export function SessionsHub(
         {away && (
           <InlineNotice tone="info">
             <span>{t("scope.offline", { host: away.name })} </span>
-            <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (visiting ? setVisitAll(true) : store.dataScope.set(ALL_SCOPE))}
+            >
               {t("scope.showAll")}
             </Button>
           </InlineNotice>
