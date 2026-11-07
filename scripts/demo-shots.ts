@@ -333,7 +333,7 @@ function shots(ids: DemoIds): Shot[] {
         if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
         await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
         const panel = page.locator("[data-slot=board-files]");
-        await panel.getByRole("tab", { name: /^(Conteúdo|Content)$/ }).click();
+        await panel.getByRole("button", { name: /^(Conteúdo|Content)$/ }).click();
         await panel.getByRole("searchbox").fill("export");
         await panel.getByText("app.ts:1").waitFor();
       },
