@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { type FakeCli, installFakeCli } from "../../../scripts/test/fake-cli.ts";
@@ -130,7 +129,7 @@ describe("deps-guard: the calls the check made are told from other activity (iss
   test("a call from another folder is not the check's: a 3-argument call elsewhere does not fail the guard", async () => {
     const fake = installFakeCli("git", [{ args: ["--version"], stdout: "git 9.9.9" }]);
     stops.push(async () => fake.restore());
-    await fake.run(["git", "worktree", "list", "--porcelain"], join(tmpdir(), "elsewhere"));
+    await fake.run(["git", "worktree", "list", "--porcelain"], tempDir("fd-elsewhere-"));
     await fake.run(["git", "--version"], process.cwd());
     expect(checkCalls(fake, 0)).toEqual([["--version"]]);
   });
