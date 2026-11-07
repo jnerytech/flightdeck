@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { SessionStatus, TeleportManifest } from "@flightdeck/protocol";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import {
   importPackage,
+  isPrefix,
   type TeleportClaim,
   type TeleportImportDeps,
 } from "../src/teleport/import.ts";
@@ -18,6 +19,7 @@ import { tempDir } from "./helpers.ts";
  * over one this host has; the session resumes there. A failure leaves nothing behind.
  */
 const ID = "0b6f5c2e-6f0a-4c39-9a51-7c4f1d2e3a4b";
+const onWindows = process.platform === "win32";
 const TRANSCRIPT = '{"type":"user","message":{"content":"fix the login"}}\n';
 
 const sha256 = (bytes: Buffer | string) =>
@@ -86,6 +88,7 @@ function target(
     /** What happens on this host while the session starts, before it answers. */
     whileStarting?: () => Promise<void>;
     failClose?: boolean;
+    failUnarchive?: boolean;
   } = {},
 ) {
   const roots = tempDir("fd-teleport-target-");
@@ -96,6 +99,8 @@ function target(
     released: 0,
     resumed: [] as unknown[],
     closed: [] as string[],
+    /** The records already closed when the session was asked to start. */
+    closedAtResume: null as string[] | null,
     unarchived: [] as string[],
   };
   const claim: TeleportClaim = {
@@ -113,6 +118,7 @@ function target(
     transcriptOf: () => options.local ?? null,
     resume: async (opts) => {
       calls.resumed.push(opts);
+      calls.closedAtResume = [...calls.closed];
       await options.whileStarting?.();
       if (options.failResume) throw new Error("claude would not start");
       return { sessionId: "t1" };
@@ -124,6 +130,7 @@ function target(
     },
     unarchive: (claudeSessionId) => {
       calls.unarchived.push(claudeSessionId);
+      if (options.failUnarchive) throw new Error("the database is locked");
     },
     now: () => new Date("2026-11-07T12:00:00.000Z"),
   };
@@ -385,13 +392,15 @@ describe("teleport-import: a received package becomes a session on this host (#1
         () => "missing",
       ),
       calls.closed,
+      calls.closedAtResume,
       calls.unarchived,
     ]).toEqual([
       "t1",
       [`${ID}.jsonl.replaced-2026-11-07T12-00-00-000Z`],
       TRANSCRIPT.slice(0, 20),
       TRANSCRIPT,
-      // Every record of it here ends: none keeps writing to the copy set aside.
+      // Every record of it here ends, before the copy is set aside: none writes to it meanwhile.
+      ["old", "older"],
       ["old", "older"],
       [ID],
     ]);
@@ -478,24 +487,67 @@ describe("teleport-import: a received package becomes a session on this host (#1
       failed.includes("claude would not start"),
       await readdir(folder),
       await readFile(file, "utf8"),
+      // The records here ended before the start: they were idle or ended, and stay so.
       [...calls.closed, ...calls.unarchived],
       await leftovers(repo, history),
-    ]).toEqual([true, [`${ID}.jsonl`], TRANSCRIPT.slice(0, 20), [], [1, "", "", ["-work-app"]]]);
+    ]).toEqual([
+      true,
+      [`${ID}.jsonl`],
+      TRANSCRIPT.slice(0, 20),
+      ["old"],
+      [1, "", "", ["-work-app"]],
+    ]);
   });
 
-  test("an old record that will not end does not undo a session that came back and started (#870)", async () => {
+  test("an old record that will not end stops the return before the copy here is touched (#870)", async () => {
     const pkg = await packaged();
     const history = tempDir("fd-teleport-history-");
-    const { file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
+    const { folder, file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
     const { repo, deps, calls } = target(pkg, {
       local: file,
       mine: [{ id: "old", status: "idle" }],
       failClose: true,
     });
+    expect([
+      await reason(() => importPackage({ ...deps, historyRoot: history }, "in-1", repo)),
+      await readdir(folder),
+      calls.resumed.length,
+      calls.unarchived,
+    ]).toEqual(["teleport_exists", [`${ID}.jsonl`], 0, []]);
+  });
+
+  test("a session that came back and started is not undone when it cannot be shown again (#870)", async () => {
+    const pkg = await packaged();
+    const history = tempDir("fd-teleport-history-");
+    const { file } = await localCopy(history, TRANSCRIPT.slice(0, 20));
+    const { repo, deps } = target(pkg, { local: file, failUnarchive: true });
     const done = await importPackage({ ...deps, historyRoot: history }, "in-1", repo).catch(
-      (e: Error) => ({ sessionId: String(e) }),
+      (e: Error) => ({ sessionId: String(e), worktree: "" }),
     );
-    expect([done.sessionId, calls.closed, calls.unarchived]).toEqual(["t1", ["old"], [ID]]);
+    expect([done.sessionId, done.worktree !== ""]).toEqual(["t1", true]);
+  });
+
+  test("the prefix is compared over every chunk, and a link or a folder is never a copy (#870)", async () => {
+    const dir = tempDir("fd-teleport-prefix-");
+    const big = "x".repeat(200 * 1024);
+    const at = (name: string, text: string) =>
+      writeFile(join(dir, name), text).then(() => join(dir, name));
+    const local = await at("local", big);
+    const longer = await at("longer", `${big}more turns\n`);
+    // One byte differs in the second chunk of 64 KiB.
+    const second = await at("second", `${big.slice(0, 100_000)}y${big.slice(100_001)}more\n`);
+    let linked: boolean | string = "no links here";
+    if (!onWindows) {
+      await symlink(local, join(dir, "link"));
+      linked = await isPrefix(join(dir, "link"), longer);
+    }
+    expect([
+      await isPrefix(local, longer),
+      await isPrefix(local, second),
+      await isPrefix(longer, local),
+      await isPrefix(dir, longer),
+      linked,
+    ]).toEqual([true, false, false, false, onWindows ? "no links here" : false]);
   });
 
   test("a copy put back never writes over a file that appeared there meanwhile: it stays set aside (#870)", async () => {
