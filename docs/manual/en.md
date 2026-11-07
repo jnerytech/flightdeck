@@ -872,7 +872,7 @@ An idle session can continue on another host: its conversation, its commits and 
 3. Read what moves: the branch, the commits not on origin yet, the files changed, the size, and how many lines look like secrets. The secrets themselves are never shown, and they move as they are.
 4. Press **Move**, then **Open it there**. Once every byte is sent you can close the window: when the move ends, a toast says so, with **Open it there**, or says why it was refused.
 
-On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here stays as it was. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them.
+On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here stays as it was. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them. Symbolic links in the code arrive as links, as in any clone of someone else's repository: a write through one can land outside the worktree, so move sessions only between hosts you trust.
 
 ### Sleeping idle sessions
 
@@ -1027,6 +1027,15 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 - **The selection bar** above the board shows "3 selected" with **Move to…** (a column),
   **Discard…** and **Clear selection**. Dragging a selected card drags the whole selection into the
   column you drop it on, in the board's order; dropped on a card, they land before it.
+- **What a column asks of a card** (#78). **In review** asks for a PR link and passing checks;
+  **In progress** asks for acceptance criteria, a checklist item (`- [ ] …`) in the card's
+  description. The other columns ask nothing. A card that lacks something says so on itself
+  ("Needs: a PR link"), and while you drag a card the columns that ask something say what, with a
+  dashed edge. Moving a card to **In review** by hand (drag, the card's menu, or the selection bar)
+  asks first and names what is missing; **Move anyway** moves it, and with several cards one
+  dialog lists every card that lacks something, with **Move only the ones that qualify**. **In
+  progress** only shows its note, it never asks, so starting work stays one move. Moves the app
+  makes by itself (a PR opens or merges, a session fails) are never asked about.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
 - **Discard…** shows one dialog with every selected card, and says what goes with each: a
