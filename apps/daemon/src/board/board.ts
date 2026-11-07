@@ -23,6 +23,7 @@ import {
   type SessionEvent,
   type SessionStatus,
   type SpecState,
+  specExpectedPath,
   specPathProblem,
   type UnblockWhen,
   type WorkflowInfo,
@@ -1554,14 +1555,17 @@ export class Board {
    */
   async refreshSpec(id: string): Promise<Card> {
     const card = this.getCard(id);
-    const path = card.specPath ?? (card.slug ? `docs/specs/${card.slug}.md` : null);
+    const path = specExpectedPath(card);
     const seen: SpecState | null =
       card.worktreePath && path ? { path, ...(await readSpec(card.worktreePath, path)) } : null;
     // The card may have been discarded, or the board stopped, while the files were read.
     if (this.stopped || this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id) === null) {
       return card;
     }
-    if (JSON.stringify(seen) === JSON.stringify(card.specState)) return card;
+    // A look that ended after the card named another path says nothing about the new one.
+    const now = this.getCard(id);
+    if (specExpectedPath(now) !== path) return now;
+    if (JSON.stringify(seen) === JSON.stringify(now.specState)) return now;
     this.db
       .query(
         "UPDATE cards SET spec_checked_path = ?, spec_found = ?, spec_heading = ? WHERE id = ?",

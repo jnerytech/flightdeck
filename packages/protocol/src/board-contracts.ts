@@ -61,7 +61,10 @@ const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
 /** What `card` lacks for `column`; nothing when the column asks nothing or the card has it all. */
 export function missingFor(
   column: BoardColumn,
-  card: Pick<Card, "description" | "prUrl" | "checksState" | "validationNote" | "specState">,
+  card: Pick<
+    Card,
+    "description" | "prUrl" | "checksState" | "validationNote" | "specState" | "specPath" | "slug"
+  >,
   overrides: ContractOverrides = {},
 ): ContractNeed[] {
   const needs: ContractNeed[] = [];
@@ -69,7 +72,13 @@ export function missingFor(
     if (check === "criteria" && !CHECKLIST_ITEM.test(card.description)) needs.push("criteria");
     if (check === "pr" && !card.prUrl) needs.push("pr");
     if (check === "validation" && !card.validationNote?.trim()) needs.push("validation");
-    if (check === "spec" && !card.specState?.found) needs.push("spec");
+    // What was found counts only for the path the card names now.
+    if (
+      check === "spec" &&
+      !(card.specState?.found && card.specState.path === specExpectedPath(card))
+    ) {
+      needs.push("spec");
+    }
     // Checks belong to a PR. A repository with none reports no state: that is not the card's fault.
     if (check === "checks" && card.prUrl) {
       if (card.checksState === "pending") needs.push("checksPending");
@@ -77,6 +86,15 @@ export function missingFor(
     }
   }
   return needs;
+}
+
+/**
+ * `con`, `nul`, `com1`… (with any extension) are devices to Windows, and spaces before the first
+ * dot are trimmed there: a name that is either is not a plain file name.
+ */
+function isDeviceName(part: string): boolean {
+  const stem = part.split(".")[0] ?? "";
+  return stem !== stem.trimEnd() || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(stem);
 }
 
 /** The longest path a card can name for its spec. */
@@ -92,16 +110,18 @@ export function specPathProblem(path: string): string | null {
   // biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
   if (/[\u0000-\u001f\u007f]/.test(path)) return "control";
   if (/^[\\/]/.test(path) || /^[A-Za-z]:/.test(path)) return "absolute";
-  if (path.split(/[\\/]/).some((part) => part === "" || part === "." || part === "..")) {
-    return "segment";
-  }
+  const parts = path.split(/[\\/]/);
+  if (parts.some((part) => part === "" || part === "." || part === "..")) return "segment";
+  // Names Windows reads as something else: a stream (`:`), a name it trims, or a device.
+  if (parts.some((part) => part.includes(":") || /[. ]$/.test(part))) return "windows";
+  if (parts.some((part) => isDeviceName(part))) return "windows";
   return path.toLowerCase().endsWith(".md") ? null : "extension";
 }
 
-/** The path a card's spec is looked for at. Stub. */
-export function specExpectedPath(_card: {
+/** The path a card's spec is looked for at: the one it names, else `docs/specs/<slug>.md`. */
+export function specExpectedPath(card: {
   specPath: string | null;
   slug: string | null;
 }): string | null {
-  return null;
+  return card.specPath ?? (card.slug ? `docs/specs/${card.slug}.md` : null);
 }
