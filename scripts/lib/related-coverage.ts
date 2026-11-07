@@ -1,6 +1,6 @@
 /** The coverage rule of `test:related`: every changed source file is 100% covered by the related tests. */
 
-import { hasRuntimeCode, isCoverageSource } from "./coverage-check.ts";
+import { ENTRY_POINTS, hasRuntimeCode, isCoverageSource } from "./coverage-check.ts";
 
 export { isCoverageSource };
 
@@ -29,7 +29,9 @@ export function loadedTargets(
   read: (path: string) => string | null,
 ): string[] {
   return paths.filter((path) => {
-    if (!/\.tsx?$/.test(path) || WHOLE_SUITE_IGNORED.test(path)) return false;
+    // Entry points and declarations are waived as in isCoverageSource (#770 review).
+    if (!/\.tsx?$/.test(path) || path.endsWith(".d.ts") || ENTRY_POINTS.has(path)) return false;
+    if (WHOLE_SUITE_IGNORED.test(path)) return false;
     const code = read(path);
     return code !== null && hasRuntimeCode(code, path.endsWith(".tsx") ? "tsx" : "ts");
   });

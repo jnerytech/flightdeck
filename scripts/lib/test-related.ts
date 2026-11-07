@@ -279,14 +279,21 @@ export function planRelated({
   const whole = pyramid ? wholeSuitePlan(changed, sources, slot) : null;
   if (whole) return whole;
   // #762: a file a changed test starts to load enters the coverage report, so it is gated too,
-  // and its own tests run to cover it.
+  // and the tests that import it themselves run to cover it (not a hub's whole tree). The test is
+  // read at the merge-base, the same point the diff compares with.
+  const at = coverageDir ? git(["merge-base", ref, "HEAD"])?.trim() || ref : ref;
   const added = coverageDir
-    ? newImports(changed, sources, (path) => git(["show", `${ref}:${path}`]))
+    ? newImports(changed, sources, (path) => git(["show", `${at}:${path}`]))
     : [];
   for (const path of added) {
     warnings.push(`${path}: newly imported by a changed test, so it is held to 100% too (#762)`);
   }
-  const byImport = selectRelated([...changed, ...added], sources, { direct: fast });
+  const byChange = selectRelated(changed, sources, { direct: fast });
+  const seen = new Set(byChange.map((r) => r.path));
+  const byImport = [
+    ...byChange,
+    ...selectRelated(added, sources, { direct: true }).filter((r) => !seen.has(r.path)),
+  ];
   const imported = new Set(byImport.map((r) => r.path));
   const selected = [
     ...byImport,
