@@ -103,6 +103,46 @@ describe("teleport-move-ui: the entry that moves a session, behind the preview (
       ...((screen.queryByRole("combobox", { name: "Host" }) as HTMLSelectElement | null)?.options ??
         []),
     ].map((o) => o.textContent ?? "");
+    // A move the source refuses (this test's alfa makes no packages): the app's own alert.
+    const select = screen.queryByRole("combobox", { name: "Host" });
+    await act(async () => {
+      fireEvent.change(select as HTMLElement, { target: { value: store.getState().hosts[1]?.id } });
+    });
+    const repo = screen.queryByRole("textbox", { name: "Repository on that host" });
+    expect(repo).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(repo as HTMLElement, { target: { value: "/work/app" } });
+    });
+    const next = screen.queryByRole("button", { name: "Continue" });
+    await act(async () => {
+      fireEvent.click(next as HTMLElement);
+    });
+    const refused = await seen(() => screen.queryByRole("alert") !== null);
+    // The form's own Close, not the dialog's X.
+    const form = screen.queryByRole("alert")?.closest("form") ?? null;
+    const close = form ? within(form).queryByRole("button", { name: "Close" }) : null;
+    expect(close).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(close as HTMLElement);
+    });
+    const closedAfterRefusal = await seen(
+      () => screen.queryByRole("dialog", { name: "Move to another host" }) === null,
+    );
+    // Opened again, then closed with Cancel.
+    await act(async () => {
+      fireEvent.pointerDown(trigger as HTMLElement, {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
+    const again = screen
+      .queryAllByRole("menuitem")
+      .find((i) => i.textContent === "Move to another host…");
+    await act(async () => {
+      fireEvent.click(again as HTMLElement);
+    });
+    await seen(() => screen.queryByRole("dialog", { name: "Move to another host" }) !== null);
     const cancel = screen.queryByRole("button", { name: "Cancel" });
     expect(cancel).not.toBeNull();
     await act(async () => {
@@ -116,8 +156,10 @@ describe("teleport-move-ui: the entry that moves a session, behind the preview (
       after.includes("Move to another host…"),
       opened,
       hosts,
+      refused,
+      closedAfterRefusal,
       closed,
-    ]).toEqual([false, true, true, ["Pick a host", "beta"], true]);
+    ]).toEqual([false, true, true, ["Pick a host", "beta"], true, true, true]);
   });
 
   test("the preview is a switch in Settings, off until the person turns it on", async () => {
