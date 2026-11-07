@@ -859,9 +859,9 @@ describe("times-ui: the host follows the switcher", () => {
     await act(async () => store.pickHost(alfa as string));
     await click("Times");
     await settleMaybe(() => hostField()?.value === alfa);
-    expect({ first: first === beta, then: hostField()?.value === alfa }).toEqual({
+    expect({ first: first === beta, after: hostField()?.value === alfa }).toEqual({
       first: true,
-      then: true,
+      after: true,
     });
   });
 
