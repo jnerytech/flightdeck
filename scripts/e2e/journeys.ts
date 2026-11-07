@@ -1648,7 +1648,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await dialog
       .getByRole("button", { name: c.t("teleportUi.open"), exact: true })
       .click({ timeout: SESSION_WAIT });
-    // The session is now on beta: the host in use is beta.
+    // The dialog leaves with the click (#842), and the session is on beta: the host in use is beta.
+    await dialog.waitFor({ state: "hidden", timeout: WAIT });
     await c.page
       .getByRole("button", { name: c.t("shell.host", { host: BETA }) })
       .waitFor({ timeout: WAIT });
