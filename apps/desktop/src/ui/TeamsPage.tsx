@@ -3,6 +3,7 @@ import { inSequence } from "@flightdeck/protocol";
 import { Copy, UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, FieldRow, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSwitcherHostId } from "@/hooks/use-switcher-hosts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
@@ -707,12 +709,26 @@ export const TeamsPage = memo(function TeamsPage(props: {
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "teams", false),
   );
+  // The host shown: the route's (an alert), else a pick in the page's own select, else the
+  // switcher's (#932), so the page never shows another host than the top bar without saying so.
+  const switcherId = useSwitcherHostId(store) ?? "";
   const [hostId, setHostId] = useState(props.host ?? "");
   // A later alert opens another host while the screen is already up.
   useEffect(() => {
     if (props.host) setHostId(props.host);
   }, [props.host]);
-  const host = hosts.find((h) => h.id === hostId) ?? hosts[0];
+  // A switch in the top bar ends the page's own pick.
+  const lastSwitcher = useRef(switcherId);
+  useEffect(() => {
+    if (lastSwitcher.current === switcherId) return;
+    lastSwitcher.current = switcherId;
+    setHostId("");
+  }, [switcherId]);
+  const wanted = hostId || switcherId;
+  const host = hosts.find((h) => h.id === wanted) ?? hosts[0];
+  /** The switcher's host when it has no teams to show: the page names it and the one shown. */
+  const missed =
+    !hostId && host && wanted !== host.id ? state.hosts.find((h) => h.id === wanted) : undefined;
   const current = host?.id ?? "";
   const [teams, setTeams] = useState<TeamInfo[]>([]);
   const [statuses, setStatuses] = useState<Record<string, TeamStatus>>({});
@@ -775,6 +791,11 @@ export const TeamsPage = memo(function TeamsPage(props: {
         </div>
       }
     >
+      {missed && (
+        <InlineNotice tone="info">
+          {t("teamsUi.otherHost", { wanted: missed.name, shown: host.name })}
+        </InlineNotice>
+      )}
       {creating && (
         <NewTeam
           store={store}
