@@ -158,6 +158,8 @@ describe("demo-prints: axe e CI", () => {
       "sessions-no-host",
       "nova-sessao-alcance",
       "tabs-por-host",
+      "card-start-alcance",
+      "time-novo-alcance",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

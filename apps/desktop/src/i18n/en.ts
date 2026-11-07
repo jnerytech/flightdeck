@@ -1172,6 +1172,7 @@ export const en: Dictionary = {
   notify: {
     waiting: "{label}: needs you",
     allow: "Allow {tool}?",
+    plainWaiting: "{label}: waiting for your answer",
     turnDone: "{label}: turn finished",
     turnDoneBody: "idle",
     externalTitle: "Needs you",

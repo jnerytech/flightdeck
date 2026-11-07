@@ -17,8 +17,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `tauri-rust-reviewer` (for changes in `src-tauri`), `test-quality-reviewer` (tests that cannot
   fail) and `security-reviewer` (spawns, paths, secrets, pairing), all read-only; hooks that block wide `git add`, edits of
   generated files, test edits that add `.only`/`test.todo`/`toMatchSnapshot` or an unnoted skip, commits
-  that break `type(scope): text` or the TDD order, heavy runs outside the slot, and a worker's full
-  coverage run (#674), and that run
+  that break `type(scope): text` or the TDD order, heavy runs outside the slot, a worker's full
+  coverage run (#674), and a push that would cancel the branch's PR run while it is still green (#741:
+  younger than 20 minutes with no failed job; `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push
+  lets it through), and that run
   Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
   `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Rules per
   area live in `.claude/rules/` (ui, protocol, daemon, tests, scripts) and load when a matching file
@@ -47,7 +49,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
   path, prints each with the reason, and runs them in one call (through the slot above 60 files). The run also collects coverage and fails unless every
   changed source file is at 100% lines and functions, listing the uncovered `file:line` and the
-  uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). `--pr` (#309) is what a PR's
+  uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A file that a
+  changed test newly imports is held to 100% too, with the tests that import it directly, since
+  loading it puts it in the full suite's gate even outside `scripts/lib` (#762; direct imports only,
+  not what that file loads in turn). `--pr` (#309) is what a PR's
   CI runs: every unit and component test plus the related tests, with the same changed-file gate, or
   the whole suite when a global file changed or a test went away; `--keep-coverage <dir>` keeps the
   lcov there. A change to `package.json`, a `bunfig` or the preload

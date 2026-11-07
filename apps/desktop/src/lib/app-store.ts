@@ -31,6 +31,7 @@ import type {
   PendingPermission,
   PermissionUpdate,
   PersonaRef,
+  PlainInfo,
   Project,
   QuotaState,
   ReleaseNote,
@@ -74,6 +75,7 @@ import type {
   AppUpdate,
   Platform,
   TrayAction,
+  TrayMenu,
   TrayStatus,
   WebhookRequest,
   WebhookResponse,
@@ -658,6 +660,8 @@ export interface PendingItem {
   /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
   risk?: RiskLevel;
   riskReason?: string;
+  /** Issue #88: the request in plain words, for the surfaces outside the window; an older daemon sends none. */
+  plain?: PlainInfo;
   /** Phase 17: the daemon asks for a secret to run an action or a free command. */
   vault?: true;
   /** Phase 19: the rule lets this request be approved for the rest of the session. */
@@ -729,6 +733,7 @@ export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
           ...(p.input ? { input: p.input } : {}),
           ...(p.risk ? { risk: p.risk } : {}),
           ...(p.riskReason ? { riskReason: p.riskReason } : {}),
+          ...(p.plain ? { plain: p.plain } : {}),
           cwd: session.cwd,
         })),
       ),
@@ -3379,7 +3384,8 @@ export class AppStore {
     const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
     const project = this.sessionProject(hostId, next.cwd);
     const team = this.teamOf.get(key);
-    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
+    const simple = this.uiMode(hostId).mode === "simple";
+    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names, simple)) {
       const source: NotifySource = {
         event: n.event ?? "other",
         hostId,
@@ -4890,16 +4896,22 @@ export class AppStore {
     const timers = this.options.timers ?? REAL_TIMERS;
     if (this.trayMenuTimer !== null) timers.clearTimeout(this.trayMenuTimer);
     this.trayMenuTimer = null;
-    if (
-      JSON.stringify(trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t)) === this.trayMenuSent
-    )
-      return;
+    if (JSON.stringify(this.trayMenuNow()) === this.trayMenuSent) return;
     this.trayMenuTimer = timers.setTimeout(() => {
       this.trayMenuTimer = null;
-      const menu = trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t);
+      const menu = this.trayMenuNow();
       this.trayMenuSent = JSON.stringify(menu);
       void this.platform.setTrayMenu(menu);
     }, TRAY_MENU_DELAY_MS);
+  }
+
+  /** The tray's "needs you" menu now: a host in simple mode words its requests plainly (issue #88). */
+  private trayMenuNow(): TrayMenu {
+    return trayMenu(
+      needsYou(this.state, this.i18n.t),
+      this.i18n.t,
+      (hostId) => this.uiMode(hostId).mode === "simple",
+    );
   }
 
   /**
@@ -4908,7 +4920,7 @@ export class AppStore {
    */
   private onLanguage(): void {
     this.syncTray();
-    const menu = trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t);
+    const menu = this.trayMenuNow();
     this.trayMenuSent = JSON.stringify(menu);
     void this.platform.setTrayMenu(menu);
     for (const listener of this.listeners) listener();

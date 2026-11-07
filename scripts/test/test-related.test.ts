@@ -3,6 +3,7 @@ import {
   importsOf,
   keepCoverageProblem,
   listSelection,
+  newImports,
   planRelated,
   resolveImport,
   selectRelated,
@@ -147,6 +148,39 @@ describe("selectRelated", () => {
   });
 });
 
+describe("newImports (#762)", () => {
+  const repo = sources({
+    "scripts/lib/a.ts": "export const a = 1;",
+    "scripts/lib/b.ts": "export const b = 1;",
+    "scripts/lib/c.ts": "export const c = 1;",
+    "scripts/test/a.test.ts": `import "../lib/a.ts";\nimport "../lib/b.ts";\nimport "bun:test";`,
+    "scripts/test/new.test.ts": `import "../lib/c.ts";\nimport "@flightdeck/protocol";`,
+    "packages/protocol/src/index.ts": "export const p = 1;",
+  });
+  const atBase: Record<string, string> = { "scripts/test/a.test.ts": `import "../lib/a.ts";` };
+  const before = (path: string) => atBase[path] ?? null;
+
+  test("names a file a changed test imports now and did not import at the base", () => {
+    expect(newImports(["scripts/test/a.test.ts"], repo, before)).toEqual(["scripts/lib/b.ts"]);
+  });
+
+  test("a new test brings every file it imports, a workspace package's index too, and bun:test is left out", () => {
+    expect(
+      newImports(["scripts/test/a.test.ts", "scripts/test/new.test.ts"], repo, before),
+    ).toEqual(["packages/protocol/src/index.ts", "scripts/lib/b.ts", "scripts/lib/c.ts"]);
+  });
+
+  test("a file the same change also edits is still named: #695 changed demo-shots.ts and its new importer at once", () => {
+    expect(newImports(["scripts/test/a.test.ts", "scripts/lib/b.ts"], repo, before)).toEqual([
+      "scripts/lib/b.ts",
+    ]);
+  });
+
+  test("a changed source file or a removed test brings nothing", () => {
+    expect(newImports(["scripts/lib/a.ts", "scripts/test/gone.test.ts"], repo, before)).toEqual([]);
+  });
+});
+
 describe("planRelated", () => {
   const BASE = "abc1234def";
   const fakeGit =
@@ -257,6 +291,127 @@ describe("planRelated", () => {
     expect(plan.output).toContain("--tier unit,component: 2 test file(s) left out (integration 2)");
     expect(plan.targets).toBeUndefined();
     expect(plan.command?.some((arg) => arg.startsWith("--coverage-dir"))).toBe(false);
+  });
+
+  test("#762: a scripts/ entry file changed in the same diff as its new importer is gated, once", () => {
+    const repo: Record<string, string> = {
+      "scripts/entry.ts": "export const names = 1;",
+      "scripts/test/narrow.test.ts": `import "../entry.ts";`,
+    };
+    const base = fakeGit(["scripts/entry.ts", "scripts/test/narrow.test.ts"], Object.keys(repo));
+    const plan = planRelated({
+      platform: "linux",
+      git: (args) => (args[0] === "show" ? "" : base(args)),
+      readFile: (path) => repo[path] ?? "",
+      coverageDir: "/tmp/cov",
+    });
+    expect(plan.targets).toEqual(["scripts/entry.ts"]);
+  });
+
+  test("#762 review: a lib file both changed and newly imported is one target", () => {
+    const repo: Record<string, string> = {
+      "scripts/lib/x.ts": "export const x = 1;",
+      "scripts/test/x.test.ts": `import "../lib/x.ts";`,
+    };
+    const base = fakeGit(["scripts/lib/x.ts", "scripts/test/x.test.ts"], Object.keys(repo));
+    const plan = planRelated({
+      platform: "linux",
+      git: (args) => (args[0] === "show" ? "" : base(args)),
+      readFile: (path) => repo[path] ?? "",
+      coverageDir: "/tmp/cov",
+    });
+    expect(plan.targets).toEqual(["scripts/lib/x.ts"]);
+  });
+
+  test("#762 review: the test is read at the merge-base the diff compares with, not at the base's tip", () => {
+    const repo: Record<string, string> = {
+      "scripts/entry.ts": "export const names = 1;",
+      "scripts/test/narrow.test.ts": `import "../entry.ts";`,
+    };
+    const shown: string[] = [];
+    const plan = planRelated({
+      base: "main",
+      platform: "linux",
+      git: (args) => {
+        if (args.join(" ") === "merge-base main HEAD") return "mb4567\n";
+        if (args[0] === "diff") return "scripts/test/narrow.test.ts";
+        if (args[0] === "ls-files") return Object.keys(repo).join("\n");
+        if (args[0] === "show") {
+          shown.push(args[1] as string);
+          return args[1] === "mb4567:scripts/test/narrow.test.ts" ? `import "../entry.ts";` : "";
+        }
+        return null;
+      },
+      readFile: (path) => repo[path] ?? "",
+      coverageDir: "/tmp/cov",
+    });
+    expect(shown).toEqual(["mb4567:scripts/test/narrow.test.ts"]);
+    expect(plan.targets).toEqual([]);
+  });
+
+  test("#762 review: a newly imported file brings only the tests that import it themselves, not a hub's whole tree", () => {
+    const repo: Record<string, string> = {
+      "scripts/lib/hub.ts": "export const hub = 1;",
+      "scripts/lib/mid.ts": `import "./hub.ts";`,
+      "scripts/test/new.test.ts": `import "../lib/hub.ts";`,
+      "scripts/test/hub.test.ts": `import "../lib/hub.ts";`,
+      "scripts/test/far.test.ts": `import "../lib/mid.ts";`,
+    };
+    const base = fakeGit(["scripts/test/new.test.ts"], Object.keys(repo));
+    const plan = planRelated({
+      platform: "linux",
+      git: (args) => (args[0] === "show" ? null : base(args)),
+      readFile: (path) => repo[path] ?? "",
+      coverageDir: "/tmp/cov",
+    });
+    expect(plan.command?.filter((arg) => arg.endsWith(".test.ts"))).toEqual([
+      "./scripts/test/hub.test.ts",
+      "./scripts/test/new.test.ts",
+    ]);
+  });
+
+  test("#762: a file a changed test newly imports joins the changed-file gate, with its own tests", () => {
+    const repo: Record<string, string> = {
+      "scripts/entry.ts": "export const names = 1;",
+      "scripts/lib/narrow.ts": "export const narrow = 1;",
+      "scripts/test/narrow.test.ts": `import "../lib/narrow.ts";\nimport "../entry.ts";`,
+      "scripts/test/entry.test.ts": `import "../entry.ts";`,
+    };
+    const base = fakeGit(["scripts/test/narrow.test.ts"], Object.keys(repo));
+    const calls: string[][] = [];
+    const plan = planRelated({
+      platform: "linux",
+      git: (args) => {
+        calls.push(args);
+        if (args[0] === "show")
+          return args[1] === `${BASE}:scripts/test/narrow.test.ts`
+            ? `import "../lib/narrow.ts";`
+            : null;
+        return base(args);
+      },
+      readFile: (path) => repo[path] ?? "",
+      coverageDir: "/tmp/cov",
+    });
+    expect(plan.targets).toEqual(["scripts/entry.ts"]);
+    expect(plan.command?.filter((arg) => arg.endsWith(".test.ts"))).toEqual([
+      "./scripts/test/entry.test.ts",
+      "./scripts/test/narrow.test.ts",
+    ]);
+    expect(plan.output).toContain(
+      "scripts/entry.ts: newly imported by a changed test, so it is held to 100% too (#762)",
+    );
+    // Without the coverage gate there is nothing to hold it to, and git is not asked.
+    calls.length = 0;
+    planRelated({
+      platform: "linux",
+      git: (args) => {
+        calls.push(args);
+        return base(args);
+      },
+      readFile: (path) => repo[path] ?? "",
+    });
+    expect(calls.some((c) => c[0] === "diff")).toBe(true);
+    expect(calls.some((c) => c[0] === "show")).toBe(false);
   });
 
   test("--pr runs every unit and component test plus the related tests of the other tiers, with the changed-file gate (#309)", () => {

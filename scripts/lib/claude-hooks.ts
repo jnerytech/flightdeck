@@ -551,7 +551,8 @@ function heavyScript(script: string, args: string[]): string | null {
  * Why a worker session's full coverage run is refused (#674): a plain, `--base` or `--pr`
  * `test:related`, or a `coverage:funcs` over more than 20 given test files, holds the shared slot
  * for 12 to 25 minutes for what the PR's CI does anyway. The coordinator
- * (`FLIGHTDECK_COORDINATOR=1` in the hook's environment) and an override with a reason pass.
+ * (`FLIGHTDECK_COORDINATOR=1` in the hook's environment) and an override with a reason pass;
+ * coverage:funcs's own limit still asks the coordinator for a reason (#725).
  */
 export function heavyRunViolation(
   command: string,
@@ -586,6 +587,9 @@ export function guardAllowLogs(
       waived.push({ rule: "slot-heavy", decision: "waived" });
     }
     if (commitWaived(command)) waived.push({ rule: "commit", decision: "waived" });
+    if (!env.FLIGHTDECK_COORDINATOR && pushNowWaived(command)) {
+      waived.push({ rule: "push-wait", decision: "waived" });
+    }
   }
   return waived.length > 0 ? waived : [{ rule: null, decision: "allow" }];
 }
@@ -680,6 +684,165 @@ export function pushViolation(command: string, cwd: string, deps: PushGuardDeps)
     if (reason) return reason;
   }
   return null;
+}
+
+/** The latest pull-request CI run of a branch, as the push-wait rule reads it (#741). */
+export interface PrRun {
+  id: number;
+  /** The run's page on GitHub. */
+  url: string;
+  inProgress: boolean;
+  /** A check of the PR has failed already (#756 review: then the push is a fix). */
+  failed: boolean;
+  /** The PR conflicts with its base (#756 review: the merge of main must go out). */
+  conflicting: boolean;
+  /** Minutes since the run started. */
+  minutes: number;
+}
+
+export interface PushWaitDeps extends PushGuardDeps {
+  /** The branch's latest PR run, read in `dir`; null when it has none or GitHub cannot be read (fail open). */
+  prRun: (branch: string, dir: string) => PrRun | null;
+}
+
+/**
+ * A branch's latest PR run from `gh run list --json databaseId,status,startedAt,url`, with its PR's
+ * conflict and failed checks from `gh pr view --json mergeable,statusCheckRollup`; null when there
+ * is none or the output does not read.
+ */
+export function prRunFrom(runs: string | null, pr: string | null, now: number): PrRun | null {
+  try {
+    const latest = (JSON.parse(runs ?? "") as Array<Record<string, unknown>>)[0];
+    if (!latest || typeof latest.databaseId !== "number") return null;
+    const started = Date.parse(String(latest.startedAt));
+    if (Number.isNaN(started)) return null;
+    const view = JSON.parse(pr ?? "") as {
+      mergeable?: string;
+      statusCheckRollup?: Array<{ conclusion?: string; state?: string }>;
+    };
+    return {
+      id: latest.databaseId,
+      url: String(latest.url ?? ""),
+      inProgress: latest.status !== "completed",
+      failed: (view.statusCheckRollup ?? []).some((check) =>
+        FAILED_CHECK.has(check.conclusion ?? check.state ?? ""),
+      ),
+      conflicting: view.mergeable === "CONFLICTING",
+      minutes: Math.floor((now - started) / 60_000),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Runs gh with these arguments in a folder; its output, or null when it fails. */
+export type Gh = (args: string[], dir: string) => string | null;
+
+/**
+ * The guard's reader of a branch's latest PR run (#756 review: the gh calls are tested here, not
+ * left as glue): `gh run list`, then `gh pr view` only when there is a run.
+ */
+export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: string) => PrRun | null {
+  return (branch, dir) => {
+    // The branch goes as one `--branch=` word, so no name reads as a flag.
+    const runs = gh(
+      [
+        "run",
+        "list",
+        `--branch=${branch}`,
+        "--event=pull_request",
+        "--limit=1",
+        "--json=databaseId,status,startedAt,url",
+      ],
+      dir,
+    );
+    if (!runs || runs.trim() === "[]") return null;
+    // `--` ends the flags, so the branch is always the PR to view.
+    const pr = gh(["pr", "view", "--json=mergeable,statusCheckRollup", "--", branch], dir);
+    return prRunFrom(runs, pr, now());
+  };
+}
+
+/** The check conclusions (a check run's) and states (a commit status's) that mean it failed. */
+const FAILED_CHECK = new Set([
+  "FAILURE",
+  "TIMED_OUT",
+  "STARTUP_FAILURE",
+  "ACTION_REQUIRED",
+  "ERROR",
+]);
+
+/** How young a green PR run must be for a push to wait for it (#741). */
+export const PUSH_WAIT_MINUTES = 20;
+
+/**
+ * Why a push would cancel a PR run that is still green (#741), or null. A new push cancels the
+ * branch's run in progress (`cancel-in-progress`); 10% of the PR runner-minutes went to runs a push
+ * cancelled while still green. A PR with a failed check or a conflict (the push is a fix), an
+ * ended or older run, no run, a release-v* branch, the coordinator and
+ * `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push pass.
+ */
+export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDeps): string | null {
+  if (deps.env.FLIGHTDECK_COORDINATOR) return null;
+  for (const call of gitCalls(command, cwd)) {
+    if (call.sub !== "push" || call.dir === null) continue;
+    if (deps.inProject && !deps.inProject(call.dir)) continue;
+    const segment = command.slice(call.start, call.end);
+    if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) continue;
+    const dir = call.dir;
+    for (const branch of pushedBranches(call, (args) => deps.git(args, dir))) {
+      const run = deps.prRun(branch, dir);
+      // A failed check or a conflict makes the push a fix that must go out (#756 review).
+      if (!run?.inProgress || run.failed || run.conflicting) continue;
+      if (run.minutes >= PUSH_WAIT_MINUTES) continue;
+      // Only GitHub's own https address; the echoed push hides credentials (security review).
+      const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
+      return `a push now cancels CI run ${run.id} on the PR of ${branch}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(segment.trim())}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * The branches a push updates (#756 review): each refspec's destination, or HEAD's branch for a
+ * bare push. None for a delete; a tag and a release-v* branch never wait.
+ */
+function pushedBranches(call: GitCall, git: (args: string[]) => string | null): string[] {
+  const words = readPushWords(call.args.map((a) => a.word));
+  if (words.deleting) return [];
+  const current = git(["symbolic-ref", "--short", "HEAD"])?.trim() || null;
+  const refspecs = words.positional.slice(1);
+  const targets: PushTarget[] =
+    refspecs.length === 0
+      ? [{ dst: current, tag: false, plus: false }]
+      : refspecs.map((spec) => pushTarget(spec, false, current, git));
+  return targets.flatMap(({ dst, tag }) =>
+    dst && !tag && !dst.startsWith("release-v") ? [dst] : [],
+  );
+}
+
+/** A command with the user and password of a URL, and a secret-looking variable's value, hidden. */
+function redacted(text: string): string {
+  return text
+    .replace(/:\/\/[^/@\s]+@/g, "://***@")
+    .replace(
+      /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
+      "$1=***",
+    );
+}
+
+/**
+ * Whether a push goes ahead on a FLIGHTDECK_PUSH_NOW override with its reason (#741). The log counts
+ * every such push, also one the rule would have let through: harness:stats shows an upper bound.
+ */
+function pushNowWaived(command: string): boolean {
+  return gitCalls(command, "/").some(
+    (call) =>
+      call.sub === "push" &&
+      heavyReasonGiven(
+        prefixAssignment(command.slice(call.start, call.end), "FLIGHTDECK_PUSH_NOW"),
+      ),
+  );
 }
 
 const OWN_BRANCHES =

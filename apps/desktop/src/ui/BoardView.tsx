@@ -541,43 +541,60 @@ export const BoardView = memo(function BoardView(props: {
       title={boardTitle(t, project?.name)}
       toolbar={
         <>
-          <Toolbar label={t("hub.filters")}>
-            <Input
-              aria-label={t("kanban.filter")}
-              placeholder={t("hub.filterPlaceholder")}
-              className="h-8 w-40 text-xs"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            />
-            {withDeps && (
-              <Button
-                size="sm"
+          <SelectionSlot
+            bar={
+              selection.length > 0 && (
+                <SelectionBar
+                  t={t}
+                  shown={acting.length}
+                  hidden={selection.length - acting.length}
+                  onMove={(column) => void moveSelected(column)}
+                  onDiscard={() => setDiscardingMany(true)}
+                  onClear={clearSelection}
+                  busy={busy}
+                  onEscape={clearSelection}
+                />
+              )
+            }
+          >
+            <Toolbar label={t("hub.filters")}>
+              <Input
+                aria-label={t("kanban.filter")}
+                placeholder={t("hub.filterPlaceholder")}
+                className="h-8 w-40 text-xs"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              />
+              {withDeps && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-pressed={onlyBlocked}
+                  onClick={() => setOnlyBlocked(!onlyBlocked)}
+                >
+                  <Lock aria-hidden="true" />
+                  {t("deps.filter")}
+                </Button>
+              )}
+              {withSync && <BoardSyncControl store={store} hostId={hostId} projectId={projectId} />}
+              {withIssues && (
+                <Button size="sm" variant="outline" onClick={() => setIssuesOpen(true)}>
+                  <ListTodo aria-hidden="true" />
+                  {t("issuesUi.button")}
+                </Button>
+              )}
+              <AddProject
+                store={store}
+                hostId={hostId}
                 variant="outline"
-                aria-pressed={onlyBlocked}
-                onClick={() => setOnlyBlocked(!onlyBlocked)}
-              >
-                <Lock aria-hidden="true" />
-                {t("deps.filter")}
+                onAdded={(added) => props.onOpenProject?.(added.id)}
+              />
+              <Button size="sm" onClick={() => setCreating(true)}>
+                <Plus aria-hidden="true" />
+                {t("kanban.newCard")}
               </Button>
-            )}
-            {withSync && <BoardSyncControl store={store} hostId={hostId} projectId={projectId} />}
-            {withIssues && (
-              <Button size="sm" variant="outline" onClick={() => setIssuesOpen(true)}>
-                <ListTodo aria-hidden="true" />
-                {t("issuesUi.button")}
-              </Button>
-            )}
-            <AddProject
-              store={store}
-              hostId={hostId}
-              variant="outline"
-              onAdded={(added) => props.onOpenProject?.(added.id)}
-            />
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus aria-hidden="true" />
-              {t("kanban.newCard")}
-            </Button>
-          </Toolbar>
+            </Toolbar>
+          </SelectionSlot>
           {treeBranch && (
             <WorktreeChip filter={treeBranch} t={t} onClear={() => store.setWorktreeFilter(null)} />
           )}
@@ -606,22 +623,6 @@ export const BoardView = memo(function BoardView(props: {
             .filter(Boolean)
             .join(". ")}
         />
-        {all.length > 0 && (
-          <SelectionSlot>
-            {selection.length > 0 && (
-              <SelectionBar
-                t={t}
-                shown={acting.length}
-                hidden={selection.length - acting.length}
-                onMove={(column) => void moveSelected(column)}
-                onDiscard={() => setDiscardingMany(true)}
-                onClear={clearSelection}
-                busy={busy}
-                onEscape={clearSelection}
-              />
-            )}
-          </SelectionSlot>
-        )}
         {notice && (
           <BoardNotice
             text={notice}
@@ -683,7 +684,7 @@ export const BoardView = memo(function BoardView(props: {
                   setCreating(true);
                 }}
               />
-              <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+              <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto empty:hidden">
                 {shown
                   .filter((card) => card.column === id)
                   .map((card) => (
@@ -747,7 +748,7 @@ export const BoardView = memo(function BoardView(props: {
               {filtering &&
                 all.some((card) => card.column === id) &&
                 shown.every((card) => card.column !== id) && (
-                  <p className="text-muted-foreground text-xs">{t("board.noMatches")}</p>
+                  <p className="column-empty">{t("board.noMatches")}</p>
                 )}
               <Button
                 variant="secondary"

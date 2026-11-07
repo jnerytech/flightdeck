@@ -37,6 +37,8 @@ export const JOURNEYS: readonly string[] = [
   "sessions-no-host",
   "nova-sessao-alcance",
   "tabs-por-host",
+  "card-start-alcance",
+  "time-novo-alcance",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

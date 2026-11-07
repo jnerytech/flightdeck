@@ -1171,6 +1171,7 @@ export const ptBR = {
   notify: {
     waiting: "{label}: esperando você",
     allow: "Permitir {tool}?",
+    plainWaiting: "{label}: esperando a sua resposta",
     turnDone: "{label}: turno concluído",
     turnDoneBody: "ociosa",
     externalTitle: "Precisa de você",

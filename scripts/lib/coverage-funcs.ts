@@ -112,7 +112,10 @@ export interface CoveragePlanDeps {
   readFile: (path: string) => string;
   /** Where the preload writes the coverage JSON. */
   out: string;
-  /** The run's environment (#674): a worker's plan over more than 20 test files is refused. */
+  /**
+   * The run's environment (#674): a plan over more than 20 test files is refused unless
+   * FLIGHTDECK_SLOT_HEAVY gives a reason, from every session (#725).
+   */
   env?: Record<string, string | undefined>;
 }
 
