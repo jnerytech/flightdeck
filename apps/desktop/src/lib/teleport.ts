@@ -87,18 +87,39 @@ class Cancelled extends Error {}
 const refused = (reason: "teleport_corrupt" | "teleport_incomplete") =>
   new RequestError("bad_request", reason.replaceAll("_", " "), reason);
 
+const ignore = () => {};
+
+/** The package id a source's answer names, when it is one: the source's own, never made up. */
+function packageId(prepared: unknown): string | null {
+  const named = TeleportManifestSchema.shape.id.safeParse(
+    (prepared as { id?: unknown } | null)?.id,
+  );
+  return named.success ? named.data : null;
+}
+
 export async function teleportSession(run: TeleportRun): Promise<TeleportOutcome> {
   const { source, target } = run;
+  let prepared: unknown;
+  try {
+    // A source that answers after a cancel still drops the package it made.
+    prepared = await unlessCancelled(
+      run.signal,
+      source("teleport.prepare", { sessionId: run.sessionId }),
+      (late) => {
+        const lateId = packageId(late);
+        if (lateId) source("teleport.cancel", { id: lateId }).catch(ignore);
+      },
+    );
+  } catch (error) {
+    if (error instanceof Cancelled) return { kind: "cancelled" };
+    throw error;
+  }
   // The source's manifest is checked as the target would: sizes, parts, names. One that is not a
-  // manifest is refused before anything else uses it.
-  const prepared: unknown = await source("teleport.prepare", { sessionId: run.sessionId });
+  // manifest is refused before anything else uses it; its package is still freed when it names one.
   const checked = TeleportManifestSchema.safeParse(prepared);
   if (!checked.success) {
-    // Its package is still freed when the id it named is one: the source's own, never made up.
-    const named = TeleportManifestSchema.shape.id.safeParse(
-      (prepared as { id?: unknown } | null)?.id,
-    );
-    if (named.success) await cleanUp(run, named.data, null);
+    const named = packageId(prepared);
+    if (named) await cleanUp(run, named, null);
     throw refused("teleport_corrupt");
   }
   const manifest = checked.data as TeleportManifest;
@@ -107,7 +128,12 @@ export async function teleportSession(run: TeleportRun): Promise<TeleportOutcome
   try {
     if (!(await run.confirm(teleportSummary(manifest)))) return { kind: "declined" };
     if (run.signal?.aborted) return { kind: "cancelled" };
-    id = (await target("teleport.receive", { manifest })).id;
+    // A target that opens its inbox after a cancel still drops it.
+    id = (
+      await unlessCancelled(run.signal, target("teleport.receive", { manifest }), (late) => {
+        if (typeof late?.id === "string") target("teleport.abort", { id: late.id }).catch(ignore);
+      })
+    ).id;
     await relay(run, manifest, id);
     // The last chance to stop: once the target imports, the session is there.
     if (run.signal?.aborted) throw new Cancelled();
@@ -143,13 +169,33 @@ async function cleanUp(run: TeleportRun, packageId: string, received: string | n
  * A host's answer during the transfer, or the cancel, whichever comes first: a host that does not
  * answer never holds a move the person stopped. The clean-up then drops what the target holds.
  */
-function unlessCancelled<T>(signal: AbortSignal | undefined, work: Promise<T>): Promise<T> {
+function unlessCancelled<T>(
+  signal: AbortSignal | undefined,
+  work: Promise<T>,
+  /** What to free when the host answers after the cancel. */
+  late?: (value: T) => void,
+): Promise<T> {
   if (!signal) return work;
-  if (signal.aborted) return Promise.reject(new Cancelled());
+  const abandon = () => {
+    work.then((value) => late?.(value), ignore);
+    return new Cancelled();
+  };
+  if (signal.aborted) return Promise.reject(abandon());
   return new Promise<T>((resolve, reject) => {
-    const stop = () => reject(new Cancelled());
+    const stop = () => reject(abandon());
     signal.addEventListener("abort", stop, { once: true });
-    work.then(resolve, reject).finally(() => signal.removeEventListener("abort", stop));
+    // Settled first: the cancel no longer applies to this answer.
+    const done = () => signal.removeEventListener("abort", stop);
+    work.then(
+      (value) => {
+        done();
+        resolve(value);
+      },
+      (error: unknown) => {
+        done();
+        reject(error);
+      },
+    );
   });
 }
 
