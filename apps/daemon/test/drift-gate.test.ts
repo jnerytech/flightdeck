@@ -176,6 +176,15 @@ describe("drift-gate: a round that leaves its PR is held, not pushed (#77)", () 
     ]).toEqual(["stopped", true, "1", "watching"]);
   });
 
+  test("drop takes back the round's commits only: work committed before the round stays", async () => {
+    const f = await strict();
+    git(f.worktree, "commit", "-q", "--allow-empty", "-m", "the person's work, not pushed yet");
+    const before = head(f);
+    const r = await round(f);
+    await service(f).resolveHeld(f.card.id, r?.id ?? "", "drop");
+    expect([r?.status, head(f) === before, f.commitsAhead()]).toEqual(["held", true, "1"]);
+  });
+
   test("a branch with new commits since the hold is refused: nothing is pushed or dropped", async () => {
     const f = await strict();
     const r = await round(f);
