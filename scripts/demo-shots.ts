@@ -593,7 +593,8 @@ function shots(ids: DemoIds): Shot[] {
     // The time panel of Custos (phase 23): the wait for permissions and the slowest tools.
     {
       name: "custos-tempo",
-      route: { name: "costs" },
+      // The time panel is per host: on All hosts, the default scope, it gives way to a pick-a-host line.
+      route: { name: "costs", host: ALFA },
       prepare: showSection(/^(Tempo por projeto|Time per project)$/),
     },
     {
