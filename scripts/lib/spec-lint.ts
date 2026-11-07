@@ -39,13 +39,21 @@ const FEATURE = /^scripts\/e2e\/bdd\/features\/[\w-]+\.feature$/;
  */
 const RUST = /^apps\/desktop\/src-tauri\/(?:[\w-]+\/)?(?:src|tests)\/[\w/]+\.rs$/;
 
+/** The text of a `## ` heading line, without the blanks that end it, or undefined when the line is not one. */
+function headingText(line: string): string | undefined {
+  if (!line.startsWith("## ")) return undefined;
+  const rest = line.slice(3);
+  const text = rest.trimEnd() || rest.slice(0, 1);
+  return text === "" || /[\n\r\u2028\u2029]/.test(text) ? undefined : text;
+}
+
 /** The lines of each `##` section outside fenced code, with the line number of each. */
 function sections(text: string): { name: string; lines: { line: string; n: number }[] }[] {
   const out: { name: string; lines: { line: string; n: number }[] }[] = [];
   let fenced = false;
   text.split("\n").forEach((line, i) => {
     if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
-    const heading = fenced ? undefined : /^## (.+?)\s*$/.exec(line)?.[1];
+    const heading = fenced ? undefined : headingText(line);
     if (heading !== undefined) out.push({ name: heading, lines: [] });
     else out.at(-1)?.lines.push({ line, n: i + 1 });
   });
@@ -109,7 +117,9 @@ export function lintSpec(text: string): string[] {
   const scenarios = found.find((s) => s.name === "Acceptance scenarios");
   if (scenarios) {
     const body = scenarios.lines.map(({ line }) => line).join("\n");
-    const features = (body.match(/^\s*Feature:/gm) ?? []).length;
+    const features = body
+      .split(/[\n\r\u2028\u2029]/)
+      .filter((line) => line.trimStart().startsWith("Feature:")).length;
     const named = (body.match(/scripts\/e2e\/bdd\/features\/[\w-]+\.feature/g) ?? []).length;
     if (features > named) {
       problems.push(
