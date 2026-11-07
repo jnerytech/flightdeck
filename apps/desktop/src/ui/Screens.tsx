@@ -746,6 +746,77 @@ function projectsScreen(
   );
 }
 
+/** The form that adds a host: the route asks for it, or there is no host yet. */
+function addHostScreen(props: ScreenProps): ReactNode {
+  const { route, store, state, go } = props;
+  const draft = route.name === "add-host" ? route.draft : undefined;
+  return (
+    <AddHost
+      key={route.name === "add-host" ? (route.key ?? 0) : 0}
+      store={store}
+      empty={state.hosts.length === 0}
+      go={go}
+      {...(draft ? { draft } : {})}
+    />
+  );
+}
+
+/** The costs, narrowed by whatever the route names: a host, a project, a client or a period. */
+function costsScreen(
+  store: AppStore,
+  route: Extract<Route, { name: "costs" }>,
+  go: (route: Route) => void,
+): ReactNode {
+  return (
+    <CostsPage
+      store={store}
+      onOpenSession={costsOpener(go)}
+      {...(route.host ? { host: route.host } : {})}
+      {...(route.projectKey ? { projectKey: route.projectKey } : {})}
+      {...(route.client ? { client: route.client } : {})}
+      {...(route.period ? { period: route.period } : {})}
+    />
+  );
+}
+
+/** The screens a route narrows with an optional host, team, rule or the costs' filters; undefined for the others. */
+function filteredScreen(props: ScreenProps): ReactNode | undefined {
+  const { route, store, state, go } = props;
+  switch (route.name) {
+    case "teams":
+      return (
+        <TeamsPage
+          store={store}
+          {...(route.host ? { host: route.host } : {})}
+          {...(route.team ? { team: route.team } : {})}
+          go={go}
+        />
+      );
+    case "all-projects":
+      return (
+        <ProjectsOverview
+          store={store}
+          state={state}
+          {...(route.host ? { host: route.host } : {})}
+          onClearHost={() => go({ name: "all-projects" })}
+          onOpen={(card) => go({ name: "project", host: card.hostId, projectId: card.projectId })}
+        />
+      );
+    case "costs":
+      return costsScreen(store, route, go);
+    case "vault":
+      return (
+        <VaultPage
+          key={JSON.stringify(route.rule ?? null)}
+          store={store}
+          {...(route.rule ? { rule: route.rule } : {})}
+        />
+      );
+    default:
+      return undefined;
+  }
+}
+
 /** What a route shows on its own; `null` is the Sessões screen with nothing open. */
 function routeScreen(props: ScreenProps): ReactNode {
   const { route, store, state, go } = props;
@@ -769,18 +840,9 @@ function routeScreen(props: ScreenProps): ReactNode {
       />
     );
   }
-  if (route.name === "add-host" || state.hosts.length === 0) {
-    const draft = route.name === "add-host" ? route.draft : undefined;
-    return (
-      <AddHost
-        key={route.name === "add-host" ? (route.key ?? 0) : 0}
-        store={store}
-        empty={state.hosts.length === 0}
-        go={go}
-        {...(draft ? { draft } : {})}
-      />
-    );
-  }
+  if (route.name === "add-host" || state.hosts.length === 0) return addHostScreen(props);
+  const filtered = filteredScreen(props);
+  if (filtered !== undefined) return filtered;
   switch (route.name) {
     case "hub":
       return null;
@@ -797,15 +859,6 @@ function routeScreen(props: ScreenProps): ReactNode {
           }}
         />
       );
-    case "teams":
-      return (
-        <TeamsPage
-          store={store}
-          {...(route.host ? { host: route.host } : {})}
-          {...(route.team ? { team: route.team } : {})}
-          go={go}
-        />
-      );
     case "conversations":
       return <ConversationsPage store={store} go={go} />;
     case "personas":
@@ -820,16 +873,6 @@ function routeScreen(props: ScreenProps): ReactNode {
       return <SnippetsPage store={store} go={go} />;
     case "connections":
       return <ConnectionsPage store={store} go={go} connect={route.connect} />;
-    case "all-projects":
-      return (
-        <ProjectsOverview
-          store={store}
-          state={state}
-          {...(route.host ? { host: route.host } : {})}
-          onClearHost={() => go({ name: "all-projects" })}
-          onOpen={(card) => go({ name: "project", host: card.hostId, projectId: card.projectId })}
-        />
-      );
     case "project":
       return (
         <ProjectPage
@@ -843,25 +886,6 @@ function routeScreen(props: ScreenProps): ReactNode {
       );
     case "overview":
       return <HomePage store={store} state={state} go={go} />;
-    case "costs":
-      return (
-        <CostsPage
-          store={store}
-          onOpenSession={costsOpener(go)}
-          {...(route.host ? { host: route.host } : {})}
-          {...(route.projectKey ? { projectKey: route.projectKey } : {})}
-          {...(route.client ? { client: route.client } : {})}
-          {...(route.period ? { period: route.period } : {})}
-        />
-      );
-    case "vault":
-      return (
-        <VaultPage
-          key={JSON.stringify(route.rule ?? null)}
-          store={store}
-          {...(route.rule ? { rule: route.rule } : {})}
-        />
-      );
     case "session":
       return (
         <ManagedSession
