@@ -196,7 +196,7 @@ describe("hook-commit-gate", () => {
     expect(elsewhere.calls.every((call) => call.startsWith(`${CWD}:`))).toBe(true);
   });
 
-  test("git failing, no base or a quoted directory lets the commit through", () => {
+  test("git failing or no base lets the commit through; a quoted directory is read as typed (#759)", () => {
     const broken = { git: () => null };
     expect(commitViolation('git commit -m "feat(a): x (#1)"', CWD, broken)).toBeNull();
     const noBase = {
@@ -207,7 +207,8 @@ describe("hook-commit-gate", () => {
     expect(
       commitViolation('cd "../my dir" && git commit -m "feat(a): x (#1)"', CWD, quoted),
     ).toBeNull();
-    expect(quoted.calls).toEqual([]);
+    // The folder is read as typed (#759), so its own checkout answers; it has no repo here.
+    expect(quoted.calls[0]).toBe(`${resolve(CWD, "../my dir")}: rev-parse HEAD`);
   });
 
   test("a commit in a repository that is not this project's is never checked", () => {
