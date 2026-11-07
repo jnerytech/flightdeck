@@ -3074,6 +3074,8 @@ export class AppStore {
     }));
     if (status === "online") {
       void this.loadHostInfo(hostId, conn);
+      // The sidebar's project tree reads these on any page, not only on the ones that load them.
+      void this.loadProjects(hostId);
       // Daemons before phase 7 have no quota: quietly nothing.
       void conn.request("quota.get", {}).then(
         (state) => this.onQuota(hostId, state),
