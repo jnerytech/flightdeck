@@ -146,6 +146,8 @@ what the PR's CI does anyway. `FLIGHTDECK_SLOT_HEAVY="<reason>"` as an env prefi
 spellings (`bun test:related`, `bun run --silent ...`, `npm run ...`, `bun scripts/test-related.ts`),
 counts a glob or a command's output after `--tests` as more than 20 files, and refuses
 `FLIGHTDECK_COORDINATOR` set in the command: only the coordinator session's own environment counts.
+The script's own limit has no coordinator exemption (#725): its environment is the command's, which an
+`export` or `--env-file` can set, so a run over 20 test files needs the reason from every session.
 
 **Functional core, imperative shell.** Logic that decides is a function that takes its effects
 (git, fs, clock, spawn, network) as a deps object or an injected context, as `runAudit({ since,

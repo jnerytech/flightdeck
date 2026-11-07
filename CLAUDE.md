@@ -73,7 +73,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
   A worker session runs it over at most 20 test files (#674): more is refused, by the guard hook
-  for `--tests` and by the script for the tests it picks, with the same override.
+  for `--tests` and by the script for the tests it picks, with the same override. The script refuses
+  for every session, the coordinator too (#725): its environment is the command's, which a worker can set.
 - Sonar: SonarCloud Code Analysis on the PR is the only Sonar check (#283); there is no local copy
   to run before a push. `// NOSONAR: <reason>` on the flagged line suppresses a reviewed false
   positive there. `sonar-project.properties` keeps SonarCloud's coverage on exactly the files of

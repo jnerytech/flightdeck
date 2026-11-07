@@ -262,6 +262,7 @@ export class SessionManager {
       .filter((p) => this.broker.isAnnounced(p.id))
       .map((p) => {
         const risk = this.classify(sessionId, p.toolName, p.input);
+        const plain = this.broker.plainOf(p.id);
         return {
           requestId: p.id,
           toolName: p.toolName,
@@ -269,6 +270,7 @@ export class SessionManager {
           input: summarizeInput(p.input),
           risk: risk.level,
           riskReason: risk.reason,
+          ...(plain ? { plain } : {}),
         };
       });
   }
