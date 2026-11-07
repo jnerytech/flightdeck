@@ -140,7 +140,8 @@ describe("drift-gate: a round that leaves its PR is held, not pushed (#77)", () 
 
   test("a round whose drift cannot be measured is held with the reason, not pushed", async () => {
     const f = await strict();
-    git(f.worktree, "update-ref", "-d", "refs/remotes/origin/main");
+    // The remote cannot be reached: nothing can be fetched to measure against.
+    git(f.worktree, "remote", "set-url", "origin", join(f.root, "gone.git"));
     const r = await round(f);
     expect([
       r?.status,
