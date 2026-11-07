@@ -1,10 +1,14 @@
 import { useEffect } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
-import { Stack } from "@/components/layout/stack";
+import { Inline, Stack } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
 import { type AppStore, sessionKey } from "@/lib/app-store";
 import { useStoreState } from "@/lib/use-store";
+import { hasFeature } from "@/lib/version";
 import type { Key } from "../../i18n/index.ts";
+
+/** Issue #77: the rounds "Allow more rounds" gives at a time. */
+const MORE_ROUNDS = 2;
 
 /**
  * Phase 22: "Vigiar e consertar" on a card with an open PR: the switch, what the watch is
@@ -13,7 +17,11 @@ import type { Key } from "../../i18n/index.ts";
 export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; cardId: string }>) {
   const t = useT();
   const { store, hostId, cardId } = props;
-  const watch = useStoreState(store).watches[sessionKey(hostId, cardId)];
+  const state = useStoreState(store);
+  const watch = state.watches[sessionKey(hostId, cardId)];
+  const features = state.hosts.find((h) => h.id === hostId)?.hostInfo?.features;
+  const canExtend = hasFeature(features, "watch.extend", false);
+  const canResolve = hasFeature(features, "watch.resolveHeld", false);
   useEffect(() => {
     void store.loadWatch(hostId, cardId);
   }, [store, hostId, cardId]);
@@ -37,6 +45,11 @@ export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; 
             {t("watchUi.needsYou", { reason: watch.reason ?? "" })}
           </p>
         )}
+        {watch?.roundsUsed !== undefined && watch.maxRounds !== undefined && (
+          <p className="text-muted-foreground">
+            {t("watchUi.roundsUsed", { used: watch.roundsUsed, max: watch.maxRounds })}
+          </p>
+        )}
         {watch && watch.rounds.length > 0 && (
           <Stack gap={1}>
             <h3 className="font-medium">{t("watchUi.rounds")}</h3>
@@ -53,11 +66,54 @@ export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; 
                     {round.summary && (
                       <span className="text-muted-foreground text-xs">{round.summary}</span>
                     )}
+                    {round.status === "held" && round.drift && (
+                      <>
+                        {round.drift.outside.length > 0 && (
+                          <span className="text-xs">
+                            {t("watchUi.outside", { files: round.drift.outside.join(", ") })}
+                          </span>
+                        )}
+                        <span className="text-xs">
+                          {t("watchUi.churn", {
+                            churn: round.drift.churn,
+                            limit: round.drift.limit,
+                          })}
+                        </span>
+                      </>
+                    )}
+                    {round.status === "held" && canResolve && (
+                      <Inline gap={2}>
+                        <ActionButton
+                          variant="outline"
+                          size="sm"
+                          onClick={() => store.resolveHeld(hostId, cardId, round.id, "push")}
+                        >
+                          {t("watchUi.pushHeld")}
+                        </ActionButton>
+                        <ActionButton
+                          variant="outline"
+                          size="sm"
+                          onClick={() => store.resolveHeld(hostId, cardId, round.id, "drop")}
+                        >
+                          {t("watchUi.dropHeld")}
+                        </ActionButton>
+                      </Inline>
+                    )}
                   </Stack>
                 </li>
               ))}
             </ul>
           </Stack>
+        )}
+        {watch?.status === "needs_you" && canExtend && (
+          <ActionButton
+            variant="outline"
+            size="sm"
+            className="self-start"
+            onClick={() => store.extendWatch(hostId, cardId, MORE_ROUNDS)}
+          >
+            {t("watchUi.extend", { n: MORE_ROUNDS })}
+          </ActionButton>
         )}
         {watch?.status === "needs_you" && (
           <ActionButton

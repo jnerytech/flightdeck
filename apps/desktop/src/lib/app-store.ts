@@ -4354,6 +4354,23 @@ export class AppStore {
     if (watch) this.keepWatch(hostId, watch);
   }
 
+  /** Issue #77: the person allows a card's watch `rounds` more fixing rounds. */
+  async extendWatch(hostId: string, cardId: string, rounds: number): Promise<void> {
+    const watch = await this.hostCommand(hostId, "watch.extend", { cardId, rounds });
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
+  /** Issue #77: a round held for drift, pushed as it is or dropped. */
+  async resolveHeld(
+    hostId: string,
+    cardId: string,
+    roundId: string,
+    action: "push" | "drop",
+  ): Promise<void> {
+    const watch = await this.hostCommand(hostId, "watch.resolveHeld", { cardId, roundId, action });
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
   /**
    * Phase 22: the screen of a PR link pasted in the palette: the card it belongs to, or else the
    * first session the history knows for it. The hosts that watch PRs are asked in order; when
