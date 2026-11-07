@@ -55,6 +55,10 @@ automation's send went around the watch's cap.
   or resets the branch with `--keep` to the HEAD the round started from (`base_sha`), so work
   committed before the round stays. It is refused when the branch moved
   since the hold, so neither unmeasured commits are pushed nor later work dropped.
+- **The round's prompt states the same rule (slice P1):** change only the files the PR already
+  changes and the files the review comments name, keep the change small, and say in the last
+  message when the fix needs another file. A round that does otherwise is held. The prompt asks;
+  the gate enforces, so a session that ignores the rule still pushes nothing out of scope.
 - **More rounds while a round is held** start a new round on top of the held commits. That round
   is measured with them, so it is held again. This is safe, but it spends a session: resolve the
   held round first.
