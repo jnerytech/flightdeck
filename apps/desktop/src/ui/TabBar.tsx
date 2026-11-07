@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  type CSSProperties,
   type ReactNode,
   useCallback,
   useEffect,
@@ -41,6 +42,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
+import { hostColorVar } from "../lib/host-color.ts";
 import { isProd } from "../lib/ssh.ts";
 import {
   badgePulses,
@@ -112,6 +114,9 @@ export function TabBar(
     shared?.tabs.includes(tab)
       ? sharedActive && tab.id === shared.activeId
       : !sharedActive && tab.id === tabs.activeId;
+  /** The host a tab belongs to: the row's own tabs belong to the host in use, the shared ones to none. */
+  const ownHost = (tab: Tab): string | null =>
+    shared && !shared.tabs.includes(tab) ? store.hostTabs.hostId : null;
   /** The tab being dragged to a new place. */
   const dragged = useRef<string | null>(null);
   /** The tab a drag is over and the side the dragged one will land on, to mark the place. */
@@ -215,6 +220,8 @@ export function TabBar(
             const ssh = sshOf(tab, store);
             // A production server is easy to mistake for another: its tab gets a red border.
             const prod = ssh ? isProd(ssh.tags) : undefined;
+            // The host's tabs carry its color; the shared ones belong to no host.
+            const hostColor = ownHost(tab) ? hostColorVar(ownHost(tab) as string) : undefined;
             return (
               // The wrapper is invisible to the tablist: the tab and its × are siblings inside it.
               <div
@@ -222,6 +229,9 @@ export function TabBar(
                 role="presentation"
                 {...(prod === undefined ? {} : { "data-prod": String(prod) })}
                 {...(tab.pinned ? { "data-pinned": "true" } : {})}
+                {...(hostColor
+                  ? { "data-host": "true", style: { "--host-color": hostColor } as CSSProperties }
+                  : {})}
                 {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
                 className={cn(
                   "tab-item group relative text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
@@ -350,6 +360,7 @@ export function TabBar(
               id: tab.id,
               title: title(tab, state, store),
               host: state.hosts.find((h) => h.id === host)?.name ?? "",
+              ...(host && state.hosts.some((h) => h.id === host) ? { hostId: host } : {}),
               icon: ICONS[kind],
               kind,
               current: selectedTab(tab),

@@ -2850,6 +2850,11 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
   abas fixas só com o ícone, e a barra do topo continua mostrando o último host usado enquanto uma
   delas está aberta. `Ctrl+Tab` percorre as abas compartilhadas e depois as do host atual.
 
+- **Cores dos hosts:** cada host tem uma de oito cores, a mesma em todo lugar em que ele aparece. É
+  um ponto ao lado do nome do host no seletor da barra do topo e na lista de todas as abas, e uma
+  linha de 2 px no alto de cada aba do host. A cor nunca é o único sinal: o nome do host fica ao lado
+  de cada ponto, e as cores mantêm 3:1 contra as superfícies no tema claro e no escuro.
+
 - **Abrir:** o clique normal troca a aba atual. `Ctrl+clique`, o botão do meio do mouse ou **Abrir
   em nova aba** (no menu do host e no menu de uma linha de sessão) abre uma nova. O botão **+** no
   fim da barra abre uma aba nova na paleta `Ctrl+K`. Uma tela tem uma aba só: um link para uma
