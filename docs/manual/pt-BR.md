@@ -3549,6 +3549,14 @@ de ver um host, não o que ele faz: as sessões, as permissões e os arquivos s�
 - *Configurações* tem o idioma, o tema, as pastas que as tarefas podem usar, as notificações e
   *Mostrar tudo*, que volta ao app completo depois de uma confirmação.
 
+**Fora da janela.** As notificações, a bandeja e o título da janela seguem o modo do host que as
+gerou (o título da janela segue o host que você está vendo). Para um host em modo simples a notificação tem o título "<host · tarefa>: esperando a sua
+resposta" e diz em palavras simples o que a tarefa quer, em vez de "precisa de você / Permitir
+Write?". Quando
+esse host está em modo simples, o título da janela vira "Flightdeck: 2 tarefas esperando a sua
+resposta"; o texto da bandeja diz o mesmo quando todos os hosts que esperam estão em modo simples. Hosts em modo completo
+mantêm o texto técnico.
+
 **Segurança.** Uma tarefa nunca pula as perguntas: ela só pode ler, perguntar antes de mudar ou
 editar a pasta escolhida. Os resultados vão para uma pasta *Flightdeck results* ao lado dos seus
 arquivos. O modo simples esconde, não protege: quem está no modo completo faz tudo o que o host
