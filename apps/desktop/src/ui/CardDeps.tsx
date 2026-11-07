@@ -2,7 +2,7 @@ import type { Card, WorkflowInfo } from "@flightdeck/protocol";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { Field, NativeSelect } from "@/components/layout/form";
+import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
@@ -114,7 +114,7 @@ export function CardDeps(
             <p className="text-muted-foreground text-xs">{t("deps.more", { count: more })}</p>
           )}
           {/* The button lines up with the select, under the label (issue #174). */}
-          <Inline gap={2} className="items-end">
+          <FieldRow align="end">
             <Field label={t("deps.addLabel")}>
               {(control) => (
                 <NativeSelect
@@ -141,7 +141,7 @@ export function CardDeps(
             >
               {t("deps.add")}
             </ActionButton>
-          </Inline>
+          </FieldRow>
           <Inline gap={2}>
             <Field label={t("deps.whenLabel")}>
               {(control) => (
