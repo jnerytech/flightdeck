@@ -241,6 +241,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
           };
           return ack(watch.info);
         }
+        // Issue #77: more rounds, and a held round pushed or dropped, answer the watch as set.
+        if (type === "watch.extend" || type === "watch.resolveHeld") return ack(watch.info);
         if (type === "watch.describe") return ack(watch.describe);
         if (type === "watch.settings") {
           const { patch } = payload as { patch?: Partial<typeof watch.settings> };

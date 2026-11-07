@@ -333,7 +333,7 @@ function shots(ids: DemoIds): Shot[] {
         if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
         await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
         const panel = page.locator("[data-slot=board-files]");
-        await panel.getByRole("tab", { name: /^(Conteúdo|Content)$/ }).click();
+        await panel.getByRole("button", { name: /^(Conteúdo|Content)$/ }).click();
         await panel.getByRole("searchbox").fill("export");
         await panel.getByText("app.ts:1").waitFor();
       },
@@ -593,7 +593,8 @@ function shots(ids: DemoIds): Shot[] {
     // The time panel of Custos (phase 23): the wait for permissions and the slowest tools.
     {
       name: "custos-tempo",
-      route: { name: "costs" },
+      // The time panel is per host: on All hosts, the default scope, it gives way to a pick-a-host line.
+      route: { name: "costs", host: ALFA },
       prepare: showSection(/^(Tempo por projeto|Time per project)$/),
     },
     {
@@ -693,10 +694,8 @@ function shots(ids: DemoIds): Shot[] {
       name: "custos-por-cliente",
       route: { name: "costs" },
       clients: {},
+      // The data scope is every host by default (#126), so this is the all-hosts view as it opens.
       prepare: async (page) => {
-        await page
-          .getByRole("combobox", { name: /^(Host dos custos|Costs host)/ })
-          .selectOption("__all__");
         await page.waitForTimeout(1500);
       },
     },
@@ -860,6 +859,10 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.roi",
       "flightdeck.uiMode",
       "flightdeck.inbox",
+      // The "barra-recolhida" print folds the sidebar, and the fold is kept: not into the next print.
+      "flightdeck.sidebarFolded",
+      // Every scoped screen reads the data scope (#126): a print that picks a host does not scope the next.
+      "flightdeck.dataScope",
     ]) {
       localStorage.removeItem(key);
     }

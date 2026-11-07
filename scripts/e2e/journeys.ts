@@ -1654,6 +1654,85 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
   },
 
+  // A session page's views (#107, #846): the tablist and Alt+1..7 switch them, the Terminal view
+  // opens a shell in the session's folder and keeps it while another view shows, and closing the
+  // terminal ends the shell (opening the view again starts a new one). The Terminal tab is in
+  // reach in a phone-sized window and a desktop one.
+  "sessao-vistas": async (c) => {
+    const route: Route = { name: "session", host: ALFA, id: c.ids.idleSession };
+    const list = c.page.getByRole("tablist", { name: c.t("sessionViews.label"), exact: true });
+    const tabs = list.getByRole("tab");
+    const terminalTab = list.getByRole("tab", { name: c.t("sessionViews.terminal"), exact: true });
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, route);
+      await terminalTab.waitFor({ timeout: WAIT });
+      if (size.width >= 800) {
+        // The strip fits: the tab is in the window with nothing scrolled.
+        await inReach(c, `a aba Terminal a ${size.width}x${size.height}`, terminalTab);
+      } else {
+        // The strip scrolls sideways by design (its tabs keep their width): the tab comes into
+        // view with the strip scrolled, and the page itself never scrolls sideways.
+        await terminalTab.scrollIntoViewIfNeeded();
+        await terminalTab.click({ trial: true, timeout: WAIT });
+        const sideways = await c.page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        if (sideways > 0)
+          throw new Error(`a página rola ${sideways}px para o lado a ${size.width}px`);
+      }
+    }
+    // Alt+1..7 pick the views in the order of the tabs; the tab picked says so.
+    const count = await tabs.count();
+    if (count < 2) throw new Error(`a página da sessão devia ter várias vistas, tem ${count}`);
+    const selected = async () => {
+      const marks = await tabs.evaluateAll((els) => els.map((e) => e.ariaSelected === "true"));
+      return marks.indexOf(true);
+    };
+    await tabs.first().click();
+    for (let i = 1; i < Math.min(count, 7); i++) {
+      await c.page.keyboard.press(`Alt+${i + 1}`);
+      await waitFor(async () => (await selected()) === i, `Alt+${i + 1} escolher a vista ${i + 1}`);
+    }
+    await c.page.keyboard.press("Alt+1");
+    await waitFor(async () => (await selected()) === 0, "Alt+1 voltar à conversa");
+    // The Terminal view: a shell in the session's folder, kept while the conversation shows.
+    const marker = `fd-${c.lang}-${Date.now()}`;
+    const rows = c.page.locator(".xterm-rows");
+    const screen = async () => ((await rows.first().textContent()) ?? "").trim();
+    await terminalTab.click();
+    await c.page
+      .getByText(c.t("terminalUi.state.live"), { exact: true })
+      .waitFor({ timeout: WAIT * 2 });
+    await waitFor(async () => (await screen()) !== "", "o prompt do shell");
+    await c.page.locator(".xterm").first().click();
+    await c.page.keyboard.type("PS1='$ '\n");
+    await c.page.keyboard.type(`echo ${marker}\n`);
+    const echoes = async () => (await screen()).split(marker).length - 1;
+    await waitFor(async () => (await echoes()) >= 2, "o eco do terminal", WAIT * 2);
+    // Ctrl+` goes back to the conversation and to the same shell, which kept what was typed.
+    await c.page.keyboard.press("Control+Backquote");
+    await waitFor(async () => (await selected()) === 0, "Ctrl+` voltar à conversa");
+    await c.page.keyboard.press("Control+Backquote");
+    await waitFor(async () => (await echoes()) >= 2, "o mesmo shell, com o que foi digitado");
+    // Closing the terminal ends the shell and returns to the conversation.
+    const end = async () => {
+      await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
+      await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
+      await waitFor(async () => (await selected()) === 0, "a conversa depois de encerrar");
+    };
+    await end();
+    // A new shell, not the one that ended: what was typed is not there.
+    await terminalTab.click();
+    await c.page
+      .getByText(c.t("terminalUi.state.live"), { exact: true })
+      .waitFor({ timeout: WAIT * 2 });
+    await waitFor(async () => (await screen()) !== "", "o prompt do novo shell");
+    if ((await echoes()) !== 0) throw new Error("o terminal encerrado voltou com o shell antigo");
+    // The demo keeps its state: leave no shell running.
+    await end();
+  },
+
   // The board's Files panel (#117, #846): a worktree picked in the sidebar tree opens its files
   // beside the columns; a name search finds a file and marks a credential as hidden instead of
   // opening it; a content search finds a key-shaped line without its key (#827, #829) and finds
@@ -1684,7 +1763,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       throw new Error("um arquivo de credencial devia aparecer como oculto, sem botão para abrir");
     }
     // By content: the key-shaped line is found, and nothing of the key shows.
-    await panel.getByRole("tab", { name: c.t("files.byContent"), exact: true }).click();
+    await panel.getByRole("button", { name: c.t("files.byContent"), exact: true }).click();
     const content = panel.getByRole("searchbox", { name: c.t("files.searchContent"), exact: true });
     await content.fill("chave de exemplo");
     await results.getByRole("button", { name: /^config\.example\.ts:\d+$/ }).waitFor({
@@ -1701,7 +1780,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await content.fill("DEMO_MODE");
     await panel.getByText(c.t("files.nothingFound"), { exact: true }).waitFor({ timeout: WAIT });
     // A match opens its file.
-    await panel.getByRole("tab", { name: c.t("files.byName"), exact: true }).click();
+    await panel.getByRole("button", { name: c.t("files.byName"), exact: true }).click();
     await panel
       .getByRole("searchbox", { name: c.t("files.searchNames"), exact: true })
       .fill("app.ts");
@@ -1721,6 +1800,100 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       }
       await inReach(c, `a busca de arquivos a ${size.width}x${size.height}`, search);
     }
+  },
+
+  // Home's leaderboard (#124, #846): where the tokens of the last 7 days went, by project, model and
+  // persona. Every row says its share, its tokens and its trend in words; a project's row opens Costs
+  // on that project; the panel does not run past the window at a phone's size or a desktop's. The
+  // notice for a host that does not answer is not here: the demo has no priced host that fails.
+  "ranking-home": async (c) => {
+    const loaded = c.page.getByRole("tablist", { name: c.t("home.leadersBy"), exact: true });
+    const rows = c.page.locator(".leader-row");
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "overview" });
+      await loaded.waitFor({ timeout: SESSION_WAIT });
+      await rows.first().waitFor({ timeout: WAIT });
+      // No row runs past the window sideways.
+      const wide = await c.page.evaluate(() => {
+        const limit = document.documentElement.clientWidth;
+        const over = [...document.querySelectorAll(".leader-panel *")].filter(
+          (el) => el.getBoundingClientRect().right > limit + 1,
+        );
+        return over.length;
+      });
+      if (wide > 0) throw new Error(`${wide} itens do ranking passam da janela a ${size.width}px`);
+    }
+    // Each grouping lists rows with a share, its tokens and its trend in words.
+    for (const tab of ["home.byProject", "home.byModel", "home.byPersona"] as const) {
+      await loaded.getByRole("tab", { name: c.t(tab), exact: true }).click();
+      const panel = c.page.getByRole("tabpanel").filter({ has: c.page.locator(".leader-row") });
+      await panel.first().waitFor({ timeout: WAIT });
+      const parts = await panel
+        .first()
+        .locator(".leader-row")
+        .first()
+        .evaluate((row) =>
+          [".leader-share", ".leader-tokens", ".leader-trend"].map(
+            (sel) => row.querySelector(sel)?.textContent?.trim() ?? "",
+          ),
+        );
+      if (parts.some((text) => text === "")) {
+        throw new Error(`uma linha de ${c.t(tab)} sem parte do texto: ${JSON.stringify(parts)}`);
+      }
+    }
+    // A project's row opens Costs on that project.
+    await loaded.getByRole("tab", { name: c.t("home.byProject"), exact: true }).click();
+    const open_ = c.page.getByRole("button", {
+      name: new RegExp(`^${c.t("home.openProject", { name: "§" }).replace("§", ".+")}$`),
+    });
+    await open_.first().waitFor({ timeout: WAIT });
+    const label = (await open_.first().textContent())?.trim() ?? "";
+    await open_.first().click();
+    const project = c.page.getByLabel(c.t("costsUi.project"), { exact: true });
+    await project.waitFor({ timeout: WAIT });
+    await waitFor(
+      async () =>
+        (await project.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.text)) ===
+        label,
+      `o filtro de Custos no projeto ${label}`,
+    );
+  },
+
+  // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one
+  // host, the choice is kept when the page is opened again, a host that is offline says so and
+  // offers all hosts, and the menu is in reach in a phone-sized window and a desktop one.
+  "escopo-dados": async (c) => {
+    const menuOf = (scope: string) =>
+      c.page.getByRole("button", { name: c.t("scope.menu", { scope }), exact: true });
+    const all = c.t("scope.all");
+    const pick = async (from: string, host: string) => {
+      await menuOf(from).click();
+      await c.page.getByRole("menuitemradio", { name: host, exact: true }).click();
+    };
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "overview" });
+      await inReach(c, `o menu Dados de a ${size.width}x${size.height}`, menuOf(all));
+    }
+    // One host: the trigger and the subtitle say whose numbers they are.
+    const subtitle = (host: string) =>
+      c.page.getByText(c.t("home.rangeHost", { host }), { exact: true });
+    await pick(all, "alfa");
+    await menuOf("alfa").waitFor({ timeout: WAIT });
+    await subtitle("alfa").waitFor({ timeout: WAIT });
+    // Kept: the page opened again is still on alfa.
+    await open(c, { name: "overview" });
+    await menuOf("alfa").waitFor({ timeout: WAIT });
+    await subtitle("alfa").waitFor({ timeout: WAIT });
+    // A host that is offline: Home says so and offers all hosts, which brings them back.
+    await pick("alfa", "notebook");
+    await menuOf("notebook").waitFor({ timeout: WAIT });
+    const showAll = c.page.getByRole("button", { name: c.t("scope.showAll"), exact: true });
+    await showAll.waitFor({ timeout: SESSION_WAIT });
+    await showAll.click();
+    await menuOf(all).waitFor({ timeout: WAIT });
+    await c.page.getByText(c.t("home.range"), { exact: true }).waitFor({ timeout: WAIT });
   },
 };
 

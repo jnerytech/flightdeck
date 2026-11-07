@@ -53,8 +53,8 @@ export const PersonasPage = memo(function PersonasPage(props: {
     setEditing(p);
   };
   // Closing the editor (Cancel or Save) puts the scroll back and the focus on the Edit button. A
-  // saved pack persona changes scope, so its card is a new one: the button is looked for again
-  // each time the list changes, by the persona's id.
+  // saved pack persona changes scope, so its card is a new one: Save reloads the list before it
+  // closes the editor, so the button that gets the focus is the one that stays (#854).
   // biome-ignore lint/correctness/useExhaustiveDependencies: `personas` is how a saved list asks to be looked at again
   useLayoutEffect(() => {
     if (editing !== null || !opener.current) return;
@@ -146,9 +146,9 @@ export const PersonasPage = memo(function PersonasPage(props: {
           project={project === APP ? "" : project}
           persona={null}
           onOpenSettings={openSettings}
-          onSaved={() => {
+          onSaved={async () => {
+            await reload();
             setEditing(null);
-            void reload();
           }}
           onClose={() => setEditing(null)}
         />
@@ -194,9 +194,9 @@ export const PersonasPage = memo(function PersonasPage(props: {
                     project={project === APP ? "" : project}
                     persona={p}
                     onOpenSettings={openSettings}
-                    onSaved={() => {
+                    onSaved={async () => {
+                      await reload();
                       setEditing(null);
-                      void reload();
                     }}
                     onClose={() => setEditing(null)}
                   />

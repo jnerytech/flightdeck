@@ -33,10 +33,57 @@ describe("ci-pyramid (#309)", () => {
     );
   });
 
-  test("the schedule and a run by hand run the whole suite with the 100% gate (#444)", () => {
-    const full = step("Testes (cobertura 100%)");
+  test("the schedule and a run by hand run the whole suite with the 100% gate, merged from three shards (#444, #296)", () => {
+    // Each shard job leaves its report as an artifact; a missing one must reach the merge, which
+    // fails closed and names it, so the download goes on without it.
+    const download = step("Relatórios dos shards");
+    expect(download?.if).toBe("needs.quick.outputs.base == ''");
+    expect((download as { "continue-on-error"?: boolean })?.["continue-on-error"]).toBe(true);
+    expect((download as { with?: Record<string, string> })?.with).toEqual({
+      pattern: "shard-*",
+      path: "${{ runner.temp }}/shards",
+    });
+    const full = step("Testes (cobertura 100%, 3 shards)");
     expect(full?.if).toBe("needs.quick.outputs.base == ''");
-    expect(full?.run).toBe("bun run test");
+    expect(full?.run).toBe(
+      'bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info',
+    );
+  });
+
+  test("each shard runs twice, Bun's coverage and istanbul's functions, only when the whole suite runs (#296)", () => {
+    const shard = ci.jobs["test-shard"] as
+      | { if?: string; name?: string; needs?: string[]; strategy?: unknown; steps: Step[] }
+      | undefined;
+    expect(shard?.if).toBe(
+      "needs.quick.outputs.base == '' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')",
+    );
+    expect(shard?.needs).toEqual(["quick"]);
+    expect(shard?.strategy).toEqual({
+      "fail-fast": false,
+      matrix: { shard: [1, 2, 3], kind: ["bun", "istanbul"] },
+    });
+    expect(shard?.name).toBe(
+      "test shard ${{ matrix.shard }}/3 ${{ matrix.kind }} (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}",
+    );
+    // The shards never use the token after checkout (#828 review).
+    const checkout = shard?.steps.find((s) =>
+      ((s as { uses?: string }).uses ?? "").startsWith("actions/checkout@"),
+    ) as { with?: Record<string, unknown> } | undefined;
+    expect(checkout?.with?.["persist-credentials"]).toBe(false);
+    const run = shard?.steps.find((s) => (s.run ?? "").includes("shard-gate.ts run"));
+    // Outside the checkout: the repo guard fails a test run that leaves a file in it.
+    expect(run?.run).toBe(
+      'bun run scripts/shard-gate.ts run ${{ matrix.shard }}/3 ${{ matrix.kind }} "$RUNNER_TEMP/shard"',
+    );
+    const upload = shard?.steps.find((s) =>
+      ((s as { uses?: string }).uses ?? "").startsWith("actions/upload-artifact@"),
+    ) as { if?: string; with?: Record<string, unknown> } | undefined;
+    expect(upload?.if).toBe("always()");
+    expect(upload?.with).toEqual({
+      name: "shard-${{ matrix.shard }}-${{ matrix.kind }}",
+      path: "${{ runner.temp }}/shard",
+      "retention-days": 1,
+    });
   });
 
   test("the plan gives the selection's base: the PR's target, the commit a push to main came after, or none for a full run (#444)", () => {

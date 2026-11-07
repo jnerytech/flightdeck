@@ -6,6 +6,8 @@ import {
   DataScopeController,
   parseScope,
   scopeHosts,
+  scopeOfValue,
+  scopeValue,
 } from "../src/lib/data-scope.ts";
 
 /** A storage in memory; `refuse` makes every call throw, like a private window's. */
@@ -36,8 +38,14 @@ describe("data-scope: whose data the scoped screens show (#126)", () => {
       parseScope("not json"),
       parseScope('{"kind":"host"}'),
       parseScope('{"kind":"project","hostId":"a"}'),
+      parseScope('{"kind":"host","hostId":""}'),
+      parseScope("null"),
+      parseScope("5"),
     ]).toEqual([
       { kind: "host", hostId: "a" },
+      ALL_SCOPE,
+      ALL_SCOPE,
+      ALL_SCOPE,
       ALL_SCOPE,
       ALL_SCOPE,
       ALL_SCOPE,
@@ -52,6 +60,33 @@ describe("data-scope: whose data the scoped screens show (#126)", () => {
       activeScope({ kind: "host", hostId: "gone" }, HOSTS),
       activeScope(ALL_SCOPE, HOSTS),
     ]).toEqual([{ kind: "host", hostId: "b" }, ALL_SCOPE, ALL_SCOPE]);
+  });
+
+  // Review of #837: before the host list is read, a kept host is not "gone" yet. Falling back
+  // then would ask every host for the numbers the person chose not to see.
+  test("before the host list is read, a kept host stays the scope", () => {
+    expect([
+      activeScope({ kind: "host", hostId: "a" }, [], false),
+      activeScope({ kind: "host", hostId: "a" }, [], true),
+      activeScope(ALL_SCOPE, [], false),
+    ]).toEqual([{ kind: "host", hostId: "a" }, ALL_SCOPE, ALL_SCOPE]);
+  });
+
+  // Review of #837: the menu's value for every host is not a value any host id can take.
+  test("a menu value names one scope, and no host id is the value for every host", () => {
+    const ids = ["a", "all", "*", "host:x"];
+    const values = [ALL_SCOPE, ...ids.map((hostId) => ({ kind: "host", hostId }) as const)].map(
+      scopeValue,
+    );
+    expect({
+      distinct: new Set(values).size,
+      back: values.map(scopeOfValue),
+      unknown: scopeOfValue("nonsense"),
+    }).toEqual({
+      distinct: 5,
+      back: [ALL_SCOPE, ...ids.map((hostId) => ({ kind: "host" as const, hostId }))],
+      unknown: ALL_SCOPE,
+    });
   });
 
   test("the hosts it keeps, in their order", () => {

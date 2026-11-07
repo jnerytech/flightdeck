@@ -1,4 +1,5 @@
 import type { Key, T } from "@/i18n/index";
+import { secretKindsText } from "@/i18n/secret-kinds";
 import type { AssistantFailure } from "@/lib/assistant";
 
 /** A refusal in words: the text of its reason, with the values it carries. Never a key, never the user's text. */
@@ -6,6 +7,9 @@ export function refusalText(t: T, failure: AssistantFailure): string {
   const params = { ...failure.params };
   if (failure.reason === "assistant_key_invalid") {
     params.why = t(`assistantSettings.keyWhy.${String(params.why ?? "empty")}` as Key);
+  }
+  if (failure.reason === "assistant_secret_found" && typeof params.labels === "string") {
+    params.labels = secretKindsText(t, params.labels);
   }
   return t(`assistantRefusal.${failure.reason}` as Key, params);
 }

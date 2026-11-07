@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BoardOptions } from "../src/board/board.ts";
-import { copyIncluded, WORKTREE_INCLUDE_LIMIT } from "../src/board/worktree.ts";
+import { addWorktree, copyIncluded, WORKTREE_INCLUDE_LIMIT } from "../src/board/worktree.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
 
 // Real git in temp repositories: more than the default 5 s.
@@ -125,5 +125,28 @@ describe("worktreeinclude", () => {
     expect((await without.board.forWire(without.board.getProject(two.id))).worktreeInclude).toBe(
       false,
     );
+  });
+
+  test("an addWorktree that fails while copying leaves no worktree and no branch (#715)", async () => {
+    const ctx = boardWithSecrets(".env\n");
+    // An ignored file that cannot be copied: a link to nothing.
+    writeFileSync(join(ctx.repo, ".gitignore"), "node_modules/\n.env\n");
+    git(ctx.repo, "add", ".gitignore");
+    git(ctx.repo, "commit", "-q", "-m", "ignore .env");
+    rmSync(join(ctx.repo, ".env"), { force: true });
+    symlinkSync(join(ctx.root, "nowhere"), join(ctx.repo, ".env"));
+    const error = await addWorktree(ctx.repo, "half made", "HEAD").then(
+      () => "no error",
+      (e: unknown) => (e instanceof Error ? "failed" : String(e)),
+    );
+    const worktrees = git(ctx.repo, "worktree", "list", "--porcelain")
+      .split("\n")
+      .filter((line) => line.startsWith("worktree "));
+    expect([
+      error,
+      worktrees.length,
+      git(ctx.repo, "branch", "--list", "fd/*"),
+      existsSync(join(ctx.repo, ".flightdeck", "worktrees", "half-made")),
+    ]).toEqual(["failed", 1, "", false]);
   });
 });

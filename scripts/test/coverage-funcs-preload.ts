@@ -5,7 +5,7 @@
 import { afterAll } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { plugin } from "bun";
-import { createInstrumenter, onLoadFor } from "../lib/coverage-funcs.ts";
+import { createInstrumenter, onLoadFor } from "../lib/coverage-funcs-hooks.ts";
 
 const files: string[] = JSON.parse(process.env.COVERAGE_FUNCS_FILES ?? "[]");
 const out = process.env.COVERAGE_FUNCS_OUT ?? "";

@@ -33,6 +33,8 @@ export interface WatchSettings {
   maxFailures: number;
   /** Estimated cost of every fixing round of the project in a day, in US$; `null` for no limit. */
   dailyUsd: number | null;
+  /** Issue #77: globs of files a round may change outside its PR; they never count as drift. */
+  driftAllow: string[];
 }
 
 export interface PrWatcherOptions {
@@ -57,6 +59,15 @@ const DEFAULT_SETTINGS: WatchSettings = {
   persona: "revisor",
   maxFailures: 2,
   dailyUsd: 20,
+  driftAllow: [
+    "bun.lock",
+    "bun.lockb",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "Cargo.lock",
+    "*.snap",
+  ],
 };
 
 /** What the last look found, to tell what got worse at the next one. */

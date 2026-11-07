@@ -38,7 +38,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `bun run slot -- bun run test`). It is one exclusive lock for the whole machine, with a queue;
   waiters take it first come, first served. `bun run slot -- --status` shows the holder (with a
   warning past `--max-age`, 90 min by default) and each waiter in queue order with its age, folder
-  and an `ORPHAN` mark. A waiter whose shell is gone gives up (`FLIGHTDECK_SLOT_DETACHED=1` keeps a
+  and an `ORPHAN` mark. Past 20 min a hold is LONG for the holder, its waiters and `--status`, and
+  harness:stats lists it; a run of more than 60 test files needs `FLIGHTDECK_SLOT_HEAVY="<reason>"`
+  (#833). A waiter whose shell is gone gives up (`FLIGHTDECK_SLOT_DETACHED=1` keeps a
   launch detached on purpose in the queue), and `--reap` (the coordinator) stops orphan waiters by
   process group, never the holder. `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
@@ -71,7 +73,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (#444). The e2e journeys run when the change touches what they read (the screens, the journeys,
   the demo, the daemon). Windows is not part of a PR's or a push's run (#534): the person tests it
   by hand. The schedule (every 3 hours) and a run by hand run the whole suite with the whole-repo
-  100% gate, Windows included as a signal that gates nothing (`test:shards`, 30 s per test there);
+  100% gate (on Linux, 3 shards × Bun lines and istanbul functions, merged fail-closed by
+  `scripts/shard-gate.ts`, #296), Windows included as a signal that gates nothing (`test:shards`, 30 s per test there);
   `pr tag` tags only a commit with such a full green run. `bun run test:tiers` prints the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
