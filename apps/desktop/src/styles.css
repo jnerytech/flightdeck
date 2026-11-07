@@ -830,6 +830,37 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 1rem;
 }
 
+/* The columns and, beside them, the files of the picked worktree (#117). A narrow board
+   (`data-narrow`, under 900 px) shows one or the other: the panel then takes the whole row. */
+@utility board-split {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0%;
+  gap: 0.75rem;
+  & > [data-slot="board-columns"] {
+    min-width: 0;
+  }
+}
+
+/* The files panel: a side column with its own scroll. */
+@utility board-files {
+  display: flex;
+  min-height: 0;
+  width: clamp(16rem, 28%, 26rem);
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 0.75rem;
+  [data-narrow] > & {
+    width: auto;
+    flex: 1 1 0%;
+  }
+}
+
 /* A column under a dragged card: it shows where the card would land. */
 /* A board column: a thin top line and a faint tint of the column's own tone. */
 @utility board-column {
