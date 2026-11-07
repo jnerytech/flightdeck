@@ -30,7 +30,7 @@ export function SelectionBar(props: {
       onKeyDown={(e) => {
         if (e.key === "Escape" && !e.defaultPrevented) props.onEscape();
       }}
-      className="m-0 flex min-w-0 flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm"
+      className="m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-2 rounded-md bg-muted pl-3 text-sm"
     >
       <span>
         {props.shown === 1 ? t("board.selectedOne") : t("board.selectedCount", { n: props.shown })}
@@ -69,11 +69,19 @@ export function SelectionBar(props: {
   );
 }
 
-/** The bar's place above the board, kept while nothing is selected so the first click moves no card. */
-export function SelectionSlot(props: { children: React.ReactNode }) {
+/**
+ * The toolbar's row, which the bar covers while cards are selected (#760): both sit in one grid
+ * cell, so the first click moves no card and the body keeps no blank band for the bar. Under the
+ * bar the toolbar is invisible and inert, out of the focus order and the accessibility tree.
+ */
+export function SelectionSlot(props: { bar: React.ReactNode; children: React.ReactNode }) {
+  const covered = Boolean(props.bar);
   return (
-    <div data-slot="selection-slot" className="min-h-12">
-      {props.children}
+    <div data-slot="selection-slot" className="selection-stack">
+      <div className={covered ? "invisible" : undefined} inert={covered}>
+        {props.children}
+      </div>
+      {props.bar}
     </div>
   );
 }
