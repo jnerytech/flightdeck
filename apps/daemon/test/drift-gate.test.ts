@@ -211,6 +211,56 @@ describe("drift-gate: a round that leaves its PR is held, not pushed (#77)", () 
     ]).toEqual(["command_failed", "command_failed", "held"]);
   });
 
+  test("git fetches the base and the branch before it measures, so neither is stale", async () => {
+    const f = await strict();
+    await round(f);
+    const at = (verb: string) => f.gitCalls.findIndex((args) => args.includes(verb));
+    const fetch = f.gitCalls[at("fetch")] ?? [];
+    expect([
+      at("fetch") >= 0 && at("fetch") < at("merge-base"),
+      fetch.includes(`+refs/heads/main:refs/remotes/origin/main`),
+      fetch.includes(`+refs/heads/${f.branch}:refs/remotes/origin/${f.branch}`),
+    ]).toEqual([true, true, true]);
+  });
+
+  test("a new round on top of a held one closes it as superseded", async () => {
+    const f = await strict();
+    await round(f);
+    service(f).extend(f.card.id, 1);
+    await round(f);
+    const [first] = f.fixer.rounds(f.card.id);
+    expect([first?.status, first?.summary?.startsWith("superseded by round 2") ?? false]).toEqual([
+      "stopped",
+      true,
+    ]);
+  });
+
+  test("no round starts while a held round is being pushed or dropped", async () => {
+    const f = await strict();
+    const r = await round(f);
+    service(f).extend(f.card.id, 1);
+    const resolving = service(f).resolveHeld(f.card.id, r?.id ?? "", "push");
+    await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    await resolving;
+    await f.fixer.idle();
+    expect(f.fixer.rounds(f.card.id).length).toBe(1);
+  });
+
+  test("push is refused once the PR is no longer open, or the card lost its worktree", async () => {
+    const f = await strict();
+    const r = await round(f);
+    f.host.state = "merged";
+    const merged = await refusal(service(f).resolveHeld(f.card.id, r?.id ?? "", "push"));
+    f.host.state = "open";
+    f.store.db.query("UPDATE cards SET worktree_path = NULL WHERE id = ?").run(f.card.id);
+    const gone = await refusal(service(f).resolveHeld(f.card.id, r?.id ?? "", "push"));
+    expect([merged, gone, f.commitsAhead()]).toEqual([
+      "watch_pr_not_open",
+      "card_no_worktree",
+      "1",
+    ]);
+  });
+
   test("a round that is not held is refused", async () => {
     const f = await fixture();
     const r = await round(f);
