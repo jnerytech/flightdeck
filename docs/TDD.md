@@ -270,7 +270,9 @@ em vez de depender de cuidado.
 
 - Every branch reaches `main` through its own PR: `bun run pr -- open <branch>` titles it after the
   branch's issue and closes it (`--refs <n>` writes `Refs #n` instead, for a PR that is only one
-  slice of the issue: GitHub keeps the closing link of a first body even after an edit, #839). A branch stacked on another opens with `--base <parent>`. When
+  slice of the issue: GitHub keeps the closing link of a first body even after an edit, #839), and
+  then titles it after the branch's first commit, without its `type(scope): ` (#909).
+  `--title <text>` names it by hand. A branch stacked on another opens with `--base <parent>`. When
   `FLIGHTDECK_PR_OPENED` is set (words split on spaces, or a JSON array of strings for a path with
   spaces), `open` runs it with the new PR's number, branch and base (the coordinator's tooling
   queues an OpenCode review there, #273). A hook that fails, or runs past two minutes, leaves the

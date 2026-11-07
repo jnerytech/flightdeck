@@ -138,7 +138,7 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
 - Delivery is GitHub Flow (#260, #271): one PR per branch to `main`. A session pushes its own
   branch, opens its PR (`bun run pr -- open <branch>`, with `--refs <n>` for a slice of an issue so
-  it does not close it, #839) and turns on auto-merge
+  it does not close it, #839, titled after the first commit, #909) and turns on auto-merge
   (`bun run pr -- auto <n>`): GitHub merges it with a merge commit once its required checks are
   green on its HEAD, even when it is behind `main` (#305: the ruleset is not strict; `main`'s push
   CI checks the result). Only a PR that conflicts with `main` waits: merge `main` into it.
