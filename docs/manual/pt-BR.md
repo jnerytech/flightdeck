@@ -995,6 +995,14 @@ Esperando você laranja, Em revisão verde, Concluído apagado), o ícone do sta
 numa pílula e um **+** que põe um card direto nessa coluna. Uma coluna vazia mostra uma caixa
 tracejada e discreta que diz "Vazio" e também cria um card quando você a aperta.
 
+Uma worktree escolhida na barra lateral mostra os arquivos dela ao lado das colunas (**Arquivos**
+esconde ou mostra; num board estreito os arquivos tomam o lugar das colunas). Num host que busca
+arquivos, o painel busca no repositório inteiro: **Nomes** acha os arquivos cujo caminho tem o
+texto, e **Conteúdo** lista cada linha que o tem como `caminho:linha`. Um só campo de busca serve
+aos dois, então trocar de modo mantém o que você digitou. Um resultado abre o arquivo, e um de
+conteúdo abre na linha. Uma credencial, ou um caminho ou linha com um token ou um valor do cofre,
+aparece mascarado e como **Oculto**, e não abre.
+
 ### Trabalhar com vários cards
 
 - **Selecionar.** `Ctrl`-clique (`⌘`-clique no Mac) num card para selecioná-lo ou desmarcá-lo;

@@ -997,6 +997,13 @@ orange, In review green, Done muted), its status icon, the number of cards as a 
 that adds a card straight into that column. An empty column shows a quiet dashed box that says
 "Empty" and also adds a card when pressed.
 
+A worktree picked in the sidebar shows its files beside the columns (**Files** hides or shows
+them; on a narrow board the files take the columns' place). On a host that searches files, the
+panel searches the whole repository: **Names** finds the files whose path holds the text, and
+**Content** lists each line that holds it as `path:line`. One search field serves both, so a
+pick keeps what you typed. A match opens the file, a content match at its line. A credential, or
+a path or line with a token or a vault value in it, shows masked and as **Hidden**, and does not open.
+
 ### Working with many cards
 
 - **Select.** `Ctrl`-click (`⌘`-click on a Mac) a card to select it or unselect it; `Shift`-click
