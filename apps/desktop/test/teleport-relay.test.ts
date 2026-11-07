@@ -196,6 +196,37 @@ describe("teleport-relay: the app moves a session from one host to another (#100
     ]);
   });
 
+  test("a move cancelled before it starts never reaches the target", async () => {
+    const h = hosts();
+    const stop = new AbortController();
+    const outcome = await run(h, {
+      confirm: async () => {
+        stop.abort();
+        return true;
+      },
+      signal: stop.signal,
+    });
+    expect([outcome, h.calls]).toEqual([
+      { kind: "cancelled" },
+      ["source:teleport.prepare", "source:teleport.cancel"],
+    ]);
+  });
+
+  test("a source whose chunks do not move on ends the transfer instead of spinning", async () => {
+    const h = hosts();
+    let reads = 0;
+    const stuck = (async (type: string, payload: never) => {
+      if (type === "teleport.read") {
+        reads++;
+        // Ends on the third try, so a relay that spins shows as a count, not a hang.
+        return { data: "", next: 0, eof: reads >= 3 };
+      }
+      return h.source(type as "teleport.prepare", payload);
+    }) as TeleportRequest;
+    await failure(run(h, { source: stuck }));
+    expect(reads).toBe(1);
+  });
+
   test("a host that went while cleaning up does not hide why the move stopped", async () => {
     const h = hosts({
       finish: new RequestError("invalid_state", "x", "teleport_exists"),
