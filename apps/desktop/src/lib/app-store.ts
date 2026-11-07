@@ -106,7 +106,6 @@ import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
-import { SessionViews } from "./session-views.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
 import { HomeCache } from "./home-cache.ts";
@@ -173,6 +172,7 @@ import {
   markGap,
   type SessionState,
 } from "./session-state.ts";
+import { SessionViews } from "./session-views.ts";
 import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
