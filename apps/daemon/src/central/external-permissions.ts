@@ -38,6 +38,9 @@ interface Held {
   resolve(body: string): void;
 }
 
+/** A text field of a hook payload: a string as it is; anything else, which Claude Code does not send, is empty. */
+const textOf = (value: unknown): string => (typeof value === "string" ? value : "");
+
 /**
  * PermissionRequest hooks of external sessions. Held only while some app watches (otherwise the
  * terminal decides at once); nothing is ever allowed without an explicit answer from the app.
@@ -63,13 +66,13 @@ export class ExternalPermissions {
    * An automatic "allow" answers too, even with no app watching.
    */
   hold(payload: HookPayload, signal: AbortSignal): Promise<string> {
-    const toolName = String(payload.tool_name ?? "");
+    const toolName = textOf(payload.tool_name);
     const input = { ...(payload.tool_input as Record<string, unknown> | undefined) };
-    const cwd = String(payload.cwd ?? "");
+    const cwd = textOf(payload.cwd);
     // From the whole input: the cut one could hide what comes after 200 characters.
     const risk = this.risk.classify(toolName, input, cwd);
     const requestId = `ext-${ulid()}`;
-    const claudeSessionId = String(payload.session_id ?? "");
+    const claudeSessionId = textOf(payload.session_id);
     const auto =
       this.auto?.decide({ sessionKey: claudeSessionId, requestId, toolName, input, cwd, risk }) ??
       Promise.resolve(null);
@@ -165,7 +168,7 @@ export class ExternalPermissions {
 
   /** The daemon is stopping: every held hook gets an empty answer. */
   closeAll(): void {
-    for (const requestId of [...this.held.keys()]) this.close(requestId, "dropped", "");
+    for (const requestId of [...this.held.keys()]) this.close(requestId, "dropped", ""); // NOSONAR: close() removes the entry it closes; the copy keeps the walk stable
   }
 
   open(): ExternalPermissionFrame[] {
