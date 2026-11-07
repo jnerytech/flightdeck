@@ -10,6 +10,7 @@ export function logHook(
   hook: string,
   rule: string | null,
   decision: HookLogEntry["decision"] = rule ? "block" : "allow",
+  extra: { detail?: string; minutes?: number } = {},
 ): void {
   try {
     const path = hookLogPath(process.env.CLAUDE_PROJECT_DIR ?? resolve(import.meta.dir, "../.."));
@@ -22,6 +23,8 @@ export function logHook(
         rule,
         decision,
         ms: Math.round(performance.now()),
+        ...(extra.detail === undefined ? {} : { detail: extra.detail }),
+        ...(extra.minutes === undefined ? {} : { minutes: extra.minutes }),
       },
       {
         size: (p) => (existsSync(p) ? statSync(p).size : 0),

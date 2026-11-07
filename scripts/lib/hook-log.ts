@@ -17,6 +17,10 @@ export interface HookLogEntry {
   decision: "allow" | "block" | "waived";
   /** Milliseconds from the hook process start to the decision. */
   ms: number;
+  /** A waiver's reason, as given (#741: push-wait overrides). */
+  detail?: string;
+  /** The age in minutes of the PR run a push-wait override cancels. */
+  minutes?: number;
 }
 
 export interface HookLogDeps {
@@ -74,6 +78,16 @@ export function summarizeHookLog(text: string): string {
     out.push("", title);
     for (const [rule, n] of [...counts].sort(([a], [b]) => a.localeCompare(b))) {
       out.push(`  ${rule.padEnd(ruleWidth)}${n}`);
+    }
+  }
+  const overrides = entries.filter(
+    (e) => e.rule === "push-wait" && e.decision === "waived" && e.detail,
+  );
+  if (overrides.length > 0) {
+    out.push("", "push-wait overrides:");
+    for (const e of overrides) {
+      const age = e.minutes === undefined ? "no run found" : `run ${e.minutes} min old`;
+      out.push(`  ${e.t.slice(0, 16).replace("T", " ")}  ${age.padEnd(15)}${e.detail}`);
     }
   }
   const skipped = lines.length - entries.length;
