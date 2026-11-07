@@ -926,9 +926,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => !(await asleep()), "a sessão acordada", SESSION_WAIT);
   },
 
-  // 26. The tab row (#488): two tabs, only the active one selected and showing its ×, which the
-  // other shows on hover; closing the active one leaves the other active; in a window under 600 px
-  // tall the tabs share the top bar's row.
+  // 26. The tab row (#488, #644): the shared Sessions tab first, with no ×, then the host's own two
+  // tabs, only the active one selected and showing its ×, which the other shows on hover; closing the
+  // active one leaves the other active; in a window under 600 px tall the tabs share the top bar's row.
   "tab-row": async (c) => {
     await open(c, { name: "hub" });
     await c.page
@@ -939,6 +939,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const bar = c.page.getByRole("tablist", { name: c.t("tabs.list"), exact: true });
     const tabs = bar.getByRole("tab");
     await waitFor(async () => (await tabs.count()) === 2, "duas abas");
+    // A new tab is one more Overview of the host in use.
+    await c.page.keyboard.press("Control+t");
+    await c.page.keyboard.press("Escape");
+    await waitFor(async () => (await tabs.count()) === 3, "três abas");
     const selected = async () =>
       (await tabs.evaluateAll((all) => all.map((tab) => tab.getAttribute("aria-selected")))).join();
     // The × of the nth tab is a sibling of the tab in its item, drawn invisible until it is wanted.
@@ -946,11 +950,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       c.page.locator(".tab-item").nth(n).locator("button[tabindex='-1']");
     const shown = async (n: number) =>
       Number(await cross(n).evaluate((el) => getComputedStyle(el).opacity)) > 0.5;
+    // The shared tab belongs to no host: it has no ×.
+    if ((await cross(0).count()) !== 0) throw new Error("a aba compartilhada não devia ter ×");
     const picked = (await selected()).split(",").indexOf("true");
-    if (picked < 0 || (await selected()).split(",").filter((s) => s === "true").length !== 1) {
-      throw new Error(`uma única aba ativa era esperado, veio: ${await selected()}`);
+    if (picked < 1 || (await selected()).split(",").filter((s) => s === "true").length !== 1) {
+      throw new Error(`uma única aba do host ativa era esperado, veio: ${await selected()}`);
     }
-    const other = picked === 0 ? 1 : 0;
+    const other = picked === 1 ? 2 : 1;
     if (!(await shown(picked))) throw new Error("a aba ativa devia mostrar o ×");
     if (await shown(other)) throw new Error("a aba inativa devia esconder o ×");
     await tabs.nth(other).hover();
@@ -960,8 +966,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => (await selected()).split(",")[other] === "true", "a outra aba ativa");
     // Closing the active tab leaves the other one, active.
     await cross(other).click();
-    await waitFor(async () => (await tabs.count()) === 1, "uma aba depois de fechar");
-    if ((await selected()) !== "true") throw new Error("a aba que sobrou devia estar ativa");
+    await waitFor(async () => (await tabs.count()) === 2, "duas abas depois de fechar");
+    if ((await selected()).split(",")[1] !== "true") {
+      throw new Error("a aba do host que sobrou devia estar ativa");
+    }
     // In a window under 600 px tall the area's tabs share the top bar's row.
     // Where the strip sits is read in the page: a locator that finds nothing would wait for the whole test.
     const inHeader = () =>
