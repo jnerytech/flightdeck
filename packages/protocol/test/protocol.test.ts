@@ -267,6 +267,7 @@ const validCommands: Record<CommandType, unknown> = {
   "teams.pause": { team: "t1" },
   "teams.resume": { team: "t1" },
   "teams.close": { team: "t1", confirm: true },
+  "teams.delete": { team: "t1" },
   "teams.message": { team: "t1", text: "parem" },
   "teams.status": { team: "t1" },
   "teams.watch": {},

@@ -7,6 +7,7 @@ import { Messaging } from "../src/messaging/messages.ts";
 import { INSTRUCTIONS_VERSION } from "../src/teams/instructions.ts";
 import { Teams, type TeamsOptions } from "../src/teams/teams.ts";
 import { cardWhen, newBoard, whenChanged } from "./board-helpers.ts";
+import { poll } from "./helpers.ts";
 
 setDefaultTimeout(30_000);
 
@@ -535,5 +536,84 @@ describe("times: members of a running team", () => {
     teams.resume(team.id);
     teams.close(team.id, true);
     expect(await reasonOf(teams.update({ team: team.id, addMember: {} }))).toBe("team_closed");
+  });
+});
+
+// Issue #934: a closed team can be deleted, and nothing of its members goes with it.
+describe("times: deleting a team", () => {
+  async function closedTeam(over: Partial<TeamsOptions> = {}) {
+    const ctx = await setup(over);
+    const created = await ctx.teams.create({ ...NEW, projectId: ctx.project.id, name: "time" });
+    await whenChanged(ctx.board, () =>
+      created.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
+    );
+    // Every member has finished its first turn: none is at work.
+    await poll(
+      () => ctx.teams.get(created.id).members.every((m) => m.sessionState === "idle") || null,
+      10_000,
+    );
+    ctx.teams.close(created.id, true);
+    return { ...ctx, team: ctx.teams.get(created.id) };
+  }
+
+  test("a closed team with nobody at work is deleted: gone from the list and the books, announced to every watcher", async () => {
+    const { teams, team, frames } = await closedTeam();
+    const before = frames.length;
+    const deleted = teams.delete(team.id);
+    expect(deleted.id).toBe(team.id);
+    expect(teams.list().map((t) => t.id)).not.toContain(team.id);
+    expect(await failure(() => teams.get(team.id))).toContain("not_found");
+    // A watcher is told once, with the team as it was: a second app reloads and drops the card.
+    expect(frames.length).toBe(before + 1);
+    expect(frames.at(-1)?.team.id).toBe(team.id);
+  });
+
+  test("the members' sessions and cards stay, and the sessions are taken out of the team", async () => {
+    const cleared: string[] = [];
+    const { teams, team, board, manager } = await closedTeam({
+      names: {
+        get: () => null,
+        setPersona: () => undefined,
+        clearTeam: (sessionId: string) => void cleared.push(sessionId),
+      },
+    });
+    const sessions = team.members.flatMap((m) => (m.sessionId ? [m.sessionId] : []));
+    teams.delete(team.id);
+    expect(cleared.sort()).toEqual([...sessions].sort());
+    for (const sessionId of sessions) expect(manager.get(sessionId).status).not.toBe("ended");
+    for (const member of team.members) {
+      if (member.cardId) expect(board.getCard(member.cardId).id).toBe(member.cardId);
+    }
+    expect(teams.teamOf(team.coordinator as string)).toBeNull();
+  });
+
+  test("an open team is refused, whatever its members do, and stays", async () => {
+    const ctx = await setup();
+    const team = await ctx.teams.create({ ...NEW, projectId: ctx.project.id });
+    expect(await failure(() => ctx.teams.delete(team.id))).toContain("invalid_state");
+    expect(await reasonOf(() => ctx.teams.delete(team.id))).toBe("team_delete_open");
+    ctx.teams.pause(team.id);
+    expect(await reasonOf(() => ctx.teams.delete(team.id))).toBe("team_delete_open");
+    expect(ctx.teams.get(team.id).id).toBe(team.id);
+  });
+
+  test("a closed team with a member at work is refused, and goes once it rests", async () => {
+    const ctx = await setup();
+    const created = await ctx.teams.create({ ...NEW, projectId: ctx.project.id });
+    ctx.teams.close(created.id, true);
+    const busy = ctx.teams.get(created.id).members.some((m) => m.sessionState === "running");
+    expect(busy).toBe(true);
+    expect(await reasonOf(() => ctx.teams.delete(created.id))).toBe("team_delete_live");
+    expect(ctx.teams.get(created.id).id).toBe(created.id);
+    await poll(
+      () => ctx.teams.get(created.id).members.every((m) => m.sessionState !== "running") || null,
+      10_000,
+    );
+    expect(ctx.teams.delete(created.id).id).toBe(created.id);
+  });
+
+  test("a team that does not exist is not_found", async () => {
+    const { teams } = await setup();
+    expect(await reasonOf(() => teams.delete("nada"))).toBe("team_not_found");
   });
 });

@@ -574,6 +574,11 @@ export class Teams {
     return this.changed(id);
   }
 
+  /** Deletes a closed team with no member at work (issue #934). Stub: nothing is deleted. */
+  delete(id: string): TeamInfo {
+    return this.get(id);
+  }
+
   /** A message from Flightdeck to every member ("mandar a todos"). */
   message(id: string, text: string): { delivered: number; refused: number } {
     this.open(id);
