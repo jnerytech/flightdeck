@@ -763,26 +763,24 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 1rem;
 }
 
-/* The columns and, beside them, the files of the picked worktree (#117); stacked when narrow. */
+/* The columns and, beside them, the files of the picked worktree (#117). A narrow board
+   (`data-narrow`, under 900 px) shows one or the other: the panel then takes the whole row. */
 @utility board-split {
   display: flex;
   min-height: 0;
   flex: 1 1 0%;
-  flex-direction: column;
   gap: 0.75rem;
   & > [data-slot="board-columns"] {
     min-width: 0;
   }
-  @container (width >= 64rem) {
-    flex-direction: row;
-  }
 }
 
-/* The files panel: its own scroll, at most 40% of the height when stacked, a side column when wide. */
+/* The files panel: a side column with its own scroll. */
 @utility board-files {
   display: flex;
   min-height: 0;
-  max-height: 40%;
+  width: clamp(16rem, 28%, 26rem);
+  flex: 0 0 auto;
   flex-direction: column;
   gap: 0.5rem;
   overflow-y: auto;
@@ -790,10 +788,9 @@ html:not(:has([data-slot="status-bar"])) {
   border: 1px solid var(--border);
   background: var(--card);
   padding: 0.75rem;
-  @container (width >= 64rem) {
-    max-height: none;
-    width: clamp(16rem, 28%, 26rem);
-    flex: 0 0 auto;
+  [data-narrow] > & {
+    width: auto;
+    flex: 1 1 0%;
   }
 }
 

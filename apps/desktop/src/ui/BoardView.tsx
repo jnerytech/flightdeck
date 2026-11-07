@@ -74,6 +74,7 @@ import { cardStartBlock } from "../lib/card-start-block.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
 import { statusTone } from "../lib/status.ts";
+import { useWidth } from "../lib/use-width.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 import { BoardFilesPanel } from "./BoardFiles.tsx";
@@ -325,8 +326,12 @@ export const BoardView = memo(function BoardView(props: {
     "issues",
     false,
   );
-  /** The checkout whose files panel (#117) was hidden with its button: another one shows it again. */
-  const [filesHiddenFor, setFilesHiddenFor] = useState<string | null>(null);
+  /** Files pressed for a checkout (#117): another checkout goes back to the default. */
+  const [filesChoice, setFilesChoice] = useState<{ path: string; open: boolean } | null>(null);
+  /** The board's width: under 900 px the panel would squeeze the columns, so it takes their place. */
+  const splitRef = useRef<HTMLDivElement>(null);
+  const splitWidth = useWidth(splitRef);
+  const narrow = splitWidth > 0 && splitWidth < 900;
   const { t } = store.i18n;
 
   useEffect(() => {
@@ -349,7 +354,10 @@ export const BoardView = memo(function BoardView(props: {
     all,
     state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
   );
-  const filesShown = files !== null && filesHiddenFor !== treeBranch?.path;
+  // Wide, a picked worktree shows its files at once; narrow, they wait for the Files button.
+  const filesShown =
+    files !== null &&
+    (filesChoice !== null && filesChoice.path === treeBranch?.path ? filesChoice.open : !narrow);
   const filtering = filter.trim() !== "" || onlyBlocked;
   // The board's order: column by column, top to bottom, among the cards a filter leaves.
   const boardOrder = COLUMNS.flatMap(({ id }) =>
@@ -593,7 +601,9 @@ export const BoardView = memo(function BoardView(props: {
                   size="sm"
                   variant="outline"
                   aria-pressed={filesShown}
-                  onClick={() => setFilesHiddenFor(filesShown ? (treeBranch?.path ?? null) : null)}
+                  onClick={() =>
+                    setFilesChoice({ path: treeBranch?.path ?? "", open: !filesShown })
+                  }
                 >
                   <FolderOpen aria-hidden="true" />
                   {t("board.files")}
@@ -652,11 +662,12 @@ export const BoardView = memo(function BoardView(props: {
             onDismiss={() => setNotice(null)}
           />
         )}
-        <div className="board-split">
+        <div ref={splitRef} className="board-split" data-narrow={narrow || undefined}>
           {/* biome-ignore lint/a11y/noStaticElementInteractions: Esc clears the selection from any card inside the board */}
           <div
             ref={boardRef}
             data-slot="board-columns"
+            hidden={narrow && filesShown}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
             tabIndex={0}
             style={{ gridAutoColumns: `${width}px` }}
