@@ -203,6 +203,33 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     },
   );
 
+  test("by content, a token in a file that is no credential leaves the host masked, even one cut at 200 characters (#829)", async () => {
+    const { repo } = await setup();
+    // A fake token of GitHub's shape; the test never uses a real one.
+    const token = `ghp_${"A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"}`;
+    writeFileSync(
+      join(repo, "src", "config.js"),
+      [
+        `const panelToken = "${token}";`,
+        `// panel ${"x".repeat(190)}${token}`,
+        "-----BEGIN RSA PRIVATE KEY----- panel MIIEowIBAAKCAQEA",
+      ].join("\n") + "\n",
+    );
+    const found = await searchRepository(
+      repo,
+      { mode: "content", query: "panel" },
+      { rg: () => null },
+    );
+    const lines = found.matches.filter((m) => m.path === "src/config.js").map((m) => m.text ?? "");
+    expect([
+      lines.length,
+      lines.some((text) => text.includes("ghp_") || text.includes("A1b2C3d4")),
+      lines.some((text) => text.includes("MIIEowIBAAKCAQEA") || text.includes("PRIVATE KEY")),
+      lines.every((text) => Array.from(text).length <= 200),
+      lines[0] ?? "",
+    ]).toEqual([3, false, false, true, 'const panelToken = "[redacted]";']);
+  });
+
   test("an rg cut by its time limit keeps what it found and says it was cut", async () => {
     const { repo } = await setup();
     const found = await searchRepository(
