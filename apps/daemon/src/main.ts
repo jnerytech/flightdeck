@@ -1023,6 +1023,8 @@ export async function startDaemon(
     log: logger.log.bind(logger),
     // A terminal's folder is a target of the Files viewer (#506).
     terminals,
+    // A project's checkout is one too, inside these (#797).
+    allowedRoots: config.allowedRoots,
   });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.

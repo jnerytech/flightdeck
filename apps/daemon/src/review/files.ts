@@ -299,6 +299,15 @@ export class ReviewFiles {
    * resolved) still inside the repository.
    */
   private async writable(target: string, path: string): Promise<Located> {
+    // A project's checkout is shown, never edited from here (#797): a session or a card edits it.
+    if (target.startsWith("project:")) {
+      throw new FlightdeckError(
+        "bad_request",
+        `a project target only reads files: ${target}`,
+        "review_target_invalid",
+        { target },
+      );
+    }
     const { root } = await this.opts.changes.resolve(target);
     return located(root, await resolveAllowedCwd(root, this.opts.allowedRoots), path);
   }
