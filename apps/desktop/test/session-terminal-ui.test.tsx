@@ -151,7 +151,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     ]);
   });
 
-  test("when the host cannot say which shells are live, the page opens a new one instead of waiting", async () => {
+  test("when the host cannot say which shells are live, the page attaches the one it kept instead of opening another", async () => {
     const { store, hostId, sessionId } = await onSessionPage();
     await settle(() => tab("Terminal") !== null);
     await clickTab("Terminal");
@@ -169,10 +169,10 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     });
     await settle(() => terminalShown());
     (store as unknown as { terminalHost: unknown }).terminalHost = real;
-    await settle(
-      () => store.sessionViews.terminalOf(`${hostId}/${sessionId}`) !== first?.terminalId,
+    expect(store.sessionViews.terminalOf(`${hostId}/${sessionId}`)).toBe(
+      first?.terminalId as string,
     );
-    expect((await live(store, hostId)).length).toBe(2);
+    expect((await live(store, hostId)).length).toBe(1);
   });
 
   test("a shell the host refuses sends the person back to the conversation, and the view stays offered", async () => {
@@ -192,6 +192,71 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     expect(terminalShown()).toBe(false);
     expect(tab("Terminal")).not.toBeNull();
     expect((await live(store, hostId)).length).toBe(0);
+  });
+
+  test("Alt numbers and Ctrl+` pressed inside the terminal switch the view and send nothing to the shell", async () => {
+    const { ptys } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    await clickTab("Terminal");
+    await settle(() => terminalShown());
+    const helper = () =>
+      document.querySelector("textarea.xterm-helper-textarea") as HTMLTextAreaElement | null;
+    await settle(() => helper() !== null);
+    // What xterm would have seen: a listener on its own text box, which runs after the page's.
+    const reached: string[] = [];
+    helper()?.addEventListener("keydown", (event) => reached.push(event.key));
+    await act(async () => {
+      fireEvent.keyDown(helper() as HTMLElement, { key: "2", code: "Digit2", altKey: true });
+    });
+    expect(tab("Mudanças")?.getAttribute("aria-selected")).toBe("true");
+    await clickTab("Terminal");
+    await act(async () => {
+      fireEvent.keyDown(helper() as HTMLElement, { key: "`", code: "Backquote", ctrlKey: true });
+    });
+    expect(tab("Conversa")?.getAttribute("aria-selected")).toBe("true");
+    // xterm never saw either key, and the shell was never typed to: no ESC and a digit, no NUL.
+    expect(reached).toEqual([]);
+    expect(ptys.spawned[0]?.written).toEqual([]);
+  });
+
+  test("a tab closed while its shell is being opened does not leave that shell running", async () => {
+    const { store, hostId, ptys } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    const real = store.hostCommand.bind(store) as (h: string, t: string, p: unknown) => unknown;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    (store as unknown as { hostCommand: unknown }).hostCommand = ((
+      host: string,
+      type: string,
+      payload: unknown,
+    ) =>
+      type === "terminal.openSession"
+        ? gate.then(() => real(host, type, payload))
+        : real(host, type, payload)) as never;
+    await clickTab("Terminal");
+    const area = store.workspace.areas[0];
+    const sessionTab = area?.tabs.find((t) => t.router.current.name === "session");
+    await act(async () => {
+      store.closeTab(area as never, sessionTab?.id as string);
+    });
+    release();
+    await waitFor(() => expect(ptys.spawned.length).toBe(1));
+    await waitFor(async () => expect((await live(store, hostId)).length).toBe(0));
+  });
+
+  test("a shell the host refuses to open says why, with no Retry that would open it unseen", async () => {
+    const { store, hostId, project } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    // The host keeps ten shells at most.
+    for (let i = 0; i < 10; i++) await store.terminalHost(hostId).open(project, 80, 24);
+    await clickTab("Terminal");
+    await settle(() => tab("Conversa")?.getAttribute("aria-selected") === "true");
+    await settle(() => store.getState().notices.length > 0);
+    const notice = store.getState().notices.at(-1);
+    expect(notice?.reason).toBe("terminal_limit");
+    expect(notice?.retry).toBeUndefined();
   });
 
   test("closing the session's tab ends the shell it opened", async () => {
