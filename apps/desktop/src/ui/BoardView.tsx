@@ -1,4 +1,4 @@
-import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
+import type { BoardColumn, Card, ContractOverrides, Project } from "@flightdeck/protocol";
 import {
   Circle,
   CircleAlert,
@@ -136,6 +136,8 @@ function CardTile(
     onDropOn(): void;
     /** Whether the card is in the selection (issue #161). */
     selected: boolean;
+    /** What the project's columns ask of a card (issue #78). */
+    contracts: ContractOverrides;
     /** Ctrl-click and the menu: adds or takes out. Shift-click: the range from the anchor. */
     onToggleSelect(): void;
     onRangeSelect(): void;
@@ -146,7 +148,7 @@ function CardTile(
   /** The workflow (when its run is known) and the branch, when there are any. */
   const meta = [props.workflow, card.branch].filter(Boolean).join(" · ");
   /** What its column asks and it lacks (issue #78): said on the card, whether or not it was asked. */
-  const needs = missingFor(card.column, card);
+  const needs = missingFor(card.column, card, props.contracts);
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Ctrl/Shift-click is the mouse's way to select; the card's menu has Select card for the keyboard
     <li // NOSONAR: Ctrl/Shift-click is the mouse's way to select; the card's menu has Select card for the keyboard
@@ -284,6 +286,7 @@ export const BoardView = memo(function BoardView(props: {
   const { store, hostId, projectId } = props;
   const state = useStoreSlice(store, BOARDVIEW_KEYS);
   const [project, setProject] = useState<Project | null>(null);
+  const contracts: ContractOverrides = project?.contractByColumn ?? {};
   const [filter, setFilter] = useState("");
   /** Phase 31: only the cards that wait for a blocker. */
   const [onlyBlocked, setOnlyBlocked] = useState(false);
@@ -396,11 +399,16 @@ export const BoardView = memo(function BoardView(props: {
   const acting = shownSelection(selection, boardOrder);
   const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
   /** Moves the shown selected cards, quietly; the host's refusals are named afterwards. */
-  const moveSelected = async (column: BoardColumn, targetId?: string, only?: Card[]) => {
+  const moveSelected = async (
+    column: BoardColumn,
+    targetId?: string,
+    only?: Card[],
+    force = false,
+  ) => {
     if (busy) return;
     // One question for the whole group; a group already asked about (`only`) goes straight on.
     if (!only) {
-      const lacking = askAbout(column, actingCards);
+      const lacking = askAbout(column, actingCards, contracts);
       if (lacking.length > 0) {
         setAsk({ column, targetId, cards: actingCards, lacking });
         return;
@@ -426,6 +434,7 @@ export const BoardView = memo(function BoardView(props: {
           cardId,
           column: to,
           ...(position !== undefined ? { position } : {}),
+          ...(force ? { force } : {}),
         });
         return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
       },
@@ -498,19 +507,20 @@ export const BoardView = memo(function BoardView(props: {
   const refocus = useRef<{ cardId: string; column: BoardColumn; index: number } | null>(null);
   const columnOf = (column: BoardColumn) =>
     all.filter((card) => card.column === column).sort((a, b) => a.position - b.position);
-  const runMove = (cardId: string, column: BoardColumn, targetId?: string) => {
+  const runMove = (cardId: string, column: BoardColumn, targetId?: string, force = false) => {
     const others = columnOf(column).filter((card) => card.id !== cardId);
     const position = targetId ? positionBefore(others, targetId) : undefined;
     void store.hostCommand(hostId, "card.move", {
       cardId,
       column,
       ...(position !== undefined ? { position } : {}),
+      ...(force ? { force } : {}),
     });
   };
   /** A person's move of one card: a column that asks for something asks first (issue #78). */
   const move = (cardId: string, column: BoardColumn, targetId?: string) => {
     const card = all.find((other) => other.id === cardId);
-    const lacking = card ? askAbout(column, [card]) : [];
+    const lacking = card ? askAbout(column, [card], contracts) : [];
     if (card && lacking.length > 0) setAsk({ column, targetId, cards: [card], lacking });
     else runMove(cardId, column, targetId);
   };
@@ -725,7 +735,7 @@ export const BoardView = memo(function BoardView(props: {
           >
             {COLUMNS.map(({ id }) => {
               /** What the dragged cards would lack here: said by the column until they let go. */
-              const asking = dragNeeds(id, dragCards);
+              const asking = dragNeeds(id, dragCards, contracts);
               return (
                 <section
                   key={id}
@@ -773,6 +783,7 @@ export const BoardView = memo(function BoardView(props: {
                         <CardTile
                           key={card.id}
                           card={card}
+                          contracts={contracts}
                           workflow={
                             card.workflowRunId
                               ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
@@ -899,8 +910,9 @@ export const BoardView = memo(function BoardView(props: {
           onMoveAll={() => {
             setAsk(null);
             const [only] = ask.cards;
-            if (only && ask.cards.length === 1) runMove(only.id, ask.column, ask.targetId);
-            else void moveSelected(ask.column, ask.targetId, ask.cards);
+            // The person went on anyway: the host is told, and keeps a notice on the card.
+            if (only && ask.cards.length === 1) runMove(only.id, ask.column, ask.targetId, true);
+            else void moveSelected(ask.column, ask.targetId, ask.cards, true);
           }}
           onMoveQualifying={() => {
             setAsk(null);

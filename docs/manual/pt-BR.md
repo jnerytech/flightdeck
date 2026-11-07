@@ -1046,7 +1046,11 @@ aparece mascarado e como **Oculto**, e não abre.
   cards uma só janela lista cada card que não tem algo, com **Mover só os que atendem**. **Em
   andamento** só mostra o aviso, nunca pergunta, então começar o trabalho continua sendo um
   movimento. Os movimentos que o app faz sozinho (um PR abre ou é mesclado, uma sessão falha)
-  nunca são perguntados.
+  nunca são perguntados. O host guarda os contratos de
+  cada projeto e confere também os seus movimentos: um movimento que ele recusaria diz o que falta ao
+  card. **Mover mesmo assim** manda o host seguir, e o card guarda um aviso ("Movido para Em revisão
+  mesmo assim; faltava um link de PR"). O host nunca recusa o que move cards sozinho: o gerente, a
+  sincronização do quadro, a vigia do PR e os eventos de PR.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com

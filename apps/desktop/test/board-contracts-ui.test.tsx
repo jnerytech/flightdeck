@@ -62,7 +62,7 @@ const CARDS = [
 
 type Call = [string, string, unknown];
 
-function setup(options: { cards?: object[]; language?: "en" | "pt-BR" } = {}) {
+function setup(options: { cards?: object[]; language?: "en" | "pt-BR"; project?: object } = {}) {
   const mem = memoryPlatform(false, options.language ?? "en");
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -77,7 +77,9 @@ function setup(options: { cards?: object[]; language?: "en" | "pt-BR" } = {}) {
   const requests: Call[] = [];
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
     commands.push([hostId, type, payload]);
-    if (type === "board.get") return { project: { id: "p1", name: "api" }, cards: [] };
+    if (type === "board.get") {
+      return { project: { id: "p1", name: "api", ...options.project }, cards: [] };
+    }
     return {};
   }) as never;
   store.hostRequest = (async (hostId: string, type: string, payload: unknown) => {
@@ -116,6 +118,21 @@ const dragTo = async (title: string, column: string) => {
   });
 };
 
+const pick = async (...titles: string[]) => {
+  for (const title of titles) await click(li(title), { ctrlKey: true });
+};
+const moveSelectedToReview = async () => {
+  await act(async () => {
+    fireEvent.pointerDown(
+      within(screen.getByRole("group", { name: "Selection" })).getByRole("button", {
+        name: "Move to…",
+      }),
+      { button: 0, ctrlKey: false, pointerType: "mouse" },
+    );
+  });
+  await click(await screen.findByRole("menuitem", { name: "In review" }));
+};
+
 // Issue #78, slice 1: a column asks for what a card already carries; a person can go on anyway.
 describe("board-contracts-ui: Review asks for a PR and passing checks", () => {
   test("dropping a card with no PR on Review asks first and names what it lacks", async () => {
@@ -141,7 +158,10 @@ describe("board-contracts-ui: Review asks for a PR and passing checks", () => {
     await dragTo("A", "In review");
     await click(within(dialog() as HTMLElement).getByRole("button", { name: "Move anyway" }));
     await settle(() => w.moves().length === 1);
-    expect(w.moves()).toEqual([["h1", "card.move", { cardId: "A", column: "review" }]]);
+    // The person went on anyway, and the host is told so (issue #78, slice 2).
+    expect(w.moves()).toEqual([
+      ["h1", "card.move", { cardId: "A", column: "review", force: true }],
+    ]);
   });
 
   test("a card with a PR and passing checks moves with no question", async () => {
@@ -194,21 +214,6 @@ describe("board-contracts-ui: Review asks for a PR and passing checks", () => {
 });
 
 describe("board-contracts-ui: many cards, one question", () => {
-  const pick = async (...titles: string[]) => {
-    for (const title of titles) await click(li(title), { ctrlKey: true });
-  };
-  const moveSelectedToReview = async () => {
-    await act(async () => {
-      fireEvent.pointerDown(
-        within(screen.getByRole("group", { name: "Selection" })).getByRole("button", {
-          name: "Move to…",
-        }),
-        { button: 0, ctrlKey: false, pointerType: "mouse" },
-      );
-    });
-    await click(await screen.findByRole("menuitem", { name: "In review" }));
-  };
-
   test("one dialog lists every card that lacks something, and what each lacks", async () => {
     const w = setup();
     await ready();
@@ -313,5 +318,93 @@ describe("board-contracts-ui: a card says what it lacks, and a column says what 
     expect(ask === null).toBe(false);
     expect(ask.textContent).toContain("A não tem: um link de PR");
     expect(within(ask).getByRole("button", { name: "Mover mesmo assim" }) === null).toBe(false);
+  });
+});
+
+// Issue #78, slice 2: the host keeps each project's contract and the person's override.
+describe("board-contracts-ui: the project's contracts, force and the recorded notice", () => {
+  test("Move anyway on a group forces every card; the qualifying ones need no force", async () => {
+    const w = setup();
+    await ready();
+    await pick("A", "C", "P");
+    await moveSelectedToReview();
+    await click(within(dialog() as HTMLElement).getByRole("button", { name: "Move anyway" }));
+    await settle(() => w.requests.length === 3);
+    expect(w.requests.map((r) => (r[2] as { force?: boolean }).force)).toEqual([true, true, true]);
+  });
+
+  test("moving only the ones that qualify sends no force", async () => {
+    const w = setup();
+    await ready();
+    await pick("A", "C", "P");
+    await moveSelectedToReview();
+    await click(
+      within(dialog() as HTMLElement).getByRole("button", {
+        name: "Move only the ones that qualify",
+      }),
+    );
+    await settle(() => w.requests.length === 1);
+    expect(Object.keys((w.requests[0]?.[2] ?? {}) as object)).not.toContain("force");
+  });
+
+  test("a move that asked nothing sends no force", async () => {
+    const w = setup();
+    await ready();
+    await dragTo("P", "In review");
+    await settle(() => w.moves().length === 1);
+    expect(w.moves()).toEqual([["h1", "card.move", { cardId: "P", column: "review" }]]);
+  });
+
+  test("the project's own contract replaces the default: Done can ask for a PR, Review can ask nothing", async () => {
+    const w = setup({
+      project: {
+        contractByColumn: {
+          done: { enforce: "confirm", checks: ["pr"] },
+          review: { enforce: "confirm", checks: [] },
+        },
+      },
+    });
+    await settle(() => screen.queryByRole("heading", { name: "Board of api" }) !== null);
+    await dragTo("A", "In review");
+    expect(dialog() === null).toBe(true);
+    await settle(() => w.moves().length === 1);
+    await dragTo("C", "Done");
+    expect((dialog() as HTMLElement).textContent).toContain("C lacks: a PR link");
+  });
+
+  test("a card in a column wears what the project's contract asks of it, not the default's", async () => {
+    setup({ project: { contractByColumn: { review: { enforce: "confirm", checks: [] } } } });
+    await ready();
+    expect(within(li("N")).queryByText("Needs: a PR link") === null).toBe(true);
+  });
+
+  test("the notice a forced move left says what the card lacked, in the app's language", async () => {
+    setup({
+      cards: [
+        card("A", "review", 1, {
+          notice: "Moved to review anyway: it lacked pr,checksFailing.",
+          noticeReason: "card_moved_anyway",
+          noticeParams: { column: "review", needs: "pr,checksFailing" },
+        }),
+      ],
+    });
+    await ready();
+    expect(
+      within(li("A")).queryByText(
+        "Moved to In review anyway; it lacked a PR link, passing checks.",
+      ) === null,
+    ).toBe(false);
+  });
+
+  test("the host's refusal reads as what the card lacks, in Portuguese too", async () => {
+    const { translateError } = await import("../src/i18n/errors.ts");
+    const { translator } = await import("../src/i18n/index.ts");
+    const why = { reason: "card_contract_unmet", params: { column: "review", needs: "pr" } };
+    expect(translateError("contract_unmet", "raw", translator("en"), why).title).toBe(
+      "This card isn't ready for In review: it lacks a PR link.",
+    );
+    expect(translateError("contract_unmet", "raw", translator("pt-BR"), why).title).toBe(
+      "Este card não está pronto para Em revisão: falta um link de PR.",
+    );
   });
 });

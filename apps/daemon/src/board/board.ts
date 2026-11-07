@@ -7,10 +7,14 @@ import {
   AutoApproveSettings,
   BoardColumn as BoardColumnSchema,
   type BoardResult,
+  ColumnContract,
+  type ContractOverrides,
+  contractOf,
   type EffortLevel,
   IssuesConfig,
   inSequence,
   isBranchName,
+  missingFor,
   type PermissionMode,
   type PermissionUpdate,
   type PersonaRef,
@@ -133,6 +137,7 @@ interface ProjectRow {
   auto_approve: string | null;
   issues: string | null;
   persona_by_column: string | null;
+  contract_by_column: string | null;
   persona_subagents: PersonaSubagentsMode | null;
   default_hours: number | null;
   roi_commits: number;
@@ -157,6 +162,7 @@ function toProject(row: ProjectRow): Project {
     autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
+    contractByColumn: row.contract_by_column ? JSON.parse(row.contract_by_column) : {},
     personaSubagents: row.persona_subagents ?? "all",
     defaultHours: row.default_hours,
     roiSignals: { commits: row.roi_commits === 1, issues: row.roi_issues === 1 },
@@ -175,6 +181,33 @@ function subagentsMode(mode: string): PersonaSubagentsMode {
     );
   }
   return parsed.data;
+}
+
+/** The contracts with the patch applied: a known column, a valid contract, `null` takes one away. */
+function mergeContracts(
+  current: Project["contractByColumn"],
+  patch: NonNullable<ProjectPatch["contractByColumn"]>,
+): Project["contractByColumn"] {
+  const merged: ContractOverrides = { ...current };
+  for (const [column, contract] of Object.entries(patch)) {
+    if (!BoardColumnSchema.options.includes(column as BoardColumn)) {
+      throw new FlightdeckError("bad_request", `unknown column: ${column}`, "column_unknown", {
+        column,
+      });
+    }
+    if (contract === null) delete merged[column as BoardColumn];
+    else if (contract === undefined) continue;
+    else {
+      const parsed = ColumnContract.safeParse(contract);
+      if (!parsed.success) {
+        throw new FlightdeckError("bad_request", "invalid contract", "contract_invalid", {
+          column,
+        });
+      }
+      merged[column as BoardColumn] = parsed.data;
+    }
+  }
+  return merged;
 }
 
 /** The default personas with the patch applied: plain ids, existing columns, `null` takes one away. */
@@ -425,7 +458,12 @@ export class Board {
     const head = await git(path, "rev-parse", "--abbrev-ref", "HEAD");
     const project: Omit<
       Project,
-      "worktreeInclude" | "personaByColumn" | "personaSubagents" | "defaultHours" | "roiSignals"
+      | "worktreeInclude"
+      | "personaByColumn"
+      | "contractByColumn"
+      | "personaSubagents"
+      | "defaultHours"
+      | "roiSignals"
     > = {
       id: ulid(),
       path,
@@ -478,6 +516,9 @@ export class Board {
       ...(patch.personaByColumn
         ? { personaByColumn: mergePersonas(current.personaByColumn, patch.personaByColumn) }
         : {}),
+      ...(patch.contractByColumn
+        ? { contractByColumn: mergeContracts(current.contractByColumn, patch.contractByColumn) }
+        : {}),
       ...(patch.personaSubagents
         ? { personaSubagents: subagentsMode(patch.personaSubagents) }
         : {}),
@@ -488,7 +529,7 @@ export class Board {
       .query(
         `UPDATE projects SET name = ?, base_branch = ?, pr_provider = ?, setup_script = ?,
          prompt_template = ?, auto_approve = ?, issues = ?, persona_by_column = ?,
-         persona_subagents = ?, default_hours = ?, roi_commits = ?, roi_issues = ? WHERE id = ?`,
+         contract_by_column = ?, persona_subagents = ?, default_hours = ?, roi_commits = ?, roi_issues = ? WHERE id = ?`,
       )
       .run(
         next.name,
@@ -499,6 +540,7 @@ export class Board {
         JSON.stringify(next.autoApprove),
         next.issues ? JSON.stringify(next.issues) : null,
         JSON.stringify(next.personaByColumn),
+        JSON.stringify(next.contractByColumn),
         next.personaSubagents,
         next.defaultHours,
         next.roiSignals.commits ? 1 : 0,
@@ -1425,6 +1467,45 @@ export class Board {
       .query("UPDATE cards SET position = ? WHERE id = ?")
       .run(position ?? (last ?? 0) + 1, id);
     return this.changed(id);
+  }
+
+  /**
+   * A person's move (the app's `card.move`): a column that confirms refuses a card that lacks what
+   * its contract asks, unless `force`, which records what the card lacked (issue #78). Every other
+   * caller of the board moves with `moveCard`, which asks nothing.
+   */
+  moveByHand(id: string, column: BoardColumn, position: number | undefined, force: boolean): Card {
+    const card = this.getCard(id);
+    const overrides = this.getProject(card.projectId).contractByColumn;
+    // A card already in the column is only reordered; a column that hints never holds a card back.
+    const needs =
+      card.column !== column && contractOf(column, overrides)?.enforce === "confirm"
+        ? missingFor(column, card, overrides)
+        : [];
+    const why = (code: "contract_unmet" | "invalid_state", text: string, reason: string) =>
+      new FlightdeckError(code, text, reason, { column, needs: needs.join(",") });
+    if (needs.length > 0 && !force) {
+      throw why("contract_unmet", `${column} needs: ${needs.join(", ")}`, "card_contract_unmet");
+    }
+    // The last forced move's notice is stale once the card moves on.
+    if (card.noticeReason === "card_moved_anyway") this.clearNotice(id);
+    const moved = this.moveCard(id, column, position);
+    if (needs.length === 0) return moved;
+    const lacked = why(
+      "invalid_state",
+      `Moved to ${column} anyway: it lacked ${needs.join(", ")}.`,
+      "card_moved_anyway",
+    );
+    this.setNotice(id, lacked.message, lacked);
+    return this.changed(id);
+  }
+
+  private clearNotice(id: string): void {
+    this.db
+      .query(
+        "UPDATE cards SET notice = NULL, notice_reason = NULL, notice_params = NULL WHERE id = ?",
+      )
+      .run(id);
   }
 
   /**
