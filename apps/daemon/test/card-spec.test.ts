@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
+  closeSync,
   linkSync,
   mkdirSync,
+  openSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -9,7 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { readSpec } from "../src/board/spec.ts";
+import { descriptorInside, readSpec } from "../src/board/spec.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
@@ -18,7 +20,7 @@ const posix = process.platform !== "win32";
 
 /** A worktree folder with an `outside` folder next to it, which a spec must never reach. */
 function folders() {
-  const base = realpathSync(tempDir("fd-spec-"));
+  const base = realpathSync.native(tempDir("fd-spec-"));
   const root = join(base, "tree");
   const outside = join(base, "outside");
   mkdirSync(root, { recursive: true });
@@ -68,7 +70,8 @@ describe("card-spec: what the daemon learns of a spec file", () => {
     writeFileSync(join(root, "a.md"), "   ##   Spaced out  ##  \n# Second\n");
     expect((await readSpec(root, "a.md")).heading).toBe("Spaced out");
     writeFileSync(join(root, "b.md"), "# Tab\there\u0007bell\u001b[31m red\n");
-    expect((await readSpec(root, "b.md")).heading).toBe("Tabherebell[31m red");
+    // A tab separates words, so it becomes a space; the other controls just go.
+    expect((await readSpec(root, "b.md")).heading).toBe("Tab herebell[31m red");
     writeFileSync(join(root, "c.md"), `# ${"x".repeat(500)}\n`);
     expect((await readSpec(root, "c.md")).heading).toBe("x".repeat(120));
     writeFileSync(join(root, "d.md"), "#nospace\n####### seven\nsetext\n=====\n");
@@ -163,8 +166,26 @@ describe("card-spec: what the daemon learns of a spec file", () => {
     writeFileSync(join(root, "slow.md"), `# a${" ".repeat(8000)}b\n`);
     const started = performance.now();
     const found = await readSpec(root, "slow.md");
-    expect(performance.now() - started).toBeLessThan(100);
+    expect(performance.now() - started).toBeLessThan(80);
     expect(found.heading).toBe(`a${" ".repeat(8000)}b`.slice(0, 120));
+  });
+
+  test("where the system says where a descriptor points, one that points elsewhere, or cannot be asked, is not inside", async () => {
+    if (process.platform !== "linux") return;
+    const { root, outside } = folders();
+    writeFileSync(join(root, "in.md"), "# In\n");
+    writeFileSync(join(outside, "out.md"), "# Out\n");
+    const inside = openSync(join(root, "in.md"), "r");
+    const elsewhere = openSync(join(outside, "out.md"), "r");
+    try {
+      expect(await descriptorInside(root, inside)).toBe(true);
+      expect(await descriptorInside(root, elsewhere)).toBe(false);
+      // A descriptor that does not exist cannot be told apart from one that hides: refused.
+      expect(await descriptorInside(root, 999_999)).toBe(false);
+    } finally {
+      closeSync(inside);
+      closeSync(elsewhere);
+    }
   });
 
   test("a worktree reached through a link is still the worktree", async () => {
@@ -272,6 +293,26 @@ describe("card-spec: the card keeps what it found", () => {
       found: true,
       heading: "Two",
     });
+  });
+
+  test("a look that ends after the card got another worktree does not write what it found", async () => {
+    const { board, card, tree, store } = await withCard();
+    mkdirSync(join(tree, "docs/specs"), { recursive: true });
+    writeFileSync(join(tree, "docs/specs/login-screen.md"), "# Login\n");
+    const first = board.refreshSpec(card.id);
+    store.db.query("UPDATE cards SET worktree_path = ? WHERE id = ?").run(folders().root, card.id);
+    await first;
+    expect(board.getCard(card.id).specState).toBeNull();
+  });
+
+  test("a card whose stored spec path no longer passes the rules can still be edited", async () => {
+    const { board, card, store } = await withCard();
+    store.db.query("UPDATE cards SET spec_path = ? WHERE id = ?").run("old/a:b.md", card.id);
+    expect(board.updateCard(card.id, { title: "renamed" }).title).toBe("renamed");
+    // Only a path in the patch is judged.
+    const error = await never(() => board.updateCard(card.id, { specPath: "x/a:b.md" }));
+    expect(error.reason).toBe("spec_path_invalid");
+    expect(board.updateCard(card.id, { specPath: null }).specPath).toBeNull();
   });
 
   test("a spec that went away is lost again", async () => {

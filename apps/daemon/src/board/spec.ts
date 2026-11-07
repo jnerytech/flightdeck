@@ -67,7 +67,7 @@ export async function readSpec(
 }
 
 /** Where an open descriptor really points, where the system tells (Linux): still inside the root. */
-async function descriptorInside(realRoot: string, fd: number): Promise<boolean> {
+export async function descriptorInside(realRoot: string, fd: number): Promise<boolean> {
   if (process.platform !== "linux") return true;
   const where = await realpath(`/proc/self/fd/${fd}`).catch(() => null);
   return where === null || isInside(realRoot, where);

@@ -258,6 +258,14 @@ describe("board-contracts: the spec artifact (issue #78, slice 3b)", () => {
       "docs/name .md/x.md",
       "docs/dot./x.md",
       "docs/space /x.md",
+      "conin$.md",
+      "docs/CONOUT$.md",
+      "com\u00b9.md",
+      "docs/LPT\u00b2.x.md",
+      "conin$.md",
+      "docs/CONOUT$.md",
+      "com\u00b9.md",
+      "docs/LPT\u00b2.x.md",
     ]) {
       expect(typeof specPathProblem(bad)).toBe("string");
     }
