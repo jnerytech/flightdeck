@@ -551,7 +551,8 @@ function heavyScript(script: string, args: string[]): string | null {
  * Why a worker session's full coverage run is refused (#674): a plain, `--base` or `--pr`
  * `test:related`, or a `coverage:funcs` over more than 20 given test files, holds the shared slot
  * for 12 to 25 minutes for what the PR's CI does anyway. The coordinator
- * (`FLIGHTDECK_COORDINATOR=1` in the hook's environment) and an override with a reason pass.
+ * (`FLIGHTDECK_COORDINATOR=1` in the hook's environment) and an override with a reason pass;
+ * coverage:funcs's own limit still asks the coordinator for a reason (#725).
  */
 export function heavyRunViolation(
   command: string,
