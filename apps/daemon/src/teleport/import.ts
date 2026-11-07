@@ -34,6 +34,8 @@ export interface TeleportImportDeps {
   historyRoot: string;
   /** The transcript of that Claude session this host already has, or null. */
   transcriptOf(claudeSessionId: string): string | null | Promise<string | null>;
+  /** Puts the transcript in place (`fs.copyFile`); a test makes it fail halfway. */
+  copyFile?: typeof copyFile;
   resume(opts: {
     cwd: string;
     claudeSessionId: string;

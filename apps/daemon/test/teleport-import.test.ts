@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { TeleportManifest } from "@flightdeck/protocol";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import {
@@ -316,6 +316,30 @@ describe("teleport-import: a received package becomes a session on this host (#1
       true,
       [1, "", "", []],
     ]);
+  });
+
+  test("a transcript copy that fails halfway leaves no partial file, even in a folder that was already there", async () => {
+    const pkg = await packaged();
+    const { repo, deps } = target(pkg);
+    let place = "";
+    const half: TeleportImportDeps = {
+      ...deps,
+      copyFile: async (_from, to) => {
+        place = String(to);
+        await writeFile(place, '{"type":"user"');
+        throw Object.assign(new Error("no space left on device"), { code: "ENOSPC" });
+      },
+    };
+    // The first try makes the folder and takes it back; the second finds it there already.
+    await reason(() => importPackage(half, "in-1", repo));
+    const folder = place ? dirname(place) : "";
+    if (folder) await mkdir(folder, { recursive: true });
+    const failed = await reason(() => importPackage(half, "in-1", repo));
+    expect([
+      failed.includes("no space left"),
+      folder ? await readdir(folder) : "the copy was never asked for",
+      git(repo, "branch", "--list", "fd/*").trim(),
+    ]).toEqual([true, [], ""]);
   });
 
   test("a session that does not start takes its worktree, branch and transcript with it", async () => {
