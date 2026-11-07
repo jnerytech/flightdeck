@@ -21,6 +21,8 @@ export interface SearchOptions {
   timeoutMs?: number;
   /** The most output read from the program; 4 MiB when absent. */
   maxBytes?: number;
+  /** Runs `rg`: the capped runner when absent (a test answers for it). */
+  run?: typeof runLimited;
 }
 
 type Search = Omit<FileSearchPayload, "target">;
@@ -37,7 +39,8 @@ const MAX_BYTES = 4 * 1024 * 1024;
 /** A line is cut to this many characters (code points, never half of one). */
 const TEXT_MAX = 200;
 /** At most this many lines of one file. */
-const PER_FILE = "5";
+const PER_FILE_LINES = 5;
+const PER_FILE = String(PER_FILE_LINES);
 /** Git runs no fsmonitor hook and writes paths as they are. */
 const GIT_SAFE = ["-c", "core.fsmonitor=false", "-c", "core.quotePath=false"];
 const NUL = 0;
@@ -81,19 +84,29 @@ export async function searchRepository(
   opts: SearchOptions = {},
 ): Promise<FileSearchResult> {
   const realRoot = await realpath(root);
+  // A repository only, whatever the mode: rg would search any folder, the home's included.
+  const top = await gitLimitedFor(
+    realRoot,
+    64 * 1024,
+    // git-arg: fixed options only
+    [...GIT_SAFE, "rev-parse", "--show-toplevel"],
+    opts.timeoutMs ?? TIMEOUT_MS,
+  );
+  if (top.code !== 0) throw notRepository(root);
   const found =
     input.mode === "name"
       ? await byName(realRoot, input.query, opts)
       : await byContent(realRoot, input.query, opts);
   const limit = input.limit ?? DEFAULT_LIMIT;
-  const stays = new Map<string, boolean>();
+  const stays = new Map<string, string | null>();
   const matches: FileSearchMatch[] = [];
   let more = false;
   for (const match of found.matches) {
-    const secret = credential(match.path);
-    // A credential's lines never leave the host; its name may, marked.
+    const real = await inside(realRoot, match.path, stays);
+    if (real === null) continue;
+    // A credential's lines never leave the host; its name may, marked. A link counts by what it is.
+    const secret = credential(match.path) || credential(real);
     if (input.mode === "content" && secret) continue;
-    if (!(await inside(realRoot, match.path, stays))) continue;
     if (matches.length === limit) {
       more = true;
       break;
@@ -103,15 +116,18 @@ export async function searchRepository(
   return { mode: input.mode, query: input.query, matches, truncated: found.truncated || more };
 }
 
-/** The path, links followed, is in the repository and outside its `.git`; asked once per path. */
-async function inside(realRoot: string, path: string, seen: Map<string, boolean>) {
+/**
+ * The path, links followed, relative to the repository: `null` outside it or in its `.git`. Asked
+ * once per path.
+ */
+async function inside(realRoot: string, path: string, seen: Map<string, string | null>) {
   const known = seen.get(path);
   if (known !== undefined) return known;
   const real = await realpath(join(realRoot, path)).catch(() => null);
-  const ok =
-    real !== null && isInside(realRoot, real) && !isGitDir(firstStep(relative(realRoot, real)));
-  seen.set(path, ok);
-  return ok;
+  const rel = real === null ? null : relative(realRoot, real);
+  const ok = real !== null && rel !== null && isInside(realRoot, real) && !isGitDir(firstStep(rel));
+  seen.set(path, ok ? rel : null);
+  return ok ? rel : null;
 }
 
 /** Tracked and new files, `.gitignore` kept, whose path holds the text, case aside. */
@@ -148,7 +164,7 @@ interface RgMatch {
 
 async function withRg(rg: string, root: string, query: string, opts: SearchOptions) {
   // `--no-config`: a config file named in the environment could add `--pre` (a program to run).
-  const result = await runLimited(
+  const result = await (opts.run ?? runLimited)(
     [
       rg,
       "--no-config",
@@ -179,8 +195,10 @@ async function withRg(rg: string, root: string, query: string, opts: SearchOptio
     const text = event.data?.lines?.text;
     const number = event.data?.line_number;
     if (event.type !== "match" || path === undefined || text === undefined || !number) continue;
+    // Windows writes `.\\src\\a.ts`; elsewhere a backslash is part of a name.
+    const named = process.platform === "win32" ? path.replaceAll("\\", "/") : path;
     matches.push({
-      path: path.replaceAll("\\", "/").replace(/^\.\//, ""),
+      path: named.replace(/^\.\//, ""),
       line: number,
       text: clip(text),
     });
@@ -204,7 +222,7 @@ async function withGitGrep(root: string, query: string, opts: SearchOptions): Pr
       "-i",
       "-F",
       "--untracked",
-      `--max-count=${PER_FILE}`,
+      // No --max-count: older gits (before 2.38) refuse it. The lines of a file are capped below.
       "-e",
       query,
     ],
@@ -212,10 +230,14 @@ async function withGitGrep(root: string, query: string, opts: SearchOptions): Pr
   );
   if (result.code > 1 && !cut(result)) throw failed("git grep", result.code);
   const matches: FileSearchMatch[] = [];
+  const perFile = new Map<string, number>();
   for (const line of result.stdout.split("\n")) {
     // `path NUL line NUL text`: the text may hold a NUL of its own.
     const [path, number, ...rest] = line.split("\0");
     if (!path || !number || rest.length === 0) continue;
+    const count = (perFile.get(path) ?? 0) + 1;
+    perFile.set(path, count);
+    if (count > PER_FILE_LINES) continue;
     matches.push({ path, line: Number(number), text: clip(rest.join("\0")) });
   }
   return { matches, truncated: cut(result) };

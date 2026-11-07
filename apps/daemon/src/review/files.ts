@@ -184,8 +184,10 @@ export class ReviewFiles {
    */
   async search(input: FileSearchPayload): Promise<FileSearchResult> {
     const { root } = await this.opts.changes.resolve(input.target);
+    // Only inside the allowed roots: a session's folder is whatever it ran in (#805 review).
+    const real = await resolveAllowedCwd(root, this.opts.allowedRoots);
     const { target: _target, ...search } = input;
-    return searchRepository(root, search, this.opts.search);
+    return searchRepository(real, search, this.opts.search);
   }
 
   /** Writes only when the file still has `expectedHash`; otherwise `file_conflict`. */
