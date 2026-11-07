@@ -3244,6 +3244,8 @@ Hover one for its name.
 - **Sidebar:** logo, navigation (Sessions, Needs you with its counter, Board, Workflows, Costs,
   History), the hosts, the pinned sessions and, at the bottom, search (`Ctrl K`), Settings and
   the theme. It collapses to a 56 px icon rail, by itself below 1024 px, and below 640 px it becomes a drawer.
+  In a wide window the button folds it to the rail and back, and the app remembers the choice for
+  the next time it opens wide.
 - **Window size:** the window opens at 1200 x 800 and can shrink to 360 x 480, as narrow as a phone,
   to sit beside an editor. Narrow, the sidebar is a drawer and the tabs are one button.
 - **Three columns** in Sessions, Needs you and History: the list on the left (adjustable,

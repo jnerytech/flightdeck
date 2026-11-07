@@ -302,6 +302,10 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const resolvedTheme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const tabScope = useSyncExternalStore(store.tabScope.subscribe, () => store.tabScope.value);
+  const sidebarFolded = useSyncExternalStore(
+    store.sidebarFold.subscribe,
+    () => store.sidebarFold.folded,
+  );
   const compact = useBreakpoint() === "compact";
   const density = useSyncExternalStore(store.density.subscribe, () => store.density.value);
   const { router } = store;
@@ -532,6 +536,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             expand: t("shell.expand"),
           }}
           navKey={route}
+          folded={sidebarFolded}
+          onFold={(folded) => store.sidebarFold.set(folded)}
           drawerTop={compact ? history : undefined}
           header={
             <>

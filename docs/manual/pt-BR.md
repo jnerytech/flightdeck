@@ -3240,6 +3240,8 @@ encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 - **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
   Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
   Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 1024 px, e abaixo de 640 px vira uma gaveta.
+  Numa janela larga o botão a recolhe para o trilho e a abre de novo, e o app lembra a escolha na
+  próxima vez que abrir larga.
 - **Tamanho da janela:** a janela abre em 1200 x 800 e pode encolher até 360 x 480, estreita como um
   celular, para ficar ao lado de um editor. Estreita, a barra lateral vira uma gaveta e as abas viram
   um botão só.
