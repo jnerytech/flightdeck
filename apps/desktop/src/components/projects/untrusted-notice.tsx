@@ -59,6 +59,7 @@ export function UntrustedNotice(
           <Button
             variant="link"
             size="sm"
+            className="h-auto px-0 py-0"
             disabled={restarting}
             onClick={() => restart(sessionId).catch(() => undefined)}
           >
@@ -73,7 +74,7 @@ export function UntrustedNotice(
     <InlineNotice>
       {t(short ? "projectPage.trust.sessionNoticeShort" : "projectPage.trust.sessionNotice")}{" "}
       {props.onReview && (
-        <Button variant="link" size="sm" onClick={props.onReview}>
+        <Button variant="link" size="sm" className="h-auto px-0 py-0" onClick={props.onReview}>
           {t("projectPage.trust.review")}
         </Button>
       )}

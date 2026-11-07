@@ -231,6 +231,42 @@ describe("board-ui", () => {
     expect(empty?.className).toContain("border-dashed");
   });
 
+  // #114 (board, Orca's lane): since the cards' list fills the lane (#713), an empty lane put its
+  // Empty box at the bottom and a filter's "no matches" was a bare line under it. Now the box sits
+  // under the head and "no matches" is a quiet box there too. The lane has a border, and its head
+  // a line under it.
+  test("an empty lane's box sits under its head, and no matches is a box there too", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Corrigir login");
+    const lane = (name: string) => screen.queryByRole("region", { name }) as HTMLElement;
+    const list = lane("Concluído")?.querySelector("ul");
+    const before = {
+      emptyListHidden:
+        list !== null && list?.children.length === 0 && list.className.includes("empty:hidden"),
+    };
+    await type("Filtrar cards", "nada disso");
+    const noMatch = within(lane("Backlog")).queryByText("Nenhuma correspondência");
+    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    const rule = (head: string) => {
+      const at = css.indexOf(head);
+      return at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
+    };
+    expect({
+      ...before,
+      noMatchBox: noMatch?.classList.contains("column-empty") ?? false,
+      laneBorder: /\n {2}border: 1px solid var\(--border\);/.test(rule("@utility board-column {")),
+      headLine: /border-bottom: 1px solid/.test(rule("@utility column-head {")),
+      boxHeight: /min-height: 5rem;/.test(rule("@utility column-empty {")),
+    }).toEqual({
+      emptyListHidden: true,
+      noMatchBox: true,
+      laneBorder: true,
+      headLine: true,
+      boxHeight: true,
+    });
+  });
+
   test("arrastar entre colunas move o card; soltar sobre outro card reordena a coluna", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);

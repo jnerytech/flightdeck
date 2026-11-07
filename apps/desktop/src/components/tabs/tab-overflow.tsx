@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { T } from "@/i18n/index";
 import { cn } from "@/lib/utils";
+import { HostDot } from "../hosts/host-dot.tsx";
 
 /** One tab as the list of all tabs shows it. */
 export interface TabRow {
@@ -12,6 +13,8 @@ export interface TabRow {
   title: string;
   /** The host it is on, in muted text; empty when the screen is not a host's. */
   host: string;
+  /** The id of that host, for its color; absent when the screen is not a host's. */
+  hostId?: string;
   icon: LucideIcon;
   kind: string;
   /** The tab on screen. */
@@ -164,9 +167,10 @@ function TabList(
                   {row.host && (
                     <span
                       data-slot="tab-host"
-                      className="max-w-[40%] shrink-0 truncate text-muted-foreground text-xs"
+                      className="flex max-w-[40%] shrink-0 items-center gap-1 text-muted-foreground text-xs"
                     >
-                      {row.host}
+                      {row.hostId && <HostDot hostId={row.hostId} />}
+                      <span className="truncate">{row.host}</span>
                     </span>
                   )}
                 </div>

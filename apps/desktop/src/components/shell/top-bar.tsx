@@ -1,6 +1,7 @@
 import { ChevronsUpDown, CircleAlert, Moon, Plus, Search, Server, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
+import { HostDot } from "@/components/hosts/host-dot";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ export function TopBarHost(
           <Button variant="ghost" size="sm" aria-label={name} className="top-bar-host">
             {/* Narrow, the name gives its room to the crumbs: the icon stays, named by the button. */}
             <Server aria-hidden="true" className="top-bar-host-icon" />
+            {current && <HostDot hostId={current.id} />}
             <span className="top-bar-host-name">{current?.name ?? t("shell.noHost")}</span>
             <ChevronsUpDown aria-hidden="true" className="top-bar-host-chevron" />
           </Button>
@@ -94,6 +96,7 @@ function HostItem(props: Readonly<{ host: TopBarHostItem; appVersion: string | u
   return (
     <DropdownMenuRadioItem value={host.id} aria-label={label}>
       <StatusDot dot {...hostDotView(host.status)} label={state} />
+      <HostDot hostId={host.id} />
       {host.name}
       {version !== null && (
         <span className={differs ? "top-bar-host-version-differs" : "top-bar-host-version"}>

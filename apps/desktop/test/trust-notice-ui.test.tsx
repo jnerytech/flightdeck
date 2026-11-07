@@ -78,4 +78,16 @@ describe("trust-notice-ui: a session in an untrusted folder says what did not lo
     await waitFor(() => expect(screen.queryByText(/Esta pasta não tem confiança/)).not.toBeNull());
     expect(screen.queryByRole("button", { name: "Revisar e confiar" })).not.toBeNull();
   });
+
+  // #721: the sidebar tree makes the projects known at connect, so a session opened first finds its
+  // project and gets this link: it must stay on the notice's text line, or the notice grows and
+  // takes height from the conversation (147 of 480 px at the smallest window, floor 150).
+  test("the Review link sits on the text line: it does not set a button's height of its own", async () => {
+    render(setup({ trusted: false }).view);
+    const review = await screen.findByRole("button", { name: "Review and trust" });
+    const classes = review.className.split(/\s+/);
+    expect(classes).toContain("h-auto");
+    expect(classes).not.toContain("h-8");
+    expect(classes).toContain("py-0");
+  });
 });

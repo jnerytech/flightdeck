@@ -1172,6 +1172,7 @@ export const en: Dictionary = {
   notify: {
     waiting: "{label}: needs you",
     allow: "Allow {tool}?",
+    plainWaiting: "{label}: waiting for your answer",
     turnDone: "{label}: turn finished",
     turnDoneBody: "idle",
     externalTitle: "Needs you",
@@ -1901,6 +1902,10 @@ export const en: Dictionary = {
       "Part of the session has not arrived on this host yet, so it cannot start here. Try the move again.",
     teleport_corrupt:
       "What arrived on this host does not match what the other host sent, so it was thrown away. Try the move again.",
+    teleport_no_project:
+      "This repository is not the session's project: it does not have the commit the session starts from. Pick the repository of the same project.",
+    teleport_exists:
+      "This host already has that Claude session, so it was not moved over it. Open the one here instead.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:

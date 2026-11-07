@@ -1,10 +1,9 @@
 import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { Copy, UsersRound } from "lucide-react";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
-import { ActionButton } from "@/components/feedback/action-button";
-import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
+import { Field, FieldRow, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { ModelSelect } from "@/components/personas/model-select";
@@ -62,7 +61,13 @@ function NewTeam(
     setRows((all) => all.map((row, i) => (i === index ? { ...row, ...change } : row)));
   const workerDefault = useSuggestedPersona(store, hostId, "dev", true);
   const personaOf = (row: Row) => row.persona ?? workerDefault;
+  const [creating, setCreating] = useState(false);
+  // A second submit before the first answered would create the team twice.
+  const inFlight = useRef(false);
   const create = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setCreating(true);
     const team = await store.hostCommand(hostId, "teams.create", {
       projectId,
       goal,
@@ -75,10 +80,18 @@ function NewTeam(
         ? { workerModels: rows.map((row) => row.model || null) }
         : {}),
     });
+    inFlight.current = false;
+    setCreating(false);
     if (team) props.onCreated();
   };
   return (
-    <div className="flex max-w-xl flex-col gap-3 rounded-lg border p-4 text-sm">
+    <form
+      className="flex max-w-xl flex-col gap-3 rounded-lg border p-4 text-sm"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void create();
+      }}
+    >
       <Field label={t("teamsUi.goal")}>
         {(control) => (
           <AssistField
@@ -163,6 +176,7 @@ function NewTeam(
               onChange={(value) => setRow(i, { model: value })}
             />
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               disabled={rows.length === 1}
@@ -174,6 +188,7 @@ function NewTeam(
           </div>
         ))}
         <Button
+          type="button"
           variant="outline"
           size="sm"
           className="self-start"
@@ -184,19 +199,16 @@ function NewTeam(
           {t("teamsUi.addWorkerButton")}
         </Button>
       </fieldset>
-      <FieldRow>
-        <ActionButton
-          disabled={!goal.trim() || !projectId}
-          disabledReason={t(goal.trim() ? "teamsUi.projectNeeded" : "teamsUi.goalNeeded")}
-          onClick={() => create()}
-        >
-          {t("teamsUi.create")}
-        </ActionButton>
-        <Button variant="ghost" onClick={props.onCancel}>
-          {t("teamsUi.cancel")}
-        </Button>
-      </FieldRow>
-    </div>
+      <FormActions
+        sticky
+        submit={t("teamsUi.create")}
+        busy={creating}
+        disabled={!goal.trim() || !projectId}
+        disabledReason={t(goal.trim() ? "teamsUi.projectNeeded" : "teamsUi.goalNeeded")}
+        cancel={t("teamsUi.cancel")}
+        onCancel={props.onCancel}
+      />
+    </form>
   );
 }
 

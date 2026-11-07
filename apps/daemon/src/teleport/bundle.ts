@@ -10,10 +10,10 @@
  */
 import { copyFile, lstat, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { gitLimitedFor, killTree, runCommand } from "../board/command.ts";
+import { gitLimitedFor } from "../board/command.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../errors.ts";
-import { whichOnPath } from "../which.ts";
+import { git, must, SAFE, TIMEOUT_MS } from "./git.ts";
 import { secretLines, TELEPORT_MAX_BYTES } from "./secrets.ts";
 
 export interface CodeBundleInput {
@@ -55,49 +55,10 @@ const AUTHOR = {
   GIT_COMMITTER_NAME: "Flightdeck",
   GIT_COMMITTER_EMAIL: "teleport@flightdeck.invalid",
 };
-const TIMEOUT_MS = 120_000;
-/** No hook, fsmonitor or signature check (gpg.program) of the repository runs. */
-const SAFE = [
-  "-c",
-  "core.hooksPath=/dev/null",
-  "-c",
-  "core.fsmonitor=false",
-  "-c",
-  "log.showSignature=false",
-];
 const ID = /^[A-Za-z0-9-]{1,64}$/;
 
 const refuse = (reason: string, params?: Record<string, string | number>) =>
   new FlightdeckError("invalid_state", reason.replaceAll("_", " "), reason, params);
-
-/** One git call in `cwd`, with no hook, fsmonitor or gpg of the repository; null when it fails. */
-async function git(
-  cwd: string,
-  args: string[],
-  env: Record<string, string> = {},
-): Promise<string | null> {
-  // git-arg: a forwarder: every caller passes a checked revision (refArg/HEAD) or a value git gave
-  const result = await runCommand(
-    [whichOnPath("git") ?? "git", ...SAFE, ...args],
-    cwd,
-    undefined,
-    TIMEOUT_MS,
-    killTree,
-    env,
-  );
-  return result.code === 0 ? result.stdout.trim() : null;
-}
-
-/** Like `git`, but a failure is an error with git's own exit. */
-async function must(
-  cwd: string,
-  args: string[],
-  env: Record<string, string> = {},
-): Promise<string> {
-  const out = await git(cwd, args, env);
-  if (out === null) throw new FlightdeckError("internal", `git ${args[0]} failed`, "teleport_git");
-  return out;
-}
 
 /** Whether the files the working tree changes or adds are, together, past `max` bytes. */
 async function pastLimit(top: string, names: string, max: number): Promise<boolean> {

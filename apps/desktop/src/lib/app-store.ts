@@ -31,6 +31,7 @@ import type {
   PendingPermission,
   PermissionUpdate,
   PersonaRef,
+  PlainInfo,
   Project,
   QuotaState,
   ReleaseNote,
@@ -74,6 +75,7 @@ import type {
   AppUpdate,
   Platform,
   TrayAction,
+  TrayMenu,
   TrayStatus,
   WebhookRequest,
   WebhookResponse,
@@ -654,6 +656,8 @@ export interface PendingItem {
   /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
   risk?: RiskLevel;
   riskReason?: string;
+  /** Issue #88: the request in plain words, for the surfaces outside the window; an older daemon sends none. */
+  plain?: PlainInfo;
   /** Phase 17: the daemon asks for a secret to run an action or a free command. */
   vault?: true;
   /** Phase 19: the rule lets this request be approved for the rest of the session. */
@@ -725,6 +729,7 @@ export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
           ...(p.input ? { input: p.input } : {}),
           ...(p.risk ? { risk: p.risk } : {}),
           ...(p.riskReason ? { riskReason: p.riskReason } : {}),
+          ...(p.plain ? { plain: p.plain } : {}),
           cwd: session.cwd,
         })),
       ),
@@ -878,9 +883,8 @@ function sameJson(a: unknown, b: unknown): boolean {
 
 /**
  * What the setup checklist asks of a host: its hooks, GitHub only when asked, and its projects when
- * they are not read yet. The projects are read for the checklist only: the list the screens use
- * stays unopened, so a screen that reads a project's trust or branch does not change because Setup
- * looked.
+ * they are not read yet. A look from the Setup screen or a host page reads them for the checklist
+ * only; the one at connect also opens the list the screens use (see `refreshSetup`).
  */
 function setupWants(
   features: readonly string[] | undefined,
@@ -2516,12 +2520,15 @@ export class AppStore {
    * `gh auth status` on the host, so it is asked only with `github` (the Setup screen, the GitHub
    * panel); what it said last stays until then.
    */
-  async refreshSetup(hostId: string, options: { github?: boolean } = {}): Promise<void> {
+  async refreshSetup(
+    hostId: string,
+    options: { github?: boolean; connect?: boolean } = {},
+  ): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
     if (host?.status !== "online") return;
     const wants = setupWants(
       host.hostInfo?.features,
-      this.state.projects[hostId] !== undefined,
+      options.connect !== true && this.state.projects[hostId] !== undefined,
       options.github === true,
     );
     const { hooks: wantsHooks, github: wantsGithub, projects: wantsProjects } = wants;
@@ -2538,6 +2545,11 @@ export class AppStore {
     if (wantsGithub)
       githubKnown = github?.ok ? github.data.installed && github.data.loggedIn : null;
     const projectList = wantsProjects && projects?.ok ? projects.data.projects : before?.projects;
+    // At connect the probe's list is also the screens' (the sidebar tree needs it on any page, #721):
+    // one request, not two.
+    if (options.connect === true && wantsProjects && projects?.ok) {
+      this.rememberProjects(hostId, projects.data.projects);
+    }
     const probe: SetupProbe = {
       hooks: hooks?.ok ? hooks.data.status : null,
       github: githubKnown,
@@ -3106,7 +3118,7 @@ export class AppStore {
       retry: conn.retry,
     }));
     if (status === "online") {
-      void this.loadHostInfo(hostId, conn);
+      void this.loadHostInfo(hostId, conn, true);
       // Daemons before phase 7 have no quota: quietly nothing.
       void conn.request("quota.get", {}).then(
         (state) => this.onQuota(hostId, state),
@@ -3154,7 +3166,7 @@ export class AppStore {
   }
 
   /** Daemons without `host.info` (phase 1) answer with an error: the page says so. */
-  private async loadHostInfo(hostId: string, conn: HostConnection): Promise<void> {
+  private async loadHostInfo(hostId: string, conn: HostConnection, connect = false): Promise<void> {
     const hostInfo = await conn.request("host.info", {}).catch(() => null);
     this.updateHost(hostId, (h) => {
       // Back on the version it was updating to: the update is over.
@@ -3162,7 +3174,7 @@ export class AppStore {
       return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
     });
     // The setup checklist reads what this host has: its hooks, GitHub, projects.
-    void this.refreshSetup(hostId);
+    void this.refreshSetup(hostId, { connect });
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);
@@ -3328,7 +3340,8 @@ export class AppStore {
     const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
     const project = this.sessionProject(hostId, next.cwd);
     const team = this.teamOf.get(key);
-    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
+    const simple = this.uiMode(hostId).mode === "simple";
+    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names, simple)) {
       const source: NotifySource = {
         event: n.event ?? "other",
         hostId,
@@ -4839,16 +4852,22 @@ export class AppStore {
     const timers = this.options.timers ?? REAL_TIMERS;
     if (this.trayMenuTimer !== null) timers.clearTimeout(this.trayMenuTimer);
     this.trayMenuTimer = null;
-    if (
-      JSON.stringify(trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t)) === this.trayMenuSent
-    )
-      return;
+    if (JSON.stringify(this.trayMenuNow()) === this.trayMenuSent) return;
     this.trayMenuTimer = timers.setTimeout(() => {
       this.trayMenuTimer = null;
-      const menu = trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t);
+      const menu = this.trayMenuNow();
       this.trayMenuSent = JSON.stringify(menu);
       void this.platform.setTrayMenu(menu);
     }, TRAY_MENU_DELAY_MS);
+  }
+
+  /** The tray's "needs you" menu now: a host in simple mode words its requests plainly (issue #88). */
+  private trayMenuNow(): TrayMenu {
+    return trayMenu(
+      needsYou(this.state, this.i18n.t),
+      this.i18n.t,
+      (hostId) => this.uiMode(hostId).mode === "simple",
+    );
   }
 
   /**
@@ -4857,7 +4876,7 @@ export class AppStore {
    */
   private onLanguage(): void {
     this.syncTray();
-    const menu = trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t);
+    const menu = this.trayMenuNow();
     this.trayMenuSent = JSON.stringify(menu);
     void this.platform.setTrayMenu(menu);
     for (const listener of this.listeners) listener();

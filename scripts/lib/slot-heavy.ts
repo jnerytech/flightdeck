@@ -4,7 +4,10 @@
  * the hook rules and what they import (#687).
  */
 
-/** The most test files a worker's coverage:funcs may run (#674). */
+/**
+ * The most test files coverage:funcs may run without a reason (#674). The guard hook lets the
+ * coordinator's `--tests` list through; the script refuses every session without a reason (#725).
+ */
 export const HEAVY_TESTS = 20;
 
 /** The forms a worker session runs instead of a full coverage run (#674). */
