@@ -84,7 +84,7 @@ describe("data-scope: whose data the scoped screens show (#126)", () => {
       unknown: scopeOfValue("nonsense"),
     }).toEqual({
       distinct: 5,
-      back: [ALL_SCOPE, ...ids.map((hostId) => ({ kind: "host", hostId }))],
+      back: [ALL_SCOPE, ...ids.map((hostId) => ({ kind: "host" as const, hostId }))],
       unknown: ALL_SCOPE,
     });
   });
