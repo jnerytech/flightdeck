@@ -63,7 +63,7 @@ describe("releases-server: releases.list over the protocol (issue #125)", () => 
     const off = await serve();
     const refused = await off.request("releases.list", {});
     expect(refused.ok).toBe(false);
-    expect(JSON.stringify(refused)).toContain("releases");
+    expect(JSON.stringify(refused)).toContain("feature_off");
     const failing = await serve(feedOf(() => new Response("{}", { status: 500 })));
     const failed = await failing.request("releases.list", {});
     expect(failed.ok).toBe(false);

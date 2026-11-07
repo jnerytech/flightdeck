@@ -7,7 +7,7 @@ import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
-const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { WHATS_NEW_KEY } = await import("../src/lib/whats-new.ts");
 const { App } = await import("../src/ui/App.tsx");
@@ -74,8 +74,6 @@ describe("whats-new-ui: the dialog (issue #125)", () => {
     });
     const list = screen.queryByRole("list", { name: "Releases" });
     expect(list).not.toBeNull();
-    const items = within(list as HTMLElement).queryAllByRole("listitem", { name: "" });
-    expect(items.length).toBeGreaterThanOrEqual(0);
     const text = (dialog as HTMLElement).textContent ?? "";
     expect(text).toContain("Release v0.38.0");
     expect(text).toContain("First change (#1)");
