@@ -76,15 +76,17 @@ export async function readSpec(
  * A system that does not tell (no `/proc`, another system) is not asked; one that tells and fails
  * to answer for this descriptor is refused.
  */
-export async function descriptorInside(realRoot: string, fd: number): Promise<boolean> {
-  if (
-    !(await stat("/proc/self/fd").then(
-      () => true,
-      () => false,
-    ))
-  )
-    return true;
-  const where = await realpath(`/proc/self/fd/${fd}`).catch(() => null);
+export async function descriptorInside(
+  realRoot: string,
+  fd: number,
+  procFds = "/proc/self/fd",
+): Promise<boolean> {
+  const tells = await stat(procFds).then(
+    () => true,
+    () => false,
+  );
+  if (!tells) return true;
+  const where = await realpath(`${procFds}/${fd}`).catch(() => null);
   return where !== null && isInside(realRoot, where);
 }
 
