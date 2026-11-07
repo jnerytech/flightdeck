@@ -142,6 +142,12 @@ describe("board-contracts: contracts per project", () => {
       } as never),
     );
     expect(badCheck.code).toBe("bad_request");
+    // A field a patch leaves undefined keeps what the project has.
+    board.updateProject(project.id, {
+      contractByColumn: { done: { enforce: "confirm", checks: ["pr"] } },
+    });
+    const kept = board.updateProject(project.id, { contractByColumn: { done: undefined } });
+    expect(kept.contractByColumn.done?.checks).toEqual(["pr"]);
   });
 });
 
