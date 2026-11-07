@@ -191,6 +191,15 @@ export class ReviewComments {
     if (!input.body.trim()) {
       throw new FlightdeckError("bad_request", "the comment is empty", "review_comment_empty");
     }
+    // A project's checkout is shown, not reviewed (#797): a session or a card takes the review.
+    if (input.target.startsWith("project:")) {
+      throw new FlightdeckError(
+        "bad_request",
+        `a project target takes no review comment: ${input.target}`,
+        "review_target_invalid",
+        { target: input.target },
+      );
+    }
     const resolved = await this.opts.changes.resolve(input.target);
     const lines = await this.content(resolved, input.path, input.side);
     if (!lines) {

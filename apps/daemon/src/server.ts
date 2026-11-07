@@ -426,6 +426,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.changes, "review"),
     // Issue #506: the file explorer lists the folders of a session's repository.
     ...when(opts.files, "file.list"),
+    // Issue #797: and searches the whole repository, by name or by content.
+    ...when(opts.files, "file.search"),
     // Issue #606: a stored tool call opens to its input and result, read from its transcript.
     ...when(opts.history, "history.tool"),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
@@ -1323,6 +1325,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await files().list(command.payload.target, command.payload.dir));
       case "file.read":
         return ok(command.type, await files().read(command.payload.target, command.payload.path));
+      case "file.search":
+        return ok(command.type, await files().search(command.payload));
       case "file.write": {
         const { target, path, text, expectedHash } = command.payload;
         return ok(command.type, await files().write(target, path, text, expectedHash));
