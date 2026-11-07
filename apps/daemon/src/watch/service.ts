@@ -52,13 +52,15 @@ export class PrWatch {
 
   /**
    * Issue #77: `rounds` more fixing rounds for the card, which is watched again. A card the watch
-   * handed over (in "Needs you") goes back to review, where its PR is.
+   * handed over (in "Needs you") goes back to review, where its PR is; one that waits for you for
+   * another reason (its session asks) stays.
    */
   extend(cardId: string, rounds: number): WatchInfo {
     const { board, watcher } = this.opts;
     const card = board.getCard(cardId);
+    const handedOver = watcher.status(cardId).status === "needs_you";
     watcher.extend(cardId, rounds);
-    if (card.column === "waiting") board.moveCard(cardId, "review");
+    if (handedOver && card.column === "waiting") board.moveCard(cardId, "review");
     this.notify(cardId);
     return this.info(cardId);
   }
