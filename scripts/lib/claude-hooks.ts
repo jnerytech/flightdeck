@@ -9,7 +9,14 @@ import { auditBase, FORBIDDEN_MARKERS, parseCommits } from "./tdd-audit.ts";
 import { undocumentedSkips } from "./unstable-skip.ts";
 
 /** git options that take their value as the next word (`git -C <dir> add`). */
-const GIT_OPTIONS_WITH_VALUE = new Set(["-C", "-c", "--git-dir", "--work-tree", "--namespace"]);
+const GIT_OPTIONS_WITH_VALUE = new Set([
+  "-C",
+  "-c",
+  "--git-dir",
+  "--work-tree",
+  "--namespace",
+  "--config-env",
+]);
 
 /** Paths written by tools, relative to a checkout; a trailing slash means the whole folder. */
 const GENERATED = [
@@ -63,16 +70,12 @@ function commandWords(command: string): string {
 
 /** The subcommand and its arguments of each git invocation in a (possibly chained) command. */
 function gitInvocations(command: string): { sub: string; args: string[] }[] {
-  const invocations: { sub: string; args: string[] }[] = [];
-  for (const segment of commandWords(command).split(/[;&|\n]+/)) {
-    const words = segment.trim().split(/\s+/);
-    let i = words.indexOf("git");
-    if (i < 0) continue;
-    i++;
-    while (words[i]?.startsWith("-")) i += GIT_OPTIONS_WITH_VALUE.has(words[i] ?? "") ? 2 : 1;
-    invocations.push({ sub: words[i] ?? "", args: words.slice(i + 1) });
-  }
-  return invocations;
+  // The same reading as the push and commit gates (#759): a quoted option value is one word, and a
+  // word that is all one quoted string reads as its text.
+  return gitCalls(command, "/").map((call) => ({
+    sub: call.sub,
+    args: call.args.map((a) => a.value),
+  }));
 }
 
 /** A cluster of short options (`-vA`) that includes one of `letters`. */
@@ -282,7 +285,8 @@ function maskCommand(command: string): string {
     })
     .replace(
       /"(?:[^"\\]|\\.)*"|'[^']*'/g,
-      (quoted) => `${quoted[0]}${blank(quoted.slice(1, -1))}${quoted[0]}`,
+      // Not spaces (#759): a quoted value stays one word, so `-c x="a b"` cannot shift the subcommand.
+      (quoted) => `${quoted[0]}${"_".repeat(quoted.length - 2)}${quoted[0]}`,
     );
 }
 
@@ -304,8 +308,9 @@ interface GitCall {
   sub: string;
   /** Where it runs; null when a directory is quoted (its words are hidden from the parse). */
   dir: string | null;
-  /** The words after the subcommand, from the masked command, with their offsets. */
-  args: { word: string; at: number }[];
+  /** The words after the subcommand, from the masked command, with their offsets and their text
+   * unquoted from the original (`value`, #759: `"main"` is main). */
+  args: { word: string; at: number; value: string }[];
   /** The masked segment's start and end in the command. */
   start: number;
   end: number;
@@ -321,11 +326,14 @@ function gitCalls(command: string, cwd: string): GitCall[] {
   const calls: GitCall[] = [];
   let dir: string | null = cwd;
   for (const segment of maskCommand(command).matchAll(/[^;&|\n]+/g)) {
-    const tokens = [...segment[0].matchAll(/\S+/g)].map((t) => ({
-      word: t[0],
-      at: segment.index + t.index,
-    }));
+    const tokens = [...segment[0].matchAll(/\S+/g)].map((t) => {
+      const at = segment.index + t.index;
+      // A word that is all one quoted string reads as its text (#759: `git "push"`).
+      const value = /^(["'])_*\1$/.test(t[0]) ? (optionValue(command, at) ?? t[0]) : t[0];
+      return { word: t[0], at, value };
+    });
     const word = (i: number) => tokens[i]?.word ?? "";
+    const value = (i: number) => tokens[i]?.value ?? "";
     if (word(0) === "cd") {
       dir = enter(dir, word(1));
       continue;
@@ -335,10 +343,10 @@ function gitCalls(command: string, cwd: string): GitCall[] {
     let at = dir;
     let i = found + 1;
     for (; word(i).startsWith("-"); i += GIT_OPTIONS_WITH_VALUE.has(word(i)) ? 2 : 1) {
-      if (word(i) === "-C") at = enter(at, word(i + 1));
+      if (word(i) === "-C") at = enter(at, value(i + 1));
     }
     calls.push({
-      sub: word(i),
+      sub: value(i),
       dir: at,
       args: tokens.slice(i + 1),
       start: segment.index,
@@ -678,7 +686,7 @@ export function pushViolation(command: string, cwd: string, deps: PushGuardDeps)
     if (deps.inProject && !deps.inProject(call.dir)) continue;
     const dir = call.dir;
     const reason = pushRuleViolation(
-      call.args.map((a) => a.word),
+      call.args.map((a) => a.value),
       (args) => deps.git(args, dir),
     );
     if (reason) return reason;
