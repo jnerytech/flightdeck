@@ -74,12 +74,12 @@ const round = (n: number, status: string, summary: string) => ({
 });
 
 /** The app on a daemon that watches PRs, on the screen of a card with an open PR. */
-async function open(over: Record<string, unknown> = {}) {
+async function open(over: Record<string, unknown> = {}, features: string[] = []) {
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
-  daemon.features.push("watch");
+  daemon.features.push("watch", ...features);
   daemon.watch.card = card(over);
   render(<App store={store} />);
   const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
@@ -174,6 +174,78 @@ describe("vigiar-ui: watching and fixing a card's PR", () => {
     });
     await settle(() => screen.queryByRole("button", { name: entry }) === null);
     expect(screen.queryByRole("button", { name: entry })).toBeNull();
+  });
+});
+
+describe("vigiar-ui: rounds used, more rounds and a held round (#77)", () => {
+  test("the card says its rounds used and the limit, and Allow 2 more rounds asks the host", async () => {
+    const mem = await open({}, ["watch.extend"]);
+    mem.daemon.watch.info = {
+      cardId: "c1",
+      enabled: true,
+      status: "needs_you",
+      reason: "limit of 3 rounds reached",
+      rounds: [round(1, "pushed", "a"), round(2, "pushed", "b"), round(3, "failed", "c")],
+      roundsUsed: 3,
+      maxRounds: 3,
+    } as typeof mem.daemon.watch.info;
+    await act(async () => {
+      mem.daemon.push({ type: "watch.updated", watch: mem.daemon.watch.info });
+    });
+    await settle(() => screen.queryByText(/limit of 3 rounds reached/) !== null);
+    expect(screen.queryByText("Rodadas usadas: 3 de 3")).not.toBeNull();
+    await click("Permitir mais 2 rodadas");
+    await settle(() => sent(mem.daemon, "watch.extend").length > 0);
+    expect(sent(mem.daemon, "watch.extend")).toEqual([{ cardId: "c1", rounds: 2 }]);
+  });
+
+  test("a host that cannot give more rounds offers none", async () => {
+    const mem = await open();
+    mem.daemon.watch.info = {
+      cardId: "c1",
+      enabled: true,
+      status: "needs_you",
+      reason: "limit of 3 rounds reached",
+      rounds: [round(1, "pushed", "a")],
+    };
+    await act(async () => {
+      mem.daemon.push({ type: "watch.updated", watch: mem.daemon.watch.info });
+    });
+    await settle(() => screen.queryByText(/limit of 3 rounds/) !== null);
+    expect([
+      screen.queryByRole("button", { name: "Permitir mais 2 rodadas" }) === null,
+      screen.queryByText(/Rodadas usadas/) === null,
+    ]).toEqual([true, true]);
+  });
+
+  test("a held round shows the files outside the PR and its lines; Push anyway and Drop ask the host", async () => {
+    const mem = await open({}, ["watch.resolveHeld"]);
+    mem.daemon.watch.info = {
+      cardId: "c1",
+      enabled: true,
+      status: "needs_you",
+      reason: "held: 1 file(s) outside the PR",
+      rounds: [
+        {
+          ...round(1, "held", "held: 1 file(s) outside the PR"),
+          drift: { outside: ["src/billing.ts"], churn: 7, limit: 200 },
+        },
+      ],
+    } as typeof mem.daemon.watch.info;
+    await act(async () => {
+      mem.daemon.push({ type: "watch.updated", watch: mem.daemon.watch.info });
+    });
+    await settle(() => screen.queryByText(/Rodada 1/) !== null);
+    expect(screen.queryByText("Rodada 1 · retida para você")).not.toBeNull();
+    expect(screen.queryByText("Fora do PR: src/billing.ts")).not.toBeNull();
+    expect(screen.queryByText("7 de no máximo 200 linhas mudadas")).not.toBeNull();
+    await click("Enviar assim mesmo");
+    await click("Descartar a rodada");
+    await settle(() => sent(mem.daemon, "watch.resolveHeld").length > 1);
+    expect(sent(mem.daemon, "watch.resolveHeld")).toEqual([
+      { cardId: "c1", roundId: "r1", action: "push" },
+      { cardId: "c1", roundId: "r1", action: "drop" },
+    ]);
   });
 });
 
