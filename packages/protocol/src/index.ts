@@ -3046,6 +3046,15 @@ export const ActionResult = z.object({
 });
 export type ActionResult = z.infer<typeof ActionResult>;
 
+/** #75: the parts the harness preview has a template for (MCP has none: its servers are the person's choice). */
+export const HARNESS_PREVIEW_PARTS = [
+  "claudeMd",
+  "hooks",
+  "skills",
+  "agents",
+  "permissions",
+] as const;
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -3115,6 +3124,15 @@ export const Command = z.discriminatedUnion("type", [
   cmd("project.trust.inspect", z.object({ path: z.string().min(1).max(4096) }).strict()),
   /** #75: the project's stack and its test, lint, format and build commands, read, never run. */
   cmd("project.harness.stack", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  cmd(
+    "project.harness.preview",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        parts: z.array(z.enum(HARNESS_PREVIEW_PARTS)).min(1).max(HARNESS_PREVIEW_PARTS.length),
+      })
+      .strict(),
+  ),
   cmd(
     "project.trust.set",
     z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
@@ -4707,6 +4725,47 @@ export const HarnessStack = z.object({
 });
 export type HarnessStack = z.infer<typeof HarnessStack>;
 
+/**
+ * #75, slice S3: what applying the chosen parts would add. For `.claude/settings.json`, only the
+ * entries that would be appended, never the file's text (it may hold `env` values); `conflicts` names
+ * a key already there with another shape, left as it is. A new file is created only when missing.
+ */
+export const HarnessPreview = z.object({
+  settings: z
+    .object({
+      path: z.literal(".claude/settings.json"),
+      /** sha256 of the file as previewed; null when there is none yet. */
+      hash: z.string().nullable(),
+      hooks: z.array(z.object({ event: z.string(), matcher: z.string(), command: z.string() })),
+      denyRules: z.array(z.string()),
+      conflicts: z.array(z.string()),
+      /** Writing the file back would change its layout, not only add entries. */
+      reformats: z.boolean(),
+    })
+    .nullable(),
+  files: z.array(z.object({ path: z.string(), content: z.string() })),
+  unreadable: z.array(z.string()),
+});
+export type HarnessPreview = z.infer<typeof HarnessPreview>;
+
+/** #75: what a hook command is for, when its command says so. */
+export type HookKind = "format" | "gitAdd" | "secrets";
+
+/**
+ * Commands that show what a hook is for, on the event it acts on: a formatter after a tool runs, a
+ * check on `git add` or on secret files before one. The checklist and the preview read hooks with
+ * the same list, so a hook the preview proposed is one the checklist then finds.
+ */
+export const HOOK_KINDS: ReadonlyArray<readonly [HookKind, string, RegExp]> = [
+  [
+    "format",
+    "PostToolUse",
+    /\b(biome|prettier|eslint --fix|ruff format|black|gofmt|rustfmt|cargo fmt|dotnet format|(npm|pnpm|yarn|bun) run (format|fmt)\b)/,
+  ],
+  ["gitAdd", "PreToolUse", /\bgit add\b/],
+  ["secrets", "PreToolUse", /(\.env\b|credentials|secrets?\b|\.pem\b|id_rsa)/],
+];
+
 /** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
 export const SleepResult = z.object({
   /** What came of it: `slept`, `already` (nothing was alive), or why it was not allowed. */
@@ -4927,6 +4986,7 @@ export interface CommandResults {
   "project.trust.state": ProjectTrustStates;
   "project.trust.inspect": ProjectLoad;
   "project.harness.stack": HarnessStack;
+  "project.harness.preview": HarnessPreview;
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;
