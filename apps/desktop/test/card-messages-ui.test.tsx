@@ -244,3 +244,53 @@ describe("card-messages-ui: a wand with no provider opens Settings (#162)", () =
     expect(opened).toEqual(["settings"]);
   });
 });
+
+describe("card-messages-ui: what is left over in the dialogs (#681)", () => {
+  test("a message written for one merge is gone when the dialog is closed and opened again", async () => {
+    renderReview("en");
+    await press(screen.queryByRole("button", { name: WORDS.en.merge }));
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText(WORDS.en.message) as HTMLElement, {
+        target: { value: "fix(app): written for an old diff" },
+      });
+    });
+    const dialog = screen.queryByRole("alertdialog");
+    await press(dialog ? within(dialog).queryByRole("button", { name: "Cancel" }) : null);
+    await press(screen.queryByRole("button", { name: WORDS.en.merge }));
+    const field = screen.queryByLabelText(WORDS.en.message) as HTMLTextAreaElement | null;
+    expect(field?.value ?? "no field").toBe("");
+  });
+
+  test("the description's wand gets the title as context", async () => {
+    const { store, sent, t } = setup("en");
+    render(
+      <TContext.Provider value={t}>
+        <TooltipProvider>
+          <PrDescriptionDialog
+            text="What changed."
+            title="Add the login"
+            redacted={0}
+            assist={{
+              controller: store.assistant,
+              fieldHostId: "h1",
+              source: { kind: "card", cardId: "c1" },
+              openSettings: () => {},
+            }}
+            onConfirm={() => {}}
+            onCancel={() => {}}
+          />
+        </TooltipProvider>
+      </TContext.Provider>,
+    );
+    const runs = () =>
+      sent.filter(([, type]) => type === "assistant.run").map(([, , payload]) => payload) as Array<
+        Record<string, unknown>
+      >;
+    await press(screen.queryAllByRole("button", { name: WORDS.en.improve })[1] ?? null);
+    await settle(() => runs().length === 1);
+    expect([runs()[0]?.kind, runs()[0]?.context ?? "no context"]).toEqual([
+      "pr.description",
+      { title: "Add the login" },
+    ]);
+  });
+});
