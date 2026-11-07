@@ -13,6 +13,7 @@ import {
   TeleportAbortPayload,
   TeleportCancelPayload,
   type TeleportChunk,
+  TeleportFinishPayload,
   type TeleportManifest,
   TeleportPreparePayload,
   TeleportReadPayload,
@@ -3084,6 +3085,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("teleport.receive", TeleportReceivePayload),
   cmd("teleport.write", TeleportWritePayload),
   cmd("teleport.abort", TeleportAbortPayload),
+  /** The import (slice 2b). */
+  cmd("teleport.finish", TeleportFinishPayload),
   /** Phase 40: the AI assistant (feature `assistant`). */
   cmd("assistant.run", AssistantRunPayload),
   cmd("assistant.cancel", AssistantCancelPayload),
@@ -4810,6 +4813,7 @@ export interface CommandResults {
   "teleport.receive": { id: string };
   "teleport.write": { written: number };
   "teleport.abort": undefined;
+  "teleport.finish": { sessionId: string; worktree: string; branch: string };
   "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;

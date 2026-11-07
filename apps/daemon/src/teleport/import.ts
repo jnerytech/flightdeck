@@ -159,3 +159,25 @@ async function start(
     throw error;
   }
 }
+
+/** The daemon's parts an import reads (issue #100). */
+export interface TeleportImportWiring {
+  inbox: TeleportImportDeps["inbox"];
+  allowedRoots: readonly string[];
+  historyRoots: readonly string[];
+  indexer: { transcriptFile(claudeSessionId: string): string | null } | undefined;
+  manager: { createResumed: TeleportImportDeps["resume"] };
+}
+
+/** The real deps of an import. */
+export function teleportImportDeps(wiring: TeleportImportWiring): TeleportImportDeps {
+  return {
+    inbox: wiring.inbox,
+    // The same array the daemon keeps: a root added later counts at once.
+    allowedRoots: wiring.allowedRoots,
+    // Where Claude Code writes on this host: the first history root (`~/.claude/projects`).
+    historyRoot: wiring.historyRoots[0] ?? "",
+    transcriptOf: (claudeSessionId) => wiring.indexer?.transcriptFile(claudeSessionId) ?? null,
+    resume: (opts) => wiring.manager.createResumed(opts),
+  };
+}
