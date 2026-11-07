@@ -289,10 +289,14 @@ describe("teleport-import: a received package becomes a session on this host (#1
     }));
     expect([
       done.sessionId,
-      await readFile(join(done.worktree, "data.bin"), "utf8").catch(() => "missing"),
+      // A pointer, as the tree has it (a host with git-lfs rewrites it as a full pointer on add).
+      await readFile(join(done.worktree, "data.bin"), "utf8").then(
+        (text) => text.startsWith("version https://git-lfs.github.com/spec/v1\n"),
+        () => "missing",
+      ),
       (calls.resumed[0] as { permissionMode?: string } | undefined)?.permissionMode,
       (await readdir(marks)).includes("ran"),
-    ]).toEqual(["t1", "version https://git-lfs.github.com/spec/v1\n", "default", false]);
+    ]).toEqual(["t1", true, "default", false]);
   });
 
   test("a transcript that cannot be copied is that failure, not a session already here, and nothing is left", async () => {
