@@ -903,8 +903,10 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE pr_watch ADD COLUMN extra_rounds INTEGER NOT NULL DEFAULT 0;
   `,
-  // Issue #77: a round held for drift keeps the commit it was held at and what drifted.
+  // Issue #77: the commit a round started from; a round held for drift keeps the commit it was
+  // held at and what drifted.
   `
+  ALTER TABLE pr_watch_rounds ADD COLUMN base_sha TEXT;
   ALTER TABLE pr_watch_rounds ADD COLUMN held_sha TEXT;
   ALTER TABLE pr_watch_rounds ADD COLUMN drift TEXT;
   `,

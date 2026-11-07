@@ -59,6 +59,7 @@ interface RoundRow {
   turns: number;
   started_at: string;
   ended_at: string | null;
+  base_sha: string | null;
   held_sha: string | null;
   drift: string | null;
 }
@@ -99,7 +100,7 @@ const SAFE_DIFF = ["diff", "--numstat", "-z", "--no-renames", "--no-ext-diff", "
 function heldSummary(measured: { drift: Drift } | { error: string }): string {
   if ("error" in measured) return `held: the drift could not be measured (${measured.error})`;
   const { outside, churn, limit } = measured.drift;
-  const shown = outside.slice(0, 5).map((path) => path.replace(/\p{Cc}/gu, "?"));
+  const shown = outside.slice(0, 5).map((path) => masked(path.replace(/\p{Cc}/gu, "?")));
   const more = outside.length > shown.length ? ` and ${outside.length - shown.length} more` : "";
   const files =
     outside.length > 0
@@ -176,6 +177,8 @@ function buildPrompt(input: {
 export class PrFixer {
   private stopped = false;
   private readonly running = new Set<string>();
+  /** Cards whose held round is being pushed or dropped now: one at a time. */
+  private readonly resolving = new Set<string>();
   private readonly pending = new Set<Promise<void>>();
 
   constructor(private readonly opts: PrFixerOptions) {
@@ -219,13 +222,26 @@ export class PrFixer {
         "SELECT * FROM pr_watch_rounds WHERE card_id = ? ORDER BY n DESC LIMIT 1",
       )
       .get(cardId);
-    if (last?.id !== roundId || last.status !== "held" || this.running.has(cardId)) {
+    const busy = this.running.has(cardId) || this.resolving.has(cardId);
+    if (last?.id !== roundId || last.status !== "held" || busy) {
       throw new FlightdeckError("invalid_state", "that round is not held", "watch_round_not_held");
     }
+    this.resolving.add(cardId);
+    try {
+      await this.resolve(cardId, last, action);
+    } finally {
+      this.resolving.delete(cardId);
+    }
+  }
+
+  private async resolve(cardId: string, last: RoundRow, action: "push" | "drop"): Promise<void> {
+    const { db, board } = this.opts;
+    const card = board.getCard(cardId);
+    const roundId = last.id;
     const worktree = card.worktreePath as string;
     const branch = refArg(card.branch as string);
     const sha = last.held_sha ?? "";
-    const head = await this.git(worktree, "rev-parse", "HEAD");
+    const head = await this.git(worktree, ...SAFE_GIT, "rev-parse", "HEAD");
     if (!COMMIT_ID.test(sha) || head.stdout.trim() !== sha) {
       throw new FlightdeckError(
         "invalid_state",
@@ -233,12 +249,16 @@ export class PrFixer {
         "watch_held_moved",
       );
     }
+    // Back to where the round started: work committed before it stays.
+    const base = COMMIT_ID.test(last.base_sha ?? "")
+      ? (last.base_sha as string)
+      : refArg(`origin/${branch}`);
     const done =
       action === "push"
         ? // git-arg: the held commit id (checked hex) to the card's own branch (refArg), never forced
-          await this.git(worktree, "push", "origin", `${sha}:refs/heads/${branch}`)
-        : // git-arg: back to what was pushed (refArg); --keep refuses to lose uncommitted changes
-          await this.git(worktree, "reset", "--keep", refArg(`origin/${branch}`));
+          await this.git(worktree, ...SAFE_GIT, "push", "origin", `${sha}:refs/heads/${branch}`)
+        : // git-arg: the round's start (checked hex) or what was pushed (refArg); --keep keeps uncommitted work
+          await this.git(worktree, ...SAFE_GIT, "reset", "--keep", base);
     if (done.code !== 0) {
       throw new FlightdeckError(
         "internal",
@@ -253,7 +273,7 @@ export class PrFixer {
     const [status, summary] =
       action === "push"
         ? ["pushed", `pushed by you after the hold: ${last.summary ?? ""}`]
-        : ["stopped", `dropped by you: the branch is back at origin/${branch}`];
+        : ["stopped", "dropped by you: the branch is back where the round started"];
     db.query("UPDATE pr_watch_rounds SET status = ?, summary = ?, ended_at = ? WHERE id = ?").run(
       status,
       summary,
@@ -317,7 +337,7 @@ export class PrFixer {
     ) => void,
     spent: { sessionId?: string | null; costUsd?: number; turns?: number },
   ): Promise<void> {
-    const head = (await this.git(worktree, "rev-parse", "HEAD")).stdout.trim();
+    const head = (await this.git(worktree, ...SAFE_GIT, "rev-parse", "HEAD")).stdout.trim();
     this.opts.db
       .query("UPDATE pr_watch_rounds SET held_sha = ?, drift = ? WHERE id = ?")
       .run(
@@ -543,9 +563,14 @@ export class PrFixer {
       spent?: { sessionId?: string | null; costUsd?: number; turns?: number },
     ) => void;
   }): Promise<void> {
-    const { board, watcher } = this.opts;
+    const { board, watcher, db } = this.opts;
     const { id, trigger, n, branch, worktree, settings, project, card, provider, end } = input;
     const { cardId } = trigger;
+    // Issue #77: where the round starts, so a drop takes back its commits only.
+    const start = (await this.git(worktree, ...SAFE_GIT, "rev-parse", "HEAD")).stdout.trim();
+    if (COMMIT_ID.test(start)) {
+      db.query("UPDATE pr_watch_rounds SET base_sha = ? WHERE id = ?").run(start, id);
+    }
     const logs = await this.logs(provider, card.prUrl as string, project.path, trigger);
     const fixed = await board
       .fixCard(cardId, {
