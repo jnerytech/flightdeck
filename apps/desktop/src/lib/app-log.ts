@@ -157,6 +157,37 @@ const show = (value: unknown): string => {
   }
 };
 
+/** React's own errors: the minified production message, or the development one for a render loop. */
+export function isReactError(_reason: unknown): boolean {
+  return false;
+}
+
+/** What React reports for a component tree error: the component stack, when it gives one. */
+export interface ReactErrorInfo {
+  componentStack?: string | null | undefined;
+}
+
+/**
+ * One line that places a React error (issue #938): the first frames of its stack, the components
+ * React names, and the screen the person was on. Names of functions, files of the app and the
+ * route's name only; the log scrubs secrets from it anyway.
+ */
+export function reactErrorLine(_error: unknown, _info: ReactErrorInfo, _screen: string): string {
+  return "";
+}
+
+/** The `createRoot` options that log the errors React catches in a tree (its error boundaries). */
+export function reactRootErrorHandlers(
+  _log: AppLog,
+  _screen: () => string,
+): {
+  onUncaughtError(error: unknown, info: ReactErrorInfo): void;
+  onCaughtError(error: unknown, info: ReactErrorInfo): void;
+  onRecoverableError(error: unknown, info: ReactErrorInfo): void;
+} {
+  return { onUncaughtError: () => {}, onCaughtError: () => {}, onRecoverableError: () => {} };
+}
+
 /** The consoles the log is installed on: a second install would forward each call twice. */
 const installed = new WeakSet<object>();
 
@@ -172,6 +203,7 @@ export function installGlobalLog(
   },
   log: AppLog,
   console_: { error: (...args: unknown[]) => void; warn: (...args: unknown[]) => void } = console,
+  _screen: () => string = () => "unknown",
 ): () => void {
   if (installed.has(console_)) return () => {};
   installed.add(console_);

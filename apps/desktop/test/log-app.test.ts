@@ -3,8 +3,11 @@ import {
   AppLog,
   diagnosticsText,
   installGlobalLog,
+  isReactError,
   LOG_BURST,
   LOG_QUEUE,
+  reactErrorLine,
+  reactRootErrorHandlers,
 } from "../src/lib/app-log.ts";
 import type { LogSink } from "../src/platform/types.ts";
 
@@ -404,5 +407,126 @@ describe("log-cobertura-app: failures that never reach the caller (issue #255)",
     fakeConsole.error(circular);
     off();
     expect(written.at(-1)).toContain("ERROR console [object Object]");
+  });
+});
+
+describe("log-app: a React error says where it came from (issue #938)", () => {
+  const V8 = [
+    "Error: Minified React error #185; visit https://react.dev/errors/185 for the full message.",
+    "    at Wi (assets/index-1a2b.js:40:1200)",
+    "    at Ml (assets/index-1a2b.js:41:90)",
+    "    at store.emit (assets/index-1a2b.js:7:55)",
+  ].join("\n");
+  const reactError = () => {
+    const error = new Error("Minified React error #185; visit https://react.dev/errors/185");
+    error.stack = V8;
+    return error;
+  };
+
+  test("a React error is told from any other", () => {
+    expect(isReactError(reactError())).toBe(true);
+    expect(isReactError(new Error("Maximum update depth exceeded. This can happen when"))).toBe(
+      true,
+    );
+    expect(isReactError(new Error("nope"))).toBe(false);
+    expect(isReactError("Minified React error #185")).toBe(false);
+    expect(isReactError(null)).toBe(false);
+  });
+
+  test("the line carries the message, the first six frames, the components and the screen", () => {
+    const stack = [
+      "Error: boom",
+      ...Array.from({ length: 9 }, (_, i) => `    at f${i} (assets/a.js:${i}:1)`),
+    ].join("\n");
+    const error = Object.assign(new Error("Minified React error #185"), { stack });
+    const line = reactErrorLine(
+      error,
+      {
+        componentStack:
+          "\n    at HostRow (assets/a.js:1:1)\n    at Sidebar (assets/a.js:2:2)\n    at App (assets/a.js:3:3)",
+      },
+      "overview",
+    );
+    expect(line).toContain("Minified React error #185");
+    expect(line).toContain("screen: overview");
+    expect(line).toContain("f0 (assets/a.js:0:1) < f1 (assets/a.js:1:1)");
+    expect(line).toContain("f5 (assets/a.js:5:1)");
+    expect(line).not.toContain("f6");
+    expect(line).toContain("components: HostRow < Sidebar < App");
+  });
+
+  test("a JavaScriptCore stack (name@file:line:column) gives its frames too", () => {
+    const error = Object.assign(new Error("Minified React error #185"), {
+      stack:
+        "Wi@tauri://localhost/assets/index.js:40:1200\nMl@tauri://localhost/assets/index.js:41:90",
+    });
+    const line = reactErrorLine(error, {}, "overview");
+    expect(line).toContain("Wi (assets/index.js:40:1200) < Ml (assets/index.js:41:90)");
+    expect(line).not.toContain("components:");
+  });
+
+  test("an error with no stack, or a value that is not an error, still names the screen", () => {
+    expect(reactErrorLine("odd", {}, "costs")).toContain("screen: costs");
+    expect(reactErrorLine(new Error("Minified React error #185"), {}, "costs")).toContain(
+      "screen: costs",
+    );
+  });
+
+  test("a rejection that is a React error adds a react line after its own", async () => {
+    const written: string[] = [];
+    const s: LogSink = {
+      write: async (lines) => void written.push(...lines),
+      tail: async () => [],
+      openFolder: async () => {},
+    };
+    const log = new AppLog({ sink: s, now: () => NOW });
+    const listeners = new Map<string, (event: never) => void>();
+    installGlobalLog(
+      {
+        addEventListener: (type, fn) => void listeners.set(type, fn),
+        removeEventListener: (type) => void listeners.delete(type),
+      },
+      log,
+      { error: () => {}, warn: () => {} },
+      () => "overview",
+    );
+    (listeners.get("unhandledrejection") as (e: unknown) => void)({ reason: reactError() });
+    (listeners.get("unhandledrejection") as (e: unknown) => void)({ reason: new Error("nope") });
+    await log.flush();
+    const lines = written.map((l) => l.replace(/^\S+ /, ""));
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toBe(
+      "ERROR rejection Minified React error #185; visit https://react.dev/errors/185",
+    );
+    expect(lines[1]).toContain("ERROR react ");
+    expect(lines[1]).toContain("screen: overview");
+    expect(lines[1]).toContain("Wi (assets/index-1a2b.js:40:1200)");
+    expect(lines[2]).toBe("ERROR rejection nope");
+  });
+
+  test("the root's handlers log what React caught in a tree, with its component stack and the screen", async () => {
+    const written: string[] = [];
+    const s: LogSink = {
+      write: async (lines) => void written.push(...lines),
+      tail: async () => [],
+      openFolder: async () => {},
+    };
+    const log = new AppLog({ sink: s, now: () => NOW });
+    const handlers = reactRootErrorHandlers(log, () => {
+      throw new Error("no router yet");
+    });
+    handlers.onUncaughtError(reactError(), { componentStack: "\n    at Sidebar (a.js:1:1)" });
+    handlers.onCaughtError(reactError(), { componentStack: null });
+    handlers.onRecoverableError(new Error("hydration"), {});
+    await log.flush();
+    expect(written).toHaveLength(3);
+    for (const line of written) {
+      expect(line).toContain(" react ");
+      expect(line).toContain("screen: unknown");
+    }
+    expect(written[0]).toContain("components: Sidebar");
+    expect(written[0]).toContain("uncaught");
+    expect(written[1]).toContain("caught");
+    expect(written[2]).toContain("recoverable");
   });
 });
