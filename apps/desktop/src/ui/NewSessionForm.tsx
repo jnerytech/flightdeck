@@ -2,6 +2,7 @@ import type { CommandPayload, EffortLevel, PermissionMode } from "@flightdeck/pr
 import { useEffect, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
+import { Page } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -144,197 +145,199 @@ export function NewSessionForm(
     }
   };
   return (
-    <Form onSubmit={() => submit()} className="mx-auto p-6">
-      <h2 className="font-semibold text-xl">{t("newSession.title", { host: props.host.name })}</h2>
-      {props.hosts && props.hosts.length > 1 && props.onHost && (
-        <Field label={t("newSession.host")}>
-          {(control) => (
-            <NativeSelect
-              {...control}
-              value={props.host.id}
-              onChange={(e) => props.onHost?.(e.target.value)}
-            >
-              {props.hosts?.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name}
-                </option>
-              ))}
-            </NativeSelect>
-          )}
-        </Field>
-      )}
-      {hasOpenCode && (
-        <Field label={t("newSession.agent")}>
-          {(control) => (
-            <NativeSelect
-              {...control}
-              value={runtime}
-              onChange={(e) => chooseRuntime(e.target.value as Runtime)}
-            >
-              <option value="claude">{t("newSession.agentClaude")}</option>
-              <option value="opencode">{t("newSession.agentOpenCode")}</option>
-            </NativeSelect>
-          )}
-        </Field>
-      )}
-      <Field label={t("newSession.folder")}>
-        {(control) => (
-          <NativeSelect {...control} value={root} onChange={(e) => setRoot(e.target.value)}>
-            {folders.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </NativeSelect>
-        )}
-      </Field>
-      <Field label={t("newSession.subfolder")}>
-        {(control) => (
-          <Input
-            {...control}
-            value={sub}
-            onChange={(e) => setSub(e.target.value)}
-            placeholder={t("newSession.optional")}
-          />
-        )}
-      </Field>
-      {canBrowse && (
-        <Button
-          type="button"
-          variant="outline"
-          className="self-start"
-          onClick={() => setBrowsing(true)}
-        >
-          {t("folderPicker.browse")}
-        </Button>
-      )}
-      {browsing && props.store && canBrowse && (
-        <FolderPicker
-          store={props.store}
-          host={props.host}
-          onPick={pick}
-          onClose={() => setBrowsing(false)}
-        />
-      )}
-      <Field label={t("newSession.name")}>
-        {(control) => (
-          <Input
-            {...control}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("newSession.optional")}
-          />
-        )}
-      </Field>
-      <Field label={t("newSession.mode")}>
-        {(control) => (
-          <>
-            <NativeSelect
-              {...control}
-              value={mode}
-              onChange={(e) => setMode(e.target.value as PermissionMode)}
-            >
-              {modes.map((m) => (
-                <option key={m} value={m}>
-                  {t("modes.option", {
-                    name: t(`modes.${m}.name` as Key),
-                    description: t(`modes.${m}.description` as Key),
-                  })}
-                </option>
-              ))}
-            </NativeSelect>
-            {mode === "bypassPermissions" && (
-              <p role="alert" className="text-status-error text-xs">
-                {t("modes.bypassWarning")}
-              </p>
+    <Page title={t("newSession.title", { host: props.host.name })}>
+      <Form onSubmit={() => submit()}>
+        {props.hosts && props.hosts.length > 1 && props.onHost && (
+          <Field label={t("newSession.host")}>
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={props.host.id}
+                onChange={(e) => props.onHost?.(e.target.value)}
+              >
+                {props.hosts?.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name}
+                  </option>
+                ))}
+              </NativeSelect>
             )}
-          </>
+          </Field>
         )}
-      </Field>
-      <Field label={t("session.modelLabel")}>
-        {(control) => (
-          <NativeSelect {...control} value={model} onChange={(e) => setModel(e.target.value)}>
-            <option value="">{t("session.modelDefault")}</option>
-            <ModelOptions models={models} />
-          </NativeSelect>
+        {hasOpenCode && (
+          <Field label={t("newSession.agent")}>
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={runtime}
+                onChange={(e) => chooseRuntime(e.target.value as Runtime)}
+              >
+                <option value="claude">{t("newSession.agentClaude")}</option>
+                <option value="opencode">{t("newSession.agentOpenCode")}</option>
+              </NativeSelect>
+            )}
+          </Field>
         )}
-      </Field>
-      {opencode && (
-        <Field label={t("newSession.effort")}>
+        <Field label={t("newSession.folder")}>
           {(control) => (
-            <NativeSelect
-              {...control}
-              value={effort}
-              onChange={(e) => setEffort(e.target.value as EffortLevel | "")}
-            >
-              <option value="">{t("newSession.effortDefault")}</option>
-              {EFFORTS.map((level) => (
-                <option key={level} value={level}>
-                  {level}
+            <NativeSelect {...control} value={root} onChange={(e) => setRoot(e.target.value)}>
+              {folders.map((r) => (
+                <option key={r} value={r}>
+                  {r}
                 </option>
               ))}
             </NativeSelect>
           )}
         </Field>
-      )}
-      <Field label={t("newSession.prompt")}>
-        {(control) => {
-          const area = (assist?: object) => (
-            <Textarea
+        <Field label={t("newSession.subfolder")}>
+          {(control) => (
+            <Input
               {...control}
-              {...assist}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              value={sub}
+              onChange={(e) => setSub(e.target.value)}
               placeholder={t("newSession.optional")}
-              className="min-h-28"
             />
-          );
-          // The AI wand (phase 40): it improves the prompt and never starts the session.
-          return store ? (
-            <AssistField
-              binding={{
-                controller: store.assistant,
-                kind: "prompt",
-                fieldHostId: hostId,
-                ...(cwd ? { cwd } : {}),
-                openSettings: () => store.router.push({ name: "settings", section: "assistant" }),
-              }}
-              value={prompt}
-              onChange={setPrompt}
-              t={t}
-            >
-              {area}
-            </AssistField>
-          ) : (
-            area()
-          );
-        }}
-      </Field>
-      {!opencode && props.extra}
-      {asking && (
-        <ConfirmDialog
-          destructive
-          message={t("newSession.bypassMessage", { host: props.host.name, folder: cwd })}
-          confirmLabel={t("newSession.bypassConfirm")}
-          onCancel={() => setAsking(false)}
-          onConfirm={() => submit(true)}
-        />
-      )}
-      <FormActions
-        submit={t("newSession.create")}
-        busy={creating}
-        disabled={!root}
-        disabledReason={
-          <span>
-            {t("newSession.needFolder")}{" "}
-            {props.onAddFolder && (
-              <Button type="button" variant="link" onClick={props.onAddFolder}>
-                {t("newSession.addFolder", { host: props.host.name })}
-              </Button>
+          )}
+        </Field>
+        {canBrowse && (
+          <Button
+            type="button"
+            variant="outline"
+            className="self-start"
+            onClick={() => setBrowsing(true)}
+          >
+            {t("folderPicker.browse")}
+          </Button>
+        )}
+        {browsing && props.store && canBrowse && (
+          <FolderPicker
+            store={props.store}
+            host={props.host}
+            onPick={pick}
+            onClose={() => setBrowsing(false)}
+          />
+        )}
+        <Field label={t("newSession.name")}>
+          {(control) => (
+            <Input
+              {...control}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("newSession.optional")}
+            />
+          )}
+        </Field>
+        <Field label={t("newSession.mode")}>
+          {(control) => (
+            <>
+              <NativeSelect
+                {...control}
+                value={mode}
+                onChange={(e) => setMode(e.target.value as PermissionMode)}
+              >
+                {modes.map((m) => (
+                  <option key={m} value={m}>
+                    {t("modes.option", {
+                      name: t(`modes.${m}.name` as Key),
+                      description: t(`modes.${m}.description` as Key),
+                    })}
+                  </option>
+                ))}
+              </NativeSelect>
+              {mode === "bypassPermissions" && (
+                <p role="alert" className="text-status-error text-xs">
+                  {t("modes.bypassWarning")}
+                </p>
+              )}
+            </>
+          )}
+        </Field>
+        <Field label={t("session.modelLabel")}>
+          {(control) => (
+            <NativeSelect {...control} value={model} onChange={(e) => setModel(e.target.value)}>
+              <option value="">{t("session.modelDefault")}</option>
+              <ModelOptions models={models} />
+            </NativeSelect>
+          )}
+        </Field>
+        {opencode && (
+          <Field label={t("newSession.effort")}>
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={effort}
+                onChange={(e) => setEffort(e.target.value as EffortLevel | "")}
+              >
+                <option value="">{t("newSession.effortDefault")}</option>
+                {EFFORTS.map((level) => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
+              </NativeSelect>
             )}
-          </span>
-        }
-      />
-    </Form>
+          </Field>
+        )}
+        <Field label={t("newSession.prompt")}>
+          {(control) => {
+            const area = (assist?: object) => (
+              <Textarea
+                {...control}
+                {...assist}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={t("newSession.optional")}
+                className="min-h-28"
+              />
+            );
+            // The AI wand (phase 40): it improves the prompt and never starts the session.
+            return store ? (
+              <AssistField
+                binding={{
+                  controller: store.assistant,
+                  kind: "prompt",
+                  fieldHostId: hostId,
+                  ...(cwd ? { cwd } : {}),
+                  openSettings: () => store.router.push({ name: "settings", section: "assistant" }),
+                }}
+                value={prompt}
+                onChange={setPrompt}
+                t={t}
+              >
+                {area}
+              </AssistField>
+            ) : (
+              area()
+            );
+          }}
+        </Field>
+        {!opencode && props.extra}
+        {asking && (
+          <ConfirmDialog
+            destructive
+            message={t("newSession.bypassMessage", { host: props.host.name, folder: cwd })}
+            confirmLabel={t("newSession.bypassConfirm")}
+            onCancel={() => setAsking(false)}
+            onConfirm={() => submit(true)}
+          />
+        )}
+        <FormActions
+          sticky
+          submit={t("newSession.create")}
+          busy={creating}
+          disabled={!root}
+          disabledReason={
+            <span>
+              {t("newSession.needFolder")}{" "}
+              {props.onAddFolder && (
+                <Button type="button" variant="link" onClick={props.onAddFolder}>
+                  {t("newSession.addFolder", { host: props.host.name })}
+                </Button>
+              )}
+            </span>
+          }
+        />
+      </Form>
+    </Page>
   );
 }
