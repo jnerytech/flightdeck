@@ -164,8 +164,14 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
       const settings = (await previewHarness(root, ["hooks", "permissions"])).settings;
       return [settings?.hooks, settings?.denyRules, settings?.conflicts];
     };
-    expect([await pick(strings), await pick(deny)]).toEqual([
+    const nulls = repo({
+      ...bunProject,
+      [SETTINGS]: json({ hooks: null, permissions: { deny: null } }),
+    });
+    expect([await pick(strings), await pick(deny), await pick(nulls)]).toEqual([
       [[], [], ["hooks.PostToolUse", "permissions"]],
+      [[], [], ["hooks", "permissions.deny"]],
+      // A key set to null is there: it is not free to fill.
       [[], [], ["hooks", "permissions.deny"]],
     ]);
   });
