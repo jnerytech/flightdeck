@@ -250,10 +250,10 @@ describe("teleport-relay: the app moves a session from one host to another (#100
 
   test("a host that never answers the clean-up does not hold the move, and the other host is still cleaned", async () => {
     const h = hosts({ finish: new RequestError("invalid_state", "x", "teleport_exists") });
-    // An abort that answers only after 2 s: a move that waits for it shows as a slow return.
+    // An abort that never answers: a move that waits for it never returns.
     const slow = (async (type: string, payload: never) =>
       type === "teleport.abort"
-        ? new Promise((resolve) => setTimeout(resolve, 2_000))
+        ? new Promise(() => {})
         : h.target(type as "teleport.receive", payload)) as TeleportRequest;
     const started = Date.now();
     const why = await failure(run(h, { target: slow, cleanupMs: 50 }));
