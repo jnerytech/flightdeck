@@ -6,11 +6,17 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
-import { acoesAction, DANGER_SESSION, OVERFLOW_VIEWPORTS, VIEWPORTS } from "../lib/e2e-journeys.ts";
+import {
+  acoesAction,
+  DANGER_SESSION,
+  OVERFLOW_VIEWPORTS,
+  REACH_VIEWPORTS,
+  VIEWPORTS,
+} from "../lib/e2e-journeys.ts";
 import { ensureOnline } from "../lib/e2e-online.ts";
 import {
   BARS,
@@ -111,6 +117,32 @@ export async function waitFor(check: () => Promise<boolean>, what: string, timeo
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   throw new Error(`esperava: ${what}`);
+}
+
+/**
+ * The screen's main action is inside the window as the page settles (nothing scrolled it there) and
+ * can take a click: the #731 and #732 class of bug, where it sat below the fold (#754).
+ */
+export async function inReach(c: Context, what: string, button: Locator) {
+  await button.waitFor({ timeout: WAIT });
+  let seen = "";
+  const fits = async () => {
+    const size = c.page.viewportSize();
+    const box = await button.boundingBox();
+    seen = `${JSON.stringify(box)} in ${size?.width}x${size?.height}`;
+    return (
+      size !== null &&
+      box !== null &&
+      box.x >= 0 &&
+      box.y >= 0 &&
+      box.x + box.width <= size.width + 0.5 &&
+      box.y + box.height <= size.height + 0.5
+    );
+  };
+  await waitFor(fits, `${what} dentro da janela`).catch((error) => {
+    throw new Error(`${error.message}: ${seen}`);
+  });
+  await button.click({ trial: true, timeout: WAIT });
 }
 
 export const journeys: Record<string, (c: Context) => Promise<void>> = {
@@ -1267,6 +1299,22 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByText(c.t("sidebar.addHostCrumb"), { exact: true }).first().waitFor({
       timeout: WAIT,
     });
+  },
+
+  // Issue #731: New session -> Create session. The button is in view and clickable as the form
+  // opens, in a phone-sized window and a desktop one, and it starts the session.
+  "nova-sessao-alcance": async (c) => {
+    const create = c.page.getByRole("button", { name: c.t("newSession.create"), exact: true });
+    const prompt = c.page.getByLabel(c.t("newSession.prompt"), { exact: true });
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "new-session", host: ALFA });
+      await prompt.fill("[bash] ls");
+      await inReach(c, `${c.t("newSession.create")} a ${size.width}x${size.height}`, create);
+    }
+    // At the desktop size it also does what it says: the form leaves and the session opens.
+    await create.click();
+    await create.waitFor({ state: "detached", timeout: WAIT });
   },
 };
 

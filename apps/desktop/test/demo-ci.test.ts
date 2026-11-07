@@ -156,6 +156,7 @@ describe("demo-prints: axe e CI", () => {
       "project-tree-cap",
       "board-landing",
       "sessions-no-host",
+      "nova-sessao-alcance",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
