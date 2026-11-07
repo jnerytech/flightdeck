@@ -24,6 +24,8 @@ export interface TeleportDialogProps {
   targets: ReadonlyArray<{ id: string; name: string }>;
   /** The repository field for a host (the folder picker, in the app). */
   repoField(hostId: string, value: string, onChange: (path: string) => void): ReactNode;
+  /** The names of the hosts, the source and `target`, reached over plain `ws://` off this machine. */
+  plain?(target: string): string[];
   run(args: TeleportRunArgs): Promise<TeleportOutcome>;
   onOpen(hostId: string, sessionId: string): void;
   onClose(): void;
@@ -74,6 +76,7 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
   const stop = useRef<AbortController | null>(null);
   const closed = useRef(false);
   const host = props.targets.find((h) => h.id === target)?.name ?? "";
+  const plain = target ? (props.plain?.(target) ?? []) : [];
 
   /** The dialog closes once, whatever closes it: the person, then the run that ends after. */
   const close = () => {
@@ -148,6 +151,12 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
         <DialogHeader>
           <DialogTitle>{t("teleportUi.title")}</DialogTitle>
         </DialogHeader>
+        {plain.length > 0 &&
+          (phase.at === "pick" || phase.at === "preparing" || phase.at === "confirm") && (
+            <p role="note" className="font-medium text-sm">
+              {t("teleportUi.plainWs", { n: plain.length, hosts: plain.join(", ") })}
+            </p>
+          )}
         {(phase.at === "pick" || phase.at === "preparing") && (
           <Form variant="dialog" onSubmit={begin}>
             <NativeSelect

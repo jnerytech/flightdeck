@@ -20,7 +20,15 @@ const SPENT: Record<string, number> = { h1: 2, h2: 5 };
 const usage: UsageSummary = { days: 7, rows: [] };
 
 function setup(
-  options: { language?: "en" | "pt-BR"; kept?: string; offline?: string; hosts?: string[] } = {},
+  options: {
+    language?: "en" | "pt-BR";
+    kept?: string;
+    offline?: string;
+    connecting?: string;
+    hosts?: string[];
+    /** Whether the host list was read yet (#212); read by default. */
+    loaded?: boolean;
+  } = {},
 ) {
   const platform = memoryPlatform(false, options.language ?? "en").platform;
   if (options.kept) platform.storage.setItem(DATA_SCOPE_KEY, options.kept);
@@ -37,18 +45,19 @@ function setup(
     summary.totals.costUsd = spent;
     return { ok: true, data: summary };
   }) as never;
-  const names: Record<string, string> = { h1: "alfa", h2: "beta" };
+  const names: Record<string, string> = { h1: "alfa", h2: "beta", h3: "gama" };
   const hosts = (options.hosts ?? ["h1", "h2"]).map((id) => ({
     id,
     name: names[id],
-    status: options.offline === id ? "offline" : "online",
+    status:
+      options.offline === id ? "offline" : options.connecting === id ? "connecting" : "online",
     hostInfo: { daemonVersion: "x", features: ["costs"] },
     sessions: [],
   }));
   const state = {
     ...store.getState(),
     hosts,
-    hostsLoaded: true,
+    hostsLoaded: options.loaded ?? true,
     budgets: {},
   } as never as ReturnType<typeof store.getState>;
   render(<HomePage store={store} state={state} go={() => {}} />);
@@ -59,12 +68,12 @@ function setup(
 const spend = (name = "Open Spend") => screen.queryByRole("button", { name })?.textContent ?? "";
 const pick = async (menu: string, item: string) => {
   const trigger = screen.queryByRole("button", { name: menu });
-  if (!trigger) return;
+  if (!trigger) throw new Error(`no menu named ${menu}`);
   await act(async () => {
     fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
   });
   const entry = screen.queryByRole("menuitemradio", { name: item });
-  if (!entry) return;
+  if (!entry) throw new Error(`no item named ${item}`);
   await act(async () => {
     fireEvent.click(entry);
   });
@@ -75,9 +84,10 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     const { asked, storage } = setup();
     await settle(() => /\$7\.00/.test(spend()));
     const all = /\$7\.00/.test(spend());
-    await pick("Data from All hosts", "alfa");
     const since = asked.length;
-    await settleMaybe(() => /\$2\.00/.test(spend()));
+    await pick("Data from All hosts", "alfa");
+    // alfa's numbers are on screen: the read that followed the pick is done.
+    await settle(() => /\$2\.00/.test(spend()));
     expect({
       all,
       alfa: /\$2\.00/.test(spend()),
@@ -95,17 +105,66 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     });
   });
 
+  // Review of #837: the page's subtitle says whose numbers they are, as the menu does.
+  test("the subtitle names the scoped host, or every host", async () => {
+    setup();
+    await settle(() => /\$7\.00/.test(spend()));
+    const all = screen.queryByText("Last 7 days · all hosts") !== null;
+    await pick("Data from All hosts", "alfa");
+    await settle(() => /\$2\.00/.test(spend()));
+    expect({ all, alfa: screen.queryByText("Last 7 days · alfa") !== null }).toEqual({
+      all: true,
+      alfa: true,
+    });
+  });
+
+  // Review of #837: a kept host missing from a list not read yet is not gone, so Home asks
+  // nobody for numbers the person chose not to see; once the list is read without it, it is.
+  test("a kept host not listed yet asks no host; once the list is read without it, Home adds up all", async () => {
+    const early = setup({ kept: '{"kind":"host","hostId":"h1"}', hosts: ["h2"], loaded: false });
+    await settleMaybe(() => early.asked.length > 0, 400);
+    const before = [...early.asked];
+    cleanup();
+    setup({ kept: '{"kind":"host","hostId":"h1"}', hosts: ["h2"] });
+    await settle(() => /\$5\.00/.test(spend()));
+    expect({ before, after: /\$5\.00/.test(spend()) }).toEqual({ before: [], after: true });
+  });
+
+  // Review of #856: until the list is read, the kept host has no name to show, and "all hosts"
+  // would mislead: the subtitle names no scope, and the menu waits for the list.
+  test("before the host list is read, a kept host's scope is not called all hosts", async () => {
+    setup({ kept: '{"kind":"host","hostId":"h1"}', hosts: ["h2", "h3"], loaded: false });
+    const all = () =>
+      screen.queryByText("Last 7 days · all hosts") !== null ||
+      screen.queryByRole("button", { name: "Data from All hosts" }) !== null;
+    await settleMaybe(all, 300);
+    expect({ all: all(), plain: screen.queryByText("Last 7 days") !== null }).toEqual({
+      all: false,
+      plain: true,
+    });
+  });
+
+  // Review of #837: a scoped host still connecting is not offline; Home does not offer to leave it.
+  test("a scoped host that is connecting offers no way out of the scope", async () => {
+    setup({ kept: '{"kind":"host","hostId":"h1"}', connecting: "h1" });
+    const offered = () => screen.queryByRole("button", { name: "Show all hosts" }) !== null;
+    await settleMaybe(offered, 400);
+    expect({
+      offered: offered(),
+      menu: screen.queryByRole("button", { name: "Data from alfa" }) !== null,
+    }).toEqual({ offered: false, menu: true });
+  });
+
   test("a kept scope whose host is offline says so and offers every host", async () => {
     setup({ kept: '{"kind":"host","hostId":"h1"}', offline: "h1" });
-    await settleMaybe(() => screen.queryByText(/alfa is offline/) !== null);
+    await settle(() => screen.queryByText(/alfa is offline/) !== null);
     const said = screen.queryByText(/alfa is offline/) !== null;
     const all = screen.queryByRole("button", { name: "Show all hosts" });
-    if (all) {
-      await act(async () => {
-        fireEvent.click(all);
-      });
-    }
-    await settleMaybe(() => /\$5\.00/.test(spend()));
+    if (!all) throw new Error("no Show all hosts button");
+    await act(async () => {
+      fireEvent.click(all);
+    });
+    await settle(() => /\$5\.00/.test(spend()));
     expect({ said, offered: all !== null, beta: /\$5\.00/.test(spend()) }).toEqual({
       said: true,
       offered: true,

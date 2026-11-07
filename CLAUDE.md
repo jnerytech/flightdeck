@@ -71,7 +71,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (#444). The e2e journeys run when the change touches what they read (the screens, the journeys,
   the demo, the daemon). Windows is not part of a PR's or a push's run (#534): the person tests it
   by hand. The schedule (every 3 hours) and a run by hand run the whole suite with the whole-repo
-  100% gate, Windows included as a signal that gates nothing (`test:shards`, 30 s per test there);
+  100% gate (on Linux, 3 shards × Bun lines and istanbul functions, merged fail-closed by
+  `scripts/shard-gate.ts`, #296), Windows included as a signal that gates nothing (`test:shards`, 30 s per test there);
   `pr tag` tags only a commit with such a full green run. `bun run test:tiers` prints the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test

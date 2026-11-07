@@ -266,8 +266,13 @@ export function Sidebar(
     new: t("sidebar.badgeNew"),
   };
   const version = props.appVersion ?? APP_VERSION;
+  // What the person hid from the account menu: the badges, What's new (issue #282).
+  const shellPrefs = useSyncExternalStore(
+    props.store.shellPrefs.subscribe,
+    () => props.store.shellPrefs.value,
+  );
   const badgeOf = (key: NavBadgeKey) => {
-    const kind = navBadge(key, version);
+    const kind = shellPrefs.hideBadges ? null : navBadge(key, version);
     return kind ? badges[kind] : undefined;
   };
   const here = props.route ? activeNav(props.route) : null;
@@ -830,12 +835,18 @@ export function Sidebar(
           density={density}
           onDensity={(next) => props.store.density.set(next)}
           onCopy={(text) => void props.store.copyText(text)}
+          hideBadges={shellPrefs.hideBadges}
+          onHideBadges={(hide) => props.store.shellPrefs.set({ hideBadges: hide })}
+          hideWhatsNew={shellPrefs.hideWhatsNew}
+          onHideWhatsNew={(hide) => props.store.shellPrefs.set({ hideWhatsNew: hide })}
+          hideSetup={setupHidden}
+          onHideSetup={(hide) => props.store.setup.setHidden(hide)}
           onCheckUpdates={() => {
             go({ name: "settings" });
             void props.store.checkAppUpdate();
           }}
           onShortcuts={() => props.onShortcuts?.()}
-          hasNew={whatsNewDot}
+          hasNew={whatsNewDot && !shellPrefs.hideWhatsNew}
           onWhatsNew={() => props.onWhatsNew?.()}
           onOpenManual={() =>
             void props.store.openLink(

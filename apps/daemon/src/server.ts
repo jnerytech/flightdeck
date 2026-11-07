@@ -458,6 +458,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.watch, "watch"),
     // Issue #77: a card's watch takes more rounds.
     ...when(opts.watch, "watch.extend"),
+    ...when(opts.watch, "watch.resolveHeld"),
     ...when(opts.names, "names"),
   ];
 }
@@ -916,6 +917,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, watching().set(command.payload.cardId, command.payload.enabled));
       case "watch.get":
         return ok(command.type, watching().info(command.payload.cardId));
+      case "watch.resolveHeld": {
+        const { cardId, roundId, action } = command.payload;
+        return ok(command.type, await watching().resolveHeld(cardId, roundId, action));
+      }
       case "watch.extend":
         return ok(command.type, watching().extend(command.payload.cardId, command.payload.rounds));
       case "watch.trace":

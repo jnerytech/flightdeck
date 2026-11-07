@@ -39,9 +39,10 @@ describe("ci-ubuntu-split (#293)", () => {
   test("the suite runs alone, after quick, and hands its lcov report on as an artifact", () => {
     const suite = job("test-suite");
     expect(suite.name).toBe(`test suite (ubuntu-latest)${SUFFIX}`);
-    expect(suite.needs).toEqual(["quick"]);
-    expect(suite.if).toBe(DISPATCH);
-    expect(runs("test-suite")).toContain("bun run test");
+    // After the shards (#296), and even when one failed: the merge then fails closed, by name.
+    expect(suite.needs).toEqual(["quick", "test-shard"]);
+    expect(suite.if).toBe(`!cancelled() && needs.quick.result == 'success' && (${DISPATCH})`);
+    expect(runs("test-suite")).toContain("bun run scripts/shard-gate.ts merge");
     for (const gone of ["Smokes", "SonarCloud", "cargo check do app"]) {
       expect(`${gone}: ${suite.steps.some((s) => s.name === gone)}`).toBe(`${gone}: false`);
     }

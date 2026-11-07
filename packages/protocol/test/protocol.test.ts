@@ -272,6 +272,7 @@ const validCommands: Record<CommandType, unknown> = {
   "watch.set": { cardId: "c1", enabled: true },
   "watch.get": { cardId: "c1" },
   "watch.extend": { cardId: "c1", rounds: 2 },
+  "watch.resolveHeld": { cardId: "c1", roundId: "r1", action: "push" },
   "watch.trace": { cardId: "c1" },
   "watch.byUrl": { url: "https://dev.azure.com/acme/proj/_git/repo/pullrequest/9" },
   "watch.describe": { cardId: "c1" },

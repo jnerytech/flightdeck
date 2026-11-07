@@ -39,12 +39,23 @@ export function HomePage(
 ) {
   const { store, state, go } = props;
   const { t, lang } = store.i18n;
-  // The data scope (#126): Home adds up only the hosts in it; a host no longer there means all.
+  // The data scope (#126): Home adds up only the hosts in it; a host no longer there means all,
+  // once the host list is read (before, a kept host is only not listed yet, and Home asks nobody).
   const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
-  const scope = activeScope(kept, state.hosts);
-  const hosts = scopeHosts(state.hosts, scope);
-  /** The scoped host, when it is offline: Home says so instead of showing nothing. */
-  const away = scope.kind === "host" ? hosts.find((host) => host.status !== "online") : undefined;
+  const scope = activeScope(kept, state.hosts, state.hostsLoaded);
+  const hosts = useMemo(() => scopeHosts(state.hosts, scope), [state.hosts, scope]);
+  /** The scoped host, when it is offline (not still connecting): Home says so and offers all. */
+  const away =
+    scope.kind === "host"
+      ? hosts.find((host) => host.status !== "online" && host.status !== "connecting")
+      : undefined;
+  /** The subtitle says whose numbers they are, as the scope menu does. */
+  const scoped = scope.kind === "host" ? hosts[0]?.name : undefined;
+  // A kept host not listed yet has no name: the subtitle names no scope rather than "all hosts".
+  const subtitle = (() => {
+    if (scope.kind === "all") return t("home.range");
+    return scoped ? t("home.rangeHost", { host: scoped }) : t("home.rangeDays");
+  })();
   const online = hosts.filter((host) => host.status === "online");
   const key = online.map((host) => host.id).join(",");
   /** The cache's entry: every host of the set, whether it is online now or not. */
@@ -233,9 +244,9 @@ export function HomePage(
   return (
     <Page
       title={t("home.title")}
-      subtitle={t("home.range")}
+      subtitle={subtitle}
       toolbar={
-        state.hosts.length > 1 ? (
+        state.hostsLoaded && state.hosts.length > 1 ? (
           <ScopeMenu store={store} hosts={state.hosts} scope={scope} />
         ) : undefined
       }
