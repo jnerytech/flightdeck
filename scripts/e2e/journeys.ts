@@ -1219,6 +1219,63 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByText(c.t("projectsOverview.subtitle"), { exact: true })
       .waitFor({ timeout: WAIT });
   },
+
+  // Issue #669: Board in the sidebar lands on the host's projects as cards (a filter box past six);
+  // a card opens its board, and the next Board opens that same board without asking again.
+  "board-landing": async (c) => {
+    await open(c, { name: "hub" });
+    const board = c.page.getByRole("button", { name: c.t("sidebar.board"), exact: true });
+    const cards = c.page.locator("[data-slot='board-card']");
+    const newCard = c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true });
+    await board.click();
+    await cards.first().waitFor({ timeout: WAIT });
+    if ((await cards.count()) < 7) throw new Error("o Board deveria mostrar um card por projeto");
+    // Every card says what it holds: its columns (or that it has no cards yet) and its sessions.
+    const facts = c.page.locator("[data-slot='board-card-columns']");
+    if ((await facts.count()) !== (await cards.count()))
+      throw new Error("cada card deveria dizer o que tem nas colunas");
+    // More than six projects: the filter box narrows to one by name.
+    const filter = c.page.getByRole("textbox", { name: c.t("boardLanding.filter"), exact: true });
+    await filter.fill("design-system");
+    await waitFor(async () => (await cards.count()) === 1, "só o design-system");
+    await filter.fill("zzz-sem-projeto");
+    await c.page.getByText(c.t("boardLanding.noMatch"), { exact: true }).waitFor({ timeout: WAIT });
+    await filter.fill("design-system");
+    // The card opens its board.
+    await c.page
+      .getByRole("button", { name: c.t("projectsUi.openBoard", { name: "design-system" }) })
+      .click();
+    await newCard.waitFor({ timeout: WAIT });
+    // Board again: the board opened last, not the picker.
+    await c.page.getByRole("button", { name: c.t("sidebar.openSessions"), exact: true }).click();
+    await board.click();
+    await newCard.waitFor({ timeout: WAIT });
+    if ((await cards.count()) !== 0) throw new Error("o Board deveria abrir o último quadro");
+  },
+
+  // Issue #730: with no host online, Sessions is not a dead end: it says so and offers Add a host.
+  // The demo's other hosts are offline, so removing the two online ones leaves none to list.
+  "sessions-no-host": async (c) => {
+    await open(c, { name: "hub" });
+    for (const host of ["alfa", "beta"]) {
+      await c.page
+        .getByRole("button", { name: c.t("sidebar.hostMenu", { host }), exact: true })
+        .click();
+      await c.page.getByRole("menuitem", { name: c.t("sidebar.removeHost"), exact: true }).click();
+      await c.page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: c.t("sidebar.removeHost"), exact: true })
+        .click();
+      await c.page
+        .getByRole("button", { name: c.t("sidebar.hostMenu", { host }), exact: true })
+        .waitFor({ state: "detached", timeout: WAIT });
+    }
+    await c.page.getByText(c.t("hub.noOnlineHost"), { exact: true }).waitFor({ timeout: WAIT });
+    await c.page.getByRole("button", { name: c.t("hub.addHost"), exact: true }).click();
+    await c.page.getByText(c.t("sidebar.addHostCrumb"), { exact: true }).first().waitFor({
+      timeout: WAIT,
+    });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

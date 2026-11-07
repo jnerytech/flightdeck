@@ -53,7 +53,6 @@ export function HostForm(
 
   return (
     <Form
-      className="mx-auto p-6"
       onSubmit={() => {
         if (!draft.name.trim() || !draft.address.trim() || !draft.token.trim()) {
           setProblem(t("hostForm.missing"));

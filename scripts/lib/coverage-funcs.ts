@@ -155,9 +155,11 @@ export function planCoverageFuncs({
       env: {},
     };
   }
-  // #674: a worker's run over many test files holds the slot for what the PR's CI does anyway.
+  // #674: a run over many test files holds the slot for what the PR's CI does anyway. #725: no
+  // coordinator exemption here: this process's environment is the command's, which a worker sets
+  // (export, --env-file); the guard hook reads the session's own. Everyone gives a reason.
   let slotHeavy: CoveragePlan["slotHeavy"];
-  if (env && !env.FLIGHTDECK_COORDINATOR && related.length > HEAVY_TESTS) {
+  if (env && related.length > HEAVY_TESTS) {
     const reason = env.FLIGHTDECK_SLOT_HEAVY;
     if (reason === undefined || !heavyReasonGiven(reason)) {
       const what = `\`bun run coverage:funcs\` over ${related.length} test files`;

@@ -33,6 +33,8 @@ export const JOURNEYS: readonly string[] = [
   "activity",
   "health-fold",
   "project-tree-cap",
+  "board-landing",
+  "sessions-no-host",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
