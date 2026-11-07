@@ -164,8 +164,9 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
   );
   const ref = `refs/flightdeck/teleport/${input.id}`;
   const file = join(input.folder, "code");
-  await must(top, ["update-ref", ref, wip], {}, signal);
   try {
+    // Inside the try: an abort that kills update-ref after the ref is in place still removes it.
+    await must(top, ["update-ref", ref, wip], {}, signal);
     await must(top, ["bundle", "create", "-q", file, ref, `^${base}`], {}, signal);
   } finally {
     // git-arg: the ref is made here, from a package id checked against ID
@@ -177,8 +178,8 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
     throw refuse("teleport_too_large", { max });
   }
   const bytes = await readFile(file);
-  const ahead = Number(await must(top, ["rev-list", "--count", `${base}..${head}`]));
-  const names = await must(top, ["diff", "--no-ext-diff", "--name-only", head, wip]);
+  const ahead = Number(await must(top, ["rev-list", "--count", `${base}..${head}`], {}, signal));
+  const names = await must(top, ["diff", "--no-ext-diff", "--name-only", head, wip], {}, signal);
   // Everything that moves, commit by commit: a secret one commit added and a later one removed
   // still travels in the bundle. Only added lines.
   // The text is read up to `max`: past it, the scan would count only part of what moves.
