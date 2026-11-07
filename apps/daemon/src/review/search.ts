@@ -132,11 +132,25 @@ export async function searchRepository(
   }
   running += 1;
   try {
-    return await search(root, input, opts);
+    if (opts.signal?.aborted) throw superseded();
+    const result = await search(root, input, opts);
+    // Aborted while it ran: what the killed programs left is not an answer.
+    if (opts.signal?.aborted) throw superseded();
+    return result;
+  } catch (error) {
+    throw opts.signal?.aborted ? superseded() : error;
   } finally {
     running -= 1;
   }
 }
+
+/** A newer search from the same connection replaced this one (#905). */
+const superseded = () =>
+  new FlightdeckError(
+    "invalid_state",
+    "the search was replaced by a newer one",
+    "search_superseded",
+  );
 
 async function search(root: string, input: Search, opts: SearchOptions): Promise<FileSearchResult> {
   const realRoot = await realpath(root);
@@ -147,6 +161,9 @@ async function search(root: string, input: Search, opts: SearchOptions): Promise
     // git-arg: fixed options only
     [...GIT_SAFE, "rev-parse", "--show-toplevel"],
     opts.timeoutMs ?? TIMEOUT_MS,
+    undefined,
+    undefined,
+    opts.signal,
   );
   if (top.code !== 0) throw notRepository(root);
   // A `core.worktree` in the repository's config sends git to another tree: its files are not
@@ -204,6 +221,7 @@ async function byName(root: string, query: string, opts: SearchOptions): Promise
     opts.timeoutMs ?? TIMEOUT_MS,
     undefined,
     NUL,
+    opts.signal,
   );
   if (result.code !== 0 && !cut(result)) throw notRepository(root);
   const wanted = query.toLowerCase();
@@ -246,6 +264,9 @@ async function withRg(rg: string, root: string, query: string, opts: SearchOptio
     root,
     opts.maxBytes ?? MAX_BYTES,
     opts.timeoutMs ?? TIMEOUT_MS,
+    undefined,
+    undefined,
+    opts.signal,
   );
   const matches: FileSearchMatch[] = [];
   for (const line of result.stdout.split("\n")) {
@@ -291,6 +312,9 @@ async function withGitGrep(root: string, query: string, opts: SearchOptions): Pr
       query,
     ],
     opts.timeoutMs ?? TIMEOUT_MS,
+    undefined,
+    undefined,
+    opts.signal,
   );
   if (result.code > 1 && !cut(result)) throw failed("git grep", result.code);
   const matches: FileSearchMatch[] = [];
