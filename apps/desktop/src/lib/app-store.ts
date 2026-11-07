@@ -183,6 +183,7 @@ import {
 import { savePayload } from "./ssh.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
+import type { TeleportRequest } from "./teleport.ts";
 import {
   isLocalUrl,
   type TerminalEnv,
@@ -562,6 +563,8 @@ export interface Settings {
   /** Issue #280: a newer version downloads by itself, to install on a restart (on by default). */
   autoUpdate: boolean;
   updaterSupported: boolean;
+  /** Issue #100: the preview of moving a session to another host (off by default). */
+  teleportPreview: boolean;
 }
 
 export interface AppStoreOptions {
@@ -818,6 +821,8 @@ const PALETTE_RECENTS_KEPT = 12;
 export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
 /** Issue #280: the app downloads a newer version by itself; "false" turns it off. */
 export const AUTO_UPDATE_KEY = "flightdeck.autoUpdate";
+/** Issue #100: "true" turns on the preview of moving a session to another host. */
+export const TELEPORT_PREVIEW_KEY = "flightdeck.teleportPreview";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
@@ -1077,6 +1082,7 @@ export class AppStore {
         notifyUpdates: true,
         autoUpdate: true,
         updaterSupported: platform.updater.supported,
+        teleportPreview: false,
       },
     };
   }
@@ -1270,6 +1276,8 @@ export class AppStore {
     const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
     const notifyUpdates = this.platform.storage.getItem(NOTIFY_UPDATES_KEY) !== "false";
     const autoUpdate = this.platform.storage.getItem(AUTO_UPDATE_KEY) !== "false";
+    // A preview: on only when the person turned it on.
+    const teleportPreview = this.platform.storage.getItem(TELEPORT_PREVIEW_KEY) === "true";
     this.update({
       settings: {
         ...this.state.settings,
@@ -1278,6 +1286,7 @@ export class AppStore {
         globalShortcut,
         notifyUpdates,
         autoUpdate,
+        teleportPreview,
       },
     });
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
@@ -2973,6 +2982,17 @@ export class AppStore {
   setAutoUpdate(enabled: boolean): void {
     this.platform.storage.setItem(AUTO_UPDATE_KEY, String(enabled));
     this.update({ settings: { ...this.state.settings, autoUpdate: enabled } });
+  }
+
+  setTeleportPreview(enabled: boolean): void {
+    this.platform.storage.setItem(TELEPORT_PREVIEW_KEY, String(enabled));
+    this.update({ settings: { ...this.state.settings, teleportPreview: enabled } });
+  }
+
+  /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
+  teleportRequest(hostId: string): TeleportRequest {
+    return ((type, payload) =>
+      this.dispatch(hostId, type as HostCommandType, payload as never)) as TeleportRequest;
   }
 
   setNotifyUpdates(enabled: boolean): void {
