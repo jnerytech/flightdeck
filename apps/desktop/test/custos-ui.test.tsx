@@ -38,7 +38,7 @@ const choose = async (label: string, value: string) => {
   });
 };
 
-/** Picks a host in the data scope menu of the Costs toolbar (#126). */
+/** Picks a host or a project in the data scope menu of the Costs toolbar (#126). */
 const pickScope = async (name: string) => {
   const trigger = screen
     .getAllByRole("button")
@@ -266,17 +266,20 @@ describe("custos-ui", () => {
     await act(async () => store.router.push({ name: "costs", host, projectKey: "kB" }));
     await settle(() => text("Custo estimado") === "US$ 0.50");
     expect(text("Custo estimado")).toBe("US$ 0.50");
-    expect((screen.queryByLabelText("Projeto") as HTMLSelectElement).value).toBe("kB");
+    // The project is the visit's scope (#126 slice 4): the Dados de menu names it.
+    expect(screen.queryByRole("button", { name: "Dados de kB" }) === null).toBe(false);
   });
 
-  test("filtros por projeto, modelo e origem", async () => {
+  test("filtros por projeto (no escopo), modelo e origem", async () => {
     await online();
     await click("Custos");
     await settle(() => text("Custo estimado") === "US$ 4.00");
-    await choose("Projeto", "kB");
+    // The project is the data scope's (#126 slice 4), in the Dados de menu.
+    await pickScope("kB");
     await settle(() => text("Custo estimado") === "US$ 0.50");
     expect(text("Custo estimado")).toBe("US$ 0.50");
-    await choose("Projeto", "");
+    await pickScope("Todos os hosts");
+    await settle(() => text("Custo estimado") === "US$ 4.00");
     await choose("Modelo", "claude-opus-5-5");
     await settle(() => text("Custo estimado") === "US$ 3.50");
     expect(text("Custo estimado")).toBe("US$ 3.50");
