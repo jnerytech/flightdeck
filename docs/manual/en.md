@@ -869,7 +869,7 @@ An idle session can continue on another host: its conversation, its commits and 
 1. In the session's menu (the "…" on its row), pick **Move to another host…**.
 2. Pick the host and type the repository there. It must be the same project, so that host must already have a clone of it.
 3. Read what moves: the branch, the commits not on origin yet, the files changed, the size, and how many lines look like secrets. The secrets themselves are never shown, and they move as they are.
-4. Press **Move**, then **Open it there**.
+4. Press **Move**, then **Open it there**. Once every byte is sent you can close the window: when the move ends, a toast says so, with **Open it there**, or says why it was refused.
 
 On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here stays as it was. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them.
 

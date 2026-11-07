@@ -100,7 +100,7 @@ const closeForm = async () => {
 };
 
 /** The move reaches the point where the target imports: every byte is sent. */
-async function untilFinishing(move: Awaited<ReturnType<typeof setup>>["move"]) {
+async function reachFinishing(move: Awaited<ReturnType<typeof setup>>["move"]) {
   const summary = { branch: "feature", ahead: 0, changed: 0, bytes: 10, secretLines: 0 };
   await act(async () => {
     void move.args?.confirm(summary);
@@ -120,7 +120,7 @@ const toasts = (store: InstanceType<typeof AppStore>) =>
 describe("teleport-toast: a move that ends after its dialog closed says so (#100)", () => {
   test("moved: a toast names the host and opens the session there", async () => {
     const { store, move, to, closed } = await setup();
-    await untilFinishing(move);
+    await reachFinishing(move);
     await closeForm();
     expect(closed()).toBe(1);
     await act(async () => {
@@ -138,7 +138,7 @@ describe("teleport-toast: a move that ends after its dialog closed says so (#100
 
   test("refused: a toast with the app's own text, never the host's words", async () => {
     const { store, move } = await setup();
-    await untilFinishing(move);
+    await reachFinishing(move);
     await closeForm();
     await act(async () => {
       move.fail?.(new RequestError("conflict", "the host says: /etc/passwd", "teleport_too_large"));
@@ -154,7 +154,7 @@ describe("teleport-toast: a move that ends after its dialog closed says so (#100
 
   test("a move that ends while the dialog is open adds no toast: the dialog says it", async () => {
     const { store, move } = await setup();
-    await untilFinishing(move);
+    await reachFinishing(move);
     await act(async () => {
       move.end?.({ kind: "moved", sessionId: "s2", worktree: "/work/app-2", branch: "feature" });
     });
@@ -166,7 +166,7 @@ describe("teleport-toast: a move that ends after its dialog closed says so (#100
 
   test("a move the person cancelled leaves no toast", async () => {
     const { store, move, closed } = await setup();
-    await untilFinishing(move);
+    await reachFinishing(move);
     await closeForm();
     await act(async () => {
       move.end?.({ kind: "cancelled" });

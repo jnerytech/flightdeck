@@ -863,7 +863,7 @@ Uma sessão ociosa pode continuar em outro host: a conversa, os commits e as mud
 1. No menu da sessão (o "…" na linha dela), escolha **Mover para outro host…**.
 2. Escolha o host e digite o repositório lá. Tem de ser o mesmo projeto, então esse host já precisa ter um clone dele.
 3. Leia o que vai: a branch, os commits ainda fora do origin, os arquivos alterados, o tamanho e quantas linhas parecem segredos. Os segredos em si nunca aparecem, e eles vão como estão.
-4. Aperte **Mover** e depois **Abrir lá**.
+4. Aperte **Mover** e depois **Abrir lá**. Depois que todos os bytes foram enviados, você pode fechar a janela: quando a mudança termina, um aviso diz isso, com **Abrir lá**, ou diz por que foi recusada.
 
 No outro host o código fica numa worktree nova desse repositório, numa branch própria, e a sessão continua de onde parou. A sessão daqui fica como estava. Arquivos guardados no Git LFS chegam como ponteiros: rode `git lfs pull` na worktree para buscá-los.
 

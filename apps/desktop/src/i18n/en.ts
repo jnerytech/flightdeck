@@ -2756,6 +2756,7 @@ export const en: Dictionary = {
     done: "The session is on {host} now. The one here stays as it was.",
     open: "Open it there",
     close: "Close",
+    movedToast: "The session moved to {host}.",
     preview: "Preview: move a session to another host",
   },
   automationsUi: {

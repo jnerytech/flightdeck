@@ -2758,6 +2758,7 @@ export const ptBR = {
     done: "A sessão está agora em {host}. A daqui fica como estava.",
     open: "Abrir lá",
     close: "Fechar",
+    movedToast: "A sessão foi movida para {host}.",
     preview: "Prévia: mover uma sessão para outro host",
   },
   automationsUi: {
