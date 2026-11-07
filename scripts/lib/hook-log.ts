@@ -115,7 +115,11 @@ function parseEntry(line: string): HookLogEntry | null {
       typeof e?.hook === "string" &&
       typeof e.ms === "number" &&
       typeof e.t === "string" &&
+      /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(e.t) &&
+      printable(e.hook) === e.hook &&
+      (e.rule === null || (typeof e.rule === "string" && printable(e.rule) === e.rule)) &&
       (e.detail === undefined || typeof e.detail === "string") &&
+      (e.minutes === undefined || typeof e.minutes === "number") &&
       ["allow", "block", "waived"].includes(e.decision);
     return ok ? (e as HookLogEntry) : null;
   } catch {

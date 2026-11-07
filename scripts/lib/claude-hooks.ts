@@ -830,7 +830,7 @@ export function withBudget<A extends unknown[], R>(
   now: () => number,
   limit: number,
 ): (...args: A) => R | null {
-  return (...args) => (limit < 0 && now() < 0 ? fn(...args) : null);
+  return (...args) => (now() > limit ? null : fn(...args));
 }
 
 /** Text with control, format (bidi, zero-width), surrogate, private-use and line-separator characters out. */
@@ -845,9 +845,9 @@ export function printable(text: string): string {
 const TOKEN_SHAPES: readonly RegExp[] = [
   /(?:gh[pousr]_|github_pat_)\w+/g,
   /glpat-[\w-]+/g,
-  /npm_\w+/g,
+  /\bnpm_\w+/g,
   /xox[abprs]-[\w-]+/g,
-  /sk-[\w-]{16,}/g,
+  /\bsk-[\w-]{16,}/g,
   /AKIA[0-9A-Z]{16}/g,
   /eyJ[\w-]+\.[\w-]+\.[\w-]+/g,
 ];
@@ -859,7 +859,10 @@ function redacted(text: string): string {
     text.replace(/:\/\/[^/@\s]+@/g, "://***@"),
   )
     .replace(/\b(Authorization:)\s*(?:(?:Basic|Bearer|Token)\s+)?\S+/gi, "$1 ***")
-    .replace(/--(token|password|secret)([= ])(?:"[^"]*"|'[^']*'|\S+)/gi, "--$1$2***")
+    .replace(
+      /--((?:\w+-)*(?:token|password|passwd|secret|key))([= ])(?:"[^"]*"|'[^']*'|\S+)/gi,
+      "--$1$2***",
+    )
     .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
     .replace(
       /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
@@ -882,10 +885,21 @@ function pushNowOverride(
     const reason = prefixAssignment(command.slice(call.start, call.end), "FLIGHTDECK_PUSH_NOW");
     if (!heavyReasonGiven(reason)) continue;
     const dir = call.dir;
-    // A checkout outside the project is not the rule's: no waiver, and gh is not asked there.
+    // A checkout outside the project is not the rule's: no waiver, and gh is not asked there. A
+    // folder the parse cannot tell (dir null) still logs the reason alone: an upper bound.
     if (dir !== null && push?.deps.inProject && !push.deps.inProject(dir)) continue;
     // Unprintable characters go first, so none reaches the terminal and none splits a secret.
-    const detail = redacted(printable(reason ?? "").trim()).slice(0, 200);
+    // Cut before the redaction too, so its regexes never scan an unbounded reason; the last cut
+    // counts characters, never splitting one in two.
+    const detail = Array.from(
+      redacted(
+        printable(reason ?? "")
+          .trim()
+          .slice(0, 2000),
+      ),
+    )
+      .slice(0, 200)
+      .join("");
     if (!push || dir === null) return { detail };
     const ages = pushedBranches(call, (args) => push.deps.git(args, dir)).flatMap((branch) => {
       const run = push.deps.prRun(branch, dir);

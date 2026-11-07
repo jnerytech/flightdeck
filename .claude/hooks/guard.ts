@@ -23,6 +23,7 @@ import {
   pushWaitViolation,
   slotViolation,
   testEditViolation,
+  withBudget,
 } from "../../scripts/lib/claude-hooks.ts";
 import { logHook } from "./log.ts";
 
@@ -67,7 +68,10 @@ if (typeof command === "string") {
     });
     return proc.status === 0 ? proc.stdout : null;
   };
-  const prRun = prRunVia(gh, Date.now);
+  const prRun = prRunVia(
+    withBudget(gh, () => performance.now(), 6000),
+    Date.now,
+  );
   push = { cwd, deps: { ...repo, env: process.env, prRun } };
   block("push-wait", pushWaitViolation(command, cwd, push.deps));
 }
@@ -85,15 +89,11 @@ if (typeof filePath === "string") {
     }),
   );
 }
-// The run's age is only for the log: past 6 s into the hook it is skipped, so the override's entry
-// is always written inside the hook's 10 s (#821 review).
+// The run's age is only for the log: its git calls, like every gh call, start only in the first 6 s
+// of the hook, so each ends inside the hook's 10 s (approximately: gh 3 s, git 2 s; #826 review).
 const logged = push && {
   ...push,
-  deps: {
-    ...push.deps,
-    prRun: (branch: string, dir: string) =>
-      performance.now() > 6000 ? null : (push?.deps.prRun(branch, dir) ?? null),
-  },
+  deps: { ...push.deps, git: withBudget(push.deps.git, () => performance.now(), 6000) },
 };
 for (const { rule, decision, detail, minutes } of guardAllowLogs(command, process.env, logged)) {
   logHook("guard", rule, decision, { detail, minutes });
