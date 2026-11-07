@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { askAbout, contractOf, dragNeeds, missingFor } from "../src/lib/board-contracts.ts";
+import {
+  askAbout,
+  contractOf,
+  dragNeeds,
+  missingFor,
+  startNeeds,
+} from "../src/lib/board-contracts.ts";
 
 const card = (over: Partial<Card> = {}) =>
   ({
@@ -75,5 +81,27 @@ describe("board-contracts: a project's own contracts", () => {
     expect(dragNeeds("done", [card()], mine)).toEqual(["pr"]);
     const off = { review: { enforce: "confirm" as const, checks: [] } };
     expect(askAbout("review", [card()], off)).toEqual([]);
+  });
+});
+
+describe("board-contracts: what a card lacks for starting (issue #78, slice 3a)", () => {
+  test("a card with no acceptance criteria lacks them, and a checklist item is enough", () => {
+    expect(startNeeds(card({ description: "Just words." }))).toEqual(["criteria"]);
+    expect(startNeeds(card({ description: "Goal\n- [ ] it works" }))).toEqual([]);
+  });
+
+  test("a project can switch the question off, and only criteria are asked when starting", () => {
+    expect(startNeeds(card(), { in_progress: { enforce: "hint", checks: [] } })).toEqual([]);
+    const more = {
+      in_progress: { enforce: "hint" as const, checks: ["criteria" as const, "pr" as const] },
+    };
+    expect(startNeeds(card(), more)).toEqual(["criteria"]);
+    expect(startNeeds(card({ description: "- [ ] a" }), more)).toEqual([]);
+  });
+
+  test("a validation note is a need like the others", () => {
+    const asks = { review: { enforce: "confirm" as const, checks: ["validation" as const] } };
+    expect(missingFor("review", card(), asks)).toEqual(["validation"]);
+    expect(missingFor("review", card({ validationNote: "ran it" }), asks)).toEqual([]);
   });
 });

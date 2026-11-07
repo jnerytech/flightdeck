@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  Card,
   type ColumnContract,
   Command,
   contractOf,
@@ -106,5 +107,44 @@ describe("board-contracts: the wire", () => {
     expect(ErrorCode.options).toContain("contract_unmet");
     expect(DAEMON_REASONS).toContain("card_contract_unmet");
     expect(DAEMON_REASONS).toContain("card_moved_anyway");
+  });
+});
+
+describe("board-contracts: the validation note (issue #78, slice 3a)", () => {
+  const asks = { review: { enforce: "confirm", checks: ["validation"] } } as const;
+
+  test("a column can ask for a validation note, and a blank one does not count", () => {
+    expect(missingFor("review", card({}), asks)).toEqual(["validation"]);
+    expect(missingFor("review", { ...card({}), validationNote: "   " }, asks)).toEqual([
+      "validation",
+    ]);
+    expect(missingFor("review", { ...card({}), validationNote: "ran it by hand" }, asks)).toEqual(
+      [],
+    );
+    // No column asks for it unless a project says so.
+    expect(missingFor("review", card({ prUrl: "https://x/pr/1" }))).toEqual([]);
+  });
+
+  test("it is asked in the order the contract lists it", () => {
+    const both = { review: { enforce: "confirm", checks: ["validation", "pr"] } } as const;
+    expect(missingFor("review", card({}), both)).toEqual(["validation", "pr"]);
+  });
+
+  test("a card carries validationNote, empty for an older daemon, and card.update sets or clears it", () => {
+    const base = { id: "c", projectId: "p", title: "t", description: "", column: "backlog" };
+    expect(Card.safeParse(base).success).toBe(true);
+    expect(Card.parse(base).validationNote).toBeNull();
+    expect(Card.parse({ ...base, validationNote: "done by hand" }).validationNote).toBe(
+      "done by hand",
+    );
+    const update = (validationNote: unknown) =>
+      Command.safeParse({
+        type: "card.update",
+        id: "1",
+        payload: { cardId: "c", validationNote },
+      }).success;
+    expect(update("ran it")).toBe(true);
+    expect(update(null)).toBe(true);
+    expect(update("x".repeat(4001))).toBe(false);
   });
 });

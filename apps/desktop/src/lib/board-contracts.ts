@@ -63,3 +63,8 @@ export function dragNeeds(
     .flatMap((card) => missingFor(column, card, overrides));
   return [...new Set(needs)];
 }
+
+/** What a card lacks for starting. Stub. */
+export function startNeeds(_card: Card, _overrides: ContractOverrides = {}): Need[] {
+  return ["pr"];
+}

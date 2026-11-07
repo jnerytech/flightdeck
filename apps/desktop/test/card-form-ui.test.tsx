@@ -46,6 +46,7 @@ async function openCard(lang: "en" | "pt-BR", options: { alone?: boolean } = {})
       cardId: card.id,
     });
   });
+  return { d, card };
 }
 
 /** The visible `<label>` tied to a control found by its name, or why there is none. */
@@ -204,3 +205,61 @@ for (const [lang, t] of [
     });
   });
 }
+
+// Issue #78, slice 3a: the validation note and the question before starting.
+describe("card-form (en): the validation note and starting a card with no criteria", () => {
+  test("the validation note is a labelled field that saves on the card, and clears with empty text", async () => {
+    const { d, card } = await openCard("en");
+    await settle(() => screen.queryByLabelText("Description") !== null);
+    expect(screen.queryByLabelText("Validation note") === null).toBe(false);
+    const field = screen.getByLabelText("Validation note") as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "  Ran it by hand on the staging data.  " } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save validation note" }));
+    });
+    await settle(() => d.board.getCard(card.id).validationNote !== null);
+    expect(d.board.getCard(card.id).validationNote).toBe("Ran it by hand on the staging data.");
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save validation note" }));
+    });
+    await settle(() => d.board.getCard(card.id).validationNote === null);
+  });
+
+  test("Start asks first; Cancel starts nothing, Start anyway starts the card", async () => {
+    const { d, card } = await openCard("en");
+    const started = () =>
+      d.board.getCard(card.id).queued || d.board.getCard(card.id).sessionId !== null;
+    await settle(() => screen.queryByRole("button", { name: "Start" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    });
+    await settle(() => started() || screen.queryByRole("alertdialog") !== null);
+    expect(screen.queryByRole("alertdialog") === null).toBe(false);
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.textContent).toContain("acceptance criteria");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    });
+    expect(screen.queryByRole("alertdialog") === null).toBe(true);
+    expect(d.board.getCard(card.id).queued || d.board.getCard(card.id).sessionId !== null).toBe(
+      false,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    });
+    await settle(() => screen.queryByRole("alertdialog") !== null);
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Start anyway" }),
+      );
+    });
+    await settle(
+      () => d.board.getCard(card.id).queued || d.board.getCard(card.id).sessionId !== null,
+    );
+  });
+});
