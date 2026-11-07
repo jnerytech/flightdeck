@@ -696,8 +696,8 @@ export interface PrRun {
 }
 
 export interface PushWaitDeps extends PushGuardDeps {
-  /** The branch's latest PR run, or null when it has none or GitHub cannot be read (fail open). */
-  prRun: (branch: string) => PrRun | null;
+  /** The branch's latest PR run, read in `dir`; null when it has none or GitHub cannot be read (fail open). */
+  prRun: (branch: string, dir: string) => PrRun | null;
 }
 
 /**
@@ -745,7 +745,7 @@ export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDe
     if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) continue;
     const branch = deps.git(["symbolic-ref", "--short", "HEAD"], call.dir)?.trim();
     if (!branch) continue;
-    const run = deps.prRun(branch);
+    const run = deps.prRun(branch, call.dir);
     if (!run?.inProgress || run.failed || run.minutes >= PUSH_WAIT_MINUTES) continue;
     return `a push now cancels CI run ${run.id} on this branch's PR: ${run.minutes} min in, with no failure yet (#741). Batch the next commits with this one and push once the run ends, or put FLIGHTDECK_PUSH_NOW="<reason>" in front of the push.`;
   }

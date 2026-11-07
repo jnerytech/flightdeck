@@ -52,27 +52,21 @@ if (typeof command === "string") {
   };
   block("commit", commitViolation(command, cwd, repo));
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
-  // #741: gh is asked only for a push without an override; any failure reads as no run.
-  const gh = (args: string[]) => {
-    const proc = spawnSync("gh", args, { cwd, encoding: "utf8", timeout: 4000 });
+  // #741: gh is asked only for a push without an override, in the push's own checkout; any
+  // failure reads as no run. The branch goes as one `--branch=` word, so no name reads as a flag.
+  const gh = (args: string[], dir: string) => {
+    const proc = spawnSync("gh", args, { cwd: dir, encoding: "utf8", timeout: 4000 });
     return proc.status === 0 ? proc.stdout : null;
   };
-  const prRun = (branch: string) => {
-    const runs = gh([
-      "run",
-      "list",
-      "--branch",
-      branch,
-      "--event",
-      "pull_request",
-      "--limit",
-      "1",
-      "--json",
-      "databaseId,status,startedAt",
-    ]);
-    const id = /"databaseId":(\d+)/.exec(runs ?? "")?.[1];
-    const jobs = id ? gh(["run", "view", id, "--json", "jobs"]) : null;
-    return prRunFrom(runs, jobs, Date.now());
+  const prRun = (branch: string, dir: string) => {
+    const fields = "--json=databaseId,status,startedAt";
+    const runs = gh(
+      ["run", "list", `--branch=${branch}`, "--event=pull_request", "--limit=1", fields],
+      dir,
+    );
+    const first = prRunFrom(runs, '{"jobs":[]}', Date.now());
+    if (!first?.inProgress) return first;
+    return prRunFrom(runs, gh(["run", "view", String(first.id), "--json=jobs"], dir), Date.now());
   };
   block("push-wait", pushWaitViolation(command, cwd, { ...repo, env: process.env, prRun }));
 }
