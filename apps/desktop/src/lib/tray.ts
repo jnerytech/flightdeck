@@ -20,13 +20,20 @@ function trayActions(item: PendingItem): Array<"approve" | "deny" | "open"> {
 }
 
 /** The "Precisa de você" submenu for the open requests, oldest first, in `t`'s language. */
-export function trayMenu(items: PendingItem[], t: T = PT): TrayMenu {
+export function trayMenu(
+  items: PendingItem[],
+  t: T = PT,
+  /** Whether a host is in simple mode: its requests are told in the plain sentence (issue #88). */
+  simpleHost: (hostId: string) => boolean = () => false,
+): TrayMenu {
   const more = Math.max(0, items.length - TRAY_MENU_MAX);
   return {
     items: items.slice(0, TRAY_MENU_MAX).map((item) => {
       return {
         key: `${item.hostId}/${item.requestId}`,
-        label: `${item.hostName} · ${item.sessionName} · ${pendingText(item, t)}`,
+        label: `${item.hostName} · ${item.sessionName} · ${
+          simpleHost(item.hostId) && item.plain ? item.plain.sentence[t.lang] : pendingText(item, t)
+        }`,
         // A gate is answered in the app, and a high-risk request is approved by holding a button.
         // A vault grant is never approved here (#244): this line cannot show the secret and
         // parameters. Deny needs no hold, so both still offer it (#245).
