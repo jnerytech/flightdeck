@@ -218,7 +218,13 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
           </Form>
         )}
         {phase.at === "done" && (
-          <Form variant="dialog" onSubmit={() => props.onOpen(target, phase.sessionId)}>
+          <Form
+            variant="dialog"
+            onSubmit={() => {
+              props.onOpen(target, phase.sessionId);
+              close();
+            }}
+          >
             <p role="status">{t("teleportUi.done", { host })}</p>
             <FormActions
               submit={t("teleportUi.open")}
