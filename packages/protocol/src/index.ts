@@ -10,11 +10,14 @@ import {
 import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 import {
+  TeleportAbortPayload,
   TeleportCancelPayload,
   type TeleportChunk,
   type TeleportManifest,
   TeleportPreparePayload,
   TeleportReadPayload,
+  TeleportReceivePayload,
+  TeleportWritePayload,
 } from "./teleport.ts";
 
 export const PROTOCOL_VERSION = 1;
@@ -3077,6 +3080,10 @@ export const Command = z.discriminatedUnion("type", [
   cmd("teleport.prepare", TeleportPreparePayload),
   cmd("teleport.read", TeleportReadPayload),
   cmd("teleport.cancel", TeleportCancelPayload),
+  /** The target side (slice 2a). */
+  cmd("teleport.receive", TeleportReceivePayload),
+  cmd("teleport.write", TeleportWritePayload),
+  cmd("teleport.abort", TeleportAbortPayload),
   /** Phase 40: the AI assistant (feature `assistant`). */
   cmd("assistant.run", AssistantRunPayload),
   cmd("assistant.cancel", AssistantCancelPayload),
@@ -4800,6 +4807,9 @@ export interface CommandResults {
   "teleport.prepare": TeleportManifest;
   "teleport.read": TeleportChunk;
   "teleport.cancel": undefined;
+  "teleport.receive": { id: string };
+  "teleport.write": { written: number };
+  "teleport.abort": undefined;
   "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;

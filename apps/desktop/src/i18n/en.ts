@@ -1896,7 +1896,11 @@ export const en: Dictionary = {
     teleport_git:
       "Git could not pack the session's code. Try again; if it fails again, check the repository.",
     teleport_stopped:
-      "The host is stopping, so the session was not packed. Try again once it is back.",
+      "The host is stopping, so the session did not move. Try again once it is back.",
+    teleport_incomplete:
+      "Part of the session has not arrived on this host yet, so it cannot start here. Try the move again.",
+    teleport_corrupt:
+      "What arrived on this host does not match what the other host sent, so it was thrown away. Try the move again.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:

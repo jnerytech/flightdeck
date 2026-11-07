@@ -186,6 +186,7 @@ export class TeleportPackages {
               branch: code.branch,
               head: code.head,
               base: code.base,
+              baseSha: code.baseSha,
               ref: code.ref,
               ahead: code.ahead,
               changed: code.changed,
