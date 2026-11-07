@@ -867,7 +867,7 @@ settings, where the folder, base branch, setup and personas are edited).
 An idle session can continue on another host: its conversation, its commits and its uncommitted changes go with it. It is a preview, off by default: turn it on in Settings, Window, "Preview: move a session to another host".
 
 1. In the session's menu (the "…" on its row), pick **Move to another host…**.
-2. Pick the host and type the repository there. It must be the same project, so that host must already have a clone of it.
+2. Pick the host and the repository there: press **Browse…** to choose among the folders that host allows, or type the path. It must be the same project, so that host must already have a clone of it.
 3. Read what moves: the branch, the commits not on origin yet, the files changed, the size, and how many lines look like secrets. The secrets themselves are never shown, and they move as they are.
 4. Press **Move**, then **Open it there**.
 

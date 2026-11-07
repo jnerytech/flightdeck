@@ -861,7 +861,7 @@ configurações de projetos do host, onde se editam pasta, branch base, setup e 
 Uma sessão ociosa pode continuar em outro host: a conversa, os commits e as mudanças ainda não commitadas vão junto. É uma prévia, desligada por padrão: ligue em Configurações, Janela, "Prévia: mover uma sessão para outro host".
 
 1. No menu da sessão (o "…" na linha dela), escolha **Mover para outro host…**.
-2. Escolha o host e digite o repositório lá. Tem de ser o mesmo projeto, então esse host já precisa ter um clone dele.
+2. Escolha o host e o repositório lá: aperte **Procurar…** para escolher entre as pastas que esse host permite, ou digite o caminho. Tem de ser o mesmo projeto, então esse host já precisa ter um clone dele.
 3. Leia o que vai: a branch, os commits ainda fora do origin, os arquivos alterados, o tamanho e quantas linhas parecem segredos. Os segredos em si nunca aparecem, e eles vão como estão.
 4. Aperte **Mover** e depois **Abrir lá**.
 
