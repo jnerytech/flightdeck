@@ -48,8 +48,6 @@ export interface HubRow {
 
 export interface HubFilter {
   text: string;
-  /** Host name, or "" for all. */
-  host: string;
   origin: "" | HubOrigin;
   state: "" | HubState;
   /** A persona id, or "" for all (phase 20). */
@@ -63,7 +61,6 @@ export const HUB_FILTER_KEY = "flightdeck.hubFilter";
 
 export const DEFAULT_HUB_FILTER: HubFilter = {
   text: "",
-  host: "",
   origin: "",
   state: "",
   persona: "",
@@ -88,7 +85,6 @@ export function loadHubFilter(storage: { getItem(key: string): string | null }):
   };
   return {
     text: "",
-    host: text("host"),
     origin: text("origin", ORIGINS) as HubFilter["origin"],
     state: text("state", STATES) as HubFilter["state"],
     persona: text("persona"),
@@ -374,7 +370,6 @@ const matches = (row: HubRow, filter: HubFilter) =>
   `${row.title}\n${row.cwd}\n${row.hostName}\n${groupName(row.projectKey)}`
     .toLowerCase()
     .includes(filter.text.trim().toLowerCase()) &&
-  (!filter.host || row.hostName === filter.host) &&
   (!filter.origin || row.origin === filter.origin) &&
   (!filter.state || row.state === filter.state) &&
   (!filter.persona || row.persona?.id === filter.persona) &&
