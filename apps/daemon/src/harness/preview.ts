@@ -43,6 +43,9 @@ const orNull = <T>(promise: Promise<T>): Promise<T | null> =>
     () => null,
   );
 
+/** A key that is not there is free to fill; one set to anything, null included, is the person's. */
+const orEmpty = (value: unknown, empty: object): unknown => (value === undefined ? empty : value);
+
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -105,8 +108,8 @@ function additions(
     conflicts: [],
   };
   if (parts.includes("hooks") && format !== null) {
-    const hooks = settings.hooks ?? {};
-    const after = isObject(hooks) ? (hooks.PostToolUse ?? []) : null;
+    const hooks = orEmpty(settings.hooks, {});
+    const after = isObject(hooks) ? orEmpty(hooks.PostToolUse, []) : null;
     if (!isObject(hooks)) out.conflicts.push("hooks");
     else if (!Array.isArray(after)) out.conflicts.push("hooks.PostToolUse");
     else {
@@ -117,8 +120,8 @@ function additions(
     }
   }
   if (parts.includes("permissions")) {
-    const permissions = settings.permissions ?? {};
-    const deny = isObject(permissions) ? (permissions.deny ?? []) : null;
+    const permissions = orEmpty(settings.permissions, {});
+    const deny = isObject(permissions) ? orEmpty(permissions.deny, []) : null;
     if (!isObject(permissions)) out.conflicts.push("permissions");
     else if (!Array.isArray(deny)) out.conflicts.push("permissions.deny");
     else out.denyRules = DENY_RULES.filter((rule) => !deny.includes(rule));
