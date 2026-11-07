@@ -1,0 +1,155 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { join } from "node:path";
+import { HistoryIndexer } from "../src/history/indexer.ts";
+import { startServer } from "../src/server.ts";
+import { EventStore } from "../src/store/event-store.ts";
+import { TeleportPackages, type TeleportSession, teleportDeps } from "../src/teleport/package.ts";
+import { newManager, tempDir } from "./helpers.ts";
+import { FrameClient, projectsRoot, userLine, writeTranscript } from "./history-helpers.ts";
+
+/**
+ * Issue #100, slice 1: how the daemon wires a teleport. The transcript is the file the history
+ * indexer recorded; the session, its team and the package folder come from the daemon's own parts;
+ * the server answers `teleport.prepare`, `teleport.read` and `teleport.cancel` and announces
+ * `teleport`, and a host without it refuses them as a feature that is off.
+ */
+const ID = "0b6f5c2e-6f0a-4c39-9a51-7c4f1d2e3a4b";
+const TOKEN = "t".repeat(24);
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+async function indexed() {
+  const root = projectsRoot();
+  const file = writeTranscript(root, "-work-app", ID, [
+    userLine({ uuid: "u1", text: "fix the login", cwd: "/work/app" }),
+  ]);
+  const store = new EventStore(":memory:");
+  const indexer = new HistoryIndexer({ db: store.db, roots: [root] });
+  cleanups.push(() => indexer.stop());
+  await indexer.scan();
+  return { root, file, indexer };
+}
+
+describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
+  test("the indexer names the transcript file it recorded for a Claude session, and none for another", async () => {
+    const { indexer, file } = await indexed();
+    expect([
+      indexer.transcriptFile(ID),
+      indexer.transcriptFile("11111111-1111-4111-8111-111111111111"),
+    ]).toEqual([file, null]);
+  });
+
+  test("the deps read the session, its team and its transcript from the daemon, and keep packages under the data dir", async () => {
+    const { indexer, file, root } = await indexed();
+    const session: TeleportSession = {
+      id: "s1",
+      cwd: "/work/app",
+      status: "idle",
+      permissionMode: "default",
+      model: null,
+      claudeSessionId: ID,
+    };
+    const deps = teleportDeps({
+      manager: { get: () => session },
+      names: { get: (id) => (id === "s1" ? ({ team: { name: "t" } } as never) : null) },
+      indexer,
+      historyRoots: [root],
+      dataDir: "/data",
+      scan: (text) => (text.includes("ghp_") ? ["token"] : []),
+      log: () => {},
+    });
+    expect([
+      deps.session("s1"),
+      deps.inTeam("s1"),
+      deps.inTeam("s2"),
+      deps.transcriptOf(ID),
+      deps.dir,
+      deps.historyRoots,
+      deps.scan("ghp_x"),
+      typeof deps.now(),
+      new Set([deps.newId(), deps.newId()]).size,
+      deps.timers === globalThis,
+    ]).toEqual([
+      session,
+      true,
+      false,
+      file,
+      join("/data", "teleport"),
+      [root],
+      ["token"],
+      "number",
+      2,
+      true,
+    ]);
+  });
+
+  test("the server announces teleport and answers prepare, read and cancel; without it they are off", async () => {
+    const { manager } = newManager();
+    const dir = tempDir("fd-teleport-");
+    const packages = new TeleportPackages({
+      session: () => ({
+        id: "s1",
+        cwd: "/work/app",
+        status: "idle",
+        permissionMode: "default",
+        model: null,
+        claudeSessionId: ID,
+      }),
+      inTeam: () => false,
+      transcriptOf: () => null,
+      historyRoots: [],
+      dir,
+      scan: () => [],
+      now: () => 0,
+      newId: () => "p1",
+      timers: globalThis,
+    });
+    const base = {
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    };
+    const server = startServer({ ...base, teleport: packages });
+    const off = startServer(base);
+    const client = new FrameClient(server.url);
+    const bare = new FrameClient(off.url);
+    cleanups.push(async () => {
+      client.close();
+      bare.close();
+      await server.stop();
+      await off.stop();
+    });
+    for (const c of [client, bare]) await c.request("hello", { token: TOKEN, client: "test" });
+    const features = async (c: FrameClient) =>
+      (await c.data<{ features?: string[] }>("host.info", {}))?.features ?? [];
+    const why = (answer: { error?: unknown }) =>
+      (answer.error as { reason?: string; params?: unknown } | undefined) ?? null;
+    const prepared = why(await client.request("teleport.prepare", { sessionId: "s1" }));
+    const read = why(
+      await client.request("teleport.read", { id: "p9", part: "transcript", offset: 0 }),
+    );
+    const cancelled = (await client.request("teleport.cancel", { id: "p9" })).ok;
+    const refused = why(await bare.request("teleport.prepare", { sessionId: "s1" }));
+    expect([
+      (await features(client)).includes("teleport"),
+      (await features(bare)).includes("teleport"),
+      prepared?.reason,
+      read?.reason,
+      cancelled,
+      refused?.params,
+    ]).toEqual([
+      true,
+      false,
+      "teleport_no_transcript",
+      "teleport_not_found",
+      true,
+      { feature: "teleport" },
+    ]);
+  });
+});

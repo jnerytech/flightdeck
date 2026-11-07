@@ -316,10 +316,26 @@ export class AssistantController {
       const names = secrets.filter((secret) => hits.includes(secret.id)).map((s) => s.name);
       throw fail("assistant_vault_value", { names: names.join(", ") });
     }
-    return this.deps.api.run(request, ids, {
+    const answer = await this.deps.api.run(request, ids, {
       provider,
       denyDataCollection: this.current.openrouterPrivate,
     });
+    if (!repo) return answer;
+    // The same checks and notices as the host's answer has: the repo's rules, and what was left out.
+    const checked = checkOutput(input.kind, input.text, answer.text, {
+      conventional: repo.conventional,
+      rules: repo.rules,
+    });
+    return {
+      ...answer,
+      text: checked.text,
+      notices: [
+        ...answer.notices,
+        ...checked.notices,
+        ...(repo.truncated ? ["diff_truncated"] : []),
+        ...(repo.redactedLines > 0 ? ["lines_redacted"] : []),
+      ],
+    };
   }
 
   /**
@@ -330,8 +346,10 @@ export class AssistantController {
     input: AssistantRunInput,
     source: CommitSource,
   ): Promise<AssistantContextBundle> {
+    // The repo is the field's host's: with no host there is nothing to read from.
+    if (!input.fieldHostId) throw fail("assistant_not_configured");
     const kind = input.kind.startsWith("pr.") ? "pr" : "commit";
-    const answer = await this.deps.request(input.fieldHostId ?? "", "assistant.context", {
+    const answer = await this.deps.request(input.fieldHostId, "assistant.context", {
       kind,
       source,
     });

@@ -282,25 +282,24 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
 
   // 8. A floating box ends at least `min` px over the one below it in the same columns (#581): a
   // box that overlaps it is a finding too.
+  /** One floating box against the boxes below it that share its columns. */
+  const gapsBelow = (el: Element, belows: Element[], min: number) => {
+    const box = rectOf(el);
+    for (const below of belows) {
+      const under = rectOf(below);
+      if (box.right <= under.left || box.left >= under.right) continue;
+      const gap = under.top - box.bottom;
+      // Half a pixel is rounding (a rem at a fractional zoom), not a gap that went away (#655).
+      if (gap < min - 0.5) {
+        add("gap", pathOf(el), `${Math.round(gap)} px above ${pathOf(below)}, at least ${min}`);
+      }
+    }
+  };
   const checkGaps = () => {
     for (const rule of options.gaps ?? []) {
       const belows = [...document.querySelectorAll(rule.below)].filter((el) => !hidden(el));
       for (const el of document.querySelectorAll(rule.above)) {
-        if (hidden(el)) continue;
-        const box = rectOf(el);
-        for (const below of belows) {
-          const under = rectOf(below);
-          if (box.right <= under.left || box.left >= under.right) continue;
-          const gap = under.top - box.bottom;
-          // Half a pixel is rounding (a rem at a fractional zoom), not a gap that went away (#655).
-          if (gap < rule.min - 0.5) {
-            add(
-              "gap",
-              pathOf(el),
-              `${Math.round(gap)} px above ${pathOf(below)}, at least ${rule.min}`,
-            );
-          }
-        }
+        if (!hidden(el)) gapsBelow(el, belows, rule.min);
       }
     }
   };
@@ -461,25 +460,27 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     }
     return true;
   };
+  /** The page scrolls sideways by `extra` px: names the box that reaches furthest right. */
+  const pageSideways = (shown: Element[], extra: number) => {
+    let widest: Element | null = null;
+    let right = 0;
+    for (const el of shown.filter(canWiden)) {
+      const box = rectOf(el);
+      if (box.width > 0 && box.right > right) {
+        widest = el;
+        right = box.right;
+      }
+    }
+    add(
+      "overflow-x",
+      widest ? pathOf(widest, true) : "page",
+      `the page scrolls ${extra} px sideways; this ends at ${Math.round(right)}`,
+      extra,
+    );
+  };
   const checkOverflowX = (shown: Element[]) => {
     const extra = root.scrollWidth - root.clientWidth;
-    if (extra > 1) {
-      let widest: Element | null = null;
-      let right = 0;
-      for (const el of shown.filter(canWiden)) {
-        const box = rectOf(el);
-        if (box.width > 0 && box.right > right) {
-          widest = el;
-          right = box.right;
-        }
-      }
-      add(
-        "overflow-x",
-        widest ? pathOf(widest, true) : "page",
-        `the page scrolls ${extra} px sideways; this ends at ${Math.round(right)}`,
-        extra,
-      );
-    }
+    if (extra > 1) pageSideways(shown, extra);
     // The outermost box past the right of a parent that neither clips nor scrolls (a table past its card).
     const past: Element[] = [];
     for (const el of shown) {
@@ -525,34 +526,41 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       }
     }
   };
+  /** One header against the tab rows over it: it does not start under one, and its title is not cut. */
+  const headerClipped = (
+    header: Element,
+    rows: ReturnType<typeof rectOf>[],
+    titleSelector: string,
+  ) => {
+    const box = rectOf(header);
+    const over = rows.filter(
+      (row) => box.top >= row.top && box.left < row.right && row.left < box.right,
+    );
+    const under = Math.max(0, ...over.map((row) => row.bottom - box.top));
+    if (under > 0.5) {
+      add(
+        "header-clipped",
+        pathOf(header, true),
+        `starts ${Math.round(under)} px under the tab row`,
+        under,
+      );
+    }
+    for (const title of header.querySelectorAll(titleSelector)) {
+      if (!hidden(title) && title.scrollWidth - title.clientWidth > 1) {
+        add(
+          "header-clipped",
+          pathOf(title, true),
+          `cut: ${title.clientWidth} px of ${title.scrollWidth}`,
+          title.scrollWidth - title.clientWidth,
+        );
+      }
+    }
+  };
   const checkHeader = (rules: ResponsiveRules) => {
     // Every app tab row (a split has one per pane): a header is checked against the ones over it.
     const rows = [...document.querySelectorAll(rules.tabs)].filter((el) => !hidden(el)).map(rectOf);
     for (const header of document.querySelectorAll(rules.header)) {
-      if (hidden(header)) continue;
-      const box = rectOf(header);
-      const over = rows.filter(
-        (row) => box.top >= row.top && box.left < row.right && row.left < box.right,
-      );
-      const under = Math.max(0, ...over.map((row) => row.bottom - box.top));
-      if (under > 0.5) {
-        add(
-          "header-clipped",
-          pathOf(header, true),
-          `starts ${Math.round(under)} px under the tab row`,
-          under,
-        );
-      }
-      for (const title of header.querySelectorAll(rules.title)) {
-        if (!hidden(title) && title.scrollWidth - title.clientWidth > 1) {
-          add(
-            "header-clipped",
-            pathOf(title, true),
-            `cut: ${title.clientWidth} px of ${title.scrollWidth}`,
-            title.scrollWidth - title.clientWidth,
-          );
-        }
-      }
+      if (!hidden(header)) headerClipped(header, rows, rules.title);
     }
   };
   const checkNarrow = () => {
