@@ -1164,6 +1164,10 @@ export const en: Dictionary = {
       one: "Flightdeck: {n} request waiting for you ({hosts})",
       other: "Flightdeck: {n} requests waiting for you ({hosts})",
     },
+    plainWaiting: {
+      one: "Flightdeck: {n} task waiting for your answer ({hosts})",
+      other: "Flightdeck: {n} tasks waiting for your answer ({hosts})",
+    },
     autoApproved: {
       one: "{n} automatic approval",
       other: "{n} automatic approvals",
@@ -1172,6 +1176,7 @@ export const en: Dictionary = {
   notify: {
     waiting: "{label}: needs you",
     allow: "Allow {tool}?",
+    plainWaiting: "{label}: waiting for your answer",
     turnDone: "{label}: turn finished",
     turnDoneBody: "idle",
     externalTitle: "Needs you",
@@ -2693,6 +2698,29 @@ export const en: Dictionary = {
     passing: "checks passing",
     failing: "checks failing",
   },
+  teleportUi: {
+    menu: "Move to another host…",
+    title: "Move to another host",
+    host: "Host",
+    pickHost: "Pick a host",
+    repo: "Repository on that host",
+    next: "Continue",
+    cancel: "Cancel",
+    branch: "Branch:",
+    noBranch: "none (a detached HEAD)",
+    ahead: "Commits not on origin yet: {n}",
+    changed: "Files changed: {n}",
+    size: "Size: {size}",
+    secrets:
+      "Lines that look like secrets: {n}. They move as they are, and the scan can miss some.",
+    move: "Move",
+    back: "Back",
+    moving: "Moving… {percent}%",
+    done: "The session is on {host} now. The one here stays as it was.",
+    open: "Open it there",
+    close: "Close",
+    preview: "Preview: move a session to another host",
+  },
   automationsUi: {
     title: "Automations of {project}",
     list: "Automations",
@@ -3832,6 +3860,13 @@ export const en: Dictionary = {
     snooze: "Snooze notifications for 1 hour",
   },
   simple: {
+    windowTitle: {
+      idle: "Flightdeck",
+      waiting: {
+        one: "Flightdeck: {n} task waiting for your answer",
+        other: "Flightdeck: {n} tasks waiting for your answer",
+      },
+    },
     modeLabel: "Simple mode",
     fullApp: "Full app",
     lockedNote: "This host is set to simple mode. Ask its admin to unlock it.",

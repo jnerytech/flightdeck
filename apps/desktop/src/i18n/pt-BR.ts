@@ -1163,6 +1163,10 @@ export const ptBR = {
       one: "Flightdeck: {n} pedido esperando você ({hosts})",
       other: "Flightdeck: {n} pedidos esperando você ({hosts})",
     },
+    plainWaiting: {
+      one: "Flightdeck: {n} tarefa esperando a sua resposta ({hosts})",
+      other: "Flightdeck: {n} tarefas esperando a sua resposta ({hosts})",
+    },
     autoApproved: {
       one: "{n} aprovação automática",
       other: "{n} aprovações automáticas",
@@ -1171,6 +1175,7 @@ export const ptBR = {
   notify: {
     waiting: "{label}: esperando você",
     allow: "Permitir {tool}?",
+    plainWaiting: "{label}: esperando a sua resposta",
     turnDone: "{label}: turno concluído",
     turnDoneBody: "ociosa",
     externalTitle: "Precisa de você",
@@ -2694,6 +2699,29 @@ export const ptBR = {
     passing: "checks passando",
     failing: "checks falhando",
   },
+  teleportUi: {
+    menu: "Mover para outro host…",
+    title: "Mover para outro host",
+    host: "Host",
+    pickHost: "Escolha um host",
+    repo: "Repositório nesse host",
+    next: "Continuar",
+    cancel: "Cancelar",
+    branch: "Branch:",
+    noBranch: "nenhuma (um HEAD solto)",
+    ahead: "Commits ainda fora do origin: {n}",
+    changed: "Arquivos alterados: {n}",
+    size: "Tamanho: {size}",
+    secrets:
+      "Linhas que parecem segredos: {n}. Elas vão como estão, e a varredura pode deixar passar algumas.",
+    move: "Mover",
+    back: "Voltar",
+    moving: "Movendo… {percent}%",
+    done: "A sessão está agora em {host}. A daqui fica como estava.",
+    open: "Abrir lá",
+    close: "Fechar",
+    preview: "Prévia: mover uma sessão para outro host",
+  },
   automationsUi: {
     title: "Automações de {project}",
     list: "Automações",
@@ -3838,6 +3866,13 @@ export const ptBR = {
     snooze: "Adiar notificações por 1 hora",
   },
   simple: {
+    windowTitle: {
+      idle: "Flightdeck",
+      waiting: {
+        one: "Flightdeck: {n} tarefa esperando a sua resposta",
+        other: "Flightdeck: {n} tarefas esperando a sua resposta",
+      },
+    },
     modeLabel: "Modo simples",
     fullApp: "App completo",
     lockedNote: "Este host está no modo simples. Peça a quem administra para liberar.",

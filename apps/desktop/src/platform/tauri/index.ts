@@ -136,6 +136,8 @@ export function tauriPlatform(
     copyText: (text) => win.navigator.clipboard.writeText(text),
     showMainWindow: () => call("focus_main"),
     systemLanguage: () => win.navigator.language ?? "",
+    // What getCurrentWindow().setTitle() sends; needs core:window:allow-set-title (issue #88).
+    setTitle: (title) => call("plugin:window|set_title", { label: "main", value: title }),
     // What getCurrentWindow().setTheme() sends; needs core:window:allow-set-theme.
     setWindowTheme: (theme) => call("plugin:window|set_theme", { label: "main", value: theme }),
     // Rust runs the program with the arguments as a list, never through a shell.

@@ -21,6 +21,8 @@ export const TeleportCancelPayload = z.object({ id: z.string().min(1).max(64) })
 
 const Sha256 = z.string().regex(/^[0-9a-f]{64}$/);
 const Count = z.number().int().nonnegative();
+/** The largest part a teleport carries (the daemons refuse more): 64 MiB. */
+export const TELEPORT_PART_MAX_BYTES = 64 * 1024 * 1024;
 const PartName = z.enum(["transcript", "code"]);
 
 /** The manifest as the source host made it; the target checks it before it takes a byte. */
@@ -34,7 +36,7 @@ export const TeleportManifestSchema = z.object({
   persona: z.string().max(200).nullable(),
   expiresAt: z.string().max(64),
   parts: z
-    .array(z.object({ name: PartName, size: Count, sha256: Sha256 }))
+    .array(z.object({ name: PartName, size: Count.max(TELEPORT_PART_MAX_BYTES), sha256: Sha256 }))
     .min(1)
     .max(2),
   secrets: z.object({ lines: Count, labels: z.array(z.string().max(100)).max(50) }),

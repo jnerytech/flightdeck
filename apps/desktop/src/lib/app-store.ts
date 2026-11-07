@@ -31,6 +31,7 @@ import type {
   PendingPermission,
   PermissionUpdate,
   PersonaRef,
+  PlainInfo,
   Project,
   QuotaState,
   ReleaseNote,
@@ -74,10 +75,12 @@ import type {
   AppUpdate,
   Platform,
   TrayAction,
+  TrayMenu,
   TrayStatus,
   WebhookRequest,
   WebhookResponse,
 } from "../platform/types.ts";
+import type { TeleportRunArgs } from "../ui/TeleportDialog.tsx";
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
@@ -183,6 +186,7 @@ import {
 import { savePayload } from "./ssh.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
+import { type TeleportOutcome, type TeleportRequest, teleportSession } from "./teleport.ts";
 import {
   isLocalUrl,
   type TerminalEnv,
@@ -562,6 +566,8 @@ export interface Settings {
   /** Issue #280: a newer version downloads by itself, to install on a restart (on by default). */
   autoUpdate: boolean;
   updaterSupported: boolean;
+  /** Issue #100: the preview of moving a session to another host (off by default). */
+  teleportPreview: boolean;
 }
 
 export interface AppStoreOptions {
@@ -654,6 +660,8 @@ export interface PendingItem {
   /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
   risk?: RiskLevel;
   riskReason?: string;
+  /** Issue #88: the request in plain words, for the surfaces outside the window; an older daemon sends none. */
+  plain?: PlainInfo;
   /** Phase 17: the daemon asks for a secret to run an action or a free command. */
   vault?: true;
   /** Phase 19: the rule lets this request be approved for the rest of the session. */
@@ -725,6 +733,7 @@ export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
           ...(p.input ? { input: p.input } : {}),
           ...(p.risk ? { risk: p.risk } : {}),
           ...(p.riskReason ? { riskReason: p.riskReason } : {}),
+          ...(p.plain ? { plain: p.plain } : {}),
           cwd: session.cwd,
         })),
       ),
@@ -818,6 +827,8 @@ const PALETTE_RECENTS_KEPT = 12;
 export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
 /** Issue #280: the app downloads a newer version by itself; "false" turns it off. */
 export const AUTO_UPDATE_KEY = "flightdeck.autoUpdate";
+/** Issue #100: "true" turns on the preview of moving a session to another host. */
+export const TELEPORT_PREVIEW_KEY = "flightdeck.teleportPreview";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
@@ -1077,6 +1088,7 @@ export class AppStore {
         notifyUpdates: true,
         autoUpdate: true,
         updaterSupported: platform.updater.supported,
+        teleportPreview: false,
       },
     };
   }
@@ -1270,6 +1282,8 @@ export class AppStore {
     const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
     const notifyUpdates = this.platform.storage.getItem(NOTIFY_UPDATES_KEY) !== "false";
     const autoUpdate = this.platform.storage.getItem(AUTO_UPDATE_KEY) !== "false";
+    // A preview: on only when the person turned it on.
+    const teleportPreview = this.platform.storage.getItem(TELEPORT_PREVIEW_KEY) === "true";
     this.update({
       settings: {
         ...this.state.settings,
@@ -1278,6 +1292,7 @@ export class AppStore {
         globalShortcut,
         notifyUpdates,
         autoUpdate,
+        teleportPreview,
       },
     });
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
@@ -2975,6 +2990,45 @@ export class AppStore {
     this.update({ settings: { ...this.state.settings, autoUpdate: enabled } });
   }
 
+  setTeleportPreview(enabled: boolean): void {
+    this.platform.storage.setItem(TELEPORT_PREVIEW_KEY, String(enabled));
+    this.update({ settings: { ...this.state.settings, teleportPreview: enabled } });
+  }
+
+  /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
+  teleportRequest(hostId: string): TeleportRequest {
+    // Straight to the connection: a host's teleport answer is checked by the relay, and never
+    // reaches the board's card or run state on the way.
+    return ((type, payload) => {
+      const conn = this.connections.get(hostId);
+      if (!conn) return Promise.reject(new RequestError("offline", "unknown host"));
+      return conn.request(type, payload);
+    }) as TeleportRequest;
+  }
+
+  /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
+  moveSession(
+    sourceHost: string,
+    sessionId: string,
+    args: TeleportRunArgs,
+  ): Promise<TeleportOutcome> {
+    return teleportSession({
+      source: this.teleportRequest(sourceHost),
+      target: this.teleportRequest(args.target),
+      sessionId,
+      repo: args.repo,
+      confirm: args.confirm,
+      onProgress: args.onProgress,
+      signal: args.signal,
+    });
+  }
+
+  /** The session a move made, opened on its new host. */
+  readonly openMovedSession = (hostId: string, sessionId: string): void => {
+    this.select(hostId, sessionId);
+    this.router.push({ name: "session", host: hostId, id: sessionId });
+  };
+
   setNotifyUpdates(enabled: boolean): void {
     this.platform.storage.setItem(NOTIFY_UPDATES_KEY, String(enabled));
     this.update({ settings: { ...this.state.settings, notifyUpdates: enabled } });
@@ -3335,7 +3389,8 @@ export class AppStore {
     const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
     const project = this.sessionProject(hostId, next.cwd);
     const team = this.teamOf.get(key);
-    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
+    const simple = this.uiMode(hostId).mode === "simple";
+    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names, simple)) {
       const source: NotifySource = {
         event: n.event ?? "other",
         hostId,
@@ -4829,7 +4884,17 @@ export class AppStore {
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
     if (patch.secrets) void this.rememberVaultValues();
-    if (patch.hosts) this.syncTray();
+    if (patch.hosts || patch.uiChoices) this.syncTray();
+    if (
+      patch.hosts ||
+      patch.uiChoices ||
+      patch.selected ||
+      patch.externalRequests ||
+      patch.externals ||
+      patch.runs
+    ) {
+      this.syncTitle();
+    }
     if (patch.hosts) this.watchClientBudgetHosts();
     if (patch.hub || patch.projects) this.scheduleVaultScope();
     if (patch.hosts || patch.externalRequests || patch.externals || patch.runs || patch.cards) {
@@ -4846,16 +4911,42 @@ export class AppStore {
     const timers = this.options.timers ?? REAL_TIMERS;
     if (this.trayMenuTimer !== null) timers.clearTimeout(this.trayMenuTimer);
     this.trayMenuTimer = null;
-    if (
-      JSON.stringify(trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t)) === this.trayMenuSent
-    )
-      return;
+    if (JSON.stringify(this.trayMenuNow()) === this.trayMenuSent) return;
     this.trayMenuTimer = timers.setTimeout(() => {
       this.trayMenuTimer = null;
-      const menu = trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t);
+      const menu = this.trayMenuNow();
       this.trayMenuSent = JSON.stringify(menu);
       void this.platform.setTrayMenu(menu);
     }, TRAY_MENU_DELAY_MS);
+  }
+
+  /** The title the window has now, so the platform is told only when it changes. */
+  private titleShown = "Flightdeck";
+
+  /**
+   * The window shows one host (the selected one): in simple mode its title says how many tasks wait
+   * for an answer; in full mode the title is left alone (issue #88).
+   */
+  private syncTitle(): void {
+    const { t } = this.i18n;
+    const hostId = this.uiHostId();
+    let title = t("simple.windowTitle.idle");
+    if (hostId && this.uiMode(hostId).mode === "simple") {
+      const n = needsYou(this.state, t).filter((item) => item.hostId === hostId).length;
+      if (n > 0) title = t("simple.windowTitle.waiting", { n });
+    }
+    if (title === this.titleShown) return;
+    this.titleShown = title;
+    void Promise.resolve(this.platform.setTitle?.(title)).catch(() => {});
+  }
+
+  /** The tray's "needs you" menu now: a host in simple mode words its requests plainly (issue #88). */
+  private trayMenuNow(): TrayMenu {
+    return trayMenu(
+      needsYou(this.state, this.i18n.t),
+      this.i18n.t,
+      (hostId) => this.uiMode(hostId).mode === "simple",
+    );
   }
 
   /**
@@ -4864,7 +4955,8 @@ export class AppStore {
    */
   private onLanguage(): void {
     this.syncTray();
-    const menu = trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t);
+    this.syncTitle();
+    const menu = this.trayMenuNow();
     this.trayMenuSent = JSON.stringify(menu);
     void this.platform.setTrayMenu(menu);
     for (const listener of this.listeners) listener();
@@ -4879,7 +4971,12 @@ export class AppStore {
         if (item.kind === "permission" && item.resolution?.auto) autoApproved++;
       }
     }
-    const status = trayStatus(this.state.hosts, this.i18n.t, autoApproved);
+    const hosts = this.state.hosts.map((h) => ({
+      name: h.name,
+      sessions: h.sessions,
+      simple: this.uiMode(h.id).mode === "simple",
+    }));
+    const status = trayStatus(hosts, this.i18n.t, autoApproved);
     if (this.tray?.label === status.label && this.tray.tooltip === status.tooltip) return;
     this.tray = status;
     void this.platform.setTrayStatus(status);

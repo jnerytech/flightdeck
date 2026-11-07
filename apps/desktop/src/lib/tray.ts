@@ -20,13 +20,20 @@ function trayActions(item: PendingItem): Array<"approve" | "deny" | "open"> {
 }
 
 /** The "Precisa de você" submenu for the open requests, oldest first, in `t`'s language. */
-export function trayMenu(items: PendingItem[], t: T = PT): TrayMenu {
+export function trayMenu(
+  items: PendingItem[],
+  t: T = PT,
+  /** Whether a host is in simple mode: its requests are told in the plain sentence (issue #88). */
+  simpleHost: (hostId: string) => boolean = () => false,
+): TrayMenu {
   const more = Math.max(0, items.length - TRAY_MENU_MAX);
   return {
     items: items.slice(0, TRAY_MENU_MAX).map((item) => {
       return {
         key: `${item.hostId}/${item.requestId}`,
-        label: `${item.hostName} · ${item.sessionName} · ${pendingText(item, t)}`,
+        label: `${item.hostName} · ${item.sessionName} · ${
+          simpleHost(item.hostId) && item.plain ? item.plain.sentence[t.lang] : pendingText(item, t)
+        }`,
         // A gate is answered in the app, and a high-risk request is approved by holding a button.
         // A vault grant is never approved here (#244): this line cannot show the secret and
         // parameters. Deny needs no hold, so both still offer it (#245).
@@ -49,6 +56,8 @@ export function trayMenu(items: PendingItem[], t: T = PT): TrayMenu {
 
 export interface TrayHost {
   name: string;
+  /** The host is in simple mode: its requests are told as tasks waiting for an answer (issue #88). */
+  simple?: boolean;
   sessions: { pendingPermissions: PendingPermission[] }[];
 }
 
@@ -69,5 +78,10 @@ export function trayStatus(hosts: TrayHost[], t: T = PT, autoApproved = 0): Tray
   const auto = autoApproved > 0 ? ` · ${t("tray.autoApproved", { n: autoApproved })}` : "";
   if (count === 0) return { count, label, tooltip: `${t("tray.idle")}${auto}` };
   const breakdown = perHost.map((h) => `${h.name}: ${h.count}`).join(", ");
-  return { count, label, tooltip: `${t("tray.waiting", { n: count, hosts: breakdown })}${auto}` };
+  // Plain words only when every host that waits is in simple mode: a mixed fleet keeps the usual one.
+  const plainly = hosts
+    .filter((h) => perHost.some((p) => p.name === h.name))
+    .every((h) => h.simple);
+  const key = plainly ? "tray.plainWaiting" : "tray.waiting";
+  return { count, label, tooltip: `${t(key, { n: count, hosts: breakdown })}${auto}` };
 }

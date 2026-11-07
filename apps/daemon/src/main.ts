@@ -1218,10 +1218,18 @@ export async function startDaemon(
         }
       },
     },
-    startCoordinator: async ({ cwd, prompt, name, persona, model }) => {
+    bypassAllowed: () => config.allowBypassPermissions,
+    startCoordinator: async ({ cwd, prompt, name, persona, model, permissionMode }) => {
       const ref = persona ? { id: persona } : undefined;
       return manager.create(
-        { cwd, prompt, name, ...(ref ? { persona: ref } : {}), ...(model ? { model } : {}) },
+        {
+          cwd,
+          prompt,
+          name,
+          ...(ref ? { persona: ref } : {}),
+          ...(model ? { model } : {}),
+          ...(permissionMode ? { permissionMode } : {}),
+        },
         { prepared: await prepare(ref, cwd) },
       );
     },

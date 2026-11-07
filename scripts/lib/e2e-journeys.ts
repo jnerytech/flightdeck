@@ -38,6 +38,8 @@ export const JOURNEYS: readonly string[] = [
   "nova-sessao-alcance",
   "tabs-por-host",
   "card-start-alcance",
+  "orcamento-alcance",
+  "time-novo-alcance",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

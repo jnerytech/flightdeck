@@ -60,6 +60,7 @@ import { typing } from "../lib/keys.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
 import { activeWorktreeFilter, rowInFilter } from "../lib/project-tree.ts";
 import { hasFeature } from "../lib/version.ts";
+import { TeleportMove } from "./TeleportMove.tsx";
 
 /** How often the hub asks the hosts about their background sessions. */
 const BG_REFRESH_MS = 10_000;
@@ -111,6 +112,10 @@ export function SessionsHub(
     setFilter({ ...store.hubFilter(), host: askedHost });
   }, [askedHost]);
   const [renaming, setRenaming] = useState<HubRow | null>(null);
+  /** Issue #100: the session being moved to another host (the preview's dialog). */
+  const [moving, setMoving] = useState<HubRow | null>(null);
+  const canTeleport = (hostId: string) =>
+    hasFeature(state.hosts.find((h) => h.id === hostId)?.hostInfo?.features, "teleport", false);
   const [name, setName] = useState("");
   // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
   // keeps failing to connect changes status on every attempt: only being online counts.
@@ -325,6 +330,15 @@ export function SessionsHub(
               {t("hub.sleepNow")}
             </DropdownMenuItem>
           )}
+          {state.settings.teleportPreview &&
+            row.origin === "flightdeck" &&
+            row.state === "idle" &&
+            row.sessionId &&
+            canTeleport(row.hostId) && (
+              <DropdownMenuItem onSelect={() => setMoving(row)}>
+                {t("teleportUi.menu")}
+              </DropdownMenuItem>
+            )}
           <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
             {row.pinned ? t("hub.unpin") : t("hub.pin")}
           </DropdownMenuItem>
@@ -549,6 +563,14 @@ export function SessionsHub(
         )}
         {picked && (
           <WorktreeChip filter={picked} t={t} onClear={() => store.setWorktreeFilter(null)} />
+        )}
+        {moving?.sessionId && (
+          <TeleportMove
+            store={store}
+            hostId={moving.hostId}
+            sessionId={moving.sessionId}
+            onClose={() => setMoving(null)}
+          />
         )}
         {renaming && (
           <div className="flex items-center gap-2">

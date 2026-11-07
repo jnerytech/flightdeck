@@ -110,6 +110,39 @@ export async function createSession(c: Context, prompt: string, name?: string) {
   await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
 }
 
+/**
+ * Clicks `trigger` until `expected` shows. For a click whose result is the page's own state (a
+ * dialog): a page drawn again in between drops it, and one more click brings it back. Gives up
+ * after a few tries and lets the caller's own wait name what is missing.
+ */
+export async function clickUntil(trigger: Locator, expected: Locator, tries = 4) {
+  for (let attempt = 0; attempt < tries; attempt++) {
+    // Late, not lost: a dialog that came after the wait hides the trigger behind it.
+    if ((await expected.count()) > 0) return;
+    await trigger.click();
+    const shown = await expected.waitFor({ timeout: 4000 }).then(
+      () => true,
+      () => false,
+    );
+    if (shown) return;
+  }
+}
+
+/**
+ * Where a session opened, measured until it holds (the view follows the end while the timeline
+ * fills, so the first reading can be a few lines short): null once it is right, or the last
+ * reading when it never is within the wait (#747).
+ */
+export async function pinnedOnceSettled(page: Page): Promise<string | null> {
+  const deadline = Date.now() + WAIT;
+  let reading = await page.evaluate(pinnedProblem);
+  while (reading !== null && Date.now() < deadline) {
+    await page.waitForTimeout(150);
+    reading = await page.evaluate(pinnedProblem);
+  }
+  return reading;
+}
+
 export async function waitFor(check: () => Promise<boolean>, what: string, timeout = WAIT) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
@@ -406,11 +439,14 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const name = acoesAction(c.lang, c.repeat);
     const row = c.page.getByRole("listitem", { name: c.t("actionsUi.row", { name }) });
     await row.getByText(c.t("actionsUi.notTrusted"), { exact: true }).waitFor({ timeout: WAIT });
-    await row.getByRole("button", { name: c.t("actionsUi.trust", { name }) }).click();
-    await c.page
+    const confirm = c.page
       .getByRole("alertdialog")
-      .getByRole("button", { name: c.t("actionsUi.trustLabel"), exact: true })
-      .click();
+      .getByRole("button", { name: c.t("actionsUi.trustLabel"), exact: true });
+    // The dialog is the page's own state: a page that is drawn again between the click and the
+    // dialog (a host that reconnects) loses it, and the run waited 90 s for a button that was
+    // gone (#747). Ask again until it is there.
+    await clickUntil(row.getByRole("button", { name: c.t("actionsUi.trust", { name }) }), confirm);
+    await confirm.click();
     await row.getByText(c.t("actionsUi.trusted"), { exact: true }).waitFor({ timeout: WAIT });
   },
 
@@ -1376,6 +1412,46 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await inReach(c, `${c.t("cardUi.start")} a ${size.width}x${size.height}`, start);
     }
   },
+
+  // Teams (#754): the form of a new team ends in Create and start, which must be in view and
+  // clickable once the goal is written, in a phone-sized window and a desktop one. Nothing is
+  // created: the demo keeps no team behind, so the other journeys' counts stay as they were.
+  "time-novo-alcance": async (c) => {
+    const create = c.page.getByRole("button", { name: c.t("teamsUi.create"), exact: true });
+    const goal = c.page.getByLabel(c.t("teamsUi.goal"), { exact: true });
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "teams" });
+      await c.page
+        .getByRole("button", { name: c.t("teamsUi.new"), exact: true })
+        .or(c.page.getByRole("button", { name: c.t("teamsUi.emptyAction"), exact: true }))
+        .first()
+        .click();
+      await goal.fill(`Objetivo e2e ${Date.now()}`);
+      await inReach(c, `${c.t("teamsUi.create")} a ${size.width}x${size.height}`, create);
+    }
+  },
+
+  // Costs (#754): Set a budget is in reach on the Costs page, and on the budgets section it opens
+  // Create budget is too once a limit is typed, in a phone-sized window and a desktop one. Nothing
+  // is created, so the demo's spending rules stay as they were.
+  "orcamento-alcance": async (c) => {
+    const setBudget = c.page.getByRole("button", { name: c.t("costsUi.setBudget"), exact: true });
+    // Settings holds the section of every host, so the form is the first one: the host in use.
+    const form = c.page
+      .locator("form")
+      .filter({ has: c.page.getByRole("button", { name: c.t("budgetsUi.create"), exact: true }) })
+      .first();
+    const create = form.getByRole("button", { name: c.t("budgetsUi.create"), exact: true });
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "costs" });
+      await inReach(c, `${c.t("costsUi.setBudget")} a ${size.width}x${size.height}`, setBudget);
+      await setBudget.click();
+      await form.getByLabel(c.t("budgetsUi.limit"), { exact: true }).fill("5");
+      await inReach(c, `${c.t("budgetsUi.create")} a ${size.width}x${size.height}`, create);
+    }
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
@@ -1939,7 +2015,7 @@ export async function layout(c: Context, problems: string[]) {
   // request is whole above the composer. Nothing scrolls the page before the measure.
   await c.page.setViewportSize({ width: 1280, height: 800 });
   await open(c, { name: "session", host: ALFA, id: c.ids.waitingSession });
-  const pinned = await c.page.evaluate(pinnedProblem);
+  const pinned = await pinnedOnceSettled(c.page);
   if (pinned) problems.push(`${c.lang} waiting session: ${pinned}`);
   // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
   // the bars' tablists are counted (a screen may have tabs of its own), and the split is always
