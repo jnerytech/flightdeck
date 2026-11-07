@@ -150,4 +150,28 @@ describe("ci-shards", () => {
       expect(job(key).name ?? "").toEndWith(SUFFIX);
     }
   });
+
+  test("a PR skips the shards, and every job after them still runs: each states its own status check (#296)", () => {
+    // GitHub skips a job whose needs chain holds a skipped job unless its `if` names a status
+    // function, so without one SonarCloud stopped running on every PR and main push.
+    const after = new Set(["test-shard"]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const [key, value] of Object.entries(ci.jobs)) {
+        if (!after.has(key) && (value.needs ?? []).some((need) => after.has(need))) {
+          after.add(key);
+          grew = true;
+        }
+      }
+    }
+    after.delete("test-shard");
+    const unguarded = [...after].filter(
+      (key) => !/!cancelled\(\)|always\(\)/.test(job(key).if ?? ""),
+    );
+    expect(unguarded).toEqual([]);
+    expect(after.has("sonar")).toBe(true);
+    // SonarCloud still reads only a suite that passed.
+    expect(job("sonar").if ?? "").toContain("needs.test-suite.result == 'success'");
+  });
 });
