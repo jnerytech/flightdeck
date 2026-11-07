@@ -154,7 +154,11 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
               aria-label={t("teleportUi.host")}
               disabled={phase.at === "preparing"}
               value={target}
-              onChange={(e) => setTarget(e.target.value)}
+              onChange={(e) => {
+                setTarget(e.target.value);
+                // The repository was for the other host.
+                setRepo("");
+              }}
             >
               <option value="">{t("teleportUi.pickHost")}</option>
               {props.targets.map((h) => (
