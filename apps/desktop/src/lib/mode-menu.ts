@@ -18,7 +18,8 @@ export const MENU_MODES: readonly SettableMode[] = [
 ];
 
 export function modeRows(opts: {
-  current: PermissionMode;
+  /** Null while the session has not said its mode: no row is the current one. */
+  current: PermissionMode | null;
   start: PermissionMode;
   bypassAllowed: boolean;
 }): ModeRow[] {
@@ -37,9 +38,9 @@ export function modeRows(opts: {
 const CYCLE: readonly SettableMode[] = ["default", "acceptEdits", "plan"];
 
 /** The mode Shift+Tab goes to from `current`, or null when there is none to go to. */
-export function nextMode(rows: ModeRow[], current: PermissionMode): SettableMode | null {
+export function nextMode(rows: ModeRow[], current: PermissionMode | null): SettableMode | null {
   const open = new Set(rows.filter((r) => r.blocked === null).map((r) => r.mode));
-  const from = CYCLE.indexOf(current as SettableMode);
+  const from = current === null ? -1 : CYCLE.indexOf(current as SettableMode);
   for (let step = 1; step <= CYCLE.length; step++) {
     const mode = CYCLE[(from + step + CYCLE.length) % CYCLE.length] as SettableMode;
     if (mode !== current && open.has(mode)) return mode;

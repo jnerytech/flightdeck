@@ -370,7 +370,7 @@ interface PickerState {
   setModel(value: string): void;
   effort: EffortLevel | null;
   setEffort(level: EffortLevel | null): void;
-  mode: PermissionMode;
+  mode: PermissionMode | null;
   modeMenu: ReturnType<typeof modeRows>;
   chooseMode(next: SettableMode): void;
 }
@@ -537,15 +537,24 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const wand = useWand(props.assist, text, setText);
   const [closing, setClosing] = useState(false);
   const [picking, setPicking] = useState(false);
-  const start = session.permissionMode ?? "default";
-  const [mode, setMode] = useState<PermissionMode>(start);
+  // The session's own mode, null until it says (#935): never a guess of Default.
+  const start = session.permissionMode ?? null;
+  // A pick belongs to the session and the mode it was made over: another session, or a new mode
+  // from this one, shows its own.
+  const owner = `${props.scrollKey ?? ""}|${start ?? ""}`;
+  const [picked, setPicked] = useState<{ owner: string; mode: PermissionMode } | null>(null);
+  const mode = picked?.owner === owner ? picked.mode : start;
+  const setMode = (next: PermissionMode) => setPicked({ owner, mode: next });
   const [bypassAsk, setBypassAsk] = useState(false);
   const opencode = props.runtime === "opencode";
   const fork = opencode ? undefined : props.fork;
   // OpenCode has no accept-edits mode: the menu lists the others and the numbers follow.
-  const modeMenu = modeRows({ current: mode, start, bypassAllowed: Boolean(props.bypass) }).filter(
-    (row) => !opencode || row.mode !== "acceptEdits",
-  );
+  // An unknown start blocks nothing here: the host refuses a looser mode itself.
+  const modeMenu = modeRows({
+    current: mode,
+    start: start ?? "default",
+    bypassAllowed: Boolean(props.bypass),
+  }).filter((row) => !opencode || row.mode !== "acceptEdits");
   /** A mode from the menu or Shift+Tab: bypass asks first, any other changes at once. */
   const chooseMode = (next: SettableMode) => {
     if (next === "bypassPermissions") {
@@ -1009,7 +1018,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
         <SessionStatusLine
           t={t}
           model={session.model}
-          mode={session.permissionMode ?? "default"}
+          mode={mode}
           pickers={pickers}
           working={working}
           {...(props.cache ? { cache: props.cache } : {})}

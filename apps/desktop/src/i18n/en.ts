@@ -2255,6 +2255,8 @@ export const en: Dictionary = {
     modeLabel: "Permission mode",
     modeChip: "Permission mode: {mode}",
     modeMenuTitle: "Mode",
+    modeUnknown: "Unknown",
+    modeUnknownExplain: "The session has not said its mode yet",
     modeBypassOff: "Turned off on this host",
     modeBypassHow: "Turn it on in the host settings",
     modelChip: "Model: {model}",
