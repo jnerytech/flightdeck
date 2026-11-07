@@ -81,7 +81,7 @@ export function selectRelated(
 /**
  * #762: the tracked files a changed test imports now and did not import at the base (`before`
  * gives a file's text there, or null for a new file). Loading a file puts it in the whole-repo
- * coverage report, so the changed-file gate covers it too. Changed files are left out.
+ * coverage report, so the changed-file gate covers it too, even when the same diff edits it.
  */
 export function newImports(
   changed: string[],
@@ -89,14 +89,13 @@ export function newImports(
   before: (path: string) => string | null,
 ): string[] {
   const known = new Set(sources.keys());
-  const changedSet = new Set(changed);
   const found = new Set<string>();
   for (const test of changed.filter((path) => TEST_FILE.test(path) && sources.has(path))) {
     const targets = (source: string) =>
       importsOf(source).flatMap((spec) => resolveImport(test, spec, known) ?? []);
     const old = new Set(targets(before(test) ?? ""));
     for (const path of targets(sources.get(test) as string)) {
-      if (!old.has(path) && !changedSet.has(path)) found.add(path);
+      if (!old.has(path)) found.add(path);
     }
   }
   return [...found].sort();
@@ -303,8 +302,10 @@ export function planRelated({
   if (warning) warnings.push(warning);
   const targets = coverageDir
     ? [
-        ...coverageTargets(changed, (path) => sources.get(path) ?? null),
-        ...loadedTargets(added, (path) => sources.get(path) ?? null),
+        ...new Set([
+          ...coverageTargets(changed, (path) => sources.get(path) ?? null),
+          ...loadedTargets(added, (path) => sources.get(path) ?? null),
+        ]),
       ]
     : undefined;
   const nothing = related.length === 0;
