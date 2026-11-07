@@ -244,6 +244,35 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
     );
   });
 
+  test("an error that is not a host's refusal, or a move that names no session, shows the app's alert instead of hanging", async () => {
+    const first = open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      first.control.fail?.(new TypeError("not a refusal"));
+    });
+    const failed = await settle(() => screen.queryByRole("alert") !== null).then(
+      () => true,
+      () => false,
+    );
+    cleanup();
+    const second = open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      second.control.finish?.({ kind: "moved", sessionId: "", worktree: "/w", branch: "fd/x" });
+    });
+    const nameless = await settle(() => screen.queryByRole("alert") !== null).then(
+      () => true,
+      () => false,
+    );
+    expect([failed, (document.body.textContent ?? "").includes("not a refusal"), nameless]).toEqual(
+      [true, false, true],
+    );
+  });
+
   test("progress past the total or with nothing to send stays between 0% and 100%", async () => {
     const { control } = open("en");
     await start("en");
