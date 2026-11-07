@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { FULL_SUITE_JOB } from "../lib/pr-flow.ts";
 
 /**
  * #220: the Windows tests run in three shards and the prints apart from e2e, while the four checks
@@ -37,9 +38,17 @@ const DISPATCH = "github.event_name != 'workflow_dispatch' || inputs.only != 'sc
 const SUFFIX = "${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}";
 
 describe("ci-shards", () => {
-  test("Linux runs the whole suite with the exact 100% gate in its own job, and SonarCloud in another (#293)", () => {
+  test("pr tag's full-run check names the job that holds the merged shard gate (#296)", () => {
+    // A dispatch counts as a full green run when this job passed: it must be the merge.
+    expect(job("test-suite").name?.startsWith(FULL_SUITE_JOB)).toBe(true);
+    expect(runs("test-suite")).toContain("bun run scripts/shard-gate.ts merge");
+    expect(job("test-suite").needs).toContain("test-shard");
+  });
+
+  test("Linux runs the whole suite in shards with the exact merged 100% gate, and SonarCloud in another job (#293, #296)", () => {
     expect(job("test-suite")["runs-on"]).toBe("ubuntu-latest");
-    expect(runs("test-suite")).toContain("bun run test");
+    expect(runs("test-suite")).toContain("bun run scripts/shard-gate.ts merge");
+    expect(runs("test-shard")).toContain("bun run scripts/shard-gate.ts run");
     expect(job("test-suite").steps.some((s) => s.name === "SonarCloud")).toBe(false);
     expect(job("sonar").steps.some((s) => s.name === "SonarCloud")).toBe(true);
   });
@@ -140,5 +149,29 @@ describe("ci-shards", () => {
     for (const key of ["test-windows-shard", "checks-windows"]) {
       expect(job(key).name ?? "").toEndWith(SUFFIX);
     }
+  });
+
+  test("a PR skips the shards, and every job after them still runs: each states its own status check (#296)", () => {
+    // GitHub skips a job whose needs chain holds a skipped job unless its `if` names a status
+    // function, so without one SonarCloud stopped running on every PR and main push.
+    const after = new Set(["test-shard"]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const [key, value] of Object.entries(ci.jobs)) {
+        if (!after.has(key) && (value.needs ?? []).some((need) => after.has(need))) {
+          after.add(key);
+          grew = true;
+        }
+      }
+    }
+    after.delete("test-shard");
+    const unguarded = [...after].filter(
+      (key) => !/!cancelled\(\)|always\(\)/.test(job(key).if ?? ""),
+    );
+    expect(unguarded).toEqual([]);
+    expect(after.has("sonar")).toBe(true);
+    // SonarCloud still reads only a suite that passed.
+    expect(job("sonar").if ?? "").toContain("needs.test-suite.result == 'success'");
   });
 });
