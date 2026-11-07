@@ -110,6 +110,22 @@ describe("teleport-picker-ui: the repository on the target is picked from its fo
     expect((repoBox() as HTMLInputElement).value).toBe("/typed/app");
   });
 
+  test("a path typed for one host is gone when another host is picked", async () => {
+    await setup();
+    await act(async () => {
+      fireEvent.change(repoBox(), { target: { value: "/typed/app" } });
+    });
+    const select = screen.getByRole("combobox", { name: "Host" });
+    const to = (select as HTMLSelectElement).value;
+    await act(async () => {
+      fireEvent.change(select, { target: { value: "" } });
+    });
+    await act(async () => {
+      fireEvent.change(select, { target: { value: to } });
+    });
+    expect((repoBox() as HTMLInputElement).value).toBe("");
+  });
+
   test("a target that cannot list folders keeps the typed field alone", async () => {
     await setup({ canBrowse: false });
     expect([repoBox() !== null, browse()]).toEqual([true, null]);
