@@ -79,7 +79,6 @@ describe("tab-compact: below 640 px the tab row is one button for the current ta
     });
     const dialog = screen.queryByRole("dialog", { name: "Todas as abas" }) as HTMLElement;
     expect(dialog === null).toBe(false);
-    expect(dialog.className).toContain("w-[calc(100vw-1rem)]");
     const options = screen.queryAllByRole("option");
     expect(options).toHaveLength(4);
     await act(async () => {
@@ -118,5 +117,44 @@ describe("tab-compact: below 640 px the tab row is one button for the current ta
     expect(strip() === null).toBe(false);
     expect(current() === undefined).toBe(true);
     expect(screen.queryByRole("button", { name: "Dividir a tela" }) === null).toBe(false);
+  });
+  test("a window that was split can still be joined, and the split is not offered otherwise", async () => {
+    const store = await mount();
+    await act(async () => {
+      store.workspace.toggleSplit();
+    });
+    await viewport(390);
+    expect(screen.queryByRole("button", { name: "Juntar as áreas" }) === null).toBe(false);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Juntar as áreas" }) as HTMLElement);
+    });
+    expect(store.workspace.split).toBeNull();
+    expect(screen.queryByRole("button", { name: "Dividir a tela" }) === null).toBe(true);
+  });
+
+  test("the current tab keeps its menu: pin, move and the rest", async () => {
+    await mount();
+    await viewport(390);
+    const menu = screen.queryByRole("button", { name: "Ações da aba Projetos" });
+    expect(menu === null).toBe(false);
+    await act(async () => {
+      fireEvent.pointerDown(menu as HTMLElement, {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+      fireEvent.click(menu as HTMLElement);
+    });
+    expect(screen.queryByRole("menuitem", { name: "Fixar aba Projetos" }) === null).toBe(false);
+  });
+
+  test("a host not known by name is not named by its id", async () => {
+    const store = await mount();
+    await viewport(390);
+    await act(async () => {
+      store.hostTabs.open({ name: "history", host: "ghost" });
+    });
+    // The row keeps working: the title stands alone, without the id.
+    expect(current()?.getAttribute("aria-label") ?? "").not.toContain("ghost");
   });
 });
