@@ -107,7 +107,7 @@ describe("protocolo-board", () => {
     const b = await create("B");
     const c = await create("C");
     await client.data("card.move", { cardId: c?.id, column: "backlog", position: 0.5 });
-    await client.data("card.move", { cardId: b?.id, column: "review" });
+    await client.data("card.move", { cardId: b?.id, column: "review", force: true });
     const board = await client.data<{
       project: { id: string };
       columns: Array<{ column: string; cards: WireCard[] }>;

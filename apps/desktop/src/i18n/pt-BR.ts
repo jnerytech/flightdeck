@@ -35,6 +35,8 @@ export const ptBR = {
     all: "Todos os hosts",
     showing: "Mostrando {scope}",
     offline: "{host} está offline. Os números voltam quando ele reconectar.",
+    offlineSessions: "{host} está offline. As sessões dele voltam quando ele reconectar.",
+    incompatible: "{host} precisa de uma atualização do daemon para os dados aparecerem aqui.",
     showAll: "Mostrar todos os hosts",
     noCosts: "{host} não informa custos.",
   },
@@ -1301,6 +1303,7 @@ export const ptBR = {
       "O host recusou o token: pareie de novo com o link novo do host (flightdeckd pair).",
     not_found: "Não encontrado no host.",
     invalid_state: "Não dá para fazer isso agora.",
+    contract_unmet: "O card não atende ao que essa coluna pede.",
     forbidden_cwd:
       "A pasta está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
     protocol_incompatible:
@@ -1499,6 +1502,9 @@ export const ptBR = {
     messaging_policy_invalid: "As regras de mensagens não valem: {errors}",
     project_no_issues:
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
+    card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",
+    card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
+    contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
     remote_not_github: "O remoto {url} não é do GitHub.",
     remote_not_azure: "O remoto {url} não é do Azure DevOps.",

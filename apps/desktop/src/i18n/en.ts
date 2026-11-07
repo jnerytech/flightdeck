@@ -33,6 +33,8 @@ export const en: Dictionary = {
     all: "All hosts",
     showing: "Showing {scope}",
     offline: "{host} is offline. Its numbers come back when it reconnects.",
+    offlineSessions: "{host} is offline. Its sessions show again when it reconnects.",
+    incompatible: "{host} needs a daemon update before its data shows here.",
     showAll: "Show all hosts",
     noCosts: "{host} does not report costs.",
   },
@@ -1303,6 +1305,7 @@ export const en: Dictionary = {
       "The host refused the token: pair again with the host's new link (flightdeckd pair).",
     not_found: "Not found on the host.",
     invalid_state: "That can't be done right now.",
+    contract_unmet: "The card does not meet what that column asks for.",
     forbidden_cwd:
       "The folder is outside the host's allowed folders. Add it with flightdeckd setup or in allowedRoots, in ~/.flightdeck/config.json.",
     protocol_incompatible:
@@ -1503,6 +1506,9 @@ export const en: Dictionary = {
       "The session is on another host: read_session only reads sessions of this host.",
     messaging_policy_invalid: "The messaging rules are not valid: {errors}",
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
+    card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
+    card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
+    contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
     remote_not_github: "The remote {url} is not a GitHub one.",
     remote_not_azure: "The remote {url} is not an Azure DevOps one.",

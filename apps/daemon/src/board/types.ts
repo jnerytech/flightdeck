@@ -1,6 +1,7 @@
 import type {
   AutoApproveSettings,
   BoardColumn,
+  ColumnContract,
   IssuesConfig,
   PersonaSubagentsMode,
   PrProviderKind,
@@ -37,6 +38,8 @@ export interface NewProject {
 export type ProjectPatch = Partial<Omit<NewProject, "path">> & {
   /** The default persona by column (phase 20); `null` removes a column's. */
   personaByColumn?: Partial<Record<BoardColumn, string | null>>;
+  /** What each column asks of a card (issue #78); `null` gives a column back to the default. */
+  contractByColumn?: Partial<Record<BoardColumn, ColumnContract | null>>;
   /** Which personas the project offers as subagents (phase 20). */
   personaSubagents?: PersonaSubagentsMode;
   /** Phase 36: the hours a done card is worth without an estimate; `null` removes it. */

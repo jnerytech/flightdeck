@@ -45,7 +45,13 @@ const session = (hostId: string) => ({
 });
 
 function setup(
-  options: { kept?: string; offline?: string; route?: string; language?: "en" | "pt-BR" } = {},
+  options: {
+    kept?: string;
+    offline?: string;
+    incompatible?: string;
+    route?: string;
+    language?: "en" | "pt-BR";
+  } = {},
 ) {
   const mem = memoryPlatform(false, options.language ?? "en");
   if (options.kept) mem.platform.storage.setItem(DATA_SCOPE_KEY, options.kept);
@@ -55,7 +61,10 @@ function setup(
   const state = {
     ...store.getState(),
     hostsLoaded: true,
-    hosts: ["h1", "h2"].map((id) => host(id, options.offline === id ? "offline" : "online")),
+    hosts: ["h1", "h2"].map((id) => {
+      if (options.offline === id) return host(id, "offline");
+      return host(id, options.incompatible === id ? "incompatible" : "online");
+    }),
     hub: {
       h1: { managed: [session("h1")], history: [] },
       h2: { managed: [session("h2")], history: [] },
@@ -193,6 +202,50 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
       menu: true,
       scope: { kind: "host", hostId: "h2" },
     });
+  });
+
+  // #886: Sessions lists sessions, so its notice says they come back, not numbers.
+  test("an offline scoped host says its sessions come back when it reconnects", async () => {
+    setup({ kept: '{"kind":"host","hostId":"h1"}', offline: "h1" });
+    const sessions = () =>
+      screen.queryByText(/alfa is offline\. Its sessions show again when it reconnects\./) !== null;
+    await settleMaybe(sessions);
+    expect(sessions()).toBe(true);
+  });
+
+  // Review of #904: the scoped host stays in the menu, checked, so the menu says what is chosen.
+  test("an incompatible scoped host asks for a daemon update, and the menu still shows it chosen", async () => {
+    setup({ kept: '{"kind":"host","hostId":"h2"}', incompatible: "h2" });
+    const update = () => screen.queryByText(/beta needs a daemon update/) !== null;
+    await settleMaybe(update);
+    const said = update();
+    expect(hasMenu("Data from beta")).toBe(true);
+    const trigger = screen.queryByRole("button", { name: "Data from beta" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    const items = screen.queryAllByRole("menuitemradio").map((item) => item.textContent);
+    const checked = screen
+      .queryAllByRole("menuitemradio")
+      .filter((item) => item.getAttribute("aria-checked") === "true")
+      .map((item) => item.textContent);
+    expect({ said, items, checked }).toEqual({
+      said: true,
+      items: ["All hosts", "alfa", "beta"],
+      checked: ["beta"],
+    });
+  });
+
+  test("on All hosts the menu does not offer an incompatible host", async () => {
+    setup({ incompatible: "h2" });
+    await settle(() => shown("on alfa"));
+    expect(hasMenu("Data from All hosts")).toBe(true);
+    const trigger = screen.queryByRole("button", { name: "Data from All hosts" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    const items = screen.queryAllByRole("menuitemradio").map((item) => item.textContent);
+    expect(items).toEqual(["All hosts", "alfa"]);
   });
 
   // One control for whose sessions: the Filters popover and the row above the groups had their own.
