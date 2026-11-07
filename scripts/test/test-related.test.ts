@@ -163,11 +163,16 @@ describe("newImports (#762)", () => {
     expect(newImports(["scripts/test/a.test.ts"], repo, before)).toEqual(["scripts/lib/b.ts"]);
   });
 
-  test("a new test brings every file it imports; a changed file and a package are left out", () => {
+  test("a new test brings every file it imports, and a package is left out", () => {
     expect(
       newImports(["scripts/test/a.test.ts", "scripts/test/new.test.ts"], repo, before),
     ).toEqual(["scripts/lib/b.ts", "scripts/lib/c.ts"]);
-    expect(newImports(["scripts/test/a.test.ts", "scripts/lib/b.ts"], repo, before)).toEqual([]);
+  });
+
+  test("a file the same change also edits is still named: #695 changed demo-shots.ts and its new importer at once", () => {
+    expect(newImports(["scripts/test/a.test.ts", "scripts/lib/b.ts"], repo, before)).toEqual([
+      "scripts/lib/b.ts",
+    ]);
   });
 
   test("a changed source file or a removed test brings nothing", () => {
@@ -285,6 +290,24 @@ describe("planRelated", () => {
     expect(plan.output).toContain("--tier unit,component: 2 test file(s) left out (integration 2)");
     expect(plan.targets).toBeUndefined();
     expect(plan.command?.some((arg) => arg.startsWith("--coverage-dir"))).toBe(false);
+  });
+
+  test("#762: a scripts/ entry file changed in the same diff as its new importer is gated, once", () => {
+    const repo: Record<string, string> = {
+      "scripts/demo-shots.ts": "export const names = 1;",
+      "scripts/test/narrow.test.ts": `import "../demo-shots.ts";`,
+    };
+    const base = fakeGit(
+      ["scripts/demo-shots.ts", "scripts/test/narrow.test.ts"],
+      Object.keys(repo),
+    );
+    const plan = planRelated({
+      platform: "linux",
+      git: (args) => (args[0] === "show" ? "" : base(args)),
+      readFile: (path) => repo[path] ?? "",
+      coverageDir: "/tmp/cov",
+    });
+    expect(plan.targets).toEqual(["scripts/demo-shots.ts"]);
   });
 
   test("#762: a file a changed test newly imports joins the changed-file gate, with its own tests", () => {
