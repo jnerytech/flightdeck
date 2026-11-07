@@ -123,15 +123,36 @@ const secretFile = (file: DiffFile): DiffFile => ({
 /** A credential file that is shown anyway, its private values masked (#806): `.mcp.json`. */
 const unlisted = (path: string) => credential(path) && !maskedConfig(path);
 
-/** A config's hunks with their private values masked; the command it runs stays readable. */
+const masks = (text: string) => text.split('"[redacted]"').length;
+
+/**
+ * A config's hunks with their private values masked; the command it runs stays readable. The old
+ * side (context and removed lines) and the new side (context and added lines) are masked as two
+ * texts, each as a hunk may open anywhere in it; a context line keeps the stricter of its two.
+ */
 const maskedFile = (file: DiffFile): DiffFile => ({
   ...file,
   hunks: file.hunks.map((hunk) => {
-    const texts = maskConfig(hunk.lines.map((line) => line.text));
+    const old = maskConfig(
+      hunk.lines.filter((line) => line.op !== "+").map((line) => line.text),
+      true,
+    );
+    const now = maskConfig(
+      hunk.lines.filter((line) => line.op !== "-").map((line) => line.text),
+      true,
+    );
+    let o = 0;
+    let n = 0;
     return {
       ...hunk,
-      header: maskConfig([hunk.header])[0] ?? hunk.header,
-      lines: hunk.lines.map((line, i) => ({ ...line, text: texts[i] ?? line.text })),
+      header: maskConfig([hunk.header], true)[0] ?? hunk.header,
+      lines: hunk.lines.map((line) => {
+        const before = line.op === "+" ? "" : (old[o++] ?? "");
+        const after = line.op === "-" ? "" : (now[n++] ?? "");
+        const text =
+          line.op === "+" || (line.op === " " && masks(after) > masks(before)) ? after : before;
+        return { ...line, text };
+      }),
     };
   }),
 });

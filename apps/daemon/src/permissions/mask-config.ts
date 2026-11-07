@@ -18,52 +18,77 @@ export function maskedConfig(path: string): boolean {
 
 const scanner = new SecretScanner();
 const MASK = '"[redacted]"';
-/** One string of a JSON line, with what is just after it (a colon makes it a key). */
+/** One string of a JSON line. */
 const STRING = /"(?:[^"\\]|\\.)*"/g;
-/** The keys whose values say what a server runs and where: everything else is masked. */
-const SHOWN = new Set(["command", "type", "transport", "name", "cwd", "url"]);
-/** An argument that names a secret: the next one is its value. */
-const SECRET_FLAG = /^"--?[\w-]*(token|key|secret|passw|auth|cred|bearer)[\w-]*"$/i;
+/** The keys whose values say what a server runs and where; case-sensitive, as Claude Code reads them. */
+const SHOWN = new Set(["command", "type", "transport", "cwd", "url"]);
+/** The objects whose values are all private; the rest of the line is masked after one. */
+const PRIVATE = new Set(["env", "headers"]);
 
-/** A `url` without its query or fragment, where a key is often passed. */
-const bare = (value: string) => value.replace(/[?#].*"$/, '?[redacted]"');
+/** Whether a flag's name says its value is a secret (`--token`, `--api-key`, `--db-pwd`, not `--path`). */
+const secretName = (name: string) =>
+  /token|secret|passw|credential|apikey|bearer/i.test(name) ||
+  name.split("-").some((part) => /^(key|pwd|pat|dsn|sig|auth|cred)$/i.test(part));
+const FLAG = /^"(--?[\w-]+)(=.*)?"$/;
+/** A header value that names its scheme: its list item is a secret whatever the key. */
+const SCHEME = /^"(?:bearer|basic)\s/i;
+
+/** A `url` without the user in it and without its query or fragment, where a key is often passed. */
+const bare = (value: string) =>
+  value.replace(/\/\/[^/@"]*@/, "//[redacted]@").replace(/[?#].*"$/, '?[redacted]"');
 
 /**
- * The lines of a config with its private values masked. Fail-closed, line by line: a string
- * value is shown only under `command`, `type`, `transport`, `name`, `cwd` and `url` (without its
- * query); an argument in a list is shown unless it follows a flag that names a secret; the keys
- * and everything that is not a string stay, and token shapes are masked in what is left. No line
- * depends on the ones around it, so a hunk that starts inside an object is masked as well as the
- * whole file.
+ * The lines of a config with its private values masked. Fail-closed, and line by line: a string
+ * value is shown only under `command`, `type`, `transport`, `cwd` and `url` (without its user and
+ * query) and never in an `env` or `headers` object on the same line; a list item is shown only
+ * in an `args` list or on a line of its own, unless it follows a flag that names a secret, is
+ * joined to one, or names a scheme. A value on the line after its key is masked. `unknownStart`
+ * is for a diff hunk, which may open inside an object or on a flag's value: its first string
+ * is masked. Keys, numbers and punctuation stay, and token shapes are masked in what is left.
  */
-export function maskConfig(lines: readonly string[]): string[] {
-  let flagged = false;
+export function maskConfig(lines: readonly string[], unknownStart = false): string[] {
+  // The next string with no key before it is a value that belongs to something unseen.
+  let owed = unknownStart;
   return lines.map((text) => {
     let out = "";
     let at = 0;
     let key = "";
+    // Braces are counted on the line: an `env` or `headers` object ends at its own closing brace.
+    let depth = 0;
+    let privateAt = -1;
     for (const found of text.matchAll(STRING)) {
       const start = found.index;
       const end = start + found[0].length;
+      for (const char of text.slice(at, start)) {
+        if (char === "{") depth += 1;
+        if (char === "}") depth -= 1;
+        if (depth <= privateAt) privateAt = -1;
+      }
+      const inPrivate = privateAt >= 0;
       const before = text.slice(0, start).trimEnd().slice(-1);
-      const isKey = /^\s*:/.test(text.slice(end));
+      const listed = text.slice(0, start).lastIndexOf("[") > text.slice(0, start).lastIndexOf("]");
       let value = found[0];
-      if (isKey) {
-        key = value.slice(1, -1).toLowerCase();
-        flagged = false;
+      if (/^\s*:/.test(text.slice(end))) {
+        key = value.slice(1, -1);
+        owed = false;
+        if (PRIVATE.has(key) && privateAt < 0) privateAt = depth;
       } else if (before === ":") {
-        if (!SHOWN.has(key)) value = MASK;
+        if (inPrivate || !SHOWN.has(key)) value = MASK;
         else if (key === "url") value = bare(value);
-      } else if (flagged) {
+      } else if (owed || inPrivate || SCHEME.test(value) || (listed && key !== "args")) {
         value = MASK;
-        flagged = false;
+        owed = false;
       } else {
-        flagged = SECRET_FLAG.test(value);
+        const flag = FLAG.exec(value);
+        if (flag?.[2] && secretName(flag[1] ?? "")) value = `"${flag[1]}=[redacted]"`;
+        owed = flag?.[2] === undefined && secretName(flag?.[1] ?? "");
       }
       out += text.slice(at, start) + value;
       at = end;
     }
     out += text.slice(at);
+    // A key at the end of a line owes its value to the next one.
+    if (text.trimEnd().endsWith(":")) owed = true;
     return out
       .split(MASK)
       .map((part) => scanner.redact(part, false))
