@@ -2388,6 +2388,13 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   você acrescenta ou tira linhas (o número de linhas é o número de executoras, de 1 a 8). A
   persona de cada executora começa como o Desenvolvedor, quando o host o tem; escolha **Nenhuma**
   para o padrão simples. Sem escolha, o modelo é o da persona. O modelo de cada membro aparece na linha dele.
+- **As permissões de cada membro** são escolhidas na mesma linha (e para a coordenadora):
+  **Padrão** (pergunta antes de mudar, ou o modo da persona quando ele é mais restrito), **Aceitar
+  edições**, **Planejar** e, só onde o host permite, **Ignorar permissões** (Bypass). Escolher
+  Bypass pede uma confirmação antes de criar o time ou acrescentar a executora; um host que o
+  proíbe recusa o time antes de qualquer membro começar. As linhas se alinham em colunas: persona,
+  modelo, permissões, remover. Um host antigo demais para aceitar os modos não mostra o seletor de
+  permissões, então uma escolha nunca é ignorada em silêncio.
 - **O nome de cada membro** diz quem ele é: o time e a persona no idioma do app, como
   "md-server · Arquiteto 2" ou "md-server · Coordenadora"; sem persona, "Executora 2". O nome vale na
   lista de sessões, na busca e em Precisa de você. Um nome que você deu, ou o que o Claude Code deu, continua
@@ -2404,8 +2411,8 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   - pausar (STOP a todos os membros) e retomar;
   - mandar uma mensagem a todos;
   - trocar a persona de um membro;
-  - acrescentar uma executora, escolhendo a persona e o modelo dela (a coordenadora recebe o aviso
-    com o nome e o card da nova executora);
+  - acrescentar uma executora, escolhendo a persona, o modelo e as permissões dela (a coordenadora
+    recebe o aviso com o nome e o card da nova executora);
   - tirar um membro: a sessão dele é parada, a coordenadora é avisada e o card fica no board;
   - encerrar o time, com confirmação.
 - **A cota:** quando a cota do plano passa do limite (`quota.pauseAt`), o time pausa sozinho. Você

@@ -2385,6 +2385,13 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   you add or remove rows (the number of rows is the number of workers, 1 to 8). A worker's
   persona starts as the Developer when the host has it; pick **None** for the plain default. With no choice,
   the model is the persona's. Each member's model shows on its line.
+- **Each member's permissions** are picked in the same row (and for the coordinator): **Default**
+  (asks before changes, or the persona's own mode when it is stricter), **Accept edits**, **Plan**
+  and, only where the host allows it, **Ignore permissions** (Bypass). Choosing Bypass asks for a
+  confirmation before the team is created or the worker is added; a host that forbids it refuses
+  the team before any member starts. The rows line up in columns: persona, model, permissions,
+  remove. A host that is too old to take the modes shows no permissions picker, so a choice is
+  never silently ignored.
 - **Each member's name** says who it is: the team and the persona in the app's language, such as
   "md-server · Architect 2" or "md-server · Coordinator"; with no persona, "Worker 2". The name
   shows in the sessions list, the search and Needs you. A name you gave, or the one Claude Code
@@ -2401,7 +2408,8 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - pause it (STOP to every member) and resume it;
   - send a message to everyone;
   - change a member's persona;
-  - add a worker, choosing its persona and model (the coordinator is told its name and card);
+  - add a worker, choosing its persona, model and permissions (the coordinator is told its name and
+    card);
   - take a member out: its session is stopped, the coordinator is told, and its card stays on the
     board;
   - close the team, with a confirmation.
