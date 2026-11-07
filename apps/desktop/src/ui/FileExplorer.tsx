@@ -9,6 +9,7 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
 import { affectedDirs } from "../lib/file-changes.ts";
+import { FileSearch } from "./FileSearch.tsx";
 
 // CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first open.
 const FileViewer = lazy(() => import("./FileViewer.tsx").then((m) => ({ default: m.FileViewer })));
@@ -21,9 +22,12 @@ const pathOf = (dir: string, name: string) => (dir === "" ? name : `${dir}/${nam
 /**
  * The files of a session's repository as a tree (issue #506): folders open on click and are asked
  * for once, a changed file carries its status from the Changes tab's diff, a credential shows as
- * hidden, and a filter keeps the names that match among the folders already open.
+ * hidden, and a filter keeps the names that match among the folders already open. With `search`
+ * (a host with `file.search`, #797), a search over the whole repository takes the filter's place.
  */
-export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; target: string }>) {
+export function FileExplorer(
+  props: Readonly<{ store: AppStore; hostId: string; target: string; search?: boolean }>,
+) {
   const t = useT();
   const { store, hostId, target } = props;
   const [folders, setFolders] = useState<Record<string, Folder>>({});
@@ -171,16 +175,26 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
   return (
     <section aria-label={t("files.region")}>
       <Stack gap={2}>
-        <Input
-          type="search"
-          aria-label={t("files.filter")}
-          placeholder={t("files.filter")}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <Stack as="ul" gap={1}>
-          {folder("")}
-        </Stack>
+        {props.search ? (
+          <FileSearch store={store} hostId={hostId} target={target} onOpen={setViewing}>
+            <Stack as="ul" gap={1}>
+              {folder("")}
+            </Stack>
+          </FileSearch>
+        ) : (
+          <>
+            <Input
+              type="search"
+              aria-label={t("files.filter")}
+              placeholder={t("files.filter")}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <Stack as="ul" gap={1}>
+              {folder("")}
+            </Stack>
+          </>
+        )}
         {viewing && (
           <Suspense fallback={null}>
             <FileViewer
