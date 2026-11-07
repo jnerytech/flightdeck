@@ -105,6 +105,13 @@ describe("watch-extend: more fixing rounds for a card (#77)", () => {
     expect([twice, again.maxRounds, again.roundsUsed]).toEqual([6, 3, 0]);
   });
 
+  test("a card that waits for you for another reason (its session asks) stays waiting", async () => {
+    const f = await fixture();
+    f.board.moveCard(f.card.id, "waiting");
+    service(f).extend(f.card.id, 1);
+    expect(f.board.getCard(f.card.id).column).toBe("waiting");
+  });
+
   test("a card in another column stays where it is", async () => {
     const f = await fixture();
     f.board.moveCard(f.card.id, "done");
