@@ -7,6 +7,7 @@ import {
   teleportSession,
   teleportSummary,
 } from "../src/lib/teleport.ts";
+import { settleMaybe, stays } from "./wait.ts";
 
 /**
  * Issue #100, slice 3a: the app relays a session's package from the source host to the target.
@@ -292,5 +293,150 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       cancelFails: true,
     });
     expect(await failure(run(h))).toBe("teleport_exists");
+  });
+
+  test("a cancel while a host does not answer a chunk ends the move, and both hosts are told", async () => {
+    const h = hosts();
+    let waiting = false;
+    // A read that never answers: a move that waits for it cannot be cancelled.
+    const hung = (async (type: string, payload: never) => {
+      if (type === "teleport.read") {
+        waiting = true;
+        return new Promise(() => {});
+      }
+      return h.source(type as "teleport.prepare", payload);
+    }) as TeleportRequest;
+    const stop = new AbortController();
+    let outcome: unknown = "still waiting";
+    void run(h, { source: hung, signal: stop.signal }).then((done) => {
+      outcome = done;
+    });
+    await settleMaybe(() => waiting);
+    stop.abort();
+    await settleMaybe(() => outcome !== "still waiting", 2000);
+    expect([outcome, h.calls.slice(-2)]).toEqual([
+      { kind: "cancelled" },
+      ["target:teleport.abort", "source:teleport.cancel"],
+    ]);
+  });
+
+  test("a cancel after the last chunk, before the import, never reaches the target's import", async () => {
+    const h = hosts();
+    const stop = new AbortController();
+    const outcome = await run(h, {
+      onProgress: (sent, total) => {
+        if (sent === total) stop.abort();
+      },
+      signal: stop.signal,
+    });
+    expect([outcome, h.calls.includes("target:teleport.finish"), h.calls.slice(-2)]).toEqual([
+      { kind: "cancelled" },
+      false,
+      ["target:teleport.abort", "source:teleport.cancel"],
+    ]);
+  });
+
+  test("a manifest that is not one still frees the source's package when its id is one", async () => {
+    const cancelled = async (manifest: unknown) => {
+      const ids: unknown[] = [];
+      const source = (async (type: string, payload: { id?: unknown }) => {
+        if (type === "teleport.prepare") return manifest;
+        if (type === "teleport.cancel") ids.push(payload.id);
+        return undefined;
+      }) as TeleportRequest;
+      const why = await failure(run(hosts(), { source }));
+      return [why, ids];
+    };
+    const broken = { ...MANIFEST, parts: [{ name: "transcript", size: -1, sha256: "a" }] };
+    expect([
+      await cancelled(broken),
+      await cancelled({ ...broken, id: "" }),
+      await cancelled({ ...broken, id: { not: "an id" } }),
+      await cancelled(null),
+    ]).toEqual([
+      ["teleport_corrupt", ["pkg-1"]],
+      ["teleport_corrupt", []],
+      ["teleport_corrupt", []],
+      ["teleport_corrupt", []],
+    ]);
+  });
+
+  test("a cancel while the source prepares, or the target opens its inbox, ends the move, and what answers late is freed", async () => {
+    const late = async (where: "prepare" | "receive") => {
+      const h = hosts();
+      let answer: ((value: unknown) => void) | null = null;
+      const held = (async (type: string, payload: never) => {
+        if (type === `teleport.${where}`) {
+          return new Promise<unknown>((resolve) => {
+            answer = resolve;
+          });
+        }
+        return (where === "prepare" ? h.source : h.target)(type as "teleport.cancel", payload);
+      }) as TeleportRequest;
+      const stop = new AbortController();
+      let outcome: unknown = "still waiting";
+      void run(h, {
+        ...(where === "prepare" ? { source: held } : { target: held }),
+        signal: stop.signal,
+      }).then((done) => {
+        outcome = done;
+      });
+      await settleMaybe(() => answer !== null);
+      stop.abort();
+      await settleMaybe(() => outcome !== "still waiting", 2000);
+      const calls = h.calls.length;
+      // The host answers after the move ended: its package goes.
+      (answer as unknown as (value: unknown) => void)(
+        where === "prepare" ? MANIFEST : { id: "in-late" },
+      );
+      await settleMaybe(() => h.calls.length > calls, 2000);
+      return [outcome, h.calls.slice(calls)];
+    };
+    expect([await late("prepare"), await late("receive")]).toEqual([
+      [{ kind: "cancelled" }, ["source:teleport.cancel"]],
+      [{ kind: "cancelled" }, ["target:teleport.abort"]],
+    ]);
+  });
+
+  test("a session on no branch shows none", () => {
+    const summary = teleportSummary({
+      ...MANIFEST,
+      git: { ...(MANIFEST.git as NonNullable<TeleportManifest["git"]>), branch: null },
+    });
+    expect(summary.branch).toBeNull();
+  });
+
+  test("a host that refuses after the move was cancelled is not an error anywhere", async () => {
+    const stray: unknown[] = [];
+    const onStray = (reason: unknown) => stray.push(reason);
+    process.on("unhandledRejection", onStray);
+    try {
+      const h = hosts();
+      let refuse: ((error: unknown) => void) | null = null;
+      const held = (async (type: string, payload: never) =>
+        type === "teleport.prepare"
+          ? new Promise((_resolve, reject) => {
+              refuse = reject;
+            })
+          : h.source(type as "teleport.cancel", payload)) as TeleportRequest;
+      const stop = new AbortController();
+      let outcome: unknown = "still waiting";
+      void run(h, { source: held, signal: stop.signal }).then((done) => {
+        outcome = done;
+      });
+      await settleMaybe(() => refuse !== null);
+      stop.abort();
+      await settleMaybe(() => outcome !== "still waiting", 2000);
+      (refuse as unknown as (error: unknown) => void)(
+        new RequestError("invalid_state", "x", "teleport_busy"),
+      );
+      const quiet = await stays(() => stray.length === 0, 200).then(
+        () => true,
+        () => false,
+      );
+      expect([outcome, quiet, h.calls]).toEqual([{ kind: "cancelled" }, true, []]);
+    } finally {
+      process.off("unhandledRejection", onStray);
+    }
   });
 });
