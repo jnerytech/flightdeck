@@ -213,7 +213,8 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     expect(sessions()).toBe(true);
   });
 
-  test("an incompatible scoped host asks for a daemon update, and the menu does not offer it", async () => {
+  // Review of #904: the scoped host stays in the menu, checked, so the menu says what is chosen.
+  test("an incompatible scoped host asks for a daemon update, and the menu still shows it chosen", async () => {
     setup({ kept: '{"kind":"host","hostId":"h2"}', incompatible: "h2" });
     const update = () => screen.queryByText(/beta needs a daemon update/) !== null;
     await settleMaybe(update);
@@ -224,7 +225,27 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
       fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
     });
     const items = screen.queryAllByRole("menuitemradio").map((item) => item.textContent);
-    expect({ said, items }).toEqual({ said: true, items: ["All hosts", "alfa"] });
+    const checked = screen
+      .queryAllByRole("menuitemradio")
+      .filter((item) => item.getAttribute("aria-checked") === "true")
+      .map((item) => item.textContent);
+    expect({ said, items, checked }).toEqual({
+      said: true,
+      items: ["All hosts", "alfa", "beta"],
+      checked: ["beta"],
+    });
+  });
+
+  test("on All hosts the menu does not offer an incompatible host", async () => {
+    setup({ incompatible: "h2" });
+    await settle(() => shown("on alfa"));
+    expect(hasMenu("Data from All hosts")).toBe(true);
+    const trigger = screen.queryByRole("button", { name: "Data from All hosts" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    const items = screen.queryAllByRole("menuitemradio").map((item) => item.textContent);
+    expect(items).toEqual(["All hosts", "alfa"]);
   });
 
   // One control for whose sessions: the Filters popover and the row above the groups had their own.

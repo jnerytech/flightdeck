@@ -67,6 +67,26 @@ describe("hub-scope: the hub's own host filter becomes the data scope, once (#12
     });
   });
 
+  // Review of #904: a stored null is not a filter; saving over it writes the filter.
+  test("saving over a stored null writes the filter, and a host already taken does not come back", () => {
+    const odd = storage({ [HUB_FILTER_KEY]: "null" });
+    let saved = true;
+    try {
+      saveHubFilter(odd, { ...loadHubFilter(storage()), state: "idle" });
+    } catch {
+      saved = false;
+    }
+    const taken = storage({ [HUB_FILTER_KEY]: JSON.stringify({ host: "beta" }) });
+    takeHubHost(taken);
+    saveHubFilter(taken, { ...loadHubFilter(taken), state: "running" });
+    const left = JSON.parse(taken.items.get(HUB_FILTER_KEY) ?? "{}") as Record<string, unknown>;
+    expect({
+      saved,
+      state: (JSON.parse(odd.items.get(HUB_FILTER_KEY) ?? "{}") as Record<string, unknown>)?.state,
+      host: "host" in left,
+    }).toEqual({ saved: true, state: "idle", host: false });
+  });
+
   test("nothing kept, or not readable, takes nothing", () => {
     expect([
       takeHubHost(storage()),
