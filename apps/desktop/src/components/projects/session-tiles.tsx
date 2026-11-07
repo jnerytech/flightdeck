@@ -23,6 +23,7 @@ import {
   tileColumns,
 } from "../../lib/tiles.ts";
 import { inputSummary } from "../../lib/tool-input.ts";
+import { uniqueKeys } from "../../lib/unique-keys.ts";
 import { useSessionState } from "../../lib/use-store.ts";
 
 const MOVES: Record<string, (at: number, columns: number) => number> = {
@@ -133,7 +134,7 @@ function SessionTile(
       aria-label={row.title}
       // The tile itself takes the keyboard focus, so Alt+arrows can move from one to the next.
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a region the keyboard moves between
-      tabIndex={0}
+      tabIndex={0} // NOSONAR: the tile is the tab stop Alt+arrows move between; a button inside would add a second stop and change the focus order
       aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight Alt+ArrowUp Alt+ArrowDown"
       data-slot="session-tile"
       className="session-tile"
@@ -153,10 +154,7 @@ function SessionTile(
       </header>
       <output aria-label={t("tiles.lines")} className="session-tile-lines">
         {lines.length > 0 ? (
-          lines.map((line, at) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: the lines are the tail of a text, in order
-            <span key={at}>{line}</span>
-          ))
+          uniqueKeys(lines).map((key, at) => <span key={key}>{lines[at]}</span>)
         ) : (
           <span className="text-muted-foreground">{t("tiles.nothingYet")}</span>
         )}
@@ -301,8 +299,7 @@ export function SessionTiles(
           <span className="ms-2 font-medium">{t("tiles.notShown", { n: hidden })}</span>
         )}
       </p>
-      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Alt+arrows move between the tiles inside */}
-      <ul
+      <ul // NOSONAR: one handler for the keys that bubble from every control of every tile; each control is already keyboard-reachable, this only adds the Alt+arrows between tiles
         ref={grid}
         aria-label={t("tiles.title")}
         className="tile-grid"
