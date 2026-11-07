@@ -124,11 +124,25 @@ interface AzWorkItem {
   fields: Record<string, unknown>;
 }
 
+/** The text of a field: a string as it is; anything else, which Azure DevOps does not send, is empty. */
+const textOf = (value: unknown): string => (typeof value === "string" ? value : "");
+
+/** `html` without its tags: each `<` up to the next `>`; a `<` with no `>` after it stays. A scan, not a pattern, so a long description cannot make it slow. */
+function withoutTags(html: string): string {
+  let out = "";
+  let at = 0;
+  for (;;) {
+    const open = html.indexOf("<", at);
+    const close = open === -1 ? -1 : html.indexOf(">", open);
+    if (close === -1) return out + html.slice(at);
+    out += html.slice(at, open);
+    at = close + 1;
+  }
+}
+
 /** The text of the HTML Azure DevOps keeps in descriptions. */
 function htmlToText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>|<\/(p|div|li|h\d)>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
+  return withoutTags(html.replace(/<br\s*\/?>|<\/(p|div|li|h\d)>/gi, "\n"))
     .replaceAll("&nbsp;", " ")
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
@@ -211,22 +225,22 @@ export class AzureIssues implements IssueProvider {
     // Older az versions print "Name <email>" instead of the identity object.
     const identity: AzIdentity =
       typeof created === "string"
-        ? { displayName: created, uniqueName: /<(.+)>/.exec(created)?.[1] ?? created }
+        ? { displayName: created, uniqueName: /<(.+)>/.exec(created)?.[1] ?? created } // NOSONAR: one short identity string from az, not text of any length
         : (created ?? {});
     const unique = (identity.uniqueName ?? "").toLowerCase();
     return {
       ref: this.refOf(String(id)),
       id: String(id),
-      title: String(fields["System.Title"] ?? ""),
-      body: htmlToText(String(fields["System.Description"] ?? "")),
+      title: textOf(fields["System.Title"]),
+      body: htmlToText(textOf(fields["System.Description"])),
       url: `https://dev.azure.com/${this.coords.org}/${encodeURIComponent(this.coords.project)}/_workitems/edit/${id}`,
       author: identity.displayName ?? identity.uniqueName ?? "",
-      labels: String(fields["System.Tags"] ?? "")
+      labels: textOf(fields["System.Tags"])
         .split(";")
         .map((tag) => tag.trim())
         .filter((tag) => tag !== ""),
       external: me === null || unique !== me,
-      createdAt: String(fields["System.CreatedDate"] ?? ""),
+      createdAt: textOf(fields["System.CreatedDate"]),
     };
   }
 }

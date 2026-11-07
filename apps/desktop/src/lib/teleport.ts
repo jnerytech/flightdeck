@@ -12,6 +12,7 @@ import {
   TeleportManifestSchema,
 } from "@flightdeck/protocol";
 import { RequestError } from "./host-connection.ts";
+import { isLocalUrl } from "./terminal.ts";
 
 /** One host's command channel: a connection's `request`, injected so tests use fakes. */
 export type TeleportRequest = <T extends CommandType>(
@@ -67,6 +68,15 @@ const MARKS = /[\p{Cc}\p{Cf}]/gu;
 /** A host's text shown as the plain text it is: no mark that could disguise it, at most `max` long. */
 export const plainText = (text: string, max: number): string =>
   text.replace(MARKS, "").slice(0, max);
+
+/** A host the app reaches over plain `ws://` and not on this machine: nothing encrypts its traffic. */
+export function isPlainRemote(url: string): boolean {
+  try {
+    return new URL(url).protocol === "ws:" && !isLocalUrl(url);
+  } catch {
+    return false;
+  }
+}
 
 export function teleportSummary(manifest: TeleportManifest): TeleportSummary {
   const branch = manifest.git?.branch ? plainText(manifest.git.branch, 255) : null;

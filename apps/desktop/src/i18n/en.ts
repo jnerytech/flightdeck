@@ -37,6 +37,7 @@ export const en: Dictionary = {
   home: {
     title: "Home",
     range: "Last 7 days · all hosts",
+    rangeHost: "Last 7 days · {host}",
     spend: "Spend",
     noBudget: "No budget set",
     ofBudget: "{spent} of {limit} budget this month",
@@ -2764,6 +2765,11 @@ export const en: Dictionary = {
     done: "The session is on {host} now. The one here stays as it was.",
     open: "Open it there",
     close: "Close",
+    plainWs: {
+      one: "{hosts} connects without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
+      other:
+        "{hosts} connect without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
+    },
     movedToast: "The session moved to {host}.",
     preview: "Preview: move a session to another host",
   },

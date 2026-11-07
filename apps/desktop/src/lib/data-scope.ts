@@ -25,10 +25,34 @@ export function parseScope(raw: string | null): DataScope {
   return ALL_SCOPE;
 }
 
-/** The scope as it applies now: a host that is no longer there means every host. */
-export function activeScope(scope: DataScope, hosts: readonly { id: string }[]): DataScope {
-  if (scope.kind === "host" && !hosts.some((host) => host.id === scope.hostId)) return ALL_SCOPE;
+/**
+ * The scope as it applies now: a host that is no longer there means every host. Until the host
+ * list is read (`loaded`), a kept host is not gone yet, only not listed.
+ */
+export function activeScope(
+  scope: DataScope,
+  hosts: readonly { id: string }[],
+  loaded = true,
+): DataScope {
+  if (scope.kind === "host" && loaded && !hosts.some((host) => host.id === scope.hostId)) {
+    return ALL_SCOPE;
+  }
   return scope;
+}
+
+/** A host's menu value starts with this; every host's has none, so no host id can take it. */
+const HOST_VALUE = "host:";
+
+/** The scope as a menu value. */
+export function scopeValue(scope: DataScope): string {
+  return scope.kind === "host" ? `${HOST_VALUE}${scope.hostId}` : "all";
+}
+
+/** The scope a menu value names; anything else is every host. */
+export function scopeOfValue(value: string): DataScope {
+  return value.startsWith(HOST_VALUE)
+    ? { kind: "host", hostId: value.slice(HOST_VALUE.length) }
+    : ALL_SCOPE;
 }
 
 /** The hosts the scope keeps, in their order. */

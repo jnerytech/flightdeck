@@ -862,6 +862,7 @@ Uma sessão ociosa pode continuar em outro host: a conversa, os commits e as mud
 
 1. No menu da sessão (o "…" na linha dela), escolha **Mover para outro host…**.
 2. Escolha o host e o repositório lá: aperte **Procurar…** para escolher entre as pastas que esse host permite, ou digite o caminho. Tem de ser o mesmo projeto, então esse host já precisa ter um clone dele.
+   Se um dos hosts é alcançado por `ws://` puro e não é esta máquina, um aviso o nomeia: a conversa e o código passam pelo app sem criptografia, então mova só por uma rede em que você confia.
 3. Leia o que vai: a branch, os commits ainda fora do origin, os arquivos alterados, o tamanho e quantas linhas parecem segredos. Os segredos em si nunca aparecem, e eles vão como estão.
 4. Aperte **Mover** e depois **Abrir lá**. Depois que todos os bytes foram enviados, você pode fechar a janela: quando a mudança termina, um aviso diz isso, com **Abrir lá**, ou diz por que foi recusada.
 
@@ -3240,6 +3241,8 @@ encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 - **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
   Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
   Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 1024 px, e abaixo de 640 px vira uma gaveta.
+  Numa janela larga o botão a recolhe para o trilho e a abre de novo, e o app lembra a escolha na
+  próxima vez que abrir larga.
 - **Tamanho da janela:** a janela abre em 1200 x 800 e pode encolher até 360 x 480, estreita como um
   celular, para ficar ao lado de um editor. Estreita, a barra lateral vira uma gaveta e as abas viram
   um botão só.
