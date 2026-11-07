@@ -38,7 +38,7 @@ export interface Pr {
 const REPO = "repos/{owner}/{repo}";
 const MAIN = "main";
 const USAGE =
-  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n> | --refs <n>] | next | update <n> | auto <n> | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
+  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n> | --refs <n>] [--title <text>] | next | update <n> | auto <n> | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
 /** A required check passes as GitHub counts it: a success, or a run it skipped or left neutral. */
 const PASSED = new Set(["success", "skipped", "neutral"]);
 
@@ -212,6 +212,20 @@ async function behindBy(deps: PrFlowDeps, base: string, head: string): Promise<n
   return Number(stdout.trim()) || 0;
 }
 
+/**
+ * The first non-merge commit's subject (git log lists the newest first) without its
+ * `type(scope): ` prefix and trailing `(#N)`, or null when the branch has none (#909).
+ */
+export function sliceTitle(subjects: string[]): string | null {
+  const first = subjects.filter((s) => !s.startsWith("Merge ")).at(-1);
+  if (!first) return null;
+  const text = first
+    .replace(/^[a-z]+(?:\([^)]*\))?!?: /, "")
+    .replace(/ \(#\d+\)$/, "")
+    .trim();
+  return text || null;
+}
+
 async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
   const branch = args[0];
   if (!branch || branch.startsWith("--")) return usage(deps);
@@ -248,7 +262,11 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     deps.log(`#${issue}: the issue cannot be read`);
     return 1;
   }
-  const link = args.includes("--refs") ? "Refs" : "Closes";
+  const refs = args.includes("--refs");
+  const link = refs ? "Refs" : "Closes";
+  // #909: a slice (--refs) is named after its own first commit, not the issue it is part of; a
+  // PR that closes its issue keeps the issue's title. --title names it by hand in every mode.
+  const name = option("--title") ?? (refs ? sliceTitle(subjects) : null) ?? title.stdout.trim();
   const body = [`${link} #${issue}`, "", ...subjects.map((s) => `- ${s}`)].join("\n");
   const created = await deps.gh([
     "api",
@@ -256,7 +274,7 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     "POST",
     `${REPO}/pulls`,
     "-f",
-    `title=${title.stdout.trim()} (#${issue})`,
+    `title=${name} (#${issue})`,
     "-f",
     `head=${branch}`,
     "-f",
