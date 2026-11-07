@@ -151,6 +151,30 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     ]);
   });
 
+  test("when the host cannot say which shells are live, the page opens a new one instead of waiting", async () => {
+    const { store, hostId, sessionId } = await onSessionPage();
+    await settle(() => tab("Terminal") !== null);
+    await clickTab("Terminal");
+    await settle(() => terminalShown());
+    const [first] = await live(store, hostId);
+    await act(async () => {
+      store.router.push({ name: "hub" });
+    });
+    await settle(() => tab("Terminal") === null);
+    const real = store.terminalHost.bind(store);
+    (store as unknown as { terminalHost: unknown }).terminalHost = (id: string) =>
+      Object.create(real(id), { list: { value: () => Promise.reject(new Error("offline")) } });
+    await act(async () => {
+      store.router.push({ name: "session", host: hostId, id: sessionId });
+    });
+    await settle(() => terminalShown());
+    (store as unknown as { terminalHost: unknown }).terminalHost = real;
+    await settle(
+      () => store.sessionViews.terminalOf(`${hostId}/${sessionId}`) !== first?.terminalId,
+    );
+    expect((await live(store, hostId)).length).toBe(2);
+  });
+
   test("a shell the host refuses sends the person back to the conversation, and the view stays offered", async () => {
     const { store, hostId } = await onSessionPage();
     await settle(() => tab("Terminal") !== null);
