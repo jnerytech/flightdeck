@@ -1366,6 +1366,7 @@ export class Board {
         name: card.title,
         ...(variant?.model ? { model: variant.model } : {}),
         ...(variant?.effort ? { effort: variant.effort } : {}),
+        ...(variant?.permissionMode ? { permissionMode: variant.permissionMode } : {}),
         ...(personaRef ? { persona: personaRef } : {}),
       },
       { unattended: run?.fix_prompt != null, prepared },

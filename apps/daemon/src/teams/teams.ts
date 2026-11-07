@@ -201,6 +201,19 @@ export class Teams {
     return row;
   }
 
+  /**
+   * Refuses a team that asks for a mode without permission prompts on a host that forbids it, before
+   * anything starts: the coordinator would otherwise be up when the first worker is turned away.
+   */
+  private checkPermissions(modes: ReadonlyArray<PermissionMode | null | undefined>): void {
+    if (!modes.includes("bypassPermissions") || this.opts.bypassAllowed?.() === true) return;
+    throw new FlightdeckError(
+      "invalid_permission_update",
+      "this host does not allow sessions without permission prompts",
+      "bypass_not_allowed",
+    );
+  }
+
   private stored(row: Row): StoredMember[] {
     return JSON.parse(row.members) as StoredMember[];
   }
@@ -221,7 +234,7 @@ export class Teams {
       role: stored.role,
       persona: stored.persona,
       model: stored.model ?? null,
-      permission: null,
+      permission: stored.permission ?? null,
       cardId: stored.cardId,
       sessionId,
       address: sessionId ? `${this.opts.host}/${sessionId}` : null,
@@ -334,13 +347,16 @@ export class Teams {
     coordinator: string | null,
     model: string | null = null,
     number: number | null = null,
+    permission: PermissionMode | null = null,
   ): Promise<StoredMember> {
     const brief: TeamBrief = { ...team, workers: [] };
     const card = this.opts.board.createCard(team.projectId, {
       title: name,
       description: workerInstructions(brief, coordinator),
-      // The card's variant is where a card keeps the model its session opens in.
-      ...(model ? { variant: { label: "team", model, effort: null, persona } } : {}),
+      // The card's variant is where a card keeps the model and the mode its session opens in.
+      ...(model || permission
+        ? { variant: { label: "team", model, effort: null, persona, permissionMode: permission } }
+        : {}),
     });
     // Before the card starts: its session is named with this persona from the first moment.
     if (persona) this.cardPersonas.set(card.id, persona);
@@ -348,7 +364,16 @@ export class Teams {
     await (this.opts.startWorker
       ? this.opts.startWorker(card.id, persona, model)
       : this.opts.board.startCard(card.id));
-    return { name, role: "worker", persona, model, cardId: card.id, sessionId: null, number };
+    return {
+      name,
+      role: "worker",
+      persona,
+      model,
+      permission,
+      cardId: card.id,
+      sessionId: null,
+      number,
+    };
   }
 
   async create(input: NewTeam): Promise<TeamInfo> {
@@ -373,6 +398,8 @@ export class Teams {
       workerPersonas.push(await this.checkPersona(p));
     });
     const coordinatorModel = input.coordinatorModel ?? null;
+    const coordinatorPermission = input.coordinatorPermission ?? null;
+    this.checkPermissions([coordinatorPermission, ...(input.workerPermissions ?? [])]);
     const name = input.name ?? input.goal.slice(0, 40);
     const checks = input.checks ?? [];
     const id = ulid((this.opts.clock ?? Date.now)());
@@ -405,6 +432,7 @@ export class Teams {
             prompt: start.prompt,
             name: start.name,
             ...(start.model ? { model: start.model } : {}),
+            ...(start.permissionMode ? { permissionMode: start.permissionMode } : {}),
           },
           { prepared: await (this.opts.preparePersonas ?? withoutPersonas)(undefined, start.cwd) },
         ));
@@ -417,7 +445,7 @@ export class Teams {
       name: coordinatorName,
       persona: coordinatorPersona,
       model: coordinatorModel,
-      permissionMode: null,
+      permissionMode: coordinatorPermission,
     });
     if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
     this.opts.names?.setTeam?.(sessionId, { name: label(name), role: "coordinator", number: null });
@@ -428,6 +456,7 @@ export class Teams {
         role: "coordinator",
         persona: coordinatorPersona,
         model: coordinatorModel,
+        permission: coordinatorPermission,
         cardId: null,
         sessionId,
       },
@@ -441,6 +470,7 @@ export class Teams {
           address,
           input.workerModels?.[i] ?? null,
           i + 1,
+          input.workerPermissions?.[i] ?? null,
         ),
       );
     });
@@ -587,7 +617,11 @@ export class Teams {
     count: number,
     coordinator: TeamMember | undefined,
     tellCoordinator: (text: string) => void,
-    spec: { persona: string | null; model: string | null } = { persona: null, model: null },
+    spec: { persona: string | null; model: string | null; permission: PermissionMode | null } = {
+      persona: null,
+      model: null,
+      permission: null,
+    },
   ) {
     const members = this.stored(this.row(row.id));
     const taken = members.flatMap((m) => numberOf(m) ?? []);
@@ -608,12 +642,14 @@ export class Teams {
           coordinator?.address ?? null,
           spec.model,
           number,
+          spec.permission,
         );
       members.push(added);
       this.save(row.id, { members: JSON.stringify(members) });
       const asked = [
         spec.persona && `persona ${spec.persona}`,
         spec.model && `modelo ${spec.model}`,
+        spec.permission && `modo de permissão ${spec.permission}`,
       ].filter(Boolean);
       tellCoordinator(
         `Entrou uma executora no time: "${added.name}" (card ${added.cardId})${
@@ -651,6 +687,8 @@ export class Teams {
     const tellCoordinator = (text: string) =>
       this.notify(this.get(row.id), text, (m) => m.role === "coordinator");
 
+    // Before anything changes: a refused worker leaves the team as it was.
+    if (patch.addMember) this.checkPermissions([patch.addMember.permission]);
     if (patch.goal !== undefined) {
       this.save(row.id, { goal: patch.goal });
       tellCoordinator(`O objetivo do time mudou: ${patch.goal}`);
@@ -681,6 +719,7 @@ export class Teams {
       const spec = {
         persona: await this.checkPersona(patch.addMember.persona),
         model: patch.addMember.model ?? null,
+        permission: patch.addMember.permission ?? null,
       };
       await this.addWorkers(row, 1, coordinator, tellCoordinator, spec);
     }
