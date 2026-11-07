@@ -124,6 +124,8 @@ export function gitLimitedFor(
   separator = 10,
   /** Aborting it kills the program like the time limit does, and the result says `aborted` (#905). */
   signal?: AbortSignal,
+  /** Added to the process's environment for this call. */
+  env?: Record<string, string>,
 ): Promise<CommandResult & { truncated: boolean }> {
   // git-arg: the capped git helper: its callers are what the git-args ratchet checks
   return runLimited(
@@ -134,6 +136,7 @@ export function gitLimitedFor(
     kill,
     separator,
     signal,
+    env,
   );
 }
 
@@ -165,10 +168,11 @@ export async function runLimited(
   kill: (pid: number) => Promise<void> = killTree,
   separator = 10,
   signal?: AbortSignal,
+  env?: Record<string, string>,
 ): Promise<CommandResult & { truncated: boolean }> {
   const proc = Bun.spawn(cmd, {
     cwd,
-    env: { ...process.env },
+    env: { ...process.env, ...env },
     stdout: "pipe",
     stderr: "pipe",
     stdin: "ignore",
