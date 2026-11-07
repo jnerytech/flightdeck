@@ -193,6 +193,7 @@ function ManagedSession(
     <SessionTabs
       store={store}
       hostId={hostId}
+      viewKey={sessionKey(hostId, sessionId)}
       claudeSessionId={claudeId}
       // Phase 39: these tabs read Claude Code's transcript, and OpenCode sessions stay out of messaging.
       enabled={!opencode && hasFeature(host?.hostInfo?.features, "review", false)}
@@ -653,6 +654,7 @@ function externalScreen(
   return (
     <SessionTabs
       key={`${route.host}/${route.claudeSessionId}`}
+      viewKey={`${route.host}/${route.claudeSessionId}`}
       store={store}
       hostId={route.host}
       claudeSessionId={route.claudeSessionId}

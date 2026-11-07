@@ -1288,6 +1288,22 @@ conversation. It is where you check what the agent did and send it back what to 
 
 The host announces `review` in `host.info`; an older host has no Changes tab.
 
+### The views of a session page
+
+A session page shows one **view** at a time: Conversation, Changes, Files, Time, Trace and
+Messages (each only where the host offers it). They are one **tab bar**: the active view is
+filled and has a bar under it, and the bar scrolls sideways in a narrow pane.
+
+- **Click** a view, or use the keys: **Alt+1** to **Alt+6** pick the 1st to 6th view of the bar
+  (from the message box too; `Ctrl+1` to `Ctrl+9` stay with the app's tabs), and with the focus on
+  the bar the **arrow keys**, **Home** and **End** move between views, wrapping around.
+- The palette (**Ctrl+K**) lists **Show Changes**, **Show Trace** and the others for the page you
+  are on, first among its commands, and the `?` sheet lists the keys under **Session views**.
+- The conversation stays where it was: what you typed in its box is still there after a visit to
+  another view.
+- Each session tab **remembers its last view** while the app runs; a tab you never switched opens
+  on the conversation.
+
 ### `.worktreeinclude`
 
 A new worktree gets the repository's tracked files, but not the ignored ones, such as `.env`. To
@@ -3160,7 +3176,8 @@ their English equivalents.
   has the card icon.
 - With nothing typed, a **Recent** section comes first with up to six of the entries you opened
   (kept between runs): what waits for you first, then what runs, then the rest. Each shows
-  **Alt+1** to **Alt+6**, which open it while the palette is open (they do nothing outside it).
+  **Alt+1** to **Alt+6**, which open it while the palette is open (outside it, the same keys pick
+  the views of a session page).
   The order is fixed when the palette opens, so rows do not move under the cursor.
 - The palette opens **narrowed to where you are**: on a board or a card, to its host and project;
   on a session or a host page, to the host. The filters show as chips under the field; click one to

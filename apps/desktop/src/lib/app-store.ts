@@ -172,6 +172,7 @@ import {
   markGap,
   type SessionState,
 } from "./session-state.ts";
+import { SessionViews } from "./session-views.ts";
 import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
@@ -1108,6 +1109,8 @@ export class AppStore {
     this.router.push({ name: "settings", section: "assistant" });
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  /** Issue #107: the view each session tab was on, and the page now on screen. */
+  readonly sessionViews = new SessionViews();
   readonly terminalReader: TerminalReaderSetting;
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;

@@ -354,7 +354,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "sessao-mudancas",
       route: { name: "session", host: ALFA, id: ids.idleSession },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Mudanças|Changes)$/ }).click();
+        await page.getByRole("tab", { name: /^(Mudanças|Changes)$/ }).click();
         await page.waitForTimeout(800);
       },
     },
@@ -560,7 +560,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "sessao-tempo",
       route: { name: "session", host: ALFA, id: ids.idleSession },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Tempo|Time)$/ }).click();
+        await page.getByRole("tab", { name: /^(Tempo|Time)$/ }).click();
         await page.waitForTimeout(800);
       },
     },
@@ -569,7 +569,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "rastro",
       route: { name: "external", host: ALFA, claudeSessionId: ids.traceSession },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Rastro|Trace)$/ }).click();
+        await page.getByRole("tab", { name: /^(Rastro|Trace)$/ }).click();
         await page.waitForTimeout(800);
       },
     },
@@ -577,7 +577,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "rastro-replay",
       route: { name: "external", host: ALFA, claudeSessionId: ids.traceSession },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Rastro|Trace)$/ }).click();
+        await page.getByRole("tab", { name: /^(Rastro|Trace)$/ }).click();
         await page.getByRole("button", { name: "Replay" }).click();
         await page.getByRole("button", { name: /^(Próximo|Next)$/ }).click();
         await page.getByRole("button", { name: /^(Próximo|Next)$/ }).click();
