@@ -11,7 +11,7 @@ import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import { useT } from "../i18n/context.tsx";
 import { translateError } from "../i18n/errors.ts";
 import { formatBytes } from "../lib/format-bytes.ts";
-import type { RequestError } from "../lib/host-connection.ts";
+import { RequestError } from "../lib/host-connection.ts";
 import type { TeleportOutcome, TeleportSummary } from "../lib/teleport.ts";
 
 export interface TeleportRunArgs {
@@ -38,6 +38,19 @@ type Phase =
   | { at: "moving"; percent: number }
   | { at: "done"; sessionId: string }
   | { at: "failed"; text: string };
+
+/** The refusals a move can meet: only these fill their text with what the host sent. */
+const KNOWN = /^(teleport_|feature_off$|cwd_outside_roots$|cwd_missing$|session_not_found$)/;
+
+/** The app's own text for why the move stopped: never the host's message, nor its words elsewhere. */
+function failureText(error: unknown, t: ReturnType<typeof useT>): string {
+  const refusal = error instanceof RequestError ? error : new RequestError("internal", "");
+  const why =
+    refusal.reason && KNOWN.test(refusal.reason)
+      ? { reason: refusal.reason, params: refusal.params ?? {} }
+      : {};
+  return translateError(refusal.code, "", t, why).title;
+}
 
 /** The share sent, from 0 to 100 whatever the numbers say. */
 const percentOf = (sent: number, total: number) =>
@@ -68,15 +81,15 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
         onProgress: (sent, total) => setPhase({ at: "moving", percent: percentOf(sent, total) }),
       })
       .then(
-        (outcome) =>
-          outcome.kind === "moved"
-            ? setPhase({ at: "done", sessionId: outcome.sessionId })
-            : props.onClose(),
-        (error: RequestError) => {
-          // The app's own text for the reason: the host's message never reaches the screen.
-          const why = error.reason ? { reason: error.reason, params: error.params ?? {} } : {};
-          setPhase({ at: "failed", text: translateError(error.code, "", t, why).title });
+        (outcome) => {
+          if (outcome.kind !== "moved") return props.onClose();
+          // A move that names no session on the target did not land anywhere the app can open.
+          if (typeof outcome.sessionId !== "string" || !outcome.sessionId) {
+            return setPhase({ at: "failed", text: failureText(null, t) });
+          }
+          setPhase({ at: "done", sessionId: outcome.sessionId });
         },
+        (error: unknown) => setPhase({ at: "failed", text: failureText(error, t) }),
       );
   };
 

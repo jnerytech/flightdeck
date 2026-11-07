@@ -2997,8 +2997,13 @@ export class AppStore {
 
   /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
   teleportRequest(hostId: string): TeleportRequest {
-    return ((type, payload) =>
-      this.dispatch(hostId, type as HostCommandType, payload as never)) as TeleportRequest;
+    // Straight to the connection: a host's teleport answer is checked by the relay, and never
+    // reaches the board's card or run state on the way.
+    return ((type, payload) => {
+      const conn = this.connections.get(hostId);
+      if (!conn) return Promise.reject(new RequestError("offline", "unknown host"));
+      return conn.request(type, payload);
+    }) as TeleportRequest;
   }
 
   /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
