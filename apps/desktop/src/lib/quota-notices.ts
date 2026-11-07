@@ -15,7 +15,9 @@ const LEVELS = [0.95, 1];
  */
 export function quotaLevel(window: QuotaWindow, pauseAt: number | null): number {
   if (pauseAt === null) return 0;
-  const thresholds = [...new Set([pauseAt, ...LEVELS.filter((t) => t >= pauseAt)])].sort();
+  const thresholds = [...new Set([pauseAt, ...LEVELS.filter((t) => t >= pauseAt)])].sort(
+    (a, b) => a - b,
+  );
   if (window.status === "rejected") return thresholds.length;
   const used = window.utilization ?? 0;
   return thresholds.filter((t) => used >= t).length;
