@@ -30,8 +30,9 @@ const secretName = (name: string) =>
   /token|secret|passw|credential|apikey|bearer/i.test(name) ||
   name.split("-").some((part) => /^(key|pwd|pat|dsn|sig|auth|cred)$/i.test(part));
 const FLAG = /^"(--?[\w-]+)(=.*)?"$/;
-/** A header value that names its scheme: its list item is a secret whatever the key. */
-const SCHEME = /^"(?:bearer|basic)\s/i;
+/** A header passed as a list item (`Bearer x`, `Authorization: x`, `X-Api-Key: x`): a secret whatever the key. */
+const SCHEME =
+  /^"(?:(?:bearer|basic)\s|[\w-]*(?:authorization|token|secret|key|passw\w*)[\w-]*\s*:)/i;
 
 /** A `url` without the user in it and without its query or fragment, where a key is often passed. */
 const bare = (value: string) =>
@@ -61,8 +62,10 @@ export function maskConfig(lines: readonly string[], unknownStart = false): stri
       const end = start + found[0].length;
       for (const char of text.slice(at, start)) {
         if (char === "{") depth += 1;
-        if (char === "}") depth -= 1;
-        if (depth <= privateAt) privateAt = -1;
+        if (char === "}") {
+          depth -= 1;
+          if (depth <= privateAt) privateAt = -1;
+        }
       }
       const inPrivate = privateAt >= 0;
       const before = text.slice(0, start).trimEnd().slice(-1);
@@ -75,13 +78,16 @@ export function maskConfig(lines: readonly string[], unknownStart = false): stri
       } else if (before === ":") {
         if (inPrivate || !SHOWN.has(key)) value = MASK;
         else if (key === "url") value = bare(value);
-      } else if (owed || inPrivate || SCHEME.test(value) || (listed && key !== "args")) {
-        value = MASK;
-        owed = false;
       } else {
+        // A flag is judged by what it was, whether or not it is shown: the next one is its value.
         const flag = FLAG.exec(value);
-        if (flag?.[2] && secretName(flag[1] ?? "")) value = `"${flag[1]}=[redacted]"`;
-        owed = flag?.[2] === undefined && secretName(flag?.[1] ?? "");
+        const secret = secretName(flag?.[1] ?? "");
+        if (owed || inPrivate || SCHEME.test(value) || (listed && key !== "args")) {
+          value = MASK;
+        } else if (flag?.[2] && secret) {
+          value = `"${flag[1]}=[redacted]"`;
+        }
+        owed = flag?.[2] === undefined && secret;
       }
       out += text.slice(at, start) + value;
       at = end;
