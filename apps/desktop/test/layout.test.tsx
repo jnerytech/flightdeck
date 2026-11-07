@@ -127,15 +127,15 @@ describe("layout", () => {
     await act(async () => {
       fireEvent.keyDown(overlay as HTMLElement, { key: "Escape" });
     });
-    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(sidebar()?.getAttribute("data-collapsed")).toBe("true");
     await act(async () => {
       fireEvent.click(toggle() as HTMLElement);
     });
-    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) !== null).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" })).not.toBeNull();
     // Widening to 1024 px closes it and the sidebar pushes the content again.
     await viewport(1200);
-    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(sidebar()?.getAttribute("data-collapsed")).toBe("false");
     expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
   });
@@ -143,7 +143,7 @@ describe("layout", () => {
   test("compact (below 640 px): no rail, a menu button opens the sidebar as a drawer, Esc returns the focus to it", async () => {
     shell();
     await viewport(500);
-    expect(sidebar() === null).toBe(true);
+    expect(sidebar() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(screen.queryByRole("main")?.textContent).toBe("conteúdo");
     const menu = toggle() as HTMLElement;
     expect(menu.getAttribute("aria-label")).toBe("Mostrar barra lateral");
@@ -157,9 +157,9 @@ describe("layout", () => {
     await act(async () => {
       fireEvent.keyDown(drawer as HTMLElement, { key: "Escape" });
     });
-    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => document.activeElement === toggle());
-    expect(document.activeElement === toggle()).toBe(true);
+    expect(document.activeElement === toggle()).toBe(true); // NOSONAR: toBe would print both DOM nodes on failure
   });
 
   test("the drawer has its own close button, and it closes after navigating (a new navKey)", async () => {
@@ -178,21 +178,21 @@ describe("layout", () => {
     await act(async () => {
       fireEvent.click(toggle() as HTMLElement);
     });
-    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) !== null).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" })).not.toBeNull();
     rerender(view("a"));
-    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) !== null).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" })).not.toBeNull();
     rerender(view("b"));
     await settle(() => screen.queryByRole("dialog", { name: "Barra lateral" }) === null);
-    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await act(async () => {
       fireEvent.click(toggle() as HTMLElement);
     });
     const close = screen.queryByRole("button", { name: "Recolher barra lateral" });
-    expect(close !== null).toBe(true);
+    expect(close).not.toBeNull();
     await act(async () => {
       if (close) fireEvent.click(close);
     });
-    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 
   test("Page: título, subtítulo, ações e barra de ferramentas fora da rolagem; o corpo rola", () => {
@@ -264,7 +264,7 @@ describe("layout", () => {
     render(<Page title="Projeto">body</Page>);
     const title = screen.getByRole("heading", { name: "Projeto" });
     expect(title.getAttribute("data-slot")).toBe("page-title");
-    expect(title.closest("[data-slot='page-header']") !== null).toBe(true);
+    expect(title.closest("[data-slot='page-header']")).not.toBeNull();
   });
 
   test("Page: the body positions what it holds, so an sr-only caption scrolls inside it and cannot stretch the screen (#640)", () => {
