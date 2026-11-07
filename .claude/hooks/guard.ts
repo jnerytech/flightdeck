@@ -11,6 +11,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import {
+  budgetedGh,
   checkoutRoot,
   commandViolation,
   commitViolation,
@@ -59,24 +60,27 @@ if (typeof command === "string") {
   block("commit", commitViolation(command, cwd, repo));
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
   // #741: gh is asked for a push, in the push's own checkout: without an override to decide, with
-  // one to log the run's age. A failure reads as GitHub unread: asked once more, then the push holds
-  // with the override line (prRunVia and pushWaitCheck in scripts/lib/claude-hooks.ts).
-  const gh = (args: string[], dir: string) => {
-    // 3 s each, and each starts only in the first 6 s (withBudget), so the retry never takes the
-    // hook past its 10 s; one that cannot start reads as GitHub unread. gh never prompts.
-    const proc = spawnSync("gh", args, {
-      cwd: dir,
-      encoding: "utf8",
-      timeout: 3000,
-      env: { ...process.env, GH_PROMPT_DISABLED: "1" },
-    });
-    return proc.status === 0 ? proc.stdout : null;
-  };
-  const prRun = prRunVia(
-    withBudget(gh, () => performance.now(), 6000),
-    Date.now,
+  // one to log the run's age. A failed lookup is asked once more, then the push holds with the
+  // override line (budgetedGh, prRunVia and pushWaitCheck in scripts/lib/claude-hooks.ts).
+  const ghCalls = budgetedGh(
+    (args, dir) => {
+      // 3 s each, and each starts only in the first 6 s, so the retry never takes the hook past
+      // its 10 s. gh missing, or no time left to start it, lets the push go with that reason
+      // logged (#945 review); a gh that ran and failed holds it. gh never prompts.
+      const proc = spawnSync("gh", args, {
+        cwd: dir,
+        encoding: "utf8",
+        timeout: 3000,
+        env: { ...process.env, GH_PROMPT_DISABLED: "1" },
+      });
+      const missing = (proc.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT";
+      return { stdout: proc.status === 0 ? proc.stdout : null, missing };
+    },
+    () => performance.now(),
+    6000,
   );
-  push = { cwd, deps: { ...repo, env: process.env, prRun } };
+  const prRun = prRunVia(ghCalls.gh, Date.now);
+  push = { cwd, deps: { ...repo, env: process.env, prRun, whyUnread: ghCalls.whyUnread } };
   const decision = pushWaitCheck(command, cwd, push.deps);
   passes = decision.passes;
   block("push-wait", decision.violation);

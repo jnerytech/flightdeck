@@ -749,7 +749,8 @@ export interface PushWaitPass {
 /**
  * A branch's latest PR run from `gh run list --json databaseId,status,startedAt,url`, with its PR's
  * conflict and failed checks from `gh pr view --json mergeable,statusCheckRollup`: "none" when
- * the list is empty, null when gh gave no output or it does not read (#741: GitHub unread).
+ * the list is empty, null when the list is missing or does not read (#741: GitHub unread); a PR
+ * unread leaves the run's age to decide (#945 review).
  */
 export function prRunFrom(
   runs: string | null,
@@ -763,10 +764,7 @@ export function prRunFrom(
     if (!latest || typeof latest.databaseId !== "number") return null;
     const started = Date.parse(String(latest.startedAt));
     if (Number.isNaN(started)) return null;
-    const view = JSON.parse(pr ?? "") as {
-      mergeable?: string;
-      statusCheckRollup?: Array<{ conclusion?: string; state?: string }>;
-    };
+    const view = parsedView(pr);
     return {
       id: latest.databaseId,
       url: String(latest.url ?? ""),
@@ -779,6 +777,21 @@ export function prRunFrom(
     };
   } catch {
     return null;
+  }
+}
+
+/**
+ * The PR's mergeable state and checks, or none known when `gh pr view` failed or printed no JSON:
+ * the run's age decides then (#945 review), so a PR unread alone never holds a push.
+ */
+function parsedView(text: string | null): {
+  mergeable?: string;
+  statusCheckRollup?: Array<{ conclusion?: string; state?: string }>;
+} {
+  try {
+    return JSON.parse(text ?? "") ?? {};
+  } catch {
+    return {};
   }
 }
 
@@ -856,13 +869,21 @@ export function pushWaitCheck(
     const segment = command.slice(call.start, call.end);
     if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) continue;
     const dir = call.dir;
-    const override = `FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(segment.trim())}`;
+    // Unprintable characters out first, so none reaches the terminal or splits a secret (#945 review).
+    const override = `FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(printable(segment.trim()))}`;
     for (const branch of pushedBranches(call, (args) => deps.git(args, dir))) {
       // The name comes from the command or from git: unprintable characters out first (so none splits a secret), then secrets hidden (#945 review).
       const shown = redacted(printable(branch));
       // One more try: a gh call can time out once on a busy machine.
       const run = deps.prRun(branch, dir) ?? deps.prRun(branch, dir);
       if (run === null) {
+        // No lookup could answer (gh missing, no time left): retrying would not help, so it goes,
+        // logged with why (#945 review). GitHub that answered with a failure holds.
+        const why = deps.whyUnread?.() ?? null;
+        if (why) {
+          passes.push({ reason: why });
+          continue;
+        }
         const violation = `GitHub could not be read to check the PR run of ${shown}, twice (#741). Push again in a minute, or push now with:\n  ${override}`;
         return { violation, passes };
       }
@@ -918,9 +939,18 @@ export function budgetedGh(
   now: () => number,
   limit: number,
 ): { gh: Gh; whyUnread: () => string | null } {
+  let why: string | null = null;
   return {
-    gh: (args, dir) => (now() > limit ? null : spawn(args, dir).stdout),
-    whyUnread: () => null,
+    gh: (args, dir) => {
+      if (now() > limit) {
+        why ??= "no time";
+        return null;
+      }
+      const ran = spawn(args, dir);
+      if (ran.missing) why ??= "gh missing";
+      return ran.stdout;
+    },
+    whyUnread: () => why,
   };
 }
 
