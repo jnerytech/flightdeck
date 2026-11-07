@@ -61,21 +61,23 @@ const scanner = new SecretScanner();
 /** What is read past the cut before the mask: a token across the cut is masked whole (#829). */
 const MASK_WINDOW = 1024;
 
+/** A line that is one run of base64, mixed case and digits: a key's body or a token on its own (#829). */
+const BASE64_RUN = /^(?=[^\s]*[A-Z])(?=[^\s]*[a-z])(?=[^\s]*\d)[A-Za-z0-9+/=]{24,}$/;
+
+/** A matched line as it is kept until it leaves: bounded in size, not masked yet. */
+const bounded = (text: string) => text.replace(/\r?\n$/, "").slice(0, (TEXT_MAX + MASK_WINDOW) * 2);
+
 /**
  * A matched line as it leaves the host: secrets masked, then cut to 200 characters. Masked before
  * the cut, so a token the cut would split is still seen whole and masked whole.
  */
-const clip = (text: string) =>
-  Array.from(
-    scanner.redact(
-      Array.from(text.replace(/\r?\n$/, ""))
-        .slice(0, TEXT_MAX + MASK_WINDOW)
-        .join(""),
-      false,
-    ),
-  )
-    .slice(0, TEXT_MAX)
+function shown(text: string): string {
+  const window = Array.from(text)
+    .slice(0, TEXT_MAX + MASK_WINDOW)
     .join("");
+  const masked = BASE64_RUN.test(window.trim()) ? "[redacted]" : scanner.redact(window, false);
+  return Array.from(masked).slice(0, TEXT_MAX).join("");
+}
 
 const cut = (result: CommandResult & { truncated: boolean }) =>
   result.truncated || result.timedOut === true;
@@ -135,7 +137,9 @@ export async function searchRepository(
       more = true;
       break;
     }
-    matches.push(secret ? { ...match, secret } : match);
+    // Masked only now, for the matches that leave (#829).
+    const kept = match.text === undefined ? match : { ...match, text: shown(match.text) };
+    matches.push(secret ? { ...kept, secret } : kept);
   }
   return { mode: input.mode, query: input.query, matches, truncated: found.truncated || more };
 }
@@ -224,7 +228,7 @@ async function withRg(rg: string, root: string, query: string, opts: SearchOptio
     matches.push({
       path: named.replace(/^\.\//, ""),
       line: number,
-      text: clip(text),
+      text: bounded(text),
     });
   }
   // 1 is "nothing found"; 2 with matches is a file it could not read on the way.
@@ -262,7 +266,7 @@ async function withGitGrep(root: string, query: string, opts: SearchOptions): Pr
     const count = (perFile.get(path) ?? 0) + 1;
     perFile.set(path, count);
     if (count > PER_FILE_LINES) continue;
-    matches.push({ path, line: Number(number), text: clip(rest.join("\0")) });
+    matches.push({ path, line: Number(number), text: bounded(rest.join("\0")) });
   }
   return { matches, truncated: cut(result) };
 }
