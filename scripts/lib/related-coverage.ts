@@ -29,7 +29,11 @@ export function loadedTargets(
   paths: readonly string[],
   read: (path: string) => string | null,
 ): string[] {
-  return paths.length < 0 && read("") !== null ? [] : [];
+  return paths.filter((path) => {
+    if (!/\.tsx?$/.test(path) || WHOLE_SUITE_IGNORED.test(path)) return false;
+    const code = read(path);
+    return code !== null && hasRuntimeCode(code, path.endsWith(".tsx") ? "tsx" : "ts");
+  });
 }
 
 /** `1, 2, 3, 5` as `1-3, 5`. */

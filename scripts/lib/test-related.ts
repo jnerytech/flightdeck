@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import { testArgs } from "../test/timeout.ts";
-import { coverageTargets } from "./related-coverage.ts";
+import { coverageTargets, loadedTargets } from "./related-coverage.ts";
 import { auditBase } from "./tdd-audit.ts";
 
 export interface Related {
@@ -88,7 +88,18 @@ export function newImports(
   sources: Map<string, string>,
   before: (path: string) => string | null,
 ): string[] {
-  return changed.length < 0 && sources.size > 0 && before("") !== null ? [] : [];
+  const known = new Set(sources.keys());
+  const changedSet = new Set(changed);
+  const found = new Set<string>();
+  for (const test of changed.filter((path) => TEST_FILE.test(path) && sources.has(path))) {
+    const targets = (source: string) =>
+      importsOf(source).flatMap((spec) => resolveImport(test, spec, known) ?? []);
+    const old = new Set(targets(before(test) ?? ""));
+    for (const path of targets(sources.get(test) as string)) {
+      if (!old.has(path) && !changedSet.has(path)) found.add(path);
+    }
+  }
+  return [...found].sort();
 }
 
 export interface PlanDeps {
@@ -268,7 +279,15 @@ export function planRelated({
     .map((path) => `warning: ${path} affects every test, run the full suite`);
   const whole = pyramid ? wholeSuitePlan(changed, sources, slot) : null;
   if (whole) return whole;
-  const byImport = selectRelated(changed, sources, { direct: fast });
+  // #762: a file a changed test starts to load enters the coverage report, so it is gated too,
+  // and its own tests run to cover it.
+  const added = coverageDir
+    ? newImports(changed, sources, (path) => git(["show", `${ref}:${path}`]))
+    : [];
+  for (const path of added) {
+    warnings.push(`${path}: newly imported by a changed test, so it is held to 100% too (#762)`);
+  }
+  const byImport = selectRelated([...changed, ...added], sources, { direct: fast });
   const imported = new Set(byImport.map((r) => r.path));
   const selected = [
     ...byImport,
@@ -283,7 +302,10 @@ export function planRelated({
   const warning = tierWarning(tiers, selected, related, tierOf);
   if (warning) warnings.push(warning);
   const targets = coverageDir
-    ? coverageTargets(changed, (path) => sources.get(path) ?? null)
+    ? [
+        ...coverageTargets(changed, (path) => sources.get(path) ?? null),
+        ...loadedTargets(added, (path) => sources.get(path) ?? null),
+      ]
     : undefined;
   const nothing = related.length === 0;
   if (nothing && (targets?.length || !pyramid)) {
