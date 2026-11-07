@@ -46,8 +46,17 @@ const MANIFEST: TeleportManifest = {
 const PARTS: Record<string, string> = { transcript: TRANSCRIPT, code: CODE };
 
 /** Two fake hosts: the source serves its package in 16-byte chunks, the target keeps what lands. */
-function hosts(options: { finish?: Error; abortFails?: boolean; cancelFails?: boolean } = {}) {
+function hosts(
+  options: {
+    finish?: Error;
+    abortFails?: boolean;
+    cancelFails?: boolean;
+    /** The source's archive of its copy: refused, or never answered. */
+    archive?: "fails" | "hangs";
+  } = {},
+) {
   const calls: string[] = [];
+  const archived: unknown[] = [];
   const landed: Record<string, string> = {};
   const source = (async (type: string, payload: Record<string, unknown>) => {
     calls.push(`source:${type}`);
@@ -63,6 +72,11 @@ function hosts(options: { finish?: Error; abortFails?: boolean; cancelFails?: bo
       };
     }
     if (type === "teleport.cancel" && options.cancelFails) throw new Error("source went");
+    if (type === "session.meta.set") {
+      archived.push(payload);
+      if (options.archive === "fails") throw new Error("source went");
+      if (options.archive === "hangs") return new Promise(() => {});
+    }
     return undefined;
   }) as TeleportRequest;
   const target = (async (type: string, payload: Record<string, unknown>) => {
@@ -85,7 +99,7 @@ function hosts(options: { finish?: Error; abortFails?: boolean; cancelFails?: bo
     if (type === "teleport.abort" && options.abortFails) throw new Error("target went");
     return undefined;
   }) as TeleportRequest;
-  return { source, target, calls, landed };
+  return { source, target, calls, landed, archived };
 }
 
 const run = (
@@ -146,7 +160,8 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       progress.at(-1),
       h.calls[0],
       h.calls.filter((c) => c === "target:teleport.write").length,
-      h.calls.slice(-2),
+      h.calls.slice(-3),
+      h.archived,
     ]).toEqual([
       {
         kind: "moved",
@@ -159,7 +174,21 @@ describe("teleport-relay: the app moves a session from one host to another (#100
       0,
       "source:teleport.prepare",
       Math.ceil(Buffer.byteLength(TRANSCRIPT) / 16) + Math.ceil(Buffer.byteLength(CODE) / 16),
-      ["target:teleport.finish", "source:teleport.cancel"],
+      // The copy it left is archived on the source (#870): the session now lives on the target.
+      ["target:teleport.finish", "source:teleport.cancel", "source:session.meta.set"],
+      [{ claudeSessionId: MANIFEST.claudeSessionId, archived: true }],
+    ]);
+  });
+
+  test("a source that refuses or never answers the archive does not hold or fail a move that landed (#870)", async () => {
+    const outcomes = [];
+    for (const archive of ["fails", "hangs"] as const) {
+      const h = hosts({ archive });
+      outcomes.push([(await run(h, { cleanupMs: 50 })).kind, h.archived.length]);
+    }
+    expect(outcomes).toEqual([
+      ["moved", 1],
+      ["moved", 1],
     ]);
   });
 
