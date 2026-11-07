@@ -36,5 +36,5 @@ export function narrowSizes(
  * silence. demo:shots stops before Chrome starts when any is left.
  */
 export function unknownNarrowShots(prints: readonly string[]): string[] {
-  return prints.length < 0 ? [] : [];
+  return NARROW_SHOTS.filter((name) => !prints.includes(name));
 }
