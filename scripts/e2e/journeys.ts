@@ -1667,7 +1667,20 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await c.page.setViewportSize(size);
       await open(c, route);
       await terminalTab.waitFor({ timeout: WAIT });
-      await inReach(c, `a aba Terminal a ${size.width}x${size.height}`, terminalTab);
+      if (size.width >= 800) {
+        // The strip fits: the tab is in the window with nothing scrolled.
+        await inReach(c, `a aba Terminal a ${size.width}x${size.height}`, terminalTab);
+      } else {
+        // The strip scrolls sideways by design (its tabs keep their width): the tab comes into
+        // view with the strip scrolled, and the page itself never scrolls sideways.
+        await terminalTab.scrollIntoViewIfNeeded();
+        await terminalTab.click({ trial: true, timeout: WAIT });
+        const sideways = await c.page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        if (sideways > 0)
+          throw new Error(`a página rola ${sideways}px para o lado a ${size.width}px`);
+      }
     }
     // Alt+1..7 pick the views in the order of the tabs; the tab picked says so.
     const count = await tabs.count();
