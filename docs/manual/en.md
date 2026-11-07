@@ -2816,7 +2816,9 @@ offers **Show all hosts**. **By client** splits the spend (with **No client**), 
 narrows everything; a host that is offline, has no costs or does not answer is named. The CSV export
 covers every host on **All hosts**, with the host's name as the first column (a host that does not
 answer is left out). The quota charts are per host: on **All hosts** one line, **Pick a host to see
-its quota**, has a button for each host. Each
+its quota**, has a button for each host. A project whose name is also a project on another host
+shows with its host (`docs-site · alfa`), the same on Home and on Costs, even when only one of
+them is in the list on screen. Each
 client can have a **monthly limit** (US$): the app looks at it when a host with costs comes online,
 when you change it and every ten minutes, warns once a month at 50%, 80% and 100% (a notification
 and a line in **Needs you**), and **does not hold cards**: the limits of each host and project stay

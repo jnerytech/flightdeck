@@ -6,10 +6,11 @@ import { Page } from "@/components/layout/page";
 import { Grid, Stack } from "@/components/layout/stack";
 import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
+import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { mergeSummaries } from "../lib/client-costs.ts";
-import { ALL_HOSTS, daysBetween, periodRange, projectLabels } from "../lib/costs.ts";
+import { ALL_HOSTS, daysBetween, periodRange } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, scopeHosts } from "../lib/data-scope.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
@@ -150,6 +151,11 @@ export function HomePage(
           range.from,
           range.to,
         ).summary;
+      // The week names every project of the hosts that answered, not only the ones listed here:
+      // the labels of every screen are told apart against them.
+      if (shares.length > 0) {
+        store.projectKeys.note(merged("week").byProject.map((row) => row.projectKey));
+      }
       // Shares from only some hosts would read as the whole: until every host with costs gave
       // its three answers, the last whole leaderboard of these hosts stays, or the panel says so.
       const priced = results.filter((r) => r.priced);
@@ -234,7 +240,11 @@ export function HomePage(
     });
   const board = leaders?.entry === entry ? leaders : null;
   const shown = board?.leaders ?? null;
-  const labels = projectLabels(shown?.project.flatMap((row) => (row.key ? [row.key] : [])) ?? []);
+  // One label per project on every screen: told apart against all the keys known, not only these rows.
+  const labels = useProjectLabels(
+    store,
+    shown?.project.flatMap((row) => (row.key ? [row.key] : [])) ?? [],
+  );
   const openTurns = () => {
     const only = online.length === 1 ? online[0] : undefined;
     if (only) go({ name: "history", host: only.id, from: range.from, to: range.to });
