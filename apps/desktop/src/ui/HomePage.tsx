@@ -51,6 +51,11 @@ export function HomePage(
       : undefined;
   /** The subtitle says whose numbers they are, as the scope menu does. */
   const scoped = scope.kind === "host" ? hosts[0]?.name : undefined;
+  // A kept host not listed yet has no name: the subtitle names no scope rather than "all hosts".
+  const subtitle = (() => {
+    if (scope.kind === "all") return t("home.range");
+    return scoped ? t("home.rangeHost", { host: scoped }) : t("home.rangeDays");
+  })();
   const online = hosts.filter((host) => host.status === "online");
   const key = online.map((host) => host.id).join(",");
   /** The cache's entry: every host of the set, whether it is online now or not. */
@@ -239,9 +244,9 @@ export function HomePage(
   return (
     <Page
       title={t("home.title")}
-      subtitle={scoped ? t("home.rangeHost", { host: scoped }) : t("home.range")}
+      subtitle={subtitle}
       toolbar={
-        state.hosts.length > 1 ? (
+        state.hostsLoaded && state.hosts.length > 1 ? (
           <ScopeMenu store={store} hosts={state.hosts} scope={scope} />
         ) : undefined
       }
