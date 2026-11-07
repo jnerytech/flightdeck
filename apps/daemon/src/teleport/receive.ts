@@ -205,7 +205,10 @@ export class TeleportInbox {
   }
 
   private async drop(id: string): Promise<void> {
+    const entry = this.entries.get(id);
     this.entries.delete(id);
+    // A chunk already being written ends first: no file is opened while its folder goes.
+    await entry?.queue;
     await rm(join(this.deps.dir, id), { recursive: true, force: true });
   }
 
