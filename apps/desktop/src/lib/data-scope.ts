@@ -1,4 +1,5 @@
 import type { Platform } from "../platform/types.ts";
+import type { ConnectionStatus } from "./host-connection.ts";
 
 /** Where the data scope is kept across starts (#126). */
 export const DATA_SCOPE_KEY = "flightdeck.dataScope";
@@ -106,4 +107,16 @@ export class DataScopeController {
     }
     for (const listener of this.listeners) listener();
   }
+}
+
+/**
+ * Why a scoped host has nothing to show (#886): an incompatible daemon needs an update, any other
+ * host is offline. Sessions lists sessions, the other screens numbers.
+ */
+export function awayKey(
+  status: ConnectionStatus,
+  listing: "numbers" | "sessions",
+): "scope.offline" | "scope.offlineSessions" | "scope.incompatible" {
+  if (status === "incompatible") return "scope.incompatible";
+  return listing === "sessions" ? "scope.offlineSessions" : "scope.offline";
 }

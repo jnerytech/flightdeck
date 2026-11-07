@@ -972,7 +972,8 @@ live; the list is the project's, so a session of another project never shows her
 - **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
   it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
   change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
-  When the chosen host is offline, Home says so and offers **Show all hosts**. Costs follows it too
+  When the chosen host is offline, Home says so and offers **Show all hosts**; a host whose daemon
+  needs an update says that instead, and the menu does not offer it. Costs follows it too
   (see **Costs and budgets**), and so does Sessions (the hub's own host filter, if you had one,
   becomes the choice once); the Board follows it in a later version.
 - The tabs have a row of their own under the top bar, over each area (with a split, each area has
