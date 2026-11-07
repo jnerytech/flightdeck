@@ -78,8 +78,9 @@ describe("permissao-plain: the fake runtime can raise a vault request (issue #88
   test("Given [vault], Then the session waits on a request that needs full access, and its wording never shows the command", async () => {
     const { manager, project } = newManager();
     const { sessionId } = await manager.create({ cwd: project, prompt: "[vault]" });
-    await waitFor(() => (manager.get(sessionId).status === "running" ? null : true), {
-      label: "the first turn to stop",
+    // A session starts as `starting`: wait for the request itself, not for a status that moved.
+    await waitFor(() => (manager.pendingPermissions(sessionId).length > 0 ? true : null), {
+      label: "the vault request to be raised",
     });
     const pending = manager.pendingPermissions(sessionId);
     expect(pending).toHaveLength(1);
