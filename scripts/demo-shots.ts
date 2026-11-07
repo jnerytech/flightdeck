@@ -280,7 +280,7 @@ function shots(ids: DemoIds): Shot[] {
           await page.keyboard.press("Control+t");
           await page.keyboard.press("Escape");
         }
-        await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
+        await page.getByRole("button", { name: /^(Todas as abas|All tabs)( \(|$)/ }).waitFor();
       },
     },
     // The list of all tabs open over that strip (#576): icons, hosts, the active one marked.
@@ -292,7 +292,7 @@ function shots(ids: DemoIds): Shot[] {
           await page.keyboard.press("Control+t");
           await page.keyboard.press("Escape");
         }
-        await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).click();
+        await page.getByRole("button", { name: /^(Todas as abas|All tabs)( \(|$)/ }).click();
         await page.getByRole("listbox", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
       },
     },

@@ -1626,13 +1626,16 @@ async function tabWidthsProblem(page: Page, minimum: number): Promise<string | n
  */
 async function tabListProblem(page: Page): Promise<string | null> {
   const name = /^(Todas as abas|All tabs)$/;
-  await page.getByRole("button", { name }).click();
+  // Under 640 px the button is the current tab's, named "All tabs (N), current: ...".
+  await page.getByRole("button", { name: /^(Todas as abas|All tabs)( \(|$)/ }).click();
   await page.getByRole("listbox", { name }).waitFor({ timeout: 5000 });
   const problem = await page.evaluate(() => {
     const box = document.querySelector<HTMLElement>("[data-slot='tab-overflow']");
     if (!box) return "the list did not open";
     const width = box.getBoundingClientRect().width;
-    const most = Math.min(384, window.innerWidth - 32);
+    // Under 640 px the list takes the window less 1rem; wider, 24rem at most and the window less 2rem.
+    const most =
+      window.innerWidth < 640 ? window.innerWidth - 16 : Math.min(384, window.innerWidth - 32);
     if (width > most + 1) return `the list is ${Math.round(width)}px, past ${most}px`;
     const list = box.querySelector<HTMLElement>("[role='listbox']");
     if (list && list.scrollWidth > list.clientWidth + 1) return "the list scrolls sideways";

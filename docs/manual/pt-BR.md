@@ -2873,6 +2873,12 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
   host: cada aba do host tem um nome como "Board, host alfa", e escolher um host diz "alfa: 5 abas"
   uma vez, sem interromper.
 
+- **Janelas estreitas:** com menos de 640 px de largura a fileira é um botão só, não uma faixa para
+  rolar. Ele mostra a aba atual (o ícone, o título e o ponto do host) e quantas abas estão abertas; abre
+  a lista de todas as abas na largura da janela, onde um toque vai até a aba. O **+** ainda abre uma
+  aba nova; os botões de dividir não são oferecidos. Um leitor de tela ouve "Todas as abas (5), atual:
+  Board, host alfa".
+
 - **Cores dos hosts:** cada host tem uma de oito cores, a mesma em todo lugar em que ele aparece. É
   um ponto ao lado do nome do host no seletor da barra do topo e na lista de todas as abas, e uma
   linha de 2 px no alto de cada aba do host. A cor nunca é o único sinal: o nome do host fica ao lado
