@@ -1680,6 +1680,7 @@ export const en: Dictionary = {
     watch_off: "This card's PR is not watched: turn the watch on first.",
     watch_extend_blocked: "More rounds would not help: {reason}",
     watch_round_not_held: "That round is not held: there is nothing to push or drop.",
+    watch_pr_not_open: "The card's PR is {state}: nothing is pushed to it.",
     watch_held_moved:
       "The branch has new commits since the round was held: look at them before you push or drop.",
     review_file_missing: "The file {path} does not exist.",

@@ -3,7 +3,7 @@ import { inSequence, isWatchCheck } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { type CommandResult, git as realGit } from "../board/command.ts";
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, prProvider, tail } from "../board/pr.ts";
-import { refArg } from "../board/ref-arg.ts";
+import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import { settled } from "../settled.ts";
@@ -238,8 +238,24 @@ export class PrFixer {
     const { db, board } = this.opts;
     const card = board.getCard(cardId);
     const roundId = last.id;
-    const worktree = card.worktreePath as string;
-    const branch = refArg(card.branch as string);
+    if (!card.worktreePath || !card.branch) {
+      throw new FlightdeckError("invalid_state", "the card has no worktree", "card_no_worktree");
+    }
+    const worktree = card.worktreePath;
+    const branch = assertBranchName(card.branch);
+    if (action === "push") {
+      const project = board.getProject(card.projectId);
+      const provider = (this.opts.provider ?? prProvider)(project.prProvider);
+      const state = (await provider?.status({ cwd: project.path, url: card.prUrl ?? "" }))?.state;
+      if (state !== "open") {
+        throw new FlightdeckError(
+          "invalid_state",
+          `the card's PR is ${state ?? "unknown"}: nothing is pushed to it`,
+          "watch_pr_not_open",
+          { state: state ?? "unknown" },
+        );
+      }
+    }
     const sha = last.held_sha ?? "";
     const head = await this.git(worktree, ...SAFE_GIT, "rev-parse", "HEAD");
     if (!COMMIT_ID.test(sha) || head.stdout.trim() !== sha) {
@@ -312,6 +328,15 @@ export class PrFixer {
     const numstat = async (from: string, to: string): Promise<FileChange[]> =>
       parseNumstat(await read(...SAFE_DIFF, from, to, "--"));
     try {
+      // Fresh copies of the base and the branch: someone else may have pushed to either.
+      // git-arg: branch names checked by git's rules in fixed refspecs, never forced to a branch of the worktree
+      await read(
+        "fetch",
+        "--no-tags",
+        "origin",
+        `+refs/heads/${assertBranchName(base)}:refs/remotes/${target}`,
+        `+refs/heads/${assertBranchName(branch)}:refs/remotes/${pushed}`,
+      );
       const before = await numstat(await commit(target, pushed), pushed);
       const after = await numstat(await commit(target, "HEAD"), "HEAD");
       const inPr = new Set(after.map((file) => file.path));
@@ -358,7 +383,7 @@ export class PrFixer {
   private triggerNow(trigger: WatchTrigger): void {
     const { cardId } = trigger;
     const { watcher } = this.opts;
-    if (this.running.has(cardId) || !watcher.enabled(cardId)) return;
+    if (this.running.has(cardId) || this.resolving.has(cardId) || !watcher.enabled(cardId)) return;
     if (watcher.status(cardId).status !== "watching") return;
     const stop = this.limit(cardId);
     if (stop) {
@@ -480,6 +505,15 @@ export class PrFixer {
     const provider = (this.opts.provider ?? prProvider)(project.prProvider);
     const id = ulid();
     const n = this.rounds(cardId).length + 1;
+    // A held round under this one goes with it: its commits are measured again with this round's.
+    db.query(
+      `UPDATE pr_watch_rounds SET status = 'stopped', summary = ?, ended_at = ?
+       WHERE card_id = ? AND status = 'held'`,
+    ).run(
+      `superseded by round ${n}: its commits are measured and pushed with it`,
+      new Date(this.now).toISOString(),
+      cardId,
+    );
     db.query(
       `INSERT INTO pr_watch_rounds (id, card_id, n, status, trigger, started_at)
        VALUES (?, ?, ?, 'running', ?, ?)`,

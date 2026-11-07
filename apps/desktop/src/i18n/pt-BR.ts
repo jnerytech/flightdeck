@@ -1680,6 +1680,7 @@ export const ptBR = {
     watch_off: "O PR deste card não está sendo vigiado: ligue o Vigiar antes.",
     watch_extend_blocked: "Mais rodadas não resolveriam: {reason}",
     watch_round_not_held: "Essa rodada não está retida: não há nada para enviar ou descartar.",
+    watch_pr_not_open: "O PR do card está {state}: nada é enviado a ele.",
     watch_held_moved:
       "O branch tem commits novos desde que a rodada foi retida: veja-os antes de enviar ou descartar.",
     review_file_missing: "O arquivo {path} não existe.",
