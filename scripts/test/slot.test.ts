@@ -929,6 +929,19 @@ describe("slot: long holds and the test file limit (#833)", () => {
     );
   });
 
+  test("#833 review: a C1 control character in a holder's label, such as CSI, becomes a space in the new lines too", () => {
+    const f = fake({
+      files: {
+        [PATH]: held({ ...theirs, label: "ki\u009b2Jwi" }),
+        [`${PATH}.wait.30`]: queued(30, "userhome", 2000),
+      },
+    });
+    f.env.now = () => 1000 + 25 * 60_000;
+    const out = status(f.env);
+    expect(/[\u0080-\u009f]/.test(out)).toBe(false);
+    expect(out).toContain("waits on ki 2Jwi (pid 20)");
+  });
+
   test("a waiter is told once when the holder passes 20 minutes, first in line or behind another", async () => {
     for (const ahead of [false, true]) {
       const files: Record<string, string> = { [PATH]: held(theirs) };
