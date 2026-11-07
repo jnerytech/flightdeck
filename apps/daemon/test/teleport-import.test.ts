@@ -161,8 +161,22 @@ describe("teleport-import: a received package becomes a session on this host (#1
   test("a repository of another project, or outside the allowed roots, is refused and nothing is left", async () => {
     const pkg = await packaged();
     const { history, deps, calls, roots } = target(pkg);
+    // Another project: a history of its own, with nothing in common with the package's.
     const other = join(roots, "other");
-    git(roots, "clone", "-q", gitRepoWithOrigin().remote, other);
+    git(roots, "init", "-q", other);
+    await writeFile(join(other, "readme.txt"), "another project\n");
+    git(other, "add", "readme.txt");
+    git(
+      other,
+      "-c",
+      "user.name=t",
+      "-c",
+      "user.email=t@t",
+      "commit",
+      "-q",
+      "-m",
+      "chore(x): start",
+    );
     const outside = gitRepo().repo;
     expect([
       await reason(() => importPackage(deps, "in-1", other)),
