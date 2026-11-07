@@ -704,8 +704,27 @@ export interface PushWaitDeps extends PushGuardDeps {
  * A branch's latest PR run from `gh run list --json databaseId,status,startedAt` and, for one in
  * progress, `gh run view <id> --json jobs`; null when there is none or the output does not read.
  */
-export function prRunFrom(_runs: string | null, _jobs: string | null, _now: number): PrRun | null {
-  return null;
+export function prRunFrom(runs: string | null, jobs: string | null, now: number): PrRun | null {
+  try {
+    const latest = (JSON.parse(runs ?? "") as Array<Record<string, unknown>>)[0];
+    if (!latest || typeof latest.databaseId !== "number") return null;
+    const started = Date.parse(String(latest.startedAt));
+    if (Number.isNaN(started)) return null;
+    const inProgress = latest.status !== "completed";
+    const failed =
+      inProgress &&
+      (JSON.parse(jobs ?? "") as { jobs: Array<{ conclusion: string }> }).jobs.some(
+        (job) => job.conclusion === "failure",
+      );
+    return {
+      id: latest.databaseId,
+      inProgress,
+      failed,
+      minutes: Math.floor((now - started) / 60_000),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** How young a green PR run must be for a push to wait for it (#741). */

@@ -4,7 +4,7 @@
  * everything at once (docs/TDD.md), hand edits of generated files, test edits that add
  * .only/.skip/test.todo/toMatchSnapshot, commits whose subject breaks the format or the TDD
  * order, heavy runs outside `bun run slot --`, a worker's full coverage run (#674), a session's hand merge or tag of a PR, and pushes of anything but the session's own work
- * branch. Exit 2 blocks the call and shows the reason to Claude. The rules live in
+ * branch, and a push that would cancel the branch's PR run while it is still green (#741). Exit 2 blocks the call and shows the reason to Claude. The rules live in
  * scripts/lib/claude-hooks.ts, with their tests.
  */
 import { spawnSync } from "node:child_process";
@@ -18,7 +18,9 @@ import {
   guardAllowLogs,
   heavyRunViolation,
   prMergeViolation,
+  prRunFrom,
   pushViolation,
+  pushWaitViolation,
   slotViolation,
   testEditViolation,
 } from "../../scripts/lib/claude-hooks.ts";
@@ -50,6 +52,29 @@ if (typeof command === "string") {
   };
   block("commit", commitViolation(command, cwd, repo));
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
+  // #741: gh is asked only for a push without an override; any failure reads as no run.
+  const gh = (args: string[]) => {
+    const proc = spawnSync("gh", args, { cwd, encoding: "utf8", timeout: 4000 });
+    return proc.status === 0 ? proc.stdout : null;
+  };
+  const prRun = (branch: string) => {
+    const runs = gh([
+      "run",
+      "list",
+      "--branch",
+      branch,
+      "--event",
+      "pull_request",
+      "--limit",
+      "1",
+      "--json",
+      "databaseId,status,startedAt",
+    ]);
+    const id = /"databaseId":(\d+)/.exec(runs ?? "")?.[1];
+    const jobs = id ? gh(["run", "view", id, "--json", "jobs"]) : null;
+    return prRunFrom(runs, jobs, Date.now());
+  };
+  block("push-wait", pushWaitViolation(command, cwd, { ...repo, env: process.env, prRun }));
 }
 if (typeof filePath === "string") {
   const root = checkoutRoot(filePath, ROOT);
