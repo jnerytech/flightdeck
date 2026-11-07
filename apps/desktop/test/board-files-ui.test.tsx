@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { FileListing } from "@flightdeck/protocol";
+import { NARROW_SHOTS } from "../../../scripts/lib/shots-narrow.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settleMaybe } from "./wait.ts";
@@ -103,6 +104,31 @@ function setup(options: { language?: "en" | "pt-BR"; features?: string[] } = {})
   return { store, pick };
 }
 
+/** A ResizeObserver whose callbacks the test fires with the width it wants. */
+function fakeResizeObserver() {
+  const saved = globalThis.ResizeObserver;
+  const observers: Array<(width: number) => void> = [];
+  globalThis.ResizeObserver = class {
+    constructor(callback: ResizeObserverCallback) {
+      observers.push((width) =>
+        callback([{ contentRect: { width } } as ResizeObserverEntry], this as ResizeObserver),
+      );
+    }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  return {
+    resize: (width: number) =>
+      act(async () => {
+        for (const fire of observers) fire(width);
+      }),
+    restore: () => {
+      globalThis.ResizeObserver = saved;
+    },
+  };
+}
+
 const panel = (name: string) => screen.queryByRole("complementary", { name });
 const shows = (name: string, text: string) => {
   const region = panel(name);
@@ -181,5 +207,43 @@ describe("board-files-ui: the files of the picked worktree beside the board (#11
       shown: shows("Arquivos · fd/b", "b-readme.md"),
       button: screen.queryByRole("button", { name: "Arquivos" }) !== null,
     }).toEqual({ shown: true, button: true });
+  });
+
+  // A narrow board has no room for both: picking a worktree keeps the columns, and Files swaps
+  // the panel in for them (the #117 design), so a stacked panel is never squeezed to a strip.
+  test("in a narrow board the panel waits for Files, then takes the columns' place", async () => {
+    const ro = fakeResizeObserver();
+    try {
+      const { pick } = setup();
+      await ro.resize(700);
+      await pick("worktree", "/wt/b", "fd/b");
+      const files = () => screen.queryByRole("button", { name: "Files" });
+      const columns = () => screen.queryByRole("region", { name: "In progress" }) !== null;
+      const picked = {
+        panel: panel("Files · fd/b") !== null,
+        pressed: files()?.getAttribute("aria-pressed") ?? null,
+        columns: columns(),
+      };
+      await press("Files");
+      await settleMaybe(() => shows("Files · fd/b", "b-readme.md"));
+      const opened = { panel: shows("Files · fd/b", "b-readme.md"), columns: columns() };
+      await press("Files");
+      expect({
+        picked,
+        opened,
+        closed: { panel: panel("Files · fd/b") !== null, columns: columns() },
+      }).toEqual({
+        picked: { panel: false, pressed: "false", columns: true },
+        opened: { panel: true, columns: false },
+        closed: { panel: false, columns: true },
+      });
+    } finally {
+      ro.restore();
+    }
+  });
+
+  // The prints check the panel's contrast and overflow (#98, #103) at every narrow size too.
+  test("the prints measure the board with its files at the narrow sizes", () => {
+    expect(NARROW_SHOTS.includes("board-arquivos")).toBe(true);
   });
 });
