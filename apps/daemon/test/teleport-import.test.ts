@@ -124,7 +124,7 @@ describe("teleport-import: a received package becomes a session on this host (#1
       worktree: "",
       branch: "",
     }));
-    const at = (cmd: () => string) => {
+    const at = <T>(cmd: () => T): T | string => {
       try {
         return cmd();
       } catch {
