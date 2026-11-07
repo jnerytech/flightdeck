@@ -37,7 +37,14 @@ export function ProjectsOverview(
   const cards = useProjectCards(store, state);
   const hostName = props.host ? state.hosts.find((h) => h.id === props.host)?.name : undefined;
   // A route's host wins; else the hosts the switcher shows (#932), so a pick never lands elsewhere.
-  const shownHosts = useSwitcherHosts(store, state.hosts).map((host) => host.id);
+  const switcher = useSwitcherHosts(store, state.hosts);
+  const shownHosts = switcher.map((host) => host.id);
+  /** The one host the page shows, if one: the route's, else the switcher's. */
+  const one = props.host
+    ? state.hosts.find((host) => host.id === props.host)
+    : switcher.length === 1
+      ? switcher[0]
+      : undefined;
   const scoped = props.host
     ? cards.filter((card) => card.hostId === props.host)
     : cards.filter((card) => shownHosts.includes(card.hostId));
@@ -46,7 +53,11 @@ export function ProjectsOverview(
   return (
     <Page
       title={t("projectsOverview.title")}
-      subtitle={t("projectsOverview.subtitle")}
+      subtitle={
+        one
+          ? t("projectsOverview.subtitleHost", { host: one.name })
+          : t("projectsOverview.subtitle")
+      }
       toolbar={
         <div className="row-wrap">
           <Input
@@ -83,7 +94,16 @@ export function ProjectsOverview(
         </div>
       }
     >
-      {scoped.length === 0 && <EmptyState icon={FolderGit2} title={t("states.emptyProjects")} />}
+      {scoped.length === 0 && (
+        <EmptyState
+          icon={FolderGit2}
+          title={
+            one && one.status !== "online"
+              ? t("projectsOverview.hostOffline", { host: one.name })
+              : t("states.emptyProjects")
+          }
+        />
+      )}
       {scoped.length > 0 && shown.length === 0 && (
         <EmptyState title={t("projectsOverview.noMatch")} />
       )}

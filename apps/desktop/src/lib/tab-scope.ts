@@ -36,6 +36,7 @@ export function switcherHosts<T extends { id: string }>(
   scope: TabScope,
   hostId: string | null,
 ): T[] {
-  if (scope === "all" || hostId === null) return [...hosts];
+  // A host the list does not have (none chosen yet, or removed) means every host.
+  if (scope === "all" || !hosts.some((host) => host.id === hostId)) return [...hosts];
   return hosts.filter((host) => host.id === hostId);
 }
