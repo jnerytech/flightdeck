@@ -41,7 +41,7 @@ async function openCard(withBg: boolean) {
   render(<App store={store} />);
   const card = d.board.createCard(projectId, {
     title: "Somar o total",
-    description: "O total erra.",
+    description: "O total erra.\n- [ ] A soma bate.",
   });
   await act(async () => {
     store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });

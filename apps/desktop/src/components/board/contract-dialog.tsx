@@ -27,7 +27,8 @@ export function ContractDialog(
     qualifying: number;
     onCancel(): void;
     onMoveAll(): void;
-    onMoveQualifying(): void;
+    /** Left out when there is nothing to split (a start asks about one card). */
+    onMoveQualifying?(): void;
     /**
      * The dialog closed: the card it asked about gets the focus, the menu it came from is gone.
      * Left out, the focus goes back to the control that opened it.
@@ -94,7 +95,7 @@ export function ContractDialog(
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-          {!props.start && props.qualifying > 0 && (
+          {props.onMoveQualifying && props.qualifying > 0 && (
             <AlertDialogAction variant="outline" onClick={act(props.onMoveQualifying)}>
               {t("board.contract.moveQualifying")}
             </AlertDialogAction>

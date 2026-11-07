@@ -83,7 +83,7 @@ async function openBoard(repo: string) {
   await settle(() => screen.queryByRole("heading", { name: "Board de repo" }) !== null);
 }
 
-async function createCard(title: string, description = "faça") {
+async function createCard(title: string, description = "faça\n- [ ] ok") {
   // The form lives in a dialog the "Novo card" button opens.
   await click("Novo card");
   await type("Título do card", title);
@@ -383,7 +383,7 @@ describe("board-ui", () => {
   test("Excluir… de um card que já começou explica a recusa e oferece Descartar card no lugar", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);
-    await createCard("Em curso", "faça");
+    await createCard("Em curso", "faça\n- [ ] ok");
     await openCard("Em curso");
     await click("Iniciar");
     await click("Voltar ao board");
@@ -472,7 +472,7 @@ describe("board-ui", () => {
   test("Concluir e Descartar pedem confirmação; Descartar avisa das alterações não enviadas", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);
-    await createCard("Terminar", "faça");
+    await createCard("Terminar", "faça\n- [ ] ok");
     await openCard("Terminar");
     await click("Iniciar");
     await click("Voltar ao board");
@@ -496,7 +496,7 @@ describe("board-ui", () => {
     await settle(() => column("Concluído").includes("Terminar"));
     expect(column("Concluído")).toEqual(["Terminar"]);
 
-    await createCard("Jogar fora", "faça");
+    await createCard("Jogar fora", "faça\n- [ ] ok");
     await openCard("Jogar fora");
     await click("Iniciar");
     const discardId = board
@@ -529,7 +529,7 @@ describe("board-ui", () => {
   test("Descartar card sem alterações não mostra o aviso", async () => {
     const { repo } = await setup();
     await openBoard(repo);
-    await createCard("Ideia", "faça");
+    await createCard("Ideia", "faça\n- [ ] ok");
     await openCard("Ideia");
     await click("Descartar");
     await settle(() => dialog() !== null);
@@ -542,7 +542,7 @@ describe("board-ui", () => {
   test("what was typed in the card's title and adjustment stays when the card's session starts", async () => {
     const { repo } = await setup();
     await openBoard(repo);
-    await createCard("Rascunho", "faça");
+    await createCard("Rascunho", "faça\n- [ ] ok");
     await openCard("Rascunho");
     await type("Título", "Rascunho meu");
     await type("Ajuste", "meu ajuste");
@@ -560,7 +560,7 @@ describe("board-ui", () => {
   test("once the card's conversation shows, its details become a pane of their own above it", async () => {
     const { repo } = await setup();
     await openBoard(repo);
-    await createCard("Painel", "faça");
+    await createCard("Painel", "faça\n- [ ] ok");
     await openCard("Painel");
     const details = () => screen.queryByLabelText("Título")?.closest("[data-slot='card-info']");
     const before = details() ?? null;
@@ -596,7 +596,7 @@ describe("board-ui", () => {
   test("the board fills its page: the columns row scrolls sideways, each column's cards scroll by themselves", async () => {
     const { repo } = await setup();
     await openBoard(repo);
-    await createCard("Coluna", "faça");
+    await createCard("Coluna", "faça\n- [ ] ok");
     const row = document.querySelector("[data-slot='board-columns']");
     const body = row?.closest("[data-slot='page-body']");
     const lists = [
@@ -626,11 +626,11 @@ describe("board-ui", () => {
     await createCard("Detalhe", "crie [commit]");
     await openCard("Detalhe");
     expect(screen.queryByText("Sem sessão ainda.")).not.toBeNull();
-    await type("Descrição", "crie e commite [commit]");
+    await type("Descrição", "crie e commite [commit]\n- [ ] ok");
     await click("Salvar descrição");
     const id = board.getBoard(board.listProjects()[0]?.id ?? "").columns[0]?.cards[0]?.id ?? "";
-    await settle(() => board.getCard(id).description === "crie e commite [commit]");
-    expect(board.getCard(id).description).toBe("crie e commite [commit]");
+    await settle(() => board.getCard(id).description === "crie e commite [commit]\n- [ ] ok");
+    expect(board.getCard(id).description).toBe("crie e commite [commit]\n- [ ] ok");
 
     await click("Iniciar");
     await settle(() => board.getCard(id).sessionStatus === "idle");
@@ -639,7 +639,9 @@ describe("board-ui", () => {
     );
     expect(screen.queryByRole("list", { name: "Execuções" })?.textContent ?? "").toContain("#1");
     await settle(() => (screen.queryByRole("log")?.textContent ?? "").includes("Echo:"));
-    expect(screen.queryByRole("log")?.textContent ?? "").toContain("crie e commite [commit]");
+    expect(screen.queryByRole("log")?.textContent ?? "").toContain(
+      "crie e commite [commit]\n- [ ] ok",
+    );
     // The card's conversation fills its pane like the session screen: no fixed box, no narrow column.
     const chat = screen.queryByRole("log", { name: "Conversa do card" }) as HTMLElement;
     expect(chat.className).toContain("card-chat");
@@ -689,7 +691,7 @@ describe("board-ui", () => {
   test("remover o host tira os cards dele do app", async () => {
     const { repo, store } = await setup();
     await openBoard(repo);
-    await createCard("Some junto", "faça");
+    await createCard("Some junto", "faça\n- [ ] ok");
     expect(Object.keys(store.getState().cards)).toHaveLength(1);
     await act(async () => {
       await store.removeHost(store.getState().hosts[0]?.id ?? "");
@@ -700,7 +702,7 @@ describe("board-ui", () => {
   test("cards mostram fila, estado do PR, checks e avisos vindos do daemon", async () => {
     const { repo, board, eventStore } = await setup();
     await openBoard(repo);
-    await createCard("Com selos", "faça");
+    await createCard("Com selos", "faça\n- [ ] ok");
     const project = board.listProjects()[0]?.id ?? "";
     const id = board.getBoard(project).columns[0]?.cards[0]?.id ?? "";
     board.setMaxParallelRuns(1);

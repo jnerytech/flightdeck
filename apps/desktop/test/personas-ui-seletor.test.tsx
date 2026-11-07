@@ -117,7 +117,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
 
   test("a card suggests the Developer next to Iniciar, and None can still be picked", async () => {
     const { store, hostId, projectId, d } = await open();
-    const card = d.board.createCard(projectId, { title: "Codar", description: "faça" });
+    const card = d.board.createCard(projectId, { title: "Codar", description: "faça\n- [ ] ok" });
     const asked: Array<{ type: string; payload: unknown }> = [];
     const command = store.hostCommand.bind(store);
     store.hostCommand = (async (id: string, type: never, payload: never) => {
@@ -142,7 +142,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
 
   test("a card starts in the persona chosen next to Iniciar", async () => {
     const { store, hostId, projectId, d } = await open();
-    const card = d.board.createCard(projectId, { title: "Revisar", description: "faça" });
+    const card = d.board.createCard(projectId, { title: "Revisar", description: "faça\n- [ ] ok" });
     const asked: Array<{ type: string; payload: unknown }> = [];
     const command = store.hostCommand.bind(store);
     store.hostCommand = (async (id: string, type: never, payload: never) => {
@@ -163,7 +163,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
 
   test("the board menu's Iniciar card shows the picker with the suggestion, and the persona chosen reaches card.start", async () => {
     const { store, hostId, projectId, d } = await open();
-    d.board.createCard(projectId, { title: "Do menu", description: "faça" });
+    d.board.createCard(projectId, { title: "Do menu", description: "faça\n- [ ] ok" });
     const asked: Array<{ type: string; payload: unknown }> = [];
     const command = store.hostCommand.bind(store);
     store.hostCommand = (async (id: string, type: never, payload: never) => {
@@ -228,7 +228,10 @@ describe("personas-ui: choosing a persona when a session opens", () => {
 
   test("Iniciar em arena takes a persona per variant, and the comparison shows it", async () => {
     const { store, hostId, projectId, d } = await open();
-    const card = d.board.createCard(projectId, { title: "Comparar", description: "faça" });
+    const card = d.board.createCard(projectId, {
+      title: "Comparar",
+      description: "faça\n- [ ] ok",
+    });
     await act(async () => {
       store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
     });
@@ -255,7 +258,10 @@ describe("personas-ui: choosing a persona when a session opens", () => {
 
   test("an arena variant in an app persona shows its name, and its id once the app no longer has it", async () => {
     const { store, hostId, projectId, d } = await open();
-    const card = d.board.createCard(projectId, { title: "Comparar app", description: "faça" });
+    const card = d.board.createCard(projectId, {
+      title: "Comparar app",
+      description: "faça\n- [ ] ok",
+    });
     await act(async () => {
       store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
     });

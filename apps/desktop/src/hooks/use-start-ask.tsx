@@ -34,7 +34,6 @@ export function useStartAsk(restoreFocus?: (cardId: string) => void): {
         setPending(null);
         go();
       }}
-      onMoveQualifying={() => undefined}
       {...(restoreFocus ? { onRestoreFocus: restoreFocus } : {})}
     />
   ) : null;

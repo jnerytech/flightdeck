@@ -75,7 +75,7 @@ async function openBoard(repo: string) {
   await settle(() => screen.queryByRole("heading", { name: "Board de repo" }) !== null);
 }
 
-async function createCard(title: string, description = "faça") {
+async function createCard(title: string, description = "faça\n- [ ] ok") {
   // The form lives in a dialog the "Novo card" button opens.
   await click("Novo card");
   await type("Título do card", title);

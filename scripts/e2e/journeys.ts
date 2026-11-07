@@ -245,6 +245,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await tile.waitFor({ timeout: WAIT });
     await tile.getByRole("button", { name: title, exact: true }).click();
     await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
+    // A card with no acceptance criteria asks first (issue #78): go on anyway.
+    await c.page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: c.t("board.contract.startAnyway"), exact: true })
+      .click();
     await open(c, { name: "card", host: ALFA, projectId: c.ids.project, cardId: c.ids.diffCard });
     await c.page.getByRole("button", { name: c.t("cardUi.diff"), exact: true }).click();
     await c.page.getByRole("region", { name: c.t("diff.unifiedLabel") }).waitFor({ timeout: WAIT });
@@ -564,6 +569,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       tile(title).getByRole("button", { name: c.t("board.cardActions", { title }), exact: true });
     await actions(second).click();
     await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    // A card with no acceptance criteria asks first (issue #78): go on anyway.
+    await c.page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: c.t("board.contract.startAnyway"), exact: true })
+      .click();
     // The menu's Start asks for the workflow and persona first (issue #188).
     await c.page
       .getByRole("dialog", { name: c.t("board.startCard") })
@@ -689,6 +699,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("button", { name: c.t("board.cardActions", { title }), exact: true })
       .click();
     await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    // A card with no acceptance criteria asks first (issue #78): go on anyway.
+    await c.page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: c.t("board.contract.startAnyway"), exact: true })
+      .click();
     const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
     await start.waitFor({ timeout: WAIT });
     await start.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();

@@ -77,7 +77,7 @@ async function setup() {
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "inicial");
   const project = await d.board.addProject({ path: repo, promptTemplate: "" });
-  const card = d.board.createCard(project.id, { title: "Ajuste", description: "faça" });
+  const card = d.board.createCard(project.id, { title: "Ajuste", description: "faça\n- [ ] ok" });
   const { sessionId } = await d.manager.create({
     cwd: d.project,
     prompt: "[bash]",
@@ -265,7 +265,10 @@ describe("navegacao", () => {
     await poll(() => d.board.getCard(card.id).runs.length > 0, 8000);
     expect(d.board.getCard(card.id).runs).toHaveLength(1);
 
-    const second = d.board.createCard(card.projectId, { title: "Outro", description: "faça" });
+    const second = d.board.createCard(card.projectId, {
+      title: "Outro",
+      description: "faça\n- [ ] ok",
+    });
     await act(async () => {
       fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     });
