@@ -74,6 +74,39 @@ describe("git-limited: a capped git read with a time limit (#100)", () => {
     ]);
   });
 
+  test("an abort whose kill fails still answers, and says aborted (#905)", async () => {
+    const controller = new AbortController();
+    const running = gitLimitedFor(
+      tempDir("fd-git-limited-"),
+      1024,
+      ["-c", "alias.wait=!sleep 1", "wait"],
+      10_000,
+      async () => {
+        throw new Error("the process was already gone");
+      },
+      undefined,
+      controller.signal,
+    );
+    controller.abort();
+    expect((await running).aborted).toBe(true);
+  });
+
+  test("a signal that is already aborted kills the program as it starts (#905)", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const started = Date.now();
+    const result = await gitLimitedFor(
+      tempDir("fd-git-limited-"),
+      1024,
+      ["-c", "alias.hang=!sleep 3", "hang"],
+      10_000,
+      undefined,
+      undefined,
+      controller.signal,
+    );
+    expect([result.aborted, Date.now() - started < 2_500]).toEqual([true, true]);
+  });
+
   test("a git that ends in time gives its output and no time-out", async () => {
     const result = await gitLimitedFor(tempDir("fd-git-limited-"), 1024, ["--version"], 10_000);
     expect([
