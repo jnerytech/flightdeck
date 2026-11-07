@@ -308,6 +308,8 @@ export const PendingPermission = z.object({
   /** Phase 13; optional only because older daemons do not send it. */
   risk: RiskLevel.optional(),
   riskReason: z.string().optional(),
+  /** Issue #88: the request in plain words, as `permission.requested` carries it; an older daemon sends none. */
+  plain: PlainInfo.optional(),
 });
 export type PendingPermission = z.infer<typeof PendingPermission>;
 
