@@ -91,7 +91,7 @@ export async function descriptorInside(
 }
 
 /** The path still leads, inside the root, to the very file that was opened. */
-async function stillThere(
+export async function stillThere(
   realRoot: string,
   target: string,
   opened: { dev: bigint; ino: bigint },

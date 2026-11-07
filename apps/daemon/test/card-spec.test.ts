@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   closeSync,
   linkSync,
+  lstatSync,
   mkdirSync,
   openSync,
   realpathSync,
@@ -11,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { descriptorInside, readSpec } from "../src/board/spec.ts";
+import { descriptorInside, readSpec, stillThere } from "../src/board/spec.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
@@ -188,6 +189,17 @@ describe("card-spec: what the daemon learns of a spec file", () => {
       closeSync(inside);
       closeSync(elsewhere);
     }
+  });
+
+  test("a path that went away after the open, or leads to another file, is not the file that was opened", async () => {
+    const { root } = folders();
+    writeFileSync(join(root, "here.md"), "# Here\n");
+    const info = lstatSync(join(root, "here.md"), { bigint: true });
+    expect(await stillThere(root, join(root, "here.md"), info)).toBe(true);
+    expect(await stillThere(root, join(root, "gone.md"), info)).toBe(false);
+    expect(
+      await stillThere(root, join(root, "here.md"), { dev: info.dev, ino: info.ino + 1n }),
+    ).toBe(false);
   });
 
   test("a worktree reached through a link is still the worktree", async () => {
