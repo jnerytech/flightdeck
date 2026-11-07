@@ -3126,6 +3126,13 @@ export const en: Dictionary = {
     workersLegend: "Workers",
     workerPersona: "Persona of worker {n} (optional)",
     workerModel: "Model of worker {n}",
+    coordinatorPermission: "Coordinator permissions",
+    workerPermission: "Permissions of worker {n}",
+    newMemberPermission: "Permissions of the new worker of {name}",
+    bypassMessage:
+      "On {host}, members set to Bypass permissions run everything without asking first: they can edit and delete files and run commands. Nothing stops them once they start.",
+    bypassConfirm: "Create without permission prompts",
+    bypassAddConfirm: "Add without permission prompts",
     addRow: "Add a worker to the new team",
     removeRow: "Remove worker {n}",
     newMemberPersona: "Persona of the new worker of {name} (optional)",

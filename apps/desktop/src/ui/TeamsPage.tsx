@@ -7,6 +7,7 @@ import { Field, FieldRow, FormActions, NativeSelect } from "@/components/layout/
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { ModelSelect } from "@/components/personas/model-select";
+import { type PermissionChoice, PermissionSelect } from "@/components/personas/permission-select";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { AddProject } from "@/components/projects/add-project";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,21 @@ import { sessionLabel } from "../lib/session-label.ts";
 import { useDraft } from "../lib/use-draft.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
+
+/**
+ * Issue #93: what a host takes for a team member's permission mode. A host that does not announce
+ * it would ignore the choice, so the form shows none; Bypass needs the host's own switch.
+ */
+function useModes(store: AppStore, hostId: string) {
+  const { hosts } = useStoreSlice(store, MODES_KEYS);
+  const host = hosts.find((h) => h.id === hostId);
+  return {
+    offered: hasFeature(host?.hostInfo?.features, "teams.permissions", false),
+    allowBypass: host?.hostInfo?.allowBypassPermissions === true,
+    name: host?.name ?? hostId,
+  };
+}
+const MODES_KEYS = ["hosts"] as const;
 
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
 function NewTeam(
@@ -48,14 +64,18 @@ function NewTeam(
   const projectId = projects.some((p) => p.id === picked) ? picked : (projects[0]?.id ?? "");
   const [persona, setPersona] = useState("");
   const [model, setModel] = useState("");
+  const modes = useModes(store, hostId);
+  const [permission, setPermission] = useState<PermissionChoice>("");
+  /** Bypass asks again each time the team is created. */
+  const [asking, setAsking] = useState(false);
   /**
-   * One row per worker: the row's persona and model ("" is the default). A persona nobody picked
-   * is `null` and shows the Developer when the host has it.
+   * One row per worker: the row's persona, model and permission mode ("" is the default). A persona
+   * nobody picked is `null` and shows the Developer when the host has it.
    */
-  type Row = { persona: string | null; model: string };
+  type Row = { persona: string | null; model: string; permission: PermissionChoice };
   const [rows, setRows] = useState<Row[]>([
-    { persona: null, model: "" },
-    { persona: null, model: "" },
+    { persona: null, model: "", permission: "" },
+    { persona: null, model: "", permission: "" },
   ]);
   const setRow = (index: number, change: Partial<Row>) =>
     setRows((all) => all.map((row, i) => (i === index ? { ...row, ...change } : row)));
@@ -64,8 +84,14 @@ function NewTeam(
   const [creating, setCreating] = useState(false);
   // A second submit before the first answered would create the team twice.
   const inFlight = useRef(false);
-  const create = async () => {
+  const create = async (confirmed = false) => {
     if (inFlight.current) return;
+    const asked = modes.offered ? [permission, ...rows.map((row) => row.permission)] : [];
+    if (asked.includes("bypassPermissions") && !confirmed) {
+      setAsking(true);
+      return;
+    }
+    setAsking(false);
     inFlight.current = true;
     setCreating(true);
     const team = await store.hostCommand(hostId, "teams.create", {
@@ -78,6 +104,10 @@ function NewTeam(
       ...(model ? { coordinatorModel: model } : {}),
       ...(rows.some((row) => row.model)
         ? { workerModels: rows.map((row) => row.model || null) }
+        : {}),
+      ...(modes.offered && permission ? { coordinatorPermission: permission } : {}),
+      ...(modes.offered && rows.some((row) => row.permission)
+        ? { workerPermissions: rows.map((row) => row.permission || null) }
         : {}),
     });
     inFlight.current = false;
@@ -156,11 +186,23 @@ function NewTeam(
         value={model}
         onChange={setModel}
       />
+      {modes.offered && (
+        <PermissionSelect
+          label={t("teamsUi.coordinatorPermission")}
+          value={permission}
+          allowBypass={modes.allowBypass}
+          onChange={setPermission}
+        />
+      )}
       <fieldset className="form-stack">
         <legend className="legend-tight">{t("teamsUi.workersLegend")}</legend>
         {rows.map((row, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: a row has no identity besides its number
-          <div key={i} className="row-end-wrap">
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: a row has no identity besides its number
+            key={i}
+            data-slot="worker-row"
+            className={modes.offered ? "worker-row" : "worker-row worker-row-lean"}
+          >
             <PersonaPicker
               store={store}
               hostId={hostId}
@@ -175,6 +217,14 @@ function NewTeam(
               value={row.model}
               onChange={(value) => setRow(i, { model: value })}
             />
+            {modes.offered && (
+              <PermissionSelect
+                label={t("teamsUi.workerPermission", { n: i + 1 })}
+                value={row.permission}
+                allowBypass={modes.allowBypass}
+                onChange={(value) => setRow(i, { permission: value })}
+              />
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -194,7 +244,7 @@ function NewTeam(
           className="self-start"
           disabled={rows.length >= 8}
           aria-label={t("teamsUi.addRow")}
-          onClick={() => setRows((all) => [...all, { persona: null, model: "" }])}
+          onClick={() => setRows((all) => [...all, { persona: null, model: "", permission: "" }])}
         >
           {t("teamsUi.addWorkerButton")}
         </Button>
@@ -208,6 +258,15 @@ function NewTeam(
         cancel={t("teamsUi.cancel")}
         onCancel={props.onCancel}
       />
+      {asking && (
+        <ConfirmDialog
+          message={t("teamsUi.bypassMessage", { host: modes.name })}
+          confirmLabel={t("teamsUi.bypassConfirm")}
+          destructive
+          onConfirm={() => void create(true)}
+          onCancel={() => setAsking(false)}
+        />
+      )}
     </form>
   );
 }
@@ -369,7 +428,7 @@ function NewMember(
     store: AppStore;
     hostId: string;
     team: TeamInfo;
-    onAdd(member: { persona: string; model: string }): void;
+    onAdd(member: { persona: string; model: string; permission: PermissionChoice }): void;
     onCancel(): void;
   }>,
 ) {
@@ -377,6 +436,8 @@ function NewMember(
   const { t } = store.i18n;
   const [persona, setPersona] = useState("");
   const [model, setModel] = useState("");
+  const [permission, setPermission] = useState<PermissionChoice>("");
+  const modes = useModes(store, props.hostId);
   return (
     <div className="row-end-wrap">
       <PersonaPicker
@@ -393,10 +454,18 @@ function NewMember(
         value={model}
         onChange={setModel}
       />
+      {modes.offered && (
+        <PermissionSelect
+          label={t("teamsUi.newMemberPermission", { name: team.name })}
+          value={permission}
+          allowBypass={modes.allowBypass}
+          onChange={setPermission}
+        />
+      )}
       <Button
         size="sm"
         aria-label={t("teamsUi.addMember", { name: team.name })}
-        onClick={() => props.onAdd({ persona, model })}
+        onClick={() => props.onAdd({ persona, model, permission })}
       >
         {t("teamsUi.addMemberButton")}
       </Button>
@@ -424,10 +493,31 @@ function Team(
   const [text, setText] = useState("");
   const [sent, setSent] = useState<{ delivered: number; refused: number } | null>(null);
   const [adding, setAdding] = useState(false);
+  /** A worker set to Bypass waits here for the person's yes. */
+  const [bypassing, setBypassing] = useState<{
+    persona: string;
+    model: string;
+    permission: PermissionChoice;
+  } | null>(null);
+  const modes = useModes(store, hostId);
   const [confirm, setConfirm] = useState<
     { kind: "close" } | { kind: "remove"; member: string } | null
   >(null);
   const open = team.state !== "closed";
+  const addMember = (member: { persona: string; model: string; permission: PermissionChoice }) => {
+    setAdding(false);
+    setBypassing(null);
+    void act(
+      store.hostCommand(hostId, "teams.update", {
+        team: team.id,
+        addMember: {
+          persona: member.persona || null,
+          model: member.model || null,
+          ...(member.permission ? { permission: member.permission } : {}),
+        },
+      }),
+    );
+  };
   const act = async (command: Promise<TeamInfo | null>) => {
     const updated = await command;
     if (updated) props.onChanged(updated);
@@ -522,16 +612,11 @@ function Team(
               team={team}
               onCancel={() => setAdding(false)}
               onAdd={(member) => {
-                setAdding(false);
-                void act(
-                  store.hostCommand(hostId, "teams.update", {
-                    team: team.id,
-                    addMember: {
-                      persona: member.persona || null,
-                      model: member.model || null,
-                    },
-                  }),
-                );
+                if (member.permission === "bypassPermissions") {
+                  setBypassing(member);
+                  return;
+                }
+                addMember(member);
               }}
             />
           )}
@@ -559,6 +644,15 @@ function Team(
             {sent && <span role="status">{t("teamsUi.sentAll", sent)}</span>}
           </div>
         </div>
+      )}
+      {bypassing && (
+        <ConfirmDialog
+          message={t("teamsUi.bypassMessage", { host: modes.name })}
+          confirmLabel={t("teamsUi.bypassAddConfirm")}
+          destructive
+          onConfirm={() => addMember(bypassing)}
+          onCancel={() => setBypassing(null)}
+        />
       )}
       {confirm && (
         <ConfirmDialog
