@@ -133,7 +133,7 @@ describe("data-scope: why a scoped host has nothing to show", () => {
       awayKey("incompatible", "sessions"),
       awayKey("offline", "numbers"),
       awayKey("offline", "sessions"),
-      awayKey("refused", "sessions"),
+      awayKey("unauthorized", "sessions"),
     ]).toEqual([
       "scope.incompatible",
       "scope.incompatible",
