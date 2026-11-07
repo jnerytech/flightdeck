@@ -22,6 +22,11 @@ automation's send went around the watch's cap.
   Vigiar on is how a person bounds the automatic fixes of a card.
 - **The cap stays a project setting** (`maxRounds`), counted per card since the watch was last
   turned on (`round_base`).
+- **More rounds (slice D2):** `watch.extend { cardId, rounds }` adds to the card's own
+  `extra_rounds`, so its limit is `maxRounds + extra_rounds`. It does not move `round_base`: that
+  would also forget the turns and the money of the older rounds, and more rounds must never
+  forgive spent money. It watches the card again and moves a card in "Needs you" back to review.
+  Turning the watch on again resets both.
 - **The hand-over:** the card needs you when its rounds run out, or when enough rounds in a row
   fail. The watch keeps `needs_you` with the reason, which lists each round. A card in `review`
   then moves to the `waiting` column, which the board shows as "Needs you". A card in any other
