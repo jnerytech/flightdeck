@@ -162,6 +162,7 @@ describe("demo-prints: axe e CI", () => {
       "orcamento-alcance",
       "modo-simples-alcance",
       "layout-medido",
+      "teleport-mover",
       "time-novo-alcance",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);

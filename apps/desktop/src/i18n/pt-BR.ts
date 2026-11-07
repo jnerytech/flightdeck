@@ -28,6 +28,13 @@ export const ptBR = {
     signOutGithubConfirm:
       "Sair do GitHub em {host}? As sessões de lá perdem o acesso aos seus repositórios até você entrar de novo.",
   },
+  scope: {
+    menu: "Dados de {scope}",
+    all: "Todos os hosts",
+    showing: "Mostrando {scope}",
+    offline: "{host} está offline. Os números voltam quando ele reconectar.",
+    showAll: "Mostrar todos os hosts",
+  },
   home: {
     title: "Início",
     range: "Últimos 7 dias · todos os hosts",
@@ -2763,6 +2770,7 @@ export const ptBR = {
       other:
         "{hosts} se conectam sem TLS (ws:// puro). A conversa e o código da sessão passam por este app sem criptografia: mova só por uma rede em que você confia.",
     },
+    movedToast: "A sessão foi movida para {host}.",
     preview: "Prévia: mover uma sessão para outro host",
   },
   automationsUi: {

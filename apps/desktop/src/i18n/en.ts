@@ -26,6 +26,13 @@ export const en: Dictionary = {
     signOutGithubConfirm:
       "Sign out of GitHub on {host}? Its sessions lose access to your repositories until you sign in again.",
   },
+  scope: {
+    menu: "Data from {scope}",
+    all: "All hosts",
+    showing: "Showing {scope}",
+    offline: "{host} is offline. Its numbers come back when it reconnects.",
+    showAll: "Show all hosts",
+  },
   home: {
     title: "Home",
     range: "Last 7 days · all hosts",
@@ -2761,6 +2768,7 @@ export const en: Dictionary = {
       other:
         "{hosts} connect without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
     },
+    movedToast: "The session moved to {host}.",
     preview: "Preview: move a session to another host",
   },
   automationsUi: {

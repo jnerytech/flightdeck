@@ -3,7 +3,7 @@
  * (online, with teleport, not its own), the repository on the target (typed, or picked from the
  * folders that host allows), the store's relay, and the session opened where it landed.
  */
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "../i18n/context.tsx";
@@ -12,7 +12,7 @@ import { isPlainRemote, plainText } from "../lib/teleport.ts";
 import { useStoreSlice } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { FolderPicker } from "./FolderPicker.tsx";
-import { TeleportDialog } from "./TeleportDialog.tsx";
+import { failureText, TeleportDialog } from "./TeleportDialog.tsx";
 
 const TELEPORT_KEYS = ["hosts"] as const;
 
@@ -65,7 +65,10 @@ export const TeleportMove = memo(function TeleportMove(
   props: Readonly<{ store: AppStore; hostId: string; sessionId: string; onClose(): void }>,
 ) {
   const { store } = props;
+  const t = useT();
   const state = useStoreSlice(store, TELEPORT_KEYS);
+  /** The dialog closed (the person closed it while the target finished): the move tells by toast. */
+  const closed = useRef(false);
   const targets = state.hosts
     .filter(
       (h) =>
@@ -85,14 +88,34 @@ export const TeleportMove = memo(function TeleportMove(
           onChange={onChange}
         />
       )}
-      run={(args) => store.moveSession(props.hostId, props.sessionId, args)}
+      run={(args) =>
+        store.moveSession(props.hostId, props.sessionId, args).then(
+          (outcome) => {
+            if (closed.current && outcome.kind === "moved") {
+              const host = state.hosts.find((h) => h.id === args.target)?.name ?? "";
+              store.success(t("teleportUi.movedToast", { host }), {
+                label: t("teleportUi.open"),
+                run: () => store.openMovedSession(args.target, outcome.sessionId),
+              });
+            }
+            return outcome;
+          },
+          (error: unknown) => {
+            if (closed.current) store.reportError(failureText(error, t));
+            throw error;
+          },
+        )
+      }
       plain={(target) =>
         state.hosts
           .filter((h) => (h.id === props.hostId || h.id === target) && isPlainRemote(h.url))
           .map((h) => plainText(h.name, 64))
       }
       onOpen={store.openMovedSession}
-      onClose={props.onClose}
+      onClose={() => {
+        closed.current = true;
+        props.onClose();
+      }}
     />
   );
 });

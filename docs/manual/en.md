@@ -870,7 +870,7 @@ An idle session can continue on another host: its conversation, its commits and 
 2. Pick the host and the repository there: press **Browse…** to choose among the folders that host allows, or type the path. It must be the same project, so that host must already have a clone of it.
    If either host is reached over plain `ws://` and is not this machine, a warning names it: the conversation and the code then travel through the app unencrypted, so move only over a network you trust.
 3. Read what moves: the branch, the commits not on origin yet, the files changed, the size, and how many lines look like secrets. The secrets themselves are never shown, and they move as they are.
-4. Press **Move**, then **Open it there**.
+4. Press **Move**, then **Open it there**. Once every byte is sent you can close the window: when the move ends, a toast says so, with **Open it there**, or says why it was refused.
 
 On the other host the code is in a new worktree of that repository, on a branch of its own, and the session goes on from where it stopped. The session here stays as it was. Files kept in Git LFS arrive as pointers: run `git lfs pull` in the worktree to fetch them.
 
@@ -959,6 +959,11 @@ live; the list is the project's, so a session of another project never shows her
   window you already used comes back with its tabs. The account at the foot of the bar is the one
   of the host you are on; with no host open it is the shared account of the online hosts, or "N
   accounts" when they differ.
+- **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
+  it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
+  change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
+  When the chosen host is offline, Home says so and offers **Show all hosts**. Sessions, Costs and
+  the Board follow it in later versions.
 - The tabs have a row of their own under the top bar, over each area (with a split, each area has
   its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
   the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
@@ -3240,6 +3245,8 @@ Hover one for its name.
 - **Sidebar:** logo, navigation (Sessions, Needs you with its counter, Board, Workflows, Costs,
   History), the hosts, the pinned sessions and, at the bottom, search (`Ctrl K`), Settings and
   the theme. It collapses to a 56 px icon rail, by itself below 1024 px, and below 640 px it becomes a drawer.
+- **Window size:** the window opens at 1200 x 800 and can shrink to 360 x 480, as narrow as a phone,
+  to sit beside an editor. Narrow, the sidebar is a drawer and the tabs are one button.
 - **Three columns** in Sessions, Needs you and History: the list on the left (adjustable,
   remembered width), the session, request or transcript on the right. Board, Costs, Settings and
   the host pages use the full width. The header shows the path (Sessions > session, History >

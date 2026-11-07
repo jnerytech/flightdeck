@@ -864,7 +864,7 @@ Uma sessão ociosa pode continuar em outro host: a conversa, os commits e as mud
 2. Escolha o host e o repositório lá: aperte **Procurar…** para escolher entre as pastas que esse host permite, ou digite o caminho. Tem de ser o mesmo projeto, então esse host já precisa ter um clone dele.
    Se um dos hosts é alcançado por `ws://` puro e não é esta máquina, um aviso o nomeia: a conversa e o código passam pelo app sem criptografia, então mova só por uma rede em que você confia.
 3. Leia o que vai: a branch, os commits ainda fora do origin, os arquivos alterados, o tamanho e quantas linhas parecem segredos. Os segredos em si nunca aparecem, e eles vão como estão.
-4. Aperte **Mover** e depois **Abrir lá**.
+4. Aperte **Mover** e depois **Abrir lá**. Depois que todos os bytes foram enviados, você pode fechar a janela: quando a mudança termina, um aviso diz isso, com **Abrir lá**, ou diz por que foi recusada.
 
 No outro host o código fica numa worktree nova desse repositório, numa branch própria, e a sessão continua de onde parou. A sessão daqui fica como estava. Arquivos guardados no Git LFS chegam como ponteiros: rode `git lfs pull` na worktree para buscá-los.
 
@@ -957,6 +957,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
   barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
   "N contas" quando diferem.
+- **Dados de** (#126): com dois hosts ou mais, a barra do Início tem um menu que diz de quem são os
+  números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
+  aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
+  abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
+  hosts**. Sessões, Custos e o Board passam a segui-lo em versões seguintes.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
   tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
   (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
@@ -3236,6 +3241,9 @@ encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 - **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
   Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
   Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 1024 px, e abaixo de 640 px vira uma gaveta.
+- **Tamanho da janela:** a janela abre em 1200 x 800 e pode encolher até 360 x 480, estreita como um
+  celular, para ficar ao lado de um editor. Estreita, a barra lateral vira uma gaveta e as abas viram
+  um botão só.
 - **Três colunas** em Sessões, Precisa de você e Histórico: a lista à esquerda (largura
   ajustável e guardada), a sessão, o pedido ou a transcrição à direita. Board, Custos,
   Configurações e as páginas do host usam a largura toda. O cabeçalho mostra o caminho
