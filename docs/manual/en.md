@@ -965,8 +965,8 @@ live; the list is the project's, so a session of another project never shows her
 - **Data from** (#126): with two hosts or more, Home's toolbar has a menu that says whose numbers
   it shows, **All hosts** or one host, and changes them; the choice is kept across starts, and a
   change is announced ("Showing alfa"). It is not the host switcher at the top, which is about tabs.
-  When the chosen host is offline, Home says so and offers **Show all hosts**. Sessions, Costs and
-  the Board follow it in later versions.
+  When the chosen host is offline, Home says so and offers **Show all hosts**. Costs follows it too
+  (see **Costs and budgets**); Sessions and the Board follow it in later versions.
 - The tabs have a row of their own under the top bar, over each area (with a split, each area has
   its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
   the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
@@ -2799,9 +2799,15 @@ ones hidden), Costs, and the Vault. It never filters **Needs you**, the tray, no
 budget alerts or the global search, and each request there wears its client's chip. A host's own
 **Projects** screen always lists every project.
 
-**Costs and budgets.** On **Costs**, **All hosts** adds the hosts up, **By client** splits the
-spend (with **No client**), and a selected client narrows everything; a host that is offline, has
-no costs or does not answer is named. The CSV export and the quota charts stay per host. Each
+**Costs and budgets.** On **Costs**, the **Data from** menu in the toolbar (the same as Home's, and
+kept across starts) picks **All hosts**, which is how Costs opens and adds the hosts up, or one host.
+A link that names a host (an alert, a card on Home) shows that host for that visit and leaves the
+menu's choice alone. If the chosen host is offline or does not report costs, Costs says so and
+offers **Show all hosts**. **By client** splits the spend (with **No client**), and a selected client
+narrows everything; a host that is offline, has no costs or does not answer is named. The CSV export
+covers every host on **All hosts**, with the host's name as the first column (a host that does not
+answer is left out). The quota charts are per host: on **All hosts** one line, **Pick a host to see
+its quota**, has a button for each host. Each
 client can have a **monthly limit** (US$): the app looks at it when a host with costs comes online,
 when you change it and every ten minutes, warns once a month at 50%, 80% and 100% (a notification
 and a line in **Needs you**), and **does not hold cards**: the limits of each host and project stay

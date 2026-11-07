@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, utimes, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { TeleportManifest } from "@flightdeck/protocol";
 import { bundleCode } from "../src/teleport/bundle.ts";
@@ -78,11 +78,14 @@ async function packaged(over: Partial<TeleportManifest> = {}, options: { lfs?: b
 /** The target: its own clone of origin, under its allowed root, and the fakes around the import. */
 function target(
   pkg: Awaited<ReturnType<typeof packaged>>,
-  options: { local?: string | null; failResume?: boolean } = {},
+  options: { local?: string | null; failResume?: boolean; autocrlf?: boolean } = {},
 ) {
   const roots = tempDir("fd-teleport-target-");
   const repo = join(roots, "app");
   git(roots, "clone", "-q", pkg.remote, repo);
+  // The import runs git with the repository's own config, and the test's git() with autocrlf off:
+  // pinned here, both read the files the same way on every OS (Git for Windows defaults to true).
+  git(repo, "config", "core.autocrlf", String(options.autocrlf ?? false));
   const history = tempDir("fd-teleport-history-");
   const calls = { released: 0, resumed: [] as unknown[] };
   const claim: TeleportClaim = {
@@ -166,6 +169,31 @@ describe("teleport-import: a received package becomes a session on this host (#1
       [{ cwd: done.worktree, claudeSessionId: ID, name: null, permissionMode: "default" }],
       1,
       "",
+    ]);
+  });
+
+  test("on a host whose git writes CRLF (core.autocrlf=true), the worktree shows only the real changes (#868)", async () => {
+    const pkg = await packaged();
+    const { repo, deps } = target(pkg, { autocrlf: true });
+    const done = await importPackage(deps, "in-1", repo);
+    // A new timestamp before each status makes git compare the contents, as Windows' stat data
+    // often does; a status refreshes the index, so each one gets its own.
+    let at = Date.parse("2020-01-01T00:00:00Z");
+    const status = async (autocrlf: boolean) => {
+      at += 60_000;
+      for (const file of ["README.md", ".gitignore"])
+        await utimes(join(done.worktree, file), new Date(at), new Date(at));
+      return git(done.worktree, "-c", `core.autocrlf=${autocrlf}`, "status", "--porcelain").trim();
+    };
+    expect([
+      await readFile(join(done.worktree, "README.md"), "utf8").catch(() => "missing"),
+      await status(true),
+      // Read with autocrlf off, as the test's git() reads, the same files look all changed.
+      await status(false),
+    ]).toEqual([
+      "# repo\r\n",
+      "M f1.txt\n?? new.txt",
+      "M .gitignore\n M README.md\n M f1.txt\n?? new.txt",
     ]);
   });
 

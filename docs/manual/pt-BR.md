@@ -965,7 +965,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   números mostrados, **Todos os hosts** ou um host, e os troca; a escolha fica guardada entre
   aberturas, e a troca é anunciada ("Mostrando alfa"). Não é o seletor de host do topo, que é das
   abas. Quando o host escolhido está offline, o Início diz isso e oferece **Mostrar todos os
-  hosts**. Sessões, Custos e o Board passam a segui-lo em versões seguintes.
+  hosts**. Os Custos também o seguem (veja **Custos e orçamentos**); Sessões e o Board passam a
+  segui-lo em versões seguintes.
 - As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
   tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
   (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
@@ -2805,9 +2806,16 @@ sempre aparecem, e uma linha conta os escondidos), Custos e o Cofre. Nunca filtr
 você**, a bandeja, as notificações, os alertas de orçamento nem a busca global, e cada pedido ali
 leva o selo do cliente. A tela **Projetos** do próprio host sempre lista todos os projetos.
 
-**Custos e orçamentos.** Em **Custos**, **Todos os hosts** soma os hosts, **Por cliente** divide o
-gasto (com **Sem cliente**) e um cliente escolhido restringe tudo; um host que está offline, não
-tem custos ou não responde é citado. A exportação CSV e os gráficos de cota ficam por host. Cada
+**Custos e orçamentos.** Em **Custos**, o menu **Dados de** na barra de ferramentas (o mesmo do
+Início, guardado entre aberturas) escolhe **Todos os hosts**, que é como os Custos abrem e soma os
+hosts, ou um host. Um link que nomeia um host (um alerta, um cartão do Início) mostra esse host
+naquela visita e não mexe na escolha do menu. Se o host escolhido está offline ou não informa
+custos, os Custos dizem isso e oferecem **Mostrar todos os hosts**. **Por cliente** divide o gasto
+(com **Sem cliente**) e um cliente escolhido restringe tudo; um host que está offline, não tem
+custos ou não responde é citado. A exportação CSV cobre todos os hosts em **Todos os hosts**, com o
+nome do host na primeira coluna (um host que não responde fica de fora). Os gráficos de cota são
+por host: em **Todos os hosts** há uma linha, **Escolha um host para ver a cota**, com um botão por
+host. Cada
 cliente pode ter um **limite mensal** (US$): o app confere quando um host com custos entra no ar,
 quando você muda o limite e a cada dez minutos, avisa uma vez por mês em 50%, 80% e 100% (uma
 notificação e uma linha em **Precisa de você**) e **não segura cards**: os limites de cada host e
