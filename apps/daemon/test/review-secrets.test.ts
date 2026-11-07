@@ -399,6 +399,75 @@ describe("review-secrets: an MCP config shows what it runs, with its values mask
     ]).toEqual([true, true, true, false]);
   });
 
+  /** A tracked .mcp.json changed in the working tree: what its diff shows. */
+  const changedDiff = async (before: string, after: string) => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, ".mcp.json"), before);
+    git(repo, "add", ".");
+    git(repo, "commit", "-q", "-m", "mcp");
+    writeFileSync(join(repo, ".mcp.json"), after);
+    return shown((await workingDiff(repo)).find((f) => f.path === ".mcp.json")).join("\n");
+  };
+
+  test("a hunk that opens on the value of a secret flag masks it, and so does a flag edited next to it", async () => {
+    const args = (flag: string, last: string) =>
+      [
+        "{",
+        '  "command": "node",',
+        '  "args": [',
+        `    "${flag}",`,
+        '    "flag-private",',
+        '    "x1",',
+        '    "x2",',
+        `    "${last}"`,
+        "  ]",
+        "}",
+        "",
+      ].join("\n");
+    const far = await changedDiff(args("--token", "a"), args("--token", "b"));
+    const edited = await changedDiff(args("--token", "a"), args("--port", "a"));
+    expect([far.includes('"x1"'), far.includes("flag-private")]).toEqual([true, false]);
+    expect(edited.includes("flag-private")).toBe(false);
+  });
+
+  test("lists under any other key, and env names that look like shown keys, are masked", async () => {
+    const text = await changedDiff(
+      "{}\n",
+      [
+        "{",
+        '  "headers": { "Authorization": ["Bearer short-list"] },',
+        '  "env": { "K": ["env-list"], "URL": "https://hook.example/T0/B0/hook-path", "NAME": "env-name" },',
+        '  "command": "node"',
+        "}",
+        "",
+      ].join("\n"),
+    );
+    expect([
+      text.includes('"command": "node"'),
+      /short-list|env-list|hook-path|env-name/.test(text),
+    ]).toEqual([true, false]);
+  });
+
+  test("a value on the line after its key, a secret flag joined or spelled short, and a url's user are masked", async () => {
+    const text = await changedDiff(
+      "{}\n",
+      [
+        "{",
+        '  "token":',
+        '    "separate-line",',
+        '  "args": ["--pwd", "pwd-value", "--auth=auth-value", "--sig", "sig-value", "--name", "plain-name"],',
+        '  "url": "https://user-token@host.example/mcp"',
+        "}",
+        "",
+      ].join("\n"),
+    );
+    expect([
+      text.includes("plain-name"),
+      text.includes("host.example/mcp"),
+      /separate-line|pwd-value|auth-value|sig-value|user-token/.test(text),
+    ]).toEqual([true, true, false]);
+  });
+
   test("a .mcp.json inside a credential folder is still a credential", async () => {
     const { repo } = gitRepo();
     mkdirSync(join(repo, ".aws"));
