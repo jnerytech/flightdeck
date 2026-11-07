@@ -86,6 +86,12 @@ describe("assistant-fields-simple: Ask for changes in simple mode (issue #160)",
     expect(request).toContain("shorter pls");
     expect(request).toContain("plain words");
     await click("Accept");
+    // The preview leaves with its scroll lock and its aria-hidden on the page: the next test
+    // must not start before it is gone (#727).
+    await waitFor(
+      () => expect(screen.queryByRole("dialog", { name: "AI suggestion" }) === null).toBe(true),
+      WAIT,
+    );
     expect(box.value).toBe(ANSWER.text);
     // Nothing was asked of the task: it is still Done.
     expect(screen.queryByText("Done", { selector: "[data-slot='task-chip']" })).not.toBeNull();
