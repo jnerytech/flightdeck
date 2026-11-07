@@ -41,6 +41,8 @@ const SECRETS = [
   "/p/client.p12",
   "/p/vpn.ovpn",
   "/p/infra/terraform.tfstate",
+  "/p/.mcp.json",
+  "/p/.claude/settings.local.json",
 ];
 
 describe("secret paths: the classifier and OpenCode's read rules know the same ones (issue #449)", () => {

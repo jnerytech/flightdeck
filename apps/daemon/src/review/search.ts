@@ -38,6 +38,9 @@ interface Found {
   truncated: boolean;
 }
 
+/** At most this many searches run at once (#806). */
+export const MAX_SEARCHES = 4;
+
 const DEFAULT_LIMIT = 100;
 const TIMEOUT_MS = 5_000;
 const MAX_BYTES = 4 * 1024 * 1024;
