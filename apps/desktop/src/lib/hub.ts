@@ -48,8 +48,6 @@ export interface HubRow {
 
 export interface HubFilter {
   text: string;
-  /** Host name, or "" for all. */
-  host: string;
   origin: "" | HubOrigin;
   state: "" | HubState;
   /** A persona id, or "" for all (phase 20). */
@@ -63,7 +61,6 @@ export const HUB_FILTER_KEY = "flightdeck.hubFilter";
 
 export const DEFAULT_HUB_FILTER: HubFilter = {
   text: "",
-  host: "",
   origin: "",
   state: "",
   persona: "",
@@ -88,13 +85,29 @@ export function loadHubFilter(storage: { getItem(key: string): string | null }):
   };
   return {
     text: "",
-    host: text("host"),
     origin: text("origin", ORIGINS) as HubFilter["origin"],
     state: text("state", STATES) as HubFilter["state"],
     persona: text("persona"),
     pinnedOnly: stored.pinnedOnly === true,
     showArchived: stored.showArchived === true,
   };
+}
+
+/** The host the hub kept in its own filter before #126, taken out of it: "" when there is none. */
+export function takeHubHost(storage: {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}): string {
+  try {
+    const stored = JSON.parse(storage.getItem(HUB_FILTER_KEY) ?? "{}") as Record<string, unknown>;
+    const { host, ...rest } = stored;
+    if (typeof host !== "string" || host === "") return "";
+    storage.setItem(HUB_FILTER_KEY, JSON.stringify(rest));
+    return host;
+  } catch {
+    // Not JSON, or a storage that refuses: nothing to take.
+    return "";
+  }
 }
 
 export function saveHubFilter(
@@ -357,7 +370,6 @@ const matches = (row: HubRow, filter: HubFilter) =>
   `${row.title}\n${row.cwd}\n${row.hostName}\n${groupName(row.projectKey)}`
     .toLowerCase()
     .includes(filter.text.trim().toLowerCase()) &&
-  (!filter.host || row.hostName === filter.host) &&
   (!filter.origin || row.origin === filter.origin) &&
   (!filter.state || row.state === filter.state) &&
   (!filter.persona || row.persona?.id === filter.persona) &&

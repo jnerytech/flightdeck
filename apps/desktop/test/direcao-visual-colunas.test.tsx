@@ -176,7 +176,7 @@ describe("direcao-visual: três colunas", () => {
   test("os filtros da lista são compactos (32 px)", async () => {
     await setup();
     await sidebar.openFilters();
-    for (const label of ["Host", "Origem", "Estado"]) {
+    for (const label of ["Origem", "Estado"]) {
       expect(screen.queryByLabelText(label)?.className ?? "").toContain("h-8");
     }
     expect(screen.queryByLabelText("Filtrar sessões")?.className ?? "").toContain("h-8");

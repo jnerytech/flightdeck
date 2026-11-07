@@ -104,7 +104,7 @@ import {
 } from "./client-vault.ts";
 import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
-import { DataScopeController } from "./data-scope.ts";
+import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
@@ -125,6 +125,7 @@ import {
   saveHubFilter,
   saveHubOpen,
   saveHubView,
+  takeHubHost,
 } from "./hub.ts";
 import {
   addEntry,
@@ -1345,6 +1346,12 @@ export class AppStore {
       if (token) this.connect(config, token);
     });
     this.update({ hostsLoaded: true });
+    // #126 slice 2: the hub's own host filter (a name) becomes the data scope once, unless one
+    // was chosen already; either way it leaves the hub, which now follows the scope.
+    const hubHost = takeHubHost(this.platform.storage);
+    if (hubHost && !this.dataScope.chosen) {
+      this.dataScope.set(hubHostScope(hubHost, this.state.hosts));
+    }
     // Last: the saved hosts must not wait for it.
     if (this.platform.terminal.supported) {
       this.update({ terminalEnv: await this.platform.terminal.probe() });

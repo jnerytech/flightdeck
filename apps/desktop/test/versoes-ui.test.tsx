@@ -142,9 +142,9 @@ describe("versoes-ui", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Abrir Sessões" }));
     });
-    await sidebar.openFilters();
-    const hosts = within(screen.getByLabelText("Host")).queryAllByRole("option");
-    expect(hosts.map((o) => o.textContent)).toEqual(["Todos os hosts"]);
+    // No other host to pick: Sessões offers no Dados de menu (#126).
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Filtros/ })).not.toBeNull());
+    expect(screen.queryByRole("button", { name: /^Dados de / })).toBeNull();
     await openHost();
     // One catalog sentence says what is wrong (issue #181); the daemon's words are under Details.
     expect(text()).toContain("Versão do host incompatível com este app");
