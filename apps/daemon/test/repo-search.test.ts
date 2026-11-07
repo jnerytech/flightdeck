@@ -230,6 +230,18 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     ]).toEqual([3, false, false, true, 'const [redacted]";']);
   });
 
+  test("a file named after a token is never listed, by name or by content (#829)", async () => {
+    const { repo } = await setup();
+    // A fake token of GitHub's shape in the file's name; the test never uses a real one.
+    const named = `panel-ghp_${"A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"}.txt`;
+    writeFileSync(join(repo, "src", named), "panel\n");
+    const leaks = async (mode: "name" | "content") =>
+      (await searchRepository(repo, { mode, query: "panel" }, { rg: () => null })).matches.some(
+        (m) => m.path.includes("ghp_"),
+      );
+    expect([await leaks("name"), await leaks("content")]).toEqual([false, false]);
+  });
+
   test("an rg cut by its time limit keeps what it found and says it was cut", async () => {
     const { repo } = await setup();
     const found = await searchRepository(
