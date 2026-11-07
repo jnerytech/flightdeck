@@ -21,6 +21,8 @@ const COLUMNS: RoiColumn[] = [
   "roi",
 ];
 const DASH = "—";
+/** The first column stays in view while the table scrolls sideways. */
+const STICKY = " sticky left-0 z-1 bg-background";
 const money = (n: number | null) => (n === null ? DASH : usd(n));
 const REFRESH_MS = 30_000;
 
@@ -116,17 +118,17 @@ export function RoiTable(
           >
             <thead>
               <tr>
-                {COLUMNS.map((column) => (
+                {COLUMNS.map((column, index) => (
                   <th
                     key={column}
                     scope="col"
                     aria-sort={ariaSort(sort, column)}
-                    className="py-1 pr-3 font-medium"
+                    className={`py-1 pr-3 font-medium${index === 0 ? STICKY : ""}`}
                   >
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-auto px-0"
+                      className="h-auto min-h-6 px-0"
                       onClick={() => click(column)}
                     >
                       {label(column)}
@@ -138,7 +140,7 @@ export function RoiTable(
             <tbody>
               {shown.map((row) => (
                 <tr key={row.key} className="border-t">
-                  <th scope="row" className="py-1 pr-3 font-normal">
+                  <th scope="row" className={`py-1 pr-3 font-normal${STICKY}`}>
                     {row.name}
                   </th>
                   <td className="pr-3">{usd(row.figures.costUsd)}</td>
@@ -156,7 +158,7 @@ export function RoiTable(
             </tbody>
             <tfoot>
               <tr className="border-t font-medium">
-                <th scope="row" className="py-1 pr-3 text-left">
+                <th scope="row" className={`py-1 pr-3 text-left${STICKY}`}>
                   {t("roiUi.table.total")}
                 </th>
                 <td className="pr-3">{usd(totals.costUsd)}</td>
