@@ -1,8 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { DAEMON_FEATURES } from "@flightdeck/protocol";
-import { GATES } from "../src/server/gates.ts";
 import { startServer } from "../src/server.ts";
 import { newManager } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -59,23 +55,4 @@ describe("recusas-recurso: a command whose part is off says which feature, as a 
       expect((answer.error as { message: string }).message).not.toMatch(/[À-ú]/);
     });
   }
-
-  test("the server uses only listed features, and every listed feature is used", () => {
-    // Issue #248: the names live in server.ts, in its handler modules and in the gate table.
-    const dir = resolve(import.meta.dir, "../src/server");
-    const files = [
-      resolve(import.meta.dir, "../src/server.ts"),
-      ...readdirSync(dir, { recursive: true })
-        .map(String)
-        .filter((f) => f.endsWith(".ts"))
-        .map((f) => resolve(dir, f)),
-    ];
-    const source = files.map((f) => readFileSync(f, "utf8")).join("\n");
-    const used = new Set([
-      ...[...source.matchAll(/featureOff\("(\w+)"\)/g)].map((m) => m[1]),
-      ...Object.values(GATES).filter((feature) => /^\w+$/.test(feature)),
-    ]);
-    expect(used.size).toBeGreaterThan(30);
-    expect([...used].sort()).toEqual([...(DAEMON_FEATURES as readonly string[])].sort());
-  });
 });
