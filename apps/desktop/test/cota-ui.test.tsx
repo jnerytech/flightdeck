@@ -143,7 +143,7 @@ describe("cota-ui", () => {
     expect(card()?.textContent ?? "").not.toMatch(/horas|reinicia|lida|leitura/);
   });
 
-  test("cruzar o pauseAt notifica uma vez por janela", async () => {
+  test("cruzar o pauseAt notifica uma vez por janela e por nível", async () => {
     const { quota, notifications } = await online();
     const resets = START + 60 * MINUTE;
     const reading = (utilization: number, resetsAt = resets) => [
@@ -151,14 +151,18 @@ describe("cota-ui", () => {
     ];
     await act(async () => quota.record(reading(0.5)));
     await act(async () => quota.record(reading(0.92)));
-    await act(async () => quota.record(reading(0.97)));
+    await act(async () => quota.record(reading(0.93)));
     await settle(() => notifications.length > 0);
+    // The same level again says nothing; reaching 95% is a higher level (#933).
     expect(notifications).toEqual([{ title: "Cota do plano", body: "alfa: 5 horas em 92%" }]);
+    await act(async () => quota.record(reading(0.97)));
+    await settle(() => notifications.length > 1);
     // A new window (another reset) may notify again.
     await act(async () => quota.record(reading(0.93, resets + 5 * 60 * MINUTE)));
-    await settle(() => notifications.length > 1);
+    await settle(() => notifications.length > 2);
     expect(notifications.map((n) => n.body)).toEqual([
       "alfa: 5 horas em 92%",
+      "alfa: 5 horas em 97%",
       "alfa: 5 horas em 93%",
     ]);
   });
