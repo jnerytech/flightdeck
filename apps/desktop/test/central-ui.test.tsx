@@ -68,8 +68,11 @@ const scopeTo = async (item: string) => {
   await act(async () => {
     fireEvent.click(entry as HTMLElement);
   });
-  // The menu closes before the next control is used: an open one swallows the next click.
-  await settle(() => screen.queryByRole("menuitemradio") === null);
+  // The menu closes and gives focus back to its trigger before the next control is used: focus
+  // landing late on the trigger dismisses a popover opened in between.
+  await settle(
+    () => screen.queryByRole("menuitemradio") === null && document.activeElement === trigger,
+  );
 };
 
 /** A row's action from its menu (phase 10: no loose icons); Radix opens on pointer down. */
@@ -196,14 +199,18 @@ describe("central-ui", () => {
     await change("Filtrar sessões", "gerenc");
     expect(group("central")).toEqual(["Gerenciada"]);
     await change("Filtrar sessões", "");
-    await scopeTo("beta");
-    expect(group("central")).toEqual(["Do histórico"]);
-    await scopeTo("Todos os hosts");
     await change("Origem", "terminal");
     expect(group("central")).toEqual(["repo"]);
     await change("Origem", "");
     await change("Estado", "ended");
     expect(group("central")).toEqual(["Do histórico"]);
+    await change("Estado", "");
+    // Whose sessions comes last: the Dados de menu (#126) gives focus back to its trigger when it
+    // closes, which would dismiss the Filtros popover opened right after it.
+    await scopeTo("beta");
+    expect(group("central")).toEqual(["Do histórico"]);
+    await scopeTo("Todos os hosts");
+    expect(group("central")).toEqual(["repo", "Gerenciada", "Do histórico"]);
   });
 
   test("fixadas no topo do grupo; arquivadas escondidas por padrão; renomear e copiar o comando", async () => {
