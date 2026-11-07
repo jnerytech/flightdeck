@@ -173,7 +173,10 @@ describe("slot: the max age", () => {
     expect(status(f.env)).toBe(
       "held by kiwi: bun run e2e (pid 20, 1h 31m); WARNING: older than 90m, check if it is stuck",
     );
-    expect(status(f.env, 120 * 60_000)).toBe("held by kiwi: bun run e2e (pid 20, 1h 31m)");
+    // Under its own max age a holder past 20 minutes is still LONG (#833).
+    expect(status(f.env, 120 * 60_000)).toBe(
+      "held by kiwi: bun run e2e (pid 20, 1h 31m); LONG: over 20m",
+    );
   });
 
   test("a dead holder is stale, not old", () => {
@@ -409,8 +412,8 @@ describe("slot: first come, first served (#372)", () => {
     expect(status(fake({ files: { ...files, [PATH]: held(theirs) }, dead: [31] }).env)).toBe(
       [
         "held by kiwi: bun run e2e (pid 20, 4s)",
-        `waiting 1: userhome: ${clipped} (pid 30, 3s)`,
-        "waiting 2: top-bar: bun run test (pid 40, 2s)",
+        `waiting 1: userhome: ${clipped} (pid 30, 3s); waits on kiwi (pid 20)`,
+        "waiting 2: top-bar: bun run test (pid 40, 2s); waits on kiwi (pid 20)",
       ].join("\n"),
     );
     expect(status(fake({ files, dead: [31] }).env)).toBe(
@@ -469,7 +472,7 @@ describe("slot: running a command", () => {
     expect(await run(f.env, ["--status"])).toBe(0);
     expect(f.logs).toEqual([
       "held by kiwi: bun run e2e (pid 20, 4s)",
-      "waiting 1: userhome: bun run e2e (pid 30, 3s)",
+      "waiting 1: userhome: bun run e2e (pid 30, 3s); waits on kiwi (pid 20)",
     ]);
   });
 
