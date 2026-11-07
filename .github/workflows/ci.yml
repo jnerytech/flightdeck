@@ -222,11 +222,12 @@ jobs:
 
   # SonarCloud, with the lcov report of the suite. The product version marks the new-code period
   # ("previous version"). Skipped on a dispatch, and where the secret is not available (pull requests
-  # from forks).
+  # from forks). The status check is explicit: a PR skips the shards, and GitHub would skip this job
+  # after them too.
   sonar:
     name: sonarcloud
     needs: [test-suite]
-    if: github.event_name != 'workflow_dispatch'
+    if: "!cancelled() && needs.test-suite.result == 'success' && github.event_name != 'workflow_dispatch'"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
