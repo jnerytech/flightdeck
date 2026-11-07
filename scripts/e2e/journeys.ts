@@ -868,7 +868,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   "files-viewer": async (c) => {
     const route: Route = { name: "session", host: ALFA, id: c.ids.idleSession };
     await open(c, route);
-    await c.page.getByRole("button", { name: c.t("files.tab"), exact: true }).click();
+    await c.page.getByRole("tab", { name: c.t("files.tab"), exact: true }).click();
     const tree = c.page.getByRole("region", { name: c.t("files.region"), exact: true });
     await tree.getByRole("button", { name: "README.md", exact: true }).click();
     const viewer = c.page.getByRole("region", { name: c.t("files.viewer", { path: "README.md" }) });
@@ -878,9 +878,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     try {
       await open({ ...c, page: other }, route);
       // The tab the first window picked is remembered by the browser: this one starts on the conversation.
-      await other
-        .getByRole("button", { name: c.t("changes.conversationTab"), exact: true })
-        .click();
+      await other.getByRole("tab", { name: c.t("changes.conversationTab"), exact: true }).click();
       const box = other.getByLabel(c.t("session.message"), { exact: true });
       await box.fill("[result:README.md] reescreva o arquivo");
       await box.press("Enter");

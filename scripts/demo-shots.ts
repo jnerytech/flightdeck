@@ -328,7 +328,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "card-mudancas",
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Mudanças|Changes)$/ }).click();
+        await page.getByRole("tab", { name: /^(Mudanças|Changes)$/ }).click();
         await page
           .getByRole("button", {
             name: /^(Comentar a linha 1 de fake-1.txt|Comment on line 1 of fake-1.txt)$/,
@@ -342,7 +342,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "sessao-mudancas",
       route: { name: "session", host: ALFA, id: ids.idleSession },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /^(Mudanças|Changes)$/ }).click();
+        await page.getByRole("tab", { name: /^(Mudanças|Changes)$/ }).click();
         await page.waitForTimeout(800);
       },
     },
