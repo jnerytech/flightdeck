@@ -2495,7 +2495,7 @@ window resets.
   - Crossing `pauseAt` raises a notification, once per window.
 - **In the status bar** (the slim line at the bottom of the window, below): a small meter shows the
   window under most pressure across the online hosts, with its percentage and the time left until it
-  resets (the window's name shows from 960 px wide), and a **Refresh the plan usage** button that
+  resets (the window's name shows from 1024 px wide), and a **Refresh the plan usage** button that
   asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
   from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
   host and the time left. Clicking it opens that host's page. With no reading, neither the meter
@@ -3225,7 +3225,7 @@ Hover one for its name.
 
 - **Sidebar:** logo, navigation (Sessions, Needs you with its counter, Board, Workflows, Costs,
   History), the hosts, the pinned sessions and, at the bottom, search (`Ctrl K`), Settings and
-  the theme. It collapses to a 56 px icon rail, by itself below 960 px.
+  the theme. It collapses to a 56 px icon rail, by itself below 1024 px, and below 640 px it becomes a drawer.
 - **Three columns** in Sessions, Needs you and History: the list on the left (adjustable,
   remembered width), the session, request or transcript on the right. Board, Costs, Settings and
   the host pages use the full width. The header shows the path (Sessions > session, History >
