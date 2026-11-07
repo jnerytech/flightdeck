@@ -73,7 +73,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     expect(terminalShown()).toBe(false);
     await clickTab("Terminal");
     await settle(() => terminalShown());
-    expect(screen.queryByText("Ao vivo")).not.toBeNull();
+    await settle(() => screen.queryByText("Ao vivo") !== null);
     const [shell] = await live(store, hostId);
     const cwd = store.getState().sessions[`${hostId}/${sessionId}`]?.cwd;
     expect(shell?.cwd).toBe(cwd);
@@ -90,7 +90,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     ]);
   });
 
-  test("Ctrl+` toggles between the Terminal and the Conversation, and Alt+7 shows the Terminal", async () => {
+  test("Ctrl+` toggles between the Terminal and the Conversation, and its Alt number shows the Terminal", async () => {
     const { store, hostId } = await onSessionPage();
     await settle(() => tab("Terminal") !== null);
     await press({ key: "`", ctrlKey: true });
@@ -98,7 +98,12 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     await press({ key: "`", ctrlKey: true });
     expect(terminalShown()).toBe(false);
     expect(tab("Conversa")?.getAttribute("aria-selected")).toBe("true");
-    await press({ key: "7", altKey: true });
+    // The Alt numbers count the views the page has: the Terminal is the one after the others.
+    const bar = screen.queryByRole("tablist", { name: "Visões da sessão" }) as HTMLElement;
+    const names = within(bar)
+      .queryAllByRole("tab")
+      .map((t) => t.textContent);
+    await press({ key: String(names.indexOf("Terminal") + 1), altKey: true });
     await settle(() => terminalShown());
     expect((await live(store, hostId)).length).toBe(1);
   });
