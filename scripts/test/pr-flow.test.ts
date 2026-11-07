@@ -338,7 +338,8 @@ describe("pr-flow: open", () => {
     });
     expect(await prFlow(["open", "slice", "--refs", "117", "--draft"], f.deps)).toBe(0);
     const post = f.writes[0] ?? "";
-    expect(post).toContain("-f title=A big issue (#117)");
+    // A slice is titled after its own first commit, not the parent issue (#909).
+    expect(post).toContain("-f title=y (#117) -f head=");
     expect(post).toContain("-f body=Refs #117\n\n- feat(slice): x (#9)\n- test(slice): y (#9)");
     expect(post).toContain("-F draft=true");
     expect(post).not.toContain("Closes #");
@@ -355,10 +356,48 @@ describe("pr-flow: open", () => {
     expect(f.out()).toBe("--issue and --refs cannot be used together: pick one");
   });
 
-  test("the usage text names --refs (#839)", async () => {
+  test("the usage text names --refs (#839) and --title (#909)", async () => {
     const f = fake();
     expect(await prFlow(["open"], f.deps)).toBe(2);
     expect(f.out()).toContain("[--issue <n> | --refs <n>]");
+    expect(f.out()).toContain("[--title <text>]");
+  });
+
+  test("#909: a --refs title is the first non-merge commit's subject without type(scope) and (#N); with none, the issue's", async () => {
+    const title = async (subjects: string[]) => {
+      const f = fake({
+        pushed: ["slice"],
+        subjects: { slice: subjects },
+        issues: { 117: "A big issue" },
+      });
+      expect(await prFlow(["open", "slice", "--refs", "117"], f.deps)).toBe(0);
+      return /-f title=(.*?) -f head=/.exec(f.writes[0] ?? "")?.[1];
+    };
+    // git log lists the newest first: the first commit is the last subject.
+    expect(await title(["fix(slice): later (#9)", "docs: the first step"])).toBe(
+      "the first step (#117)",
+    );
+    expect(await title(["Merge branch 'main' into slice", "feat(a-b): x y (#12)"])).toBe(
+      "x y (#117)",
+    );
+    expect(await title(["refactor(slot)!: one lock", "Merge branch 'main' into slice"])).toBe(
+      "one lock (#117)",
+    );
+    expect(await title(["Merge branch 'main' into slice"])).toBe("A big issue (#117)");
+  });
+
+  test("#909: --title overrides the title in every mode, and the issue still links", async () => {
+    for (const mode of [["--refs", "117"], ["--issue", "117"], []]) {
+      const f = fake({
+        pushed: ["slice"],
+        subjects: { slice: ["feat(slice): x (#117)"] },
+        issues: { 117: "A big issue" },
+      });
+      expect(
+        await prFlow(["open", "slice", ...mode, "--title", "Windows path fixes"], f.deps),
+      ).toBe(0);
+      expect(f.writes[0] ?? "").toContain("-f title=Windows path fixes (#117) -f head=");
+    }
   });
 
   test("a new PR runs the FLIGHTDECK_PR_OPENED hook with its number, branch and base; a failed hook leaves the PR open (#273)", async () => {
