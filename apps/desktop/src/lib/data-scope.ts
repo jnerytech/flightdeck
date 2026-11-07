@@ -4,20 +4,31 @@ import type { Platform } from "../platform/types.ts";
 export const DATA_SCOPE_KEY = "flightdeck.dataScope";
 
 /**
- * Whose data the scoped screens show (#126): every host, or one. It is not the host switcher's
+ * Whose data the scoped screens show (#126): every host, one host, or one project. It is not the host switcher's
  * choice, which is about tabs (#644): Home (and, in later slices, Sessions, Costs and Board) read
  * this one value, set from the scope menu in their toolbar.
  */
-export type DataScope = { kind: "all" } | { kind: "host"; hostId: string };
+export type DataScope =
+  | { kind: "all" }
+  | { kind: "host"; hostId: string }
+  /** One project (slice 4): a remote key spans the hosts, a folder key pins its host. */
+  | { kind: "project"; projectKey: string };
 
 export const ALL_SCOPE: DataScope = { kind: "all" };
 
 /** The scope as kept; anything unreadable is every host. */
 export function parseScope(raw: string | null): DataScope {
   try {
-    const kept = JSON.parse(raw ?? "") as { kind?: unknown; hostId?: unknown };
+    const kept = JSON.parse(raw ?? "") as {
+      kind?: unknown;
+      hostId?: unknown;
+      projectKey?: unknown;
+    };
     if (kept.kind === "host" && typeof kept.hostId === "string" && kept.hostId !== "") {
       return { kind: "host", hostId: kept.hostId };
+    }
+    if (kept.kind === "project" && typeof kept.projectKey === "string" && kept.projectKey !== "") {
+      return { kind: "project", projectKey: kept.projectKey };
     }
   } catch {
     // Not JSON: every host.
@@ -42,14 +53,20 @@ export function activeScope(
 
 /** A host's menu value starts with this; every host's has none, so no host id can take it. */
 const HOST_VALUE = "host:";
+/** A project's: read first, since a folder key itself starts with `host:` (slice 4). */
+const PROJECT_VALUE = "project:";
 
 /** The scope as a menu value. */
 export function scopeValue(scope: DataScope): string {
+  if (scope.kind === "project") return `${PROJECT_VALUE}${scope.projectKey}`;
   return scope.kind === "host" ? `${HOST_VALUE}${scope.hostId}` : "all";
 }
 
 /** The scope a menu value names; anything else is every host. */
 export function scopeOfValue(value: string): DataScope {
+  if (value.startsWith(PROJECT_VALUE)) {
+    return { kind: "project", projectKey: value.slice(PROJECT_VALUE.length) };
+  }
   return value.startsWith(HOST_VALUE)
     ? { kind: "host", hostId: value.slice(HOST_VALUE.length) }
     : ALL_SCOPE;
@@ -57,7 +74,9 @@ export function scopeOfValue(value: string): DataScope {
 
 /** The hosts the scope keeps, in their order. */
 export function scopeHosts<T extends { id: string }>(hosts: readonly T[], scope: DataScope): T[] {
-  return scope.kind === "all" ? [...hosts] : hosts.filter((host) => host.id === scope.hostId);
+  // A project keeps every host; each screen then keeps the project's rows.
+  if (scope.kind !== "host") return [...hosts];
+  return hosts.filter((host) => host.id === scope.hostId);
 }
 
 /** The scope the hub's own host filter (a host's name, before #126) stands for. */
