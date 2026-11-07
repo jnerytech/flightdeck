@@ -685,6 +685,15 @@ html:not(:has([data-slot="status-bar"])) {
   border-radius: 0.5rem;
 }
 
+/* The board's body on its fill page: the columns row below takes what is left of the height (#641). */
+@utility board-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 /* A column under a dragged card: it shows where the card would land. */
 /* A board column: a thin top line and a faint tint of the column's own tone. */
 @utility board-column {

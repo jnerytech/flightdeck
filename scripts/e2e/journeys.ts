@@ -1165,6 +1165,85 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("button", { name: pattern("hostHealth.okShow") })
       .waitFor({ timeout: WAIT });
   },
+
+  // Issue #689: with seven projects the sidebar tree draws five, folded; the filter finds one by
+  // name, a pin brings it to the top, and "All projects (N)" opens the Projects page.
+  "project-tree-cap": async (c) => {
+    // The tree draws what the state knows of each host's projects, and the Projects page is what
+    // asks for them: open it, then go back to Sessions, where the tree has to stay narrow.
+    await open(c, { name: "all-projects" });
+    await c.page.getByRole("button", { name: c.t("sidebar.openSessions"), exact: true }).click();
+    const tree = c.page.locator("[data-slot='project-tree']");
+    const heads = tree.locator(".project-tree-name");
+    const names = () => heads.evaluateAll((els) => els.map((el) => el.textContent ?? ""));
+    await heads.first().waitFor({ timeout: WAIT });
+    const all = tree.getByRole("button", {
+      name: new RegExp(
+        `^${c.t("projectTree.projectsAll", { n: 99999 }).replace("99999", "\\d+").replaceAll(/[()]/g, "\\$&")}$`,
+      ),
+    });
+    await all.waitFor({ timeout: WAIT });
+    const total = Number(((await all.textContent()) ?? "").match(/\d+/)?.[0]);
+    if (!(total >= 7)) throw new Error(`esperava 7 projetos ou mais, a árvore diz ${total}`);
+    if ((await heads.count()) !== 5)
+      throw new Error(`a árvore mostra ${await heads.count()} projetos, não 5`);
+    // Past three projects the tree starts folded.
+    if ((await heads.first().getAttribute("aria-expanded")) !== "false") {
+      throw new Error("o primeiro projeto devia começar dobrado");
+    }
+    // The filter reaches a project the tree does not draw, and a pin brings it to the top.
+    const filter = tree.getByRole("searchbox", {
+      name: c.t("projectTree.projectFilter"),
+      exact: true,
+    });
+    await filter.fill("design-system");
+    await waitFor(async () => (await names()).join() === "design-system", "só o design-system");
+    await tree
+      .getByRole("button", { name: c.t("projectTree.pin", { name: "design-system" }), exact: true })
+      .click();
+    await filter.press("Escape");
+    await waitFor(async () => (await names())[0] === "design-system", "o fixado em primeiro");
+    if ((await heads.count()) !== 5)
+      throw new Error("o fixado deveria ocupar um dos cinco lugares");
+    // The way to all of them.
+    await all.click();
+    await c.page
+      .getByText(c.t("projectsOverview.subtitle"), { exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+
+  // Issue #669: Board in the sidebar lands on the host's projects as cards (a filter box past six);
+  // a card opens its board, and the next Board opens that same board without asking again.
+  "board-landing": async (c) => {
+    await open(c, { name: "hub" });
+    const board = c.page.getByRole("button", { name: c.t("sidebar.board"), exact: true });
+    const cards = c.page.locator("[data-slot='board-card']");
+    const newCard = c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true });
+    await board.click();
+    await cards.first().waitFor({ timeout: WAIT });
+    if ((await cards.count()) < 7) throw new Error("o Board deveria mostrar um card por projeto");
+    // Every card says what it holds: its columns (or that it has no cards yet) and its sessions.
+    const facts = c.page.locator("[data-slot='board-card-columns']");
+    if ((await facts.count()) !== (await cards.count()))
+      throw new Error("cada card deveria dizer o que tem nas colunas");
+    // More than six projects: the filter box narrows to one by name.
+    const filter = c.page.getByRole("textbox", { name: c.t("boardLanding.filter"), exact: true });
+    await filter.fill("design-system");
+    await waitFor(async () => (await cards.count()) === 1, "só o design-system");
+    await filter.fill("zzz-sem-projeto");
+    await c.page.getByText(c.t("boardLanding.noMatch"), { exact: true }).waitFor({ timeout: WAIT });
+    await filter.fill("design-system");
+    // The card opens its board.
+    await c.page
+      .getByRole("button", { name: c.t("projectsUi.openBoard", { name: "design-system" }) })
+      .click();
+    await newCard.waitFor({ timeout: WAIT });
+    // Board again: the board opened last, not the picker.
+    await c.page.getByRole("button", { name: c.t("sidebar.openSessions"), exact: true }).click();
+    await board.click();
+    await newCard.waitFor({ timeout: WAIT });
+    if ((await cards.count()) !== 0) throw new Error("o Board deveria abrir o último quadro");
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

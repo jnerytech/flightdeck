@@ -60,6 +60,28 @@ describe("primeira execução", () => {
     expect(copies).toEqual(["flightdeckd doctor"]);
   });
 
+  // #728 (journey pass #168): the screen centered its content in a box that scrolls, so when it
+  // was taller than the window its top (the intro and step 1) sat above it, out of reach, and it
+  // had no title. It is a page now: a title, the intro under it, and a body that scrolls from its top.
+  test("the first-run screen is a page with a title, whose body scrolls from its top", async () => {
+    firstRun("en");
+    await act(async () => {});
+    const title = screen.queryByRole("heading", { level: 1, name: "Connect your first host" });
+    const steps = screen.queryByRole("list", { name: "First steps" });
+    const page = title?.closest("[data-slot='page']") ?? null;
+    const centered = [...document.querySelectorAll("main *")].filter((el) => {
+      const classes = el.className.toString().split(/\s+/);
+      return classes.includes("justify-center") && classes.includes("overflow-y-auto");
+    }).length;
+    expect({
+      title: title !== null,
+      stepsInPage: page !== null && steps !== null && page.contains(steps),
+      intro:
+        page?.textContent?.includes("Add a host with the flightdeckd address and token.") ?? false,
+      centered,
+    }).toEqual({ title: true, stepsInPage: true, intro: true, centered: 0 });
+  });
+
   test("the same screen in English", async () => {
     firstRun("en");
     await act(async () => {});

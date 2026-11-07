@@ -32,6 +32,7 @@ describe("ci-prints (#291)", () => {
   test("each job prints its own pair, and keeps its prints in an artifact of its own", () => {
     const shots = prints.steps.find((s) => (s.run ?? "").includes("bun run demo:shots"));
     expect(shots?.env).toEqual({
+      DEMO_BUILD: "1",
       VISUAL: "record",
       SHOTS_THEME: "${{ matrix.theme }}",
       SHOTS_LANG: "${{ matrix.lang }}",

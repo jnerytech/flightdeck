@@ -106,7 +106,15 @@ export function CardReview(
           {refusal}
         </div>
       )}
-      <AlertDialog open={merging} onOpenChange={(open) => !open && setMerging(false)}>
+      <AlertDialog
+        open={merging}
+        onOpenChange={(open) => {
+          if (open) return;
+          // A message written for this diff is not kept for the next merge.
+          setMerging(false);
+          setMessage("");
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("cardReview.merge")}</AlertDialogTitle>

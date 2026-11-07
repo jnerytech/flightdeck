@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ciPlan, FULL, planOutputs, selectionBase, WINDOWS_SPLIT_ABOVE } from "../lib/ci-paths.ts";
 
@@ -95,6 +95,33 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan(PR, ["scripts/test/fake-cli.ts"]).e2e).toBe(true);
     expect(ciPlan(PR, ["scripts/test/slot.test.ts"]).e2e).toBe(false);
     expect(ciPlan(PR, ["scripts/lib/slot.ts"]).e2e).toBe(false);
+  });
+
+  test("demo:shots and every local file it imports plan the prints, so a change to the print guards runs them (#637)", () => {
+    const shots = readFileSync(join(ROOT, "scripts/demo-shots.ts"), "utf8");
+    const local = [...shots.matchAll(/from "(\.\/[^"]+)"/g)].map((m) =>
+      join("scripts", m[1] ?? "").replaceAll("\\", "/"),
+    );
+    expect(local).toContain("scripts/lib/layout-guards.ts");
+    for (const path of ["scripts/demo.ts", "scripts/demo-shots.ts", ...local]) {
+      expect(`${path}: ${ciPlan(PR, [path]).screenshots}`).toBe(`${path}: true`);
+    }
+    expect(ciPlan(PR, ["scripts/lib/slot.ts"]).screenshots).toBe(false);
+    expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).screenshots).toBe(false);
+    // The raw-utility ratchet is a bun test; demo-shots does not import it (#703 review).
+    expect(ciPlan(PR, ["scripts/lib/layout-ratchet.ts"]).screenshots).toBe(false);
+  });
+
+  test("every local script file the journeys import plans them, so a change to a guard they run runs them (#637)", () => {
+    const dir = join(ROOT, "scripts/e2e");
+    const files = readdirSync(dir).filter((name) => name.endsWith(".ts"));
+    const local = files.flatMap((name) =>
+      [...readFileSync(join(dir, name), "utf8").matchAll(/from "(\.{1,2}\/[^"]+)"/g)]
+        .map((m) => join("scripts/e2e", m[1] ?? "").replaceAll("\\", "/"))
+        .filter((path) => path.startsWith("scripts/")),
+    );
+    expect(local).toContain("scripts/lib/layout-guards.ts");
+    for (const path of local) expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
   });
 
   test("the daemon or a smoke adds the smokes", () => {

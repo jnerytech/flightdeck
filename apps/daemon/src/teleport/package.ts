@@ -21,6 +21,10 @@ import type {
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { readRegularSized } from "../read-regular.ts";
+import { bundleCode, type CodeBundle, type CodeBundleInput } from "./bundle.ts";
+import { addSecrets, secretLines, TELEPORT_MAX_BYTES } from "./secrets.ts";
+
+export { secretLines, TELEPORT_MAX_BYTES };
 
 /** What a teleport reads of a session. */
 export interface TeleportSession {
@@ -51,14 +55,14 @@ export interface TeleportDeps {
   log?(line: string): void;
   maxBytes?: number;
   chunkBytes?: number;
+  /** The session's code as a git bundle in the package's folder (slice 1b). */
+  code?(input: CodeBundleInput): Promise<CodeBundle>;
 }
 
 export type { TeleportChunk, TeleportManifest };
 
 /** How long a package waits for the target to read it. */
 export const TELEPORT_TTL_MS = 30 * 60_000;
-/** The largest transcript a teleport takes. */
-export const TELEPORT_MAX_BYTES = 64 * 1024 * 1024;
 /** One chunk: well under a WebSocket frame once in base64. */
 export const TELEPORT_CHUNK_BYTES = 128 * 1024;
 
@@ -76,27 +80,13 @@ interface Entry {
 const refuse = (code: "invalid_state" | "bad_request" | "not_found", reason: string) =>
   new FlightdeckError(code, reason.replaceAll("_", " "), reason);
 
-/** The lines of a transcript that look like secrets, and the kinds found, in the order met. */
-export function secretLines(
-  text: string,
-  scan: (text: string) => string[],
-): TeleportManifest["secrets"] {
-  const labels: string[] = [];
-  let lines = 0;
-  for (const line of text.split("\n")) {
-    const found = line ? scan(line) : [];
-    if (found.length === 0) continue;
-    lines++;
-    for (const label of found) if (!labels.includes(label)) labels.push(label);
-  }
-  return { lines, labels };
-}
-
 export class TeleportPackages {
   private readonly entries = new Map<string, Entry>();
   private readonly pending = new Set<Promise<void>>();
   /** One package is made at a time: each reads a whole transcript into memory. */
   private queue: Promise<unknown> = Promise.resolve();
+  /** The daemon is stopping: no package is made any more. */
+  private stopped = false;
 
   constructor(readonly deps: TeleportDeps) {}
 
@@ -113,6 +103,7 @@ export class TeleportPackages {
   }
 
   private async make(sessionId: string): Promise<TeleportManifest> {
+    if (this.stopped) throw refuse("invalid_state", "teleport_stopped");
     const session = this.deps.session(sessionId);
     if (session.status !== "idle" && session.status !== "ended") {
       throw refuse("invalid_state", "teleport_busy");
@@ -126,21 +117,29 @@ export class TeleportPackages {
     if (!UUID.test(claudeId)) throw refuse("bad_request", "teleport_unsafe_transcript");
     const file = this.deps.transcriptOf(claudeId);
     if (!file) throw refuse("not_found", "teleport_no_transcript");
-    // A session has one package at a time: a new one replaces the old.
-    for (const [old, entry] of this.entries) {
-      if (entry.manifest.sessionId === sessionId) await this.cancel(old);
+    // A session has one package at a time: a new one replaces the old once it is stored.
+    const old = [...this.entries].find(([, entry]) => entry.manifest.sessionId === sessionId)?.[0];
+    if (this.entries.size - (old ? 1 : 0) >= TELEPORT_MAX_LIVE) {
+      throw refuse("invalid_state", "teleport_too_many");
     }
-    if (this.entries.size >= TELEPORT_MAX_LIVE) throw refuse("invalid_state", "teleport_too_many");
     const text = await this.readTranscript(file, claudeId);
     const id = this.deps.newId();
     const folder = join(this.deps.dir, id);
+    let manifest: TeleportManifest;
     try {
-      return await this.store(id, folder, session, claudeId, text);
+      manifest = await this.store(id, folder, session, claudeId, text);
+      // The daemon began to stop while this package was made: nothing of it stays.
+      if (this.stopped) throw refuse("invalid_state", "teleport_stopped");
     } catch (error) {
       // Nothing of a package that failed half-way stays on disk.
+      const entry = this.entries.get(id);
+      if (entry) this.deps.timers.clearTimeout(entry.timer);
+      this.entries.delete(id);
       await rm(folder, { recursive: true, force: true });
       throw error;
     }
+    if (old) await this.cancel(old);
+    return manifest;
   }
 
   private async store(
@@ -153,6 +152,16 @@ export class TeleportPackages {
     const sessionId = session.id;
     await mkdir(folder, { recursive: true, mode: 0o700 });
     await writeFile(join(folder, PART), text, { mode: 0o600 });
+    const secrets = await secretLines(text.toString("utf8"), this.deps.scan);
+    const code = this.deps.code
+      ? await this.deps.code({
+          cwd: session.cwd,
+          folder,
+          id,
+          scan: this.deps.scan,
+          ...(this.deps.maxBytes ? { maxBytes: this.deps.maxBytes } : {}),
+        })
+      : null;
     const manifest: TeleportManifest = {
       id,
       sessionId,
@@ -168,8 +177,22 @@ export class TeleportPackages {
           size: text.byteLength,
           sha256: new Bun.CryptoHasher("sha256").update(text).digest("hex"),
         },
+        ...(code ? [{ name: "code" as const, size: code.size, sha256: code.sha256 }] : []),
       ],
-      secrets: secretLines(text.toString("utf8"), this.deps.scan),
+      secrets: code ? addSecrets(secrets, code.secrets) : secrets,
+      ...(code
+        ? {
+            git: {
+              branch: code.branch,
+              head: code.head,
+              base: code.base,
+              baseSha: code.baseSha,
+              ref: code.ref,
+              ahead: code.ahead,
+              changed: code.changed,
+            },
+          }
+        : {}),
     };
     const timer = this.deps.timers.setTimeout(() => this.track(this.drop(id)), TELEPORT_TTL_MS);
     // A package's timer never holds the daemon open.
@@ -186,12 +209,15 @@ export class TeleportPackages {
     const size = entry?.manifest.parts.find((p) => p.name === part)?.size;
     if (size === undefined) throw refuse("not_found", "teleport_not_found");
     if (!Number.isInteger(offset) || offset < 0 || offset > size) {
-      throw refuse("bad_request", "request_invalid");
+      throw new FlightdeckError("bad_request", "bad offset", "request_invalid", {
+        field: "offset",
+        command: "teleport.read",
+      });
     }
     const length = Math.min(this.deps.chunkBytes ?? TELEPORT_CHUNK_BYTES, size - offset);
     const buffer = Buffer.alloc(length);
     // The package may go (its time ran out) between the lookup and the open.
-    const handle = await open(join(this.deps.dir, id, PART), "r").catch(() => {
+    const handle = await open(join(this.deps.dir, id, part), "r").catch(() => {
       throw refuse("not_found", "teleport_not_found");
     });
     try {
@@ -214,6 +240,9 @@ export class TeleportPackages {
   /** Waits for the packages being removed (a test, and the daemon's stop). */
   /** The daemon stops: every package goes now, and no timer is left. */
   async stop(): Promise<void> {
+    this.stopped = true;
+    // A package being made sees the stop when it is done, and removes itself.
+    await this.queue;
     for (const entry of this.entries.values()) this.deps.timers.clearTimeout(entry.timer);
     this.entries.clear();
     await this.idle();
@@ -282,5 +311,6 @@ export function teleportDeps(wiring: TeleportWiring): TeleportDeps {
     newId: randomUUID,
     timers: globalThis,
     log: wiring.log,
+    code: bundleCode,
   };
 }

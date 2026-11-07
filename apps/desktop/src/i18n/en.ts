@@ -967,6 +967,9 @@ export const en: Dictionary = {
     filterLabel: "Filter sessions",
     toggleProject: "Show or hide {name}",
     countChip: "{live} live of {total} sessions",
+    noHost: "No host yet",
+    noOnlineHost: "No host is online",
+    addHost: "Add a host",
     expandAll: "Expand all",
     collapseAll: "Collapse all",
     earlier: "{n} earlier sessions",
@@ -1886,6 +1889,18 @@ export const en: Dictionary = {
       "This move is no longer on the host: it was cancelled or its time ran out. Start it again.",
     teleport_too_many:
       "This host is already moving two sessions. Wait for one to finish, or cancel it.",
+    teleport_no_git:
+      "The session's folder is not a git repository with a commit: its code cannot move.",
+    teleport_no_remote:
+      "The session's repository has no origin branch to start from: the other host could not fetch the code.",
+    teleport_git:
+      "Git could not pack the session's code. Try again; if it fails again, check the repository.",
+    teleport_stopped:
+      "The host is stopping, so the session did not move. Try again once it is back.",
+    teleport_incomplete:
+      "Part of the session has not arrived on this host yet, so it cannot start here. Try the move again.",
+    teleport_corrupt:
+      "What arrived on this host does not match what the other host sent, so it was thrown away. Try the move again.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:
@@ -2500,6 +2515,9 @@ export const en: Dictionary = {
     checkFailed: "The check did not run: {reason}",
   },
   welcome: {
+    /** The first-run screen's title, and the Add host screen's once a host exists (#728). */
+    title: "Connect your first host",
+    titleMore: "Add a host",
     addHost: "Add a host with the flightdeckd address and token.",
     stepsLabel: "First steps",
     step1: "On the computer that runs Claude Code, install and start the daemon:",

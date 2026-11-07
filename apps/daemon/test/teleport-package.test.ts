@@ -8,6 +8,7 @@ import {
   TeleportPackages,
   type TeleportSession,
 } from "../src/teleport/package.ts";
+import { secretLines } from "../src/teleport/secrets.ts";
 import { tempDir } from "./helpers.ts";
 
 /**
@@ -44,9 +45,10 @@ async function setup(
     scan?: (text: string) => string[];
     team?: boolean;
     lines?: string[];
-    transcript?: "file" | "link" | "outside" | "none" | "gone";
+    transcript?: "file" | "link" | "outside" | "renamed" | "none" | "gone";
     maxBytes?: number;
     chunkBytes?: number;
+    code?: TeleportDeps["code"];
   } = {},
 ) {
   const base = tempDir("fd-teleport-");
@@ -54,24 +56,31 @@ async function setup(
   const history = join(base, "projects");
   const project = join(history, "-work-app");
   await mkdir(project, { recursive: true });
-  const outside = join(base, "outside.json");
+  // Named like a transcript, so only the history-root check can refuse it.
+  await mkdir(join(base, "elsewhere"), { recursive: true });
+  const outside = join(base, "elsewhere", `${ID}.jsonl`);
   await writeFile(outside, '{"secret":"credentials"}\n');
   const file = join(project, `${ID}.jsonl`);
   const kind = options.transcript ?? "file";
   if (kind === "file") await writeFile(file, `${(options.lines ?? LINES).join("\n")}\n`);
   if (kind === "link") await symlink(outside, file);
+  // Another session's transcript, a real file in the same project folder: never read for this one.
+  if (kind === "renamed") await writeFile(join(project, "renamed.jsonl"), "{}\n");
   const timers: Array<{ fn: () => void; ms: number; live: boolean; unref: boolean }> = [];
   const logs: string[] = [];
   let ids = 0;
   const deps: TeleportDeps = {
     session: (id) => {
-      if (id !== "s1") throw new FlightdeckError("not_found", "no session", "session_not_found");
-      return { ...SESSION, ...options.session };
+      if (id !== "s1" && id !== "s2") {
+        throw new FlightdeckError("not_found", "no session", "session_not_found");
+      }
+      return { ...SESSION, id, ...options.session };
     },
     inTeam: () => options.team ?? false,
     transcriptOf: () => {
       if (kind === "none") return null;
       if (kind === "gone") return join(history, "-gone", `${ID}.jsonl`);
+      if (kind === "renamed") return join(project, "renamed.jsonl");
       return kind === "outside" ? outside : file;
     },
     // A root that does not exist on this host is skipped.
@@ -102,6 +111,7 @@ async function setup(
     log: (line) => void logs.push(line),
     ...(options.maxBytes ? { maxBytes: options.maxBytes } : {}),
     ...(options.chunkBytes ? { chunkBytes: options.chunkBytes } : {}),
+    ...(options.code ? { code: options.code } : {}),
   };
   const packages = new TeleportPackages(deps);
   return { packages, deps, base, file, timers, logs };
@@ -172,7 +182,7 @@ describe("teleport-package: an idle session's transcript becomes a package (#100
     ]);
   });
 
-  test("a transcript that is a link, lies outside the history, has a bad id or a folder that is gone is never read", async () => {
+  test("a transcript that is a link, lies outside the history, has a bad id, another name or a folder that is gone is never read", async () => {
     const reasons = [];
     const copied = [];
     for (const options of [
@@ -180,6 +190,7 @@ describe("teleport-package: an idle session's transcript becomes a package (#100
       { transcript: "outside" as const },
       { session: { claudeSessionId: "../../.credentials" } },
       { transcript: "gone" as const },
+      { transcript: "renamed" as const },
     ]) {
       const { packages, deps } = await setup(options);
       reasons.push(await reason(() => packages.prepare("s1")));
@@ -191,8 +202,9 @@ describe("teleport-package: an idle session's transcript becomes a package (#100
         "teleport_unsafe_transcript",
         "teleport_unsafe_transcript",
         "teleport_unsafe_transcript",
+        "teleport_unsafe_transcript",
       ],
-      [[], [], [], []],
+      [[], [], [], [], []],
     ]);
   });
 
@@ -243,12 +255,20 @@ describe("teleport-package: the package is read in chunks and does not outlive i
       await reason(() => packages.read(manifest.id, "transcript", size + 1)),
       await reason(() => packages.read(manifest.id, "transcript", -1)),
     ]).toEqual(["teleport_not_found", "teleport_not_found", "request_invalid", "request_invalid"]);
+    // The refusal names what was wrong, as the app's text for it reads.
+    const params = await packages.read(manifest.id, "transcript", -1).then(
+      () => null,
+      (e: FlightdeckError) => e.params ?? null,
+    );
+    expect(params).toEqual({ field: "offset", command: "teleport.read" });
   });
 
   test("the package goes when its time is up, when it is cancelled and when the daemon starts", async () => {
     const { packages, deps, timers } = await setup();
+    // Two sessions: one package each, so the first is still there when its time runs out.
     const first = await packages.prepare("s1");
-    const second = await packages.prepare("s1");
+    const second = await packages.prepare("s2");
+    const before = (await packages.read(first.id, "transcript", 0)).eof;
     const timer = timers[0];
     timer?.fn();
     await packages.idle();
@@ -260,12 +280,13 @@ describe("teleport-package: the package is read in chunks and does not outlive i
     await writeFile(join(deps.dir, "stale", "transcript"), "old");
     await new TeleportPackages(deps).start();
     expect([
+      before,
       timer?.ms,
       expired,
       timers[1]?.live,
       left,
       await readdir(deps.dir).catch(() => ["no folder"]),
-    ]).toEqual([1_800_000, "teleport_not_found", false, [], []]);
+    ]).toEqual([true, 1_800_000, "teleport_not_found", false, [], []]);
   });
 });
 
@@ -317,5 +338,118 @@ describe("teleport-package: what the security review asked for (#100)", () => {
       [chunk.data, chunk.eof],
       await reason(() => packages.read(removed.id, "transcript", 0)),
     ]).toEqual([["", true], "teleport_not_found"]);
+  });
+});
+
+/** A code bundle as `bundleCode` gives it, written where the package asks. */
+function fakeCode(over: { fail?: string; wait?: Promise<void>; secret?: boolean } = {}) {
+  const code: NonNullable<TeleportDeps["code"]> = async (input) => {
+    await over.wait;
+    if (over.fail) throw new FlightdeckError("invalid_state", over.fail, over.fail);
+    const file = join(input.folder, "code");
+    await writeFile(file, "BUNDLE");
+    return {
+      file,
+      ref: `refs/flightdeck/teleport/${input.id}`,
+      size: 6,
+      sha256: sha256("BUNDLE"),
+      branch: "feature",
+      head: "a".repeat(40),
+      base: "origin/main",
+      baseSha: "b".repeat(40),
+      ahead: 2,
+      changed: 1,
+      secrets: over.secret ? { lines: 2, labels: ["AWS key"] } : { lines: 0, labels: [] },
+    };
+  };
+  return code;
+}
+
+describe("teleport-package: the code travels in the same package (#100)", () => {
+  test("the manifest names the code part and where it starts from, and its secrets add to the transcript's", async () => {
+    const line = JSON.stringify({ type: "user", message: { content: `token ${TOKEN}` } });
+    const { packages } = await setup({ lines: [line], code: fakeCode({ secret: true }) });
+    const manifest = await packages.prepare("s1");
+    const code = await packages.read(manifest.id, "code", 0).catch(() => ({ data: "" }));
+    expect([
+      manifest.parts.map((part) => part.name),
+      manifest.parts[1],
+      manifest.git,
+      manifest.secrets,
+      Buffer.from(code.data, "base64").toString("utf8"),
+    ]).toEqual([
+      ["transcript", "code"],
+      { name: "code", size: 6, sha256: sha256("BUNDLE") },
+      {
+        branch: "feature",
+        head: "a".repeat(40),
+        base: "origin/main",
+        baseSha: "b".repeat(40),
+        ref: "refs/flightdeck/teleport/pkg-1",
+        ahead: 2,
+        changed: 1,
+      },
+      { lines: 3, labels: [...new SecretScanner().scan(line), "AWS key"] },
+      "BUNDLE",
+    ]);
+  });
+
+  test("a new package that fails keeps the session's old one", async () => {
+    let fail = false;
+    const working = fakeCode();
+    const { packages } = await setup({
+      code: (input) => (fail ? fakeCode({ fail: "teleport_no_remote" })(input) : working(input)),
+    });
+    const first = await packages.prepare("s1");
+    fail = true;
+    const refused = await reason(() => packages.prepare("s1"));
+    const still = await packages
+      .read(first.id, "transcript", 0)
+      .catch(() => ({ eof: "the old package is gone" }));
+    expect([refused, still.eof]).toEqual(["teleport_no_remote", true]);
+  });
+
+  test("stop waits for a package being made, and leaves nothing of it", async () => {
+    let release = () => {};
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { packages, deps } = await setup({ code: fakeCode({ wait }) });
+    const making = packages.prepare("s1").then(
+      (m) => m.id,
+      (e: FlightdeckError) => e.reason,
+    );
+    const stopping = packages.stop();
+    release();
+    await stopping;
+    const made = await making;
+    expect([
+      made,
+      await readdir(deps.dir).catch(() => ["no folder"]),
+      await reason(() => packages.read("pkg-1", "transcript", 0)),
+    ]).toEqual(["teleport_stopped", ["no folder"], "teleport_not_found"]);
+  });
+});
+
+describe("teleport-package: a big transcript does not hold the daemon (#100)", () => {
+  test("the secret scan gives the event loop back between slices, and counts the same", async () => {
+    const lines = Array.from({ length: 50 }, (_, n) =>
+      n % 10 === 0 ? `key ${TOKEN}` : `line ${n}`,
+    );
+    const scan = (text: string) => (text.includes("ghp_") ? ["token"] : []);
+    let pauses = 0;
+    const paced = await secretLines(lines.join("\n"), scan, {
+      every: 64,
+      pause: async () => {
+        pauses++;
+      },
+    });
+    expect([paced, pauses > 5]).toEqual([{ lines: 5, labels: ["token"] }, true]);
+  });
+
+  test("with its default pace, a text past one slice is scanned to the end", async () => {
+    const big = `${"x".repeat(300 * 1024)}\nkey ${TOKEN}`;
+    const scan = (text: string) => (text.includes("ghp_") ? ["token"] : []);
+    expect(await secretLines(big, scan)).toEqual({ lines: 1, labels: ["token"] });
   });
 });

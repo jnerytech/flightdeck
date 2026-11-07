@@ -32,6 +32,8 @@ export const JOURNEYS: readonly string[] = [
   "notify-prefs",
   "activity",
   "health-fold",
+  "project-tree-cap",
+  "board-landing",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

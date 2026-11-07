@@ -46,6 +46,10 @@ async function finishedTask(configured: boolean) {
   const fake = fakeAssistant({ run: () => ANSWER });
   if (configured) await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
   mem.platform.assistant = fake.assistant;
+  // The folder dialog exists only if the platform has it when the app draws (store.canPickFolder is
+  // read at render, not watched): set it before the first render, and point it at the folder later (#737).
+  let picked = "";
+  mem.platform.pickFolder = async () => picked;
   const d = makeDaemon(cleanups, { simple: true, ui: { mode: "simple", locked: false } });
   const server = d.listen();
   const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
@@ -59,7 +63,7 @@ async function finishedTask(configured: boolean) {
   await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
   const folder = join(d.root, "notes");
   mkdirSync(folder, { recursive: true });
-  mem.platform.pickFolder = async () => folder;
+  picked = folder;
   await click(/Summarise a folder/);
   await click("Choose folder…");
   await waitFor(() => expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0), WAIT);
@@ -86,6 +90,12 @@ describe("assistant-fields-simple: Ask for changes in simple mode (issue #160)",
     expect(request).toContain("shorter pls");
     expect(request).toContain("plain words");
     await click("Accept");
+    // The preview leaves with its scroll lock and its aria-hidden on the page: the next test
+    // must not start before it is gone (#727).
+    await waitFor(
+      () => expect(screen.queryByRole("dialog", { name: "AI suggestion" }) === null).toBe(true),
+      WAIT,
+    );
     expect(box.value).toBe(ANSWER.text);
     // Nothing was asked of the task: it is still Done.
     expect(screen.queryByText("Done", { selector: "[data-slot='task-chip']" })).not.toBeNull();
