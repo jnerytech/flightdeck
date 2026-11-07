@@ -238,6 +238,16 @@ describe("sonar-a11y4: a session tile keeps its roles, names, keys and click tar
     const { store, hostId, ids } = await tiles(["pede", "solo"]);
     await waitFor(() => tileEls().length === 2, "two tiles");
     const tile = screen.getByRole("region", { name: "solo" });
+    // Its own reply is done first: a later event would replace the text put there.
+    await waitFor(
+      () =>
+        (within(tile).queryByLabelText("Last lines")?.textContent ?? "").includes("Echo: oi solo"),
+      "its reply",
+    );
+    await waitFor(
+      () => store.getState().sessions[sessionKey(hostId, ids[1] as string)]?.status === "idle",
+      "idle",
+    );
     await stream(store, hostId, ids[1] as string, "one\ntwo\nthree\nfour");
     await waitFor(() => linesOf(tile).length === 4, "four lines");
     expect(linesOf(tile).map((l) => l.textContent)).toEqual(["one", "two", "three", "four"]);
