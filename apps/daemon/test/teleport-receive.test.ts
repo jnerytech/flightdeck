@@ -289,6 +289,37 @@ describe("teleport-receive: a received package does not outlive its time (#100)"
     ]);
   });
 
+  test("a write that arrives after the abort, during it, or after its time, never brings a package back", async () => {
+    const { inbox, deps, timers } = setup();
+    await inbox.start();
+    const first = await inbox.receive(manifest());
+    await inbox.write(first.id, "transcript", 0, b64("part"));
+    // 1. During the abort: the chunk in flight ends first, the one that follows is refused.
+    const aborting = inbox.abort(first.id);
+    const during = await reason(() => inbox.write(first.id, "transcript", 4, b64("more")));
+    await aborting;
+    // 2. After the abort, to the first chunk's place and to a part that was never there.
+    const after = await reason(() => inbox.write(first.id, "transcript", 0, b64("part")));
+    const stray = await reason(() => inbox.write(first.id, "code", 0, b64("x")));
+    const afterAbort = await readdir(deps.dir).catch(() => ["no folder"]);
+    // 3. After the package's time is up.
+    const second = await inbox.receive(manifest());
+    timers.at(-1)?.fn();
+    await inbox.idle();
+    const late = await reason(() => inbox.write(second.id, "transcript", 0, b64("part")));
+    // 4. Nothing sent to an id receives it again: only `receive` makes a package.
+    const again = await reason(() => inbox.claim(first.id));
+    expect([during, after, stray, afterAbort, late, again, await readdir(deps.dir)]).toEqual([
+      "teleport_not_found",
+      "teleport_not_found",
+      "teleport_not_found",
+      [],
+      "teleport_not_found",
+      "teleport_not_found",
+      [],
+    ]);
+  });
+
   test("a claimed package leaves the inbox and its time stops; only its release removes it", async () => {
     const { inbox, deps, timers } = setup();
     await inbox.start();

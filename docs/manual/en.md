@@ -1288,6 +1288,31 @@ conversation. It is where you check what the agent did and send it back what to 
 
 The host announces `review` in `host.info`; an older host has no Changes tab.
 
+### The views of a session page
+
+A session page shows one **view** at a time: Conversation, Changes, Files, Time, Trace and
+Messages, plus **Terminal** (each only where the host offers it). They are one **tab bar**: the active view is
+filled and has a bar under it, and the bar scrolls sideways in a narrow pane.
+
+- **Click** a view, or use the keys: **Alt+1** to **Alt+7** pick the 1st to 7th view of the bar
+  (from the message box too; `Ctrl+1` to `Ctrl+9` stay with the app's tabs), and with the focus on
+  the bar the **arrow keys**, **Home** and **End** move between views, wrapping around.
+- **Terminal** is a shell on the session's host, opened in the session's own folder (its worktree,
+  for a card): the host decides the folder, the app only says which session. It opens the first
+  time you show the view and lives as long as the session's tab, or until you close it from the
+  view (**Close terminal**); switching views only hides it, and a tab that comes back finds the same
+  shell. Closing the session's tab ends its shell. It has the terminal's search, copy and paste
+  and links. A session started from a terminal ("Claude aqui") shows that terminal instead, and
+  closing the tab leaves it running. **Ctrl+\`** switches between the Terminal and the Conversation
+  (the shell never receives it). The view needs the host's terminal turned on; an older host has
+  none.
+- The palette (**Ctrl+K**) lists **Show Changes**, **Show Trace** and the others for the page you
+  are on, first among its commands, and the `?` sheet lists the keys under **Session views**.
+- The conversation stays where it was: what you typed in its box is still there after a visit to
+  another view.
+- Each session tab **remembers its last view** while the app runs; a tab you never switched opens
+  on the conversation.
+
 ### `.worktreeinclude`
 
 A new worktree gets the repository's tracked files, but not the ignored ones, such as `.env`. To
@@ -2479,7 +2504,7 @@ window resets.
   - Crossing `pauseAt` raises a notification, once per window.
 - **In the status bar** (the slim line at the bottom of the window, below): a small meter shows the
   window under most pressure across the online hosts, with its percentage and the time left until it
-  resets (the window's name shows from 960 px wide), and a **Refresh the plan usage** button that
+  resets (the window's name shows from 1024 px wide), and a **Refresh the plan usage** button that
   asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
   from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
   host and the time left. Clicking it opens that host's page. With no reading, neither the meter
@@ -3160,7 +3185,8 @@ their English equivalents.
   has the card icon.
 - With nothing typed, a **Recent** section comes first with up to six of the entries you opened
   (kept between runs): what waits for you first, then what runs, then the rest. Each shows
-  **Alt+1** to **Alt+6**, which open it while the palette is open (they do nothing outside it).
+  **Alt+1** to **Alt+6**, which open it while the palette is open (outside it, the same keys pick
+  the views of a session page).
   The order is fixed when the palette opens, so rows do not move under the cursor.
 - The palette opens **narrowed to where you are**: on a board or a card, to its host and project;
   on a session or a host page, to the host. The filters show as chips under the field; click one to
@@ -3208,7 +3234,7 @@ Hover one for its name.
 
 - **Sidebar:** logo, navigation (Sessions, Needs you with its counter, Board, Workflows, Costs,
   History), the hosts, the pinned sessions and, at the bottom, search (`Ctrl K`), Settings and
-  the theme. It collapses to a 56 px icon rail, by itself below 960 px.
+  the theme. It collapses to a 56 px icon rail, by itself below 1024 px, and below 640 px it becomes a drawer.
 - **Three columns** in Sessions, Needs you and History: the list on the left (adjustable,
   remembered width), the session, request or transcript on the right. Board, Costs, Settings and
   the host pages use the full width. The header shows the path (Sessions > session, History >

@@ -92,6 +92,56 @@ describe("hook-log", () => {
     );
   });
 
+  test("#741: each push-wait override is listed with its time, the run's age and its reason", () => {
+    const override = (t: string, detail: string, minutes?: number): HookLogEntry => ({
+      ...entry("guard", 40),
+      t,
+      rule: "push-wait",
+      decision: "waived",
+      detail,
+      ...(minutes === undefined ? {} : { minutes }),
+    });
+    const text = [
+      override("2026-11-07T02:10:05.000Z", "a fix after review", 6),
+      override("2026-11-07T03:01:00.000Z", "the reviewer waits"),
+      // A line written by hand: control and bidi characters never reach the terminal.
+      override("2026-11-07T03:05:00.000Z", "a\u001b[2Jb\u202ec"),
+    ]
+      .map((e) => JSON.stringify(e))
+      .join("\n");
+    expect(summarizeHookLog(text).split("\n").slice(-5)).toEqual([
+      "",
+      "push-wait overrides:",
+      "  2026-11-07 02:10 UTC  run 6 min old       a fix after review",
+      "  2026-11-07 03:01 UTC  no run in progress  the reviewer waits",
+      "  2026-11-07 03:05 UTC  no run in progress  a[2Jbc",
+    ]);
+  });
+
+  test("#821 review: a line with a time or a reason that is not text is skipped, not a crash", () => {
+    const bad = (over: Record<string, unknown>) =>
+      JSON.stringify({
+        ...entry("guard", 40),
+        rule: "push-wait",
+        decision: "waived",
+        detail: "x",
+        ...over,
+      });
+    const text = [
+      bad({ t: 5 }),
+      bad({ detail: 7 }),
+      // #826 review: every field the summary prints is checked, so none carries a control character.
+      bad({ minutes: "\u001b[2J" }),
+      bad({ t: "\u001b[2J" }),
+      bad({ hook: "gu\u001bard" }),
+      bad({ rule: "push\u202ewait" }),
+    ].join("\n");
+    expect(() => summarizeHookLog(text)).not.toThrow();
+    expect(summarizeHookLog(text)).toBe(
+      "hook  calls  blocks  p50 ms  p95 ms\n\n6 line(s) skipped (not a hook log entry)",
+    );
+  });
+
   test("waived commits are counted apart from blocks, per rule", () => {
     const waived: HookLogEntry = { ...entry("guard", 40), rule: "commit", decision: "waived" };
     const text = [entry("guard", 30), waived, waived].map((e) => JSON.stringify(e)).join("\n");

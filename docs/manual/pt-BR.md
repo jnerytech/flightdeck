@@ -1288,6 +1288,30 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
 
 O host anuncia `review` no `host.info`; um host mais antigo não tem a aba Mudanças.
 
+### As visões da página de uma sessão
+
+A página de uma sessão mostra uma **visão** por vez: Conversa, Mudanças, Arquivos, Tempo, Rastro e
+Mensagens, mais **Terminal** (cada uma só onde o host a oferece). Elas formam uma **barra de abas**: a visão ativa é
+preenchida e tem uma barra embaixo, e a barra rola para o lado num painel estreito.
+
+- **Clique** numa visão, ou use as teclas: **Alt+1** a **Alt+7** escolhem a 1ª a 7ª visão da barra
+  (também de dentro da caixa de mensagem; `Ctrl+1` a `Ctrl+9` continuam sendo as abas do app), e com
+  o foco na barra as **setas**, **Home** e **End** passam de uma visão a outra, dando a volta.
+- **Terminal** é um shell no host da sessão, aberto na pasta da própria sessão (a worktree, num
+  card): quem decide a pasta é o host, o app só diz qual sessão. Ele abre na primeira vez que você
+  mostra a visão e vive enquanto a aba da sessão existir, ou até você fechá-lo na visão (**Fechar
+  terminal**); trocar de visão só o esconde, e uma aba que volta encontra o mesmo shell. Fechar a
+  aba da sessão encerra o shell dela. Ele tem a busca, copiar e colar e os links do terminal. Uma
+  sessão iniciada num terminal ("Claude aqui") mostra aquele terminal, e fechar a aba o deixa
+  rodando. **Ctrl+\`** alterna entre o Terminal e a Conversa (o shell nunca a recebe). A visão
+  precisa do terminal ligado no host; um host antigo não tem.
+- A paleta (**Ctrl+K**) lista **Mostrar Mudanças**, **Mostrar Rastro** e as outras da página em que
+  você está, primeiro entre os comandos, e a folha `?` lista as teclas em **Visões da sessão**.
+- A conversa fica onde estava: o que você digitou na caixa continua lá depois de uma visita a outra
+  visão.
+- Cada aba de sessão **lembra a última visão** enquanto o app roda; uma aba que você nunca trocou
+  abre na conversa.
+
 ### `.worktreeinclude`
 
 Uma worktree nova recebe os arquivos rastreados do repositório, mas não os ignorados, como `.env`.
@@ -2481,7 +2505,7 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
 - **Na barra de status** (a linha fina na base da janela, abaixo): um medidor pequeno mostra a
   janela mais usada entre os hosts online, com a porcentagem e o tempo que falta para reiniciar (o
-  nome da janela aparece a partir de 960 px de largura), e um botão **Atualizar o consumo do plano**
+  nome da janela aparece a partir de 1024 px de largura), e um botão **Atualizar o consumo do plano**
   que pergunta aos hosts de novo. A partir de 80% ele ganha uma marca de alerta na cor de "precisa de
   você", e em 100% (ou a partir do `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome
   e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem
@@ -3158,8 +3182,8 @@ Configurações) e, depois de Enter, **Histórico**.
   de um card tem o ícone do card.
 - Sem nada digitado, uma seção **Recentes** vem primeiro, com até seis das entradas que você abriu
   (guardadas entre execuções): o que espera por você primeiro, depois o que está rodando, depois o
-  resto. Cada uma mostra **Alt+1** a **Alt+6**, que a abrem com a paleta aberta (fora dela não
-  fazem nada). A ordem fica fixa quando a paleta abre, para as linhas não se mexerem sob o cursor.
+  resto. Cada uma mostra **Alt+1** a **Alt+6**, que a abrem com a paleta aberta (fora dela, as
+  mesmas teclas escolhem as visões da página de uma sessão). A ordem fica fixa quando a paleta abre, para as linhas não se mexerem sob o cursor.
 - A paleta abre **restrita ao lugar onde você está**: num board ou card, ao host e ao projeto dele;
   numa sessão ou na página de um host, ao host. Os filtros aparecem como chips sob o campo; clique
   num para tirá-lo, ou em **Limpar todos os filtros**. A mudança dura só até a paleta fechar.
@@ -3206,7 +3230,7 @@ encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 
 - **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
   Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
-  Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 960 px.
+  Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 1024 px, e abaixo de 640 px vira uma gaveta.
 - **Três colunas** em Sessões, Precisa de você e Histórico: a lista à esquerda (largura
   ajustável e guardada), a sessão, o pedido ou a transcrição à direita. Board, Custos,
   Configurações e as páginas do host usam a largura toda. O cabeçalho mostra o caminho

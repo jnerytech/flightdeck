@@ -29,7 +29,7 @@ export interface FixRound {
 
 export interface PrFixerOptions {
   db: Database;
-  board: Pick<Board, "getCard" | "getProject" | "fixCard">;
+  board: Pick<Board, "getCard" | "getProject" | "fixCard" | "moveCard">;
   watcher: PrWatcher;
   provider?: (kind: PrProviderKind) => PrProvider | null;
   /** Runs the project's local checks in the card's worktree. */
@@ -167,6 +167,17 @@ export class PrFixer {
     return (this.opts.git ?? realGit)(cwd, ...args);
   }
 
+  /**
+   * Why an automation must not send a failure or a comment to the card (#77), or null: while its
+   * PR is watched, the watch alone fixes it, and a card that needs you gets nothing more.
+   */
+  claims(cardId: string): string | null {
+    const { watcher } = this.opts;
+    if (!watcher.enabled(cardId)) return null;
+    const { status, reason } = watcher.status(cardId);
+    return status === "needs_you" ? (reason ?? "the PR needs you") : "the PR watch fixes this card";
+  }
+
   /** The watcher's trigger: starts a round, one at a time per card, unless a limit says stop. */
   onTrigger(trigger: WatchTrigger): Promise<void> {
     return settled(() => this.triggerNow(trigger));
@@ -214,7 +225,12 @@ export class PrFixer {
   }
 
   /** Why no round may start for the card now, or `null`: the limits, before a session is paid for. */
-  private limit(cardId: string): string | null {
+  /** Issue #77: a limit other than the rounds that keeps the card from a new round, or null. */
+  blockedBesidesRounds(cardId: string): string | null {
+    return this.limit(cardId, false);
+  }
+
+  private limit(cardId: string, rounds = true): string | null {
     const { board, watcher, db } = this.opts;
     const card = board.getCard(cardId);
     const project = board.getProject(card.projectId);
@@ -225,14 +241,9 @@ export class PrFixer {
       return `the card's branch is the target branch (${project.baseBranch}): nothing is pushed to it`;
     }
     const settings = watcher.settings(card.projectId);
+    const reached = rounds ? this.roundLimit(cardId) : null;
+    if (reached) return reached;
     const done = this.counted(cardId);
-    if (done.length >= settings.maxRounds) {
-      const list = done.map(
-        (r) =>
-          `round ${r.n}: ${r.status}` + (r.summary ? " (" + r.summary.split("\n")[0] + ")" : ""),
-      );
-      return `limit of ${settings.maxRounds} rounds reached — ${list.join("; ")}`;
-    }
     const turns = done.reduce((sum, r) => sum + r.turns, 0);
     if (settings.maxTurns !== null && turns >= settings.maxTurns) {
       return `${turns} of ${settings.maxTurns} turns used on this PR`;
@@ -253,9 +264,36 @@ export class PrFixer {
     return null;
   }
 
+  /** The rounds that count against the card's limit, and the limit with the rounds allowed on top. */
+  roundBudget(cardId: string): { used: number; max: number } {
+    const { watcher, board } = this.opts;
+    const settings = watcher.settings(board.getCard(cardId).projectId);
+    return {
+      used: this.counted(cardId).length,
+      max: settings.maxRounds + watcher.extraRounds(cardId),
+    };
+  }
+
+  /** The card's rounds used up: the reason with each round, or null while some are left. */
+  private roundLimit(cardId: string): string | null {
+    const { max } = this.roundBudget(cardId);
+    const done = this.counted(cardId);
+    if (done.length < max) return null;
+    const list = done.map(
+      (r) => `round ${r.n}: ${r.status}` + (r.summary ? " (" + r.summary.split("\n")[0] + ")" : ""),
+    );
+    return `limit of ${max} rounds reached — ${list.join("; ")}`;
+  }
+
+  /**
+   * Hands the card to the person: the watch says why, and a card in review (its PR open) goes to
+   * "Needs you" (#77). A card elsewhere stays: done is done, and a running one is the session's.
+   */
   private needsYou(cardId: string, reason: string): void {
     if (this.stopped) return;
     this.opts.watcher.markNeedsYou(cardId, reason);
+    const { board } = this.opts;
+    if (board.getCard(cardId).column === "review") board.moveCard(cardId, "waiting");
     this.opts.onUpdate?.(cardId);
   }
 
@@ -360,7 +398,7 @@ export class PrFixer {
       .fixCard(cardId, {
         prompt: buildPrompt({
           n,
-          maxRounds: settings.maxRounds,
+          maxRounds: this.roundBudget(cardId).max,
           branch,
           base: project.baseBranch,
           settings,

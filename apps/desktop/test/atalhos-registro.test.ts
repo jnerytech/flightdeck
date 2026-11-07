@@ -75,6 +75,24 @@ describe("atalhos-registro: the registry", () => {
     expect(own).toEqual(expect.arrayContaining(["list-next", "list-previous", "approve", "deny"]));
   });
 
+  test("Alt+1 to Alt+7 pick the views of a session page, in a group of their own, handled by the page (issue #107)", () => {
+    const views = SHORTCUTS.find((s) => s.id === "view-number");
+    expect(views?.keys).toEqual(["Alt", "1…7"]);
+    expect(views?.group).toBe("views");
+    expect(views?.action).toBeUndefined();
+    expect(views?.label).toBe("shortcuts.viewNumber");
+    expect(views && keysLabel(views, false)).toBe("Alt+1…7");
+    // Ctrl+` switches between the Terminal and the Conversation of the page.
+    const terminal = SHORTCUTS.find((s) => s.id === "view-terminal");
+    expect(terminal?.keys).toEqual(["Ctrl", "`"]);
+    expect(terminal?.group).toBe("views");
+    expect(terminal?.action).toBeUndefined();
+    expect(terminal?.label).toBe("shortcuts.viewTerminal");
+    expect(terminal && keysLabel(terminal, true)).toBe("Ctrl+`");
+    // Ctrl+1 to 9 stay with the app's tabs: the views took the Alt keys.
+    expect(SHORTCUTS.find((s) => s.id === "tab-number")?.keys).toEqual(["Mod", "1…9"]);
+  });
+
   test("the wand's Ctrl or ⌘+I is on the sheet, handled by the field and not by an action", () => {
     const wand = SHORTCUTS.find((s) => s.id === "assist-field");
     expect(wand?.keys).toEqual(["Mod", "I"]);

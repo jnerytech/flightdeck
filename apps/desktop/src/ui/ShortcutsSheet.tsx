@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { AppStore } from "../lib/app-store.ts";
 import { SHORTCUTS, type ShortcutGroup } from "../lib/shortcuts.ts";
 
-const GROUPS: ShortcutGroup[] = ["general", "navigation", "tabs", "lists", "approvals"];
+const GROUPS: ShortcutGroup[] = ["general", "navigation", "tabs", "views", "lists", "approvals"];
 
 /** The `?` sheet: every shortcut of the registry, by group. */
 export function ShortcutsSheet(

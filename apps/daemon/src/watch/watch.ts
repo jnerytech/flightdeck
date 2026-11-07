@@ -113,18 +113,50 @@ export class PrWatcher {
 
   /**
    * The card's own choice; `null` goes back to the project's default. Everything is news again,
-   * and the rounds done so far stop counting against the limits.
+   * and the rounds done so far stop counting against the limits, as do the rounds allowed on top.
    */
   setEnabled(cardId: string, enabled: boolean | null): void {
     this.opts.db
       .query(
-        `INSERT INTO pr_watch (card_id, enabled, snapshot, status, reason, round_base, updated_at)
-         VALUES (?1, ?2, NULL, 'watching', NULL, ${COUNT_ROUNDS}, ?3)
+        `INSERT INTO pr_watch (card_id, enabled, snapshot, status, reason, round_base, extra_rounds, updated_at)
+         VALUES (?1, ?2, NULL, 'watching', NULL, ${COUNT_ROUNDS}, 0, ?3)
          ON CONFLICT (card_id) DO UPDATE SET enabled = excluded.enabled, snapshot = NULL,
            status = 'watching', reason = NULL, round_base = excluded.round_base,
-           updated_at = excluded.updated_at`,
+           extra_rounds = 0, updated_at = excluded.updated_at`,
       )
       .run(cardId, enabled === null ? null : Number(enabled), new Date().toISOString());
+  }
+
+  /** Issue #77: the person allows the card `rounds` more fixing rounds. */
+  extend(cardId: string, rounds: number): void {
+    this.opts.db
+      .query(
+        `INSERT INTO pr_watch (card_id, enabled, snapshot, status, reason, extra_rounds, updated_at)
+         VALUES (?1, NULL, NULL, 'watching', NULL, ?2, ?3)
+         ON CONFLICT (card_id) DO UPDATE SET extra_rounds = extra_rounds + excluded.extra_rounds,
+           updated_at = excluded.updated_at`,
+      )
+      .run(cardId, rounds, new Date().toISOString());
+  }
+
+  /** A card handed over is watched again: what the last look saw is news again. */
+  resume(cardId: string): void {
+    this.opts.db
+      .query(
+        `UPDATE pr_watch SET snapshot = NULL, status = 'watching', reason = NULL, updated_at = ?
+         WHERE card_id = ?`,
+      )
+      .run(new Date().toISOString(), cardId);
+  }
+
+  /** The rounds allowed on top of the project's maximum, since the watch was last turned on. */
+  extraRounds(cardId: string): number {
+    const row = this.opts.db
+      .query<{ extra: number }, [string]>(
+        "SELECT extra_rounds AS extra FROM pr_watch WHERE card_id = ?",
+      )
+      .get(cardId);
+    return row?.extra ?? 0;
   }
 
   /** `needs_you` once a limit was hit or a round failed for good; `setEnabled` starts over. */

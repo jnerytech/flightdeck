@@ -21,23 +21,32 @@ const cards = [
   { id: "C", worktreePath: "/wt/b" },
 ];
 
+const SEARCH = ["file.list", "file.search"];
+
 describe("board-files: what the files panel beside the board shows (#117)", () => {
-  test("a picked worktree shows the files of the card that owns it", () => {
-    expect(boardFiles(worktree, cards, ["file.list"])).toEqual({
-      kind: "worktree",
-      target: "card:B",
-      branch: "fd/b",
-    });
+  test("a picked worktree shows the files of the card that owns it; search comes with file.search", () => {
+    expect([
+      boardFiles(worktree, cards, ["file.list"]),
+      boardFiles(worktree, cards, SEARCH),
+    ]).toEqual([
+      { kind: "tree", target: "card:B", branch: "fd/b", search: false },
+      { kind: "tree", target: "card:B", branch: "fd/b", search: true },
+    ]);
   });
 
-  test("the main checkout has no target yet: the panel says to pick a worktree", () => {
-    expect(boardFiles(primary, cards, ["file.list"])).toEqual({ kind: "primary", branch: "main" });
+  test("the main checkout is the project's own target on a host with file.search, else a hint", () => {
+    expect([boardFiles(primary, cards, SEARCH), boardFiles(primary, cards, ["file.list"])]).toEqual(
+      [
+        { kind: "tree", target: "project:p1", branch: "main", search: true },
+        { kind: "primary", branch: "main" },
+      ],
+    );
   });
 
   test("nothing picked, a worktree no card owns, or a host without file.list: no panel", () => {
     expect([
-      boardFiles(null, cards, ["file.list"]),
-      boardFiles({ ...worktree, path: "/wt/other" }, cards, ["file.list"]),
+      boardFiles(null, cards, SEARCH),
+      boardFiles({ ...worktree, path: "/wt/other" }, cards, SEARCH),
       boardFiles(worktree, cards, []),
       boardFiles(worktree, cards, undefined),
     ]).toEqual([null, null, null, null]);

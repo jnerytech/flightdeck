@@ -3,11 +3,13 @@ import type { WorktreeFilter } from "./project-tree.ts";
 import { hasFeature } from "./version.ts";
 
 /**
- * What the board's files panel shows (#117): the tree of the worktree the sidebar picked, through
- * the card that owns it (`card:<id>`), or a hint for the main checkout, which has no target yet.
+ * What the board's files panel shows (#117): the tree of the checkout the sidebar picked. A
+ * worktree is read through the card that owns it (`card:<id>`); the main checkout through the
+ * project's own read-only target (`project:<id>`), which a host announces with `file.search`
+ * (#797), as it does the search. Without it, the main checkout gets a hint.
  */
 export type BoardFiles =
-  | { kind: "worktree"; target: string; branch: string }
+  | { kind: "tree"; target: string; branch: string; search: boolean }
   | { kind: "primary"; branch: string };
 
 /** The panel for the picked checkout of this board; `null` with none picked or a host without `file.list`. */
@@ -17,7 +19,13 @@ export function boardFiles(
   features: readonly string[] | undefined,
 ): BoardFiles | null {
   if (!filter || !hasFeature(features, "file.list", false)) return null;
-  if (filter.kind === "primary") return { kind: "primary", branch: filter.branch };
+  const search = hasFeature(features, "file.search", false);
+  const { branch } = filter;
+  if (filter.kind === "primary") {
+    return search
+      ? { kind: "tree", target: `project:${filter.projectId}`, branch, search }
+      : { kind: "primary", branch };
+  }
   const owner = cards.find((card) => card.worktreePath === filter.path);
-  return owner ? { kind: "worktree", target: `card:${owner.id}`, branch: filter.branch } : null;
+  return owner ? { kind: "tree", target: `card:${owner.id}`, branch, search } : null;
 }

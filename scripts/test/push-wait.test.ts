@@ -5,6 +5,7 @@ import {
   prRunFrom,
   prRunVia,
   pushWaitViolation,
+  withBudget,
 } from "../lib/claude-hooks.ts";
 
 const CWD = "/repos/flightdeck-fix";
@@ -149,9 +150,159 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
 
   test("an override with a reason logs a push-wait waiver, not an allow", () => {
     expect(guardAllowLogs('FLIGHTDECK_PUSH_NOW="the reviewer waits on it" git push', {})).toEqual([
-      { rule: "push-wait", decision: "waived" },
+      { rule: "push-wait", decision: "waived", detail: "the reviewer waits on it" },
     ]);
     expect(guardAllowLogs("git push", {})).toEqual([{ rule: null, decision: "allow" }]);
+  });
+});
+
+describe("push-wait: what an override logs (#741, #821 review)", () => {
+  /** The same checkout, with a run per branch and, if given, which folders are the project's. */
+  function runsBy(runs: Record<string, PrRun | null>, inProject?: (dir: string) => boolean) {
+    const base = deps(null);
+    return {
+      ...base,
+      inProject,
+      prRun: (branch: string, dir: string) => {
+        base.asked.push(`${branch} in ${dir}`);
+        return runs[branch] ?? null;
+      },
+    };
+  }
+  const log = (command: string, d: ReturnType<typeof runsBy>, cwd = CWD) =>
+    guardAllowLogs(command, {}, { cwd, deps: d });
+  const waiver = (detail: string, minutes?: number): ReturnType<typeof guardAllowLogs> => [
+    {
+      rule: "push-wait",
+      decision: "waived",
+      detail,
+      ...(minutes === undefined ? {} : { minutes }),
+    },
+  ];
+
+  test("the reason and the age of the run the push cancels, asked in the push's own checkout", () => {
+    const d = runsBy({ "fix-x": green });
+    expect(log('FLIGHTDECK_PUSH_NOW="a fix after review" git push origin fix-x', d)).toEqual(
+      waiver("a fix after review", 6),
+    );
+    expect(d.asked).toEqual([`fix-x in ${CWD}`]);
+  });
+
+  test("with two pushed branches, the youngest run in progress", () => {
+    const d = runsBy({ a: { ...green, minutes: 12 }, b: { ...green, minutes: 4 } });
+    expect(log('FLIGHTDECK_PUSH_NOW="both need the fix" git push origin a b', d)).toEqual(
+      waiver("both need the fix", 4),
+    );
+    expect(d.asked).toEqual([`a in ${CWD}`, `b in ${CWD}`]);
+  });
+
+  test("a run that ended, no run, a delete or an unknown folder: the reason alone", () => {
+    expect(
+      log(
+        'FLIGHTDECK_PUSH_NOW="a fix after review" git push',
+        runsBy({ "fix-x": { ...green, inProgress: false } }),
+      ),
+    ).toEqual(waiver("a fix after review"));
+    expect(log('FLIGHTDECK_PUSH_NOW="a fix after review" git push', runsBy({}))).toEqual(
+      waiver("a fix after review"),
+    );
+    const gone = runsBy({ "fix-x": green });
+    expect(
+      log('FLIGHTDECK_PUSH_NOW="drop the old branch" git push origin --delete fix-x', gone),
+    ).toEqual(waiver("drop the old branch"));
+    expect(gone.asked).toEqual([]);
+    const quoted = runsBy({ "fix-x": green });
+    expect(
+      log('cd "/repos/flight deck" && FLIGHTDECK_PUSH_NOW="a fix after review" git push', quoted),
+    ).toEqual(waiver("a fix after review"));
+    expect(quoted.asked).toEqual([]);
+  });
+
+  test("a push in a checkout outside the project is not the rule's: no waiver, and GitHub is not asked", () => {
+    const d = runsBy({ "fix-x": green }, (dir) => dir === CWD);
+    expect(log('FLIGHTDECK_PUSH_NOW="a fix after review" git push', d, "/elsewhere")).toEqual([
+      { rule: null, decision: "allow" },
+    ]);
+    expect(d.asked).toEqual([]);
+  });
+
+  test("the coordinator logs nothing and asks nothing, with an override or without", () => {
+    for (const command of ['FLIGHTDECK_PUSH_NOW="a fix after review" git push', "git push"]) {
+      const d = runsBy({ "fix-x": green });
+      expect(
+        guardAllowLogs(command, { FLIGHTDECK_COORDINATOR: "1" }, { cwd: CWD, deps: d }),
+      ).toEqual([{ rule: null, decision: "allow" }]);
+      expect(d.asked).toEqual([]);
+    }
+  });
+
+  test("a long reason is cut at 200 characters after its secrets are hidden", () => {
+    expect(
+      log(`FLIGHTDECK_PUSH_NOW="GH_TOKEN=abc123 ${"x".repeat(300)}" git push`, runsBy({})),
+    ).toEqual(waiver(`GH_TOKEN=*** ${"x".repeat(187)}`));
+  });
+
+  test("control, C1, bidi and line-separator characters go first, so a secret split by one is still hidden", () => {
+    expect(
+      log(
+        'FLIGHTDECK_PUSH_NOW="a\u001b[2Jb\u0007c\u0085d\u202ee\u2028f\u2066g\u200bh\ue000i" git push',
+        runsBy({}),
+      ),
+    ).toEqual(waiver("a[2Jbcdefghi"));
+    expect(
+      log('FLIGHTDECK_PUSH_NOW="see ghp_ab\u0000cdefghijklmnop now" git push', runsBy({})),
+    ).toEqual(waiver("see *** now"));
+  });
+
+  test.each([
+    ["x_ghp_abc123def456", "x_***"],
+    ["glpat-abcdefghij1234567890", "***"],
+    ["npm_abcdefghijklmnopqrstuvwxyz0123456789", "***"],
+    ["xoxb-123-456-abc", "***"],
+    ["sk-abcdefghijklmnopqrstuv", "***"],
+    ["AKIAABCDEFGHIJKLMNOP", "***"],
+    ["eyJhbGciOi.eyJzdWIi.c2lnbmF0dXJl", "***"],
+    ["Authorization: Basic dXNlcjpwYXNz", "Authorization: ***"],
+    ["--token abc123", "--token ***"],
+    ["--password=hunter2", "--password=***"],
+    ["--secret 'two words'", "--secret ***"],
+    ["--api-key abc123", "--api-key ***"],
+    ["--github-token=abc123", "--github-token=***"],
+    ["Bearer xyz", "Bearer ***"],
+    // Ordinary words stay readable (#826 review).
+    ["--token-count 5", "--token-count 5"],
+    ["desk-abcdefghijklmnopqrstuv", "desk-abcdefghijklmnopqrstuv"],
+  ])("a reason with %p logs %p", (secret, shown) => {
+    expect(log(`FLIGHTDECK_PUSH_NOW="see ${secret} now" git push`, runsBy({}))).toEqual(
+      waiver(`see ${shown} now`),
+    );
+  });
+
+  test("the 200-character cut never splits a character in two", () => {
+    expect(log(`FLIGHTDECK_PUSH_NOW="${"x".repeat(199)}\u{1F600}y" git push`, runsBy({}))).toEqual(
+      waiver(`${"x".repeat(199)}\u{1F600}`),
+    );
+  });
+});
+
+describe("push-wait: withBudget, the guard's time limit for its gh and git calls (#826 review)", () => {
+  test("a call starts only before the limit; past it, the answer is null and the call is not made", () => {
+    let clock = 0;
+    const calls: string[] = [];
+    const budgeted = withBudget(
+      (what: string) => {
+        calls.push(what);
+        return `done ${what}`;
+      },
+      () => clock,
+      6000,
+    );
+    expect(budgeted("first")).toBe("done first");
+    clock = 6000;
+    expect(budgeted("at the limit")).toBe("done at the limit");
+    clock = 6001;
+    expect(budgeted("late")).toBeNull();
+    expect(calls).toEqual(["first", "at the limit"]);
   });
 });
 
