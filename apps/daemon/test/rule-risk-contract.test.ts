@@ -126,6 +126,17 @@ describe("rule-risk: a rule that names a folder covers what is inside it (issue 
     expect(ruleLevel("Read", "//proj/src/", classify, missing)).toBe("any");
   });
 
+  test("a folder named with slashes at its end is probed below the folder, with no empty segment", () => {
+    const probed: string[] = [];
+    const record: ClassifyCall = (_tool, input) => {
+      probed.push(String(input.file_path));
+      return "low";
+    };
+    ruleLevel("Read", "//proj/src///", record, folder);
+    // The rule's own path is probed as written; what is probed below it has one slash only.
+    expect(probed.some((path) => path.startsWith("/proj/src/") && !path.includes("//"))).toBe(true);
+  });
+
   test("only a file on disk keeps the level of the path itself", () => {
     expect(ruleLevel("Read", "//proj/src/a.ts", classify, file)).toBe("low");
     expect(ruleLevel("Read", "//proj/src/a.ts", classify, onDisk)).toBe("low");
