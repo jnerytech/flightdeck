@@ -9,7 +9,7 @@ import { FrameClient } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { fakeAssistant, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { waiter } from "./wait.ts";
+import { settleMaybe, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -829,5 +829,53 @@ describe("times-ui: the wand on the goal of a new team (issue #160)", () => {
     await click("Melhorar com IA");
     expect(store.router.current).toEqual({ name: "settings", section: "assistant" });
     expect(fake.calls.filter((c) => c[0] === "run")).toHaveLength(0);
+  });
+});
+
+// Issue #932: the Teams page's host follows the top bar's switcher, or says it shows another one.
+describe("times-ui: the host follows the switcher", () => {
+  const hostField = () => screen.queryByLabelText("Host") as HTMLSelectElement | null;
+  // A switch opens that host's Overview, which asks its daemon whether GitHub is signed in: a fake
+  // answers "not signed in", the real `gh` never runs.
+  const fakeGh = () => {
+    const gh = installFakeCli("gh", [
+      { args: ["auth", "status"], stderr: "not logged in", code: 1 },
+    ]);
+    cleanups.push(() => gh.restore());
+  };
+
+  test("with two hosts with teams, Times opens on the switcher's host, after each switch", async () => {
+    fakeGh();
+    const { store } = await open();
+    const other = await daemonWithProject("pi");
+    await act(() => store.addHost({ name: "beta", url: other.url, token: other.token }));
+    await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
+    const [alfa, beta] = store.getState().hosts.map((h) => h.id);
+    // A pick in the switcher shows that host's tabs; Times then opens on that host.
+    await act(async () => store.pickHost(beta as string));
+    await click("Times");
+    await settleMaybe(() => hostField()?.value === beta);
+    const first = hostField()?.value;
+    await act(async () => store.pickHost(alfa as string));
+    await click("Times");
+    await settleMaybe(() => hostField()?.value === alfa);
+    expect({ first: first === beta, then: hostField()?.value === alfa }).toEqual({
+      first: true,
+      then: true,
+    });
+  });
+
+  test("a switcher host with no teams is named, with the host the page shows instead", async () => {
+    fakeGh();
+    const { store } = await open();
+    const legacy = legacyDaemon(cleanups);
+    await act(() => store.addHost({ name: "gama", url: legacy.url, token: TOKEN }));
+    await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
+    const gama = store.getState().hosts.find((h) => h.name === "gama")?.id as string;
+    await act(async () => store.pickHost(gama));
+    await click("Times");
+    const said = () => screen.queryByText("gama não tem times. Mostrando alfa.") !== null;
+    await settleMaybe(said);
+    expect(said()).toBe(true);
   });
 });
