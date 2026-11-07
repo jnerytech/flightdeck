@@ -272,7 +272,11 @@ describe("teleport-relay: the app moves a session from one host to another (#100
         branch: "fix\u202e\u0007-login",
       },
     });
-    expect(summary.branch).toBe("fix-login");
+    const marksOnly = teleportSummary({
+      ...MANIFEST,
+      git: { ...(MANIFEST.git as NonNullable<TeleportManifest["git"]>), branch: "\u202e\u200b" },
+    });
+    expect([summary.branch, marksOnly.branch]).toEqual(["fix-login", null]);
   });
 
   test("a host that went while cleaning up does not hide why the move stopped", async () => {
