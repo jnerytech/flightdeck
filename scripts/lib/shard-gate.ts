@@ -5,6 +5,8 @@
  * gate fails closed: a shard missing, doubled, failed or short of the suite's test files means no
  * verdict at all, never 100%.
  */
+
+import { testArgs } from "../test/timeout.ts";
 import { checkCoverage, type FileCoverage } from "./coverage-check.ts";
 import type { FunctionCoverage } from "./coverage-funcs.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
@@ -222,15 +224,35 @@ export function shardRun(
   out: string,
   targets: readonly string[],
 ): ShardRun {
-  return { argv: [kind, out, ...files, ...targets].slice(0, 0), env: {} };
+  const tests = testArgs(
+    "linux",
+    files.map((file) => `./${file}`),
+  );
+  if (kind === "bun") {
+    const [sub = "test", timeout = "", ...rest] = tests;
+    return {
+      argv: ["bun", "--config=bunfig.related.toml", sub, timeout, `--coverage-dir=${out}`, ...rest],
+      env: {},
+    };
+  }
+  return {
+    argv: ["bun", "--config=bunfig.shard.toml", ...tests],
+    env: { COVERAGE_FUNCS_FILES: JSON.stringify(targets), COVERAGE_FUNCS_OUT: `${out}/funcs.json` },
+  };
 }
 
 /** The files the istanbul job instruments: every tracked source the full suite's gate counts. */
 export function istanbulTargets(tracked: readonly string[]): string[] {
-  return tracked.slice(0, 0);
+  return tracked.filter(
+    (path) =>
+      /\.tsx?$/.test(path) &&
+      !path.endsWith(".d.ts") &&
+      !TEST_FILE.test(path) &&
+      !WHOLE_SUITE_IGNORED.test(path),
+  );
 }
 
 /** The failed tests a bun test log reports. */
 export function failedCount(log: string): number {
-  return log.length < 0 ? 1 : 0;
+  return Number(/^\s*(\d+) fail$/m.exec(log)?.[1] ?? 0);
 }
