@@ -68,6 +68,7 @@ function open(lang: "en" | "pt-BR") {
     finish?: (outcome: TeleportOutcome) => void;
     fail?: (error: unknown) => void;
     answer?: Promise<boolean>;
+    signal?: AbortSignal;
   } = {};
   render(
     <TContext.Provider value={translator(lang)}>
@@ -79,6 +80,7 @@ function open(lang: "en" | "pt-BR") {
         run={(args) => {
           calls.args.push({ target: args.target, repo: args.repo });
           control.progress = args.onProgress;
+          control.signal = args.signal;
           control.answer = args.confirm(SUMMARY);
           return new Promise<TeleportOutcome>((resolve, reject) => {
             control.finish = resolve;
@@ -190,6 +192,49 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       ]).toEqual([true, false]);
     });
   }
+
+  test("Cancel during the move stops it, Escape on the summary says no, and Escape before it closes", async () => {
+    const escape = async () => {
+      await act(async () => {
+        fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+      });
+    };
+    const first = open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    await click(TEXT.en.move);
+    await act(async () => {
+      first.control.progress?.(10, 100);
+    });
+    await shows("Moving… 10%");
+    await click("Cancel");
+    const stopped = first.control.signal?.aborted ?? false;
+    await escape();
+    const stoppedByEscape = first.control.signal?.aborted ?? false;
+    cleanup();
+    const second = open("en");
+    await start("en");
+    await shows(TEXT.en.secrets);
+    let answered: boolean | null = null;
+    void second.control.answer?.then((yes) => {
+      answered = yes;
+    });
+    await escape();
+    // The answer the run got, if any: a dialog that just closed never answers.
+    const declined = await settle(() => answered !== null).then(
+      () => answered,
+      () => "no answer",
+    );
+    cleanup();
+    const third = open("en");
+    await escape();
+    expect([stopped, stoppedByEscape, declined, third.calls.closed]).toEqual([
+      true,
+      true,
+      false,
+      1,
+    ]);
+  });
 
   test("progress past the total or with nothing to send stays between 0% and 100%", async () => {
     const { control } = open("en");
