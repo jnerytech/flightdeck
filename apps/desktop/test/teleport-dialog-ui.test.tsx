@@ -103,14 +103,17 @@ const click = async (name: string) => {
   });
 };
 
-/** Picks the host and types the repository, then continues. */
+/** Picks the host (the repository field is for that host), types the repository, continues. */
 async function start(lang: "en" | "pt-BR") {
   const t = TEXT[lang];
   const host = screen.queryByRole("combobox", { name: t.host });
-  const repo = screen.queryByRole("textbox", { name: "repo-path" });
-  expect([host !== null, repo !== null]).toEqual([true, true]);
+  expect(host).not.toBeNull();
   await act(async () => {
     fireEvent.change(host as HTMLElement, { target: { value: "h2" } });
+  });
+  const repo = screen.queryByRole("textbox", { name: "repo-path" });
+  expect(repo).not.toBeNull();
+  await act(async () => {
     fireEvent.change(repo as HTMLElement, { target: { value: "/work/app" } });
   });
   await click(t.next);
