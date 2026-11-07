@@ -32,6 +32,8 @@ export function Leaderboard(
     /** The last read did not give every host's costs, and there is no earlier leaderboard to keep. */
     unavailable: boolean;
     projectName(key: string): string;
+    /** The folder behind a project, whole, for the tooltip; the short name stays the accessible name. */
+    projectTitle?(key: string): string | null;
     onOpenProject(key: string): void;
   }>,
 ) {
@@ -93,7 +95,7 @@ export function Leaderboard(
                         <button
                           type="button"
                           className="leader-name leader-link"
-                          title={label}
+                          title={props.projectTitle?.(project) ?? label}
                           aria-label={t("home.openProject", { name: label })}
                           onClick={() => props.onOpenProject(project)}
                         >

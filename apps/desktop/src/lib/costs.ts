@@ -1,5 +1,3 @@
-import { basename } from "./paths.ts";
-
 const DAY_MS = 86_400_000;
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -41,15 +39,34 @@ export function periodRange(
 /** `US$ 1.23`. */
 export const usd = (value: number) => `US$ ${value.toFixed(2)}`;
 
-/** The folder a project key names, for the tooltip. Stub. */
-export function projectPath(_key: string): string | null {
-  return null;
+const HOST_KEY = /^host:([^:]+):(.+)$/;
+/** A path as the daemon writes it: from the root, a drive or a share. */
+const ABSOLUTE = /^(\/|[A-Za-z]:[\\/]|\\\\)/;
+
+/** The folder a project key names: a host key's folder, or a key that is itself a path. */
+function folderOf(key: string): string | null {
+  const folder = HOST_KEY.exec(key)?.[2];
+  if (folder) return folder;
+  return ABSOLUTE.test(key) ? key : null;
 }
 
-/** A project key as a person reads it: a folder's key (`host:alfa:C:\x\app`) shows as `app`. */
+/** The names of the folders in a path, outermost first; the drive of `C:\\x` is not one. */
+function folderNames(folder: string): string[] {
+  return folder.split(/[\\/]/).filter((part) => part !== "" && !/^[A-Za-z]:$/.test(part));
+}
+
+/** The folder a project key names, whole, for the tooltip; `null` for a key that is no folder. */
+export function projectPath(key: string): string | null {
+  return folderOf(key);
+}
+
+/**
+ * A project key as a person reads it: a folder's key (`host:alfa:C:\\x\\app`, or the path itself,
+ * trailing slash and all) shows as its last folder, `app`. Anything else is its own label.
+ */
 export function projectLabel(key: string): string {
-  const folder = /^host:[^:]+:(.+)$/.exec(key)?.[1];
-  return folder ? basename(folder) : key;
+  const folder = folderOf(key);
+  return (folder === null ? undefined : folderNames(folder).at(-1)) ?? key;
 }
 
 /**
@@ -71,29 +88,31 @@ export function projectLabels(keys: string[], known: readonly string[] = []): Ma
   return new Map(keys.map((key) => [key, labels.get(key) ?? key]));
 }
 
-const HOST_KEY = /^host:([^:]+):(.+)$/;
-
 /** The first way of writing the keys of one clashing label that makes them all different. */
 function toldApart(label: string, group: string[]): Map<string, string> {
-  const parts = (key: string) => {
-    const match = HOST_KEY.exec(key);
-    const folder = match?.[2]?.split(/[\\/]/).filter(Boolean) ?? [];
-    const parent = folder.length > 1 ? folder.at(-2) : undefined;
-    return { host: match?.[1], parent };
+  const hostOf = (key: string) => HOST_KEY.exec(key)?.[1];
+  const names = new Map(group.map((key) => [key, folderNames(folderOf(key) ?? "")]));
+  // The last `n + 1` folders of a key, as many as it has.
+  const tail = (key: string, n: number) =>
+    (names.get(key) ?? []).slice(-(n + 1)).join("/") || label;
+  // Each key takes the fewest folders that no other key shares: one level, further only where
+  // that level still clashes.
+  const withFolders = (key: string) => {
+    const most = Math.max(...group.map((one) => names.get(one)?.length ?? 0));
+    for (let n = 0; n < most; n++) {
+      if (group.every((one) => one === key || tail(one, n) !== tail(key, n))) return tail(key, n);
+    }
+    return tail(key, most);
   };
   const withHost = (key: string, base: string) => {
-    const { host } = parts(key);
+    const host = hostOf(key);
     return host ? `${base} · ${host}` : base;
-  };
-  const withParent = (key: string) => {
-    const { parent } = parts(key);
-    return parent ? `${parent}/${label}` : label;
   };
   const raw = (key: string) => key;
   const ways = [
     (key: string) => withHost(key, label),
-    withParent,
-    (key: string) => withHost(key, withParent(key)),
+    withFolders,
+    (key: string) => withHost(key, withFolders(key)),
     raw,
   ];
   const way = ways.find((write) => new Set(group.map(write)).size === group.length) ?? raw;
