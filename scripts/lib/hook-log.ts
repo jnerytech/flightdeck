@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { gitCommonDir } from "./claude-hooks.ts";
+import { gitCommonDir, printable } from "./claude-hooks.ts";
 
 /**
  * The decision log of the project's Claude Code hooks (.claude/hooks): one JSON line per call,
@@ -86,8 +86,9 @@ export function summarizeHookLog(text: string): string {
   if (overrides.length > 0) {
     out.push("", "push-wait overrides:");
     for (const e of overrides) {
-      const age = e.minutes === undefined ? "no run found" : `run ${e.minutes} min old`;
-      out.push(`  ${e.t.slice(0, 16).replace("T", " ")}  ${age.padEnd(15)}${e.detail}`);
+      const age = e.minutes === undefined ? "no run in progress" : `run ${e.minutes} min old`;
+      const when = `${e.t.slice(0, 16).replace("T", " ")} UTC`;
+      out.push(`  ${when}  ${age.padEnd(20)}${printable(e.detail ?? "")}`);
     }
   }
   const skipped = lines.length - entries.length;
@@ -106,6 +107,8 @@ function parseEntry(line: string): HookLogEntry | null {
     const ok =
       typeof e?.hook === "string" &&
       typeof e.ms === "number" &&
+      typeof e.t === "string" &&
+      (e.detail === undefined || typeof e.detail === "string") &&
       ["allow", "block", "waived"].includes(e.decision);
     return ok ? (e as HookLogEntry) : null;
   } catch {

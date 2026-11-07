@@ -170,7 +170,7 @@ describe("push-wait: what an override logs (#741, #821 review)", () => {
   }
   const log = (command: string, d: ReturnType<typeof runsBy>, cwd = CWD) =>
     guardAllowLogs(command, {}, { cwd, deps: d });
-  const waiver = (detail: string, minutes?: number) => [
+  const waiver = (detail: string, minutes?: number): ReturnType<typeof guardAllowLogs> => [
     {
       rule: "push-wait",
       decision: "waived",

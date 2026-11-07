@@ -130,7 +130,7 @@ describe("hook-log", () => {
     const text = [bad({ t: 5 }), bad({ detail: 7 })].join("\n");
     expect(() => summarizeHookLog(text)).not.toThrow();
     expect(summarizeHookLog(text)).toBe(
-      "no hook calls logged yet\n\n2 line(s) skipped (not a hook log entry)",
+      "hook  calls  blocks  p50 ms  p95 ms\n\n2 line(s) skipped (not a hook log entry)",
     );
   });
 

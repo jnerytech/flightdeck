@@ -85,7 +85,17 @@ if (typeof filePath === "string") {
     }),
   );
 }
-for (const { rule, decision, detail, minutes } of guardAllowLogs(command, process.env, push)) {
+// The run's age is only for the log: past 6 s into the hook it is skipped, so the override's entry
+// is always written inside the hook's 10 s (#821 review).
+const logged = push && {
+  ...push,
+  deps: {
+    ...push.deps,
+    prRun: (branch: string, dir: string) =>
+      performance.now() > 6000 ? null : (push?.deps.prRun(branch, dir) ?? null),
+  },
+};
+for (const { rule, decision, detail, minutes } of guardAllowLogs(command, process.env, logged)) {
   logHook("guard", rule, decision, { detail, minutes });
 }
 process.exit(0);
