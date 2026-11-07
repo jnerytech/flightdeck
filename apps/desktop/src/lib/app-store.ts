@@ -1354,7 +1354,7 @@ export class AppStore {
     url: string;
     token: string;
   }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
-    this.hostTokens.add(input.token);
+    this.rememberToken(input.token);
     const probe = await probeHost(input.url, input.token, this.i18n.t);
     if (!probe.ok) return probe;
     return { ok: true, hostId: await this.addHost(input) };
@@ -3084,7 +3084,7 @@ export class AppStore {
   }
 
   private connect(config: HostConfig, token: string): void {
-    this.hostTokens.add(token);
+    this.rememberToken(token);
     const conn = new HostConnection({
       url: config.url,
       token,
@@ -4220,9 +4220,32 @@ export class AppStore {
   private readonly hostTokens = new Set<string>();
   private vaultPieces: string[] = [];
 
+  /**
+   * Goes up each time `scanValues` may give more (#827): what masks text already on screen, such
+   * as the files search's matches, renders again through `subscribeScan`.
+   */
+  scanVersion = 0;
+  private readonly scanListeners = new Set<() => void>();
+
+  subscribeScan = (listener: () => void): (() => void) => {
+    this.scanListeners.add(listener);
+    return () => this.scanListeners.delete(listener);
+  };
+
+  private rememberToken(token: string): void {
+    this.hostTokens.add(token);
+    this.scanChanged();
+  }
+
+  private scanChanged(): void {
+    this.scanVersion++;
+    for (const listener of this.scanListeners) listener();
+  }
+
   private async rememberVaultValues(): Promise<void> {
     try {
       this.vaultPieces = await this.vaultValuesForScan();
+      this.scanChanged();
     } catch {
       // The log's cache is a convenience: a vault that cannot be read leaves the last one.
     }

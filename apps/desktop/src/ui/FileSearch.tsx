@@ -1,5 +1,5 @@
 import { type FileSearchResult, SecretScanner } from "@flightdeck/protocol";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -137,6 +137,9 @@ function Matches(
   // The masker the app log uses, with what the app knows: its token shapes, the hosts' tokens
   // and the vault's values (#827). A match's line never shows any of them, nor does its path.
   const scanner = useMemo(() => new SecretScanner(() => store.scanValues()), [store]);
+  // A value the app learns later (the vault loads after the app starts) renders the matches
+  // again, so it hides in what is already on screen (review of #850).
+  useSyncExternalStore(store.subscribeScan, () => store.scanVersion);
   // Masked on every render, not memoised: the vault's values arrive late, and a value the masker
   // learns after the answer came must still hide (security review of #827). At most 200
   // characters a line, so the cost stays small.
