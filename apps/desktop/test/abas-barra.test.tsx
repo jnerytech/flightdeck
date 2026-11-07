@@ -37,7 +37,10 @@ const tabs = () => {
   const row = screen.queryByRole("tablist", { name: "Abas" });
   return row ? within(row).queryAllByRole("tab") : [];
 };
-const names = () => tabs().map((tab) => tab.getAttribute("aria-label") ?? tab.textContent);
+const names = () =>
+  tabs().map((tab) =>
+    (tab.getAttribute("aria-label") ?? tab.textContent ?? "").replace(/, host .*$/, ""),
+  );
 const press = async (name: string) => {
   const button = screen.queryByRole("button", { name });
   expect(button).not.toBeNull();
@@ -86,9 +89,9 @@ describe("abas: a barra de abas", () => {
     await open({ name: "history", host: "ha" });
     await open({ name: "projects", host: "ha" });
     // The shared Sessões sits first; the host's tabs follow.
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos"]);
     await menu.choose("Projetos", "Fixar aba Projetos");
-    expect(names()).toEqual(["Sessões", "Projetos", "alfa"]);
+    expect(names()).toEqual(["Sessões", "Projetos", "Histórico"]);
     await menu.open("Projetos");
     expect(menu.item("Desafixar aba Projetos")).not.toBeNull();
     await act(async () => {
@@ -102,9 +105,9 @@ describe("abas: a barra de abas", () => {
     });
     // The menu is the active tab's: alfa now.
     expect(screen.queryByRole("button", { name: "Ações da aba Projetos" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Ações da aba alfa" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Ações da aba Histórico" })).not.toBeNull();
     await act(async () => {
-      const close = screen.queryByLabelText("Fechar aba alfa");
+      const close = screen.queryByLabelText("Fechar aba Histórico");
       expect(close).not.toBeNull();
       fireEvent.click(close as HTMLElement);
     });
@@ -163,9 +166,9 @@ describe("abas: a barra de abas", () => {
       store.hostTabs.open({ name: "projects", host: "ha" });
     });
     await key("PageUp", { shift: true });
-    expect(names()).toEqual(["Sessões", "Projetos", "alfa"]);
+    expect(names()).toEqual(["Sessões", "Projetos", "Histórico"]);
     await key("PageDown", { shift: true });
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos"]);
   });
 
   test("a Ctrl+click or a middle click on an item opens it in a new tab", async () => {

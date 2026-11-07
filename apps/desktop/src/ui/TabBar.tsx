@@ -79,11 +79,18 @@ const sshOf = (tab: Tab, store: AppStore) => {
     : undefined;
 };
 
-/** The title of a tab: the last step of the path its route shows in the header. */
+/**
+ * The title of a tab: the last step of the path its route shows in the header. A host's Overview and
+ * History end in the host's name, which the row already says (it belongs to that host): they show
+ * their section instead (issue #644).
+ */
 const title = (tab: Tab, state: AppState, store: AppStore) => {
   const ssh = sshOf(tab, store);
   if (ssh) return store.i18n.t("terminalUi.sshBadge", { name: ssh.name });
-  return breadcrumb(tab.router.current, state, store.i18n.t).at(-1)?.label ?? "";
+  const route = tab.router.current;
+  if (route.name === "host") return store.i18n.t("hostHome.overview");
+  if (route.name === "history") return store.i18n.t("sidebar.history");
+  return breadcrumb(route, state, store.i18n.t).at(-1)?.label ?? "";
 };
 
 // The Ctrl+Tab switcher draws the same icon and title as the strip.
@@ -121,8 +128,19 @@ export function TabBar(
   const dragged = useRef<string | null>(null);
   /** The tab a drag is over and the side the dragged one will land on, to mark the place. */
   const [dropOn, setDropOn] = useState<{ id: string; side: "before" | "after" } | null>(null);
-  /** What a screen reader is told about the last move. */
+  /** What a screen reader is told about the last move or the host the row switched to. */
   const [announcement, setAnnouncement] = useState("");
+  // The first area's row says which host it switched to and how many tabs it has.
+  const rowHost = shared ? store.hostTabs.hostId : null;
+  const hostTabCount = rowHost ? store.hostTabs.tabCount(rowHost) : 0;
+  const hostLabel = state.hosts.find((h) => h.id === rowHost)?.name ?? rowHost;
+  const announcedHost = useRef<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a change of host speaks, not a new tab
+  useEffect(() => {
+    if (!rowHost || announcedHost.current === rowHost) return;
+    announcedHost.current = rowHost;
+    setAnnouncement(t("tabs.hostCount", { host: hostLabel ?? rowHost, n: hostTabCount }));
+  }, [rowHost]);
   /** The tab a keyboard move just went off with: the focus goes back to it. */
   const focusTab = useRef<string | null>(null);
   const active = sharedActive ? undefined : tabs.tabs.find((tab) => tab.id === tabs.activeId);
@@ -221,7 +239,11 @@ export function TabBar(
             // A production server is easy to mistake for another: its tab gets a red border.
             const prod = ssh ? isProd(ssh.tags) : undefined;
             // The host's tabs carry its color; the shared ones belong to no host.
-            const hostColor = ownHost(tab) ? hostColorVar(ownHost(tab) as string) : undefined;
+            const tabHost = ownHost(tab);
+            const hostColor = tabHost ? hostColorVar(tabHost) : undefined;
+            const hostName = tabHost
+              ? (state.hosts.find((h) => h.id === tabHost)?.name ?? tabHost)
+              : undefined;
             return (
               // The wrapper is invisible to the tablist: the tab and its × are siblings inside it.
               <div
@@ -253,6 +275,10 @@ export function TabBar(
                     aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
                     // A pinned tab shows no title, so its name is set here, with the badge's words.
                     {...(tab.pinned ? { "aria-label": pinnedLabel } : {})}
+                    // A host's tab is named with its host: its title no longer carries the name.
+                    {...(hostName
+                      ? { "aria-label": t("tabs.named", { title: pinnedLabel, host: hostName }) }
+                      : {})}
                     className="tab-button"
                     onClick={() => store.hostTabs.activate(tab.id)}
                     onDoubleClick={() => own.commit(tab.id)}
@@ -425,7 +451,7 @@ export function TabBar(
         <Plus />
       </Button>
       {props.children}
-      <div role="status" aria-label={t("tabs.position")} className="sr-only">
+      <div role="status" aria-live="polite" aria-label={t("tabs.position")} className="sr-only">
         {announcement}
       </div>
     </div>

@@ -15,7 +15,11 @@ setDefaultTimeout(30_000);
 afterEach(cleanup);
 
 const names = () =>
-  screen.queryAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.textContent);
+  screen
+    .queryAllByRole("tab")
+    .map((tab) =>
+      (tab.getAttribute("aria-label") ?? tab.textContent ?? "").replace(/, host .*$/, ""),
+    );
 
 /**
  * A store with one host, "alfa", and `count` of its tabs open: its history, Projects and automatic
@@ -39,7 +43,7 @@ async function open(count: number) {
 describe("abas: arrastar para reordenar", () => {
   test("dragging a tab onto another puts it there, within its group", async () => {
     await open(3);
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos", "Aprovações automáticas"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos", "Aprovações automáticas"]);
     const [first, , last] = screen.queryAllByRole("tab").slice(1);
     expect(first?.getAttribute("draggable")).toBe("true");
     await act(async () => {
@@ -47,7 +51,7 @@ describe("abas: arrastar para reordenar", () => {
       fireEvent.dragOver(last as HTMLElement);
       fireEvent.drop(last as HTMLElement);
     });
-    expect(names()).toEqual(["Sessões", "Projetos", "Aprovações automáticas", "alfa"]);
+    expect(names()).toEqual(["Sessões", "Projetos", "Aprovações automáticas", "Histórico"]);
   });
 
   test("a drop with nothing being dragged changes nothing", async () => {
@@ -55,7 +59,7 @@ describe("abas: arrastar para reordenar", () => {
     await act(async () => {
       fireEvent.drop(screen.queryAllByRole("tab")[1] as HTMLElement);
     });
-    expect(names()).toEqual(["Sessões", "alfa"]);
+    expect(names()).toEqual(["Sessões", "Histórico"]);
   });
 
   test("the buttons Mover para a esquerda e para a direita reordenam a aba ativa, desligados nas pontas do grupo", async () => {
@@ -69,20 +73,20 @@ describe("abas: arrastar para reordenar", () => {
     await act(async () => {
       fireEvent.click(menu.item(left) as HTMLElement);
     });
-    expect(names()).toEqual(["Sessões", "alfa", "Aprovações automáticas", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Aprovações automáticas", "Projetos"]);
     await menu.open("Aprovações automáticas");
     expect(disabled(right)).toBe(false);
     await act(async () => {
       fireEvent.click(menu.item(left) as HTMLElement);
     });
     // The first tab of the host: the shared tabs on its left are another group.
-    expect(names()).toEqual(["Sessões", "Aprovações automáticas", "alfa", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Aprovações automáticas", "Histórico", "Projetos"]);
     await menu.open("Aprovações automáticas");
     expect(disabled(left)).toBe(true);
     await act(async () => {
       fireEvent.click(menu.item(right) as HTMLElement);
     });
-    expect(names()).toEqual(["Sessões", "alfa", "Aprovações automáticas", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Aprovações automáticas", "Projetos"]);
     // The menu closes with the focus back on the tab's own button or the tab, never on the page.
     // The menu hands the focus back after it closes, a beat later on a slow runner: wait for it,
     // and fail with a short message (a failed `expect` on the element dumps the whole page).
@@ -96,7 +100,7 @@ describe("abas: arrastar para reordenar", () => {
     await act(async () => {
       store.tabs.pin(store.tabs.tabs[0]?.id ?? "", true);
     });
-    expect(names()).toEqual(["Sessões", "alfa", "Projetos"]);
+    expect(names()).toEqual(["Sessões", "Histórico", "Projetos"]);
     await menu.open("Projetos");
     expect(menu.item("Mover a aba Projetos para a esquerda")?.getAttribute("aria-disabled")).toBe(
       "true",

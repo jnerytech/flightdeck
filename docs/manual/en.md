@@ -2842,6 +2842,11 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   showing the last host used while one of them is open. `Ctrl+Tab` goes over the shared tabs and
   then the current host's.
 
+- **Tab titles and names:** a host's tab does not repeat the host's name in its title: its Overview
+  tab says **Overview** and its History tab says **History**. A screen reader still hears the host:
+  each of the host's tabs is named like "Board, host alfa", and picking a host says "alfa: 5 tabs"
+  once, politely.
+
 - **Host colors:** each host has one of eight colors, the same wherever the host shows. It is a dot
   next to the host's name in the top bar's switcher and in the list of all tabs, and a 2 px line over
   the top of each of the host's tabs. The color is never the only sign: the host's name stands beside
