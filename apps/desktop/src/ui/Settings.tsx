@@ -277,6 +277,14 @@ export const Settings = memo(function Settings(props: {
             />
             {t("setup.restore")}
           </label>
+          <label className={check}>
+            <input
+              type="checkbox"
+              checked={settings.teleportPreview}
+              onChange={(e) => props.store.setTeleportPreview(e.target.checked)}
+            />
+            {t("teleportUi.preview")}
+          </label>
         </Panel>
       ),
     },

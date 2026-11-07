@@ -78,6 +78,7 @@ import type {
   WebhookRequest,
   WebhookResponse,
 } from "../platform/types.ts";
+import type { TeleportRunArgs } from "../ui/TeleportDialog.tsx";
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
@@ -183,7 +184,7 @@ import {
 import { savePayload } from "./ssh.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
-import type { TeleportRequest } from "./teleport.ts";
+import { type TeleportOutcome, type TeleportRequest, teleportSession } from "./teleport.ts";
 import {
   isLocalUrl,
   type TerminalEnv,
@@ -2994,6 +2995,29 @@ export class AppStore {
     return ((type, payload) =>
       this.dispatch(hostId, type as HostCommandType, payload as never)) as TeleportRequest;
   }
+
+  /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
+  moveSession(
+    sourceHost: string,
+    sessionId: string,
+    args: TeleportRunArgs,
+  ): Promise<TeleportOutcome> {
+    return teleportSession({
+      source: this.teleportRequest(sourceHost),
+      target: this.teleportRequest(args.target),
+      sessionId,
+      repo: args.repo,
+      confirm: args.confirm,
+      onProgress: args.onProgress,
+      signal: args.signal,
+    });
+  }
+
+  /** The session a move made, opened on its new host. */
+  readonly openMovedSession = (hostId: string, sessionId: string): void => {
+    this.select(hostId, sessionId);
+    this.router.push({ name: "session", host: hostId, id: sessionId });
+  };
 
   setNotifyUpdates(enabled: boolean): void {
     this.platform.storage.setItem(NOTIFY_UPDATES_KEY, String(enabled));
