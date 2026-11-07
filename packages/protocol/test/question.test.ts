@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { PlainInfo } from "../src/index.ts";
+import { EventEnvelope, PlainInfo } from "../src/index.ts";
 import {
   type PlainQuestion,
   plainInfo,
@@ -242,5 +242,46 @@ describe("plain-info: the request in both languages, from one source", () => {
     );
     expect(pt({ toolName: "Read", input: {} }).sentence).toBe("Olhar os seus arquivos");
     expect(ask({ toolName: "Read", input: {} }).sentence).toBe("Look through your files");
+  });
+});
+
+describe("plain-info: the session summary lists a request with its wording (issue #88)", () => {
+  test("Given a summary whose pending request has a plain wording, Then parsing keeps it, and one without still parses", () => {
+    const plain = plainInfo({
+      toolName: "Write",
+      input: { file_path: "/w/Reports/a.md" },
+      fileExists: false,
+      risk: "low",
+    });
+    const summary = (pending: object) => ({
+      type: "session.summary",
+      sessionId: "s1",
+      name: null,
+      cwd: "/w",
+      status: "awaiting_permission",
+      pendingPermissions: [pending],
+      updatedAt: "2026-11-06T12:00:00.000Z",
+    });
+    const base = { requestId: "r1", toolName: "Write", createdAt: "2026-11-06T12:00:00.000Z" };
+    const withPlain = EventEnvelope.safeParse({
+      type: "event",
+      sessionId: "s1",
+      seq: 1,
+      ts: "2026-11-06T12:00:00.000Z",
+      event: summary({ ...base, plain }),
+    });
+    const parsed = withPlain.success ? withPlain.data.event : null;
+    const kept =
+      parsed && "pendingPermissions" in parsed ? parsed.pendingPermissions[0]?.plain : undefined;
+    expect(kept).toEqual(plain);
+    expect(
+      EventEnvelope.safeParse({
+        type: "event",
+        sessionId: "s1",
+        seq: 1,
+        ts: "2026-11-06T12:00:00.000Z",
+        event: summary(base),
+      }).success,
+    ).toBe(true);
   });
 });

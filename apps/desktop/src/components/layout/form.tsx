@@ -143,6 +143,8 @@ export function FormActions(
     /** The secondary button's label; the button only exists with `onCancel`. */
     cancel?: string;
     onCancel?(): void;
+    /** The buttons stay at the bottom of the page's scroller while the fields scroll under them. */
+    sticky?: boolean;
     /** More secondary buttons (a wizard's "Voltar"), after the cancel and before the primary. */
     extra?: ReactNode;
   }>,
@@ -153,7 +155,10 @@ export function FormActions(
   const t = useT();
   const reason = props.disabled && props.disabledReason ? props.disabledReason : null;
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      {...(props.sticky ? { "data-sticky-actions": "" } : {})}
+      className={cn("flex flex-col gap-2", props.sticky && "form-actions-sticky")}
+    >
       <div
         data-actions
         data-slot="form-actions"

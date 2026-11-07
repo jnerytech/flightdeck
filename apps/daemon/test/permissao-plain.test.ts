@@ -50,3 +50,26 @@ describe("permissao-plain: the request the host emits carries its plain wording"
     expect(JSON.stringify(plain)).not.toContain("npm");
   });
 });
+
+describe("permissao-plain: the summary lists the request with its plain wording (issue #88)", () => {
+  test("Given an announced request, Then the session's pending list carries the same plain as the event", async () => {
+    const { manager, store, project } = newManager();
+    const { sessionId } = await manager.create({ cwd: project, prompt: "[tool]" });
+    const pending = await waitFor(
+      () =>
+        manager.pendingPermissions(sessionId).length > 0
+          ? manager.pendingPermissions(sessionId)
+          : null,
+      { label: "the pending request" },
+    );
+    const event = (
+      store.db
+        .query("SELECT payload FROM events WHERE session_id = ? ORDER BY seq")
+        .all(sessionId) as Array<{ payload: string }>
+    )
+      .map((row) => JSON.parse(row.payload) as { type: string; plain?: PlainInfo })
+      .find((e) => e.type === "permission.requested");
+    expect(pending[0]?.plain).toEqual(event?.plain);
+    expect(pending[0]?.plain?.sentence.en).toBe(`Create the file fake.txt in ${basename(project)}`);
+  });
+});
