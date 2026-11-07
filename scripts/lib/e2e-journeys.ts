@@ -36,6 +36,7 @@ export const JOURNEYS: readonly string[] = [
   "board-landing",
   "sessions-no-host",
   "nova-sessao-alcance",
+  "tabs-por-host",
   "time-novo-alcance",
 ];
 

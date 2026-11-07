@@ -289,6 +289,25 @@ describe("teleport-receive: a received package does not outlive its time (#100)"
     ]);
   });
 
+  test("a claimed package leaves the inbox and its time stops; only its release removes it", async () => {
+    const { inbox, deps, timers } = setup();
+    await inbox.start();
+    const { id } = await inbox.receive(manifest());
+    await send(inbox, id, { transcript: TRANSCRIPT, code: CODE });
+    const claim = await inbox.claim(id);
+    await inbox.abort(id);
+    const kept = await readFile(claim.transcript, "utf8").catch(() => "missing");
+    const again = await reason(() => inbox.claim(id));
+    await claim.release();
+    expect([
+      claim.manifest.claudeSessionId,
+      kept,
+      timers[0]?.live,
+      again,
+      await readdir(deps.dir).catch(() => ["no folder"]),
+    ]).toEqual([ID, TRANSCRIPT, false, "teleport_not_found", []]);
+  });
+
   test("an abort, the daemon's start and its stop remove what was received", async () => {
     const { inbox, deps, timers } = setup();
     await inbox.start();

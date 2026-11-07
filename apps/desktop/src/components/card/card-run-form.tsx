@@ -1,7 +1,7 @@
 import type { Card, WorkflowInfo } from "@flightdeck/protocol";
 import { type ReactNode, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
-import { Field, NativeSelect } from "@/components/layout/form";
+import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
@@ -126,7 +126,8 @@ export function CardRunForm(
             </Field>
           ))}
         </div>
-        <div className="flex flex-wrap items-end gap-2">
+        {/* A row of its own reasons: each button that is off says why on its own line (#732). */}
+        <FieldRow align="end">
           {features.personas && (
             <PersonaPicker
               store={store}
@@ -185,7 +186,7 @@ export function CardRunForm(
           <Button variant="destructive" onClick={() => void askDiscard()}>
             {t("cardUi.discard")}
           </Button>
-        </div>
+        </FieldRow>
       </Panel>
       {draft && (
         <PrDescriptionDialog

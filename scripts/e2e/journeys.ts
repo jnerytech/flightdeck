@@ -1325,6 +1325,40 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await create.waitFor({ state: "detached", timeout: WAIT });
   },
 
+  // Issue #644: each host has its own tabs. The row shows the shared Sessions tab and the host in
+  // use; picking another host in the switcher swaps the row, and the first host's tabs are back
+  // when it is picked again.
+  "tabs-por-host": async (c) => {
+    await open(c, { name: "hub" });
+    const tabs = c.page
+      .getByRole("tablist", { name: c.t("tabs.list"), exact: true })
+      .getByRole("tab");
+    const count = (n: number, what: string) =>
+      waitFor(async () => (await tabs.count()) === n, what);
+    const switcher = (host: string) =>
+      c.page.getByRole("button", { name: c.t("shell.host", { host }) });
+    const sidebar = c.page.locator("aside").first();
+    await sidebar
+      .getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) })
+      .click({ modifiers: ["Control"] });
+    await count(2, "a aba compartilhada e a do alfa");
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    // One more tab of alfa's own (a new tab is the Overview of the host in use).
+    await c.page.keyboard.press("Control+t");
+    await c.page.keyboard.press("Escape");
+    await count(3, "a aba compartilhada e duas do alfa");
+    // Another host in the switcher: the row holds the shared tab and that host's own.
+    await switcher("alfa").click();
+    await c.page.getByRole("menuitemradio", { name: /beta/ }).click();
+    await switcher("beta").waitFor({ timeout: WAIT });
+    await count(2, "a aba compartilhada e a do beta");
+    // Back to the first: its two tabs are still there.
+    await switcher("beta").click();
+    await c.page.getByRole("menuitemradio", { name: /alfa/ }).click();
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    await count(3, "as duas abas do alfa voltaram");
+  },
+
   // Teams (#754): the form of a new team ends in Create and start, which must be in view and
   // clickable once the goal is written, in a phone-sized window and a desktop one. Nothing is
   // created: the demo keeps no team behind, so the other journeys' counts stay as they were.

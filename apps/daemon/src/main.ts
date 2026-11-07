@@ -157,6 +157,7 @@ import { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStatus } from "./telemetry/otlp-env.ts";
 import { startTelemetry } from "./telemetry/service.ts";
 import { TelemetryStore } from "./telemetry/store.ts";
+import { teleportImportDeps } from "./teleport/import.ts";
 import { TeleportPackages, teleportDeps } from "./teleport/package.ts";
 import { TeleportInbox } from "./teleport/receive.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
@@ -1378,6 +1379,13 @@ export async function startDaemon(
     ...(assistant ? { assistant } : {}),
     teleport,
     teleportInbox,
+    teleportImport: teleportImportDeps({
+      inbox: teleportInbox,
+      allowedRoots: config.allowedRoots,
+      historyRoots: config.history.roots,
+      indexer: history,
+      manager,
+    }),
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.

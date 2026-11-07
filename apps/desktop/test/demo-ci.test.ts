@@ -157,6 +157,7 @@ describe("demo-prints: axe e CI", () => {
       "board-landing",
       "sessions-no-host",
       "nova-sessao-alcance",
+      "tabs-por-host",
       "time-novo-alcance",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);

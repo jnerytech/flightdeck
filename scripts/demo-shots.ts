@@ -30,7 +30,7 @@ import {
 } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
-import { narrowSizes } from "./lib/shots-narrow.ts";
+import { narrowSizes, unknownNarrowShots } from "./lib/shots-narrow.ts";
 import { pickVariants } from "./lib/shots-variants.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
@@ -220,12 +220,6 @@ function showSection(title: RegExp): (page: Page) => Promise<void> {
 async function openHostSettings(page: Page): Promise<void> {
   await page.getByRole("tab", { name: /^(Configurações|Settings)$/ }).click();
   await page.waitForTimeout(300);
-}
-
-/** The names of the prints, in order (#677: the narrow list is checked against them). */
-export function shotNames(): string[] {
-  // The routes need ids; the names do not.
-  return shots({} as DemoIds).map((shot) => shot.name);
 }
 
 function shots(ids: DemoIds): Shot[] {
@@ -971,6 +965,11 @@ export async function takeShots(
   // All four pairs, or the one a CI job prints (SHOTS_THEME, SHOTS_LANG; #291), refused before
   // Chrome starts when the filter keeps none.
   const variants = pickVariants(process.env);
+  // #677: a typo in the narrow list would skip a page in silence.
+  const unknown = unknownNarrowShots(shots(ids).map((shot) => shot.name));
+  if (unknown.length > 0) {
+    throw new Error(`NARROW_SHOTS names no print of demo:shots: ${unknown.join(", ")}`);
+  }
   const browser = await launchFirst((attempt) =>
     chromium.launch({ ...attempt, headless: true, env }),
   );
