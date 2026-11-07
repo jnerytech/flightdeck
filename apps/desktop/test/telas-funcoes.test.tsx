@@ -87,6 +87,29 @@ describe("telas-funcoes: callbacks the Screens module wires", () => {
     expect(went).toEqual([{ name: "project", host: "h1", projectId: "p-api" }]);
   });
 
+  test("a project added from the overview routes to that project's page (#931)", async () => {
+    const { view, went, store } = setup({ name: "all-projects" }, (type) =>
+      type === "project.add" ? { id: "p-new", name: "new", path: "/work/new" } : null,
+    );
+    render(view());
+    await settle(() => screen.queryByRole("button", { name: "New project" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "New project" }));
+    });
+    const dialog = await screen.findByRole("dialog");
+    await act(async () => {
+      fireEvent.change(within(dialog).getByLabelText("Project folder"), {
+        target: { value: "/work/new" },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Add" }));
+    });
+    await settle(() => went.length === 1);
+    expect(went).toEqual([{ name: "project", host: "h1", projectId: "p-new" }]);
+    expect(store.getState().projects.h1?.some((p) => p.id === "p-new")).toBe(true);
+  });
+
   test("a usage row of the host page routes to the history of its folder and day", async () => {
     const { view, went } = setup({ name: "host", host: "h1" }, (type) =>
       type === "costs.summary"
