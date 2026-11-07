@@ -59,14 +59,21 @@ if (typeof command === "string") {
     return proc.status === 0 ? proc.stdout : null;
   };
   const prRun = (branch: string, dir: string) => {
-    const fields = "--json=databaseId,status,startedAt";
     const runs = gh(
-      ["run", "list", `--branch=${branch}`, "--event=pull_request", "--limit=1", fields],
+      [
+        "run",
+        "list",
+        `--branch=${branch}`,
+        "--event=pull_request",
+        "--limit=1",
+        "--json=databaseId,status,startedAt,url",
+      ],
       dir,
     );
-    const first = prRunFrom(runs, '{"jobs":[]}', Date.now());
-    if (!first?.inProgress) return first;
-    return prRunFrom(runs, gh(["run", "view", String(first.id), "--json=jobs"], dir), Date.now());
+    if (!runs || runs.trim() === "[]") return null;
+    // `--` ends the flags, so the branch is always the PR to view.
+    const pr = gh(["pr", "view", "--json=mergeable,statusCheckRollup", "--", branch], dir);
+    return prRunFrom(runs, pr, Date.now());
   };
   block("push-wait", pushWaitViolation(command, cwd, { ...repo, env: process.env, prRun }));
 }

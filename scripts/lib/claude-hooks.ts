@@ -706,27 +706,28 @@ export interface PushWaitDeps extends PushGuardDeps {
 }
 
 /**
- * A branch's latest PR run from `gh run list --json databaseId,status,startedAt` and, for one in
- * progress, `gh run view <id> --json jobs`; null when there is none or the output does not read.
+ * A branch's latest PR run from `gh run list --json databaseId,status,startedAt,url`, with its PR's
+ * conflict and failed checks from `gh pr view --json mergeable,statusCheckRollup`; null when there
+ * is none or the output does not read.
  */
-export function prRunFrom(runs: string | null, jobs: string | null, now: number): PrRun | null {
+export function prRunFrom(runs: string | null, pr: string | null, now: number): PrRun | null {
   try {
     const latest = (JSON.parse(runs ?? "") as Array<Record<string, unknown>>)[0];
     if (!latest || typeof latest.databaseId !== "number") return null;
     const started = Date.parse(String(latest.startedAt));
     if (Number.isNaN(started)) return null;
-    const inProgress = latest.status !== "completed";
-    const failed =
-      inProgress &&
-      (JSON.parse(jobs ?? "") as { jobs: Array<{ conclusion: string }> }).jobs.some(
-        (job) => job.conclusion === "failure",
-      );
+    const view = JSON.parse(pr ?? "") as {
+      mergeable?: string;
+      statusCheckRollup?: Array<{ conclusion?: string; state?: string }>;
+    };
     return {
       id: latest.databaseId,
-      url: "",
-      inProgress,
-      failed,
-      conflicting: false,
+      url: String(latest.url ?? ""),
+      inProgress: latest.status !== "completed",
+      failed: (view.statusCheckRollup ?? []).some((check) =>
+        FAILED_CHECK.has(check.conclusion ?? check.state ?? ""),
+      ),
+      conflicting: view.mergeable === "CONFLICTING",
       minutes: Math.floor((now - started) / 60_000),
     };
   } catch {
@@ -734,14 +735,24 @@ export function prRunFrom(runs: string | null, jobs: string | null, now: number)
   }
 }
 
+/** The check conclusions (a check run's) and states (a commit status's) that mean it failed. */
+const FAILED_CHECK = new Set([
+  "FAILURE",
+  "TIMED_OUT",
+  "STARTUP_FAILURE",
+  "ACTION_REQUIRED",
+  "ERROR",
+]);
+
 /** How young a green PR run must be for a push to wait for it (#741). */
 export const PUSH_WAIT_MINUTES = 20;
 
 /**
  * Why a push would cancel a PR run that is still green (#741), or null. A new push cancels the
  * branch's run in progress (`cancel-in-progress`); 10% of the PR runner-minutes went to runs a push
- * cancelled while still green. A red run (the push is a fix), an ended or older run, no run, the
- * coordinator and `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push pass.
+ * cancelled while still green. A PR with a failed check or a conflict (the push is a fix), an
+ * ended or older run, no run, a release-v* branch, the coordinator and
+ * `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push pass.
  */
 export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDeps): string | null {
   if (deps.env.FLIGHTDECK_COORDINATOR) return null;
@@ -751,10 +762,13 @@ export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDe
     const segment = command.slice(call.start, call.end);
     if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) continue;
     const branch = deps.git(["symbolic-ref", "--short", "HEAD"], call.dir)?.trim();
-    if (!branch) continue;
+    // A release never waits (#756 review).
+    if (!branch || branch.startsWith("release-v")) continue;
     const run = deps.prRun(branch, call.dir);
-    if (!run?.inProgress || run.failed || run.minutes >= PUSH_WAIT_MINUTES) continue;
-    return `a push now cancels CI run ${run.id} on this branch's PR: ${run.minutes} min in, with no failure yet (#741). Batch the next commits with this one and push once the run ends, or put FLIGHTDECK_PUSH_NOW="<reason>" in front of the push.`;
+    // A failed check or a conflict makes the push a fix that must go out (#756 review).
+    if (!run?.inProgress || run.failed || run.conflicting) continue;
+    if (run.minutes >= PUSH_WAIT_MINUTES) continue;
+    return `a push now cancels CI run ${run.id} on this branch's PR, ${run.minutes} min old with no failed check (#741): ${run.url}. Batch the next commits with this one and push once the run ends, or push now with:\n  FLIGHTDECK_PUSH_NOW="<reason>" ${segment.trim()}`;
   }
   return null;
 }
