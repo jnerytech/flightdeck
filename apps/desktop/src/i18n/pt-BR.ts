@@ -55,6 +55,25 @@ export const ptBR = {
     ready: "O Início está pronto.",
     updated: "Atualizado {ago}",
     stale: "Mostrando os últimos números de {hosts}: não foi possível atualizar. Atualizado {ago}.",
+    leaders: "Para onde foram os tokens",
+    leadersHint:
+      "Parte dos tokens dos últimos 7 dias. A tendência compara os dias 1 a 3 com os dias 4 a 6: hoje ainda não acabou.",
+    leadersBy: "Agrupar os tokens por",
+    byProject: "Projetos",
+    byModel: "Modelos",
+    byPersona: "Personas",
+    noPersona: "Sem persona",
+    others: "{n} outros",
+    tokensOf: "{n} tokens",
+    underOne: "<1%",
+    trendUp: "Subiu {n}%",
+    trendDown: "Caiu {n}%",
+    trendFlat: "Estável",
+    trendNew: "Novo",
+    openProject: "Abrir os custos de {name}",
+    noTokens: "Nenhum token nos últimos 7 dias.",
+    leadersUnavailable:
+      "Não foi possível ler para onde foram os tokens. O Início tenta de novo em um minuto.",
   },
   hosts: {
     status: {
