@@ -25,7 +25,11 @@ const reading = (utilization: number, resetsAt: number, status = "allowed") => (
 
 /** Three online hosts on one account; `answer` says what each one reports on a poll. */
 function hosts(answer: (host: string, poll: number) => unknown) {
-  const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+  // A clock of its own: a reset in the test is always in the future, whatever day this runs.
+  const store = new AppStore(memoryPlatform(false, "en").platform, {
+    baseDelayMs: 600_000,
+    now: () => RESET - 24 * 3_600_000,
+  });
   (store as unknown as { update(patch: object): void }).update({
     hosts: ["a", "b", "c"].map((id) => ({
       id,
