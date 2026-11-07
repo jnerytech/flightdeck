@@ -542,17 +542,18 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   // A pick belongs to the session and the mode it was made over: another session, or a new mode
   // from this one, shows its own.
   const owner = `${props.scrollKey ?? ""}|${start ?? ""}`;
-  const [picked, setPicked] = useState<{ owner: string; mode: PermissionMode } | null>(null);
-  const mode = picked?.owner === owner ? picked.mode : start;
-  const setMode = (next: PermissionMode) => setPicked({ owner, mode: next });
+  const [picks, setPicks] = useState<Readonly<Record<string, PermissionMode>>>({});
+  const mode = picks[owner] ?? start;
+  const setMode = (next: PermissionMode) => setPicks((all) => ({ ...all, [owner]: next }));
   const [bypassAsk, setBypassAsk] = useState(false);
   const opencode = props.runtime === "opencode";
   const fork = opencode ? undefined : props.fork;
   // OpenCode has no accept-edits mode: the menu lists the others and the numbers follow.
-  // An unknown start blocks nothing here: the host refuses a looser mode itself.
+  // An unknown start blocks nothing as looser (the loosest mode is the base): the host refuses a
+  // looser mode itself, and the menu must not claim a start it does not know.
   const modeMenu = modeRows({
     current: mode,
-    start: start ?? "default",
+    start: start ?? "bypassPermissions",
     bypassAllowed: Boolean(props.bypass),
   }).filter((row) => !opencode || row.mode !== "acceptEdits");
   /** A mode from the menu or Shift+Tab: bypass asks first, any other changes at once. */
