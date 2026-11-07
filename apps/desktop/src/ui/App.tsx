@@ -240,6 +240,7 @@ export function runPaletteTarget(
       void store.openTerminal(target.hostId);
       return;
     case "session-view":
+      store.sessionViews.select(target.view);
       return;
     case "toggle-theme":
       store.theme.toggle();

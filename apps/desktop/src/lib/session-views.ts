@@ -1,3 +1,5 @@
+import type { Key } from "../i18n/index.ts";
+
 /** The views of a session's page, in the order the keys and the palette number them. */
 export const SESSION_VIEWS = [
   "conversation",
@@ -8,6 +10,16 @@ export const SESSION_VIEWS = [
   "messages",
 ] as const;
 export type SessionView = (typeof SESSION_VIEWS)[number];
+
+/** The dictionary key that names each view. */
+export const VIEW_LABEL: Record<SessionView, Key> = {
+  conversation: "changes.conversationTab",
+  changes: "changes.tab",
+  files: "files.tab",
+  time: "telemetry.tab",
+  trace: "trace.tab",
+  messages: "sessionMessages.tab",
+};
 
 /** What the page on screen offers: which views it has, and how to show one. */
 export interface SessionViewsEntry {

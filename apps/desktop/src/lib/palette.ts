@@ -7,7 +7,7 @@ import { hostStatusView } from "./host-status.ts";
 import { basename, isInside } from "./paths.ts";
 import type { Route } from "./router.ts";
 import { sessionLabel } from "./session-label.ts";
-import type { SessionView } from "./session-views.ts";
+import { type SessionView, VIEW_LABEL } from "./session-views.ts";
 import { keysLabel, type ShortcutAction, shortcutOf } from "./shortcuts.ts";
 import type { TerminalTarget } from "./terminal.ts";
 import { hasFeature } from "./version.ts";
@@ -367,6 +367,16 @@ export function paletteSections(
   };
   const oldestActions = decideActions();
   const actions = [
+    // First: the view of the page on screen is what the person is most likely to want from here.
+    ...(options.views ?? []).map((view, i) =>
+      action(
+        `view:${view}`,
+        t("palette.showView", { view: t(VIEW_LABEL[view]) }),
+        { kind: "session-view", view },
+        undefined,
+        `Alt+${i + 1}`,
+      ),
+    ),
     ...online.map((host) =>
       action(`new:${host.id}`, t("palette.newSessionIn", { host: host.name }), {
         kind: "new-session",
