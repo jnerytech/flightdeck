@@ -2632,7 +2632,10 @@ do app, dos cards e dos workflows, subagentes incluídos.
   - No primeiro boot desta versão, o daemon lê em segundo plano os transcripts que já existem e
     continua respondendo enquanto isso.
 - **Período:** hoje, 7 dias, 30 dias, mês atual ou um intervalo, sempre no fuso do host.
-- **Filtros:** host, projeto, modelo e origem (terminal, app, card, workflow, subagent).
+- **Dados de:** todos os hosts, um host ou um projeto. O grupo **Projetos** do menu lista os
+  projetos do período, com o nome que têm no Início; a escolha é a mesma que o Início e as Sessões
+  guardam (#126). Um alerta de orçamento ou um cartão do Início abre um projeto só naquela visita.
+- **Filtros:** modelo e origem (terminal, app, card, workflow, subagent).
 - **O que aparece:**
   - o custo estimado, os tokens e a economia do cache (quanto o cache read custou a menos do que
     o mesmo volume como input normal);

@@ -31,6 +31,7 @@ export const en: Dictionary = {
   scope: {
     menu: "Data from {scope}",
     all: "All hosts",
+    projects: "Projects",
     showing: "Showing {scope}",
     offline: "{host} is offline. Its numbers come back when it reconnects.",
     showAll: "Show all hosts",
@@ -4309,8 +4310,6 @@ export const en: Dictionary = {
     quotaPick: "Pick a host to see its quota",
     from: "From",
     to: "To",
-    project: "Project",
-    allProjects: "All projects",
     model: "Model",
     allModels: "All models",
     origin: "Origin",

@@ -1,11 +1,13 @@
 import { ChevronsUpDown, Server } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -20,19 +22,34 @@ export function ScopeMenu(
   props: Readonly<{
     store: AppStore;
     hosts: readonly { id: string; name: string }[];
+    /**
+     * The projects a screen can show one of (slice 4), labelled as everywhere. A screen that passes
+     * none does not read projects yet: a project scope there reads, and shows, every host.
+     */
+    projects?: readonly { key: string; label: string }[];
     scope: DataScope;
     /** Called when the person picks from the menu, so a screen can end a route's own choice. */
     onPick?(): void;
   }>,
 ) {
-  const { store, hosts, scope } = props;
+  const { store, hosts, projects, scope } = props;
   const { t } = store.i18n;
   const [said, setSaid] = useState("");
-  const nameOf = (value: DataScope) =>
-    value.kind === "host"
-      ? (hosts.find((host) => host.id === value.hostId)?.name ?? t("scope.all"))
-      : t("scope.all");
+  const projectsId = useId();
+  const nameOf = (value: DataScope) => {
+    if (value.kind === "host") {
+      return hosts.find((host) => host.id === value.hostId)?.name ?? t("scope.all");
+    }
+    if (value.kind === "project" && projects) {
+      return (
+        projects.find((project) => project.key === value.projectKey)?.label ?? value.projectKey
+      );
+    }
+    return t("scope.all");
+  };
   const label = nameOf(scope);
+  // Where projects are not read, a project scope is every host, and the menu says so.
+  const value = scope.kind === "project" && !projects ? scopeValue(ALL_SCOPE) : scopeValue(scope);
   const choose = (value: string) => {
     const next = scopeOfValue(value);
     store.dataScope.set(next);
@@ -50,7 +67,7 @@ export function ScopeMenu(
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuRadioGroup value={scopeValue(scope)} onValueChange={choose}>
+          <DropdownMenuRadioGroup value={value} onValueChange={choose}>
             <DropdownMenuRadioItem value={scopeValue(ALL_SCOPE)}>
               {t("scope.all")}
             </DropdownMenuRadioItem>
@@ -63,6 +80,26 @@ export function ScopeMenu(
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
+          {projects && projects.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={value}
+                onValueChange={choose}
+                aria-labelledby={projectsId}
+              >
+                <DropdownMenuLabel id={projectsId}>{t("scope.projects")}</DropdownMenuLabel>
+                {projects.map((project) => (
+                  <DropdownMenuRadioItem
+                    key={project.key}
+                    value={scopeValue({ kind: "project", projectKey: project.key })}
+                  >
+                    {project.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       {/* Not role=status: Home's own status region is the one that says the screen's state (#212). */}

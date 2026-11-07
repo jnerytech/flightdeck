@@ -33,6 +33,7 @@ export const ptBR = {
   scope: {
     menu: "Dados de {scope}",
     all: "Todos os hosts",
+    projects: "Projetos",
     showing: "Mostrando {scope}",
     offline: "{host} está offline. Os números voltam quando ele reconectar.",
     showAll: "Mostrar todos os hosts",
@@ -4317,8 +4318,6 @@ export const ptBR = {
     quotaPick: "Escolha um host para ver a cota",
     from: "De",
     to: "Até",
-    project: "Projeto",
-    allProjects: "Todos os projetos",
     model: "Modelo",
     allModels: "Todos os modelos",
     origin: "Origem",
