@@ -15,6 +15,7 @@ import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
   acoesAction,
   DANGER_SESSION,
+  DEMO_CLOSED_TEAM,
   OVERFLOW_VIEWPORTS,
   REACH_VIEWPORTS,
   VIEWPORTS,
@@ -1418,7 +1419,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
 
   // Teams (#754): the form of a new team ends in Create and start, which must be in view and
   // clickable once the goal is written, in a phone-sized window and a desktop one. Nothing is
-  // created: the demo keeps no team behind, so the other journeys' counts stay as they were.
+  // created, so the other journeys' counts stay as they were (the demo's one closed team aside).
   "time-novo-alcance": async (c) => {
     const create = c.page.getByRole("button", { name: c.t("teamsUi.create"), exact: true });
     const goal = c.page.getByLabel(c.t("teamsUi.goal"), { exact: true });
@@ -1861,6 +1862,28 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one
   // host, the choice is kept when the page is opened again, a host that is offline says so and
   // offers all hosts, and the menu is in reach in a phone-sized window and a desktop one.
+  // Issue #934: a closed team is deleted from its card's menu after a confirmation, the card goes,
+  // and the sessions of its members are still there. The demo keeps one closed team for it.
+  "time-apagar": async (c) => {
+    await open(c, { name: "teams", host: ALFA });
+    const row = c.page.getByRole("listitem", {
+      name: c.t("teamsUi.row", { name: DEMO_CLOSED_TEAM }),
+    });
+    await row.waitFor({ timeout: WAIT });
+    await row
+      .getByRole("button", { name: c.t("teamsUi.menu", { name: DEMO_CLOSED_TEAM }) })
+      .click();
+    await c.page.getByRole("menuitem", { name: c.t("teamsUi.delete"), exact: true }).click();
+    await c.page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: c.t("teamsUi.delete"), exact: true })
+      .click();
+    await row.waitFor({ state: "detached", timeout: WAIT });
+    // The coordinator's session is still there, and open.
+    await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+    await c.page.getByLabel(c.t("session.message"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
   "escopo-dados": async (c) => {
     const menuOf = (scope: string) =>
       c.page.getByRole("button", { name: c.t("scope.menu", { scope }), exact: true });

@@ -47,6 +47,7 @@ export const JOURNEYS: readonly string[] = [
   "sessao-vistas",
   "ranking-home",
   "escopo-dados",
+  "time-apagar",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
@@ -94,3 +95,6 @@ export const OVERFLOW_VIEWPORTS: ReadonlyArray<{ width: number; height: number }
 
 /** The name of the demo session that holds the high-risk request (the issue-e-risco journey). */
 export const DANGER_SESSION = "Limpar a pasta build";
+
+/** The closed team the demo keeps for the journey that deletes it (issue #934). */
+export const DEMO_CLOSED_TEAM = "closed-crew";
