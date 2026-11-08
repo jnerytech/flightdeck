@@ -50,7 +50,6 @@ import {
   hubGroups,
   hubRows,
   hubView,
-  isOver,
   isSearching,
   rowStatus,
   sessionLineText,
@@ -736,13 +735,14 @@ export function SessionsHub(
                       const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
                       const line = sessionLineText(row.summary, store.now(), t);
                       const said = rowStatus(row, store.now(), t);
-                      // #1132: the row's state in words. A live row in the compact list shows the
-                      // word where its time was (the time stays in the tooltip): the row has no
-                      // room for one more item. The summary carries the word and its detail.
+                      // #1132: the row's state in words. A working or waiting row in the compact
+                      // list shows the word where its time was (the time stays in the tooltip):
+                      // the row has no room for one more item. An idle or past row keeps its time,
+                      // which says more there. The summary carries the word and its detail.
                       const showWord =
                         props.density === "compact" &&
                         row.origin !== "history" &&
-                        !isOver(row.state);
+                        (row.state === "running" || row.state === "needs_you");
                       const summaryText = [
                         [said.word, said.detail].filter(Boolean).join(" · "),
                         line,
