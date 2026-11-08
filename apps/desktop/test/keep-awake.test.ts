@@ -21,6 +21,22 @@ describe("keep-awake: a lock held for the app's life (#939)", () => {
     expect([taken, names, state]).toEqual([true, ["flightdeck-awake"], "held"]);
   });
 
+  test("a lock the webview refuses is no error the app sees", async () => {
+    let refused: Promise<unknown> = Promise.resolve();
+    const locks: Locks = {
+      request: (_name, _callback) => {
+        refused = Promise.reject(new Error("locks refused"));
+        return refused;
+      },
+    };
+    const taken = holdAwake(locks);
+    const unhandled = await refused.then(
+      () => "kept",
+      () => "caught",
+    );
+    expect([taken, unhandled]).toEqual([true, "caught"]);
+  });
+
   test("a webview without Web Locks is left as it is", () => {
     expect(holdAwake(undefined)).toBe(false);
   });
