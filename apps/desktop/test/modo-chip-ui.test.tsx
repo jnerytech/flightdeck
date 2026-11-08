@@ -5,7 +5,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { SessionView } = await import("../src/ui/SessionView.tsx");
-const { emptySession } = await import("../src/lib/session-state.ts");
+const { applyEnvelope, emptySession } = await import("../src/lib/session-state.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 
@@ -369,5 +369,45 @@ describe("modo-chip: the chip shows the session's real mode (#935)", () => {
       true,
       true,
     ]);
+  });
+});
+
+describe("modo-chip: a mode the session reports moves the chip (#935)", () => {
+  test("after session.mode the chip shows the reported mode, while the start mode still limits the menu", async () => {
+    const at = (seq: number, event: object) =>
+      ({ type: "event", sessionId: "s1", seq, ts: "", event }) as never;
+    let state = applyEnvelope(
+      emptySession(),
+      at(1, { type: "session.created", cwd: "/w", name: null, permissionMode: "default" }),
+    );
+    state = applyEnvelope(state, at(2, { type: "session.mode", permissionMode: "plan" }));
+    const t = translator("en");
+    render(
+      <TContext.Provider value={t}>
+        <SessionView
+          title="refactor"
+          t={t}
+          scrollKey="h/s1"
+          session={{ ...state, status: "idle" }}
+          actions={{
+            send: async () => {},
+            interrupt: async () => {},
+            close: async () => {},
+            resume: async () => {},
+            respond: async () => {},
+            setMode: async () => {},
+          }}
+          settings
+          runtime="claude"
+        />
+      </TContext.Provider>,
+    );
+    const label = chip()?.getAttribute("aria-label") ?? "";
+    await open();
+    expect([
+      label,
+      row(/^Default/)?.getAttribute("aria-disabled") ?? "false",
+      row(/^Accept edits/)?.getAttribute("aria-disabled") ?? "false",
+    ]).toEqual(["Permission mode: Plan", "false", "true"]);
   });
 });

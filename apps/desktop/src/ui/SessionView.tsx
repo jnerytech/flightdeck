@@ -539,11 +539,13 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const [picking, setPicking] = useState(false);
   // The session's own mode, null until it says (#935): never a guess of Default.
   const start = session.permissionMode ?? null;
+  // The mode it runs in now: the last one it reported, else the one it opened with.
+  const current = session.mode ?? start;
   // A pick belongs to the session and the mode it was made over: another session, or a new mode
   // from this one, shows its own.
-  const owner = `${props.scrollKey ?? ""}|${start ?? ""}`;
+  const owner = `${props.scrollKey ?? ""}|${current ?? ""}`;
   const [picks, setPicks] = useState<Readonly<Record<string, PermissionMode>>>({});
-  const mode = picks[owner] ?? start;
+  const mode = picks[owner] ?? current;
   const setMode = (next: PermissionMode) => setPicks((all) => ({ ...all, [owner]: next }));
   const [bypassAsk, setBypassAsk] = useState(false);
   const opencode = props.runtime === "opencode";
