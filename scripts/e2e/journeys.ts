@@ -830,6 +830,45 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await on.first().waitFor({ timeout: WAIT });
   },
 
+  // Workflow templates (issue #79): Add from a template lists the templates, a template opens with
+  // where to commit it and the file itself, Copy puts the file on the clipboard and says so, and
+  // Back returns to the list. Nothing is written to the project.
+  "workflow-templates": async (c) => {
+    await c.page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await open(c, {
+      name: "workflows",
+      host: ALFA,
+      projectId: c.ids.project,
+      projectName: c.ids.projectName,
+    });
+    await c.page
+      .getByRole("button", { name: c.t("workflowsUi.templates.open"), exact: true })
+      .click();
+    const dialog = c.page.getByRole("dialog", { name: c.t("workflowsUi.templates.title") });
+    await dialog.waitFor({ timeout: WAIT });
+    // The first template of the list, whatever its name: "Show <name>" in the language of the app.
+    const show = c.t("workflowsUi.templates.show", { name: "\u0000" }).split("\u0000")[0] ?? "";
+    const templates = dialog.getByRole("button").filter({ hasText: show });
+    await templates.first().click();
+    const copy = dialog.getByRole("button", {
+      name: c.t("workflowsUi.templates.copy"),
+      exact: true,
+    });
+    await copy.waitFor({ timeout: WAIT });
+    await copy.click();
+    await dialog
+      .getByText(c.t("workflowsUi.templates.copied"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    const copied = await c.page.evaluate(() => navigator.clipboard.readText());
+    if (!copied.includes("steps")) {
+      throw new Error("workflow-templates: the clipboard has no workflow file");
+    }
+    await dialog
+      .getByRole("button", { name: c.t("workflowsUi.templates.back"), exact: true })
+      .click();
+    await templates.first().waitFor({ timeout: WAIT });
+  },
+
   // 25. The Files tab of a session opens a file read only; when the session rewrites it (a second
   // window sends the message) the open file offers its diff, live, and the diff toggles back (#506).
   // The demo keeps its state: after the first run README.md is already changed, so only a fresh
