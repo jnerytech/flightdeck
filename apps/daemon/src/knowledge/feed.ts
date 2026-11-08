@@ -1,4 +1,4 @@
-import type { KnowledgeEntry } from "@flightdeck/protocol";
+import type { KnowledgeEntry, KnowledgeIndexResult } from "@flightdeck/protocol";
 
 /**
  * Issue #76: the index of a project's library that a session is given in its system prompt. Only
@@ -6,14 +6,7 @@ import type { KnowledgeEntry } from "@flightdeck/protocol";
  * unclassified or obsolete document is never given. The text is the repository's own, so each
  * title is cut to one short plain line and the agent is told they are data, not instructions.
  */
-export interface KnowledgeFeed {
-  /** Markdown for the system prompt; empty when there is nothing to give. */
-  text: string;
-  /** Documents named in the text. */
-  fed: number;
-  /** Some documents that qualify were left out to stay under the cap. */
-  truncated: boolean;
-}
+export type KnowledgeFeed = KnowledgeIndexResult;
 
 /** The most the index takes in the system prompt, in bytes. */
 export const FEED_MAX_BYTES = 4096;

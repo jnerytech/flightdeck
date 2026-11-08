@@ -17,6 +17,7 @@ import {
   type HarnessStack,
   type HostRuntime,
   type KeepAwakeStatus,
+  type KnowledgeIndexResult,
   type KnowledgeListResult,
   MIN_PROTOCOL_VERSION,
   Pong,
@@ -178,6 +179,8 @@ export interface ServerOptions {
   harnessStack?: (path: string) => Promise<HarnessStack>;
   /** Issue #76: the library of documents of a project, read only. */
   knowledge?: (path: string) => Promise<KnowledgeListResult>;
+  /** #76: the index of the project's current documents for a session's system prompt. */
+  knowledgeFeed?: (path: string) => Promise<KnowledgeIndexResult>;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
   projectTrust?: {
@@ -1133,6 +1136,9 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.knowledge) throw featureOff("knowledge");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.knowledge(path));
+      }
+      case "knowledge.index": {
+        return ok(command.type, { text: "", fed: 0, truncated: false });
       }
       case "project.harness.stack": {
         if (!opts.harnessStack) throw featureOff("harnessStack");
