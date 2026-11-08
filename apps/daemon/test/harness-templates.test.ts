@@ -106,7 +106,8 @@ describe("harness-templates: a project's Markdown harness shared as a host templ
     const titles = await templates.list().catch(() => []);
     expect([secretTitle, listed, titles.map((t) => t.title)]).toEqual([
       "harness_template_secret",
-      "ok:ok",
+      // Listing did not throw on the broken meta; the id stands in for its title.
+      "ok",
       ["ok"],
     ]);
   });
