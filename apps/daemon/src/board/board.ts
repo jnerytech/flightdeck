@@ -413,7 +413,7 @@ export class Board {
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
   private readonly running = new Set<string>();
   /** Workflow turns waiting for the plan quota to free up. */
-  private quotaWaiters: Array<() => void> = [];
+  private readonly quotaWaiters: Array<() => void> = [];
   private readonly unwatchQuota: () => void;
   private readonly unwatchBudgets: () => void;
   /** Review comments of each card's open PR, from the last poll (phase 11). */

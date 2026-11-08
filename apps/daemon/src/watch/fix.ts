@@ -220,7 +220,8 @@ export class PrFixer {
    */
   async resolveHeld(cardId: string, roundId: string, action: "push" | "drop"): Promise<void> {
     const { db, board } = this.opts;
-    const card = board.getCard(cardId);
+    // An unknown card is refused (card_not_found) before its rounds are read.
+    board.getCard(cardId);
     const last = db
       .query<RoundRow, [string]>(
         "SELECT * FROM pr_watch_rounds WHERE card_id = ? ORDER BY n DESC LIMIT 1",
