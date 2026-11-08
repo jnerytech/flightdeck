@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { open } from "node:fs/promises";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
@@ -117,6 +117,28 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       "c.txt": sha("new\n"),
     });
   });
+
+  test.skipIf(!posix)(
+    "the changes name the commit hooks that will run: in the hooks folder, core.hooksPath, or a linked worktree's",
+    async () => {
+      const own = setup({ hook: "#!/bin/sh\nexit 0\n" });
+      const husky = setup();
+      mkdirSync(join(husky.repo, ".husky"));
+      writeFileSync(join(husky.repo, ".husky", "commit-msg"), "#!/bin/sh\nexit 0\n");
+      chmodSync(join(husky.repo, ".husky", "commit-msg"), 0o755);
+      writeFileSync(join(husky.repo, ".husky", "post-commit"), "not executable\n");
+      git(husky.repo, "config", "core.hooksPath", ".husky");
+      const linked = setup({ hook: "#!/bin/sh\nexit 0\n" });
+      const worktree = join(linked.repo, "..", "linked-worktree");
+      git(linked.repo, "worktree", "add", "-q", "-b", "side", worktree);
+      insertSession(linked.ctx.store.db, "m-2", "s-2", worktree);
+      expect([
+        (await own.changes.get(TARGET)).hooks,
+        (await husky.changes.get(TARGET)).hooks,
+        (await linked.changes.get("session:s-2")).hooks,
+      ]).toEqual([["pre-commit"], ["commit-msg"], ["pre-commit"]]);
+    },
+  );
 
   test("the chosen files are committed on a new branch, the rest stay as they were", async () => {
     const { repo, changes, commits } = setup();
