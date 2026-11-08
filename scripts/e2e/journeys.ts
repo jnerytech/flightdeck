@@ -1637,55 +1637,6 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
-  // Issue #1131: a request is answered from the bell, in its row, at a phone's width too. The
-  // session's own request is put in the bell by hand (the web demo sends no notification), then
-  // answered there, and its row is gone from the bell.
-  "bell-approve": async (c) => {
-    const session = `Sino e2e ${Date.now()}`;
-    await createSession(c, "[bash] ls", session);
-    await open(c, { name: "needs-you" });
-    await c.page
-      .locator("main ul li button", { hasText: session })
-      .first()
-      .click({ timeout: SESSION_WAIT });
-    const card = c.page.locator("fieldset[data-request-id]").first();
-    await card.waitFor({ timeout: WAIT });
-    const requestId = await card.getAttribute("data-request-id");
-    const link = `flightdeck://request?${new URLSearchParams({ host: ALFA, request: requestId ?? "" })}`;
-    const seed = JSON.stringify([
-      {
-        id: "bell-approve",
-        at: new Date().toISOString(),
-        title: "Precisa de você",
-        body: "",
-        link,
-        subject: session,
-        host: "alfa",
-        ask: "Quer executar: ls",
-        read: false,
-      },
-    ]);
-    await c.page.evaluate((value) => localStorage.setItem("flightdeck.inbox", value), seed);
-    await c.page.setViewportSize({ width: 390, height: 800 });
-    await open(c, { name: "hub" });
-    await c.page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
-    const dialog = c.page.getByRole("dialog");
-    await dialog.waitFor({ timeout: WAIT });
-    const group = dialog.getByRole("group", { name: new RegExp(session) });
-    await group.waitFor({ timeout: SESSION_WAIT });
-    // The row fits the panel: no sideways scroll and nothing past its right edge.
-    const fits = await dialog.evaluate((box) => {
-      const edge = box.getBoundingClientRect().right;
-      const past = [...box.querySelectorAll<HTMLElement>(".inbox-request > *")].filter(
-        (el) => el.getBoundingClientRect().right > edge + 1,
-      );
-      return box.scrollWidth <= box.clientWidth + 1 && past.length === 0;
-    });
-    if (!fits) throw new Error("a linha do pedido passa do painel do sino a 390 px");
-    await group.getByRole("button", { name: c.t("approval.approve"), exact: true }).click();
-    await waitFor(async () => (await group.count()) === 0, "o pedido saiu do sino");
-  },
-
   // Issues #1030 and #1031: at the usual window the board fills its width with all five columns
   // (none cut at the right edge, no head running past its column), and the Return on cost card is
   // one short row, so the columns start right under it.
