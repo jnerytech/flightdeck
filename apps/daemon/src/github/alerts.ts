@@ -26,23 +26,37 @@ const RANK: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3
 /** A code-scanning rule with no security level only has the tool's own word for it. */
 const RULE_LEVEL: Record<string, Severity> = { error: "high", warning: "medium", note: "low" };
 
-/** What a person must not be shown, or a prompt carry: controls and invisible formatting. */
-const NOT_SHOWN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+/**
+ * What a person must not be shown, or a prompt carry: controls, invisible formatting, private-use,
+ * unassigned and lone-surrogate code points, variation selectors and the blanks that look empty.
+ */
+const NOT_SHOWN = /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}\p{Zl}\p{Zp}\u00A0\u3164\u2800]|[\uFE00-\uFE0F]/u;
 
+/** A line that reads as a fence or a heading: it could close the block the alert sits in. */
+const FENCE_LINE = /^\s*(?:-{3,}|`{3,}|~{3,}|#)/;
 const record = (value: unknown): Record<string, unknown> | null =>
   typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
 
-/** A string with its controls and invisible characters gone (the newlines too, unless kept), cut to `max`. */
+/**
+ * A string with its controls and invisible characters gone (the newlines too, unless kept), cut to
+ * `max`. Third-party text sits between markers in a prompt, so a run of three dashes is shortened
+ * and, with the lines kept, a line that looks like a fence or a heading is dropped.
+ */
 function clean(value: unknown, max: number, keepLines = false): string {
   if (typeof value !== "string") return "";
   const kept = keepLines ? value.replace(/\r\n?/g, "\n") : value.replace(/\s+/g, " ");
-  return [...kept]
+  const visible = [...kept]
     .filter((char) => (keepLines && char === "\n") || !NOT_SHOWN.test(char))
-    .join("")
-    .trim()
-    .slice(0, max);
+    .join("");
+  const lines = keepLines
+    ? visible
+        .split("\n")
+        .filter((line) => !FENCE_LINE.test(line))
+        .join("\n")
+    : visible;
+  return [...lines.replace(/-{3,}/g, "--").trim()].slice(0, max).join("");
 }
 
 const severityOf = (level: unknown, fallback?: unknown): Severity => {
@@ -67,10 +81,13 @@ function entry(
   lines: string[],
 ): RepoAlert {
   const label = kind === "code-scanning" ? "Code scanning" : "Dependabot";
-  const text = [`${label} alert #${number} (${severity}): ${title}`, ...lines]
-    .filter((line) => line !== "")
-    .join("\n")
-    .slice(0, TEXT_MAX);
+  const text = [
+    ...[`${label} alert #${number} (${severity}): ${title}`, ...lines]
+      .filter((line) => line !== "")
+      .join("\n"),
+  ]
+    .slice(0, TEXT_MAX)
+    .join("");
   return { id: `${kind}:${number}`, kind, number, severity, title, location, url, text };
 }
 
