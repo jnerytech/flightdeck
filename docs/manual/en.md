@@ -1115,8 +1115,10 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   host cannot discard a card, the notice says it may be partly cleaned up. Cards that never started are deleted; started ones are discarded.
   Cancelling leaves everything as it was.
 - **Column width.** The handle at the right edge of a column (drag it, or Tab to it and press the
-  arrows, 20 px a step, or Home and End; only the last column's handle takes a Tab stop) sets one width for all the columns, between 220 and 520 px (260 by
-  default), and it is kept on this computer. The board scrolls inside itself, never the page.
+  arrows, 20 px a step, or Home and End; only the last column's handle takes a Tab stop) sets one width for all the columns, between 180 and 520 px, and it is kept on this computer.
+  Until you set one, the five columns share the width of the window (at 1280 px each is about 187 px,
+  and wider windows make them wider), so none is cut at the right edge. When the window is too narrow
+  for that, or once you set a width, the board scrolls inside itself, never the page.
 - **Counts.** Each column shows how many cards it has; with a filter on it reads `n / total`, and a
   column the filter emptied says "No matches" instead of offering a new card.
 - **New card in a column.** The **New card** button at the bottom of a column creates the card
@@ -2855,7 +2857,8 @@ gains a **project table**, a **people table** and a settings block. It answers o
 for what it cost?* Every figure is correlated and estimated: hours and rates are typed, not measured, and a card done is
 not a verified result. The screens never call it profit or savings.
 
-- **The card.** Choose 7 days, 30 days or this month. The first line says how many items were delivered (cards done,
+- **The card.** It starts folded to one row (the title, the first line below, and **Details**), so the board
+  begins right under it; **Details** opens it and the choice is kept. Choose 7 days, 30 days or this month. The first line says how many items were delivered (cards done,
   split into *planned*, which were on the board before the period began, and *unplanned*, created and done inside it),
   what the agents cost, and whether that is more, fewer or about the same (within 5%) as the period before, with the
   cost per item of both. Below it: cards done and PRs merged, cost per card and per PR, the rework line (fix rounds and

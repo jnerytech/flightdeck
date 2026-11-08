@@ -1591,6 +1591,76 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
+  // Issues #1030 and #1031: at the usual window the board fills its width with all five columns
+  // (none cut at the right edge, no head running past its column), and the Return on cost card is
+  // one short row, so the columns start right under it.
+  "board-fit": async (c) => {
+    await c.page.setViewportSize({ width: 1280, height: 800 });
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    const grid = c.page.locator("[data-slot='board-columns']");
+    await grid.waitFor({ timeout: WAIT });
+    const measure = () =>
+      grid.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const lanes = [...el.querySelectorAll("section[data-column]")].map((lane) =>
+          lane.getBoundingClientRect(),
+        );
+        const last = lanes[lanes.length - 1];
+        return {
+          lanes: lanes.length,
+          scroll: el.scrollWidth,
+          client: el.clientWidth,
+          inside: lanes.every((lane) => lane.right <= window.innerWidth),
+          // The columns share the width: the last one reaches (almost) the row's right edge.
+          gap: last === undefined ? Number.NaN : box.right - last.right,
+        };
+      });
+    const fits = async () => {
+      const m = await measure();
+      return m.lanes === 5 && m.scroll <= m.client + 1 && m.inside && m.gap <= 24;
+    };
+    try {
+      await waitFor(fits, "as cinco colunas cabem na largura do quadro, a 1280");
+    } catch (error) {
+      throw new Error(`${(error as Error).message}: ${JSON.stringify(await measure())}`);
+    }
+    // A head is one line: its items share a top, and none runs past the lane's right edge.
+    const heads = await grid.evaluate((el) =>
+      [...el.querySelectorAll("section[data-column]")].flatMap((lane) => {
+        const edge = lane.getBoundingClientRect().right;
+        const name = lane.getAttribute("data-column") ?? "";
+        const items = [...lane.querySelectorAll(".column-head > *")].map((item) =>
+          item.getBoundingClientRect(),
+        );
+        const past = items.some((box) => box.right > edge + 1);
+        const wrapped = items.some((box) => Math.abs(box.top - (items[0]?.top ?? 0)) > 6);
+        return past || wrapped ? [name] : [];
+      }),
+    );
+    if (heads.length > 0) {
+      throw new Error(`o cabeçalho passa da coluna: ${[...new Set(heads)].join(", ")}`);
+    }
+    // The Return on cost card, when the demo has one: one short row, and the columns right under it.
+    const roi = c.page.getByRole("region", { name: c.t("roiUi.title"), exact: true });
+    if ((await roi.count()) > 0) {
+      // Folded and loaded: the details button says it is closed (the loading box has none).
+      await c.page
+        .getByRole("button", { name: c.t("roiUi.details"), exact: true })
+        .and(c.page.locator("[aria-expanded='false']"))
+        .waitFor({ timeout: WAIT });
+      const gap = await roi.evaluate((card) => {
+        const own = card.getBoundingClientRect();
+        const columns = document.querySelector("[data-slot='board-columns']");
+        return {
+          height: own.height,
+          below: (columns?.getBoundingClientRect().top ?? 0) - own.bottom,
+        };
+      });
+      if (gap.height > 64) throw new Error(`o card de retorno tem ${gap.height}px dobrado`);
+      if (gap.below > 32) throw new Error(`as colunas começam ${gap.below}px abaixo do card`);
+    }
+  },
+
   // Issue #790: a session moves from alfa to beta. The preview is switched on, the demo's movable
   // transcript is resumed on alfa and moved to beta's clone, the dialog shows only counts (none of
   // the conversation's words), and "Open it there" lands on the session on beta.
