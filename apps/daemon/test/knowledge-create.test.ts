@@ -112,7 +112,8 @@ describe("knowledge-create: a document from a template (#1039)", () => {
 
   test("a body replaces the template's sections, and is text only: front matter and control characters in it do nothing", async () => {
     const root = project();
-    const body = "---\nstatus: valid\n---\r\n## Context\r\nWe chose SQLite.\u0000\u0007\n\n## Decision\tkept\n\n";
+    const body =
+      "---\nstatus: valid\n---\r\n## Context\r\nWe chose SQLite.\u0000\u0007\n\n## Decision\tkept\n\n";
     const entry = await createKnowledgeDoc(root, "adr", "Use SQLite", body);
     const text = readFileSync(join(root, entry.path), "utf8");
     expect([entry.status, entry.title, text]).toEqual([
