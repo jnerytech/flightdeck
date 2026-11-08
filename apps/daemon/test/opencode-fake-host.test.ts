@@ -82,7 +82,7 @@ describe("opencode-fake-host", () => {
     });
     const sessionId = String(created.sessionId);
     await ask("session.subscribe", { sessionId });
-    expect(await poll(() => events.find((e) => e.type === "turn.result"), 10_000)).not.toBe(null);
+    expect(await poll(() => events.find((e) => e.type === "turn.result"), 10_000)).not.toBeNull();
     const list = (await ask("session.list", {})) as { sessions?: protocol.SessionSummary[] };
     expect(list.sessions?.find((s) => s.id === sessionId)?.runtime).toBe("opencode");
   });

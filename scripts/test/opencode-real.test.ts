@@ -43,8 +43,8 @@ describe("opencode-real", () => {
   test("the options it answers with: always to save a rule, reject to refuse one request", () => {
     expect(alwaysOptionId(OPTIONS)).toBe("always");
     expect(rejectOptionId(OPTIONS)).toBe("reject");
-    expect(alwaysOptionId([])).toBe(null);
-    expect(rejectOptionId([])).toBe(null);
+    expect(alwaysOptionId([])).toBeNull();
+    expect(rejectOptionId([])).toBeNull();
   });
 
   test("the saved rules' ids, from the API's data or a bare list; none when it does not parse", () => {
