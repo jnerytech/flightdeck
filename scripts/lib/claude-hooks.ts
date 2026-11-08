@@ -345,7 +345,6 @@ function maskCommand(command: string): string {
     );
 }
 
-/** A shell word as the shell reads it, quotes taken out (a `\` escape inside double quotes too). */
 /**
  * What a word means once its quotes are read: `$'...'` and backticks are not read (the word stays
  * as typed, which nothing matches, #759 review), quoted text loses its quotes, the rest is as is.
@@ -355,6 +354,7 @@ function wordValue(typed: string, masked: string): string {
   return /["']/.test(masked) ? unquote(typed) : masked;
 }
 
+/** A shell word as the shell reads it, quotes taken out (a `\` escape inside double quotes too). */
 function unquote(word: string): string {
   return word.replace(/"((?:[^"\\]|\\.)*)"|'([^']*)'/g, (_, double?: string, single?: string) =>
     // In double quotes the shell drops a backslash only before $ ` " \ or a newline.
