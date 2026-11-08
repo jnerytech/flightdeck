@@ -45,7 +45,7 @@ async function toggleAll() {
     fireEvent.click(trigger);
   });
   const entry = screen.queryByRole("menuitemcheckbox", { name: "Abas de todos os hosts" });
-  expect(entry === null).toBe(false);
+  expect(entry === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   await act(async () => {
     fireEvent.click(entry as HTMLElement);
   });
@@ -125,6 +125,6 @@ describe("host-tabs-all-ui: the switcher's All hosts entry groups every host's t
     await toggleAll();
     expect(store.tabScope.value).toBe("host");
     expect(names()).toEqual(["Sessões", "Histórico"]);
-    expect(row().querySelector("[data-slot='tab-group']") === null).toBe(true);
+    expect(row().querySelector("[data-slot='tab-group']") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

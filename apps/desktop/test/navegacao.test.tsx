@@ -150,7 +150,7 @@ describe("navegacao", () => {
     expect(heading("Configurações")).toBe(false);
     expect(heading("Pedinte")).toBe(true);
     const settingsTab = screen.queryByRole("tab", { name: "Configurações" });
-    expect(settingsTab === null).toBe(false);
+    expect(settingsTab === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       if (settingsTab) fireEvent.click(settingsTab);
     });
@@ -315,7 +315,7 @@ describe("navegacao", () => {
       () =>
         screen.queryByRole("alertdialog") !== null || d.board.getCard(second.id).runs.length > 0,
     );
-    expect(screen.queryByRole("alertdialog") === null).toBe(false);
+    expect(screen.queryByRole("alertdialog") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const ask = screen.getByRole("alertdialog");
     expect(ask.textContent).toContain("Iniciar Outro mesmo assim?");
     expect(d.board.getCard(second.id).runs).toHaveLength(0);

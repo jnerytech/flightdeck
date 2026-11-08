@@ -267,7 +267,7 @@ describe("custos-ui", () => {
     await settle(() => text("Custo estimado") === "US$ 0.50");
     expect(text("Custo estimado")).toBe("US$ 0.50");
     // The project is the visit's scope (#126 slice 4): the Dados de menu names it.
-    expect(screen.queryByRole("button", { name: "Dados de kB" }) === null).toBe(false);
+    expect(screen.queryByRole("button", { name: "Dados de kB" }) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("filtros por projeto (no escopo), modelo e origem", async () => {

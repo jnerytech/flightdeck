@@ -69,9 +69,9 @@ describe("nova-sessao-primeiro: the task comes first", () => {
   test("the first prompt is the first field of the form, and has the focus", () => {
     open(hostOf(["/work"]));
     const prompt = field("First prompt");
-    expect(document.activeElement === prompt).toBe(true);
+    expect(document.activeElement === prompt).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const fields = [...(prompt.closest("form")?.querySelectorAll("textarea, select, input") ?? [])];
-    expect(fields[0] === prompt).toBe(true);
+    expect(fields[0] === prompt).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a session starts in one step: the task and Create session", async () => {

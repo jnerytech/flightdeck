@@ -136,7 +136,7 @@ for (const [lang, dict] of [
       expect(item).not.toBeNull();
       const dot = within(item as HTMLElement).queryByRole("img");
       expect(dot?.className.includes("size-2") ?? false).toBe(true);
-      expect(dot?.querySelector("svg") === null).toBe(true);
+      expect(dot?.querySelector("svg") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
 
     test("the menu adds a host too, and with no host the switcher says so", async () => {
@@ -215,7 +215,7 @@ for (const [lang, dict] of [
         fireEvent.click(add as HTMLElement);
       });
       // The breadcrumb (and the tab) now say where the person is.
-      expect(bar.queryAllByText(dict.sidebar.addHostCrumb).length > 0).toBe(true);
+      expect(bar.queryAllByText(dict.sidebar.addHostCrumb).length > 0).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
 
     test("search opens the palette, the theme button says what it switches to, and the version shows", async () => {

@@ -68,7 +68,7 @@ describe("sonar-regex2: the picker's status messages are <output> elements", () 
       expect(message).not.toBeNull();
       expect(message?.tagName).toBe("OUTPUT");
       const status = screen.queryAllByRole("status").filter((el) => el === message);
-      expect(status.length).toBe(1);
+      expect(status.length).toBe(1); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
 
     test(`the loading message shows in an <output> with role status while a folder opens (${lang})`, async () => {
@@ -83,7 +83,7 @@ describe("sonar-regex2: the picker's status messages are <output> elements", () 
       const message = screen.queryByText(TEXT[lang].loading);
       expect(message).not.toBeNull();
       expect(message?.tagName).toBe("OUTPUT");
-      expect(screen.queryAllByRole("status").filter((el) => el === message).length).toBe(1);
+      expect(screen.queryAllByRole("status").filter((el) => el === message).length).toBe(1); // NOSONAR: the boolean keeps a DOM node out of the failure diff
       const list = screen.queryByRole("list", { name: TEXT[lang].list });
       expect(list?.getAttribute("aria-busy")).toBe("true");
     });

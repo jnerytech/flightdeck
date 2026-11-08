@@ -187,7 +187,7 @@ describe("home-leaders-ui: where the tokens of the 7 days went", () => {
     setup();
     await loaded("Where the tokens went");
     const open = screen.queryByRole("button", { name: "Open the costs of app" });
-    expect(open === null).toBe(false);
+    expect(open === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(open?.getAttribute("title")).toBe("/x/app");
     expect(open?.textContent).toBe("app");
   });
@@ -223,7 +223,7 @@ describe("home-leaders-ui: where the tokens of the 7 days went", () => {
   test("a host whose week of costs fails did not answer, even though its usage came (#363)", async () => {
     setup({ refuse: ["2026-10-04|2026-10-10"] });
     await settleMaybe(() => screen.queryByText("Some hosts did not answer: host1.") !== null);
-    expect(screen.queryByText("Some hosts did not answer: host1.") !== null).toBe(true);
+    expect(screen.queryByText("Some hosts did not answer: host1.") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a refresh whose costs fail keeps the shares read before", async () => {

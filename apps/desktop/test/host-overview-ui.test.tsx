@@ -193,7 +193,7 @@ describe("host-overview-ui: the Projects list filtered by a host", () => {
         />
       </TooltipProvider>,
     );
-    await waitFor(() => expect(document.querySelectorAll("li[data-project]").length).toBe(1));
+    await waitFor(() => expect(document.querySelectorAll("li[data-project]").length).toBe(1)); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(document.querySelector("li[data-project='api']")).not.toBeNull();
     await act(
       async () =>

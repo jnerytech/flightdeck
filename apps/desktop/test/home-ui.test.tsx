@@ -151,7 +151,7 @@ describe("home-ui: four cards with the last seven days of every host", () => {
     render(view);
     const chart = await screen.findByRole("img", { name: /^Spend, last 7 days: / });
     expect(chart.getAttribute("aria-label")).toContain("1.75");
-    expect(screen.getAllByRole("img").length).toBe(4);
+    expect(screen.getAllByRole("img").length).toBe(4); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a card opens the screen it summarizes", async () => {
@@ -201,7 +201,7 @@ describe("home-ui: four cards with the last seven days of every host", () => {
     const { view, asked } = setup({ hosts: 2 });
     render(view);
     await screen.findByRole("button", { name: "Open Spend" });
-    await waitFor(() => expect(asked.length).toBe(8));
+    await waitFor(() => expect(asked).toHaveLength(8));
     expect(asked.sort()).toEqual([
       "h1:costs.summary",
       "h1:costs.summary",

@@ -104,7 +104,7 @@ describe("session-project: a session sits under its transcript's project (#583)"
       await uiIdle();
       const chips = [...document.querySelectorAll("li[aria-label] [data-slot='origin-chip']")];
       expect(chips.map((chip) => chip.textContent)).toEqual(["terminal"]);
-      expect(document.querySelectorAll("[data-slot='group-meta']").length).toBe(0);
+      expect(document.querySelectorAll("[data-slot='group-meta']").length).toBe(0); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
   }
 });

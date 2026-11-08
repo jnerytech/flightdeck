@@ -23,6 +23,6 @@ describe("scope-menu: the name of a project scope", () => {
         scope={{ kind: "project", projectKey: "host:alfa:/work/app" }}
       />,
     );
-    expect(screen.queryByRole("button", { name: "Data from app" }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Data from app" }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });
