@@ -134,8 +134,9 @@ export function HostResources(
     if (inFlight.current) return;
     inFlight.current = true;
     try {
-      const next = await store.hostCommand(host.id, "resources.get", {});
-      if (next) setSnap(next);
+      // A timed read: a refusal keeps the last numbers quietly, instead of an error every tick (#937).
+      const next = await store.hostRequest(host.id, "resources.get", {});
+      if (next.ok) setSnap(next.data);
     } finally {
       inFlight.current = false;
     }
