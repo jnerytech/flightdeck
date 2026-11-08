@@ -1824,6 +1824,10 @@ export const ptBR = {
       "O git não tem nome e e-mail para este repositório: defina user.name e user.email e faça o commit.",
     harness_commit_secret: "{file} contém um segredo, então não foi para o commit.",
     harness_commit_branch_taken: "O branch {branch} já existe: tente de novo em um minuto.",
+    harness_commit_git:
+      "O git não conseguiu fazer o commit ou o branch da configuração neste repositório.",
+    harness_commit_ignored:
+      "{file} é ignorado pelo git neste projeto, então não foi para o commit: faça o commit você mesmo se quiser.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",

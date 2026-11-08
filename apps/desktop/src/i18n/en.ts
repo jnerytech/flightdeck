@@ -1826,6 +1826,9 @@ export const en: Dictionary = {
       "Git has no name and email for this repository: set user.name and user.email, then commit.",
     harness_commit_secret: "{file} holds a secret, so it was not committed.",
     harness_commit_branch_taken: "The branch {branch} is already there: try again in a minute.",
+    harness_commit_git: "Git could not make the setup's commit or branch in this repository.",
+    harness_commit_ignored:
+      "{file} is ignored by git in this project, so it was not committed: commit it yourself if you mean to.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",

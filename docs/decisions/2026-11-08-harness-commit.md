@@ -18,6 +18,8 @@ commands. The design is on #75 (C1); this record covers slice C1a, the daemon.
   - It keeps no state of its own and takes no content from the app.
 - **Only the setup's files.** `.claude/settings.json`, `CLAUDE.md`, `.claude/agents/reviewer.md` and
   `.claude/skills/tdd/SKILL.md`. Any other path, a `.env` included, is stale.
+- **Ignored files.** A setup file the repository ignores (`git check-ignore`), such as local-only
+  settings, is refused with `harness_commit_ignored`: Flightdeck never commits it for the person.
 - **Committed whole.** If the person changed `settings.json` before the apply, that change is in the
   commit too. The app's confirm step says so (C1b).
 - **How.** A temporary `GIT_INDEX_FILE`:
@@ -26,7 +28,12 @@ commands. The design is on #75 (C1); this record covers slice C1a, the daemon.
     the repository runs, since one can run a command), then `update-index --cacheinfo`;
   - `write-tree` and `commit-tree -p HEAD`;
   - `update-ref refs/heads/<branch> <commit> <zeros>`, which makes the branch only if no branch has
-    that name: `harness_commit_branch_taken`.
+    that name. A name already there is `harness_commit_branch_taken` (checked with `show-ref`
+    first). Any other failure of git (a branch named like a folder of this one, a lock) is
+    `harness_commit_git`.
+  - A file HEAD has as executable keeps its mode, and every other file is a plain file. In a
+    project that is a folder of a larger repository, the files land at their place in it
+    (`--show-prefix`).
   - The person's branch, index and working tree stay as they are, and the files stay changed on
     their current branch.
 - **Git runs disarmed.** Every call goes through `teleport/git.ts`'s `SAFE` options: `core.hooksPath`
@@ -40,6 +47,9 @@ commands. The design is on #75 (C1); this record covers slice C1a, the daemon.
   sit in `settings.json`, and a commit is one push from public. A finding refuses with
   `harness_commit_secret` and names the file, never the value.
 - **A repository with no commit** refuses with `harness_commit_no_head`.
+- **The commit message** is a fixed English line ("Set up Claude Code", with the files). It is a git
+  artefact, like the code and the commit messages of the repository, not app text.
+- **No signing.** `commit-tree --no-gpg-sign`, on top of `SAFE`'s disarmed hooks and fsmonitor.
 - **Guards.** The feature `harnessCommit`, a near connection only, and `confirm: true` (else
   `harness_confirm`).
 

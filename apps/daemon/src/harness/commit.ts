@@ -49,8 +49,7 @@ function git(
 ): Promise<CommandResult> {
   // git-arg: every revision here is HEAD, a value git gave, or the host's own branch through refArg.
   return runCommand(
-    // Defence in depth over SAFE: no signing program of the repository either.
-    [whichOnPath("git") ?? "git", ...SAFE, "-c", "commit.gpgsign=false", ...args],
+    [whichOnPath("git") ?? "git", ...SAFE, ...args],
     cwd,
     input,
     TIMEOUT_MS,
@@ -138,6 +137,19 @@ export async function commitHarness(
     throw refuse("harness_commit_no_head", "the project has no commit to start a branch from");
   }
   const parent = head.stdout.trim();
+  const at = prefix.stdout.trim();
+  // A file the person keeps out of git (local-only settings) is never committed for them.
+  for (const [name] of files) {
+    if ((await git(path, ["check-ignore", "-q", "--", name])).code === 0) {
+      throw refuse(
+        "harness_commit_ignored",
+        `${name} is ignored by git here: it is not committed`,
+        {
+          file: name,
+        },
+      );
+    }
+  }
   const author = await identity(path);
   const branch = refArg(branchName(deps.now?.() ?? new Date()));
   const scratch = await mkdtemp(join(tmpdir(), "fd-harness-commit-"));
@@ -147,20 +159,31 @@ export async function commitHarness(
     for (const [name, text] of files) {
       // From the bytes checked, with no clean filter of the repository (one can run a command).
       const blob = await must(path, ["hash-object", "-w", "--no-filters", "--stdin"], {}, text);
-      const at = `${prefix.stdout.trim()}${name}`;
-      await must(path, ["update-index", "--add", "--cacheinfo", `100644,${blob},${at}`], index);
+      // A file HEAD has as executable stays so; anything else is a plain file.
+      const known = await must(path, ["ls-files", "-s", "--", name], index);
+      const mode = known.startsWith("100755 ") ? "100755" : "100644";
+      await must(
+        path,
+        ["update-index", "--add", "--cacheinfo", `${mode},${blob},${at}${name}`],
+        index,
+      );
     }
     const tree = await must(path, ["write-tree"], index);
     const message = `Set up Claude Code\n\nWritten by Flightdeck: ${files.map(([name]) => name).join(", ")}`;
-    const commit = await must(path, ["commit-tree", tree, "-p", parent, "-m", message], author);
-    // The old value all zeros: the branch is made only if no branch has that name.
-    const none = "0".repeat(parent.length);
-    const made = await git(path, ["update-ref", `refs/heads/${branch}`, commit, none]);
-    if (made.code !== 0) {
+    const commit = await must(
+      path,
+      ["commit-tree", "--no-gpg-sign", tree, "-p", parent, "-m", message],
+      author,
+    );
+    const ref = `refs/heads/${branch}`;
+    if ((await git(path, ["show-ref", "--verify", "-q", ref])).code === 0) {
       throw refuse("harness_commit_branch_taken", `the branch ${branch} is already there`, {
         branch,
       });
     }
+    // The old value all zeros: made only if no branch has that name, even one made just now. Any
+    // other failure (a branch named like a folder of this one, a lock) is git's own.
+    await must(path, ["update-ref", ref, commit, "0".repeat(parent.length)]);
     return { branch, commit, files: files.map(([name]) => name) };
   } finally {
     await rm(scratch, { recursive: true, force: true });

@@ -3256,11 +3256,6 @@ export const Command = z.discriminatedUnion("type", [
       .strict(),
   ),
   /**
-   * #75, slice S4: writes what the preview proposed. The daemon makes the proposals again and never
-   * takes content from the app; `digests` (each proposal's, by path) must match them all, else
-   * `harness_stale`. Writing hooks lets commands run in sessions: a near connection and `confirm`.
-   */
-  /**
    * #75, slice C1: commits what `project.harness.apply` wrote (by its `digests`) on a new branch the
    * host names, through a temporary index: the person's branch, index and files stay as they are.
    */
@@ -3276,6 +3271,11 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /**
+   * #75, slice S4: writes what the preview proposed. The daemon makes the proposals again and never
+   * takes content from the app; `digests` (each proposal's, by path) must match them all, else
+   * `harness_stale`. Writing hooks lets commands run in sessions: a near connection and `confirm`.
+   */
   cmd(
     "project.harness.apply",
     z
