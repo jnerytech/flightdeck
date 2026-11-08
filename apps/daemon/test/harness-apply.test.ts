@@ -219,6 +219,22 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
     },
   );
 
+  test.skipIf(onWindows)(
+    "a project path that no longer resolves to itself is refused: it was resolved inside the allowed roots",
+    async () => {
+      const root = repo(bunProject);
+      const outside = repo(bunProject);
+      const preview = await previewHarness(outside, ["agents"]);
+      // The project's folder, once resolved, became a link to another place.
+      renameSync(root, `${root}-was`);
+      symlinkSync(outside, root);
+      expect([
+        await outcome(applyHarness(root, ["agents"], digestsOf(preview))),
+        existsSync(join(outside, ".claude")),
+      ]).toEqual(["harness_stale", false]);
+    },
+  );
+
   test("a settings file hard-linked to a file elsewhere is refused: writing it would change that file", async () => {
     const text = json({ model: "opus" });
     const root = repo(bunProject);
