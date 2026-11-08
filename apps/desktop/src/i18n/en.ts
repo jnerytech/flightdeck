@@ -1517,7 +1517,7 @@ export const en: Dictionary = {
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
     card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
     spec_path_invalid:
-      "The spec path must be a relative path to a Markdown file inside the worktree, like docs/specs/name.md.",
+      "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
@@ -3724,7 +3724,7 @@ export const en: Dictionary = {
     saveValidation: "Save validation note",
     specFile: "Spec file",
     saveSpec: "Save spec file",
-    specPathInvalid: "Use a path to a Markdown file inside the worktree, like docs/specs/name.md.",
+    specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
     specFound: "Spec found: {heading}",
     specFoundPlain: "Spec found",
     specMissing: "No spec file at {path}",

@@ -169,6 +169,7 @@ describe("demo-prints: axe e CI", () => {
       "ranking-home",
       "escopo-dados",
       "projeto-novo",
+      "time-apagar",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

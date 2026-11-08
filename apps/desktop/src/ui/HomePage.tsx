@@ -291,13 +291,12 @@ export function HomePage(
       }
     >
       {/* One live region from the first word to the numbers: its change is what is announced. */}
-      <p
-        role="status"
+      <output
         aria-busy={busy ? true : undefined}
-        className={kpis ? "sr-only" : "text-muted-foreground text-sm"}
+        className={kpis ? "sr-only" : "block text-muted-foreground text-sm"}
       >
         {message}
-      </p>
+      </output>
       {away && (
         <InlineNotice tone="info">
           {/* Without numbers the line above says it; with older numbers on screen, this one does. */}

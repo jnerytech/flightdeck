@@ -1513,7 +1513,7 @@ export const ptBR = {
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
     card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",
     spec_path_invalid:
-      "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como docs/specs/nome.md.",
+      "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
     contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
@@ -3730,8 +3730,7 @@ export const ptBR = {
     saveValidation: "Salvar nota de validação",
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
-    specPathInvalid:
-      "Use o caminho de um arquivo Markdown dentro do worktree, como docs/specs/nome.md.",
+    specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",
     specFound: "Especificação encontrada: {heading}",
     specFoundPlain: "Especificação encontrada",
     specMissing: "Nenhum arquivo de especificação em {path}",

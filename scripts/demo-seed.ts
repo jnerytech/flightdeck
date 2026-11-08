@@ -16,13 +16,15 @@ import { basename, dirname, join, resolve } from "node:path";
 import { type Ack, inSequence, parseServerMessage } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
+import { INSTRUCTIONS_VERSION } from "../apps/daemon/src/teams/instructions.ts";
 import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
+import { ulid } from "../apps/daemon/src/ulid.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
 import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo-teleport.ts";
-import { acoesActions, DANGER_SESSION } from "./lib/e2e-journeys.ts";
+import { acoesActions, DANGER_SESSION, DEMO_CLOSED_TEAM } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
@@ -857,6 +859,45 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await until(async () => (await statusOf(bash.sessionId)) === "awaiting_permission", "Bash");
   await until(async () => (await statusOf(ended.sessionId)) === "idle", "sessão antiga");
   await client.call("session.close", { sessionId: ended.sessionId });
+
+  // A closed team nobody works in: the Teams journey deletes it (issue #934). Its coordinator is the
+  // idle session and its worker's card a finished one, so both are still there once it is gone.
+  await until(async () => (await statusOf(idle.sessionId)) === "idle", "sessão ociosa");
+  const teams = new Database(join(alfa.dataDir, "flightdeck.db"));
+  const members = [
+    {
+      name: "coordenadora",
+      role: "coordinator",
+      persona: null,
+      cardId: null,
+      sessionId: idle.sessionId,
+    },
+    {
+      name: "executora-1",
+      role: "worker",
+      persona: null,
+      cardId: finished[0] as string,
+      sessionId: null,
+      number: 1,
+    },
+  ];
+  teams
+    .query(
+      `INSERT INTO teams (id, name, project_id, goal, coordinator, members, checks, state,
+                          paused_by, instructions_version, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, '[]', 'closed', NULL, ?, ?)`,
+    )
+    .run(
+      ulid(),
+      DEMO_CLOSED_TEAM,
+      project.id,
+      "Ship the login.",
+      idle.sessionId,
+      JSON.stringify(members),
+      INSTRUCTIONS_VERSION,
+      new Date().toISOString(),
+    );
+  teams.close();
 
   // A long conversation (a code block in the first message, then twenty-four turns) whose summary
   // the host can build: the scroll journey needs a conversation taller than the window.
