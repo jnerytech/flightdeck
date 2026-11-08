@@ -124,16 +124,14 @@ class Client {
   card(id: string, check: (card: Card) => boolean): Card | undefined {
     return this.frames
       .flatMap((f) => (f.type === "card.updated" && f.card.id === id ? [f.card as Card] : []))
-      .filter(check)
-      .at(-1);
+      .findLast(check);
   }
 
   /** Latest `run.updated` of the run that satisfies `check`. */
   run(id: string, check: (run: Run) => boolean): Run | undefined {
     return this.frames
       .flatMap((f) => (f.type === "run.updated" && f.run.id === id ? [f.run as Run] : []))
-      .filter(check)
-      .at(-1);
+      .findLast(check);
   }
 
   close(): void {
