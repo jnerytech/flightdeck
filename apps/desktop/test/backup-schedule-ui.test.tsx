@@ -122,6 +122,14 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     ]).toEqual([false, 1, null, true, true, true]);
   });
 
+  test("a number to keep that is not valid goes back to the saved one when the field is left", async () => {
+    const { platform } = open();
+    await type("Files to keep", "0");
+    const input = field("Files to keep") as HTMLInputElement;
+    await act(async () => fireEvent.blur(input));
+    expect([input.value, loadSchedule(platform.storage).keep]).toEqual(["5", 5]);
+  });
+
   test("a write that fails is shown, not hidden", async () => {
     open({ failWrite: true });
     await click("Choose folder");

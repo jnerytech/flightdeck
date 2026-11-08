@@ -121,6 +121,20 @@ describe("backup-scheduler (#1264)", () => {
     ]);
   });
 
+  test("turning it off forgets the passphrase and clears a notice that no longer applies", async () => {
+    const { scheduler } = setup();
+    await scheduler.chooseFolder();
+    await scheduler.setCadence("daily");
+    const waiting = scheduler.report.status;
+    await scheduler.setPassphrase(PASS);
+    await scheduler.setCadence("off");
+    expect([waiting, scheduler.hasPassphrase, scheduler.report]).toEqual([
+      "skipped",
+      false,
+      { status: "idle" },
+    ]);
+  });
+
   test("the number to keep is saved, never below one", async () => {
     const { scheduler, platform } = setup();
     await scheduler.setKeep(8);
