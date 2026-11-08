@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "typecheck": "bun run scripts/lane.ts bun run scripts/typecheck.ts",
-    "lint": "bun run scripts/lane.ts bun x biome check .",
+    "lint": "bun run scripts/lane.ts bun x biome check . --max-diagnostics=none",
     "format": "biome check --write .",
     "layout:ratchet": "bun run scripts/layout-ratchet.ts",
     "bundle:budget": "bun run scripts/bundle-budget.ts",
