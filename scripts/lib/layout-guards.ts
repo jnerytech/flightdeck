@@ -489,9 +489,40 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       extra,
     );
   };
+  /** The nearest ancestor that draws an edge (a border on its right) or clips: what out-of-flow text must end inside. */
+  const edgeOf = (el: Element) => {
+    for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
+      const style = getComputedStyle(up);
+      const border = Number.parseFloat(style.borderRightWidth || "0") || 0;
+      if ((style.overflowX || "visible") !== "visible" || border > 0) return up;
+    }
+    return null;
+  };
+  /**
+   * #1270: text out of the flow (a disabled button's hanging reason) past the right of the box
+   * around it: the parent check skips it, and it shows outside a card or is cut by the window.
+   */
+  const checkOutOfFlow = (shown: Element[]) => {
+    for (const el of shown) {
+      if (getComputedStyle(el).position !== "absolute" || !el.textContent?.trim()) continue;
+      const edge = edgeOf(el);
+      if (!edge) continue;
+      const box = rectOf(el);
+      const room = rectOf(edge);
+      if (box.width > 1 && room.width > 0 && box.right - room.right > 1) {
+        add(
+          "overflow-x",
+          pathOf(el, true),
+          `${Math.round(box.right - room.right)} px past the right of ${nameOf(edge)}`,
+          box.right - room.right,
+        );
+      }
+    }
+  };
   const checkOverflowX = (shown: Element[]) => {
     const extra = root.scrollWidth - root.clientWidth;
     if (extra > 1) pageSideways(shown, extra);
+    checkOutOfFlow(shown);
     // The outermost box past the right of a parent that neither clips nor scrolls (a table past its card).
     const past: Element[] = [];
     for (const el of shown) {

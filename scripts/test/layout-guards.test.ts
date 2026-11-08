@@ -463,6 +463,32 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     }
   });
 
+  // #1270: a disabled button's reason hangs out of the flow (position: absolute), so the parent
+  // check above skips it; it must still end inside the box that draws its edge (a bordered panel).
+  test("narrow (#1270): out-of-flow text past the edge of the box around it, by how far; a dot or a popover is not", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,640,800">
+        <section data-slot="details" style="border-right-width: 1px; border-right-style: solid" data-rect="16,16,600,300">
+          <div data-rect="32,40,584,80">
+            <span style="position: relative" data-rect="480,40,584,80">
+              <button data-rect="480,40,584,80">Save</button>
+              <span class="action-reason" style="position: absolute" data-rect="480,82,700,96">Type the path to save it.</span>
+            </span>
+          </div>
+          <div data-rect="32,120,584,160">
+            <span style="position: relative" data-rect="32,120,120,160">
+              <span class="action-reason" style="position: absolute" data-rect="32,162,300,176">Type the hours.</span>
+            </span>
+            <span class="dot" style="position: absolute" data-rect="590,120,604,134"></span>
+          </div>
+        </section>
+        <div data-slot="menu" style="position: fixed" data-rect="500,0,800,100">a popover</div>
+      </div>`);
+    expect(narrow()).toEqual([
+      "overflow-x: page-body > details > span.action-reason (100 px past the right of details)",
+    ]);
+  });
+
   test("narrow (#641): a box that scrolls inside another that scrolls is two scrollbars; one with nothing to hide is not", () => {
     page(`
       <div data-slot="scroll-area-viewport" style="overflow-y: auto" data-rect="0,0,640,800" data-ch="800" data-sh="1600">

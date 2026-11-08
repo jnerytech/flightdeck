@@ -254,7 +254,8 @@ async function history(host: Host): Promise<HistorySessionSummary | undefined> {
 async function until(check: () => Promise<boolean> | boolean, what: string): Promise<void> {
   const deadline = Date.now() + TIMEOUT_MS;
   for (;;) {
-    if (await check()) return;
+    const checking = check();
+    if (await checking) return; // NOSONAR: a poll until the deadline, one check at a time
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
     await Bun.sleep(100);
   }
@@ -313,9 +314,11 @@ async function run(hosts: Host[], work: string): Promise<void> {
   log(`host-a at ${a.url}, host-b at ${b.url}`);
 
   step = "both hosts announce teleport";
-  for (const host of [a, b]) {
-    const info = await host.client.call<{ features?: string[] }>("host.info", {});
-    if (!info.features?.includes("teleport")) throw new Error(`${host.name} has no teleport`);
+  const infos = await Promise.all(
+    [a, b].map((host) => host.client.call<{ features?: string[] }>("host.info", {})),
+  );
+  for (const [i, host] of [a, b].entries()) {
+    if (!infos[i]?.features?.includes("teleport")) throw new Error(`${host.name} has no teleport`);
   }
 
   step = "A's session: its code and its transcript";
@@ -370,10 +373,12 @@ try {
   failed = true;
   console.error(`smoke-teleport failed at "${step}": ${(error as Error).message}`);
 } finally {
-  for (const host of hosts) {
-    host.client.close();
-    await host.stop();
-  }
+  await Promise.all(
+    hosts.map(async (host) => {
+      host.client.close();
+      await host.stop();
+    }),
+  );
   try {
     rmSync(work, { recursive: true, force: true });
   } catch {
