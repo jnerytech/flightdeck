@@ -140,6 +140,34 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     expect(picker().value).toBe("");
   });
 
+  test("a card from a template opens with its persona already chosen, and Iniciar starts in it (#1201)", async () => {
+    const { store, hostId, projectId, d } = await open();
+    const card = d.board.createCard(projectId, {
+      title: "Do modelo",
+      description: "faça",
+      startPersona: "seguranca",
+    });
+    const asked: Array<{ type: string; payload: unknown }> = [];
+    const command = store.hostCommand.bind(store);
+    store.hostCommand = (async (id: string, type: never, payload: never) => {
+      asked.push({ type, payload });
+      return command(id, type, payload);
+    }) as typeof store.hostCommand;
+    await act(async () => {
+      store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
+    });
+    await settle(() => options("Persona do card").length > 1);
+    await settle(
+      () =>
+        (screen.queryByLabelText("Persona do card") as HTMLSelectElement).value ===
+        "host:seguranca",
+    );
+    await click("Iniciar");
+    expect(asked.find((a) => a.type === "card.start")?.payload).toMatchObject({
+      persona: { id: "seguranca", language: "pt-BR" },
+    });
+  });
+
   test("a card starts in the persona chosen next to Iniciar", async () => {
     const { store, hostId, projectId, d } = await open();
     const card = d.board.createCard(projectId, { title: "Revisar", description: "faça" });

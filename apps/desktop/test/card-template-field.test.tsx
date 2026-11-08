@@ -151,7 +151,7 @@ for (const [lang, t] of [
       const parts = [
         t.kanban.templateWorkflow.replace("{name}", "fix"),
         t.kanban.templatePersona.replace("{name}", "reviewer"),
-        (lang === "en" ? "2 pinned documents" : "2 documentos fixados"),
+        lang === "en" ? "2 pinned documents" : "2 documentos fixados",
         t.kanban.templateSpec.replace("{path}", "docs/specs/bug.md"),
       ].join(", ");
       expect(screen.queryByText(t.kanban.templateStarts.replace("{parts}", parts))).not.toBeNull();
@@ -180,6 +180,19 @@ for (const [lang, t] of [
       await show(OFFER({ dropped: 2 }));
       await settle(() => select() !== null);
       expect(screen.queryByText(t.kanban.templateDropped.replace("{n}", "2"))).not.toBeNull();
+    });
+
+    test("a template that the project no longer offers is dropped from the card, not sent unseen", async () => {
+      const { picks } = await show(OFFER(), { value: "gone" });
+      await settle(() => select() !== null);
+      expect(picks).toEqual([null]);
+    });
+
+    test("one template left out reads in the singular", async () => {
+      await show(OFFER({ dropped: 1 }));
+      await settle(() => select() !== null);
+      const said = lang === "en" ? "1 template left out" : "1 modelo deixado de fora";
+      expect(document.body.textContent?.includes(said)).toBe(true);
     });
 
     test("a file that was not used says why, and offers no picker", async () => {
