@@ -21,8 +21,16 @@ export function serializeTemplate(template: Template): string {
     `planFirst: ${template.planFirst}`,
   ];
   if (template.outputFolder) lines.push(`outputFolder: ${JSON.stringify(template.outputFolder)}`);
-  lines.push(`fields: ${JSON.stringify(template.fields)}`, "---");
-  lines.push("# en", template.prompt.en, "", "# pt-BR", template.prompt["pt-BR"], "");
+  lines.push(
+    `fields: ${JSON.stringify(template.fields)}`,
+    "---",
+    "# en",
+    template.prompt.en,
+    "",
+    "# pt-BR",
+    template.prompt["pt-BR"],
+    "",
+  );
   return lines.join("\n");
 }
 
