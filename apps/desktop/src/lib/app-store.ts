@@ -5220,7 +5220,9 @@ export class AppStore {
           host: host.name,
           label: budgetLabel(update.budget, this.i18n.t),
           percent: Math.round(update.threshold * 100),
-          limit: window ? share(update.budget.limitPct ?? 0) : usd(update.budget.limitUsd),
+          limit: window
+            ? share(update.budget.limitPct ?? 0, this.i18n.t.lang)
+            : usd(update.budget.limitUsd),
           estimate: estimateNote(update.budget, this.i18n.t),
         }),
       },
