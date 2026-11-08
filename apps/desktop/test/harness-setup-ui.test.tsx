@@ -112,7 +112,7 @@ const listing = (text = "What this project would load") =>
   settle(() => screen.queryByText(text) !== null, 5000, "the listing");
 const button = (name: string) => screen.queryByRole("button", { name });
 const dialogText = () => screen.queryByRole("alertdialog")?.textContent ?? "";
-async function click(name: string, inDialog = false) {
+async function click(name: string | RegExp, inDialog = false) {
   const scope = inDialog ? screen.queryByRole("alertdialog") : document.body;
   const target = scope ? within(scope as HTMLElement).queryByRole("button", { name }) : null;
   if (target) await act(async () => fireEvent.click(target));
@@ -256,6 +256,21 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       movedAfter,
       count("project.harness.preview"),
     ]).toEqual([true, false, true, true, false, 2]);
+  });
+
+  test("Cancel closes the dialog and applies nothing", async () => {
+    const { view, count } = setup();
+    render(view);
+    await listing();
+    const opened = await open();
+    const cancelled = await click(/^Cancel/, true);
+    const closed = await settleMaybe(() => screen.queryByRole("alertdialog") === null);
+    expect([opened, cancelled, closed, count("project.harness.apply")]).toEqual([
+      true,
+      true,
+      true,
+      0,
+    ]);
   });
 
   test("a preview with nothing to add says so, and Apply stays off", async () => {
