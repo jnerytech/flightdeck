@@ -197,6 +197,27 @@ export function testEditViolation(
   return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, test.todo or first-run toMatchSnapshot, and no .skip: a flaky test is deleted, never skipped (#1003). Write the assertion with a hand-written literal (docs/TDD.md).`;
 }
 
+/**
+ * Why an Edit or Write of a test file is blocked for weakening an assertion (#1141): within the
+ * edit, strict matchers go down and weak ones go up (`weakensAssertions`).
+ */
+export function weakAssertViolation(
+  _tool: string,
+  _input: Record<string, unknown>,
+  _readFile: (path: string) => string | null,
+): string | null {
+  return null;
+}
+
+/** The reason of a `// weaker: <why>` line the edit adds, for the hook log's waivers; else null. */
+export function weakerEscape(
+  _tool: string,
+  _input: Record<string, unknown>,
+  _readFile: (path: string) => string | null,
+): string | null {
+  return null;
+}
+
 export interface CommitGateDeps {
   /** Runs git with these arguments in `cwd`; null when git fails. */
   git: (args: string[], cwd: string) => string | null;
