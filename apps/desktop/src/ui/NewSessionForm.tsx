@@ -77,9 +77,9 @@ export function NewSessionForm(
   // The subfolder typed; before that, the remembered one (only with the remembered folder).
   const [typedSub, setSub] = useState<string | null>(null);
   const sub = typedSub ?? (picked === null && keptHere ? keptHere.sub : "");
-  // More options is folded, except that it opens by itself to show a remembered subfolder.
+  // The person's own click on More options; until then it follows `wanted` (below).
   const [moreOpen, setMoreOpen] = useState<boolean | null>(null);
-  const more = moreOpen ?? sub !== "";
+  const [latched, setLatched] = useState(false);
   const optionsId = useId();
   const [browsing, setBrowsing] = useState(false);
   /** The host answers `fs.dirs`: an older daemon does not, and there the folder is typed. */
@@ -114,6 +114,12 @@ export function NewSessionForm(
   /** Phase 39: the agent, offered when the host has OpenCode on; its models come from the host. */
   const [runtime, setRuntime] = useState<Runtime>("claude");
   const opencode = runtime === "opencode";
+  // More options is folded, except that it opens by itself for what would otherwise act unseen: a
+  // subfolder, OpenCode, or a setting of the screen's own. Once open for that it stays open, so
+  // the field being edited never disappears from under the cursor.
+  const wanted = sub !== "" || opencode || props.extraSet === true;
+  if (wanted && !latched) setLatched(true);
+  const more = moreOpen ?? latched;
   const hasOpenCode =
     props.host.hostInfo?.runtimes?.some((r) => r.kind === "opencode" && r.available) === true;
   const [openCodeModels, setOpenCodeModels] = useState<string[]>([]);
