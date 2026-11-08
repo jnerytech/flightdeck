@@ -1762,6 +1762,13 @@ export class Board {
     return this.changed(id);
   }
 
+  /** The project's own validation note shape for the card, or why it was ignored (issue #1058). */
+  async validationTemplate(
+    _id: string,
+  ): Promise<{ text: string | null; ignored: TemplateIgnored | null }> {
+    return { text: null, ignored: null };
+  }
+
   /**
    * Looks at the card's spec file again (the path set on the card, else `docs/specs/<slug>.md`)
    * in its worktree, and keeps whether it is there and its first heading (issue #78).
