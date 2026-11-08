@@ -15,10 +15,6 @@
     "count": 17,
     "worst": 1595
   },
-  "overflow-x|dark en 390x844 times-apagar|page-body > team-member > member-head > button": {
-    "count": 1,
-    "worst": 21
-  },
   "nested-scroll|dark en 1024x700 board-contrato|page > page-body > board-columns > ul.flex": {
     "count": 1
   },
@@ -27,14 +23,6 @@
   },
   "nested-scroll|dark en 390x844 board-contrato|page > page-body > board-columns > ul.flex": {
     "count": 1
-  },
-  "overflow-x|dark pt-BR 390x844 times-apagar|page-body > team-member > member-head > button": {
-    "count": 1,
-    "worst": 21
-  },
-  "overflow-x|dark pt-BR 390x844 times-apagar|page-body > team-member > member-head > badge": {
-    "count": 1,
-    "worst": 8
   },
   "nested-scroll|dark pt-BR 1024x700 board-contrato|page > page-body > board-columns > ul.flex": {
     "count": 1
