@@ -45,6 +45,7 @@ describe("assistant-protocol", () => {
       "commit.message",
       "pr.title",
       "pr.description",
+      "adr.draft",
     ]);
     expect(UsageOrigin.options).toContain("assistant");
     expect(ASSISTANT_FEATURE).toBe("assistant");
