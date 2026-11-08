@@ -33,6 +33,8 @@ export function NeedsBadge(
     <Badge asChild variant="outline" className="text-status-needs-you">
       <button
         type="button"
+        // Not a Tab stop: a column is one (#1198), and Enter on the card's title opens the same card.
+        tabIndex={-1}
         className="cursor-pointer hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
         onClick={props.onFix}
       >
