@@ -53,6 +53,7 @@ export const JOURNEYS: readonly string[] = [
   "projeto-novo",
   "time-apagar",
   "time-rodando",
+  "merge-pr-recusa",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
@@ -106,6 +107,10 @@ export const DANGER_SESSION = "Limpar a pasta build";
 
 /** The closed team the demo keeps for the journey that deletes it (issue #934). */
 export const DEMO_CLOSED_TEAM = "closed-crew";
+
+/** The In review card whose PR the demo keeps open, and that PR (issue #1244). */
+export const DEMO_PR_CARD = "Revisar mensagens de erro";
+export const DEMO_PR_URL = "https://github.com/acme/flightdeck-web/pull/42";
 
 /** The active team the demo keeps, with its members' last reports (issue #1222). */
 export const DEMO_ACTIVE_TEAM = "checkout-crew";

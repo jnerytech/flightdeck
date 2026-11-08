@@ -668,6 +668,41 @@ describe("pr-flow: next", () => {
   });
 });
 
+describe("pr-flow: a red main is said before a PR moves (#1246)", () => {
+  const RED =
+    "main is red since https://github.com/o/r/actions/runs/7: typecheck (#30, fd-qa); do not start a parallel fix";
+
+  test("open and update print the red main's line with its claim and still do their work; green or a failed check says nothing", async () => {
+    const opened = fake({
+      pushed: ["oom-guard"],
+      subjects: { "oom-guard": ["fix(oom-guard): x (#247)", "test(oom-guard): y (#247)"] },
+      issues: { 247: "OOM on the Pi kills Claude sessions" },
+    });
+    opened.deps.mainRed = async () => RED;
+    expect(await prFlow(["open", "oom-guard"], opened.deps)).toBe(0);
+    expect(opened.out()).toContain(`warning: ${RED}`);
+    expect(opened.writes).toHaveLength(1);
+    const updated = fake({ prs: [pr(13, "behind")] });
+    updated.deps.mainRed = async () => RED;
+    expect(await prFlow(["update", "13"], updated.deps)).toBe(0);
+    expect(updated.out()).toContain(`warning: ${RED}`);
+    // A green main, or a check that fails, prints nothing and blocks nothing.
+    const green = fake({ prs: [pr(13, "behind")] });
+    green.deps.mainRed = async () => null;
+    const broken = fake({ prs: [pr(13, "behind")] });
+    broken.deps.mainRed = async () => {
+      throw new Error("gh missing");
+    };
+    expect([
+      await prFlow(["update", "13"], green.deps),
+      await prFlow(["update", "13"], broken.deps),
+    ]).toEqual([0, 0]);
+    expect([green.out().includes("warning: main"), broken.out().includes("warning: main")]).toEqual(
+      [false, false],
+    );
+  });
+});
+
 describe("pr-flow: update and merge", () => {
   test("update brings a PR up to date with its base by REST, then turns its auto-merge back on (#613)", async () => {
     const f = fake({ prs: [pr(13, "behind")] });

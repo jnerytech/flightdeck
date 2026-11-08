@@ -225,6 +225,7 @@ describe("platform", () => {
       document: { ...win.document, createElement: () => input },
     } as never);
     const without = createWebPlatform(win);
+    expect([withInput.vault.canPick, without.vault.canPick]).toEqual([true, false]);
     expect([await withInput.vault.pickFile(), await without.vault.pickFile()]).toEqual([
       { path: "k.fdbackup", text: "abc" },
       null,

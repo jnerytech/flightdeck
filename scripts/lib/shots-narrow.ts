@@ -31,6 +31,8 @@ export const NARROW_SHOTS: readonly string[] = [
   // #1222: the new-team form and an active team, at every width.
   "times-novo",
   "times-rodando",
+  // #1244: Merge PR's confirmation on a card with an open PR.
+  "card-merge-pr",
   "workflows-modelos",
   "board-contrato",
   // #1052: the onboarding journey, the first screens a new person sees.
@@ -38,6 +40,7 @@ export const NARROW_SHOTS: readonly string[] = [
   "host-novo",
   // #168, round 3: the surfaces shipped on 2026-11-07 and 08.
   "projeto-conhecimento",
+  "card-novo-modelo",
   "claude-code-preparar",
   "card-fixados",
 ];

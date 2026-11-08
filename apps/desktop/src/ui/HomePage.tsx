@@ -72,6 +72,97 @@ async function readHost(store: AppStore, host: HostView, span: ReadWindow) {
   };
 }
 
+/** The last read of this visit: what it found, and which hosts answered. */
+interface Fetched {
+  entry: string;
+  hosts: HomeSnapshot;
+  answered: string[];
+  /** Hosts of the set that had numbers from an earlier read. */
+  kept: string[];
+  /** Online hosts that did not answer. */
+  failed: string[];
+}
+
+/** The leaderboard of the last read: in memory only, since it names projects (#124). */
+// `leaders` is null after a read in which a host with costs did not give all of them.
+interface Board {
+  entry: string;
+  leaders: HomeLeaders | null;
+}
+
+/**
+ * Reads the online hosts for Home: at once, every minute and when the window comes back. The
+ * numbers move with every turn.
+ */
+function useHomeRead(
+  store: AppStore,
+  read: {
+    online: HostView[];
+    entry: string;
+    key: string;
+    span: ReadWindow;
+    refreshMs: number | undefined;
+  },
+) {
+  const { online, entry, key, span, refreshMs } = read;
+  const { range } = span;
+  const [fetched, setFetched] = useState<Fetched | null>(null);
+  const [leaders, setLeaders] = useState<Board | null>(null);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const again = () => setTick((n) => n + 1);
+    const timer = setInterval(again, refreshMs ?? REFRESH_MS);
+    window.addEventListener("focus", again);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", again);
+    };
+  }, [refreshMs]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when the hosts, the day or the tick change
+  useEffect(() => {
+    if (online.length === 0) return;
+    let current = true;
+    void Promise.all(online.map((host) => readHost(store, host, span))).then((results) => {
+      if (!current) return;
+      const before = store.homeCache.get(entry) ?? {};
+      const hosts = keepAnswers(before, results);
+      store.homeCache.set(entry, hosts);
+      // The week names every project of the hosts that answered, not only the ones listed here:
+      // the labels of every screen are told apart against them.
+      const total = addUp(results, range);
+      if (total.projectKeys) store.projectKeys.note(total.projectKeys);
+      setLeaders((last) => nextBoard(last, entry, total));
+      setFetched({
+        entry,
+        hosts,
+        answered: results.filter((r) => r.answered).map((r) => r.id),
+        kept: Object.keys(before),
+        failed: results.filter((r) => !r.answered).map((r) => r.id),
+      });
+    });
+    return () => {
+      current = false;
+    };
+  }, [store, entry, key, range.from, range.to, tick]);
+
+  return { fetched, leaders };
+}
+
+/**
+ * The leaderboard after a read. Until every host with costs gave its three answers, the last whole
+ * leaderboard of these hosts stays, or the panel says so.
+ */
+function nextBoard(
+  last: Board | null,
+  entry: string,
+  total: { whole: boolean; leaders: HomeLeaders | null },
+): Board {
+  if (total.whole) return { entry, leaders: total.leaders };
+  return last?.entry === entry && last.leaders ? last : { entry, leaders: null };
+}
+
 /**
  * Home: the last seven days of every online host in four cards (spend, turns, tokens, the average
  * turn), from the hosts' own costs and usage; no command of its own.
@@ -136,71 +227,15 @@ export function HomePage(
   const only = projectKey ? { projectKey } : {};
   const range = periodRange(PERIOD, store.today());
   const days = useMemo(() => daysBetween(range.from, range.to), [range.from, range.to]);
-  /** The last read of this visit: what it found, and which hosts answered. */
-  const [fetched, setFetched] = useState<{
-    entry: string;
-    hosts: HomeSnapshot;
-    answered: string[];
-    /** Hosts of the set that had numbers from an earlier read. */
-    kept: string[];
-    /** Online hosts that did not answer. */
-    failed: string[];
-  } | null>(null);
-  const [tick, setTick] = useState(0);
-  /** The leaderboard of the last read: in memory only, since it names projects (#124). */
-  // `leaders` is null after a read in which a host with costs did not give all of them.
-  const [leaders, setLeaders] = useState<{ entry: string; leaders: HomeLeaders | null } | null>(
-    null,
-  );
+  const { fetched, leaders } = useHomeRead(store, {
+    online,
+    entry,
+    key,
+    span: { range, days, only, projectKey },
+    refreshMs: props.refreshMs,
+  });
   // What is on screen at once: this visit's read, or else the last one of the same hosts and period.
   const data = fetched?.entry === entry ? fetched.hosts : (store.homeCache.get(entry) ?? null);
-
-  // The numbers move with every turn: read again on a timer and when the window comes back.
-  useEffect(() => {
-    const again = () => setTick((n) => n + 1);
-    const timer = setInterval(again, props.refreshMs ?? REFRESH_MS);
-    window.addEventListener("focus", again);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("focus", again);
-    };
-  }, [props.refreshMs]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when the hosts, the day or the tick change
-  useEffect(() => {
-    if (online.length === 0) return;
-    let current = true;
-    void Promise.all(
-      online.map((host) => readHost(store, host, { range, days, only, projectKey })),
-    ).then((results) => {
-      if (!current) return;
-      const before = store.homeCache.get(entry) ?? {};
-      const hosts = keepAnswers(before, results);
-      store.homeCache.set(entry, hosts);
-      // The week names every project of the hosts that answered, not only the ones listed here:
-      // the labels of every screen are told apart against them.
-      const total = addUp(results, range);
-      if (total.projectKeys) store.projectKeys.note(total.projectKeys);
-      // Until every host with costs gave its three answers, the last whole leaderboard of these
-      // hosts stays, or the panel says so.
-      if (total.whole) setLeaders({ entry, leaders: total.leaders });
-      else {
-        setLeaders((last) =>
-          last?.entry === entry && last.leaders ? last : { entry, leaders: null },
-        );
-      }
-      setFetched({
-        entry,
-        hosts,
-        answered: results.filter((r) => r.answered).map((r) => r.id),
-        kept: Object.keys(before),
-        failed: results.filter((r) => !r.answered).map((r) => r.id),
-      });
-    });
-    return () => {
-      current = false;
-    };
-  }, [store, entry, key, range.from, range.to, tick]);
 
   const kpis: HomeKpis | null = useMemo(() => {
     if (!data) return null;

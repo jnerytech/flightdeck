@@ -29,6 +29,8 @@ export interface PrFlowDeps {
   log(line: string): void;
   /** The clock in ms (Date.now when absent): the age of a PR run (#741). */
   now?: () => number;
+  /** #1246: the one-line warning while main is red (null when green); absent, nothing is said. */
+  mainRed?: () => Promise<string | null>;
 }
 
 export interface Pr {
@@ -231,9 +233,16 @@ export function sliceTitle(subjects: string[]): string | null {
   return text || null;
 }
 
+/** #1246: says a red main and who owns its fix before a PR moves; never blocks, never fails. */
+async function warnMainRed(deps: PrFlowDeps): Promise<void> {
+  const line = await deps.mainRed?.().catch(() => null);
+  if (line) deps.log(`warning: ${line}`);
+}
+
 async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
   const branch = args[0];
   if (!branch || branch.startsWith("--")) return usage(deps);
+  await warnMainRed(deps);
   const option = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
   if (args.includes("--issue") && args.includes("--refs")) {
     deps.log("--issue and --refs cannot be used together: pick one");
@@ -446,6 +455,7 @@ function parsedPr(text: string): {
  * parent main does not have yet, stays updated without it, which is no failure.
  */
 async function updatePr(n: number, deps: PrFlowDeps): Promise<number> {
+  await warnMainRed(deps);
   const held = await updateWait(n, deps);
   if (held) {
     deps.log(held);

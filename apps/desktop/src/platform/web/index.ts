@@ -72,7 +72,9 @@ export function createWebPlatform(
         return Promise.resolve();
       },
       generateKey: () => Promise.reject(new Error("ssh-keygen needs the desktop app")),
-      // A page picks a file through a file input; a window that cannot make one picks nothing.
+      // A page picks a file through a file input, where the window can make one; else there is no
+      // dialog, and the app offers no restore.
+      canPick: Boolean(win.document?.createElement),
       pickFile: () =>
         win.document?.createElement
           ? pickWithInput(win.document as PickDocument)

@@ -1,13 +1,12 @@
 import { memo } from "react";
 import { QuotaGuard } from "@/components/hosts/quota-guard";
 import { Inline, Stack } from "@/components/layout/stack";
-import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { quotaBars } from "@/lib/quota";
 import { useStoreSlice } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
+import { QuotaBarList } from "./quota-bars";
 
 const QUOTA_DETAIL_KEYS = ["quota", "hosts"] as const;
 
@@ -35,32 +34,7 @@ export const QuotaDetail = memo(function QuotaDetail(
         return (
           <Stack key={host.id} gap={2} label={t("quota.region", { host: host.name })}>
             <h3 className="font-semibold text-sm">{host.name}</h3>
-            {quotaBars(quota, store.now(), (iso) => store.formatTime(iso), t).map((bar) => (
-              <Stack key={bar.window} gap={1}>
-                <Inline gap={2}>
-                  <span className="text-sm">{bar.label}</span>
-                  {bar.hasReading && (
-                    <span className="font-medium text-sm">{`${bar.percent}%`}</span>
-                  )}
-                </Inline>
-                {bar.hasReading ? (
-                  <>
-                    <Meter
-                      label={t("quota.meter", { window: bar.label, host: host.name })}
-                      value={bar.value}
-                      max={1}
-                      hot={bar.hot}
-                      className="w-full"
-                    />
-                    {bar.reset && (
-                      <span className="text-muted-foreground text-xs">{bar.reset}</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-muted-foreground text-xs">{t("quota.noReading")}</span>
-                )}
-              </Stack>
-            ))}
+            <QuotaBarList store={store} host={host} quota={quota} />
             <QuotaGuard store={store} host={host} pauseAt={quota?.pauseAt ?? null} />
             <Inline gap={2}>
               <Button
