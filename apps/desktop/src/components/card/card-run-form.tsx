@@ -47,6 +47,8 @@ export function CardRunForm(
     features: CardRunFeatures;
     /** The tab of the card page that shows: Review changes leads while it is the conversation (#1197). */
     tab: "conversation" | "diff";
+    /** The card's run waits at a gate: the gate's own buttons lead, not the run panel's (#1269). */
+    gateWaiting: boolean;
     /** The card's PR is open and can be merged from here (#1197): Merge PR leads. */
     canMerge: boolean;
     /** Merge PR was chosen: the page asks to confirm. */
@@ -102,7 +104,11 @@ export function CardRunForm(
     return undefined;
   };
 
-  const step = nextStep(card, { tab: props.tab, canMerge: props.canMerge });
+  const step = nextStep(card, {
+    tab: props.tab,
+    canMerge: props.canMerge,
+    gate: props.gateWaiting,
+  });
   const running = cardStartBlock(card) !== null;
   /** A session that is still there (even idle) or a card that waits: Stop has something to stop. */
   const alive =
@@ -138,6 +144,7 @@ export function CardRunForm(
       variant: "default" as const,
       run: () => props.onMerge(),
     },
+    gate: null,
     none: null,
   }[step ?? "none"];
   const canOpenPr = Boolean(card.worktreePath) && !card.prUrl;

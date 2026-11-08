@@ -41,7 +41,12 @@ function setup(language: "en" | "pt-BR" = "en") {
   }) as never;
   store.hostRequest = (async () => ({ ok: true, data: { text: null, ignored: null } })) as never;
   const seen = { shown: 0, back: 0, merged: 0 };
-  const form = (over: object, tab: "conversation" | "diff" = "conversation", canMerge = false) => (
+  const form = (
+    over: object,
+    tab: "conversation" | "diff" = "conversation",
+    canMerge = false,
+    gate = false,
+  ) => (
     <TContext.Provider value={store.i18n.t}>
       <CardRunForm
         store={store}
@@ -50,6 +55,7 @@ function setup(language: "en" | "pt-BR" = "en") {
         features={{ bg: true, watch: false }}
         tab={tab}
         canMerge={canMerge}
+        gateWaiting={gate}
         onMerge={() => {
           seen.merged++;
         }}
@@ -161,6 +167,12 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     await openMenu();
     await click(item("Merge PR"));
     expect(w.seen.merged).toBe(1);
+  });
+
+  test("a run waiting at a gate has no primary of its own: the gate's Approve is the only one (#1269)", () => {
+    const w = setup();
+    render(w.form(finished, "diff", false, true));
+    expect(shown()).toEqual(["Actions for Cart screen"]);
   });
 
   test("a finished run leads with Review changes, which shows the changes; Open PR waits in the menu", async () => {

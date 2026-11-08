@@ -241,6 +241,7 @@ export const CardDetail = memo(function CardDetail(props: {
                   arenaStart={arena.start}
                   onDiscarded={props.onBack}
                   canMerge={withMergePr && canMergeCardPr(card)}
+                  gateWaiting={false}
                   onMerge={() => setMergeOpen(true)}
                   onShowDiff={() => setTab("diff")}
                 />

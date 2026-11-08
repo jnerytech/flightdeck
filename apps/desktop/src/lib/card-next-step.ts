@@ -2,7 +2,7 @@ import type { Card } from "@flightdeck/protocol";
 import { cardStartBlock } from "./card-start-block.ts";
 
 /** The one thing a card asks of the person next, shown as its primary button. */
-export type NextStep = "start" | "stop" | "review" | "open-pr" | "merge-pr";
+export type NextStep = "start" | "stop" | "review" | "open-pr" | "merge-pr" | "gate";
 
 type Shape = Pick<
   Card,
@@ -12,7 +12,7 @@ type Shape = Pick<
 /** The card's next step, from its state and what the page shows. `null`: nothing is waiting on the person. */
 export function nextStep(
   card: Shape,
-  view: { tab: "conversation" | "diff"; canMerge: boolean },
+  view: { tab: "conversation" | "diff"; canMerge: boolean; gate: boolean },
 ): NextStep | null {
   if (cardStartBlock(card) !== null) return "stop";
   if (card.prUrl) {
