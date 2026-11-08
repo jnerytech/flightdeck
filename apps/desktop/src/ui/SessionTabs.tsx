@@ -9,6 +9,7 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { SessionFinish } from "../components/session/session-finish.tsx";
 import type { AppStore } from "../lib/app-store.ts";
 import {
   offeredViews,
@@ -263,6 +264,15 @@ export function SessionTabs(
                   },
                 }
               : {})}
+            extra={(changes, refresh) => (
+              <SessionFinish
+                store={props.store}
+                hostId={props.hostId}
+                target={changes.target}
+                changes={changes}
+                refresh={refresh}
+              />
+            )}
           />
           <SessionFiles
             store={props.store}

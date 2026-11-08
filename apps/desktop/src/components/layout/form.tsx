@@ -211,6 +211,8 @@ export function CheckField(
   props: Readonly<{
     checked: boolean;
     onChange(checked: boolean): void;
+    /** Shown but not changeable: what cannot be picked, with the reason beside it. */
+    disabled?: boolean;
     children: ReactNode;
   }>,
 ) {
@@ -219,6 +221,7 @@ export function CheckField(
       <input
         type="checkbox"
         checked={props.checked}
+        disabled={props.disabled}
         onChange={(e) => props.onChange(e.target.checked)}
       />
       {props.children}
