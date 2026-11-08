@@ -177,7 +177,7 @@ function TemplateFile(
         aria-label={t("workflowsUi.templates.file", { path: template.path })}
         // The file can be longer than the dialog: it scrolls, and a keyboard can reach it.
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must take the focus
-        tabIndex={0}
+        tabIndex={0} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
         className="max-h-80 overflow-auto rounded-md bg-muted p-3"
       >
         <pre className="font-mono text-xs">{template.yaml}</pre>

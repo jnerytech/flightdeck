@@ -173,7 +173,7 @@ export const CardDetail = memo(function CardDetail(props: {
           data-split={chatShown}
           aria-label={chatShown ? t("cardUi.infoPane") : undefined}
           // biome-ignore lint/a11y/noNoninteractiveTabindex: a pane that scrolls takes focus, so the keyboard reaches it
-          tabIndex={chatShown ? 0 : undefined}
+          tabIndex={chatShown ? 0 : undefined} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
           className="card-info"
         >
           {card.notice && (
