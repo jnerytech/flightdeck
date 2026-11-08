@@ -136,7 +136,9 @@ export class AssistantController {
   /** An arrow, so a screen can hand it to `useSyncExternalStore` as it is. */
   readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
-    return () => void this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   };
 
   /** Which API providers have a key saved, as last read. */

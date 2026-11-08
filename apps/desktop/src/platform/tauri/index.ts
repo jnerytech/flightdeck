@@ -34,7 +34,7 @@ export interface BrowserWindow extends FilePickerWindow {
 function shell<T>(call: typeof invoke, command: string, args: Record<string, unknown>): Promise<T> {
   return call<T>(command, args).catch((error: unknown) => {
     const reason = (error as { reason?: unknown } | null | undefined)?.reason;
-    return Promise.reject(typeof reason === "string" ? error : { reason: "assistant_bad_output" });
+    throw typeof reason === "string" ? error : { reason: "assistant_bad_output" };
   });
 }
 

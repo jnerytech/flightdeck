@@ -37,7 +37,7 @@ export function FileExplorer(
   /** The repository's folder on the host, from the diff: what makes a path whole. */
   const [root, setRoot] = useState<string | null>(null);
   /** The file open in the viewer, at a line when a content match opened it (#827). */
-  const [viewing, setViewing] = useState<{ path: string; line?: number | undefined } | null>(null);
+  const [viewing, setViewing] = useState<{ path: string; line?: number } | null>(null);
 
   const load = useCallback(
     async (dir: string) => {
