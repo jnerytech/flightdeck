@@ -1981,6 +1981,14 @@ export const ptBR = {
       "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider: "O projeto não tem provedor de PR.",
     card_no_pr: "O card não tem PR.",
+    card_pr_not_open: "O PR do card não está aberto.",
+    card_pr_merge_unsupported:
+      "Este host de PR não faz merge pelo Flightdeck: faça o merge do PR lá.",
+    card_pr_checks_failing:
+      "Os checks estão falhando ou ainda rodando: o PR ainda não pode ser mesclado.",
+    card_pr_review_required: "O PR precisa de uma revisão antes de ser mesclado.",
+    card_pr_conflict: "O PR tem conflito com a branch base: resolva o conflito antes.",
+    card_pr_merge_failed: "Não foi possível fazer o merge do PR: {detail}",
     pr_no_comment: "Nenhum comentário foi escolhido.",
     card_running: "O card está em execução: espere o agente terminar.",
     merge_confirm: "Confirme o merge.",

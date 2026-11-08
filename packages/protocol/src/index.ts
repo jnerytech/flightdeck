@@ -3493,6 +3493,20 @@ export const Command = z.discriminatedUnion("type", [
       outcome: z.enum(["done", "discard"]).optional(),
     }),
   ),
+  /**
+   * #1196: merges the card's open PR on its provider (`gh pr merge`, a merge commit or a squash);
+   * a near connection and `confirm`. The card then moves to Done as any merged PR does.
+   */
+  cmd(
+    "card.pr.merge",
+    z
+      .object({
+        cardId: z.string(),
+        method: z.enum(["merge", "squash"]),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
   /** Removes a card that never started; a started one is refused (use `card.discard`). */
@@ -5445,6 +5459,7 @@ export interface CommandResults {
   "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;
+  "card.pr.merge": Card;
   "card.manage": Card;
   "card.complete": Card;
   "card.discard": Card;
