@@ -139,10 +139,20 @@ export function ProjectPage(
           hostName={host?.name ?? hostId}
           projectName={project.name}
           path={project.path}
+          canSetUp={
+            hasFeature(host?.hostInfo?.features, "harnessPreview", false) &&
+            hasFeature(host?.hostInfo?.features, "harnessApply", false)
+          }
         />
       )}
       {hasFeature(host?.hostInfo?.features, "knowledge", false) && (
-        <KnowledgePanel store={store} hostId={hostId} path={project.path} />
+        <KnowledgePanel
+          store={store}
+          hostId={hostId}
+          path={project.path}
+          feed={hasFeature(host?.hostInfo?.features, "knowledgeFeed", false)}
+          status={hasFeature(host?.hostInfo?.features, "knowledgeStatus", false)}
+        />
       )}
       <SessionTiles
         store={store}

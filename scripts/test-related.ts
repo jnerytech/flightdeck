@@ -13,7 +13,8 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { checkChanged } from "./lib/related-coverage.ts";
+import { COVERAGE_GATE } from "./lib/coverage-check.ts";
+import { checkChanged, wholeSuiteCheck } from "./lib/related-coverage.ts";
 import { keepCoverageProblem, listSelection, planRelated } from "./lib/test-related.ts";
 import { testTiers } from "./lib/test-tiers.ts";
 
@@ -80,6 +81,16 @@ if (!plan.command) {
   if (!keep) rmSync(coverageDir, { recursive: true, force: true });
   process.exit(plan.code);
 }
+const check = wholeSuiteCheck(plan.wholeCoverage && resolve(ROOT, plan.wholeCoverage), {
+  remove: (path) => rmSync(path, { force: true }),
+  read: (path) => {
+    try {
+      return readFileSync(path, "utf8");
+    } catch {
+      return null;
+    }
+  },
+});
 const [cmd = "bun", ...rest] = plan.command;
 const proc = Bun.spawn([cmd === "bun" ? process.execPath : cmd, ...rest], {
   cwd: ROOT,
@@ -87,7 +98,11 @@ const proc = Bun.spawn([cmd === "bun" ? process.execPath : cmd, ...rest], {
 });
 let code = await proc.exited;
 
-// The changed source files must be at 100% lines and functions, as the full suite demands.
+// #996: Bun's coverage threshold fails a whole-suite run with exit code 1 and no word on why.
+const wholeVerdict = check(code);
+if (wholeVerdict) console.error(`\n${wholeVerdict}`);
+
+// The changed source files must be at the gate (80% of lines and functions), as the full suite demands.
 const targets = plan.targets ?? [];
 if (targets.length > 0) {
   const lcov = join(coverageDir, "lcov.info");
@@ -101,7 +116,7 @@ if (targets.length > 0) {
   const verdict = checkChanged(report, targets);
   if (report && verdict.problems.length > 0) {
     console.error(
-      `\ntest:related: ${verdict.problems.length} changed file(s) below 100% coverage:`,
+      `\ntest:related: ${verdict.problems.length} changed file(s) below the ${COVERAGE_GATE}% coverage gate:`,
     );
     for (const problem of verdict.problems) console.error(`  - ${problem}`);
     if (verdict.functionGaps.length > 0) {

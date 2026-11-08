@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import {
   childEnv,
+  type EvalHost,
   type EvalRunner,
   type EvalTask,
+  evalContext,
   evalOptions,
+  evalPlatformRefusal,
   grade,
   parseStream,
   prepareClone,
@@ -164,6 +167,53 @@ describe("harness-eval", () => {
 });
 
 describe("harness-eval: the CLI's options", () => {
+  test("#986 Sonar: an eval starts from claude on the PATH, a runner with the filtered env, and the repo's root and HEAD", () => {
+    const calls: string[] = [];
+    const host = (over: Partial<EvalHost> = {}): EvalHost => ({
+      platform: "linux",
+      which: (name) => (name === "claude" ? "/bin/claude" : null),
+      spawn: (command, cwd, env) => {
+        calls.push(`${cwd} ${command.join(" ")} ${Object.keys(env).join(",")}`);
+        const out = command.includes("--show-toplevel") ? "/r/repo\n" : "abc123\n";
+        return { code: 0, out };
+      },
+      cwd: "/r/repo/scripts",
+      env: { PATH: "/bin", GH_TOKEN: "x" },
+      ...over,
+    });
+    const context = evalContext("ux-review-eval", host());
+    expect(typeof context === "string" ? context : { ...context, run: typeof context.run }).toEqual(
+      {
+        claude: "/bin/claude",
+        run: "function",
+        root: "/r/repo",
+        head: "abc123",
+      },
+    );
+    // No token reaches what it runs: only the filtered env.
+    expect(calls).toEqual([
+      "/r/repo/scripts git rev-parse --show-toplevel PATH",
+      "/r/repo git rev-parse HEAD PATH",
+    ]);
+    expect(evalContext("ux-review-eval", host({ platform: "win32" }))).toBe(
+      "ux-review-eval: the evals run on Linux and macOS only: on Windows their git deny patterns miss backslash paths",
+    );
+    expect(evalContext("harness-eval", host({ which: () => null }))).toBe(
+      "harness-eval: claude is not on the PATH",
+    );
+    expect(evalContext("harness-eval", host({ spawn: () => ({ code: 128, out: "" }) }))).toBe(
+      "harness-eval: run it inside the flightdeck repository",
+    );
+  });
+
+  test("#986 review: the evals refuse Windows, where their git deny patterns and paths do not hold", () => {
+    expect(evalPlatformRefusal("win32")).toBe(
+      "the evals run on Linux and macOS only: on Windows their git deny patterns miss backslash paths",
+    );
+    expect(evalPlatformRefusal("linux")).toBeNull();
+    expect(evalPlatformRefusal("darwin")).toBeNull();
+  });
+
   test("defaults to 3 samples, a $1 budget, sonnet, and no --keep", () => {
     expect(evalOptions([])).toEqual({ samples: 3, budget: "1", model: "sonnet", keep: false });
     expect(evalOptions(["--samples", "2", "--budget", "0.5", "--model", "opus", "--keep"])).toEqual(
@@ -215,6 +265,23 @@ describe("harness-eval: what the session may touch", () => {
       expect(denied).toContain(tool);
     }
     for (const tool of ["Read(~/**)", "Edit(~/**)", "Write(~/**)"]) expect(denied).toContain(tool);
+    // #986 security review: `git diff <path> <path>` with a path outside the clone compares files
+    // (an implied --no-index), so it reads what Read(~/**) denies.
+    for (const tool of [
+      "Bash(git * --no-index*)",
+      "Bash(git diff /*)",
+      "Bash(git diff * /*)",
+      "Bash(git diff ~*)",
+      "Bash(git diff * ~*)",
+      "Bash(git diff ../*)",
+      "Bash(git diff *../*)",
+      // A variable or a drive letter names a path outside the clone too (re-review of #986).
+      "Bash(git diff $*)",
+      "Bash(git diff *$*)",
+      "Bash(git diff *:*)",
+    ]) {
+      expect(denied).toContain(tool);
+    }
   });
 
   test("a clone inside the home folder does not deny the home folder, which would deny the clone", () => {

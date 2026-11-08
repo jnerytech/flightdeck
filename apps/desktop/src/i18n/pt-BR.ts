@@ -1355,12 +1355,13 @@ export const ptBR = {
     input_name_invalid: "Um nome de input usa letras, números, hífens e sublinhados.",
     persona_invalid: "O id da persona não é válido.",
     step_one_action:
-      "Uma etapa precisa de exatamente uma ação: agent, check, gate, loop, parallel ou pr.",
+      "Uma etapa precisa de exatamente uma ação: agent, check, gate, loop, parallel, pr ou cards.",
     step_id_duplicate: "Outra etapa tem esse id.",
     inner_one_action: "{where} precisa de exatamente uma ação: agent ou check.",
     continue_unknown: "continue aponta para uma etapa que não existe: {step}.",
     persona_with_continue: "persona não vale com continue: a sessão dessa etapa já existe.",
     reference_unknown: "Referência desconhecida: {ref}.",
+    cards_from_unknown: "cards.from precisa nomear uma etapa agent anterior, e {step} não é uma.",
   },
   actionIssue: {
     not_object: "A ação precisa ser um bloco de campos.",
@@ -1479,7 +1480,10 @@ export const ptBR = {
     projectTrust: "a confiança em projetos",
     harnessStack: "a leitura do stack do projeto",
     knowledge: "a leitura dos documentos do projeto",
+    knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
+    knowledgeStatus: "a mudança do status de um documento",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
+    harnessApply: "a aplicação de mudanças na configuração do Claude Code",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
@@ -1516,6 +1520,10 @@ export const ptBR = {
     project_no_issues:
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
     card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",
+    findings_missing:
+      "A resposta da etapa {step} não traz uma lista de achados, então nenhum card foi criado.",
+    findings_invalid:
+      "A resposta da etapa {step} não é uma lista de achados válida ({where}), então nenhum card foi criado.",
     spec_path_invalid:
       "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
@@ -1737,6 +1745,8 @@ export const ptBR = {
     review_text_big: "O texto passa de 1 MB: encurte-o ou edite o arquivo fora do Flightdeck.",
     review_file_changed:
       "O arquivo {path} mudou desde que foi aberto: recarregue e aplique a edição de novo.",
+    knowledge_frontmatter:
+      "O front matter de {path} não pode ser mudado com segurança por aqui: edite o arquivo à mão.",
     review_revert_confirm: "Confirme o revert para continuar.",
     review_undo_confirm: "Confirme o desfazer para continuar.",
     review_undo_nothing:
@@ -1791,6 +1801,11 @@ export const ptBR = {
       "Isto só funciona por uma conexão próxima: este computador (loopback) ou a Tailscale, que o WireGuard cifra. Para um host WSL, adicione-o como ws://localhost:<porta> (o WSL repassa a porta) ou pelo endereço da Tailscale.",
     trust_root_refused:
       "Esta pasta é uma pasta permitida com vários projetos, ou fica acima de uma: confie na pasta do próprio projeto.",
+    harness_stale:
+      "O projeto mudou desde a prévia, ou a prévia não era destas partes: faça a prévia de novo.",
+    harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
+    harness_reformat:
+      "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
@@ -4197,10 +4212,30 @@ export const ptBR = {
       empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
       truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
       failed: "Não foi possível ler os documentos neste host.",
+      setStatus: {
+        hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
+        label: "Status de {title}",
+        changed:
+          "{title} agora está {status}. O arquivo foi mudado na pasta do projeto e não foi commitado.",
+        failed: "Não foi possível mudar o status. {why}",
+      },
+      feed: {
+        on: "As sessões que o Flightdeck inicia aqui recebem um índice dos documentos válidos.",
+        onUntrusted:
+          "Ligado, mas este projeto não é confiável, então as sessões não recebem o índice.",
+        off: "Desligado: as sessões daqui não recebem o índice.",
+        offBy:
+          "Desligado por {path}, uma pasta acima deste projeto, na configuração do host. Ligue lá.",
+        turnOff: "Desligar",
+        turnOn: "Ligar",
+        failed: "Não foi possível ler ou mudar o interruptor do índice neste host.",
+      },
     },
     harness: {
       title: "Configuração do Claude Code",
       hint: "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Só leitura: nada aqui muda o projeto.",
+      hintSetup:
+        "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Nada muda até você ler uma configuração e aplicá-la.",
       summary: "{n} de {total} partes encontradas",
       found: "Encontrado",
       missing: "Faltando",
@@ -4220,6 +4255,29 @@ export const ptBR = {
         format: "um formatador após edições",
         gitAdd: "uma verificação antes do git add",
         secrets: "uma verificação de arquivos de segredo",
+      },
+      setup: {
+        action: "Configurar o Claude Code",
+        apply: "Aplicar a configuração",
+        message:
+          "Isto acrescenta o que falta no projeto. Só acrescenta: nada que já existe é alterado ou removido.",
+        nothing:
+          "Nada a acrescentar: o projeto já tem todas as partes que esta configuração grava.",
+        hooks: "Hooks a acrescentar",
+        hookLine: "{event} ({matcher}): {command}",
+        formatterNote:
+          "Isto roda o script de formatação do próprio projeto: o que ele faz vem dos arquivos do projeto, e um pull pode mudá-lo.",
+        deny: "Regras de bloqueio a acrescentar (melhor esforço)",
+        denyNote:
+          "Elas impedem a ferramenta Read do Claude Code nestes arquivos e estas formas de git add. Não impedem um comando de shell como cat .env.",
+        files: "Arquivos novos",
+        conflicts: "Ficam como estão: estas chaves já guardam outra coisa",
+        unreadable: "Não lidos, então ficam como estão",
+        untrusted: "Estes hooks e regras só carregam depois que você confiar neste projeto.",
+        reformat:
+          "Regravar .claude/settings.json com outro layout. O espaçamento muda, e uma chave repetida ou um número muito grande podem ser reescritos.",
+        done: "Configurado: {files}",
+        again: "Fazer a prévia de novo",
       },
     },
     trust: {

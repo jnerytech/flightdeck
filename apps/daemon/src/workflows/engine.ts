@@ -19,6 +19,7 @@ import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { addTurn, noSpending, overBudget, type RunSpending } from "./budget.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";
+import { CARDS_PER_RUN, type CardsRaised, type Finding, parseFindings } from "./findings.ts";
 import { type InterpolationContext, interpolate, OUTPUTS_SEPARATOR } from "./interpolate.ts";
 import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
 import {
@@ -46,6 +47,12 @@ export interface EngineHost {
   takeSlots(cardId: string, count: number): string[];
   /** Pushes the card's branch and opens its PR (phase 4); the PR's URL. */
   createPr(cardId: string): Promise<string>;
+  /** Issue #79: raises findings as Backlog cards of the card's project. */
+  raiseCards(
+    cardId: string,
+    findings: readonly Finding[],
+    origin: { workflow: string; runId: string },
+  ): CardsRaised;
   card(cardId: string): Card;
 }
 
@@ -114,6 +121,17 @@ const reason = (error: unknown) => (error instanceof Error ? error.message : Str
 
 /** The run was ended by the board while it waited: nothing more to do. */
 class Abandoned extends Error {}
+
+/** Fails the run with a reason the app translates (`status_reason_key` and its params). */
+class Refused extends Error {
+  constructor(
+    readonly reasonKey: string,
+    readonly params: Record<string, string>,
+    why: string,
+  ) {
+    super(why);
+  }
+}
 
 /** Ends the run with a status of its own (not `failed`), such as a rejected gate. */
 class Stop extends Error {
@@ -289,12 +307,16 @@ export class WorkflowEngine {
     refusal: { reason: string; params?: Record<string, string | number> } | null = null,
   ): void {
     this.end(runId, "failed", why);
-    if (!refusal) return;
+    if (refusal) this.setReasonKey(runId, refusal.reason, refusal.params ?? {});
+  }
+
+  /** The reason a run ended, as a key and params the app translates. */
+  private setReasonKey(runId: string, key: string, params: Record<string, string | number>): void {
     this.db
       .query(
         "UPDATE workflow_runs SET status_reason_key = ?, status_reason_params = ? WHERE id = ?",
       )
-      .run(refusal.reason, JSON.stringify(refusal.params ?? {}), runId);
+      .run(key, JSON.stringify(params), runId);
     this.emit(runId);
   }
 
@@ -456,7 +478,10 @@ export class WorkflowEngine {
     } catch (error) {
       if (error instanceof Abandoned) return;
       if (error instanceof Stop) this.finish(run, error.status, error.message);
-      else this.finish(run, "failed", reason(error));
+      else if (error instanceof Refused) {
+        this.finish(run, "failed", error.message);
+        this.setReasonKey(run.id, error.reasonKey, error.params);
+      } else this.finish(run, "failed", reason(error));
     }
   }
 
@@ -478,6 +503,8 @@ export class WorkflowEngine {
       return { output: await this.loopStep(run, worktree, step.id, step.loop, context) };
     }
     if ("pr" in step) return { output: await this.prStep(run, step.id) };
+    if ("cards" in step)
+      return { output: await this.cardsStep(run, step.id, step.cards.from, context) };
     if ("parallel" in step) {
       return { outputs: await this.parallelStep(run, worktree, step.id, step.parallel, context) };
     }
@@ -555,6 +582,44 @@ export class WorkflowEngine {
       this.endStep(run.id, stepId, 1, "failed", null);
       throw new Error(`etapa ${stepId} falhou: ${reason(error)}`);
     }
+  }
+
+  /** Issue #79: raises the findings in the reply of an earlier agent step as Backlog cards. */
+  private async cardsStep(
+    run: RunRow,
+    stepId: string,
+    from: string,
+    context: InterpolationContext,
+  ): Promise<string> {
+    this.db
+      .query(
+        `INSERT OR IGNORE INTO step_runs (run_id, step_id, attempt, type, status, started_at)
+         VALUES (?, ?, 1, 'cards', 'running', ?)`,
+      )
+      .run(run.id, stepId, now());
+    this.emit(run.id);
+    // The reply is untrusted text: any shape problem raises nothing and the run says why.
+    const parsed = parseFindings(context.steps[from]?.output ?? "");
+    if (!parsed.ok) {
+      this.endStep(run.id, stepId, 1, "failed", null);
+      const params: Record<string, string> = { step: from };
+      if (parsed.reason === "findings_invalid") params.where = parsed.where;
+      throw new Refused(
+        parsed.reason,
+        params,
+        parsed.reason === "findings_missing"
+          ? `step ${stepId}: the reply of ${from} has no json block of findings`
+          : `step ${stepId}: the reply of ${from} is not a valid list of findings (${params.where})`,
+      );
+    }
+    const raised = this.host.raiseCards(run.card_id, parsed.findings, {
+      workflow: run.workflow_name,
+      runId: run.id,
+    });
+    const count = raised.created.length;
+    const summary = `Raised ${count} ${count === 1 ? "card" : "cards"}; ${raised.duplicates} already covered; ${raised.overCap} over the cap of ${CARDS_PER_RUN}.`;
+    this.endStep(run.id, stepId, 1, "completed", summary);
+    return summary;
   }
 
   /** An agent or a check (on its own, or inside a loop or a parallel); a failed check fails. */

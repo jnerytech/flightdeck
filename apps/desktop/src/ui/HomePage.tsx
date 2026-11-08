@@ -8,7 +8,7 @@ import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import type { AppState, AppStore, HostView } from "../lib/app-store.ts";
 import { mergeSummaries } from "../lib/client-costs.ts";
 import { ALL_HOSTS, daysBetween, periodRange, projectLabel, projectPath } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, scopeHosts } from "../lib/data-scope.ts";
@@ -24,6 +24,53 @@ const PERIOD = "7d";
 
 /** Read again every minute while the page is open, and when the window gets focus back. */
 const REFRESH_MS = 60_000;
+
+/** What the cards and the leaderboard need to read from one online host. */
+interface ReadWindow {
+  range: { from: string; to: string };
+  days: string[];
+  only: { projectKey?: string };
+  projectKey: string | undefined;
+}
+
+/** One host's costs, usage and the leaderboard's two halves, and whether it answered. */
+async function readHost(store: AppStore, host: HostView, span: ReadWindow) {
+  const { range, days, only, projectKey } = span;
+  const priced = hasFeature(host.hostInfo?.features, "costs", false);
+  // The leaderboard's trend compares days 1-3 with days 4-6: today is not over.
+  const half = (from: number, to: number) =>
+    priced
+      ? store.hostRequest(host.id, "costs.summary", {
+          from: days[from] ?? range.from,
+          to: days[to] ?? range.to,
+          ...only,
+        })
+      : null;
+  const [costs, usage, first, second] = await Promise.all([
+    priced ? store.hostRequest(host.id, "costs.summary", { ...range, ...only }) : null,
+    store.hostRequest(host.id, "usage.summary", { days: 7 }),
+    half(0, 2),
+    half(3, 5),
+  ]);
+  // A host that has costs but did not give them, or did not give its usage, did not answer.
+  const answered = (costs === null || costs.ok) && usage.ok;
+  return {
+    id: host.id,
+    priced,
+    answered,
+    // A host whose three costs came is in the leaderboard; the others are in the notices.
+    shares:
+      costs?.ok && first?.ok && second?.ok
+        ? { week: costs.data, first: first.data, second: second.data }
+        : null,
+    data: homeHostData(
+      costs?.ok ? costs.data : null,
+      usage.ok ? usage.data : null,
+      store.now(),
+      projectKey,
+    ),
+  };
+}
 
 /**
  * Home: the last seven days of every online host in four cards (spend, turns, tokens, the average
@@ -127,42 +174,7 @@ export function HomePage(
     if (online.length === 0) return;
     let current = true;
     void Promise.all(
-      online.map(async (host) => {
-        const priced = hasFeature(host.hostInfo?.features, "costs", false);
-        // The leaderboard's trend compares days 1-3 with days 4-6: today is not over.
-        const half = (from: number, to: number) =>
-          priced
-            ? store.hostRequest(host.id, "costs.summary", {
-                from: days[from] ?? range.from,
-                to: days[to] ?? range.to,
-                ...only,
-              })
-            : null;
-        const [costs, usage, first, second] = await Promise.all([
-          priced ? store.hostRequest(host.id, "costs.summary", { ...range, ...only }) : null,
-          store.hostRequest(host.id, "usage.summary", { days: 7 }),
-          half(0, 2),
-          half(3, 5),
-        ]);
-        // A host that has costs but did not give them, or did not give its usage, did not answer.
-        const answered = (costs === null || costs.ok) && usage.ok;
-        return {
-          id: host.id,
-          priced,
-          answered,
-          // A host whose three costs came is in the leaderboard; the others are in the notices.
-          shares:
-            costs?.ok && first?.ok && second?.ok
-              ? { week: costs.data, first: first.data, second: second.data }
-              : null,
-          data: homeHostData(
-            costs?.ok ? costs.data : null,
-            usage.ok ? usage.data : null,
-            store.now(),
-            projectKey,
-          ),
-        };
-      }),
+      online.map((host) => readHost(store, host, { range, days, only, projectKey })),
     ).then((results) => {
       if (!current) return;
       // A host that did not answer keeps the numbers it had, and the hosts that are offline too.

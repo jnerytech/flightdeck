@@ -174,6 +174,46 @@ export interface EvalOptions {
   keep: boolean;
 }
 
+/** The effects an eval starts from: the platform, the PATH lookup, a spawn, the folder and env. */
+export interface EvalHost {
+  platform: string;
+  which: (name: string) => string | null;
+  spawn: (command: string[], cwd: string, env: Record<string, string>) => EvalRun;
+  cwd: string;
+  env: Record<string, string | undefined>;
+}
+
+/** What an eval runs with: claude, a runner with the filtered env, the repo's root and HEAD. */
+export interface EvalContext {
+  claude: string;
+  run: EvalRunner;
+  root: string;
+  head: string;
+}
+
+/** The context of an eval named `tag`, or why it cannot start (prefixed with the tag). */
+export function evalContext(tag: string, host: EvalHost): EvalContext | string {
+  const refusal = evalPlatformRefusal(host.platform);
+  if (refusal) return `${tag}: ${refusal}`;
+  const claude = host.which("claude");
+  if (!claude) return `${tag}: claude is not on the PATH`;
+  const env = childEnv(host.env);
+  const run: EvalRunner = (command, cwd) => host.spawn(command, cwd, env);
+  const top = run(["git", "rev-parse", "--show-toplevel"], host.cwd);
+  if (top.code !== 0) return `${tag}: run it inside the flightdeck repository`;
+  const root = top.out.trim();
+  return { claude, run, root, head: run(["git", "rev-parse", "HEAD"], root).out.trim() };
+}
+
+/** Why the evals refuse to run on this platform, or null. */
+export function evalPlatformRefusal(platform: string): string | null {
+  // The git deny patterns match / paths only, `core.hooksPath=/dev/null` and a spawn without a
+  // shell (no claude.cmd) are POSIX, and the home check is case-sensitive (#986 review).
+  return platform === "win32"
+    ? "the evals run on Linux and macOS only: on Windows their git deny patterns miss backslash paths"
+    : null;
+}
+
 /** The options from `argv`, or the reason they are refused. */
 export function evalOptions(argv: string[]): EvalOptions | string {
   const option = (name: string, fallback: string) => {
@@ -212,7 +252,24 @@ const ALLOWED_TOOLS = [
 ];
 
 /** What a sample may never do, even when an allowed pattern matches it. */
-const DENIED_TOOLS = ["Bash(git push *)", "Bash(git remote *)", "Bash(git * --output*)"];
+export const DENIED_TOOLS = [
+  "Bash(git push *)",
+  "Bash(git remote *)",
+  "Bash(git * --output*)",
+  // `git diff <path> <path>` with a path outside the clone compares the files (an implied
+  // --no-index), which would read what Read(~/**) denies (#986 security review).
+  "Bash(git * --no-index*)",
+  "Bash(git diff /*)",
+  "Bash(git diff * /*)",
+  "Bash(git diff ~*)",
+  "Bash(git diff * ~*)",
+  "Bash(git diff ../*)",
+  "Bash(git diff *../*)",
+  // A variable ($HOME) or a drive letter (C:/) names a path outside the clone too.
+  "Bash(git diff $*)",
+  "Bash(git diff *$*)",
+  "Bash(git diff *:*)",
+];
 
 /** The path without its trailing slashes and backslashes (a regex on a long run of them is quadratic). */
 function trimSeparators(path: string): string {
@@ -231,11 +288,6 @@ export function sessionArgs(
   options: Pick<EvalOptions, "model" | "budget">,
   places: { dir: string; home: string },
 ): string[] {
-  const home = trimSeparators(places.home);
-  const inHome =
-    places.dir === home ||
-    (places.dir.startsWith(home) && /^[\\/]/.test(places.dir.slice(home.length)));
-  const homeDenied = inHome ? [] : ["Read(~/**)", "Edit(~/**)", "Write(~/**)"];
   return [
     "-p",
     prompt,
@@ -253,8 +305,17 @@ export function sessionArgs(
     ...ALLOWED_TOOLS,
     "--disallowedTools",
     ...DENIED_TOOLS,
-    ...homeDenied,
+    ...homeDenials(places),
   ];
+}
+
+/** The home folder's deny rules, when the clone is outside it; none when it is inside. */
+export function homeDenials(places: { dir: string; home: string }): string[] {
+  const home = trimSeparators(places.home);
+  const inHome =
+    places.dir === home ||
+    (places.dir.startsWith(home) && /^[\\/]/.test(places.dir.slice(home.length)));
+  return inHome ? [] : ["Read(~/**)", "Edit(~/**)", "Write(~/**)"];
 }
 
 /** The environment variables a sample's processes keep: no token, key or other secret. */
@@ -288,8 +349,14 @@ export function childEnv(env: Record<string, string | undefined>): Record<string
   return kept;
 }
 
+/** A command's exit code and stdout. */
+export interface EvalRun {
+  code: number;
+  out: string;
+}
+
 /** Runs a command in a folder and gives its exit code and stdout. */
-export type EvalRunner = (command: string[], cwd: string) => { code: number; out: string };
+export type EvalRunner = (command: string[], cwd: string) => EvalRun;
 
 /**
  * Clones `root` at `head` into `dir`, removes origin and installs the dependencies; the reason it

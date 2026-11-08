@@ -1358,13 +1358,16 @@ export const en: Dictionary = {
     parallel_empty: "parallel needs at least one item.",
     input_name_invalid: "An input name takes letters, digits, hyphens and underscores.",
     persona_invalid: "The persona id is not valid.",
-    step_one_action: "A step needs exactly one action: agent, check, gate, loop, parallel or pr.",
+    step_one_action:
+      "A step needs exactly one action: agent, check, gate, loop, parallel, pr or cards.",
     step_id_duplicate: "Another step has this id.",
     inner_one_action: "{where} needs exactly one action: agent or check.",
     continue_unknown: "continue points to a step that does not exist: {step}.",
     persona_with_continue:
       "persona does not apply with continue: that step's session already exists.",
     reference_unknown: "Unknown reference: {ref}.",
+    cards_from_unknown:
+      "cards.from must name an agent step that comes before it, and {step} is not one.",
   },
   actionIssue: {
     not_object: "The action must be a block of fields.",
@@ -1482,7 +1485,10 @@ export const en: Dictionary = {
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
     knowledge: "reading the project's documents",
+    knowledgeFeed: "the switch for the documents index in agents' prompts",
+    knowledgeStatus: "changing a document's status",
     harnessPreview: "previewing Claude Code setup changes",
+    harnessApply: "applying Claude Code setup changes",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
@@ -1520,6 +1526,9 @@ export const en: Dictionary = {
     messaging_policy_invalid: "The messaging rules are not valid: {errors}",
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
     card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
+    findings_missing: "The reply of step {step} has no list of findings, so no card was created.",
+    findings_invalid:
+      "The reply of step {step} is not a valid list of findings ({where}), so no card was created.",
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
@@ -1738,6 +1747,8 @@ export const en: Dictionary = {
     review_text_big: "The text is over 1 MB: shorten it or edit the file outside Flightdeck.",
     review_file_changed:
       "The file {path} changed since it was opened: reload it and apply your edit again.",
+    knowledge_frontmatter:
+      "The front matter of {path} cannot be changed safely from here: edit the file by hand.",
     review_revert_confirm: "Confirm the revert to go on.",
     review_undo_confirm: "Confirm the undo to go on.",
     review_undo_nothing:
@@ -1792,6 +1803,11 @@ export const en: Dictionary = {
       "This only works over a near connection: this computer (loopback) or Tailscale, which WireGuard encrypts. For a WSL host, add it as ws://localhost:<port> (WSL forwards the port) or by its Tailscale address.",
     trust_root_refused:
       "This folder is an allowed folder that holds several projects, or a folder above one: trust the project's own folder instead.",
+    harness_stale:
+      "The project changed since the preview, or the preview was not of these parts: preview again.",
+    harness_confirm: "Changing the Claude Code setup needs your confirmation.",
+    harness_reformat:
+      "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",
@@ -4194,10 +4210,29 @@ export const en: Dictionary = {
       empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
       truncated: "The list is cut: only the first documents are shown.",
       failed: "The documents could not be read from this host.",
+      setStatus: {
+        hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
+        label: "Status of {title}",
+        changed:
+          "{title} is now {status}. The file is changed in the project's folder and not committed.",
+        failed: "The status could not be changed. {why}",
+      },
+      feed: {
+        on: "Sessions that Flightdeck starts here are given an index of the valid documents.",
+        onUntrusted: "On, but this project is not trusted, so sessions are not given the index.",
+        off: "Off: sessions here are not given the index.",
+        offBy:
+          "Off through {path}, a folder above this project, in the host's config. Switch it on there.",
+        turnOff: "Turn off",
+        turnOn: "Turn on",
+        failed: "The index switch could not be read or changed on this host.",
+      },
     },
     harness: {
       title: "Claude Code setup",
       hint: "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Read-only: nothing here changes the project.",
+      hintSetup:
+        "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Nothing changes until you read a setup and apply it.",
       summary: "{n} of {total} parts found",
       found: "Found",
       missing: "Missing",
@@ -4217,6 +4252,28 @@ export const en: Dictionary = {
         format: "a formatter after edits",
         gitAdd: "a check before git add",
         secrets: "a check on secret files",
+      },
+      setup: {
+        action: "Set up Claude Code",
+        apply: "Apply the setup",
+        message:
+          "This adds what the project is missing. It only adds: nothing already there is changed or removed.",
+        nothing: "Nothing to add: the project already has every part this setup writes.",
+        hooks: "Hooks to add",
+        hookLine: "{event} ({matcher}): {command}",
+        formatterNote:
+          "This runs the project's own format script: what it does comes from the project's files, and a pull can change it.",
+        deny: "Deny rules to add (best effort)",
+        denyNote:
+          "They stop Claude Code's Read tool on these files and these git add forms. They do not stop a shell command such as cat .env.",
+        files: "New files",
+        conflicts: "Left as they are: these keys already hold something else",
+        unreadable: "Not read, so left as they are",
+        untrusted: "These hooks and rules load only once you trust this project.",
+        reformat:
+          "Rewrite .claude/settings.json with a new layout. Spacing changes, and a repeated key or a very large number may be rewritten.",
+        done: "Set up: {files}",
+        again: "Preview again",
       },
     },
     trust: {

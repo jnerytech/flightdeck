@@ -3,10 +3,13 @@ import { readFileSync } from "node:fs";
 import {
   checkChanged,
   coverageTargets,
+  filesBelowGate,
   isCoverageSource,
   lineRanges,
   loadedTargets,
   WHOLE_SUITE_IGNORED,
+  wholeSuiteCheck,
+  wholeSuiteVerdict,
 } from "../lib/related-coverage.ts";
 import { planRelated } from "../lib/test-related.ts";
 
@@ -97,6 +100,26 @@ describe("related-coverage: the verdict on the changed files", () => {
     record("apps/daemon/src/untouched.ts", [0, 1], [[1, 0]]),
   ].join("\n");
 
+  test("#1002: a changed file at 80% of lines and functions passes, uncovered lines and all", () => {
+    const most = record(
+      "apps/daemon/src/most.ts",
+      [4, 5],
+      Array.from({ length: 10 }, (_, i): [number, number] => [i + 1, i < 8 ? 1 : 0]),
+    );
+    expect(checkChanged(most, ["apps/daemon/src/most.ts"])).toEqual({
+      problems: [],
+      functionGaps: [],
+    });
+    const less = record(
+      "apps/daemon/src/less.ts",
+      [5, 5],
+      Array.from({ length: 10 }, (_, i): [number, number] => [i + 1, i < 7 ? 1 : 0]),
+    );
+    expect(checkChanged(less, ["apps/daemon/src/less.ts"]).problems).toEqual([
+      "apps/daemon/src/less.ts: lines 8-10 not covered",
+    ]);
+  });
+
   test("a changed file at 100% passes", () => {
     expect(checkChanged(lcov, ["apps/daemon/src/full.ts"])).toEqual({
       problems: [],
@@ -104,15 +127,74 @@ describe("related-coverage: the verdict on the changed files", () => {
     });
   });
 
-  test("a changed file below 100% fails with its uncovered lines and its function count", () => {
+  test("a changed file below 80% fails with its uncovered lines and its function count", () => {
     expect(checkChanged(lcov, ["apps/daemon/src/low.ts"])).toEqual({
       problems: ["apps/daemon/src/low.ts: lines 20-22, 30 not covered; functions 1/2 called"],
       functionGaps: ["apps/daemon/src/low.ts"],
     });
   });
 
-  test("an unchanged file below 100% is ignored", () => {
+  test("an unchanged file below 80% is ignored", () => {
     expect(checkChanged(lcov, ["apps/daemon/src/full.ts"]).problems).toEqual([]);
+  });
+
+  test("#996: every file of a whole-suite report below the 80% gate is named, with what it misses", () => {
+    expect(filesBelowGate(lcov)).toEqual([
+      "apps/daemon/src/low.ts: lines 20-22, 30 not covered; functions 1/2 called",
+      "apps/daemon/src/untouched.ts: lines 1 not covered; functions 0/1 called",
+    ]);
+    expect(filesBelowGate(record("apps/daemon/src/full.ts", [1, 1], [[1, 1]]))).toEqual([]);
+  });
+
+  test("#1000 review: the whole suite's report goes before the run, so a run that writes none says so", () => {
+    const ops: string[] = [];
+    const files: Record<string, string> = {};
+    const check = wholeSuiteCheck("coverage/lcov.info", {
+      remove: (path) => {
+        ops.push(`remove ${path}`);
+        delete files[path];
+      },
+      read: (path) => {
+        ops.push(`read ${path}`);
+        return files[path] ?? null;
+      },
+    });
+    expect(ops).toEqual(["remove coverage/lcov.info"]);
+    // The run died before Bun wrote a report: no stale one answers for it.
+    expect(check(1)).toBe(
+      "test:related: the whole suite exited with 1 and left no coverage report",
+    );
+    files["coverage/lcov.info"] = record("apps/daemon/src/low.ts", [1, 1], [[3, 0]]);
+    expect(check(1)).toContain("apps/daemon/src/low.ts: lines 3 not covered");
+    expect(check(0)).toBeNull();
+    // Not a whole-suite run: nothing is removed or read.
+    const none: string[] = [];
+    const idle = wholeSuiteCheck(undefined, {
+      remove: (path) => none.push(path),
+      read: (path) => {
+        none.push(path);
+        return null;
+      },
+    });
+    expect(idle(1)).toBeNull();
+    expect(none).toEqual([]);
+  });
+
+  test("#996: a whole suite that exits non-zero names its cause: the files below the gate, or none", () => {
+    expect(wholeSuiteVerdict(0, lcov)).toBeNull();
+    expect(wholeSuiteVerdict(1, lcov)).toBe(
+      [
+        "test:related: the whole suite exited with 1, and 2 file(s) are below the 80% gate:",
+        "  - apps/daemon/src/low.ts: lines 20-22, 30 not covered; functions 1/2 called",
+        "  - apps/daemon/src/untouched.ts: lines 1 not covered; functions 0/1 called",
+      ].join("\n"),
+    );
+    expect(wholeSuiteVerdict(1, record("apps/daemon/src/full.ts", [1, 1], [[1, 1]]))).toBe(
+      "test:related: the whole suite exited with 1 with every file at the 80% gate: a failing test, a file that did not load, the isolation guard or a timeout stopped it (see above)",
+    );
+    expect(wholeSuiteVerdict(1, null)).toBe(
+      "test:related: the whole suite exited with 1 and left no coverage report",
+    );
   });
 
   test("a changed file the related tests never load is a failure of its own", () => {

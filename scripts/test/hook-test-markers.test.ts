@@ -29,7 +29,7 @@ describe("hook-test-markers", () => {
   test("a bare .skip is blocked too, and the reason says how to note it under its issue (#494)", () => {
     const reason = edit("apps/daemon/test/a.test.ts", "", `describe${SKIP}"b", () => {})`) ?? "";
     expect(reason).toContain("is blocked");
-    expect(reason).toContain("// unstable: #<issue> <reason>");
+    expect(reason).toContain("a flaky test is deleted, never skipped (#1003)");
   });
 
   test("tsx files and Windows paths count as test files", () => {

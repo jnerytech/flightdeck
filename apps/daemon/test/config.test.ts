@@ -60,6 +60,17 @@ describe("config", () => {
     ]);
   });
 
+  test("two rewrites of the config file at once both land: each reads what the other wrote", async () => {
+    const file = join(tempDir(), "config.json");
+    await loadConfig(file);
+    const keys = ["alpha", "beta", "gamma", "delta"];
+    await Promise.allSettled(
+      keys.map((key) => updateConfigFile(file, (raw) => ({ ...raw, [key]: key }))),
+    );
+    const written = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+    expect(keys.map((key) => written[key])).toEqual(keys);
+  });
+
   test("loading and rewriting the config file return promises, so nothing blocks on the disk", async () => {
     const file = join(tempDir(), "async", "config.json");
     const loading = loadConfig(file);

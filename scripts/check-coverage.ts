@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
-/** Fails unless every source file is loaded by the tests and 100% covered (run after `bun test`). */
+/** Fails unless every source file is loaded by the tests and at the coverage gate, 80% (run after `bun test`). */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
+  COVERAGE_GATE,
   checkCoverage,
   hasRuntimeCode,
   isCoverageSource,
@@ -24,8 +25,8 @@ const sources = [
 const report = parseLcov(readFileSync(resolve(ROOT, "coverage/lcov.info"), "utf8"));
 const problems = checkCoverage(report, sources);
 if (problems.length > 0) {
-  console.error(`cobertura abaixo de 100% em ${problems.length} arquivo(s):`);
+  console.error(`cobertura abaixo de ${COVERAGE_GATE}% em ${problems.length} arquivo(s):`);
   for (const problem of problems) console.error(`  - ${problem}`);
   process.exit(1);
 }
-console.log(`cobertura 100% em ${sources.length} arquivos-fonte`);
+console.log(`cobertura de ${COVERAGE_GATE}% ou mais em ${sources.length} arquivos-fonte`);

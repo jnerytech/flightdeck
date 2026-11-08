@@ -352,9 +352,18 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   uma linha diz quantos documentos ficaram de fora. Os títulos são marcados como dados do
   repositório, não como instruções. Um worktree é lido da pasta principal confiável, não da branch.
   Um prompt de sistema que você mesmo passar (`--append-system-prompt`) fica como está, sem o
-  índice ao lado. Para desligar em um projeto, liste a pasta dele no arquivo de configuração do
-  host: `"knowledge": { "feedOff": ["/caminho/do/projeto"] }` (tudo dentro da pasta também fica
-  desligado).
+  índice ao lado. O painel diz se o projeto recebe o índice, e **Desligar** / **Ligar** mudam isso
+  só para aquele projeto. A escolha fica no arquivo de configuração do host, como
+  `"knowledge": { "feedOff": ["/caminho/do/projeto"] }`, e uma pasta dessa lista desliga tudo
+  dentro dela também: um projeto desligado por uma pasta acima diz isso, e é religado editando
+  essa entrada no arquivo. Um projeto sem confiança não recebe o índice, ligado ou desligado.
+  Cada documento tem um seletor de status. Escolher um escreve só a linha `status:` do front matter
+  daquele arquivo (um documento sem front matter ganha um bloco com essa linha), mantém o resto do
+  arquivo como está e deixa a mudança na pasta do projeto, sem commit: revise com o git. A mudança
+  é recusada quando o arquivo mudou desde que a lista o mostrou (recarregue e tente de novo),
+  quando o front matter não é claro o bastante para editar com segurança, ou quando o arquivo passa
+  de 1 MB ou não é texto. Só os documentos que a lista mostra podem ser mudados; um link, um nome
+  de credencial ou um arquivo fora das pastas da biblioteca não podem.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
@@ -1559,6 +1568,7 @@ steps:
 | `loop` | Roda o `check` do `until`. Enquanto ele falhar, roda o `do` (no máximo `max` vezes). Esgotado o `max`, a execução pausa. |
 | `parallel` | Roda os itens ao mesmo tempo, dentro de `maxParallelRuns`. As saídas chegam em `outputs`, na ordem declarada. |
 | `pr` | Faz o push e abre o PR pelo provedor do projeto. |
+| `cards` | `cards: { from: <etapa agent> }` cria cards no Backlog com os achados da resposta dessa etapa. Veja abaixo. |
 
 A interpolação aceita só `{{inputs.*}}`, `{{steps.<id>.output}}` (`outputs` num `parallel`) e
 `{{loop.lastCheck.output|exitCode}}`, este dentro do `do` de um loop. Uma referência
@@ -1578,10 +1588,29 @@ validação e os comandos `check`. **Confiar** mostra esses comandos e pede conf
   execução e que esse conteúdo continua confiado. Qualquer outro comando é recusado sem chegar
   ao shell.
 
+### Criar cards com os achados de um agente
+
+Uma etapa agent pode terminar a resposta com um bloco `json` cercado, uma lista de
+`{ key, title, body }`, e uma etapa `cards` seguinte transforma a lista em cards no Backlog do
+projeto. A etapa lê só o último bloco assim, e é rígida: um campo que não seja `key`, `title` ou
+`body`, uma `key` que não seja um id simples de até 160 caracteres, um `title` de uma linha com até
+160, um `body` de até 4000, um caractere de controle ou invisível, ou mais de 50 itens recusam a
+lista inteira. Nada é criado e a execução falha com o motivo, que diz qual item e qual campo.
+
+Um achado não é criado de novo quando um card do projeto já tem a mesma `key` (ou um concluído nos
+últimos 30 dias), ou um card aberto tem o mesmo título, sem contar maiúsculas e espaços. Cada
+execução cria no máximo 10 cards; a etapa diz quantos criou, quantos um card já cobria e quantos
+passaram do limite. Os cards vêm marcados como texto do agente, mostram o selo externo e mantêm a
+aprovação automática desligada, porque o que um agente lê em um repositório pode ter sido escrito
+por qualquer pessoa.
+
 ### Modelos
 
-Dois workflows já vêm com o Flightdeck, para trabalho recorrente que termina em um pull request:
+Três workflows já vêm com o Flightdeck, para trabalho recorrente:
 
+- **Varredura de dívida técnica:** lê o repositório (em modo de plano, nada é enviado) atrás de TODOs,
+  APIs obsoletas e avisos de lint ou de segurança, e cria os 10 que mais importam como cards no
+  Backlog. Para rodar toda semana, crie uma automação que inicie este workflow por horário.
 - **Corretor de alertas:** pega um alerta de lint ou de segurança que você cola, corrige na branch
   do card com um teste (até 3 tentativas com o seu comando de teste), pergunta a você e abre o
   pull request.

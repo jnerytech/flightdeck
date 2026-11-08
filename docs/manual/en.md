@@ -359,9 +359,19 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   Documents without a status and obsolete ones are never given. The index is capped at 4 KiB, and a
   line says how many documents were left out. The titles are marked as the repository's data, not
   instructions. A worktree is read from the trusted main folder, not from the branch. A system
-  prompt you pass yourself (`--append-system-prompt`) is left alone, with no index beside it. To
-  turn it off for a project, list its folder in the host's config file:
-  `"knowledge": { "feedOff": ["/path/to/project"] }` (everything inside the folder is off too).
+  prompt you pass yourself (`--append-system-prompt`) is left alone, with no index beside it. The
+  panel says whether the project is given the index, and **Turn off** / **Turn on** switch it for
+  that project only. The choice is kept in the host's config file as
+  `"knowledge": { "feedOff": ["/path/to/project"] }`, and a folder in that list switches off
+  everything inside it too: a project off through a folder above it says so, and is switched on
+  by editing that entry in the file. An untrusted project is not given the index, on or off.
+  Each document has a status picker. Choosing one writes only the `status:` line of that file's
+  front matter (a document with no front matter gets a block holding that line), keeps the rest of
+  the file as it is, and leaves the change in the project's folder, not committed: review it with
+  git. It is refused when the file changed since the list showed it (reload and try again), when
+  its front matter is not clear enough to edit safely, or when the file is over 1 MB or not text.
+  Only the documents the list shows can be changed; a link, a credential name or a file outside
+  the library folders cannot.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
@@ -1553,6 +1563,7 @@ steps:
 | `loop` | Runs the `check` of `until`. While it fails, runs the `do` (at most `max` times). When `max` is exhausted, the run pauses. |
 | `parallel` | Runs the items at the same time, within `maxParallelRuns`. The outputs arrive in `outputs`, in the declared order. |
 | `pr` | Pushes and opens the PR through the project's provider. |
+| `cards` | `cards: { from: <agent step> }` raises the findings in that step's reply as Backlog cards. See below. |
 
 Interpolation accepts only `{{inputs.*}}`, `{{steps.<id>.output}}` (`outputs` in a `parallel`)
 and `{{loop.lastCheck.output|exitCode}}`, the latter inside a loop's `do`. An unknown reference,
@@ -1571,10 +1582,28 @@ and their `check` commands. **Trust** shows those commands and asks for confirma
 - **Before each check:** the daemon verifies that the command is literally in the run's workflow
   and that this content is still trusted. Any other command is refused before reaching the shell.
 
+### Raising cards from an agent's findings
+
+An agent step can end its reply with a fenced `json` block, a list of `{ key, title, body }`, and
+a later `cards` step turns it into cards in the project's Backlog. The step reads only the last such
+block, and it is strict: a field that is not `key`, `title` or `body`, a `key` that is not a plain
+id of at most 160 characters, a one-line `title` of at most 160, a `body` of at most 4000, a control
+or invisible character, or more than 50 items refuses the whole list. Nothing is created and the run
+fails with the reason, which says which item and field.
+
+A finding is not raised again when a card of the project already has its `key` (or one done in the
+last 30 days), or an open card has the same title, case and spacing aside. A run creates at most 10
+cards; the step reports how many it raised, how many a card already covered and how many were over
+the cap. The cards are marked as the agent's text, show the external seal, and keep automatic
+approval off, since what an agent reads in a repository can be written by anyone.
+
 ### Templates
 
-Two workflows ship with Flightdeck, for recurring work that ends in a pull request:
+Three workflows ship with Flightdeck, for recurring work:
 
+- **Tech-debt scan:** reads the repository (in plan mode, nothing pushed) for TODOs, deprecated APIs
+  and lint or security warnings, and raises the 10 that matter most as Backlog cards. To run it every
+  week, add an automation that starts this workflow on a schedule.
 - **Alert fixer:** takes one lint or security alert that you paste in, fixes it on the card's branch
   with a test (up to 3 attempts against your test command), asks you, then opens the pull request.
 - **Post-mortem draft:** drafts a post-mortem of an incident (summary, impact, timeline, cause,

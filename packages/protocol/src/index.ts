@@ -996,12 +996,26 @@ export interface KnowledgeEntry {
   problems: string[];
   /** A valid document that points at an obsolete one: `references_obsolete:<path>`. */
   warnings: string[];
+  /** What the list read of the file (its size and start); `knowledge.setStatus` writes only if it still holds. */
+  hash: string;
 }
 
 export interface KnowledgeListResult {
   entries: KnowledgeEntry[];
   /** More documents than the list holds. */
   truncated: boolean;
+}
+
+/** Whether sessions in a project are given the library's index, and why not. */
+export interface KnowledgeFeedState {
+  /** Not switched off: the project, or a folder above it, is not in the host's `knowledge.feedOff`. */
+  on: boolean;
+  /** The project is trusted. An untrusted project is not given the index, on or off. */
+  trusted: boolean;
+  /** The folder in `knowledge.feedOff` that switches it off; the project itself, or one above it. */
+  offBy: string | null;
+  /** `offBy` is the project itself (under any name of it), so the project's own switch can turn it on. */
+  own: boolean;
 }
 
 /** What a session is given of the library: Markdown for its system prompt, empty when it is not given any. */
@@ -1886,7 +1900,7 @@ export const RunStatus = z.enum([
 ]);
 export type RunStatus = z.infer<typeof RunStatus>;
 
-export const StepType = z.enum(["agent", "check", "gate", "loop", "parallel", "pr"]);
+export const StepType = z.enum(["agent", "check", "gate", "loop", "parallel", "pr", "cards"]);
 export type StepType = z.infer<typeof StepType>;
 
 export const StepStatus = z.enum([
@@ -3202,6 +3216,26 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /**
+   * #75, slice S4: writes what the preview proposed. The daemon makes the proposals again and never
+   * takes content from the app; `digests` (each proposal's, by path) must match them all, else
+   * `harness_stale`. Writing hooks lets commands run in sessions: a near connection and `confirm`.
+   */
+  cmd(
+    "project.harness.apply",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        parts: z.array(z.enum(HARNESS_PREVIEW_PARTS)).min(1).max(HARNESS_PREVIEW_PARTS.length),
+        digests: z
+          .record(z.string().max(256), z.string().max(128))
+          .refine((digests) => Object.keys(digests).length <= HARNESS_PREVIEW_PARTS.length),
+        confirm: z.boolean().optional(),
+        /** The person accepted the settings being rewritten with another layout (the preview's `reformats`). */
+        reformat: z.boolean().optional(),
+      })
+      .strict(),
+  ),
   cmd(
     "project.trust.set",
     z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
@@ -4480,6 +4514,25 @@ export const Command = z.discriminatedUnion("type", [
   cmd("knowledge.list", z.object({ path: z.string().min(1).max(4096) }).strict()),
   /** Issue #76: the index of the project's current documents that a session is given in its system prompt. */
   cmd("knowledge.index", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** Issue #76: whether sessions in the project at `path` are given that index. */
+  cmd("knowledge.feed", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** Issue #76: the `status:` line of one library document, written only if the file is as it was listed. */
+  cmd(
+    "knowledge.setStatus",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        file: z.string().min(1).max(512),
+        status: KnowledgeStatus,
+        expectedHash: z.string().min(1).max(128),
+      })
+      .strict(),
+  ),
+  /** Issue #76: switch the index on or off for the project at `path`, in the host's config. */
+  cmd(
+    "knowledge.setFeed",
+    z.object({ path: z.string().min(1).max(4096), enabled: z.boolean() }).strict(),
+  ),
   /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
   cmd(
     "file.write",
@@ -4827,12 +4880,19 @@ export const HarnessPreview = z.object({
       conflicts: z.array(z.string()),
       /** Writing the file back would change its layout, not only add entries. */
       reformats: z.boolean(),
+      /** Binds the file's hash and what would be added: apply refuses when it differs (S4). */
+      digest: z.string(),
     })
     .nullable(),
-  files: z.array(z.object({ path: z.string(), content: z.string() })),
+  /** A new file, whole; `digest` is the sha256 of `content`. */
+  files: z.array(z.object({ path: z.string(), content: z.string(), digest: z.string() })),
   unreadable: z.array(z.string()),
 });
 export type HarnessPreview = z.infer<typeof HarnessPreview>;
+
+/** #75, slice S4: the project files `project.harness.apply` wrote, in the preview's order. */
+export const HarnessApplied = z.object({ written: z.array(z.string()) });
+export type HarnessApplied = z.infer<typeof HarnessApplied>;
 
 /** #75: what a hook command is for, when its command says so. */
 export type HookKind = "format" | "gitAdd" | "secrets";
@@ -5073,6 +5133,7 @@ export interface CommandResults {
   "project.trust.inspect": ProjectLoad;
   "project.harness.stack": HarnessStack;
   "project.harness.preview": HarnessPreview;
+  "project.harness.apply": HarnessApplied;
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;
@@ -5366,6 +5427,9 @@ export interface CommandResults {
   "file.search": FileSearchResult;
   "knowledge.list": KnowledgeListResult;
   "knowledge.index": KnowledgeIndexResult;
+  "knowledge.feed": KnowledgeFeedState;
+  "knowledge.setStatus": KnowledgeEntry;
+  "knowledge.setFeed": KnowledgeFeedState;
   "file.write": { path: string; hash: string; size: number };
 }
 
