@@ -49,6 +49,15 @@ describe("dialogo-compacto: below 640 px a dialog is a full-screen sheet", () =>
     }
   });
 
+  // #1249: the footer bleeds to the sheet's edges (margin: 0 -1.5rem). Inside a form, that bleed
+  // must land on the form's own padding, or the footer sits 24 px past the form (narrow guard).
+  test("a form in the sheet takes the sheet's padding as its own, so its footer stays inside it", () => {
+    const form = compactRule('[data-slot="dialog-content"] > form');
+    for (const declaration of ["margin: 0 -1.5rem -1.5rem", "padding: 0 1.5rem 1.5rem"]) {
+      expect(`${declaration}: ${form.includes(declaration)}`).toBe(`${declaration}: true`);
+    }
+  });
+
   test("the footer stays at the bottom of the sheet, its buttons stacked with the primary last", () => {
     // A descendant, not a child: the New card dialog's footer is inside its form.
     const footer = compactRule('[data-slot="dialog-content"] [data-slot="dialog-footer"]');
