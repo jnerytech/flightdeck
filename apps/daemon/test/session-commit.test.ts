@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { open } from "node:fs/promises";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
@@ -56,9 +56,6 @@ function setup(
     chmodSync(hook, 0o755);
   }
   insertSession(ctx.store.db, "m-1", "s-1", repo);
-  // The session starts after the repository and its hooks were set up (a second ahead: an mtime
-  // has fractions of a millisecond).
-  const started = Date.now() + 1000;
   const changes = new Changes({ db: ctx.store.db });
   const seen = {
     resolve: changes.resolve.bind(changes),
@@ -69,7 +66,6 @@ function setup(
     },
   };
   const commits = new SessionCommits({
-    startedAt: () => started,
     changes: seen,
     scanner: new SecretScanner(() => options.vault ?? []),
     isCardWorktree: () => options.cardWorktree === true,
@@ -120,14 +116,6 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       "b.txt": "deleted",
       "c.txt": sha("new\n"),
     });
-  });
-
-  test("a session started when its first record says: managed, opened in a terminal, or in the history", () => {
-    const { changes } = setup();
-    expect([changes.startedAt("s-1"), changes.startedAt("nobody")]).toEqual([
-      Date.parse("2026-10-01T00:00:00.000Z"),
-      null,
-    ]);
   });
 
   test("the chosen files are committed on a new branch, the rest stay as they were", async () => {
@@ -466,39 +454,6 @@ describe("session-commit: a plain session's files committed on a new branch (#11
         }),
       );
       expect((done as { base?: string }).base).toBe(at);
-    },
-  );
-
-  test.skipIf(!posix)(
-    "a hook, or a local setting that runs a program, changed after the session started refuses",
-    async () => {
-      const later = Date.now() / 1000 + 60;
-      const hooked = setup();
-      const hook = join(hooked.repo, ".git", "hooks", "pre-commit");
-      writeFileSync(hook, "#!/bin/sh\nexit 0\n");
-      chmodSync(hook, 0o755);
-      utimesSync(hook, later, later);
-      const filtered = setup();
-      git(filtered.repo, "config", "filter.spy.clean", "cat");
-      utimesSync(join(filtered.repo, ".git", "config"), later, later);
-      const pushed = setup();
-      git(pushed.repo, "config", "branch.main.remote", "origin");
-      utimesSync(join(pushed.repo, ".git", "config"), later, later);
-      const attempt = async (made: ReturnType<typeof setup>) => {
-        writeFileSync(join(made.repo, "a.txt"), "one, changed\n");
-        return outcome(
-          made.commits.commit(TARGET, {
-            files: await digests(made.changes, "a.txt"),
-            message: "m",
-            branch: "work/after",
-          }),
-        );
-      };
-      expect([await attempt(hooked), await attempt(filtered), await attempt(pushed)]).toEqual([
-        { reason: "changes_commit_state", state: "hooks" },
-        { reason: "changes_commit_state", state: "config" },
-        "ok",
-      ]);
     },
   );
 
