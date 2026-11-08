@@ -913,7 +913,7 @@ export const ptBR = {
     quotaLabelNoReset: "Cota do plano {state}: {window} em {percent}% em {host}",
     quotaLevels: { ok: "tranquila", near: "perto do limite", reached: "no limite" },
     host: "Host: {host}",
-    noHost: "Nenhum host ainda",
+    noHost: "Nenhum host",
     allHostsTabs: "Abas de todos os hosts",
     hostItem: "{host}, {state}",
     hostItemVersion: "{host}, {state}, flightdeckd {version}",
