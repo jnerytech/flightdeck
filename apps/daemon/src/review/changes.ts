@@ -81,6 +81,13 @@ const SESSION_CWD = `SELECT cwd FROM (
   UNION ALL SELECT cwd, 3, last_ts FROM history_sessions WHERE claude_session_id = $id
 ) WHERE cwd IS NOT NULL AND cwd <> '' ORDER BY rank, at DESC LIMIT 1`;
 
+/** When a session started: the earliest of its records (managed, opened in a terminal, history). */
+const SESSION_START = `SELECT MIN(at) AS at FROM (
+  SELECT created_at AS at FROM sessions WHERE claude_session_id = $id
+  UNION ALL SELECT started_at FROM external_sessions WHERE claude_session_id = $id
+  UNION ALL SELECT first_ts FROM history_sessions WHERE claude_session_id = $id
+) WHERE at IS NOT NULL AND at <> ''`;
+
 /**
  * The working tree of any session or card, as a diff. The folder always comes from what the
  * daemon recorded (sessions, external sessions, history, card worktrees), never from the client.
@@ -90,6 +97,15 @@ export class Changes {
 
   constructor(readonly opts: ChangesOptions) {
     this.timers = opts.timers ?? realTimers;
+  }
+
+  /** When the session started, in ms, by its earliest record; null when there is none (#1133). */
+  startedAt(claudeSessionId: string): number | null {
+    const row = this.opts.db.query(SESSION_START).get({ id: claudeSessionId }) as {
+      at: string | null;
+    } | null;
+    const at = row?.at ? Date.parse(row.at) : Number.NaN;
+    return Number.isNaN(at) ? null : at;
   }
 
   /** `terminal`: the caller only reads files (`file.read`, `file.list`), the one use of a terminal's folder (#506). */

@@ -1057,6 +1057,7 @@ export async function startDaemon(
     changes,
     scanner: snippetScanner,
     isCardWorktree: (root) => board.projectForCwd(root)?.card != null,
+    startedAt: (claudeSessionId) => changes.startedAt(claudeSessionId),
   });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.

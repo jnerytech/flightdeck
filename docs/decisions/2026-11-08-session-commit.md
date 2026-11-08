@@ -39,12 +39,33 @@ branch of the checkout.
   - After the commit, git hashes the same bytes with the path's own filters, and the commit must
     hold exactly those. A session still writing may change a file between the check and git's read.
     If one did, the commit is undone (the branch back on the commit it started from, the index as
-    it was), and the refusal is `changes_commit_stale`.
+    it was), and the refusal `changes_commit_rewritten` names the files. A hook that formats files
+    does this too: the person looks at the formatted change and commits again, and the hook,
+    finding nothing left to format, lets it through.
+  - A rename's old path goes into the commit as gone. It must be absent when it is checked, and the
+    commit must not hold it.
+  - A chosen path that is no longer a regular file (a pipe, a device) is refused as stale, never
+    opened: opening a pipe with no writer never returns.
+  - A file over 8 MiB gets the digest `too-large` without being read, so a refresh of the diff never
+    hashes a large artifact, and choosing it refuses at once.
+- **One at a time.** Commits of one checkout run one after the other. A second one (a double click,
+  two windows) then finds its files committed and refuses as stale.
+- **What the session may have changed refuses.**
+  - The daemon knows when the session started (its earliest record). A file in the hooks folder or
+    in `core.hooksPath` changed since then refuses (`changes_commit_state`, `hooks`).
+  - So does the local `.git/config` changed since then, when it names a program git runs. These are
+    `core.fsmonitor` (not a boolean), `core.sshCommand`, `core.hooksPath`, `core.askPass`,
+    `core.gitProxy`, `gpg.*program`, `filter.*.clean|smudge|process`, `credential.*helper`,
+    `diff.*.command|textconv` and `merge.*.driver` (`changes_commit_state`, `config`).
+  - Such a hook or setting may be the session's own, and would run as the daemon's user, outside the
+    session's permissions.
+  - When the start is unknown, these checks are skipped.
 - **A failing hook.**
   - The person stays on the new branch, with their files untouched and their index put back from a
     copy taken before.
   - The refusal `changes_commit_hook` carries the end of what git and the hook said (2,000
-    characters at most), the branch, and the base to switch back to. The output is scanned whole
+    characters at most), the branch, and the way back: the base branch, or from a detached checkout
+    the commit it was on. Both work with `git checkout`. The output is scanned whole
     before it is cut, so a cut cannot split a secret past the scanner, and it is withheld when the
     scanner flags it.
   - The index is put back through a new file renamed into place, so a link left where the index was
@@ -53,10 +74,13 @@ branch of the checkout.
   - `GIT_TERMINAL_PROMPT=0`, so no credential prompt waits.
   - `GIT_LITERAL_PATHSPECS=1`, so a path is never a pattern. The hooks inherit it, which changes how
     a hook's own git commands read patterns; that is the price of literal paths.
-  - Every call has a time limit (120 s), which stops a hook or a gpg prompt that never ends.
+  - Every call has a time limit (120 s), which stops a hook or a gpg prompt that never ends; that
+    refusal is `changes_commit_timeout`, and an output withheld for a secret is
+    `changes_commit_hook_withheld`.
   - The message goes on stdin, and paths follow `--`.
 - **Guards.** A near connection only, and `confirm: true` (`changes_commit_confirm`).
 - **The base.** The branch the checkout was on is kept, by checkout and branch, for the PR step (D2).
+  It is kept in memory only: after a restart, the PR step falls back to the remote's default branch.
 
 ## Alternatives discarded
 
@@ -76,7 +100,10 @@ branch of the checkout.
   would run.
 - A session can write `.git/hooks`, `core.hooksPath` or `.git/config` itself. A hook it wrote runs as
   the daemon's user, outside the session's own permissions, and the person does not see its text.
-  The confirm in the app (slice A) says the repository's git hooks run. Refusing a hook that changed
-  since the session started is left for later.
+  Hooks and program settings changed since the session started are refused, as above. The
+  confirm in the app (slice A) also says the repository's git hooks run.
+- The config check is by the file's time, so a setting written for another reason refuses as well.
+  For example, `git push -u` writes the branch's upstream into a config that already names
+  `core.hooksPath`. The person then commits in a terminal.
 - After a failed hook, the new branch stays there with no commit of its own. A retry needs another
   name, and the app (slice A) drafts a new one.
