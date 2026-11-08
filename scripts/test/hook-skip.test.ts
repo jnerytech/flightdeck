@@ -39,14 +39,24 @@ describe("hook-skip: a flaky test is deleted, never skipped (#1003, #169)", () =
     );
   });
 
-  test("#169: a skipIf for a platform passes, off Linux included", () => {
-    for (const condition of [
-      "process.platform === 'win32'",
-      "!volumeHas83Names()",
-      "notLinux",
-      'process.platform !== "linux"',
-    ]) {
+  test("#169: a skipIf for a platform passes", () => {
+    for (const condition of ["process.platform === 'win32'", "!volumeHas83Names()", "onWindows"]) {
       expect(`${condition}: ${edit("", platform("test", condition))}`).toBe(`${condition}: null`);
+    }
+  });
+
+  test("#1057 review: a skipIf off Linux needs its reason in a comment, and a skipIf(true) is blocked", () => {
+    for (const condition of ["notLinux", 'process.platform !== "linux"']) {
+      expect(edit("", platform("test", condition)) ?? "").toContain("reason in a comment");
+      expect(edit("", `${platform("test", condition)} // inotify is Linux only`)).toBeNull();
+      expect(edit("", `// /proc is Linux only\n${platform("it", condition)}`)).toBeNull();
+      // A blank line between does not count.
+      expect(edit("", `// /proc\n\n${platform("it", condition)}`) ?? "").toContain("is blocked");
+    }
+    for (const condition of ["true", " 1 ", "!0"]) {
+      expect(`${condition}: ${edit("", platform("test", condition)) !== null}`).toBe(
+        `${condition}: true`,
+      );
     }
   });
 
@@ -74,6 +84,8 @@ describe("hook-skip: a flaky test is deleted, never skipped (#1003, #169)", () =
       `${TODO}"x");`,
       platform("test", "process.platform === 'win32'"),
       platform("describe", "notLinux"),
+      `// inotify is Linux only\n${platform("describe", "notLinux")}`,
+      platform("test", "true"),
       `test("plain", () => {});`,
     ];
     for (const text of cases) {

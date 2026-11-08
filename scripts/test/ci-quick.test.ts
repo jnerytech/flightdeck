@@ -32,6 +32,9 @@ const QUICK_PASSED = 'test "${{ needs.quick.result }}" = success';
 describe("ci-quick", () => {
   test("#169: no skip is noted under an issue any more, so the quick job reads no issues", () => {
     expect(runs("quick")).not.toContain("unstable-issues");
+    // #1057 review: no step of the job is handed the token either.
+    const env = job("quick").steps.map((s) => (s as { env?: Record<string, string> }).env ?? {});
+    expect(env.filter((e) => "GH_TOKEN" in e)).toEqual([]);
     // The token keeps contents: read, as in the rest of the workflow.
     expect((job("quick") as { permissions?: Record<string, string> }).permissions).toEqual({
       contents: "read",

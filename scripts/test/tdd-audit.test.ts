@@ -94,11 +94,28 @@ describe("tdd-audit", () => {
       { path: "a.test.ts", content: `// unstable: #484 a late status\ntest${SKIP}"x", () => {});` },
       { path: "b.test.ts", content: `test${SKIP}"y", () => {}); // unstable: #492 races` },
       { path: "c.test.ts", content: `test${skipIf}process.platform === "win32")("z", () => {});` },
-      { path: "d.test.ts", content: `describe${skipIf}notLinux)("w", () => {});` },
+      {
+        path: "d.test.ts",
+        content: `// /proc is Linux only\ndescribe${skipIf}notLinux)("w", () => {});`,
+      },
     ];
     expect(findForbiddenMarkers(files)).toEqual([
       { commit: "a.test.ts:2", scope: "-", reason: `uso proibido de ${SKIP}` },
       { commit: "b.test.ts:1", scope: "-", reason: `uso proibido de ${SKIP}` },
+    ]);
+  });
+
+  test("#1057 review: a skipIf off Linux with no reason comment, or a skipIf(true), is refused", () => {
+    const skipIf = `.${"skip"}${"If"}(`;
+    const files = [
+      { path: "a.test.ts", content: `test${skipIf}notLinux)("x", () => {});` },
+      { path: "b.test.ts", content: `test${skipIf}process.platform !== "linux")("y", () => {});` },
+      { path: "c.test.ts", content: `test${skipIf}true)("z", () => {});` },
+    ];
+    expect(findForbiddenMarkers(files).map((v) => `${v.commit} ${v.reason}`)).toEqual([
+      "a.test.ts:1 uso proibido de skipIf off Linux with no reason comment",
+      "b.test.ts:1 uso proibido de skipIf off Linux with no reason comment",
+      "c.test.ts:1 uso proibido de skipIf(true)",
     ]);
   });
 
