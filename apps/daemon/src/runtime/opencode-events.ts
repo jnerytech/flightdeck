@@ -57,7 +57,10 @@ function resultText(content: unknown): string {
   });
   if (texts.length > 0) return texts.join("\n");
   return blocks
-    .map((block) => `[${String(block.type)} ${String(block.path ?? "")}]`.replace(" ]", "]"))
+    .map((block) => {
+      const path = typeof block.path === "string" ? block.path : "";
+      return `[${String(block.type)} ${path}]`.replace(" ]", "]");
+    })
     .join("\n");
 }
 

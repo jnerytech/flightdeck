@@ -162,6 +162,14 @@ describe("opencode-security", () => {
     expect(out.error).toBe(null);
   });
 
+  test("a command that is not text is never shown as [object Object] when it trips (S6551)", async () => {
+    const { out, open } = setup();
+    const agent = await open();
+    await toolRuns(agent, "t1", "shell", { command: { argv: ["ls"] }, cwd: "/w" }, false);
+    expect(await poll(() => out.error !== null)).toBe(true);
+    expect(failure(out.error)[1] ?? "").toBe("Bash  ran without a question");
+  });
+
   test("a read outside the folder that asked nobody trips it", async () => {
     const { out, open } = setup();
     const agent = await open();

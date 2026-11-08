@@ -118,7 +118,8 @@ export async function contextBudget(input: BudgetInput): Promise<ContextBudget> 
       if (!entry.isDirectory() || !(await exists(path))) return;
       const data = frontmatter(await readFile(path, "utf8"));
       if (typeof data?.name !== "string") return;
-      add("skills", path, "start", Buffer.byteLength(`${data.name}: ${data.description ?? ""}`));
+      const description = typeof data.description === "string" ? data.description : "";
+      add("skills", path, "start", Buffer.byteLength(`${data.name}: ${description}`));
     });
   };
 

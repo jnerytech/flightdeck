@@ -385,7 +385,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       const answer = message.subtype === "success" ? message.structured_output : undefined;
       const { decision, reason } = (answer ?? {}) as { decision?: unknown; reason?: unknown };
       return decision === "allow" || decision === "ask" || decision === "deny"
-        ? { decision, reason: String(reason ?? ""), tokens }
+        ? { decision, reason: typeof reason === "string" ? reason : "", tokens }
         : { decision: "ask", reason: `answer without a decision (${message.subtype})`, tokens };
     }
     return { decision: "ask", reason: "the query ended without a result" };
