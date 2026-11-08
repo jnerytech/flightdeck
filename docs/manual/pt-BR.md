@@ -1102,6 +1102,12 @@ aparece mascarado e como **Oculto**, e não abre.
   coluna que pede isso olha o arquivo antes. O host só confere que o arquivo existe (um arquivo
   comum, não vazio, que não seja um link, dentro do worktree) e lê o primeiro título: nunca lê nem
   envia o resto.
+- **Documentos fixados** (#76). Num host com a biblioteca do projeto, a página do card tem o painel
+  **Documentos fixados**: escolha um documento da biblioteca (ADRs, RFCs, PRDs, specs) para fixá-lo,
+  até 10, e **Desafixar** tira um. Quando o card começa, o primeiro prompt lista cada documento
+  fixado que está no worktree do card, com o título, e orienta a sessão a lê-los. Só o caminho e o
+  primeiro título vão no prompt, nunca o conteúdo do documento. Um documento fixado marcado como
+  obsoleto continua citado: você o escolheu.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
