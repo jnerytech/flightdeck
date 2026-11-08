@@ -33,6 +33,12 @@ function attribute(attrs: string, name: string): string {
   return raw.replace(/&(amp|lt|gt|quot|apos);/g, (_, entity: string) => ENTITIES[entity] ?? "");
 }
 
+/** A tag's time in seconds; NaN when the report gives none, so the verdict never reads it as 0. */
+function seconds(attrs: string): number {
+  const raw = attribute(attrs, "time");
+  return raw.trim() === "" ? Number.NaN : Number(raw);
+}
+
 /** Each file's and each test's time from a bun JUnit report; tests named `file > describes > test`. */
 export function parseJunit(xml: string): JunitTimes {
   const times: JunitTimes = { files: [], tests: [] };
@@ -43,12 +49,12 @@ export function parseJunit(xml: string): JunitTimes {
     else if (tag === "testsuite" && !selfClosing) {
       const name = attribute(attrs, "name");
       if (suites.length === 0) {
-        times.files.push({ file: name, seconds: Number(attribute(attrs, "time")) });
+        times.files.push({ file: name, seconds: seconds(attrs) });
       }
       suites.push(name);
     } else if (tag === "testcase" && !close) {
       const id = [...suites, attribute(attrs, "name")].join(" > ");
-      times.tests.push({ id, seconds: Number(attribute(attrs, "time")) });
+      times.tests.push({ id, seconds: seconds(attrs) });
     }
   }
   return times;
@@ -65,13 +71,16 @@ export function slowVerdict(
     else verdict.allowed.push(`${id}: ${seconds.toFixed(1)} s (${why})`);
   };
   for (const { file, seconds } of times.files) {
-    if (seconds > FILE_LIMIT_S) {
+    if (!Number.isFinite(seconds))
+      verdict.problems.push(`${file}: the report gives no time for the file`);
+    else if (seconds > FILE_LIMIT_S) {
       const over = `the file took ${seconds.toFixed(1)} s, over the ${FILE_LIMIT_S} s limit`;
       judge(file, seconds, allow.files[file], over);
     }
   }
   for (const { id, seconds } of times.tests) {
-    if (seconds > TEST_LIMIT_S) {
+    if (!Number.isFinite(seconds)) verdict.problems.push(`${id}: the report gives no time`);
+    else if (seconds > TEST_LIMIT_S) {
       judge(
         id,
         seconds,
@@ -85,8 +94,13 @@ export function slowVerdict(
 
 /** #1022 review: what a missing report means, from the outcome of the test step that writes it. */
 export function missingReport(
-  _outcome: string | undefined,
-  _path: string,
+  outcome: string | undefined,
+  path: string,
 ): { code: number; line: string } {
-  return { code: 0, line: "" };
+  return outcome === "success"
+    ? { code: 1, line: `slow-tests: the test step passed but left no JUnit report at ${path}` }
+    : {
+        code: 0,
+        line: `slow-tests: no JUnit report at ${path}; the test step did not pass, and says why`,
+      };
 }

@@ -6,7 +6,7 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parseJunit, type SlowAllowlist, slowVerdict } from "./lib/slow-tests.ts";
+import { missingReport, parseJunit, type SlowAllowlist, slowVerdict } from "./lib/slow-tests.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const report = process.argv[2] ?? "";
@@ -14,9 +14,10 @@ let xml: string;
 try {
   xml = readFileSync(report, "utf8");
 } catch {
-  // The test step failed before bun wrote it: that step is already red and says why.
-  console.log(`slow-tests: no JUnit report at ${report}; nothing to check`);
-  process.exit(0);
+  // CI passes the test step's outcome: a passing step that wrote no report is a failure here.
+  const missing = missingReport(process.env.TESTS_OUTCOME, report);
+  (missing.code === 0 ? console.log : console.error)(missing.line);
+  process.exit(missing.code);
 }
 const allow = JSON.parse(
   readFileSync(resolve(ROOT, "slow-tests-allowlist.json"), "utf8"),

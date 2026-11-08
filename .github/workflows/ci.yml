@@ -193,6 +193,7 @@ jobs:
       # functions from them. The coverage report stays in coverage/ for SonarCloud.
       # A push to main does the same from the commit it came after (#444).
       - name: Testes da seleção (pirâmide)
+        id: related
         if: needs.quick.outputs.base != ''
         env:
           BASE: ${{ needs.quick.outputs.base }}
@@ -202,6 +203,8 @@ jobs:
       # #1003: a test over 5 s or a test file over 60 s fails the PR, from the run above's own times.
       - name: Testes lentos (#1003)
         if: always() && needs.quick.outputs.base != ''
+        env:
+          TESTS_OUTCOME: ${{ steps.related.outcome }}
         run: bun run scripts/slow-tests.ts "$RUNNER_TEMP/junit.xml"
 
       - name: Tempos dos testes (JUnit)
