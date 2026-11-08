@@ -1,4 +1,5 @@
 import { inSequence } from "@flightdeck/protocol";
+import { BRANCH_PR_JQ, branchPr, otherPrsMessage } from "./branch-pr.ts";
 import { type PrRun, prRunFrom, pushWaitPass } from "./claude-hooks.ts";
 import { heavyReasonGiven } from "./slot-heavy.ts";
 /**
@@ -247,12 +248,20 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     "api",
     `${REPO}/pulls?head={owner}:${branch}&state=open`,
     "--jq",
-    ".[].number",
+    BRANCH_PR_JQ,
   ]);
-  const open = existing.stdout.trim().split("\n")[0];
-  if (open) {
-    deps.log(`${branch} already has PR #${open}`);
+  if (existing.code !== 0) {
+    deps.log(`the open PRs of ${branch} cannot be read: nothing was opened`);
+    return 1;
+  }
+  const { own, others } = branchPr(existing.stdout, branch);
+  if (own !== null) {
+    deps.log(`${branch} already has PR #${own}`);
     return 0;
+  }
+  if (others.length > 0) {
+    deps.log(otherPrsMessage(branch, others));
+    return 1;
   }
   const log = await deps.git(["log", "--format=%s", `origin/${base}..origin/${branch}`]);
   const subjects = log.stdout.split("\n").filter(Boolean);

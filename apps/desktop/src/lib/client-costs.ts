@@ -103,7 +103,7 @@ export function mergeSummaries(
     .map(([origin, v]) => ({ origin: origin as CostsSummary["byOrigin"][number]["origin"], ...v }))
     .sort(byCost);
   merged.byPersona = [...personas].map(([persona, v]) => ({ persona, ...v })).sort(byCost);
-  const top = sessions.sort((a, b) => b.costUsd - a.costUsd).slice(0, TOP_SESSIONS);
+  const top = [...sessions].sort((a, b) => b.costUsd - a.costUsd).slice(0, TOP_SESSIONS);
   merged.topSessions = top.map(({ hostId: _host, ...session }) => session);
   return {
     summary: merged,

@@ -894,11 +894,11 @@ export function Sidebar(
           onShortcuts={() => props.onShortcuts?.()}
           hasNew={whatsNewDot && !shellPrefs.hideWhatsNew}
           onWhatsNew={() => props.onWhatsNew?.()}
-          onOpenManual={() =>
-            void props.store.openLink(
-              `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${t.lang === "pt-BR" ? "pt-BR" : "en"}.md`,
-            )
-          }
+          onOpenManual={() => {
+            const page = t.lang === "pt-BR" ? "pt-BR" : "en";
+            const url = `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${page}.md`;
+            void props.store.openLink(url); // NOSONAR: the promise is deliberately not awaited; void says so
+          }}
         />
         {props.onSimpleMode && (
           <NavButton

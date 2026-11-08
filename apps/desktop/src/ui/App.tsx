@@ -631,7 +631,11 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               onShortcuts={() => setHelp(true)}
               onWhatsNew={() => setWhatsNew(true)}
               {...(focusHost && store.uiMode(focusHost.id).canSwitch
-                ? { onSimpleMode: () => void store.toggleUiMode() }
+                ? {
+                    onSimpleMode: () => {
+                      void store.toggleUiMode(); // NOSONAR: the promise is deliberately not awaited; void says so
+                    },
+                  }
                 : {})}
             />
           )}

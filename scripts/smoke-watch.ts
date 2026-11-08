@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { type Pending, pollUntil } from "./lib/smoke-poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -64,14 +65,8 @@ function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
   ]);
 }
 
-async function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
-  const deadline = Date.now() + TIMEOUT_MS;
-  for (;;) {
-    const value = check();
-    if (value) return value;
-    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20);
-  }
+function until<T>(check: () => T | Pending, what: string): Promise<T> {
+  return pollUntil(check, what, { timeoutMs: TIMEOUT_MS, pauseMs: 20 });
 }
 
 class Client {
@@ -176,7 +171,7 @@ async function pushedRound(client: Client, cardId: string) {
     if (round) return round;
     if (watch.status === "needs_you") throw new Error(`a vigia pediu você: ${watch.reason}`);
     if (Date.now() > deadline) throw new Error("timeout: rodada com push");
-    await Bun.sleep(100);
+    await Bun.sleep(100); // NOSONAR: a poll, one look per pause
   }
 }
 

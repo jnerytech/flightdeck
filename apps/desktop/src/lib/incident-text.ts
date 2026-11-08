@@ -85,10 +85,8 @@ export function incidentText(input: IncidentInput): string {
       : []),
     ...failedSteps.slice(0, STEPS_MAX).flatMap((step) => {
       const output = clean(step.output, STEP_OUTPUT_MAX);
-      return fact(
-        "Failed step",
-        `${clean(step.stepId, 100)} (${clean(step.type, 40)})${output ? `: ${output}` : ""}`,
-      );
+      const said = output ? `: ${output}` : "";
+      return fact("Failed step", `${clean(step.stepId, 100)} (${clean(step.type, 40)})${said}`);
     }),
     ...fact("Asked", clean(recap?.asked, FIELD_MAX)),
     ...fact("Done", clean(recap?.done, FIELD_MAX)),
