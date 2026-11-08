@@ -47,6 +47,8 @@ export function CardRunForm(
     features: CardRunFeatures;
     /** The tab of the card page that shows: Review changes leads while it is the conversation (#1197). */
     tab: "conversation" | "diff";
+    /** The card's run waits at a gate: the gate's own buttons lead, not the run panel's (#1269). */
+    gateWaiting: boolean;
     /** The card's PR is open and can be merged from here (#1197): Merge PR leads. */
     canMerge: boolean;
     /** Merge PR was chosen: the page asks to confirm. */
@@ -102,8 +104,14 @@ export function CardRunForm(
     return undefined;
   };
 
-  const step = nextStep(card, { tab: props.tab, canMerge: props.canMerge });
+  const step = nextStep(card, {
+    tab: props.tab,
+    canMerge: props.canMerge,
+    gate: props.gateWaiting,
+  });
   const running = cardStartBlock(card) !== null;
+  /** A card starts when nothing runs for it and no run waits at a gate: the host refuses a start over a waiting run. */
+  const startable = !running && step !== "gate";
   /** A session that is still there (even idle) or a card that waits: Stop has something to stop. */
   const alive =
     card.queued ||
@@ -138,6 +146,7 @@ export function CardRunForm(
       variant: "default" as const,
       run: () => props.onMerge(),
     },
+    gate: null,
     none: null,
   }[step ?? "none"];
   const canOpenPr = Boolean(card.worktreePath) && !card.prUrl;
@@ -164,17 +173,17 @@ export function CardRunForm(
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {step !== "start" && !running && (
+              {step !== "start" && startable && (
                 <DropdownMenuItem onSelect={startPlain}>{t("cardUi.start")}</DropdownMenuItem>
               )}
-              {!running && (
+              {startable && (
                 <DropdownMenuItem
                   onSelect={() => startAsk.ask(card, contracts, () => setStartingWith(true))}
                 >
                   {t("cardUi.startWith")}
                 </DropdownMenuItem>
               )}
-              {features.bg && !card.sessionId && (
+              {startable && features.bg && !card.sessionId && (
                 <DropdownMenuItem
                   onSelect={() =>
                     startAsk.ask(card, contracts, () => {

@@ -23,6 +23,7 @@ import {
   PersonaSubagentsMode as PersonaSubagentsModeSchema,
   PINNED_DOCS_MAX,
   pinnedDocProblem,
+  type RunResumeCheck,
   type SessionEvent,
   type SessionStatus,
   type SpecState,
@@ -413,7 +414,7 @@ export class Board {
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
   private readonly running = new Set<string>();
   /** Workflow turns waiting for the plan quota to free up. */
-  private quotaWaiters: Array<() => void> = [];
+  private readonly quotaWaiters: Array<() => void> = [];
   private readonly unwatchQuota: () => void;
   private readonly unwatchBudgets: () => void;
   /** Review comments of each card's open PR, from the last poll (phase 11). */
@@ -1413,6 +1414,23 @@ export class Board {
 
   get watcherCount(): number {
     return this.watchers.size;
+  }
+
+  /** #1266: whether a failed run can resume from its failed step; with `confirm`, resumes it. */
+  async resumeRun(runId: string, confirm: boolean): Promise<RunResumeCheck> {
+    const run = this.workflows.getRun(runId);
+    let project: Project;
+    try {
+      project = this.getProject(this.getCard(run.cardId).projectId);
+    } catch {
+      if (confirm) {
+        throw new FlightdeckError("invalid_state", "the run's card is gone", "run_resume_card");
+      }
+      return { from: "", ok: false, reason: "run_resume_card" };
+    }
+    return confirm
+      ? this.workflows.resume(runId, project)
+      : this.workflows.resumeCheck(runId, project);
   }
 
   /**

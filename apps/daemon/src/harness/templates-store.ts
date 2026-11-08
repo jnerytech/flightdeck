@@ -142,7 +142,8 @@ function plainFrontmatter(text: string): boolean {
  * A shell command a skill or a command runs as it loads: `!` then a backtick, inline, or a fence of
  * any length opened with `!`, wherever it starts. Withheld anywhere, CLAUDE.md included.
  */
-const RUNS_COMMAND = /!`|(?:`{3,}|~{3,})!/;
+// A longer fence opened with `!` holds three of its marks then `!`: the same matches, no backtracking.
+const RUNS_COMMAND = /!`|(?:`{3}|~{3})!/;
 
 /**
  * An `@` import (as CLAUDE.md has) of a file outside the project: from the home folder, an absolute

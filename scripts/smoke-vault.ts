@@ -60,7 +60,7 @@ class AppVault {
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
   frames: ServerMessage[] = [];
 

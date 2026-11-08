@@ -69,6 +69,13 @@ export const runsHandlers = {
   "run.get": (payload, { server }) => {
     return server.need("board").workflows.getRun(payload.runId);
   },
+  // #1266: the check answers anywhere; the resume runs the project's commands again, so only a
+  // near connection may confirm it.
+  "run.resume": async (payload, { ws, server }) => {
+    const confirm = payload.confirm === true;
+    if (confirm) requireVaultTransport(ws.data.origin, "run.resume", server.opts.log);
+    return await server.need("board").resumeRun(payload.runId, confirm);
+  },
   "webhook.send": async (payload, { ws, server }) => {
     return await server.need("webhook").send(payload, ws.data.origin);
   },

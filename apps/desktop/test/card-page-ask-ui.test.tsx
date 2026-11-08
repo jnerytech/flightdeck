@@ -140,6 +140,7 @@ function form(w: ReturnType<typeof setup>, cardOver: object = {}) {
         features={{ bg: true, watch: false }}
         tab="conversation"
         canMerge={false}
+        gateWaiting={false}
         onMerge={() => {}}
         arenaStart={null}
         onDiscarded={() => {}}
