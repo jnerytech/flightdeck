@@ -199,7 +199,14 @@ step(
 // What a scenario makes for itself: the card it created, the project folder it added.
 const made = new WeakMap<
   Context,
-  { card?: string; project?: string; entry?: string; counts?: number[]; guard?: string }
+  {
+    card?: string;
+    project?: string;
+    entry?: string;
+    counts?: number[];
+    guard?: string;
+    backup?: string;
+  }
 >();
 const mine = (c: Context) => {
   const state = made.get(c) ?? {};
@@ -1184,4 +1191,116 @@ step(Then, "I put the guard of host {string} back to what it was", async (c, hos
     async () => (await guardSelect(c, host).inputValue()) === before,
     "the guard is back",
   );
+});
+
+// Settings > Backup: one encrypted file with everything, a restore that previews before it changes anything (issue #1241).
+// The page's save dialog is replaced by one that keeps what is written; the file dialog of a restore is answered by the test.
+const PASSPHRASE = "a long enough passphrase";
+const WRONG_PASSPHRASE = "another long passphrase";
+const backupField = (
+  c: Context,
+  key: "backupAll.passphrase" | "backupAll.confirm" | "backupAll.filePassphrase",
+) => c.page.getByLabel(c.t(key), { exact: true });
+
+step(Given, "I am on Settings > Backup and files are saved into the page", async (c) => {
+  await open(c, { name: "settings", section: "backup" });
+  await c.page.evaluate(() => {
+    const kept = window as unknown as { __saved?: { name: string; text: string } };
+    (window as unknown as { showSaveFilePicker: unknown }).showSaveFilePicker = async (options: {
+      suggestedName: string;
+    }) => ({
+      createWritable: async () => ({
+        write: async (text: string) => {
+          kept.__saved = { name: options.suggestedName, text };
+        },
+        close: async () => {},
+      }),
+    });
+  });
+  await c.page.getByLabel(c.t("backupAll.passphrase"), { exact: true }).waitFor({ timeout: WAIT });
+});
+
+const savedFile = (c: Context) =>
+  c.page.evaluate(
+    () => (window as unknown as { __saved?: { name: string; text: string } }).__saved ?? null,
+  );
+
+step(When, "I back up everything with a passphrase", async (c) => {
+  await backupField(c, "backupAll.passphrase").fill(PASSPHRASE);
+  await backupField(c, "backupAll.confirm").fill(PASSPHRASE);
+  await c.page.getByRole("button", { name: c.t("backupAll.export"), exact: true }).click();
+});
+
+step(When, "I back up everything with two passphrases that differ", async (c) => {
+  await backupField(c, "backupAll.passphrase").fill(PASSPHRASE);
+  await backupField(c, "backupAll.confirm").fill(WRONG_PASSPHRASE);
+  await c.page.getByRole("button", { name: c.t("backupAll.export"), exact: true }).click();
+});
+
+step(Then, "the panel says the backup was saved", async (c) => {
+  await c.page.getByText(c.t("backupAll.saved"), { exact: true }).waitFor({ timeout: WAIT });
+  const file = await savedFile(c);
+  mine(c).backup = file?.text;
+});
+
+step(Then, "the saved file is encrypted and does not hold the passphrase", async (c) => {
+  const file = await savedFile(c);
+  if (!file) throw new Error("no file was saved");
+  if (!file.text.startsWith("-----BEGIN AGE ENCRYPTED FILE-----")) {
+    throw new Error("the saved file is not an encrypted file");
+  }
+  if (file.text.includes(PASSPHRASE)) throw new Error("the passphrase is in the file");
+});
+
+step(Then, "the panel says the passphrases do not match and nothing was saved", async (c) => {
+  await c.page
+    .getByText(c.t("backupAll.error.mismatch"), { exact: true })
+    .waitFor({ timeout: WAIT });
+  if ((await savedFile(c)) !== null) throw new Error("a file was saved");
+});
+
+/** Reads the backup made earlier in the scenario, answering the file dialog with it. */
+async function readBackup(c: Context, passphrase: string) {
+  const text = mine(c).backup;
+  if (!text) throw new Error("no backup was made earlier in this scenario");
+  await backupField(c, "backupAll.filePassphrase").fill(passphrase);
+  const chooser = c.page.waitForEvent("filechooser");
+  await c.page.getByRole("button", { name: c.t("backupAll.read"), exact: true }).click();
+  await (await chooser).setFiles({
+    name: "flightdeck-backup.fdbackup",
+    mimeType: "text/plain",
+    buffer: Buffer.from(text),
+  });
+}
+
+step(When, "I read that backup with a wrong passphrase", async (c) =>
+  readBackup(c, WRONG_PASSPHRASE),
+);
+
+step(When, "I read that backup with its passphrase", async (c) => readBackup(c, PASSPHRASE));
+
+step(Then, "the panel says the file could not be read and offers no Restore", async (c) => {
+  await c.page
+    .getByText(c.t("backupAll.error.unreadable"), { exact: true })
+    .waitFor({ timeout: WAIT });
+  const restore = await c.page
+    .getByRole("button", { name: c.t("backupAll.restore"), exact: true })
+    .count();
+  if (restore > 0) throw new Error("Restore is offered for a file that could not be read");
+});
+
+step(Then, "the panel previews what the backup holds and nothing is restored yet", async (c) => {
+  const kinds = ["settings", "personas", "snippets", "hosts", "vault"] as const;
+  await c.page
+    .getByText(c.t("backupAll.nothingToRestore"), { exact: true })
+    .waitFor({ timeout: WAIT });
+  const body = ((await c.page.locator("body").textContent()) ?? "").toLowerCase();
+  const first = c.t(`backupAll.kinds.${kinds[0]}`).toLowerCase();
+  if (!body.includes(first)) throw new Error("the preview does not name the kinds it holds");
+  const done = await c.page
+    .getByText(c.t("backupAll.result", { added: "0", overwritten: "0", skipped: "0" }), {
+      exact: false,
+    })
+    .count();
+  if (done > 0) throw new Error("something was restored before the confirm");
 });
