@@ -837,6 +837,10 @@ function shots(ids: DemoIds): Shot[] {
           .getByRole("menuitem", { name: /^(Move to|Mover para) .*(eview|evisão)/ })
           .click();
         await page.getByRole("alertdialog").or(page.getByRole("dialog")).first().waitFor();
+        // #1005: when the confirm shows, the actions menu is still on its way out (closed, its
+        // exit animation running, gone some 50 ms later). The print turns animations off, which
+        // drew that closing menu whole under the confirm: the print waits until it is gone.
+        await page.locator('[role="menu"]').waitFor({ state: "detached" });
       },
     },
     {
