@@ -54,7 +54,7 @@ const rows = () =>
   [...document.querySelectorAll("section li button")].map((b) => b.textContent ?? "");
 
 describe("needs-you-finished-ui: the Finished group (issue #1134)", () => {
-  test("lists what finished, newest first, under its own heading, and the page is not empty", async () => {
+  test("lists what finished, newest first, under its own heading, below the note that nothing waits", async () => {
     await open([
       finish("s2", { outcome: "failed", files: null, at: new Date(NOW - 60_000).toISOString() }),
       finish("s1"),
@@ -65,7 +65,9 @@ describe("needs-you-finished-ui: the Finished group (issue #1134)", () => {
     expect(first).toContain("Failed");
     expect(second).toContain("Backend tests");
     expect(second).toContain("Finished");
-    expect(document.body.textContent).not.toContain("Nothing is waiting for you.");
+    // No request waits, and the page says so above what finished.
+    expect(document.body.textContent).toContain("Nothing is waiting for you.");
+    expect(screen.getByRole("heading", { name: "Finished", level: 2 })).toBeTruthy();
   });
 
   test("a finish seen at the last look is not listed", async () => {
