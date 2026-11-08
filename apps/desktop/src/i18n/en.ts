@@ -815,6 +815,9 @@ export const en: Dictionary = {
       unreadable:
         "The file could not be read. Check the passphrase; a changed file is refused too.",
       failed: "The restore failed and nothing was changed.",
+      unexpected: "Something went wrong. Nothing was changed.",
+      "too-big":
+        "This backup is too big to be restored later (over 1 MiB), so it was not saved. Remove large personas or snippets and try again.",
     },
   },
   approval: {
