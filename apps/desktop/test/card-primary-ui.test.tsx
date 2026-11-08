@@ -175,6 +175,21 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     expect(shown()).toEqual(["Actions for Cart screen"]);
   });
 
+  test("while a gate waits, the menu offers no way to start: the host refuses a start over a waiting run", async () => {
+    const w = setup();
+    render(w.form(finished, "diff", false, true));
+    await openMenu();
+    expect(
+      [
+        item("Start"),
+        item("Start with a workflow or persona…"),
+        item("Start in the background"),
+        item("Finish…"),
+        item("Discard"),
+      ].map((el) => el !== null),
+    ).toEqual([false, false, false, true, true]);
+  });
+
   test("a finished run leads with Review changes, which shows the changes; Open PR waits in the menu", async () => {
     const w = setup();
     render(w.form(finished));
