@@ -52,6 +52,7 @@ export const JOURNEYS: readonly string[] = [
   "projetos-host",
   "projeto-novo",
   "time-apagar",
+  "time-rodando",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
@@ -105,3 +106,9 @@ export const DANGER_SESSION = "Limpar a pasta build";
 
 /** The closed team the demo keeps for the journey that deletes it (issue #934). */
 export const DEMO_CLOSED_TEAM = "closed-crew";
+
+/** The active team the demo keeps, with its members' last reports (issue #1222). */
+export const DEMO_ACTIVE_TEAM = "checkout-crew";
+
+/** The last report of the active team's first worker, as its team page shows it (issue #1222). */
+export const DEMO_TEAM_REPORT = "Somei o frete no total do carrinho; os testes passam.";

@@ -879,6 +879,10 @@ export const ptBR = {
     resizeValue: "{n} px",
     countOne: "1 card",
     countMany: "{n} cards",
+    keysHint:
+      "As setas passam de um card a outro, Enter abre, S inicia e M mostra as ações do card.",
+    columns: "Colunas",
+    showColumn: "{column}, {count}",
     countOfMany: "{shown} de {total} cards",
     noMatches: "Nenhuma correspondência",
     quickAdd: "Novo card em {column}",
@@ -1437,6 +1441,7 @@ export const ptBR = {
       "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
   },
   daemonFeature: {
+    serviceInstall: "iniciar no boot pelo app",
     assistant: "o assistente de IA",
     teleport: "mudar uma sessão de host",
     github: "o login do GitHub",
@@ -1516,6 +1521,7 @@ export const ptBR = {
     harnessDraft: "o rascunho de um CLAUDE.md com o Claude",
     harnessTemplates: "o compartilhamento da configuração do Claude Code como modelo",
     keepAwake: "a função de manter o computador acordado",
+    quotaPause: "a trava da cota para cartões novos",
     autoUpdate: "atualização automática do host",
   },
   daemonRefusal: {
@@ -1527,6 +1533,9 @@ export const ptBR = {
     terminal_enable_confirm:
       "Ligar o terminal dá um shell completo neste host: confirme para seguir.",
     central_confirm: "Mexer no ~/.claude/settings.json do host pede a sua confirmação.",
+    service_confirm: "Instalar o serviço no host pede a sua confirmação.",
+    service_unsupported:
+      "Este host não tem um gerenciador de serviços que inicie o flightdeckd com o computador ({platform}).",
     permission_request_closed: "O pedido de permissão {id} não está aberto.",
     hold_required: "Um pedido de risco alto só é aprovado segurando o botão.",
     input_changed: "Um pedido é aprovado como foi feito: a resposta muda o que ele executa.",
@@ -1975,6 +1984,14 @@ export const ptBR = {
       "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider: "O projeto não tem provedor de PR.",
     card_no_pr: "O card não tem PR.",
+    card_pr_not_open: "O PR do card não está aberto.",
+    card_pr_merge_unsupported:
+      "Este host de PR não faz merge pelo Flightdeck: faça o merge do PR lá.",
+    card_pr_checks_failing:
+      "Os checks estão falhando ou ainda rodando: o PR ainda não pode ser mesclado.",
+    card_pr_review_required: "O PR precisa de uma revisão antes de ser mesclado.",
+    card_pr_conflict: "O PR tem conflito com a branch base: resolva o conflito antes.",
+    card_pr_merge_failed: "Não foi possível fazer o merge do PR: {detail}",
     pr_no_comment: "Nenhum comentário foi escolhido.",
     card_running: "O card está em execução: espere o agente terminar.",
     merge_confirm: "Confirme o merge.",
@@ -3918,9 +3935,6 @@ export const ptBR = {
   },
   cardUi: {
     noIssueLink: "Esta issue não tem link para abrir",
-    needWorktree: "Inicie o card antes de abrir o PR",
-    notRunning: "O card não está rodando",
-    prAlreadyOpen: "O PR já está aberto",
     notFound: "Card não encontrado.",
     cost: "Custo do card",
     back: "Voltar ao board",
@@ -3978,6 +3992,8 @@ export const ptBR = {
     start: "Iniciar",
     stop: "Parar",
     openPr: "Abrir PR",
+    reviewChanges: "Revisar mudanças",
+    startWith: "Iniciar com workflow ou persona…",
     complete: "Concluir",
     finish: "Finalizar…",
     finishTitle: "Finalizar este card",
@@ -4151,6 +4167,7 @@ export const ptBR = {
       views: "Visões da sessão",
       lists: "Listas",
       approvals: "Aprovações",
+      board: "Board",
     },
     palette: "Abrir a paleta de comandos",
     toggleMode: "Alternar entre o modo simples e o app completo",
@@ -4177,6 +4194,9 @@ export const ptBR = {
     approve: "Aprovar o pedido",
     deny: "Negar o pedido",
     dismiss: "Fechar o pedido",
+    boardMove: "Passar de um card a outro no board",
+    boardStart: "Iniciar o card em foco",
+    boardActions: "Mostrar as ações do card em foco",
   },
   sidebarGroups: {
     main: "Principal",
@@ -4540,7 +4560,29 @@ export const ptBR = {
         gitAdd: "uma verificação antes do git add",
         secrets: "uma verificação de arquivos de segredo",
       },
+      share: {
+        action: "Compartilhar como modelo",
+        message:
+          "Guarda o CLAUDE.md, os agentes e as skills deste projeto como um modelo do qual qualquer projeto deste host pode partir. As configurações ficam de fora: nunca hooks, permissões ou servidores MCP. Cada arquivo é verificado em busca de segredos antes.",
+        name: "Nome do modelo",
+        idHint: "Salvo como {id}.",
+        needsName: "Use pelo menos uma letra ou um dígito (a-z, 0-9).",
+        confirm: "Compartilhar",
+        filesOne: "1 arquivo",
+        filesMany: "{n} arquivos",
+        done: "Compartilhado como o modelo {title} ({files}).",
+      },
       setup: {
+        startFrom: "Partir de",
+        builtIn: "Arquivos do próprio Flightdeck",
+        withheld: "Deixado de fora do modelo",
+        withheldLine: "{path}: {why}",
+        withheldWhy: {
+          frontmatter: "o cabeçalho dele poderia executar um comando ou conceder uma permissão",
+          secret: "ele contém um segredo",
+          import: "ele importa um arquivo de fora do projeto",
+          command: "ele executa um comando ao carregar",
+        },
         action: "Configurar o Claude Code",
         apply: "Aplicar a configuração",
         message:
@@ -4874,6 +4916,7 @@ export const ptBR = {
   },
   hostForm: {
     fromLink: "Este link veio de fora do app. Confira os dados antes de salvar.",
+    byHand: "Informar o endereço e o token manualmente",
     link: "Link de pareamento",
     name: "Nome",
     namePlaceholder: "meu pc",
@@ -4906,6 +4949,20 @@ export const ptBR = {
     okHide: "Ocultar {n} itens sem nada a fazer",
     optionalAbsent: "Opcional · não instalado",
     okList: "Funcionando",
+    service: {
+      turnOn: "Ligar",
+      messageLinux:
+        "O Flightdeck vai instalar um serviço do usuário em ~/.config/systemd/user/flightdeckd.service, para o flightdeckd iniciar no próximo boot ou login. O daemon que está rodando agora continua como está.",
+      messageWindows:
+        "O Flightdeck vai criar a tarefa {task} no Agendador de Tarefas, para o flightdeckd iniciar no seu próximo login. O daemon que está rodando agora continua como está.",
+      noteLabel: "Iniciar no boot",
+      boot: "Iniciar no boot está ligado: o flightdeckd inicia com este computador a partir do próximo boot. O daemon que está rodando agora continua como está.",
+      logon:
+        "Iniciar no boot está ligado: o flightdeckd inicia no seu próximo login. O daemon que está rodando agora continua como está.",
+      lingerOff:
+        "O linger está desligado, então o flightdeckd espera um login. Para iniciar no boot, rode isto num terminal do host. O app nunca roda sudo:",
+      copyLinger: "Copiar o comando do linger",
+    },
   },
   hostDeps: {
     installPage: "Página de instalação",

@@ -25,20 +25,18 @@ export function applyTemplate(current: TemplateText, picked: CardTemplate | null
 }
 
 /** The workflow a card starts with: its template's, when the project still has it; else none. */
-export function startWorkflowOf(card: { startWorkflow: string | null }, names: string[]): string {
-  return card.startWorkflow !== null && names.includes(card.startWorkflow)
-    ? card.startWorkflow
-    : "";
+export function startWorkflowOf(card: { startWorkflow?: string | null }, names: string[]): string {
+  const wanted = card.startWorkflow ?? null;
+  return wanted !== null && names.includes(wanted) ? wanted : "";
 }
 
 /** The picker value of the persona a card starts in: its template's, when the host has it; else none. */
 export function startPersonaOf(
-  card: { startPersona: string | null },
+  card: { startPersona?: string | null },
   hostPersonas: string[],
 ): string | null {
-  return card.startPersona !== null && hostPersonas.includes(card.startPersona)
-    ? `host:${card.startPersona}`
-    : null;
+  const wanted = card.startPersona ?? null;
+  return wanted !== null && hostPersonas.includes(wanted) ? `host:${wanted}` : null;
 }
 
 /** What the template sets besides the text, as one phrase; empty when it sets nothing. */

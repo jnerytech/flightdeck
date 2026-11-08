@@ -117,9 +117,9 @@ export function SnippetEditor(
       try {
         store.globalSnippets.save({ ...(snippet ? { id: snippet.id } : {}), ...fields });
         return props.onSaved();
-      } catch (thrown) {
-        if (!(thrown instanceof SnippetModelError)) throw thrown;
-        return setError(errorOf(thrown.code, thrown.message, t, thrown));
+      } catch (error_) {
+        if (!(error_ instanceof SnippetModelError)) throw error_;
+        return setError(errorOf(error_.code, error_.message, t, error_));
       }
     }
     const where = whereOf(snippet, place, project);

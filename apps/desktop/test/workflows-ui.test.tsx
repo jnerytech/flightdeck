@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
@@ -104,6 +105,12 @@ describe("workflows-ui", () => {
     await act(async () => {
       fireEvent.click(open as HTMLElement);
     });
+    // The workflow is chosen in the start dialog, under the card's menu (#1197).
+    await chooseFromCardMenu(
+      { act, fireEvent, screen } as never,
+      "Ações de Somar",
+      "Iniciar com workflow ou persona…",
+    );
     await settle(
       () => (screen.queryByLabelText("Workflow") as HTMLSelectElement | null)?.options.length === 2,
     );
@@ -115,7 +122,13 @@ describe("workflows-ui", () => {
     expect(screen.queryByLabelText("Input task")).toBeNull();
     await change("Workflow", "plan");
     await change("Input task", "dois números");
-    await click("Iniciar");
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("dialog", { name: "Iniciar card" })).getByRole("button", {
+          name: "Iniciar",
+        }),
+      );
+    });
     await settle(() => board.getCard(card.id).workflowRunId !== null);
     const runId = board.getCard(card.id).workflowRunId ?? "";
     expect(runId).not.toBe("");
@@ -124,29 +137,31 @@ describe("workflows-ui", () => {
     expect(screen.queryByRole("region", { name: "Execução do workflow" })).not.toBeNull();
   });
 
-  test("um card de um modelo abre com o workflow do modelo já escolhido, e só se o projeto o tem", async () => {
+  test("o Iniciar de um card de um modelo abre o diálogo com o workflow do modelo já escolhido, e só se o projeto o tem", async () => {
     const plan =
       "inputs: [task]\nsteps:\n  - id: plan\n    agent: { prompt: 'plano de {{inputs.task}}' }\n";
     const { board, project } = await online({ plan }, ["plan"]);
     board.createCard(project.id, { title: "Do modelo", description: "x", startWorkflow: "plan" });
     board.createCard(project.id, { title: "Sumiu", description: "x", startWorkflow: "gone" });
     await click("Abrir board de repo");
-    const open = async (title: string) => {
+    const chosenFor = async (title: string) => {
       await settle(() => screen.queryByLabelText(`Card ${title}`) !== null);
       await act(async () => {
         fireEvent.click(
           screen.queryByLabelText(`Card ${title}`)?.querySelector("button") as HTMLElement,
         );
       });
+      await click("Iniciar");
       await settle(
         () =>
           (screen.queryByLabelText("Workflow") as HTMLSelectElement | null)?.options.length === 2,
       );
       return (screen.queryByLabelText("Workflow") as HTMLSelectElement).value;
     };
-    const fromTemplate = await open("Do modelo");
+    const fromTemplate = await chosenFor("Do modelo");
+    await click("Cancelar");
     await click("Voltar");
-    const gone = await open("Sumiu");
+    const gone = await chosenFor("Sumiu");
     expect([fromTemplate, gone]).toEqual(["plan", ""]);
   });
 

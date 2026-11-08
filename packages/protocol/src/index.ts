@@ -3262,7 +3262,11 @@ export const Command = z.discriminatedUnion("type", [
   cmd("session.subscribe", SessionSubscribePayload),
   cmd("session.unsubscribe", SessionIdPayload),
   cmd("permission.respond", PermissionRespondPayload),
-  cmd("sessions.watch", z.object({}).strict()),
+  /**
+   * `snapshot: "ack"` (#1191, feature `watch.snapshot`): the current summaries come in the ack, one
+   * frame for them all, not one frame each.
+   */
+  cmd("sessions.watch", z.object({ snapshot: z.literal("ack").optional() }).strict()),
   cmd("host.info", z.object({}).strict()),
   cmd("history.list", HistoryListPayload),
   cmd("history.get", HistoryGetPayload),
@@ -3495,6 +3499,20 @@ export const Command = z.discriminatedUnion("type", [
       text: z.string().min(1).optional(),
       outcome: z.enum(["done", "discard"]).optional(),
     }),
+  ),
+  /**
+   * #1196: merges the card's open PR on its provider (`gh pr merge`, a merge commit or a squash);
+   * a near connection and `confirm`. The card then moves to Done as any merged PR does.
+   */
+  cmd(
+    "card.pr.merge",
+    z
+      .object({
+        cardId: z.string(),
+        method: z.enum(["merge", "squash"]),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
   ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
@@ -4078,6 +4096,8 @@ export const Command = z.discriminatedUnion("type", [
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
   cmd("hooks.uninstall", z.object({ confirm: z.boolean().optional() })),
+  /** #1200: installs the daemon as a service for the next boot or login: only with `confirm: true`. */
+  cmd("service.install", z.object({ confirm: z.boolean().optional() }).strict()),
   cmd("external.message", z.object({ claudeSessionId: z.string(), text: z.string().min(1) })),
   // Phase 6: workflows of a project (read from its base branch) and their runs.
   cmd("workflow.list", z.object({ projectId: z.string() })),
@@ -4106,6 +4126,8 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 7 (track B).
   cmd("quota.get", z.object({}).strict()),
   cmd("quota.watch", z.object({}).strict()),
+  /** The guard "new cards wait from N%": 0 to 1, `null` turns it off. Answers with the new state. */
+  cmd("quota.setPauseAt", z.object({ pauseAt: z.number().min(0).max(1).nullable() }).strict()),
   cmd("account.get", z.object({}).strict()),
   cmd("account.watch", z.object({}).strict()),
   cmd("account.unwatch", z.object({}).strict()),
@@ -4653,7 +4675,14 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("review.update", z.object({ id: z.string(), body: z.string().min(1) })),
   cmd("review.remove", z.object({ id: z.string() })),
-  cmd("review.send", z.object({ target: ReviewTarget })),
+  cmd(
+    "review.send",
+    z.object({
+      target: ReviewTarget,
+      /** The language the review is written in (the app's); English when absent. */
+      language: z.enum(["en", "pt-BR"]).optional(),
+    }),
+  ),
   cmd(
     "changes.revert",
     z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
@@ -4766,6 +4795,11 @@ export const HelloResult = z.object({
   daemonVersion: z.string(),
   protocolVersion: z.number().int(),
   allowedRoots: z.array(z.string()),
+  /**
+   * What this connection can ask for before `host.info` answers (#1191): `watch.snapshot`, the
+   * current summaries in the ack of `sessions.watch`. Absent from an older host.
+   */
+  features: z.array(z.string()).optional(),
 });
 export type HelloResult = z.infer<typeof HelloResult>;
 
@@ -5197,6 +5231,22 @@ export const BoardResult = z.object({
 });
 export type BoardResult = z.infer<typeof BoardResult>;
 
+/** #1200: the host can install itself as a service from the app (`service.install`). */
+export const FEATURE_SERVICE_INSTALL = "serviceInstall";
+
+/**
+ * #1200: what `service.install` did. The service is enabled for the next boot or login, never
+ * started now: the daemon that answered keeps running.
+ */
+export interface ServiceInstallResult {
+  /** When the service first runs: the next boot (Linux with linger on) or the next login. */
+  startsAt: "boot" | "logon";
+  /** Linux with linger off: until linger is on, the service starts only after a login. */
+  lingerOff: boolean;
+  /** The account a `sudo loginctl enable-linger <user>` line names. */
+  user: string;
+}
+
 export const HooksStatusResult = z.object({
   status: z.enum(["installed", "absent", "outdated"]),
   /** The settings.json the hooks go to. */
@@ -5370,7 +5420,8 @@ export interface CommandResults {
   "session.subscribe": SessionSubscribeResult;
   "session.unsubscribe": undefined;
   "permission.respond": undefined;
-  "sessions.watch": undefined;
+  /** With `snapshot: "ack"`: every session's current summary; otherwise nothing. */
+  "sessions.watch": { summaries: SessionEventOf<"session.summary">[] } | undefined;
   "host.info": HostInfoResult;
   "history.list": HistoryListResult;
   "history.get": HistoryGetResult;
@@ -5417,6 +5468,7 @@ export interface CommandResults {
   "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;
+  "card.pr.merge": Card;
   "card.manage": Card;
   "card.complete": Card;
   "card.discard": Card;
@@ -5538,6 +5590,7 @@ export interface CommandResults {
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;
+  "service.install": ServiceInstallResult;
   "card.get": Card;
   "card.spec": Card;
   "card.validationTemplate": ValidationTemplate;
@@ -5558,6 +5611,7 @@ export interface CommandResults {
   "gate.respond": WorkflowRun;
   "quota.get": QuotaState;
   "quota.watch": undefined;
+  "quota.setPauseAt": QuotaState;
   "account.get": AccountState;
   "account.watch": undefined;
   "account.unwatch": undefined;

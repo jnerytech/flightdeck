@@ -1581,10 +1581,25 @@ html:not(:has([data-slot="status-bar"])) {
   grid-template-columns: minmax(0, 1fr) 7rem 10rem auto;
   align-items: end;
   gap: 0.5rem;
+  /* A narrow window gives the persona its own line, then model and permissions side by side, and
+     Remove under them at the left (#1222): the fixed columns left the persona a few dozen pixels. */
+  @media (width < 40rem) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    & > :first-child {
+      grid-column: 1 / -1;
+    }
+    & > :last-child {
+      justify-self: start;
+    }
+  }
 }
 /* A host that does not take the permission modes has no such column. */
 @utility worker-row-lean {
   grid-template-columns: minmax(0, 1fr) 7rem auto;
+  /* Its columns come after the full row's, so the narrow ones are repeated here (#1222). */
+  @media (width < 40rem) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 @utility row-end-wrap {
   display: flex;
@@ -2898,6 +2913,30 @@ html:not(:has([data-slot="status-bar"])) {
 @utility resources-kind {
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
+}
+/* Add a host: the fields to fill by hand, folded under their summary (#1199). The summary is a
+   row-sized target (axe target-size wants 24 px: 0.375 rem of padding each side of a line) with
+   a visible focus; the fields sit one step below it. */
+@utility host-fold {
+  & > summary {
+    /* The list item keeps the browser's triangle, which says it opens and shuts. */
+    display: list-item;
+    list-style-position: inside;
+    padding-block: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    cursor: pointer;
+  }
+  & > summary:hover {
+    color: var(--foreground);
+  }
+  & > summary:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  & > :not(summary) {
+    margin-block-start: 0.5rem;
+  }
 }
 /* Health's first line: the headline, the counts, when it was read and Check again (#640). */
 @utility health-summary {

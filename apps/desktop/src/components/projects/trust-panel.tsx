@@ -39,6 +39,8 @@ export function TrustPanel(
     canCommit?: boolean;
     /** The host can draft a CLAUDE.md with its model (#75, G1). */
     canDraft?: boolean;
+    /** The host keeps a project's Markdown setup as a template (#75, T2). */
+    canShare?: boolean;
   }>,
 ) {
   const { store, hostId, path } = props;
@@ -144,7 +146,7 @@ export function TrustPanel(
                           <pre
                             className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2"
                             // biome-ignore lint/a11y/noNoninteractiveTabindex: a long command scrolls, and focus lets the keyboard do it
-                            tabIndex={0}
+                            tabIndex={0} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
                           >
                             {item}
                           </pre>
@@ -203,9 +205,11 @@ export function TrustPanel(
                   onApplied: read,
                   canCommit: props.canCommit === true,
                   canDraft: props.canDraft === true,
+                  canTemplates: props.canShare === true,
                 }
               : null
           }
+          share={props.canShare ? { store, hostId, path } : null}
         />
       )}
     </>

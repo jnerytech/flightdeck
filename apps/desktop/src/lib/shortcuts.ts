@@ -15,7 +15,14 @@ export type ShortcutAction =
   | "go-activity"
   | "go-settings";
 
-export type ShortcutGroup = "general" | "navigation" | "tabs" | "views" | "lists" | "approvals";
+export type ShortcutGroup =
+  | "general"
+  | "navigation"
+  | "tabs"
+  | "views"
+  | "lists"
+  | "approvals"
+  | "board";
 
 /** One shortcut, for the cheat sheet and for the palette's hints. */
 export interface ShortcutDef {
@@ -72,6 +79,9 @@ export const SHORTCUTS: ShortcutDef[] = [
   def("approve", "approvals", ["A"], "shortcuts.approve"),
   def("deny", "approvals", ["N"], "shortcuts.deny"),
   def("dismiss", "approvals", ["Esc"], "shortcuts.dismiss"),
+  def("board-move", "board", ["←↑↓→"], "shortcuts.boardMove"),
+  def("board-start", "board", ["s"], "shortcuts.boardStart"),
+  def("board-actions", "board", ["m"], "shortcuts.boardActions"),
 ];
 
 /** The shortcut that runs `action`, if there is one. */

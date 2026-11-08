@@ -138,6 +138,8 @@ export interface PrProvider {
   health(opts: { cwd: string; url: string }): Promise<PrHealth>;
   /** Phase 22: the end of the log of what failed in a build, at most 16 KB. */
   buildLog(opts: { cwd: string; url: string; buildId: string }): Promise<string>;
+  /** #1196: merges the open PR (a merge commit or a squash); a provider without it cannot. */
+  merge?(opts: { cwd: string; url: string; method: "merge" | "squash" }): Promise<void>;
 }
 
 /** Starts a program that was found: runCommand, or a stand-in that starts nothing. */
@@ -189,7 +191,7 @@ export async function cliOk(
  * send it away. A line break has no place in a name either.
  */
 function urlName(what: string, value: string): string {
-  const control = [...value].some((char) => char.charCodeAt(0) < 32);
+  const control = [...value].some((char) => (char.codePointAt(0) ?? 0) < 32);
   if (value === "" || value.startsWith("@") || control) {
     throw new FlightdeckError(
       "invalid_state",
@@ -242,6 +244,16 @@ function ghParts(url: string): { owner: string; repo: string; number: string; pr
   return { owner, repo, number, prUrl: `https://github.com/${owner}/${repo}/pull/${number}` };
 }
 
+/** A CLI's words with what looks like a token left out: GitHub tokens, auth headers and URL credentials. */
+function withoutTokens(text: string): string {
+  return text
+    .replace(/\bgh[pousr]_\w+/g, "[token]")
+    .replace(/\bgithub_pat_\w+/g, "[token]")
+    .replace(/\bBearer\s+\S+/gi, "[token]")
+    .replace(/\bBasic\s+\S+/g, "[token]")
+    .replace(/\/\/[^/@\s]+@/g, "//[token]@");
+}
+
 const GH_BUCKETS: Record<string, PrCheck["state"]> = {
   pass: "passing",
   skipping: "passing",
@@ -288,6 +300,64 @@ abstract class CliProvider {
 
 /** GitHub through `gh`. */
 export class GithubCli extends CliProvider implements PrProvider {
+  /**
+   * #1196: `gh pr merge <url> --merge|--squash`, and nothing else: no `--admin` (rules stay), no
+   * `--auto`, no branch delete, no message of ours. When gh refuses, it is asked once more, with a
+   * read, why the PR cannot be merged, so the refusal says that and not gh's own words.
+   */
+  async merge({
+    cwd,
+    url,
+    method,
+  }: {
+    cwd: string;
+    url: string;
+    method: "merge" | "squash";
+  }): Promise<void> {
+    // Rebuilt from its parts: the stored address never reaches gh as it is.
+    const { prUrl } = ghParts(url);
+    const result = await this.call("gh", ["pr", "merge", prUrl, `--${method}`], cwd);
+    if (result.code === 0) return;
+    const reason = await this.whyNotMergeable(cwd, prUrl);
+    // gh's words travel as the detail of the unknown refusal only, never the message, and without tokens.
+    const detail = withoutTokens(result.stderr.trim()).slice(0, 300);
+    throw new FlightdeckError("invalid_state", "the PR could not be merged", reason, {
+      url: prUrl,
+      ...(reason === "card_pr_merge_failed" ? { detail } : {}),
+    });
+  }
+
+  /** Why GitHub holds the PR back, from its merge state, its review decision and its checks. */
+  private async whyNotMergeable(cwd: string, url: string): Promise<string> {
+    const state = await this.json<{
+      mergeStateStatus?: string;
+      reviewDecision?: string | null;
+      statusCheckRollup?: GhCheck[];
+    }>(
+      "gh",
+      ["pr", "view", url, "--json", "mergeStateStatus,reviewDecision,statusCheckRollup"],
+      cwd,
+    ).catch(() => null);
+    if (state === null) return "card_pr_merge_failed";
+    if (state.mergeStateStatus === "DIRTY") return "card_pr_conflict";
+    if (
+      state.reviewDecision === "REVIEW_REQUIRED" ||
+      state.reviewDecision === "CHANGES_REQUESTED"
+    ) {
+      return "card_pr_review_required";
+    }
+    const checks = summarize(
+      (state.statusCheckRollup ?? []).map((check) => {
+        const result = (check.conclusion ?? check.state ?? "").toUpperCase();
+        if (GH_FAIL.has(result)) return "failing" as const;
+        return GH_PASS.has(result) ? ("passing" as const) : ("pending" as const);
+      }),
+    );
+    return checks === "failing" || checks === "pending"
+      ? "card_pr_checks_failing"
+      : "card_pr_merge_failed";
+  }
+
   async create(opts: CreatePr): Promise<string> {
     const existing = await this.url(opts);
     if (existing) return existing;

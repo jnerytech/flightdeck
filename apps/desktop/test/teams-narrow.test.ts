@@ -37,3 +37,21 @@ describe("teams-narrow: a team member's row fits a narrow window", () => {
     expect(actions).toContain("flex-wrap: wrap");
   });
 });
+
+// Issue #1222: a worker row of the new-team form kept fixed 7 rem and 10 rem columns at 390 px, so
+// the persona picker got a few dozen pixels. Narrow, the row is two columns, and the persona spans
+// both. The lean row (a host with no permission modes) sets its own columns after the full one, so
+// it needs the same narrow rule, or it would win at 390.
+describe("teams-narrow: a worker row of the new-team form fits a narrow window (#1222)", () => {
+  for (const name of ["worker-row", "worker-row-lean"]) {
+    test(`${name}: below 640 px two even columns`, () => {
+      expect(narrow(utility(name))).toContain(
+        "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)",
+      );
+    });
+  }
+
+  test("below 640 px the persona picker spans the row", () => {
+    expect(narrow(utility("worker-row"))).toMatch(/& > :first-child \{\s*grid-column: 1 \/ -1;/);
+  });
+});
