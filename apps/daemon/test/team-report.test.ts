@@ -7,6 +7,7 @@ import { Messaging } from "../src/messaging/messages.ts";
 import { startServer } from "../src/server.ts";
 import { Teams } from "../src/teams/teams.ts";
 import { cardWhen, newBoard } from "./board-helpers.ts";
+import { poll } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 setDefaultTimeout(30_000);
@@ -126,7 +127,12 @@ describe("team-report: the coordinator's outcome of the team (#1220)", () => {
   });
 
   test("over the protocol, the asking session is the daemon's, and a report is capped in length", async () => {
-    const { server, team, coordinator, worker } = await boot();
+    const { server, teams, team, coordinator } = await boot();
+    // The worker's card starts its session after the team is made: a real member that is not the
+    // coordinator, so the refusal is the host's check of the role.
+    const worker = await poll(() =>
+      teams.status(team.id).members.find((m) => m.role === "worker" && m.sessionId),
+    );
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
