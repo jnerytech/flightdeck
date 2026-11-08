@@ -91,7 +91,22 @@ describe("dialogo-compacto: below 640 px a dialog is a full-screen sheet", () =>
   // not obscured): the sheet keeps room at its bottom for the buttons and a reason under them.
   test("a focused field is scrolled clear of the footer, not left under it", () => {
     const content = compactRule('[data-slot="dialog-content"]');
-    expect(content.includes("scroll-padding-bottom: 6rem")).toBe(true);
+    // 8rem: the bar is about 5rem, a reason line or a wrapped button row adds 1.5 to 3rem.
+    expect(content.includes("scroll-padding-bottom: 8rem")).toBe(true);
+  });
+
+  // #1271: a dialog's fields may scroll in a box of their own, so its buttons stay in view. In the
+  // sheet that box would stop the buttons mid-sheet: there the sheet is the only scroller.
+  test("a dialog's own fields box scrolls in a centered dialog and lets the sheet scroll below 640 px", () => {
+    const at = css.indexOf("@utility dialog-fields {");
+    const utility = at < 0 ? "" : css.slice(at, css.indexOf("\n}\n", at));
+    const narrow = utility.slice(utility.indexOf("@media (width < 40rem) {"));
+    expect([
+      utility.includes("max-height: 70vh"),
+      utility.includes("overflow-y: auto"),
+      narrow.includes("max-height: none"),
+      narrow.includes("overflow: visible"),
+    ]).toEqual([true, true, true, true]);
   });
 
   test("a confirmation is not part of the sheet: a two-line question stays a centered box", () => {
