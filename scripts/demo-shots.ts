@@ -277,8 +277,8 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "hub" },
       async prepare(page) {
         for (let i = 0; i < 20; i++) {
-          await page.keyboard.press("Control+t");
-          await page.keyboard.press("Escape");
+          await page.keyboard.press("Control+t"); // NOSONAR: key presses reach the page in the order typed
+          await page.keyboard.press("Escape"); // NOSONAR: the tab opens first, then closes its menu
         }
         await page.getByRole("button", { name: /^(Todas as abas|All tabs)( \(|$)/ }).waitFor();
       },
@@ -289,8 +289,8 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "hub" },
       async prepare(page) {
         for (let i = 0; i < 20; i++) {
-          await page.keyboard.press("Control+t");
-          await page.keyboard.press("Escape");
+          await page.keyboard.press("Control+t"); // NOSONAR: key presses reach the page in the order typed
+          await page.keyboard.press("Escape"); // NOSONAR: the tab opens first, then closes its menu
         }
         await page.getByRole("button", { name: /^(Todas as abas|All tabs)( \(|$)/ }).click();
         await page.getByRole("listbox", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
@@ -1108,13 +1108,15 @@ async function printShot(
     // Narrow windows (#641): the same page resized, judged against its own baseline. The contract
     // rules stay at 1280: the page scrolling sideways is overflow-x here, a finding with a baseline.
     for (const size of narrowSizes(theme, shot.name)) {
-      await page.setViewportSize(size);
-      await page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES });
+      await page.setViewportSize(size); // NOSONAR: one window size at a time on the same page
+      await page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES }); // NOSONAR: the layout must settle at this size before the shot
       const at = `${size.width}x${size.height}`;
-      await page.screenshot({
+      const shooting = page.screenshot({
         path: join(SHOTS_DIR, `narrow-${theme}-${lang}`, `${shot.name}@${at}.png`),
       });
-      const found: Finding[] = await page.evaluate(layoutFindings, { responsive: RESPONSIVE });
+      await shooting; // NOSONAR: the shot is taken before the window is resized again
+      const measuring = page.evaluate(layoutFindings, { responsive: RESPONSIVE });
+      const found: Finding[] = await measuring; // NOSONAR: measured at this size, before the next one
       const kept = found.filter((finding) => RESPONSIVE_RULES.includes(finding.rule));
       problems.push(...ratchetScreen(`${theme} ${lang} ${at} ${shot.name}`, kept, narrow));
     }

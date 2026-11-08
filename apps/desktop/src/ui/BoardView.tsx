@@ -476,11 +476,15 @@ export const BoardView = memo(function BoardView(props: {
     setBusy(true);
     const failed: BulkRefusal[] = [];
     for (const card of cards) {
-      const answer = await store.hostRequest(
+      const asking = store.hostRequest(
         hostId,
         hasStartedWork(card) ? "card.discard" : "card.delete",
-        { cardId: card.id, confirm: true },
+        {
+          cardId: card.id,
+          confirm: true,
+        },
       );
+      const answer = await asking; // NOSONAR: one card at a time, so the host never runs two discards (git, worktrees) at once
       if (!answer.ok) failed.push({ card, ...answerOf(answer) });
     }
     // A discard is not atomic on the host: a card it refused may be partly cleaned up, so it is

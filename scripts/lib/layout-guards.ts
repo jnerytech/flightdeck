@@ -951,8 +951,8 @@ export async function confirmGaps(
 ): Promise<Finding[]> {
   let found = await measure();
   for (let n = 0; n < tries && found.some((finding) => finding.rule === "gap"); n++) {
-    await settle();
-    found = await measure();
+    await settle(); // NOSONAR: the boxes settle before each new measure
+    found = await measure(); // NOSONAR: each measure follows the settle, and the loop stops at the first clean one
   }
   return found;
 }
