@@ -113,8 +113,11 @@ function AssistantMessage(
     <Message from="assistant">
       {props.item.blocks.map((block, i) =>
         block.type === "text" ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: blocks are immutable and ordered
-          <Markdown key={i} text={block.text} />
+          <Markdown
+            // biome-ignore lint/suspicious/noArrayIndexKey: blocks are immutable and ordered
+            key={i} // NOSONAR: blocks are immutable and ordered
+            text={block.text}
+          />
         ) : (
           <ToolCall
             key={block.id}
@@ -853,8 +856,11 @@ export function SessionView(props: Readonly<SessionViewProps>) {
         {queued.length > 0 && (
           <ul aria-label={t("session.queue")} className="composer-images">
             {queued.map((item, at) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: the queue is only ever edited by position
-              <li key={at} className="composer-queued">
+              <li
+                // biome-ignore lint/suspicious/noArrayIndexKey: the queue is only ever edited by position
+                key={at} // NOSONAR: the queue is only ever edited by position
+                className="composer-queued"
+              >
                 <span className="min-w-0 flex-1 truncate text-sm">{item.text}</span>
                 {item.images.length > 0 && (
                   <span className="text-muted-foreground text-xs">

@@ -108,7 +108,9 @@ describe("parseFindings (issue #79)", () => {
     ]) {
       expect(refusedAt(parseFindings(reply([item({ title })])))).toBe("item 1, title");
     }
-    expect(findings(parseFindings(reply([item({ title: "x".repeat(TITLE_MAX) })]))).length).toBe(1);
+    expect(findings(parseFindings(reply([item({ title: "x".repeat(TITLE_MAX) })])))).toHaveLength(
+      1,
+    );
   });
 
   test("a title is trimmed, and a missing body is empty", () => {

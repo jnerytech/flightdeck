@@ -128,6 +128,7 @@ function dependabot(raw: unknown): RepoAlert | null {
   const name = clean(record(dependency?.package)?.name, 100);
   const url = linkOf(alert.html_url);
   const detail = clean(advisory.description, TEXT_MAX, true);
+  const inManifest = manifest ? ` (${manifest})` : "";
   return entry(
     "dependabot",
     number,
@@ -135,9 +136,7 @@ function dependabot(raw: unknown): RepoAlert | null {
     title,
     manifest || null,
     url,
-    [name && `Package: ${name}${manifest ? ` (${manifest})` : ""}`, url, detail].map(
-      (line) => line || "",
-    ),
+    [name && `Package: ${name}${inManifest}`, url, detail].map((line) => line || ""),
   );
 }
 

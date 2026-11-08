@@ -225,7 +225,7 @@ describe("acp-client", () => {
     agent.sendRaw("{}");
     agent.send({ jsonrpc: "2.0", id: 1, result: { stopReason: "end_turn" } });
     expect(await poll(() => answer)).toEqual({ stopReason: "end_turn" });
-    expect(closedWith).toBe(null);
+    expect(closedWith).toBeNull();
     expect(logs).toHaveLength(4);
     expect(logs.join("\n")).not.toContain("SECRET");
   });

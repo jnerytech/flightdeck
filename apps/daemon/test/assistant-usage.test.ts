@@ -157,7 +157,7 @@ describe("assistant-usage", () => {
     });
     const summary = costs.summary({ from: DAY, to: DAY });
     expect(summary.byOrigin.map((o) => [o.origin, o.costUsd])).toEqual([["assistant", 2]]);
-    expect(costs.summary({ from: DAY, to: DAY, origin: "assistant" }).byOrigin.length).toBe(1);
+    expect(costs.summary({ from: DAY, to: DAY, origin: "assistant" }).byOrigin).toHaveLength(1);
     const budgets = new Budgets({ db, now: () => Date.parse(AT), day: () => DAY });
     budgets.set({ scope: "host", period: "day", limitUsd: 10, action: "notify" });
     expect(budgets.list()[0]?.spentUsd).toBe(2);

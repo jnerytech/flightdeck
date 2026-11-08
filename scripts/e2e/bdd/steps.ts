@@ -38,9 +38,14 @@ step(When, "I create the session", async (c) =>
   c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click(),
 );
 
-step(Then, "the session opens showing my prompt {string}", async (c, prompt = "") =>
-  c.page.getByText(prompt).first().waitFor({ timeout: SESSION_WAIT }),
-);
+step(Then, "the session opens showing my prompt {string}", async (c, prompt = "") => {
+  // The session page has the message box; the form (or the palette) that held the text has none,
+  // so the text alone would be found there too.
+  await c.page
+    .getByLabel(c.t("session.message"), { exact: true })
+    .waitFor({ timeout: SESSION_WAIT });
+  await c.page.getByText(prompt).first().waitFor({ timeout: SESSION_WAIT });
+});
 
 step(
   Given,
@@ -596,3 +601,57 @@ step(Then, "its project group counts its active sessions", async (c) =>
     .getByText(pattern(dictionary(c).hub.countShort))
     .waitFor({ timeout: WAIT }),
 );
+
+// New session, task first (#1135): the task has the focus, the rest is folded, Ctrl+Enter starts it.
+const promptBox = (c: Context) => c.page.getByLabel(c.t("newSession.prompt"), { exact: true });
+const moreOptionsToggle = (c: Context) =>
+  c.page.getByRole("button", { name: c.t("newSession.moreOptions"), exact: true });
+
+step(Then, "the first prompt box has the focus", async (c) => {
+  await promptBox(c).waitFor({ timeout: WAIT });
+  await waitFor(
+    () => promptBox(c).evaluate((el) => el === document.activeElement),
+    "the first prompt has the focus",
+  );
+});
+
+step(Then, "the name and the subfolder are folded under More options", async (c) => {
+  await moreOptionsToggle(c).waitFor({ timeout: WAIT });
+  await waitFor(
+    async () =>
+      (await moreOptionsToggle(c).getAttribute("aria-expanded")) === "false" &&
+      !(await c.page.getByLabel(c.t("newSession.name"), { exact: false }).isVisible()),
+    "the name is folded",
+  );
+});
+
+step(When, "I open More options", async (c) => moreOptionsToggle(c).click());
+
+step(Then, "the name and the subfolder boxes show", async (c) => {
+  await c.page.getByLabel(c.t("newSession.name"), { exact: false }).waitFor({ timeout: WAIT });
+  await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).waitFor({ timeout: WAIT });
+});
+
+step(When, "I press Ctrl+Enter in the first prompt", async (c) =>
+  promptBox(c).press("Control+Enter"),
+);
+
+// The palette starts a session from the text typed in it, in the project on screen.
+const palette = (c: Context) => c.page.getByRole("dialog", { name: c.t("searchUi.label") });
+
+step(When, "I open the command palette", async (c) => {
+  await c.page.keyboard.press("Control+K");
+  await palette(c).waitFor({ timeout: WAIT });
+});
+
+step(When, "I type {string} in the palette", async (c, text = "") =>
+  c.page.getByLabel(c.t("searchUi.input"), { exact: true }).fill(text),
+);
+
+step(When, "I choose to start a session in {string} with that text", async (c, project = "") => {
+  const text = await c.page.getByLabel(c.t("searchUi.input"), { exact: true }).inputValue();
+  await c.page
+    .getByRole("listbox", { name: c.t("palette.sectionStart"), exact: true })
+    .getByRole("option", { name: c.t("palette.startIn", { project, text }) })
+    .click({ timeout: WAIT });
+});

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
 import type { WandBinding } from "@/components/assistant/use-wand";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -23,6 +23,8 @@ export function PrDescriptionDialog(
     assist: Omit<WandBinding, "kind">;
     onConfirm(text: string, title: string): unknown;
     onCancel(): void;
+    /** What the person reads before confirming, below the fields (where the push goes). */
+    children?: ReactNode;
   }>,
 ) {
   const t = useT();
@@ -77,6 +79,7 @@ export function PrDescriptionDialog(
             />
           )}
         </AssistField>
+        {props.children}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={props.onCancel}>
             {t("common.cancel")}

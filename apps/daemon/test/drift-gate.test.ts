@@ -260,7 +260,7 @@ describe("drift-gate: a round that leaves its PR is held, not pushed (#77)", () 
     await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
     await resolving;
     await f.fixer.idle();
-    expect(f.fixer.rounds(f.card.id).length).toBe(1);
+    expect(f.fixer.rounds(f.card.id)).toHaveLength(1);
   });
 
   test("push is refused once the PR is no longer open, or the card lost its worktree", async () => {

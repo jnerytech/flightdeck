@@ -8,7 +8,7 @@ const scanner = new SecretScanner();
 
 describe("demo-secret: the key the demo's repository holds for the Files panel (#846)", () => {
   test("the fake key is one the host's scanner masks", () => {
-    expect(scanner.scan(DEMO_FAKE_KEY).length > 0).toBe(true);
+    expect(scanner.scan(DEMO_FAKE_KEY).length).toBeGreaterThan(0);
     expect(scanner.redact(DEMO_FAKE_KEY, false)).toBe("[redacted]");
   });
 

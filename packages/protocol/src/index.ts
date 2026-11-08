@@ -3320,6 +3320,16 @@ export const Command = z.discriminatedUnion("type", [
   /** #75, slice T1: the host's harness templates: names and sizes, never content. */
   cmd("harness.templates.list", z.object({}).strict()),
   /**
+   * #75, slice T2: deletes the host's harness template `id` (its folder, and nothing outside it).
+   * A near connection, and only once the person confirmed.
+   */
+  cmd(
+    "harness.templates.delete",
+    z
+      .object({ id: z.string().regex(HARNESS_TEMPLATE_ID), confirm: z.boolean().optional() })
+      .strict(),
+  ),
+  /**
    * #75, slice G1: drafts a CLAUDE.md with the host's model from the detected stack and the
    * project's top-level names (never a file's content). The host holds the draft; an apply whose
    * digest for CLAUDE.md is the draft's writes it. Never hooks or permissions from a model.
@@ -5378,6 +5388,7 @@ export interface CommandResults {
   "project.harness.draft": HarnessDraft;
   "project.harness.export": HarnessTemplateInfo;
   "harness.templates.list": { templates: HarnessTemplateInfo[] };
+  "harness.templates.delete": { id: string };
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;
