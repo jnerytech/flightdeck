@@ -4530,6 +4530,16 @@ export const ptBR = {
         done: "Compartilhado como o modelo {title} ({files}).",
       },
       setup: {
+        startFrom: "Partir de",
+        builtIn: "Arquivos do próprio Flightdeck",
+        withheld: "Deixado de fora do modelo",
+        withheldLine: "{path}: {why}",
+        withheldWhy: {
+          frontmatter: "o cabeçalho dele poderia executar um comando ou conceder uma permissão",
+          secret: "ele contém um segredo",
+          import: "ele importa um arquivo de fora do projeto",
+          command: "ele executa um comando ao carregar",
+        },
         action: "Configurar o Claude Code",
         apply: "Aplicar a configuração",
         message:
