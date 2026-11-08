@@ -1490,6 +1490,7 @@ export const en: Dictionary = {
     knowledgeStatus: "changing a document's status",
     harnessPreview: "previewing Claude Code setup changes",
     harnessApply: "applying Claude Code setup changes",
+    harnessCommit: "committing the Claude Code setup on a branch",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
@@ -1813,6 +1814,13 @@ export const en: Dictionary = {
     harness_confirm: "Changing the Claude Code setup needs your confirmation.",
     harness_reformat:
       "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
+    harness_commit_stale:
+      "The files are not as the setup wrote them: apply the setup again, then commit.",
+    harness_commit_no_head: "The project has no commit yet to start a branch from.",
+    harness_commit_identity:
+      "Git has no name and email for this repository: set user.name and user.email, then commit.",
+    harness_commit_secret: "{file} holds a secret, so it was not committed.",
+    harness_commit_branch_taken: "The branch {branch} is already there: try again in a minute.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",

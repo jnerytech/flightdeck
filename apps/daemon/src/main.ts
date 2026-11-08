@@ -65,6 +65,7 @@ import { listAlerts } from "./github/alerts.ts";
 import { runGh, runGhIn } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
 import { applyHarness } from "./harness/apply.ts";
+import { commitHarness } from "./harness/commit.ts";
 import { previewHarness } from "./harness/preview.ts";
 import { detectStack } from "./harness/stack.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
@@ -1474,6 +1475,7 @@ export async function startDaemon(
     }),
     harnessPreview: previewHarness,
     harnessApply: applyHarness,
+    harnessCommit: (path, digests) => commitHarness(path, digests, { scanner: snippetScanner }),
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) => paths.map(trustState),
