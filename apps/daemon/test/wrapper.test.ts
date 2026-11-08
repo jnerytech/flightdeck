@@ -162,10 +162,10 @@ describe("wrapper", () => {
       out: [String(error)],
     }));
     const starts = fake.events().filter((e) => e.type === "start");
-    expect([result.code, result.out.join("\n").includes("could not write the channel config")]).toEqual([
-      0,
-      true,
-    ]);
+    expect([
+      result.code,
+      result.out.join("\n").includes("could not write the channel config"),
+    ]).toEqual([0, true]);
     expect(starts.map((e) => e.args)).toEqual([["-c"]]);
   });
 
