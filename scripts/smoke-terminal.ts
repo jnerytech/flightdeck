@@ -165,7 +165,7 @@ async function run(work: string): Promise<void> {
     step = "saída do processo";
     const seen = (text: string) => client.output.includes(text);
     const first = await until(
-      () => client.output.match(/READY pid=(\d+) child=(\d+)/),
+      () => /READY pid=(\d+) child=(\d+)/.exec(client.output),
       "a primeira linha do processo",
     );
     pids.push(Number(first[1]), Number(first[2]));
