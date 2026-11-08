@@ -987,6 +987,8 @@ step(Then, "the manual fields open with the name {string}", async (c, name = "")
 });
 
 // Start at boot: a host run from source (the demo) shows the command to run by hand and no Turn it on (issue #1200).
+/** The command the Service row gives to run by hand: a command, not UI text. */
+const SERVICE_COMMAND = "flightdeckd service install";
 const serviceRow = (c: Context) =>
   c.page.getByRole("listitem", { name: c.t("hostDeps.names.service"), exact: true });
 
@@ -997,7 +999,7 @@ step(When, "I open the health of host {string}", async (c) =>
 step(Then, "the Service row says it is missing and shows the command to run by hand", async (c) => {
   const row = serviceRow(c);
   await row.getByText(c.t("hostDeps.state.missing"), { exact: true }).waitFor({ timeout: WAIT });
-  await row.getByText("flightdeckd service install", { exact: true }).waitFor({ timeout: WAIT });
+  await row.getByText(SERVICE_COMMAND, { exact: true }).waitFor({ timeout: WAIT });
 });
 
 step(
