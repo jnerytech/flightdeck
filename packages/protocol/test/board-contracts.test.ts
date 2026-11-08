@@ -366,4 +366,11 @@ describe("board-contracts: the spec artifact (issue #78, slice 3b)", () => {
     ).toBe(true);
     expect(Command.safeParse({ type: "card.spec", id: "1", payload: {} }).success).toBe(false);
   });
+
+  test("card.validationTemplate asks for a card's project validation note shape", () => {
+    const ask = (payload: unknown) =>
+      Command.safeParse({ type: "card.validationTemplate", id: "1", payload }).success;
+    expect(ask({ cardId: "c" })).toBe(true);
+    expect(ask({})).toBe(false);
+  });
 });

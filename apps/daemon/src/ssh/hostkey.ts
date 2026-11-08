@@ -42,7 +42,7 @@ interface Scan {
 /** The SHA256 fingerprint, as `ssh-keygen -l` prints it. */
 function fingerprintOf(key: string): string {
   const blob = Buffer.from(key.split(" ")[1] as string, "base64");
-  return `SHA256:${createHash("sha256").update(blob).digest("base64").replace(/=+$/, "")}`;
+  return `SHA256:${createHash("sha256").update(blob).digest("base64").replace(/=+$/, "")}`; // NOSONAR: a SHA-256 digest in base64 is 44 chars with one "="
 }
 
 /** The lines of the Flightdeck's own known_hosts for a server: `host key`, or `[host]:port key`. */

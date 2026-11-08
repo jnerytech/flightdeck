@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { quickTests } from "../lib/ci-quick.ts";
 
@@ -60,6 +60,18 @@ describe("ci-quick", () => {
       "scripts/test/protocol-surface.test.ts",
       "scripts/test/wait-ratchet.test.ts",
     ]);
+  });
+
+  test("#1068: md-links runs in the quick job, so the PR that names a missing doc fails, whatever it changed", () => {
+    expect(
+      quickTests([
+        "scripts/test/md-size.test.ts",
+        "scripts/test/md-links.test.ts",
+        "scripts/lib/md-links.ts",
+        "apps/desktop/test/md-links.test.ts",
+      ]),
+    ).toEqual(["scripts/test/md-links.test.ts"]);
+    expect(existsSync(join(ROOT, "scripts/test/md-links.test.ts"))).toBe(true);
   });
 
   test("a quick job runs typecheck, lint, the TDD audit and the ratchet tests (#272), no local Sonar (#283)", () => {

@@ -37,6 +37,16 @@ export const SpecState = z.object({
 });
 export type SpecState = z.infer<typeof SpecState>;
 
+/**
+ * A project's own shape for a validation note (issue #1058): its text when the host reads one, else
+ * why a template that is there was not used. Neither when the project has none.
+ */
+export const ValidationTemplate = z.object({
+  text: z.string().nullable(),
+  ignored: z.enum(["untrusted", "unsafe", "too_big", "empty"]).nullable(),
+});
+export type ValidationTemplate = z.infer<typeof ValidationTemplate>;
+
 export type ContractOverrides = Partial<Record<BoardColumn, ColumnContract>>;
 
 /**

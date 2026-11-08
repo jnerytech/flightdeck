@@ -3796,6 +3796,13 @@ export const en: Dictionary = {
     saveValidation: "Save validation note",
     validationShape:
       "What was checked:\nHow (commands, steps, data):\nResult:\nWhat was not checked:",
+    validationIgnored: {
+      untrusted: "The project's validation note template was not used: the project is not trusted.",
+      unsafe:
+        "The project's validation note template was not used: it is a link or has more than one name.",
+      too_big: "The project's validation note template was not used: it is over 32 KiB.",
+      empty: "The project's validation note template was not used: it is empty.",
+    },
     specFile: "Spec file",
     saveSpec: "Save spec file",
     specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
@@ -3807,6 +3814,10 @@ export const en: Dictionary = {
       pickPlaceholder: "Choose a document…",
       unpin: "Unpin {path}",
       unpinShort: "Unpin",
+      pinAction: "Pin",
+      pinNeeded: "Choose a document to pin.",
+      pinned: "Pinned: {title}.",
+      unpinned: "Unpinned: {title}.",
       unlisted: "not in the project's library",
       full: "A card pins at most {max} documents.",
       failed: "Could not save the pinned documents: {why}",
@@ -3977,6 +3988,9 @@ export const en: Dictionary = {
       file: "File {path}",
       copy: "Copy the file",
       copied: "Copied. Commit it to the base branch, then trust it here.",
+      copyFailed:
+        "The clipboard refused the copy. Select the file's text above and copy it by hand.",
+      none: "This host offers no templates.",
       checkFilled:
         "The check line holds this project's test command. Review it before you trust the workflow.",
       checkPlaceholder:
@@ -4336,6 +4350,8 @@ export const en: Dictionary = {
       setStatus: {
         hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
         label: "Status of {title}",
+        apply: "Change",
+        applyLabel: "Change the status of {title}",
         changed:
           "{title} is now {status}. The file is changed in the project's folder and not committed.",
         failed: "The status could not be changed. {why}",
@@ -4401,6 +4417,9 @@ export const en: Dictionary = {
         commitMessage:
           "The setup's files go on a new branch Flightdeck names, with your git name and email. They are committed whole: changes you made to them before the setup are in the commit too. Your checkout keeps them as changes on your current branch.",
         commitFiles: "Files to commit",
+        draft: "Draft with Claude",
+        drafted:
+          "Drafted by Claude from the project's commands and file names. Read it before you apply: it becomes the instructions your sessions follow.",
         committed: "Committed on {branch}. Push it when you are ready.",
       },
     },

@@ -1355,6 +1355,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, board().getCard(command.payload.cardId));
       case "card.spec":
         return ok(command.type, await board().refreshSpec(command.payload.cardId));
+      case "card.validationTemplate":
+        return ok(command.type, await board().validationTemplate(command.payload.cardId));
       case "gate.respond": {
         const { runId, stepId, attempt, decision, note } = command.payload;
         board().workflows.respond(runId, stepId, attempt, decision, note);

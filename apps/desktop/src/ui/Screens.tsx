@@ -28,6 +28,7 @@ import { basename, holdsFolder } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
 import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
+import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ActivityBoard } from "./ActivityBoard.tsx";
@@ -117,6 +118,19 @@ export function rowRoute(row: HubRow): Route {
   return { name: "reader", target: { hostId: row.hostId, claudeSessionId: id } };
 }
 
+/** The folder picker the composer opens to mention a file or folder of the host; none once it is gone. */
+const pathPicker =
+  (store: AppStore, host: HostView | undefined) => (done: (path: string | null) => void) =>
+    host && (
+      <FolderPicker
+        store={store}
+        host={host}
+        files={hasFeature(host.hostInfo?.features, "fs.files", false)}
+        onPick={(path) => done(path)}
+        onClose={() => done(null)}
+      />
+    );
+
 /** A managed session's conversation; selecting it subscribes to its full event stream. */
 function ManagedSession(
   props: Readonly<{
@@ -178,14 +192,7 @@ function ManagedSession(
         : undefined,
     [store, hostId, claudeId, canFork, cwd],
   );
-  const [costUsd, setCostUsd] = useState<number | null>(null);
-  useEffect(() => {
-    setCostUsd(null);
-    if (!claudeId || !withCosts || !status) return;
-    void store
-      .hostCommand(hostId, "costs.session", { claudeSessionId: claudeId })
-      .then((r) => setCostUsd(r?.costUsd ?? null));
-  }, [store, hostId, claudeId, withCosts, status]);
+  const costUsd = useSessionCost(store, hostId, claudeId, withCosts, status);
   return (
     <SessionTabs
       store={store}
@@ -230,17 +237,7 @@ function ManagedSession(
           ? { bypass: { host: host.name } }
           : {})}
         images={hasFeature(host?.hostInfo?.features, "session.images", false)}
-        pickPath={(done) =>
-          host && (
-            <FolderPicker
-              store={store}
-              host={host}
-              files={hasFeature(host.hostInfo?.features, "fs.files", false)}
-              onPick={(path) => done(path)}
-              onClose={() => done(null)}
-            />
-          )
-        }
+        pickPath={pathPicker(store, host)}
         focusRequestId={props.focus}
         assist={{
           controller: store.assistant,

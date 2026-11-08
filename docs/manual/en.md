@@ -365,7 +365,9 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   `"knowledge": { "feedOff": ["/path/to/project"] }`, and a folder in that list switches off
   everything inside it too: a project off through a folder above it says so, and is switched on
   by editing that entry in the file. An untrusted project is not given the index, on or off.
-  Each document has a status picker. Choosing one writes only the `status:` line of that file's
+  Each document has a status picker and a **Change** button: choosing a status only picks it (the arrow
+  keys can browse the list without writing anything), and **Change**, on while the choice differs from
+  the file's status, writes it. It writes only the `status:` line of that file's
   front matter (a document with no front matter gets a block holding that line), keeps the rest of
   the file as it is, and leaves the change in the project's folder, not committed: review it with
   git. It is refused when the file changed since the list showed it (reload and try again), when
@@ -1099,6 +1101,9 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 - **A validation note and starting without criteria** (#78). A card has a **Validation note** in
   its Details: a line or two on how you checked the work. A project can make a column ask for it
   (a contract with the `validation` check), and the card then says "Needs: a validation note".
+  An empty note shows the shape of a note as a hint, never saved: a trusted project can give its own
+  as `.flightdeck/templates/validation.md` in its checkout (at most 32 KiB), and the card says why
+  when that file is there but was not used.
   **Start** (the card's menu, the Run section of the card, or the Ctrl+K palette) asks first only
   in a project whose In progress contract confirms acceptance criteria and only for a card with
   none (no `- [ ] …` item in its description): **Start anyway** goes on. By default In progress
@@ -1661,6 +1666,8 @@ commit it to `.flightdeck/workflows/` on the base branch, and **Trust** it on th
 like any other workflow. The `check` line of the alert fixer already holds the project's test
 command when Flightdeck can tell it (`npm run test`, `cargo test`...). When it cannot, the line
 holds a placeholder that fails on purpose: replace it with your test command before you commit.
+If the clipboard refuses the copy, the dialog says so as an alert: select the text of the file shown
+there and copy it by hand. A host with no templates says that instead of showing an empty list.
 
 ### Running and following
 

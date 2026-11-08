@@ -124,7 +124,22 @@ project's harness (#75). The design is on #78. This record covers slice S-T1.
 - **Why a placeholder.** It is never saved. A prefilled template, or a button that inserts one, could
   be saved as it is and would meet the `validation` check with nothing validated, as the spec
   template would have without `draft: true`.
-- **What is left.** A project's own validation template (`.flightdeck/templates/validation.md`, for
-  trusted projects only, as the spec template) needs the host to read it for the app. It also
-  needs the notice that a project template was ignored. Both are left for a later slice, if they
-  are wanted.
+- **What is left.** A project's own validation template, which is the next slice.
+
+## Slice S-T3d: a project's own validation template (issue #1058)
+
+- **What it does.** The card's validation note field takes a trusted project's
+  `.flightdeck/templates/validation.md` as its placeholder, instead of the built-in shape. It is the
+  text as it is: no front matter and no placeholders. It is never saved, for the reason above.
+- **How the app gets it.** A command of its own, `card.validationTemplate {cardId}`, answers
+  `{ text, ignored }`: the text when a template is read, `ignored` (`untrusted`, `unsafe`, `too_big`
+  or `empty`) when one is there and was not used, neither when there is none. The app asks quietly
+  when the card opens (a host without the command has none). The text is not part of the card, so it
+  is neither stored nor sent to every app watching the board.
+- **Which rules.** The same as the spec template: read from the trusted checkout only, through
+  `readInsideWhy` (a plain file of at most 32 KiB, one name, no link on the way); an untrusted
+  project's template is only looked for by name; a trust check that fails says nothing, and is
+  logged. It is looked for in the card's worktree, else in the project's folder.
+- **Why not a card notice.** The spec notice is set once, when the file is written. A validation
+  template is read each time the card opens, so the reason is said by the field itself, under it, in
+  both languages.

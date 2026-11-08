@@ -800,7 +800,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // The status changes in the document's file, and the counts follow it.
     const select = (title: string) =>
       panel.getByLabel(c.t("projectPage.knowledge.setStatus.label", { title }), { exact: true });
+    const apply = (title: string) =>
+      panel.getByRole("button", {
+        name: c.t("projectPage.knowledge.setStatus.applyLabel", { title }),
+        exact: true,
+      });
     await select(titles.obsolete).selectOption({ label: word("valid") });
+    await apply(titles.obsolete).click();
     await panel
       .getByRole("status")
       .filter({
@@ -812,6 +818,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
     await filter("valid", 2).waitFor({ timeout: WAIT });
     await select(titles.obsolete).selectOption({ label: word("obsolete") });
+    await apply(titles.obsolete).click();
     await filter("obsolete", 1).waitFor({ timeout: WAIT });
     // The index for sessions: off, then on again. The demo's project is not trusted, so "on" reads
     // as the untrusted kind of on.
@@ -911,6 +918,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await none.waitFor({ timeout: WAIT });
     }
     await panel.getByLabel(c.t("cardUi.pins.pick"), { exact: true }).selectOption(path);
+    // Choosing only picks (#1088): Pin pins it.
+    await panel.getByRole("button", { name: c.t("cardUi.pins.pinAction"), exact: true }).click();
     await unpin.waitFor({ timeout: WAIT });
     await panel
       .getByText("Design tokens come from one file", { exact: true })

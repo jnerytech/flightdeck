@@ -49,7 +49,7 @@ async function userProcesses(): Promise<ProcessInfo[]> {
   const text = await new Response(ps.stdout).text();
   const list: ProcessInfo[] = [];
   for (const line of text.split("\n")) {
-    const match = /^\s*(\d+)\s+(\d+)\s+(-?\d+)\s+(.*)$/.exec(line);
+    const match = /^\s*(\d+)\s+(\d+)\s+(-?\d+)\s+(.*)$/.exec(line); // NOSONAR: one line of the user's own `ps`, dev tool
     if (match) {
       list.push({
         pid: Number(match[1]),

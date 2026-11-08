@@ -19,7 +19,7 @@ export const TEMP_PATH_ALLOWED: readonly string[] = [
  */
 export function bareTempUses(source: string): number {
   // Comments name these calls to explain them: they are not uses.
-  const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1"); // NOSONAR: a source file of the repo, read by a ratchet
   const tmp = code.match(/(?<![\w$])tmpdir\(\)/g)?.length ?? 0;
   const real = code.match(/(?<![\w$.])realpathSync\(/g)?.length ?? 0;
   return tmp + real;
