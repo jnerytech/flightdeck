@@ -162,9 +162,9 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     expect(heading.className).toContain("font-semibold");
     expect(heading.className).not.toContain("text-muted-foreground");
     expect(region.querySelector("svg.lucide-folder")).not.toBeNull();
-    // #1132: the chip reads in words; its name keeps the long form.
+    // #1132: the chip reads in words; its name keeps the long form, with the same word.
     expect(within(region).getByText("1 de 4 ativas").getAttribute("aria-label")).toBe(
-      "1 ao vivo de 4 sessões",
+      "1 de 4 sessões ativas",
     );
     expect(within(region).getByRole("button", { name: "Abrir o host alfa" })).toBeTruthy();
     expect(
