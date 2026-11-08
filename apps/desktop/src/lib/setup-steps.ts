@@ -21,6 +21,36 @@ export interface SetupProbe {
   projects?: Project[] | null;
 }
 
+/** What a host said to one request: its data, a refusal, or nothing (the request was not made). */
+type Said<T> = { ok: true; data: T } | { ok: false } | null;
+
+/**
+ * The probe after a look at the host: what each request that was made says, and for the rest what
+ * the last probe knew. Hooks are not carried over (a look that did not ask leaves them unknown);
+ * GitHub keeps its last answer unless it was asked; the projects keep their last list unless a
+ * request for them was made and answered.
+ */
+export function probeAfter(
+  before: SetupProbe | undefined,
+  wants: { github: boolean; projects: boolean },
+  said: {
+    hooks: Said<{ status: NonNullable<SetupProbe["hooks"]> }>;
+    github: Said<{ installed: boolean; loggedIn: boolean }>;
+    projects: Said<{ projects: Project[] }>;
+  },
+): SetupProbe {
+  let github = before?.github ?? null;
+  if (wants.github)
+    github = said.github?.ok ? said.github.data.installed && said.github.data.loggedIn : null;
+  const projects =
+    wants.projects && said.projects?.ok ? said.projects.data.projects : before?.projects;
+  return {
+    hooks: said.hooks?.ok ? said.hooks.data.status : null,
+    github,
+    ...(projects ? { projects } : {}),
+  };
+}
+
 export interface SetupStep {
   id: SetupStepId;
   /** A core step counts for the ring and, once all are done, removes the sidebar row. */

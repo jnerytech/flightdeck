@@ -181,7 +181,7 @@ import {
   type SessionState,
 } from "./session-state.ts";
 import { SessionViews } from "./session-views.ts";
-import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
+import { probeAfter, type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { ShellPrefs } from "./shell-prefs.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { SidebarFoldController } from "./sidebar-fold.ts";
@@ -2626,21 +2626,12 @@ export class AppStore {
     ]);
     // The host may have gone while it was asked.
     if (!this.state.hosts.some((h) => h.id === hostId)) return;
-    const before = this.state.setupProbes[hostId];
-    let githubKnown = before?.github ?? null;
-    if (wantsGithub)
-      githubKnown = github?.ok ? github.data.installed && github.data.loggedIn : null;
-    const projectList = wantsProjects && projects?.ok ? projects.data.projects : before?.projects;
     // At connect the probe's list is also the screens' (the sidebar tree needs it on any page, #721):
     // one request, not two.
     if (options.connect === true && wantsProjects && projects?.ok) {
       this.rememberProjects(hostId, projects.data.projects);
     }
-    const probe: SetupProbe = {
-      hooks: hooks?.ok ? hooks.data.status : null,
-      github: githubKnown,
-      ...(projectList ? { projects: projectList } : {}),
-    };
+    const probe = probeAfter(this.state.setupProbes[hostId], wants, { hooks, github, projects });
     this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
   }
 
