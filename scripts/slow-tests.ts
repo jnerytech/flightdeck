@@ -25,7 +25,7 @@ if (path === null) {
 }
 let xml: string;
 try {
-  xml = readFileSync(path, "utf8");
+  xml = readFileSync(path, "utf8"); // NOSONAR: reportPath keeps it under the repository, tmpdir or RUNNER_TEMP; read only (security-reviewed, #1022)
 } catch {
   // CI passes the test step's outcome: a passing step that wrote no report is a failure here.
   const missing = missingReport(process.env.TESTS_OUTCOME, path);
