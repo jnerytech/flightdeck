@@ -612,7 +612,7 @@ function runFailed(run: MainRun): boolean {
 }
 
 /**
- * The job a dispatched full run must pass: since #296 it merges the six shard jobs into the 100%
+ * The job a dispatched full run must pass: since #296 it merges the six shard jobs into the coverage
  * gate, and fails closed when one is missing (ci-shards.test.ts pins the pairing).
  */
 export const FULL_SUITE_JOB = "test suite (ubuntu-latest)";
