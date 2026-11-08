@@ -1144,6 +1144,16 @@ aparece mascarado e como **Oculto**, e não abre.
   quando há um modelo que não pode ser usado, o embutido é escrito e o card diz o motivo: o projeto
   não é confiável, o arquivo é um link ou tem um segundo nome, passa de 32 KiB ou está vazio. O aviso
   nunca cita o modelo.
+- **Modelos de card** (#1201). Um projeto confiável pode listar modelos de card em
+  `.flightdeck/templates/cards.json` (até 32 KiB, 12 modelos): cada um tem um `id`, um `name` e,
+  se quiser, `description`, `criteria` (uma lista, escrita como itens `- [ ]`), `workflow`,
+  `persona`, `pins` (documentos da biblioteca) e um arquivo de `spec`. O **Novo card** passa a
+  oferecer **A partir de um modelo**; escolher um preenche a descrição vazia e diz com o que mais o
+  card começa. O card recebe o arquivo de spec e os documentos fixados do modelo, e a página dele
+  abre com o workflow e a persona do modelo já escolhidos, quando o projeto e o host ainda os têm.
+  Um modelo com erro fica de fora e é contado; um arquivo que não pode ser usado (o projeto não é
+  confiável, é um link, é grande demais, está vazio, não é uma lista) é dito no **Novo card** com o
+  motivo.
 - **Documentos fixados** (#76). Num host com a biblioteca do projeto, a página do card tem o painel
   **Documentos fixados**: escolha um documento da biblioteca (ADRs, RFCs, PRDs, specs) para fixá-lo,
   até 10, e **Desafixar** tira um. Quando o card começa, o primeiro prompt lista cada documento
@@ -2789,8 +2799,13 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   nome da janela aparece a partir de 1024 px de largura), e um botão **Atualizar o consumo do plano**
   que pergunta aos hosts de novo. A partir de 80% ele ganha uma marca de alerta na cor de "precisa de
   você", e em 100% (ou a partir do `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome
-  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem
-  leitura, nem o medidor nem o botão aparecem.
+  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre um painel com as duas janelas
+  de cada host online e a hora em que reiniciam. Nele, **Cartões novos esperam a partir de** muda a
+  trava (`quota.pauseAt`) de cada host: de 50% a 100%, ou **Nunca**. Um host com flightdeckd antigo
+  mostra só o texto. **Mostrar o que está rodando** abre a atividade de todas as sessões, e cada
+  host tem o seu link para a página dele. O aviso de cota alta no cartão da conta traz a mesma
+  trava e a mesma ação. Mudar a trava nunca para uma sessão que já está rodando. Sem leitura, nem o
+  medidor nem o botão aparecem.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
 

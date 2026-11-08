@@ -86,3 +86,70 @@ describe("create-card: the New card dialog keeps what was typed until the card e
     expect(field(t.kanban.titleLabel)?.value).toBe("");
   });
 });
+
+const BUG = {
+  id: "bug",
+  name: "Bug fix",
+  description: "Fix it.\n\n- [ ] a test fails first",
+  workflow: null,
+  persona: null,
+  pins: [],
+  spec: null,
+};
+
+describe("create-card: a project's card templates in the New card dialog (#1201)", () => {
+  /** The dialog with the host's answer to card.templates fixed, and the card.create payloads seen. */
+  async function withTemplates() {
+    const made = await filledDialog();
+    const real = made.store.hostRequest.bind(made.store);
+    made.store.hostRequest = (async (hostId, type, payload) =>
+      type === "card.templates"
+        ? { ok: true, data: { templates: [BUG], dropped: 0, ignored: null } }
+        : real(hostId, type, payload)) as typeof made.store.hostRequest;
+    const sent: Array<Record<string, unknown>> = [];
+    const command = made.store.hostCommand.bind(made.store);
+    made.store.hostCommand = (async (hostId, type, payload) => {
+      if (type === "card.create") sent.push(payload as Record<string, unknown>);
+      return command(hostId, type, payload);
+    }) as typeof made.store.hostCommand;
+    // Opened again, so the dialog asks for the templates through the answer above.
+    await act(async () => {
+      fireEvent.keyDown(screen.queryByRole("dialog") as HTMLElement, { key: "Escape" });
+    });
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: t.kanban.newCard }) as HTMLElement);
+    });
+    await settle(() => screen.queryByLabelText(t.kanban.template) !== null);
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText(t.kanban.titleLabel) as HTMLElement, {
+        target: { value: "Login fails" },
+      });
+    });
+    return { ...made, sent };
+  }
+  const pick = (value: string) =>
+    act(async () => {
+      fireEvent.change(screen.queryByLabelText(t.kanban.template) as HTMLElement, {
+        target: { value },
+      });
+    });
+
+  test("picking a template fills the empty description and the card is created from it", async () => {
+    const { sent } = await withTemplates();
+    await pick("bug");
+    expect(field(t.kanban.descriptionLabel)?.value).toBe(BUG.description);
+    await submit();
+    await settle(() => sent.length === 1);
+    expect([sent[0]?.templateId, sent[0]?.description]).toEqual(["bug", BUG.description]);
+  });
+
+  test("going back to a blank card takes the template's text out and sends no template", async () => {
+    const { sent } = await withTemplates();
+    await pick("bug");
+    await pick("");
+    expect(field(t.kanban.descriptionLabel)?.value).toBe("");
+    await submit();
+    await settle(() => sent.length === 1);
+    expect("templateId" in (sent[0] ?? {})).toBe(false);
+  });
+});

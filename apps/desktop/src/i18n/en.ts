@@ -1334,6 +1334,21 @@ export const en: Dictionary = {
     resets: "resets at {time}",
     read: "read {ago}",
     hotNotice: "{host}: over {pct}%: new cards wait for the quota; manual sessions go on.",
+    guard: {
+      label: "New cards wait from",
+      labelFor: "New cards wait from, on {host}",
+      off: "Never",
+      hint: "Sessions already running are never stopped.",
+      readOnly:
+        "New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
+      readOnlyOff: "The guard is off. This host cannot change it from the app: update flightdeckd.",
+    },
+    popover: {
+      label: "Plan quota of the hosts",
+      showRunning: "Show what is running",
+      openHost: "Open the host page",
+      openHostOf: "Open the page of {host}",
+    },
     projection: {
       few: "too few readings to project",
       exhausts: "at the current pace, the {window} window runs out at {time}",
@@ -3904,6 +3919,26 @@ export const en: Dictionary = {
     descriptionLabel: "Card description",
     descriptionPlaceholder: "Description",
     newCard: "New card",
+    /** Issue #1201: the project's card templates, offered in New card. */
+    template: "From a template",
+    templateNone: "Blank card",
+    templateStarts: "Starts with: {parts}",
+    templateWorkflow: "workflow {name}",
+    templatePersona: "persona {name}",
+    templatePins: { one: "{n} pinned document", other: "{n} pinned documents" },
+    templateSpec: "spec {path}",
+    templateDropped: {
+      one: "{n} template left out for a mistake in cards.json.",
+      other: "{n} templates left out for a mistake in cards.json.",
+    },
+    templateIgnored: {
+      untrusted: "The project's card templates were not used: the project is not trusted.",
+      unsafe:
+        "The project's card templates were not used: the file is a link or has more than one name.",
+      too_big: "The project's card templates were not used: the file is over 32 KiB.",
+      empty: "The project's card templates were not used: the file is empty.",
+      invalid: "The project's card templates were not used: cards.json is not a list of templates.",
+    },
     created: "Card created: {title}",
     started: "Card started: {title}",
     openCard: "Open",

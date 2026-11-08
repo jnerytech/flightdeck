@@ -1138,6 +1138,15 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   `{{criteria}}` are filled in); when a template is there but cannot be used, the built-in one is
   written and the card says why: the project is not trusted, the file is a link or has a second
   name, is over 32 KiB, or is empty. The notice never quotes the template.
+- **Card templates** (#1201). A trusted project can list card templates in
+  `.flightdeck/templates/cards.json` (at most 32 KiB, 12 templates): each has an `id`, a `name`, and
+  optionally a `description`, `criteria` (a list, written as `- [ ]` items), a `workflow`, a
+  `persona`, `pins` (library documents) and a `spec` file. **New card** then offers **From a
+  template**; picking one fills the empty description and says what else the card starts with. The
+  card gets the template's spec file and pinned documents, and its page opens with the template's
+  workflow and persona already chosen, when the project and the host still have them. A template
+  with a mistake is left out and counted; a file that cannot be used (the project is not trusted, a
+  link, too big, empty, not a list) is said in **New card** with the reason.
 - **Pinned documents** (#76). On a host with a project library, the card page has a **Pinned
   documents** panel: choose a document of the library (ADRs, RFCs, PRDs, specs) to pin it, up to
   10, and **Unpin** takes one off. When the card starts, its first prompt lists each pinned document
@@ -2773,8 +2782,13 @@ window resets.
   resets (the window's name shows from 1024 px wide), and a **Refresh the plan usage** button that
   asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
   from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
-  host and the time left. Clicking it opens that host's page. With no reading, neither the meter
-  nor the refresh shows.
+  host and the time left. Clicking it opens a panel with both windows of every online host and
+  their reset times. In it, **New cards wait from** sets the guard (`quota.pauseAt`) of each host:
+  50% to 100%, or **Never**. A host with an older flightdeckd shows it as text only. **Show what is
+  running** opens the activity of every session, and each host has its own link to its page. The
+  near-limit notice on the account card carries the same setting and the same action. Changing the
+  guard never stops a session that is already running. With no reading, neither the meter nor the
+  refresh shows.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
   sees empty or stale bars until a card or a managed session runs on the host.
 
