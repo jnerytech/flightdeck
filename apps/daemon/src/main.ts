@@ -1007,7 +1007,7 @@ export async function startDaemon(
     // A worktree is removed once no snapshot runs git in it (a busy folder on Windows).
     idle: snapshots.idle.bind(snapshots),
     // A card raised from an agent's findings keeps automatic approval off (issue #79).
-    suspendApproval: (cardId, reason) => autoApprove.suspend(`card:${cardId}`, reason),
+    suspendApproval: autoApprove.suspendCard.bind(autoApprove),
     ...(config.board.prPollIntervalMs ? { prPollIntervalMs: config.board.prPollIntervalMs } : {}),
     // Changed from the app: kept in the config file, like the rest of the host settings.
     onSettingsChange: ({ maxParallelRuns }) =>
