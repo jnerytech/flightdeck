@@ -45,7 +45,12 @@ function changes(over: Partial<ChangesResult> = {}): ChangesResult {
   } as ChangesResult;
 }
 
-function setup(lang: "en" | "pt-BR", target: string, seen: ChangesResult) {
+function setup(
+  lang: "en" | "pt-BR",
+  target: string,
+  seen: ChangesResult,
+  refuse?: { reason: string; params: Record<string, string> },
+) {
   const sent: Array<[string, unknown]> = [];
   const items = new Map<string, string>();
   const controller = new AssistantController({
@@ -61,6 +66,9 @@ function setup(lang: "en" | "pt-BR", target: string, seen: ChangesResult) {
     openAssistantSettings: () => {},
     hostRequest: async (_hostId: string, type: string, payload: unknown) => {
       sent.push([type, payload]);
+      if (type === "changes.commit" && refuse) {
+        return { ok: false, code: "invalid_state", message: "refused", ...refuse };
+      }
       if (type === "changes.commit") {
         const { branch } = payload as { branch: string };
         return { ok: true, data: { branch, base: "main", commit: "c0ffee", files: ["a.txt"] } };
@@ -108,6 +116,11 @@ const NAMES = {
     body: "Files:\n- a.txt",
     confirmPr: "Open the PR with this text",
     noRemote: "This checkout has no origin to push to.",
+    messageLabel: "Commit message",
+    branchLabel: "New branch",
+    many: "Update 2 files",
+    noHooks: "No commit hook is set.",
+    taken: "There is already a branch session/mine: pick another name.",
   },
   "pt-BR": {
     commit: "Fazer commit num branch novo",
@@ -121,6 +134,11 @@ const NAMES = {
     body: "Arquivos:\n- a.txt",
     confirmPr: "Abrir o PR com este texto",
     noRemote: "Este checkout não tem um origin para o push.",
+    messageLabel: "Mensagem do commit",
+    branchLabel: "Branch novo",
+    many: "Atualiza 2 arquivos",
+    noHooks: "Nenhum hook de commit configurado.",
+    taken: "Já existe um branch session/mine: escolha outro nome.",
   },
 } as const;
 
@@ -189,6 +207,54 @@ describe("session-finish-ui: a plain session's commit on a new branch, then its 
       );
       const open = screen.queryByRole("button", { name: n.openPr });
       expect([open?.hasAttribute("disabled"), screen.queryByText(n.noRemote) !== null]).toEqual([
+        true,
+        true,
+      ]);
+    });
+
+    test(`${lang}: what the person unticks and renames is what goes, and a refused commit says why`, async () => {
+      const seen = changes({ hooks: [] });
+      seen.files = [seen.files[0], { ...seen.files[0], path: "b.txt", digest: "d-b" }] as never;
+      const taken = { reason: "changes_commit_branch_taken", params: { branch: "session/mine" } };
+      const sent = setup(lang, `session:${lang}-3`, seen, taken);
+      await press(screen.queryByRole("button", { name: n.commit }));
+      const message = screen.queryByRole("textbox", {
+        name: n.messageLabel,
+      }) as HTMLTextAreaElement;
+      const drafted = message?.value;
+      const branch = screen.queryByRole("textbox", { name: n.branchLabel }) as HTMLInputElement;
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("checkbox", { name: "b.txt" }) as HTMLElement);
+        fireEvent.change(branch, { target: { value: "session/mine" } });
+        fireEvent.change(message, { target: { value: "Fix the note" } });
+      });
+      const noHooks = screen.queryByText(n.noHooks) !== null;
+      await press(
+        within(screen.queryByRole("alertdialog") as HTMLElement).queryByRole("button", {
+          name: n.commit,
+        }),
+      );
+      expect([
+        drafted,
+        noHooks,
+        sent,
+        screen.queryByRole("alert")?.textContent?.includes(n.taken) ?? false,
+        screen.queryByRole("button", { name: n.openPr }) === null,
+      ]).toEqual([
+        n.many,
+        true,
+        [
+          [
+            "changes.commit",
+            {
+              target: `session:${lang}-3`,
+              files: { "a.txt": "d-a" },
+              message: "Fix the note",
+              branch: "session/mine",
+              confirm: true,
+            },
+          ],
+        ],
         true,
         true,
       ]);
