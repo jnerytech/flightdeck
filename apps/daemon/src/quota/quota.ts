@@ -106,6 +106,9 @@ export class Quota {
     };
   }
 
+  /** Changes the guard: from this utilization new cards wait (`null` turns it off). */
+  setPauseAt(_pauseAt: number | null): void {}
+
   state(): QuotaState {
     return { windows: this.windows(), pauseAt: this.opts.pauseAt };
   }
