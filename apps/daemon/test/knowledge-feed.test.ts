@@ -89,6 +89,14 @@ describe("knowledge-feed: the index a session is given (#76)", () => {
     expect(truncated).toBe(true);
   });
 
+  test("a cap too small for even one line gives no text, and says it left them out", () => {
+    expect(feedIndex([entry("docs/adr/0001-a.md", "valid")], 20)).toEqual({
+      text: "",
+      fed: 0,
+      truncated: true,
+    });
+  });
+
   test("a title is one short line: line breaks, control characters and length are cut", () => {
     const { text } = feedIndex([
       entry(
