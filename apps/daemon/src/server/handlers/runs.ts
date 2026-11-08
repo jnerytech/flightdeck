@@ -4,6 +4,7 @@
  */
 import { FlightdeckError, featureOff } from "../../errors.ts";
 import { startTemplate } from "../../templates/start.ts";
+import { workflowTemplates } from "../../workflows/templates.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";
 
 export const runsHandlers = {
@@ -32,8 +33,12 @@ export const runsHandlers = {
       workflows: await server.need("board").listWorkflows(payload.projectId),
     };
   },
-  "workflow.templates": () => {
-    return { templates: [] };
+  "workflow.templates": async (payload, { server }) => {
+    const project = server.need("board").getProject(payload.projectId);
+    // The check line takes the project's test command when the host can tell it; a stack that
+    // cannot be read leaves the placeholder, since the list is still worth showing.
+    const stack = await server.opts.harnessStack?.(project.path).catch(() => null);
+    return { templates: workflowTemplates(stack?.commands.test ?? null) };
   },
   "workflow.validate": async (payload, { server }) => {
     const { projectId, name } = payload;
