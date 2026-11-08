@@ -192,28 +192,35 @@ const composerTops = new Map<HTMLElement, number>();
 /**
  * Issue #994: the toasts' corner is a session's message box, so a toast covered Send (and on a
  * phone the whole box). While a box shows, it tells styles.css to keep the toasts above its top
- * (--composer-clear, the highest box's top and a 0.75rem gap), following its height and the
- * window's, and takes it back when it goes. A ref callback, so React runs the cleanup.
+ * (--composer-clear, the highest box's top and a 0.75rem gap), and takes it back when it goes. A
+ * box on another tab of the session is hidden, has no box at all and lifts nothing. Its top moves
+ * with its own height, the dock's (the status line under it), the session pane's and the window's,
+ * so the lift follows all four. A ref callback, so React runs the cleanup.
  */
 function clearToasts(card: HTMLElement | null): (() => void) | undefined {
   if (!card) return undefined;
   const root = card.ownerDocument.documentElement;
+  const win = card.ownerDocument.defaultView;
   const apply = () => {
     const highest = Math.max(0, ...composerTops.values());
     if (composerTops.size === 0) root.style.removeProperty("--composer-clear");
     else root.style.setProperty("--composer-clear", `calc(${highest}px + 0.75rem)`);
   };
   const measure = () => {
-    const height = card.ownerDocument.defaultView?.innerHeight ?? 0;
-    composerTops.set(card, Math.ceil(height - card.getBoundingClientRect().top));
+    if (card.getClientRects().length === 0) composerTops.delete(card);
+    else
+      composerTops.set(card, Math.ceil((win?.innerHeight ?? 0) - card.getBoundingClientRect().top));
     apply();
   };
   measure();
   const watch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-  watch?.observe(card);
-  watch?.observe(root);
+  for (const target of [card, card.parentElement, card.closest("section"), root]) {
+    if (target) watch?.observe(target);
+  }
+  win?.addEventListener("resize", measure);
   return () => {
     watch?.disconnect();
+    win?.removeEventListener("resize", measure);
     composerTops.delete(card);
     apply();
   };
