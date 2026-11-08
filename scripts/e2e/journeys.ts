@@ -911,6 +911,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await none.waitFor({ timeout: WAIT });
     }
     await panel.getByLabel(c.t("cardUi.pins.pick"), { exact: true }).selectOption(path);
+    // Choosing only picks (#1088): Pin pins it.
+    await panel.getByRole("button", { name: c.t("cardUi.pins.pinAction"), exact: true }).click();
     await unpin.waitFor({ timeout: WAIT });
     await panel
       .getByText("Design tokens come from one file", { exact: true })

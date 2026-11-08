@@ -98,6 +98,12 @@ describe("card-pins-ui-card: pinning from the card's detail", () => {
     await act(async () => {
       fireEvent.change(pick() as HTMLElement, { target: { value: "docs/adr/0001-sqlite.md" } });
     });
+    // Choosing only picks (#1088): Fixar pins it.
+    const pin = panel()?.querySelector<HTMLButtonElement>("button:not([aria-label])") ?? null;
+    expect(pin?.textContent).toBe("Fixar");
+    await act(async () => {
+      fireEvent.click(pin as HTMLElement);
+    });
     await settle(() => panel()?.querySelector("li")?.textContent?.includes("Usar SQLite") === true);
     const kept = Object.values(store.getState().cards).find((card) => card.title === "Fixar");
     expect(kept?.pinnedDocs).toEqual(["docs/adr/0001-sqlite.md"]);
