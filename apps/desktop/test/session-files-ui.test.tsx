@@ -34,8 +34,8 @@ describe("session-files-ui: the session's own files say where they come from (#1
     [
       "en",
       {
-        title: "Files the session wrote with its own tools",
-        none: "None yet. Changes made by commands (Bash) or outside the session show only in the changes above.",
+        title: "Files the session edited directly (Write, Edit)",
+        none: "None yet. Changes made by commands (Bash) or outside the session are not listed here.",
         old: "The session has not written any file yet.",
         bash: "Changes made through Bash do not count.",
       },
@@ -43,8 +43,8 @@ describe("session-files-ui: the session's own files say where they come from (#1
     [
       "pt-BR",
       {
-        title: "Arquivos que a sessão escreveu com as próprias ferramentas",
-        none: "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão aparecem só nas mudanças acima.",
+        title: "Arquivos que a sessão editou direto (Write, Edit)",
+        none: "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
         old: "A sessão ainda não escreveu arquivos.",
         bash: "Mudanças feitas pelo Bash não entram.",
       },
