@@ -131,7 +131,7 @@ export function KnowledgePanel(
                       aria-label={t("projectPage.knowledge.setStatus.label", {
                         title: entry.title,
                       })}
-                      className="rounded-md border bg-background px-2 py-1 text-sm"
+                      className="rounded-md border border-input bg-background px-2 py-1 text-sm"
                       value={entry.status === "unclassified" ? "" : entry.status}
                       onChange={(event) =>
                         void change(entry, event.target.value as KnowledgeStatus)
