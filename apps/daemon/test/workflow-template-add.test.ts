@@ -51,11 +51,21 @@ async function reasonOf(run: () => Promise<unknown>): Promise<string> {
   }
 }
 
+/** A repository with a local bare origin and the person's identity: they will push the branch. */
+function project(identity = true) {
+  const made = gitRepoWithOrigin();
+  if (identity) {
+    git(made.repo, "config", "user.name", "Ana");
+    git(made.repo, "config", "user.email", "ana@example.com");
+  }
+  return made;
+}
+
 const branches = (repo: string) => git(repo, "for-each-ref", "--format=%(refname)", "refs/heads/");
 
 describe("adding a workflow template from the app (#1221)", () => {
   test("the template is committed on a new branch from the base, pushed and opened as a PR; the base and the checkout stay", async () => {
-    const { repo, remote } = gitRepoWithOrigin();
+    const { repo, remote } = project();
     const main = git(repo, "rev-parse", "main");
     // The person works on another branch, with a staged file and an unsaved change.
     git(repo, "checkout", "-q", "-b", "work");
@@ -91,21 +101,22 @@ describe("adding a workflow template from the app (#1221)", () => {
     expect(created[0]?.body ?? "").toContain(FILE);
   });
 
-  test("it is refused, with nothing made or opened, without confirm, for a template the host lacks, with no PR host, or when the base already has the file", async () => {
-    const cases: [string, boolean, string, boolean, boolean][] = [
-      ["no confirm", false, "alert-fixer", true, false],
-      ["unknown template", true, "not-a-template", true, false],
-      ["no PR host", true, "alert-fixer", false, false],
-      ["already on the base", true, "alert-fixer", true, true],
+  test("it is refused, with nothing made or opened, without confirm, for a template the host lacks, with no PR host, when the base already has the file, or with no git identity", async () => {
+    const cases: [string, boolean, string, boolean, boolean, boolean][] = [
+      ["no confirm", false, "alert-fixer", true, false, true],
+      ["unknown template", true, "not-a-template", true, false, true],
+      ["no PR host", true, "alert-fixer", false, false, true],
+      ["already on the base", true, "alert-fixer", true, true, true],
+      ["no identity", true, "alert-fixer", true, false, false],
     ];
     const seen: string[] = [];
-    for (const [name, confirm, id, withHost, onBase] of cases) {
-      const { repo } = gitRepoWithOrigin();
+    for (const [name, confirm, id, withHost, onBase, identity] of cases) {
+      const { repo } = project(identity);
       if (onBase) {
         mkdirSync(join(repo, ".flightdeck", "workflows"), { recursive: true });
         writeFileSync(join(repo, FILE), "steps: []\n");
         git(repo, "add", "--", FILE);
-        git(repo, "commit", "-q", "-m", "workflow");
+        git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "workflow");
       }
       const before = branches(repo);
       const { provider, created } = host();
@@ -124,11 +135,12 @@ describe("adding a workflow template from the app (#1221)", () => {
       "unknown template: workflow_template_unknown, branches same, PRs 0",
       "no PR host: project_no_pr_provider, branches same, PRs 0",
       "already on the base: workflow_template_exists, branches same, PRs 0",
+      "no identity: workflow_template_identity, branches same, PRs 0",
     ]);
   });
 
   test("a second add in the same minute finds its branch taken and opens no second PR", async () => {
-    const { repo } = gitRepoWithOrigin();
+    const { repo } = project();
     const { provider, created } = host();
     const add = () =>
       addWorkflowTemplate({ path: repo, baseBranch: "main" }, TEMPLATES, "alert-fixer", true, {
