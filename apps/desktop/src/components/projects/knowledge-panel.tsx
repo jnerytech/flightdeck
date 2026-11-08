@@ -24,6 +24,10 @@ export function KnowledgePanel(
     feed?: boolean;
     /** The host announces `knowledgeStatus`: a document's status can be changed here. */
     status?: boolean;
+    /** The project on the board: a spec can become a card of it (#78, S-T2). */
+    projectId?: string;
+    /** Opens a card the panel made. */
+    onOpenCard?(cardId: string): void;
   }>,
 ) {
   const { store, hostId, path } = props;
@@ -46,6 +50,22 @@ export function KnowledgePanel(
     void store.hostCommand(hostId, "knowledge.list", { path }).then((result) => {
       setLoaded(result ?? "failed");
     });
+  };
+  // Issue #78, S-T2: a spec becomes a card that names it, so its first start reads it first and
+  // works test first. A card the host refuses is not named; the banner says why.
+  const makeCard = async (entry: KnowledgeEntry, projectId: string) => {
+    const made = await store.hostCommand(hostId, "card.create", {
+      projectId,
+      title: entry.title,
+      description: "",
+    });
+    if (!made) return;
+    await store.hostCommand(hostId, "card.update", { cardId: made.id, specPath: entry.path });
+    const open = props.onOpenCard;
+    store.success(
+      t("projectPage.knowledge.cardMade", { title: made.title }),
+      open ? { label: t("kanban.openCard"), run: () => open(made.id) } : undefined,
+    );
   };
   // The file is written by the host only if it is as the list showed it; a refusal says why, and
   // the list is read again so the next try has what the file is now.
@@ -153,6 +173,15 @@ export function KnowledgePanel(
                     <span className="text-muted-foreground text-xs">
                       {t(`projectPage.knowledge.type.${entry.type}` as Key)}
                     </span>
+                  )}
+                  {entry.type === "spec" && props.projectId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void makeCard(entry, props.projectId as string)}
+                    >
+                      {t("projectPage.knowledge.makeCard")}
+                    </Button>
                   )}
                 </span>
                 <span className="text-muted-foreground text-xs">

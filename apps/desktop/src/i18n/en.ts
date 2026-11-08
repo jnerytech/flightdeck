@@ -4229,6 +4229,8 @@ export const en: Dictionary = {
       },
       type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
       changed: "Changed {date}",
+      makeCard: "Make a card",
+      cardMade: "Card made from the spec: {title}",
       referencesObsolete: "Points at an obsolete document: {path}",
       problem: {
         status_unknown:
