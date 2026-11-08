@@ -145,6 +145,23 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
       observers.length = 0;
     });
 
+    // The full run of #1032: a file's leftover box, its page cleared without React's cleanup, still
+    // lifted the toasts of the next file. A box no longer in the page lifts nothing.
+    test("a box taken off the page without its cleanup lifts nothing", () => {
+      render(
+        <div data-top="100">
+          <Composer>left over</Composer>
+        </div>,
+      );
+      document.body.innerHTML = "";
+      render(
+        <div data-top="500">
+          <Composer>one</Composer>
+        </div>,
+      );
+      expect(clear()).toBe(lifted(500));
+    });
+
     test("with two boxes the toasts clear the higher one; gone, no more", () => {
       const view = render(
         <>
