@@ -50,8 +50,8 @@ import {
   hubGroups,
   hubRows,
   hubView,
-  isSearching,
   isOver,
+  isSearching,
   rowStatus,
   sessionLineText,
   sharedMeta,
@@ -780,7 +780,7 @@ export function SessionsHub(
                                   setCursor(listed.findIndex((r) => r.key === row.key));
                                   props.onOpen(row);
                                 }}
-                                className="min-w-0 flex-1 truncate text-left font-medium text-sm"
+                                className="row-title min-w-0 flex-1 truncate text-left font-medium text-sm"
                               >
                                 {row.title}
                               </button>
@@ -833,12 +833,13 @@ export function SessionsHub(
                           {showWord ? (
                             <span
                               data-slot="row-word"
-                              title={
-                                row.lastActivity
-                                  ? store.formatDateTime(row.lastActivity)
-                                  : undefined
-                              }
-                              className="shrink-0 text-muted-foreground text-xs"
+                              title={[
+                                said.word,
+                                row.lastActivity && store.formatDateTime(row.lastActivity),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                              className="row-word"
                             >
                               {said.word}
                             </span>
