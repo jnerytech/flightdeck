@@ -1,6 +1,6 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { Changes } from "../src/review/changes.ts";
@@ -26,7 +26,14 @@ const posix = process.platform !== "win32";
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 
 /** A repository with `a.txt` and `b.txt` committed on main, and a session `s-1` in it. */
-function setup(options: { vault?: string[]; cardWorktree?: boolean; timeoutMs?: number } = {}) {
+function setup(
+  options: {
+    vault?: string[];
+    cardWorktree?: boolean;
+    timeoutMs?: number;
+    afterCheck?: () => Promise<void>;
+  } = {},
+) {
   const ctx = newManager();
   const repo = ctx.project;
   git(repo, "init", "-q", "-b", "main");
@@ -44,6 +51,7 @@ function setup(options: { vault?: string[]; cardWorktree?: boolean; timeoutMs?: 
     scanner: new SecretScanner(() => options.vault ?? []),
     isCardWorktree: () => options.cardWorktree === true,
     ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}),
+    ...(options.afterCheck ? { afterCheck: options.afterCheck } : {}),
   });
   return { ctx, repo, changes, commits };
 }
@@ -162,6 +170,50 @@ describe("session-commit: a plain session's files committed on a new branch (#11
     },
   );
 
+  test("a file changed after the check is not committed: the commit is undone and the person stays on the new branch", async () => {
+    let repo = "";
+    const made = setup({
+      vault: ["k3y-in-the-vault"],
+      afterCheck: async () => writeFileSync(join(repo, "a.txt"), "now k3y-in-the-vault\n"),
+    });
+    repo = made.repo;
+    const first = git(repo, "rev-parse", "HEAD");
+    writeFileSync(join(repo, "a.txt"), "one, changed\n");
+    const done = await outcome(
+      made.commits.commit(TARGET, {
+        files: await digests(made.changes, "a.txt"),
+        message: "Change a",
+        branch: "work/swapped",
+      }),
+    );
+    expect([done, branchOf(repo), git(repo, "rev-parse", "HEAD") === first, status(repo)]).toEqual([
+      "changes_commit_stale",
+      "work/swapped",
+      true,
+      ["M a.txt"],
+    ]);
+  });
+
+  test.skipIf(!posix)(
+    "what a hook said is withheld whole when a secret is anywhere in it, even cut",
+    async () => {
+      const { repo, changes, commits } = setup({ vault: ["k3y-in-the-vault"] });
+      const hook = join(repo, ".git", "hooks", "pre-commit");
+      writeFileSync(hook, `#!/bin/sh\necho 'k3y-in-the-vault'\nprintf '%01995d\\n' 0\nexit 1\n`);
+      chmodSync(hook, 0o755);
+      writeFileSync(join(repo, "a.txt"), "one, changed\n");
+      const done = await outcome(
+        commits.commit(TARGET, {
+          files: await digests(changes, "a.txt"),
+          message: "Change a",
+          branch: "work/said",
+        }),
+      );
+      expect(JSON.stringify(done).includes("k3y")).toBe(false);
+      expect((done as { output?: string }).output ?? "").toContain("not shown");
+    },
+  );
+
   test.skipIf(!posix)("a hook that never ends is stopped at the time limit", async () => {
     const { repo, changes, commits } = setup({ timeoutMs: 400 });
     const hook = join(repo, ".git", "hooks", "pre-commit");
@@ -228,6 +280,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
     writeFileSync(join(repo, "a.txt"), "one, changed\n");
     writeFileSync(join(repo, "c.txt"), "token k3y-in-the-vault\n");
     writeFileSync(join(repo, ".env"), "KEY=1\n");
+    if (posix) symlinkSync("k3y-in-the-vault", join(repo, "link"));
     git(repo, "branch", "work/taken");
     const attempt = (files: Record<string, string>, message: string, branch: string) =>
       outcome(commits.commit(TARGET, { files, message, branch }));
@@ -238,6 +291,9 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       await attempt(a, "uses k3y-in-the-vault", "work/one"),
       await attempt(await digests(changes, "c.txt"), "m", "work/two"),
       await attempt({ ".env": "x" }, "m", "work/three"),
+      posix
+        ? await attempt(await digests(changes, "link"), "m", "work/link")
+        : { reason: "changes_commit_secret", file: "link" },
       await attempt(a, "m", "work/taken"),
       await attempt(a, "m", "-x"),
       await outcome(commits.commit("card:c-1", { files: a, message: "m", branch: "work/four" })),
@@ -254,6 +310,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       "changes_commit_message_secret",
       { reason: "changes_commit_secret", file: "c.txt" },
       { reason: "changes_commit_secret", file: ".env" },
+      { reason: "changes_commit_secret", file: "link" },
       { reason: "changes_commit_branch_taken", branch: "work/taken" },
       { reason: "branch_invalid", name: "-x" },
       "changes_commit_target",
