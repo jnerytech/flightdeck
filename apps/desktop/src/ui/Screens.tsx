@@ -1117,6 +1117,7 @@ function NewSession(
       onAddFolder={() => props.store.router.push({ name: "host", host: host.id })}
       {...(props.prompt ? { prompt: props.prompt } : {})}
       onFolder={setCwd}
+      promptRequired={background}
       extra={
         <>
           {personas && (

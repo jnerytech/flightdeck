@@ -201,7 +201,7 @@ describe("opencode-runtime", () => {
       const out = collect(runtime.start(startOpts({ permissionMode })));
       expect(await poll(() => out.error !== null)).toBe(true);
       expect(reasonOf(out.error)).toBe("runtime_unsupported");
-      expect(agents.length).toBe(0);
+      expect(agents).toHaveLength(0);
     }
   });
 
@@ -291,7 +291,7 @@ describe("opencode-runtime", () => {
     agents[0]?.endPrompt({ stopReason: "cancelled" });
     expect(await poll(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
     timers.advance(INTERRUPT_ESCALATION_MS);
-    expect(methods(agents[0]).includes("session/close")).toBe(false);
+    expect(methods(agents[0])).not.toContain("session/close");
     expect(agents[0]?.alive).toBe(true);
   });
 
@@ -313,7 +313,7 @@ describe("opencode-runtime", () => {
     timers.advance(3_000);
     await Promise.all([closing, again]);
     expect(killed).toEqual([[4242, false]]);
-    expect(methods(agents[0]).filter((m) => m === "session/close").length).toBe(1);
+    expect(methods(agents[0]).filter((m) => m === "session/close")).toHaveLength(1);
     expect(await poll(() => out.ended)).toBe(true);
   });
 
@@ -329,7 +329,7 @@ describe("opencode-runtime", () => {
     opened.resolve({ sessionId: "ses_1", configOptions: configOptions() });
     await closing;
     expect(await poll(() => methods(agents[0]).includes("session/close"))).toBe(true);
-    expect(methods(agents[0]).includes("session/prompt")).toBe(false);
+    expect(methods(agents[0])).not.toContain("session/prompt");
   });
 
   test("treeKiller: taskkill /T /F on Windows; elsewhere the process group, TERM then KILL, and the process if the group is gone", () => {
@@ -392,7 +392,7 @@ describe("opencode-runtime", () => {
   test("no process until the first send; a failed start leaves no process and runs the preflight once", async () => {
     const lazy = setup();
     lazy.runtime.start(startOpts());
-    expect(lazy.agents.length).toBe(0);
+    expect(lazy.agents).toHaveLength(0);
     const extra = setup((agent) => {
       agent.handlers["session/new"] = () => ({
         sessionId: "ses_1",
@@ -427,7 +427,7 @@ describe("opencode-runtime", () => {
     await run.close();
     release();
     await turns(20);
-    expect(agents.filter((a) => a.alive).length).toBe(0);
+    expect(agents.filter((a) => a.alive)).toHaveLength(0);
   });
 
   test("an interrupt while the turn waits for its start cancels that turn; on an idle run it changes nothing", async () => {
@@ -497,7 +497,7 @@ describe("opencode-runtime", () => {
     expect(await poll(() => (agents[1]?.openPrompts ?? 0) === 1)).toBe(true);
     expect(checks).toEqual(["/w", "/w"]);
     expect(agents[1]?.calls("session/resume")[0]?.sessionId).toBe("ses_1");
-    expect(out.events.filter((e) => e.type === "session.init").length).toBe(1);
+    expect(out.events.filter((e) => e.type === "session.init")).toHaveLength(1);
     expect(out.error).toBe(null);
   });
 
