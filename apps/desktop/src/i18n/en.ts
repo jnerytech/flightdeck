@@ -1480,6 +1480,7 @@ export const en: Dictionary = {
     bg: "background sessions",
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
+    knowledge: "reading the project's documents",
     harnessPreview: "previewing Claude Code setup changes",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
@@ -4143,6 +4144,32 @@ export const en: Dictionary = {
     notHere: "This project is not on this host.",
     baseInvalid:
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
+    knowledge: {
+      title: "Project knowledge",
+      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter. Read only: nothing here changes the project.",
+      filter: "{status} ({n})",
+      all: "All",
+      status: {
+        valid: "Valid",
+        transitional: "Transitional",
+        obsolete: "Obsolete",
+        unclassified: "Not classified",
+      },
+      type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
+      changed: "Changed {date}",
+      referencesObsolete: "Points at an obsolete document: {path}",
+      problem: {
+        status_unknown:
+          "The status in the front matter is not valid, so agents are not given this document.",
+        type_unknown: "The type in the front matter is not prd, rfc, adr or spec.",
+        frontmatter_invalid: "The front matter could not be read.",
+        supersedes_invalid: "supersedes is not a path to a document.",
+        supersedes_missing: "It replaces a document that is not in the library.",
+      },
+      empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
+      truncated: "The list is cut: only the first documents are shown.",
+      failed: "The documents could not be read from this host.",
+    },
     harness: {
       title: "Claude Code setup",
       hint: "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Read-only: nothing here changes the project.",
@@ -4234,6 +4261,9 @@ export const en: Dictionary = {
     searchPlaceholder: "Name, host, branch or folder",
     sortBy: "Sort by",
     clearHost: "Clear host filter: {host}",
+    newProject: "New project",
+    newOn: "On {host}",
+    noHostOnline: "No host is online to add a project to.",
     sorts: {
       activity: "Last activity",
       name: "Name",

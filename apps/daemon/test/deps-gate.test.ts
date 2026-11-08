@@ -2,23 +2,36 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { FlightdeckError } from "../src/errors.ts";
-import { newBoard } from "./board-helpers.ts";
+import { cardWhen, newBoard } from "./board-helpers.ts";
 
 setDefaultTimeout(20_000);
 
-const cleanups: Array<() => void> = [];
-afterEach(() => {
-  for (const fn of cleanups.splice(0).reverse()) fn();
+const cleanups: Array<() => void | Promise<void>> = [];
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
 /** A board with a project and the cards A, B and C in its Backlog. */
 async function setup() {
   const ctx = newBoard();
-  cleanups.push(() => ctx.board.stop());
   const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
   const ids = ["A", "B", "C"].map(
     (title) => ctx.board.createCard(project.id, { title, description: "" }).id,
   ) as [string, string, string];
+  // A started card goes on preparing its worktree (a git run) after `startCard` returns: the test
+  // waits for every run to have its session or to have ended, so no git is left running into the
+  // next test file (issue #747).
+  cleanups.push(async () => {
+    const prepared = await Promise.all(
+      ids.map((id) =>
+        cardWhen(ctx.board, id, (card) =>
+          card.runs.every((run) => run.sessionId !== null || run.endedAt !== null),
+        ),
+      ),
+    );
+    ctx.board.stop();
+    expect(prepared.every((card) => card !== null)).toBe(true);
+  });
   return { ...ctx, project, ids };
 }
 

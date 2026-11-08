@@ -68,6 +68,21 @@ describe("sessoes-externas", () => {
     expect(registry.list().map((s) => s.claudeSessionId)).toEqual(["s1"]);
   });
 
+  test("the mode a hook reports is the session's mode: Shift+Tab in the terminal reaches the app, and a value that is no mode is ignored (#935)", () => {
+    const { registry, start } = setup();
+    start();
+    const opened = registry.get("s1")?.permissionMode;
+    registry.apply("UserPromptSubmit", { session_id: "s1", permission_mode: "plan" });
+    const planned = registry.get("s1")?.permissionMode;
+    registry.apply("PreToolUse", { session_id: "s1", permission_mode: "rm -rf" });
+    registry.apply("Stop", { session_id: "s1" });
+    expect([opened, planned, registry.get("s1")?.permissionMode]).toEqual([
+      undefined,
+      "plan",
+      "plan",
+    ]);
+  });
+
   test("the project stays the launch folder's when the session later works in another folder (#583)", () => {
     const { registry, start, dir } = setup();
     start("s1");

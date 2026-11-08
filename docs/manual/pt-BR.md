@@ -339,6 +339,12 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
   variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
   avisa: uma parte marcada como faltando pode existir.
+- **Conhecimento do projeto** lista os PRDs, RFCs, ADRs e specs do projeto (os arquivos Markdown em
+  `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` e `docs/specs`), cada um com título, caminho,
+  tipo e o status que diz ter no front matter (`status: valid`, `transitional` ou `obsolete`). Um
+  documento sem status aparece como **Sem classificação**. Os filtros contam os documentos de cada
+  status, e um aviso aparece quando um documento válido aponta para um obsoleto. Ele só lê: nada no
+  projeto muda. Só os primeiros 500 documentos aparecem.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
@@ -860,6 +866,12 @@ precisam de você, a última atividade e quanto custou nos últimos sete dias. O
 um traço quando o host não informa custos. Digite na busca para filtrar por nome, host, branch ou
 pasta, e use **Ordenar por** para ordenar por última atividade, nome, custo da semana ou o que
 precisa de atenção primeiro.
+
+**Novo projeto**, no alto à direita da página, adiciona um projeto: abre o formulário de adição (as
+pastas das sessões recentes, uma pasta digitada ou escolhida, **Adicionar**) e a página do projeto
+abre quando ele é adicionado. Com um host online, ou com o filtro de host ligado, o formulário é
+daquele host; com vários hosts online ele pergunta primeiro qual ("Em alfa", "Em beta"). Sem
+nenhum host online o botão fica desligado e diz isso.
 
 Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às **Sessões** (a lista, filtrada pelo projeto: um chip "Projeto: nome" com × limpa o filtro), aos
 **Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as

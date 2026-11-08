@@ -1901,6 +1901,21 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await switcher(BETA).waitFor({ timeout: WAIT });
   },
 
+  // Issue #931: the Projects page adds a project. The route names alfa, so one host is in scope and
+  // the button opens the add form for it at once (the pick between hosts is a component test).
+  "projeto-novo": async (c) => {
+    await open(c, { name: "all-projects", host: ALFA });
+    await c.page
+      .getByRole("button", { name: c.t("projectsOverview.newProject"), exact: true })
+      .click();
+    const dialog = c.page.getByRole("dialog", { name: c.t("addProject.title"), exact: true });
+    await dialog.getByLabel(c.t("addProject.folder"), { exact: true }).fill(c.ids.freshRepo);
+    await dialog.getByRole("button", { name: c.t("addProject.add"), exact: true }).click();
+    // The project is added, and the Projects page lists it.
+    await open(c, { name: "all-projects", host: ALFA });
+    await c.page.locator('li[data-project="fresh-app"]').waitFor({ timeout: WAIT });
+  },
+
   // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one
   // host, the choice is kept when the page is opened again, a host that is offline says so and
   // offers all hosts, and the menu is in reach in a phone-sized window and a desktop one.

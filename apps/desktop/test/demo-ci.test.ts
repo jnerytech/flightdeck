@@ -170,6 +170,7 @@ describe("demo-prints: axe e CI", () => {
       "escopo-dados",
       // Issue #932: opening another host's project says the switch, and Back returns.
       "projetos-host",
+      "projeto-novo",
       "time-apagar",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);

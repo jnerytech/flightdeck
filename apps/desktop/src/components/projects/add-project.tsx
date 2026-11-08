@@ -29,11 +29,20 @@ export function AddProject(
     hostId: string;
     onAdded(project: Project): void;
     variant?: "default" | "outline";
+    /** The button's text; "Add project" when left out. */
+    label?: string;
+    /** No button: the caller opens the form (the dialog starts open) and hears when it is closed. */
+    bare?: boolean;
+    onClosed?(): void;
   }>,
 ) {
   const { store, hostId } = props;
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(props.bare === true);
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    if (!next) props.onClosed?.();
+  };
   const [path, setPath] = useState("");
   const [browsing, setBrowsing] = useState(false);
   const host = store.getState().hosts.find((h) => h.id === hostId);
@@ -53,10 +62,12 @@ export function AddProject(
   };
   return (
     <>
-      <Button variant={props.variant ?? "default"} onClick={() => setOpen(true)}>
-        <Plus aria-hidden="true" />
-        {t("states.addProject")}
-      </Button>
+      {!props.bare && (
+        <Button variant={props.variant ?? "default"} onClick={() => setOpen(true)}>
+          <Plus aria-hidden="true" />
+          {props.label ?? t("states.addProject")}
+        </Button>
+      )}
       {open && (
         <Dialog open onOpenChange={(next) => !next && setOpen(false)}>
           <DialogContent>
