@@ -104,7 +104,7 @@ export function KnowledgePanel(
     if (retrying || !refocusRetry.current) return;
     refocusRetry.current = false;
     (retryButton.current ?? filters.current?.querySelector<HTMLElement>("button"))?.focus();
-  }, [retrying, loaded]);
+  }, [retrying]);
   const retry = async () => {
     setRetrying(true);
     const result = await store.hostCommand(hostId, "knowledge.list", { path });
