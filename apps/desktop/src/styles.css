@@ -460,6 +460,13 @@ html:not(:has([data-slot="status-bar"])) {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
+  /* #1270: the action ends the row at the card's edge, so its disabled reason hangs from the
+     button's right and grows left, under the field, never past the card. */
+  & > .action-button-box .action-reason {
+    left: auto;
+    right: 0;
+    text-align: right;
+  }
 }
 
 /*
