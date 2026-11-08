@@ -194,6 +194,10 @@ describe("workflow-schema: the issues, for the app to translate", () => {
     expect(issuesOf("  - id: a\n    check: lint\n  - id: a\n    check: test")).toEqual([
       { path: "steps.1 (a)", code: "step_id_duplicate" },
     ]);
+    // #1266: a parallel item is `<step>.<n>`; a step's own id never has a dot.
+    expect(issuesOf("  - id: a.1\n    check: lint")).toEqual([
+      { path: "steps.0 (a.1)", code: "step_id_dot" },
+    ]);
     expect(issuesOf("  - id: a\n    agent: { prompt: '{{inputs.nope}}' }")).toEqual([
       { path: "steps.0 (a)", code: "reference_unknown", params: { ref: "{{inputs.nope}}" } },
     ]);
