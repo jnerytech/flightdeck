@@ -137,6 +137,8 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
   test("the base is never pushed, nor a detached checkout, nor a secret; a card opens its own PR", async () => {
     const vault = ["k3y-in-the-vault"];
     const onMain = setup({ vault });
+    // The remote names its default branch, so the checkout's own branch is known to be the base.
+    git(onMain.repo, "remote", "set-head", "origin", "main");
     const sent = (made: ReturnType<typeof setup>, title = "t", body = "b") =>
       outcome(made.prs.open(TARGET, { title, body }));
     const main = await sent(onMain);
