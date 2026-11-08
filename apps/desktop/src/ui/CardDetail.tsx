@@ -12,7 +12,6 @@ import { PostMortem } from "@/components/card/post-mortem";
 import { RunAgain } from "@/components/card/run-again";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
-import { Button } from "@/components/ui/button";
 import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
 import { useT } from "@/i18n/context";
 import { canMergeCardPr } from "@/lib/card-merge-pr";
@@ -241,25 +240,18 @@ export const CardDetail = memo(function CardDetail(props: {
                   tab={tab}
                   arenaStart={arena.start}
                   onDiscarded={props.onBack}
+                  canMerge={withMergePr && canMergeCardPr(card)}
+                  onMerge={() => setMergeOpen(true)}
                   onShowDiff={() => setTab("diff")}
                 />
                 {withMergePr && (
-                  <>
-                    {canMergeCardPr(card) && (
-                      <div>
-                        <Button variant="outline" size="sm" onClick={() => setMergeOpen(true)}>
-                          {t("cardMergePr.action")}
-                        </Button>
-                      </div>
-                    )}
-                    <CardMergePr
-                      store={store}
-                      hostId={hostId}
-                      card={card}
-                      open={mergeOpen}
-                      onOpenChange={setMergeOpen}
-                    />
-                  </>
+                  <CardMergePr
+                    store={store}
+                    hostId={hostId}
+                    card={card}
+                    open={mergeOpen}
+                    onOpenChange={setMergeOpen}
+                  />
                 )}
                 {withWatch && card.prUrl && (
                   <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />

@@ -169,7 +169,12 @@ describe("times-protocolo", () => {
 });
 
 describe("mcp-mensagens: team_status", () => {
-  async function mcp(session: string, teams: Teams, server: { port: number }) {
+  async function mcp(
+    session: string,
+    teams: Teams,
+    server: { port: number },
+    tool = "team_status",
+  ) {
     const file = join(tempDir(), "config.json");
     writeFileSync(
       file,
@@ -188,7 +193,7 @@ describe("mcp-mensagens: team_status", () => {
     cleanups.push(() => client.close());
     void teams;
     return async (args: Record<string, unknown>) => {
-      const result = await client.callTool({ name: "team_status", arguments: args });
+      const result = await client.callTool({ name: tool, arguments: args });
       const text = (result.content as Array<{ text?: string }>)[0]?.text ?? "";
       return result.isError ? { error: text } : { data: JSON.parse(text) };
     };
@@ -213,5 +218,29 @@ describe("mcp-mensagens: team_status", () => {
     const asOutsider = await mcp(outsider, teams, server);
     expect((await asOutsider({ team: team.id })).error).toContain("is not in team");
     expect((await asMember({ team: "nada" })).error).toContain("not_found");
+  });
+
+  test("#1220: through the MCP, the coordinator's report is the team's outcome; a worker's is refused", async () => {
+    const { teams, project, board, server } = await boot();
+    const team = await teams.create({
+      projectId: project.id,
+      goal: "Faça o login.",
+      workers: 1,
+      name: "login",
+    });
+    await whenChanged(board, () =>
+      team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
+    );
+    const workerCard = team.members.find((m) => m.role === "worker")?.cardId as string;
+    const worker = board.getCard(workerCard).sessionId as string;
+    const asCoordinator = await mcp(team.coordinator as string, teams, server, "team_report");
+    const asWorker = await mcp(worker, teams, server, "team_report");
+    const refused = await asWorker({ team: team.id, text: "Terminei.", done: true });
+    const reported = await asCoordinator({ team: team.id, text: "Login pronto.", done: true });
+    expect([
+      refused.error?.includes("only the coordinator of team login") ?? false,
+      reported.data?.outcome?.text,
+      reported.data?.outcome?.done,
+    ]).toEqual([true, "Login pronto.", true]);
   });
 });

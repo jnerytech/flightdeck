@@ -52,6 +52,7 @@ describe("recursos-fase13: o host.info anuncia o que a Fase 13 trouxe", () => {
     expect(await features({ automations: true })).toEqual(["automation"]);
     expect(await features({ board: true })).toEqual([
       "workflows",
+      "workflowTemplateAdd",
       "rules",
       "arena",
       "deps",
@@ -61,6 +62,7 @@ describe("recursos-fase13: o host.info anuncia o que a Fase 13 trouxe", () => {
     ]);
     expect(await features({ board: true, issues: true, automations: true })).toEqual([
       "workflows",
+      "workflowTemplateAdd",
       "rules",
       "arena",
       "deps",

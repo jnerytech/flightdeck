@@ -7,6 +7,7 @@ import {
   type CommandType,
   parseServerMessage,
   type SessionIdentity,
+  TEAM_REPORT_MAX,
   WS_PATH,
 } from "@flightdeck/protocol";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -17,6 +18,7 @@ import {
   notifyWhenIdle,
   readSession,
   sendToSession,
+  teamReport,
   teamStatus,
 } from "./messaging/tools.ts";
 
@@ -257,6 +259,16 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
     "The state of the team this session belongs to: the members with persona, state, card and last report, and how many messages they exchanged. Only a member of the team may see it.",
     { team: z.string().min(1) },
     ({ team }) => teamStatus(daemon, who(), team),
+  );
+  tool(
+    "team_report",
+    "Only the team's coordinator: says the team's outcome to the user, in a few lines (what was done, where it is, what is left). With done: true it says the goal is met, and the user is told. The last report is what the team shows as its outcome.",
+    {
+      team: z.string().min(1),
+      text: z.string().min(1).max(TEAM_REPORT_MAX),
+      done: z.boolean(),
+    },
+    ({ team, text, done }) => teamReport(daemon, who(), team, text, done),
   );
 
   // Phase 17: use a secret without ever receiving it. The value stays between the app and the

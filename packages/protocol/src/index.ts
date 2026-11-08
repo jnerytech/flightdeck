@@ -1934,6 +1934,15 @@ export const WorkflowTemplate = z.object({
 });
 export type WorkflowTemplate = z.infer<typeof WorkflowTemplate>;
 
+/** Issue #1221: where the template went: its file, the new branch, the base the PR targets, the PR. */
+export const WorkflowTemplateAdded = z.object({
+  path: z.string(),
+  branch: z.string(),
+  base: z.string(),
+  url: z.string(),
+});
+export type WorkflowTemplateAdded = z.infer<typeof WorkflowTemplateAdded>;
+
 /**
  * Issue #79: an open alert of the project's repository, read by the host with `gh` (code scanning
  * or Dependabot). `text` is what goes into a workflow's `alert` input: the alert's own words, which
@@ -3035,14 +3044,24 @@ export const TeamStatus = z.object({
     }),
   ),
   messages: z.number().int(),
+  /**
+   * #1220: the coordinator's last report (`team_report`), the team's outcome. Text a session wrote:
+   * shown as plain text, never as markup. Absent from an older host.
+   */
+  outcome: z.object({ text: z.string(), at: z.string(), done: z.boolean() }).nullable().optional(),
 });
 export type TeamStatus = z.infer<typeof TeamStatus>;
+
+/** #1220: the longest report a coordinator may send. */
+export const TEAM_REPORT_MAX = 4000;
 
 export const TeamsUpdatedFrame = z.object({
   type: z.literal("teams.updated"),
   team: TeamInfo,
   /** Why it changed, when that is news for you (quota pause, quota resume). */
   reason: z.string().nullable(),
+  /** #1220: the coordinator reported the goal done; the app tells the person in its language. */
+  event: z.enum(["report_done"]).optional(),
 });
 export type TeamsUpdatedFrame = z.infer<typeof TeamsUpdatedFrame>;
 
@@ -3838,6 +3857,21 @@ export const Command = z.discriminatedUnion("type", [
   /** With `as`, only a member of the team may ask (the MCP tool does). */
   cmd("teams.status", z.object({ team: z.string().min(1), as: SessionIdentity.optional() })),
   cmd("teams.watch", z.object({}).strict()),
+  /**
+   * #1220: the coordinator's report, the team's outcome; `done` says the goal is met. Only the
+   * team's coordinator (`as`, resolved by the host) may send it.
+   */
+  cmd(
+    "teams.report",
+    z
+      .object({
+        team: z.string().min(1),
+        text: z.string().min(1).max(TEAM_REPORT_MAX),
+        done: z.boolean(),
+        as: SessionIdentity,
+      })
+      .strict(),
+  ),
   /** Phase 22: the PR watch of a project (the settings) and of a card (the switch, the rounds). */
   cmd(
     "watch.settings",
@@ -4136,6 +4170,21 @@ export const Command = z.discriminatedUnion("type", [
   cmd("workflow.list", z.object({ projectId: z.string() })),
   /** Issue #79: the workflow templates, with the check line filled from the project's stack. */
   cmd("workflow.templates", z.object({ projectId: z.string() })),
+  /**
+   * Issue #1221: the host commits one of its own templates (by id; the app sends no file and no
+   * path) on a new branch of the project and opens its PR, as a card does. Never the base branch:
+   * the file is listed, untrusted, once the PR is merged. Refused without `confirm: true`.
+   */
+  cmd(
+    "workflow.template.add",
+    z
+      .object({
+        projectId: z.string(),
+        templateId: z.string().min(1).max(200),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
   /** Issue #79: the open code-scanning and Dependabot alerts of the project's repository, read-only. */
   cmd("alert.list", z.object({ projectId: z.string() })),
   cmd("workflow.validate", z.object({ projectId: z.string(), name: z.string().min(1) })),
@@ -5575,6 +5624,7 @@ export interface CommandResults {
   "teams.delete": TeamInfo;
   "teams.message": { delivered: number; refused: number };
   "teams.status": TeamStatus;
+  "teams.report": TeamStatus;
   "teams.watch": undefined;
   "watch.settings": WatchSettings;
   "watch.set": WatchInfo;
@@ -5631,6 +5681,7 @@ export interface CommandResults {
   "card.templates": CardTemplates;
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.templates": { templates: WorkflowTemplate[] };
+  "workflow.template.add": WorkflowTemplateAdded;
   "alert.list": { alerts: RepoAlert[]; unavailable: AlertsUnavailable[] };
   "workflow.validate": WorkflowInfo;
   "workflow.trust": WorkflowInfo;
