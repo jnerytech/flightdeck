@@ -14,6 +14,7 @@ import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
 import { demoFinished, demoInbox } from "./lib/demo-seeds.ts";
+import { DEMO_TEAM_REPORT } from "./lib/e2e-journeys.ts";
 import {
   type Finding,
   GAP_BOXES,
@@ -762,6 +763,25 @@ function shots(ids: DemoIds): Shot[] {
         await page.getByRole("button", { name: /^(Actions for|Ações de) closed-crew$/ }).click();
         await page.getByRole("menuitem", { name: /^(Delete team|Excluir time)$/ }).click();
         await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    {
+      // #1222: the new-team form with its two worker rows; narrow, each row stacks with the
+      // persona on its own line.
+      name: "times-novo",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        await page.getByRole("button", { name: /^(New team|Novo time)$/ }).click();
+        await page.getByRole("group", { name: /^(Workers|Executoras)$/ }).waitFor();
+      },
+    },
+    {
+      // #1222: the demo's active team at work, with its members' last reports.
+      name: "times-rodando",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        const team = page.getByRole("listitem", { name: /^(Team|Time) checkout-crew$/ });
+        await team.getByText(DEMO_TEAM_REPORT).scrollIntoViewIfNeeded();
       },
     },
     {
