@@ -1,6 +1,7 @@
 import type { ProjectLoad } from "@flightdeck/protocol";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
+import { HarnessSetup, type HarnessSetupProps } from "@/components/projects/harness-setup";
 import type { AppStore } from "@/lib/app-store";
 import { type HarnessItem, harnessParts } from "@/lib/harness";
 
@@ -37,9 +38,12 @@ function detail(item: HarnessItem, t: T): string {
 
 /**
  * Issue #75, slice S1: the project's Claude Code setup as a checklist, from the listing the trust
- * panel read (#196): one read for both. Read-only: it says what is there and what is missing.
+ * panel read (#196): one read for both. It says what is there and what is missing; on a host that can
+ * preview and apply, it also offers to set up what is missing (slice S4b).
  */
-export function HarnessPanel(props: Readonly<{ load: ProjectLoad; t: T }>) {
+export function HarnessPanel(
+  props: Readonly<{ load: ProjectLoad; t: T; setup?: HarnessSetupProps | null }>,
+) {
   const { load, t } = props;
   const items = harnessParts(load);
   const found = items.filter((item) => item.found).length;
@@ -66,6 +70,7 @@ export function HarnessPanel(props: Readonly<{ load: ProjectLoad; t: T }>) {
           );
         })}
       </Stack>
+      {props.setup && <HarnessSetup {...props.setup} />}
     </Panel>
   );
 }
