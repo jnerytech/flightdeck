@@ -38,7 +38,9 @@ const LIST = {
   ],
 };
 
-function setup(options: { language?: "en" | "pt-BR"; refuse?: boolean } = {}) {
+function setup(
+  options: { language?: "en" | "pt-BR"; refuse?: boolean; refuseName?: boolean } = {},
+) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
   });
@@ -52,7 +54,7 @@ function setup(options: { language?: "en" | "pt-BR"; refuse?: boolean } = {}) {
     if (type === "card.create") {
       return options.refuse ? null : { id: "c9", title: (payload as { title: string }).title };
     }
-    if (type === "card.update") return { id: "c9" };
+    if (type === "card.update") return options.refuseName ? null : { id: "c9" };
     return null;
   }) as never;
   const went: unknown[] = [];
@@ -85,7 +87,8 @@ const listed = (title = "Login screen") =>
   settle(() => screen.queryByText(title) !== null, 5000, "the documents");
 /** The row of the document with this title. */
 const row = (title: string) => screen.queryByText(title)?.closest("li") ?? null;
-const makeCard = (title: string, name = "Make a card") =>
+/** Each row's button says which spec it makes a card of, for a screen reader too. */
+const makeCard = (title: string, name = `Make a card from ${title}`) =>
   row(title) ? within(row(title) as HTMLElement).queryByRole("button", { name }) : null;
 
 describe("knowledge-card-ui: a spec in the documents becomes a card that names it (#78)", () => {
@@ -128,9 +131,37 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
     expect([created, sent.some(([type]) => type === "card.update")]).toEqual([true, false]);
   });
 
+  test("a card the host would not name after the spec says no success", async () => {
+    const { view, sent, store } = setup({ refuseName: true });
+    render(view);
+    await listed();
+    const button = makeCard("Login screen");
+    if (button) await act(async () => fireEvent.click(button));
+    const tried = await settleMaybe(() => sent.some(([type]) => type === "card.update"));
+    expect([tried, store.getState().notices.some((n) => n.kind === "success")]).toEqual([
+      true,
+      false,
+    ]);
+  });
+
+  test("a second click while the first is making the card makes no second card", async () => {
+    const { view, sent } = setup();
+    render(view);
+    await listed();
+    const button = makeCard("Login screen");
+    if (button) {
+      await act(async () => {
+        fireEvent.click(button);
+        fireEvent.click(button);
+      });
+    }
+    await settleMaybe(() => sent.some(([type]) => type === "card.update"));
+    expect(sent.filter(([type]) => type === "card.create").length).toBe(1);
+  });
+
   test("in Portuguese too", async () => {
     render(setup({ language: "pt-BR" }).view);
     await listed();
-    expect(makeCard("Login screen", "Criar um cartão") !== null).toBe(true);
+    expect(makeCard("Login screen", "Criar um cartão de Login screen") !== null).toBe(true);
   });
 });
