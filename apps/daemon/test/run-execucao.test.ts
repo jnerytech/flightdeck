@@ -86,11 +86,11 @@ describe("run-execucao: o setup", () => {
 
   test("um processo que o sistema recusa (terminais desligados, limite) falha o Run com o motivo e encerra os que subiram", async () => {
     const s = setup(runConfig({ setup: null }));
-    s.refused.set("api", "limite de 10 terminais por host");
+    s.refused.set("api", "limit of 10 terminals per host");
     await s.manager.start("card-a");
     await until(() => s.status("card-a") === "failed");
     const state = s.manager.state("card-a");
-    expect(state.error).toBe("não consegui iniciar api: limite de 10 terminais por host");
+    expect(state.error).toBe("could not start api: limit of 10 terminals per host");
     expect(s.of("serve")[0]?.killed).toBe(true);
     expect(state.processes.map((p) => p.status)).toEqual(["exited"]);
     s.refused.delete("api");
@@ -100,11 +100,11 @@ describe("run-execucao: o setup", () => {
 
   test("um setup que o sistema recusa falha o Run com o motivo", async () => {
     const s = setup();
-    s.refused.set("prepare", "terminal desligado neste host");
+    s.refused.set("prepare", "the terminal is off on this host");
     await s.manager.start("card-a");
     await until(() => s.status("card-a") === "failed");
     expect(s.manager.state("card-a").error).toBe(
-      "não consegui iniciar o setup: terminal desligado neste host",
+      "could not start the setup: the terminal is off on this host",
     );
     expect(s.manager.state("card-a").setup).toBe("failed");
   });

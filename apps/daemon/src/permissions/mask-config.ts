@@ -31,12 +31,19 @@ const secretName = (name: string) =>
   name.split("-").some((part) => /^(key|pwd|pat|dsn|sig|auth|cred)$/i.test(part));
 const FLAG = /^"(--?[\w-]+)(=.*)?"$/;
 /** A header passed as a list item (`Bearer x`, `Authorization: x`, `X-Api-Key: x`): a secret whatever the key. */
-const SCHEME =
-  /^"(?:(?:bearer|basic)\s|[\w-]*(?:authorization|token|secret|key|passw\w*)[\w-]*\s*:)/i;
+const SCHEME = /^"(?:bearer|basic)\s/i;
+/** The key of a `Key: value` item: one run of word characters, so it is read in a single pass. */
+const HEADER_KEY = /^"([\w-]*)\s*:/;
+const SECRET_WORD = /authorization|token|secret|key|passw/i;
+const isScheme = (value: string) =>
+  SCHEME.test(value) || SECRET_WORD.test(HEADER_KEY.exec(value)?.[1] ?? "");
 
 /** A `url` without the user in it and without its query or fragment, where a key is often passed. */
-const bare = (value: string) =>
-  value.replace(/\/\/[^/@"]*@/, "//[redacted]@").replace(/[?#].*"$/, '?[redacted]"');
+const bare = (value: string) => {
+  const hidden = value.replace(/\/\/[^/@"]*@/, "//[redacted]@");
+  const cut = hidden.search(/[?#]/);
+  return cut < 0 ? hidden : `${hidden.slice(0, cut)}?[redacted]"`;
+};
 
 /**
  * The lines of a config with its private values masked. Fail-closed, and line by line: a string
@@ -105,7 +112,7 @@ function maskString(scan: Scan, text: string, value: string, start: number, end:
     return value;
   }
   const head = text.slice(0, start);
-  if (head.trimEnd().slice(-1) === ":") {
+  if (head.trimEnd().endsWith(":")) {
     if (inPrivate || !SHOWN.has(scan.key)) return MASK;
     return scan.key === "url" ? bare(value) : value;
   }
@@ -118,7 +125,7 @@ function maskItem(scan: Scan, value: string, inPrivate: boolean, listed: boolean
   const flag = FLAG.exec(value);
   const secret = secretName(flag?.[1] ?? "");
   let shown = value;
-  if (scan.owed || inPrivate || SCHEME.test(value) || (listed && scan.key !== "args")) {
+  if (scan.owed || inPrivate || isScheme(value) || (listed && scan.key !== "args")) {
     shown = MASK;
   } else if (flag?.[2] && secret) {
     shown = `"${flag[1]}=[redacted]"`;

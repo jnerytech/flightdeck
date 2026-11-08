@@ -4,8 +4,10 @@ import { CardSyncLog } from "@/components/board/board-sync";
 import { CardAdjustment, CardRuns } from "@/components/card/card-adjustment";
 import { CardArena } from "@/components/card/card-arena";
 import { CardFields } from "@/components/card/card-fields";
+import { CardPins } from "@/components/card/card-pins";
 import { CardRunForm } from "@/components/card/card-run-form";
 import { CardHeaderActions, type CardTab, CardWork } from "@/components/card/card-work";
+import { PostMortem } from "@/components/card/post-mortem";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
@@ -22,7 +24,7 @@ import { CardDeps } from "./CardDeps.tsx";
 import { RunPanel } from "./RunPanel.tsx";
 import { GateCard, RunTimeline } from "./RunTimeline.tsx";
 
-const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards"] as const;
+const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards", "projects"] as const;
 
 /** One card: description, runs, the active run's conversation, its diff and the actions. */
 export const CardDetail = memo(function CardDetail(props: {
@@ -34,6 +36,8 @@ export const CardDetail = memo(function CardDetail(props: {
   /** Opens Settings, section Assistant (the wand found no provider). */
   onOpenSettings(): void;
   onBack(): void;
+  /** Opens another card of the project (the post-mortem that was just started). */
+  onOpenCard(cardId: string): void;
 }) {
   const t = useT();
   const { store, hostId, cardId } = props;
@@ -61,6 +65,8 @@ export const CardDetail = memo(function CardDetail(props: {
   const [opened, setOpened] = useState<{ stepId: string; attempt: number } | null>(null);
   /** Workflows the card can start with: trusted and valid on the project's base branch. */
   const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
+  /** The host has answered `workflow.list`: until then an empty list means nothing. */
+  const [workflowsKnown, setWorkflowsKnown] = useState(false);
   const projectId = card?.projectId ?? "";
   const openedStep = run?.steps.find(
     (s) => s.stepId === opened?.stepId && s.attempt === opened.attempt,
@@ -89,6 +95,7 @@ export const CardDetail = memo(function CardDetail(props: {
     if (!projectId) return;
     void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
       setWorkflows((result?.workflows ?? []).filter((w) => w.trusted && w.errors.length === 0));
+      setWorkflowsKnown(result !== null);
     });
   }, [store, hostId, projectId]);
 
@@ -175,6 +182,15 @@ export const CardDetail = memo(function CardDetail(props: {
                 }
               />
             ))}
+          <PostMortem
+            store={store}
+            hostId={hostId}
+            card={card}
+            run={run ?? null}
+            claudeSessionId={session?.claudeSessionId ?? null}
+            workflows={workflowsKnown ? workflows : null}
+            onOpenCard={props.onOpenCard}
+          />
           {/* How it runs, then the details, then what the card waits for: the card's next step
               (Start, Stop, Open PR) is the first thing on it, not under the form (#732). */}
           <CardArena
@@ -224,6 +240,15 @@ export const CardDetail = memo(function CardDetail(props: {
             withRoi={withRoi}
             onOpenSettings={props.onOpenSettings}
           />
+          {has("cardPins") && (
+            <CardPins
+              store={store}
+              hostId={hostId}
+              card={card}
+              path={state.projects[hostId]?.find((p) => p.id === card.projectId)?.path ?? null}
+              library={has("knowledge")}
+            />
+          )}
           {withDeps && (
             <CardDeps
               store={store}

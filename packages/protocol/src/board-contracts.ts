@@ -32,6 +32,8 @@ export const SpecState = z.object({
   path: z.string(),
   found: z.boolean(),
   heading: z.string().nullable(),
+  /** The file's front matter says `draft: true` (#78): a spec still being written meets no check. */
+  draft: z.boolean().optional(),
 });
 export type SpecState = z.infer<typeof SpecState>;
 
@@ -56,7 +58,7 @@ export function contractOf(
 }
 
 /** A checklist item in the description is what the card calls its acceptance criteria. */
-const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
+export const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
 
 type Lookable = Pick<
   Card,
@@ -78,7 +80,9 @@ const LACKING: Record<ContractCheck, (card: Lookable) => ContractNeed[]> = {
   validation: (card) => (card.validationNote?.trim() ? [] : ["validation"]),
   // What was found counts only for the path the card names now.
   spec: (card) =>
-    card.specState?.found && card.specState.path === specExpectedPath(card) ? [] : ["spec"],
+    card.specState?.found && !card.specState.draft && card.specState.path === specExpectedPath(card)
+      ? []
+      : ["spec"],
 };
 
 /** What `card` lacks for `column`; nothing when the column asks nothing or the card has it all. */
@@ -132,4 +136,29 @@ export function specExpectedPath(card: {
   slug: string | null;
 }): string | null {
   return card.specPath ?? (card.slug ? `docs/specs/${card.slug}.md` : null);
+}
+
+/** The folders of a project's library of documents (issue #76); a card pins one from here. */
+export const KNOWLEDGE_FOLDERS = [
+  "docs/decisions",
+  "docs/adr",
+  "docs/rfc",
+  "docs/prd",
+  "docs/specs",
+] as const;
+
+/** The most documents one card pins. */
+export const PINNED_DOCS_MAX = 10;
+
+/**
+ * Why a document cannot be pinned to a card, or null when it can: a plain path to a Markdown file
+ * (`specPathProblem`) inside one of the library's folders. The host looks the file up in the
+ * worktree, and checks where it lands, when the card starts.
+ */
+export function pinnedDocProblem(path: string): string | null {
+  const problem = specPathProblem(path);
+  if (problem !== null) return problem;
+  // The path goes into a prompt: no line break (U+0085, U+2028/9) or direction mark (format chars).
+  if (/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(path)) return "control";
+  return KNOWLEDGE_FOLDERS.some((folder) => path.startsWith(`${folder}/`)) ? null : "folder";
 }

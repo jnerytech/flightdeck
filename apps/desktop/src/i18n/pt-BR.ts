@@ -1479,6 +1479,7 @@ export const ptBR = {
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
     harnessStack: "a leitura do stack do projeto",
+    alerts: "a leitura dos alertas do repositório",
     knowledge: "a leitura dos documentos do projeto",
     knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
     knowledgeStatus: "a mudança do status de um documento",
@@ -1526,7 +1527,11 @@ export const ptBR = {
       "A resposta da etapa {step} não é uma lista de achados válida ({where}), então nenhum card foi criado.",
     spec_path_invalid:
       "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
+    pinned_doc_invalid:
+      "Um documento fixado deve ser um arquivo Markdown da pasta docs do projeto (decisions, adr, rfc, prd ou specs), e um card fixa no máximo 10.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
+    spec_template_failed:
+      "Não deu para gravar o modelo de spec em {path} (um link ou arquivo está no caminho): a sessão começou sem ele.",
     contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
     remote_not_github: "O remoto {url} não é do GitHub.",
@@ -3752,6 +3757,18 @@ export const ptBR = {
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
     specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",
+    pins: {
+      title: "Documentos fixados",
+      hint: "Quando o card começa, a sessão é orientada a ler estes documentos.",
+      none: "Nenhum documento fixado.",
+      pick: "Fixar um documento",
+      pickPlaceholder: "Escolha um documento…",
+      unpin: "Desafixar {path}",
+      unpinShort: "Desafixar",
+      unlisted: "fora da biblioteca do projeto",
+      full: "Um card fixa no máximo {max} documentos.",
+      failed: "Não foi possível salvar os documentos fixados: {why}",
+    },
     specFound: "Especificação encontrada: {heading}",
     specFoundPlain: "Especificação encontrada",
     specMissing: "Nenhum arquivo de especificação em {path}",
@@ -3840,6 +3857,49 @@ export const ptBR = {
     budgetCost: "Custo estimado",
     budgetLine: "{label}: {shown} de {max}",
     budgetNoLimit: "{label}: {shown} (sem limite)",
+  },
+  postMortem: {
+    open: "Redigir um post-mortem",
+    title: "Redigir um post-mortem",
+    intro:
+      "Um card novo vai escrever o post-mortem deste como um arquivo Markdown e perguntar antes de abrir um pull request. Confira o que ele vai receber sobre o incidente e edite.",
+    loading: "Lendo a sessão",
+    field: "Incidente",
+    missing:
+      "O workflow Rascunho de post-mortem não está configurado neste projeto. Adicione em Workflows, Modelos, e tente de novo.",
+    start: "Iniciar o post-mortem",
+    cardTitle: "Post-mortem: {title}",
+    started: "Post-mortem iniciado: {title}",
+    notStarted:
+      'O card "{title}" foi criado, mas não iniciou. Aperte Iniciar para tentar de novo; não vai criar outro.',
+  },
+  alertsUi: {
+    open: "Escolher um alerta",
+    title: "Escolher um alerta",
+    intro:
+      "Alertas abertos de code scanning e do Dependabot deste repositório, os mais graves primeiro. O texto do alerta vai para o campo: leia antes de iniciar.",
+    loading: "Carregando alertas",
+    failed:
+      "Não deu para ler os alertas. O host pode estar offline ou precisar de uma versão mais nova do Flightdeck.",
+    list: "Alertas",
+    use: "Usar o alerta {title}",
+    useShort: "Usar",
+    empty: "Nenhum alerta aberto.",
+    kind: { "code-scanning": "Code scanning", dependabot: "Dependabot" },
+    severity: {
+      critical: "Crítico",
+      high: "Alto",
+      medium: "Médio",
+      low: "Baixo",
+      unknown: "Sem gravidade",
+    },
+    reason: {
+      gh_missing: "{source}: o GitHub CLI (gh) não está instalado no host.",
+      not_signed_in: "{source}: o gh do host não está conectado a uma conta.",
+      unavailable:
+        "{source}: indisponível neste repositório. Pode estar desligado, ou o gh do host pode não ter acesso.",
+      failed: "{source}: não deu para ler.",
+    },
   },
   workflowsUi: {
     title: "Workflows de {project}",
@@ -4200,6 +4260,10 @@ export const ptBR = {
       },
       type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
       changed: "Alterado em {date}",
+      makeCard: "Criar um cartão",
+      makeCardOf: "Criar um cartão de {title}",
+      cardMade: "Cartão criado a partir da spec: {title}",
+      cardMadeNoSpec: "Cartão criado sem a spec: {title}. Abra-o para definir o caminho da spec.",
       referencesObsolete: "Aponta para um documento obsoleto: {path}",
       problem: {
         status_unknown:

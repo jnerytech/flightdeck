@@ -229,7 +229,7 @@ export class RunManager {
     };
     try {
       if (config.setup && entry.setup !== "done") {
-        await this.runSetup(entry, await spawn("o setup", config.setup), launched);
+        await this.runSetup(entry, await spawn("the setup", config.setup), launched);
         if (entry.status !== "setup") return;
       }
       entry.status = "running";
@@ -322,7 +322,7 @@ export class RunManager {
     );
     if (entry.setup === "running" || entry.status === "setup") entry.setup = "failed";
     entry.status = "failed";
-    entry.error = `não consegui iniciar ${error.what}: ${error.message}`;
+    entry.error = `could not start ${error.what}: ${error.message}`;
     this.emit(entry);
   }
 

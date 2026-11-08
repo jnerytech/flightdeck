@@ -14,6 +14,7 @@ import {
   type HarnessStack,
   HOOK_KINDS,
 } from "@flightdeck/protocol";
+import { layoutLike, parseJsonText } from "../json-text.ts";
 import { detectStack } from "./stack.ts";
 import { claudeMd, DENY_RULES, EDIT_MATCHER, reviewerAgent, tddSkill } from "./templates.ts";
 
@@ -109,14 +110,6 @@ async function settingsLook(root: string): Promise<Look> {
   return look(root, SETTINGS);
 }
 
-/** `value` as JSON laid out like `text` (its indent and final newline); 2 spaces and a newline for a new file. */
-export function layoutLike(text: string | null, value: unknown): string {
-  if (text === null) return `${JSON.stringify(value, null, 2)}\n`;
-  const indent = /^\{\r?\n([ \t]+)"/.exec(text)?.[1] ?? 2;
-  const newline = text.endsWith("\n") ? "\n" : "";
-  return `${JSON.stringify(value, null, indent)}${newline}`;
-}
-
 /** The commands of the hooks already on an event, whatever else their entries hold. */
 function commandsOf(entries: unknown[]): string[] {
   return entries.flatMap((entry) =>
@@ -184,7 +177,7 @@ async function settingsProposal(
   let parsed: unknown = {};
   if (file.state === "file") {
     try {
-      parsed = JSON.parse(file.text);
+      parsed = parseJsonText(file.text);
     } catch {
       parsed = null;
     }

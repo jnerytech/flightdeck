@@ -1484,6 +1484,7 @@ export const en: Dictionary = {
     bg: "background sessions",
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
+    alerts: "reading the repository's alerts",
     knowledge: "reading the project's documents",
     knowledgeFeed: "the switch for the documents index in agents' prompts",
     knowledgeStatus: "changing a document's status",
@@ -1531,7 +1532,11 @@ export const en: Dictionary = {
       "The reply of step {step} is not a valid list of findings ({where}), so no card was created.",
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
+    pinned_doc_invalid:
+      "A pinned document must be a Markdown file in the project's docs (decisions, adr, rfc, prd or specs), and a card pins at most 10.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
+    spec_template_failed:
+      "The spec template could not be written at {path} (a link or a file is in the way): the session started without it.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
     remote_not_github: "The remote {url} is not a GitHub one.",
@@ -3747,6 +3752,18 @@ export const en: Dictionary = {
     specFile: "Spec file",
     saveSpec: "Save spec file",
     specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
+    pins: {
+      title: "Pinned documents",
+      hint: "When the card starts, its session is told to read these documents.",
+      none: "No documents pinned.",
+      pick: "Pin a document",
+      pickPlaceholder: "Choose a document…",
+      unpin: "Unpin {path}",
+      unpinShort: "Unpin",
+      unlisted: "not in the project's library",
+      full: "A card pins at most {max} documents.",
+      failed: "Could not save the pinned documents: {why}",
+    },
     specFound: "Spec found: {heading}",
     specFoundPlain: "Spec found",
     specMissing: "No spec file at {path}",
@@ -3834,6 +3851,49 @@ export const en: Dictionary = {
     budgetCost: "Estimated cost",
     budgetLine: "{label}: {shown} of {max}",
     budgetNoLimit: "{label}: {shown} (no limit)",
+  },
+  postMortem: {
+    open: "Draft a post-mortem",
+    title: "Draft a post-mortem",
+    intro:
+      "A new card will write a post-mortem of this one as a Markdown file and ask before it opens a pull request. Check what it will be told about the incident, and edit it.",
+    loading: "Reading the session",
+    field: "Incident",
+    missing:
+      "The Post-mortem draft workflow is not set up in this project. Add it from Workflows, Templates, then try again.",
+    start: "Start the post-mortem",
+    cardTitle: "Post-mortem: {title}",
+    started: "Post-mortem started: {title}",
+    notStarted:
+      'The card "{title}" was made but did not start. Press Start to try again; it will not make another.',
+  },
+  alertsUi: {
+    open: "Choose an alert",
+    title: "Choose an alert",
+    intro:
+      "Open code-scanning and Dependabot alerts of this repository, the worst first. The alert's own words go into the field: read them before you start.",
+    loading: "Loading alerts",
+    failed:
+      "Could not read the alerts. The host may be offline or need a newer version of Flightdeck.",
+    list: "Alerts",
+    use: "Use alert {title}",
+    useShort: "Use",
+    empty: "No open alerts.",
+    kind: { "code-scanning": "Code scanning", dependabot: "Dependabot" },
+    severity: {
+      critical: "Critical",
+      high: "High",
+      medium: "Medium",
+      low: "Low",
+      unknown: "No severity",
+    },
+    reason: {
+      gh_missing: "{source}: the GitHub CLI (gh) is not installed on the host.",
+      not_signed_in: "{source}: gh on the host is not signed in to an account.",
+      unavailable:
+        "{source}: not available for this repository. It may be off, or gh on the host may lack access.",
+      failed: "{source}: could not be read.",
+    },
   },
   workflowsUi: {
     title: "Workflows of {project}",
@@ -4198,6 +4258,10 @@ export const en: Dictionary = {
       },
       type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
       changed: "Changed {date}",
+      makeCard: "Make a card",
+      makeCardOf: "Make a card from {title}",
+      cardMade: "Card made from the spec: {title}",
+      cardMadeNoSpec: "Card made without its spec: {title}. Open it to set the spec path.",
       referencesObsolete: "Points at an obsolete document: {path}",
       problem: {
         status_unknown:

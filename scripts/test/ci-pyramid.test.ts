@@ -17,8 +17,23 @@ const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "
 };
 const steps = ci.jobs["test-suite"]?.steps ?? [];
 const step = (name: string) => steps.find((s) => s.name === name);
+const related = () => step("Testes da seleção (pirâmide)");
 
 describe("ci-pyramid (#309)", () => {
+  test("#1003: after the PR's run, the slow-test check reads its JUnit times, and the report is kept", () => {
+    const check = step("Testes lentos (#1003)");
+    expect(check?.if).toBe("always() && needs.quick.outputs.base != ''");
+    expect(check?.run).toBe('bun run scripts/slow-tests.ts "$RUNNER_TEMP/junit.xml"');
+    // A report missing after a passing test step is a failure, not a pass (#1022 review).
+    expect(check?.env).toEqual({ TESTS_OUTCOME: "${{ steps.related.outcome }}" });
+    expect((related() as { id?: string } | undefined)?.id).toBe("related");
+    const kept = steps.find((s) => s.name === "Tempos dos testes (JUnit)") as
+      | (Step & { with?: Record<string, string> })
+      | undefined;
+    expect(kept?.if).toBe("always() && needs.quick.outputs.base != ''");
+    expect(kept?.with?.path).toBe("${{ runner.temp }}/junit.xml");
+  });
+
   test("the full suite runs every 3 hours on a schedule, so a red only it sees shows within 3 h (#444)", () => {
     expect(ci.on.schedule).toEqual([{ cron: "17 */3 * * *" }]);
   });
@@ -27,7 +42,11 @@ describe("ci-pyramid (#309)", () => {
     const related = step("Testes da seleção (pirâmide)");
     expect(related?.if).toBe("needs.quick.outputs.base != ''");
     // The base reaches the shell as a quoted variable, never expanded into the line.
-    expect(related?.env).toEqual({ BASE: "${{ needs.quick.outputs.base }}" });
+    expect(related?.env).toEqual({
+      BASE: "${{ needs.quick.outputs.base }}",
+      // #1003: the same run keeps each test's time, for the slow-test check below.
+      FLIGHTDECK_JUNIT: "${{ runner.temp }}/junit.xml",
+    });
     expect(related?.run).toBe(
       'bun run test:related -- --pr --base "$BASE" --keep-coverage coverage',
     );

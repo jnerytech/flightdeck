@@ -1097,6 +1097,12 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   again** looks once more; a move to a column that asks for it looks at the file first. The host
   checks only that the file is there (a plain, non-empty file, not a link, inside the worktree) and
   reads its first heading: it never reads or sends the rest.
+- **Pinned documents** (#76). On a host with a project library, the card page has a **Pinned
+  documents** panel: choose a document of the library (ADRs, RFCs, PRDs, specs) to pin it, up to
+  10, and **Unpin** takes one off. When the card starts, its first prompt lists each pinned document
+  that is in the card's worktree, with its title, and tells the session to read them. Only the path
+  and the first heading go in the prompt, never the document's contents. A pinned document marked
+  obsolete is still named: you chose it.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
 - **Discard…** shows one dialog with every selected card, and says what goes with each: a
@@ -1611,6 +1617,22 @@ Three workflows ship with Flightdeck, for recurring work:
 
 Both stop at an approval before anything is pushed, and both have a budget of turns and minutes.
 Once the pull request is open, the PR watch's round limit applies to it.
+
+To start the alert fixer, start a card with it and fill the `alert` field. **Choose an alert** beside
+the field lists the repository's open code-scanning and Dependabot alerts, the worst first, read by the
+host with its own `gh` (read-only; Flightdeck holds no GitHub token). Picking one copies its text into
+the field: read it before you start, since an alert's words come from a scanner or an advisory. A
+source that cannot be read (code scanning is off, or `gh` has no access or is not signed in) is named
+beside the list, and the list never says "no open alerts" when one of them failed. The button shows
+only when the host can read alerts.
+
+**Post-mortem from a failed card.** A card that stopped with a problem, or whose workflow run
+failed, shows **Draft a post-mortem** in its detail. It opens the facts Flightdeck has of the
+incident: the card, its problem, the failed steps of its run and the summary of its session. They
+are plain lines, cut and cleaned, that you can read and edit. **Start the post-mortem** makes a new
+card, "Post-mortem: <title>", and starts it with the Post-mortem draft workflow and that text; the
+failed card is not touched. The button is off, with a note, when the project has not added that
+workflow yet.
 
 A template is a file, and Flightdeck writes nothing to your repository. On the **Workflows**
 screen, **Add from a template** lists them. Open one to read its file, then **Copy the file**,

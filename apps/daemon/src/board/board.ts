@@ -20,6 +20,8 @@ import {
   type PersonaRef,
   type PersonaSubagentsMode,
   PersonaSubagentsMode as PersonaSubagentsModeSchema,
+  PINNED_DOCS_MAX,
+  pinnedDocProblem,
   type SessionEvent,
   type SessionStatus,
   type SpecState,
@@ -54,11 +56,13 @@ import {
   pendingFiles,
   rebaseOnto,
 } from "./merge.ts";
+import { pinnedPrompt } from "./pins.ts";
 import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
+import { hasTddSkill, renderSpec, specFirstLine, wantsSpec, writeSpec } from "./spec-template.ts";
 import type {
   BoardColumn,
   Card,
@@ -246,6 +250,16 @@ function mergePersonas(
   return merged;
 }
 
+/** The pinned documents of a row: a list of paths, or none when the column is empty or not one. */
+function pinnedDocsOf(stored: string | null): string[] {
+  try {
+    const parsed: unknown = JSON.parse(stored ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 /** The auto-start as the cards table keeps it. */
 const autoStartOf = (autoStart: { workflow: string | null } | null | undefined) =>
   autoStart ? JSON.stringify(autoStart) : null;
@@ -274,9 +288,11 @@ interface CardRow {
   estimate_hours: number | null;
   validation_note: string | null;
   spec_path: string | null;
+  pinned_docs: string | null;
   spec_checked_path: string | null;
   spec_found: number;
   spec_heading: string | null;
+  spec_draft: number;
   arena_of: string | null;
   variant: string | null;
   unblock_when: UnblockWhen;
@@ -360,6 +376,8 @@ export class Board {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private readonly prRoundListeners = new Set<() => void>();
   private polling = false;
+  /** The last PR poll round, finished or not (a failed one counts as finished): see `idle`. */
+  private lastRound: Promise<void> = Promise.resolve();
   /** Set by stop(): the database may be closed, so a start still in flight writes nothing. */
   private stopped = false;
   private readonly watchers = new Set<(card: Card) => void>();
@@ -702,6 +720,7 @@ export class Board {
       estimateHours: row.estimate_hours,
       validationNote: row.validation_note,
       specPath: row.spec_path,
+      pinnedDocs: pinnedDocsOf(row.pinned_docs),
       specState:
         row.spec_checked_path === null
           ? null
@@ -709,6 +728,7 @@ export class Board {
               path: row.spec_checked_path,
               found: row.spec_found === 1,
               heading: row.spec_heading,
+              ...(row.spec_draft === 1 ? { draft: true } : {}),
             },
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
@@ -1012,6 +1032,8 @@ export class Board {
       validationNote?: string | null;
       /** Issue #78: the spec file in the worktree; `null` goes back to the default. */
       specPath?: string | null;
+      /** Issue #76: the library documents pinned to the card; replaces the whole list. */
+      pinnedDocs?: string[];
       blockedBy?: string[];
       unblockWhen?: UnblockWhen;
       autoStart?: { workflow: string | null } | null;
@@ -1028,10 +1050,23 @@ export class Board {
         "spec_path_invalid",
       );
     }
+    const pinned =
+      patch.pinnedDocs === undefined ? card.pinnedDocs : [...new Set(patch.pinnedDocs)];
+    // Only pins that come in the patch are judged: ones stored earlier do not block an edit.
+    if (
+      patch.pinnedDocs !== undefined &&
+      (pinned.length > PINNED_DOCS_MAX || pinned.some((doc) => pinnedDocProblem(doc) !== null))
+    ) {
+      throw new FlightdeckError(
+        "bad_request",
+        "a pinned document must be a Markdown file in the project's docs folders, and a card pins at most 10",
+        "pinned_doc_invalid",
+      );
+    }
     this.db
       .query(
         `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, validation_note = ?,
-           spec_path = ?, unblock_when = ?, auto_start = ?, updated_at = ? WHERE id = ?`,
+           spec_path = ?, pinned_docs = ?, unblock_when = ?, auto_start = ?, updated_at = ? WHERE id = ?`,
       )
       .run(
         patch.title ?? card.title,
@@ -1041,6 +1076,7 @@ export class Board {
           ? card.validationNote
           : patch.validationNote?.trim() || null,
         specPath,
+        pinned.length === 0 ? null : JSON.stringify(pinned),
         patch.unblockWhen ?? card.unblockWhen,
         autoStartOf(patch.autoStart === undefined ? card.autoStart : patch.autoStart),
         now(),
@@ -1050,7 +1086,7 @@ export class Board {
     if (specPath !== card.specPath) {
       this.db
         .query(
-          "UPDATE cards SET spec_checked_path = NULL, spec_found = 0, spec_heading = NULL WHERE id = ?",
+          "UPDATE cards SET spec_checked_path = NULL, spec_found = 0, spec_heading = NULL, spec_draft = 0 WHERE id = ?",
         )
         .run(id);
     }
@@ -1520,7 +1556,11 @@ export class Board {
     await this.closeRuns(id, runId);
     // A workflow run executes its steps instead of sending the description to one session.
     if (this.workflows.has(runId)) return this.workflows.begin(runId, worktree);
-    const prompt = [card.description, project.promptTemplate]
+    const specLine = this.firstSession(id, runId)
+      ? await this.startSpec(id, project.contractByColumn, worktree)
+      : null;
+    const pins = await pinnedPrompt(worktree, card.pinnedDocs);
+    const prompt = [card.description, specLine ?? "", pins, project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");
     const { variant } = card;
@@ -1546,6 +1586,46 @@ export class Board {
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.changed(id);
     this.follow(id, sessionId, 0);
+  }
+
+  /**
+   * Issue #78: on a card's first run, when its project asks for a spec, writes the spec from the
+   * template into the new worktree (never over one that is there) and gives the line that sends the
+   * session to it first. A spec that cannot be written is said on the card; the run starts anyway.
+   */
+  private async startSpec(
+    id: string,
+    contracts: ContractOverrides,
+    worktree: string,
+  ): Promise<string | null> {
+    const card = this.getCard(id);
+    const path = specExpectedPath(card);
+    if (path === null || !wantsSpec(contracts, card.specPath)) return null;
+    const result = await writeSpec(worktree, path, renderSpec(card));
+    if (result === "failed") {
+      // The app says it in its language; the prompt sends the agent to no spec that is not there.
+      const why = new FlightdeckError(
+        "invalid_state",
+        `spec template not written: ${path}`,
+        "spec_template_failed",
+        { path },
+      );
+      this.setNotice(id, why.message, why);
+      this.changed(id);
+      return null;
+    }
+    return specFirstLine(path, await hasTddSkill(worktree));
+  }
+
+  /**
+   * No earlier run of the card reached a session: the card's first start, the one a spec template
+   * is for. A first start that failed before its session (a setup script) still counts as first.
+   */
+  private firstSession(id: string, runId: string): boolean {
+    const earlier = this.db
+      .query("SELECT 1 FROM card_runs WHERE card_id = ? AND id <> ? AND session_id IS NOT NULL")
+      .get(id, runId);
+    return earlier === null;
   }
 
   /** Closes the card's sessions and ends its open runs, except `keep` (the one launching). */
@@ -1659,9 +1739,9 @@ export class Board {
     if (JSON.stringify(seen) === JSON.stringify(now.specState)) return now;
     this.db
       .query(
-        "UPDATE cards SET spec_checked_path = ?, spec_found = ?, spec_heading = ? WHERE id = ?",
+        "UPDATE cards SET spec_checked_path = ?, spec_found = ?, spec_heading = ?, spec_draft = ? WHERE id = ?",
       )
-      .run(seen?.path ?? null, seen?.found ? 1 : 0, seen?.heading ?? null, id);
+      .run(seen?.path ?? null, seen?.found ? 1 : 0, seen?.heading ?? null, seen?.draft ? 1 : 0, id);
     return this.changed(id);
   }
 
@@ -2119,6 +2199,12 @@ export class Board {
   /** Asks the provider about every card with an open PR; one round at a time. */
   async pollPrs(): Promise<void> {
     if (this.polling) return;
+    const round = this.pollRound();
+    this.lastRound = round.catch(() => {});
+    await round;
+  }
+
+  private async pollRound(): Promise<void> {
     this.polling = true;
     try {
       const open = this.db
@@ -2190,6 +2276,11 @@ export class Board {
     this.limit = value;
     this.pump();
     await this.opts.onSettingsChange?.({ maxParallelRuns: value });
+  }
+
+  /** Resolves when no PR poll round is running (stop() lets the one in flight finish). */
+  idle(): Promise<void> {
+    return this.lastRound;
   }
 
   stop(): void {

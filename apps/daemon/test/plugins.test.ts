@@ -239,7 +239,7 @@ describe("plugins: o inventário", () => {
     );
     expect(inventory.manifest).toBeNull();
     expect(inventory.skills).toEqual(["a"]);
-    expect(inventory.problems).toEqual(["plugin.json: não é um JSON válido"]);
+    expect(inventory.problems).toEqual(["plugin.json: not valid JSON"]);
     expect(await codeOf(() => inspectPlugin(join(tempDir("fd-none-"), "nada")))).toBe("not_found");
   });
 
@@ -316,7 +316,7 @@ describe("plugins: o inventário", () => {
       ["prompt", "diga oi"],
       ["command", undefined],
     ]);
-    expect(inventory.problems).toEqual(["hooks/hooks.json: não é um JSON válido"]);
+    expect(inventory.problems).toEqual(["hooks/hooks.json: not valid JSON"]);
   });
 
   test("um plugin com arquivos demais é recusado", async () => {
@@ -955,7 +955,7 @@ describe("plugins: pela CLI", () => {
       confirmHash: await hashOf(marketplace, "deploy-tools"),
     });
     expect(result.outcome).toBe("failed");
-    expect(result.message).toContain("conferir");
+    expect(result.message).toContain("could not check the installed content");
     expect(changes(fake).filter((c) => c.includes("uninstall"))).toEqual([]);
     expect(decisions).toEqual([]);
   });
@@ -1058,7 +1058,7 @@ describe("plugins: pela CLI", () => {
     const bad = world((ctx) => everything(ctx, [{ args: ["marketplace", "update"], code: 3 }]));
     expect(await bad.plugins.marketplaceUpdate("acme")).toEqual({
       outcome: "failed",
-      message: "código 3",
+      message: "code 3",
     });
   });
 

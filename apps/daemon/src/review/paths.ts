@@ -12,7 +12,11 @@ export const firstStep = (inside: string) => inside.split(/[\\/]/)[0] ?? "";
  * `.git` as a filesystem may take it: in any case (Windows and macOS do not tell them apart) and
  * with trailing dots or spaces (Windows drops them).
  */
-export const isGitDir = (name: string) => name.replace(/[. ]+$/, "").toLowerCase() === ".git";
+export const isGitDir = (name: string) => {
+  let end = name.length;
+  while (end > 0 && (name[end - 1] === "." || name[end - 1] === " ")) end--;
+  return name.slice(0, end).toLowerCase() === ".git";
+};
 
 /**
  * A file of the review, given relative to the repository: never absolute, never above the root

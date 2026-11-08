@@ -25,6 +25,11 @@ export const NARROW_SHOTS: readonly string[] = [
   "simples-inicio",
   // #117: the board with the files panel; narrow, it gives the row back to the columns.
   "board-arquivos",
+  // #168: the screens shipped on 2026-11-06 and 07.
+  "projetos-novo",
+  "times-apagar",
+  "workflows-modelos",
+  "board-contrato",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

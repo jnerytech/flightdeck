@@ -1102,6 +1102,12 @@ aparece mascarado e como **Oculto**, e não abre.
   coluna que pede isso olha o arquivo antes. O host só confere que o arquivo existe (um arquivo
   comum, não vazio, que não seja um link, dentro do worktree) e lê o primeiro título: nunca lê nem
   envia o resto.
+- **Documentos fixados** (#76). Num host com a biblioteca do projeto, a página do card tem o painel
+  **Documentos fixados**: escolha um documento da biblioteca (ADRs, RFCs, PRDs, specs) para fixá-lo,
+  até 10, e **Desafixar** tira um. Quando o card começa, o primeiro prompt lista cada documento
+  fixado que está no worktree do card, com o título, e orienta a sessão a lê-los. Só o caminho e o
+  primeiro título vão no prompt, nunca o conteúdo do documento. Um documento fixado marcado como
+  obsoleto continua citado: você o escolheu.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
@@ -1620,6 +1626,23 @@ Três workflows já vêm com o Flightdeck, para trabalho recorrente:
 
 Os dois param em uma aprovação antes de enviar qualquer coisa e têm um orçamento de turnos e de
 minutos. Com o pull request aberto, vale para ele o limite de rodadas do Vigiar PRs.
+
+Para iniciar o corretor de alertas, inicie um card com ele e preencha o campo `alert`. **Escolher um
+alerta**, ao lado do campo, lista os alertas abertos de code scanning e do Dependabot do repositório,
+os mais graves primeiro, lidos pelo host com o próprio `gh` (só leitura; o Flightdeck não guarda token
+do GitHub). Escolher um copia o texto dele para o campo: leia antes de iniciar, porque as palavras de
+um alerta vêm de um scanner ou de um aviso. Uma fonte que não dá para ler (o code scanning está
+desligado, ou o `gh` não tem acesso ou não está conectado) aparece citada ao lado da lista, e a lista
+nunca diz "nenhum alerta aberto" quando uma delas falhou. O botão só aparece quando o host sabe ler
+alertas.
+
+**Post-mortem de um card que falhou.** Um card que parou com um problema, ou cuja execução de
+workflow falhou, mostra **Redigir um post-mortem** no detalhe. Abre os fatos que o Flightdeck tem do
+incidente: o card, o problema, os passos que falharam na execução e o resumo da sessão. São linhas
+simples, cortadas e limpas, que você pode ler e editar. **Iniciar o post-mortem** cria um card novo,
+"Post-mortem: <título>", e o inicia com o workflow Rascunho de post-mortem e esse texto; o card que
+falhou não é mexido. O botão fica desligado, com um aviso, quando o projeto ainda não adicionou esse
+workflow.
 
 Um modelo é um arquivo, e o Flightdeck não grava nada no seu repositório. Na tela **Workflows**,
 **Adicionar de um modelo** lista os modelos. Abra um para ler o arquivo, use **Copiar o arquivo**,
