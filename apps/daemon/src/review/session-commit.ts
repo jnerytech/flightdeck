@@ -136,7 +136,7 @@ async function bytesOf(root: string, path: string): Promise<Read | null | "too l
 
 /**
  * The hooks a commit from the app runs: the commit's own, and those the new branch's switch, the
- * ref update and the index write run.
+ * ref update and the index write run; then `pre-push`, which the PR's push runs.
  */
 const COMMIT_HOOKS = [
   "pre-commit",
@@ -146,6 +146,7 @@ const COMMIT_HOOKS = [
   "post-checkout",
   "reference-transaction",
   "post-index-change",
+  "pre-push",
 ];
 
 /**

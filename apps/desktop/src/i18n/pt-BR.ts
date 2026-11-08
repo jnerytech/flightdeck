@@ -1857,7 +1857,8 @@ export const ptBR = {
     changes_pr_detached:
       "O checkout não está em nenhum branch: faça o commit num branch novo antes.",
     changes_pr_base:
-      "Não se sabe para qual branch abrir o PR: abra-o num terminal, ou defina o branch padrão do remoto.",
+      "Este branch não veio de um commit do app, então a base dele não é conhecida: abra o PR num terminal.",
+    changes_pr_remote: "O destino do push mudou desde que você olhou: confira de novo e abra o PR.",
     changes_commit_rewritten:
       "{files} mudou durante o commit (um hook que formata, ou a sessão ainda escrevendo), então o commit foi desfeito: confira as mudanças de novo e faça o commit.",
     changes_commit_git: "O git não conseguiu criar o branch ou o commit neste repositório.",

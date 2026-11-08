@@ -89,8 +89,19 @@ branch of the checkout.
 - One core does this for a card and a session (`board/publish-pr.ts`). The title and body are
   scanned (`pr_secret`, `pr_title_secret`), then the branch is pushed, then the provider opens the
   PR. A card's base is now checked before its push, not after.
-- **The base.** It is the branch the commit started from, kept in memory, or else the remote's
-  default branch (`origin/HEAD`). Neither known refuses (`changes_pr_base`).
+- **Only the daemon's own branch.** A PR opens only for a branch a commit from the app made, into
+  the branch that commit started from (kept in memory). Any other branch refuses
+  (`changes_pr_base`): one made by hand, one after a restart, or the base itself. The remote's
+  default (`origin/HEAD`) never stands in, since the session can point it anywhere.
+- **Where the push goes.** `changes.get` shows `origin`'s push address as git resolves it
+  (`pushurl` and `pushInsteadOf` included), with any user and password taken out. The confirm sends
+  it back, and an address changed since refuses (`changes_pr_remote`).
+- **The push.** It names the whole ref on both sides (`refs/heads/<b>:refs/heads/<b>`), so no
+  `push.default`, upstream or refspec setting redirects it. It has a time limit (120 s) and no
+  prompt (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`). The `pre-push` hook runs, as it would
+  for the person's own push, and `changes.get` names it with the commit's hooks.
+- **Content.** Only the title and description are scanned at this step. The content was scanned
+  when the commit from the app was made, and only such a branch is pushed.
 - **Never the base.** A checkout on its base (`changes_pr_on_base`) or on no branch
   (`changes_pr_detached`) refuses, so the base itself is never pushed.
 - **The provider.** It is the board project's that holds the checkout, else GitHub (`gh`). A project

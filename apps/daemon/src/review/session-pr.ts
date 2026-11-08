@@ -34,7 +34,10 @@ export class SessionPrs {
   constructor(readonly deps: SessionPrDeps) {}
 
   /** Pushes the session's current branch and opens its PR with the confirmed title and body. */
-  async open(target: string, input: { title: string; body: string }): Promise<ChangesPrOpened> {
+  async open(
+    target: string,
+    input: { title: string; body: string; remote: string },
+  ): Promise<ChangesPrOpened> {
     if (!target.startsWith("session:")) {
       throw refuse("changes_pr_target", "only a plain session's branch is opened as a PR here");
     }
@@ -56,9 +59,14 @@ export class SessionPrs {
       );
     }
     const branch = assertBranchName(head.stdout.trim());
-    const base = this.deps.commits.baseOf(root, branch) ?? (await remoteDefault(root));
+    // Only a branch this daemon's commit made, into the branch it started from: never one the
+    // remote's default (which the session can point anywhere) stands in for.
+    const base = this.deps.commits.baseOf(root, branch);
     if (base === null) {
-      throw refuse("changes_pr_base", "the branch to open the PR into is not known");
+      throw refuse(
+        "changes_pr_base",
+        "this branch was not made by a commit from the app: open its PR from a terminal",
+      );
     }
     // Never the base itself: that would push straight into it.
     if (branch === base) {
@@ -66,6 +74,10 @@ export class SessionPrs {
         "changes_pr_on_base",
         `the checkout is on ${base}: commit on a new branch first`,
       );
+    }
+    // Where the push goes, as the person saw it: the session can change `origin` in between.
+    if ((await pushAddress(root)) !== input.remote) {
+      throw refuse("changes_pr_remote", "the push address changed since it was shown: look again");
     }
     const url = await publishPr({
       cwd: root,
@@ -79,9 +91,12 @@ export class SessionPrs {
   }
 }
 
-/** The remote's default branch (`origin/HEAD`), without `origin/`; null when it is not known. */
-async function remoteDefault(root: string): Promise<string | null> {
-  const found = await git(root, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD");
-  const name = found.stdout.trim();
-  return found.code === 0 && name.startsWith("origin/") ? name.slice("origin/".length) : null;
+/**
+ * Where a push to `origin` goes, as git resolves it (`pushurl` and `pushInsteadOf` included), with
+ * any user and password taken out of the address: shown to every client of `changes.get`.
+ */
+export async function pushAddress(root: string): Promise<string | null> {
+  const found = await git(root, "remote", "get-url", "--push", "origin");
+  if (found.code !== 0) return null;
+  return found.stdout.trim().replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@]*@/i, "$1");
 }

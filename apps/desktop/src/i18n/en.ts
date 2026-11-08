@@ -1856,7 +1856,9 @@ export const en: Dictionary = {
     changes_pr_on_base: "The checkout is on the base branch: commit on a new branch first.",
     changes_pr_detached: "The checkout is on no branch: commit on a new branch first.",
     changes_pr_base:
-      "The branch to open the PR into is not known: open it from a terminal, or set the remote's default branch.",
+      "This branch was not made by a commit from the app, so its base is not known: open its PR from a terminal.",
+    changes_pr_remote:
+      "Where the push goes changed since you looked: check it again, then open the PR.",
     changes_commit_rewritten:
       "{files} changed while being committed (a hook that formats, or the session still writing), so the commit was undone: look at the changes again, then commit.",
     changes_commit_git: "Git could not make the branch or the commit in this repository.",

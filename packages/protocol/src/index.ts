@@ -1097,6 +1097,11 @@ export const ChangesResult = z.object({
    * before the person confirms one. Only for a target against `HEAD`.
    */
   hooks: z.array(z.string()).optional(),
+  /**
+   * #1133: where a PR's push would go (`origin`'s push address, no password in it); the person's
+   * confirm sends it back, and a push address changed since refuses. Only against `HEAD`.
+   */
+  remote: z.string().optional(),
 });
 export type ChangesResult = z.infer<typeof ChangesResult>;
 
@@ -4657,6 +4662,8 @@ export const Command = z.discriminatedUnion("type", [
         target: ReviewTarget,
         title: z.string().min(1).max(256),
         body: z.string().max(65_536),
+        /** The push address the person saw (`changes.get`'s `remote`). */
+        remote: z.string().min(1).max(4096),
         confirm: z.boolean().optional(),
       })
       .strict(),

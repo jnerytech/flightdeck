@@ -4,7 +4,8 @@
  */
 import type { SecretScanner } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
-import { git } from "./command.ts";
+import { whichOnPath } from "../which.ts";
+import { killTree, runCommand } from "./command.ts";
 import type { PrProvider } from "./pr.ts";
 import { refArg } from "./ref-arg.ts";
 import { must } from "./worktree.ts";
@@ -34,6 +35,11 @@ export function assertNoSecretInPr(
   }
 }
 
+/** How long the push may take: a credential helper or a host prompt never waits for good. */
+const PUSH_TIMEOUT_MS = 120_000;
+/** No prompt can wait on a terminal the daemon does not have. */
+const PUSH_ENV = { GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" };
+
 /** Pushes `branch` to `origin` with its upstream and opens the PR into `base`; returns its URL. */
 export async function publishPr(opts: {
   cwd: string;
@@ -44,6 +50,17 @@ export async function publishPr(opts: {
   provider: PrProvider;
 }): Promise<string> {
   const { cwd, branch, base, title, body, provider } = opts;
-  must(await git(cwd, "push", "-u", "origin", refArg(branch)), "git push");
+  // The whole ref on both sides: no `push.default`, upstream or refspec setting can send it elsewhere.
+  const ref = `refs/heads/${refArg(branch)}`;
+  // git-arg: the branch went through assertBranchName and refArg.
+  const pushed = await runCommand(
+    [whichOnPath("git") ?? "git", "push", "-u", "origin", `${ref}:${ref}`],
+    cwd,
+    undefined,
+    PUSH_TIMEOUT_MS,
+    killTree,
+    PUSH_ENV,
+  );
+  must(pushed, "git push");
   return provider.create({ cwd, base, head: branch, title, body });
 }

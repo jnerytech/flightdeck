@@ -286,6 +286,7 @@ export const DAEMON_REASONS = [
   "changes_pr_on_base",
   "changes_pr_detached",
   "changes_pr_base",
+  "changes_pr_remote",
   "harness_commit_stale",
   "harness_commit_no_head",
   "harness_commit_identity",
