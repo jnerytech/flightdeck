@@ -489,6 +489,58 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     }
   });
 
+  // #1271: below 640 px a dialog is a full-screen sheet. A form's buttons rest on the sheet's bottom
+  // edge, and at the end of the sheet's scroll no field is left under them. New action kept its
+  // fields in a 70vh box of their own, so the buttons stopped mid-sheet over the next field.
+  test("narrow (#1271): a sheet's form buttons stop short of its bottom, or sit over a field at the end of its scroll", () => {
+    page(`
+      <div data-slot="dialog-content" style="position: fixed; overflow-y: auto" data-rect="0,0,1000,700" data-ch="700" data-sh="700">
+        <form data-rect="0,56,1000,700">
+          <div data-slot="fields" style="overflow-y: auto" data-rect="24,56,976,640" data-ch="584" data-sh="900">
+            <input aria-label="Action name" data-rect="24,80,976,116">
+            <input aria-label="Parameters" data-rect="24,650,976,690">
+          </div>
+          <div data-rect="24,560,976,596"><div data-slot="form-actions" data-rect="24,560,976,596"><button data-rect="800,560,976,596">Save</button></div></div>
+        </form>
+      </div>`);
+    expect(narrow()).toEqual([
+      "sheet-actions: dialog-content > form-actions (ends 104 px above the sheet's bottom)",
+    ]);
+    // On the bottom, but the sheet has nothing left to scroll: the last field stays under them. A
+    // field inside a scroller of its own (above) is that box's to show, not the buttons'.
+    page(`
+      <div data-slot="dialog-content" style="position: fixed; overflow-y: auto" data-rect="0,0,1000,700" data-ch="700" data-sh="700">
+        <form data-rect="0,56,1000,700">
+          <input aria-label="Action name" data-rect="24,80,976,116">
+          <input aria-label="Parameters" data-rect="24,650,976,686">
+          <div data-rect="0,640,1000,700"><div data-slot="form-actions" data-rect="24,656,976,692"><button data-rect="800,656,976,692">Save</button></div></div>
+        </form>
+      </div>`);
+    expect(narrow()).toEqual([
+      "sheet-actions: dialog-content > input (under dialog-content > form-actions)",
+    ]);
+    // Fixed: the buttons rest on the bottom, and the last field scrolls up clear of them (the sheet
+    // hides 300 px, so at the end of its scroll the field at 900 is at 600, above the buttons at 640).
+    page(`
+      <div data-slot="dialog-content" style="position: fixed; overflow-y: auto" data-rect="0,0,1000,700" data-ch="700" data-sh="1000">
+        <form data-rect="0,56,1000,1000">
+          <input aria-label="Action name" data-rect="24,80,976,116">
+          <input aria-label="Parameters" data-rect="24,900,976,936">
+          <div data-rect="0,640,1000,700"><div data-slot="form-actions" data-rect="24,656,976,692"><button data-rect="800,656,976,692">Save</button></div></div>
+        </form>
+      </div>`);
+    expect(narrow()).toEqual([]);
+    // A dialog that is not a sheet (a wide window) keeps its buttons where its form ends.
+    page(`
+      <div data-slot="dialog-content" style="position: fixed" data-rect="200,100,800,500">
+        <form data-rect="224,124,776,476">
+          <input aria-label="Action name" data-rect="224,140,776,176">
+          <div data-rect="224,300,776,336"><div data-slot="form-actions" data-rect="224,300,776,336"></div></div>
+        </form>
+      </div>`);
+    expect(narrow()).toEqual([]);
+  });
+
   test("narrow (#641): a page header that starts under the tab row, and a title cut short, are findings", () => {
     page(`
       <div class="tab-strip" role="tablist" data-rect="0,0,640,40"></div>
