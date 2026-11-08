@@ -14,7 +14,7 @@ export type ToolLoad = () => Promise<HistoryToolDetail | null>;
  * input and the result, read on the first open.
  */
 export function ToolRow(
-  props: Readonly<{ name: string; input: string; label: string; load?: ToolLoad | undefined }>,
+  props: Readonly<{ name: string; input: string; label: string; load?: ToolLoad }>,
 ) {
   const t = useT();
   const [open, setOpen] = useState(false);
