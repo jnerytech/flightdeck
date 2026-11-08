@@ -1,5 +1,5 @@
 import type { WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,21 @@ export function RunAgain(props: Readonly<RunAgainProps>) {
   const { t } = store.i18n;
   const state = runAgain(run, props.workflow, props.known);
   const [refused, setRefused] = useState<string | null>(null);
+  const [started, setStarted] = useState(false);
   const refusedBox = useRef<HTMLDivElement>(null);
+  const startedBox = useRef<HTMLParagraphElement>(null);
+  const reasonId = useId();
+  useEffect(() => {
+    if (started) startedBox.current?.focus();
+  }, [started]);
+  // Once started the button is gone (the new run is not failed): the note takes its place and the focus.
+  if (started) {
+    return (
+      <p role="status" ref={startedBox} tabIndex={-1} className="text-sm" data-started>
+        {t("runUi.again.started")}
+      </p>
+    );
+  }
   if (!state.show) return null;
   const { off } = state;
   const start = async () => {
@@ -44,7 +58,9 @@ export function RunAgain(props: Readonly<RunAgainProps>) {
     if (!result.ok) {
       setRefused(refusalText(result.code, result.message, t, result));
       refusedBox.current?.focus();
+      return;
     }
+    setStarted(true);
   };
   return (
     <Stack gap={2}>
@@ -53,14 +69,17 @@ export function RunAgain(props: Readonly<RunAgainProps>) {
           variant="outline"
           size="sm"
           disabled={off !== null}
-          {...(off
-            ? { disabledReason: t(`runUi.again.${off}` as Key, { name: run.workflowName }) }
-            : {})}
+          aria-describedby={off ? reasonId : undefined}
           onClick={start}
         >
           {t("runUi.again.action")}
         </ActionButton>
       </div>
+      {off && (
+        <p id={reasonId} className="text-muted-foreground text-xs">
+          {t(`runUi.again.${off}` as Key, { name: run.workflowName })}
+        </p>
+      )}
       {off !== null && off !== "loading" && (
         <div>
           <Button variant="link" size="sm" onClick={props.onOpenWorkflows}>

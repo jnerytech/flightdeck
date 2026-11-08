@@ -118,6 +118,9 @@ function setup(
   return { store, sent, opened, view };
 }
 
+const startedNote = () =>
+  screen.queryAllByRole("status").find((box) => (box.textContent ?? "") === "Started again.") ??
+  null;
 const button = (name: string | RegExp) =>
   screen.queryByRole("button", { name }) as HTMLButtonElement | null;
 async function click(target: HTMLElement | null) {
@@ -132,14 +135,8 @@ describe("run-again-ui: Run again on a failed run (#1219)", () => {
     await click(button("Run again"));
     await settleMaybe(() => sent.length === 1, 5000);
     // The button goes once the run starts: the focus moves to what says so, not to the page.
-    const status = await settleMaybe(
-      () => screen.queryByRole("status")?.textContent === "Started again.",
-      3000,
-    );
-    const focused = await settleMaybe(
-      () => document.activeElement === screen.queryByRole("status"),
-      2000,
-    );
+    const status = await settleMaybe(() => startedNote()?.textContent === "Started again.", 3000);
+    const focused = await settleMaybe(() => document.activeElement === startedNote(), 2000);
     expect([sent, status, focused]).toEqual([
       [["card.start", { cardId: "c1", workflow: "feature", inputs: { topic: "login" } }]],
       true,

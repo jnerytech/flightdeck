@@ -4015,6 +4015,7 @@ export const ptBR = {
         "O workflow {name} mudou desde que você confiou nele: revise e confie de novo antes de executá-lo.",
       invalid: "O workflow {name} tem erros: corrija o arquivo e faça o commit.",
       openWorkflows: "Abrir Workflows",
+      started: "Executando de novo.",
     },
     budget: "Orçamento",
     gate: "Gate {step}",
