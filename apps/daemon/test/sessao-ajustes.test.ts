@@ -237,4 +237,13 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
       .map((e) => (e.event as { permissionMode?: string }).permissionMode);
     expect(modes).toEqual(["plan"]);
   });
+
+  test("a run started again (resume, a restart) starts in the mode the session last reported, never back in the start mode (#935)", async () => {
+    const { manager, runtime, sessionId } = await liveSession();
+    await manager.setPermissionMode(sessionId, "plan");
+    await manager.close(sessionId);
+    await poll(() => manager.get(sessionId).status === "ended", 3000);
+    await manager.resume(sessionId);
+    expect(runtime.starts.map((start) => start.permissionMode)).toEqual(["default", "plan"]);
+  });
 });
