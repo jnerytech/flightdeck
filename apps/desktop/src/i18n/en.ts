@@ -4501,6 +4501,16 @@ export const en: Dictionary = {
         gitAdd: "a check before git add",
         secrets: "a check on secret files",
       },
+      share: {
+        action: "Share as template",
+        message:
+          "Keeps this project's CLAUDE.md, agents and skills as a template any project on this host can start from. Settings stay out: never hooks, permissions or MCP servers. Every file is checked for secrets first.",
+        name: "Template name",
+        confirm: "Share",
+        filesOne: "1 file",
+        filesMany: "{n} files",
+        done: "Shared as the template {title} ({files}).",
+      },
       setup: {
         action: "Set up Claude Code",
         apply: "Apply the setup",

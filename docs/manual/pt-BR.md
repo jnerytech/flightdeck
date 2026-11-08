@@ -339,6 +339,11 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
   variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
   avisa: uma parte marcada como faltando pode existir.
+- Em um host que guarda modelos de configuração, **Compartilhar como modelo**, abaixo da checklist,
+  pede um nome e guarda o `CLAUDE.md`, os agentes e as skills do projeto como um modelo do qual
+  qualquer projeto desse host pode partir. As configurações (hooks, permissões, servidores MCP)
+  nunca são compartilhadas, cada arquivo é verificado em busca de segredos antes, e um nome já
+  usado é recusado.
 - **Conhecimento do projeto** lista os PRDs, RFCs, ADRs e specs do projeto (os arquivos Markdown em
   `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` e `docs/specs`), cada um com título, caminho,
   tipo e o status que diz ter no front matter (`status: valid`, `transitional` ou `obsolete`). Um

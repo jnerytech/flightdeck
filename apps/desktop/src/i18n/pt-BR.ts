@@ -4508,6 +4508,16 @@ export const ptBR = {
         gitAdd: "uma verificação antes do git add",
         secrets: "uma verificação de arquivos de segredo",
       },
+      share: {
+        action: "Compartilhar como modelo",
+        message:
+          "Guarda o CLAUDE.md, os agentes e as skills deste projeto como um modelo do qual qualquer projeto deste host pode partir. As configurações ficam de fora: nunca hooks, permissões ou servidores MCP. Cada arquivo é verificado em busca de segredos antes.",
+        name: "Nome do modelo",
+        confirm: "Compartilhar",
+        filesOne: "1 arquivo",
+        filesMany: "{n} arquivos",
+        done: "Compartilhado como o modelo {title} ({files}).",
+      },
       setup: {
         action: "Configurar o Claude Code",
         apply: "Aplicar a configuração",

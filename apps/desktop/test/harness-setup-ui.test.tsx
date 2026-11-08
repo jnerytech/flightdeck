@@ -127,6 +127,19 @@ async function open() {
 }
 
 describe("harness-setup-ui: the project page sets up Claude Code after the person read the preview (#75)", () => {
+  test("only a host that keeps setup templates offers to share the project's setup", async () => {
+    const withTemplates = setup({ features: [...FEATURES, "harnessTemplates"] });
+    render(withTemplates.view);
+    await listing();
+    const offered = await settleMaybe(() => button("Share as template") !== null);
+    cleanup();
+    const without = setup();
+    render(without.view);
+    await listing();
+    await uiIdle();
+    expect([offered, button("Share as template") !== null]).toEqual([true, false]);
+  });
+
   test("only a host that can preview and apply offers it", async () => {
     const both = setup();
     render(both.view);

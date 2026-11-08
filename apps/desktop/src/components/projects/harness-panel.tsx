@@ -2,7 +2,7 @@ import type { ProjectLoad } from "@flightdeck/protocol";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
 import { HarnessSetup, type HarnessSetupProps } from "@/components/projects/harness-setup";
-import type { HarnessShareProps } from "@/components/projects/harness-share";
+import { HarnessShare, type HarnessShareProps } from "@/components/projects/harness-share";
 import type { AppStore } from "@/lib/app-store";
 import { type HarnessItem, harnessParts } from "@/lib/harness";
 
@@ -80,6 +80,7 @@ export function HarnessPanel(
         })}
       </Stack>
       {props.setup && <HarnessSetup {...props.setup} />}
+      {props.share && <HarnessShare {...props.share} />}
     </Panel>
   );
 }
