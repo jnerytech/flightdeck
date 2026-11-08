@@ -1,0 +1,211 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { ExternalSessions } from "../src/central/external.ts";
+import { startReceptor } from "../src/central/receptor.ts";
+import { PLAIN_PATH, RECEPTOR_FILE } from "../src/central/wrapper.ts";
+import { runCli } from "../src/main.ts";
+import { EventStore } from "../src/store/event-store.ts";
+import { installFakeClaude } from "./fake-claude.ts";
+import { tempDir } from "./helpers.ts";
+
+/** Issue #936: on Windows the channel config goes to a plain path claude can read back. */
+const HOOKS = "hooks-token-0123456789";
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+function receptor() {
+  const external = new ExternalSessions({ db: new EventStore(":memory:").db, staleAfterS: 900 });
+  const server = startReceptor({ port: 0, token: () => HOOKS, external, isManaged: () => false });
+  cleanups.push(() => server.stop());
+  return server.url;
+}
+
+/** A host whose data folder is `dataParts` below a temp folder, claude as given. */
+function host(dataParts: string[], executablePath?: string) {
+  const dir = tempDir();
+  const dataDir = join(dir, ...dataParts);
+  mkdirSync(dataDir, { recursive: true });
+  const file = join(dir, "config.json");
+  writeFileSync(
+    file,
+    JSON.stringify({
+      token: "t".repeat(32),
+      dataDir,
+      hooks: { port: 0, token: HOOKS },
+      ...(executablePath ? { claude: { executablePath } } : {}),
+    }),
+  );
+  writeFileSync(join(dataDir, RECEPTOR_FILE), JSON.stringify({ url: receptor() }));
+  return { file, dataDir };
+}
+
+interface Acl {
+  cmd: string[];
+  /** What the folder held when icacls ran: the token file must not be there yet. */
+  listing: string[];
+}
+
+async function launch(
+  file: string,
+  options: {
+    platform?: NodeJS.Platform;
+    env?: Record<string, string>;
+    aclCode?: number;
+  } = {},
+) {
+  const acls: Acl[] = [];
+  const errors: string[] = [];
+  const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+  cleanups.push(fake.restore);
+  await runCli(["claude", "-c"], {
+    env: { ...process.env, FLIGHTDECK_CONFIG: file, ...options.env },
+    log: { log: () => {}, error: (m) => errors.push(m) },
+    exit: () => {},
+    onSignal: () => {},
+    selfCommand: ["C:\\fd\\flightdeckd.exe"],
+    ...(options.platform ? { platform: options.platform } : {}),
+    exec: async (cmd) => {
+      acls.push({ cmd, listing: readdirSync(cmd[1] ?? "") });
+      return { code: options.aclCode ?? 0, stdout: "" };
+    },
+  });
+  const start = fake.events().find((e) => e.type === "start") as unknown as {
+    args: string[];
+    mcpConfig: { mcpServers: Record<string, unknown> } | null;
+  };
+  const at = start.args.indexOf("--mcp-config");
+  return { start, acls, errors, configPath: at < 0 ? null : (start.args[at + 1] ?? null), fake };
+}
+
+const WINDOWS_ENV = (programData: string, over: Record<string, string> = {}) => ({
+  ProgramData: programData,
+  USERNAME: "joão",
+  USERDOMAIN: "PC",
+  ...over,
+});
+
+describe("wrapper-ascii: the channel config is read back from a plain path (#936)", () => {
+  test("the plain-path rule: letters, digits and \\ / : . _ - only", () => {
+    const plain = ["C:\\ProgramData\\Flightdeck-01ABC\\01ABC.json", "/tmp/fd-1/a_b.json"];
+    const not = [
+      "C:\\Users\\João Silva\\AppData\\x.json",
+      "C:\\Users\\Ana Lima\\x.json",
+      "C:\\a&b\\x.json",
+      "C:\\a%TEMP%\\x.json",
+      "C:\\a^b\\x.json",
+      "C:\\a(b)\\x.json",
+    ];
+    expect([plain.map((p) => PLAIN_PATH.test(p)), not.map((p) => PLAIN_PATH.test(p))]).toEqual([
+      plain.map(() => true),
+      not.map(() => false),
+    ]);
+  });
+
+  test("a data folder with a space and an accent: the config goes to a private plain folder, and is gone after", async () => {
+    const programData = tempDir();
+    const { file } = host(["João Silva", "data"]);
+    const run = await launch(file, { platform: "win32", env: WINDOWS_ENV(programData) });
+    const path = run.configPath ?? "";
+    expect([
+      PLAIN_PATH.test(path),
+      path.startsWith(programData),
+      Object.keys(run.start.mcpConfig?.mcpServers ?? {}),
+      existsSync(path),
+      readdirSync(programData),
+    ]).toEqual([true, true, ["flightdeck"], false, []]);
+    // The folder is restricted to the user before the file with the token is written into it.
+    expect(run.acls).toHaveLength(1);
+    expect(run.acls[0]?.cmd.slice(0, 1)).toEqual(["icacls"]);
+    expect(run.acls[0]?.cmd.slice(2)).toEqual(["/inheritance:r", "/grant:r", "PC\\joão:(OI)(CI)F"]);
+    expect(run.acls[0]?.listing).toEqual([]);
+  });
+
+  test("claude as a .cmd shim, with a path cmd.exe would change (& or %): the same plain folder", async () => {
+    const programData = tempDir();
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    const shim = join(fake.dir, "claude.cmd");
+    copyFileSync(join(fake.dir, "claude"), shim);
+    chmodSync(shim, 0o755);
+    fake.restore();
+    const { file } = host(["a&b%TEMP%", "data"], shim);
+    const run = await launch(file, { platform: "win32", env: WINDOWS_ENV(programData) });
+    expect([
+      PLAIN_PATH.test(run.configPath ?? ""),
+      (run.configPath ?? "").startsWith(programData),
+      run.acls.length,
+    ]).toEqual([true, true, 1]);
+  });
+
+  test("a data folder that is already plain keeps the config where it was, with no folder made and no icacls", async () => {
+    const programData = tempDir();
+    const { file, dataDir } = host(["data"]);
+    const run = await launch(file, { platform: "win32", env: WINDOWS_ENV(programData) });
+    expect([
+      (run.configPath ?? "").startsWith(join(dataDir, "channels")),
+      run.acls.length,
+      readdirSync(programData),
+    ]).toEqual([true, 0, []]);
+  });
+
+  test("on Linux an accent and a space change nothing: the config stays in the data folder", async () => {
+    const { file, dataDir } = host(["João Silva", "data"]);
+    const run = await launch(file, { env: WINDOWS_ENV(tempDir()) });
+    expect([(run.configPath ?? "").startsWith(join(dataDir, "channels")), run.acls.length]).toEqual(
+      [true, 0],
+    );
+  });
+
+  test("a ProgramData that is not plain is passed over for the public folder", async () => {
+    const odd = join(tempDir(), "Program Data");
+    mkdirSync(odd);
+    const publicFolder = tempDir();
+    const { file } = host(["João Silva", "data"]);
+    const run = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(odd, { PUBLIC: publicFolder }),
+    });
+    expect([(run.configPath ?? "").startsWith(publicFolder), readdirSync(odd)]).toEqual([true, []]);
+  });
+
+  test("when the folder cannot be restricted, the config is not written and claude opens with neither flag", async () => {
+    const programData = tempDir();
+    const { file } = host(["João Silva", "data"]);
+    const run = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(programData),
+      aclCode: 5,
+    });
+    expect([
+      run.configPath,
+      run.start.args.includes("--dangerously-load-development-channels"),
+      readdirSync(programData),
+      run.errors.join("\n").includes("configuração do canal"),
+    ]).toEqual([null, false, [], true]);
+  });
+
+  test("with no plain folder to use, or no user to give it to, claude opens with neither flag", async () => {
+    const { file } = host(["João Silva", "data"]);
+    const noBase = await launch(file, { platform: "win32", env: { USERNAME: "joão" } });
+    const noUser = await launch(file, {
+      platform: "win32",
+      env: { ProgramData: tempDir(), USERNAME: "" },
+    });
+    expect([noBase.configPath, noUser.configPath, noBase.acls.length, noUser.acls.length]).toEqual([
+      null,
+      null,
+      0,
+      0,
+    ]);
+    expect(noBase.errors.join("\n")).toContain("configuração do canal");
+  });
+});

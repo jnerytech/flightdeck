@@ -54,6 +54,9 @@ async function telemetryTarget(config: Config): Promise<TelemetryTarget | null> 
   }
 }
 
+/** The characters a path may hold for claude to read it back whatever starts it (#936). */
+export const PLAIN_PATH = /^$/;
+
 /** The local daemon's receptor URL, if it answers within `timeoutMs`. */
 export async function liveReceptor(dataDir: string, timeoutMs: number): Promise<string | null> {
   const file = join(dataDir, RECEPTOR_FILE);
