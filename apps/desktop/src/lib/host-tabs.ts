@@ -214,9 +214,8 @@ export class HostTabs {
    * A navigation took the window to another host's tabs (#932): `from` is the host it left (null
    * from no host). The window says so, and Back returns there.
    */
-  onSwitch(listener: (from: string | null, to: string) => void): () => void {
+  onSwitch(listener: (from: string | null, to: string) => void): void {
     this.switchListeners.add(listener);
-    return () => this.switchListeners.delete(listener);
   }
 
   /**
