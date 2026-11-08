@@ -5129,6 +5129,8 @@ export const en: Dictionary = {
     title: "Claude Code setup templates",
     hint: "Shared from a project's Claude Code setup. Another project can start from one.",
     asking: "Looking for templates…",
+    loadFailed: "Could not load the templates.",
+    retry: "Try again",
     none: "No templates yet. Share a project's setup to make one.",
     filesOne: "1 file",
     filesMany: "{n} files",

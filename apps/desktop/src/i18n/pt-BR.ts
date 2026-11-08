@@ -5148,6 +5148,8 @@ export const ptBR = {
     title: "Modelos de configuração do Claude Code",
     hint: "Compartilhados da configuração do Claude Code de um projeto. Outro projeto pode partir de um deles.",
     asking: "Procurando modelos…",
+    loadFailed: "Não foi possível carregar os modelos.",
+    retry: "Tentar de novo",
     none: "Nenhum modelo ainda. Compartilhe a configuração de um projeto para criar um.",
     filesOne: "1 arquivo",
     filesMany: "{n} arquivos",

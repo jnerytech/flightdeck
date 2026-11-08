@@ -1,8 +1,8 @@
 import type { HarnessTemplateInfo } from "@flightdeck/protocol";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ListRow } from "@/components/layout/list-row";
 import { Panel } from "@/components/layout/panel";
-import { Stack } from "@/components/layout/stack";
+import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
@@ -18,20 +18,35 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
   const { store, hostId } = props;
   const [templates, setTemplates] = useState<HarnessTemplateInfo[] | null>(null);
   const [deleting, setDeleting] = useState<HarnessTemplateInfo | null>(null);
+  const [failed, setFailed] = useState(false);
+  // The Delete button that opened the dialog: a cancel gives the focus back to it.
+  const opener = useRef<HTMLElement | null>(null);
+  const cancelled = useRef(false);
   const refresh = useCallback(async () => {
     const next = await store.hostCommand(hostId, "harness.templates.list", {});
+    setFailed(next === null);
     if (next) setTemplates(next.templates);
   }, [store, hostId]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // After the dialog is gone: its own focus return has nothing to go back to (no trigger).
+  useEffect(() => {
+    if (deleting !== null || !cancelled.current) return;
+    cancelled.current = false;
+    const id = setTimeout(() => opener.current?.focus(), 0);
+    return () => clearTimeout(id);
+  }, [deleting]);
 
   const remove = async (template: HarnessTemplateInfo) => {
     setDeleting(null);
-    const done = await store.hostCommand(hostId, "harness.templates.delete", {
-      id: template.id,
-      confirm: true,
-    });
+    // Not retried from the banner: a delete repeated later, unseen, would run without a question.
+    const done = await store.hostCommand(
+      hostId,
+      "harness.templates.delete",
+      { id: template.id, confirm: true },
+      { retry: false },
+    );
     await refresh();
     if (done) store.success(t("harnessTemplates.deleted", { title: template.title }));
   };
@@ -44,11 +59,19 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
       size: formatBytes(template.bytes),
     });
   return (
-    <section aria-label={t("harnessTemplates.title")}>
-      <Panel title={t("harnessTemplates.title")}>
+    <>
+      <Panel title={t("harnessTemplates.title")} label={t("harnessTemplates.title")}>
         <p className="text-muted-foreground text-sm">{t("harnessTemplates.hint")}</p>
-        {templates === null && (
+        {templates === null && !failed && (
           <p className="text-muted-foreground text-sm">{t("harnessTemplates.asking")}</p>
+        )}
+        {failed && (
+          <Inline>
+            <p className="text-sm">{t("harnessTemplates.loadFailed")}</p>
+            <Button variant="outline" size="sm" onClick={() => void refresh()}>
+              {t("harnessTemplates.retry")}
+            </Button>
+          </Inline>
         )}
         {templates?.length === 0 && <p className="text-sm">{t("harnessTemplates.none")}</p>}
         {templates && templates.length > 0 && (
@@ -64,7 +87,10 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
                       variant="outline"
                       size="sm"
                       aria-label={t("harnessTemplates.deleteLabel", { title: template.title })}
-                      onClick={() => setDeleting(template)}
+                      onClick={(event) => {
+                        opener.current = event.currentTarget;
+                        setDeleting(template);
+                      }}
                     >
                       {t("harnessTemplates.delete")}
                     </Button>
@@ -82,9 +108,12 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
           confirmLabel={t("harnessTemplates.confirmButton")}
           destructive
           onConfirm={() => void remove(deleting)}
-          onCancel={() => setDeleting(null)}
+          onCancel={() => {
+            cancelled.current = true;
+            setDeleting(null);
+          }}
         />
       )}
-    </section>
+    </>
   );
 }
