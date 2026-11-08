@@ -252,6 +252,10 @@ describe("board-contracts: the spec artifact (issue #78, slice 3b)", () => {
       "/docs/adr/x.md",
       "C:\\docs\\adr\\x.md",
       "docs/adr/x\u0000.md",
+      // line breaks and direction marks past the ASCII controls
+      "docs/adr/x\u0085.md",
+      "docs/adr/x\u2028y.md",
+      "docs/adr/x\u202ey.md",
     ]) {
       expect(typeof pinnedDocProblem(bad)).toBe("string");
     }
