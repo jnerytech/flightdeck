@@ -5,7 +5,9 @@ import {
   FILE_LIMIT_S,
   missingReport,
   parseJunit,
+  readAllowlist,
   type SlowAllowlist,
+  slowReport,
   slowVerdict,
   TEST_LIMIT_S,
 } from "../lib/slow-tests.ts";
@@ -48,6 +50,73 @@ describe("slow-tests (#1003)", () => {
       ],
     });
     expect(parseJunit("not xml")).toEqual({ files: [], tests: [] });
+  });
+
+  test("#1022 review: a report bun 1.4.4 really wrote parses, odd names and all", () => {
+    // Written by `bun test --reporter=junit` on a file with these test names (fixture).
+    const real = readFileSync(join(import.meta.dir, "fixtures/slow-tests-junit.xml"), "utf8");
+    expect(parseJunit(real).tests.map((t) => t.id)).toEqual([
+      `names.test.ts > odd => names > it's a <tag> & "quote"`,
+      "names.test.ts > odd => names > ação não é 🚀",
+      "names.test.ts > top level",
+    ]);
+    expect(parseJunit(real).files).toEqual([{ file: "names.test.ts", seconds: 0.00320771 }]);
+  });
+
+  test("#1022 review: numeric entities are read, an unknown one stays as written, and a Windows path uses /", () => {
+    const xml = [
+      '<testsuite name="apps\\c.test.ts" file="apps\\c.test.ts" time="1">',
+      '  <testcase name="it&#39;s &#x1F680; &bogus;" time="0.1" />',
+      "</testsuite>",
+    ].join("\n");
+    expect(parseJunit(xml)).toEqual({
+      files: [{ file: "apps/c.test.ts", seconds: 1 }],
+      tests: [{ id: "apps/c.test.ts > it's 🚀 &bogus;", seconds: 0.1 }],
+    });
+  });
+
+  test("#1022 review: the report lists the slowest tests and names runner noise on a fail, and warns on stale entries", () => {
+    const times = parseJunit(junit);
+    const allow: SlowAllowlist = {
+      tests: {
+        "apps/a.test.ts > at the top": "#1 cut",
+        "apps/a.test.ts > gone": "#2 deleted",
+        "apps/z.test.ts > elsewhere": "#3 not in this run",
+      },
+      files: { "apps/b.test.ts": "#4 cut" },
+    };
+    const report = slowReport(times, allow);
+    expect(report.code).toBe(1);
+    expect(report.lines).toEqual([
+      "slow-tests: stale allowlist entry apps/b.test.ts: 2.0 s now, under the 60 s limit",
+      "slow-tests: stale allowlist entry apps/a.test.ts > at the top: 5.0 s now, under the 5 s limit",
+      "slow-tests: stale allowlist entry apps/a.test.ts > gone: its file ran without it",
+      "slow-tests: 2 too slow (#1003):",
+      "  - apps/a.test.ts: the file took 61.3 s, over the 60 s limit",
+      "  - apps/a.test.ts > board & cards > moves a card: 6.5 s, over the 5 s limit",
+      "The slowest tests of this run:",
+      "  6.5 s  apps/a.test.ts > board & cards > moves a card",
+      "  5.0 s  apps/a.test.ts > at the top",
+      '  0.5 s  apps/a.test.ts > board & cards > says "no" <fast>',
+      "  0.0 s  apps/b.test.ts > quick",
+      "Make it faster, or delete it when a faster test checks the same thing (docs/TDD.md). A test fd-qa is still cutting goes in slow-tests-allowlist.json, with its issue. Within 10% of a limit it may be runner noise: rerun the job once before cutting it.",
+    ]);
+    const fine = slowReport(
+      parseJunit('<testsuite name="x.test.ts" time="1"><testcase name="t" time="1" /></testsuite>'),
+      {
+        tests: {},
+        files: {},
+      },
+    );
+    expect(fine).toEqual({ code: 0, lines: ["slow-tests: 1 test(s) in 1 file(s), none too slow"] });
+  });
+
+  test("#1022 review: a broken allowlist is named, not a stack trace", () => {
+    expect(readAllowlist('{"tests": {}, "files": {}}')).toEqual({ tests: {}, files: {} });
+    expect(readAllowlist("{ nope")).toBe("slow-tests: slow-tests-allowlist.json is not valid JSON");
+    expect(readAllowlist('{"tests": []}')).toBe(
+      "slow-tests: slow-tests-allowlist.json needs a tests and a files map",
+    );
   });
 
   test("a test over 5 s or a file over 60 s fails unless the allowlist names it; 5 s itself passes", () => {
