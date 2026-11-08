@@ -70,6 +70,16 @@ describe("session-context", () => {
     expect(text).toContain("slot: fd-ux: bun run demo:shots (pid 42, 1m 0s)");
   });
 
+  test("a red main is said with its claim, so nobody starts a parallel fix (#1246)", () => {
+    const red =
+      "main is red since https://github.com/o/r/actions/runs/7: typecheck (#30, fd-qa); do not start a parallel fix";
+    const lines = sessionContext("compact", { ...facts, mainRed: red }).split("\n");
+    expect(lines.filter((line) => line.includes("main is red"))).toEqual([`- warning: ${red}`]);
+    expect(sessionContext("startup", { ...facts, mainRed: null }).includes("main is red")).toBe(
+      false,
+    );
+  });
+
   test("on main it points dev work to a worktree, and with no facts it says nothing", () => {
     expect(sessionContext("startup", { ...facts, branch: "main", ahead: 0, tested: [] })).toContain(
       "cd ../flightdeck-<topic> && claude",
