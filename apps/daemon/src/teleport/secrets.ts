@@ -19,6 +19,13 @@ const DEFAULT_PACE = {
   pause: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
 };
 
+/** The line that starts at `start` and where the next one starts (past the end after the last). */
+function lineAt(text: string, start: number): { line: string; next: number } {
+  const end = text.indexOf("\n", start);
+  if (end === -1) return { line: text.slice(start), next: text.length + 1 };
+  return { line: text.slice(start, end), next: end + 1 };
+}
+
 /**
  * The lines of a text that look like secrets, and the kinds found in the order met. The text is
  * walked line by line, never split into an array: a transcript can be 64 MB.
@@ -38,9 +45,8 @@ export async function secretLines(
       mark = start;
       await pace.pause(); // NOSONAR: the pause is the point: it gives the event loop back between slices
     }
-    const end = text.indexOf("\n", start);
-    const line = text.slice(start, end === -1 ? text.length : end);
-    start = end === -1 ? text.length + 1 : end + 1;
+    const { line, next } = lineAt(text, start);
+    start = next;
     const found = line ? scan(line) : [];
     if (found.length === 0) continue;
     lines++;
