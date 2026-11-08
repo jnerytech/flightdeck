@@ -683,14 +683,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "roi");
   }
 
-  function boardsync(): BoardSyncService {
-    return need(opts, "boardsync");
-  }
-
-  function github(): GithubService {
-    return need(opts, "github");
-  }
-
   /**
    * Asks git for the project key of each folder without blocking, so the sync `listed` below reads
    * the cache: a cold folder would otherwise cost one blocking git spawn on the event loop, which
@@ -1461,44 +1453,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { models: await opts.opencode.models() });
       }
-      case "boardsync.boards":
-        return ok(command.type, { boards: await boardsync().boards() });
-      case "boardsync.link":
-        return ok(command.type, await boardsync().link(command.payload));
-      case "boardsync.unlink":
-        boardsync().unlink(command.payload.projectId);
-        return ok(command.type);
-      case "boardsync.setMap":
-        return ok(
-          command.type,
-          await boardsync().setMap(command.payload.projectId, command.payload.columnMap),
-        );
-      case "boardsync.setPush": {
-        const { projectId, push, confirm } = command.payload;
-        return ok(command.type, await boardsync().setPush(projectId, push, confirm));
-      }
-      case "boardsync.status":
-        return ok(command.type, await boardsync().status(command.payload.projectId));
-      case "boardsync.syncNow":
-        return ok(command.type, await boardsync().syncNow(command.payload.projectId));
-      case "boardsync.log":
-        return ok(command.type, { entries: boardsync().log(command.payload.cardId) });
-      case "github.status":
-        return ok(command.type, await github().status());
-      case "github.login.start":
-        return ok(command.type, await github().loginStart());
-      case "github.login.cancel":
-        await github().loginCancel();
-        return ok(command.type);
-      case "github.logout":
-        await github().logout();
-        return ok(command.type);
-      case "github.repos":
-        return ok(command.type, { repos: await github().repos(command.payload.query) });
-      case "github.issues":
-        return ok(command.type, { issues: await github().issues(command.payload.repo) });
-      case "github.start":
-        return ok(command.type, await github().start(command.payload));
       case "projects.clone":
         if (!opts.findProjects) throw featureOff("projects.clone");
         return ok(
