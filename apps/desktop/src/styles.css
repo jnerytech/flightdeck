@@ -1132,6 +1132,17 @@ html:not(:has([data-slot="status-bar"])) {
     /* Room under the stack for a button's reason, which hangs below it. */
     padding: 1rem 1.5rem 1.5rem;
   }
+  /* #1271: a Form's own buttons (FormActions) are the sheet's footer too: they rest on its bottom
+     edge and the fields scroll clear of them, as the footer above. Their row stays a row. */
+  [data-slot="dialog-content"] > form > :has(> [data-slot="form-actions"]) {
+    position: sticky;
+    bottom: -1.5rem;
+    z-index: 1;
+    margin: auto -1.5rem -1.5rem;
+    border-top-width: 1px;
+    background-color: var(--background);
+    padding: 1rem 1.5rem 1.5rem;
+  }
   /* A button with a reason under it is as wide as the others in the stack. */
   [data-slot="dialog-footer"] .action-button-box > button {
     flex: 1;
