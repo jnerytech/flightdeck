@@ -316,7 +316,7 @@ describe("board-contracts-ui: a card says what it lacks, and a column says what 
     });
     const ask = dialog() as HTMLElement;
     expect(ask).not.toBeNull();
-    expect(ask.textContent).toContain("A não tem: um link de PR");
+    expect(ask.textContent).toContain("A ainda precisa de um link de PR.");
     expect(within(ask).getByRole("button", { name: "Mover mesmo assim" })).not.toBeNull();
   });
 });
@@ -478,7 +478,7 @@ describe("board-contracts-ui: Start asks only when In progress confirms criteria
     const ask = dialog() as HTMLElement;
     expect(ask).not.toBeNull();
     expect(ask.textContent).toContain("Iniciar A mesmo assim?");
-    expect(ask.textContent).toContain("A não tem: critérios de aceite");
+    expect(ask.textContent).toContain("A ainda precisa de critérios de aceite");
     expect(within(ask).getByRole("button", { name: "Iniciar mesmo assim" })).not.toBeNull();
   });
 });
