@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
+import type { PrProvider, PrStatus } from "../src/board/pr.ts";
 import { startServer } from "../src/server.ts";
 import { newBoard } from "./board-helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -64,9 +65,8 @@ async function reason(run: Promise<unknown>): Promise<string> {
 
 describe("card-pr-merge: the card merges its open PR, after a confirm (#1196)", () => {
   test("a squash and a merge commit call gh pr merge with the PR's URL and that method, then the card is Done", async () => {
-    const gh = fakeGh([OPEN, { args: ["pr", "merge"] }]);
+    const gh = fakeGh([{ args: ["pr", "merge"] }, MERGED]);
     const squashed = await setup();
-    gh.respond([{ args: ["pr", "merge"] }, MERGED]);
     const done = await squashed.board.mergePr(squashed.cardId, "squash", true);
     const merged = await setup();
     await merged.board.mergePr(merged.cardId, "merge", true);
@@ -93,9 +93,10 @@ describe("card-pr-merge: the card merges its open PR, after a confirm (#1196)", 
     await ctx.board.mergePr(ctx.cardId, "squash", true);
     const flags = gh
       .calls()
+      .filter((args) => args.includes("merge"))
       .flat()
       .filter((arg) => arg.startsWith("--"));
-    expect(flags).toEqual(["--squash", "--json"]);
+    expect(flags).toEqual(["--squash"]);
   });
 
   test("without the confirm nothing is asked of gh", async () => {
@@ -197,37 +198,82 @@ describe("card-pr-merge: the card merges its open PR, after a confirm (#1196)", 
     ]);
   });
 
-  test("a PR merged by gh is a success even when the read that follows fails", async () => {
+  test("a PR merged by gh is a success even when the read that follows fails: a notice, then the next round moves the card", async () => {
     const gh = fakeGh([{ args: ["pr", "merge"] }]);
     const ctx = await setup();
     gh.respond([{ args: ["pr", "merge"] }, { args: ["view", "state,statusCheckRollup"], code: 1 }]);
     const card = await ctx.board.mergePr(ctx.cardId, "merge", true);
-    expect(card.id).toBe(ctx.cardId);
+    const after = [card.notice !== null, card.prState];
+    gh.respond([MERGED]);
+    await ctx.board.pollPrs();
+    const next = ctx.board.getCard(ctx.cardId);
+    expect([after, next.column, next.prState]).toEqual([[true, "open"], "done", "merged"]);
   });
 
-  test("a refusal with a known reason carries a fixed message, gh's own words only for the unknown one", async () => {
-    const gh = fakeGh([{ args: ["pr", "merge"], code: 1, stderr: "SECRET-WORDS" }]);
+  test("a refusal's message is fixed; gh's own words travel as the detail of the unknown one only, without tokens", async () => {
+    const gh = fakeGh([{ args: ["pr", "merge"], code: 1, stderr: "x" }]);
     const ctx = await setup();
-    const message = async (diagnosis: FakeRule | null) => {
-      gh.respond(
-        diagnosis === null
-          ? [{ args: ["pr", "merge"], code: 1, stderr: "SECRET-WORDS" }]
-          : [{ args: ["pr", "merge"], code: 1, stderr: "SECRET-WORDS" }, diagnosis],
-      );
+    const refusal = async (stderr: string, diagnosis: FakeRule | null) => {
+      const refuse = { args: ["pr", "merge"], code: 1, stderr };
+      gh.respond(diagnosis === null ? [refuse] : [refuse, diagnosis]);
       return ctx.board.mergePr(ctx.cardId, "merge", true).then(
-        () => "",
-        (caught: Error) => caught.message,
+        () => ({ message: "", params: {} as Record<string, string> }),
+        (caught: { message: string; params?: Record<string, string> }) => ({
+          message: caught.message,
+          params: caught.params ?? {},
+        }),
       );
     };
-    const known = await message({
+    const known = await refusal("SECRET-WORDS", {
       args: ["view", DIAGNOSE],
       stdout: JSON.stringify({ mergeStateStatus: "DIRTY", statusCheckRollup: [] }),
     });
-    const unknown = await message(null);
-    expect([known.includes("SECRET-WORDS"), unknown.includes("SECRET-WORDS")]).toEqual([
-      false,
-      true,
-    ]);
+    const unknown = await refusal(
+      "denied for ghp_abcDEF123456 and Bearer abc.def-123 at github.com",
+      null,
+    );
+    expect([
+      known.message.includes("SECRET-WORDS"),
+      known.params.detail,
+      unknown.message.includes("github.com"),
+      unknown.params.detail,
+    ]).toEqual([false, undefined, false, "denied for [token] and [token] at github.com"]);
+  });
+
+  test("a poll and a merge asking about the same card at once ask the provider once", async () => {
+    const status = Promise.withResolvers<PrStatus>();
+    let asked = 0;
+    const provider: PrProvider = {
+      create: async () => PR_URL,
+      status: () => {
+        asked++;
+        return status.promise;
+      },
+      url: async () => null,
+      comments: async () => [],
+      health: async () => ({ checks: [], conflicts: false }),
+      buildLog: async () => "",
+      merge: async () => {},
+    };
+    const ctx = newBoard({ prProvider: () => provider });
+    cleanups.push(() => ctx.board.stop());
+    const project = await ctx.board.addProject({
+      path: ctx.repo,
+      prProvider: "github",
+      promptTemplate: "",
+    });
+    const card = ctx.board.createCard(project.id, { title: "Sum", description: "add" });
+    ctx.store.db
+      .query("UPDATE cards SET pr_url = ?, pr_state = 'open', board_column = 'review' WHERE id = ?")
+      .run(PR_URL, card.id);
+    const round = ctx.board.pollPrs();
+    const merging = ctx.board.mergePr(card.id, "merge", true);
+    // Only microtasks and a spawn-free stand-in run here: both have reached the provider by now.
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    const whileAsking = asked;
+    status.resolve({ state: "merged", checks: null });
+    await Promise.all([round, merging]);
+    expect([whileAsking, ctx.board.getCard(card.id).column]).toEqual([1, "done"]);
   });
 
   test("the server merges over a near connection once confirmed, and refuses a far one", async () => {
