@@ -82,7 +82,8 @@ export interface SessionActions {
   copyText?(text: string): Promise<boolean>;
   send(text: string, images?: SessionImage[]): Promise<void>;
   /** Changes the permission mode / the model (null: the default) of the open session. */
-  setMode?(mode: SettableMode): Promise<void>;
+  /** False when the host refused the mode (#935): the picker goes back to the session's own. */
+  setMode?(mode: SettableMode): Promise<unknown>;
   setModel?(model: string | null): Promise<void>;
   /** Changes the effort of the live session; null is the model's default. */
   setEffort?(effort: EffortLevel | null): Promise<void>;
@@ -546,7 +547,18 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const owner = `${props.scrollKey ?? ""}|${current ?? ""}`;
   const [picks, setPicks] = useState<Readonly<Record<string, PermissionMode>>>({});
   const mode = picks[owner] ?? current;
-  const setMode = (next: PermissionMode) => setPicks((all) => ({ ...all, [owner]: next }));
+  /**
+   * Shows the pick at once and asks the host; a refusal (said in the error bar) takes it back, so
+   * the chip shows the session's own mode again (#935).
+   */
+  const pickMode = (next: SettableMode) => {
+    const key = owner;
+    setPicks((all) => ({ ...all, [key]: next }));
+    void actions.setMode?.(next).then((taken) => {
+      if (taken !== false) return;
+      setPicks(({ [key]: _refused, ...rest }) => rest);
+    });
+  };
   const [bypassAsk, setBypassAsk] = useState(false);
   const opencode = props.runtime === "opencode";
   const fork = opencode ? undefined : props.fork;
@@ -564,8 +576,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
       setBypassAsk(true);
       return;
     }
-    setMode(next);
-    void actions.setMode?.(next);
+    pickMode(next);
   };
   const [model, setModel] = useState("");
   const [effort, setEffort] = useState<EffortLevel | null>(null);
@@ -1013,8 +1024,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             onCancel={() => setBypassAsk(false)}
             onConfirm={() => {
               setBypassAsk(false);
-              setMode("bypassPermissions");
-              void actions.setMode?.("bypassPermissions");
+              pickMode("bypassPermissions");
             }}
           />
         )}
