@@ -67,6 +67,10 @@ const slugOf = (title: string) =>
     .slice(0, SLUG_MAX)
     .replace(/-+$/, "");
 
+/** Windows opens these names as devices whatever the extension: `nul.md` is no file. */
+const DEVICE_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/;
+const fileSlug = (slug: string) => (DEVICE_NAME.test(slug) ? `${slug}-doc` : slug);
+
 const textOf = (kind: KnowledgeKind, title: string) =>
   `---\nstatus: transitional\n---\n# ${title}\n\n${SECTIONS[kind].map((s) => `## ${s}`).join("\n\n")}\n`;
 
@@ -90,7 +94,8 @@ async function libraryFolder(root: string, kind: KnowledgeKind): Promise<string 
   if (!(await ensureFolder(docs)) || !(await ensureFolder(folder))) return null;
   const [real, at] = await Promise.allSettled([realpath(root), realpath(folder)]);
   if (real.status !== "fulfilled" || at.status !== "fulfilled") return null;
-  return samePath(at.value, join(real.value, "docs", kind)) ? folder : null;
+  // The write goes through the resolved folder, so a link swapped in after the check is not followed.
+  return samePath(at.value, join(real.value, "docs", kind)) ? at.value : null;
 }
 
 /** The next number after the highest `NNNN-` Markdown name in the folder. */
@@ -109,7 +114,7 @@ export async function createKnowledgeDoc(
   title: string,
 ): Promise<KnowledgeEntry> {
   const clean = oneLine(title);
-  const slug = slugOf(clean);
+  const slug = fileSlug(slugOf(clean));
   if (slug === "") {
     throw refuse("bad_request", "knowledge_title_invalid", "the title has no letter or digit");
   }
