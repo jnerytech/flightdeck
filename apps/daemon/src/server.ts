@@ -1229,38 +1229,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.projectTrust.inspect(path));
       }
-      case "knowledge.list": {
-        if (!opts.knowledge) throw featureOff("knowledge");
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.knowledge(path));
-      }
-      case "knowledge.index": {
-        if (!opts.knowledgeFeed) throw featureOff("knowledge");
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.knowledgeFeed(path));
-      }
-      case "knowledge.setStatus": {
-        if (!opts.knowledgeStatus) throw featureOff("knowledgeStatus");
-        const { path: asked, file, status, expectedHash } = command.payload;
-        const path = await resolveAllowedCwd(asked, opts.allowedRoots);
-        return ok(command.type, await opts.knowledgeStatus(path, file, status, expectedHash));
-      }
-      case "knowledge.create": {
-        if (!opts.knowledgeCreate) throw featureOff("knowledgeCreate");
-        const { path: asked, kind, title, body } = command.payload;
-        const path = await resolveAllowedCwd(asked, opts.allowedRoots);
-        return ok(command.type, await opts.knowledgeCreate(path, kind, title, body));
-      }
-      case "knowledge.feed": {
-        if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.knowledgeFeedSwitch.state(path));
-      }
-      case "knowledge.setFeed": {
-        if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.knowledgeFeedSwitch.set(path, command.payload.enabled));
-      }
       case "project.harness.stack": {
         if (!opts.harnessStack) throw featureOff("harnessStack");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
