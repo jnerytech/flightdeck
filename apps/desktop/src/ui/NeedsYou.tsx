@@ -40,6 +40,7 @@ type Entry =
 // items-stretch: a button's own style is align-items: flex-start, which leaves a line no width
 // to cut at (issue #175).
 const ROW_PAD = "px-2 py-1.5";
+const NOTE = `${ROW_PAD} text-muted-foreground text-sm`;
 const HEADING = `${ROW_PAD} font-medium text-muted-foreground text-xs`;
 const ROW = `flex w-full min-w-0 flex-col items-stretch gap-0.5 rounded-md ${ROW_PAD} text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[active=true]:bg-accent aria-pressed:bg-accent`;
 
@@ -534,6 +535,11 @@ export function NeedsYou(
         <span className="text-muted-foreground text-xs tabular-nums">{waiting.length}</span>
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto p-2">
+        {waiting.length === 0 && (
+          <li>
+            <p className={NOTE}>{t("needsYou.empty")}</p>
+          </li>
+        )}
         {entries.map((entry, i) => (
           <Fragment key={entry.key}>
             {i === firstFinished && (
