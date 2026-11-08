@@ -83,8 +83,10 @@ const cleanBody = (body: string) =>
     .trim();
 
 /** The file: front matter, the heading, then the given body or the kind's template sections. */
-const textOf = (kind: KnowledgeKind, title: string, body: string) =>
-  `---\nstatus: transitional\n---\n# ${title}\n\n${body === "" ? SECTIONS[kind].map((s) => `## ${s}`).join("\n\n") : body}\n`;
+const textOf = (kind: KnowledgeKind, title: string, body: string) => {
+  const sections = SECTIONS[kind].map((s) => `## ${s}`).join("\n\n");
+  return `---\nstatus: transitional\n---\n# ${title}\n\n${body === "" ? sections : body}\n`;
+};
 
 /** One level of the library path: a real folder, made when it is not there. */
 async function ensureFolder(path: string): Promise<boolean> {
