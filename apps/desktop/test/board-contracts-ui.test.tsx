@@ -75,6 +75,8 @@ function setup(options: { cards?: object[]; language?: "en" | "pt-BR"; project?:
   });
   const commands: Call[] = [];
   const requests: Call[] = [];
+  /** The cards the board was asked to open: id, and whether with its title ready to edit. */
+  const opened: Array<[string, boolean]> = [];
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
     commands.push([hostId, type, payload]);
     if (type === "board.get") {
@@ -92,13 +94,15 @@ function setup(options: { cards?: object[]; language?: "en" | "pt-BR"; project?:
         store={store}
         hostId="h1"
         projectId="p1"
-        onOpenCard={() => {}}
+        onOpenCard={(id, edit) => {
+          opened.push([id, edit === true]);
+        }}
         onOpenSettings={() => {}}
       />
     </TContext.Provider>,
   );
   const moves = () => commands.filter(([, type]) => type === "card.move");
-  return { store, commands, requests, moves };
+  return { store, commands, requests, moves, opened };
 }
 
 const li = (title: string) => screen.getByLabelText(`Card ${title}`);
@@ -286,6 +290,39 @@ describe("board-contracts-ui: a card says what it lacks, and a column says what 
     await ready();
     expect(within(li("N")).queryByText("Needs: a PR link")).not.toBeNull();
     expect(within(li("F")).queryByText("Needs: passing checks")).not.toBeNull();
+  });
+
+  // #1197: the chip is a button that goes where the card is fixed: the fields for what the card's
+  // text lacks, the card for its PR and checks.
+  test("the Needs: chip is a button: criteria open the card on its fields, a PR or checks open the card", async () => {
+    const w = setup();
+    await ready();
+    const chip = (title: string, text: string) =>
+      within(li(title)).queryByRole("button", { name: text });
+    expect([
+      chip("D", "Needs: acceptance criteria") !== null,
+      chip("N", "Needs: a PR link") !== null,
+      chip("F", "Needs: passing checks") !== null,
+    ]).toEqual([true, true, true]);
+    for (const [title, text] of [
+      ["D", "Needs: acceptance criteria"],
+      ["N", "Needs: a PR link"],
+      ["F", "Needs: passing checks"],
+    ] as const) {
+      const button = chip(title, text);
+      expect(button).not.toBeNull();
+      await act(async () => {
+        if (button) fireEvent.click(button);
+      });
+    }
+    expect(w.opened).toEqual([
+      ["D", true],
+      ["N", false],
+      ["F", false],
+    ]);
+    // The chip is not the card: a click on it neither selects it nor moves it.
+    expect(li("D").getAttribute("data-selected")).toBeNull();
+    expect(w.moves()).toEqual([]);
   });
 
   test("while a card is dragged, the columns that ask something say what; they stop when it lets go", async () => {
