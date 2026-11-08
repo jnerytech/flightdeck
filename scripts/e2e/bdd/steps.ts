@@ -987,13 +987,14 @@ step(Then, "the main button now says Review changes, on the same button", async 
 
 // Run again: a card whose workflow run failed starts it again from the card (issue #1219).
 // The check fails the first time and passes the second, so a run that starts again can finish.
+const FLOW = "breaks";
 const BREAKS =
   "steps:\n  - id: lint\n    check: 'test -e .bdd-attempt || { touch .bdd-attempt; exit 1; }'\n";
 
 step(
   Given,
   "a git project of my own with a workflow that fails is added to host {string}",
-  async (c) => addOwnProject(c, { ".flightdeck/workflows/breaks.yaml": BREAKS }),
+  async (c) => addOwnProject(c, { [`.flightdeck/workflows/${FLOW}.yaml`]: BREAKS }),
 );
 
 step(Given, "I trust its workflow", async (c) => {
@@ -1001,13 +1002,13 @@ step(Given, "I trust its workflow", async (c) => {
   await c.page
     .getByRole("button", { name: c.t("projectsUi.workflows", { name: mine(c).project ?? "" }) })
     .click({ timeout: WAIT });
-  await c.page.getByRole("button", { name: c.t("workflowsUi.trust", { name: "breaks" }) }).click();
+  await c.page.getByRole("button", { name: c.t("workflowsUi.trust", { name: FLOW }) }).click();
   await c.page
     .getByRole("alertdialog")
     .getByRole("button", { name: c.t("workflowsUi.trustConfirm"), exact: true })
     .click();
   await c.page
-    .getByRole("listitem", { name: c.t("workflowsUi.item", { name: "breaks" }) })
+    .getByRole("listitem", { name: c.t("workflowsUi.item", { name: FLOW }) })
     .getByText(c.t("workflowsUi.trusted"), { exact: true })
     .waitFor({ timeout: WAIT });
 });
@@ -1024,7 +1025,7 @@ step(When, "I start a card of my own on that project with its workflow", async (
     .click();
   await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
   const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
-  await start.getByLabel(c.t("cardUi.workflow"), { exact: true }).selectOption("breaks");
+  await start.getByLabel(c.t("cardUi.workflow"), { exact: true }).selectOption(FLOW);
   await start.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
   await start.waitFor({ state: "detached", timeout: WAIT });
 });
@@ -1043,7 +1044,7 @@ step(When, "I press Run again", async (c) => {
 step(Then, "the second run of the card completes", async (c) => {
   await c.page
     .getByRole("heading", {
-      name: c.t("runUi.title", { name: "breaks", status: c.t("runUi.status.completed") }),
+      name: c.t("runUi.title", { name: FLOW, status: c.t("runUi.status.completed") }),
     })
     .waitFor({ timeout: SESSION_WAIT });
   await c.page
