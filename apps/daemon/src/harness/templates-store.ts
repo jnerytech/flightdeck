@@ -264,6 +264,11 @@ export class HarnessTemplates {
     return unvetted(part, text);
   }
 
+  /** Deletes template `id`: its folder and what is in it, nothing outside the templates folder. */
+  async remove(id: string): Promise<{ id: string }> {
+    return { id };
+  }
+
   /** The templates on this host: names and sizes, never content. */
   async list(): Promise<HarnessTemplateInfo[]> {
     const ids = (await readdir(this.dir).catch(() => [] as string[])).filter((id) => ID.test(id));

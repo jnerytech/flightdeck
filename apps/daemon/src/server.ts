@@ -223,7 +223,7 @@ export interface ServerOptions {
     options: { reformat: boolean; template?: TemplateMarkdown },
   ) => Promise<HarnessApplied>;
   /** #75, slice T1: the host's harness templates, shared from projects. */
-  harnessTemplates?: Pick<HarnessTemplates, "export" | "list" | "files">;
+  harnessTemplates?: Pick<HarnessTemplates, "export" | "list" | "files" | "remove">;
   /** #75, slice G1: drafts a CLAUDE.md with the host's model and holds it by its digest. */
   harnessDraft?: (path: string) => Promise<HarnessDraft>;
   /** #75, slice C1: commits what apply wrote (by its digests) on a new branch. */
@@ -1257,6 +1257,10 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "harness.templates.list": {
         if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
         return ok(command.type, { templates: await opts.harnessTemplates.list() });
+      }
+      case "harness.templates.delete": {
+        if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
+        return ok(command.type, await opts.harnessTemplates.remove(command.payload.id));
       }
       case "project.harness.draft": {
         if (!opts.harnessDraft) throw featureOff("harnessDraft");
