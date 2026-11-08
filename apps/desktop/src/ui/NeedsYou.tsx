@@ -75,6 +75,14 @@ function entriesOf(state: AppState, t: T): Entry[] {
   ];
 }
 
+/** How many files a finished session changed, in words; null when the host did not say. */
+function filesText(t: T, files: number | null): string | null {
+  if (files === null) return null;
+  if (files === 0) return t("needsYou.finishedNoFiles");
+  if (files === 1) return t("needsYou.finishedFilesOne");
+  return t("needsYou.finishedFilesMany", { n: files });
+}
+
 /** A session that finished: how, when, how many files it changed, and the way to its Changes. */
 function FinishedDetail(
   props: Readonly<{ finish: Finish; store: AppStore; go(route: Route): void }>,
@@ -82,14 +90,7 @@ function FinishedDetail(
   const { finish, store, go } = props;
   const { t } = store.i18n;
   const outcome = t(`needsYou.finishedOutcome.${finish.outcome}` as Key);
-  const files =
-    finish.files === null
-      ? null
-      : finish.files === 0
-        ? t("needsYou.finishedNoFiles")
-        : finish.files === 1
-          ? t("needsYou.finishedFilesOne")
-          : t("needsYou.finishedFilesMany", { n: finish.files });
+  const files = filesText(t, finish.files);
   return (
     <DetailColumn>
       <h2 className="font-semibold text-base">{finish.name}</h2>

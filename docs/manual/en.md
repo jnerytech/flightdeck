@@ -2264,6 +2264,14 @@ are both refused, and change nothing. Close and reopen Flightdeck afterwards to 
 settings and hosts. Personas and snippets that a host keeps, or that come from a repository, are not
 in the file.
 
+**Scheduled backups** (the desktop app only) sit below, in the same section. Pick **Every day** or
+**Every week**, choose a folder with **Choose folder**, and set **Files to keep** (5 by default):
+after each backup the oldest files go, and only files named like a Flightdeck backup are ever
+touched. The backup is encrypted like the one above, so Flightdeck asks for a passphrase once each
+time it starts; it stays in memory until you close the app and is never saved. Until you give it, a
+backup that is due waits, and the section says so. A backup that could not be saved is shown there
+too, and the date of the last good one stays.
+
 ## Actions: Claude uses a secret without seeing it
 
 An **action** is a command you declare, with places for vault secrets and for parameters. Claude

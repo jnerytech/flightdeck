@@ -2278,6 +2278,14 @@ são recusados, e nada muda. Feche e abra o Flightdeck de novo para usar as conf
 restaurados. Personas e snippets que um host guarda, ou que vêm de um repositório, não vão no
 arquivo.
 
+Os **Backups agendados** (só no app para desktop) ficam logo abaixo, na mesma seção. Escolha **Todo
+dia** ou **Toda semana**, escolha uma pasta em **Escolher pasta** e defina **Arquivos a manter** (5
+por padrão): depois de cada backup os mais antigos saem, e só arquivos com nome de backup do
+Flightdeck são tocados. O backup é cifrado como o de cima, então o Flightdeck pede a frase-senha uma
+vez a cada abertura; ela fica na memória até você fechar o app e nunca é salva. Enquanto você não a
+der, um backup devido espera, e a seção avisa. Um backup que não pôde ser salvo também aparece ali, e
+a data do último bom continua.
+
 ## Ações: o Claude usa um segredo sem vê-lo
 
 Uma **ação** é um comando que você declara, com lugares para segredos do cofre e para parâmetros.

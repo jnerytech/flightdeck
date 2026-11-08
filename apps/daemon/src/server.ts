@@ -287,7 +287,7 @@ export interface ServerOptions {
   /** Issue #100: the packages other hosts send to this one. */
   teleportInbox?: TeleportInbox;
   /** Issue #100: what an import on this host reads. */
-  teleportImport?: TeleportImportDeps | undefined;
+  teleportImport?: TeleportImportDeps;
   /** The run environment of the cards: the run.yaml and the processes (phase 24). */
   runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */
