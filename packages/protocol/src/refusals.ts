@@ -499,6 +499,7 @@ export const DAEMON_FEATURES = [
   "worktrees",
   "projectTrust",
   "harnessStack",
+  "knowledge",
   "harnessPreview",
   "keepAwake",
   "autoUpdate",

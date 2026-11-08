@@ -1475,6 +1475,7 @@ export const ptBR = {
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
     harnessStack: "a leitura do stack do projeto",
+    knowledge: "a leitura dos documentos do projeto",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
