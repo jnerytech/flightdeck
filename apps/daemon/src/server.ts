@@ -519,6 +519,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "deps"),
     // Issue #76: a card pins library documents; the app offers the picker.
     ...when(opts.board, "cardPins"),
+    // Issue #1201: a project's card templates; New card offers them.
+    ...when(opts.board, "cardTemplates"),
     ...when(opts.issues, "issues"),
     ...when(opts.automations, "automation"),
     ...when(opts.autoApprove, "autoapprove"),

@@ -46,6 +46,7 @@ import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
+import { parseCardTemplates } from "./card-templates.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
@@ -770,19 +771,49 @@ export class Board {
     };
   }
 
-  /** Issue #1201: the project's card templates; stub. */
+  /**
+   * Issue #1201: the project's card templates (`.flightdeck/templates/cards.json`, trusted projects
+   * only, read from the trusted checkout): the ones offered, how many entries were left out, and
+   * why a file that is there was not used.
+   */
   async cardTemplates(projectId: string): Promise<CardTemplates> {
-    this.getProject(projectId);
-    return { templates: [], dropped: 0, ignored: null };
+    const project = this.getProject(projectId);
+    const found = await this.templateFor(project.path, "cards", true);
+    if (found.ignored !== null) return { templates: [], dropped: 0, ignored: found.ignored };
+    if (found.body === null) return { templates: [], dropped: 0, ignored: null };
+    const { templates, dropped, invalid } = parseCardTemplates(found.body);
+    return { templates, dropped, ignored: invalid ? "invalid" : null };
   }
 
-  /** Issue #1201: a card made from one of the project's templates; stub. */
+  /**
+   * A new card, filled from one of the project's templates when `templateId` names one: its
+   * workflow, persona, pins and spec file, and its text when the person typed none. A template the
+   * project does not offer (or does not trust) refuses the card.
+   */
   async createCardFrom(
     projectId: string,
     input: Parameters<Board["createCard"]>[1] & { templateId?: string },
   ): Promise<Card> {
-    const { templateId: _templateId, ...rest } = input;
-    return this.createCard(projectId, rest);
+    const { templateId, ...rest } = input;
+    if (templateId === undefined) return this.createCard(projectId, rest);
+    const template = (await this.cardTemplates(projectId)).templates.find(
+      (candidate) => candidate.id === templateId,
+    );
+    if (!template) {
+      throw new FlightdeckError(
+        "bad_request",
+        `the project offers no card template ${templateId}`,
+        "card_template_unknown",
+      );
+    }
+    return this.createCard(projectId, {
+      ...rest,
+      description: rest.description.trim() ? rest.description : template.description,
+      specPath: template.spec,
+      pinnedDocs: template.pins,
+      startWorkflow: template.workflow,
+      startPersona: template.persona,
+    });
   }
 
   /** A new card goes to the end of the column it is born in: the Backlog unless it says another. */
@@ -801,6 +832,11 @@ export class Board {
       blockedBy?: string[];
       unblockWhen?: UnblockWhen;
       autoStart?: { workflow: string | null } | null;
+      /** Issue #1201: what a card template fills in; the spec path and the pins are judged as an edit's are. */
+      specPath?: string | null;
+      pinnedDocs?: string[];
+      startWorkflow?: string | null;
+      startPersona?: string | null;
       /** An arena variant: the arena's card, and what makes it different. */
       arenaOf?: string;
       variant?: {
@@ -829,8 +865,8 @@ export class Board {
       .query(
         `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
            issue_external, arena_of, variant, unblock_when, auto_start, created_at, updated_at,
-           source_key)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           source_key, spec_path, pinned_docs, start_workflow, start_persona)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -848,6 +884,10 @@ export class Board {
         at,
         at,
         input.sourceKey ?? null,
+        input.specPath ?? null,
+        input.pinnedDocs?.length ? JSON.stringify(input.pinnedDocs) : null,
+        input.startWorkflow ?? null,
+        input.startPersona ?? null,
       );
     this.storeBlockers(id, blockedBy);
     this.noteWaiting(id);
