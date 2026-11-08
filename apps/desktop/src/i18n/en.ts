@@ -3874,6 +3874,23 @@ export const en: Dictionary = {
     descriptionLabel: "Card description",
     descriptionPlaceholder: "Description",
     newCard: "New card",
+    /** Issue #1201: the project's card templates, offered in New card. */
+    template: "From a template",
+    templateNone: "Blank card",
+    templateStarts: "Starts with: {parts}",
+    templateWorkflow: "workflow {name}",
+    templatePersona: "persona {name}",
+    templatePins: "{n} pinned documents",
+    templateSpec: "spec {path}",
+    templateDropped: "Templates left out for a mistake in cards.json: {n}.",
+    templateIgnored: {
+      untrusted: "The project's card templates were not used: the project is not trusted.",
+      unsafe:
+        "The project's card templates were not used: the file is a link or has more than one name.",
+      too_big: "The project's card templates were not used: the file is over 32 KiB.",
+      empty: "The project's card templates were not used: the file is empty.",
+      invalid: "The project's card templates were not used: cards.json is not a list of templates.",
+    },
     created: "Card created: {title}",
     started: "Card started: {title}",
     openCard: "Open",
