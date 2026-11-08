@@ -177,7 +177,7 @@ describe("run-resume: a failed run resumes from its failed step (#1266)", () => 
     ]).toEqual([
       "run_resume_workflow_changed",
       1,
-      "card_workflow_running",
+      "card_queued",
       ["a", "b", "c", "c", "d"],
     ]);
   });
