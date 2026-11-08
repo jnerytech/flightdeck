@@ -3846,6 +3846,21 @@ export const ptBR = {
     budgetLine: "{label}: {shown} de {max}",
     budgetNoLimit: "{label}: {shown} (sem limite)",
   },
+  postMortem: {
+    open: "Redigir um post-mortem",
+    title: "Redigir um post-mortem",
+    intro:
+      "Um card novo vai escrever o post-mortem deste como um arquivo Markdown e perguntar antes de abrir um pull request. Confira o que ele vai receber sobre o incidente e edite.",
+    loading: "Lendo a sessão",
+    field: "Incidente",
+    missing:
+      "O workflow Rascunho de post-mortem não está configurado neste projeto. Adicione em Workflows, Modelos, e tente de novo.",
+    start: "Iniciar o post-mortem",
+    cardTitle: "Post-mortem: {title}",
+    started: "Post-mortem iniciado: {title}",
+    notStarted:
+      'O card "{title}" foi criado, mas não iniciou. Aperte Iniciar para tentar de novo; não vai criar outro.',
+  },
   alertsUi: {
     open: "Escolher um alerta",
     title: "Escolher um alerta",

@@ -1620,6 +1620,14 @@ source that cannot be read (code scanning is off, or `gh` has no access or is no
 beside the list, and the list never says "no open alerts" when one of them failed. The button shows
 only when the host can read alerts.
 
+**Post-mortem from a failed card.** A card that stopped with a problem, or whose workflow run
+failed, shows **Draft a post-mortem** in its detail. It opens the facts Flightdeck has of the
+incident: the card, its problem, the failed steps of its run and the summary of its session. They
+are plain lines, cut and cleaned, that you can read and edit. **Start the post-mortem** makes a new
+card, "Post-mortem: <title>", and starts it with the Post-mortem draft workflow and that text; the
+failed card is not touched. The button is off, with a note, when the project has not added that
+workflow yet.
+
 A template is a file, and Flightdeck writes nothing to your repository. On the **Workflows**
 screen, **Add from a template** lists them. Open one to read its file, then **Copy the file**,
 commit it to `.flightdeck/workflows/` on the base branch, and **Trust** it on the same screen

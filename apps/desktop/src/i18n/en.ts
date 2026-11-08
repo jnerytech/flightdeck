@@ -3840,6 +3840,21 @@ export const en: Dictionary = {
     budgetLine: "{label}: {shown} of {max}",
     budgetNoLimit: "{label}: {shown} (no limit)",
   },
+  postMortem: {
+    open: "Draft a post-mortem",
+    title: "Draft a post-mortem",
+    intro:
+      "A new card will write a post-mortem of this one as a Markdown file and ask before it opens a pull request. Check what it will be told about the incident, and edit it.",
+    loading: "Reading the session",
+    field: "Incident",
+    missing:
+      "The Post-mortem draft workflow is not set up in this project. Add it from Workflows, Templates, then try again.",
+    start: "Start the post-mortem",
+    cardTitle: "Post-mortem: {title}",
+    started: "Post-mortem started: {title}",
+    notStarted:
+      'The card "{title}" was made but did not start. Press Start to try again; it will not make another.',
+  },
   alertsUi: {
     open: "Choose an alert",
     title: "Choose an alert",
