@@ -114,6 +114,8 @@ export interface PlanDeps {
   coverageDir?: string;
   /** `--fast`: only the tests that import a changed file directly (the transitive set runs in CI). */
   fast?: boolean;
+  /** #1003: where the run writes each test's time (bun's JUnit reporter); CI sets it. */
+  junit?: string;
   /** `--tier unit,component`: only the tests of these tiers (#261); the coverage gate stays in CI. */
   tiers?: string[];
   /** A test file's tier (lib/test-tiers.ts); undefined for a file it does not classify. */
@@ -226,15 +228,20 @@ function runCommand(
   coverageDir: string | undefined,
   related: Related[],
   slot: boolean,
+  junit?: string,
 ): string[] {
   const run = [
     "bun",
     // The area config turns coverage off; the related one turns it on without the threshold.
     coverageDir ? "--config=bunfig.related.toml" : "--config=bunfig.area.toml",
-    ...testArgs(platform, [
-      ...(coverageDir ? [`--coverage-dir=${coverageDir}`] : []),
-      ...related.map((r) => `./${r.path}`),
-    ]),
+    ...testArgs(
+      platform,
+      [
+        ...(coverageDir ? [`--coverage-dir=${coverageDir}`] : []),
+        ...related.map((r) => `./${r.path}`),
+      ],
+      junit,
+    ),
   ];
   return slot && related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run;
 }
@@ -269,6 +276,7 @@ export function planRelated({
   tierOf = () => undefined,
   pyramid = false,
   slot = true,
+  junit,
 }: PlanDeps): Plan {
   // A run of some tiers covers only part of a file: the coverage gate is the full run's (CI).
   const coverageDir = tiers ? undefined : asked;
@@ -344,7 +352,7 @@ export function planRelated({
   return {
     code: 0,
     output,
-    command: runCommand(platform, coverageDir, related, slot),
+    command: runCommand(platform, coverageDir, related, slot, junit),
     files: related.map((r) => r.path),
     ...(targets ? { targets } : {}),
   };

@@ -10,9 +10,13 @@ export function defaultTestTimeoutMs(platform: NodeJS.Platform): number {
   return platform === "win32" ? 30_000 : 15_000;
 }
 
-/** The `bun` arguments of the full suite. */
-export function testArgs(platform: NodeJS.Platform, extra: string[]): string[] {
+/**
+ * The `bun` arguments of the full suite. With `junit`, bun also writes each test's time there
+ * (#1003); the console output stays as it is.
+ */
+export function testArgs(platform: NodeJS.Platform, extra: string[], junit?: string): string[] {
   // A flag, not a setDefaultTimeout in the preload: bun keeps that one for the first file only.
   // A file that calls setDefaultTimeout itself still wins.
-  return ["test", `--timeout=${defaultTestTimeoutMs(platform)}`, ...extra];
+  const times = junit ? ["--reporter=junit", `--reporter-outfile=${junit}`] : [];
+  return ["test", `--timeout=${defaultTestTimeoutMs(platform)}`, ...times, ...extra];
 }
