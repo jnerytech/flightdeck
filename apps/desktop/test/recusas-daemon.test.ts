@@ -11,6 +11,8 @@ const enT = translator("en");
 const ptT = translator("pt-BR");
 
 const REASONS = [
+  "service_confirm",
+  "service_unsupported",
   "runtime_unavailable",
   "runtime_unsupported",
   "opencode_unsafe_global",

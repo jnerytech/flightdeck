@@ -67,6 +67,7 @@ export const GATES = {
   // Written inline in a case before the split, each with a single name.
   bypass: "bypass",
   doctor: "doctor.run",
+  serviceInstall: "serviceInstall",
   forker: "forker",
   snapshots: "snapshots",
   tasks: "tasks",
