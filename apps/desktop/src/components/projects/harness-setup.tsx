@@ -9,6 +9,9 @@ import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 type T = AppStore["i18n"]["t"];
 
+/** The refusals a new preview, read again, can get past; any other (a far connection) it cannot. */
+const PREVIEW_AGAIN = new Set(["harness_stale", "harness_reformat", "harness_confirm"]);
+
 export interface HarnessSetupProps {
   store: AppStore;
   hostId: string;
@@ -26,7 +29,8 @@ function Group(props: Readonly<{ title: string; items: string[]; note?: string |
     <Stack gap={1} className="text-sm">
       <p className="font-medium">{props.title}</p>
       <Stack as="ul" gap={1} className="font-mono text-xs [overflow-wrap:anywhere]">
-        {props.items.map((item) => (
+        {/* The same line twice says nothing more, and two rows would share a key. */}
+        {[...new Set(props.items)].map((item) => (
           <li key={item}>{item}</li>
         ))}
       </Stack>
@@ -93,6 +97,8 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   const [shown, setShown] = useState<HarnessPreview | null>(null);
   const [ticked, setTicked] = useState(false);
   const [outcome, setOutcome] = useState<{ text: string; again: boolean } | null>(null);
+  // Apply is under way: no second preview may start, or its apply would race this one.
+  const [busy, setBusy] = useState(false);
 
   const preview = async () => {
     setOutcome(null);
@@ -103,15 +109,19 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
 
   const apply = async (seen: HarnessPreview, reformat: boolean) => {
     setShown(null);
-    const result = await store.hostRequest(hostId, "project.harness.apply", {
-      path,
-      parts,
-      digests: previewDigests(seen),
-      confirm: true,
-      ...(reformat ? { reformat: true } : {}),
-    });
+    setBusy(true);
+    const result = await store
+      .hostRequest(hostId, "project.harness.apply", {
+        path,
+        parts,
+        digests: previewDigests(seen),
+        confirm: true,
+        ...(reformat ? { reformat: true } : {}),
+      })
+      .finally(() => setBusy(false));
     if (!result.ok) {
-      setOutcome({ text: refusalText(result.code, result.message, t, result), again: true });
+      const again = PREVIEW_AGAIN.has(result.reason ?? "");
+      setOutcome({ text: refusalText(result.code, result.message, t, result), again });
       return;
     }
     const files = result.data.written.join(", ");
@@ -124,7 +134,7 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   return (
     <Stack gap={2}>
       <div>
-        <ActionButton variant="outline" onClick={() => void preview()}>
+        <ActionButton variant="outline" pending={busy} onClick={() => void preview()}>
           {t("projectPage.harness.setup.action")}
         </ActionButton>
       </div>
@@ -134,7 +144,7 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
             <p className="text-sm">{outcome.text}</p>
             {outcome.again && (
               <div>
-                <ActionButton variant="outline" onClick={() => void preview()}>
+                <ActionButton variant="outline" pending={busy} onClick={() => void preview()}>
                   {t("projectPage.harness.setup.again")}
                 </ActionButton>
               </div>
@@ -152,7 +162,10 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
           onCancel={() => setShown(null)}
           onConfirm={() => void apply(shown, tick && ticked)}
         >
-          <Details preview={shown} trusted={trusted} t={t} />
+          {/* A long preview scrolls, so Apply and Cancel stay in sight on a small window. */}
+          <div className="max-h-[60vh] overflow-y-auto">
+            <Details preview={shown} trusted={trusted} t={t} />
+          </div>
           {tick && (
             <label className="flex items-start gap-2 text-sm">
               <input

@@ -49,7 +49,9 @@ export function HarnessPanel(
   const found = items.filter((item) => item.found).length;
   return (
     <Panel title={t("projectPage.harness.title")} label={t("projectPage.harness.title")}>
-      <p className="text-muted-foreground text-xs">{t("projectPage.harness.hint")}</p>
+      <p className="text-muted-foreground text-xs">
+        {t(props.setup ? "projectPage.harness.hintSetup" : "projectPage.harness.hint")}
+      </p>
       <p className="font-medium text-sm">
         {t("projectPage.harness.summary", { n: found, total: items.length })}
       </p>

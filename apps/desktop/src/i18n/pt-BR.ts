@@ -4228,7 +4228,9 @@ export const ptBR = {
     },
     harness: {
       title: "Configuração do Claude Code",
-      hint: "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Nada muda até você ler uma configuração e aplicá-la.",
+      hint: "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Só leitura: nada aqui muda o projeto.",
+      hintSetup:
+        "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Nada muda até você ler uma configuração e aplicá-la.",
       summary: "{n} de {total} partes encontradas",
       found: "Encontrado",
       missing: "Faltando",

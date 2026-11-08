@@ -4224,7 +4224,9 @@ export const en: Dictionary = {
     },
     harness: {
       title: "Claude Code setup",
-      hint: "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Nothing changes until you read a setup and apply it.",
+      hint: "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Read-only: nothing here changes the project.",
+      hintSetup:
+        "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Nothing changes until you read a setup and apply it.",
       summary: "{n} of {total} parts found",
       found: "Found",
       missing: "Missing",
