@@ -64,9 +64,23 @@ export async function installServiceFromApp(
       { platform: ctx.platform },
     );
   }
+  // systemd with no user bus (an SSH login without XDG_RUNTIME_DIR, a container) would fail
+  // after the unit is written: refuse before touching anything.
+  if (ctx.platform === "linux") {
+    const bus = await ctx.exec(["systemctl", "--user", "show-environment"]);
+    if (bus.code !== 0) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "systemd has no user session for this account, so it cannot start flightdeckd at boot",
+        "service_unsupported",
+        { platform: ctx.platform },
+      );
+    }
+  }
+  await installService(ctx, deps.config, { start: false });
+  // Only an install that went through changes the config.
   const claude = resolveServiceClaude(ctx);
   if (claude.path) await deps.recordClaude(claude.path);
-  await installService(ctx, deps.config, { start: false });
   const linger = await lingerState(ctx);
   return {
     startsAt: ctx.platform === "linux" && linger === "on" ? "boot" : "logon",

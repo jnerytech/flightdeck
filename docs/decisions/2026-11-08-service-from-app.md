@@ -27,6 +27,9 @@ answered keeps running.
 on Windows (`appCanInstallService`, the `serviceInstall` feature in `host.info`). A daemon run from
 source (the demo, the e2e journeys) never offers it, so no journey or print runs `systemctl` or
 `schtasks`. Offline, the row keeps its terminal command. The command needs `confirm: true` and is
-refused with a reason otherwise (`service_confirm`, `service_unsupported`). The service gets
+refused with a reason otherwise (`service_confirm`, `service_unsupported`). A Linux host where
+`systemctl --user show-environment` fails (no user bus: an SSH login without `XDG_RUNTIME_DIR`, a
+container) is refused as `service_unsupported` before any file is written. The service gets
 `--config` only when the daemon was started with one, and the `claude` it will use is written to
-the config, as `flightdeckd service install` does.
+the config, as `flightdeckd service install` does, but only after the install went through: a
+failed install leaves the config as it was.
