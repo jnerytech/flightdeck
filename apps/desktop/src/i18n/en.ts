@@ -1334,6 +1334,20 @@ export const en: Dictionary = {
     resets: "resets at {time}",
     read: "read {ago}",
     hotNotice: "{host}: over {pct}%: new cards wait for the quota; manual sessions go on.",
+    guard: {
+      label: "New cards wait from",
+      off: "Never",
+      hint: "Sessions already running are never stopped.",
+      readOnly:
+        "New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
+      readOnlyOff: "The guard is off. This host cannot change it from the app: update flightdeckd.",
+      failed: "Could not change the guard on {host}.",
+    },
+    popover: {
+      label: "Plan quota of the hosts",
+      showRunning: "Show what is running",
+      openHost: "Open the host page",
+    },
     projection: {
       few: "too few readings to project",
       exhausts: "at the current pace, the {window} window runs out at {time}",
