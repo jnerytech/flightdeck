@@ -7,7 +7,14 @@ import {
   type AssistantResult,
   AssistantRunPayload,
 } from "./assistant.ts";
-import { ColumnContract, SPEC_PATH_MAX, SpecState, specPathProblem } from "./board-contracts.ts";
+import {
+  ColumnContract,
+  PINNED_DOCS_MAX,
+  pinnedDocProblem,
+  SPEC_PATH_MAX,
+  SpecState,
+  specPathProblem,
+} from "./board-contracts.ts";
 import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 import {
@@ -852,6 +859,8 @@ export const Card = z.object({
   specPath: z.string().nullable().default(null),
   /** Issue #78: what the host last found of the spec file; `null` until it looked. */
   specState: SpecState.nullable().default(null),
+  /** Issue #76: the library documents the person pinned to this card, relative paths in order. */
+  pinnedDocs: z.array(z.string()).default([]),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -3298,6 +3307,16 @@ export const Command = z.discriminatedUnion("type", [
         .max(SPEC_PATH_MAX)
         .refine((path) => specPathProblem(path) === null)
         .nullable()
+        .optional(),
+      /** Issue #76: the library documents pinned to the card; replaces the whole list. */
+      pinnedDocs: z
+        .array(
+          z
+            .string()
+            .max(SPEC_PATH_MAX)
+            .refine((path) => pinnedDocProblem(path) === null),
+        )
+        .max(PINNED_DOCS_MAX)
         .optional(),
       ...CardDeps,
     }),

@@ -483,6 +483,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "arena"),
     // Phase 31: card dependencies are the board's.
     ...when(opts.board, "deps"),
+    // Issue #76: a card pins library documents; the app offers the picker.
+    ...when(opts.board, "cardPins"),
     ...when(opts.issues, "issues"),
     ...when(opts.automations, "automation"),
     ...when(opts.autoApprove, "autoapprove"),

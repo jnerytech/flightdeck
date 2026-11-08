@@ -1527,6 +1527,8 @@ export const ptBR = {
       "A resposta da etapa {step} não é uma lista de achados válida ({where}), então nenhum card foi criado.",
     spec_path_invalid:
       "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
+    pinned_doc_invalid:
+      "Um documento fixado deve ser um arquivo Markdown da pasta docs do projeto (decisions, adr, rfc, prd ou specs), e um card fixa no máximo 10.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
     spec_template_failed:
       "Não deu para gravar o modelo de spec em {path} (um link ou arquivo está no caminho): a sessão começou sem ele.",
@@ -3843,6 +3845,21 @@ export const ptBR = {
     budgetCost: "Custo estimado",
     budgetLine: "{label}: {shown} de {max}",
     budgetNoLimit: "{label}: {shown} (sem limite)",
+  },
+  postMortem: {
+    open: "Redigir um post-mortem",
+    title: "Redigir um post-mortem",
+    intro:
+      "Um card novo vai escrever o post-mortem deste como um arquivo Markdown e perguntar antes de abrir um pull request. Confira o que ele vai receber sobre o incidente e edite.",
+    loading: "Lendo a sessão",
+    field: "Incidente",
+    missing:
+      "O workflow Rascunho de post-mortem não está configurado neste projeto. Adicione em Workflows, Modelos, e tente de novo.",
+    start: "Iniciar o post-mortem",
+    cardTitle: "Post-mortem: {title}",
+    started: "Post-mortem iniciado: {title}",
+    notStarted:
+      'O card "{title}" foi criado, mas não iniciou. Aperte Iniciar para tentar de novo; não vai criar outro.',
   },
   alertsUi: {
     open: "Escolher um alerta",

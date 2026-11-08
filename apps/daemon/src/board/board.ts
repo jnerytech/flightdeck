@@ -20,6 +20,8 @@ import {
   type PersonaRef,
   type PersonaSubagentsMode,
   PersonaSubagentsMode as PersonaSubagentsModeSchema,
+  PINNED_DOCS_MAX,
+  pinnedDocProblem,
   type SessionEvent,
   type SessionStatus,
   type SpecState,
@@ -54,6 +56,7 @@ import {
   pendingFiles,
   rebaseOnto,
 } from "./merge.ts";
+import { pinnedPrompt } from "./pins.ts";
 import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import { assertBranchName, refArg } from "./ref-arg.ts";
@@ -247,6 +250,16 @@ function mergePersonas(
   return merged;
 }
 
+/** The pinned documents of a row: a list of paths, or none when the column is empty or not one. */
+function pinnedDocsOf(stored: string | null): string[] {
+  try {
+    const parsed: unknown = JSON.parse(stored ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 /** The auto-start as the cards table keeps it. */
 const autoStartOf = (autoStart: { workflow: string | null } | null | undefined) =>
   autoStart ? JSON.stringify(autoStart) : null;
@@ -275,6 +288,7 @@ interface CardRow {
   estimate_hours: number | null;
   validation_note: string | null;
   spec_path: string | null;
+  pinned_docs: string | null;
   spec_checked_path: string | null;
   spec_found: number;
   spec_heading: string | null;
@@ -706,6 +720,7 @@ export class Board {
       estimateHours: row.estimate_hours,
       validationNote: row.validation_note,
       specPath: row.spec_path,
+      pinnedDocs: pinnedDocsOf(row.pinned_docs),
       specState:
         row.spec_checked_path === null
           ? null
@@ -1017,6 +1032,8 @@ export class Board {
       validationNote?: string | null;
       /** Issue #78: the spec file in the worktree; `null` goes back to the default. */
       specPath?: string | null;
+      /** Issue #76: the library documents pinned to the card; replaces the whole list. */
+      pinnedDocs?: string[];
       blockedBy?: string[];
       unblockWhen?: UnblockWhen;
       autoStart?: { workflow: string | null } | null;
@@ -1033,10 +1050,23 @@ export class Board {
         "spec_path_invalid",
       );
     }
+    const pinned =
+      patch.pinnedDocs === undefined ? card.pinnedDocs : [...new Set(patch.pinnedDocs)];
+    // Only pins that come in the patch are judged: ones stored earlier do not block an edit.
+    if (
+      patch.pinnedDocs !== undefined &&
+      (pinned.length > PINNED_DOCS_MAX || pinned.some((doc) => pinnedDocProblem(doc) !== null))
+    ) {
+      throw new FlightdeckError(
+        "bad_request",
+        "a pinned document must be a Markdown file in the project's docs folders, and a card pins at most 10",
+        "pinned_doc_invalid",
+      );
+    }
     this.db
       .query(
         `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, validation_note = ?,
-           spec_path = ?, unblock_when = ?, auto_start = ?, updated_at = ? WHERE id = ?`,
+           spec_path = ?, pinned_docs = ?, unblock_when = ?, auto_start = ?, updated_at = ? WHERE id = ?`,
       )
       .run(
         patch.title ?? card.title,
@@ -1046,6 +1076,7 @@ export class Board {
           ? card.validationNote
           : patch.validationNote?.trim() || null,
         specPath,
+        pinned.length === 0 ? null : JSON.stringify(pinned),
         patch.unblockWhen ?? card.unblockWhen,
         autoStartOf(patch.autoStart === undefined ? card.autoStart : patch.autoStart),
         now(),
@@ -1528,7 +1559,8 @@ export class Board {
     const specLine = this.firstSession(id, runId)
       ? await this.startSpec(id, project.contractByColumn, worktree)
       : null;
-    const prompt = [card.description, specLine ?? "", project.promptTemplate]
+    const pins = await pinnedPrompt(worktree, card.pinnedDocs);
+    const prompt = [card.description, specLine ?? "", pins, project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");
     const { variant } = card;

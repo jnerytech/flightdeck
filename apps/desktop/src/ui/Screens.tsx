@@ -977,6 +977,9 @@ function routeScreen(props: ScreenProps): ReactNode {
           edit={route.edit === true}
           onOpenSettings={() => go({ name: "settings", section: "assistant" })}
           onBack={() => go({ name: "board", host: route.host, projectId: route.projectId })}
+          onOpenCard={(cardId) =>
+            go({ name: "card", host: route.host, projectId: route.projectId, cardId })
+          }
         />
       );
     case "agent":

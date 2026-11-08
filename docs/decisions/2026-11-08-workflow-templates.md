@@ -36,3 +36,12 @@ three proposed (the alert fixer and the post-mortem draft) and a read-only view 
   strips control and invisible characters, cuts the lengths, and drops a link that is not https. The
   app copies the text into the `alert` input of the card's workflow, as a multi-line box, and the
   alert-fixer prompt fences it as data. The agent sessions get no network.
+- **A post-mortem starts from a failed card in the app (slice 4).** A card with a problem, or whose
+  run failed, offers "Draft a post-mortem". The app builds the `incident` text from what it already
+  holds (the card, its problem, the failed steps of its run, and the session summary the host
+  gives with no model call), as plain English lines. Those words come from an agent session, so the
+  text is cleaned and bounded before it is shown: invisible characters go, lines that read as a
+  fence or a heading are dropped, a run of dashes is cut short, and the total is cut at 3000
+  characters. The person reads and edits it, then Start makes a new card and starts it with the
+  `post-mortem` workflow. The failed card is not restarted or changed, so its transcript stays the
+  record. No daemon change: the template and the commands existed.

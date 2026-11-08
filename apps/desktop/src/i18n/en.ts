@@ -1532,6 +1532,8 @@ export const en: Dictionary = {
       "The reply of step {step} is not a valid list of findings ({where}), so no card was created.",
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
+    pinned_doc_invalid:
+      "A pinned document must be a Markdown file in the project's docs (decisions, adr, rfc, prd or specs), and a card pins at most 10.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
     spec_template_failed:
       "The spec template could not be written at {path} (a link or a file is in the way): the session started without it.",
@@ -3837,6 +3839,21 @@ export const en: Dictionary = {
     budgetCost: "Estimated cost",
     budgetLine: "{label}: {shown} of {max}",
     budgetNoLimit: "{label}: {shown} (no limit)",
+  },
+  postMortem: {
+    open: "Draft a post-mortem",
+    title: "Draft a post-mortem",
+    intro:
+      "A new card will write a post-mortem of this one as a Markdown file and ask before it opens a pull request. Check what it will be told about the incident, and edit it.",
+    loading: "Reading the session",
+    field: "Incident",
+    missing:
+      "The Post-mortem draft workflow is not set up in this project. Add it from Workflows, Templates, then try again.",
+    start: "Start the post-mortem",
+    cardTitle: "Post-mortem: {title}",
+    started: "Post-mortem started: {title}",
+    notStarted:
+      'The card "{title}" was made but did not start. Press Start to try again; it will not make another.',
   },
   alertsUi: {
     open: "Choose an alert",

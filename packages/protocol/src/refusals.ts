@@ -28,6 +28,7 @@ export const DAEMON_REASONS = [
   "team_delete_open",
   "team_delete_live",
   "spec_path_invalid",
+  "pinned_doc_invalid",
   "findings_missing",
   "findings_invalid",
   "contract_invalid",

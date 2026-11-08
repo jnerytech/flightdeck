@@ -931,6 +931,10 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE external_sessions ADD COLUMN permission_mode TEXT;
   `,
+  // Issue #76: the library documents pinned to a card (a JSON list of paths; NULL: none).
+  `
+  ALTER TABLE cards ADD COLUMN pinned_docs TEXT;
+  `,
   // Issue #79: the stable key of the finding a card was raised from, so a scan does not raise it again.
   `
   ALTER TABLE cards ADD COLUMN source_key TEXT;
