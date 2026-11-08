@@ -22,6 +22,7 @@ import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { readRegularSized } from "../read-regular.ts";
 import { bundleCode, type CodeBundle, type CodeBundleInput } from "./bundle.ts";
+import { onDisk } from "./on-disk.ts";
 import { addSecrets, secretLines, TELEPORT_MAX_BYTES } from "./secrets.ts";
 
 export { secretLines, TELEPORT_MAX_BYTES };
@@ -44,7 +45,8 @@ export interface TeleportDeps {
   /** The session belongs to a team: v1 moves one session at a time. */
   inTeam(id: string): boolean;
   /** The transcript file the history indexer recorded for a Claude session, or null. */
-  transcriptOf(claudeSessionId: string): string | null;
+  /** Where the transcript is: what the indexer recorded, else the file on disk under the history roots. */
+  transcriptOf(claudeSessionId: string): string | null | Promise<string | null>;
   historyRoots: readonly string[];
   /** Where packages live (under the daemon's data dir). */
   dir: string;
@@ -117,7 +119,7 @@ export class TeleportPackages {
     const claudeId = session.claudeSessionId;
     if (!claudeId) throw refuse("not_found", "teleport_no_transcript");
     if (!UUID.test(claudeId)) throw refuse("bad_request", "teleport_unsafe_transcript");
-    const file = this.deps.transcriptOf(claudeId);
+    const file = await this.deps.transcriptOf(claudeId);
     if (!file) throw refuse("not_found", "teleport_no_transcript");
     // A session has one package at a time: a new one replaces the old once it is stored.
     const old = [...this.entries].find(([, entry]) => entry.manifest.sessionId === sessionId)?.[0];
@@ -313,7 +315,10 @@ export function teleportDeps(wiring: TeleportWiring): TeleportDeps {
   return {
     session: (id) => wiring.manager.get(id),
     inTeam: (id) => Boolean(wiring.names.get(id)?.team),
-    transcriptOf: (claudeSessionId) => wiring.indexer?.transcriptFile(claudeSessionId) ?? null,
+    // A session a move just brought in can leave again before the indexer's next scan sees it.
+    transcriptOf: async (claudeSessionId) =>
+      wiring.indexer?.transcriptFile(claudeSessionId) ??
+      (await onDisk(wiring.historyRoots, claudeSessionId)),
     historyRoots: wiring.historyRoots,
     dir: join(wiring.dataDir, "teleport"),
     scan: wiring.scan,
