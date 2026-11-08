@@ -64,6 +64,8 @@ export const CardDetail = memo(function CardDetail(props: {
   const [opened, setOpened] = useState<{ stepId: string; attempt: number } | null>(null);
   /** Workflows the card can start with: trusted and valid on the project's base branch. */
   const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
+  /** The host has answered `workflow.list`: until then an empty list means nothing. */
+  const [workflowsKnown, setWorkflowsKnown] = useState(false);
   const projectId = card?.projectId ?? "";
   const openedStep = run?.steps.find(
     (s) => s.stepId === opened?.stepId && s.attempt === opened.attempt,
@@ -92,6 +94,7 @@ export const CardDetail = memo(function CardDetail(props: {
     if (!projectId) return;
     void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
       setWorkflows((result?.workflows ?? []).filter((w) => w.trusted && w.errors.length === 0));
+      setWorkflowsKnown(result !== null);
     });
   }, [store, hostId, projectId]);
 
@@ -166,15 +169,6 @@ export const CardDetail = memo(function CardDetail(props: {
               {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
             </InlineNotice>
           )}
-          <PostMortem
-            store={store}
-            hostId={hostId}
-            card={card}
-            run={run ?? null}
-            claudeSessionId={session?.claudeSessionId ?? null}
-            workflows={workflows}
-            onOpenCard={props.onOpenCard}
-          />
           {/* Issue #227: a gate waiting for the person is the first thing on the card, not under the form. */}
           {run?.steps
             .filter((step) => step.type === "gate" && step.status === "waiting")
@@ -187,6 +181,15 @@ export const CardDetail = memo(function CardDetail(props: {
                 }
               />
             ))}
+          <PostMortem
+            store={store}
+            hostId={hostId}
+            card={card}
+            run={run ?? null}
+            claudeSessionId={session?.claudeSessionId ?? null}
+            workflows={workflowsKnown ? workflows : null}
+            onOpenCard={props.onOpenCard}
+          />
           {/* How it runs, then the details, then what the card waits for: the card's next step
               (Start, Stop, Open PR) is the first thing on it, not under the form (#732). */}
           <CardArena

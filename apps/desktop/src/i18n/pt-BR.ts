@@ -3853,6 +3853,8 @@ export const ptBR = {
     start: "Iniciar o post-mortem",
     cardTitle: "Post-mortem: {title}",
     started: "Post-mortem iniciado: {title}",
+    notStarted:
+      'O card "{title}" foi criado, mas não iniciou. Aperte Iniciar para tentar de novo; não vai criar outro.',
   },
   workflowsUi: {
     title: "Workflows de {project}",

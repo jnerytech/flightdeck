@@ -44,6 +44,8 @@ export function PostMortem(
   /** Null while the session's summary is read. */
   const [text, setText] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  /** The post-mortem card, once made: a start that was refused tries that card again, not a new one. */
+  const [made, setMade] = useState<Pick<Card, "id" | "title"> | null>(null);
   if (card.notice === null && run?.status !== "failed") return null;
   const available = props.workflows?.some((w) => w.name === WORKFLOW) ?? false;
 
@@ -51,6 +53,7 @@ export function PostMortem(
     setOpen(next);
     if (!next) return;
     setText(null);
+    setMade(null);
     const read = props.claudeSessionId
       ? store.sessionRecap(hostId, props.claudeSessionId)
       : Promise.resolve(null);
@@ -59,59 +62,79 @@ export function PostMortem(
   const start = async () => {
     if (text === null || starting) return;
     setStarting(true);
-    const made = await store.hostCommand(hostId, "card.create", {
-      projectId: card.projectId,
-      title: t("postMortem.cardTitle", { title: card.title }),
-      description: "",
-    });
-    const started = made
-      ? await store.hostCommand(hostId, "card.start", {
-          cardId: made.id,
-          workflow: WORKFLOW,
-          inputs: { incident: text },
-        })
+    // `retry: false`: a retry of the banner would repeat one command alone, and leave a card behind.
+    const target =
+      made ??
+      (await store.hostCommand(
+        hostId,
+        "card.create",
+        {
+          projectId: card.projectId,
+          title: t("postMortem.cardTitle", { title: card.title }),
+          description: "",
+        },
+        { retry: false },
+      ));
+    if (target) setMade(target);
+    const started = target
+      ? await store.hostCommand(
+          hostId,
+          "card.start",
+          { cardId: target.id, workflow: WORKFLOW, inputs: { incident: text } },
+          { retry: false },
+        )
       : null;
     setStarting(false);
-    if (!made || !started) return;
+    if (!target || !started) return;
     setOpen(false);
-    store.success(t("postMortem.started", { title: made.title }), {
+    store.success(t("postMortem.started", { title: target.title }), {
       label: t("kanban.openCard"),
-      run: () => props.onOpenCard(made.id),
+      run: () => props.onOpenCard(target.id),
     });
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          {t("postMortem.open")}
-        </Button>
-      </DialogTrigger>
-      <AppDialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("postMortem.title")}</DialogTitle>
-          <DialogDescription>{t("postMortem.intro")}</DialogDescription>
-        </DialogHeader>
-        {!available && <InlineNotice tone="warn">{t("postMortem.missing")}</InlineNotice>}
-        {text === null ? (
-          <LoadingState label={t("postMortem.loading")} />
-        ) : (
-          <Textarea
-            aria-label={t("postMortem.field")}
-            rows={8}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-        )}
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            {t("common.cancel")}
+    // A block of its own, so the button keeps its width in the card's column of sections.
+    <div>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            {t("postMortem.open")}
           </Button>
-          <Button disabled={!available || text === null || starting} onClick={() => void start()}>
-            {t("postMortem.start")}
-          </Button>
-        </DialogFooter>
-      </AppDialogContent>
-    </Dialog>
+        </DialogTrigger>
+        <AppDialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("postMortem.title")}</DialogTitle>
+            <DialogDescription>{t("postMortem.intro")}</DialogDescription>
+          </DialogHeader>
+          {props.workflows !== null && !available && (
+            <InlineNotice tone="warn">{t("postMortem.missing")}</InlineNotice>
+          )}
+          {made && (
+            <InlineNotice tone="warn">
+              {t("postMortem.notStarted", { title: made.title })}
+            </InlineNotice>
+          )}
+          {text === null ? (
+            <LoadingState label={t("postMortem.loading")} />
+          ) : (
+            <Textarea
+              aria-label={t("postMortem.field")}
+              rows={8}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button disabled={!available || text === null || starting} onClick={() => void start()}>
+              {t("postMortem.start")}
+            </Button>
+          </DialogFooter>
+        </AppDialogContent>
+      </Dialog>
+    </div>
   );
 }

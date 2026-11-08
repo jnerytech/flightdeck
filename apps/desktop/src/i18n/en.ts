@@ -3847,6 +3847,8 @@ export const en: Dictionary = {
     start: "Start the post-mortem",
     cardTitle: "Post-mortem: {title}",
     started: "Post-mortem started: {title}",
+    notStarted:
+      'The card "{title}" was made but did not start. Press Start to try again; it will not make another.',
   },
   workflowsUi: {
     title: "Workflows of {project}",
