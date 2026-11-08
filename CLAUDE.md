@@ -28,12 +28,18 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `bun run harness:stats` shows how often each rule blocked and how long the hooks took, and lists
   each push-wait override with its reason and the cancelled run's age, and counts the pushes it let through by reason (#741). Rules per
   area live in `.claude/rules/` (ui, protocol, daemon, tests, scripts) and load when a matching file
-  is touched; a SessionStart hook states the branch, the tested scopes and the slot, and after a
+  is touched; a SessionStart hook states the branch, the tested scopes, the slot and a red main with its claim, and after a
   compact reminds that those rules come back only with a matching file. Personal settings go to
   `.claude/settings.local.json` (ignored).
 
 ## Commands
 
+- A red main (#1246): `bun run main-red` shows main's latest finished CI run, what fails and the open
+  `main-red` issues with their owner. A green run closes the claims made before it. Before fixing a red main, run
+  `bun run main-red -- claim "<cause>"`. It opens one labelled issue with the failing tests. A second claim on a
+  failing test someone owns is refused and names the owner, so help there instead of opening a parallel
+  fix. The SessionStart context and `bun run pr -- open/update` print the same one-line warning while
+  main is red. The tool never creates the label.
 - Test a single file: `bun --config=bunfig.area.toml test <file>`. A plain `bun test <file>`
   exits with 1 even when it passes, because of the global coverage threshold.
 - Full suite (with the 80% line and function threshold per file, #1002): `bun run slot -- bun run test`.
