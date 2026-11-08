@@ -13,4 +13,18 @@ describe("server-registry", () => {
     expect(twice).toEqual([]);
     expect(Object.keys(HANDLERS).sort()).toEqual([...owners.keys()].sort());
   });
+
+  // Issue #1288: the knowledge commands left the switch of server.ts.
+  test("the knowledge domain owns the knowledge.* commands", () => {
+    expect(Object.keys(DOMAINS.knowledge ?? {}).sort()).toEqual(
+      [
+        "knowledge.create",
+        "knowledge.feed",
+        "knowledge.index",
+        "knowledge.list",
+        "knowledge.setFeed",
+        "knowledge.setStatus",
+      ].sort(),
+    );
+  });
 });
