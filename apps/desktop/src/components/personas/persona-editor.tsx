@@ -109,9 +109,9 @@ export function PersonaEditor(
       try {
         store.globalPersonas.save(input);
         return props.onSaved();
-      } catch (thrown) {
-        if (!(thrown instanceof PersonaModelError)) throw thrown;
-        return refused(thrown.code, thrown.message);
+      } catch (error_) {
+        if (!(error_ instanceof PersonaModelError)) throw error_;
+        return refused(error_.code, error_.message);
       }
     }
     const result = await store.hostRequest(hostId, "personas.save", {

@@ -97,6 +97,7 @@ export async function writeSpec(
 const PROJECT_TEMPLATES = {
   spec: ".flightdeck/templates/spec.md",
   validation: ".flightdeck/templates/validation.md",
+  cards: ".flightdeck/templates/cards.json",
 } as const;
 export type TemplateName = keyof typeof PROJECT_TEMPLATES;
 const TEMPLATE_MAX = 32 * 1024;

@@ -70,7 +70,7 @@ export function DayChart(
       <div className="flex h-40 items-end gap-1">
         {days.map((day, index) => (
           <IconTip key={day} label={dayText(day)}>
-            <fieldset
+            <fieldset // NOSONAR: a group the arrow keys walk, one day at a time (roving tabindex); a native control would not hold the bars
               data-day={day}
               aria-label={dayText(day)}
               tabIndex={index === current ? 0 : -1}

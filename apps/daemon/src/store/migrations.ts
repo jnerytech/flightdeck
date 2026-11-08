@@ -944,4 +944,9 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE cards ADD COLUMN spec_draft INTEGER NOT NULL DEFAULT 0;
   `,
+  // Issue #1201: the workflow and the persona a card is meant to start with (from a card template).
+  `
+  ALTER TABLE cards ADD COLUMN start_workflow TEXT;
+  ALTER TABLE cards ADD COLUMN start_persona TEXT;
+  `,
 ];

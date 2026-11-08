@@ -30,9 +30,9 @@ export function SelectionBar(
     if (e.key === "Escape" && !e.defaultPrevented) props.onEscape();
   };
   return (
-    <fieldset
+    <fieldset // NOSONAR: Escape leaves the selection from any control in the bar; the bar is a group, not a control
       aria-label={t("board.selection")}
-      onKeyDown={leaveOnEscape} // NOSONAR: Escape leaves the selection from any control in the bar; the bar is a group, not a control
+      onKeyDown={leaveOnEscape}
       className="m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-2 rounded-md bg-muted pl-3 text-sm"
     >
       <span>
