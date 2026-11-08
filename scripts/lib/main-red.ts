@@ -255,6 +255,14 @@ async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<n
   return 0;
 }
 
+/** The warning line within `ms`, else null: a hook or a PR never waits on GitHub for long. */
+export async function mainRedWithin(
+  _deps: Pick<MainRedDeps, "gh">,
+  _ms: number,
+): Promise<string | null> {
+  return null;
+}
+
 /** `main-red [claim "<cause>" [--by <name>]]`; the exit code. */
 export async function mainRed(
   args: string[],

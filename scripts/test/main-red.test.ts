@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { GhResult } from "../lib/ci-branch.ts";
-import { latestMainRun, mainRed, mainRedLine, openClaims } from "../lib/main-red.ts";
+import { latestMainRun, mainRed, mainRedLine, mainRedWithin, openClaims } from "../lib/main-red.ts";
 
 /**
  * Issue #1246: a red main is claimed once. Every `gh` here is a fake that answers by its
@@ -27,7 +27,13 @@ const LOG = [
 ].join("\n");
 
 /** An open claim as the tool writes it. */
-function issue(number: number, owner: string, failing: string[], cause = "typecheck") {
+function issue(
+  number: number,
+  owner: string,
+  failing: string[],
+  cause = "typecheck",
+  jobs: string[] = [],
+) {
   return {
     number,
     title: `main red: ${cause}`,
@@ -36,6 +42,7 @@ function issue(number: number, owner: string, failing: string[], cause = "typech
       `Owner: ${owner}`,
       "Run: https://github.com/o/r/actions/runs/7",
       "Run at: 2026-11-08T21:07:02Z",
+      `Jobs: ${jobs.join(", ")}`,
       "Failing:",
       ...failing.map((f) => `- ${f}`),
     ].join("\n"),
@@ -48,12 +55,21 @@ function fakeGh(opts: {
   log?: string;
   jobs?: object[];
   createFails?: string;
+  /** What `issue list` answers once an issue was created (a claim made at the same moment). */
+  claimsAfterCreate?: object[];
+  /** `run list` answers this text instead of JSON (an auth prompt, a proxy page). */
+  runsText?: string;
+  /** `issue list` answers this text instead of JSON. */
+  claimsText?: string;
 }) {
+  let madeOne = false;
   const asked: string[][] = [];
   const gh = async (args: string[]): Promise<GhResult> => {
     asked.push(args);
     const line = args.join(" ");
-    if (line.startsWith("run list")) return { code: 0, stdout: JSON.stringify(opts.runs ?? []) };
+    if (line.startsWith("run list")) {
+      return { code: 0, stdout: opts.runsText ?? JSON.stringify(opts.runs ?? []) };
+    }
     if (line.startsWith("run view") && args.includes("--log-failed")) {
       return { code: 0, stdout: opts.log ?? "" };
     }
@@ -61,10 +77,13 @@ function fakeGh(opts: {
       return { code: 0, stdout: JSON.stringify({ jobs: opts.jobs ?? [] }) };
     }
     if (line.startsWith("issue list")) {
-      return { code: 0, stdout: JSON.stringify(opts.claims ?? []) };
+      if (opts.claimsText !== undefined) return { code: 0, stdout: opts.claimsText };
+      const listed = madeOne && opts.claimsAfterCreate ? opts.claimsAfterCreate : opts.claims;
+      return { code: 0, stdout: JSON.stringify(listed ?? []) };
     }
     if (line.startsWith("issue create")) {
       if (opts.createFails) return { code: 1, stdout: "", stderr: opts.createFails };
+      madeOne = true;
       return { code: 0, stdout: "https://github.com/o/r/issues/31\n" };
     }
     if (line.startsWith("issue close")) return { code: 0, stdout: "" };
@@ -99,6 +118,7 @@ describe("main-red: one claim per red main (#1246)", () => {
         cause: "typecheck",
         owner: "fd-qa",
         failing: ["a > b", "c > d"],
+        jobs: [],
         runAt: "2026-11-08T21:07:02Z",
       },
     ]);
@@ -113,6 +133,13 @@ describe("main-red: one claim per red main (#1246)", () => {
       `main is red since ${RED_RUN.url}, unclaimed: bun run main-red -- claim "<cause>" before fixing it`,
     );
     expect(await mainRedLine(fakeGh({ runs: [GREEN_RUN] }))).toBe(null);
+    // A claim for other jobs (an older red) does not cover this one: the red is unclaimed.
+    const other = fakeGh({
+      runs: [RED_RUN],
+      claims: [issue(30, "fd-qa", ["x"], "lint", ["lint"])],
+      jobs: [{ name: "typecheck", conclusion: "failure" }],
+    });
+    expect((await mainRedLine(other)) ?? "").toContain("unclaimed");
     // When GitHub cannot answer, the warning says nothing rather than guess.
     const down = async (): Promise<GhResult> => ({ code: 1, stdout: "", stderr: "offline" });
     const throws = async (): Promise<GhResult> => {
@@ -139,6 +166,7 @@ describe("main-red: one claim per red main (#1246)", () => {
       "Owner: fd-harness",
       `Run: ${RED_RUN.url}`,
       `Run at: ${RED_RUN.createdAt}`,
+      "Jobs: ",
       "Failing:",
       "- protocolo-compat > host.info traz os recursos",
       "- card detail > opens on changes",
@@ -248,5 +276,56 @@ describe("main-red: one claim per red main (#1246)", () => {
     const shown = run([], green);
     expect(await shown.code).toBe(0);
     expect(green.asked.some((a) => a[0] === "issue" && a[1] === "close")).toBe(false);
+  });
+
+  test("from the review: no claim without a known failure, the later of two simultaneous claims closes itself, and a cause of control characters is no cause", async () => {
+    const blind = fakeGh({ runs: [RED_RUN], log: "", jobs: [] });
+    const unknown = run(["claim", "something"], blind);
+    expect(await unknown.code).toBe(1);
+    expect(unknown.lines.at(-1) ?? "").toBe(
+      "nothing failing is known for this run yet: read it with bun run main-red, then claim",
+    );
+    // Another session claimed the same test at the same moment, as #29: this one (#31) closes.
+    const raced = fakeGh({
+      runs: [RED_RUN],
+      log: LOG,
+      claimsAfterCreate: [
+        issue(29, "fd-qa", ["card detail > opens on changes"]),
+        issue(31, "fd-harness", ["card detail > opens on changes"]),
+      ],
+    });
+    const second = run(["claim", "same red"], raced);
+    expect(await second.code).toBe(1);
+    const close = raced.asked.find((a) => a[0] === "issue" && a[1] === "close");
+    expect([close?.[2], close?.[close.indexOf("--comment") + 1]]).toEqual([
+      "31",
+      "duplicate of #29, claimed at the same moment",
+    ]);
+    expect(second.lines.at(-1) ?? "").toBe(
+      "already claimed: #29 by fd-qa (typecheck); help there instead of a parallel fix",
+    );
+    const blank = run(["claim", "\u0001\u0002"], fakeGh({ runs: [RED_RUN], log: LOG }));
+    expect(await blank.code).toBe(2);
+    expect([created(blind.asked).length, created(fakeGh({}).asked).length]).toEqual([0, 0]);
+  });
+
+  test("from the review: an answer that is not JSON is a message and exit 1, never a stack trace", async () => {
+    const page = run([], fakeGh({ runsText: "<html>sign in</html>" }));
+    expect(await page.code).toBe(1);
+    expect(page.lines.at(-1) ?? "").toBe(
+      "main's CI state is unknown: gh found no finished run, or could not answer",
+    );
+    const issues = run(["claim", "x"], fakeGh({ runs: [RED_RUN], log: LOG, claimsText: "oops" }));
+    expect(await issues.code).toBe(1);
+    expect(issues.lines.at(-1) ?? "").toBe("main-red: gh issue list did not answer with JSON");
+  });
+
+  test("from the review: the lookup has one deadline; a gh that never answers says nothing in time", async () => {
+    const never = () => new Promise<GhResult>(() => {});
+    const started = Date.now();
+    expect(await mainRedWithin({ gh: never }, 30)).toBe(null);
+    expect(Date.now() - started < 1000).toBe(true);
+    const red = fakeGh({ runs: [RED_RUN] });
+    expect((await mainRedWithin(red, 1000)) ?? "").toContain("unclaimed");
   });
 });
