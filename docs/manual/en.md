@@ -347,6 +347,12 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   Each is **Found** or **Missing**, and the card says how many of the six are there. It only reads:
   nothing in the project changes, and environment variables are never shown in it. When some of
   the project's files cannot be read, it says so: a part shown as missing may be there.
+- **Project knowledge** lists the project's PRDs, RFCs, ADRs and specs (the Markdown files in
+  `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` and `docs/specs`), each with its title, path,
+  type and the status it says it has in its front matter (`status: valid`, `transitional` or
+  `obsolete`). A document without a status is **Not classified**. The filters count the documents of
+  each status, and a note appears when a valid document points at an obsolete one. It only reads:
+  nothing in the project changes. Only the first 500 documents are shown.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
