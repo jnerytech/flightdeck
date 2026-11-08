@@ -248,6 +248,8 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     await open("Adicionar de um modelo");
     await settleMaybe(() => screen.queryByRole("list", { name: "Modelos" }) !== null);
     expect(dialog("Modelos de workflow") !== null).toBe(true);
+    // #1051: says the app writes no file, not that "nothing is saved for you".
+    expect(screen.queryByText(/O app não grava nenhum arquivo por você\.$/) !== null).toBe(true);
     expect(screen.queryByText("Corretor de alertas") !== null).toBe(true);
     await press("Ver Corretor de alertas");
     expect(button("Copiar o arquivo") !== null).toBe(true);

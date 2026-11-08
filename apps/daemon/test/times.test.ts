@@ -343,7 +343,7 @@ describe("times: os controles", () => {
     expect(board.getCard(removed?.cardId as string).id).toBe(removed?.cardId as string);
     expect(
       await failure(teams.update({ team: team.id, removeMember: team.coordinator as string })),
-    ).toContain("coordenadora");
+    ).toContain("coordinator does not leave");
     expect(await failure(teams.update({ team: team.id, removeMember: "nada" }))).toContain(
       "not_found",
     );
@@ -372,9 +372,9 @@ describe("times: os controles", () => {
     const closed = teams.close(team.id, true);
     expect(closed.state).toBe("closed");
     expect(messaging.list({}).filter((m) => m.text.includes("encerrado"))).toHaveLength(3);
-    expect(await failure(() => teams.pause(team.id))).toContain("encerrado");
-    expect(await failure(() => teams.message(team.id, "oi"))).toContain("encerrado");
-    expect(await failure(teams.update({ team: team.id, goal: "x" }))).toContain("encerrado");
+    expect(await failure(() => teams.pause(team.id))).toContain("is closed");
+    expect(await failure(() => teams.message(team.id, "oi"))).toContain("is closed");
+    expect(await failure(teams.update({ team: team.id, goal: "x" }))).toContain("is closed");
     expect(teams.close(team.id, true).state).toBe("closed");
     expect(teams.teamOf(team.coordinator as string)).toBeNull();
   });

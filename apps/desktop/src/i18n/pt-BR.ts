@@ -850,7 +850,7 @@ export const ptBR = {
       },
       hint: "Precisa de: {needs}",
       title: "Mover para {column} mesmo assim?",
-      lacksOne: "{title} não tem: {needs}.",
+      lacksOne: "{title} ainda precisa de {needs}.",
       lacksMany: "{count} cards não têm algo de que {column} precisa:",
       item: "{title} — {needs}",
       moveAnyway: "Mover mesmo assim",
@@ -3927,7 +3927,7 @@ export const ptBR = {
       open: "Adicionar de um modelo",
       title: "Modelos de workflow",
       intro:
-        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. Nada é gravado para você.",
+        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. O app não grava nenhum arquivo por você.",
       loading: "Carregando modelos",
       failed:
         "Não deu para carregar os modelos. O host pode estar offline ou precisar de uma versão mais nova do Flightdeck.",
@@ -4254,7 +4254,7 @@ export const ptBR = {
   projectPage: {
     knowledge: {
       title: "Conhecimento do projeto",
-      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter. Só leitura: nada aqui muda o projeto.",
+      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter.",
       filter: "{status} ({n})",
       all: "Todos",
       status: {

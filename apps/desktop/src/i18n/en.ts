@@ -4252,7 +4252,7 @@ export const en: Dictionary = {
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
     knowledge: {
       title: "Project knowledge",
-      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter. Read only: nothing here changes the project.",
+      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter.",
       filter: "{status} ({n})",
       all: "All",
       status: {
