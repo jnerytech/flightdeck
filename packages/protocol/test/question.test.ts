@@ -47,6 +47,11 @@ describe("question-wording: one sentence and what it means", () => {
     expect(q.reversible).toBe(false);
   });
 
+  test("Given a path that ends in a separator, Then the last name is the one before it", () => {
+    const del = ask({ toolName: "Bash", input: { command: "rm -rf /home/ana/old/ /w/build/" } });
+    expect(del.sentence).toBe("Delete old and build");
+  });
+
   test("Given a command that deletes, moves or copies, Then it names the things and not the command", () => {
     const del = ask({ toolName: "Bash", input: { command: "rm -rf build old.txt" } });
     expect(del).toMatchObject({ kind: "delete", reversible: false });

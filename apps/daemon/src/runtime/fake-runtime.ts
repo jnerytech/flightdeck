@@ -217,7 +217,7 @@ class FakeRun implements AgentRun {
       this.mcpServers.map((name) => ({
         name,
         status:
-          this.toggles.filter((t) => t.name === name).at(-1)?.enabled === false
+          this.toggles.findLast((t) => t.name === name)?.enabled === false
             ? "disabled"
             : "connected",
       })),
