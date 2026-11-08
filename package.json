@@ -18,6 +18,7 @@
     "smoke": "bun run scripts/smoke.ts",
     "smoke:real": "bun run scripts/smoke.ts --real",
     "smoke:multi": "bun run scripts/smoke-multi.ts",
+    "smoke:teleport": "bun run scripts/smoke-teleport.ts",
     "smoke:history": "bun run scripts/smoke-history.ts",
     "smoke:board": "bun run scripts/smoke-board.ts",
     "smoke:deps": "bun run scripts/smoke-deps.ts",
