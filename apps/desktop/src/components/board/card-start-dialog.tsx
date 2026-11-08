@@ -1,11 +1,12 @@
 import type { WorkflowInfo } from "@flightdeck/protocol";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { NativeSelect } from "@/components/layout/form";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AlertPicker } from "@/components/workflows/alert-picker";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -79,13 +80,22 @@ export function CardStartDialog(
             ))}
           </NativeSelect>
           {chosen?.inputs.map((name) => (
-            <Input
-              key={name}
-              aria-label={t("cardUi.input", { name })}
-              placeholder={name}
-              value={inputs[name] ?? ""}
-              onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
-            />
+            <Fragment key={name}>
+              <Input
+                aria-label={t("cardUi.input", { name })}
+                placeholder={name}
+                value={inputs[name] ?? ""}
+                onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+              />
+              {name === "alert" && (
+                <AlertPicker
+                  store={store}
+                  hostId={hostId}
+                  projectId={card.projectId}
+                  onPick={(text) => setInputs({ ...inputs, alert: text })}
+                />
+              )}
+            </Fragment>
           ))}
           {hasFeature(host?.hostInfo?.features, "personas", false) && (
             <PersonaPicker
