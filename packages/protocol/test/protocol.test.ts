@@ -289,6 +289,7 @@ const validCommands: Record<CommandType, unknown> = {
   "teams.delete": { team: "t1" },
   "teams.message": { team: "t1", text: "parem" },
   "teams.status": { team: "t1" },
+  "teams.report": { team: "t1", text: "Done.", done: true, as: { session: "s1" } },
   "teams.watch": {},
   "watch.settings": { projectId: "p1", patch: { enabled: true } },
   "watch.set": { cardId: "c1", enabled: true },

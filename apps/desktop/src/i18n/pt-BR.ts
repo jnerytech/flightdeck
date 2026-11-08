@@ -1656,6 +1656,7 @@ export const ptBR = {
     perm_tool_always_asks: "Esta ferramenta sempre pergunta: nenhuma regra a libera.",
     perm_not_suggested: "Isso não é uma das sugestões do pedido nem uma regra do projeto.",
     team_session_foreign: "Esta sessão não faz parte do time {team}.",
+    team_report_not_coordinator: "Só a coordenadora do time {team} relata o resultado dele.",
     team_close_confirm: "Encerrar o time {name} pede a sua confirmação.",
     team_coordinator_stays: "A coordenadora não sai do time: encerre o time.",
     team_delete_open: "O time {name} ainda está aberto: encerre-o primeiro.",

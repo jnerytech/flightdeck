@@ -1662,6 +1662,7 @@ export const en: Dictionary = {
     perm_tool_always_asks: "This tool always asks: no rule can allow it.",
     perm_not_suggested: "That is neither one of the request's suggestions nor a project rule.",
     team_session_foreign: "This session is not part of the team {team}.",
+    team_report_not_coordinator: "Only the coordinator of the team {team} reports its outcome.",
     team_close_confirm: "Closing the team {name} needs your confirmation.",
     team_coordinator_stays: "The coordinator does not leave the team: close the team instead.",
     team_closed: "The team {name} is closed.",

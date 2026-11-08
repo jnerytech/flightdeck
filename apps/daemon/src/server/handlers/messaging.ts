@@ -33,6 +33,11 @@ export const messagingHandlers = {
     const asker = as ? server.need("messaging").whoIs(as).id : undefined;
     return server.need("teams").status(team, asker);
   },
+  // #1220: the asking session is the host's, resolved from `as`; the service checks its role.
+  "teams.report": (payload, { server }) => {
+    const asker = server.need("messaging").whoIs(payload.as).id;
+    return server.need("teams").report(payload.team, asker, payload.text, payload.done);
+  },
   "teams.watch": (_payload, { ws, send, server }) => {
     const service = server.need("teams");
     ws.data.unwatchTeams?.();
