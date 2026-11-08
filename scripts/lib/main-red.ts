@@ -4,7 +4,7 @@
  * opens one issue per red, refused when another owner already claimed one of its failing tests.
  * The SessionStart hook and `bun run pr -- open/update` print the one-line warning.
  */
-import type { GhResult } from "./pr-flow.ts";
+import type { GhResult } from "./ci-branch.ts";
 
 export interface MainRedDeps {
   /** Runs `gh <args>` in the repository. */
@@ -30,6 +30,22 @@ export interface Claim {
 }
 
 const LABEL = "main-red";
+
+/**
+ * Issue text is data, and it reaches every session's context: one line with no control
+ * character, at most `max` characters.
+ */
+function oneLine(text: string, max: number): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
+  return text
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+/** A session name (fd-harness): letters, digits, dots, dashes and underscores; else unknown. */
+const plainOwner = (name: string) => (/^[\w.-]{1,32}$/.test(name) ? name : "unknown");
 const USAGE = 'usage: bun run main-red [-- claim "<cause>" [--by <name>]]';
 
 /** Main's latest CI run that finished green or red, or null when there is none or gh failed. */
@@ -102,9 +118,9 @@ export async function openClaims(deps: Pick<MainRedDeps, "gh">): Promise<Claim[]
             .flatMap((line) => (line.startsWith("- ") ? [line.slice(2).trim()] : []));
     return {
       number,
-      cause: field(body, "Cause") || title.replace(/^main red: /, ""),
-      owner: field(body, "Owner") || "unknown",
-      failing,
+      cause: oneLine(field(body, "Cause") || title.replace(/^main red: /, ""), 80),
+      owner: plainOwner(field(body, "Owner")),
+      failing: failing.map((name) => oneLine(name, 200)),
       runAt: field(body, "Run at"),
     };
   });
@@ -117,7 +133,7 @@ async function failingOf(deps: Pick<MainRedDeps, "gh">, run: MainRun): Promise<s
   for (const match of (log.code === 0 ? log.stdout : "").matchAll(
     /\(fail\) (.+?) \[\d+(?:\.\d+)?m?s\]/g,
   )) {
-    const name = (match[1] ?? "").trim();
+    const name = oneLine(match[1] ?? "", 200);
     if (name && !tests.includes(name)) tests.push(name);
   }
   if (tests.length > 0) return tests;
@@ -142,7 +158,10 @@ export async function mainRedLine(deps: Pick<MainRedDeps, "gh">): Promise<string
     if (claims.length === 0) {
       return `main is red since ${run.url}, unclaimed: bun run main-red -- claim "<cause>" before fixing it`;
     }
-    const who = claims.map((c) => `${c.cause} (#${c.number}, ${c.owner})`).join("; ");
+    // The cause is quoted: it is what someone typed, never an instruction.
+    const who = claims
+      .map((c) => `claimed in #${c.number} by ${c.owner} (${JSON.stringify(c.cause)})`)
+      .join("; ");
     return `main is red since ${run.url}: ${who}; do not start a parallel fix`;
   } catch {
     return null;
@@ -166,8 +185,9 @@ async function status(deps: MainRedDeps): Promise<number> {
   }
   deps.log(`main is green: ${run.url}`);
   for (const claim of claims) {
-    // Only a run newer than the red one the claim was about closes it.
-    if (claim.runAt && claim.runAt >= run.createdAt) continue;
+    // Only a run newer than the red one the claim was about closes it, and only a claim the tool
+    // wrote (it has its run's time): an issue labelled by hand stays for a person.
+    if (!claim.runAt || claim.runAt >= run.createdAt) continue;
     const closing = deps.gh([
       "issue",
       "close",
@@ -252,5 +272,5 @@ export async function mainRed(
     deps.log(USAGE);
     return 2;
   }
-  return await claim(deps, cause.trim(), owner);
+  return await claim(deps, oneLine(cause, 120), plainOwner(owner));
 }
