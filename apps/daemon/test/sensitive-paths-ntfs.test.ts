@@ -67,4 +67,19 @@ describe("sensitive-paths: a control path under an NTFS name is still a control 
       [],
     );
   });
+
+  test("a name is still read as written: a colon or a short-name tilde in a POSIX file does not hide it", () => {
+    const written = [
+      "host:8080.key",
+      "a/cert:prod.pfx",
+      "app:prod.env",
+      "terraform:prod.tfstate",
+      "ID_ED2~1",
+      "id_rsa~1",
+      "keys/id_ed25519:backup",
+    ];
+    expect(written.filter((path) => !credential(path))).toEqual([]);
+    expect(isControl("tools:x/.git/hooks/pre-commit")).toBe(true);
+    expect(isControl("a:b/package.json")).toBe(true);
+  });
 });
