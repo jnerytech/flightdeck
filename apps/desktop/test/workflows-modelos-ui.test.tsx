@@ -237,7 +237,9 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     await act(async () => {
       fireEvent.keyDown(shown ?? document.body, { key: "Escape" });
     });
-    await settleMaybe(() => dialog("Workflow templates") === null);
+    // The dialog hands the focus back a tick after it unmounts, so wait for the focus itself.
+    await settleMaybe(() => document.activeElement === button("Add from a template"));
+    expect(dialog("Workflow templates") === null).toBe(true);
     expect(document.activeElement === button("Add from a template")).toBe(true);
   });
 
