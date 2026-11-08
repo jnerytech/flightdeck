@@ -1,4 +1,5 @@
 import type { DiffFile, ReviewComment } from "@flightdeck/protocol";
+import { MessageSquarePlus } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -32,18 +33,29 @@ function LineNumber(
   const t = useT();
   const key = props.side === "old" ? "changes.commentOldLine" : "changes.commentLine";
   const pick = props.onPick;
+  const label = t(key, { line: props.line, path: props.path });
   if (!pick) {
     return <span className={NUMBER}>{props.line}</span>;
   }
   return (
     <button
       type="button"
-      aria-label={t(key, { line: props.line, path: props.path })}
+      aria-label={label}
+      title={label}
       aria-pressed={props.picked}
-      className={cn(NUMBER, "hit-24 hover:text-foreground aria-pressed:text-foreground")}
+      className={cn(
+        NUMBER,
+        "group hit-24 hover:text-foreground aria-pressed:text-foreground focus-visible:text-foreground",
+      )}
       onClick={(e) => pick(props.path, props.side, props.line, e.shiftKey)}
     >
-      {props.line}
+      {/* On hover and focus the number gives way to the Comment mark: a line can be commented. */}
+      <span className="group-hover:hidden group-focus-visible:hidden">{props.line}</span>
+      <MessageSquarePlus
+        data-slot="comment-affordance"
+        aria-hidden="true"
+        className="ml-auto hidden size-4 group-hover:block group-focus-visible:block"
+      />
     </button>
   );
 }

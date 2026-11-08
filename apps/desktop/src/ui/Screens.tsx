@@ -221,6 +221,8 @@ function ManagedSession(
           : {})}
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
         scrollKey={sessionKey(hostId, sessionId)}
+        composerFill={state.composerFill[sessionKey(hostId, sessionId)] ?? null}
+        onComposerFilled={() => store.takeComposerFill(sessionKey(hostId, sessionId))}
         session={session}
         actions={store}
         cache={

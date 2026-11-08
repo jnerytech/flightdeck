@@ -252,6 +252,15 @@ export function SessionTabs(
             store={props.store}
             hostId={props.hostId}
             target={`session:${props.claudeSessionId}`}
+            {...(viewKey
+              ? {
+                  onCompose: (text: string) => {
+                    props.store.fillComposer(viewKey, text);
+                    pick("conversation");
+                    props.store.success(t("changes.composed"));
+                  },
+                }
+              : {})}
           />
           <SessionFiles
             store={props.store}

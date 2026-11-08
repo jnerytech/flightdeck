@@ -1612,11 +1612,19 @@ export class AppStore {
   }
 
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
-  fillComposer(_key: string, _text: string): void {}
+  fillComposer(key: string, text: string): void {
+    const waiting = this.state.composerFill[key];
+    this.update({
+      composerFill: { ...this.state.composerFill, [key]: waiting ? `${waiting}\n\n${text}` : text },
+    });
+  }
 
   /** The text waiting for the session's box, which is now taken; `null` when there is none. */
-  takeComposerFill(_key: string): string | null {
-    return null;
+  takeComposerFill(key: string): string | null {
+    const { [key]: text, ...rest } = this.state.composerFill;
+    if (text === undefined) return null;
+    this.update({ composerFill: rest });
+    return text;
   }
 
   /** Sends an OS notification and keeps it in the notification center. */

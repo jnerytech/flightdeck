@@ -1378,11 +1378,17 @@ conversation. It is where you check what the agent did and send it back what to 
   this computer the viewer also has **Open in its app** and **Show in folder**.
 - **Inline comments:**
   - click a line number to comment on it, and shift+click another to extend the range. A removed
-    line is commented on its old side;
+    line is commented on its old side. A number shows a Comment mark when you point at it or
+    tab to it. The comment box takes the focus: **Ctrl+Enter** adds the comment and **Esc**
+    closes the box;
   - comments stay as drafts, which you can edit or remove, until **Send review**;
   - the review goes to the managed session, to the card's session or to the channel of a terminal
     session started with `flightdeckd claude`. A session that takes no messages gets the text
     copied instead, and the comments count as sent;
+  - in a session, **Review in the message box** puts the same review in the session's message box
+    instead, after what you had typed, and opens the conversation: edit it and send it there. The
+    drafts stay as drafts (they are only marked sent by **Send review**), so use one or the
+    other;
   - a comment follows the quoted lines when the file changes, and shows **Outdated** when they are
     gone. Sent comments stay in the list as history.
 - **Revert and edit:**

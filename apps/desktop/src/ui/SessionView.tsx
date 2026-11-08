@@ -602,6 +602,20 @@ export function SessionView(props: Readonly<SessionViewProps>) {
 
   const box = useRef<HTMLTextAreaElement>(null);
   const files = useRef<HTMLInputElement>(null);
+  // Text handed over from elsewhere (a review from Changes) goes after what is typed, once.
+  const { composerFill: fill, onComposerFilled } = props;
+  const takenFill = useRef<string | null>(null);
+  useEffect(() => {
+    if (!fill) {
+      takenFill.current = null;
+      return;
+    }
+    if (takenFill.current === fill) return;
+    takenFill.current = fill;
+    setText((before) => (before.trim() ? `${before}\n\n${fill}` : fill));
+    box.current?.focus();
+    onComposerFilled?.();
+  }, [fill, onComposerFilled]);
   /** Where the cursor goes once Ctrl+Enter has put a line break in the text. */
   const caret = useRef<number | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the new text is when the cursor moves

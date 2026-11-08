@@ -1,6 +1,7 @@
 import type { ChangesResult, DiffFile, ReviewComment } from "@flightdeck/protocol";
+import { reviewMessage } from "@flightdeck/protocol";
 import { Pencil, RotateCcw } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,11 @@ export function ChangesPanel(
   const [mode, setMode] = useState<"unified" | "split">("unified");
   const [selection, setSelection] = useState<Selection | null>(null);
   const [body, setBody] = useState("");
+  const commentBox = useRef<HTMLTextAreaElement>(null);
+  // Picking a line is the start of a comment: the box takes the focus, so the keys go on from there.
+  useEffect(() => {
+    if (selection) commentBox.current?.focus();
+  }, [selection]);
   const [reverting, setReverting] = useState<string | null>(null);
   const [undo, setUndo] = useState<Undo | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -154,10 +160,22 @@ export function ChangesPanel(
     <form aria-label={t("changes.composer")} className="flex flex-col gap-2 rounded-md border p-3">
       <p className="font-mono text-xs">{where}</p>
       <Textarea
+        ref={commentBox}
         aria-label={t("changes.commentLabel")}
         value={body}
         className="min-h-16"
         onChange={(e) => setBody(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            void addComment();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            setSelection(null);
+            setBody("");
+          }
+        }}
       />
       <div className="flex gap-2">
         <Button type="button" size="sm" onClick={() => void addComment()}>
@@ -291,6 +309,12 @@ export function ChangesPanel(
             void store.hostCommand(hostId, "review.remove", { id }).then(loadComments)
           }
           onSend={() => void send()}
+          {...(props.onCompose
+            ? {
+                onCompose: () =>
+                  props.onCompose?.(reviewMessage(comments.filter((c) => c.state === "draft"))),
+              }
+            : {})}
         />
       )}
       {reverting && (

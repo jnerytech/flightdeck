@@ -1385,11 +1385,17 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   também tem **Abrir no app padrão** e **Mostrar na pasta**.
 - **Comentários inline:**
   - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
-    Uma linha apagada é comentada pelo lado antigo;
+    Uma linha apagada é comentada pelo lado antigo. O número mostra a marca de Comentar quando
+    você aponta ou chega nele com Tab. A caixa do comentário recebe o foco: **Ctrl+Enter**
+    adiciona o comentário e **Esc** fecha a caixa;
   - os comentários ficam em rascunho, que dá para editar ou remover, até **Enviar revisão**;
   - a revisão vai para a sessão gerenciada, para a sessão do card ou para o canal de uma sessão do
     terminal aberta com `flightdeckd claude`. Uma sessão que não recebe mensagens ganha o texto
     copiado, e os comentários contam como enviados;
+  - numa sessão, **Revisar na caixa de mensagem** põe a mesma revisão na caixa de mensagem da
+    sessão, depois do que você já tinha digitado, e abre a conversa: edite e envie por lá. Os
+    rascunhos continuam rascunhos (só **Enviar revisão** os marca como enviados), então use um
+    ou outro;
   - um comentário segue o trecho citado quando o arquivo muda, e mostra **Desatualizado** quando o
     trecho some. Os enviados continuam na lista como histórico.
 - **Reverter e editar:**
