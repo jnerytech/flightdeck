@@ -5,11 +5,24 @@
  * runs it after the PR's test run, which wrote the report; it runs no test itself.
  */
 import { readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { missingReport, parseJunit, readAllowlist, slowReport } from "./lib/slow-tests.ts";
+import {
+  missingReport,
+  parseJunit,
+  readAllowlist,
+  reportPath,
+  slowReport,
+} from "./lib/slow-tests.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
-const path = process.argv[2] ?? "";
+// Only a report under the repository or a temp folder is read (#1022 Sonar S8707).
+const roots = [ROOT, tmpdir(), process.env.RUNNER_TEMP].filter((root): root is string => !!root);
+const path = reportPath(process.argv[2], roots);
+if (path === null) {
+  console.error("slow-tests: give the JUnit report's path, under the repository or a temp folder");
+  process.exit(2);
+}
 let xml: string;
 try {
   xml = readFileSync(path, "utf8");

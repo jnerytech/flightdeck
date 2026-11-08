@@ -4,6 +4,8 @@
  * the JUnit report bun writes during the PR's own test run, so the check runs no test itself.
  */
 
+import { resolve, sep } from "node:path";
+
 export const TEST_LIMIT_S = 5;
 export const FILE_LIMIT_S = 60;
 
@@ -29,7 +31,7 @@ const ENTITIES: Record<string, string> = {
 
 /** An attribute of a tag's text, with its XML entities read. */
 function attribute(attrs: string, name: string): string {
-  const raw = new RegExp(`\\b${name}="([^"]*)"`).exec(attrs)?.[1] ?? "";
+  const raw = new RegExp(String.raw`\b${name}="([^"]*)"`).exec(attrs)?.[1] ?? "";
   return raw.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (whole, entity: string) => {
     if (entity.startsWith("#")) {
       const code =
@@ -195,6 +197,8 @@ export function readAllowlist(text: string): SlowAllowlist | string {
 }
 
 /** #1022 Sonar: the report's resolved path when it is under one of `roots`, else null. */
-export function reportPath(_arg: string | undefined, _roots: readonly string[]): string | null {
-  return null;
+export function reportPath(arg: string | undefined, roots: readonly string[]): string | null {
+  if (!arg) return null;
+  const path = resolve(arg);
+  return roots.some((root) => path.startsWith(`${resolve(root)}${sep}`)) ? path : null;
 }
