@@ -48,9 +48,7 @@ describe("assinatura", () => {
       "the signature is from another key, not the Flightdeck key",
     );
     const tampered = withLine(SAMPLE_SIG, 2, "trusted comment: timestamp:1\tfile:outro.bin");
-    expect(check(SAMPLE, tampered, TAURI_PUB)).toBe(
-      "the signature's trusted comment was altered",
-    );
+    expect(check(SAMPLE, tampered, TAURI_PUB)).toBe("the signature's trusted comment was altered");
   });
 
   test("recusa formato inválido de assinatura e de chave", () => {
