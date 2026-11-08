@@ -189,7 +189,7 @@ export async function applyHarness(
       );
     }
     // New files first: one that appeared since the check refuses before the settings change.
-    for (const file of files) await create(root, file.path, file.content, fs);
+    for (const file of files) await create(root, file.path, file.content, fs); // NOSONAR: in order: a file that appeared since the check refuses before the next is written
     const written = files.map((file) => file.path);
     // What each file holds now, as written: a commit of the setup (C1) takes exactly these.
     const wrote: Record<string, string> = Object.fromEntries(

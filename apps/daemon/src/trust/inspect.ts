@@ -145,7 +145,7 @@ async function names(root: string, dir: string, folders: boolean): Promise<strin
       if (entry.isDirectory()) {
         if (folders && depth === 0) out.push(entry.name);
         else if (!folders && depth < 3)
-          await walk(join(at, entry.name), `${prefix}${entry.name}/`, depth + 1);
+          await walk(join(at, entry.name), `${prefix}${entry.name}/`, depth + 1); // NOSONAR: depth first in name order, up to MAX_ITEMS: the walk shares the list it fills
       } else if (!folders && entry.isFile() && entry.name.endsWith(".md")) {
         out.push(`${prefix}${entry.name.slice(0, -3)}`);
       }
@@ -183,7 +183,8 @@ async function headers(
       const full = join(at, entry.name);
       const shown = relative(root, full).split(sep).join("/");
       if (entry.isDirectory()) {
-        if (depth < 3) await walk(full, depth + 1);
+        if (depth < 3)
+          await walk(full, depth + 1); // NOSONAR: depth first in name order: the walk shares the files and skipped lists
         else skipped.add(`${shown} (too deep, not scanned)`);
       } else if (entry.isSymbolicLink() && !entry.name.endsWith(".md")) {
         skipped.add(`${shown} (a link, not followed, not scanned)`);
@@ -201,12 +202,12 @@ async function headers(
   for (const full of files) {
     const name = relative(root, full).split(sep).join("/");
     try {
-      const real = await realpath(full);
+      const real = await realpath(full); // NOSONAR: each step needs the answer of the one before (real path, then size, then text)
       if (!isInside(root, real)) throw new Error("leaves the project");
-      const info = await stat(real);
+      const info = await stat(real); // NOSONAR: each step needs the answer of the one before (real path, then size, then text)
       if (!info.isFile() || info.size > MAX_FILE)
         throw new Error("not a plain file of a sane size");
-      const text = await readFile(real, "utf8");
+      const text = await readFile(real, "utf8"); // NOSONAR: each step needs the answer of the one before (real path, then size, then text)
       const head = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? "";
       const keys = [...head.matchAll(/^["']?([A-Za-z][\w-]*)["']?[ \t]*:/gm)]
         .map((m) => m[1] as string)
@@ -318,7 +319,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
   const shown = { hooks: 0 };
   const otherKeys = new Set<string>();
   for (const file of [".claude/settings.json", ".claude/settings.local.json"]) {
-    const settings = await readJson(root, file, unreadable);
+    const settings = await readJson(root, file, unreadable); // NOSONAR: settings.json, then settings.local.json: both fill the same counters and lists, in that order
     if (settings) readSettings(load, settings, file, shown, otherKeys);
   }
   const mcp = await readJson(root, ".mcp.json", unreadable);

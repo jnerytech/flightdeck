@@ -121,8 +121,10 @@ export async function detectStack(path: string): Promise<HarnessStack> {
   const root = await realpath(path).catch(() => path);
   const stacks: Stack[] = [];
   const commands: Commands = { test: null, lint: null, format: null, build: null };
-  for (const [stack, detect] of DETECTORS) {
-    const found = await detect(root);
+  // Each detector only reads the project; the first stack in the list still wins a command.
+  const detected = await Promise.all(DETECTORS.map(([, detect]) => detect(root)));
+  for (const [at, [stack]] of DETECTORS.entries()) {
+    const found = detected[at];
     if (!found) continue;
     stacks.push(stack);
     for (const key of ["test", "lint", "format", "build"] as const) {

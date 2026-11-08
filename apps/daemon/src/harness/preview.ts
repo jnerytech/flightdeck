@@ -208,9 +208,11 @@ export async function planHarness(
     ? await settingsProposal(await readSettings(root), parts, commands.format, unreadable)
     : null;
   const files: HarnessPreview["files"] = [];
-  for (const [part, name, template] of FILES) {
-    if (!parts.includes(part)) continue;
-    const file = await look(root, name);
+  const wanted = FILES.filter(([part]) => parts.includes(part));
+  // Each file is looked at on its own; the answers are used in the order of FILES.
+  const looks = await Promise.all(wanted.map(([, name]) => look(root, name)));
+  for (const [at, [, name, template]] of wanted.entries()) {
+    const file = looks[at] as Awaited<ReturnType<typeof look>>;
     if (file.state === "refused") unreadable.push(name);
     else if (file.state === "absent") {
       const content = drafted(name) ?? template(commands);
