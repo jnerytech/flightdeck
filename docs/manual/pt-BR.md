@@ -1672,6 +1672,8 @@ qualquer workflow. A linha `check` do corretor de alertas já traz o comando de 
 quando o Flightdeck consegue descobrir (`npm run test`, `cargo test`...). Quando não consegue, a
 linha traz um texto provisório que falha de propósito: troque pelo seu comando de teste antes do
 commit.
+Se a área de transferência recusar a cópia, o diálogo avisa como alerta: selecione o texto do arquivo
+mostrado ali e copie à mão. Um host sem modelos diz isso, em vez de mostrar uma lista vazia.
 
 ### Rodar e acompanhar
 

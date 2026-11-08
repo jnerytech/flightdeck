@@ -3971,6 +3971,9 @@ export const en: Dictionary = {
       file: "File {path}",
       copy: "Copy the file",
       copied: "Copied. Commit it to the base branch, then trust it here.",
+      copyFailed:
+        "The clipboard refused the copy. Select the file's text above and copy it by hand.",
+      none: "This host offers no templates.",
       checkFilled:
         "The check line holds this project's test command. Review it before you trust the workflow.",
       checkPlaceholder:
