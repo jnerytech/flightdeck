@@ -6,9 +6,11 @@ import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
-const { cleanup, render, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { HostVersionLine } = await import("../src/components/hosts/host-version.tsx");
+const { HostVersionLine, HostVersionTip } = await import(
+  "../src/components/hosts/host-version.tsx"
+);
 
 afterEach(() => cleanup());
 
@@ -40,3 +42,38 @@ for (const [lang, dict] of [
     });
   });
 }
+
+describe("host-version: the sidebar tooltip follows the version across a reconnect (issue #938)", () => {
+  const row = (text: string | null) => (
+    <HostVersionTip text={text}>
+      <button type="button">alfa</button>
+    </HostVersionTip>
+  );
+  const tooltip = () => document.querySelector("[role='tooltip']");
+
+  test("with no version known the button shows no tooltip and points at none; the version arriving keeps the same button", () => {
+    const view = render(row(null));
+    const button = screen.queryByRole("button", { name: "alfa" }) as HTMLElement;
+    act(() => {
+      fireEvent.focus(button);
+    });
+    expect(tooltip() === null).toBe(true);
+    expect(button.getAttribute("aria-describedby") === null).toBe(true);
+    view.rerender(row("flightdeckd 0.37.0"));
+    expect(screen.queryByRole("button", { name: "alfa" }) === button).toBe(true);
+  });
+
+  test("with a version, focusing the button shows it; the version leaving takes the tooltip away at once, and coming back does not reopen it", () => {
+    const view = render(row("flightdeckd 0.37.0"));
+    const button = screen.queryByRole("button", { name: "alfa" }) as HTMLElement;
+    act(() => {
+      fireEvent.focus(button);
+    });
+    expect(tooltip()?.textContent ?? "").toContain("flightdeckd 0.37.0");
+    view.rerender(row(null));
+    expect(tooltip() === null).toBe(true);
+    expect(button.getAttribute("aria-describedby") === null).toBe(true);
+    view.rerender(row("flightdeckd 0.37.1"));
+    expect(tooltip() === null).toBe(true);
+  });
+});
