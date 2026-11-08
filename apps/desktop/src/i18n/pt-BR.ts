@@ -4373,6 +4373,11 @@ export const ptBR = {
           "Regravar .claude/settings.json com outro layout. O espaçamento muda, e uma chave repetida ou um número muito grande podem ser reescritos.",
         done: "Configurado: {files}",
         again: "Fazer a prévia de novo",
+        commit: "Fazer commit em um branch novo",
+        commitMessage:
+          "Os arquivos da configuração vão para um branch novo que o Flightdeck nomeia, com o seu nome e e-mail do git. O commit é do arquivo inteiro: mudanças que você fez neles antes da configuração vão junto. O seu checkout continua com eles como mudanças no branch atual.",
+        commitFiles: "Arquivos do commit",
+        committed: "Commit feito em {branch}. Faça o push quando quiser.",
       },
     },
     trust: {

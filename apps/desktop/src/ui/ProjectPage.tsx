@@ -143,6 +143,7 @@ export function ProjectPage(
             hasFeature(host?.hostInfo?.features, "harnessPreview", false) &&
             hasFeature(host?.hostInfo?.features, "harnessApply", false)
           }
+          canCommit={hasFeature(host?.hostInfo?.features, "harnessCommit", false)}
         />
       )}
       {hasFeature(host?.hostInfo?.features, "knowledge", false) && (

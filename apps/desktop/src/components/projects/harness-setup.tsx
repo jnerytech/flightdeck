@@ -20,6 +20,8 @@ export interface HarnessSetupProps {
   trusted: boolean;
   /** Reads the project again: the checklist and the trust listing show what was added. */
   onApplied(): Promise<void>;
+  /** The host can commit what apply wrote on a new branch (#75, C1). */
+  canCommit?: boolean;
 }
 
 /** One titled list in the dialog; nothing when the list is empty. */
@@ -97,6 +99,11 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   const [shown, setShown] = useState<HarnessPreview | null>(null);
   const [ticked, setTicked] = useState(false);
   const [outcome, setOutcome] = useState<{ text: string; again: boolean } | null>(null);
+  // What the last apply wrote, with the digests a commit must send back (#75, C1).
+  const [wrote, setWrote] = useState<{ files: string[]; digests: Record<string, string> } | null>(
+    null,
+  );
+  const [askingCommit, setAskingCommit] = useState(false);
   // Apply is under way: no second preview may start, or its apply would race this one.
   const [busy, setBusy] = useState(false);
 
@@ -126,7 +133,31 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     }
     const files = result.data.written.join(", ");
     setOutcome({ text: t("projectPage.harness.setup.done", { files }), again: false });
+    const digests = result.data.digests;
+    setWrote(digests ? { files: result.data.written, digests } : null);
     await props.onApplied();
+  };
+
+  // The files apply wrote, by their digests: the host commits them only if they are still so.
+  const commit = async (made: { files: string[]; digests: Record<string, string> }) => {
+    setAskingCommit(false);
+    setBusy(true);
+    const result = await store
+      .hostRequest(hostId, "project.harness.commit", {
+        path,
+        digests: made.digests,
+        confirm: true,
+      })
+      .finally(() => setBusy(false));
+    if (!result.ok) {
+      setOutcome({ text: refusalText(result.code, result.message, t, result), again: false });
+      return;
+    }
+    setWrote(null);
+    setOutcome({
+      text: t("projectPage.harness.setup.committed", { branch: result.data.branch }),
+      again: false,
+    });
   };
 
   const nothing = shown !== null && addsNothing(shown);
@@ -149,8 +180,29 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
                 </ActionButton>
               </div>
             )}
+            {props.canCommit && wrote && (
+              <div>
+                <ActionButton
+                  variant="outline"
+                  pending={busy}
+                  onClick={() => setAskingCommit(true)}
+                >
+                  {t("projectPage.harness.setup.commit")}
+                </ActionButton>
+              </div>
+            )}
           </Stack>
         </div>
+      )}
+      {askingCommit && wrote && (
+        <ConfirmDialog
+          message={t("projectPage.harness.setup.commitMessage")}
+          confirmLabel={t("projectPage.harness.setup.commit")}
+          onCancel={() => setAskingCommit(false)}
+          onConfirm={() => void commit(wrote)}
+        >
+          <Group title={t("projectPage.harness.setup.commitFiles")} items={wrote.files} />
+        </ConfirmDialog>
       )}
       {shown && (
         <ConfirmDialog
