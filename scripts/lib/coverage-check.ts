@@ -6,6 +6,9 @@ export interface FileCoverage {
 
 const normalize = (path: string) => path.replaceAll("\\", "/");
 
+/** #1002: the share of each source file's lines and functions the tests must run, in percent. */
+export const COVERAGE_GATE = 100;
+
 /** Process entry points with no logic of their own; see docs/DECISIONS.md. */
 export const ENTRY_POINTS: ReadonlySet<string> = new Set([
   "apps/daemon/src/bin.ts",

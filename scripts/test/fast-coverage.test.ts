@@ -12,7 +12,7 @@ const record = (path: string, fn: [number, number], ln: [number, number]) =>
   ].join("\n");
 
 describe("fast-coverage (#309)", () => {
-  test("a file is fully covered at 100% lines and functions; only the listed sources count, sorted", () => {
+  test("#1002: a file the fast tiers cover at 80% of lines and functions counts; only the listed sources, sorted", () => {
     const lcov = [
       record("scripts/lib/b.ts", [2, 2], [10, 10]),
       record("scripts/lib/a.ts", [3, 3], [5, 5]),
@@ -28,9 +28,11 @@ describe("fast-coverage (#309)", () => {
       "scripts/lib/lines.ts",
       "scripts/lib/win.ts",
     ];
+    // lines.ts has 4 of 5 lines (80%); half.ts has 1 of 2 functions (50%).
     expect(fullyCovered(lcov, sources)).toEqual([
       "scripts/lib/a.ts",
       "scripts/lib/b.ts",
+      "scripts/lib/lines.ts",
       "scripts/lib/win.ts",
     ]);
   });

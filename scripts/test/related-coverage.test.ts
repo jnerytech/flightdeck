@@ -97,6 +97,26 @@ describe("related-coverage: the verdict on the changed files", () => {
     record("apps/daemon/src/untouched.ts", [0, 1], [[1, 0]]),
   ].join("\n");
 
+  test("#1002: a changed file at 80% of lines and functions passes, uncovered lines and all", () => {
+    const most = record(
+      "apps/daemon/src/most.ts",
+      [4, 5],
+      Array.from({ length: 10 }, (_, i): [number, number] => [i + 1, i < 8 ? 1 : 0]),
+    );
+    expect(checkChanged(most, ["apps/daemon/src/most.ts"])).toEqual({
+      problems: [],
+      functionGaps: [],
+    });
+    const less = record(
+      "apps/daemon/src/less.ts",
+      [5, 5],
+      Array.from({ length: 10 }, (_, i): [number, number] => [i + 1, i < 7 ? 1 : 0]),
+    );
+    expect(checkChanged(less, ["apps/daemon/src/less.ts"]).problems).toEqual([
+      "apps/daemon/src/less.ts: lines 8-10 not covered",
+    ]);
+  });
+
   test("a changed file at 100% passes", () => {
     expect(checkChanged(lcov, ["apps/daemon/src/full.ts"])).toEqual({
       problems: [],
@@ -104,14 +124,14 @@ describe("related-coverage: the verdict on the changed files", () => {
     });
   });
 
-  test("a changed file below 100% fails with its uncovered lines and its function count", () => {
+  test("a changed file below 80% fails with its uncovered lines and its function count", () => {
     expect(checkChanged(lcov, ["apps/daemon/src/low.ts"])).toEqual({
       problems: ["apps/daemon/src/low.ts: lines 20-22, 30 not covered; functions 1/2 called"],
       functionGaps: ["apps/daemon/src/low.ts"],
     });
   });
 
-  test("an unchanged file below 100% is ignored", () => {
+  test("an unchanged file below 80% is ignored", () => {
     expect(checkChanged(lcov, ["apps/daemon/src/full.ts"]).problems).toEqual([]);
   });
 
