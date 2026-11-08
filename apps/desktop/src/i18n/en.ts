@@ -3852,6 +3852,7 @@ export const en: Dictionary = {
     started: "Post-mortem started: {title}",
     notStarted:
       'The card "{title}" was made but did not start. Press Start to try again; it will not make another.',
+  },
   alertsUi: {
     open: "Choose an alert",
     title: "Choose an alert",

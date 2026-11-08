@@ -3858,6 +3858,7 @@ export const ptBR = {
     started: "Post-mortem iniciado: {title}",
     notStarted:
       'O card "{title}" foi criado, mas não iniciou. Aperte Iniciar para tentar de novo; não vai criar outro.',
+  },
   alertsUi: {
     open: "Escolher um alerta",
     title: "Escolher um alerta",
