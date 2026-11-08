@@ -1479,6 +1479,7 @@ export const en: Dictionary = {
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
     knowledge: "reading the project's documents",
+    knowledgeFeed: "the switch for the documents index in agents' prompts",
     harnessPreview: "previewing Claude Code setup changes",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
