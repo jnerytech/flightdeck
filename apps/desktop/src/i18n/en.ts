@@ -1444,6 +1444,7 @@ export const en: Dictionary = {
   },
   daemonFeature: {
     assistant: "the AI assistant",
+    serviceInstall: "starting at boot from the app",
     teleport: "moving a session to another host",
     github: "sign-in with GitHub",
     boardsync: "board sync",
