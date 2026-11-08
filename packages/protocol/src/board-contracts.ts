@@ -71,8 +71,8 @@ export function hasChecklistItem(text: string): boolean {
   let lineStart = 0;
   while (lineStart < text.length) {
     WHITE_SPACE.lastIndex = lineStart;
-    WHITE_SPACE.test(text);
-    const item = WHITE_SPACE.lastIndex;
+    const run = WHITE_SPACE.exec(text);
+    const item = lineStart + (run?.[0].length ?? 0);
     AFTER_INDENT.lastIndex = item;
     if (AFTER_INDENT.test(text)) return true;
     LINE_BREAK.lastIndex = item;
