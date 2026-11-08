@@ -15,7 +15,7 @@ export function nextStep(
   view: { tab: "conversation" | "diff"; canMerge: boolean; gate: boolean },
 ): NextStep | null {
   if (cardStartBlock(card) !== null) return "stop";
-  // A run waiting at a gate is answered at the gate, where Approve and Reject are (#1269).
+  // A run waiting at a gate is answered at the gate, where Approve and Deny are (#1269).
   if (view.gate) return "gate";
   if (card.prUrl) {
     const open = card.prState === null || card.prState === "open";

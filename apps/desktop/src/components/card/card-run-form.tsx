@@ -110,6 +110,8 @@ export function CardRunForm(
     gate: props.gateWaiting,
   });
   const running = cardStartBlock(card) !== null;
+  /** A card starts when nothing runs for it and no run waits at a gate: the host refuses a start over a waiting run. */
+  const startable = !running && step !== "gate";
   /** A session that is still there (even idle) or a card that waits: Stop has something to stop. */
   const alive =
     card.queued ||
@@ -171,17 +173,17 @@ export function CardRunForm(
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {step !== "start" && !running && (
+              {step !== "start" && startable && (
                 <DropdownMenuItem onSelect={startPlain}>{t("cardUi.start")}</DropdownMenuItem>
               )}
-              {!running && (
+              {startable && (
                 <DropdownMenuItem
                   onSelect={() => startAsk.ask(card, contracts, () => setStartingWith(true))}
                 >
                   {t("cardUi.startWith")}
                 </DropdownMenuItem>
               )}
-              {features.bg && !card.sessionId && (
+              {startable && features.bg && !card.sessionId && (
                 <DropdownMenuItem
                   onSelect={() =>
                     startAsk.ask(card, contracts, () => {
