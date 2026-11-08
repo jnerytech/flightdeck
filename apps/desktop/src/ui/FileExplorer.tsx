@@ -116,6 +116,7 @@ export function FileExplorer(
   const row = (dir: string, entry: FileEntry) => {
     const path = pathOf(dir, entry.name);
     const mark = status.get(path);
+    const markText = mark ? t(`changes.status.${mark}`) : null; // NOSONAR: a status is a word
     return (
       <TreeItem key={path} id={path}>
         <Stack gap={1}>
@@ -134,7 +135,7 @@ export function FileExplorer(
               <FileName entry={entry} onOpen={() => setViewing({ path })} />
             )}
             {entry.secret && <Badge variant="outline">{t("files.hidden")}</Badge>}
-            {mark && <Badge variant="outline">{t(`changes.status.${mark}`)}</Badge>}
+            {markText && <Badge variant="outline">{markText}</Badge>}
             {entry.kind === "dir" && changedInside(path) && (
               <span className="text-muted-foreground text-xs">{t("files.changedInside")}</span>
             )}
