@@ -189,12 +189,13 @@ export function NotificationCenter(
   const answering = useRef<{ id: string; at: number; words: string; since: number } | null>(null);
   const answer = (row: InboxRow, decision: "allow" | "deny", run: () => void) => {
     const rows = [...(list.current?.querySelectorAll("li[data-entry]") ?? [])];
-    const at = rows.findIndex((li) => li.getAttribute("data-entry") === row.entry.id);
+    const at = rows.findIndex((li) => (li as HTMLElement).dataset.entry === row.entry.id);
     const subject = row.entry.subject ?? row.entry.title;
+    const outcome = t(`approval.resolved.${decision}` as Key);
     answering.current = {
       id: row.entry.id,
       at: Math.max(at, 0),
-      words: `${subject}: ${t(`approval.resolved.${decision}` as Key)}`,
+      words: `${subject}: ${outcome}`,
       since: Date.now(),
     };
     run();
@@ -207,7 +208,7 @@ export function NotificationCenter(
       return;
     }
     const still = [...(list.current?.querySelectorAll("li[data-entry]") ?? [])].some(
-      (li) => li.getAttribute("data-entry") === waiting.id,
+      (li) => (li as HTMLElement).dataset.entry === waiting.id,
     );
     if (still) return;
     answering.current = null;

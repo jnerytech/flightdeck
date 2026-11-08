@@ -277,6 +277,11 @@ export function StatusBar(
   );
 }
 
+/** The quota's windows and guard, shown in the popover that the quota item opens. */
+const quotaDetailFor = (store: AppStore) => (close: () => void) => (
+  <QuotaDetail store={store} onClose={close} />
+);
+
 /** The bar over the app's state: the quota glance of the online hosts, the counts and the update. */
 export function StatusBarSlot(
   props: Readonly<{
@@ -309,7 +314,7 @@ export function StatusBarSlot(
       quota={glance ? { glance, hostName: quotaHost?.name ?? "" } : null}
       {...(store && glance
         ? {
-            quotaDetail: (close: () => void) => <QuotaDetail store={store} onClose={close} />,
+            quotaDetail: quotaDetailFor(store),
           }
         : {})}
       refreshing={props.refreshing}

@@ -84,11 +84,16 @@ export function needsReformat(preview: HarnessPreview): boolean {
 
 /** The id a template gets from its title: lower case letters and digits joined by dashes, up to 40. */
 export function templateIdFrom(title: string): string {
-  return title
+  const dashed = title
     .normalize("NFKD")
     .replace(/\p{M}/gu, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .slice(0, 40)
-    .replace(/^-+|-+$/g, "");
+    .slice(0, 40);
+  // The dashes at either end go: two plain scans, where one regex would try every start of a run.
+  let start = 0;
+  let end = dashed.length;
+  while (start < end && dashed[start] === "-") start++;
+  while (end > start && dashed[end - 1] === "-") end--;
+  return dashed.slice(start, end);
 }
