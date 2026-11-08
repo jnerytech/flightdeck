@@ -9,10 +9,14 @@ import { credential } from "../permissions/sensitive-paths.ts";
 export const firstStep = (inside: string) => inside.split(/[\\/]/)[0] ?? "";
 
 /**
- * `.git` as a filesystem may take it: in any case (Windows and macOS do not tell them apart) and
- * with trailing dots or spaces (Windows drops them).
+ * `.git` as a filesystem may take it: in any case (Windows and macOS do not tell them apart), with
+ * trailing dots or spaces (Windows drops them), with an NTFS stream after a colon
+ * (`.git::$INDEX_ALLOCATION` is the folder itself), and as its 8.3 short name (`GIT~1`, issue #1034).
  */
-export const isGitDir = (name: string) => name.replace(/[. ]+$/, "").toLowerCase() === ".git";
+export function isGitDir(name: string): boolean {
+  const base = (name.split(":")[0] ?? "").replace(/[. ]+$/, "").toLowerCase();
+  return base === ".git" || /^git~\d+$/.test(base);
+}
 
 /**
  * A file of the review, given relative to the repository: never absolute, never above the root
