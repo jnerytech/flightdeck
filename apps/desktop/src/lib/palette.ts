@@ -57,6 +57,8 @@ export type PaletteTarget =
   | { kind: "snippet"; hostId: string | null; snippetId: string }
   /** Issue #147: a card made from the text typed in the palette. */
   | { kind: "create-card"; hostId: string; projectId: string; title: string }
+  /** Issue #1135: a session started in a project's folder with the typed text as its first prompt. */
+  | { kind: "start-session"; hostId: string; cwd: string; prompt: string }
   /** A card made from an issue: `ref` when the text names the issue fully, else its `id` in the project. */
   | { kind: "create-card-issue"; hostId: string; projectId: string; ref?: string; id?: string }
   /** A pasted PR link (phase 22): the hosts that watch PRs are asked which card or session it is. */

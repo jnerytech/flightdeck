@@ -48,6 +48,7 @@ type InPlace =
   | "start-card"
   | "create-card"
   | "create-card-issue"
+  | "start-session"
   | "snippet"
   | "pull-link"
   | "switch-client"
@@ -281,6 +282,8 @@ export function runPaletteTarget(
         });
       return;
     }
+    case "start-session":
+      return;
     case "create-card-issue": {
       const board: Route = { name: "board", host: target.hostId, projectId: target.projectId };
       void createFromIssue(store, target).then((card) => {
