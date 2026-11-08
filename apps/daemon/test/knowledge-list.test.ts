@@ -40,6 +40,15 @@ describe("knowledge-list: the library of a project, read only (#76)", () => {
     ]);
   });
 
+  test("a document in a subfolder of a library folder is listed too", async () => {
+    const root = tempDir("fd-knowledge-");
+    await put(root, "docs/adr/2026/0003-c.md", front("transitional", "# Third\n"));
+    const { entries } = await listKnowledge(root);
+    expect(entries.map((e) => [e.path, e.title, e.status])).toEqual([
+      ["docs/adr/2026/0003-c.md", "Third", "transitional"],
+    ]);
+  });
+
   test("a project with no library folder has an empty list", async () => {
     expect(await listKnowledge(tempDir("fd-knowledge-"))).toEqual({
       entries: [],
