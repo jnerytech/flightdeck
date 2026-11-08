@@ -40,8 +40,8 @@ function setup(language: "en" | "pt-BR" = "en") {
     return type === "workflow.list" ? { workflows: [] } : {};
   }) as never;
   store.hostRequest = (async () => ({ ok: true, data: { text: null, ignored: null } })) as never;
-  const seen = { shown: 0, back: 0 };
-  const form = (over: object, tab: "conversation" | "diff" = "conversation") => (
+  const seen = { shown: 0, back: 0, merged: 0 };
+  const form = (over: object, tab: "conversation" | "diff" = "conversation", canMerge = false) => (
     <TContext.Provider value={store.i18n.t}>
       <CardRunForm
         store={store}
@@ -49,6 +49,10 @@ function setup(language: "en" | "pt-BR" = "en") {
         card={card(over)}
         features={{ bg: true, watch: false }}
         tab={tab}
+        canMerge={canMerge}
+        onMerge={() => {
+          seen.merged++;
+        }}
         arenaStart={null}
         onDiscarded={() => {
           seen.back++;
@@ -132,6 +136,31 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     expect(w.commands.filter(([, type]) => type === "card.stop")).toEqual([
       ["h1", "card.stop", { cardId: "c1" }],
     ]);
+  });
+
+  const open = { prUrl: "https://github.com/acme/repo/pull/1", prState: "open" };
+
+  test("a card with an open PR that can be merged leads with Merge PR, which asks to merge", async () => {
+    const w = setup();
+    render(w.form({ ...finished, ...open }, "conversation", true));
+    expect(shown()).toEqual(["Merge PR", "Actions for Cart screen"]);
+    await click(button("Merge PR"));
+    expect(w.seen.merged).toBe(1);
+  });
+
+  test("a PR that cannot be merged (its checks fail, or the host cannot merge) leads with nothing", () => {
+    const w = setup();
+    render(w.form({ ...finished, ...open }, "conversation", false));
+    expect(shown()).toEqual(["Actions for Cart screen"]);
+  });
+
+  test("a running card with an open PR keeps Merge PR in the menu, behind Stop", async () => {
+    const w = setup();
+    render(w.form({ ...finished, ...open, sessionStatus: "running" }, "conversation", true));
+    expect(shown()).toEqual(["Stop", "Actions for Cart screen"]);
+    await openMenu();
+    await click(item("Merge PR"));
+    expect(w.seen.merged).toBe(1);
   });
 
   test("a finished run leads with Review changes, which shows the changes; Open PR waits in the menu", async () => {

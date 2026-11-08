@@ -47,6 +47,10 @@ export function CardRunForm(
     features: CardRunFeatures;
     /** The tab of the card page that shows: Review changes leads while it is the conversation (#1197). */
     tab: "conversation" | "diff";
+    /** The card's PR is open and can be merged from here (#1197): Merge PR leads. */
+    canMerge: boolean;
+    /** Merge PR was chosen: the page asks to confirm. */
+    onMerge(): void;
     /** The arena's Start, placed between Complete and Discard (it knows when it may show). */
     arenaStart: ReactNode;
     /** The card was discarded: the screen goes back. */
