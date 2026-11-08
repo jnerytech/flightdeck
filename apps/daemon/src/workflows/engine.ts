@@ -552,6 +552,8 @@ export class WorkflowEngine {
         return;
       }
       this.host.place(cardId, { type: "workflow", state: "running" });
+      // From here the run owns the slot: its own end gives it back, not this catch.
+      held = false;
       this.begin(runId, worktree);
     } catch (error) {
       // The run may be gone (its card discarded meanwhile): its slot still goes back.
