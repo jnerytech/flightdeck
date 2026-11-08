@@ -69,6 +69,17 @@ describe("ci-quick", () => {
       "scripts/test/md-links.test.ts",
     ]);
     expect(quickTests(["scripts/test/md-links.test.ts"], () => "")).toEqual([]);
+    // #1114 review: a file that cannot be read is not marked, and the job does not crash on it.
+    const missing = () => {
+      throw new Error("ENOENT");
+    };
+    let picked: string[];
+    try {
+      picked = quickTests(["scripts/test/gone.test.ts", "scripts/test/a-ratchet.test.ts"], missing);
+    } catch {
+      picked = ["the read error stopped the job"];
+    }
+    expect(picked).toEqual(["scripts/test/a-ratchet.test.ts"]);
   });
 
   test("#1108: a test marked // repo-wide runs in the quick job, wherever it is and whatever its name", () => {

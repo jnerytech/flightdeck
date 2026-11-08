@@ -34,6 +34,28 @@ describe("repo-wide (#1108)", () => {
     }
   });
 
+  test("#1114 review: other spawns, a git wrapper and the root under another name count too", () => {
+    const shell = `"git ls-${"files"} apps"`;
+    for (const source of [
+      `const t = execSync(${shell}, { encoding: "utf8" });`,
+      `const t = execFileSync("git", [${LS}], { cwd: REPO_ROOT });`,
+      `const t = Bun.spawn(["git", ${LS}], { cwd: process.cwd() });`,
+      `const t = spawnSync("git", [${LS}], { cwd: resolve(import.meta.dir, "../..") });`,
+      `const t = spawnSync("git", [${LS}], { cwd: root });`,
+      `const t = git(ROOT, ${LS}, "*.md");`,
+    ]) {
+      expect(`${source}: ${scansRealRepo(source)}`).toBe(`${source}: true`);
+    }
+    for (const source of [
+      `const t = execSync(${shell}, { cwd: tmp });`,
+      `const t = git(repo, ${LS});`,
+      `switch (args[0]) {\n  case ${LS}:\n    return "";\n}`,
+      `const reply = args[0] === ${LS} ? "a" : null;`,
+    ]) {
+      expect(`${source}: ${scansRealRepo(source)}`).toBe(`${source}: false`);
+    }
+  });
+
   test("the marker is a comment line of its own, starting // repo-wide", () => {
     expect(isRepoWide(`import x from "y";\n${MARK} (#1108): reads every doc\n`)).toBe(true);
     expect(isRepoWide(`  ${MARK}: scans the code\n`)).toBe(true);
