@@ -1301,6 +1301,10 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   **Excluir…**, que cita o card e pergunta antes. Excluir vale só para um card que nunca começou
   (sem worktree, branch nem sessão). Para um que já começou, a janela explica o motivo e oferece
   **Descartar card** no lugar. Os cards que esperavam o excluído ficam livres dele, com um aviso.
+- **O selo Precisa de:** de um card do board é um botão. Para o que o texto do card não tem
+  (critérios, uma nota de validação, uma especificação) abre o card com o título pronto para
+  editar; para um link de PR ou checks abre o card, onde o próximo passo lidera. Ele não é uma
+  parada do Tab: Enter no título do card abre o mesmo card.
 
 ### Provedores de PR
 

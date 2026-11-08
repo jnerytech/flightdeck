@@ -1295,6 +1295,10 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
   **Delete…**, which names the card and asks first. Delete is only for a card that never started
   (no worktree, branch or session). For one that did, the dialog says why and offers **Discard card**
   instead. The cards that waited for a deleted card are freed of it, with a notice.
+- **The Needs: chip** on a board card is a button. For what the card's own text lacks (criteria, a
+  validation note, a spec) it opens the card with its title ready to edit; for a PR link or checks
+  it opens the card, where its next step leads. It is not a Tab stop: Enter on the card's title
+  opens the same card.
 
 ### PR providers
 
