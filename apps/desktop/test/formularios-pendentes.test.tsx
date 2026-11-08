@@ -71,12 +71,14 @@ async function expectBusyOnce(
 describe("formularios-pendentes: a form answers Enter before the work is done", () => {
   test("Criar orçamento goes busy and saves once", async () => {
     const save = slow();
+    // One state object: the slice reads it again after each render and needs the same hosts list.
+    const state = { clientSelection: "all", hosts: [] };
     const store = {
       today: () => "2026-10-15",
       hostCommand: () => Promise.resolve(null),
       clientScope: () => ({ includes: () => true }),
       subscribe: () => () => {},
-      getState: () => ({ clientSelection: "all" }),
+      getState: () => state,
       setBudget: save.call,
     } as unknown as AppStore;
     render(

@@ -2801,6 +2801,9 @@ same login, so the quota belongs to the host. The daemon keeps the last reading 
 (5 hours, 7 days and any others that come along), and a reading stops being valid when its
 window resets.
 
+- **On the Costs screen:** on a subscription the **Plan quota** block leads the screen, with the
+  bars of each host, before the dollars (an estimate at API prices that the plan does not charge).
+  A host on an API key has no plan window, so its screen leads with dollars.
 - **In the app:** the top of the Sessions screen shows, for each Claude account, the 5-hour and
   7-day bars (hosts signed in to the same account share one card, named after all of them), with the percentage, the reset time and the age of the reading ("read 12 min
   ago").
@@ -2970,6 +2973,14 @@ In **Settings**, each host with costs has the **Budgets** section:
   - **hold new cards:** at 100%, new cards of that scope wait in the queue with reason
     `budget`. They leave by themselves in the next period or when the limit goes up.
   - Terminal sessions and manual sessions are never held.
+- **Measured in:** on a host that reports the plan quota (a subscription), **Measured in** also offers a share of the plan's
+  **5-hour window** or **weekly window**, instead of dollars. The limit is then a percentage of
+  that window (0.1% to 100%) and the window is the period: the alerts and the hold start again
+  when it resets. The host's share is the window's own use; a project's share is that use times the
+  project's part of the estimated cost since the window began, so the list marks it **estimate**
+  (the plan does not say who used it). A new reading of the plan counts at once. With no reading
+  of the window the budget stays at zero and nothing alerts. A host with an older flightdeckd
+  keeps the dollar form only.
 
 ### Quota history
 

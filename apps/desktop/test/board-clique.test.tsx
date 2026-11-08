@@ -125,7 +125,7 @@ describe("board-clique: the board and the card say why a button is off", () => {
     await openCard("Login");
     // Nothing to open a PR from yet: the card leads with Iniciar and offers no Abrir PR (#1197).
     expect(screen.queryByRole("button", { name: "Iniciar" })).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Abrir PR" }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Abrir PR" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the new-card dialog is a form: Enter in the title creates the card, and Cancelar does not submit", async () => {

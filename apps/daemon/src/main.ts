@@ -1003,7 +1003,7 @@ export async function startDaemon(
     log: (m) => logger.log(m),
     onPass: () => budgets.evaluate(),
   });
-  const budgets = new Budgets({ db: store.db });
+  const budgets = new Budgets({ db: store.db, quota });
   budgets.start();
   history.onChange(() => usageIndex.request());
   usageIndex.start();

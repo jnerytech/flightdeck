@@ -155,7 +155,7 @@ describe("harness-share-ui: the setup card shares the project's Markdown as a ho
     const field = nameField("Template name");
     if (field) await act(async () => fireEvent.keyDown(field, { key: "Enter" }));
     await uiIdle();
-    expect(sent.length).toBe(0);
+    expect(sent).toHaveLength(0);
   });
 
   test("an older answer is gone when the next attempt starts", async () => {
