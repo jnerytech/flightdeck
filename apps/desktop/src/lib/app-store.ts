@@ -3281,19 +3281,7 @@ export class AppStore {
         this.keepUsage();
       },
       // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
-      onTeams: (frame) => {
-        this.rememberTeam(config.id, frame.team);
-        for (const listener of this.teamListeners) listener(config.id, frame);
-        if (frame.reason) {
-          this.notifyUser(
-            {
-              title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
-              body: frame.reason,
-            },
-            { name: "teams", host: config.id, team: frame.team.id },
-          );
-        }
-      },
+      onTeams: (frame) => this.onTeams(config.id, frame),
       onMessagingAlert: (alert) => this.onLoopAlert(config.id, alert),
       onWatch: (frame) => this.keepWatch(config.id, frame.watch),
       onMessages: (frame) => {
@@ -3559,6 +3547,21 @@ export class AppStore {
     // here and say so in the conversation.
     this.resyncing.delete(key);
     return markGap(known);
+  }
+
+  /** A team changed on a host: kept, told to the page, and, when it is news, notified. */
+  private onTeams(hostId: string, frame: TeamsUpdatedFrame): void {
+    this.rememberTeam(hostId, frame.team);
+    for (const listener of this.teamListeners) listener(hostId, frame);
+    if (frame.reason) {
+      this.notifyUser(
+        {
+          title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
+          body: frame.reason,
+        },
+        { name: "teams", host: hostId, team: frame.team.id },
+      );
+    }
   }
 
   /** Sidebar, queue, tray and notifications all come from `session.summary`. */
