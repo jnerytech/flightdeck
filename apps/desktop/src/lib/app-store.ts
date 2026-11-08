@@ -288,6 +288,8 @@ export interface AppState {
   settings: Settings;
   /** The notifications the app sent, newest first, kept for the notification center. */
   inbox: InboxEntry[];
+  /** Text handed to a session's message box that the box has not taken yet, by session key. */
+  composerFill: Record<string, string>;
   /** Last global history search, `null` before the first one. */
   search: SearchState | null;
   searchOpen: boolean;
@@ -1114,6 +1116,7 @@ export class AppStore {
       clientBudgets: [],
       notices: [],
       inbox: [],
+      composerFill: {},
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null, ready: null },
       // Defaults: close to tray on, start with Windows off.
@@ -1606,6 +1609,14 @@ export class AppStore {
     )
       this.openRequest(item);
     else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+  }
+
+  /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
+  fillComposer(_key: string, _text: string): void {}
+
+  /** The text waiting for the session's box, which is now taken; `null` when there is none. */
+  takeComposerFill(_key: string): string | null {
+    return null;
   }
 
   /** Sends an OS notification and keeps it in the notification center. */

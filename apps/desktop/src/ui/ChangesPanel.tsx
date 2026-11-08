@@ -38,6 +38,8 @@ export function ChangesPanel(
     target: string;
     /** Something above the files (a card's position against its base, its PR); gets the answer. */
     extra?: (changes: ChangesResult, refresh: () => Promise<void>) => ReactNode;
+    /** Where the collected review can be put to be edited and sent (a session's message box). */
+    onCompose?: (text: string) => void;
   }>,
 ) {
   const t = useT();
