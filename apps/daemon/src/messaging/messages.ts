@@ -175,7 +175,7 @@ export class Messaging {
     for (const row of lost) {
       this.update(row.id, {
         status: "expired",
-        reason: "o daemon reiniciou antes da entrega",
+        reason: "the daemon restarted before delivery",
         at: this.ms(),
       });
     }
@@ -270,7 +270,7 @@ export class Messaging {
     const info = id ? this.opts.endpoints.list().find((e) => e.id === id) : undefined;
     if (!info) {
       throw notFound(
-        "a sessão que pede não existe neste host: não sei quem está mandando",
+        "the asking session does not exist on this host: I do not know who is sending",
         "messaging_asker_unknown",
       );
     }
@@ -285,7 +285,7 @@ export class Messaging {
       const info = list.find((e) => e.id === id) ?? list.find((e) => e.id === sessionId);
       if (!info) {
         return {
-          error: `sessão ${address} não encontrada neste host`,
+          error: `session ${address} not found on this host`,
           reason: "messaging_target_not_found",
           params: { address },
         };
@@ -300,7 +300,7 @@ export class Messaging {
     const sessions = this.peers.get(host);
     if (!sessions) {
       return {
-        error: `o host ${host} não é conhecido: o app descreve os hosts`,
+        error: `the host ${host} is not known: the app describes the hosts`,
         reason: "messaging_host_unknown",
         params: { host },
       };
@@ -310,7 +310,7 @@ export class Messaging {
       sessions.find((s) => s.id === id) ?? sessions.find((s) => s.aliases?.includes(alias));
     if (!peer) {
       return {
-        error: `sessão ${address} não encontrada no host ${host}`,
+        error: `session ${address} not found on host ${host}`,
         reason: "messaging_peer_not_found",
         params: { address, host },
       };
@@ -391,13 +391,13 @@ export class Messaging {
     if (!info) {
       throw new FlightdeckError(
         "invalid_state",
-        "a sessão é de outro host: o read_session só lê sessões deste host",
+        "the session is on another host: read_session only reads sessions of this host",
         "messaging_read_other_host",
       );
     }
     const read = await this.opts.endpoints.read(info.id, last);
     if (!read) {
-      throw notFound(`sessão ${address} não encontrada`, "messaging_target_not_found", { address });
+      throw notFound(`session ${address} not found`, "messaging_target_not_found", { address });
     }
     return read;
   }
@@ -510,14 +510,14 @@ export class Messaging {
     if (!allowed.ok) return allowed.reason;
     const key = pairKey(from, to);
     if (this.isPaused(key)) {
-      return "o par está pausado por um laço de mensagens; libere em Configurações";
+      return "the pair is paused by a message loop; release it in Settings";
     }
     const limit = limits(from, to, this.history(), this.ms(), this.policy);
     if (!limit.ok) {
       if (limit.kind === "loop") this.pause(key, from, to);
       return limit.reason;
     }
-    if (!target.receives) return target.reason ?? "a sessão não recebe mensagens";
+    if (!target.receives) return target.reason ?? "the session does not receive messages";
     return null;
   }
 
@@ -531,7 +531,7 @@ export class Messaging {
       kind: "loop",
       from,
       to,
-      message: `o par ${from} e ${to} foi pausado: mais mensagens do que o limite indo e voltando`,
+      message: `the pair ${from} and ${to} was paused: more messages than the limit going back and forth`,
       at,
     });
   }
@@ -611,7 +611,7 @@ export class Messaging {
   private suspend(sessionId: string): void {
     this.opts.endpoints.suspend(
       sessionId,
-      "mensagem de uma sessão que recebeu conteúdo de terceiros",
+      "message from a session that received third-party content",
     );
   }
 
@@ -654,12 +654,12 @@ export class Messaging {
       });
       return { id: message.id, status: "refused", reason };
     };
-    if (message.kind !== "session") return refuse("só mensagens de sessão atravessam os hosts");
+    if (message.kind !== "session") return refuse("only session messages cross hosts");
     if (message.toHost !== this.opts.host) {
-      return refuse(`a mensagem é para outro host (${message.toHost}), não para este`);
+      return refuse(`the message is for another host (${message.toHost}), not this one`);
     }
     const info = this.opts.endpoints.list().find((e) => e.id === message.toSession);
-    if (!info) return refuse(`sessão ${message.toHost}/${message.toSession} não encontrada`);
+    if (!info) return refuse(`session ${message.toHost}/${message.toSession} not found`);
     const to = this.partyOf(info);
     const target: Target = {
       party: to,
@@ -776,7 +776,7 @@ export class Messaging {
         formatted,
       });
     if (!info) {
-      const reason = `sessão ${to} não encontrada`;
+      const reason = `session ${to} not found`;
       record("refused", reason, null);
       return { id, status: "refused", reason };
     }
@@ -859,7 +859,7 @@ export class Messaging {
     for (const { id } of stale) {
       this.update(id, {
         status: "expired",
-        reason: "o app não repassou em 24 horas: a mensagem não saiu",
+        reason: "the app did not relay it within 24 hours: the message was not sent",
         at: now,
       });
     }

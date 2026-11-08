@@ -181,7 +181,7 @@ import {
   type SessionState,
 } from "./session-state.ts";
 import { SessionViews } from "./session-views.ts";
-import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
+import { probeAfter, type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { ShellPrefs } from "./shell-prefs.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { SidebarFoldController } from "./sidebar-fold.ts";
@@ -434,6 +434,11 @@ export type HostCommandType = Extract<
   | "session.sleep"
   | "host.keepAwake"
   | `project.trust.${string}`
+  | `project.harness.${string}`
+  | "knowledge.list"
+  | "knowledge.feed"
+  | "knowledge.setFeed"
+  | "knowledge.setStatus"
   | "host.updates.set"
   | `ssh.${string}`
   | `snippets.${string}`
@@ -981,6 +986,19 @@ export class AppStore {
       options.startRoute,
     );
     this.router = this.hostTabs.router;
+    // A navigation took the window to another host's tabs (#932): say so, with the way back.
+    this.hostTabs.onSwitch((left, to) => {
+      // With no tabs' host yet (after a reload), the switcher named the window's host: the same
+      // host is no switch. With no host at all (a first page, a deep link), nothing was left.
+      const from = left ?? this.uiHostId();
+      if (!from || from === to) return;
+      const { t } = this.i18n;
+      const name = (id: string) => this.state.hosts.find((host) => host.id === id)?.name ?? id;
+      this.success(t("toast.switchedHost", { host: name(to) }), {
+        label: t("toast.backTo", { host: name(from) }),
+        run: () => this.hostTabs.returnAcross(left),
+      });
+    });
     // A set kept for a host that is not configured any more (removed before, or gone from the list).
     const configured = new Set(loadHosts(platform.storage).map((host) => host.id));
     for (const id of Object.keys(this.hostTabs.snapshot().hosts)) {
@@ -2608,21 +2626,12 @@ export class AppStore {
     ]);
     // The host may have gone while it was asked.
     if (!this.state.hosts.some((h) => h.id === hostId)) return;
-    const before = this.state.setupProbes[hostId];
-    let githubKnown = before?.github ?? null;
-    if (wantsGithub)
-      githubKnown = github?.ok ? github.data.installed && github.data.loggedIn : null;
-    const projectList = wantsProjects && projects?.ok ? projects.data.projects : before?.projects;
     // At connect the probe's list is also the screens' (the sidebar tree needs it on any page, #721):
     // one request, not two.
     if (options.connect === true && wantsProjects && projects?.ok) {
       this.rememberProjects(hostId, projects.data.projects);
     }
-    const probe: SetupProbe = {
-      hooks: hooks?.ok ? hooks.data.status : null,
-      github: githubKnown,
-      ...(projectList ? { projects: projectList } : {}),
-    };
+    const probe = probeAfter(this.state.setupProbes[hostId], wants, { hooks, github, projects });
     this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
   }
 
@@ -2819,10 +2828,14 @@ export class AppStore {
     return this.onSelected((conn, sessionId) => conn.request("session.interrupt", { sessionId }));
   }
 
-  setMode(permissionMode: SettableMode): Promise<void> {
-    return this.onSelected((conn, sessionId) =>
-      conn.request("session.setMode", { sessionId, permissionMode }),
-    );
+  /** Whether the host took the mode (#935): false when it refused (said why), or no session is open. */
+  async setMode(permissionMode: SettableMode): Promise<boolean> {
+    let taken = false;
+    await this.onSelected(async (conn, sessionId) => {
+      await conn.request("session.setMode", { sessionId, permissionMode });
+      taken = true;
+    });
+    return taken;
   }
 
   setModel(model: string | null): Promise<void> {

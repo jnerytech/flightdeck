@@ -113,14 +113,14 @@ export function TabSwitcherHost(props: Readonly<{ store: AppStore }>) {
             );
           })}
         </div>
-        <p role="status" className="sr-only">
+        <output className="sr-only">
           {picked &&
             t("tabs.switcher.position", {
               title: tabTitle(picked, state, store),
               n: switcher.index + 1,
               total: rows.length,
             })}
-        </p>
+        </output>
       </div>
     </div>
   );

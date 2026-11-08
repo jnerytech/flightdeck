@@ -13,10 +13,15 @@ import {
   type ExternalStatus,
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
+  type HarnessApplied,
   type HarnessPreview,
   type HarnessStack,
   type HostRuntime,
   type KeepAwakeStatus,
+  type KnowledgeEntry,
+  type KnowledgeIndexResult,
+  type KnowledgeListResult,
+  type KnowledgeStatus,
   MIN_PROTOCOL_VERSION,
   Pong,
   PROTOCOL_VERSION,
@@ -56,6 +61,7 @@ import type { PreviewPart } from "./harness/preview.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
+import type { KnowledgeSwitch } from "./knowledge/switch.ts";
 import type { FileLog } from "./logs/file-log.ts";
 import { logPathFor, tailForOrigin } from "./logs/serve.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
@@ -175,8 +181,28 @@ export interface ServerOptions {
   ) => string;
   /** #75: a project's stack and commands, read from its manifest files, never run. */
   harnessStack?: (path: string) => Promise<HarnessStack>;
+  /** Issue #76: the library of documents of a project, read only. */
+  knowledge?: (path: string) => Promise<KnowledgeListResult>;
+  /** #76: the index of the project's current documents for a session's system prompt. */
+  knowledgeFeed?: (path: string) => Promise<KnowledgeIndexResult>;
+  /** #76: whether sessions in a project are given that index, and the person's switch for it. */
+  knowledgeFeedSwitch?: KnowledgeSwitch;
+  /** #76: the status of one library document, written into its front matter. */
+  knowledgeStatus?: (
+    path: string,
+    file: string,
+    status: KnowledgeStatus,
+    expectedHash: string,
+  ) => Promise<KnowledgeEntry>;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
+  /** #75: writes what the preview proposed, when `digests` still match the proposals. */
+  harnessApply?: (
+    path: string,
+    parts: readonly PreviewPart[],
+    digests: Readonly<Record<string, string>>,
+    options: { reformat: boolean },
+  ) => Promise<HarnessApplied>;
   projectTrust?: {
     /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
     refresh(): Promise<void>;
@@ -408,7 +434,12 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.deps, "depsCheck"),
     ...when(opts.projectTrust, "projectTrust"),
     ...when(opts.harnessStack, "harnessStack"),
+    // Issue #76: the project's library of documents, with their lifecycle status.
+    ...when(opts.knowledge, "knowledge"),
+    ...when(opts.knowledgeFeedSwitch, "knowledgeFeed"),
+    ...when(opts.knowledgeStatus, "knowledgeStatus"),
     ...when(opts.harnessPreview, "harnessPreview"),
+    ...when(opts.harnessApply, "harnessApply"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
@@ -1124,6 +1155,32 @@ export function startServer(opts: ServerOptions): RunningServer {
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.projectTrust.inspect(path));
       }
+      case "knowledge.list": {
+        if (!opts.knowledge) throw featureOff("knowledge");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.knowledge(path));
+      }
+      case "knowledge.index": {
+        if (!opts.knowledgeFeed) throw featureOff("knowledge");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeFeed(path));
+      }
+      case "knowledge.setStatus": {
+        if (!opts.knowledgeStatus) throw featureOff("knowledgeStatus");
+        const { path: asked, file, status, expectedHash } = command.payload;
+        const path = await resolveAllowedCwd(asked, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeStatus(path, file, status, expectedHash));
+      }
+      case "knowledge.feed": {
+        if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeFeedSwitch.state(path));
+      }
+      case "knowledge.setFeed": {
+        if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeFeedSwitch.set(path, command.payload.enabled));
+      }
       case "project.harness.stack": {
         if (!opts.harnessStack) throw featureOff("harnessStack");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
@@ -1133,6 +1190,25 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.harnessPreview) throw featureOff("harnessPreview");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.harnessPreview(path, command.payload.parts));
+      }
+      case "project.harness.apply": {
+        if (!opts.harnessApply) throw featureOff("harnessApply");
+        // A hook written here runs its command in every session of a trusted project: a near
+        // connection only, like project.trust.set, and only once the person confirmed.
+        requireVaultTransport(ws.data.origin, "project.harness.apply", opts.log);
+        const { parts, digests, confirm, reformat } = command.payload;
+        if (confirm !== true) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "changing the Claude Code setup needs confirm: true",
+            "harness_confirm",
+          );
+        }
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(
+          command.type,
+          await opts.harnessApply(path, parts, digests, { reformat: reformat === true }),
+        );
       }
       case "project.trust.set": {
         if (!opts.projectTrust) throw featureOff("projectTrust");

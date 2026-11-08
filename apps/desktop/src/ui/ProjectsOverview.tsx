@@ -1,12 +1,15 @@
+import type { Project } from "@flightdeck/protocol";
 import { FolderGit2, X } from "lucide-react";
 import { useState } from "react";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
+import { NewProject } from "@/components/projects/new-project";
 import { ProjectCardTile } from "@/components/projects/project-card-tile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProjectCards } from "@/hooks/use-project-cards";
+import { useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { HubRowState } from "../lib/hub.ts";
 import {
@@ -24,6 +27,8 @@ export function ProjectsOverview(
     store: AppStore;
     state: Pick<AppState, "projects" | "cards"> & HubRowState;
     onOpen(card: ProjectCard): void;
+    /** A project was added from here (issue #931): the screen goes to it. */
+    onAdded?(hostId: string, project: Project): void;
     /** Only this host's projects (its id), with a chip that clears the filter. */
     host?: string;
     onClearHost?(): void;
@@ -35,13 +40,35 @@ export function ProjectsOverview(
   const [sort, setSort] = useState<ProjectSort>("activity");
   const cards = useProjectCards(store, state);
   const hostName = props.host ? state.hosts.find((h) => h.id === props.host)?.name : undefined;
-  const scoped = props.host ? cards.filter((card) => card.hostId === props.host) : cards;
+  // A route's host wins; else the hosts the switcher shows (#932), so a pick never lands elsewhere.
+  const switcher = useSwitcherHosts(store, state.hosts);
+  const shownHosts = switcher.map((host) => host.id);
+  /** The one host the page shows, if one: the route's, else the switcher's. */
+  const one = props.host
+    ? state.hosts.find((host) => host.id === props.host)
+    : switcher.length === 1
+      ? switcher[0]
+      : undefined;
+  const scoped = props.host
+    ? cards.filter((card) => card.hostId === props.host)
+    : cards.filter((card) => shownHosts.includes(card.hostId));
   const shown = sortProjectCards(filterProjectCards(scoped, query), sort);
 
   return (
     <Page
       title={t("projectsOverview.title")}
-      subtitle={t("projectsOverview.subtitle")}
+      subtitle={
+        one
+          ? t("projectsOverview.subtitleHost", { host: one.name })
+          : t("projectsOverview.subtitle")
+      }
+      actions={
+        <NewProject
+          store={store}
+          hosts={props.host ? state.hosts.filter((h) => h.id === props.host) : switcher}
+          onAdded={(hostId, project) => props.onAdded?.(hostId, project)}
+        />
+      }
       toolbar={
         <div className="row-wrap">
           <Input
@@ -78,7 +105,16 @@ export function ProjectsOverview(
         </div>
       }
     >
-      {scoped.length === 0 && <EmptyState icon={FolderGit2} title={t("states.emptyProjects")} />}
+      {scoped.length === 0 && (
+        <EmptyState
+          icon={FolderGit2}
+          title={
+            one && one.status !== "online"
+              ? t("projectsOverview.hostOffline", { host: one.name })
+              : t("states.emptyProjects")
+          }
+        />
+      )}
       {scoped.length > 0 && shown.length === 0 && (
         <EmptyState title={t("projectsOverview.noMatch")} />
       )}

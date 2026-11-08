@@ -226,4 +226,25 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
       await code(fromAccept.manager.setPermissionMode(fromAccept.sessionId, "acceptEdits")),
     ).toBe("ok");
   });
+
+  test("a mode change the run took is told as a session.mode event, so every app and a reload show it (#935)", async () => {
+    const { manager, store, sessionId } = await liveSession();
+    await manager.setPermissionMode(sessionId, "plan");
+    // The session started in default: accept edits is looser, refused, and reports nothing.
+    const refused = await code(manager.setPermissionMode(sessionId, "acceptEdits"));
+    const modes = store
+      .eventsSince(sessionId)
+      .filter((e) => e.event.type === "session.mode")
+      .map((e) => (e.event as { permissionMode?: string }).permissionMode);
+    expect([refused, modes]).toEqual(["invalid_permission_update", ["plan"]]);
+  });
+
+  test("a run started again (resume, a restart) starts in the mode the session last reported, never back in the start mode (#935)", async () => {
+    const { manager, runtime, sessionId } = await liveSession();
+    await manager.setPermissionMode(sessionId, "plan");
+    await manager.close(sessionId);
+    await poll(() => manager.get(sessionId).status === "ended", 3000);
+    await manager.resume(sessionId);
+    expect(runtime.starts.map((start) => start.permissionMode)).toEqual(["default", "plan"]);
+  });
 });

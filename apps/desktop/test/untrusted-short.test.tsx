@@ -7,7 +7,7 @@ import { settle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
-const { cleanup, render, within } = await import("@testing-library/react");
+const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { UntrustedNotice } = await import("../src/components/projects/untrusted-notice.tsx");
 const { ShortArea, SessionPane } = await import("../src/components/session/parts.tsx");
@@ -74,3 +74,24 @@ for (const [lang, dict] of [
     });
   });
 }
+
+// #168: the session page passes "" until the session's folder is known; the host refuses an empty
+// path, and every session page showed "The request has a wrong paths.0 (project.trust.state)".
+describe("untrusted-short: a folder not known yet", () => {
+  test("no folder yet asks the host nothing; the folder, once known, is asked", async () => {
+    const asked: string[][] = [];
+    const store = {
+      i18n: { t: translator("en") },
+      hostCommand: async (_h: string, _type: string, payload: { paths: string[] }) => {
+        asked.push(payload.paths);
+        return { items: [{ trusted: true }] };
+      },
+    } as never;
+    const view = render(<UntrustedNotice store={store} hostId="h" announced cwd="" />);
+    act(() => {
+      view.rerender(<UntrustedNotice store={store} hostId="h" announced cwd="/p" />);
+    });
+    await settle(() => asked.some((paths) => paths[0] === "/p"));
+    expect(asked).toEqual([["/p"]]);
+  });
+});

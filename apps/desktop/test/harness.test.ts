@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { ProjectLoad } from "@flightdeck/protocol";
-import { harnessParts } from "../src/lib/harness.ts";
+import type { HarnessPreview, ProjectLoad } from "@flightdeck/protocol";
+import { addsNothing, harnessParts, needsReformat } from "../src/lib/harness.ts";
 
 /** Issue #75, slice S1: a project's harness as a checklist, from what the host already lists. */
 const EMPTY: ProjectLoad = {
@@ -132,5 +132,27 @@ describe("harness: a project's Claude Code setup as a checklist (#75)", () => {
   test("an env name or value never reaches the checklist", () => {
     const text = JSON.stringify(harnessParts({ ...FULL, envKeys: ["SONAR_TOKEN", "API_KEY"] }));
     expect([text.includes("SONAR_TOKEN"), text.includes("API_KEY")]).toEqual([false, false]);
+  });
+});
+
+describe("harness: what a set-up preview would write (#75, S4b)", () => {
+  const settings: NonNullable<HarnessPreview["settings"]> = {
+    path: ".claude/settings.json",
+    hash: "h",
+    hooks: [],
+    denyRules: [],
+    conflicts: ["permissions"],
+    reformats: true,
+    digest: "d",
+  };
+  test("a preview of conflicts and unreadable files only adds nothing, and asks for no reformat", () => {
+    const preview: HarnessPreview = { settings, files: [], unreadable: ["CLAUDE.md"] };
+    expect([addsNothing(preview), needsReformat(preview)]).toEqual([true, false]);
+  });
+
+  test("a reformat is asked for only when the settings gain entries", () => {
+    const adds = { ...settings, denyRules: ["Read(./.env)"] };
+    const preview: HarnessPreview = { settings: adds, files: [], unreadable: [] };
+    expect([addsNothing(preview), needsReformat(preview)]).toEqual([false, true]);
   });
 });

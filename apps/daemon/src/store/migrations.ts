@@ -927,4 +927,8 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE cards ADD COLUMN spec_found INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE cards ADD COLUMN spec_heading TEXT;
   `,
+  // Issue #935: the permission mode a terminal session's hooks last reported.
+  `
+  ALTER TABLE external_sessions ADD COLUMN permission_mode TEXT;
+  `,
 ];

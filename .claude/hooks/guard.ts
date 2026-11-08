@@ -8,19 +8,21 @@
  * scripts/lib/claude-hooks.ts, with their tests.
  */
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import {
+  budgetedGh,
   checkoutRoot,
   commandViolation,
   commitViolation,
   generatedViolation,
   guardAllowLogs,
   heavyRunViolation,
+  type PushWaitPass,
   prMergeViolation,
   prRunVia,
   pushViolation,
-  pushWaitViolation,
+  pushWaitCheck,
   slotViolation,
   testEditViolation,
   withBudget,
@@ -40,6 +42,8 @@ const input = await Bun.stdin.json().catch(() => null);
 const { command, file_path: filePath } = input?.tool_input ?? {};
 // #741: the push context of the log, so a push-wait override records the run's age.
 let push: Parameters<typeof guardAllowLogs>[2];
+// #741: why push-wait let each pushed branch go, for the log.
+let passes: PushWaitPass[] = [];
 if (typeof command === "string") {
   block("command", commandViolation(command));
   block("slot", slotViolation(command, process.env));
@@ -56,24 +60,31 @@ if (typeof command === "string") {
   block("commit", commitViolation(command, cwd, repo));
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
   // #741: gh is asked for a push, in the push's own checkout: without an override to decide, with
-  // one to log the run's age. Any failure reads as no run (prRunVia in scripts/lib/claude-hooks.ts).
-  const gh = (args: string[], dir: string) => {
-    // 3 s each: two calls stay inside the hook's 10 s with the git calls; gh never prompts. Past
-    // the 10 s, Claude Code lets the command through, so a slow GitHub fails open too.
-    const proc = spawnSync("gh", args, {
-      cwd: dir,
-      encoding: "utf8",
-      timeout: 3000,
-      env: { ...process.env, GH_PROMPT_DISABLED: "1" },
-    });
-    return proc.status === 0 ? proc.stdout : null;
-  };
-  const prRun = prRunVia(
-    withBudget(gh, () => performance.now(), 6000),
-    Date.now,
+  // one to log the run's age. A failed lookup is asked once more, then the push holds with the
+  // override line (budgetedGh, prRunVia and pushWaitCheck in scripts/lib/claude-hooks.ts).
+  const ghCalls = budgetedGh(
+    (args, dir) => {
+      // 3 s each, and each starts only in the first 6 s, so the retry never takes the hook past
+      // its 10 s. gh missing, or no time left to start it, lets the push go with that reason
+      // logged (#945 review); a gh that ran and failed holds it. gh never prompts.
+      const proc = spawnSync("gh", args, {
+        cwd: dir,
+        encoding: "utf8",
+        timeout: 3000,
+        env: { ...process.env, GH_PROMPT_DISABLED: "1" },
+      });
+      const missing = (proc.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT";
+      return { stdout: proc.status === 0 ? proc.stdout : null, missing };
+    },
+    existsSync,
+    () => performance.now(),
+    6000,
   );
-  push = { cwd, deps: { ...repo, env: process.env, prRun } };
-  block("push-wait", pushWaitViolation(command, cwd, push.deps));
+  const prRun = prRunVia(ghCalls.gh, Date.now);
+  push = { cwd, deps: { ...repo, env: process.env, prRun, whyUnread: ghCalls.whyUnread } };
+  const decision = pushWaitCheck(command, cwd, push.deps);
+  passes = decision.passes;
+  block("push-wait", decision.violation);
 }
 if (typeof filePath === "string") {
   const root = checkoutRoot(filePath, ROOT);
@@ -95,7 +106,12 @@ const logged = push && {
   ...push,
   deps: { ...push.deps, git: withBudget(push.deps.git, () => performance.now(), 6000) },
 };
-for (const { rule, decision, detail, minutes } of guardAllowLogs(command, process.env, logged)) {
+for (const { rule, decision, detail, minutes } of guardAllowLogs(
+  command,
+  process.env,
+  logged,
+  passes,
+)) {
   logHook("guard", rule, decision, { detail, minutes });
 }
 process.exit(0);

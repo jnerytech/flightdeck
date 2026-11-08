@@ -4,6 +4,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { NAV_ICONS } from "@/components/nav-icons";
+import { KnowledgePanel } from "@/components/projects/knowledge-panel";
 import { SessionTiles } from "@/components/projects/session-tiles";
 import { TrustPanel } from "@/components/projects/trust-panel";
 import type { Key } from "../i18n/index.ts";
@@ -138,6 +139,19 @@ export function ProjectPage(
           hostName={host?.name ?? hostId}
           projectName={project.name}
           path={project.path}
+          canSetUp={
+            hasFeature(host?.hostInfo?.features, "harnessPreview", false) &&
+            hasFeature(host?.hostInfo?.features, "harnessApply", false)
+          }
+        />
+      )}
+      {hasFeature(host?.hostInfo?.features, "knowledge", false) && (
+        <KnowledgePanel
+          store={store}
+          hostId={hostId}
+          path={project.path}
+          feed={hasFeature(host?.hostInfo?.features, "knowledgeFeed", false)}
+          status={hasFeature(host?.hostInfo?.features, "knowledgeStatus", false)}
         />
       )}
       <SessionTiles

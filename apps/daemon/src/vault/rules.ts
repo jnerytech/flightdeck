@@ -347,33 +347,33 @@ const verdict = (over: Partial<Verdict> & Pick<Verdict, "decision" | "reason">):
 /** The safe default of a use no rule matched. */
 function fallback(ctx: UseContext): Verdict {
   if (ctx.requester === "you") {
-    return verdict({ decision: "allow", reason: "padrão: o uso por você no app é liberado" });
+    return verdict({ decision: "allow", reason: "default: your own use in the app is allowed" });
   }
   if (ctx.requester !== "claude") {
     return verdict({
       decision: "deny",
-      reason: `padrão: ${ctx.requester} não usa segredos sem uma regra que permita`,
+      reason: `default: ${ctx.requester} uses no secrets without a rule that allows it`,
     });
   }
   if (ctx.purpose === "run_with_secret") {
     return verdict({
       decision: "ask",
-      reason: "padrão: o app pede a sua aprovação a cada run_with_secret",
+      reason: "default: the app asks for your approval at every run_with_secret",
     });
   }
   if (ctx.actionApproval === "never") {
-    return verdict({ decision: "allow", reason: "padrão: a ação declara approval never" });
+    return verdict({ decision: "allow", reason: "default: the action declares approval never" });
   }
   if (ctx.actionApproval === "always") {
     return verdict({
       decision: "ask",
-      reason: "padrão: a ação declara approval always, o app pede a cada uso",
+      reason: "default: the action declares approval always, the app asks at every use",
     });
   }
   return verdict({
     decision: "ask",
     once: true,
-    reason: "padrão: o app pede a sua aprovação uma vez por sessão",
+    reason: "default: the app asks for your approval once per session",
   });
 }
 
@@ -382,20 +382,20 @@ function ruleVerdict(rule: Rule, env: RulesEnv): Verdict & { inWindow: boolean }
   const now = env.now();
   let decision = rule.decision;
   let once = rule.once === "session";
-  let reason = `regra ${rule.id}: ${rule.decision}`;
+  let reason = `rule ${rule.id}: ${rule.decision}`;
   let inWindow = false;
   if (rule.window) {
     if (insideWindow(rule.window, env.local(now))) inWindow = true;
     else {
       decision = rule.outsideWindow ?? "deny";
       once = false;
-      reason = `regra ${rule.id}: fora da janela ${rule.window.from}–${rule.window.to}, vale ${decision}`;
+      reason = `rule ${rule.id}: outside the window ${rule.window.from}–${rule.window.to}, ${decision} applies`;
     }
   }
   if (decision !== "deny") {
     const limits: Array<[number | undefined, number, string]> = [
-      [rule.maxPerHour, HOUR_MS, "por hora"],
-      [rule.maxPerDay, DAY_MS, "por dia"],
+      [rule.maxPerHour, HOUR_MS, "per hour"],
+      [rule.maxPerDay, DAY_MS, "per day"],
     ];
     for (const [max, span, label] of limits) {
       if (max !== undefined && env.uses(rule.id, now - span) >= max) {
@@ -404,7 +404,7 @@ function ruleVerdict(rule: Rule, env: RulesEnv): Verdict & { inWindow: boolean }
             ruleId: rule.id,
             decision: "deny",
             limited: true,
-            reason: `regra ${rule.id}: o limite de ${max} ${label} foi atingido; vale de novo quando o período virar`,
+            reason: `rule ${rule.id}: the limit of ${max} ${label} was reached; it applies again when the period rolls over`,
           }),
           inWindow,
         };
@@ -436,21 +436,21 @@ export function evaluate(rules: readonly Rule[], ctx: UseContext, env: RulesEnv)
     out.reason = `${out.reason}; ${why}`;
   };
   if (ctx.purpose === "run_with_secret" && (out.decision === "allow" || out.once)) {
-    raise("o run_with_secret pede a sua aprovação a cada uso");
+    raise("run_with_secret asks for your approval at every use");
   }
   const prod = ctx.tags.some(isProdTag);
   if (prod) {
-    if (out.decision === "allow" && !inWindow) raise("prod pede a sua aprovação a cada uso");
+    if (out.decision === "allow" && !inWindow) raise("prod asks for your approval at every use");
     // A rule may say once per session; prod still asks at every use, so a session approval
     // (this one's, or another use's under the same rule) never stands in for the held button.
     else if (out.decision === "ask" && (out.once || !rule)) {
       out.once = false;
-      out.reason = `${out.reason}; prod pede a sua aprovação a cada uso`;
+      out.reason = `${out.reason}; prod asks for your approval at every use`;
     }
   }
   const high = ctx.risk === "high";
   if (high && (out.decision === "allow" || out.once)) {
-    raise("risco alto pede a sua aprovação a cada uso");
+    raise("high risk asks for your approval at every use");
   }
   out.needsHold = out.decision === "ask" && (prod || high);
   return out;

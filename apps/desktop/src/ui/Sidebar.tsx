@@ -32,6 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
@@ -276,11 +277,12 @@ export function Sidebar(
     return kind ? badges[kind] : undefined;
   };
   const here = props.route ? activeNav(props.route) : null;
-  /** The host the screens that need one open on: the selected one, else the first online. */
-  const navHost =
-    (state.selected && state.hosts.find((h) => h.id === state.selected?.hostId)) ||
-    state.hosts.find((h) => h.status === "online") ||
-    state.hosts[0];
+  /**
+   * The host the screens that need one open on: the switcher's, as the project tree (#126, #932).
+   * With none picked, that is the selected session's host, else the first online (`uiHostId`).
+   */
+  const switcherId = useSwitcherHostId(props.store);
+  const navHost = state.hosts.find((h) => h.id === switcherId) ?? state.hosts[0];
   const pendingItems = needsYou(state);
   const pending =
     pendingItems.length +
@@ -304,9 +306,11 @@ export function Sidebar(
     ],
   );
   const pinned = rows.filter((row) => row.pinned && !row.archived);
+  // The tree lists the hosts the switcher shows (#932), as the Projects page does.
+  const treeHosts = useSwitcherHosts(props.store, state.hosts);
   const tree = useMemo(
-    () => projectTree({ hosts: state.hosts, projects: state.projects, cards: state.cards }, rows),
-    [state.hosts, state.projects, state.cards, rows],
+    () => projectTree({ hosts: treeHosts, projects: state.projects, cards: state.cards }, rows),
+    [treeHosts, state.projects, state.cards, rows],
   );
   // Who is signed in to GitHub is asked when the account menu opens, not on every render.
   const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);

@@ -37,6 +37,7 @@ export const en: Dictionary = {
     offlineSessions: "{host} is offline. Its sessions show again when it reconnects.",
     incompatible: "{host} needs a daemon update before its data shows here.",
     showAll: "Show all hosts",
+    projectNoSessions: "{project} has no sessions.",
     noCosts: "{host} does not report costs.",
     projectEmpty: "{project} has no costs in this period.",
   },
@@ -398,6 +399,8 @@ export const en: Dictionary = {
     noHost: "No online host reports this.",
   },
   toast: {
+    switchedHost: "Switched to {host}",
+    backTo: "Back to {host}",
     copied: "Copied",
     details: "Details",
     close: "Close",
@@ -1478,7 +1481,11 @@ export const en: Dictionary = {
     bg: "background sessions",
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
+    knowledge: "reading the project's documents",
+    knowledgeFeed: "the switch for the documents index in agents' prompts",
+    knowledgeStatus: "changing a document's status",
     harnessPreview: "previewing Claude Code setup changes",
+    harnessApply: "applying Claude Code setup changes",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
@@ -1517,7 +1524,7 @@ export const en: Dictionary = {
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
     card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
     spec_path_invalid:
-      "The spec path must be a relative path to a Markdown file inside the worktree, like docs/specs/name.md.",
+      "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
@@ -1580,6 +1587,9 @@ export const en: Dictionary = {
     team_close_confirm: "Closing the team {name} needs your confirmation.",
     team_coordinator_stays: "The coordinator does not leave the team: close the team instead.",
     team_closed: "The team {name} is closed.",
+    team_delete_open: "The team {name} is still open: close it first.",
+    team_delete_live:
+      "The team {name} still has {members} member(s) at work: wait until they rest, then delete it.",
     agentcfg_file_missing: "{path} does not exist in this project.",
     agentcfg_path_invalid: "{path} is not a valid path for this kind of file ({kind}).",
     agentcfg_confirm: "Writing the file needs your confirmation.",
@@ -1731,6 +1741,8 @@ export const en: Dictionary = {
     review_text_big: "The text is over 1 MB: shorten it or edit the file outside Flightdeck.",
     review_file_changed:
       "The file {path} changed since it was opened: reload it and apply your edit again.",
+    knowledge_frontmatter:
+      "The front matter of {path} cannot be changed safely from here: edit the file by hand.",
     review_revert_confirm: "Confirm the revert to go on.",
     review_undo_confirm: "Confirm the undo to go on.",
     review_undo_nothing:
@@ -1785,6 +1797,11 @@ export const en: Dictionary = {
       "This only works over a near connection: this computer (loopback) or Tailscale, which WireGuard encrypts. For a WSL host, add it as ws://localhost:<port> (WSL forwards the port) or by its Tailscale address.",
     trust_root_refused:
       "This folder is an allowed folder that holds several projects, or a folder above one: trust the project's own folder instead.",
+    harness_stale:
+      "The project changed since the preview, or the preview was not of these parts: preview again.",
+    harness_confirm: "Changing the Claude Code setup needs your confirmation.",
+    harness_reformat:
+      "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",
@@ -3245,6 +3262,8 @@ export const en: Dictionary = {
     title: "Teams",
     subtitle: "A coordinator session and its workers, each in a card",
     host: "Host",
+    otherHost: "{wanted} has no teams. Showing {shown}.",
+    otherHostOffline: "{wanted} is offline. Showing {shown}.",
     noHost: "No connected host with teams",
     noHostLink: "Add a host",
     openSession: "Open session",
@@ -3310,6 +3329,11 @@ export const en: Dictionary = {
     close: "Close {name}",
     closeButton: "Close",
     closeMessage: "Close the team {name}? Its sessions are told to stop.",
+    menu: "Actions for {name}",
+    delete: "Delete team",
+    deleteOpen: "Close the team first",
+    deleteMessage:
+      "Delete the team {name}? The team record and its card on this page go. The sessions of its members stay, with their transcripts and history, and so do their board cards: they are only taken out of the team.",
   },
   clients: {
     title: "Clients",
@@ -3716,7 +3740,7 @@ export const en: Dictionary = {
     saveValidation: "Save validation note",
     specFile: "Spec file",
     saveSpec: "Save spec file",
-    specPathInvalid: "Use a path to a Markdown file inside the worktree, like docs/specs/name.md.",
+    specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
     specFound: "Spec found: {heading}",
     specFoundPlain: "Spec found",
     specMissing: "No spec file at {path}",
@@ -3823,6 +3847,28 @@ export const en: Dictionary = {
     empty: "No workflows on the base branch yet.",
     failed:
       "Could not read the workflows. Check that the host is connected, then open the page again.",
+    templates: {
+      open: "Add from a template",
+      title: "Workflow templates",
+      intro:
+        "Each template is a file. Copy it, commit it to .flightdeck/workflows/ on the base branch, then trust it on this page. Nothing is written for you.",
+      loading: "Loading templates",
+      failed:
+        "Could not load the templates. The host may be offline or need a newer version of Flightdeck.",
+      list: "Templates",
+      show: "Show {name}",
+      back: "Back to the templates",
+      persona: "Persona: {persona}",
+      inputs: "Asks for: {inputs}",
+      path: "Commit it to {path}",
+      file: "File {path}",
+      copy: "Copy the file",
+      copied: "Copied. Commit it to the base branch, then trust it here.",
+      checkFilled:
+        "The check line holds this project's test command. Review it before you trust the workflow.",
+      checkPlaceholder:
+        "The check line holds a placeholder that fails. Replace it with your test command before you commit the file.",
+    },
   },
   sessionViews: { label: "Session views", terminal: "Terminal" },
   shortcuts: {
@@ -4133,9 +4179,54 @@ export const en: Dictionary = {
     notHere: "This project is not on this host.",
     baseInvalid:
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
+    knowledge: {
+      title: "Project knowledge",
+      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter. Read only: nothing here changes the project.",
+      filter: "{status} ({n})",
+      all: "All",
+      status: {
+        valid: "Valid",
+        transitional: "Transitional",
+        obsolete: "Obsolete",
+        unclassified: "Not classified",
+      },
+      type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
+      changed: "Changed {date}",
+      referencesObsolete: "Points at an obsolete document: {path}",
+      problem: {
+        status_unknown:
+          "The status in the front matter is not valid, so agents are not given this document.",
+        type_unknown: "The type in the front matter is not prd, rfc, adr or spec.",
+        frontmatter_invalid: "The front matter could not be read.",
+        supersedes_invalid: "supersedes is not a path to a document.",
+        supersedes_missing: "It replaces a document that is not in the library.",
+      },
+      empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
+      truncated: "The list is cut: only the first documents are shown.",
+      failed: "The documents could not be read from this host.",
+      setStatus: {
+        hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
+        label: "Status of {title}",
+        changed:
+          "{title} is now {status}. The file is changed in the project's folder and not committed.",
+        failed: "The status could not be changed. {why}",
+      },
+      feed: {
+        on: "Sessions that Flightdeck starts here are given an index of the valid documents.",
+        onUntrusted: "On, but this project is not trusted, so sessions are not given the index.",
+        off: "Off: sessions here are not given the index.",
+        offBy:
+          "Off through {path}, a folder above this project, in the host's config. Switch it on there.",
+        turnOff: "Turn off",
+        turnOn: "Turn on",
+        failed: "The index switch could not be read or changed on this host.",
+      },
+    },
     harness: {
       title: "Claude Code setup",
       hint: "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Read-only: nothing here changes the project.",
+      hintSetup:
+        "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Nothing changes until you read a setup and apply it.",
       summary: "{n} of {total} parts found",
       found: "Found",
       missing: "Missing",
@@ -4155,6 +4246,28 @@ export const en: Dictionary = {
         format: "a formatter after edits",
         gitAdd: "a check before git add",
         secrets: "a check on secret files",
+      },
+      setup: {
+        action: "Set up Claude Code",
+        apply: "Apply the setup",
+        message:
+          "This adds what the project is missing. It only adds: nothing already there is changed or removed.",
+        nothing: "Nothing to add: the project already has every part this setup writes.",
+        hooks: "Hooks to add",
+        hookLine: "{event} ({matcher}): {command}",
+        formatterNote:
+          "This runs the project's own format script: what it does comes from the project's files, and a pull can change it.",
+        deny: "Deny rules to add (best effort)",
+        denyNote:
+          "They stop Claude Code's Read tool on these files and these git add forms. They do not stop a shell command such as cat .env.",
+        files: "New files",
+        conflicts: "Left as they are: these keys already hold something else",
+        unreadable: "Not read, so left as they are",
+        untrusted: "These hooks and rules load only once you trust this project.",
+        reformat:
+          "Rewrite .claude/settings.json with a new layout. Spacing changes, and a repeated key or a very large number may be rewritten.",
+        done: "Set up: {files}",
+        again: "Preview again",
       },
     },
     trust: {
@@ -4218,10 +4331,15 @@ export const en: Dictionary = {
   projectsOverview: {
     title: "Projects",
     subtitle: "Every project of every host, with what is running in it.",
+    subtitleHost: "The projects of {host}, with what is running in them.",
+    hostOffline: "{host} is offline. Its projects show again when it reconnects.",
     search: "Search projects",
     searchPlaceholder: "Name, host, branch or folder",
     sortBy: "Sort by",
     clearHost: "Clear host filter: {host}",
+    newProject: "New project",
+    newOn: "On {host}",
+    noHostOnline: "No host is online to add a project to.",
     sorts: {
       activity: "Last activity",
       name: "Name",
@@ -4625,6 +4743,7 @@ export const en: Dictionary = {
     endTitle: "End process",
     endMessage: "End process {pid} ({name})? The host's daemon started it and no session owns it.",
     endFailed: "That process could not be ended.",
+    unreadable: "This host's resources could not be read. They show when the host answers.",
   },
   worktrees: {
     title: "Worktrees",

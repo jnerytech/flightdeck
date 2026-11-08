@@ -71,8 +71,10 @@ export interface SessionState {
   busySince?: number;
   cwd?: string;
   model?: string;
-  /** The permission mode the session opened with, from `session.created`. */
+  /** The permission mode the session opened with, from `session.created`: the limit of a change. */
   permissionMode?: PermissionMode;
+  /** The mode it runs in now, from `session.mode` (#935); the opening mode until one comes. */
+  mode?: PermissionMode;
   /** The slash commands the session has, from `session.init`. */
   slashCommands?: string[];
   /** The same commands with a description and a kind, from a daemon that sends them. */
@@ -224,6 +226,8 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
       return state;
     case "session.created":
       return sessionCreated(next, event);
+    case "session.mode":
+      return { ...next, mode: event.permissionMode };
     case "session.status":
       return {
         ...next,

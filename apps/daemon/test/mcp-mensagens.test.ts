@@ -108,9 +108,9 @@ describe("mcp-mensagens", () => {
     });
     const refused = await call("send_to_session", { to: "pc/s3", text: "oi" });
     expect(refused.data).toMatchObject({ resultado: "recusada" });
-    expect(refused.data?.motivo).toContain("projeto");
+    expect(refused.data?.motivo).toContain("same project");
     expect(endpoints.sent.map((s) => s.id)).toEqual(["T1", "s2"]);
-    expect(endpoints.sent[0]?.text).toContain("[id para responder: pc/s1]");
+    expect(endpoints.sent[0]?.text).toContain("[id to reply to: pc/s1]");
   });
 
   test("notify_when_idle avisa uma vez só quando a sessão termina o turno, e já avisa se ela está ociosa", async () => {
@@ -124,7 +124,7 @@ describe("mcp-mensagens", () => {
     expect(endpoints.sent).toHaveLength(1);
     expect((await call("notify_when_idle", { session: "pc/s2" })).data).toEqual({ avisado: true });
     expect(endpoints.sent).toHaveLength(2);
-    expect((await call("notify_when_idle", { session: "pc/s3" })).error).toContain("projeto");
+    expect((await call("notify_when_idle", { session: "pc/s3" })).error).toContain("same project");
   });
 
   test("read_session é só leitura: o resumo e as últimas mensagens, e o que as regras escondem não se lê", async () => {
@@ -140,7 +140,7 @@ describe("mcp-mensagens", () => {
       messages: [{ role: "assistant", text: "feito" }],
       summary: { request: "faça x" },
     });
-    expect((await call("read_session", { session: "pc/s3" })).error).toContain("projeto");
+    expect((await call("read_session", { session: "pc/s3" })).error).toContain("same project");
     expect(endpoints.sent).toEqual([]);
   });
 
@@ -149,7 +149,7 @@ describe("mcp-mensagens", () => {
     expect(
       (await call("send_to_session", { to: "pc/s2", text: "do terminal" })).data,
     ).toMatchObject({ resultado: "entregue" });
-    expect(endpoints.sent[0]?.text).toContain("[id para responder: pc/T1]");
+    expect(endpoints.sent[0]?.text).toContain("[id to reply to: pc/T1]");
   });
 
   test("sem saber qual é a sessão, nenhuma ferramenta de mensagem funciona, e diz por quê", async () => {

@@ -329,6 +329,21 @@ describe("card-spec: the card keeps what it found", () => {
     expect(board.updateCard(card.id, { specPath: null }).specPath).toBeNull();
   });
 
+  // #996: only timing reached this line before; a run where it did not missed the 100% gate.
+  test("a look that ends after the board stopped, or the card went away, writes nothing", async () => {
+    const stopped = await withCard();
+    const look = stopped.board.refreshSpec(stopped.card.id);
+    stopped.board.stop();
+    expect((await look).specState).toBeNull();
+    expect(stopped.store.db.query("SELECT spec_found FROM cards").get()).toEqual({ spec_found: 0 });
+    const gone = await withCard();
+    const later = gone.board.refreshSpec(gone.card.id);
+    // A discard that ended while the file was read: the row is gone.
+    gone.store.db.query("DELETE FROM cards WHERE id = ?").run(gone.card.id);
+    expect((await later).id).toBe(gone.card.id);
+    expect(gone.store.db.query("SELECT 1 FROM cards WHERE id = ?").get(gone.card.id)).toBeNull();
+  });
+
   test("a spec that went away is lost again", async () => {
     const { board, card, tree } = await withCard();
     writeFileSync(join(tree, "mine.md"), "# Mine\n");

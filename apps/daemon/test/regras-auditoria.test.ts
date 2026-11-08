@@ -248,7 +248,7 @@ describe("regras-auditoria: os limites contam o que passou", () => {
     }
     const error = await failure(t.run());
     expect(error).toContain("invalid_state");
-    expect(error).toContain("por hora");
+    expect(error).toContain("per hour");
     expect(t.alerts().find((a) => a.kind === "limit")).toMatchObject({
       secretId: "token",
       requester: "claude",
@@ -274,7 +274,7 @@ describe("regras-auditoria: os limites contam o que passou", () => {
     t.actions.approve(f.requestId, { via: "app" });
     t.deliver(f);
     await running;
-    expect(await failure(t.run())).toContain("por hora");
+    expect(await failure(t.run())).toContain("per hour");
   });
 });
 

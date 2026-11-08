@@ -22,6 +22,9 @@ export const messagingHandlers = {
   "teams.close": (payload, { server }) => {
     return server.need("teams").close(payload.team, payload.confirm === true);
   },
+  "teams.delete": (payload, { server }) => {
+    return server.need("teams").delete(payload.team);
+  },
   "teams.message": (payload, { server }) => {
     return server.need("teams").message(payload.team, payload.text);
   },

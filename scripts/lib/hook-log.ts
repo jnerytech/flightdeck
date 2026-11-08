@@ -55,16 +55,44 @@ export function summarizeHookLog(text: string): string {
   const lines = text.split("\n").filter((line) => line.trim() !== "");
   const entries = lines.map(parseEntry).filter((e): e is HookLogEntry => e !== null);
   if (lines.length === 0) return "no hook calls logged yet";
+  const { byHook, byRule, waivedByRule, passesByReason } = tally(entries);
+  const out = [
+    ...timingRows(byHook),
+    ...ruleSection("blocks by rule:", byRule),
+    ...ruleSection("waivers by rule:", waivedByRule),
+    ...ruleSection("pushes push-wait let through, by reason:", passesByReason),
+    ...overrideLines(entries),
+    ...longHoldLines(entries),
+  ];
+  const skipped = lines.length - entries.length;
+  if (skipped > 0) out.push("", `${skipped} line(s) skipped (not a hook log entry)`);
+  return out.join("\n");
+}
+
+/** The entries per hook, the blocks and waivers per rule, and the pushes let through per reason. */
+function tally(entries: HookLogEntry[]) {
   const byHook = new Map<string, HookLogEntry[]>();
   const byRule = new Map<string, number>();
   const waivedByRule = new Map<string, number>();
+  const passesByReason = new Map<string, number>();
   for (const e of entries) {
     // The slot is no hook: its entries take no time to decide, so they stay out of the timings (#833).
     if (e.hook !== SLOT) byHook.set(e.hook, [...(byHook.get(e.hook) ?? []), e]);
+    // #741: a push push-wait let through is no block: counted by its reason.
+    if (e.rule === "push-wait" && e.decision === "allow") {
+      const reason = printable(e.detail ?? "?");
+      passesByReason.set(reason, (passesByReason.get(reason) ?? 0) + 1);
+      continue;
+    }
     // A long hold is no block and no waiver: it has its own section (#865 review: only it).
     const counts = e.decision === "waived" ? waivedByRule : byRule;
     if (e.rule && e.rule !== "long-hold") counts.set(e.rule, (counts.get(e.rule) ?? 0) + 1);
   }
+  return { byHook, byRule, waivedByRule, passesByReason };
+}
+
+/** The header and one row per hook: calls, blocks and p50/p95 milliseconds. */
+function timingRows(byHook: Map<string, HookLogEntry[]>): string[] {
   const hookWidth = Math.max(4, ...[...byHook.keys()].map((h) => h.length)) + 2;
   const out = [`${"hook".padEnd(hookWidth)}calls  blocks  p50 ms  p95 ms`];
   for (const [hook, calls] of [...byHook].sort(([a], [b]) => a.localeCompare(b))) {
@@ -74,21 +102,17 @@ export function summarizeHookLog(text: string): string {
       `${hook.padEnd(hookWidth)}${String(calls.length).padStart(5)}${String(blocks).padStart(8)}${String(percentile(ms, 0.5)).padStart(8)}${String(percentile(ms, 0.95)).padStart(8)}`,
     );
   }
-  for (const [title, counts] of [
-    ["blocks by rule:", byRule],
-    ["waivers by rule:", waivedByRule],
-  ] as const) {
-    if (counts.size === 0) continue;
-    const ruleWidth = Math.max(...[...counts.keys()].map((r) => r.length)) + 2;
-    out.push("", title);
-    for (const [rule, n] of [...counts].sort(([a], [b]) => a.localeCompare(b))) {
-      out.push(`  ${rule.padEnd(ruleWidth)}${n}`);
-    }
-  }
-  out.push(...overrideLines(entries), ...longHoldLines(entries));
-  const skipped = lines.length - entries.length;
-  if (skipped > 0) out.push("", `${skipped} line(s) skipped (not a hook log entry)`);
-  return out.join("\n");
+  return out;
+}
+
+/** A blank line, the title and one row per rule; nothing when no rule has a count. */
+function ruleSection(title: string, counts: Map<string, number>): string[] {
+  if (counts.size === 0) return [];
+  const ruleWidth = Math.max(...[...counts.keys()].map((r) => r.length)) + 2;
+  const rows = [...counts]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([rule, n]) => `  ${rule.padEnd(ruleWidth)}${n}`);
+  return ["", title, ...rows];
 }
 
 /** #741: each push-wait override with its time, the cancelled run's age and its reason. */
@@ -119,7 +143,8 @@ function longHoldLines(entries: HookLogEntry[]): string[] {
     `long slot holds (over 20 min): ${holds.length}`,
     ...holds.map((e) => {
       const when = `${e.t.slice(0, 16).replace("T", " ")} UTC`;
-      return `  ${when}  ${`${e.minutes} min`.padEnd(8)}${printable(e.detail ?? "")}`;
+      const length = `${e.minutes} min`;
+      return `  ${when}  ${length.padEnd(8)}${printable(e.detail ?? "")}`;
     }),
   ];
 }

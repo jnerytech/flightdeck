@@ -68,7 +68,7 @@ function Body(
 ) {
   const t = useT();
   const { result } = props;
-  if (result === null) return <p role="status">{t("whatsNew.loading")}</p>;
+  if (result === null) return <output className="block">{t("whatsNew.loading")}</output>;
   if (result.kind === "none")
     return <p className="text-muted-foreground text-sm">{t("whatsNew.none")}</p>;
   if (result.kind === "error") {

@@ -26,50 +26,68 @@ const proc = (ownPid: number): ProcReader => ({
   uptimeSec: async () => 10_000,
 });
 
+/** Boots a daemon with `extra` in its config and returns its answer to `resources.get`. */
+async function askResources(
+  extra: Record<string, unknown> = {},
+): Promise<protocol.Ack | undefined> {
+  const dir = tempDir("fd-res-main-");
+  const file = join(dir, "config.json");
+  writeFileSync(
+    file,
+    JSON.stringify({
+      hostName: "h",
+      port: 0,
+      token: TOKEN,
+      dataDir: join(dir, "data"),
+      allowedRoots: [dir],
+      ...extra,
+    }),
+  );
+  const daemon = await startDaemon(
+    { command: "start", config: file, runtime: "fake" },
+    {},
+    { log: () => {}, error: () => {} },
+    { resourcesProc: proc(process.pid) },
+  );
+  stops.push(() => daemon.stop());
+  const ws = new WebSocket(daemon.url);
+  const acks: protocol.Ack[] = [];
+  ws.addEventListener("message", (m) => {
+    const msg = protocol.parseServerMessage(String(m.data));
+    if (msg.type === "ack") acks.push(msg);
+  });
+  await new Promise((r) => ws.addEventListener("open", r));
+  ws.send(JSON.stringify({ id: "1", type: "hello", payload: { token: TOKEN, client: "t" } }));
+  ws.send(JSON.stringify({ id: "2", type: "resources.get", payload: {} }));
+  const ack = await new Promise<protocol.Ack | undefined>((resolve) => {
+    const timer = setInterval(() => {
+      const found = acks.find((a) => a.id === "2");
+      if (found) {
+        clearInterval(timer);
+        resolve(found);
+      }
+    }, 20);
+  });
+  ws.close();
+  return ack;
+}
+
 describe("resources-main: a booted daemon answers resources.get", () => {
   test("it lists the sessions it has, and a claude no session of this daemon ever had is not an orphan", async () => {
-    const dir = tempDir("fd-res-main-");
-    const file = join(dir, "config.json");
-    writeFileSync(
-      file,
-      JSON.stringify({
-        hostName: "h",
-        port: 0,
-        token: TOKEN,
-        dataDir: join(dir, "data"),
-        allowedRoots: [dir],
-      }),
-    );
-    const daemon = await startDaemon(
-      { command: "start", config: file, runtime: "fake" },
-      {},
-      { log: () => {}, error: () => {} },
-      { resourcesProc: proc(process.pid) },
-    );
-    stops.push(() => daemon.stop());
-    const ws = new WebSocket(daemon.url);
-    const acks: protocol.Ack[] = [];
-    ws.addEventListener("message", (m) => {
-      const msg = protocol.parseServerMessage(String(m.data));
-      if (msg.type === "ack") acks.push(msg);
-    });
-    await new Promise((r) => ws.addEventListener("open", r));
-    ws.send(JSON.stringify({ id: "1", type: "hello", payload: { token: TOKEN, client: "t" } }));
-    ws.send(JSON.stringify({ id: "2", type: "resources.get", payload: {} }));
-    const ack = await new Promise<protocol.Ack | undefined>((resolve) => {
-      const timer = setInterval(() => {
-        const found = acks.find((a) => a.id === "2");
-        if (found) {
-          clearInterval(timer);
-          resolve(found);
-        }
-      }, 20);
-    });
-    ws.close();
+    const ack = await askResources();
     expect(ack?.ok).toBe(true);
     const snap = (ack?.ok ? ack.data : null) as protocol.ResourcesSnapshot;
     expect(snap.measured).toBe(true);
     // The reader shows a claude in /gone that no session of this daemon had: not one of its leftovers.
     expect(snap.orphans).toEqual([]);
+  });
+
+  // #937: the host Overview reads this every 5 s; a refusal there was an error every 5 s.
+  test("a host with its terminal off still answers, with no terminals in it", async () => {
+    const ack = await askResources({ terminal: { enabled: false } });
+    expect({ ok: ack?.ok, code: ack?.ok ? null : ack?.error.code }).toEqual({
+      ok: true,
+      code: null,
+    });
   });
 });

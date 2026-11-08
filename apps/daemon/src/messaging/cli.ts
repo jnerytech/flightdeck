@@ -24,12 +24,12 @@ export async function runMessageCli(
 ): Promise<unknown> {
   if (!identity) {
     throw new Error(
-      "esta sessão não foi aberta pelo Flightdeck, então não sei quem está mandando: FLIGHTDECK_SESSION ou FLIGHTDECK_LAUNCH_ID dizem qual é",
+      "this session was not opened by Flightdeck, so I do not know who is sending: FLIGHTDECK_SESSION or FLIGHTDECK_LAUNCH_ID say which one it is",
     );
   }
   const daemon = await DaemonClient.connect(daemonUrl(config), config.token).catch(
     (error: Error) => {
-      throw new Error(`não consegui conectar no daemon: ${error.message}`);
+      throw new Error(`could not connect to the daemon: ${error.message}`);
     },
   );
   try {

@@ -204,6 +204,13 @@ export const Config = z.object({
     .default(() => ({ extraHigh: [] })),
   /** The ssh the destinos run (phase 15); the system one when absent. */
   ssh: z.object({ path: z.string().min(1).optional() }).default(() => ({})),
+  /** Issue #76: the library of documents a session is given the index of. */
+  knowledge: z
+    .object({
+      /** Project folders (and what is inside them) whose sessions are not given the index. */
+      feedOff: z.array(z.string()).default([]),
+    })
+    .default(() => ({ feedOff: [] })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
@@ -263,6 +270,7 @@ export async function loadConfig(path: string = defaultConfigPath()): Promise<Co
     ...config,
     dataDir: resolve(expandHome(config.dataDir)),
     allowedRoots: config.allowedRoots.map((r) => resolve(expandHome(r))),
+    knowledge: { feedOff: config.knowledge.feedOff.map((r) => resolve(expandHome(r))) },
     history: {
       roots: config.history.roots.map((r) => resolve(expandHome(r))),
       // Compared with the transcripts' cwd as written, so only `~` is expanded.
@@ -272,11 +280,24 @@ export async function loadConfig(path: string = defaultConfigPath()): Promise<Co
   };
 }
 
+/** The rewrites of the config file run one at a time: each reads the file the one before it wrote. */
+let rewriting: Promise<unknown> = Promise.resolve();
+
 /**
  * Rewrites the raw config file through `update`, keeping fields it does not touch. Writes to a
- * temp file and renames it, so a running daemon never reads a half-written config.
+ * temp file and renames it, so a running daemon never reads a half-written config. Two rewrites
+ * asked together run in turn, so neither loses the other's change.
  */
-export async function updateConfigFile(
+export function updateConfigFile(
+  file: string,
+  update: (raw: Record<string, unknown>) => Record<string, unknown>,
+): Promise<void> {
+  const run = rewriting.then(() => rewriteConfigFile(file, update));
+  rewriting = Promise.allSettled([run]);
+  return run;
+}
+
+async function rewriteConfigFile(
   file: string,
   update: (raw: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<void> {

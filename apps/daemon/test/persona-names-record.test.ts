@@ -8,6 +8,23 @@ afterEach(() => {
 });
 
 /** Issue #101: a session's name record says whether it is the standard name, and its team. */
+describe("persona-names: a session leaves its team (#934)", () => {
+  test("clearing the team keeps the name and its aliases, and a session nobody named is left alone", () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const names = new Names(store.db);
+    names.assign("a", { project: "app", team: { name: "md-server", role: "worker", number: 3 } });
+    const before = names.get("a");
+    expect(before?.team).toEqual({ name: "md-server", role: "worker", number: 3 });
+    names.clearTeam("a");
+    const after = names.get("a");
+    expect(after?.team).toBeNull();
+    expect(after?.display).toBe(before?.display);
+    expect(after?.aliases).toEqual(before?.aliases);
+    expect(() => names.clearTeam("nobody")).not.toThrow();
+  });
+});
+
 describe("persona-names: a name says whether it is the standard one (#101)", () => {
   test("standard until renamed in Flightdeck or titled in Claude Code; a team set on an unnamed session waits", () => {
     const store = new EventStore(":memory:");

@@ -118,13 +118,13 @@ const toRun = (row: RunRow): AutomationRun => ({
 function causeOf(event: AutomationEvent): string {
   switch (event.type) {
     case "cron":
-      return `agendamento de ${new Date(event.minute).toISOString()}`;
+      return `schedule of ${new Date(event.minute).toISOString()}`;
     case "pr_comment":
-      return `comentário ${event.commentId} de ${event.author} no PR do card ${event.cardId}`;
+      return `comment ${event.commentId} by ${event.author} on the PR of card ${event.cardId}`;
     case "ci_failed":
-      return `checks do PR do card ${event.cardId} falharam`;
+      return `checks of the PR of card ${event.cardId} failed`;
     case "issue_label":
-      return `issue ${event.issue.ref} com o rótulo ${event.issue.labels.join(", ")}`;
+      return `issue ${event.issue.ref} with the label ${event.issue.labels.join(", ")}`;
   }
 }
 
@@ -148,8 +148,8 @@ const isExternal = (event: AutomationEvent) =>
 
 /** What the agent is told about the event; empty for a time-based one. */
 function contentOf(event: AutomationEvent): string {
-  if (event.type === "pr_comment") return `Comentário de ${event.author} no PR:\n${event.text}`;
-  if (event.type === "ci_failed") return `Os checks do PR falharam: ${event.summary}`;
+  if (event.type === "pr_comment") return `Comment by ${event.author} on the PR:\n${event.text}`;
+  if (event.type === "ci_failed") return `The PR's checks failed: ${event.summary}`;
   return "";
 }
 
@@ -267,9 +267,9 @@ export class Automations {
 
   /** The PR's checks turned to failing: the source is the board's PR polling. */
   onChecksFailing(cardId: string, failed: string[]): void {
-    const summary = failed.length > 0 ? failed.join(", ") : "os checks do PR falharam";
+    const summary = failed.length > 0 ? failed.join(", ") : "the PR's checks failed";
     void this.fire({ type: "ci_failed", cardId, key: ulid(), summary }).catch((error: Error) =>
-      this.opts.log?.(`automações: ci_failed do card ${cardId}: ${error.message}`),
+      this.opts.log?.(`automations: ci_failed of card ${cardId}: ${error.message}`),
     );
   }
 
@@ -325,7 +325,7 @@ export class Automations {
         issues = await this.opts.issues.list(projectId);
       } catch (error) {
         this.opts.log?.(
-          `automações: a busca de issues do projeto ${projectId} falhou: ${(error as Error).message}`,
+          `automations: the issues search of project ${projectId} failed: ${(error as Error).message}`,
         );
         return;
       }
@@ -428,9 +428,9 @@ export class Automations {
         this.record(
           auto,
           slot,
-          `agendamento perdido de ${new Date(slot).toISOString()}`,
+          `missed schedule of ${new Date(slot).toISOString()}`,
           "missed",
-          "o daemon estava parado",
+          "the daemon was stopped",
         );
       }
     }
@@ -449,12 +449,12 @@ export class Automations {
         at,
         cause,
         "ignored",
-        "autor externo: a automação não age sobre conteúdo de terceiros",
+        "external author: the automation does not act on third-party content",
       );
       return;
     }
     if (this.today(auto.id, at) >= auto.maxRunsPerDay) {
-      this.record(auto, at, cause, "limited", `limite de ${auto.maxRunsPerDay} execuções por dia`);
+      this.record(auto, at, cause, "limited", `limit of ${auto.maxRunsPerDay} runs per day`);
       return;
     }
     try {
@@ -496,7 +496,7 @@ export class Automations {
         throw error;
       }
     }
-    if (!("cardId" in event)) return { status: "skipped", detail: "o evento não é de um card" };
+    if (!("cardId" in event)) return { status: "skipped", detail: "the event is not about a card" };
     // The watch fixes a watched PR (#77): a second fix of the same failure would race it.
     const claimed = this.opts.prWatch?.claims(event.cardId) ?? null;
     if (claimed) return { status: "skipped", detail: claimed };
@@ -504,7 +504,7 @@ export class Automations {
     const text = external ? `${UNTRUSTED_MARK}\n\n${contentOf(event)}` : contentOf(event);
     board.message(event.cardId, text);
     if (external) this.suspend(event.cardId);
-    return { status: "ok", detail: `enviado ao card ${event.cardId}` };
+    return { status: "ok", detail: `sent to card ${event.cardId}` };
   }
 
   /** The card of an issue, made now; an issue that already has one is skipped. */
@@ -515,17 +515,14 @@ export class Automations {
   ): Promise<Outcome> {
     const existing = this.opts.board.cardForIssue(auto.projectId, issue.ref);
     if (existing)
-      return { status: "skipped", detail: `a issue ${issue.ref} já tem o card ${existing}` };
+      return { status: "skipped", detail: `issue ${issue.ref} already has card ${existing}` };
     const card = await this.opts.issues.createCard(auto.projectId, issue.ref);
     return { status: "ok", detail: await then(card.id) };
   }
 
   /** Content from a third party reached the card: nothing there is approved automatically. */
   private suspend(cardId: string): void {
-    this.opts.autoApprove?.suspend(
-      `card:${cardId}`,
-      "conteúdo de terceiro enviado por uma automação",
-    );
+    this.opts.autoApprove?.suspend(`card:${cardId}`, "third-party content sent by an automation");
   }
 
   /** Runs that count against the daily limit: those that acted, or tried to. */

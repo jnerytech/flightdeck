@@ -103,11 +103,11 @@ export function SetupPage(
   return (
     <Page title={t("setup.title")} subtitle={t("setup.subtitle")}>
       <Section title={t("setup.core")}>
-        <p className="text-muted-foreground text-sm" role="status">
+        <output className="block text-muted-foreground text-sm">
           {progress.complete
             ? t("setup.allDone")
             : t("setup.ring", { done: progress.done, total: progress.total })}
-        </p>
+        </output>
         <StepList label={t("setup.core")} steps={core} current={current} go={props.go} />
       </Section>
       {optional.length > 0 && (

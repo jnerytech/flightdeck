@@ -785,7 +785,9 @@ export class SessionManager {
     const agents = this.store.sessionAgents(sessionId);
     const run = this.runtimeOf(session).start({
       cwd: session.cwd,
-      permissionMode: session.permissionMode,
+      // The mode it last reported (#935): a new run never falls back to the start mode, which
+      // stays only the limit of a change.
+      permissionMode: this.store.lastMode(sessionId) ?? session.permissionMode,
       allowBypass: this.bypassAllowed(),
       // The session's own id: the Flightdeck MCP it opens knows who is sending (phase 21).
       env: {
@@ -956,6 +958,10 @@ export class SessionManager {
       );
     }
     await run.setPermissionMode(mode);
+    // Told to every app, and kept for a reload (#935); the start mode stays the session's limit.
+    // A run that ended during the change reports nothing after its last status.
+    if (this.live.get(sessionId)?.run !== run) return;
+    this.emit(sessionId, { type: "session.mode", permissionMode: mode });
   }
 
   /** Changes the model of a live managed session, for its next turn; null is the default. */

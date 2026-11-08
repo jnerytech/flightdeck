@@ -39,6 +39,7 @@ export const ptBR = {
     offlineSessions: "{host} está offline. As sessões dele voltam quando ele reconectar.",
     incompatible: "{host} precisa de uma atualização do daemon para os dados aparecerem aqui.",
     showAll: "Mostrar todos os hosts",
+    projectNoSessions: "{project} não tem sessões.",
     noCosts: "{host} não informa custos.",
     projectEmpty: "{project} não tem custos neste período.",
   },
@@ -402,6 +403,8 @@ export const ptBR = {
     noHost: "Nenhum host online informa isto.",
   },
   toast: {
+    switchedHost: "Mudou para {host}",
+    backTo: "Voltar para {host}",
     copied: "Copiado",
     details: "Detalhes",
     close: "Fechar",
@@ -1475,7 +1478,11 @@ export const ptBR = {
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
     harnessStack: "a leitura do stack do projeto",
+    knowledge: "a leitura dos documentos do projeto",
+    knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
+    knowledgeStatus: "a mudança do status de um documento",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
+    harnessApply: "a aplicação de mudanças na configuração do Claude Code",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
@@ -1513,7 +1520,7 @@ export const ptBR = {
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
     card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",
     spec_path_invalid:
-      "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como docs/specs/nome.md.",
+      "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
     contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
@@ -1576,6 +1583,9 @@ export const ptBR = {
     team_session_foreign: "Esta sessão não faz parte do time {team}.",
     team_close_confirm: "Encerrar o time {name} pede a sua confirmação.",
     team_coordinator_stays: "A coordenadora não sai do time: encerre o time.",
+    team_delete_open: "O time {name} ainda está aberto: encerre-o primeiro.",
+    team_delete_live:
+      "O time {name} ainda tem {members} membro(s) trabalhando: espere até que descansem e exclua depois.",
     team_closed: "O time {name} está encerrado.",
     agentcfg_file_missing: "{path} não existe neste projeto.",
     agentcfg_path_invalid: "{path} não é um caminho válido para este tipo de arquivo ({kind}).",
@@ -1730,6 +1740,8 @@ export const ptBR = {
     review_text_big: "O texto passa de 1 MB: encurte-o ou edite o arquivo fora do Flightdeck.",
     review_file_changed:
       "O arquivo {path} mudou desde que foi aberto: recarregue e aplique a edição de novo.",
+    knowledge_frontmatter:
+      "O front matter de {path} não pode ser mudado com segurança por aqui: edite o arquivo à mão.",
     review_revert_confirm: "Confirme o revert para continuar.",
     review_undo_confirm: "Confirme o desfazer para continuar.",
     review_undo_nothing:
@@ -1784,6 +1796,11 @@ export const ptBR = {
       "Isto só funciona por uma conexão próxima: este computador (loopback) ou a Tailscale, que o WireGuard cifra. Para um host WSL, adicione-o como ws://localhost:<porta> (o WSL repassa a porta) ou pelo endereço da Tailscale.",
     trust_root_refused:
       "Esta pasta é uma pasta permitida com vários projetos, ou fica acima de uma: confie na pasta do próprio projeto.",
+    harness_stale:
+      "O projeto mudou desde a prévia, ou a prévia não era destas partes: faça a prévia de novo.",
+    harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
+    harness_reformat:
+      "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
@@ -3246,6 +3263,8 @@ export const ptBR = {
     title: "Times",
     subtitle: "Uma sessão coordenadora e as executoras, cada uma num card",
     host: "Host",
+    otherHost: "{wanted} não tem times. Mostrando {shown}.",
+    otherHostOffline: "{wanted} está offline. Mostrando {shown}.",
     noHost: "Nenhum host conectado com times",
     noHostLink: "Adicionar host",
     openSession: "Abrir sessão",
@@ -3315,6 +3334,11 @@ export const ptBR = {
     close: "Encerrar {name}",
     closeButton: "Encerrar",
     closeMessage: "Encerrar o time {name}? As sessões recebem o aviso para parar.",
+    menu: "Ações de {name}",
+    delete: "Excluir time",
+    deleteOpen: "Encerre o time primeiro",
+    deleteMessage:
+      "Excluir o time {name}? O registro do time e o card dele nesta página saem. As sessões dos membros ficam, com as transcrições e o histórico, e os cards delas no board também: só deixam de ser do time.",
   },
   clients: {
     title: "Clientes",
@@ -3722,8 +3746,7 @@ export const ptBR = {
     saveValidation: "Salvar nota de validação",
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
-    specPathInvalid:
-      "Use o caminho de um arquivo Markdown dentro do worktree, como docs/specs/nome.md.",
+    specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",
     specFound: "Especificação encontrada: {heading}",
     specFoundPlain: "Especificação encontrada",
     specMissing: "Nenhum arquivo de especificação em {path}",
@@ -3830,6 +3853,28 @@ export const ptBR = {
     loading: "Carregando workflows",
     empty: "Nenhum workflow na branch base ainda.",
     failed: "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
+    templates: {
+      open: "Adicionar de um modelo",
+      title: "Modelos de workflow",
+      intro:
+        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. Nada é gravado para você.",
+      loading: "Carregando modelos",
+      failed:
+        "Não deu para carregar os modelos. O host pode estar offline ou precisar de uma versão mais nova do Flightdeck.",
+      list: "Modelos",
+      show: "Ver {name}",
+      back: "Voltar aos modelos",
+      persona: "Persona: {persona}",
+      inputs: "Pede: {inputs}",
+      path: "Faça commit em {path}",
+      file: "Arquivo {path}",
+      copy: "Copiar o arquivo",
+      copied: "Copiado. Faça commit na branch base e confie nele aqui.",
+      checkFilled:
+        "A linha check tem o comando de teste deste projeto. Confira antes de confiar no workflow.",
+      checkPlaceholder:
+        "A linha check tem um texto provisório que falha. Troque pelo seu comando de teste antes de fazer o commit do arquivo.",
+    },
   },
   sessionViews: { label: "Visões da sessão", terminal: "Terminal" },
   shortcuts: {
@@ -4137,9 +4182,55 @@ export const ptBR = {
     placeholder: "Digite uma mensagem",
   },
   projectPage: {
+    knowledge: {
+      title: "Conhecimento do projeto",
+      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter. Só leitura: nada aqui muda o projeto.",
+      filter: "{status} ({n})",
+      all: "Todos",
+      status: {
+        valid: "Válido",
+        transitional: "Em transição",
+        obsolete: "Obsoleto",
+        unclassified: "Sem classificação",
+      },
+      type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
+      changed: "Alterado em {date}",
+      referencesObsolete: "Aponta para um documento obsoleto: {path}",
+      problem: {
+        status_unknown:
+          "O status no front matter não é válido, então os agentes não recebem este documento.",
+        type_unknown: "O tipo no front matter não é prd, rfc, adr nem spec.",
+        frontmatter_invalid: "Não foi possível ler o front matter.",
+        supersedes_invalid: "supersedes não é o caminho de um documento.",
+        supersedes_missing: "Substitui um documento que não está na biblioteca.",
+      },
+      empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
+      truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
+      failed: "Não foi possível ler os documentos neste host.",
+      setStatus: {
+        hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
+        label: "Status de {title}",
+        changed:
+          "{title} agora está {status}. O arquivo foi mudado na pasta do projeto e não foi commitado.",
+        failed: "Não foi possível mudar o status. {why}",
+      },
+      feed: {
+        on: "As sessões que o Flightdeck inicia aqui recebem um índice dos documentos válidos.",
+        onUntrusted:
+          "Ligado, mas este projeto não é confiável, então as sessões não recebem o índice.",
+        off: "Desligado: as sessões daqui não recebem o índice.",
+        offBy:
+          "Desligado por {path}, uma pasta acima deste projeto, na configuração do host. Ligue lá.",
+        turnOff: "Desligar",
+        turnOn: "Ligar",
+        failed: "Não foi possível ler ou mudar o interruptor do índice neste host.",
+      },
+    },
     harness: {
       title: "Configuração do Claude Code",
       hint: "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Só leitura: nada aqui muda o projeto.",
+      hintSetup:
+        "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Nada muda até você ler uma configuração e aplicá-la.",
       summary: "{n} de {total} partes encontradas",
       found: "Encontrado",
       missing: "Faltando",
@@ -4159,6 +4250,29 @@ export const ptBR = {
         format: "um formatador após edições",
         gitAdd: "uma verificação antes do git add",
         secrets: "uma verificação de arquivos de segredo",
+      },
+      setup: {
+        action: "Configurar o Claude Code",
+        apply: "Aplicar a configuração",
+        message:
+          "Isto acrescenta o que falta no projeto. Só acrescenta: nada que já existe é alterado ou removido.",
+        nothing:
+          "Nada a acrescentar: o projeto já tem todas as partes que esta configuração grava.",
+        hooks: "Hooks a acrescentar",
+        hookLine: "{event} ({matcher}): {command}",
+        formatterNote:
+          "Isto roda o script de formatação do próprio projeto: o que ele faz vem dos arquivos do projeto, e um pull pode mudá-lo.",
+        deny: "Regras de bloqueio a acrescentar (melhor esforço)",
+        denyNote:
+          "Elas impedem a ferramenta Read do Claude Code nestes arquivos e estas formas de git add. Não impedem um comando de shell como cat .env.",
+        files: "Arquivos novos",
+        conflicts: "Ficam como estão: estas chaves já guardam outra coisa",
+        unreadable: "Não lidos, então ficam como estão",
+        untrusted: "Estes hooks e regras só carregam depois que você confiar neste projeto.",
+        reformat:
+          "Regravar .claude/settings.json com outro layout. O espaçamento muda, e uma chave repetida ou um número muito grande podem ser reescritos.",
+        done: "Configurado: {files}",
+        again: "Fazer a prévia de novo",
       },
     },
     trust: {
@@ -4228,10 +4342,15 @@ export const ptBR = {
   projectsOverview: {
     title: "Projetos",
     subtitle: "Todos os projetos de todos os hosts, com o que está rodando em cada um.",
+    subtitleHost: "Os projetos de {host}, com o que está rodando em cada um.",
+    hostOffline: "{host} está offline. Os projetos dele voltam quando ele reconectar.",
     search: "Buscar projetos",
     searchPlaceholder: "Nome, host, branch ou pasta",
     sortBy: "Ordenar por",
     clearHost: "Limpar o filtro de host: {host}",
+    newProject: "Novo projeto",
+    newOn: "Em {host}",
+    noHostOnline: "Nenhum host está online para adicionar um projeto.",
     sorts: {
       activity: "Última atividade",
       name: "Nome",
@@ -4636,6 +4755,7 @@ export const ptBR = {
     endMessage:
       "Encerrar o processo {pid} ({name})? O daemon do host o iniciou e nenhuma sessão é dona dele.",
     endFailed: "Não foi possível encerrar esse processo.",
+    unreadable: "Não deu para ler os recursos deste host. Eles aparecem quando o host responder.",
   },
   worktrees: {
     title: "Worktrees",
