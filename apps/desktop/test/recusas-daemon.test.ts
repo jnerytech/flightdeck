@@ -431,6 +431,7 @@ const REASONS = [
   "perm_tool_always_asks",
   "perm_not_suggested",
   "team_session_foreign",
+  "team_report_not_coordinator",
   "team_close_confirm",
   "team_coordinator_stays",
   "team_closed",

@@ -2998,14 +2998,24 @@ export const TeamStatus = z.object({
     }),
   ),
   messages: z.number().int(),
+  /**
+   * #1220: the coordinator's last report (`team_report`), the team's outcome. Text a session wrote:
+   * shown as plain text, never as markup. Absent from an older host.
+   */
+  outcome: z.object({ text: z.string(), at: z.string(), done: z.boolean() }).nullable().optional(),
 });
 export type TeamStatus = z.infer<typeof TeamStatus>;
+
+/** #1220: the longest report a coordinator may send. */
+export const TEAM_REPORT_MAX = 4000;
 
 export const TeamsUpdatedFrame = z.object({
   type: z.literal("teams.updated"),
   team: TeamInfo,
   /** Why it changed, when that is news for you (quota pause, quota resume). */
   reason: z.string().nullable(),
+  /** #1220: the coordinator reported the goal done; the app tells the person in its language. */
+  event: z.enum(["report_done"]).optional(),
 });
 export type TeamsUpdatedFrame = z.infer<typeof TeamsUpdatedFrame>;
 
@@ -3784,6 +3794,21 @@ export const Command = z.discriminatedUnion("type", [
   /** With `as`, only a member of the team may ask (the MCP tool does). */
   cmd("teams.status", z.object({ team: z.string().min(1), as: SessionIdentity.optional() })),
   cmd("teams.watch", z.object({}).strict()),
+  /**
+   * #1220: the coordinator's report, the team's outcome; `done` says the goal is met. Only the
+   * team's coordinator (`as`, resolved by the host) may send it.
+   */
+  cmd(
+    "teams.report",
+    z
+      .object({
+        team: z.string().min(1),
+        text: z.string().min(1).max(TEAM_REPORT_MAX),
+        done: z.boolean(),
+        as: SessionIdentity,
+      })
+      .strict(),
+  ),
   /** Phase 22: the PR watch of a project (the settings) and of a card (the switch, the rounds). */
   cmd(
     "watch.settings",
@@ -5499,6 +5524,7 @@ export interface CommandResults {
   "teams.delete": TeamInfo;
   "teams.message": { delivered: number; refused: number };
   "teams.status": TeamStatus;
+  "teams.report": TeamStatus;
   "teams.watch": undefined;
   "watch.settings": WatchSettings;
   "watch.set": WatchInfo;

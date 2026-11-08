@@ -144,6 +144,10 @@ interface Row {
   paused_by: TeamInfo["pausedBy"];
   instructions_version: string;
   created_at: string;
+  /** #1220: the coordinator's last report; null before the first. */
+  report_text: string | null;
+  report_at: string | null;
+  report_done: number;
 }
 
 /**
@@ -291,6 +295,27 @@ export class Teams {
     return null;
   }
 
+  /**
+   * #1220: the coordinator's report, the team's outcome; `done` says the goal is met and tells the
+   * watchers. Only the team's coordinator may write it: the host checks, not the prompt.
+   */
+  report(id: string, asker: string, text: string, done: boolean): TeamStatus {
+    const row = this.open(id);
+    const coordinator = this.info(row).members.find((m) => m.role === "coordinator")?.sessionId;
+    if (!coordinator || asker !== coordinator) {
+      throw invalid(
+        `only the coordinator of team ${row.name} reports its outcome`,
+        "team_report_not_coordinator",
+        { team: row.name },
+      );
+    }
+    this.opts.db
+      .query("UPDATE teams SET report_text = ?, report_at = ?, report_done = ? WHERE id = ?")
+      .run(text, this.now(), done ? 1 : 0, id);
+    this.changed(id, null, done ? "report_done" : undefined);
+    return this.status(id);
+  }
+
   /** The state of a team; with `asker`, only a member of the team may read it. */
   status(id: string, asker?: string): TeamStatus {
     const team = this.get(id);
@@ -304,9 +329,14 @@ export class Teams {
       .filter((m) => m.kind === "session");
     const last = (member: TeamMember): MessageInfo | undefined =>
       messages.find((m) => m.fromSession === member.sessionId);
+    const row = this.row(id);
     return {
       team,
       messages: messages.length,
+      outcome:
+        row.report_text && row.report_at
+          ? { text: row.report_text, at: row.report_at, done: row.report_done === 1 }
+          : null,
       members: team.members.map((member) => {
         const report = last(member);
         return {
@@ -518,9 +548,19 @@ export class Teams {
     return row;
   }
 
-  private changed(id: string, reason: string | null = null): TeamInfo {
+  private changed(
+    id: string,
+    reason: string | null = null,
+    event?: TeamsUpdatedFrame["event"],
+  ): TeamInfo {
     const info = this.get(id);
-    for (const listener of this.listeners) listener({ type: "teams.updated", team: info, reason });
+    const frame = {
+      type: "teams.updated" as const,
+      team: info,
+      reason,
+      ...(event ? { event } : {}),
+    };
+    for (const listener of this.listeners) listener(frame);
     return info;
   }
 
