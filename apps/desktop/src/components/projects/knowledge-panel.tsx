@@ -60,6 +60,31 @@ export function KnowledgePanel(
       setLoaded(result ?? "failed");
     });
   };
+  // A write is on its way until the list read again shows it: a second press (a double click, a held
+  // Enter) comes before the host answers and would write with the hash the first one used up.
+  const writing = useRef(new Set<string>());
+  const pickers = useRef(new Map<string, HTMLSelectElement>());
+  const filters = useRef<HTMLDivElement>(null);
+  const refocus = useRef<string | null>(null);
+  // Once the list is read again: a choice the file now agrees with is done, and the focus goes back to
+  // the picker of the document that was changed (or to the filter in use, when it no longer fits).
+  useEffect(() => {
+    if (loaded === null || loaded === "failed") return;
+    writing.current.clear();
+    setChosen((now) => {
+      const kept = Object.entries(now).filter(
+        ([file, status]) => loaded.entries.find((e) => e.path === file)?.status !== status,
+      );
+      return kept.length === Object.keys(now).length ? now : Object.fromEntries(kept);
+    });
+    const wanted = refocus.current;
+    if (wanted === null) return;
+    refocus.current = null;
+    (
+      pickers.current.get(wanted) ??
+      filters.current?.querySelector<HTMLElement>("[aria-pressed='true']")
+    )?.focus();
+  }, [loaded]);
   // Issue #78, S-T2: a spec becomes a card that names it, so its first start reads it first and
   // works test first. A card the host refuses is not named; the banner says why.
   const makeCard = async (entry: KnowledgeEntry, projectId: string) => {
@@ -96,14 +121,16 @@ export function KnowledgePanel(
   // The file is written by the host only if it is as the list showed it; a refusal says why, and
   // the list is read again so the next try has what the file is now.
   const change = async (entry: KnowledgeEntry, status: KnowledgeStatus) => {
+    if (writing.current.has(entry.path)) return;
+    writing.current.add(entry.path);
     const result = await store.hostRequest(hostId, "knowledge.setStatus", {
       path,
       file: entry.path,
       status,
       expectedHash: entry.hash,
     });
-    // A change that went through is the file's status now: the choice is not a pending one anymore.
-    if (result.ok) setChosen(({ [entry.path]: _applied, ...rest }) => rest);
+    if (result.ok) refocus.current = entry.path;
+    else writing.current.delete(entry.path);
     setNote(
       result.ok
         ? {
@@ -155,7 +182,7 @@ export function KnowledgePanel(
         <p className="text-sm">{t("projectPage.knowledge.empty")}</p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
+          <div ref={filters} className="flex flex-wrap gap-2">
             {(["all", ...STATUSES] as const).map((status) => (
               <Button
                 key={status}
@@ -180,6 +207,10 @@ export function KnowledgePanel(
                   <Badge variant="outline">{word(entry.status)}</Badge>
                   {props.status && (
                     <select
+                      ref={(el) => {
+                        if (el) pickers.current.set(entry.path, el);
+                        else pickers.current.delete(entry.path);
+                      }}
                       aria-label={t("projectPage.knowledge.setStatus.label", {
                         title: entry.title,
                       })}
