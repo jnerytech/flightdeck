@@ -1,9 +1,10 @@
+import { type PickDocument, pickWithInput } from "../pick-file.ts";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
 import type { Platform } from "../types.ts";
 
 export interface WebWindow extends FilePickerWindow {
   localStorage: Platform["storage"];
-  document: { hasFocus(): boolean; title: string };
+  document: { hasFocus(): boolean; title: string; createElement?: PickDocument["createElement"] };
   location: { hash: string };
   open(url: string, target: string, features: string): unknown;
   addEventListener(type: "hashchange", listener: () => void): void;
@@ -71,7 +72,11 @@ export function createWebPlatform(
         return Promise.resolve();
       },
       generateKey: () => Promise.reject(new Error("ssh-keygen needs the desktop app")),
-      pickFile: () => Promise.resolve(null),
+      // A page picks a file through a file input; a window that cannot make one picks nothing.
+      pickFile: () =>
+        win.document.createElement
+          ? pickWithInput(win.document as PickDocument)
+          : Promise.resolve(null),
       removeFile: async () => {},
     },
     async notify({ title, body, link }) {
