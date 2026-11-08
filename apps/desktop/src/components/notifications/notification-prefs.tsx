@@ -182,11 +182,11 @@ export function NotificationPrefs(
           {t("notifyPrefs.test")}
         </Button>
         {test && (
-          <p role="status" className="text-sm">
+          <output className="block text-sm">
             {test === "delivered"
               ? t("notifyPrefs.delivered")
               : `${t("notifyPrefs.notShown")} ${t("notifyPrefs.blockedHint")}`}
-          </p>
+          </output>
         )}
       </div>
     </Panel>
