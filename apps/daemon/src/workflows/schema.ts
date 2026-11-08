@@ -18,7 +18,9 @@ export type Action =
   | { gate: { message: string; show?: string } }
   | { loop: { max: number; until: { check: string }; do: InnerAction } }
   | { parallel: InnerAction[] }
-  | { pr: Record<string, never> };
+  | { pr: Record<string, never> }
+  /** Issue #79: raises the findings of an earlier agent step as Backlog cards. */
+  | { cards: { from: string } };
 
 export type Step = { id: string } & Action;
 
@@ -58,7 +60,9 @@ const ENGLISH: Record<string, (params: Record<string, string>) => string> = {
   input_name_invalid: () => "invalid input name",
   persona_invalid: () => "invalid persona id",
   step_one_action: () =>
-    "the step needs exactly one action (agent, check, gate, loop, parallel or pr)",
+    "the step needs exactly one action (agent, check, gate, loop, parallel, pr or cards)",
+  cards_from_unknown: (p) =>
+    `cards.from points to an agent step that does not come before it: ${p.step}`,
   step_id_duplicate: () => "repeated id",
   inner_one_action: (p) => `${p.where}: needs exactly one action (agent or check)`,
   continue_unknown: (p) => `continue points to a step that does not exist: ${p.step}`,
@@ -80,7 +84,7 @@ const describeIssue = (item: RuleIssue) => {
 /** `{{ expression }}` inside prompts and gate texts. */
 export const REFERENCE = /\{\{\s*(.*?)\s*\}\}/g;
 
-const ACTIONS = ["agent", "check", "gate", "loop", "parallel", "pr"] as const;
+const ACTIONS = ["agent", "check", "gate", "loop", "parallel", "pr", "cards"] as const;
 const INNER_ACTIONS = ["agent", "check"] as const;
 
 const text = z.string().min(1, "not_empty");
@@ -110,6 +114,7 @@ const StepSchema = z.strictObject({
     .optional(),
   parallel: z.array(InnerSchema).min(1, "parallel_empty").optional(),
   pr: z.strictObject({}).optional(),
+  cards: z.strictObject({ from: text }).optional(),
 });
 const WorkflowSchema = z.strictObject({
   name: text.optional(),
@@ -226,6 +231,10 @@ function validate(inputs: string[], steps: RawStep[]): RuleIssue[] {
       }
     }
     checkAgents(step, inner, earlier, fail);
+    // One problem at a time: a step with two actions is already refused above.
+    if (actions.length === 1 && step.cards && earlier.get(step.cards.from) !== "agent") {
+      fail("cards_from_unknown", { step: step.cards.from });
+    }
     for (const [template, inLoop] of templatesOf(step, inner)) {
       for (const [raw, expression] of template.matchAll(REFERENCE)) {
         if (!known(expression ?? "", { inputs, earlier, inLoop })) {

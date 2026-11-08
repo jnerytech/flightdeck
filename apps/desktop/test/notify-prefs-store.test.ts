@@ -75,6 +75,23 @@ describe("notify-prefs-store: the preferences decide what is sent (issue #149)",
     expect(w.store.getState().inbox).toHaveLength(2);
   });
 
+  test("a request's bell entry keeps its session and opens at that request; a finished turn's opens nothing in particular (#363)", () => {
+    const w = world();
+    w.summary("s", "idle");
+    w.summary("s", "running", ["r1"]);
+    w.summary("s", "idle");
+    const [turn, request] = w.store.getState().inbox;
+    expect({
+      request: request?.route,
+      requestLinked: request?.link !== undefined,
+      turn: turn?.route,
+    }).toEqual({
+      request: { name: "session", host: "h1", id: "s", focus: "r1" },
+      requestLinked: true,
+      turn: undefined,
+    });
+  });
+
   test("a muted host: no OS notification and no bell entry, but the request is still in Needs you", () => {
     const w = world();
     w.store.notifyPrefs.muteHost("h1", true);

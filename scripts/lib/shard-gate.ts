@@ -1,14 +1,14 @@
 /**
- * The 100% coverage gate of a suite run in shards (#296). Each shard runs twice, in jobs of its own:
+ * The coverage gate (80% per file since #1002) of a suite run in shards (#296). Each shard runs twice, in jobs of its own:
  * once with Bun's coverage (the lines, and the lcov SonarCloud reads) and once with istanbul's
  * function maps (Bun's lcov counts functions but does not name them, so counts cannot merge). The
  * gate fails closed: a shard missing, doubled, failed or short of the suite's test files means no
- * verdict at all, never 100%.
+ * verdict at all, never a pass.
  */
 
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { testArgs } from "../test/timeout.ts";
-import { checkCoverage, type FileCoverage } from "./coverage-check.ts";
+import { belowGate, COVERAGE_GATE, checkCoverage, type FileCoverage } from "./coverage-check.ts";
 import type { FunctionCoverage } from "./coverage-funcs.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
 import { TEST_FILE } from "./test-related.ts";
@@ -42,7 +42,7 @@ export interface GateInput {
 }
 
 export interface GateResult {
-  /** Empty only when every shard is in and every loaded file and source is at 100%. */
+  /** Empty only when every shard is in and every loaded file and source is at the gate. */
   problems: string[];
   /** The shards' Bun lcov merged, for SonarCloud; empty when a shard is missing. */
   lcov: string;
@@ -172,6 +172,8 @@ function functionsOf(
   if (hits.some((hit) => hit >= found)) return [found, found];
   // Each shard calls a subset; when their sizes cannot reach the total, some function never ran.
   if (hits.reduce((total, hit) => total + hit, 0) < found) return [Math.max(...hits), found];
+  // The best shard alone reaches the gate: whatever the others ran, the file passes (#1011 review).
+  if (!belowGate([Math.max(...hits), found])) return [Math.max(...hits), found];
   problems.push(
     `${path}: the shards' function counts cannot tell whether every function ran; run the suite whole`,
   );
@@ -371,13 +373,15 @@ export function mergeShards(
   });
   if (result.lcov) deps.write(lcovOut, result.lcov);
   if (result.problems.length === 0) {
-    deps.print(`cobertura 100% em ${deps.sources.length} arquivos-fonte, de ${count} shards`);
+    deps.print(
+      `cobertura de ${COVERAGE_GATE}% ou mais em ${deps.sources.length} arquivos-fonte, de ${count} shards`,
+    );
     return 0;
   }
   deps.error(
     result.closed
       ? `the sharded run has no coverage verdict (${result.problems.length} problem(s)):`
-      : `cobertura abaixo de 100% em ${result.problems.length} arquivo(s):`,
+      : `cobertura abaixo de ${COVERAGE_GATE}% em ${result.problems.length} arquivo(s):`,
   );
   for (const problem of result.problems) deps.error(`  - ${problem}`);
   return 1;

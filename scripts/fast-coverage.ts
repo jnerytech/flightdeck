@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * `bun run fast-coverage [--write]` (#309): runs only the unit and component tiers with coverage
- * and checks that every source in fast-coverage-baseline.json is still at 100% from them alone.
+ * and checks that every source in fast-coverage-baseline.json is still at the coverage gate (80%) from them alone.
  * `--write` adds the newly covered sources, and refuses while a listed one dropped (the list only
  * grows). The logic is in lib/fast-coverage.ts; the tiers come from lib/test-tiers.ts.
  */
@@ -58,7 +58,7 @@ const baseline: string[] = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELI
 const { dropped, gained, gone } = fastCoverageVerdict(covered, baseline, sources);
 if (dropped.length > 0) {
   console.error(
-    `fast-coverage: ${dropped.length} source(s) the fast tiers covered at 100% no longer are:`,
+    `fast-coverage: ${dropped.length} source(s) the fast tiers covered at the gate no longer are:`,
   );
   for (const path of dropped) console.error(`  - ${path}`);
   console.error(
@@ -73,7 +73,7 @@ if (write) {
   );
 } else {
   console.log(
-    `fast-coverage: ${covered.length} of ${sources.length} source(s) at 100% from the fast tiers; the ${baseline.length} listed hold`,
+    `fast-coverage: ${covered.length} of ${sources.length} source(s) at the gate from the fast tiers; the ${baseline.length} listed hold`,
   );
   if (gained.length > 0)
     console.log(

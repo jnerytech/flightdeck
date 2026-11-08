@@ -337,7 +337,12 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
     const { root, project } = workspace();
     const server = startServer({
       manager: newManager().manager,
-      knowledgeFeed: async () => ({ text: "index", fed: 1, truncated: false }),
+      // Asked after the config is written: the index's own name is taken in the folder by then.
+      knowledgeFeed: async () => {
+        const folder = join(programData, readdirSync(programData)[0] ?? "");
+        writeFileSync(join(folder, `${launchIdOf(folder)}.md`), "taken");
+        return { text: "index", fed: 1, truncated: false };
+      },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
@@ -355,8 +360,6 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
         hooks: { port: 0, token: HOOKS },
       }),
     );
-    // The index goes in a file under `personas`: a file stands there, so writing it fails.
-    writeFileSync(join(dataDir, "personas"), "not a folder");
     const run = await launch(file, {
       platform: "win32",
       env: WINDOWS_ENV(programData),
