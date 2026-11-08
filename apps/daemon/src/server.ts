@@ -62,7 +62,7 @@ import { listDirs, listFiles } from "./fs-dirs.ts";
 import type { AlertList } from "./github/alerts.ts";
 import type { GithubService } from "./github/service.ts";
 import type { PreviewPart } from "./harness/preview.ts";
-import type { HarnessTemplates } from "./harness/templates-store.ts";
+import type { HarnessTemplates, TemplateMarkdown } from "./harness/templates-store.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
@@ -209,16 +209,20 @@ export interface ServerOptions {
     body?: string,
   ) => Promise<KnowledgeEntry>;
   /** #75: what adding harness parts would add, written nowhere. */
-  harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
+  harnessPreview?: (
+    path: string,
+    parts: readonly PreviewPart[],
+    template?: TemplateMarkdown | null,
+  ) => Promise<HarnessPreview>;
   /** #75: writes what the preview proposed, when `digests` still match the proposals. */
   harnessApply?: (
     path: string,
     parts: readonly PreviewPart[],
     digests: Readonly<Record<string, string>>,
-    options: { reformat: boolean },
+    options: { reformat: boolean; template?: TemplateMarkdown },
   ) => Promise<HarnessApplied>;
   /** #75, slice T1: the host's harness templates, shared from projects. */
-  harnessTemplates?: Pick<HarnessTemplates, "export" | "list">;
+  harnessTemplates?: Pick<HarnessTemplates, "export" | "list" | "files">;
   /** #75, slice G1: drafts a CLAUDE.md with the host's model and holds it by its digest. */
   harnessDraft?: (path: string) => Promise<HarnessDraft>;
   /** #75, slice C1: commits what apply wrote (by its digests) on a new branch. */
@@ -790,6 +794,13 @@ export function startServer(opts: ServerOptions): RunningServer {
     return sub;
   }
 
+  /** A host template's Markdown for a harness preview or apply, read now; null without one (#75, T1b). */
+  async function markdownOf(template: string | undefined): Promise<TemplateMarkdown | null> {
+    if (template === undefined) return null;
+    if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
+    return opts.harnessTemplates.files(template);
+  }
+
   async function dispatch(ws: Socket, command: Command): Promise<void> {
     const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
       send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
@@ -1224,8 +1235,13 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "project.harness.preview": {
         if (!opts.harnessPreview) throw featureOff("harnessPreview");
+        const { parts, template } = command.payload;
+        // A template's files come back whole, and T1a keeps them off a far connection: near only.
+        if (template !== undefined) {
+          requireVaultTransport(ws.data.origin, "project.harness.preview", opts.log);
+        }
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.harnessPreview(path, command.payload.parts));
+        return ok(command.type, await opts.harnessPreview(path, parts, await markdownOf(template)));
       }
       case "project.harness.export": {
         if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
@@ -1265,7 +1281,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         // A hook written here runs its command in every session of a trusted project: a near
         // connection only, like project.trust.set, and only once the person confirmed.
         requireVaultTransport(ws.data.origin, "project.harness.apply", opts.log);
-        const { parts, digests, confirm, reformat } = command.payload;
+        const { parts, digests, confirm, reformat, template } = command.payload;
         if (confirm !== true) {
           throw new FlightdeckError(
             "invalid_state",
@@ -1274,9 +1290,14 @@ export function startServer(opts: ServerOptions): RunningServer {
           );
         }
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        // The template is read again here: apply never takes its content from the app.
+        const markdown = await markdownOf(template);
         return ok(
           command.type,
-          await opts.harnessApply(path, parts, digests, { reformat: reformat === true }),
+          await opts.harnessApply(path, parts, digests, {
+            reformat: reformat === true,
+            ...(markdown ? { template: markdown } : {}),
+          }),
         );
       }
       case "project.trust.set": {

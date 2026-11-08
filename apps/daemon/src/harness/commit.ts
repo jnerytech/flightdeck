@@ -17,6 +17,7 @@ import { samePath } from "../paths.ts";
 import { SAFE, TIMEOUT_MS } from "../teleport/git.ts";
 import { whichOnPath } from "../which.ts";
 import { MAX_FILE, SETTINGS } from "./preview.ts";
+import { plainName, unvetted } from "./templates-store.ts";
 
 export interface CommitDeps {
   /** The host's scanner (the vault's values among them): a commit is one push from public. */
@@ -24,13 +25,17 @@ export interface CommitDeps {
   now?: () => Date;
 }
 
-/** The files a setup writes: nothing else can be committed this way (never a `.env`). */
-const SETUP_FILES = new Set([
-  SETTINGS,
-  "CLAUDE.md",
-  ".claude/agents/reviewer.md",
-  ".claude/skills/tdd/SKILL.md",
-]);
+/**
+ * The files a setup writes: the settings, CLAUDE.md, and an agent or a skill under a plain name (a
+ * template's, #75 T1b). Nothing else can be committed this way: never a `.env`, a hidden name or `..`.
+ */
+function setupFile(name: string): boolean {
+  if (name === SETTINGS || name === "CLAUDE.md") return true;
+  const agent = /^\.claude\/agents\/([^/]+)\.md$/.exec(name)?.[1];
+  const skill = /^\.claude\/skills\/([^/]+)\/SKILL\.md$/.exec(name)?.[1];
+  const plain = agent ?? skill;
+  return plain !== undefined && plainName(plain);
+}
 
 const sha256 = (text: string): string => createHash("sha256").update(text, "utf8").digest("hex");
 
@@ -86,7 +91,7 @@ async function filesAsWritten(
   digests: Readonly<Record<string, string>>,
 ): Promise<Array<[string, string]>> {
   const names = Object.keys(digests);
-  if (names.length === 0 || names.some((name) => !SETUP_FILES.has(name))) throw stale();
+  if (names.length === 0 || names.some((name) => !setupFile(name))) throw stale();
   const files: Array<[string, string]> = [];
   for (const name of names) {
     const text = await readInside(root, name, MAX_FILE);
@@ -129,6 +134,15 @@ export async function commitHarness(
       throw refuse("harness_commit_secret", `${name} holds a secret: it is not committed`, {
         file: name,
       });
+    }
+    // An agent or a skill on disk may never have come through a setup: vetted as a template's is.
+    const part = name.startsWith(".claude/agents/") ? "agents" : "skills";
+    if (name.startsWith(".claude/") && name !== SETTINGS && unvetted(part, text) !== null) {
+      throw refuse(
+        "harness_commit_withheld",
+        `${name} could run a command or grant a permission: it is not committed`,
+        { file: name },
+      );
     }
   }
   const head = await git(path, ["rev-parse", "--verify", "-q", "HEAD^{commit}"]);
