@@ -4232,6 +4232,7 @@ export const en: Dictionary = {
       makeCard: "Make a card",
       makeCardOf: "Make a card from {title}",
       cardMade: "Card made from the spec: {title}",
+      cardMadeNoSpec: "Card made without its spec: {title}. Open it to set the spec path.",
       referencesObsolete: "Points at an obsolete document: {path}",
       problem: {
         status_unknown:

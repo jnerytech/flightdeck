@@ -75,15 +75,16 @@ export function KnowledgePanel(
       description: "",
     });
     if (!made) return;
-    // A card that does not name the spec is not what was asked: the banner says why, no success.
+    // The card exists either way: when it could not be pointed at the spec (the banner says why),
+    // the person is told so and can open it to set the path, instead of making a second card.
     const named = await store.hostCommand(hostId, "card.update", {
       cardId: made.id,
       specPath: entry.path,
     });
-    if (!named) return;
     const open = props.onOpenCard;
+    const key = named ? "projectPage.knowledge.cardMade" : "projectPage.knowledge.cardMadeNoSpec";
     store.success(
-      t("projectPage.knowledge.cardMade", { title: made.title }),
+      t(key, { title: made.title }),
       open ? { label: t("kanban.openCard"), run: () => open(made.id) } : undefined,
     );
   };
