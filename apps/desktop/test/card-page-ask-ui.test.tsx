@@ -128,6 +128,7 @@ function form(w: ReturnType<typeof setup>, cardOver: object = {}) {
         card={card(cardOver)}
         workflows={[]}
         features={{ personas: false, bg: true, watch: false }}
+        tab="conversation"
         arenaStart={null}
         onDiscarded={() => {}}
         onShowDiff={() => {}}

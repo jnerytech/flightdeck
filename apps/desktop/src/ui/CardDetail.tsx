@@ -218,6 +218,7 @@ export const CardDetail = memo(function CardDetail(props: {
                     bg: has("bg"),
                     watch: withWatch,
                   }}
+                  tab={tab}
                   arenaStart={arena.start}
                   onDiscarded={props.onBack}
                   onShowDiff={() => setTab("diff")}

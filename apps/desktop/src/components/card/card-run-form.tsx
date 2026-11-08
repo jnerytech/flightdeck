@@ -40,6 +40,8 @@ export function CardRunForm(
     /** Workflows the card can start with: trusted and valid on the project's base branch. */
     workflows: WorkflowInfo[];
     features: CardRunFeatures;
+    /** The tab of the card page that shows: Review changes leads while it is the conversation (#1197). */
+    tab: "conversation" | "diff";
     /** The arena's Start, placed between Complete and Discard (it knows when it may show). */
     arenaStart: ReactNode;
     /** The card was discarded: the screen goes back. */
