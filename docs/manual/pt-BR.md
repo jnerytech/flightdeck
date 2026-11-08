@@ -1313,8 +1313,15 @@ descrição do card:
   vem de `az repos pr show`, e os checks das políticas, de `az repos pr policy list`.
 
 O CLI precisa estar instalado e autenticado no host do daemon (`gh auth login`, `az login` com a
-extensão `azure-devops`). O daemon só o invoca, procurando-o no PATH. O merge continua no
-provedor. Os cards com PR aberto são consultados a cada 60 s, ou a cada
+extensão `azure-devops`). O daemon só o invoca, procurando-o no PATH. O merge segue as regras
+do provedor: no GitHub, **Fazer merge do PR** num card com PR aberto (e checks que não estejam
+falhando) pergunta antes, com o endereço do PR, os checks e o jeito de fazer o merge (commit de
+merge ou squash), e então roda `gh pr merge` com esse jeito e nada mais: sem `--admin`, sem
+`--auto`, sem apagar a branch, então os checks e revisões obrigatórios continuam valendo. Se o
+GitHub recusar, o card diz por quê (revisão pendente, checks falhando ou ainda rodando, conflito, ou
+as palavras do próprio GitHub) com um link para o PR, e o card fica onde está; quando o merge
+acontece, o card vai para Concluído. Funciona por uma conexão próxima (este computador ou
+Tailscale), e os cards do Azure DevOps fazem o merge no Azure DevOps. Os cards com PR aberto são consultados a cada 60 s, ou a cada
 `board.prPollIntervalMs` da config. PR mesclado leva o card a Concluído; fechado sem merge, a
 Esperando você.
 
