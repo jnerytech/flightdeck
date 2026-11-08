@@ -325,6 +325,18 @@ describe("board-contracts-ui: a card says what it lacks, and a column says what 
     expect(w.moves()).toEqual([]);
   });
 
+  test("a Ctrl-click on the Needs: chip selects the card, as on the rest of the tile, and opens nothing", async () => {
+    const w = setup();
+    await ready();
+    const button = within(li("D")).queryByRole("button", { name: "Needs: acceptance criteria" });
+    expect(button).not.toBeNull();
+    await act(async () => {
+      if (button) fireEvent.click(button, { ctrlKey: true });
+    });
+    expect(w.opened).toEqual([]);
+    expect(li("D").getAttribute("data-selected")).toBe("true");
+  });
+
   test("while a card is dragged, the columns that ask something say what; they stop when it lets go", async () => {
     setup();
     await ready();
