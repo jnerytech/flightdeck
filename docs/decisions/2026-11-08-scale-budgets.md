@@ -40,8 +40,14 @@ Nothing measured the app or the daemon at a few hundred sessions across hosts. A
   - Budget (`scale-connect.test.tsx`): connecting to 4 hosts with 50 sessions each commits at most
     12 renders per host. It was 239 in total; with the fix it stays within the budget, and the test
     takes 4 s instead of 17 s.
+- **Second fix: the rows of Needs you.** `EntryRow` is a memoized component in its own module. It
+  compares what it shows (the entry's own record, field by field), because the list rebuilds its
+  entries on every change. Its parent passes one stable handler and the chip as a value. A
+  `minute` prop lets "time ago" move on once a minute.
+  - Budget (`scale-needs-you.test.tsx`): a burst of 10 summaries of one session, at 200 sessions,
+    redraws at most 3 rows per summary. It was 529. The test wraps the row's module and keeps the
+    row's own memo, so a row that is not memoized counts every render of the list.
 - **Next, one PR each, red budget first:**
-  - the rows of Needs you;
   - the Sessions and sidebar rows;
   - `App`'s root `useStoreState`.
   Each of these is measured as the rows of the other sessions that render on one session's burst.
