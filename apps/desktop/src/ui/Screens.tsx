@@ -234,6 +234,18 @@ function ManagedSession(
         {...(fork ? { fork } : {})}
         {...(summary?.runtime ? { runtime: summary.runtime } : {})}
         {...(openCodeModels ? { models: openCodeModels } : {})}
+        {...(claudeId && !opencode && hasFeature(host?.hostInfo?.features, "review", false)
+          ? {
+              // #1133: End first asks about the files the session's checkout did not commit.
+              uncommitted: async () => {
+                const found = await store.hostRequest(hostId, "changes.get", {
+                  target: `session:${claudeId}`,
+                });
+                return found.ok ? found.data.files.length : 0;
+              },
+              onCommitFirst: () => void store.sessionViews.select("changes"),
+            }
+          : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
         effort={hasFeature(host?.hostInfo?.features, "session.effort", false)}
         onOpenHostSettings={() => props.go({ name: "host", host: hostId })}

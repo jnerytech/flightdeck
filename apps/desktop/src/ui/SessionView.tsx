@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { EndWithChangesDialog } from "../components/session/end-with-changes-dialog.tsx";
 import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import type { Answer } from "../lib/app-store.ts";
@@ -282,6 +283,13 @@ export function errorText(item: Extract<ChatItem, { kind: "error" }>, t: T): str
 
 interface SessionViewProps {
   title: string;
+  /**
+   * #1133: how many files the session's checkout has not committed, asked when End is pressed.
+   * Absent: End only confirms.
+   */
+  uncommitted?: () => Promise<number>;
+  /** #1133: shows the session's Changes, where those files are committed. */
+  onCommitFirst?: () => void;
   session: SessionState;
   actions: SessionActions;
   focusRequestId?: string | null;
@@ -540,6 +548,8 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const [text, setText] = useState("");
   const wand = useWand(props.assist, text, setText);
   const [closing, setClosing] = useState(false);
+  // #1133: how many files End found uncommitted, while it asks about them.
+  const [unsaved, setUnsaved] = useState<number | null>(null);
   const [picking, setPicking] = useState(false);
   // The session's own mode, null until it says (#935): never a guess of Default.
   const start = session.permissionMode ?? null;
@@ -625,6 +635,10 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   }, [text]);
   /** The session is being ended: Encerrar is busy until the daemon says so. */
   const [ending, setEnding] = useState(false);
+  const end = () => {
+    setEnding(true);
+    void actions.close().finally(() => setEnding(false));
+  };
 
   /** The images waiting to go with the next message, and why the last file was turned away. */
   const [attached, setAttached] = useState<SessionImage[]>([]);
@@ -735,7 +749,11 @@ export function SessionView(props: Readonly<SessionViewProps>) {
                 variant="outline"
                 size="sm"
                 pending={ending}
-                onClick={() => setClosing(true)}
+                onClick={async () => {
+                  const count = props.uncommitted ? await props.uncommitted().catch(() => 0) : 0;
+                  if (count > 0) setUnsaved(count);
+                  else setClosing(true);
+                }}
               >
                 {t("session.end")}
               </ActionButton>
@@ -743,19 +761,35 @@ export function SessionView(props: Readonly<SessionViewProps>) {
           </>
         }
         dialogs={
-          closing && (
-            <ConfirmDialog
-              message={t("session.endMessage")}
-              confirmLabel={t("session.endConfirm")}
-              destructive
-              onConfirm={() => {
-                setClosing(false);
-                setEnding(true);
-                void actions.close().finally(() => setEnding(false));
-              }}
-              onCancel={() => setClosing(false)}
-            />
-          )
+          <>
+            {closing && (
+              <ConfirmDialog
+                message={t("session.endMessage")}
+                confirmLabel={t("session.endConfirm")}
+                destructive
+                onConfirm={() => {
+                  setClosing(false);
+                  end();
+                }}
+                onCancel={() => setClosing(false)}
+              />
+            )}
+            {unsaved !== null && (
+              <EndWithChangesDialog
+                t={t}
+                files={unsaved}
+                onCommit={() => {
+                  setUnsaved(null);
+                  props.onCommitFirst?.();
+                }}
+                onEnd={() => {
+                  setUnsaved(null);
+                  end();
+                }}
+                onCancel={() => setUnsaved(null)}
+              />
+            )}
+          </>
         }
         extra={opencode ? undefined : props.persona}
       />
