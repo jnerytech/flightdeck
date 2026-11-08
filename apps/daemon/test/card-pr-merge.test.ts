@@ -181,6 +181,57 @@ describe("card-pr-merge: the card merges its open PR, after a confirm (#1196)", 
     expect(error?.params?.url).toBe(PR_URL);
   });
 
+  test("the PR's address is rebuilt before gh gets it, and a stored address that is no GitHub PR is refused", async () => {
+    const gh = fakeGh([{ args: ["pr", "merge"] }, MERGED]);
+    const odd = await setup();
+    odd.store.db
+      .query("UPDATE cards SET pr_url = ? WHERE id = ?")
+      .run(`${PR_URL}?next=--admin#x`, odd.cardId);
+    const bad = await setup();
+    bad.store.db
+      .query("UPDATE cards SET pr_url = ? WHERE id = ?")
+      .run("--admin", bad.cardId);
+    const refused = await reason(bad.board.mergePr(bad.cardId, "merge", true));
+    await odd.board.mergePr(odd.cardId, "merge", true);
+    expect([refused, gh.calls().filter((args) => args.includes("merge"))]).toEqual([
+      "pr_url_invalid",
+      [["pr", "merge", PR_URL, "--merge"]],
+    ]);
+  });
+
+  test("a PR merged by gh is a success even when the read that follows fails", async () => {
+    const gh = fakeGh([{ args: ["pr", "merge"] }]);
+    const ctx = await setup();
+    gh.respond([{ args: ["pr", "merge"] }, { args: ["view", "state,statusCheckRollup"], code: 1 }]);
+    const card = await ctx.board.mergePr(ctx.cardId, "merge", true);
+    expect(card.id).toBe(ctx.cardId);
+  });
+
+  test("a refusal with a known reason carries a fixed message, gh's own words only for the unknown one", async () => {
+    const gh = fakeGh([{ args: ["pr", "merge"], code: 1, stderr: "SECRET-WORDS" }]);
+    const ctx = await setup();
+    const message = async (diagnosis: FakeRule | null) => {
+      gh.respond(
+        diagnosis === null
+          ? [{ args: ["pr", "merge"], code: 1, stderr: "SECRET-WORDS" }]
+          : [{ args: ["pr", "merge"], code: 1, stderr: "SECRET-WORDS" }, diagnosis],
+      );
+      return ctx.board.mergePr(ctx.cardId, "merge", true).then(
+        () => "",
+        (caught: Error) => caught.message,
+      );
+    };
+    const known = await message({
+      args: ["view", DIAGNOSE],
+      stdout: JSON.stringify({ mergeStateStatus: "DIRTY", statusCheckRollup: [] }),
+    });
+    const unknown = await message(null);
+    expect([known.includes("SECRET-WORDS"), unknown.includes("SECRET-WORDS")]).toEqual([
+      false,
+      true,
+    ]);
+  });
+
   test("the server merges over a near connection once confirmed, and refuses a far one", async () => {
     const gh = fakeGh([{ args: ["pr", "merge"] }, MERGED]);
     const ctx = await setup();
