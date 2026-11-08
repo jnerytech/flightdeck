@@ -7,7 +7,7 @@
  */
 
 /** Bump when the text below changes meaning. */
-export const INSTRUCTIONS_VERSION = "1";
+export const INSTRUCTIONS_VERSION = "2";
 
 export interface TeamBrief {
   name: string;
@@ -53,6 +53,7 @@ Cada executora trabalha num card com a própria worktree. Ache os endereços del
 4. **Aceite só commit verde.** Se um check falhar, ou o critério de pronto não foi cumprido, peça a correção com os detalhes (o comando, o erro, o arquivo) por send_to_session e assine notify_when_idle de novo. Não aceite "quase".
 5. **Integre na ordem combinada**, pelo merge local do projeto ou pelo PR, e só depois de confiar no resultado: rode os checks de novo depois de integrar, e não integre duas executoras ao mesmo tempo.
 6. **Não peça a uma executora o que foi negado a outra**, e avise o usuário, escrevendo no seu próprio chat, sempre que algo precisar de uma decisão dele.
+7. **Relate o resultado com team_report.** Quando o objetivo estiver cumprido e integrado, diga em poucas linhas o que foi feito, onde está e o que ficou de fora, com done: true; o usuário é avisado. Um relato no meio do caminho vai com done: false. O texto é para o usuário: não ponha segredos nele.
 
 ## Regras que não mudam
 

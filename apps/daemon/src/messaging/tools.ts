@@ -37,3 +37,12 @@ export const readSession = (daemon: Caller, as: SessionIdentity, session: string
 
 export const teamStatus = (daemon: Caller, as: SessionIdentity, team: string) =>
   daemon.call("teams.status", { team, as });
+
+/** #1220: the coordinator's report of the team's outcome; the host checks it is the coordinator. */
+export const teamReport = (
+  daemon: Caller,
+  as: SessionIdentity,
+  team: string,
+  text: string,
+  done: boolean,
+) => daemon.call("teams.report", { team, text, done, as });

@@ -35,7 +35,7 @@ export interface ImportResult {
 }
 
 const VERSION = 1;
-const DEFAULT_WORK_FACTOR = 18;
+export const DEFAULT_WORK_FACTOR = 18;
 
 /** Phase 16: the `.fdvault` file; `age` with a passphrase holds the metadata and the values. */
 export async function exportVault(
@@ -83,7 +83,7 @@ async function readBackup(file: Uint8Array, passphrase: string): Promise<BackupE
   }
 }
 
-function sameSecret(a: BackupEntry, b: BackupEntry): boolean {
+export function sameSecret(a: BackupEntry, b: BackupEntry): boolean {
   return (
     a.value === b.value &&
     a.meta.name === b.meta.name &&

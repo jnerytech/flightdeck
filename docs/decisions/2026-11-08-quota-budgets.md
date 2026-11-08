@@ -22,7 +22,9 @@ of the 5-hour or the weekly window, with the same two actions as a dollar budget
 - **The period of a window is the window.** `periodKey` is the window's reset time. A new reset
   starts a new period and clears the thresholds, as a new day does. With no reading of the window
   (never read, or read and since reset) `periodKey` is `unread`, the share is 0 and nothing
-  alerts until a reading arrives.
+  alerts until a reading arrives. A reading with no reset has no period to keep the alerts in, so
+  it counts as no reading. The reset counts to the minute: the CLI may round it differently
+  between readings, and that is the same window, not a new period that would alert again.
 - **Re-evaluation.** `Budgets` listens to `Quota` (from `start()` to `stop()`), so a new reading
   can cross a threshold at once instead of at the next usage pass.
 - **Storage.** A `limit_pct` column on `budgets` (migration). Dollar budgets keep `limit_usd`; a
@@ -30,3 +32,11 @@ of the 5-hour or the weekly window, with the same two actions as a dollar budget
 
 Protocol: `Budget` gains `limitPct`, `spentPct` (both `null` for dollars) and `estimated`, all
 defaulted, so an app talking to an older host still parses its budgets.
+
+The other direction: an app from before this change parses `budget.list` with `period` as `day` or
+`month`, so a window budget (made by a newer app on the same host) fails its parse. The app and the
+host it manages are updated together (the host announces `quotaBudgets` only when it runs this
+code), and a window budget exists only after a person of the newer app made one. We accept that an
+old app next to a newer one on the same host does not show that host's budgets until it updates.
+The dollar surfaces that sum `limitUsd` (the home tile) read only month budgets, so a window budget,
+which stores 0, never enters them.

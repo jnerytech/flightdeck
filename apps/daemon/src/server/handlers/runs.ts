@@ -4,6 +4,7 @@
  */
 import { FlightdeckError, featureOff } from "../../errors.ts";
 import { startTemplate } from "../../templates/start.ts";
+import { requireVaultTransport } from "../../vault/vault.ts";
 import { workflowTemplates } from "../../workflows/templates.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";
 
@@ -39,6 +40,18 @@ export const runsHandlers = {
     // cannot be read leaves the placeholder, since the list is still worth showing.
     const stack = await server.opts.harnessStack?.(project.path).catch(() => null);
     return { templates: workflowTemplates(stack?.commands.test ?? null) };
+  },
+  "workflow.template.add": async (payload, { ws, server }) => {
+    // A branch pushed from the person's repository, with its pre-push hook running: near only,
+    // as the harness commit and changes.pr are.
+    requireVaultTransport(ws.data.origin, "workflow.template.add", server.opts.log);
+    const board = server.need("board");
+    const project = board.getProject(payload.projectId);
+    // The same templates the list shows, the check line filled the same way.
+    const stack = await server.opts.harnessStack?.(project.path).catch(() => null);
+    const templates = workflowTemplates(stack?.commands.test ?? null);
+    const { projectId, templateId, confirm } = payload;
+    return await board.addWorkflowTemplate(projectId, templates, templateId, confirm === true);
   },
   "alert.list": async (payload, { server }) => {
     if (!server.opts.alerts) throw featureOff("alerts");

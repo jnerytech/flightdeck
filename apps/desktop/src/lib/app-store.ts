@@ -3633,7 +3633,12 @@ export class AppStore {
     const project = this.sessionProject(hostId, next.cwd);
     const team = this.teamOf.get(key);
     const simple = this.uiMode(hostId).mode === "simple";
-    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names, simple)) {
+    for (const n of summaryNotifications(prev, next, label, focused, {
+      linkFor,
+      t,
+      names,
+      simple,
+    })) {
       const source: NotifySource = {
         event: n.event ?? "other",
         hostId,

@@ -93,7 +93,7 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
     read("five_hour", 0.5, 2 * HOUR);
     expect(budgets.blocked("kA")).toBe(true);
     // The window resets: its reading is gone until a new one arrives, and the cards go on.
-    time.advance(2 * HOUR + 1);
+    time.advance(2 * HOUR + 60_000);
     expect(budgets.blocked("kA")).toBe(false);
     read("five_hour", 0.1, 5 * HOUR);
     expect(budgets.blocked("kA")).toBe(false);
@@ -166,6 +166,37 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
     const host = budgets.setWindow(HOST_5H);
     expect(host.spentPct).toBe(1);
     expect(host.fraction).toBe(2);
+  });
+
+  test("a reading without a reset has no period to keep alerts in: the budget ignores it", () => {
+    const { budgets, quota, thresholds } = setup();
+    quota.record([{ window: "five_hour", utilization: 0.9, status: "allowed", resetsAt: null }]);
+    const budget = budgets.setWindow(HOST_5H);
+    expect(budget).toMatchObject({ spentPct: 0, periodKey: "unread", crossed: [] });
+    expect(thresholds()).toEqual([]);
+  });
+
+  test("a reset that moves by seconds between readings is the same window: no alert twice", () => {
+    const { budgets, read, thresholds } = setup();
+    budgets.setWindow(HOST_5H);
+    read("five_hour", 0.4, 2 * HOUR);
+    const first = budgets.list()[0]?.periodKey;
+    // The CLI rounds its reset differently a minute later.
+    read("five_hour", 0.41, 2 * HOUR + 20_000);
+    expect(budgets.list()[0]?.periodKey).toBe(first as string);
+    expect(budgets.list()[0]?.crossed).toEqual([0.5, 0.8]);
+    expect(thresholds()).toEqual([0.8]);
+  });
+
+  test("a window budget needs the plan quota: a host without it refuses, as feature_off", () => {
+    const db = new EventStore(":memory:").db;
+    const budgets = new Budgets({ db });
+    expect(refusal(() => budgets.setWindow(HOST_5H))).toMatchObject({
+      code: "invalid_state",
+      reason: "feature_off",
+      params: { feature: "quotaBudgets" },
+    });
+    expect(budgets.list()).toEqual([]);
   });
 
   test("a dollar budget still works beside a window one, and says it is not a share of a window", () => {
