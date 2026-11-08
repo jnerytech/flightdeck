@@ -8,9 +8,10 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import { open } from "node:fs/promises";
 import { join } from "node:path";
 import type { HarnessPreview } from "@flightdeck/protocol";
-import { applyHarness } from "../src/harness/apply.ts";
+import { type ApplyFs, applyHarness } from "../src/harness/apply.ts";
 import { previewHarness } from "../src/harness/preview.ts";
 import { startServer } from "../src/server.ts";
 import { newManager, tempDir } from "./helpers.ts";
@@ -216,6 +217,23 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
       ]).toEqual(["harness_stale", false]);
     },
   );
+
+  test("a settings file swapped in between the walk and the open is refused: the handle must be the file walked", async () => {
+    const text = json({ model: "opus" });
+    const root = repo({ ...bunProject, [SETTINGS]: text, ".claude/twin.json": text });
+    const preview = await previewHarness(root, ["permissions"]);
+    const fs: ApplyFs = {
+      open: async (path, flags) => {
+        // Same bytes, another file: what a swap right after the walk leaves.
+        if (path.endsWith("settings.json")) renameSync(join(root, ".claude/twin.json"), path);
+        return open(path, flags);
+      },
+    };
+    expect([
+      await outcome(applyHarness(root, ["permissions"], digestsOf(preview), fs)),
+      read(root, SETTINGS) === text,
+    ]).toEqual(["harness_stale", true]);
+  });
 
   test("the server applies over a near connection, with confirm, inside the allowed roots only", async () => {
     const root = repo(bunProject);
