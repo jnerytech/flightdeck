@@ -14,7 +14,9 @@ this record covers slice G1a, the daemon.
   deny rules would be granting permissions.
 - **What the model is told.** The detected stack, its commands (test, lint, format, build), and the
   project's top-level names, as a JSON array marked as data. A name is told only when it is plain
-  (letters, digits, `. _ - @ +` and spaces, at most 64), so no name can read as a prompt line. Hidden
+  (letters, digits and `. _ - @ +`, no space, at most 64), so a name is a word, not a sentence.
+  That narrows what a project someone else controls can steer; the real control is the person
+  reading the draft in the preview before the apply. Hidden
   names are left out, at most 60 are told, and any name the secret scanner flags is left out. Never a file's content, so the files cannot inject instructions and no `env` value goes out.
   The system prompt forbids inventing commands or paths, and writing hooks, permissions or scripts.
 - **How it runs.** A one-shot `complete` on the host's runtime, in the assistant's scratch folder,
@@ -23,8 +25,9 @@ this record covers slice G1a, the daemon.
 - **What comes back.** It must be Markdown that starts with a level-1 heading and is at most 32 KiB
   (else `harness_draft_failed`), and hold nothing the host's scanner flags, the vault's values
   included (else `harness_draft_secret`, and it is not kept).
-- **Held, not sent back.** The host keeps the draft by its sha256, for the project and the file, for
-  30 minutes, at most 16 drafts. `project.harness.draft` returns the content (for the preview) and
+- **Held, not sent back.** The host keeps the draft by its project and its sha256 (two projects may
+  be drafted the same text), for CLAUDE.md only, for 30 minutes, at most 16 drafts. One draft runs
+  per project at a time: a second ask waits for the first instead of spending again. `project.harness.draft` returns the content (for the preview) and
   the digest.
 - **Applied by digest.** `project.harness.apply` takes no new field. When its digest for `CLAUDE.md`
   is a held draft's for the same project, that draft is the proposal written. Any other digest is

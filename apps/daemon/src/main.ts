@@ -1490,7 +1490,8 @@ export async function startDaemon(
     harnessPreview: previewHarness,
     harnessApply: (path, parts, digests, options) =>
       applyHarness(path, parts, digests, { ...options, drafts: harnessDrafts }),
-    harnessDraft: (path) => harnessDrafts.draft(path),
+    // Only a runtime that can run a one-shot drafts: the feature is not offered otherwise.
+    ...(runtime.complete ? { harnessDraft: (path: string) => harnessDrafts.draft(path) } : {}),
     harnessCommit: (path, digests) => commitHarness(path, digests, { scanner: snippetScanner }),
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
