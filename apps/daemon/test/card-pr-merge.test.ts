@@ -343,17 +343,19 @@ describe("card-pr-merge: the card merges its open PR, after a confirm (#1196)", 
     });
     for (const client of clients) await client.request("hello", { token, client: "t" });
     const [nearClient, farClient] = clients as [FrameClient, FrameClient];
+    const announced = await nearClient.data<{ features: string[] }>("host.info", {});
     const merge = async (client: FrameClient, payload: Record<string, unknown>) => {
       const ack = await client.request("card.pr.merge", { cardId: ctx.cardId, ...payload });
       const error = ack.error as { reason?: string } | undefined;
       return ack.ok === true ? "ok" : (error?.reason ?? "refused");
     };
     expect([
+      announced?.features.includes("cardPrMerge"),
       await merge(farClient, { method: "squash", confirm: true }),
       await merge(nearClient, { method: "squash" }),
       gh.calls().filter((args) => args.includes("merge")).length,
       await merge(nearClient, { method: "squash", confirm: true }),
       gh.calls().filter((args) => args.includes("merge")).length,
-    ]).toEqual(["transport_refused", "merge_confirm", 0, "ok", 1]);
+    ]).toEqual([true, "transport_refused", "merge_confirm", 0, "ok", 1]);
   });
 });
