@@ -44,9 +44,12 @@ export const CardDetail = memo(function CardDetail(props: {
   const { store, hostId, cardId } = props;
   const state = useStoreSlice(store, CARDDETAIL_KEYS);
   const card = state.cards[sessionKey(hostId, cardId)];
-  const [tab, setTab] = useState<CardTab>("conversation");
-  /** The card the page chose its first tab for: a finished run opens on its changes, once (#1197). */
-  const firstTab = useRef<string | null>(null);
+  /** A finished run opens on its changes, once (#1197): at the first paint when the card is known. */
+  const [tab, setTab] = useState<CardTab>(() =>
+    card && opensOnChanges(card) ? "diff" : "conversation",
+  );
+  /** The card the page chose its first tab for; one that arrives later is chosen for in the effect. */
+  const firstTab = useRef<string | null>(card ? cardId : null);
   useEffect(() => {
     if (!card || firstTab.current === cardId) return;
     firstTab.current = cardId;

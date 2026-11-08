@@ -100,40 +100,44 @@ export function CardRunForm(
 
   const step = nextStep(card, { tab: props.tab, canMerge: false });
   const running = cardStartBlock(card) !== null;
+  /** A session that is still there (even idle) or a card that waits: Stop has something to stop. */
+  const alive =
+    card.queued ||
+    (card.sessionId !== null && !["ended", "error"].includes(card.sessionStatus ?? ""));
+  const startPlain = () => {
+    const ref = store.personaRef(suggested);
+    startAsk.ask(card, contracts, () => {
+      void store.hostCommand(hostId, "card.start", { cardId, ...(ref ? { persona: ref } : {}) });
+    });
+  };
+  const stop = () => store.hostCommand(hostId, "card.stop", { cardId });
+  const lead = {
+    start: { label: t("cardUi.start"), variant: "default" as const, run: startPlain },
+    stop: { label: t("cardUi.stop"), variant: "outline" as const, run: stop },
+    review: {
+      label: t("cardUi.reviewChanges"),
+      variant: "default" as const,
+      run: () => props.onShowDiff(),
+    },
+    "open-pr": {
+      label: t("cardUi.openPr"),
+      variant: "default" as const,
+      run: () => openPr(),
+    },
+    "merge-pr": null,
+    none: null,
+  }[step ?? "none"];
   const canOpenPr = Boolean(card.worktreePath) && !card.prUrl;
 
   return (
     <>
       <Panel title={t("cardUi.runTitle")} label={t("cardUi.runTitle")} slot="card-run">
         <FieldRow align="end">
-          {step === "start" && (
-            <ActionButton
-              onClick={() => {
-                const ref = store.personaRef(suggested);
-                startAsk.ask(card, contracts, () => {
-                  void store.hostCommand(hostId, "card.start", {
-                    cardId,
-                    ...(ref ? { persona: ref } : {}),
-                  });
-                });
-              }}
-            >
-              {t("cardUi.start")}
+          {lead && (
+            // One element whatever the step is, so the focus stays on it when its name changes.
+            <ActionButton variant={lead.variant} onClick={lead.run}>
+              {lead.label}
             </ActionButton>
-          )}
-          {step === "stop" && (
-            <ActionButton
-              variant="outline"
-              onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
-            >
-              {t("cardUi.stop")}
-            </ActionButton>
-          )}
-          {step === "review" && (
-            <Button onClick={props.onShowDiff}>{t("cardUi.reviewChanges")}</Button>
-          )}
-          {step === "open-pr" && (
-            <ActionButton onClick={() => openPr()}>{t("cardUi.openPr")}</ActionButton>
           )}
           {props.arenaStart}
           <DropdownMenu>
@@ -147,6 +151,9 @@ export function CardRunForm(
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {step !== "start" && !running && (
+                <DropdownMenuItem onSelect={startPlain}>{t("cardUi.start")}</DropdownMenuItem>
+              )}
               {!running && (
                 <DropdownMenuItem
                   onSelect={() => startAsk.ask(card, contracts, () => setStartingWith(true))}
@@ -169,6 +176,9 @@ export function CardRunForm(
                 >
                   {t("bg.start")}
                 </DropdownMenuItem>
+              )}
+              {step !== "stop" && alive && (
+                <DropdownMenuItem onSelect={() => void stop()}>{t("cardUi.stop")}</DropdownMenuItem>
               )}
               {step !== "open-pr" && canOpenPr && (
                 <DropdownMenuItem onSelect={() => void openPr()}>
