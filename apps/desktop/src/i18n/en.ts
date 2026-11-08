@@ -1030,6 +1030,7 @@ export const en: Dictionary = {
     filterLabel: "Filter sessions",
     toggleProject: "Show or hide {name}",
     countChip: "{live} live of {total} sessions",
+    countShort: "{live} of {total} active",
     noHost: "No host yet",
     noOnlineHost: "No host is online",
     addHost: "Add a host",

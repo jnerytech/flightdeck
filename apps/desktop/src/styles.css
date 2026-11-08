@@ -1782,6 +1782,19 @@ html:not(:has([data-slot="status-bar"])) {
 }
 
 /* An ActionButton's disabled reason hangs under the button and adds no height to its row (issue #38). */
+/* #1132: a sessions row's state in words ("Waiting for you · wants to run Bash"): beside the title
+   on a wide row, it gives way to the title first and is cut with an ellipsis. */
+@utility row-status {
+  min-width: 0;
+  max-width: 45%;
+  flex-shrink: 2;
+  overflow: hidden;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @utility action-button-box {
   position: relative;
   display: inline-flex;

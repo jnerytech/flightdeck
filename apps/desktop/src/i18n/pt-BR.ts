@@ -1031,6 +1031,7 @@ export const ptBR = {
     clearProjectFilter: "Limpar o filtro de projeto",
     toggleProject: "Mostrar ou esconder {name}",
     countChip: "{live} ao vivo de {total} sessões",
+    countShort: "{live} de {total} ativas",
     noHost: "Nenhum host ainda",
     noOnlineHost: "Nenhum host online",
     addHost: "Adicionar um host",

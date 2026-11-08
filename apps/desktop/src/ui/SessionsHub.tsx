@@ -51,6 +51,7 @@ import {
   hubRows,
   hubView,
   isSearching,
+  rowStatus,
   sessionLineText,
   sharedMeta,
 } from "../lib/hub.ts";
@@ -677,6 +678,10 @@ export function SessionsHub(
                     live: liveCount,
                     total: groupView?.total ?? group.rows.length,
                   })}
+                  text={t("hub.countShort", {
+                    live: liveCount,
+                    total: groupView?.total ?? group.rows.length,
+                  })}
                 />
                 {hostChips.map((chip) => (
                   <HostChip
@@ -767,6 +772,13 @@ export function SessionsHub(
                             </TooltipTrigger>
                             <TooltipContent>{row.title}</TooltipContent>
                           </Tooltip>
+                          {/* #1132: what the session is doing, in words: the dot alone did not say. */}
+                          <span data-slot="row-status" className="row-status">
+                            {(() => {
+                              const said = rowStatus(row, store.now(), t);
+                              return [said.word, said.detail].filter(Boolean).join(" · ");
+                            })()}
+                          </span>
                           {shared.hostName === null && (
                             <HostChip
                               name={row.hostName}
