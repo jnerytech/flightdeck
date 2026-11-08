@@ -1108,6 +1108,9 @@ html:not(:has([data-slot="status-bar"])) {
     margin: 0;
     border-width: 0;
     border-radius: 0;
+    /* #1271: a field that takes focus under the sticky footer scrolls clear of it (WCAG 2.4.11):
+       room for the buttons (about 5rem) and a reason under them. */
+    scroll-padding-bottom: 6rem;
   }
   /* A form that holds the fields and the footer (New card) fills the sheet, as the content does. */
   [data-slot="dialog-content"] > form {
