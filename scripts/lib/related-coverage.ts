@@ -124,10 +124,21 @@ export function wholeSuiteVerdict(code: number, lcov: string | null): string | n
   if (lcov === null) return `${lead} and left no coverage report`;
   const below = belowFull(lcov);
   if (below.length === 0) {
-    return `${lead} with every file at 100%: a failing test, a file that did not load or the isolation guard stopped it (see above)`;
+    return `${lead} with every file at 100%: a failing test, a file that did not load, the isolation guard or a timeout stopped it (see above)`;
   }
   return [
     `${lead}, and ${below.length} file(s) are below the 100% gate:`,
     ...below.map((line) => `  - ${line}`),
   ].join("\n");
+}
+
+/** #1000 review: removes the whole suite's report before the run; the verdict after it. */
+export function wholeSuiteCheck(
+  path: string | undefined,
+  deps: { remove: (path: string) => void; read: (path: string) => string | null },
+): (code: number) => string | null {
+  if (path === undefined) return () => null;
+  // A run that dies before Bun writes a report must not be judged by an older one.
+  deps.remove(path);
+  return (code) => wholeSuiteVerdict(code, deps.read(path));
 }
