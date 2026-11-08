@@ -186,8 +186,10 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
       await reformats(json({ model: "x" }, 4)),
       await reformats(JSON.stringify({ model: "x" }, null, "\t")),
       await reformats('{"model":"x"}\n'),
+      // Windows line endings are kept (#927); only a file that mixes them would change.
       await reformats(json({ model: "x" }).replaceAll("\n", "\r\n")),
-    ]).toEqual([false, false, true, true]);
+      await reformats('{\r\n  "model": "x"\n}\n'),
+    ]).toEqual([false, false, true, false, true]);
   });
 
   test("a settings file that is not a JSON object, too big, or a link is unreadable and gets no proposal", async () => {
