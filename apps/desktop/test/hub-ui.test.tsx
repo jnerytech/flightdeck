@@ -280,6 +280,22 @@ describe("hub-ui", () => {
     expect(badge("Do histórico", "encerrada")?.innerHTML).toContain("border-status-ended");
   });
 
+  // #1132: the row says in words what the session is doing (the dot alone did not), and the
+  // group's count says what it counts.
+  test("each row says its state in words, and the group's count reads 'N de M ativas'", async () => {
+    await setup();
+    const says = (title: string, word: string) => (item(title)?.textContent ?? "").includes(word);
+    const chips = Array.from(document.querySelectorAll("output[aria-label]")).map(
+      (o) => o.textContent ?? "",
+    );
+    expect([
+      says("repo-ask", "Esperando você"),
+      says("repo-run", "Trabalhando"),
+      says("Gerenciada", "Concluída"),
+      chips.length > 0 && chips.every((text) => /^\d+ de \d+ ativas$/.test(text)),
+    ]).toEqual([true, true, true, true]);
+  });
+
   test("as ações ficam num menu no fim da linha, sem ícones soltos: renomear, fixar, arquivar e copiar o comando", async () => {
     const { copied, d, sessionId } = await setup();
     for (const loose of [
