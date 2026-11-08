@@ -1,3 +1,4 @@
+import { pinnedDocProblem } from "@flightdeck/protocol";
 import { readSpec } from "./spec.ts";
 
 /**
@@ -9,6 +10,8 @@ import { readSpec } from "./spec.ts";
 export async function pinnedPrompt(root: string, pins: string[]): Promise<string> {
   const lines: string[] = [];
   for (const path of pins) {
+    // A row that did not come through `updateCard` is held to the same rule.
+    if (pinnedDocProblem(path) !== null) continue;
     const { found, heading } = await readSpec(root, path); // NOSONAR: in order, so the lines keep the order the person set
     if (found) lines.push(heading ? `- ${path}: ${heading}` : `- ${path}`);
   }

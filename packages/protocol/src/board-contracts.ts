@@ -154,5 +154,7 @@ export const PINNED_DOCS_MAX = 10;
 export function pinnedDocProblem(path: string): string | null {
   const problem = specPathProblem(path);
   if (problem !== null) return problem;
+  // The path goes into a prompt: no line break (U+0085, U+2028/9) or direction mark (format chars).
+  if (/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(path)) return "control";
   return KNOWLEDGE_FOLDERS.some((folder) => path.startsWith(`${folder}/`)) ? null : "folder";
 }
