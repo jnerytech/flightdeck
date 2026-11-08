@@ -155,7 +155,7 @@ function CardTile(
     /** Ctrl-click and the menu: adds or takes out. Shift-click: the range from the anchor. */
     onToggleSelect(): void;
     onRangeSelect(): void;
-    /** The board's one Tab stop (#1198): the other cards are reached with the arrows. */
+    /** Its column's one Tab stop (#1198): the other cards are reached with the arrows. */
     tabbable: boolean;
     /** The id of the line that says the board's keys. */
     hintId: string;
@@ -231,7 +231,7 @@ function CardTile(
         </span>
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
-            {/* Not a Tab stop (#1198): `m` on the card opens it, so the board stays one stop. */}
+            {/* Not a Tab stop (#1198): `m` on the card opens it, so each column stays one stop. */}
             <Button
               variant="ghost"
               size="icon"
@@ -244,7 +244,7 @@ function CardTile(
           </DropdownMenuTrigger>
           <DropdownMenuContent
             onCloseAutoFocus={(e) => {
-              // Back to the card's title, the board's Tab stop, unless a move took the card away.
+              // Back to the card's title, its column's Tab stop, unless a move took the card away.
               if (!titleRef.current?.isConnected) return;
               e.preventDefault();
               titleRef.current.focus();
@@ -643,11 +643,14 @@ export const BoardView = memo(function BoardView(props: {
   );
   const showing: BoardColumn =
     shownColumn ?? COLUMNS.find((_, i) => (shownIds[i]?.length ?? 0) > 0)?.id ?? "backlog";
-  const visible = switcher
-    ? (shownIds[COLUMNS.findIndex(({ id }) => id === showing)] ?? [])
-    : boardOrder;
-  /** The board's one Tab stop: the card last focused while it shows, else the first one shown. */
-  const stop = focusedCard !== null && visible.includes(focusedCard) ? focusedCard : visible[0];
+  /**
+   * Each column's one Tab stop: the card last focused when it is there, else its first card. One
+   * per column, not per board: each column's list scrolls, and axe asks a scrolling region to hold
+   * something the keyboard reaches (scrollable-region-focusable).
+   */
+  const stops = shownIds.map((ids) =>
+    focusedCard !== null && ids.includes(focusedCard) ? focusedCard : ids[0],
+  );
   const titleOf = (cardId: string) =>
     boardRef.current?.querySelector<HTMLElement>(`li[data-card="${cardId}"] [data-card-open]`);
   /** Focuses a card, showing its column first on a narrow board. */
@@ -942,7 +945,7 @@ export const BoardView = memo(function BoardView(props: {
                           selected={selection.includes(card.id)}
                           onToggleSelect={() => select(card)}
                           onRangeSelect={() => selectRange(card)}
-                          tabbable={card.id === stop}
+                          tabbable={stops.includes(card.id)}
                           hintId={hintId}
                           onFocus={() => setFocusedCard(card.id)}
                           onKey={keyOn(card.id)}
