@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   applyDemoPrefs,
+  DEMO_BACKUP_FOLDER,
+  DEMO_BACKUP_FOLDER_KEY,
+  demoBackupFolder,
   demoPlatform,
   demoStoreOptions,
   entryHtml,
@@ -165,6 +168,41 @@ describe("demo-prints", () => {
     expect(await demo.updater.check()).toEqual({ version: "9.9.9", notes: "" });
     await expect(demo.updater.download()).resolves.toBeUndefined();
     await expect(demo.updater.install()).resolves.toBeUndefined();
+  });
+
+  test("?backupFolder=demo gives the page a backup folder that keeps its files across a reload; without it the web build has none", async () => {
+    const { platform } = memoryPlatform();
+    expect(demoPlatform(platform, "?route=%7B%7D").backupFolder).toBeUndefined();
+    expect(demoPlatform(platform, "?backupFolder=other").backupFolder).toBeUndefined();
+    const folder = demoPlatform(platform, "?backupFolder=demo").backupFolder;
+    expect(await folder?.current()).toBeNull();
+    expect(await folder?.pick()).toBe(DEMO_BACKUP_FOLDER);
+    const name = "flightdeck-backup-20261108-120000.fdbackup";
+    await folder?.write(name, "text");
+    // A page loaded again reads the same folder: it lives in the page's storage.
+    const again = demoBackupFolder(platform);
+    expect(await again.current()).toBe(DEMO_BACKUP_FOLDER);
+    expect(await again.list()).toEqual([name]);
+    await again.remove(name);
+    expect(await folder?.list()).toEqual([]);
+    expect(platform.storage.getItem(DEMO_BACKUP_FOLDER_KEY)).not.toBeNull();
+  });
+
+  test("the demo's backup folder refuses a name that is not a backup file, as the shell does", async () => {
+    const { platform } = memoryPlatform();
+    const folder = demoBackupFolder(platform);
+    await folder.pick();
+    const refused = await folder.write("notes.txt", "x").then(
+      () => "written",
+      () => "refused",
+    );
+    expect([refused, await folder.list()]).toEqual(["refused", []]);
+  });
+
+  test("?backupFolder=demo and ?update=<version> work together", async () => {
+    const { platform } = memoryPlatform();
+    const demo = demoPlatform(platform, "?update=9.9.9&backupFolder=demo");
+    expect([demo.backupFolder !== undefined, demo.updater.supported]).toEqual([true, true]);
   });
 
   test("with no ?update, or one that is not a version, the platform is the same object: the demo never offers an update", () => {

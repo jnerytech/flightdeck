@@ -86,17 +86,38 @@ export function demoStoreOptions(
   return { baseDelayMs: 60_000 };
 }
 
+/** The key the demo's backup folder keeps its files under, in the page's storage (survives a reload). */
+export const DEMO_BACKUP_FOLDER_KEY = "flightdeck.demoBackupFolder";
+/** The path the demo's folder dialog gives. */
+export const DEMO_BACKUP_FOLDER = "/demo/backups";
+
+/** A stand-in for the desktop's backup folder (issue #1264), for the e2e: the web build has none. */
+export function demoBackupFolder(_platform: Platform): NonNullable<Platform["backupFolder"]> {
+  return {
+    pick: () => Promise.resolve(null),
+    current: () => Promise.resolve(null),
+    write: () => Promise.resolve(),
+    list: () => Promise.resolve([]),
+    remove: () => Promise.resolve(),
+  };
+}
+
 /**
  * The e2e asks for `?update=<version>`: the demo's updater then offers that version and "downloads"
  * it, so the update card (#490) can be driven in a page, which has no Tauri updater. Without it, or
  * with something that is not a version, the platform is the browser's as it is.
  */
 export function demoPlatform(platform: Platform, search = ""): Platform {
-  const version = new URLSearchParams(search).get("update");
-  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return platform;
+  const params = new URLSearchParams(search);
+  const withFolder =
+    params.get("backupFolder") === "demo"
+      ? { ...platform, backupFolder: demoBackupFolder(platform) }
+      : platform;
+  const version = params.get("update");
+  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withFolder;
   const nothing = () => Promise.resolve();
   return {
-    ...platform,
+    ...withFolder,
     updater: {
       supported: true,
       check: () => Promise.resolve({ version, notes: "" }),
