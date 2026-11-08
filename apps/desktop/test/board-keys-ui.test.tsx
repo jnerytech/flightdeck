@@ -123,11 +123,12 @@ const ready = () => settle(() => title("A") !== null);
 const shown = (column: string) =>
   document.querySelector<HTMLElement>(`[data-column="${column}"]`)?.hidden === false;
 
-describe("board-keys-ui: the board is one Tab stop, and the arrows move between its cards (#1198)", () => {
-  test("only the first card's title is a Tab stop; the cards' menus are not", async () => {
+describe("board-keys-ui: each column is one Tab stop, and the arrows move between the cards (#1198)", () => {
+  // axe (scrollable-region-focusable): each column's list scrolls, so it keeps one card a Tab stop.
+  test("each column's first card is its one Tab stop; the cards' menus are not", async () => {
     const { restore } = setup();
     await ready();
-    expect(tabStops()).toEqual(["A"]);
+    expect(tabStops()).toEqual(["A", "D", "E"]);
     restore();
   });
 
@@ -136,12 +137,15 @@ describe("board-keys-ui: the board is one Tab stop, and the arrows move between 
     await ready();
     title("A")?.focus();
     const path = [focused()];
-    for (const key of ["ArrowDown", "ArrowRight", "ArrowRight", "ArrowLeft"]) {
+    await press("ArrowDown");
+    path.push(focused());
+    const stops = tabStops();
+    for (const key of ["ArrowRight", "ArrowRight", "ArrowLeft"]) {
       await press(key);
       path.push(focused());
     }
     expect(path).toEqual(["A", "B", "D", "E", "D"]);
-    expect(tabStops()).toEqual(["D"]);
+    expect(stops).toEqual(["B", "D", "E"]);
     restore();
   });
 
