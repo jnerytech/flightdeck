@@ -11,6 +11,8 @@ export interface GhResult {
   code: number;
   stdout: string;
   stderr: string;
+  /** The run was killed at its limit. */
+  timedOut?: boolean;
 }
 
 /** Runs `gh`; `null` when it is not installed. */

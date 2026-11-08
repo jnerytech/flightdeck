@@ -30,7 +30,8 @@ const RULE_LEVEL: Record<string, Severity> = { error: "high", warning: "medium",
  * What a person must not be shown, or a prompt carry: controls, invisible formatting, private-use,
  * unassigned and lone-surrogate code points, variation selectors and the blanks that look empty.
  */
-const NOT_SHOWN = /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}\p{Zl}\p{Zp}\u00A0\u3164\u2800]|[\uFE00-\uFE0F]/u;
+const NOT_SHOWN =
+  /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}\p{Zl}\p{Zp}\u00A0\u3164\u2800]|[\uFE00-\uFE0F]|[\u{E0100}-\u{E01EF}]|[\u180B-\u180D]|\u034F|[\u115F\u1160\uFFA0]/u;
 
 /** A line that reads as a fence or a heading: it could close the block the alert sits in. */
 const FENCE_LINE = /^\s*(?:-{3,}|`{3,}|~{3,}|#)/;
@@ -169,6 +170,7 @@ async function readSource(gh: GhIn, cwd: string, source: (typeof SOURCES)[number
     return { unavailable: "failed" };
   }
   if (result === null) return { unavailable: "gh_missing" };
+  if (result.timedOut) return { unavailable: "failed" };
   if (result.code !== 0) return { unavailable: reasonOf(result.stderr) };
   if (result.stdout.length > RESPONSE_MAX) return { unavailable: "failed" };
   let list: unknown;
