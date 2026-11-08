@@ -1,5 +1,5 @@
 import { HARNESS_PREVIEW_PARTS, type HarnessPreview } from "@flightdeck/protocol";
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Stack } from "@/components/layout/stack";
 import { refusalText } from "@/i18n/errors";
@@ -75,12 +75,23 @@ function Details(
       {preview.files.length > 0 && (
         <Stack gap={1} className="text-sm">
           <p className="font-medium">{t("projectPage.harness.setup.files")}</p>
-          {preview.files.map((file) => (
-            <details key={file.path}>
-              <summary className="font-mono text-xs">{file.path}</summary>
-              {file.path === "CLAUDE.md" && draft.offered && (
-                <Stack gap={1}>
-                  {draft.drafted ? (
+          {preview.files.map((file) => {
+            const step = file.path === "CLAUDE.md" && draft.offered;
+            return (
+              <Stack key={file.path} gap={1}>
+                {/* A drafted file opens, so what will be written is in front of the person. */}
+                <details open={step && draft.drafted}>
+                  <summary className="font-mono text-xs">{file.path}</summary>
+                  <pre
+                    className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2 font-mono text-xs"
+                    // biome-ignore lint/a11y/noNoninteractiveTabindex: a long file scrolls, and focus lets the keyboard do it
+                    tabIndex={0}
+                  >
+                    {file.content}
+                  </pre>
+                </details>
+                {step &&
+                  (draft.drafted ? (
                     <p className="text-sm text-status-needs-you">
                       {t("projectPage.harness.setup.drafted")}
                     </p>
@@ -90,19 +101,11 @@ function Details(
                         {t("projectPage.harness.setup.draft")}
                       </ActionButton>
                     </div>
-                  )}
-                  {draft.refusal && <p className="text-sm">{draft.refusal}</p>}
-                </Stack>
-              )}
-              <pre
-                className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2 font-mono text-xs"
-                // biome-ignore lint/a11y/noNoninteractiveTabindex: a long file scrolls, and focus lets the keyboard do it
-                tabIndex={0}
-              >
-                {file.content}
-              </pre>
-            </details>
-          ))}
+                  ))}
+                {step && draft.refusal && <p className="text-sm">{draft.refusal}</p>}
+              </Stack>
+            );
+          })}
         </Stack>
       )}
       <Group
@@ -136,12 +139,15 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   const [askingCommit, setAskingCommit] = useState(false);
   // The CLAUDE.md draft (#75, G1): under way, done (the template replaced), or refused.
   const [drafting, setDrafting] = useState(false);
+  // Bumped by each preview: a draft that comes back after another preview belongs to none.
+  const previewRound = useRef(0);
   const [drafted, setDrafted] = useState(false);
   const [draftRefusal, setDraftRefusal] = useState<string | null>(null);
   // Apply is under way: no second preview may start, or its apply would race this one.
   const [busy, setBusy] = useState(false);
 
   const preview = async () => {
+    previewRound.current += 1;
     setOutcome(null);
     setDrafted(false);
     setDraftRefusal(null);
@@ -208,11 +214,13 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   // draft's digest, and the host writes the draft it holds, never text from here.
   const draftClaudeMd = async () => {
     if (drafting) return;
+    const round = previewRound.current;
     setDrafting(true);
     setDraftRefusal(null);
     const result = await store
       .hostRequest(hostId, "project.harness.draft", { path, part: "claudeMd" })
       .finally(() => setDrafting(false));
+    if (round !== previewRound.current) return;
     if (!result.ok) {
       setDraftRefusal(refusalText(result.code, result.message, t, result));
       return;
