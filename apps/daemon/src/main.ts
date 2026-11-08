@@ -17,6 +17,7 @@ import { assistantService } from "./assistant/factory.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
+import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
 import { BoardSyncLoop } from "./boardsync/loop.ts";
@@ -68,6 +69,7 @@ import { previewHarness } from "./harness/preview.ts";
 import { detectStack } from "./harness/stack.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
+import { createKnowledgeDoc } from "./knowledge/create.ts";
 import { listKnowledge } from "./knowledge/list.ts";
 import { knowledgeFeedFor } from "./knowledge/serve.ts";
 import { setKnowledgeStatus } from "./knowledge/status.ts";
@@ -995,6 +997,9 @@ export async function startDaemon(
   const board = new Board({
     folderLocks,
     preparePersonas: prepare,
+    // Issue #78: a card's spec template comes from a trusted project's trusted checkout only.
+    specTemplateRoot: async (worktree) => templateRootOf(await trustForKnowledge(worktree)),
+    log: (line) => logger.log(line),
     db: store.db,
     manager,
     quota,
@@ -1449,6 +1454,7 @@ export async function startDaemon(
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: listKnowledge,
     knowledgeStatus: setKnowledgeStatus,
+    knowledgeCreate: createKnowledgeDoc,
     knowledgeFeed: knowledgeFeedFor({
       off: () => config.knowledge.feedOff,
       trust: trustForKnowledge,

@@ -24,7 +24,12 @@ import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
 import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo-teleport.ts";
-import { acoesActions, DANGER_SESSION, DEMO_CLOSED_TEAM } from "./lib/e2e-journeys.ts";
+import {
+  acoesActions,
+  CONTRACT_CARD,
+  DANGER_SESSION,
+  DEMO_CLOSED_TEAM,
+} from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
@@ -116,9 +121,21 @@ export interface DemoIds {
   longTitleSession: string;
   /** The clone of flightdeck-web on beta: where a session moved from alfa lands (issue #790). */
   teleportRepo: string;
+  /** A project whose docs folders hold a valid, a transitional and an obsolete document (issue #76). */
+  knowledgeProject: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
+/** The library of the design-system project: one document of each status the knowledge journey moves (issue #76). */
+const KNOWLEDGE_DOCS: Record<string, string> = {
+  "docs/adr/0001-design-tokens.md":
+    "---\nstatus: valid\n---\n# Design tokens come from one file\n\nColors and spacing are read from tokens.json.\n",
+  "docs/rfc/0002-dark-mode.md":
+    "---\nstatus: transitional\n---\n# Dark mode for every screen\n\nShipping screen by screen.\n",
+  "docs/adr/0003-fixed-grid.md":
+    "---\nstatus: obsolete\n---\n# A fixed twelve column grid\n\nReplaced by the token spacing.\n",
+};
+
 /** One versioned action per language: the actions journey trusts it from the Ações screen. */
 const ACTIONS_YAML = acoesActions()
   .map(
@@ -708,10 +725,25 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // Issue #689: seven projects in all, so the sidebar tree shows its five and hides the rest.
   // A repository nobody registered: the Projects page adds it (issue #931).
   repo(join(alfa.projects, "fresh-app"), { "README.md": "# fresh-app\n" });
+  const projectIds: Record<string, string> = {};
   for (const name of ["mobile-app", "infra", "design-system", "billing", "analytics"]) {
-    repo(join(alfa.projects, name), { "README.md": `# ${name}\n` });
-    await client.call("project.add", { path: join(alfa.projects, name) });
+    repo(
+      join(alfa.projects, name),
+      name === "design-system"
+        ? { "README.md": `# ${name}\n`, ...KNOWLEDGE_DOCS }
+        : { "README.md": `# ${name}\n` },
+    );
+    const added = await client.call<{ id: string }>("project.add", {
+      path: join(alfa.projects, name),
+    });
+    projectIds[name] = added.id;
   }
+  // Issue #78: a card with no PR in a project whose board asks for one before Review.
+  await client.call("card.create", {
+    projectId: projectIds["design-system"],
+    title: CONTRACT_CARD,
+    description: "Explain how the design tokens are used.",
+  });
   const card = (title: string, description: string) =>
     client.call<{ id: string }>("card.create", { projectId: project.id, title, description });
   await card("Documentar a API pública", "Escreva o guia de uso.");
@@ -1135,6 +1167,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       longSession: longSession.sessionId,
       longTitleSession: longTitle.sessionId,
       teleportRepo: join(beta.projects, "flightdeck-web"),
+      knowledgeProject: projectIds["design-system"] as string,
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.

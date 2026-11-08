@@ -1488,6 +1488,7 @@ export const en: Dictionary = {
     knowledge: "reading the project's documents",
     knowledgeFeed: "the switch for the documents index in agents' prompts",
     knowledgeStatus: "changing a document's status",
+    knowledgeCreate: "creating a document from a template",
     harnessPreview: "previewing Claude Code setup changes",
     harnessApply: "applying Claude Code setup changes",
     keepAwake: "keeping the computer awake",
@@ -1754,6 +1755,10 @@ export const en: Dictionary = {
       "The file {path} changed since it was opened: reload it and apply your edit again.",
     knowledge_frontmatter:
       "The front matter of {path} cannot be changed safely from here: edit the file by hand.",
+    knowledge_title_invalid: "Give the document a title with letters or digits.",
+    knowledge_folder_unsafe:
+      "The folder for this document is a link or lies outside the project: nothing was written.",
+    knowledge_exists: "A document named {path} already exists: nothing was overwritten.",
     review_revert_confirm: "Confirm the revert to go on.",
     review_undo_confirm: "Confirm the undo to go on.",
     review_undo_nothing:
@@ -4275,6 +4280,18 @@ export const en: Dictionary = {
       empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
       truncated: "The list is cut: only the first documents are shown.",
       failed: "The documents could not be read from this host.",
+      create: {
+        title: "New document",
+        hint: "Starts a document from a template in this project's docs folder, as a draft (transitional). Nothing is committed.",
+        kind: "Kind",
+        titleLabel: "Title",
+        adr: "Decision record (ADR)",
+        rfc: "Proposal (RFC)",
+        prd: "Product requirements (PRD)",
+        button: "Create from template",
+        created: "Created {path}. The file is in the project's folder and not committed.",
+        failed: "The document could not be created. {why}",
+      },
       setStatus: {
         hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
         label: "Status of {title}",

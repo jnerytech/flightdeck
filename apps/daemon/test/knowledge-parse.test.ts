@@ -93,6 +93,20 @@ describe("knowledge-parse: the status, type and title of one document (#76)", ()
     );
   });
 
+  test.each([
+    ["# T(phase 2)\n", "T"],
+    ["# T   \t (issue #815)\n", "T"],
+    ["# T (issue #1) \n", "T"],
+    ["# T (issue #1) x\n", "T (issue #1) x"],
+    ["# T (issue #)\n", "T (issue #)"],
+    ["# T (phase x)\n", "T (phase x)"],
+    ["# A (issue #1) (phase 2)\n", "A (issue #1)"],
+    ["# (issue #3)\n", "a"],
+    ["#  \n# Next\n", "a"],
+  ])("the title of %j is %j", (body, title) => {
+    expect(parseKnowledge("docs/adr/a.md", body).title).toBe(title);
+  });
+
   test("front matter that is a text, a number or a list is a problem, not a crash", () => {
     for (const front of ["hello", "42", "- a\n- b"]) {
       expect(parseKnowledge("docs/adr/a.md", doc(front, "# Kept\n"))).toMatchObject({
