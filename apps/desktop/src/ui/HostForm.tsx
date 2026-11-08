@@ -54,20 +54,23 @@ export function HostForm(
   const set = (key: keyof HostDraft) => (e: { target: { value: string } }) =>
     setDraft({ ...draft, [key]: e.target.value });
   const error = problem ?? props.error ?? null;
+  // An error from the connection test (the form's own are opened in `onSubmit`).
   useEffect(() => {
-    if (error) setByHand(true);
-  }, [error]);
+    if (props.error) setByHand(true);
+  }, [props.error]);
 
   return (
     <Form
       onSubmit={() => {
         if (!draft.name.trim() || !draft.address.trim() || !draft.token.trim()) {
           setProblem(t("hostForm.missing"));
+          setByHand(true);
           return;
         }
         const port = Number(draft.port);
         if (!/^\d+$/.test(draft.port) || port < 1 || port > 65535) {
           setProblem(t("hostForm.badPort"));
+          setByHand(true);
           return;
         }
         setProblem(null);
