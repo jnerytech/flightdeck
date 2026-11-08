@@ -1633,6 +1633,8 @@ export function startServer(opts: ServerOptions): RunningServer {
           ),
         );
       case "card.pr.merge": {
+        // It merges on the provider with this computer's gh login: a near connection only.
+        requireVaultTransport(ws.data.origin, "card.pr.merge", opts.log);
         const { cardId, method, confirm } = command.payload;
         return ok(command.type, await board().mergePr(cardId, method, confirm === true));
       }

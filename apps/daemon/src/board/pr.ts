@@ -290,7 +290,66 @@ abstract class CliProvider {
 
 /** GitHub through `gh`. */
 export class GithubCli extends CliProvider implements PrProvider {
-  async merge(_opts: { cwd: string; url: string; method: "merge" | "squash" }): Promise<void> {}
+  /**
+   * #1196: `gh pr merge <url> --merge|--squash`, and nothing else: no `--admin` (rules stay), no
+   * `--auto`, no branch delete, no message of ours. When gh refuses, it is asked once more, with a
+   * read, why the PR cannot be merged, so the refusal says that and not gh's own words.
+   */
+  async merge({
+    cwd,
+    url,
+    method,
+  }: {
+    cwd: string;
+    url: string;
+    method: "merge" | "squash";
+  }): Promise<void> {
+    const result = await this.call("gh", ["pr", "merge", url, `--${method}`], cwd);
+    if (result.code === 0) return;
+    const reason = await this.whyNotMergeable(cwd, url);
+    throw new FlightdeckError(
+      "invalid_state",
+      `the PR could not be merged: ${result.stderr.trim().slice(0, 300)}`,
+      reason,
+      {
+        url,
+        ...(reason === "card_pr_merge_failed"
+          ? { detail: result.stderr.trim().slice(0, 300) }
+          : {}),
+      },
+    );
+  }
+
+  /** Why GitHub holds the PR back, from its merge state, its review decision and its checks. */
+  private async whyNotMergeable(cwd: string, url: string): Promise<string> {
+    const state = await this.json<{
+      mergeStateStatus?: string;
+      reviewDecision?: string | null;
+      statusCheckRollup?: GhCheck[];
+    }>(
+      "gh",
+      ["pr", "view", url, "--json", "mergeStateStatus,reviewDecision,statusCheckRollup"],
+      cwd,
+    ).catch(() => null);
+    if (state === null) return "card_pr_merge_failed";
+    if (state.mergeStateStatus === "DIRTY") return "card_pr_conflict";
+    if (
+      state.reviewDecision === "REVIEW_REQUIRED" ||
+      state.reviewDecision === "CHANGES_REQUESTED"
+    ) {
+      return "card_pr_review_required";
+    }
+    const checks = summarize(
+      (state.statusCheckRollup ?? []).map((check) => {
+        const result = (check.conclusion ?? check.state ?? "").toUpperCase();
+        if (GH_FAIL.has(result)) return "failing" as const;
+        return GH_PASS.has(result) ? ("passing" as const) : ("pending" as const);
+      }),
+    );
+    return checks === "failing" || checks === "pending"
+      ? "card_pr_checks_failing"
+      : "card_pr_merge_failed";
+  }
 
   async create(opts: CreatePr): Promise<string> {
     const existing = await this.url(opts);

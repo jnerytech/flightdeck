@@ -1978,7 +1978,35 @@ export class Board {
   }
 
   /** #1196: merges the card's open PR on its provider, then reads it again so the card moves to Done. */
-  async mergePr(id: string, _method: "merge" | "squash", _confirm: boolean): Promise<Card> {
+  async mergePr(id: string, method: "merge" | "squash", confirm: boolean): Promise<Card> {
+    if (!confirm) throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
+    const card = this.getCard(id);
+    if (!card.prUrl) throw new FlightdeckError("invalid_state", "the card has no PR", "card_no_pr");
+    if (card.prState !== "open") {
+      throw new FlightdeckError("invalid_state", "the card's PR is not open", "card_pr_not_open", {
+        url: card.prUrl,
+      });
+    }
+    const project = this.getProject(card.projectId);
+    const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
+    if (!provider)
+      throw new FlightdeckError(
+        "invalid_state",
+        "the project has no PR provider",
+        "project_no_pr_provider",
+      );
+    if (!provider.merge) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "this PR provider cannot merge from Flightdeck",
+        "card_pr_merge_unsupported",
+        { url: card.prUrl },
+      );
+    }
+    // From the main repository, as the poll: a cwd inside the worktree would lock it when it goes.
+    await provider.merge({ cwd: project.path, url: card.prUrl, method });
+    // Read again at once: the card moves to Done and its worktree goes, as for any merged PR.
+    await this.pollPr(id);
     return this.getCard(id);
   }
 
