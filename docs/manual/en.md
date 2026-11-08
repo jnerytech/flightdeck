@@ -1293,7 +1293,8 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
 - **The card page leads with one button:** its Run panel shows what comes next. **Start** for a card
   that has not run, **Stop** while it runs, **Review changes** once a run is done (it shows the
   card's Changes), then **Open PR**, and **Merge PR** once the PR is open and can be merged (the
-  confirm below). The rest is under the **⋯** menu next to it: **Start with a workflow or
+  confirm below; while a session runs, **Stop** leads and **Merge PR** waits in the menu, and with
+  failing checks it is not offered). The rest is under the **⋯** menu next to it: **Start with a workflow or
   persona…** (the same dialog as the board's **Start card**), **Start**, **Start in the
   background**, **Stop**, **Open PR**, **Merge PR**, **Finish…** and **Discard**. A card whose run
   is done opens on **Changes**.

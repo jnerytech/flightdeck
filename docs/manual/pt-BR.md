@@ -1299,7 +1299,9 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
 - **A página do card tem um botão que lidera:** o painel Executar mostra o que vem a seguir.
   **Iniciar** para um card que ainda não rodou, **Parar** enquanto roda, **Revisar mudanças**
   quando uma execução termina (mostra as Mudanças do card), depois **Abrir PR** e, com o PR aberto
-  e pronto para merge, **Fazer merge do PR** (a confirmação abaixo). O resto está no menu **⋯** ao
+  e pronto para merge, **Fazer merge do PR** (a confirmação abaixo; enquanto
+  uma sessão roda, **Parar** lidera e **Fazer merge do PR** espera no menu, e com checks falhando
+  ele não é oferecido). O resto está no menu **⋯** ao
   lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do board),
   **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Fazer merge do PR**,
   **Finalizar…** e **Descartar**. Um card cuja execução terminou abre em **Mudanças**.
