@@ -123,6 +123,8 @@ export interface DemoIds {
   teleportRepo: string;
   /** A project whose docs folders hold a valid, a transitional and an obsolete document (issue #76). */
   knowledgeProject: string;
+  /** The card with no PR in that project's backlog: the stage-contract and card-pins journeys use it (issues #78, #76). */
+  contractCard: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -739,7 +741,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     projectIds[name] = added.id;
   }
   // Issue #78: a card with no PR in a project whose board asks for one before Review.
-  await client.call("card.create", {
+  const contractCard = await client.call<{ id: string }>("card.create", {
     projectId: projectIds["design-system"],
     title: CONTRACT_CARD,
     description: "Explain how the design tokens are used.",
@@ -1168,6 +1170,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       longTitleSession: longTitle.sessionId,
       teleportRepo: join(beta.projects, "flightdeck-web"),
       knowledgeProject: projectIds["design-system"] as string,
+      contractCard: contractCard.id,
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.

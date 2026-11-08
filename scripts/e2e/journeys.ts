@@ -887,6 +887,39 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await tile("backlog").waitFor({ timeout: WAIT });
   },
 
+  // Card pins (issue #76): a card pins a document of the project's library, the pin shows with its
+  // title, path and status, and Unpin takes it away. The journey ends with nothing pinned, as the
+  // demo keeps its state.
+  "card-pins": async (c) => {
+    await open(c, {
+      name: "card",
+      host: ALFA,
+      projectId: c.ids.knowledgeProject,
+      cardId: c.ids.contractCard,
+    });
+    const panel = c.page.getByRole("region", { name: c.t("cardUi.pins.title"), exact: true });
+    const none = panel.getByText(c.t("cardUi.pins.none"), { exact: true });
+    const path = "docs/adr/0001-design-tokens.md";
+    const unpin = panel.getByRole("button", {
+      name: c.t("cardUi.pins.unpin", { path }),
+      exact: true,
+    });
+    // A run that stopped half way left the pin: start from the same place anyway.
+    await none.or(unpin).first().waitFor({ timeout: WAIT });
+    if ((await unpin.count()) > 0) {
+      await unpin.click();
+      await none.waitFor({ timeout: WAIT });
+    }
+    await panel.getByLabel(c.t("cardUi.pins.pick"), { exact: true }).selectOption(path);
+    await unpin.waitFor({ timeout: WAIT });
+    await panel
+      .getByText("Design tokens come from one file", { exact: true })
+      .waitFor({ timeout: WAIT });
+    await none.waitFor({ state: "detached", timeout: WAIT });
+    await unpin.click();
+    await none.waitFor({ timeout: WAIT });
+  },
+
   // 25. The Files tab of a session opens a file read only; when the session rewrites it (a second
   // window sends the message) the open file offers its diff, live, and the diff toggles back (#506).
   // The demo keeps its state: after the first run README.md is already changed, so only a fresh
