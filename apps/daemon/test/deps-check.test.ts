@@ -276,7 +276,7 @@ describe("deps-check: over the protocol", () => {
         platform: "darwin",
         serviceInstalled: async () => {
           asked++;
-          throw new Error("instalação como serviço não suportado em darwin");
+          throw new Error("installing as a service is not supported on darwin");
         },
       }),
     );

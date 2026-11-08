@@ -1491,6 +1491,7 @@ export const en: Dictionary = {
     knowledgeCreate: "creating a document from a template",
     harnessPreview: "previewing Claude Code setup changes",
     harnessApply: "applying Claude Code setup changes",
+    harnessCommit: "committing the Claude Code setup on a branch",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
@@ -1818,6 +1819,16 @@ export const en: Dictionary = {
     harness_confirm: "Changing the Claude Code setup needs your confirmation.",
     harness_reformat:
       "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
+    harness_commit_stale:
+      "The files are not as the setup wrote them: apply the setup again, then commit.",
+    harness_commit_no_head: "The project has no commit yet to start a branch from.",
+    harness_commit_identity:
+      "Git has no name and email for this repository: set user.name and user.email, then commit.",
+    harness_commit_secret: "{file} holds a secret, so it was not committed.",
+    harness_commit_branch_taken: "The branch {branch} is already there: try again in a minute.",
+    harness_commit_git: "Git could not make the setup's commit or branch in this repository.",
+    harness_commit_ignored:
+      "{file} is ignored by git in this project, so it was not committed: commit it yourself if you mean to.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",
@@ -2157,6 +2168,7 @@ export const en: Dictionary = {
     commit_message: "Commit message",
     pr_title: "Pull request title",
     pr_description: "Pull request description",
+    adr_draft: "Decision record (ADR) draft",
   },
   modelPicker: {
     search: "Search models",
@@ -3157,6 +3169,15 @@ export const en: Dictionary = {
     testTitle: "Flightdeck test",
     testBody: "This is a test message.",
   },
+  adrDraft: {
+    title: "Draft a decision record",
+    hint: "The session summary is the starting text. Use the wand to write an ADR from it, edit it, and save: it goes to docs/adr in the project as a draft, not committed.",
+    titleLabel: "Decision title",
+    bodyLabel: "Decision record text",
+    save: "Save as ADR",
+    saved: "Saved {path}. It is a draft and is not committed.",
+    failed: "Could not save: {why}",
+  },
   recap: {
     region: "Session summary",
     asked: "Asked",
@@ -3167,6 +3188,7 @@ export const en: Dictionary = {
     question: "Open question",
     state: "State",
     copy: "Copy summary",
+    draftAdr: "Draft ADR",
     empty: "The summary appears after the session's first turn and refreshes by itself.",
   },
   webhooks: {
@@ -3754,6 +3776,8 @@ export const en: Dictionary = {
     saveDescription: "Save description",
     validation: "Validation note",
     saveValidation: "Save validation note",
+    validationShape:
+      "What was checked:\nHow (commands, steps, data):\nResult:\nWhat was not checked:",
     specFile: "Spec file",
     saveSpec: "Save spec file",
     specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
@@ -4252,7 +4276,7 @@ export const en: Dictionary = {
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
     knowledge: {
       title: "Project knowledge",
-      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter. Read only: nothing here changes the project.",
+      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter.",
       filter: "{status} ({n})",
       all: "All",
       status: {

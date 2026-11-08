@@ -30,6 +30,9 @@ export const NARROW_SHOTS: readonly string[] = [
   "times-apagar",
   "workflows-modelos",
   "board-contrato",
+  // #1052: the onboarding journey, the first screens a new person sees.
+  "primeira-execucao",
+  "host-novo",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

@@ -135,7 +135,8 @@ export function KnowledgePanel(
     <Panel title={title} label={title}>
       <p className="text-muted-foreground text-sm">{t("projectPage.knowledge.hint")}</p>
       {props.feed && <KnowledgeFeedSwitch store={store} hostId={hostId} path={path} />}
-      {props.status && (
+      {/* With no document there is no status to change (#1050). */}
+      {props.status && loaded.entries.length > 0 && (
         <p className="text-muted-foreground text-sm">{t("projectPage.knowledge.setStatus.hint")}</p>
       )}
       {props.create && (

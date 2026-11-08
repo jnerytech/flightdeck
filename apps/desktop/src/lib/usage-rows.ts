@@ -1,3 +1,5 @@
+import { trimTrailingSeparators } from "./paths.ts";
+
 /** One day of one project in a host's usage table. */
 export interface UsageRow {
   day: string;
@@ -21,11 +23,7 @@ function folderOf(key: string): string | null {
   return FOLDER_KEY.exec(key)?.[1] ?? null;
 }
 
-const lastPart = (path: string) =>
-  path
-    .replace(/[\\/]+$/, "")
-    .split(/[\\/]/)
-    .pop() as string;
+const lastPart = (path: string) => trimTrailingSeparators(path).split(/[\\/]/).pop() as string;
 
 /** What a usage row asks History to show: its folder, or its project key, and the day. */
 export interface UsageHistoryTarget {
@@ -42,7 +40,7 @@ export function projectLabel(key: string): string {
 /** The folder a `host:<id>:<folder>` key stands for; `null` for a remote key. */
 export function projectCwd(key: string): string | null {
   const folder = folderOf(key);
-  return folder === null ? null : folder.replace(/[\\/]+$/, "");
+  return folder === null ? null : trimTrailingSeparators(folder);
 }
 
 const HIDDEN_FOLDERS = ["/temp/", "/tmp/", "/var/folders/", "/.claude/worktrees/"]; // NOSONAR: names of folders to hide, never a path this code reads or writes

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { KnowledgeEntry } from "@flightdeck/protocol";
 import { createKnowledgeDoc } from "../src/knowledge/create.ts";
@@ -59,6 +59,18 @@ describe("knowledge-create-wire: a document from a template over the wire (#1039
       "transitional",
       true,
     ]);
+  });
+
+  test("knowledge.create writes the body it is given under the heading", async () => {
+    const { client, project } = await serve();
+    const entry = await client.data<KnowledgeEntry>("knowledge.create", {
+      path: project,
+      kind: "adr",
+      title: "Use SQLite",
+      body: "## Context\nOne store.",
+    });
+    const text = readFileSync(join(project, entry?.path ?? "nope"), "utf8");
+    expect(text).toBe("---\nstatus: transitional\n---\n# Use SQLite\n\n## Context\nOne store.\n");
   });
 
   test("a folder outside the host's allowed roots is refused, and so is a host without the writer", async () => {

@@ -850,7 +850,7 @@ export const ptBR = {
       },
       hint: "Precisa de: {needs}",
       title: "Mover para {column} mesmo assim?",
-      lacksOne: "{title} não tem: {needs}.",
+      lacksOne: "{title} ainda precisa de {needs}.",
       lacksMany: "{count} cards não têm algo de que {column} precisa:",
       item: "{title} — {needs}",
       moveAnyway: "Mover mesmo assim",
@@ -913,7 +913,7 @@ export const ptBR = {
     quotaLabelNoReset: "Cota do plano {state}: {window} em {percent}% em {host}",
     quotaLevels: { ok: "tranquila", near: "perto do limite", reached: "no limite" },
     host: "Host: {host}",
-    noHost: "Nenhum host ainda",
+    noHost: "Nenhum host",
     allHostsTabs: "Abas de todos os hosts",
     hostItem: "{host}, {state}",
     hostItemVersion: "{host}, {state}, flightdeckd {version}",
@@ -1486,6 +1486,7 @@ export const ptBR = {
     knowledgeCreate: "a criação de um documento a partir de um modelo",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
     harnessApply: "a aplicação de mudanças na configuração do Claude Code",
+    harnessCommit: "o commit da configuração do Claude Code em um branch",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
@@ -1816,6 +1817,17 @@ export const ptBR = {
     harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
     harness_reformat:
       "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
+    harness_commit_stale:
+      "Os arquivos não estão como a configuração os gravou: aplique a configuração de novo e faça o commit.",
+    harness_commit_no_head: "O projeto ainda não tem commit de onde começar um branch.",
+    harness_commit_identity:
+      "O git não tem nome e e-mail para este repositório: defina user.name e user.email e faça o commit.",
+    harness_commit_secret: "{file} contém um segredo, então não foi para o commit.",
+    harness_commit_branch_taken: "O branch {branch} já existe: tente de novo em um minuto.",
+    harness_commit_git:
+      "O git não conseguiu fazer o commit ou o branch da configuração neste repositório.",
+    harness_commit_ignored:
+      "{file} é ignorado pelo git neste projeto, então não foi para o commit: faça o commit você mesmo se quiser.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
@@ -2154,6 +2166,7 @@ export const ptBR = {
     commit_message: "Mensagem de commit",
     pr_title: "Título do pull request",
     pr_description: "Descrição do pull request",
+    adr_draft: "Rascunho de registro de decisão (ADR)",
   },
   modelPicker: {
     search: "Buscar modelos",
@@ -3157,6 +3170,15 @@ export const ptBR = {
     testTitle: "Teste do Flightdeck",
     testBody: "Esta é uma mensagem de teste.",
   },
+  adrDraft: {
+    title: "Rascunhar um registro de decisão",
+    hint: "O resumo da sessão é o texto inicial. Use a varinha para escrever um ADR a partir dele, edite e salve: ele vai para docs/adr no projeto como rascunho, sem commit.",
+    titleLabel: "Título da decisão",
+    bodyLabel: "Texto do registro de decisão",
+    save: "Salvar como ADR",
+    saved: "Salvo em {path}. É um rascunho e não tem commit.",
+    failed: "Não foi possível salvar: {why}",
+  },
   recap: {
     region: "Resumo da sessão",
     asked: "Pedido",
@@ -3167,6 +3189,7 @@ export const ptBR = {
     question: "Pergunta em aberto",
     state: "Estado",
     copy: "Copiar resumo",
+    draftAdr: "Rascunhar ADR",
     empty: "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
   },
   webhooks: {
@@ -3759,6 +3782,8 @@ export const ptBR = {
     saveDescription: "Salvar descrição",
     validation: "Nota de validação",
     saveValidation: "Salvar nota de validação",
+    validationShape:
+      "O que foi verificado:\nComo (comandos, passos, dados):\nResultado:\nO que não foi verificado:",
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
     specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",
@@ -3927,7 +3952,7 @@ export const ptBR = {
       open: "Adicionar de um modelo",
       title: "Modelos de workflow",
       intro:
-        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. Nada é gravado para você.",
+        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. O app não grava nenhum arquivo por você.",
       loading: "Carregando modelos",
       failed:
         "Não deu para carregar os modelos. O host pode estar offline ou precisar de uma versão mais nova do Flightdeck.",
@@ -4254,7 +4279,7 @@ export const ptBR = {
   projectPage: {
     knowledge: {
       title: "Conhecimento do projeto",
-      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter. Só leitura: nada aqui muda o projeto.",
+      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter.",
       filter: "{status} ({n})",
       all: "Todos",
       status: {

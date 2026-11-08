@@ -17,7 +17,7 @@ import { App } from "./ui/App.tsx";
 import "./styles.css";
 
 const secrets = new Map<string, string>();
-const demoHosts = parseDemoHosts(import.meta.env.VITE_DEMO_HOSTS);
+const demoHosts = parseDemoHosts(import.meta.env.VITE_DEMO_HOSTS, window.location.search);
 seedDemoHosts(window.localStorage, secrets, demoHosts);
 applyDemoPrefs(window.localStorage, window.location.search);
 const store = new AppStore(
