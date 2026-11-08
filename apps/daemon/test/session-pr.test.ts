@@ -30,6 +30,8 @@ function setup(
     cardWorktree?: boolean;
     provider?: PrProviderKind | null;
     pushTimeoutMs?: number;
+    /** The provider fails its first create, as a host down after the push. */
+    failFirstCreate?: boolean;
   } = {},
 ) {
   const ctx = newManager();
@@ -43,8 +45,13 @@ function setup(
   const isCardWorktree = () => options.cardWorktree === true;
   const commits = new SessionCommits({ changes, scanner, isCardWorktree });
   const created: CreatePr[] = [];
+  let failing = options.failFirstCreate === true;
   const provider = {
     create: async (opts: CreatePr) => {
+      if (failing) {
+        failing = false;
+        throw new Error("the host did not answer");
+      }
       created.push(opts);
       return URL;
     },
@@ -258,6 +265,18 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
       "changes_pr_ahead",
       false,
       [],
+    ]);
+  });
+
+  test("a retry after a push that went out but a PR that did not open opens it", async () => {
+    const made = setup({ failFirstCreate: true });
+    await committed(made, "work/retry");
+    const send = async () =>
+      outcome(made.prs.open(TARGET, { title: "t", body: "b", remote: await seenRemote(made) }));
+    expect([await send(), await send(), made.created.map(({ head }) => head)]).toEqual([
+      "Error: the host did not answer",
+      "ok",
+      ["work/retry"],
     ]);
   });
 
