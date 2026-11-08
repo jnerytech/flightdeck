@@ -1,0 +1,5 @@
+# New session, task first, and Start in <project> are Gherkin scenarios (issue #1135)
+
+- **Done.** `new-session.feature` gets two scenarios (the first prompt has the focus and the name and subfolder are folded under More options, Ctrl+Enter starts the session; More options shows the name and the subfolder) and `palette-start.feature` is new (on a project's board, text typed in the palette offers "Start in <project>: <text>", and choosing it starts the session). en and pt-BR, each making its own session. No plain journey existed for them; the plain ones that needed More options already open it.
+- **A weak step, made strong.** "The session opens showing my prompt" looked for the text anywhere, so it also found it in the New session form and in the palette's own option: with the key press or the choice cut, the scenarios still passed. It now waits for the session page's message box first. Shown red on both scenarios with their key step cut.
+- **Not done.** The form remembering the last mode, model and folder (the unit tests of `new-session-prefs` hold it; a scenario would need the mode and model menus of two sessions in a row).
