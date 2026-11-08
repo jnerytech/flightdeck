@@ -5013,10 +5013,11 @@ export const HarnessPreview = z.object({
   unreadable: z.array(z.string()),
   /**
    * #75, slice T1b: a template's files not proposed, by project path: front matter that could run a
-   * command or grant a permission, a secret, or an import from outside the project. Only with a template.
+   * command or grant a permission, a secret, an import from outside the project, or a command a skill
+   * runs as it loads (`` !`cmd` ``). Only with a template.
    */
   withheld: z
-    .array(z.object({ path: z.string(), reason: z.enum(["frontmatter", "secret", "import"]) }))
+    .array(z.object({ path: z.string(), reason: z.enum(["frontmatter", "secret", "import", "command"]) }))
     .optional(),
 });
 export type HarnessPreview = z.infer<typeof HarnessPreview>;

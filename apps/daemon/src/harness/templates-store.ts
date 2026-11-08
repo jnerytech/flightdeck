@@ -21,8 +21,15 @@ const ID = HARNESS_TEMPLATE_ID;
 /** A name an agent or a skill may have: plain characters, no separator. */
 const NAME = /^[\w.@+-]{1,64}$/;
 
-/** A name an agent or a skill may have, and not hidden: never `.` or `..` either. */
-export const plainName = (name: string): boolean => NAME.test(name) && !name.startsWith(".");
+/** A name Windows opens as a device, whatever its extension (`CON`, `aux.md`, `NUL`). */
+const DEVICE_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
+
+/**
+ * A name an agent or a skill may have: plain characters, not hidden (never `.` or `..`), not a
+ * Windows device, and no trailing dot, which Windows drops (`ship.` would be `ship`).
+ */
+export const plainName = (name: string): boolean =>
+  NAME.test(name) && !name.startsWith(".") && !name.endsWith(".") && !DEVICE_NAME.test(name);
 const MAX_FILE = 32 * 1024;
 const MAX_FILES = 16;
 const META = "template.json";
@@ -65,7 +72,7 @@ async function parts(root: string, prefix: string): Promise<Array<[string, strin
 }
 
 type MarkdownPart = "claudeMd" | "agents" | "skills";
-type Withheld = "frontmatter" | "secret" | "import";
+type Withheld = "frontmatter" | "secret" | "import" | "command";
 
 /** A template's Markdown as a project would get it (#75, T1b): files to propose, and those held back. */
 export interface TemplateMarkdown {
@@ -127,6 +134,12 @@ function plainFrontmatter(text: string): boolean {
     Object.keys(parsed).every((key) => PLAIN_KEYS.has(key))
   );
 }
+
+/**
+ * A shell command a skill or a command runs as it loads: `!` then a backtick, inline, or a fenced
+ * block opened with `!`. Withheld wherever it is, CLAUDE.md included: no file of a template runs one.
+ */
+const RUNS_COMMAND = /!`|^[ \t]*(?:```|~~~)!/m;
 
 /**
  * An `@` import (as CLAUDE.md has) of a file outside the project: from the home folder, an absolute
@@ -231,6 +244,7 @@ export class HarnessTemplates {
   /** Why a template file is not proposed, or null when it may be. */
   private withheld(part: MarkdownPart, text: string): Withheld | null {
     if (this.scanner.scan(text).length > 0) return "secret";
+    if (RUNS_COMMAND.test(text)) return "command";
     if (importsOutside(text)) return "import";
     if (part !== "claudeMd" && !plainFrontmatter(text)) return "frontmatter";
     return null;

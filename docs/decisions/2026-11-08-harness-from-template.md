@@ -27,6 +27,8 @@ prompt in the project that takes it. A CLAUDE.md `@` import loads a file into ev
 - **Withheld, never changed.** A file is not proposed, and the preview lists it in `withheld` with its
   reason, when:
   - it holds a secret (`secret`), since the vault may have grown since the export;
+  - it runs a shell command as it loads: `!` then a backtick, or a fenced block opened with `!`
+    (`command`);
   - it has an `@` import from the home folder, an absolute path, a drive, or a `..` segment (`import`);
   - for an agent or a skill, its front matter is not plain (`frontmatter`).
 - **Plain front matter.** It is read two ways, so a parser that differs from Claude Code's cannot hide
@@ -46,8 +48,11 @@ prompt in the project that takes it. A CLAUDE.md `@` import loads a file into ev
     that off far connections. A preview without a template stays open.
   - Apply stays near-only with `confirm`.
   - Both need the `harnessTemplates` feature when a template is named.
+- **Names.** An agent or a skill name is plain characters, never hidden (`.`, `..`), never a Windows
+  device (`CON`, `aux`, `NUL`, `COM1`), and never ending in a dot, which Windows drops.
 - **Commit (C1).** It takes `.claude/agents/<n>.md` and `.claude/skills/<n>/SKILL.md` for a plain
-  name, never a hidden one or `..`.
+  name. Commit does not check that this apply wrote the file. Each file must still match its
+  digest on disk and pass the scanner, so no other file can slip in.
 - **Protocol.**
   - The `digests` cap is 17: a template's 16 files and the settings.
   - `HarnessPreview.withheld` is optional, and present only with a template.
