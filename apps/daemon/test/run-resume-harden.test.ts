@@ -48,7 +48,7 @@ const reasonOf = async (call: () => Promise<unknown>) => {
 };
 
 /** A durable host whose run failed at b, then left as a resume waiting for its slot. */
-async function waitingAfterRestart(moveBranch: boolean, noHead = false) {
+async function waitingAfterRestart(moveBranch: boolean, noHead = false, cardGone = false) {
   const { runner } = scripted();
   const made = await durableWorkflowCard(YAML, { checks: runner });
   const { host } = made;
@@ -74,6 +74,11 @@ async function waitingAfterRestart(moveBranch: boolean, noHead = false) {
     writeFileSync(join(worktree, "later.txt"), "later\n");
     git(worktree, "add", "--", "later.txt");
     git(worktree, "commit", "-q", "-m", "Later");
+  }
+  // As a card the board no longer has, its run left behind.
+  if (cardGone) {
+    host.store.db.exec("PRAGMA foreign_keys = OFF");
+    host.store.db.query("DELETE FROM cards WHERE id = ?").run(host.cardId);
   }
   await made.restart();
   return { ...made, head };
@@ -125,5 +130,35 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
       "run_resume_no_head",
       ["a"],
     ]);
+  });
+
+  test("a step whose id looks like an item of the failed one keeps its result: only the failed step's own items go", async () => {
+    const calls: string[] = [];
+    const runner: CheckRunner = {
+      run: async (command) => {
+        calls.push(command);
+        const failing = command === "fd-check a" && calls.filter((c) => c === command).length === 1;
+        return failing ? { exitCode: 1, output: "a broke" } : { exitCode: 0, output: "ok" };
+      },
+    };
+    const dotted = [
+      "steps:",
+      "  - id: a.1",
+      "    check: fd-check a1",
+      "  - id: a",
+      "    check: fd-check a",
+    ].join("\n");
+    const made = await workflowCard(dotted, { board: { checks: runner } });
+    await made.start();
+    const failed = await made.runWhen((run) => run.status === "failed");
+    await made.board.resumeRun(failed?.id ?? "", true);
+    await made.runWhen((run) => run.status === "completed");
+    expect(calls).toEqual(["fd-check a1", "fd-check a", "fd-check a"]);
+  });
+
+  test("a queued resume whose card is gone fails after a restart, and the daemon still starts", async () => {
+    const made = await waitingAfterRestart(false, false, true);
+    const failed = await made.runWhen((run) => run.status === "failed");
+    expect(failed?.reasonKey).toBe("run_resume_card");
   });
 });
