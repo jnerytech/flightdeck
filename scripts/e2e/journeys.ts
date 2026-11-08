@@ -1555,12 +1555,53 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
-  // Issue #802: two layout claims the unit tests could only pin by class name are measured in the
-  // browser: the untrusted notice stays small with its link on the text line, and the status bar's
-  // items never overlap or run past it at a compact, a medium and a wide window. (The card's Run
-  // row no longer has disabled buttons with reasons: it leads with one button, #1197.)
+  // Issue #802: layout claims the unit tests could only pin by class name are measured in the
+  // browser: the card's Run row (its one button and its menu fit and do not overlap, #1197), the
+  // untrusted notice stays small with its link on the text line, and the status bar's items never
+  // overlap or run past it at a compact, a medium and a wide window.
   "layout-medido": async (c) => {
-    // 1. The untrusted notice of a session: small, and its link is on the text line.
+    // 1. The Run row of a card that has not started: its one button and the menu fit the window
+    // and do not overlap, at a phone's, a tablet's and a desktop's width (#1197).
+    const title = `Card medido ${Date.now()}`;
+    await c.page.setViewportSize({ width: 1280, height: 800 });
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
+    await tile.waitFor({ timeout: WAIT });
+    await tile.getByRole("button", { name: title, exact: true }).click();
+    const run = c.page.locator("[data-slot='card-run']");
+    await run.waitFor({ timeout: WAIT });
+    for (const size of [
+      { width: 390, height: 844 },
+      { width: 640, height: 800 },
+      { width: 1280, height: 800 },
+    ]) {
+      await c.page.setViewportSize(size);
+      const problem = await run.evaluate((box, width) => {
+        const buttons = [...box.querySelectorAll("button")]
+          .map((button) => button.getBoundingClientRect())
+          .filter((rect) => rect.width > 0 && rect.height > 0);
+        if (buttons.length < 2) return `expected the button and the menu, found ${buttons.length}`;
+        for (const rect of buttons) {
+          if (rect.right > width + 1 || rect.left < -1) return "a button is past the window";
+        }
+        for (let a = 0; a < buttons.length; a++) {
+          for (let b = a + 1; b < buttons.length; b++) {
+            const x = buttons[a] as DOMRect;
+            const y = buttons[b] as DOMRect;
+            const across = Math.min(x.right, y.right) - Math.max(x.left, y.left);
+            const down = Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top);
+            if (across > 2 && down > 2) return "two buttons overlap";
+          }
+        }
+        return null;
+      }, size.width);
+      if (problem) throw new Error(`a linha Executar a ${size.width}px: ${problem}`);
+    }
+
+    // 2. The untrusted notice of a session: small, and its link is on the text line.
     await c.page.setViewportSize({ width: 1280, height: 800 });
     await open(c, { name: "session", host: ALFA, id: c.ids.waitingSession });
     const review = c.page.getByRole("button", {
@@ -1577,7 +1618,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     if (notice.link >= 30) throw new Error(`o link do aviso tem ${notice.link}px: cresceu`);
     if (notice.height > 72) throw new Error(`o aviso tem ${notice.height}px de altura`);
 
-    // 2. The status bar at three widths: nothing overlaps and nothing runs past the bar.
+    // 3. The status bar at three widths: nothing overlaps and nothing runs past the bar.
     for (const width of [500, 800, 1280]) {
       await c.page.setViewportSize({ width, height: 800 });
       await open(c, { name: "hub" });
