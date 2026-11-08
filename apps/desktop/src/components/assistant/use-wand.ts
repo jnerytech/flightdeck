@@ -129,8 +129,8 @@ export function useWand(
       .then(
         (result) =>
           dispatch({ type: "answer", requestId, text: result.text, notices: result.notices }),
-        (failure) => {
-          const { reason, params } = failureOf(failure);
+        (error) => {
+          const { reason, params } = failureOf(error);
           dispatch({ type: "fail", requestId, reason, ...(params ? { params } : {}) });
         },
       );
