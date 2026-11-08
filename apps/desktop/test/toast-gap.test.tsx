@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -83,22 +83,104 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
   });
 
   // #994: on a session page the corner is the message box: a toast covered Send, and on a phone the
-  // whole box and the mode chip. While a message box shows, the toasts sit above it.
-  test("while a message box shows, it lifts the toasts above its top; with two, above the higher; gone, no more", async () => {
+  // whole box and the mode chip. While a message box shows, the toasts sit above it. happy-dom has
+  // no layout: each box's top comes from its wrapper's data-top, and a box under [hidden] (another
+  // tab of the session) has no box at all, as in a browser.
+  describe("the message box lifts the toasts (#994)", () => {
     const clear = () => document.documentElement.style.getPropertyValue("--composer-clear");
-    const both = render(
-      <>
-        <Composer>one</Composer>
-        <Composer>two</Composer>
-      </>,
-    );
-    expect(clear()).toMatch(/^calc\(\d+px \+ 0\.75rem\)$/);
-    both.unmount();
-    expect(clear()).toBe("");
-    const one = render(<Composer>one</Composer>);
-    expect(clear()).toMatch(/^calc\(\d+px \+ 0\.75rem\)$/);
-    one.unmount();
-    expect(clear()).toBe("");
+    const lifted = (top: number) => `calc(${window.innerHeight - top}px + 0.75rem)`;
+    const proto = HTMLElement.prototype;
+    const realRect = proto.getBoundingClientRect;
+    const realRects = proto.getClientRects;
+    const RealObserver = globalThis.ResizeObserver;
+    const observers: Array<{ fire(target: Element): void }> = [];
+    beforeEach(() => {
+      proto.getBoundingClientRect = function (this: HTMLElement) {
+        const top = Number(this.closest("[data-top]")?.getAttribute("data-top") ?? 0);
+        return {
+          top,
+          bottom: top + 100,
+          left: 0,
+          right: 100,
+          width: 100,
+          height: 100,
+          x: 0,
+          y: top,
+        } as DOMRect;
+      };
+      proto.getClientRects = function (this: HTMLElement) {
+        return (this.closest("[hidden]")
+          ? []
+          : [this.getBoundingClientRect()]) as unknown as DOMRectList;
+      };
+      globalThis.ResizeObserver = class {
+        private readonly targets: Element[] = [];
+        constructor(private readonly callback: ResizeObserverCallback) {
+          observers.push({
+            fire: (target) => this.targets.includes(target) && this.callback([], this as never),
+          });
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        unobserve() {}
+        disconnect() {
+          this.targets.length = 0;
+        }
+      } as unknown as typeof ResizeObserver;
+    });
+    afterEach(() => {
+      proto.getBoundingClientRect = realRect;
+      proto.getClientRects = realRects;
+      globalThis.ResizeObserver = RealObserver;
+      observers.length = 0;
+    });
+
+    test("with two boxes the toasts clear the higher one; gone, no more", () => {
+      const view = render(
+        <>
+          <div data-top="500">
+            <Composer>one</Composer>
+          </div>
+          <div data-top="400">
+            <Composer>two</Composer>
+          </div>
+        </>,
+      );
+      expect(clear()).toBe(lifted(400));
+      view.unmount();
+      expect(clear()).toBe("");
+    });
+
+    test("a box on a hidden tab lifts nothing, and lifts again once it shows", async () => {
+      const view = (hidden: boolean) => (
+        <div hidden={hidden} data-top="500">
+          <Composer>one</Composer>
+        </div>
+      );
+      const { rerender } = render(view(true));
+      expect(clear()).toBe("");
+      rerender(view(false));
+      const box = document.querySelector('[data-slot="composer-card"]') as HTMLElement;
+      for (const o of observers) o.fire(box);
+      expect(clear()).toBe(lifted(500));
+    });
+
+    test("the box moving with the dock, or the window resizing, moves the lift", async () => {
+      render(
+        <div data-top="500">
+          <Composer>one</Composer>
+        </div>,
+      );
+      const box = document.querySelector('[data-slot="composer-card"]') as HTMLElement;
+      const dock = box.parentElement as HTMLElement;
+      dock.setAttribute("data-top", "420");
+      for (const o of observers) o.fire(dock);
+      expect(clear()).toBe(lifted(420));
+      dock.setAttribute("data-top", "380");
+      window.dispatchEvent(new Event("resize"));
+      expect(clear()).toBe(lifted(380));
+    });
   });
 
   test("in the demo, the prints' event shows one toast in the page's language, each time it is sent", () => {
