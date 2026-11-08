@@ -76,6 +76,9 @@ describe("home-cache: a project's numbers stay off the disk, and its budget is i
       periodKey: "2026-10",
       spentUsd: 1,
       fraction: 1 / limitUsd,
+      limitPct: null,
+      spentPct: null,
+      estimated: false,
       crossed: [],
     });
     const budgets = [budget("host", null, 100), budget("project", "github.com/x/z", 10)];

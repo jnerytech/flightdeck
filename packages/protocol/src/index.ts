@@ -2482,15 +2482,25 @@ export const QuotaHistory = z.object({
 });
 export type QuotaHistory = z.infer<typeof QuotaHistory>;
 
-/** A cost limit of the host or of one project, per day or month (host time zone). */
+/** The periods of a budget: a day or month (host time zone), or a window of the plan quota. */
+export const BudgetPeriod = z.enum(["day", "month", "five_hour", "seven_day"]);
+export type BudgetPeriod = z.infer<typeof BudgetPeriod>;
+
+/**
+ * A limit of the host or of one project: dollars per day or month, or a share of a plan quota
+ * window (`five_hour`, `seven_day`; issue #1248).
+ */
 export const BudgetInput = z.object({
   /** Present to change an existing budget. */
   id: z.string().optional(),
   scope: z.enum(["host", "project"]),
   /** Required for `project`, ignored for `host`. */
   projectKey: z.string().min(1).optional(),
-  period: z.enum(["day", "month"]),
-  limitUsd: z.number().positive(),
+  period: BudgetPeriod,
+  /** Required for `day` and `month`, ignored for a window. */
+  limitUsd: z.number().positive().optional(),
+  /** Required for `five_hour` and `seven_day`: the share of the window, above 0 up to 1. */
+  limitPct: z.number().positive().max(1).optional(),
   /** `queue`: at 100%, new cards of the scope wait (sessions are never held). */
   action: z.enum(["notify", "queue"]),
 });
@@ -2500,14 +2510,25 @@ export const Budget = z.object({
   id: z.string(),
   scope: z.enum(["host", "project"]),
   projectKey: z.string().nullable(),
-  period: z.enum(["day", "month"]),
+  period: BudgetPeriod,
+  /** 0 for a window budget. */
   limitUsd: z.number(),
+  /** The share of the window a window budget allows; `null` for dollars. */
+  limitPct: z.number().nullable().default(null),
   action: z.enum(["notify", "queue"]),
   createdAt: z.string(),
-  /** The current period: `YYYY-MM-DD` or `YYYY-MM`. */
+  /**
+   * The current period: `YYYY-MM-DD` or `YYYY-MM`, or when the window resets (`unread` while the
+   * host has no reading of it).
+   */
   periodKey: z.string(),
+  /** The estimated cost of the scope in the period (dollars, or the window so far). */
   spentUsd: z.number(),
-  /** `spentUsd / limitUsd`. */
+  /** The share of the window the scope used; `null` for dollars. */
+  spentPct: z.number().nullable().default(null),
+  /** A project's share of a window is an estimate: the plan does not say who used it. */
+  estimated: z.boolean().default(false),
+  /** `spentUsd / limitUsd`, or `spentPct / limitPct` for a window. */
   fraction: z.number(),
   /** Thresholds (0.5, 0.8, 1) already crossed in this period. */
   crossed: z.array(z.number()),

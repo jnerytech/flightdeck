@@ -25,6 +25,9 @@ const budget: Budget = {
   periodKey: "2026-10",
   spentUsd: 40,
   fraction: 0.27,
+  limitPct: null,
+  spentPct: null,
+  estimated: false,
   crossed: [],
 };
 

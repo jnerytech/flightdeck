@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { Budget, BudgetInput } from "@flightdeck/protocol";
+import type { Budget, BudgetInput, QuotaState } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
 import { localDay } from "../quota/usage.ts";
@@ -12,6 +12,8 @@ export interface BudgetsOptions {
   /** `YYYY-MM-DD` of an instant in the host's time zone. */
   day?: (ms: number) => string;
   timers?: Timers;
+  /** The plan quota: what a window budget measures (issue #1248). */
+  quota?: { state(): QuotaState; watch(listener: (state: QuotaState) => void): () => void };
   /** How often the period is checked for a turn of the day or month; 60 s when absent. */
   checkMs?: number;
 }
@@ -39,6 +41,7 @@ interface Row {
   project_key: string | null;
   period: Budget["period"];
   limit_usd: number;
+  limit_pct: number | null;
   action: Budget["action"];
   created_at: string;
 }
@@ -89,7 +92,7 @@ export class Budgets {
       scope: input.scope,
       key: projectKey,
       period: input.period,
-      limit: input.limitUsd,
+      limit: input.limitUsd ?? 0,
       action: input.action,
     };
     let id = input.id;
@@ -233,10 +236,13 @@ export class Budgets {
       projectKey: row.project_key,
       period: row.period,
       limitUsd: row.limit_usd,
+      limitPct: null,
       action: row.action,
       createdAt: row.created_at,
       periodKey,
       spentUsd: spent,
+      spentPct: null,
+      estimated: false,
       fraction: spent / row.limit_usd,
       crossed,
     };

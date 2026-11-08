@@ -66,10 +66,13 @@ describe("orcamentos", () => {
       projectKey: null,
       period: "day",
       limitUsd: 10,
+      limitPct: null,
       action: "notify",
       createdAt: "2026-10-15T12:00:00.000Z",
       periodKey: "2026-10-15",
       spentUsd: 0,
+      spentPct: null,
+      estimated: false,
       fraction: 0,
       crossed: [],
     });

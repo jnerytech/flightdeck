@@ -949,4 +949,8 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE cards ADD COLUMN start_workflow TEXT;
   ALTER TABLE cards ADD COLUMN start_persona TEXT;
   `,
+  // Issue #1248: a budget can be a share of a plan quota window (period five_hour or seven_day).
+  `
+  ALTER TABLE budgets ADD COLUMN limit_pct REAL;
+  `,
 ];
