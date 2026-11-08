@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { ActivityCardView } from "@/components/activity/activity-card";
 import { ActivityColumnView } from "@/components/activity/activity-column";
 import { NativeSelect } from "@/components/layout/form";
@@ -44,9 +44,9 @@ export function ActivityBoard(
   const [filter, setFilter] = useState<ActivityFilter>(NO_ACTIVITY_FILTER);
   const [showIdle, setShowIdle] = useState(() => store.activityIdle());
   // The screen stays open for hours: the ages and the Done window follow the clock.
-  const [, setTick] = useState(0);
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
-    const id = setInterval(() => setTick((n) => n + 1), props.tickMs ?? CLOCK_TICK_MS);
+    const id = setInterval(rerender, props.tickMs ?? CLOCK_TICK_MS);
     return () => clearInterval(id);
   }, [props.tickMs]);
   const nowMs = store.now();

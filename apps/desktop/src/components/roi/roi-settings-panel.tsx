@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useReducer, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const t = useT();
   const hosts = useStoreSlice(store, ["hosts", "roiRevision"]).hosts;
-  const [, setTick] = useState(0);
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [message, setMessage] = useState<string | null>(null);
   const settings = store.roi.data();
   const [rate, setRate] = useState(
@@ -48,7 +48,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
     try {
       change();
       setMessage(null);
-      setTick((n) => n + 1);
+      rerender();
     } catch (error) {
       setMessage(
         error instanceof RoiSettingsError

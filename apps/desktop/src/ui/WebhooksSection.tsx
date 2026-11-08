@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
@@ -52,7 +52,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   const t = useT();
   const { store } = props;
   const hosts = useStoreSlice(store, HOSTS).hosts;
-  const [, setVersion] = useState(0);
+  const [, refresh] = useReducer((n: number) => n + 1, 0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
@@ -64,7 +64,6 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "webhook", false),
   );
   const editing = targets.find((target) => target.id === draft.id);
-  const refresh = () => setVersion((n) => n + 1);
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const complete =
     draft.name.trim() !== "" && draft.kinds.length > 0 && (editing || draft.url.trim() !== "");
