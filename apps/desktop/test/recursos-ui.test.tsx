@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ResourcesSnapshot } from "@flightdeck/protocol";
 import { formatBytes } from "../src/i18n/format.ts";
+import { RequestError } from "../src/lib/host-connection.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";
@@ -68,7 +69,12 @@ function setup(
   store.i18n.start();
   const asked: Array<[string, unknown]> = [];
   let current = options.snap ?? snapshot();
-  store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
+  // The host as the connection answers it: whichever store call the panel uses goes through here.
+  (store as unknown as { dispatch: unknown }).dispatch = (async (
+    _host: string,
+    type: string,
+    payload: unknown,
+  ) => {
     asked.push([type, payload]);
     if (type === "resources.get") return current;
     if (type === "resources.endOrphan") return { ended: true };
@@ -161,7 +167,7 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
   test("a read that is still going is not asked again by the next tick (F4)", async () => {
     const w = setup();
     let release: (value: ResourcesSnapshot) => void = () => {};
-    w.store.hostCommand = (async (_h: string, type: string) => {
+    (w.store as unknown as { dispatch: unknown }).dispatch = (async (_h: string, type: string) => {
       w.asked.push([type, null]);
       if (type !== "resources.get") return {};
       return new Promise<ResourcesSnapshot>((resolve) => {
@@ -326,4 +332,57 @@ describe("recursos-ui: the table in a narrow card (#640)", () => {
       zero: false,
     });
   });
+});
+
+// #937: the panel reads every few seconds. A host that refuses the read (an older daemon whose
+// terminal is off refused it every time) is not an error toast and an ERROR line on each tick.
+describe("recursos-ui: a refused read", () => {
+  test("a refused timed read keeps the last numbers, with no toast and no ERROR line", async () => {
+    const w = setup();
+    let refuse = false;
+    const answered = (w.store as unknown as { dispatch: (...a: unknown[]) => Promise<unknown> })
+      .dispatch;
+    (w.store as unknown as { dispatch: unknown }).dispatch = (async (
+      h: string,
+      type: string,
+      payload: unknown,
+    ) => {
+      if (refuse && type === "resources.get") {
+        w.asked.push([type, payload]);
+        throw new RequestError("terminal_disabled", "the terminal is off on this host");
+      }
+      return answered(h, type, payload);
+    }) as never;
+    render(w.view());
+    await settle(() => document.querySelector("[data-slot='resources-memory']") !== null);
+    refuse = true;
+    const before = reads(w.asked).length;
+    await settle(() => reads(w.asked).length >= before + 3);
+    expect({
+      shown: document.querySelector("[data-slot='resources-memory']") !== null,
+      toasts: w.store.getState().notices.length,
+      errors: w.store.appLog.recent(50).filter((line) => line.includes("ERROR")).length,
+    }).toEqual({ shown: true, toasts: 0, errors: 0 });
+  });
+  for (const [language, text] of [
+    ["en", "This host's resources could not be read. They show when the host answers."],
+    ["pt-BR", "Não deu para ler os recursos deste host. Eles aparecem quando o host responder."],
+  ] as const) {
+    test(`a first read that is refused says so in the panel, with no toast (${language})`, async () => {
+      const w = setup({ language });
+      (w.store as unknown as { dispatch: unknown }).dispatch = (async (
+        _h: string,
+        type: string,
+      ) => {
+        w.asked.push([type, null]);
+        throw new RequestError("terminal_disabled", "the terminal is off on this host");
+      }) as never;
+      render(w.view());
+      await settle(() => reads(w.asked).length >= 2);
+      expect({
+        said: screen.queryByText(text) !== null,
+        toasts: w.store.getState().notices.length,
+      }).toEqual({ said: true, toasts: 0 });
+    });
+  }
 });

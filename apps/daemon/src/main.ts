@@ -1635,7 +1635,8 @@ export async function startDaemon(
     resources: await createResources({
       dataDir: config.dataDir,
       sessions: manager.list.bind(manager),
-      terminals: terminals.list.bind(terminals),
+      // With the terminal off there are none to list, and the read must not fail on it (#937).
+      terminals: () => (terminals.enabled ? terminals.list() : []),
       pidOf: terminals.pidOf.bind(terminals),
       ...(options.resourcesProc ? { proc: options.resourcesProc } : {}),
     }),

@@ -4669,6 +4669,7 @@ export const en: Dictionary = {
     endTitle: "End process",
     endMessage: "End process {pid} ({name})? The host's daemon started it and no session owns it.",
     endFailed: "That process could not be ended.",
+    unreadable: "This host's resources could not be read. They show when the host answers.",
   },
   worktrees: {
     title: "Worktrees",
