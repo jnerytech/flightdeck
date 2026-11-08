@@ -3944,6 +3944,8 @@ export const en: Dictionary = {
     start: "Start",
     stop: "Stop",
     openPr: "Open PR",
+    reviewChanges: "Review changes",
+    startWith: "Start with a workflow or persona…",
     complete: "Complete",
     finish: "Finish…",
     finishTitle: "Finish this card",

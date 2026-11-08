@@ -3953,6 +3953,8 @@ export const ptBR = {
     start: "Iniciar",
     stop: "Parar",
     openPr: "Abrir PR",
+    reviewChanges: "Revisar mudanças",
+    startWith: "Iniciar com workflow ou persona…",
     complete: "Concluir",
     finish: "Finalizar…",
     finishTitle: "Finalizar este card",

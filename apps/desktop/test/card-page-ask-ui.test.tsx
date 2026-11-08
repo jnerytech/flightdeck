@@ -126,8 +126,7 @@ function form(w: ReturnType<typeof setup>, cardOver: object = {}) {
         store={w.store}
         hostId="h1"
         card={card(cardOver)}
-        workflows={[]}
-        features={{ personas: false, bg: true, watch: false }}
+        features={{ bg: true, watch: false }}
         tab="conversation"
         arenaStart={null}
         onDiscarded={() => {}}

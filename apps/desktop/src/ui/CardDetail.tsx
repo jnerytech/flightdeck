@@ -212,9 +212,7 @@ export const CardDetail = memo(function CardDetail(props: {
                   store={store}
                   hostId={hostId}
                   card={card}
-                  workflows={workflows}
                   features={{
-                    personas: withPersonas,
                     bg: has("bg"),
                     watch: withWatch,
                   }}

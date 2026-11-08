@@ -1,17 +1,24 @@
-import type { Card, WorkflowInfo } from "@flightdeck/protocol";
-import { Fragment, type ReactNode, useState } from "react";
+import type { Card } from "@flightdeck/protocol";
+import { MoreHorizontal } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { CardStartDialog } from "@/components/board/card-start-dialog";
 import { ActionButton } from "@/components/feedback/action-button";
-import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
+import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
-import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
+import { useSuggestedPersona } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
-import { AlertPicker } from "@/components/workflows/alert-picker";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { nextStep } from "../../lib/card-next-step.ts";
+import { cardStartBlock } from "../../lib/card-start-block.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { CardFinishDialog } from "./card-finish.tsx";
 
@@ -22,23 +29,21 @@ interface Confirming {
 
 /** What the host lets a card do, from its features. */
 export interface CardRunFeatures {
-  personas: boolean;
   bg: boolean;
   /** Phase 22: the host watches PRs, so the PR description is offered before the PR opens. */
   watch: boolean;
 }
 
 /**
- * How a card runs: the workflow and its inputs, the persona it starts in, and its actions (start,
- * in the background, stop, open the PR, finish, discard). Complete and discard ask first.
+ * How a card runs: the one button for its next step (Start, Stop, Review changes, Open PR) and,
+ * under a menu, the rest (start with a workflow or persona, in the background, finish, discard).
+ * Complete and discard ask first (#1197).
  */
 export function CardRunForm(
   props: Readonly<{
     store: AppStore;
     hostId: string;
     card: Card;
-    /** Workflows the card can start with: trusted and valid on the project's base branch. */
-    workflows: WorkflowInfo[];
     features: CardRunFeatures;
     /** The tab of the card page that shows: Review changes leads while it is the conversation (#1197). */
     tab: "conversation" | "diff";
@@ -53,12 +58,10 @@ export function CardRunForm(
   const t = useT();
   const { store, hostId, card, features } = props;
   const cardId = card.id;
-  const [workflow, setWorkflow] = useState("");
-  const [inputs, setInputs] = useState<Record<string, string>>({});
-  /** Phase 20: the persona the card starts in, a picker value; `null` until picked (the Developer shows). */
-  const [picked, setPersona] = useState<string | null>(null);
+  /** Phase 20: the persona a plain Start uses: the one the host suggests for a dev card. */
   const suggested = useSuggestedPersona(store, hostId, "dev");
-  const persona = picked ?? suggested;
+  /** "Start with a workflow or persona…": the board's start dialog, over the card. */
+  const [startingWith, setStartingWith] = useState(false);
   /** The project's contracts decide whether a card with no criteria is asked about (issue #78). */
   const contracts = projectContracts(store, hostId, card.projectId);
   const startAsk = useStartAsk();
@@ -66,7 +69,6 @@ export function CardRunForm(
   const [finishing, setFinishing] = useState(false);
   /** Phase 22: the PR description offered for the person to edit, before the PR opens. */
   const [draft, setDraft] = useState<{ text: string; redacted: number } | null>(null);
-  const chosen = props.workflows.find((w) => w.name === workflow);
 
   const askDiscard = async () => {
     const current = card.worktreePath
@@ -96,135 +98,102 @@ export function CardRunForm(
     return undefined;
   };
 
+  const step = nextStep(card, { tab: props.tab, canMerge: false });
+  const running = cardStartBlock(card) !== null;
+  const canOpenPr = Boolean(card.worktreePath) && !card.prUrl;
+
   return (
     <>
       <Panel title={t("cardUi.runTitle")} label={t("cardUi.runTitle")} slot="card-run">
-        <div className="flex flex-wrap items-end gap-2">
-          <Field label={t("cardUi.workflow")}>
-            {(control) => (
-              <NativeSelect
-                {...control}
-                inline
-                value={workflow}
-                onChange={(e) => {
-                  setWorkflow(e.target.value);
-                  setInputs({});
-                }}
-              >
-                <option value="">{t("cardUi.noWorkflow")}</option>
-                {props.workflows.map((w) => (
-                  <option key={w.name} value={w.name}>
-                    {w.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            )}
-          </Field>
-          {chosen?.inputs.map((name) => (
-            <Fragment key={name}>
-              <Field label={t("cardUi.input", { name })}>
-                {(control) =>
-                  name === "alert" ? (
-                    // The alert is several lines (what, where, why): one line would glue them together.
-                    <Textarea
-                      {...control}
-                      placeholder={name}
-                      rows={4}
-                      className="w-80"
-                      value={inputs[name] ?? ""}
-                      onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
-                    />
-                  ) : (
-                    <Input
-                      {...control}
-                      placeholder={name}
-                      className="w-48"
-                      value={inputs[name] ?? ""}
-                      onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
-                    />
-                  )
-                }
-              </Field>
-              {name === "alert" && (
-                <AlertPicker
-                  store={store}
-                  hostId={hostId}
-                  projectId={card.projectId}
-                  onPick={(text) => setInputs({ ...inputs, alert: text })}
-                />
-              )}
-            </Fragment>
-          ))}
-        </div>
-        {/* A row of its own reasons: each button that is off says why on its own line (#732). */}
         <FieldRow align="end">
-          {features.personas && (
-            <PersonaPicker
-              store={store}
-              hostId={hostId}
-              label={t("personas.picker.card")}
-              value={persona}
-              onChange={setPersona}
-            />
-          )}
-          <ActionButton
-            onClick={() => {
-              const ref = store.personaRef(persona);
-              startAsk.ask(card, contracts, () => {
-                void store.hostCommand(hostId, "card.start", {
-                  cardId,
-                  ...(chosen ? { workflow: chosen.name, inputs } : {}),
-                  ...(ref ? { persona: ref } : {}),
-                });
-              });
-            }}
-          >
-            {t("cardUi.start")}
-          </ActionButton>
-          {features.bg && !card.sessionId && (
+          {step === "start" && (
             <ActionButton
-              variant="outline"
-              onClick={() =>
+              onClick={() => {
+                const ref = store.personaRef(suggested);
                 startAsk.ask(card, contracts, () => {
-                  void store
-                    .startBackground(hostId, {
-                      cardId,
-                      ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
-                    })
-                    .then((started) => {
-                      if (started) store.router.push({ name: "hub" });
-                    });
-                })
-              }
+                  void store.hostCommand(hostId, "card.start", {
+                    cardId,
+                    ...(ref ? { persona: ref } : {}),
+                  });
+                });
+              }}
             >
-              {t("bg.start")}
+              {t("cardUi.start")}
             </ActionButton>
           )}
-          <ActionButton
-            variant="outline"
-            disabled={!card.sessionId && !card.queued}
-            disabledReason={t("cardUi.notRunning")}
-            onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
-          >
-            {t("cardUi.stop")}
-          </ActionButton>
-          <ActionButton
-            variant="outline"
-            disabled={!card.worktreePath || Boolean(card.prUrl)}
-            disabledReason={t(card.prUrl ? "cardUi.prAlreadyOpen" : "cardUi.needWorktree")}
-            onClick={() => openPr()}
-          >
-            {t("cardUi.openPr")}
-          </ActionButton>
-          <Button variant="outline" onClick={() => setFinishing(true)}>
-            {t("cardUi.finish")}
-          </Button>
+          {step === "stop" && (
+            <ActionButton
+              variant="outline"
+              onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
+            >
+              {t("cardUi.stop")}
+            </ActionButton>
+          )}
+          {step === "review" && (
+            <Button onClick={props.onShowDiff}>{t("cardUi.reviewChanges")}</Button>
+          )}
+          {step === "open-pr" && (
+            <ActionButton onClick={() => openPr()}>{t("cardUi.openPr")}</ActionButton>
+          )}
           {props.arenaStart}
-          <Button variant="destructive" onClick={() => void askDiscard()}>
-            {t("cardUi.discard")}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label={t("board.cardActions", { title: card.title })}
+              >
+                <MoreHorizontal aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {!running && (
+                <DropdownMenuItem
+                  onSelect={() => startAsk.ask(card, contracts, () => setStartingWith(true))}
+                >
+                  {t("cardUi.startWith")}
+                </DropdownMenuItem>
+              )}
+              {features.bg && !card.sessionId && (
+                <DropdownMenuItem
+                  onSelect={() =>
+                    startAsk.ask(card, contracts, () => {
+                      const ref = suggested.startsWith("host:") ? suggested.slice(5) : null;
+                      void store
+                        .startBackground(hostId, { cardId, ...(ref ? { persona: ref } : {}) })
+                        .then((started) => {
+                          if (started) store.router.push({ name: "hub" });
+                        });
+                    })
+                  }
+                >
+                  {t("bg.start")}
+                </DropdownMenuItem>
+              )}
+              {step !== "open-pr" && canOpenPr && (
+                <DropdownMenuItem onSelect={() => void openPr()}>
+                  {t("cardUi.openPr")}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onSelect={() => setFinishing(true)}>
+                {t("cardUi.finish")}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={() => void askDiscard()}>
+                {t("cardUi.discard")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </FieldRow>
       </Panel>
+      {startingWith && (
+        <CardStartDialog
+          store={store}
+          hostId={hostId}
+          card={card}
+          onClose={() => setStartingWith(false)}
+          onStarted={() => {}}
+        />
+      )}
       {startAsk.dialog}
       {draft && (
         <PrDescriptionDialog

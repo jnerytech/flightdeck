@@ -47,8 +47,7 @@ function setup(language: "en" | "pt-BR" = "en") {
         store={store}
         hostId="h1"
         card={card(over)}
-        workflows={[]}
-        features={{ personas: false, bg: true, watch: false }}
+        features={{ bg: true, watch: false }}
         tab={tab}
         arenaStart={null}
         onDiscarded={() => {
