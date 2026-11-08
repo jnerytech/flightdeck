@@ -30,4 +30,14 @@ describe("runGhIn (issue #79)", () => {
     });
     expect(await runGhIn(["api", "x"], process.cwd())).toBeNull();
   });
+
+  test("a gh that does not answer in time is killed and reported, not waited for", async () => {
+    const fake: FakeCli = installFakeCli("gh", [{ args: ["api"], stdout: "[]", delayMs: 5_000 }]);
+    cleanups.push(fake.restore);
+    const folder = realpathSync.native(tempDir("fd-gh-slow-"));
+    const started = Date.now();
+    const result = await runGhIn(["api", "repos/{owner}/{repo}/code-scanning/alerts"], folder, 300);
+    expect(result?.timedOut).toBe(true);
+    expect(Date.now() - started < 4_000).toBe(true);
+  });
 });
