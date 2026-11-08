@@ -93,8 +93,12 @@ export async function writeSpec(
   }
 }
 
-/** The project's own spec template, and the most of it read: a template is a page, not a book. */
-const PROJECT_TEMPLATE = ".flightdeck/templates/spec.md";
+/** A project's own templates, and the most of one read: a template is a page, not a book. */
+const PROJECT_TEMPLATES = {
+  spec: ".flightdeck/templates/spec.md",
+  validation: ".flightdeck/templates/validation.md",
+} as const;
+export type TemplateName = keyof typeof PROJECT_TEMPLATES;
 const TEMPLATE_MAX = 32 * 1024;
 
 /** Why a project's template that is there was not used. */
@@ -108,8 +112,9 @@ export type TemplateIgnored = "untrusted" | "unsafe" | "too_big" | "empty";
  */
 export async function projectTemplate(
   root: string,
+  name: TemplateName = "spec",
 ): Promise<{ body: string | null; ignored: TemplateIgnored | null }> {
-  const read = await readInsideWhy(root, PROJECT_TEMPLATE, TEMPLATE_MAX);
+  const read = await readInsideWhy(root, PROJECT_TEMPLATES[name], TEMPLATE_MAX);
   if ("why" in read) return { body: null, ignored: read.why === "absent" ? null : read.why };
   return read.text.trim() ? { body: read.text, ignored: null } : { body: null, ignored: "empty" };
 }
@@ -118,11 +123,14 @@ export async function projectTemplate(
  * For a project that is not trusted: whether its worktree carries a template that is therefore not
  * read. Only a look at the name (never the text), so an untrusted file stays unread.
  */
-export async function untrustedTemplate(worktree: string): Promise<boolean> {
+export async function untrustedTemplate(
+  worktree: string,
+  name: TemplateName = "spec",
+): Promise<boolean> {
   try {
     // A link anywhere on the way is refused, not followed: the look never leaves the worktree, so
     // it cannot tell whether something lies behind a link.
-    const found = await walkInside(await realpath(worktree), PROJECT_TEMPLATE, TEMPLATE_MAX);
+    const found = await walkInside(await realpath(worktree), PROJECT_TEMPLATES[name], TEMPLATE_MAX);
     return found.state !== "absent";
   } catch {
     return false;
@@ -156,10 +164,14 @@ export function toSlashes(path: string, platform: string): string {
 }
 
 /**
- * The folder a project's spec template may be read from: the trusted checkout `sessionTrust` names,
+ * The folder a project's own templates may be read from: the trusted checkout `sessionTrust` names,
  * or null for an untrusted project. A card runs in a worktree, so the checkout is always named; when
- * it is not, null, never the worktree, whose content is the branch's.
+ * it is not, null, never the worktree, whose content is the branch's. `ownFolder` is a card's
+ * project folder itself (a card with no worktree), which is the checkout, so a trusted one stands.
  */
-export function templateRootOf(trust: { trusted: boolean; configRoot?: string }): string | null {
-  return trust.trusted && trust.configRoot ? trust.configRoot : null;
+export function templateRootOf(
+  trust: { trusted: boolean; configRoot?: string },
+  ownFolder?: string,
+): string | null {
+  return trust.trusted ? (trust.configRoot ?? ownFolder ?? null) : null;
 }

@@ -1,4 +1,5 @@
-import { type Card, specPathProblem } from "@flightdeck/protocol";
+import { type Card, specPathProblem, type ValidationTemplate } from "@flightdeck/protocol";
+import { useEffect, useState } from "react";
 import { type AssistControl, AssistField } from "@/components/assistant/assist-field";
 import type { WandBinding } from "@/components/assistant/use-wand";
 import { CardSpec } from "@/components/card/card-spec";
@@ -9,6 +10,7 @@ import { CardHours } from "@/components/roi/card-hours";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { Key } from "@/i18n";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useDraft } from "@/lib/use-draft";
@@ -129,6 +131,20 @@ export function CardFields(
 ) {
   const t = useT();
   const { store, hostId, card } = props;
+  // Issue #1058: the project's own shape for a validation note, when its host has one. Quietly: a
+  // host that does not know the command (an older daemon) simply has none.
+  const [shape, setShape] = useState<ValidationTemplate | null>(null);
+  useEffect(() => {
+    let live = true;
+    void store
+      .hostRequest(hostId, "card.validationTemplate", { cardId: card.id })
+      .then((result) => {
+        if (live && result.ok) setShape(result.data);
+      });
+    return () => {
+      live = false;
+    };
+  }, [store, hostId, card.id]);
   const update = (
     patch:
       | { title: string }
@@ -176,12 +192,17 @@ export function CardFields(
         saveLabel={t("cardUi.saveValidation")}
         source={card.validationNote ?? ""}
         // Issue #78: the shape of a validation note, shown and never saved, so it alone meets no check.
-        placeholder={t("cardUi.validationShape")}
+        placeholder={shape?.text ?? t("cardUi.validationShape")}
         multiline
         stored={(text) => text.trim()}
         savable={(text) => text.trim() !== (card.validationNote ?? "")}
         save={(text) => update({ validationNote: text === "" ? null : text })}
       />
+      {shape?.ignored && (
+        <output className="text-muted-foreground text-sm" aria-live="polite">
+          {t(`cardUi.validationIgnored.${shape.ignored}` as Key)}
+        </output>
+      )}
       <CardTextField
         label={t("cardUi.specFile")}
         saveLabel={t("cardUi.saveSpec")}

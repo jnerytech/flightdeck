@@ -139,7 +139,11 @@ describe("card-spec-template-project: a trusted project's own spec template (#78
       templateRootOf({ trusted: true, configRoot: "/work/api" }),
       // No checkout named: never the worktree, whose content is the branch's.
       templateRootOf({ trusted: true }),
-    ]).toEqual([null, "/work/api", null]);
+      // The project's own folder (a card with no worktree) is the checkout itself, when trusted.
+      templateRootOf({ trusted: true }, "/work/api"),
+      templateRootOf({ trusted: false }, "/work/api"),
+      templateRootOf({ trusted: true, configRoot: "/work/main" }, "/work/api"),
+    ]).toEqual([null, "/work/api", null, "/work/api", null, "/work/main"]);
   });
 
   test("a trust check that fails writes the built-in template and says so in the log, without the template", async () => {

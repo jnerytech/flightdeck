@@ -1102,7 +1102,9 @@ aparece mascarado e como **Oculto**, e não abre.
 - **Uma nota de validação e iniciar sem critérios** (#78). Um card tem uma **Nota de validação** nos
   Detalhes: uma ou duas linhas sobre como você conferiu o trabalho. Um projeto pode fazer uma coluna
   pedir isso (um contrato com a verificação `validation`), e o card passa a dizer "Precisa de: uma
-  nota de validação". **Iniciar** (o menu do card, a seção Executar do card ou a paleta Ctrl+K)
+  nota de validação". Uma nota vazia mostra o formato de uma nota como dica, nunca salva: um projeto
+  confiável pode dar o seu em `.flightdeck/templates/validation.md` no checkout (até 32 KiB), e o
+  card diz o motivo quando esse arquivo existe mas não foi usado. **Iniciar** (o menu do card, a seção Executar do card ou a paleta Ctrl+K)
   pergunta antes só num projeto cujo contrato de Em andamento confirma critérios de aceite, e só
   para um card sem eles (nenhum item `- [ ] …` na descrição): **Iniciar mesmo assim** segue. Por
   padrão Em andamento só avisa, então Iniciar não pergunta nada.
@@ -1672,6 +1674,8 @@ qualquer workflow. A linha `check` do corretor de alertas já traz o comando de 
 quando o Flightdeck consegue descobrir (`npm run test`, `cargo test`...). Quando não consegue, a
 linha traz um texto provisório que falha de propósito: troque pelo seu comando de teste antes do
 commit.
+Se a área de transferência recusar a cópia, o diálogo avisa como alerta: selecione o texto do arquivo
+mostrado ali e copie à mão. Um host sem modelos diz isso, em vez de mostrar uma lista vazia.
 
 ### Rodar e acompanhar
 

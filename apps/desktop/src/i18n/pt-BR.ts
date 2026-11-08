@@ -3796,6 +3796,14 @@ export const ptBR = {
     saveValidation: "Salvar nota de validação",
     validationShape:
       "O que foi verificado:\nComo (comandos, passos, dados):\nResultado:\nO que não foi verificado:",
+    validationIgnored: {
+      untrusted:
+        "O modelo de nota de validação do projeto não foi usado: o projeto não é confiável.",
+      unsafe:
+        "O modelo de nota de validação do projeto não foi usado: é um link ou tem mais de um nome.",
+      too_big: "O modelo de nota de validação do projeto não foi usado: passa de 32 KiB.",
+      empty: "O modelo de nota de validação do projeto não foi usado: está vazio.",
+    },
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
     specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",
@@ -3807,6 +3815,10 @@ export const ptBR = {
       pickPlaceholder: "Escolha um documento…",
       unpin: "Desafixar {path}",
       unpinShort: "Desafixar",
+      pinAction: "Fixar",
+      pinNeeded: "Escolha um documento para fixar.",
+      pinned: "Fixado: {title}.",
+      unpinned: "Desafixado: {title}.",
       unlisted: "fora da biblioteca do projeto",
       full: "Um card fixa no máximo {max} documentos.",
       failed: "Não foi possível salvar os documentos fixados: {why}",
@@ -3977,6 +3989,9 @@ export const ptBR = {
       file: "Arquivo {path}",
       copy: "Copiar o arquivo",
       copied: "Copiado. Faça commit na branch base e confie nele aqui.",
+      copyFailed:
+        "A área de transferência recusou a cópia. Selecione o texto do arquivo acima e copie à mão.",
+      none: "Este host não oferece modelos.",
       checkFilled:
         "A linha check tem o comando de teste deste projeto. Confira antes de confiar no workflow.",
       checkPlaceholder:
@@ -4400,6 +4415,9 @@ export const ptBR = {
         commitMessage:
           "Os arquivos da configuração vão para um branch novo que o Flightdeck nomeia, com o seu nome e e-mail do git. O commit é do arquivo inteiro: mudanças que você fez neles antes da configuração vão junto. O seu checkout continua com eles como mudanças no branch atual.",
         commitFiles: "Arquivos do commit",
+        draft: "Rascunhar com o Claude",
+        drafted:
+          "Rascunhado pelo Claude a partir dos comandos e nomes de arquivos do projeto. Leia antes de aplicar: vira as instruções que as suas sessões seguem.",
         committed: "Commit feito em {branch}. Faça o push quando quiser.",
       },
     },
