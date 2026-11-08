@@ -86,6 +86,17 @@ function setup(
 const panel = () => screen.getByRole("region", { name: "Project knowledge" });
 const picker = (title: string) =>
   within(panel()).getByRole("combobox", { name: `Status of ${title}` }) as HTMLSelectElement;
+const apply = (title: string) =>
+  within(panel()).queryByRole("button", {
+    name: `Change the status of ${title}`,
+  }) as HTMLButtonElement | null;
+/** Whether the Change button of a document is there and can be pressed. */
+const canApply = (title: string) => apply(title)?.disabled === false;
+const press = (title: string) => {
+  const button = apply(title);
+  expect(button).not.toBeNull();
+  fireEvent.click(button as HTMLElement);
+};
 const listed = async () =>
   await waitFor(() => expect(within(panel()).queryByText("Use the outbox")).not.toBeNull());
 
@@ -114,6 +125,7 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
     render(view);
     await listed();
     fireEvent.change(picker("Use the outbox"), { target: { value: "obsolete" } });
+    press("Use the outbox");
     await waitFor(() =>
       expect(
         within(panel()).queryByText(
@@ -135,6 +147,41 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
     expect(sent.filter(([type]) => type === "knowledge.list")).toHaveLength(2);
   });
 
+  test("choosing alone writes nothing, however many choices an arrow key makes; the Change button writes once", async () => {
+    const { view, sent } = setup();
+    render(view);
+    await listed();
+    // Arrow keys on a closed select fire a change for each value they pass.
+    for (const value of ["transitional", "obsolete", "transitional"]) {
+      fireEvent.change(picker("Use the outbox"), { target: { value } });
+    }
+    expect(picker("Use the outbox").value).toBe("transitional");
+    expect(sent.filter(([type]) => type === "knowledge.setStatus")).toEqual([]);
+    press("Use the outbox");
+    await waitFor(() =>
+      expect(sent.filter(([type]) => type === "knowledge.setStatus")).toHaveLength(1),
+    );
+    const [[, written]] = sent.filter(([type]) => type === "knowledge.setStatus") as [
+      [string, { status: string }],
+    ];
+    expect(written.status).toBe("transitional");
+  });
+
+  test("the Change button is off until the choice differs from the file's status, and a document that was not classified needs a choice", async () => {
+    render(setup().view);
+    await listed();
+    expect([apply("Use the outbox")?.disabled, apply("Old decision")?.disabled]).toEqual([
+      true,
+      true,
+    ]);
+    fireEvent.change(picker("Use the outbox"), { target: { value: "obsolete" } });
+    expect(canApply("Use the outbox")).toBe(true);
+    fireEvent.change(picker("Use the outbox"), { target: { value: "valid" } });
+    expect(canApply("Use the outbox")).toBe(false);
+    fireEvent.change(picker("Old decision"), { target: { value: "valid" } });
+    expect(canApply("Old decision")).toBe(true);
+  });
+
   test("a refusal is written out in words, and the list is read again so the next try has the new hash", async () => {
     const { view, sent } = setup({
       answer: {
@@ -148,6 +195,7 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
     render(view);
     await listed();
     fireEvent.change(picker("Use the outbox"), { target: { value: "transitional" } });
+    press("Use the outbox");
     await waitFor(() =>
       expect(
         within(panel()).queryByText(
@@ -178,6 +226,9 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
     const select = within(region).getByRole("combobox", {
       name: "Status de Old decision",
     }) as HTMLSelectElement;
+    expect(
+      within(region).queryByRole("button", { name: "Alterar o status de Old decision" }),
+    ).not.toBeNull();
     expect([...select.options].map((o) => o.textContent)).toEqual([
       "Sem classificação",
       "Válido",
