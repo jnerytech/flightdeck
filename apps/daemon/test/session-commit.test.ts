@@ -128,7 +128,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       done,
       git(repo, "show", "--name-status", "--format=", "-M", "HEAD").split("\n").filter(Boolean),
       status(repo),
-    ]).toEqual(["ok", ["R100\ta.txt\td.txt", "D\tb.txt"], []]);
+    ]).toEqual(["ok", ["D\tb.txt", "R100\ta.txt\td.txt"], []]);
   });
 
   test.skipIf(!posix)(
