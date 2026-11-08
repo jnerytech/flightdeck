@@ -343,7 +343,7 @@ describe("shard-gate fails closed: a merged report missing a shard never reads a
 });
 
 describe("shard-gate: how a shard job runs (#296)", () => {
-  test("the bun job writes its lcov with the related config, which has no threshold", () => {
+  test("the bun job writes its lcov with the related config, which has no threshold, and its JUnit times (#1003)", () => {
     expect(shardRun("bun", ["a.test.ts", "b.test.ts"], "out", ["x.ts"])).toEqual({
       argv: [
         "bun",
@@ -351,6 +351,8 @@ describe("shard-gate: how a shard job runs (#296)", () => {
         "test",
         "--timeout=15000",
         "--coverage-dir=out",
+        "--reporter=junit",
+        "--reporter-outfile=out/junit.xml",
         "./a.test.ts",
         "./b.test.ts",
       ],

@@ -1,0 +1,10 @@
+{
+  "tests": {
+    "apps/desktop/test/toast-sozinho.test.tsx > toast-sozinho: a toast that nobody closes leaves by itself > an error goes after its lifetime, and leaves the notice list too": "#1009 deletes it (10.1 s on CI)",
+    "apps/desktop/test/home-leaders-ui.test.tsx > home-leaders-ui: where the tokens of the 7 days went > with no tokens in the 7 days it says so; with no host that has costs there is no panel": "#1009 deletes it (10.1 s on CI)",
+    "apps/desktop/test/home-leaders-ui.test.tsx > home-leaders-ui: where the tokens of the 7 days went > when no host gave its costs, the panel says it could not read them, not that there were none": "#1009 deletes it (5.0 s on CI)",
+    "apps/desktop/test/demo-path.test.ts > stopping the demo seed puts HOME, USERPROFILE and SHELL back as they were, set or not (#301)": "#1009 deletes it (9.4 s on CI)",
+    "apps/desktop/test/demo-path.test.ts > stopping the demo seed puts PATH back, with no fake CLI left on it": "#1009 deletes it (9.3 s on CI)"
+  },
+  "files": {}
+}
