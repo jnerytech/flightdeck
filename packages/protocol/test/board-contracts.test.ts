@@ -9,7 +9,9 @@ import {
   DEFAULT_CONTRACTS,
   ErrorCode,
   missingFor,
+  PINNED_DOCS_MAX,
   Project,
+  pinnedDocProblem,
   specExpectedPath,
   specPathProblem,
 } from "../src/index.ts";
@@ -226,6 +228,47 @@ describe("board-contracts: the spec artifact (issue #78, slice 3b)", () => {
     ]) {
       expect(typeof specPathProblem(bad)).toBe("string");
     }
+  });
+
+  test("a pinned document is a plain Markdown path inside one of the library's folders", () => {
+    for (const ok of [
+      "docs/adr/0001-use-sqlite.md",
+      "docs/decisions/2026-11-08-x.md",
+      "docs/specs/login/flow.md",
+      "docs/rfc/a b.md",
+      "docs/prd/ação.md",
+    ]) {
+      expect(pinnedDocProblem(ok)).toBeNull();
+    }
+    for (const bad of [
+      "README.md",
+      "docs/adr",
+      "docs/adr/x.txt",
+      "docs/other/x.md",
+      "docs/adrs/x.md",
+      "docs/ADR/x.md",
+      "../docs/adr/x.md",
+      "docs/adr/../../secret.md",
+      "/docs/adr/x.md",
+      "C:\\docs\\adr\\x.md",
+      "docs/adr/x\u0000.md",
+    ]) {
+      expect(typeof pinnedDocProblem(bad)).toBe("string");
+    }
+  });
+
+  test("card.update takes at most ten pinned documents, each a library path", () => {
+    const update = (pinnedDocs: unknown) =>
+      Command.safeParse({ type: "card.update", payload: { cardId: "c", pinnedDocs } }).success;
+    const many = (n: number) => Array.from({ length: n }, (_, i) => `docs/adr/${i}.md`);
+    expect([
+      update([]),
+      update(["docs/adr/0001-a.md"]),
+      update(many(PINNED_DOCS_MAX)),
+      update(many(PINNED_DOCS_MAX + 1)),
+      update(["README.md"]),
+      update("docs/adr/a.md"),
+    ]).toEqual([true, true, true, false, false, false]);
   });
 
   test("what was found counts only for the path the card names now", () => {

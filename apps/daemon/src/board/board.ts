@@ -627,6 +627,7 @@ export class Board {
       estimateHours: row.estimate_hours,
       validationNote: row.validation_note,
       specPath: row.spec_path,
+      pinnedDocs: [],
       specState:
         row.spec_checked_path === null
           ? null
@@ -928,6 +929,8 @@ export class Board {
       validationNote?: string | null;
       /** Issue #78: the spec file in the worktree; `null` goes back to the default. */
       specPath?: string | null;
+      /** Issue #76: the library documents pinned to the card; replaces the whole list. */
+      pinnedDocs?: string[];
       blockedBy?: string[];
       unblockWhen?: UnblockWhen;
       autoStart?: { workflow: string | null } | null;
