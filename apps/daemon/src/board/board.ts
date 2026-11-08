@@ -67,6 +67,8 @@ import {
   projectTemplate,
   renderSpec,
   specFirstLine,
+  type TemplateIgnored,
+  untrustedTemplate,
   wantsSpec,
   writeSpec,
 } from "./spec-template.ts";
@@ -1627,7 +1629,12 @@ export class Board {
         })
       : null;
     const template = root ? await projectTemplate(root) : null;
-    const result = await writeSpec(worktree, path, renderSpec(card, template ?? undefined));
+    const ignored: TemplateIgnored | null = root
+      ? (template?.ignored ?? null)
+      : (await untrustedTemplate(worktree))
+        ? "untrusted"
+        : null;
+    const result = await writeSpec(worktree, path, renderSpec(card, template?.body ?? undefined));
     if (result === "failed") {
       // The app says it in its language; the prompt sends the agent to no spec that is not there.
       const why = new FlightdeckError(
@@ -1639,6 +1646,16 @@ export class Board {
       this.setNotice(id, why.message, why);
       this.changed(id);
       return null;
+    }
+    if (ignored) {
+      // The built-in template was used; the project's own is named by its reason, never quoted.
+      const why = new FlightdeckError(
+        "invalid_state",
+        `the project's spec template was not used (${ignored})`,
+        `spec_template_${ignored}`,
+      );
+      this.setNotice(id, why.message, why);
+      this.changed(id);
     }
     return specFirstLine(path, await hasTddSkill(worktree));
   }

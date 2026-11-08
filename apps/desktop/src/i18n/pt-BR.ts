@@ -1533,6 +1533,14 @@ export const ptBR = {
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
     spec_template_failed:
       "Não deu para gravar o modelo de spec em {path} (um link ou arquivo está no caminho): a sessão começou sem ele.",
+    spec_template_untrusted:
+      "Este projeto tem um modelo de spec próprio, mas o projeto não é confiável, então foi usado o embutido. Confie no projeto para usar o dele.",
+    spec_template_unsafe:
+      "O modelo de spec do projeto não foi usado (é um link, tem um segundo nome ou não é um arquivo comum): foi usado o embutido.",
+    spec_template_too_big:
+      "O modelo de spec do projeto não foi usado (passa de 32 KiB): foi usado o embutido.",
+    spec_template_empty:
+      "O modelo de spec do projeto não foi usado (está vazio): foi usado o embutido.",
     contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
     remote_not_github: "O remoto {url} não é do GitHub.",
