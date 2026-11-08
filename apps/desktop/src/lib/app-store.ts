@@ -3553,12 +3553,11 @@ export class AppStore {
   private onTeams(hostId: string, frame: TeamsUpdatedFrame): void {
     this.rememberTeam(hostId, frame.team);
     for (const listener of this.teamListeners) listener(hostId, frame);
-    if (frame.reason) {
+    // #1220: the coordinator reported the goal done; the host sends it once per final report.
+    const body = frame.event === "report_done" ? this.i18n.t("teamsUi.reportDone") : frame.reason;
+    if (body) {
       this.notifyUser(
-        {
-          title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
-          body: frame.reason,
-        },
+        { title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }), body },
         { name: "teams", host: hostId, team: frame.team.id },
       );
     }
