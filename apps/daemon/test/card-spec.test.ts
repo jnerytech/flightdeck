@@ -79,6 +79,12 @@ describe("card-spec: what the daemon learns of a spec file", () => {
     expect((await readSpec(root, "d.md")).heading).toBeNull();
     writeFileSync(join(root, "e.md"), "# Windows\r\nbody\r\n");
     expect((await readSpec(root, "e.md")).heading).toBe("Windows");
+    writeFileSync(join(root, "f.md"), "    # four spaces\n#\t \t Tabbed ##\n");
+    expect((await readSpec(root, "f.md")).heading).toBe("Tabbed");
+    writeFileSync(join(root, "g.md"), "   ###### six\n");
+    expect((await readSpec(root, "g.md")).heading).toBe("six");
+    writeFileSync(join(root, "h.md"), "# \n#\t\n## Second\n");
+    expect((await readSpec(root, "h.md")).heading).toBe("Second");
   });
 
   test("only the start of a big file is looked at", async () => {
