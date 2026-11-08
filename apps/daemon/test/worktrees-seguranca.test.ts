@@ -194,6 +194,19 @@ describe("worktrees-seguranca: the branch goes only if it is still what was chec
     expect(branches(where.repo)).not.toContain("fd/clean");
   });
 
+  test("a worktree on a detached HEAD has no branch of ours: it is kept whole", async () => {
+    const where = gitRepo();
+    const s = setup({}, where);
+    const path = join(where.repo, ".flightdeck", "worktrees", "loose");
+    git(where.repo, "worktree", "add", "-q", "--detach", path, "main");
+    const listed = (await s.worktrees.list()).worktrees.find((w) => w.path === path);
+    expect(listed?.branch).toBeNull();
+    expect(listed?.blockers).toContain("other_branch");
+    const result = await s.worktrees.remove([{ projectId: "p1", path }]);
+    expect(result.removed).toEqual([]);
+    expect(existsSync(path)).toBe(true);
+  });
+
   test("only Flightdeck's own branches are deleted: a worktree on another branch is kept whole", async () => {
     const where = gitRepo();
     const s = setup({}, where);

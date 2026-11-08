@@ -1,13 +1,20 @@
 import { CheckCheck, MousePointerClick } from "lucide-react";
-import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { GateText } from "@/components/approval/gate-text";
-import { ClientChip } from "@/components/clients/client-chip";
 import { ActionButton } from "@/components/feedback/action-button";
 import { SplitView } from "@/components/layout/split-view";
 import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
-import { StatusDot } from "@/components/status/status-dot";
+import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "@/components/needs-you/entry-row";
 import { Button } from "@/components/ui/button";
 import { formatAgo } from "../i18n/format.ts";
 import type { Key, T } from "../i18n/index.ts";
@@ -21,33 +28,14 @@ import {
 } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { sessionProjectKeys } from "../lib/client-scope.ts";
-import type { ClientColor } from "../lib/clients.ts";
 import { type Finish, sinceLastLook } from "../lib/finished.ts";
 import { hubRows } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
-import { pendingText } from "../lib/pending-text.ts";
 import type { Route } from "../lib/router.ts";
 import { type WatchAlert, watchAlerts } from "../lib/watch-alerts.ts";
 
-/** A line of the list: a budget alert (opens Settings), a paused loop or a request (shows its card). */
-type Entry =
-  | { kind: "alert"; key: string; label: string; clientId?: string }
-  | { kind: "loop"; key: string; alert: LoopAlert }
-  | { kind: "watch"; key: string; alert: WatchAlert }
-  | { kind: "request"; key: string; item: PendingItem }
-  | { kind: "finished"; key: string; finish: Finish };
-
-// items-stretch: a button's own style is align-items: flex-start, which leaves a line no width
-// to cut at (issue #175).
-const ROW_PAD = "px-2 py-1.5";
 const NOTE = `${ROW_PAD} text-muted-foreground text-sm`;
 const HEADING = `${ROW_PAD} font-medium text-muted-foreground text-xs`;
-const ROW = `flex w-full min-w-0 flex-col items-stretch gap-0.5 rounded-md ${ROW_PAD} text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[active=true]:bg-accent aria-pressed:bg-accent`;
-
-/** The first line of a row: a dot, then the text. A span, since a row is a button. */
-function RowHead(props: Readonly<{ children: ReactNode }>) {
-  return <span className="flex items-center gap-2">{props.children}</span>;
-}
 
 /** The right-hand side for something that is not a request: a column that scrolls by itself. */
 function DetailColumn(props: Readonly<{ children: ReactNode }>) {
@@ -85,137 +73,6 @@ function entriesOf(state: AppState, t: T): Entry[] {
       finish,
     })),
   ];
-}
-
-/** A row of the list: a button in a list item, whatever the kind of line it holds. */
-function RowButton(
-  props: Readonly<{
-    active: boolean;
-    pressed?: boolean;
-    label?: string;
-    onActivate(): void;
-    children: ReactNode;
-  }>,
-) {
-  return (
-    <li>
-      <button
-        type="button"
-        {...(props.label ? { "aria-label": props.label } : {})}
-        {...(props.pressed === undefined ? {} : { "aria-pressed": props.pressed })}
-        data-active={props.active}
-        className={ROW}
-        onClick={props.onActivate}
-      >
-        {props.children}
-      </button>
-    </li>
-  );
-}
-
-/** The first line of a row of a request, a loop or a watch: the dot, then its text. */
-function DotLine(props: Readonly<{ t: T; text: string; children?: ReactNode }>) {
-  return (
-    <RowHead>
-      <StatusDot tone="needs-you" label={props.t("hub.stateDots.needs_you")} />
-      <span className="min-w-0 flex-1 truncate text-sm">{props.text}</span>
-      {props.children}
-    </RowHead>
-  );
-}
-
-/** A line of the list, by the kind of entry it is. */
-function EntryRow(
-  props: Readonly<{
-    entry: Entry;
-    active: boolean;
-    selected: boolean;
-    store: AppStore;
-    chipOf(sessionId: string): { name: string; color: ClientColor } | null;
-    onActivate(): void;
-  }>,
-) {
-  const { entry, active, selected, store, onActivate } = props;
-  const { t } = store.i18n;
-  if (entry.kind === "alert") {
-    return (
-      <RowButton active={active} onActivate={onActivate}>
-        <span className="truncate text-sm">{entry.label}</span>
-      </RowButton>
-    );
-  }
-  if (entry.kind === "watch") {
-    const label = t("watchUi.entry", {
-      card: entry.alert.title,
-      reason: entry.alert.watch.reason ?? "",
-    });
-    return (
-      <RowButton active={active} pressed={selected} label={label} onActivate={onActivate}>
-        <DotLine t={t} text={label} />
-      </RowButton>
-    );
-  }
-  if (entry.kind === "loop") {
-    const text = t("needsYou.loopRow", { from: entry.alert.from, to: entry.alert.to });
-    return (
-      <RowButton active={active} pressed={selected} onActivate={onActivate}>
-        <DotLine t={t} text={text} />
-      </RowButton>
-    );
-  }
-  if (entry.kind === "finished") {
-    const { finish } = entry;
-    const outcome = t(`needsYou.finishedOutcome.${finish.outcome}` as Key);
-    const who = `${hostNameOf(store, finish.hostId)} · ${finish.name}`;
-    return (
-      <RowButton
-        active={active}
-        pressed={selected}
-        label={`${who}: ${outcome}`}
-        onActivate={onActivate}
-      >
-        <RowHead>
-          <StatusDot tone={FINISH_TONE[finish.outcome]} label={outcome} />
-          <span className="min-w-0 flex-1 truncate text-sm">{who}</span>
-          <span className="shrink-0 text-muted-foreground text-xs">{outcome}</span>
-          <time
-            dateTime={finish.at}
-            className="shrink-0 text-muted-foreground text-xs tabular-nums"
-          >
-            {formatAgo(store.now() - Date.parse(finish.at), t)}
-          </time>
-        </RowHead>
-      </RowButton>
-    );
-  }
-  const { item } = entry;
-  const chip = props.chipOf(item.sessionId);
-  // A workflow gate is not a tool: its line says which step waits (issue #175).
-  const what = pendingText(item, t);
-  const who = `${item.hostName} · ${item.sessionName}`;
-  return (
-    <RowButton active={active} pressed={selected} label={`${who}: ${what}`} onActivate={onActivate}>
-      <DotLine t={t} text={who}>
-        {chip && <ClientChip name={chip.name} color={chip.color} />}
-        <time
-          dateTime={item.createdAt}
-          className="shrink-0 text-muted-foreground text-xs tabular-nums"
-        >
-          {formatAgo(store.now() - Date.parse(item.createdAt), t)}
-        </time>
-      </DotLine>
-      <span className="truncate pl-5 text-muted-foreground text-xs" title={what}>
-        {what}
-      </span>
-    </RowButton>
-  );
-}
-
-const FINISH_TONE = { done: "idle", failed: "error", ended: "ended" } as const;
-
-/** The name of a host, as the list shows it; its id when it is gone. */
-function hostNameOf(store: AppStore, hostId: string): string {
-  return store.getState().hosts.find((h) => h.id === hostId)?.name ?? hostId;
 }
 
 /** A session that finished: how, when, how many files it changed, and the way to its Changes. */
@@ -471,11 +328,21 @@ export function NeedsYou(
     [store],
   );
   const chosen = entries.find((e) => e.key === selected);
+  // One handler for every row, reading the list as it is now: a row's memo holds across renders.
+  const latest = useRef({ entries, open: (_entry: Entry) => {} });
+  const activate = useCallback((i: number) => {
+    const entry = latest.current.entries[i];
+    if (!entry) return;
+    setCursor(i);
+    latest.current.open(entry);
+  }, []);
+  const minute = Math.floor(store.now() / 60_000);
   const open = (entry: Entry) => {
     if (entry.kind === "alert")
       go(entry.clientId ? { name: "clients" } : { name: "settings", section: "budgets" });
     else setSelected(entry.key);
   };
+  latest.current = { entries, open };
 
   // J and K move the cursor, Enter opens the row under it.
   useEffect(() => {
@@ -549,14 +416,15 @@ export function NeedsYou(
             )}
             <EntryRow
               entry={entry}
+              index={i}
               active={cursor === i}
               selected={selected === entry.key}
               store={store}
-              chipOf={chipOf}
-              onActivate={() => {
-                setCursor(i);
-                open(entry);
-              }}
+              chip={entry.kind === "request" ? chipOf(entry.item.sessionId) : null}
+              minute={minute}
+              lang={t.lang}
+              hostName={entry.kind === "finished" ? hostNameOf(store, entry.finish.hostId) : ""}
+              onActivate={activate}
             />
           </Fragment>
         ))}
