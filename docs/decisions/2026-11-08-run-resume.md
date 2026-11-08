@@ -41,8 +41,9 @@ engine can already continue a run without repeating what finished: after a daemo
 - **The command.** `run.resume { runId }` without `confirm` only checks. It answers
   `{ from, ok, reason?, params? }`, so the app offers "Run again from <step>" only when `ok`, and
   otherwise shows why. With `confirm: true` it checks again, records the resume, puts the card's
-  run back to running (it waits for a slot like any run) and executes it. It is near-only, like
-  starting a card, since it runs the project's commands again.
+  run back to running (it waits for a slot like any run) and executes it. The confirm is
+  near-only (`requireVaultTransport`), stricter than starting a card, since it runs the
+  project's commands again. The check answers anywhere.
 
 ## Discarded alternatives
 

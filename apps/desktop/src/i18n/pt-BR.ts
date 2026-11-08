@@ -1838,6 +1838,15 @@ export const ptBR = {
     workflow_invalid: "O workflow {name} tem erros. Corrija antes de usar.",
     workflow_not_trusted:
       "O workflow {name} não é confiado. Confie nele na tela de Workflows antes.",
+    run_resume_not_failed: "Só uma execução que falhou pode continuar de onde parou.",
+    run_resume_card:
+      "O card desta execução sumiu, está sem worktree ou tem outra execução em andamento, então ela não pode continuar.",
+    run_resume_no_head:
+      "Esta execução terminou antes de o Flightdeck guardar onde o código estava, então ela só roda de novo do começo.",
+    run_resume_workflow_changed:
+      "O workflow {name} mudou desde esta execução, então ela só roda de novo do começo.",
+    run_resume_branch_moved:
+      "O branch do card mudou desde que esta execução parou, então ela só roda de novo do começo.",
     workflow_input_required: "O workflow precisa do input {input}.",
     workflow_input_unknown: "O workflow não tem o input {input}.",
     workflow_gate_closed: "O gate {step} (tentativa {attempt}) não está aberto.",

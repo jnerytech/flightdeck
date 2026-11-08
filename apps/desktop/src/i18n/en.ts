@@ -1843,6 +1843,15 @@ export const en: Dictionary = {
     workflow_invalid: "The workflow {name} has errors. Fix them before using it.",
     workflow_not_trusted:
       "The workflow {name} is not trusted. Trust it on the Workflows screen first.",
+    run_resume_not_failed: "Only a run that failed can go on from where it stopped.",
+    run_resume_card:
+      "The run's card is gone, has no worktree or has another run going, so this run cannot go on.",
+    run_resume_no_head:
+      "This run ended before Flightdeck kept where the code was, so it can only run again from the start.",
+    run_resume_workflow_changed:
+      "The workflow {name} changed since this run, so it can only run again from the start.",
+    run_resume_branch_moved:
+      "The card's branch changed since this run stopped, so it can only run again from the start.",
     workflow_input_required: "The workflow needs the input {input}.",
     workflow_input_unknown: "The workflow has no input {input}.",
     workflow_gate_closed: "The gate {step} (attempt {attempt}) is not open.",

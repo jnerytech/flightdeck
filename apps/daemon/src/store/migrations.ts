@@ -955,4 +955,17 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE teams ADD COLUMN report_at TEXT;
   ALTER TABLE teams ADD COLUMN report_done INTEGER NOT NULL DEFAULT 0;
   `,
+  // Issue #1266: the HEAD a failed run's worktree had, and each resume of a run.
+  `
+  ALTER TABLE workflow_runs ADD COLUMN head_at_end TEXT;
+  CREATE TABLE run_resumes (
+    run_id    TEXT NOT NULL,
+    n         INTEGER NOT NULL,
+    from_step TEXT NOT NULL,
+    reason    TEXT,
+    head      TEXT,
+    at        TEXT NOT NULL,
+    PRIMARY KEY (run_id, n)
+  );
+  `,
 ];

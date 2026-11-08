@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type {
   PermissionMode,
+  RunResumeCheck,
   RunStatus,
   SessionEvent,
   SessionStatus,
@@ -12,6 +13,7 @@ import type {
 } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { BoardEvent } from "../board/columns.ts";
+import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -65,6 +67,14 @@ export interface WorkflowEngineOptions {
   checks: CheckRunner;
   /** Milliseconds now: the budget's minutes. */
   clock: () => number;
+  /** #1266: the commit a worktree is at; null when git cannot say. The real git when absent. */
+  headOf?: (worktree: string) => Promise<string | null>;
+}
+
+/** The commit a worktree's HEAD is at, from git; null when it cannot say. */
+async function gitHead(worktree: string): Promise<string | null> {
+  const found = await git(worktree, "rev-parse", "--verify", "--quiet", "HEAD");
+  return found.code === 0 ? found.stdout.trim() : null;
 }
 
 interface RunRow {
@@ -82,6 +92,8 @@ interface RunRow {
   inputs: string;
   started_at: string;
   ended_at: string | null;
+  /** #1266: the worktree's HEAD when the run failed; null before the column, or with no step run. */
+  head_at_end: string | null;
 }
 
 interface StepRow {
@@ -158,6 +170,7 @@ export class WorkflowEngine {
   private readonly host: EngineHost;
   private readonly checks: CheckRunner;
   private readonly clock: () => number;
+  private readonly headOf: (worktree: string) => Promise<string | null>;
   /** Open gates of this process, by `run/step/attempt`: wakes the run when answered. */
   private readonly gates = new Map<string, () => void>();
   private readonly watchers = new Set<(run: WorkflowRun) => void>();
@@ -171,6 +184,7 @@ export class WorkflowEngine {
     this.host = opts.host;
     this.checks = opts.checks;
     this.clock = opts.clock;
+    this.headOf = opts.headOf ?? gitHead;
   }
 
   async list(project: Project): Promise<WorkflowInfo[]> {
@@ -345,6 +359,111 @@ export class WorkflowEngine {
     }
   }
 
+  // -- resume (#1266) ---------------------------------------------------------
+
+  private async recordHead(runId: string, worktree: string): Promise<void> {
+    const head = await this.headOf(worktree).catch(() => null);
+    this.db.query("UPDATE workflow_runs SET head_at_end = ? WHERE id = ?").run(head, runId);
+  }
+
+  /**
+   * Whether a failed run can resume, and from which step: the first one not completed. Refused
+   * when it did not fail, its card cannot take it, it has no recorded HEAD, the workflow on the
+   * base branch changed or is no longer trusted, or the card's branch moved since it ended.
+   */
+  async resumeCheck(runId: string, project: Project): Promise<RunResumeCheck> {
+    const run = this.row(runId);
+    const workflow = parseWorkflow(run.definition).workflow as Workflow;
+    const from =
+      workflow.steps.find((step) => this.stepRow(run.id, step.id, 1)?.status !== "completed")?.id ??
+      "";
+    const no = (reason: string, params?: Record<string, string>): RunResumeCheck => ({
+      from,
+      ok: false,
+      reason,
+      ...(params ? { params } : {}),
+    });
+    if (run.status !== "failed") return no("run_resume_not_failed");
+    let card: Card;
+    try {
+      card = this.host.card(run.card_id);
+    } catch {
+      return no("run_resume_card");
+    }
+    if (card.discarded || !card.worktreePath || card.workflowRunId !== run.id) {
+      return no("run_resume_card");
+    }
+    if (!run.head_at_end) return no("run_resume_no_head");
+    const source = await this.source(project, run.workflow_name).catch(() => null);
+    if (source?.hash !== run.workflow_hash) {
+      return no("run_resume_workflow_changed", { name: run.workflow_name });
+    }
+    if (!this.trusted(project.id, run.workflow_name, source.hash)) {
+      return no("workflow_not_trusted", { name: run.workflow_name });
+    }
+    if ((await this.headOf(card.worktreePath).catch(() => null)) !== run.head_at_end) {
+      return no("run_resume_branch_moved");
+    }
+    return { from, ok: true };
+  }
+
+  /**
+   * Resumes a failed run in place: the check again, the resume recorded with what failed, the
+   * steps not completed cleared (the failed one runs from scratch), then the run waits for a slot
+   * and executes; the completed steps give back what they stored.
+   */
+  async resume(runId: string, project: Project): Promise<RunResumeCheck> {
+    const check = await this.resumeCheck(runId, project);
+    if (!check.ok) {
+      throw new FlightdeckError(
+        "invalid_state",
+        `run ${runId} cannot resume: ${check.reason}`,
+        check.reason,
+        check.params,
+      );
+    }
+    const run = this.row(runId);
+    const worktree = this.host.card(run.card_id).worktreePath as string;
+    const { n } = this.db
+      .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM run_resumes WHERE run_id = ?")
+      .get(run.id) ?? { n: 0 };
+    this.db
+      .query(
+        "INSERT INTO run_resumes (run_id, n, from_step, reason, head, at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(run.id, n + 1, check.from, run.status_reason, run.head_at_end, now());
+    // The failed step runs from scratch, its parallel items (`<id>.<n>`) and attempts with it.
+    const stale = this.db
+      .query<{ step_id: string; attempt: number; status: string }, [string]>(
+        "SELECT step_id, attempt, status FROM step_runs WHERE run_id = ?",
+      )
+      .all(run.id)
+      .filter(
+        (row) =>
+          row.status !== "completed" ||
+          row.step_id === check.from ||
+          row.step_id.startsWith(`${check.from}.`),
+      );
+    for (const row of stale) {
+      this.db
+        .query("DELETE FROM step_runs WHERE run_id = ? AND step_id = ? AND attempt = ?")
+        .run(run.id, row.step_id, row.attempt);
+    }
+    this.db
+      .query(
+        `UPDATE workflow_runs SET ended_at = NULL, head_at_end = NULL, status_reason_key = NULL,
+         status_reason_params = NULL WHERE id = ?`,
+      )
+      .run(run.id);
+    this.setStatus(run.id, "queued", null);
+    void (async () => {
+      await this.host.acquire(run.card_id);
+      this.host.place(run.card_id, { type: "workflow", state: "running" });
+      this.begin(run.id, worktree);
+    })();
+    return check;
+  }
+
   /** "Parar": interrupts the turns going on; the interrupted step fails the run. */
   async interrupt(runId: string): Promise<void> {
     const sessions = this.db
@@ -477,6 +596,8 @@ export class WorkflowEngine {
       this.finish(run, "completed", null);
     } catch (error) {
       if (error instanceof Abandoned) return;
+      // #1266: where the code was when it failed; a resume needs the branch still there.
+      if (!(error instanceof Stop)) await this.recordHead(run.id, worktree);
       if (error instanceof Stop) this.finish(run, error.status, error.message);
       else if (error instanceof Refused) {
         this.finish(run, "failed", error.message);

@@ -2581,6 +2581,15 @@ export const CardStartPayload = z.object({
   /** Opens the card's session in that persona, over the column's default (phase 20). */
   persona: PersonaRef.optional(),
 });
+/** #1266: whether a failed run can resume, from which step, and the reason when it cannot. */
+export const RunResumeCheck = z.object({
+  from: z.string(),
+  ok: z.boolean(),
+  reason: z.string().optional(),
+  params: z.record(z.string(), z.string()).optional(),
+});
+export type RunResumeCheck = z.infer<typeof RunResumeCheck>;
+
 export const GateRespondPayload = z.object({
   runId: z.string(),
   stepId: z.string().min(1),
@@ -4170,6 +4179,14 @@ export const Command = z.discriminatedUnion("type", [
   cmd("runenv.watch", z.object({}).strict()),
   cmd("run.get", z.object({ runId: z.string() })),
   cmd("run.watch", z.object({}).strict()),
+  /**
+   * #1266: whether a failed run can resume from its failed step (`from`), and why not; with
+   * `confirm`, resumes it (near only: it runs the project's commands again).
+   */
+  cmd(
+    "run.resume",
+    z.object({ runId: z.string().min(1), confirm: z.boolean().optional() }).strict(),
+  ),
   /** Only the user answers gates: there is no MCP tool for it. */
   cmd("gate.respond", GateRespondPayload),
   // Phase 7 (track B).
@@ -5660,6 +5677,7 @@ export interface CommandResults {
   "run.get": WorkflowRun;
   "run.watch": undefined;
   "gate.respond": WorkflowRun;
+  "run.resume": RunResumeCheck;
   "quota.get": QuotaState;
   "quota.watch": undefined;
   "quota.setPauseAt": QuotaState;
