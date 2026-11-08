@@ -127,6 +127,9 @@ export class HostTabs {
   private readonly sets: Map<string, Workspace>;
   private readonly unwatch = new Map<string, () => void>();
   private readonly listeners = new Set<() => void>();
+  private readonly switchListeners = new Set<(from: string | null, to: string) => void>();
+  /** Where the last switch by a navigation came from, for Back (#932); a pick forgets it. */
+  private cameFrom: { hostId: string | null; onShared: boolean } | null = null;
 
   private constructor(
     private readonly newId: (() => string) | undefined,
@@ -143,18 +146,24 @@ export class HostTabs {
     });
     for (const [id, set] of this.sets) this.watch(id, set);
     const active = () => (this.onShared ? this.shared.router : (this.workspace?.router ?? null));
+    const crossed = () => this.cameFrom !== null;
     this.router = {
       get current() {
         return active()?.current ?? START;
       },
+      // Past the active tab's own history, Back returns across a switch (#932).
       get canBack() {
-        return active()?.canBack ?? false;
+        return (active()?.canBack ?? false) || crossed();
       },
       get canForward() {
         return active()?.canForward ?? false;
       },
       push: (route) => this.go(route),
-      back: () => active()?.back(),
+      back: () => {
+        const router = active();
+        if (router?.canBack) router.back();
+        else this.returnFrom();
+      },
       forward: () => active()?.forward(),
       subscribe: this.subscribe,
     };
@@ -201,8 +210,29 @@ export class HostTabs {
     return () => this.listeners.delete(listener);
   };
 
+  /**
+   * A navigation took the window to another host's tabs (#932): `from` is the host it left (null
+   * from no host). The window says so, and Back returns there.
+   */
+  onSwitch(listener: (from: string | null, to: string) => void): () => void {
+    this.switchListeners.add(listener);
+    return () => this.switchListeners.delete(listener);
+  }
+
+  /** Back past a switch: the host and the kind of tab the window was on (#932). */
+  private returnFrom(): void {
+    const left = this.cameFrom;
+    if (!left) return;
+    this.cameFrom = null;
+    this.hostId = left.hostId;
+    this.onShared = left.onShared;
+    this.emit();
+  }
+
   /** The switcher picked a host: its set, at its last active tab (its Overview when it is new). */
   switchHost(id: string): void {
+    // A pick in the switcher is where the person wants to be: no way back across it.
+    this.cameFrom = null;
     this.ensure(id, overview(id));
     this.hostId = id;
     this.onShared = false;
@@ -211,6 +241,7 @@ export class HostTabs {
 
   /** A host was removed: its set goes, and the switcher moves to another host, or to none. */
   removeHost(id: string): void {
+    if (this.cameFrom?.hostId === id) this.cameFrom = null;
     this.unwatch.get(id)?.();
     this.unwatch.delete(id);
     this.sets.delete(id);
@@ -362,7 +393,12 @@ export class HostTabs {
       this.emit();
     } else if (host === this.hostId && !this.onShared && this.workspace) {
       this.workspace.router.push(route);
-    } else this.into(host, route, (set) => set.tabs.show(route), true);
+    } else {
+      const from = this.hostId;
+      if (host !== from) this.cameFrom = { hostId: from, onShared: this.onShared };
+      this.into(host, route, (set) => set.tabs.show(route), true);
+      if (host !== from) for (const listener of this.switchListeners) listener(from, host);
+    }
   }
 
   /** Shows a shared screen in the shared set, pinned, and makes it the active tab. */

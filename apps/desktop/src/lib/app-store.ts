@@ -981,6 +981,19 @@ export class AppStore {
       options.startRoute,
     );
     this.router = this.hostTabs.router;
+    // A navigation took the window to another host's tabs (#932): say so, with the way back.
+    this.hostTabs.onSwitch((left, to) => {
+      // With no tabs' host yet (after a reload), the switcher named the window's host: the same
+      // host is no switch.
+      const from = left ?? this.uiHostId();
+      if (from === to) return;
+      const { t } = this.i18n;
+      const name = (id: string) => this.state.hosts.find((host) => host.id === id)?.name ?? id;
+      const back = from
+        ? { label: t("toast.backTo", { host: name(from) }), run: () => this.router.back() }
+        : undefined;
+      this.success(t("toast.switchedHost", { host: name(to) }), back);
+    });
     // A set kept for a host that is not configured any more (removed before, or gone from the list).
     const configured = new Set(loadHosts(platform.storage).map((host) => host.id));
     for (const id of Object.keys(this.hostTabs.snapshot().hosts)) {
