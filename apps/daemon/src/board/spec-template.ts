@@ -138,7 +138,7 @@ export async function untrustedTemplate(
 }
 
 /** Whether the worktree has the TDD skill the first prompt can name. */
-export async function hasTddSkill(worktree: string): Promise<boolean> {
+export function hasTddSkill(worktree: string): Promise<boolean> {
   return lstat(join(worktree, TDD_SKILL)).then(
     (info) => info.isFile(),
     () => false,

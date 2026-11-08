@@ -114,7 +114,7 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
     );
   });
 
-  test("Given a host slow to add a folder, When Add folder is pressed in simple Settings, Then the box clears once the host answers", async () => {
+  test("Given a host slow to add a folder, When Add folder is pressed in simple Settings, Then the box clears once the host answers", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
     const { store, d } = await open({ mode: "simple", locked: false });
     const real = store.allowRoot.bind(store);
     store.allowRoot = async (...args: Parameters<typeof real>) => {

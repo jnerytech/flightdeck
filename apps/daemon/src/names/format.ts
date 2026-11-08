@@ -29,7 +29,7 @@ export function slug(text: string): string {
 
 /** The name of the project: the end of its key (`github.com/acme/app` is `app`) or its folder. */
 export function projectName(keyOrPath: string): string {
-  const trimmed = trimEndOf(keyOrPath.trim(), "\\/");
+  const trimmed = trimEndOf(keyOrPath.trim(), String.raw`\/`);
   const cut = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
   return trimmed.slice(cut + 1) || NO_PROJECT;
 }

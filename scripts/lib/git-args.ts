@@ -11,8 +11,12 @@ export interface GitArgFinding {
 /** A call of the daemon's git helpers: `git(`, `gitLimited(`, `this.git(`, `deps.git(`. */
 const CALL = /(?<![\w$])(?:[\w$]+\.)*(?:git|gitLimited)\(/g;
 /** A name that carries a branch or a revision in, from a project's settings or a protocol field. */
-const REF_TOKEN =
-  /^(?:(?:base|branch|source|ref|against|upstream)\w*|rev(?:ision)?(?:[A-Z_]\w*)?|(?:start|target)[A-Z]\w*|\w*[a-z](?:Base|Branch|Source|Rev|Ref|Against|Upstream)\w*)$/;
+const REF_TOKENS = [
+  /^(?:base|branch|source|ref|against|upstream)\w*$/,
+  /^rev(?:ision)?(?:[A-Z_]\w*)?$/,
+  /^(?:start|target)[A-Z]\w*$/,
+  /^\w*[a-z](?:Base|Branch|Source|Rev|Ref|Against|Upstream)\w*$/,
+];
 /** Other calls that start a program from an array: git is the one that follows `"git"` in it. */
 const SPAWN = /(?<![\w$])(?:[\w$]+\.)*(?:spawn|spawnSync|runCommand|exec)\(/g;
 const REVIEWED = /\/\/ git-arg: \S/;
@@ -167,7 +171,7 @@ function exposed(argument: string): boolean {
     return exposed(spread);
   }
   return (withoutGuards(text).match(/[A-Za-z_$][\w$]*/g) ?? []).some((token) =>
-    REF_TOKEN.test(token),
+    REF_TOKENS.some((re) => re.test(token)),
   );
 }
 

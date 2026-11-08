@@ -219,7 +219,8 @@ export class HarnessTemplates {
     }
     try {
       for (const [name, text] of files) {
-        if (!(await createInside(at, name, text))) throw new Error(`${name} could not be written`);
+        const creating = createInside(at, name, text);
+        if (!(await creating)) throw new Error(`${name} could not be written`); // NOSONAR: in order, so a failure names the first file that could not be written
       }
       const meta = `${JSON.stringify({ id, title }, null, 2)}\n`;
       if (!(await createInside(at, META, meta))) throw new Error(`${META} could not be written`);
@@ -244,7 +245,8 @@ export class HarnessTemplates {
     }
     const out: TemplateMarkdown = { files: [], withheld: [] };
     for (const [name] of await parts(at, "")) {
-      const text = await readInside(at, name, MAX_FILE);
+      const reading = readInside(at, name, MAX_FILE);
+      const text = await reading; // NOSONAR: the loop stops at the cap, so files past it are never read
       if (text === null) continue;
       const part = partOf(name);
       const path = name === "CLAUDE.md" ? name : `.claude/${name}`;
@@ -268,13 +270,16 @@ export class HarnessTemplates {
     const out: HarnessTemplateInfo[] = [];
     for (const id of ids.sort(byCodeUnit)) {
       const at = join(this.dir, id);
-      const meta = await readInside(at, META, MAX_FILE);
+      const reading = readInside(at, META, MAX_FILE);
+      const meta = await reading; // NOSONAR: one template at a time, so a large store is not opened all at once
       if (meta === null) continue;
       // A broken meta costs its title, never the whole list.
       const title = titleOf(meta);
       const files: Array<[string, string]> = [];
-      for (const [name] of await parts(at, "")) {
-        const text = await readInside(at, name, MAX_FILE);
+      const placed = await parts(at, ""); // NOSONAR: one template at a time, as above
+      for (const [name] of placed) {
+        const reading = readInside(at, name, MAX_FILE);
+        const text = await reading; // NOSONAR: a hand-placed template can hold many files, so they are opened one at a time
         if (text !== null) files.push([name, text]);
       }
       out.push(info(id, typeof title === "string" ? title : id, files));
