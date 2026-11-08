@@ -369,7 +369,7 @@ async function run(work: string): Promise<void> {
       });
       if (result.data.resultado === "recusada") paused = result.data.motivo ?? "";
     }
-    if (!paused.includes("laço")) throw new Error(`o laço devia ser recusado: ${paused}`);
+    if (!paused.includes("loop")) throw new Error(`o laço devia ser recusado: ${paused}`);
     const rules = await a.client.call<{ paused: string[] }>("messaging.rules.get", {});
     if (rules.paused.length !== 1)
       throw new Error(`o par devia estar pausado: ${JSON.stringify(rules)}`);
