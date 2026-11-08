@@ -6,6 +6,7 @@ import {
   missingReport,
   parseJunit,
   readAllowlist,
+  reportPath,
   type SlowAllowlist,
   slowReport,
   slowVerdict,
@@ -109,6 +110,24 @@ describe("slow-tests (#1003)", () => {
       },
     );
     expect(fine).toEqual({ code: 0, lines: ["slow-tests: 1 test(s) in 1 file(s), none too slow"] });
+  });
+
+  test("#1022 Sonar: the report is read only from under the repository or a temp folder", () => {
+    const roots = ["/r/flightdeck", "/tmp", "/runner/_temp"];
+    expect(reportPath("/runner/_temp/junit.xml", roots)).toBe("/runner/_temp/junit.xml");
+    expect(reportPath("/tmp/x/../junit.xml", roots)).toBe("/tmp/junit.xml");
+    expect(reportPath("/r/flightdeck/coverage/junit.xml", roots)).toBe(
+      "/r/flightdeck/coverage/junit.xml",
+    );
+    for (const outside of [
+      "/etc/passwd",
+      "/tmp/../etc/passwd",
+      "/r/flightdeck-other/j.xml",
+      "",
+      undefined,
+    ]) {
+      expect(`${outside}: ${reportPath(outside, roots)}`).toBe(`${outside}: null`);
+    }
   });
 
   test("#1022 review: a broken allowlist is named, not a stack trace", () => {

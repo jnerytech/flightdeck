@@ -193,3 +193,8 @@ export function readAllowlist(text: string): SlowAllowlist | string {
   }
   return { tests, files } as SlowAllowlist;
 }
+
+/** #1022 Sonar: the report's resolved path when it is under one of `roots`, else null. */
+export function reportPath(_arg: string | undefined, _roots: readonly string[]): string | null {
+  return null;
+}
