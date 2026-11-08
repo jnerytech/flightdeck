@@ -44,7 +44,7 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
     if (!result.ok) {
       setRefused({
         text: refusalText(result.code, result.message, t, result),
-        url: result.params?.url ?? (url || null),
+        url: result.params?.url === undefined ? url || null : String(result.params.url),
       });
       return;
     }
