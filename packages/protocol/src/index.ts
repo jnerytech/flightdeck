@@ -5017,7 +5017,12 @@ export const HarnessPreview = z.object({
    * runs as it loads (`` !`cmd` ``). Only with a template.
    */
   withheld: z
-    .array(z.object({ path: z.string(), reason: z.enum(["frontmatter", "secret", "import", "command"]) }))
+    .array(
+      z.object({
+        path: z.string(),
+        reason: z.enum(["frontmatter", "secret", "import", "command"]),
+      }),
+    )
     .optional(),
 });
 export type HarnessPreview = z.infer<typeof HarnessPreview>;
