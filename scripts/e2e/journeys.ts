@@ -13,6 +13,7 @@ import type { DemoIds } from "../demo-seed.ts";
 import { DEMO_FAKE_KEY } from "../lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
+  CONTRACT_CARD,
   DANGER_SESSION,
   DEMO_CLOSED_TEAM,
   OVERFLOW_VIEWPORTS,
@@ -756,6 +757,134 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       throw new Error("harness-setup: Apply is on with nothing to add");
     await c.page.keyboard.press("Escape");
     await dialog.waitFor({ state: "detached", timeout: WAIT });
+  },
+
+  // Project knowledge (issue #76): the library lists its documents with the status each one says
+  // it has, a filter narrows the list, the status select edits the document and the counts follow,
+  // and the feed switch turns the index for sessions off and on. The demo keeps its state, so the
+  // journey puts the status and the switch back where it found them.
+  "knowledge-panel": async (c) => {
+    await open(c, { name: "project", host: ALFA, projectId: c.ids.knowledgeProject });
+    const panel = c.page.getByRole("region", {
+      name: c.t("projectPage.knowledge.title"),
+      exact: true,
+    });
+    const word = (status: "valid" | "transitional" | "obsolete") =>
+      c.t(`projectPage.knowledge.status.${status}`);
+    const filter = (status: "valid" | "transitional" | "obsolete", n: number) =>
+      panel.getByRole("button", {
+        name: c.t("projectPage.knowledge.filter", { status: word(status), n }),
+        exact: true,
+      });
+    const titles = {
+      valid: "Design tokens come from one file",
+      transitional: "Dark mode for every screen",
+      obsolete: "A fixed twelve column grid",
+    } as const;
+    const listed = (title: string) => panel.getByText(title, { exact: true });
+    for (const title of Object.values(titles)) await listed(title).waitFor({ timeout: WAIT });
+    // A filter keeps the documents of one status.
+    await filter("obsolete", 1).click();
+    await listed(titles.valid).waitFor({ state: "detached", timeout: WAIT });
+    await listed(titles.obsolete).waitFor({ timeout: WAIT });
+    await panel
+      .getByRole("button", {
+        name: c.t("projectPage.knowledge.filter", {
+          status: c.t("projectPage.knowledge.all"),
+          n: 3,
+        }),
+        exact: true,
+      })
+      .click();
+    await listed(titles.valid).waitFor({ timeout: WAIT });
+    // The status changes in the document's file, and the counts follow it.
+    const select = (title: string) =>
+      panel.getByLabel(c.t("projectPage.knowledge.setStatus.label", { title }), { exact: true });
+    await select(titles.obsolete).selectOption({ label: word("valid") });
+    await panel
+      .getByRole("status")
+      .filter({
+        hasText: c.t("projectPage.knowledge.setStatus.changed", {
+          title: titles.obsolete,
+          status: word("valid"),
+        }),
+      })
+      .waitFor({ timeout: WAIT });
+    await filter("valid", 2).waitFor({ timeout: WAIT });
+    await select(titles.obsolete).selectOption({ label: word("obsolete") });
+    await filter("obsolete", 1).waitFor({ timeout: WAIT });
+    // The index for sessions: off, then on again. The demo's project is not trusted, so "on" reads
+    // as the untrusted kind of on.
+    const on = panel
+      .getByText(c.t("projectPage.knowledge.feed.on"), { exact: true })
+      .or(panel.getByText(c.t("projectPage.knowledge.feed.onUntrusted"), { exact: true }));
+    await on.first().waitFor({ timeout: WAIT });
+    await panel
+      .getByRole("button", { name: c.t("projectPage.knowledge.feed.turnOff"), exact: true })
+      .click();
+    await panel
+      .getByText(c.t("projectPage.knowledge.feed.off"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await panel
+      .getByRole("button", { name: c.t("projectPage.knowledge.feed.turnOn"), exact: true })
+      .click();
+    await on.first().waitFor({ timeout: WAIT });
+  },
+
+  // Stage contracts (issue #78): Review asks for a PR, so moving a card that has none asks first.
+  // Cancel leaves the card where it was; Move anyway moves it, and the card says what it lacked.
+  // The journey puts the card back, as the demo keeps its state.
+  "stage-contract": async (c) => {
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.knowledgeProject });
+    const column = (id: string) => c.page.locator(`[data-column="${id}"]`);
+    const tile = (id: string) =>
+      column(id).locator(`li[aria-label="${c.t("kanban.card", { title: CONTRACT_CARD })}"]`);
+    const moveTo = async (from: string, to: string) => {
+      await tile(from)
+        .getByRole("button", {
+          name: c.t("board.cardActions", { title: CONTRACT_CARD }),
+          exact: true,
+        })
+        .click();
+      await c.page
+        .getByRole("menuitem", {
+          name: c.t("board.moveTo", { column: c.t(`kanban.columns.${to}` as never) }),
+          exact: true,
+        })
+        .click();
+    };
+    // A run that stopped half way left the card in Review: start from the same place anyway.
+    await tile("backlog").or(tile("review")).first().waitFor({ timeout: WAIT });
+    if ((await tile("backlog").count()) === 0) {
+      await moveTo("review", "backlog");
+      await tile("backlog").waitFor({ timeout: WAIT });
+    }
+    const dialog = c.page.getByRole("alertdialog", {
+      name: c.t("board.contract.title", { column: c.t("kanban.columns.review") }),
+    });
+    await moveTo("backlog", "review");
+    await dialog
+      .getByText(c.t("board.contract.needs.pr"), { exact: false })
+      .waitFor({ timeout: WAIT });
+    // Cancel: nothing moved.
+    await dialog.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    if ((await tile("review").count()) !== 0) {
+      throw new Error("stage-contract: Cancel moved the card");
+    }
+    // Move anyway: the card is in Review, and its notice says what it lacked.
+    await moveTo("backlog", "review");
+    await dialog
+      .getByRole("button", { name: c.t("board.contract.moveAnyway"), exact: true })
+      .click();
+    await tile("review").waitFor({ timeout: WAIT });
+    await tile("review")
+      .getByText(c.t("board.contract.needs.pr"), { exact: false })
+      .first()
+      .waitFor({ timeout: WAIT });
+    // Back to the backlog, which asks nothing.
+    await moveTo("review", "backlog");
+    await tile("backlog").waitFor({ timeout: WAIT });
   },
 
   // 25. The Files tab of a session opens a file read only; when the session rewrites it (a second

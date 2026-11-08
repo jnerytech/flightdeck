@@ -186,10 +186,52 @@ export function ComposerDock(props: Readonly<{ children: ReactNode }>) {
   );
 }
 
+/** How far above the window's bottom each message box on screen reaches, in px. */
+const composerTops = new Map<HTMLElement, number>();
+
+/**
+ * Issue #994: the toasts' corner is a session's message box, so a toast covered Send (and on a
+ * phone the whole box). While a box shows, it tells styles.css to keep the toasts above its top
+ * (--composer-clear, the highest box's top and a 0.75rem gap), and takes it back when it goes. A
+ * box on another tab of the session is hidden, has no box at all and lifts nothing. Its top moves
+ * with its own height, the dock's (the status line under it), the session pane's and the window's,
+ * so the lift follows all four. A ref callback, so React runs the cleanup.
+ */
+function clearToasts(card: HTMLElement | null): (() => void) | undefined {
+  if (!card) return undefined;
+  const root = card.ownerDocument.documentElement;
+  const win = card.ownerDocument.defaultView;
+  const apply = () => {
+    // A box taken off the page without React's cleanup lifts nothing.
+    for (const box of composerTops.keys()) if (!box.isConnected) composerTops.delete(box);
+    const highest = Math.max(0, ...composerTops.values());
+    if (composerTops.size === 0) root.style.removeProperty("--composer-clear");
+    else root.style.setProperty("--composer-clear", `calc(${highest}px + 0.75rem)`);
+  };
+  const measure = () => {
+    if (card.getClientRects().length === 0) composerTops.delete(card);
+    else
+      composerTops.set(card, Math.ceil((win?.innerHeight ?? 0) - card.getBoundingClientRect().top));
+    apply();
+  };
+  measure();
+  const watch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+  for (const target of [card, card.parentElement, card.closest("section"), root]) {
+    if (target) watch?.observe(target);
+  }
+  win?.addEventListener("resize", measure);
+  return () => {
+    watch?.disconnect();
+    win?.removeEventListener("resize", measure);
+    composerTops.delete(card);
+    apply();
+  };
+}
+
 /** The floating rounded card of the message box and its buttons. */
 export function Composer(props: Readonly<{ children: ReactNode }>) {
   return (
-    <div data-slot="composer-card" className="composer-card">
+    <div ref={clearToasts} data-slot="composer-card" className="composer-card">
       {props.children}
     </div>
   );

@@ -372,6 +372,11 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   its front matter is not clear enough to edit safely, or when the file is over 1 MB or not text.
   Only the documents the list shows can be changed; a link, a credential name or a file outside
   the library folders cannot.
+  **New document** starts a document from a template: pick a kind (ADR, RFC or PRD), type a title
+  and press **Create from template**. The file goes in `docs/adr`, `docs/rfc` or `docs/prd` of the
+  project (an ADR or RFC is numbered, `0004-<title>.md`; a PRD is `<title>.md`), as a draft with
+  `status: transitional`, and is left uncommitted. It never replaces a file that is there, and it
+  is refused when `docs/<kind>` is a link or lies outside the project.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
@@ -1097,6 +1102,12 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   again** looks once more; a move to a column that asks for it looks at the file first. The host
   checks only that the file is there (a plain, non-empty file, not a link, inside the worktree) and
   reads its first heading: it never reads or sends the rest.
+- **Pinned documents** (#76). On a host with a project library, the card page has a **Pinned
+  documents** panel: choose a document of the library (ADRs, RFCs, PRDs, specs) to pin it, up to
+  10, and **Unpin** takes one off. When the card starts, its first prompt lists each pinned document
+  that is in the card's worktree, with its title, and tells the session to read them. Only the path
+  and the first heading go in the prompt, never the document's contents. A pinned document marked
+  obsolete is still named: you chose it.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
 - **Discard…** shows one dialog with every selected card, and says what goes with each: a

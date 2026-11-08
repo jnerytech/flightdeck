@@ -364,6 +364,11 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   quando o front matter não é claro o bastante para editar com segurança, ou quando o arquivo passa
   de 1 MB ou não é texto. Só os documentos que a lista mostra podem ser mudados; um link, um nome
   de credencial ou um arquivo fora das pastas da biblioteca não podem.
+  **Novo documento** começa um documento a partir de um modelo: escolha o tipo (ADR, RFC ou PRD),
+  digite um título e use **Criar a partir do modelo**. O arquivo vai para `docs/adr`, `docs/rfc` ou
+  `docs/prd` do projeto (ADR e RFC são numerados, `0004-<título>.md`; um PRD é `<título>.md`), como
+  rascunho com `status: transitional`, sem commit. Ele nunca substitui um arquivo que já existe, e é
+  recusado quando `docs/<tipo>` é um link ou fica fora do projeto.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
@@ -1102,6 +1107,12 @@ aparece mascarado e como **Oculto**, e não abre.
   coluna que pede isso olha o arquivo antes. O host só confere que o arquivo existe (um arquivo
   comum, não vazio, que não seja um link, dentro do worktree) e lê o primeiro título: nunca lê nem
   envia o resto.
+- **Documentos fixados** (#76). Num host com a biblioteca do projeto, a página do card tem o painel
+  **Documentos fixados**: escolha um documento da biblioteca (ADRs, RFCs, PRDs, specs) para fixá-lo,
+  até 10, e **Desafixar** tira um. Quando o card começa, o primeiro prompt lista cada documento
+  fixado que está no worktree do card, com o título, e orienta a sessão a lê-los. Só o caminho e o
+  primeiro título vão no prompt, nunca o conteúdo do documento. Um documento fixado marcado como
+  obsoleto continua citado: você o escolheu.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
