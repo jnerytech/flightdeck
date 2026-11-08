@@ -101,7 +101,9 @@ export async function runScheduledBackup(deps: {
     const text = await createBackup(platform, passphrase, passphrase, deps.options);
     await folder.write(schedule.folder, name, text);
     // Only names that look like a backup are ever considered, whatever the folder lists.
-    const mine = (await folder.list(schedule.folder)).filter((one) => NAME.test(one)).sort();
+    const mine = (await folder.list(schedule.folder))
+      .filter((one) => NAME.test(one))
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     const stale = mine.slice(0, Math.max(0, mine.length - keep));
     for (const old of stale) await folder.remove(schedule.folder, old);
     return { status: "done", name, kept: mine.length - stale.length, removed: stale.length, at };
