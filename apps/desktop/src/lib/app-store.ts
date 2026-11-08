@@ -82,6 +82,7 @@ import type {
 } from "../platform/types.ts";
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
+import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
@@ -234,7 +235,6 @@ import {
 } from "./tree-fold.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
-import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
 import {
   answerVaultRequest,
@@ -4416,27 +4416,59 @@ export class AppStore {
 
   /** Issue #1241: saves the whole backup as one encrypted file; the reason when refused or cancelled. */
   async backupEverything(
-    _passphrase: string,
-    _confirmation: string,
+    passphrase: string,
+    confirmation: string,
   ): Promise<{ ok: true } | { ok: false; code: BackupErrorCode | "cancelled" }> {
-    return { ok: false, code: "cancelled" };
+    try {
+      const { createBackup } = await import("./backup-bundle.ts");
+      const text = await createBackup(this.platform, passphrase, confirmation, {
+        ...(this.options.vaultWorkFactor !== undefined && {
+          workFactor: this.options.vaultWorkFactor,
+        }),
+      });
+      const saved = await this.platform.saveFile("flightdeck-backup.fdbackup", text);
+      return saved ? { ok: true } : { ok: false, code: "cancelled" };
+    } catch (error) {
+      if (error instanceof BackupError) return { ok: false, code: error.code };
+      this.fail(error);
+      return { ok: false, code: "cancelled" };
+    }
   }
 
   /** Issue #1241: reads a backup file the person picks and compares it with this profile; changes nothing. */
   async previewBackup(
-    _passphrase: string,
+    passphrase: string,
   ): Promise<
     { ok: true; preview: RestorePreview } | { ok: false; code: BackupErrorCode | "cancelled" }
   > {
-    return { ok: false, code: "cancelled" };
+    try {
+      const file = await this.platform.vault.pickFile();
+      if (!file) return { ok: false, code: "cancelled" };
+      const { previewRestore } = await import("./backup-bundle.ts");
+      return { ok: true, preview: await previewRestore(this.platform, file.text, passphrase) };
+    } catch (error) {
+      if (error instanceof BackupError) return { ok: false, code: error.code };
+      this.fail(error);
+      return { ok: false, code: "cancelled" };
+    }
   }
 
-  /** Issue #1241: applies a preview all or nothing; the app reads the restored data when it restarts. */
+  /**
+   * Issue #1241: applies a preview all or nothing. The app reads the restored settings and hosts
+   * when it starts again, so the person is told to reopen it.
+   */
   async restoreBackup(
-    _preview: RestorePreview,
-    _onConflict: ConflictChoice,
-  ): Promise<RestoreResult> {
-    return { added: 0, overwritten: 0, skipped: 0 };
+    preview: RestorePreview,
+    onConflict: ConflictChoice,
+  ): Promise<{ ok: true; result: RestoreResult } | { ok: false }> {
+    try {
+      const { applyRestore } = await import("./backup-bundle.ts");
+      return { ok: true, result: await applyRestore(this.platform, preview, onConflict) };
+    } catch (error) {
+      // A restore that failed put everything back; a preview already used says it is unreadable.
+      if (!(error instanceof BackupError)) this.fail(error);
+      return { ok: false };
+    }
   }
 
   /**

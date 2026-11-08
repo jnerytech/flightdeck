@@ -774,6 +774,48 @@ export const en: Dictionary = {
       },
     },
   },
+  backupAll: {
+    title: "Back up everything",
+    intro:
+      "One encrypted file with your settings, personas, snippets, hosts (with their tokens) and the vault. Only the passphrase you choose opens it.",
+    exportTitle: "Back up",
+    passphrase: "Passphrase",
+    confirm: "Confirm passphrase",
+    passphraseHelp: "At least 12 characters. Without it the backup cannot be opened.",
+    export: "Back up now",
+    exportNeeds: "Type the passphrase and repeat it.",
+    saved:
+      "Backup saved, where you chose. Keep the passphrase: without it the backup does not open.",
+    importTitle: "Restore a backup",
+    filePassphrase: "File passphrase",
+    read: "Read backup",
+    readNeeds: "Type the file's passphrase.",
+    kinds: {
+      settings: "Settings",
+      personas: "Personas",
+      snippets: "Snippets",
+      hosts: "Hosts",
+      vault: "Vault",
+    },
+    line: "{kind}: {added} new, {same} the same, {conflicting} different",
+    conflictList: "Different here",
+    choiceLegend: "When it differs",
+    nothingToRestore: "Nothing here is new. Choose to replace a difference to restore it.",
+    keep: "Keep what is here",
+    replace: "Replace with the backup",
+    restore: "Restore",
+    replaceMessage: "Replace {names} with what is in the backup? What is here is lost.",
+    replaceConfirm: "Replace",
+    result:
+      "Restored: {added} new, {overwritten} replaced, {skipped} kept. Close and reopen Flightdeck to use them.",
+    error: {
+      "short-passphrase": "The passphrase needs at least 12 characters.",
+      mismatch: "The passphrases do not match.",
+      unreadable:
+        "The file could not be read. Check the passphrase; a changed file is refused too.",
+      failed: "The restore failed and nothing was changed.",
+    },
+  },
   approval: {
     label: "Request for {tool}",
     title: "Permission for",
@@ -4206,6 +4248,7 @@ export const en: Dictionary = {
     budgets: "Budgets",
     watch: "Watch and fix PRs",
     messaging: "Messages between sessions",
+    backup: "Backup",
     words: {
       appearance:
         "theme dark light system density list font size terminal language english portuguese",
@@ -4218,6 +4261,8 @@ export const en: Dictionary = {
       watch: "watch pull request pr ci fix checks",
       messaging: "messages conversations rules agents",
       webhooks: "webhook url notify events http",
+      backup:
+        "backup restore export import encrypted file passphrase vault hosts personas snippets",
       assistant:
         "wand magic ai assistant improve write provider anthropic openrouter claude key api model",
     },

@@ -99,7 +99,10 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
     const { platform } = open({ picked: text });
     await type("File passphrase", PASS);
     await click("Read backup");
-    const shown = await settleMaybe(() => said("Personas: 2 new"), 3000);
+    const shown = await settleMaybe(
+      () => (document.body.textContent ?? "").includes("Personas: 2 new"),
+      3000,
+    );
     const before = [
       platform.storage.getItem("flightdeck.theme"),
       platform.storage.getItem("flightdeck.personas"),
@@ -124,9 +127,9 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
     const refused = await settleMaybe(() => said("could not be read"), 3000);
     expect([
       refused,
-      screen.queryByRole("button", { name: "Restore" }),
+      screen.queryByRole("button", { name: "Restore" }) === null,
       platform.storage.getItem("flightdeck.theme"),
-    ]).toEqual([true, null, null]);
+    ]).toEqual([true, true, null]);
   });
 
   test("a difference is listed by name, kept unless the person chooses to replace it, and replacing is confirmed", async () => {
@@ -165,6 +168,59 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
       before,
       again.platform.storage.getItem("flightdeck.theme"),
     ]).toEqual([true, "light", true, "light", "dark"]);
+  });
+
+  test("a backup that holds nothing new here cannot be restored, and the radios have a group name", async () => {
+    const text = await backupText();
+    const { platform } = open({ picked: text });
+    platform.storage.setItem("flightdeck.theme", "dark");
+    platform.storage.setItem(
+      "flightdeck.personas",
+      JSON.stringify([persona("p1", "Reviewer"), persona("p2", "Writer")]),
+    );
+    platform.storage.setItem(
+      "flightdeck.hosts",
+      JSON.stringify([{ id: "h1", name: "Workstation", url: "ws://10.0.0.1:7777" }]),
+    );
+    await platform.secrets.set("h1", "host-token-ONE");
+    await type("File passphrase", PASS);
+    await click("Read backup");
+    const shown = await settleMaybe(
+      () => (document.body.textContent ?? "").includes("Personas: 0 new, 2 the same"),
+      3000,
+    );
+    const restore = screen.queryByRole("button", { name: "Restore" }) as HTMLButtonElement | null;
+    expect([shown, restore?.disabled, screen.queryByRole("group") === null]).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  test("with only a difference, Restore waits until the person chooses to replace it, under a named group", async () => {
+    const text = await backupText();
+    const { platform } = open({ picked: text });
+    platform.storage.setItem("flightdeck.theme", "dark");
+    platform.storage.setItem(
+      "flightdeck.personas",
+      JSON.stringify([persona("p1", "Reviewer", "a different body"), persona("p2", "Writer")]),
+    );
+    platform.storage.setItem(
+      "flightdeck.hosts",
+      JSON.stringify([{ id: "h1", name: "Workstation", url: "ws://10.0.0.1:7777" }]),
+    );
+    await platform.secrets.set("h1", "host-token-ONE");
+    await type("File passphrase", PASS);
+    await click("Read backup");
+    const named = await settleMaybe(
+      () => screen.queryByRole("group", { name: "When it differs" }) !== null,
+      3000,
+    );
+    const restore = () => screen.queryByRole("button", { name: "Restore" }) as HTMLButtonElement;
+    const waiting = restore()?.disabled;
+    const replace = screen.queryByLabelText("Replace with the backup") as HTMLInputElement | null;
+    if (replace) await act(async () => fireEvent.click(replace));
+    expect([named, waiting, restore()?.disabled]).toEqual([true, true, false]);
   });
 
   test("the pt-BR panel is in Portuguese", async () => {
