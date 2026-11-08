@@ -1488,6 +1488,7 @@ export const ptBR = {
     harnessApply: "a aplicação de mudanças na configuração do Claude Code",
     harnessCommit: "o commit da configuração do Claude Code em um branch",
     harnessDraft: "o rascunho de um CLAUDE.md com o Claude",
+    harnessTemplates: "o compartilhamento da configuração do Claude Code como modelo",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
@@ -1840,6 +1841,12 @@ export const ptBR = {
     harness_draft_exists: "O projeto já tem um CLAUDE.md: um rascunho só cria um.",
     harness_draft_failed: "O modelo não respondeu com um CLAUDE.md: tente de novo.",
     harness_draft_secret: "O rascunho tinha um segredo, então foi descartado: tente de novo.",
+    harness_template_id: "O id de um modelo usa letras minúsculas, dígitos e hífens, até 40.",
+    harness_template_secret: "{file} contém um segredo, então nada foi compartilhado.",
+    harness_template_empty: "O projeto não tem CLAUDE.md, agente ou skill para compartilhar.",
+    harness_template_taken: "Já existe um modelo chamado {id} neste host: escolha outro nome.",
+    harness_template_title_secret:
+      "O título do modelo contém um segredo, então nada foi compartilhado.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",

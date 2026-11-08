@@ -3260,6 +3260,27 @@ export const Command = z.discriminatedUnion("type", [
       .strict(),
   ),
   /**
+   * #75, slice T1: shares the project's Markdown harness (CLAUDE.md, agents, skills; never settings)
+   * as a host template `id`: read without a link, scanned for secrets, written all or nothing.
+   */
+  cmd(
+    "project.harness.export",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        id: z.string().min(1).max(40),
+        // Shown in every client's list: words, not blank, no control character or line break.
+        title: z
+          .string()
+          .min(1)
+          .max(80)
+          .refine((title) => title.trim() !== "" && !/\p{Cc}/u.test(title)),
+      })
+      .strict(),
+  ),
+  /** #75, slice T1: the host's harness templates: names and sizes, never content. */
+  cmd("harness.templates.list", z.object({}).strict()),
+  /**
    * #75, slice G1: drafts a CLAUDE.md with the host's model from the detected stack and the
    * project's top-level names (never a file's content). The host holds the draft; an apply whose
    * digest for CLAUDE.md is the draft's writes it. Never hooks or permissions from a model.
@@ -4993,6 +5014,16 @@ export const HarnessApplied = z.object({
 });
 export type HarnessApplied = z.infer<typeof HarnessApplied>;
 
+/** #75, slice T1: a host template of a project's Markdown harness: its names, never its content. */
+export const HarnessTemplateInfo = z.object({
+  id: z.string(),
+  title: z.string(),
+  /** Paths inside the template: `CLAUDE.md`, `agents/<name>.md`, `skills/<name>/SKILL.md`. */
+  files: z.array(z.string()),
+  bytes: z.number().int(),
+});
+export type HarnessTemplateInfo = z.infer<typeof HarnessTemplateInfo>;
+
 /** #75, slice G1: a CLAUDE.md drafted by the host's model, held by the host by its digest. */
 export const HarnessDraft = z.object({
   path: z.literal("CLAUDE.md"),
@@ -5260,6 +5291,8 @@ export interface CommandResults {
   "project.harness.apply": HarnessApplied;
   "project.harness.commit": HarnessCommitted;
   "project.harness.draft": HarnessDraft;
+  "project.harness.export": HarnessTemplateInfo;
+  "harness.templates.list": { templates: HarnessTemplateInfo[] };
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;

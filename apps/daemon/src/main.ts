@@ -71,6 +71,7 @@ import { commitHarness } from "./harness/commit.ts";
 import { HarnessDrafts } from "./harness/draft.ts";
 import { previewHarness } from "./harness/preview.ts";
 import { detectStack } from "./harness/stack.ts";
+import { HarnessTemplates } from "./harness/templates-store.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
 import { createKnowledgeDoc } from "./knowledge/create.ts";
@@ -1493,6 +1494,10 @@ export async function startDaemon(
     // Only a runtime that can run a one-shot drafts: the feature is not offered otherwise.
     ...(runtime.complete ? { harnessDraft: (path: string) => harnessDrafts.draft(path) } : {}),
     harnessCommit: (path, digests) => commitHarness(path, digests, { scanner: snippetScanner }),
+    harnessTemplates: new HarnessTemplates(
+      join(config.dataDir, "harness-templates"),
+      snippetScanner,
+    ),
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) => paths.map(trustState),
