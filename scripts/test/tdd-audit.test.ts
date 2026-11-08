@@ -88,14 +88,17 @@ describe("tdd-audit", () => {
     ]);
   });
 
-  test("a .skip with `// unstable: #N <reason>` on its line or the line above is allowed; a bare one is not (#494)", () => {
+  test("#169: a .skip is refused even with a `// unstable: #N` note; a platform skipIf passes", () => {
+    const skipIf = `.${"skip"}${"If"}(`;
     const files = [
       { path: "a.test.ts", content: `// unstable: #484 a late status\ntest${SKIP}"x", () => {});` },
       { path: "b.test.ts", content: `test${SKIP}"y", () => {}); // unstable: #492 races` },
-      { path: "c.test.ts", content: `test${SKIP}"z", () => {});` },
+      { path: "c.test.ts", content: `test${skipIf}process.platform === "win32")("z", () => {});` },
+      { path: "d.test.ts", content: `describe${skipIf}notLinux)("w", () => {});` },
     ];
     expect(findForbiddenMarkers(files)).toEqual([
-      { commit: "c.test.ts:1", scope: "-", reason: `uso proibido de ${SKIP}` },
+      { commit: "a.test.ts:2", scope: "-", reason: `uso proibido de ${SKIP}` },
+      { commit: "b.test.ts:1", scope: "-", reason: `uso proibido de ${SKIP}` },
     ]);
   });
 

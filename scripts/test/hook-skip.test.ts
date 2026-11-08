@@ -1,107 +1,86 @@
 import { describe, expect, test } from "bun:test";
 import { testEditViolation } from "../lib/claude-hooks.ts";
-import { unstableSkips } from "../lib/unstable-skip.ts";
+import { findForbiddenMarkers } from "../lib/tdd-audit.ts";
 
-// Built by concatenation so this very file never holds a skip the ratchet counts.
+// Built by concatenation so this very file never holds a marker the audit counts.
 const SKIPIF = `${"skip"}${"If"}(`;
 const ONLY = `.${"only"}(`;
 const SKIP = `.${"skip"}(`;
+const TODO = `test.${"todo"}(`;
 
 const edit = (before: string, after: string, file = "apps/desktop/test/a.test.tsx") =>
   testEditViolation("Edit", { file_path: file, old_string: before, new_string: after }, () => {
     throw new Error("an Edit never reads the file");
   });
 
-const bare = (head: string, condition = "notLinux") =>
+const platform = (head: string, condition: string) =>
   `${head}.${SKIPIF}${condition})("x", () => {});`;
 
-describe("hook-skip: a test skipped off Linux names the issue that owns its fix", () => {
-  test("a skip off Linux with no comment is blocked and says what to write", () => {
-    for (const head of ["test", "it", "describe"]) {
-      const reason = edit("", bare(head)) ?? "";
+describe("hook-skip: a flaky test is deleted, never skipped (#1003, #169)", () => {
+  test("a .skip on any receiver is blocked, and the reason says to delete or replace it", () => {
+    for (const text of [
+      `test${SKIP}"x", () => {})`,
+      `describe${SKIP}"x", () => {})`,
+      `test.concurrent${SKIP}"x", () => {})`,
+    ]) {
+      const reason = edit("", text) ?? "";
       expect(reason).toContain("is blocked");
-      // #1011 review: the hook says what the rule says now (#1003): delete it, never skip it.
       expect(reason).toContain("a flaky test is deleted, never skipped");
       expect(reason).toContain("#1003");
       expect(reason).toContain("docs/TDD.md");
     }
-    expect(edit("", bare("test", 'process.platform !== "linux"')) ?? "").toContain("is blocked");
-    expect(edit("", bare("test", "process.platform !== 'linux'")) ?? "").toContain("is blocked");
   });
 
-  test("the comment on the same line or on the line above lets it through", () => {
-    expect(edit("", `${bare("test")} // unstable: #288 wall-clock polls`)).toBeNull();
-    expect(edit("", `// unstable: #288 wall-clock polls\n${bare("test")}`)).toBeNull();
-    expect(
-      edit(
-        "",
-        `  // unstable: #12 spawns biome\n  ${bare("describe", 'process.platform !== "linux"')}`,
-      ),
-    ).toBeNull();
+  test("#169: a `// unstable: #N <reason>` note no longer lets a skip through", () => {
+    const note = "// unstable: #484 reads the status late on a loaded runner\n";
+    expect(edit("", `${note}describe${SKIP}"x", () => {})`) ?? "").toContain("never skipped");
+    expect(edit("", `test${SKIP}"x", () => {}) // unstable: #492 races`) ?? "").toContain(
+      "never skipped",
+    );
   });
 
-  test("a comment with no issue number, no reason, a blank line between or two lines above does not count", () => {
-    for (const text of [
-      `${bare("test")} // unstable: flaky`,
-      `${bare("test")} // unstable: #288`,
-      `${bare("test")} // unstable: #288 `,
-      `${bare("test")} // flaky: #288 wall-clock`,
-      `// unstable: #288 wall-clock\n\n${bare("test")}`,
-      `// unstable: #288 wall-clock\nconst a = 1;\n${bare("test")}`,
+  test("#169: a skipIf for a platform passes, off Linux included", () => {
+    for (const condition of [
+      "process.platform === 'win32'",
+      "!volumeHas83Names()",
+      "notLinux",
+      'process.platform !== "linux"',
     ]) {
-      expect(edit("", text) ?? "").toContain("is blocked");
+      expect(`${condition}: ${edit("", platform("test", condition))}`).toBe(`${condition}: null`);
     }
   });
 
-  test("a skip for a platform capability needs no comment, as before", () => {
-    expect(edit("", bare("test", "process.platform === 'win32'"))).toBeNull();
-    expect(edit("", bare("describe", "!volumeHas83Names()"))).toBeNull();
-  });
-
-  test("an undocumented skip already in the file does not block an unrelated edit, a second one does", () => {
-    const old = `${bare("test")}\nconst a = 1;`;
-    expect(edit(old, `${bare("test")}\nconst a = 2;`)).toBeNull();
-    expect(edit(old, `${old}\n${bare("it")}`) ?? "").toContain("is blocked");
-  });
-
-  test("a flaky test may be skipped on any platform with the note; without it the skip is blocked (#494)", () => {
-    const note = "// unstable: #484 reads the status late on a loaded runner\n";
-    expect(edit("", `${note}describe${SKIP}"x", () => {})`)).toBeNull();
-    expect(edit("", `test${SKIP}"x", () => {}) // unstable: #492 the palette races`)).toBeNull();
-    expect(edit("", `test${SKIP}"x", () => {})`) ?? "").toContain("never skipped");
-    // Any receiver: test.concurrent.skip and each(...).skip need the note too (#494 review).
-    expect(edit("", `test.concurrent${SKIP}"x", () => {})`) ?? "").toContain("is blocked");
-  });
-
-  test("the comment excuses nothing else: .only, test.todo and a snapshot stay blocked", () => {
-    const note = "// unstable: #288 wall-clock polls\n";
-    expect(edit("", `${note}it${ONLY}"x", () => {})`) ?? "").toContain("is blocked");
-    expect(edit("", `${note}test.${"todo"}("x")`) ?? "").toContain("is blocked");
-    expect(edit("", `${note}expect(x).${"toMatchSnapshot"}()`) ?? "").toContain("is blocked");
+  test("a skip already in the file does not block an unrelated edit, a second one does", () => {
+    const old = `test${SKIP}"x", () => {});\nconst a = 1;`;
+    expect(edit(old, `test${SKIP}"x", () => {});\nconst a = 2;`)).toBeNull();
+    expect(edit(old, `${old}\nit${SKIP}"y", () => {});`) ?? "").toContain("is blocked");
   });
 
   test("a Write is judged on what it adds to the file", () => {
     const write = (content: string, current: string | null) =>
       testEditViolation("Write", { file_path: "scripts/test/c.test.ts", content }, () => current);
-    expect(write(bare("test"), null) ?? "").toContain("is blocked");
-    expect(write(`// unstable: #288 x\n${bare("test")}`, null)).toBeNull();
-    expect(write(`${bare("test")}\n`, `${bare("test")}\n`)).toBeNull();
+    expect(write(`test${SKIP}"x", () => {});`, null) ?? "").toContain("is blocked");
+    expect(write(`// unstable: #288 x\ntest${SKIP}"x", () => {});`, null) ?? "").toContain(
+      "is blocked",
+    );
+    expect(write(`test${SKIP}"x", () => {});\n`, `test${SKIP}"x", () => {});\n`)).toBeNull();
   });
 
-  test("the parser lists each skip with its line and whether its comment is complete", () => {
-    const source = [
-      "const a = 1;",
-      `// unstable: #288 wall-clock polls`,
-      bare("test"),
-      bare("it", 'process.platform !== "linux"'),
-      `${bare("describe")} // unstable: #7 spawns`,
-      bare("test", "process.platform === 'win32'"),
-    ].join("\n");
-    expect(unstableSkips(source)).toEqual([
-      { line: 3, documented: true },
-      { line: 4, documented: false },
-      { line: 5, documented: true },
-    ]);
-    expect(unstableSkips("")).toEqual([]);
+  test("#169: the hook refuses what the audit refuses, plus a first-run snapshot", () => {
+    const cases = [
+      `test${SKIP}"x", () => {});`,
+      `// unstable: #7 late\ntest${SKIP}"x", () => {});`,
+      `it${ONLY}"x", () => {});`,
+      `${TODO}"x");`,
+      platform("test", "process.platform === 'win32'"),
+      platform("describe", "notLinux"),
+      `test("plain", () => {});`,
+    ];
+    for (const text of cases) {
+      const hook = edit("", text) !== null;
+      const audit = findForbiddenMarkers([{ path: "a.test.ts", content: text }]).length > 0;
+      expect(`${text}: hook ${hook}`).toBe(`${text}: hook ${audit}`);
+    }
+    expect(edit("", `expect(x).${"toMatchSnapshot"}()`) ?? "").toContain("is blocked");
   });
 });
