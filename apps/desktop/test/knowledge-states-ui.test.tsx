@@ -104,7 +104,48 @@ describe("knowledge-states-ui: loading and a list that cannot be read (#1091)", 
     expect(sent.filter(([type]) => type === "knowledge.list")).toHaveLength(2);
   });
 
-  test("in Portuguese the loading line, the hint and Try again are in Portuguese", async () => {
+  test("after Try again the focus is not lost: on the button when it fails again, in the panel when it works", async () => {
+    const { view } = setup({ lists: [async () => null, async () => null, async () => LIST] });
+    render(view);
+    await settleMaybe(() => inPanel().queryByRole("button", { name: "Try again" }) !== null);
+    const inside = () =>
+      document.activeElement !== document.body &&
+      Boolean(panel()?.contains(document.activeElement));
+    await act(async () => {
+      fireEvent.click(inPanel().getByRole("button", { name: "Try again" }));
+    });
+    // Failed again: the button is still there and has the focus.
+    expect(
+      await settleMaybe(
+        () => document.activeElement === inPanel().queryByRole("button", { name: "Try again" }),
+      ),
+    ).toBe(true);
+    await act(async () => {
+      fireEvent.click(inPanel().getByRole("button", { name: "Try again" }));
+    });
+    expect(await settleMaybe(() => inPanel().queryByText("Use a queue") !== null)).toBe(true);
+    expect(await settleMaybe(inside)).toBe(true);
+  });
+
+  test("the hint is part of the alert, so it is read with it", async () => {
+    render(setup({ lists: [async () => null] }).view);
+    await settleMaybe(() => inPanel().queryByRole("alert") !== null);
+    expect(Boolean(inPanel().queryByRole("alert")?.textContent?.includes("then try again."))).toBe(
+      true,
+    );
+  });
+
+  test("in Portuguese the loading line is in Portuguese", async () => {
+    render(setup({ language: "pt-BR", lists: [() => new Promise(() => {})] }).view);
+    await settleMaybe(() => panel("Conhecimento do projeto") !== null);
+    expect(
+      inPanel("Conhecimento do projeto").queryByRole("status", {
+        name: "Carregando os documentos",
+      }) === null,
+    ).toBe(false);
+  });
+
+  test("in Portuguese the hint and Try again are in Portuguese", async () => {
     render(setup({ language: "pt-BR", lists: [async () => null] }).view);
     const said = await settleMaybe(
       () =>

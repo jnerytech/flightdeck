@@ -128,6 +128,29 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
     ]);
   });
 
+  test("the made card is said in a region that was in the page before, and a second card with the same title is said again", async () => {
+    const { view, store } = setup();
+    render(view);
+    await listed();
+    const region = () => document.querySelector("[data-slot='knowledge-note']");
+    expect(region()?.getAttribute("role")).toBe("status");
+    expect(region()?.textContent).toBe("");
+    const said = () => screen.queryByText("Card made from the spec: Login screen");
+    const press = async () => {
+      const button = makeCard("Login screen");
+      if (button) await act(async () => fireEvent.click(button));
+    };
+    await press();
+    await settleMaybe(() => said() !== null);
+    const first = said();
+    await press();
+    // The same words in the same node are not read twice: the note is a new node each time.
+    await settleMaybe(() => said() !== null && said() !== first);
+    expect(said() !== first).toBe(true);
+    // The toast is gone: one event is not said twice.
+    expect(store.getState().notices.filter((n) => n.kind === "success")).toEqual([]);
+  });
+
   test("a card the host refuses is not named", async () => {
     const { view, sent } = setup({ refuse: true });
     render(view);
