@@ -261,6 +261,23 @@ describe("backup-schedule: a run (#1264)", () => {
     ]);
   });
 
+  test("a stored folder that is gone is a skipped no-folder run, whatever the saved schedule says", async () => {
+    const { folder, files } = fakeFolder([named(1)]);
+    folder.current = async () => null;
+    const report = await runScheduledBackup({
+      platform: platformWith(),
+      folder,
+      schedule: schedule({ folder: "/backups" }),
+      passphrase: PASS,
+      now: NOON,
+      options: FAST,
+    });
+    expect([report, [...files.keys()]]).toEqual([
+      { status: "skipped", reason: "no-folder", at: NOON },
+      [named(1)],
+    ]);
+  });
+
   test("a write that fails is reported and removes nothing", async () => {
     const { folder, files } = fakeFolder([named(1), named(2), named(3), named(4)], {
       failWrite: true,
