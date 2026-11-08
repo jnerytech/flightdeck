@@ -53,7 +53,9 @@ function groupsOf(address: string): number[] {
   const front = head === "" ? [] : head.split(":");
   const back = rest === undefined || rest === "" ? [] : rest.split(":");
   const fill = rest === undefined ? 0 : 8 - front.length - back.length;
-  return [...front, ...Array(fill).fill("0"), ...back].map((group) => Number.parseInt(group, 16));
+  return [...front, ...new Array(fill).fill("0"), ...back].map((group) =>
+    Number.parseInt(group, 16),
+  );
 }
 
 /** Whether an address is one a webhook may be sent to: not private, link-local, loopback or reserved. */
