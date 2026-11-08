@@ -68,8 +68,15 @@ async function outcome(run: Promise<unknown>): Promise<string | Record<string, u
 }
 
 const branchOf = (repo: string) => git(repo, "rev-parse", "--abbrev-ref", "HEAD");
+/**
+ * `git status --porcelain`, each line trimmed: the helper trims the output, so only the first line
+ * would lose its leading space. Trimmed, `M a.txt` is a change not staged and `M  a.txt` a staged one.
+ */
 const status = (repo: string) =>
-  git(repo, "status", "--porcelain", "--untracked-files=all").split("\n").filter(Boolean);
+  git(repo, "status", "--porcelain", "--untracked-files=all")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => line.trim());
 
 describe("session-commit: a plain session's files committed on a new branch (#1133)", () => {
   test("each uncommitted file of a session has its digest: its bytes now, or deleted", async () => {
@@ -104,7 +111,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       { branch: "work/add-c", base: "main", commit: 40, files: ["a.txt", "c.txt"] },
       "work/add-c",
       ["Add c", "M\ta.txt", "A\tc.txt"],
-      [" M b.txt"],
+      ["M b.txt"],
       "main",
     ]);
   });
@@ -149,8 +156,8 @@ describe("session-commit: a plain session's files committed on a new branch (#11
           base: "main",
         },
         "work/hooked",
-        [" M a.txt", "?? c.txt"],
-        [" M a.txt", "?? c.txt"],
+        ["M a.txt", "?? c.txt"],
+        ["M a.txt", "?? c.txt"],
       ]);
     },
   );
@@ -170,7 +177,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
     );
     expect([(done as { reason?: string }).reason, status(repo)]).toEqual([
       "changes_commit_hook",
-      [" M a.txt"],
+      ["M a.txt"],
     ]);
   });
 
