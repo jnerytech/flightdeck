@@ -130,6 +130,38 @@ describe("Board.raiseCards (issue #79)", () => {
     expect(backlog().at(-1)?.title).toBe(`Remove the TODO in file${CARDS_PER_RUN}.ts`);
   });
 
+  test("a card whose suspension fails is not left behind without it", async () => {
+    let calls = 0;
+    const { board, project, backlog } = await setup({
+      suspendApproval: () => {
+        calls++;
+        if (calls === 2) throw new Error("the store is read-only");
+      },
+    });
+    expect(() => board.raiseCards(project.id, [finding(1), finding(2)], ORIGIN)).toThrow(
+      "the store is read-only",
+    );
+    // The first card was suspended and stays; the second never got its suspension, so it goes.
+    expect(backlog().map((card) => card.title)).toEqual(["Remove the TODO in file1.ts"]);
+  });
+
+  test("the variants of an arena started on a raised card keep the mark and the suspension", async () => {
+    const { board, project, suspended } = await setup();
+    const [raisedId] = board.raiseCards(project.id, [finding(1)], ORIGIN).created;
+    expect(raisedId !== undefined).toBe(true);
+    suspended.length = 0;
+    const arena = await board.startArena(raisedId ?? "", { variants: [{}, {}] });
+    expect(arena.variants.length).toBe(2);
+    for (const variant of arena.variants) {
+      const card = board.getCard(variant.id);
+      expect(card.issueExternal).toBe(true);
+      expect(card.description.startsWith(UNTRUSTED_MARK)).toBe(true);
+    }
+    expect(suspended.map(([cardId]) => cardId).sort()).toEqual(
+      arena.variants.map((variant) => variant.id).sort(),
+    );
+  });
+
   test("an unknown project is refused with its reason", async () => {
     const { board } = await setup();
     const refused = (() => {

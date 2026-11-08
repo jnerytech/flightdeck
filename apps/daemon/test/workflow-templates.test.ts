@@ -96,6 +96,14 @@ describe("workflow templates (issue #79)", () => {
     }
   });
 
+  test("the scan's limits do not promise more than plan mode gives", () => {
+    const scan = byId("tech-debt-scan");
+    expect(scan?.limits.en.includes("plan mode")).toBe(true);
+    expect(scan?.limits["pt-BR"].includes("modo de plano")).toBe(true);
+    expect(scan?.limits.en.toLowerCase().includes("read-only")).toBe(false);
+    expect(scan?.limits["pt-BR"].toLowerCase().includes("só leitura")).toBe(false);
+  });
+
   test("the example block in the scan's prompt is itself a valid list of findings", () => {
     const first = stepsOf(byId("tech-debt-scan")?.yaml ?? "")[0];
     const prompt = first && "agent" in first ? first.agent.prompt : "";

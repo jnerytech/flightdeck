@@ -65,8 +65,11 @@ describe("parseFindings (issue #79)", () => {
 
   test("a field the shape does not have is refused, so nothing rides along", () => {
     expect(refusedAt(parseFindings(reply([item({ command: "rm -rf /" })])))).toBe(
-      "item 1, command",
+      "item 1, extra field",
     );
+    // The name is the agent's: it is never echoed, so no invisible or endless text reaches a run's reason.
+    const named = { ...item(), ["x\u202E".repeat(300)]: 1 };
+    expect(refusedAt(parseFindings(reply([named])))).toBe("item 1, extra field");
   });
 
   test("key and title are required and must be strings", () => {
