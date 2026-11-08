@@ -136,7 +136,10 @@ describe("team-outcome-ui: a team's outcome in one place (#1220)", () => {
         outcome ? within(outcome).queryByText(n.done) !== null : false,
         screen.queryByText(n.branch) !== null,
         screen.queryByText(n.changed) !== null,
-      ]).toEqual([true, true, true, true, true, true]);
+        // A long report scrolls inside its box: the box takes the keyboard and is named by its title.
+        outcome?.getAttribute("tabindex") === "0",
+        document.getElementById(outcome?.getAttribute("aria-labelledby") ?? "")?.textContent,
+      ]).toEqual([true, true, true, true, true, true, true, n.outcome]);
     });
 
     test(`${lang}: the coordinator reporting the goal done tells the person, once, in their language`, () => {
