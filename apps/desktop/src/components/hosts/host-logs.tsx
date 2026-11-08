@@ -11,7 +11,7 @@ const LINES = 100;
  * "Copy the host's last log lines" on the host page: the daemon's own log, bounded and redacted
  * by the host, for pasting in a message. Only for an online host that announces `logs`.
  */
-export function HostLogs(props: { store: AppStore; host: HostView }) {
+export function HostLogs(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   if (host.status !== "online" || !hasFeature(host.hostInfo?.features, "logs", false)) return null;
