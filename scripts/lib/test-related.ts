@@ -138,6 +138,8 @@ export interface Plan {
    * Windows shards of a PR (#399).
    */
   files?: string[] | "all";
+  /** #996: the whole suite's lcov report, read to say why a failed run failed. */
+  wholeCoverage?: string;
 }
 
 /** The lines of a git command's output; none when git fails. */

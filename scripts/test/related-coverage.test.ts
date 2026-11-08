@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import {
+  belowFull,
   checkChanged,
   coverageTargets,
   isCoverageSource,
   lineRanges,
   loadedTargets,
   WHOLE_SUITE_IGNORED,
+  wholeSuiteVerdict,
 } from "../lib/related-coverage.ts";
 import { planRelated } from "../lib/test-related.ts";
 
@@ -113,6 +115,31 @@ describe("related-coverage: the verdict on the changed files", () => {
 
   test("an unchanged file below 100% is ignored", () => {
     expect(checkChanged(lcov, ["apps/daemon/src/full.ts"]).problems).toEqual([]);
+  });
+
+  test("#996: every file of a whole-suite report below 100% is named, with what it misses", () => {
+    expect(belowFull(lcov)).toEqual([
+      "apps/daemon/src/low.ts: lines 20-22, 30 not covered; functions 1/2 called",
+      "apps/daemon/src/untouched.ts: lines 1 not covered; functions 0/1 called",
+    ]);
+    expect(belowFull(record("apps/daemon/src/full.ts", [1, 1], [[1, 1]]))).toEqual([]);
+  });
+
+  test("#996: a whole suite that exits non-zero names its cause: the files below 100%, or none", () => {
+    expect(wholeSuiteVerdict(0, lcov)).toBeNull();
+    expect(wholeSuiteVerdict(1, lcov)).toBe(
+      [
+        "test:related: the whole suite exited with 1, and 2 file(s) are below the 100% gate:",
+        "  - apps/daemon/src/low.ts: lines 20-22, 30 not covered; functions 1/2 called",
+        "  - apps/daemon/src/untouched.ts: lines 1 not covered; functions 0/1 called",
+      ].join("\n"),
+    );
+    expect(wholeSuiteVerdict(1, record("apps/daemon/src/full.ts", [1, 1], [[1, 1]]))).toBe(
+      "test:related: the whole suite exited with 1 with every file at 100%: a failing test, a file that did not load or the isolation guard stopped it (see above)",
+    );
+    expect(wholeSuiteVerdict(1, null)).toBe(
+      "test:related: the whole suite exited with 1 and left no coverage report",
+    );
   });
 
   test("a changed file the related tests never load is a failure of its own", () => {

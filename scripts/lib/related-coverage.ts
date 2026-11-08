@@ -101,3 +101,13 @@ export function checkChanged(lcov: string, targets: readonly string[]): Coverage
   }
   return verdict;
 }
+
+/** #996: every file of a whole-suite lcov report below 100%, with what it misses. */
+export function belowFull(_lcov: string): string[] {
+  return [];
+}
+
+/** #996: why a whole-suite run exited non-zero, from its lcov report; null when it passed. */
+export function wholeSuiteVerdict(_code: number, _lcov: string | null): string | null {
+  return null;
+}

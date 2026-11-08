@@ -2333,6 +2333,8 @@ export interface CliDeps {
   binaryVersion?: (bin: string) => Promise<string | null>;
   /** Standard input (`hook session-start` reads the hook's JSON); the process's if absent. */
   stdin?: ReadableStream<Uint8Array>;
+  /** Where `setup` writes its questions; the process's stdout if absent. */
+  stdout?: (text: string) => void;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
   /** How long `service uninstall` waits for the daemon to free its lock (10 s when absent). */
