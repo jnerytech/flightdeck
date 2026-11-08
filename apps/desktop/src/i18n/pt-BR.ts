@@ -4884,6 +4884,20 @@ export const ptBR = {
     okHide: "Ocultar {n} itens sem nada a fazer",
     optionalAbsent: "Opcional · não instalado",
     okList: "Funcionando",
+    service: {
+      turnOn: "Ligar",
+      messageLinux:
+        "O Flightdeck vai instalar um serviço do usuário em ~/.config/systemd/user/flightdeckd.service, para o flightdeckd iniciar no próximo boot ou login. O daemon que está rodando agora continua como está.",
+      messageWindows:
+        "O Flightdeck vai criar a tarefa {task} no Agendador de Tarefas, para o flightdeckd iniciar no seu próximo login. O daemon que está rodando agora continua como está.",
+      noteLabel: "Iniciar no boot",
+      boot: "Iniciar no boot está ligado: o flightdeckd inicia com este computador a partir do próximo boot. O daemon que está rodando agora continua como está.",
+      logon:
+        "Iniciar no boot está ligado: o flightdeckd inicia no seu próximo login. O daemon que está rodando agora continua como está.",
+      lingerOff:
+        "O linger está desligado, então ele espera um login. Para iniciar no boot, rode isto num terminal do host. O app nunca roda sudo:",
+      copyLinger: "Copiar o comando do linger",
+    },
   },
   hostDeps: {
     installPage: "Página de instalação",

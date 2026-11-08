@@ -1,4 +1,11 @@
-import type { DepResult, DepsResult, DoctorCheckResult, DoctorResult } from "@flightdeck/protocol";
+import {
+  type DepResult,
+  type DepsResult,
+  type DoctorCheckResult,
+  type DoctorResult,
+  FEATURE_SERVICE_INSTALL,
+  type ServiceInstallResult,
+} from "@flightdeck/protocol";
 import { Check, ChevronRight, Copy, Minus, TriangleAlert, X } from "lucide-react";
 import { useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -42,7 +49,7 @@ const COVERED_BY: Record<string, string> = {
   linger: "service",
 };
 
-type Confirming = "hooks" | "update";
+type Confirming = "hooks" | "update" | "service";
 
 interface HealthRow {
   key: string;
@@ -66,6 +73,8 @@ interface RowEnv {
   update: string | null;
   onAddFolder(): void;
   confirm(what: Confirming): void;
+  /** #1200: the host is connected and can install itself as a service from here. */
+  canInstallService: boolean;
 }
 
 /** The one-click fix a dependency row offers, when the app already has the action. */
@@ -74,6 +83,14 @@ function depAction(item: DepResult, lacking: boolean, env: RowEnv): HealthRow["a
   if (item.id === "hooks")
     return { label: env.t("hostPage.install"), run: () => env.confirm("hooks") };
   if (item.id === "folders") return { label: env.t("hostHealth.addFolder"), run: env.onAddFolder };
+  // #1200: only the install itself; the linger line needs sudo and stays a command to copy.
+  if (
+    item.id === "service" &&
+    env.canInstallService &&
+    item.fix.some((fix) => fix.command === "flightdeckd service install")
+  ) {
+    return { label: env.t("hostHealth.service.turnOn"), run: () => env.confirm("service") };
+  }
   return null;
 }
 
@@ -192,6 +209,9 @@ export function HostHealth(
   const { store, host } = props;
   const { t } = store.i18n;
   const [confirming, setConfirming] = useState<Confirming | null>(null);
+  const [serviceDone, setServiceDone] = useState<ServiceInstallResult | null>(null);
+  // #1200: linger needs sudo, so the app only shows the line to copy; it never runs it.
+  const lingerLine = serviceDone ? `sudo loginctl enable-linger ${serviceDone.user}` : "";
   const [showFine, setShowFine] = useState(false);
   const fineId = useId();
   const os = host.hostInfo?.os ?? "";
@@ -210,6 +230,8 @@ export function HostHealth(
     update,
     onAddFolder: props.onAddFolder,
     confirm: setConfirming,
+    canInstallService:
+      host.status === "online" && (host.hostInfo?.features ?? []).includes(FEATURE_SERVICE_INSTALL),
   };
   const rows = {
     required: items.filter((item) => item.group === "required").map((item) => depRow(item, env)),
@@ -355,6 +377,34 @@ export function HostHealth(
           {t("hostDeps.check")}
         </ActionButton>
       </div>
+      {serviceDone && (
+        <output aria-label={t("hostHealth.service.noteLabel")} className="block text-sm">
+          <span className="block">
+            {t(
+              serviceDone.startsAt === "boot"
+                ? "hostHealth.service.boot"
+                : "hostHealth.service.logon",
+            )}
+          </span>
+          {serviceDone.lingerOff && (
+            <>
+              <span className="block">{t("hostHealth.service.lingerOff")}</span>
+              <span className="dep-fix">
+                <code className="font-mono text-xs">{lingerLine}</code>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6"
+                  aria-label={t("hostHealth.service.copyLinger")}
+                  onClick={() => void store.copyText(lingerLine)}
+                >
+                  <Copy aria-hidden="true" />
+                </Button>
+              </span>
+            </>
+          )}
+        </output>
+      )}
       {group("required")}
       {group("optional")}
       {group("checks")}
@@ -386,6 +436,24 @@ export function HostHealth(
             setConfirming(null);
             void store.hostCommand(host.id, "hooks.install", { confirm: true }).then(() => {
               props.onHooksChanged();
+              return props.onCheck();
+            });
+          }}
+        />
+      )}
+      {confirming === "service" && (
+        <ConfirmDialog
+          message={
+            os === "win32"
+              ? t("hostHealth.service.messageWindows", { task: "Flightdeck\\flightdeckd" })
+              : t("hostHealth.service.messageLinux")
+          }
+          confirmLabel={t("hostHealth.service.turnOn")}
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => {
+            setConfirming(null);
+            void store.hostCommand(host.id, "service.install", { confirm: true }).then((result) => {
+              if (result) setServiceDone(result);
               return props.onCheck();
             });
           }}

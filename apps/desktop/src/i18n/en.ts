@@ -4871,6 +4871,20 @@ export const en: Dictionary = {
     okHide: "Hide {n} checks with nothing to do",
     optionalAbsent: "Optional · not installed",
     okList: "Working",
+    service: {
+      turnOn: "Turn it on",
+      messageLinux:
+        "Flightdeck will install a user service at ~/.config/systemd/user/flightdeckd.service, so flightdeckd starts at the next boot or login. The daemon running now stays as it is.",
+      messageWindows:
+        "Flightdeck will create the {task} task in the Task Scheduler, so flightdeckd starts at your next login. The daemon running now stays as it is.",
+      noteLabel: "Start at boot",
+      boot: "Start at boot is on: flightdeckd starts with this computer from the next boot. The daemon running now stays as it is.",
+      logon:
+        "Start at boot is on: flightdeckd starts at your next login. The daemon running now stays as it is.",
+      lingerOff:
+        "Linger is off, so it waits for a login. To start it at boot, run this in a terminal on the host. The app never runs sudo:",
+      copyLinger: "Copy the linger command",
+    },
   },
   hostDeps: {
     installPage: "Install page",

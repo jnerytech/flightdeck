@@ -63,7 +63,7 @@ function setup(
     lang?: "en" | "pt-BR";
     doctor?: DoctorResult;
     /** The host's features beyond doctor.run and depsCheck (#1200). */
-    features?: string[];
+    features?: readonly string[];
     status?: string;
     /** What service.install answers (#1200). */
     service?: { startsAt: "boot" | "logon"; lingerOff: boolean; user: string };
