@@ -92,6 +92,11 @@ const shown = (title: string) => {
     (name) => screen.queryByRole("button", { name }) !== null,
   );
 };
+/** The menu's host items: the Projects group (#126 slice 4) has its own, labelled. */
+const hostItems = () =>
+  screen
+    .queryAllByRole("menuitemradio")
+    .filter((item) => item.closest("[role=group][aria-labelledby]") === null);
 /** The Data from menu is there: checked before a pick, so a missing menu fails as an assertion. */
 const hasMenu = (name: string) => screen.queryByRole("button", { name }) !== null;
 const pick = async (menu: string, item: string) => {
@@ -224,9 +229,8 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     await act(async () => {
       fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
     });
-    const items = screen.queryAllByRole("menuitemradio").map((item) => item.textContent);
-    const checked = screen
-      .queryAllByRole("menuitemradio")
+    const items = hostItems().map((item) => item.textContent);
+    const checked = hostItems()
       .filter((item) => item.getAttribute("aria-checked") === "true")
       .map((item) => item.textContent);
     expect({ said, items, checked }).toEqual({
@@ -244,7 +248,7 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     await act(async () => {
       fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
     });
-    const items = screen.queryAllByRole("menuitemradio").map((item) => item.textContent);
+    const items = hostItems().map((item) => item.textContent);
     expect(items).toEqual(["All hosts", "alfa"]);
   });
 
