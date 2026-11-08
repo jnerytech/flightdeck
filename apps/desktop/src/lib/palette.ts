@@ -132,6 +132,11 @@ const RANK = { needs_you: 0, running: 1, idle: 2 } as const;
 
 const GITHUB_ISSUE = /^https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/issues\/(\d+)(?:[/?#]\S*)?$/;
 
+/** The most of a task a palette row shows; the prompt itself is never cut. */
+const SHOWN = 48;
+const shortened = (text: string) =>
+  text.length > SHOWN ? `${text.slice(0, SHOWN).trimEnd()}…` : text;
+
 /** Where "Create card" puts the card: the scope's project, else the only project there is. */
 function createPlace(state: AppState, scope: PaletteScope | undefined) {
   const online = state.hosts.filter((h) => h.status === "online");
@@ -554,6 +559,29 @@ export function paletteSections(
         )
         .map(({ item }) => item);
   const recent = ranked.slice(0, RECENTS_SHOWN);
+  // Issue #1135: any text can also be the task of a session started in the project's folder.
+  const start = (): PaletteItem[] => {
+    const text = query.trim();
+    const place = createPlace(state, scope);
+    if (text === "" || !place) return [];
+    // A sentence is a task. One word that finds a row is a search, and a lone issue number or link
+    // is for Create card.
+    const sentence = /\s/.test(text);
+    const searching = filtered.some((section) => section.items.length > 0);
+    if (!sentence && (searching || text.startsWith("#") || text.includes("/"))) return [];
+    const { host, project } = place;
+    return [
+      {
+        id: "start:session",
+        label: t("palette.startIn", { project: project.name, text: shortened(text) }),
+        detail: t("palette.startDetail"),
+        target: { kind: "start-session", hostId: host.id, cwd: project.path, prompt: text },
+        actions: [],
+        hostId: host.id,
+        projectId: project.id,
+      },
+    ];
+  };
   // Text that matches no card can become one (or an issue's card); it is the last thing offered.
   const create = (): PaletteItem[] => {
     const text = query.trim();
@@ -597,6 +625,7 @@ export function paletteSections(
     { title: t("palette.sectionLink"), items: prLink },
     { title: t("palette.sectionRecent"), items: recent, recent: true as const },
     ...filtered,
+    { title: t("palette.sectionStart"), items: start() },
     { title: t("palette.sectionCreate"), items: create() },
   ].filter((section) => section.items.length > 0);
 }

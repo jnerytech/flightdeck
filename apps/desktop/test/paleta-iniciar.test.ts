@@ -77,19 +77,31 @@ describe("paleta-iniciar: Start in <project>: <text>", () => {
     });
   });
 
+  test("one word that finds a row is a search, not a task; one that finds nothing is offered", () => {
+    expect(start("fix", SCOPE)).toBeUndefined();
+    expect(start("refactor", SCOPE)?.items[0]?.label).toBe("Start in api: refactor");
+  });
+
+  test("a lone issue number or link is for Create card, not for a session", () => {
+    expect(start("#123", SCOPE)).toBeUndefined();
+    expect(start("https://github.com/o/r/issues/5", SCOPE)).toBeUndefined();
+  });
+
   test("an empty or blank query offers nothing", () => {
     expect(start("", SCOPE)).toBeUndefined();
     expect(start("   ", SCOPE)).toBeUndefined();
   });
 
   test("with no scope it is offered only when there is one project to start in", () => {
-    expect(start("Thing")).toBeUndefined();
+    expect(start("Do the Thing")).toBeUndefined();
     const one = state({ hosts: [host("h1", "alfa")], cards: {} });
-    expect(start("Thing", undefined, one)?.items[0]?.label).toBe("Start in api: Thing");
+    expect(start("Do the Thing", undefined, one)?.items[0]?.label).toBe(
+      "Start in api: Do the Thing",
+    );
   });
 
   test("a project of the other host is the place when the scope names it", () => {
-    const section = start("Thing", { hostId: "h2", projectId: "p-site" });
+    const section = start("Do the Thing", { hostId: "h2", projectId: "p-site" });
     expect(section?.items[0]?.target).toMatchObject({ hostId: "h2", cwd: "/srv/site" });
   });
 

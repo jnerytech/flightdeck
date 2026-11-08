@@ -282,8 +282,22 @@ export function runPaletteTarget(
         });
       return;
     }
-    case "start-session":
+    case "start-session": {
+      // Issue #1135: the typed text is the task; the mode and model are the form's last ones, and
+      // the persona the client defaults to for that folder, as on the form.
+      const { mode, model } = store.newSessionPrefs.value;
+      const persona = store.personaRef(
+        store.clientScope().defaultPersona(target.hostId, target.cwd),
+      );
+      void store.createSession(target.hostId, {
+        cwd: target.cwd,
+        prompt: target.prompt,
+        permissionMode: mode,
+        ...(model ? { model } : {}),
+        ...(persona ? { persona } : {}),
+      });
       return;
+    }
     case "create-card-issue": {
       const board: Route = { name: "board", host: target.hostId, projectId: target.projectId };
       void createFromIssue(store, target).then((card) => {

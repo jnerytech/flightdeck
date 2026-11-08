@@ -370,13 +370,17 @@ describe("paleta", () => {
 });
 
 describe("paleta: criar card a partir do texto (issue #147)", () => {
-  /** Opens the palette on the board's project, types `text` and takes the create row. */
+  /**
+   * Opens the palette on the board's project, types `text` and takes the create row. A sentence
+   * also offers a session to start (#1135) just before it, so the row is one key further down.
+   */
   async function create(text: string) {
     await openPalette();
     await settle(() => sections().includes("Ações"));
     await type(text);
     await settle(() => sections().includes("Criar"));
     await press("ArrowDown");
+    if (/\s/.test(text)) await press("ArrowDown");
     await press("Enter");
   }
 
