@@ -5169,6 +5169,23 @@ export const en: Dictionary = {
     reconnect: "Reconnect",
     remove: "Remove host",
   },
+  harnessTemplates: {
+    title: "Claude Code setup templates",
+    hint: "Shared from a project's Claude Code setup. Another project can start from one.",
+    asking: "Looking for templates…",
+    loadFailed: "Could not load the templates.",
+    retry: "Try again",
+    none: "No templates yet. Share a project's setup to make one.",
+    filesOne: "1 file",
+    filesMany: "{n} files",
+    facts: "{files} · {size}",
+    delete: "Delete",
+    deleteLabel: "Delete template {title}",
+    confirmMessage: "Delete the template {title}?",
+    confirmWarning: "Projects already set up from it keep their files.",
+    confirmButton: "Delete template",
+    deleted: "Template {title} deleted.",
+  },
   maintenance: {
     title: "Maintenance",
     fields: {

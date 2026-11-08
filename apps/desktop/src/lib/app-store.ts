@@ -450,6 +450,7 @@ export type HostCommandType = Extract<
   | "host.keepAwake"
   | `project.trust.${string}`
   | `project.harness.${string}`
+  | `harness.templates.${string}`
   | "knowledge.list"
   | "knowledge.feed"
   | "knowledge.setFeed"
