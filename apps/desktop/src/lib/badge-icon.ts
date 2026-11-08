@@ -186,7 +186,8 @@ function pixelOf(sample: Sampler, x: number, y: number): [number, number, number
 export function badgeRgba(count: number, mode: BadgeMode = "count"): number[] | null {
   const whole = Math.trunc(count);
   if (!Number.isFinite(whole) || whole <= 0) return null;
-  const sample = mode === "dot" ? dotSampler : countSampler(whole > 9 ? "9+" : String(whole));
+  const label = whole > 9 ? "9+" : String(whole);
+  const sample = mode === "dot" ? dotSampler : countSampler(label);
   const rgba = new Array<number>(BADGE_SIZE * BADGE_SIZE * 4).fill(0);
   for (let y = 0; y < BADGE_SIZE; y++) {
     for (let x = 0; x < BADGE_SIZE; x++) {
