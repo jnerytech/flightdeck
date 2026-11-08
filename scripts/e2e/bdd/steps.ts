@@ -279,11 +279,22 @@ step(When, "I move it anyway", async (c) =>
     .click(),
 );
 
+/** Finish… sits under the card page's menu (#1197). */
+const fromCardMenu = async (c: Context, item: string) => {
+  await c.page
+    .getByRole("button", {
+      name: c.t("board.cardActions", { title: mine(c).card ?? "" }),
+      exact: true,
+    })
+    .click();
+  await c.page.getByRole("menuitem", { name: item, exact: true }).click();
+};
+
 step(When, "I open the card and read the three ways to finish it", async (c) => {
   await tile(c)
     .getByRole("button", { name: mine(c).card ?? "", exact: true })
     .click();
-  await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
+  await fromCardMenu(c, c.t("cardUi.finish"));
   const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
   for (const key of ["finishMove", "finishComplete", "finishMerge"] as const) {
     await dialog.getByText(c.t(`cardUi.${key}`), { exact: true }).waitFor({ timeout: WAIT });
@@ -295,14 +306,14 @@ step(When, "I open the card and read the three ways to finish it", async (c) => 
 });
 
 step(When, "I finish the card by moving it to Done", async (c) => {
-  await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
+  await fromCardMenu(c, c.t("cardUi.finish"));
   const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
   await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
   await dialog.waitFor({ state: "detached", timeout: WAIT });
 });
 
 step(Then, "the card says it is already done", async (c) => {
-  await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
+  await fromCardMenu(c, c.t("cardUi.finish"));
   await c.page
     .getByRole("dialog", { name: c.t("cardUi.finishTitle") })
     .getByText(c.t("cardUi.alreadyDone"), { exact: true })

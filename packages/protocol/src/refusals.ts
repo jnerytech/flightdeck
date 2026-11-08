@@ -6,6 +6,8 @@ export const DAEMON_REASONS = [
   "autoapprove_resume_confirm",
   "terminal_enable_confirm",
   "central_confirm",
+  "service_confirm",
+  "service_unsupported",
   "permission_request_closed",
   "hold_required",
   "input_changed",
@@ -29,6 +31,7 @@ export const DAEMON_REASONS = [
   "team_delete_live",
   "spec_path_invalid",
   "pinned_doc_invalid",
+  "card_template_unknown",
   "findings_missing",
   "findings_invalid",
   "contract_invalid",
@@ -161,6 +164,12 @@ export const DAEMON_REASONS = [
   "merge_message_secret",
   "project_no_pr_provider",
   "card_no_pr",
+  "card_pr_not_open",
+  "card_pr_merge_unsupported",
+  "card_pr_checks_failing",
+  "card_pr_review_required",
+  "card_pr_conflict",
+  "card_pr_merge_failed",
   "pr_no_comment",
   "card_running",
   "merge_confirm",
@@ -490,6 +499,7 @@ export type RefusalParams = Record<string, string | number>;
 /** Every host feature a command can find off: the app names each one in both languages. */
 export const DAEMON_FEATURES = [
   "bypass",
+  "serviceInstall",
   "history",
   "central",
   "vault",
@@ -568,6 +578,7 @@ export const DAEMON_FEATURES = [
   "harnessDraft",
   "harnessTemplates",
   "keepAwake",
+  "quotaPause",
   "autoUpdate",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];

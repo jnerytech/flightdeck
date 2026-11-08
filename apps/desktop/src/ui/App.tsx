@@ -1,5 +1,12 @@
 import { type Card, type ContractOverrides, parsePairingLink } from "@flightdeck/protocol";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type ComponentProps,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { ResumeOfferDialog } from "@/components/hosts/resume-offer-dialog";
@@ -325,6 +332,12 @@ export function runPaletteTarget(
   }
 }
 
+/** The sidebar as the shell asks for it: a function of whether the rail is folded. */
+const sidebarSlot =
+  (props: Omit<ComponentProps<typeof Sidebar>, "collapsed">) => (collapsed: boolean) => (
+    <Sidebar {...props} collapsed={collapsed} />
+  );
+
 export function App({ store }: Readonly<{ store: AppStore }>) {
   const state = useStoreState(store);
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
@@ -627,35 +640,32 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               go={go}
             />
           }
-          sidebar={(collapsed) => (
-            <Sidebar
-              store={store}
-              state={state}
-              collapsed={collapsed}
-              t={t}
-              go={goPreview}
-              route={route}
-              onOpenProjectScreen={openProjectScreen}
-              onNewSession={(hostId) => {
-                store.select(hostId, null);
-                go({ name: "new-session", host: hostId });
-              }}
-              onRemoveHost={(id) => void store.removeHost(id)}
-              onRenameHost={(id, name) => store.renameHost(id, name)}
-              onOpenSearch={() => store.openSearch()}
-              onNewTab={() => store.hostTabs.openNextInNewTab()}
-              onToggleTheme={() => store.theme.toggle()}
-              onShortcuts={() => setHelp(true)}
-              onWhatsNew={() => setWhatsNew(true)}
-              {...(focusHost && store.uiMode(focusHost.id).canSwitch
-                ? {
-                    onSimpleMode: () => {
-                      void store.toggleUiMode(); // NOSONAR: the promise is deliberately not awaited; void says so
-                    },
-                  }
-                : {})}
-            />
-          )}
+          sidebar={sidebarSlot({
+            store,
+            state,
+            t,
+            go: goPreview,
+            route,
+            onOpenProjectScreen: openProjectScreen,
+            onNewSession: (hostId) => {
+              store.select(hostId, null);
+              go({ name: "new-session", host: hostId });
+            },
+            onRemoveHost: (id) => void store.removeHost(id),
+            onRenameHost: (id, name) => store.renameHost(id, name),
+            onOpenSearch: () => store.openSearch(),
+            onNewTab: () => store.hostTabs.openNextInNewTab(),
+            onToggleTheme: () => store.theme.toggle(),
+            onShortcuts: () => setHelp(true),
+            onWhatsNew: () => setWhatsNew(true),
+            ...(focusHost && store.uiMode(focusHost.id).canSwitch
+              ? {
+                  onSimpleMode: () => {
+                    void store.toggleUiMode(); // NOSONAR: the promise is deliberately not awaited; void says so
+                  },
+                }
+              : {}),
+          })}
         >
           <div
             className="flex h-full min-h-0 flex-col"

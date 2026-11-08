@@ -103,6 +103,7 @@ const validCommands: Record<CommandType, unknown> = {
   "project.harness.draft": { path: "/work/app", part: "claudeMd" },
   "project.harness.export": { path: "/work/app", id: "shop", title: "Shop" },
   "harness.templates.list": {},
+  "card.pr.merge": { cardId: "c1", method: "squash", confirm: true },
   "harness.templates.delete": { id: "shop", confirm: true },
   "project.harness.commit": {
     path: "/work/app",
@@ -130,6 +131,7 @@ const validCommands: Record<CommandType, unknown> = {
   "card.get": { cardId: "c" },
   "card.spec": { cardId: "c" },
   "card.validationTemplate": { cardId: "c" },
+  "card.templates": { projectId: "p" },
   "card.stop": { cardId: "c" },
   "card.diff": { cardId: "c" },
   "assistant.run": {
@@ -377,6 +379,7 @@ const validCommands: Record<CommandType, unknown> = {
   "autoapprove.resume": { sessionKey: "s1", confirm: true },
   "hooks.status": {},
   "hooks.install": { confirm: true },
+  "service.install": { confirm: true },
   "hooks.uninstall": { confirm: true },
   "workflow.list": { projectId: "p" },
   "workflow.templates": { projectId: "p" },
@@ -394,6 +397,7 @@ const validCommands: Record<CommandType, unknown> = {
   "gate.respond": { runId: "r", stepId: "approve", attempt: 1, decision: "reject", note: "não" },
   "quota.get": {},
   "quota.watch": {},
+  "quota.setPauseAt": { pauseAt: 0.8 },
   "account.get": {},
   "account.watch": {},
   "account.unwatch": {},

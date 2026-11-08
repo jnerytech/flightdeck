@@ -119,6 +119,25 @@ describe("vigiar-github: checks, conflicts and logs through gh", () => {
     ).rejects.toThrow("invalid GitHub PR URL");
     expect(gh.calls()).toEqual([]);
   });
+
+  test("an owner or repository that starts with @ or holds a control character is refused before anything runs", async () => {
+    const gh = fakeGh([]);
+    for (const [owner, repo] of [
+      ["@acme", "repo"],
+      ["acme", "@repo"],
+      ["ac\nme", "repo"],
+      ["acme", "re\u001fpo"],
+      ["acme", "re\u0000po"],
+    ] as const) {
+      await expect(
+        new GithubCli().health({
+          cwd: tempDir(),
+          url: `https://github.com/${owner}/${repo}/pull/7`,
+        }),
+      ).rejects.toThrow("in the PR URL");
+    }
+    expect(gh.calls()).toEqual([]);
+  });
 });
 
 async function watched(rules: FakeRule[]) {

@@ -37,3 +37,28 @@ describe("teams-narrow: a team member's row fits a narrow window", () => {
     expect(actions).toContain("flex-wrap: wrap");
   });
 });
+
+// Issue #1222: a worker row of the new-team form kept fixed 7 rem and 10 rem columns. The form is
+// at most about 560 px wide, so even at 1280 the model's label wrapped in its 7 rem column, and at
+// 390 the persona picker got a few dozen pixels. The row is two even columns at every width: the
+// persona on its own line, then model and permissions side by side, then Remove at the left.
+describe("teams-narrow: a worker row of the new-team form fits the form at every width (#1222)", () => {
+  test("two even columns outside any media query, with no fixed column", () => {
+    const row = utility("worker-row");
+    const tracks = row.match(/grid-template-columns:[^;]*;/g) ?? [];
+    expect([tracks, row.includes("@media")]).toEqual([
+      ["grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);"],
+      false,
+    ]);
+  });
+
+  test("the persona picker spans the row, and Remove sits at the left", () => {
+    const row = utility("worker-row");
+    expect(row).toMatch(/& > :first-child \{\s*grid-column: 1 \/ -1;/);
+    expect(row).toMatch(/& > :last-child \{\s*justify-self: start;/);
+  });
+
+  test("a host with no permission modes needs no row of its own", () => {
+    expect(utility("worker-row-lean")).toBe("");
+  });
+});

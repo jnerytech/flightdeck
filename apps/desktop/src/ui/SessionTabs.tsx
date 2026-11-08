@@ -1,3 +1,4 @@
+import type { ChangesResult } from "@flightdeck/protocol";
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -33,6 +34,19 @@ import { TracePanel } from "./TracePanel.tsx";
 
 /** Where the view keys are not for the page: a field being typed in, a dialog (the palette). */
 const TYPING_OR_DIALOG = "input, textarea, select, [contenteditable], [role=dialog]";
+
+/** What goes above a session's files: its Finish panel, given the changes the panel shows. */
+const finishPanel =
+  (store: AppStore, hostId: string) => (changes: ChangesResult, refresh: () => Promise<void>) => (
+    <SessionFinish
+      key={changes.target}
+      store={store}
+      hostId={hostId}
+      target={changes.target}
+      changes={changes}
+      refresh={refresh}
+    />
+  );
 
 /**
  * A session's screen with the Mudanças tab beside its conversation (phase 11). Without the tab
@@ -264,16 +278,7 @@ export function SessionTabs(
                   },
                 }
               : {})}
-            extra={(changes, refresh) => (
-              <SessionFinish
-                key={changes.target}
-                store={props.store}
-                hostId={props.hostId}
-                target={changes.target}
-                changes={changes}
-                refresh={refresh}
-              />
-            )}
+            extra={finishPanel(props.store, props.hostId)}
           />
           <SessionFiles
             store={props.store}

@@ -28,6 +28,9 @@ export const NARROW_SHOTS: readonly string[] = [
   // #168: the screens shipped on 2026-11-06 and 07.
   "projetos-novo",
   "times-apagar",
+  // #1222: the new-team form and an active team, at every width.
+  "times-novo",
+  "times-rodando",
   "workflows-modelos",
   "board-contrato",
   // #1052: the onboarding journey, the first screens a new person sees.

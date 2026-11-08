@@ -1296,11 +1296,22 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   estiver limpo. Senão, o card avisa e a worktree fica.
 - **Descarte:** Descartar (com confirmação, e um aviso se houver alterações não enviadas)
   remove a worktree e a branch local.
+- **A página do card tem um botão que lidera:** o painel Executar mostra o que vem a seguir.
+  **Iniciar** para um card que ainda não rodou, **Parar** enquanto roda, **Revisar mudanças**
+  quando uma execução termina (mostra as Mudanças do card) e depois **Abrir PR**. O resto está no
+  menu **⋯** ao lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do
+  board), **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Finalizar…** e
+  **Descartar**. Um card cuja execução terminou abre em **Mudanças**.
 - **Editar e excluir:** o menu **⋯** do card tem **Editar…**, que abre o card com o título pronto
   para mudar (a página do card também edita a descrição e, com o ROI ligado, a estimativa), e
   **Excluir…**, que cita o card e pergunta antes. Excluir vale só para um card que nunca começou
   (sem worktree, branch nem sessão). Para um que já começou, a janela explica o motivo e oferece
   **Descartar card** no lugar. Os cards que esperavam o excluído ficam livres dele, com um aviso.
+- **O selo Precisa de:** de um card do board é um botão. Para o que o texto do card não tem
+  (critérios, uma nota de validação, uma especificação) abre o card com o título pronto para
+  editar; para um link de PR ou checks abre o card, onde o próximo passo aparece primeiro. Ele não
+  é uma parada do Tab: pelo teclado, Enter no título do card abre o card, e **M** e depois
+  **Editar** o abre com o título pronto para editar.
 
 ### Provedores de PR
 
@@ -1671,6 +1682,16 @@ execução cria no máximo 10 cards; a etapa diz quantos criou, quantos um card 
 passaram do limite. Os cards vêm marcados como texto do agente, mostram o selo externo e mantêm a
 aprovação automática desligada, porque o que um agente lê em um repositório pode ter sido escrito
 por qualquer pessoa.
+
+### Executar de novo uma execução que falhou
+
+Uma execução de workflow que falhou, ou que terminou porque o card foi parado, mostra **Executar de
+novo** abaixo do motivo, no card. Ela inicia o card de novo com o workflow de mesmo nome como o arquivo está agora
+(não como estava quando a execução começou) e as mesmas entradas, na branch do próprio card, com a
+persona padrão da coluna, e a execução anterior continua no histórico do card. O botão
+fica desligado, com o motivo ao lado e **Abrir Workflows** para a página de Workflows do projeto,
+quando o problema é o arquivo: o workflow mudou desde que você confiou nele, tem erros, ou não está
+mais na branch base. Se o host recusar o início, a recusa aparece no próprio lugar.
 
 ### Modelos
 

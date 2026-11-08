@@ -8,6 +8,7 @@ import {
   AssistantRunPayload,
 } from "./assistant.ts";
 import {
+  type CardTemplates,
   ColumnContract,
   PINNED_DOCS_MAX,
   pinnedDocProblem,
@@ -862,6 +863,9 @@ export const Card = z.object({
   specState: SpecState.nullable().default(null),
   /** Issue #76: the library documents the person pinned to this card, relative paths in order. */
   pinnedDocs: z.array(z.string()).default([]),
+  /** Issue #1201: the workflow and the persona the card is meant to start with (a template's); `null`: the default. */
+  startWorkflow: z.string().nullable().default(null),
+  startPersona: z.string().nullable().default(null),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -3402,9 +3406,12 @@ export const Command = z.discriminatedUnion("type", [
       description: z.string(),
       /** The column the card is born in; the Backlog when absent (an older daemon ignores it). */
       column: BoardColumn.optional(),
+      /** Issue #1201: a card template of the project; the host fills the card from it. */
+      templateId: z.string().min(1).max(60).optional(),
       ...CardDeps,
     }),
   ),
+  cmd("card.templates", z.object({ projectId: z.string() })),
   cmd(
     "card.update",
     z.object({
@@ -3502,6 +3509,20 @@ export const Command = z.discriminatedUnion("type", [
       text: z.string().min(1).optional(),
       outcome: z.enum(["done", "discard"]).optional(),
     }),
+  ),
+  /**
+   * #1196: merges the card's open PR on its provider (`gh pr merge`, a merge commit or a squash);
+   * a near connection and `confirm`. The card then moves to Done as any merged PR does.
+   */
+  cmd(
+    "card.pr.merge",
+    z
+      .object({
+        cardId: z.string(),
+        method: z.enum(["merge", "squash"]),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
   ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
@@ -4100,6 +4121,8 @@ export const Command = z.discriminatedUnion("type", [
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
   cmd("hooks.uninstall", z.object({ confirm: z.boolean().optional() })),
+  /** #1200: installs the daemon as a service for the next boot or login: only with `confirm: true`. */
+  cmd("service.install", z.object({ confirm: z.boolean().optional() }).strict()),
   cmd("external.message", z.object({ claudeSessionId: z.string(), text: z.string().min(1) })),
   // Phase 6: workflows of a project (read from its base branch) and their runs.
   cmd("workflow.list", z.object({ projectId: z.string() })),
@@ -4128,6 +4151,8 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 7 (track B).
   cmd("quota.get", z.object({}).strict()),
   cmd("quota.watch", z.object({}).strict()),
+  /** The guard "new cards wait from N%": 0 to 1, `null` turns it off. Answers with the new state. */
+  cmd("quota.setPauseAt", z.object({ pauseAt: z.number().min(0).max(1).nullable() }).strict()),
   cmd("account.get", z.object({}).strict()),
   cmd("account.watch", z.object({}).strict()),
   cmd("account.unwatch", z.object({}).strict()),
@@ -5231,6 +5256,22 @@ export const BoardResult = z.object({
 });
 export type BoardResult = z.infer<typeof BoardResult>;
 
+/** #1200: the host can install itself as a service from the app (`service.install`). */
+export const FEATURE_SERVICE_INSTALL = "serviceInstall";
+
+/**
+ * #1200: what `service.install` did. The service is enabled for the next boot or login, never
+ * started now: the daemon that answered keeps running.
+ */
+export interface ServiceInstallResult {
+  /** When the service first runs: the next boot (Linux with linger on) or the next login. */
+  startsAt: "boot" | "logon";
+  /** Linux with linger off: until linger is on, the service starts only after a login. */
+  lingerOff: boolean;
+  /** The account a `sudo loginctl enable-linger <user>` line names. */
+  user: string;
+}
+
 export const HooksStatusResult = z.object({
   status: z.enum(["installed", "absent", "outdated"]),
   /** The settings.json the hooks go to. */
@@ -5452,6 +5493,7 @@ export interface CommandResults {
   "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;
+  "card.pr.merge": Card;
   "card.manage": Card;
   "card.complete": Card;
   "card.discard": Card;
@@ -5574,9 +5616,11 @@ export interface CommandResults {
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;
+  "service.install": ServiceInstallResult;
   "card.get": Card;
   "card.spec": Card;
   "card.validationTemplate": ValidationTemplate;
+  "card.templates": CardTemplates;
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.templates": { templates: WorkflowTemplate[] };
   "alert.list": { alerts: RepoAlert[]; unavailable: AlertsUnavailable[] };
@@ -5593,6 +5637,7 @@ export interface CommandResults {
   "gate.respond": WorkflowRun;
   "quota.get": QuotaState;
   "quota.watch": undefined;
+  "quota.setPauseAt": QuotaState;
   "account.get": AccountState;
   "account.watch": undefined;
   "account.unwatch": undefined;

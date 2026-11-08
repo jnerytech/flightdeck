@@ -478,6 +478,18 @@ describe("push-wait: the run and the PR as gh prints them (#741)", () => {
     conclusion,
   });
 
+  test("a run address that is not text is empty, never [object Object] (S6551)", () => {
+    const runs = JSON.stringify([
+      {
+        databaseId: 42,
+        status: "in_progress",
+        startedAt: "2026-11-07T01:04:00Z",
+        url: { href: URL },
+      },
+    ]);
+    expect(read(runs, pr("MERGEABLE"))?.url).toBe("");
+  });
+
   test("an in-progress run with its age and address, whether a PR check failed, and whether the PR conflicts", () => {
     expect(prRunFrom(list("in_progress"), pr("MERGEABLE", check("SUCCESS")), now)).toEqual({
       id: 42,

@@ -78,7 +78,7 @@ export function CardDeps(
   const holding = cards.filter((other) => card.blocking.includes(other.id));
   // The blockers of the whole chain that are not satisfied: the rest read as done.
   const waiting = new Set(cards.flatMap((other) => other.waitingOn));
-  const [choice, setPicked] = useState("");
+  const [choice, setChoice] = useState("");
   // A card no longer offered (just added as a blocker) leaves the picker on its placeholder.
   const picked = offered.some((other) => other.id === choice) ? choice : "";
   return (
@@ -122,7 +122,7 @@ export function CardDeps(
                   inline
                   disabled={offered.length === 0}
                   value={picked}
-                  onChange={(e) => setPicked(e.target.value)}
+                  onChange={(e) => setChoice(e.target.value)}
                 >
                   <option value="">{t("deps.pick")}</option>
                   {offered.map((other) => (

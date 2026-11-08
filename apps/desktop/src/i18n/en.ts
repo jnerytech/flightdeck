@@ -1450,6 +1450,7 @@ export const en: Dictionary = {
   },
   daemonFeature: {
     assistant: "the AI assistant",
+    serviceInstall: "starting at boot from the app",
     teleport: "moving a session to another host",
     github: "sign-in with GitHub",
     boardsync: "board sync",
@@ -1528,6 +1529,7 @@ export const en: Dictionary = {
     harnessDraft: "drafting a CLAUDE.md with Claude",
     harnessTemplates: "sharing the Claude Code setup as a template",
     keepAwake: "keeping the computer awake",
+    quotaPause: "the quota guard for new cards",
     autoUpdate: "automatic host updates",
   },
   daemonRefusal: {
@@ -1539,6 +1541,9 @@ export const en: Dictionary = {
     terminal_enable_confirm:
       "Turning the terminal on gives a full shell on this host: confirm it to go on.",
     central_confirm: "Changing the host's ~/.claude/settings.json needs your confirmation.",
+    service_confirm: "Installing the service on the host needs your confirmation.",
+    service_unsupported:
+      "This host has no service manager that can start flightdeckd at boot ({platform}).",
     permission_request_closed: "The permission request {id} is not open.",
     hold_required: "A high-risk request is approved only by holding the button.",
     input_changed: "A request is approved as it was asked: the answer changes what it runs.",
@@ -1569,6 +1574,8 @@ export const en: Dictionary = {
       "The reply of step {step} is not a valid list of findings ({where}), so no card was created.",
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
+    card_template_unknown:
+      "This project offers no card template with that name: pick another or make a blank card.",
     pinned_doc_invalid:
       "A pinned document must be a Markdown file in the project's docs (decisions, adr, rfc, prd or specs), and a card pins at most 10.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
@@ -1981,6 +1988,12 @@ export const en: Dictionary = {
       "The merge message looks like it has a secret ({found}): take it out before merging.",
     project_no_pr_provider: "The project has no PR provider.",
     card_no_pr: "The card has no PR.",
+    card_pr_not_open: "The card's PR is not open.",
+    card_pr_merge_unsupported: "This PR host cannot merge from Flightdeck: merge the PR there.",
+    card_pr_checks_failing: "Checks are failing or still running: the PR cannot be merged yet.",
+    card_pr_review_required: "The PR needs a review before it can be merged.",
+    card_pr_conflict: "The PR conflicts with its base branch: resolve the conflict first.",
+    card_pr_merge_failed: "The PR could not be merged: {detail}",
     pr_no_comment: "No comment was chosen.",
     card_running: "The card is running: wait for the agent to finish.",
     merge_confirm: "Confirm the merge.",
@@ -3895,9 +3908,6 @@ export const en: Dictionary = {
   },
   cardUi: {
     noIssueLink: "This issue has no link we can open",
-    needWorktree: "Start the card before opening its PR",
-    notRunning: "The card is not running",
-    prAlreadyOpen: "The PR is already open",
     notFound: "Card not found.",
     cost: "Card cost",
     back: "Back to the board",
@@ -3953,6 +3963,8 @@ export const en: Dictionary = {
     start: "Start",
     stop: "Stop",
     openPr: "Open PR",
+    reviewChanges: "Review changes",
+    startWith: "Start with a workflow or persona…",
     complete: "Complete",
     finish: "Finish…",
     finishTitle: "Finish this card",
@@ -3988,6 +4000,16 @@ export const en: Dictionary = {
     noSession: "No session yet.",
   },
   runUi: {
+    again: {
+      action: "Run again",
+      loading: "Checking the workflow file…",
+      missing: "The workflow {name} is not on the base branch any more.",
+      untrusted:
+        "The workflow {name} changed since you trusted it: review and trust it again before it runs.",
+      invalid: "The workflow {name} has errors: fix the file and commit it.",
+      openWorkflows: "Open Workflows",
+      started: "Started again.",
+    },
     budget: "Budget",
     gate: "Gate {step}",
     gateNote: "Gate note",
@@ -4709,7 +4731,7 @@ export const en: Dictionary = {
   budgets: {
     label: "{scope} budget ({period})",
     scopeHost: "host",
-    scopeProject: "of {project}",
+    scopeProject: "{project}",
     day: "day",
     month: "month",
     line: "{label} · {action} · {spent} of {limit} ({percent}%)",
@@ -4904,6 +4926,20 @@ export const en: Dictionary = {
     okHide: "Hide {n} checks with nothing to do",
     optionalAbsent: "Optional · not installed",
     okList: "Working",
+    service: {
+      turnOn: "Turn it on",
+      messageLinux:
+        "Flightdeck will install a user service at ~/.config/systemd/user/flightdeckd.service, so flightdeckd starts at the next boot or login. The daemon running now stays as it is.",
+      messageWindows:
+        "Flightdeck will create the {task} task in the Task Scheduler, so flightdeckd starts at your next login. The daemon running now stays as it is.",
+      noteLabel: "Start at boot",
+      boot: "Start at boot is on: flightdeckd starts with this computer from the next boot. The daemon running now stays as it is.",
+      logon:
+        "Start at boot is on: flightdeckd starts at your next login. The daemon running now stays as it is.",
+      lingerOff:
+        "Linger is off, so flightdeckd waits for a login. To start it at boot, run this in a terminal on the host. The app never runs sudo:",
+      copyLinger: "Copy the linger command",
+    },
   },
   hostDeps: {
     installPage: "Install page",

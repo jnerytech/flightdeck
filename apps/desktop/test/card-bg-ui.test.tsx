@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { BgService } from "../../daemon/src/bg/service.ts";
+import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
@@ -53,10 +54,13 @@ async function openCard(withBg: boolean) {
 describe("bg-ui: Iniciar em segundo plano on a card", () => {
   test("the card has the button on a host with bg, and it starts the card in the background", async () => {
     const { store, started, cardId } = await openCard(true);
-    await settle(() => screen.queryByRole("button", { name: "Iniciar em segundo plano" }) !== null);
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Iniciar em segundo plano" }));
-    });
+    await settle(() => screen.queryByRole("button", { name: /^Ações de / }) !== null);
+    const label = screen.queryByRole("button", { name: /^Ações de / })?.getAttribute("aria-label");
+    await chooseFromCardMenu(
+      { act, fireEvent, screen } as never,
+      label ?? "",
+      "Iniciar em segundo plano",
+    );
     await settle(() => started.length > 0);
     expect(started).toEqual([{ cardId }]);
     // The hub shows it.
@@ -67,6 +71,16 @@ describe("bg-ui: Iniciar em segundo plano on a card", () => {
   test("a host without bg has no such button", async () => {
     await openCard(false);
     await settle(() => screen.queryByRole("button", { name: "Iniciar" }) !== null);
-    expect(screen.queryByRole("button", { name: "Iniciar em segundo plano" })).toBeNull();
+    const menu = screen.queryByRole("button", { name: /^Ações de / });
+    expect(menu).not.toBeNull();
+    await act(async () => {
+      fireEvent.pointerDown(menu as HTMLElement, {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
+    await settle(() => screen.queryByRole("menuitem", { name: "Finalizar…" }) !== null);
+    expect(screen.queryByRole("menuitem", { name: "Iniciar em segundo plano" })).toBeNull();
   });
 });
