@@ -57,12 +57,30 @@ export function contractOf(
   return overrides[column] ?? DEFAULT_CONTRACTS[column] ?? null;
 }
 
-/** A checklist item in the description is what the card calls its acceptance criteria. */
-export const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
+const AFTER_INDENT = /[-*]\s+\[[ xX]\]\s/y;
+const WHITE_SPACE = /\s*/y;
+const LINE_BREAK = /[\n\r\u2028\u2029]/g;
 
-/** Whether a text holds a checklist item at the start of a line (`- [ ] x`, `* [x] y`). */
+/**
+ * A checklist item in the description (`- [ ] x`, `* [x] y`) is what the card calls its acceptance
+ * criteria. It must start a line, after any white space (which may itself cross lines). The white
+ * space of a line start ends at the same place for every line start inside a run of it, so the
+ * search goes on after that place: each character is read a few times at most.
+ */
 export function hasChecklistItem(text: string): boolean {
-  return CHECKLIST_ITEM.test(text);
+  let lineStart = 0;
+  while (lineStart < text.length) {
+    WHITE_SPACE.lastIndex = lineStart;
+    WHITE_SPACE.test(text);
+    const item = WHITE_SPACE.lastIndex;
+    AFTER_INDENT.lastIndex = item;
+    if (AFTER_INDENT.test(text)) return true;
+    LINE_BREAK.lastIndex = item;
+    const next = LINE_BREAK.exec(text);
+    if (next === null) return false;
+    lineStart = next.index + 1;
+  }
+  return false;
 }
 
 type Lookable = Pick<
@@ -79,7 +97,7 @@ function checksNeeds(card: Lookable): ContractNeed[] {
 
 /** What each check asks of a card. */
 const LACKING: Record<ContractCheck, (card: Lookable) => ContractNeed[]> = {
-  criteria: (card) => (CHECKLIST_ITEM.test(card.description) ? [] : ["criteria"]),
+  criteria: (card) => (hasChecklistItem(card.description) ? [] : ["criteria"]),
   pr: (card) => (card.prUrl ? [] : ["pr"]),
   checks: checksNeeds,
   validation: (card) => (card.validationNote?.trim() ? [] : ["validation"]),
