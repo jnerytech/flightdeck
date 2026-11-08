@@ -8,6 +8,8 @@ const { WorkflowsPage } = await import("../src/ui/WorkflowsPage.tsx");
 
 afterEach(cleanup);
 
+const NO_HOSTS = { hosts: [] };
+
 test("a workflow from a daemon that sends no issues shows its error texts as they came", async () => {
   const store = {
     hostCommand: async () => ({
@@ -21,6 +23,9 @@ test("a workflow from a daemon that sends no issues shows its error texts as the
         },
       ],
     }),
+    // The templates dialog reads the hosts (#1221): one state, so every read is the same.
+    getState: () => NO_HOSTS,
+    subscribe: () => () => {},
   };
   await act(async () => {
     render(<WorkflowsPage store={store as never} hostId="h1" projectId="p1" projectName="app" />);
