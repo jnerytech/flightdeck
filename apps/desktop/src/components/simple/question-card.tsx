@@ -54,7 +54,11 @@ export function QuestionCard(
     else if (e.key === "n" || e.key === "Escape") props.onAnswer("deny");
   };
   return (
-    <fieldset aria-label={sentence} className="question-card" onKeyDown={onKeyDown}>
+    <fieldset // NOSONAR: A and N answer from anywhere inside the card; the card is a group, not a control
+      aria-label={sentence}
+      className="question-card"
+      onKeyDown={onKeyDown}
+    >
       <p className="question-card-title">{sentence}</p>
       <p className="question-card-note">{consequence}</p>
       <div className="question-card-actions">

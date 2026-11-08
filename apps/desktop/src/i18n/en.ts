@@ -1574,6 +1574,8 @@ export const en: Dictionary = {
       "The reply of step {step} is not a valid list of findings ({where}), so no card was created.",
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
+    card_template_unknown:
+      "This project offers no card template with that name: pick another or make a blank card.",
     pinned_doc_invalid:
       "A pinned document must be a Markdown file in the project's docs (decisions, adr, rfc, prd or specs), and a card pins at most 10.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
@@ -3997,6 +3999,16 @@ export const en: Dictionary = {
     noSession: "No session yet.",
   },
   runUi: {
+    again: {
+      action: "Run again",
+      loading: "Checking the workflow file…",
+      missing: "The workflow {name} is not on the base branch any more.",
+      untrusted:
+        "The workflow {name} changed since you trusted it: review and trust it again before it runs.",
+      invalid: "The workflow {name} has errors: fix the file and commit it.",
+      openWorkflows: "Open Workflows",
+      started: "Started again.",
+    },
     budget: "Budget",
     gate: "Gate {step}",
     gateNote: "Gate note",

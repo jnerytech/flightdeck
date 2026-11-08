@@ -772,7 +772,10 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "teams", host: ALFA },
       async prepare(page) {
         await page.getByRole("button", { name: /^(New team|Novo time)$/ }).click();
-        await page.getByRole("group", { name: /^(Workers|Executoras)$/ }).waitFor();
+        const workers = page.getByRole("group", { name: /^(Workers|Executoras)$/ });
+        await workers.waitFor();
+        // The worker rows sit under the form's sticky buttons: the print starts at them.
+        await workers.evaluate((el) => el.scrollIntoView({ block: "start" }));
       },
     },
     {

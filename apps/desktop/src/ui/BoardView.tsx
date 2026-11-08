@@ -861,12 +861,12 @@ export const BoardView = memo(function BoardView(props: {
         )}
         <div ref={splitRef} className="board-split" data-narrow={narrow || undefined}>
           {/* biome-ignore lint/a11y/noStaticElementInteractions: Esc clears the selection from any card inside the board */}
-          <div
+          <div // NOSONAR: Esc clears the selection from any card inside the board; the columns are a region, not a control
             ref={boardRef}
             data-slot="board-columns"
             hidden={narrow && filesShown}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
-            tabIndex={0}
+            tabIndex={0} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
             style={{ gridAutoColumns: switcher ? "minmax(0, 1fr)" : `${width}px` }}
             className="grid min-h-48 flex-1 grid-flow-col gap-3 overflow-x-auto pb-2 @max-[40rem]:snap-x @max-[40rem]:snap-mandatory"
             onKeyDown={(e) => {

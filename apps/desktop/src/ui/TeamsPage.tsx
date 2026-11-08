@@ -215,7 +215,7 @@ function NewTeam(
             // biome-ignore lint/suspicious/noArrayIndexKey: a row has no identity besides its number
             key={i} // NOSONAR: a row has no identity besides its number
             data-slot="worker-row"
-            className={modes.offered ? "worker-row" : "worker-row worker-row-lean"}
+            className="worker-row"
           >
             <PersonaPicker
               store={store}
