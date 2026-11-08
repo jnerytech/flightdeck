@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { chmodSync, cpSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, symlink, utimes, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import { git, gitRepo, gitRepoWithOrigin } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
@@ -104,13 +104,17 @@ describe("teleport-bundle: the person's repository never holds the bundle's ref 
     const real = Bun.which("git", { PATH: process.env.PATH ?? "" }) ?? "git";
     const bin = tempDir("fd-log-git-");
     const log = join(bin, "calls.txt");
+    // On Windows the fake is a git.cmd: a script without an extension is not a program there.
+    const windows = process.platform === "win32";
     await writeFile(
-      join(bin, "git"),
-      `#!/bin/sh\nprintf '%s\\n' "$*" >> '${log}'\nexec '${real}' "$@"\n`,
+      join(bin, windows ? "git.cmd" : "git"),
+      windows
+        ? `@echo off\r\necho %* >> "${log}"\r\n"${real}" %*\r\n`
+        : `#!/bin/sh\nprintf '%s\\n' "$*" >> '${log}'\nexec '${real}' "$@"\n`,
     );
-    chmodSync(join(bin, "git"), 0o755);
+    if (!windows) chmodSync(join(bin, "git"), 0o755);
     const path = process.env.PATH;
-    process.env.PATH = `${bin}:${path ?? ""}`;
+    process.env.PATH = `${bin}${delimiter}${path ?? ""}`;
     try {
       await bundleCode({ cwd: repo, folder, id: "pkg-1", scan: () => [] });
     } finally {
@@ -124,14 +128,18 @@ describe("teleport-bundle: the person's repository never holds the bundle's ref 
     ]);
   });
 
-  test("a repository whose path holds a colon still bundles", async () => {
-    const { repo, folder } = await working();
-    const moved = join(tempDir("fd-colon-"), "proj:v2");
-    cpSync(repo, moved, { recursive: true });
-    expect(
-      await reason(() => bundleCode({ cwd: moved, folder, id: "pkg-1", scan: () => [] })),
-    ).toBe("no refusal");
-  });
+  // Not on Windows: a colon cannot be in a Windows folder name, so no such repository exists there.
+  test.skipIf(process.platform === "win32")(
+    "a repository whose path holds a colon still bundles",
+    async () => {
+      const { repo, folder } = await working();
+      const moved = join(tempDir("fd-colon-"), "proj:v2");
+      cpSync(repo, moved, { recursive: true });
+      expect(
+        await reason(() => bundleCode({ cwd: moved, folder, id: "pkg-1", scan: () => [] })),
+      ).toBe("no refusal");
+    },
+  );
 });
 
 describe("teleport-bundle: refs a dead daemon left are swept before the next bundle (#715)", () => {

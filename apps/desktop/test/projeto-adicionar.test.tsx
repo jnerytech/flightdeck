@@ -99,7 +99,8 @@ describe("projeto-adicionar: one add-project flow", () => {
     );
     await click(screen.getByRole("button", { name: "Add project" }));
     const dialog = screen.getByRole("dialog");
-    await click(within(dialog).getByRole("button", { name: repo }));
+    // The row shows a shortened path; its title holds the whole folder.
+    await click(within(dialog).getByTitle(repo));
     await settle(() => added.length === 1);
     expect(added[0]).toBe(repo);
     expect(store.getState().projects[hostId]?.map((p) => p.path)).toEqual([repo]);

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { testHome } from "../../../scripts/test/temp-dir.ts";
 import { loadConfig, updateConfigFile } from "../src/config.ts";
 import { parseArgs, runCli, startDaemon } from "../src/main.ts";
@@ -56,7 +56,7 @@ describe("config", () => {
     );
     expect((await loadConfig(file)).knowledge.feedOff).toEqual([
       join(testHome(), "private"),
-      "/abs/x",
+      resolve("/abs/x"),
     ]);
   });
 

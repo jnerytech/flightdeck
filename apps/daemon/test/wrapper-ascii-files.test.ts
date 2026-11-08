@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { KnowledgeIndexResult } from "@flightdeck/protocol";
 import { ExternalSessions } from "../src/central/external.ts";
 import { type Receptor, startReceptor } from "../src/central/receptor.ts";
@@ -167,7 +167,7 @@ describe("wrapper-ascii-files: every file claude is given by path is plain on Wi
     const folders = [
       argAfter(run.start.args, "--mcp-config"),
       argAfter(run.start.args, "--append-system-prompt-file"),
-    ].map((p) => (p ?? "").slice(0, (p ?? "").lastIndexOf("/")));
+    ].map((p) => dirname(p ?? ""));
     expect([
       folders[0] === folders[1],
       folders[0]?.includes("Flightdeck-"),
