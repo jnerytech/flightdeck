@@ -1,4 +1,4 @@
-import type { T } from "../i18n/index.ts";
+import type { Key, T } from "../i18n/index.ts";
 import { type AppState, sessionKey } from "./app-store.ts";
 import { basename } from "./paths.ts";
 import type { Route } from "./router.ts";
@@ -12,6 +12,25 @@ export interface Crumb {
 /** The steps with the last one plain: where the user is does not link to itself. */
 const path = (...steps: Crumb[]): Crumb[] =>
   steps.map((step, i) => (i === steps.length - 1 ? { label: step.label } : step));
+
+/** The screens that stand alone (no parent step): the dictionary key of their one step. */
+const TOP_LEVEL = {
+  overview: "nav.overview",
+  "needs-you": "sidebar.needsYou",
+  activity: "sidebar.activity",
+  "all-projects": "sidebar.projects",
+  costs: "sidebar.costs",
+  connections: "sidebar.connections",
+  personas: "sidebar.personas",
+  clients: "clients.title",
+  plugins: "sidebar.plugins",
+  setup: "setup.title",
+  conversations: "sidebar.conversations",
+  teams: "sidebar.teams",
+  snippets: "sidebar.snippets",
+  vault: "sidebar.vault",
+  settings: "sidebar.settings",
+} as const satisfies Partial<Record<Route["name"], Key>>;
 
 /** Where the user is, as the header's path. */
 export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
@@ -37,8 +56,6 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
   });
 
   switch (route.name) {
-    case "overview":
-      return path({ label: t("nav.overview") });
     case "hub":
     case "home":
     case "start":
@@ -66,10 +83,6 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
     }
     case "new-session":
       return path(sessions, { label: t("sidebar.newSession") });
-    case "needs-you":
-      return path({ label: t("sidebar.needsYou") });
-    case "activity":
-      return path({ label: t("sidebar.activity") });
     case "history":
       return path({ label: t("sidebar.history") }, { label: hostName(route.host) });
     case "host":
@@ -78,8 +91,6 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
       return path(host(route.host), {
         label: route.focus ? t(`sidebar.${route.focus}`) : t("sidebar.hostProjects"),
       });
-    case "all-projects":
-      return path({ label: t("sidebar.projects") });
     case "project":
       return path(
         { label: t("sidebar.projects"), route: { name: "all-projects" } },
@@ -127,29 +138,10 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
         },
         { label: state.cards[sessionKey(route.host, route.cardId)]?.title ?? route.cardId },
       );
-    case "costs":
-      return path({ label: t("sidebar.costs") });
-    case "connections":
-      return path({ label: t("sidebar.connections") });
-    case "personas":
-      return path({ label: t("sidebar.personas") });
-    case "clients":
-      return path({ label: t("clients.title") });
-    case "plugins":
-      return path({ label: t("sidebar.plugins") });
-    case "setup":
-      return path({ label: t("setup.title") });
-    case "conversations":
-      return path({ label: t("sidebar.conversations") });
-    case "teams":
-      return path({ label: t("sidebar.teams") });
-    case "snippets":
-      return path({ label: t("sidebar.snippets") });
-    case "vault":
-      return path({ label: t("sidebar.vault") });
-    case "settings":
-      return path({ label: t("sidebar.settings") });
     case "add-host":
       return path({ label: t("sidebar.hosts") }, { label: t("sidebar.addHostCrumb") });
+    default:
+      // A screen with no parents: one plain step. A route missing from the table is a type error.
+      return path({ label: t(TOP_LEVEL[route.name]) });
   }
 }
