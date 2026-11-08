@@ -768,7 +768,8 @@ describe("harness-setup-ui: the set-up dialog can start from one of the host's t
     await listing();
     await settleMaybe(() => startFrom() !== null);
     await open();
-    await click("Cancel", true);
+    // The dialog frame reads pt-BR when nothing provides the translator, as in the other tests here.
+    await click("Cancelar", true);
     await uiIdle();
     await choose("shop");
     await open();
