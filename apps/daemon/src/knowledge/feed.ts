@@ -29,7 +29,7 @@ const BREAKS = /[\p{Cc}\p{Zl}\p{Zp}]+/gu;
  */
 const INVISIBLE = /(?:\p{Cf}|\p{Co}|\p{Cn}|\p{Variation_Selector})+/gu;
 /** A path in one of the library folders, in plain characters: no colon, quote, backtick or hidden mark. */
-const PLAIN_PATH = /^docs\/(?:decisions|adr|rfc|prd|specs)(?:\/[A-Za-z0-9._ -]+)+\.md$/i;
+const PLAIN_PATH = /^docs\/(?:decisions|adr|rfc|prd|specs)(?:\/[a-z0-9._ -]+)+\.md$/i;
 
 const bytes = (text: string) => Buffer.byteLength(text);
 const byPath = (a: KnowledgeEntry, b: KnowledgeEntry) => byCodeUnit(a.path, b.path);

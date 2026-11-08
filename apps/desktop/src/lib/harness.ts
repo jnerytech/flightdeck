@@ -12,7 +12,7 @@ import {
 
 export type HarnessPart = "claudeMd" | "hooks" | "skills" | "agents" | "permissions" | "mcp";
 
-export type { HookKind };
+export type { HookKind } from "@flightdeck/protocol";
 
 export interface HarnessItem {
   part: HarnessPart;

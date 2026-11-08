@@ -1036,7 +1036,7 @@ export const ptBR = {
     projectFilter: "Projeto: {name}",
     clearProjectFilter: "Limpar o filtro de projeto",
     toggleProject: "Mostrar ou esconder {name}",
-    countChip: "{live} ao vivo de {total} sessões",
+    countChip: "{live} de {total} sessões ativas",
     countShort: "{live} de {total} ativas",
     noHost: "Nenhum host ainda",
     noOnlineHost: "Nenhum host online",
@@ -1478,6 +1478,7 @@ export const ptBR = {
     quotaHistory: "o histórico da cota",
     changes: "a revisão de mudanças",
     sessionCommits: "o commit das mudanças de uma sessão",
+    sessionPrs: "a abertura do PR de uma sessão",
     ssh: "os destinos ssh",
     snippets: "os snippets",
     personaSessions: "as personas em sessões abertas",
@@ -1872,6 +1873,19 @@ export const ptBR = {
       "O commit passou do tempo (um hook ou um pedido de assinatura que não terminou). Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
     changes_commit_hook_withheld:
       "O commit foi recusado, e o que o hook disse não aparece: parece conter um segredo. Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
+    changes_pr_confirm: "Confirme o PR antes que ele seja aberto.",
+    changes_pr_target:
+      "Só uma sessão iniciada à mão abre o seu PR aqui: um cartão tem o seu próprio Abrir PR.",
+    changes_pr_on_base: "O checkout está no branch base: faça o commit num branch novo antes.",
+    changes_pr_detached:
+      "O checkout não está em nenhum branch: faça o commit num branch novo antes.",
+    changes_pr_base:
+      "Este branch não veio de um commit do app, então a base dele não é conhecida: abra o PR num terminal.",
+    changes_pr_remote: "O destino do push mudou desde que você olhou: confira de novo e abra o PR.",
+    changes_pr_ahead:
+      "O branch base tem commits que ainda não estão no origin, e eles iriam junto com este PR: faça o push deles antes ou abra o PR num terminal.",
+    changes_pr_moved:
+      "O branch mudou desde o commit do app (outros commits ou outro ponto), então o PR dele só abre num terminal.",
     changes_commit_rewritten:
       "{files} mudou durante o commit (um hook que formata, ou a sessão ainda escrevendo), então o commit foi desfeito: confira as mudanças de novo e faça o commit.",
     changes_commit_git: "O git não conseguiu criar o branch ou o commit neste repositório.",
@@ -1951,6 +1965,10 @@ export const ptBR = {
     card_no_worktree: "O card ainda não tem worktree.",
     pr_secret: "A descrição parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_title_secret: "O título parece ter um segredo ({found}): tire-o antes de abrir o PR.",
+    pr_push_timeout:
+      "O push demorou demais e foi interrompido, então nenhum PR foi aberto: tente de novo ou faça o push num terminal.",
+    pr_push_withheld:
+      "O push falhou, e a saída dele parece ter um segredo ({found}), então ela não aparece: faça o push num terminal para vê-la.",
     merge_message_secret:
       "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider: "O projeto não tem provedor de PR.",
@@ -2647,6 +2665,8 @@ export const ptBR = {
     commentText: "Texto do comentário",
     saveComment: "Salvar comentário",
     send: "Enviar revisão ({n})",
+    compose: "Revisar na caixa de mensagem ({n})",
+    composed: "A revisão está na caixa de mensagem.",
     sentVia: {
       session: "Revisão enviada à sessão.",
       card: "Revisão enviada ao card.",

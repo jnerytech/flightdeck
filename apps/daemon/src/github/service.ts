@@ -52,7 +52,10 @@ export class GithubService {
 
   /** Settles when every `gh` run started so far has ended: nothing is left running behind a stop. */
   async idle(): Promise<void> {
-    while (this.running.size > 0) await Promise.allSettled(this.running);
+    while (this.running.size > 0) {
+      const settling = Promise.allSettled(this.running);
+      await settling; // NOSONAR: a run that ended may have started another, so look again until none is left
+    }
   }
 
   loginCancel(): Promise<void> {

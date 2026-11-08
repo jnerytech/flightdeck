@@ -136,7 +136,7 @@ async function bytesOf(root: string, path: string): Promise<Read | null | "too l
 
 /**
  * The hooks a commit from the app runs: the commit's own, and those the new branch's switch, the
- * ref update and the index write run.
+ * ref update and the index write run; then `pre-push`, which the PR's push runs.
  */
 const COMMIT_HOOKS = [
   "pre-commit",
@@ -146,6 +146,7 @@ const COMMIT_HOOKS = [
   "post-checkout",
   "reference-transaction",
   "post-index-change",
+  "pre-push",
 ];
 
 /**
@@ -197,7 +198,8 @@ async function inProgress(gitDir: string): Promise<string | null> {
 
 /** The commits of plain sessions, and the branch each started from (the PR's base, D2). */
 export class SessionCommits {
-  private readonly bases = new Map<string, string | null>();
+  /** What each new branch started from and the commit made on it, when this daemon made it. */
+  private readonly made = new Map<string, { base: string | null; commit: string }>();
   /** The commit running in each checkout: a second one waits for it (a double click, two windows). */
   private readonly running = new Map<string, Promise<unknown>>();
 
@@ -286,7 +288,7 @@ export class SessionCommits {
     const head = await this.git(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
     const base = head.code === 0 ? head.stdout.trim() : null;
     const commit = await this.onNewBranch(root, branch, base, paths, input.message, expected);
-    this.bases.set(`${root}\0${branch}`, base);
+    this.made.set(`${root}\0${branch}`, { base, commit });
     return {
       branch,
       base,
@@ -297,7 +299,12 @@ export class SessionCommits {
 
   /** The branch `branch` was made from in the checkout at `root`, when this daemon made it. */
   baseOf(root: string, branch: string): string | null {
-    return this.bases.get(`${root}\0${branch}`) ?? null;
+    return this.made.get(`${root}\0${branch}`)?.base ?? null;
+  }
+
+  /** The commit this daemon made on `branch` in the checkout at `root`: what its PR pushes (D2). */
+  commitOf(root: string, branch: string): string | null {
+    return this.made.get(`${root}\0${branch}`)?.commit ?? null;
   }
 
   /** The chosen files, each still uncommitted and as the person saw it (its digest). */

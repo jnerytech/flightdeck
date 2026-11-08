@@ -50,8 +50,8 @@ export function sessionContext(source: string, facts: SessionFacts): string {
       "- the main checkout, on main: dev work goes in its own worktree (cd ../flightdeck-<topic> && claude, or /cd there), where its rules and hooks load.",
     );
   } else {
-    lines.push(`- branch ${facts.branch}, ${facts.ahead ?? "?"} commit(s) past main.`);
     lines.push(
+      `- branch ${facts.branch}, ${facts.ahead ?? "?"} commit(s) past main.`,
       `- test(scope) commits so far: ${facts.tested.join(", ") || "none"}; a feat(x)/fix(x) needs its own test(x) first.`,
     );
   }

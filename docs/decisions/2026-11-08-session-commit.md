@@ -82,6 +82,46 @@ branch of the checkout.
 - **The base.** The branch the checkout was on is kept, by checkout and branch, for the PR step (D2).
   It is kept in memory only: after a restart, the PR step falls back to the remote's default branch.
 
+## The PR (slice D2)
+
+- `changes.pr {target, title, body, remote, confirm}` pushes the session's current branch to `origin` with
+  its upstream and opens its PR, near only and confirmed (`changes_pr_confirm`).
+- One core does this for a card and a session (`board/publish-pr.ts`). The title and body are
+  scanned (`pr_secret`, `pr_title_secret`), then the branch is pushed, then the provider opens the
+  PR. A card's base is now checked before its push, not after.
+- **Only the daemon's own branch.** A PR opens only for a branch a commit from the app made, into
+  the branch that commit started from (kept in memory). Any other branch refuses
+  (`changes_pr_base`): one made by hand, one after a restart, or the base itself. The remote's
+  default (`origin/HEAD`) never stands in, since the session can point it anywhere.
+- **Only the commit the app made.** The commit's id is kept with its base. A branch whose tip is no
+  longer that commit refuses (`changes_pr_moved`): the session added to it, reset it, or remade it.
+  The push sends that commit by its id, so a branch moved during the push changes nothing.
+- **Nothing unseen goes along.** A commit pushed by its id takes every ancestor `origin` lacks. When
+  the base has commits that are not on `origin` (`rev-list <commit> --not --remotes=origin` lists
+  more than the app's commit), it refuses (`changes_pr_ahead`). The tracking refs it reads are
+  session-writable: the check guards against a mistake, not a hostile session, which can already
+  push anything itself (the same class as below).
+- **Where the push goes.** `changes.get` shows `origin`'s push address as git resolves it
+  (`pushurl` and `pushInsteadOf` included), with any user, password, query and fragment taken out.
+  The confirm sends it back, and an address changed since refuses (`changes_pr_remote`). A failed
+  push's message goes through the same cut, since git quotes the address (it keeps a query).
+- **The push.** It names the whole ref (`<commit>:refs/heads/<b>`), so no `push.default`, upstream
+  or refspec setting redirects it. `--no-recurse-submodules --no-follow-tags` keep a submodule or a
+  tag the person never saw from going along. The upstream is set after the push.
+- **A failed push.** Past its limit (10 min, for a card's first push of a large branch too) it says
+  so (`pr_push_timeout`). Otherwise its output is cut to the address rule above, then scanned with
+  the host's vault: a match withholds it (`pr_push_withheld`), else at most 2000 characters show.
+  A card's Open PR gets the same. It has a time limit (120 s) and no
+  prompt (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`). The `pre-push` hook runs, as it would
+  for the person's own push, and `changes.get` names it with the commit's hooks.
+- **Content.** Only the title and description are scanned at this step. The content was scanned
+  when the commit from the app was made, and only such a branch is pushed.
+- **Never the base.** A checkout on its base (`changes_pr_on_base`) or on no branch
+  (`changes_pr_detached`) refuses, so the base itself is never pushed.
+- **The provider.** It is the board project's that holds the checkout, else GitHub (`gh`). A project
+  set to none refuses (`project_no_pr_provider`).
+- A card's target or worktree refuses (`changes_pr_target`): a card has its own Open PR.
+
 ## Alternatives discarded
 
 - **#1080's temporary index.** The checkout would stay on its old branch with the same edits still
@@ -108,5 +148,15 @@ branch of the checkout.
   - It read neither config includes, nor worktree config, nor a linked worktree's common folder.
   - Its list of settings that run programs was a deny-list, which a new setting passes unseen.
   - A check that cannot hold reads as a guarantee, which is worse than an honest notice.
+- **Accepted for the push (low).** The address check and the push are two git runs: a session that
+  changes `origin` between them pushes elsewhere. The comparison also ignores a user in the
+  address. Pinning the push to the checked address would put its credentials on the command line,
+  and the same session can already push anything as the same user. `core.sshCommand` and
+  `credential.helper` run at the push, as for the person's own `git push`, and the hook notice
+  above covers them. `remote.origin.receivepack` and `core.hooksPath` belong to the same class of
+  session-writable settings and are not listed one by one.
+- When the provider fails after the push, the branch stays on `origin`. A retry pushes the same
+  commit again, which changes nothing, and opens the PR: nothing outgoing passes the check above
+  only when `origin/<branch>` already holds the app's commit.
 - After a failed hook, the new branch stays there with no commit of its own. A retry needs another
   name, and the app (slice A) drafts a new one.

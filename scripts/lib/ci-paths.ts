@@ -47,16 +47,25 @@ const TAURI = /^apps\/desktop\/src-tauri\//;
  * (#410 review); ci-paths.test.ts checks every file the seed imports, and every script file the
  * journeys import, such as the layout guards (#637).
  */
-const E2E =
-  /^(?:scripts\/e2e\/|scripts\/lib\/(?:(?:e2e|demo)[^/]*|browser|layout-guards)\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
+const E2E = [
+  /^scripts\/e2e\//,
+  /^scripts\/lib\/(?:(?:e2e|demo)[^/]*|browser|layout-guards)\.ts$/,
+  /^scripts\/demo[^/]*\.ts$/,
+  /^playwright[^/]*$/,
+  /^apps\/daemon\//,
+  /^scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$/,
+];
 
 /**
  * demo:shots and what it runs (#637): the demo and the helpers its seed uses, the print guards and
  * axe. A change to a guard must run the prints it guards; ci-paths.test.ts checks the local files
  * demo-shots imports, one level down (#724). The daemon stays the e2e journeys'.
  */
-const SHOTS =
-  /^scripts\/(?:demo[^/]*\.ts|lib\/(?:axe|browser|layout-guards|print-theme|shots-[^/]*|visual|(?:e2e|demo)[^/]*)\.ts|test\/(?![^/]*\.test\.ts$)[^/]+\.ts)$/;
+const SHOTS = [
+  /^scripts\/demo[^/]*\.ts$/,
+  /^scripts\/lib\/(?:axe|browser|layout-guards|print-theme|shots-[^/]*|visual|(?:e2e|demo)[^/]*)\.ts$/,
+  /^scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$/,
+];
 
 /**
  * Above this many selected integration and e2e test files, a PR's Windows tests take three shards
@@ -77,15 +86,15 @@ export function ciPlan(
   // Windows is off the PR path and main's push (#534): the person tests it by hand, and delivery
   // does not wait for a slow runner. Only the schedule and a run by hand keep it, as a signal.
   if (changed === null) return { ...FULL, windows: false };
-  const any = (re: RegExp) => changed.some((path) => re.test(path));
+  const any = (...res: RegExp[]) => changed.some((path) => res.some((re) => re.test(path)));
   const everything = any(EVERYTHING);
   const daemon = everything || any(DAEMON);
   return {
     windows: false,
     smokes: daemon,
-    screenshots: everything || any(SHOTS),
+    screenshots: everything || any(...SHOTS),
     cargo: any(TAURI),
-    e2e: everything || any(E2E),
+    e2e: everything || any(...E2E),
     windowsShards:
       any(GLOBAL_FILE) ||
       removed.some((path) => TEST_FILE.test(path)) ||
