@@ -1518,7 +1518,6 @@ export const ptBR = {
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
     harnessApply: "a aplicação de mudanças na configuração do Claude Code",
     harnessCommit: "o commit da configuração do Claude Code em um branch",
-    workflowTemplateAdd: "adicionar um modelo de workflow como pull request",
     harnessDraft: "o rascunho de um CLAUDE.md com o Claude",
     harnessTemplates: "o compartilhamento da configuração do Claude Code como modelo",
     keepAwake: "a função de manter o computador acordado",

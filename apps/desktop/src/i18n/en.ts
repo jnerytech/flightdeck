@@ -1526,7 +1526,6 @@ export const en: Dictionary = {
     harnessPreview: "previewing Claude Code setup changes",
     harnessApply: "applying Claude Code setup changes",
     harnessCommit: "committing the Claude Code setup on a branch",
-    workflowTemplateAdd: "adding a workflow template as a pull request",
     harnessDraft: "drafting a CLAUDE.md with Claude",
     harnessTemplates: "sharing the Claude Code setup as a template",
     keepAwake: "keeping the computer awake",

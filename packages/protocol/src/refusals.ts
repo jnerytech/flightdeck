@@ -580,7 +580,6 @@ export const DAEMON_FEATURES = [
   "harnessPreview",
   "harnessApply",
   "harnessCommit",
-  "workflowTemplateAdd",
   "harnessDraft",
   "harnessTemplates",
   "keepAwake",
