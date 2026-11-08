@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useSwitcherHosts } from "@/hooks/use-switcher-hosts";
+import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
@@ -277,11 +277,12 @@ export function Sidebar(
     return kind ? badges[kind] : undefined;
   };
   const here = props.route ? activeNav(props.route) : null;
-  /** The host the screens that need one open on: the selected one, else the first online. */
-  const navHost =
-    (state.selected && state.hosts.find((h) => h.id === state.selected?.hostId)) ||
-    state.hosts.find((h) => h.status === "online") ||
-    state.hosts[0];
+  /**
+   * The host the screens that need one open on: the switcher's, as the project tree (#126, #932).
+   * With none picked, that is the selected session's host, else the first online (`uiHostId`).
+   */
+  const switcherId = useSwitcherHostId(props.store);
+  const navHost = state.hosts.find((h) => h.id === switcherId) ?? state.hosts[0];
   const pendingItems = needsYou(state);
   const pending =
     pendingItems.length +
