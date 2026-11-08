@@ -1451,13 +1451,17 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         );
       });
     await waitFor(fits, "as cinco colunas cabem na largura do quadro, a 1280");
+    // A head is one line: its items share a top, and none runs past the lane's right edge.
     const heads = await grid.evaluate((el) =>
       [...el.querySelectorAll("section[data-column]")].flatMap((lane) => {
         const edge = lane.getBoundingClientRect().right;
         const name = lane.getAttribute("data-column") ?? "";
-        return [...lane.querySelectorAll(".column-head > *")]
-          .filter((item) => item.getBoundingClientRect().right > edge + 1)
-          .map(() => name);
+        const items = [...lane.querySelectorAll(".column-head > *")].map((item) =>
+          item.getBoundingClientRect(),
+        );
+        const past = items.some((box) => box.right > edge + 1);
+        const wrapped = items.some((box) => Math.abs(box.top - (items[0]?.top ?? 0)) > 6);
+        return past || wrapped ? [name] : [];
       }),
     );
     if (heads.length > 0) {
@@ -1466,6 +1470,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // The Return on cost card, when the demo has one: one short row, and the columns right under it.
     const roi = c.page.getByRole("region", { name: c.t("roiUi.title"), exact: true });
     if ((await roi.count()) > 0) {
+      // Folded and loaded: the details button says it is closed (the loading box has none).
+      await c.page
+        .getByRole("button", { name: c.t("roiUi.details"), exact: true })
+        .and(c.page.locator("[aria-expanded='false']"))
+        .waitFor({ timeout: WAIT });
       const gap = await roi.evaluate((card) => {
         const own = card.getBoundingClientRect();
         const columns = document.querySelector("[data-slot='board-columns']");

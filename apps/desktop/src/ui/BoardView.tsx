@@ -1064,7 +1064,7 @@ function ColumnHeader(
 ) {
   const Icon = COLUMN_ICONS[props.id];
   return (
-    <Inline gap={2} className="column-head">
+    <Inline gap={2} className="column-head flex-nowrap">
       <Icon data-slot="column-icon" aria-hidden="true" />
       <h3 className="column-title">{props.title}</h3>
       <Badge variant="secondary" className="column-count" role="img" aria-label={props.label}>
