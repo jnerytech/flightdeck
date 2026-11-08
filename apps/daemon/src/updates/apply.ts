@@ -22,7 +22,7 @@ export function assetKey(platform: string, arch: string): string {
   if (!os || (arch !== "x64" && arch !== "arm64")) {
     throw new FlightdeckError(
       "invalid_state",
-      `sem binário do daemon para ${platform}-${arch}`,
+      `no daemon binary for ${platform}-${arch}`,
       "update_no_binary",
       { platform, arch },
     );
@@ -58,14 +58,14 @@ export class DaemonUpdater {
     if (!confirm)
       throw new FlightdeckError(
         "invalid_state",
-        "atualizar o daemon pede confirm: true",
+        "updating the daemon needs confirm: true",
         "update_confirm",
       );
     const manifest = this.opts.manifest();
     if (!manifest) {
       throw new FlightdeckError(
         "invalid_state",
-        "o daemon ainda não verificou o manifesto",
+        "the daemon has not checked the manifest yet",
         "update_manifest_unchecked",
       );
     }
@@ -75,7 +75,7 @@ export class DaemonUpdater {
     if (!asset) {
       throw new FlightdeckError(
         "invalid_state",
-        `o manifesto ${manifest.version} não tem binário para ${key}`,
+        `the manifest ${manifest.version} has no binary for ${key}`,
         "update_manifest_no_binary",
         { version: manifest.version, key },
       );
@@ -88,7 +88,7 @@ export class DaemonUpdater {
       await rm(file, { force: true });
       throw new FlightdeckError(
         "update_needs_service",
-        "o daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>",
+        "the daemon does not run as a service: update on the host with flightdeckd update --from <new binary>",
         "update_needs_service",
       );
     }
@@ -96,7 +96,7 @@ export class DaemonUpdater {
       await rm(file, { force: true });
       throw new FlightdeckError(
         "invalid_state",
-        "o host ficou ocupado enquanto o binário baixava: tenta de novo quando estiver ocioso",
+        "the host got busy while the binary downloaded: try again when it is idle",
         "update_host_busy",
       );
     }
@@ -108,10 +108,10 @@ export class DaemonUpdater {
   private async download(asset: DaemonManifest["assets"][string], file: string): Promise<void> {
     try {
       const response = await (this.opts.fetch ?? fetch)(asset.url);
-      if (!response.ok) throw new Error(`o download respondeu HTTP ${response.status}`);
+      if (!response.ok) throw new Error(`the download answered HTTP ${response.status}`);
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (sha256(bytes) !== asset.sha256) {
-        throw new Error("o sha256 do arquivo baixado não confere com o manifesto");
+        throw new Error("the sha256 of the downloaded file does not match the manifest");
       }
       verifyMinisign(bytes, asset.signature, this.opts.publicKey ?? updatePublicKey());
       await writeFile(file, bytes);

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import type { PermissionRule } from "@flightdeck/protocol";
 import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
+import { layoutLike, parseJsonText } from "../json-text.ts";
 
 /** Where Claude Code keeps a project's local (not versioned) settings. */
 export const LOCAL_SETTINGS = ".claude/settings.local.json";
@@ -25,7 +26,7 @@ async function read(repo: string): Promise<Settings> {
   }
   let value: unknown = null;
   try {
-    value = JSON.parse(text);
+    value = parseJsonText(text);
   } catch {
     // Falls through to the refusal below.
   }
@@ -49,7 +50,9 @@ async function write(repo: string, settings: Settings, allow: string[]): Promise
   const file = join(repo, LOCAL_SETTINGS);
   await mkdir(dirname(file), { recursive: true });
   const next = { ...settings, permissions: { ...settings.permissions, allow } };
-  await writeFileAtomic(file, `${JSON.stringify(next, null, 2)}\n`);
+  // In the layout the file has (its BOM, indent and line endings): only the rules change.
+  const before = await readFile(file, "utf8").catch(() => null);
+  await writeFileAtomic(file, layoutLike(before, next));
 }
 
 /** `permissions.allow` of the repository's settings.local.json; empty without the file. */
