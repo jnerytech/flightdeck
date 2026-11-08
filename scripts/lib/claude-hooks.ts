@@ -6,7 +6,6 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
 import { auditBase, FORBIDDEN_MARKERS, parseCommits } from "./tdd-audit.ts";
-import { undocumentedSkips } from "./unstable-skip.ts";
 
 /** git options that take their value as the next word (`git -C <dir> add`). */
 const GIT_OPTIONS_WITH_VALUE = new Set([
@@ -32,10 +31,12 @@ const GENERATED = [
 
 const TEST_FILE = /\.test\.tsx?$/;
 
-/** The audit's markers plus a snapshot, which on its first run records whatever the stub returns. */
+/**
+ * The audit's markers, so both refuse the same skips (#169), plus a snapshot, which on its first
+ * run records whatever the stub returns: the audit reads files, not runs, so only the hook sees it.
+ */
 const TEST_MARKERS = [
-  // A skip is judged by its note instead (#494): see undocumentedSkips below.
-  ...FORBIDDEN_MARKERS.filter(({ text }) => text !== ".skip("),
+  ...FORBIDDEN_MARKERS,
   { pattern: /\.toMatchSnapshot\(/g, text: "toMatchSnapshot(" },
 ];
 
@@ -186,9 +187,9 @@ export function testEditViolation(
   const added = TEST_MARKERS.find(
     ({ pattern }) => [...after.matchAll(pattern)].length > [...before.matchAll(pattern)].length,
   );
-  if (!added) {
-    if (undocumentedSkips(after) <= undocumentedSkips(before)) return null;
-    return `Adding a skip to ${file} is blocked: a flaky test is deleted, never skipped (#1003); when it is the only check of a business flow, replace it with a fast deterministic test (docs/TDD.md).`;
+  if (!added) return null;
+  if (added.text === ".skip(") {
+    return `Adding a skip to ${file} is blocked: a flaky test is deleted, never skipped (#1003); when it is the only check of a business flow, replace it with a fast deterministic test. A test that cannot run on a platform uses skipIf(<the platform condition>), with the reason in a comment (docs/TDD.md).`;
   }
   return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, test.todo or first-run toMatchSnapshot, and no .skip: a flaky test is deleted, never skipped (#1003). Write the assertion with a hand-written literal (docs/TDD.md).`;
 }

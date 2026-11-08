@@ -66,8 +66,11 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     `.only`, `.skip` ou `test.todo` em código commitado.
     **A flaky test is deleted, never skipped** (#1003, 2026-11-08, the person: "excluir testes
     intermitentes / lentos demais"). When it is the only check of a business flow, it is replaced
-    by a fast deterministic test. The skip rules below (#288, #494) describe the `// unstable:`
-    skips still in the repository; #1003 removes them, and no new one is added.
+    by a fast deterministic test. No note excuses a skip: the `// unstable: #<issue>` skips and
+    the checks behind them (#288, #494, #552) were removed once #1003 deleted the last one (#169).
+    A test that cannot run on a platform (no symlinks, no 8.3 names, no `ps` on Windows) is
+    `test.skipIf(<the platform condition>)(…)`, with the reason in a comment; that is not a skip of
+    a flaky test, and the hook and `tdd:audit` let it through.
     **Too slow on CI** (#1003): a test over 5 s, a test file over 60 s, or an e2e journey over
     90 s. Make it faster, or delete it when a faster test already checks the same thing.
     CI enforces the first two: the PR's test run writes bun's JUnit report, and
@@ -78,25 +81,6 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     **What to test** (#1002, the person's decision, 2026-11-08): business logic and the important
     flows. The coverage gate is 80% of each file's lines and functions; a test written only to
     reach a line is not needed.
-    *Legacy, until #1003 removes the last one:* the paragraph below describes the
-    `// unstable:` skips still in the repository and the checks that keep their notes honest. It
-    does not allow a new skip.
-    A test that bets on the machine (wall-clock polls, a timer against a limit, a child process on
-    a loaded Windows runner) is written `test.skipIf(notLinux)(…)` (`notLinux` is in
-    `scripts/test/not-linux.ts`; `process.platform !== "linux"` also counts) with
-    `// unstable: #<issue> <reason>` on the same line or the line above. The issue is where the fix
-    goes: a skip is a promise to fix, not a place to leave the test. A test that fails at random
-    on every platform (and hurts CI) may instead be `test.skip(…)`, `it.skip(…)` or
-    `describe.skip(…)` with the same note. `.only`, `test.todo` and a first-run snapshot stay
-    forbidden, and a `skipIf` for a platform *capability* (no 8.3 names, no symlinks) is still fine
-    without a note. The hook and `tdd:audit` let a skip through only with the note, one line at a
-    time. `unstable-skip-ratchet.test.ts` checks every such skip has the note, with an issue number
-    and a reason, and that there are at most 10 in the repository. CI's quick job
-    (`scripts/unstable-issues.ts`, with gh) fails when a noted issue is closed or cannot be read, so
-    the skip comes out in the PR that fixes it. On a pull request it also fails, naming the skip's
-    `file:line`, when the PR closes a noted issue (`Closes`/`Fixes`/`Resolves #N` in its body or
-    its commits' messages, #552): merged, it would close the issue with the skip still in, and
-    every later PR would go red.
 
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
 testes desligados. With `--spec docs/SPEC-fase-N.md` it also fails on an area of the spec's table
@@ -115,11 +99,9 @@ every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard
   (#253). The `TDD-Waiver` does not waive it. Other types, merges, reverts, `fixup!` and `squash!`
   need none. `Refs:` names the issue without closing it; `release:close` closes only what a merged
   PR closes (#367);
-- it refuses an Edit or Write that adds `.only(`, `test.todo(` or `toMatchSnapshot(` to a test
-  file (one that keeps or removes them passes).
-- it refuses an Edit or Write that adds a `.skip(`, a `skipIf(notLinux)` (or `skipIf(process.platform
-  !== "linux")`) to a test file without `// unstable: #<issue> <reason>` on that line or the line
-  above (one that is already there, or a skip for a platform capability, passes).
+- it refuses an Edit or Write that adds `.only(`, `.skip(`, `test.todo(` or `toMatchSnapshot(` to
+  a test file (one that keeps or removes them passes, and so does a `skipIf` for a platform). It
+  refuses the same markers `tdd:audit` does, plus the snapshot, which only a run can judge (#169).
 
 For a deliberate exception, end the commit message with a trailer line `TDD-Waiver: <why>` (or
 pass `--trailer "TDD-Waiver: <why>"`). The hook lets the commit through and `tdd:audit` lists it
