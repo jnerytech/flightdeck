@@ -193,7 +193,7 @@ async function run(work: string): Promise<void> {
         const list = await snapshots();
         if (list.length >= count) return list;
         if (Date.now() > deadline) throw new Error(`timeout: ${what} (${list.length} snapshots)`);
-        await Bun.sleep(50);
+        await Bun.sleep(50); // NOSONAR: a poll, one look per pause
       }
     };
     const statusBefore = git(project, "status", "--porcelain=v1", "--ignored");

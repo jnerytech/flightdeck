@@ -17,6 +17,7 @@ import { type Walk, walkInside } from "../create-inside.ts";
 import { layoutLike, parseJsonText } from "../json-text.ts";
 import { detectStack } from "./stack.ts";
 import { claudeMd, DENY_RULES, EDIT_MATCHER, reviewerAgent, tddSkill } from "./templates.ts";
+import type { TemplateMarkdown } from "./templates-store.ts";
 
 export type PreviewPart = (typeof HARNESS_PREVIEW_PARTS)[number];
 type Settings = NonNullable<HarnessPreview["settings"]>;
@@ -200,6 +201,8 @@ export async function planHarness(
   readSettings: (root: string) => Promise<Look>,
   /** A held draft to propose instead of the template (#75, G1), by file; null for the template. */
   drafted: (name: string) => string | null = () => null,
+  /** A host template's Markdown to propose instead of the fixed files and any draft (#75, T1b). */
+  template: TemplateMarkdown | null = null,
 ): Promise<Plan> {
   const { commands } = await detectStack(root);
   const unreadable: string[] = [];
@@ -208,28 +211,36 @@ export async function planHarness(
     ? await settingsProposal(await readSettings(root), parts, commands.format, unreadable)
     : null;
   const files: HarnessPreview["files"] = [];
-  const wanted = FILES.filter(([part]) => parts.includes(part));
-  // Each file is looked at on its own; the answers are used in the order of FILES.
+  // A template's files are the Markdown parts, and only they: a part it lacks proposes nothing.
+  const markdown: Array<[PreviewPart, string, () => string]> = template
+    ? template.files.map((file) => [file.part, file.path, () => file.content])
+    : FILES.map(([part, name, make]) => [part, name, () => drafted(name) ?? make(commands)]);
+  const wanted = markdown.filter(([part]) => parts.includes(part));
+  // Each file is looked at on its own; the answers are used in the order of the list.
   const looks = await Promise.all(wanted.map(([, name]) => look(root, name)));
-  for (const [at, [, name, template]] of wanted.entries()) {
+  for (const [at, [, name, content]] of wanted.entries()) {
     const file = looks[at] as Awaited<ReturnType<typeof look>>;
     if (file.state === "refused") unreadable.push(name);
     else if (file.state === "absent") {
-      const content = drafted(name) ?? template(commands);
-      files.push({ path: name, content, digest: sha256(content) });
+      const text = content();
+      files.push({ path: name, content: text, digest: sha256(text) });
     }
   }
-  return {
-    preview: { settings: made?.proposal ?? null, files, unreadable },
-    current: made?.current ?? null,
-  };
+  const preview: HarnessPreview = { settings: made?.proposal ?? null, files, unreadable };
+  if (template) {
+    preview.withheld = template.withheld
+      .filter(({ part }) => parts.includes(part))
+      .map(({ path, reason }) => ({ path, reason }));
+  }
+  return { preview, current: made?.current ?? null };
 }
 
 /** What adding the chosen parts to the project at `path` would add. Nothing is written or run. */
 export async function previewHarness(
   path: string,
   parts: readonly PreviewPart[],
+  template: TemplateMarkdown | null = null,
 ): Promise<HarnessPreview> {
   const root = (await orNull(realpath(path))) ?? path;
-  return (await planHarness(root, parts, settingsLook)).preview;
+  return (await planHarness(root, parts, settingsLook, undefined, template)).preview;
 }

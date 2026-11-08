@@ -35,7 +35,7 @@ function keyLine(line: string): { key: string; value: string | undefined } | nul
   if (line[KEY.lastIndex] !== ":") return null;
   const rest = line.slice(KEY.lastIndex + 1);
   if (rest === "") return { key, value: undefined };
-  if ((rest[0] !== " " && rest[0] !== "\t") || LINE_BREAK.test(rest)) return null;
+  if ((!rest.startsWith(" ") && !rest.startsWith("\t")) || LINE_BREAK.test(rest)) return null;
   let start = 1;
   while (rest[start] === " " || rest[start] === "\t") start++;
   return { key, value: rest.slice(start) };

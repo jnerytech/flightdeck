@@ -4,7 +4,7 @@ import type { LogSink } from "../platform/types.ts";
 export type LogLevel = "info" | "warn" | "error";
 
 export interface AppLogOptions {
-  sink?: LogSink | undefined;
+  sink?: LogSink;
   /** Values that must never be written: vault values, host tokens (read at each line). */
   values?: () => string[];
   now?: () => number;
@@ -142,7 +142,7 @@ export class AppLog {
     this.queue = [];
     this.overflow = 0;
     // A sink that throws at once rejects here, as good as one that fails later.
-    const sent = new Promise<void>((resolve) => resolve(sink.write(batch)));
+    const sent = (async () => sink.write(batch))();
     this.writing = sent.catch(() => {}).then(() => this.drain());
   }
 }
@@ -164,7 +164,7 @@ export function isReactError(reason: unknown): boolean {
 
 /** What React reports for a component tree error: the component stack, when it gives one. */
 export interface ReactErrorInfo {
-  componentStack?: string | null | undefined;
+  componentStack?: string | null;
 }
 
 /** How many frames and components a React error's line keeps, and how long each may be. */

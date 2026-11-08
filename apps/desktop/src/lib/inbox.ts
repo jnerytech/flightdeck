@@ -69,9 +69,6 @@ export function inboxTarget(
   return { kind: "route", route };
 }
 
-/** A day heading: "today", "yesterday", or the date. */
-export type InboxDay = string;
-
 /** The newest entry goes first; only the newest `cap` are kept. */
 export function addEntry(
   list: InboxEntry[],
@@ -105,10 +102,10 @@ const dayKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d
 export function groupByDay(
   list: InboxEntry[],
   now: Date,
-): Array<{ day: InboxDay; entries: InboxEntry[] }> {
+): Array<{ day: string; entries: InboxEntry[] }> {
   const today = dayKey(now);
   const yesterday = dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
-  const groups: Array<{ day: InboxDay; entries: InboxEntry[] }> = [];
+  const groups: Array<{ day: string; entries: InboxEntry[] }> = [];
   const sorted = [...list].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   for (const entry of sorted) {
     const key = dayKey(new Date(entry.at));

@@ -169,20 +169,22 @@ describe("knowledge-create: a document from a template (#1039)", () => {
     expect(readdirSync(join(root, "docs/prd"))).toEqual(["same-title.md"]);
   });
 
-  test("a folder that is a link, or sits behind one, is not written through", async () => {
-    if (!posix) return;
-    const root = project();
-    const outside = project();
-    mkdirSync(join(root, "docs"), { recursive: true });
-    symlinkSync(outside, join(root, "docs/adr"));
-    const viaFolder = await reasonOf(() => createKnowledgeDoc(root, "adr", "Out"));
-    const other = project();
-    symlinkSync(outside, join(other, "docs"));
-    const viaDocs = await reasonOf(() => createKnowledgeDoc(other, "rfc", "Out"));
-    expect([viaFolder, viaDocs, readdirSync(outside)]).toEqual([
-      "knowledge_folder_unsafe",
-      "knowledge_folder_unsafe",
-      [],
-    ]);
-  });
+  test.skipIf(!posix)(
+    "a folder that is a link, or sits behind one, is not written through",
+    async () => {
+      const root = project();
+      const outside = project();
+      mkdirSync(join(root, "docs"), { recursive: true });
+      symlinkSync(outside, join(root, "docs/adr"));
+      const viaFolder = await reasonOf(() => createKnowledgeDoc(root, "adr", "Out"));
+      const other = project();
+      symlinkSync(outside, join(other, "docs"));
+      const viaDocs = await reasonOf(() => createKnowledgeDoc(other, "rfc", "Out"));
+      expect([viaFolder, viaDocs, readdirSync(outside)]).toEqual([
+        "knowledge_folder_unsafe",
+        "knowledge_folder_unsafe",
+        [],
+      ]);
+    },
+  );
 });
