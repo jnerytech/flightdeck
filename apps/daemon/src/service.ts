@@ -218,10 +218,15 @@ async function installTask(ctx: ServiceContext, config?: string | null): Promise
   return { output: [`task ${TASK_NAME} created for the logon of ${ctx.user}`], instructions: [] };
 }
 
-/** Installs the service running `ctx.command start`, with `--config <config>` when given. */
+/**
+ * Installs the service running `ctx.command start`, with `--config <config>` when given. With
+ * `start: false` (#1200, from the app) the unit is enabled for the next boot or login, not started:
+ * the daemon that asked is still running.
+ */
 export async function installService(
   ctx: ServiceContext,
   config?: string | null,
+  _options: { start?: boolean } = {},
 ): Promise<ServiceResult> {
   return requireSupported(ctx) === "linux" ? installSystemd(ctx, config) : installTask(ctx, config);
 }
