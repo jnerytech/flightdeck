@@ -1662,6 +1662,7 @@ export const en: Dictionary = {
     perm_tool_always_asks: "This tool always asks: no rule can allow it.",
     perm_not_suggested: "That is neither one of the request's suggestions nor a project rule.",
     team_session_foreign: "This session is not part of the team {team}.",
+    team_report_not_coordinator: "Only the coordinator of the team {team} reports its outcome.",
     team_close_confirm: "Closing the team {name} needs your confirmation.",
     team_coordinator_stays: "The coordinator does not leave the team: close the team instead.",
     team_closed: "The team {name} is closed.",
@@ -1930,6 +1931,16 @@ export const en: Dictionary = {
       "{file} is ignored by git in this project, so it was not committed: commit it yourself if you mean to.",
     harness_commit_withheld:
       "{file} could run a command or grant a permission when it loads, so it was not committed: commit it yourself if you mean to.",
+    workflow_template_confirm: "Adding the template needs your confirmation first.",
+    workflow_template_unknown: "This host has no template {id}: open the templates again.",
+    workflow_template_exists:
+      "{path} is already on {base}: the project has this workflow. Find it on the Workflows page.",
+    workflow_template_no_head:
+      "origin has no copy of the base branch yet: push it, then add the template.",
+    workflow_template_identity:
+      "Git has no name and email for this repository: set user.name and user.email, then add the template.",
+    workflow_template_branch_taken: "The branch {branch} is already there: try again in a minute.",
+    workflow_template_git: "Git could not make the template's commit or branch in this repository.",
     harness_draft_exists: "The project already has a CLAUDE.md: a draft only creates one.",
     harness_draft_failed: "The model did not answer with a CLAUDE.md: try again.",
     harness_draft_secret: "The draft held a secret, so it was dropped: try again.",
@@ -4180,6 +4191,17 @@ export const en: Dictionary = {
         "The check line holds this project's test command. Review it before you trust the workflow.",
       checkPlaceholder:
         "The check line holds a placeholder that fails. Replace it with your test command before you commit the file.",
+      introAdd:
+        "Each template is a file. Add it to the project as a pull request, or copy it and commit it yourself. After the merge, trust it on this page.",
+      add: "Add to the project",
+      addAsk: "Add {name} to the project",
+      addConfirm:
+        "Flightdeck commits {path} on a new branch and opens a pull request into the base branch. The base branch does not change until you merge it, and the workflow does not run until you trust it on this page.",
+      addGo: "Open the pull request",
+      addBusy: "Opening the pull request…",
+      addCancel: "Cancel",
+      added: "Pull request opened from {branch}. Merge it, then trust the workflow on this page.",
+      viewPr: "View the pull request",
     },
   },
   sessionViews: { label: "Session views", terminal: "Terminal" },

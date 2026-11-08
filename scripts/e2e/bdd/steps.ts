@@ -1014,3 +1014,113 @@ step(
     if (offered > 0) throw new Error("Turn it on is offered on a host that runs from source");
   },
 );
+
+// A card leads with its next step as one primary button; the rest waits in its menu (issue #1197).
+step(When, "I open that card", async (c) => {
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+});
+
+const cardMenu = (c: Context) =>
+  c.page.getByRole("button", {
+    name: c.t("board.cardActions", { title: mine(c).card ?? "" }),
+    exact: true,
+  });
+
+step(Then, "its one main button is Start and Finish and Discard wait in its menu", async (c) => {
+  await c.page
+    .getByRole("button", { name: c.t("cardUi.start"), exact: true })
+    .waitFor({ timeout: WAIT });
+  const named = (name: string) => c.page.getByRole("button", { name, exact: true });
+  // Not on the page until the menu opens.
+  const loose = [c.t("cardUi.finish"), c.t("cardUi.discard")];
+  for (const name of loose) {
+    if ((await named(name).count()) > 0)
+      throw new Error(`"${name}" is on the page, not in the menu`);
+  }
+  await cardMenu(c).click();
+  for (const name of loose) {
+    await c.page.getByRole("menuitem", { name, exact: true }).waitFor({ timeout: WAIT });
+  }
+  await c.page.keyboard.press("Escape");
+});
+
+step(When, "I press the main button", async (c) => {
+  await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
+});
+
+step(Then, "the main button now says Review changes, on the same button", async (c) => {
+  // One element whatever the step is, so a person who pressed Start finds the focus still on it.
+  const review = c.page.getByRole("button", { name: c.t("cardUi.reviewChanges"), exact: true });
+  await review.waitFor({ timeout: SESSION_WAIT });
+  await waitFor(
+    () => review.evaluate((button) => button === document.activeElement),
+    "the focus stays on the main button",
+  );
+});
+
+// Run again: a card whose workflow run failed starts it again from the card (issue #1219).
+// The check fails the first time and passes the second, so a run that starts again can finish.
+const FLOW = "breaks";
+const BREAKS =
+  "steps:\n  - id: lint\n    check: 'test -e .bdd-attempt || { touch .bdd-attempt; exit 1; }'\n";
+
+step(
+  Given,
+  "a git project of my own with a workflow that fails is added to host {string}",
+  async (c) => addOwnProject(c, { [`.flightdeck/workflows/${FLOW}.yaml`]: BREAKS }),
+);
+
+step(Given, "I trust its workflow", async (c) => {
+  await open(c, { name: "projects", host: ALFA });
+  await c.page
+    .getByRole("button", { name: c.t("projectsUi.workflows", { name: mine(c).project ?? "" }) })
+    .click({ timeout: WAIT });
+  await c.page.getByRole("button", { name: c.t("workflowsUi.trust", { name: FLOW }) }).click();
+  await c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: c.t("workflowsUi.trustConfirm"), exact: true })
+    .click();
+  await c.page
+    .getByRole("listitem", { name: c.t("workflowsUi.item", { name: FLOW }) })
+    .getByText(c.t("workflowsUi.trusted"), { exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I start a card of my own on that project with its workflow", async (c) => {
+  const title = unique(c, "bdd card");
+  mine(c).card = title;
+  await openOwnBoard(c);
+  await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+  await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+  await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+  await tile(c)
+    .getByRole("button", { name: c.t("board.cardActions", { title }), exact: true })
+    .click();
+  await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+  const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
+  await start.getByLabel(c.t("cardUi.workflow"), { exact: true }).selectOption(FLOW);
+  await start.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
+  await start.waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(Then, "the card offers Run again once the run has failed", async (c) => {
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+  await c.page
+    .getByRole("button", { name: c.t("runUi.again.action"), exact: true })
+    .waitFor({ timeout: SESSION_WAIT });
+});
+
+step(When, "I press Run again", async (c) => {
+  await c.page.getByRole("button", { name: c.t("runUi.again.action"), exact: true }).click();
+});
+
+step(Then, "the second run of the card completes", async (c) => {
+  await c.page
+    .getByRole("heading", {
+      name: c.t("runUi.title", { name: FLOW, status: c.t("runUi.status.completed") }),
+    })
+    .waitFor({ timeout: SESSION_WAIT });
+  await c.page
+    .getByRole("button", { name: c.t("runUi.again.action"), exact: true })
+    .waitFor({ state: "detached", timeout: WAIT });
+});

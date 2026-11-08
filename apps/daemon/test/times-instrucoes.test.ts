@@ -18,7 +18,7 @@ const brief: TeamBrief = {
 
 describe("times: as instruções de coordenação", () => {
   test("são versionadas, e a versão está no texto", () => {
-    expect(INSTRUCTIONS_VERSION).toBe("1");
+    expect(INSTRUCTIONS_VERSION).toBe("2");
     expect(coordinatorInstructions(brief)).toContain(`versão ${INSTRUCTIONS_VERSION}`);
     expect(workerInstructions(brief, null)).toContain(`versão ${INSTRUCTIONS_VERSION}`);
   });
@@ -63,6 +63,8 @@ describe("times: as instruções de coordenação", () => {
 
   test("a conferência usa os comandos do time, ou os checks do projeto quando não há", () => {
     expect(coordinatorInstructions(brief)).toContain("os checks do projeto");
+    // #1220: the coordinator says the team's outcome with the tool, done when the goal is met.
+    expect(coordinatorInstructions(brief)).toContain("team_report");
     const custom = coordinatorInstructions({ ...brief, checks: ["bun test", "bun run lint"] });
     expect(custom).toContain("`bun test`, `bun run lint`");
     expect(custom).not.toContain("os checks do projeto (os mesmos");

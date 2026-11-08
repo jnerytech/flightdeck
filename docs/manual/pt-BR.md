@@ -1308,10 +1308,13 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   remove a worktree e a branch local.
 - **A página do card tem um botão que lidera:** o painel Executar mostra o que vem a seguir.
   **Iniciar** para um card que ainda não rodou, **Parar** enquanto roda, **Revisar mudanças**
-  quando uma execução termina (mostra as Mudanças do card) e depois **Abrir PR**. O resto está no
-  menu **⋯** ao lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do
-  board), **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Finalizar…** e
-  **Descartar**. Um card cuja execução terminou abre em **Mudanças**.
+  quando uma execução termina (mostra as Mudanças do card), depois **Abrir PR** e, com o PR aberto
+  e pronto para merge, **Fazer merge do PR** (a confirmação abaixo; enquanto
+  uma sessão roda, **Parar** lidera e **Fazer merge do PR** espera no menu, e com checks falhando
+  ele não é oferecido). O resto está no menu **⋯** ao
+  lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do board),
+  **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Fazer merge do PR**,
+  **Finalizar…** e **Descartar**. Um card cuja execução terminou abre em **Mudanças**.
 - **Editar e excluir:** o menu **⋯** do card tem **Editar…**, que abre o card com o título pronto
   para mudar (a página do card também edita a descrição e, com o ROI ligado, a estimativa), e
   **Excluir…**, que cita o card e pergunta antes. Excluir vale só para um card que nunca começou
@@ -1744,10 +1747,21 @@ simples, cortadas e limpas, que você pode ler e editar. **Iniciar o post-mortem
 falhou não é mexido. O botão fica desligado, com um aviso, quando o projeto ainda não adicionou esse
 workflow.
 
-Um modelo é um arquivo, e o Flightdeck não grava nada no seu repositório. Na tela **Workflows**,
-**Adicionar de um modelo** lista os modelos. Abra um para ler o arquivo, use **Copiar o arquivo**,
-faça commit em `.flightdeck/workflows/` na branch base e **confie** nele na mesma tela, como em
-qualquer workflow. A linha `check` do corretor de alertas já traz o comando de teste do projeto
+Um modelo é um arquivo. Na tela **Workflows**, **Adicionar de um modelo** lista os modelos. Abra
+um para ler o arquivo. Depois, adicione de um destes dois jeitos:
+
+- **Adicionar ao projeto** (num host a partir desta versão). O Flightdeck pergunta antes, faz o
+  commit do arquivo em `.flightdeck/workflows/` numa branch nova, a partir da cópia da branch
+  base no origin (os seus commits ainda não enviados ficam de fora),
+  `flightdeck/workflow-<modelo>-<data>`, envia e abre um pull request para a branch base, como um
+  card faz. **Ver o pull request** abre o PR. A branch base e o seu checkout não mudam: a sua
+  branch atual, o seu índice e os arquivos não salvos ficam como estão. O commit usa o `user.name`
+  e o `user.email` do repositório, e o projeto precisa de um provedor de PR. Um modelo cujo arquivo
+  já está na branch base é recusado.
+- **Copiar o arquivo**, e você mesmo faz commit em `.flightdeck/workflows/` na branch base.
+
+Nos dois casos, quando o arquivo estiver na branch base, **confie** nele na mesma tela, como em
+qualquer workflow: ele não roda antes disso. A linha `check` do corretor de alertas já traz o comando de teste do projeto
 quando o Flightdeck consegue descobrir (`npm run test`, `cargo test`...). Quando não consegue, a
 linha traz um texto provisório que falha de propósito: troque pelo seu comando de teste antes do
 commit.

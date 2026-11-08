@@ -1301,10 +1301,12 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
   the worktree and the local branch.
 - **The card page leads with one button:** its Run panel shows what comes next. **Start** for a card
   that has not run, **Stop** while it runs, **Review changes** once a run is done (it shows the
-  card's Changes), then **Open PR**. The rest is under the **⋯** menu next to it: **Start with a
-  workflow or persona…** (the same dialog as the board's **Start card**), **Start**, **Start in the
-  background**, **Stop**, **Open PR**, **Finish…** and **Discard**. A card whose run is done opens
-  on **Changes**.
+  card's Changes), then **Open PR**, and **Merge PR** once the PR is open and can be merged (the
+  confirm below; while a session runs, **Stop** leads and **Merge PR** waits in the menu, and with
+  failing checks it is not offered). The rest is under the **⋯** menu next to it: **Start with a workflow or
+  persona…** (the same dialog as the board's **Start card**), **Start**, **Start in the
+  background**, **Stop**, **Open PR**, **Merge PR**, **Finish…** and **Discard**. A card whose run
+  is done opens on **Changes**.
 - **Edit and delete:** the card's **⋯** menu has **Edit…**, which opens the card with its title ready
   to change (the card page also edits the description and, with ROI on, the estimate), and
   **Delete…**, which names the card and asks first. Delete is only for a card that never started
@@ -1731,10 +1733,21 @@ card, "Post-mortem: <title>", and starts it with the Post-mortem draft workflow 
 failed card is not touched. The button is off, with a note, when the project has not added that
 workflow yet.
 
-A template is a file, and Flightdeck writes nothing to your repository. On the **Workflows**
-screen, **Add from a template** lists them. Open one to read its file, then **Copy the file**,
-commit it to `.flightdeck/workflows/` on the base branch, and **Trust** it on the same screen
-like any other workflow. The `check` line of the alert fixer already holds the project's test
+A template is a file. On the **Workflows** screen, **Add from a template** lists them. Open one to
+read its file. Then add it in one of two ways:
+
+- **Add to the project** (a host from this version on). Flightdeck asks first, then commits the file
+  to `.flightdeck/workflows/` on a new branch from origin's copy of the base branch (your
+  commits not pushed yet stay out), `flightdeck/workflow-<template>-<date>`, pushes it
+  and opens a pull request into the base branch, as a card does. **View the pull request** opens
+  it. The base branch and your checkout do not change: your current branch, your index and your
+  unsaved files stay as they are. The commit uses the repository's `user.name` and `user.email`,
+  and the project needs a PR provider. A template whose file is already on the base branch is
+  refused.
+- **Copy the file**, then commit it to `.flightdeck/workflows/` on the base branch yourself.
+
+Either way, once the file is on the base branch, **Trust** it on the same screen like any other
+workflow: it does not run before. The `check` line of the alert fixer already holds the project's test
 command when Flightdeck can tell it (`npm run test`, `cargo test`...). When it cannot, the line
 holds a placeholder that fails on purpose: replace it with your test command before you commit.
 If the clipboard refuses the copy, the dialog says so as an alert: select the text of the file shown
