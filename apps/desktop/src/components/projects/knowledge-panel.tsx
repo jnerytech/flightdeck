@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { Key } from "@/i18n";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { KnowledgeCreate } from "./knowledge-create";
 import { KnowledgeFeedSwitch } from "./knowledge-feed-switch";
 
 type Status = KnowledgeEntry["status"];
@@ -24,6 +25,8 @@ export function KnowledgePanel(
     feed?: boolean;
     /** The host announces `knowledgeStatus`: a document's status can be changed here. */
     status?: boolean;
+    /** The host announces `knowledgeCreate`: a document can be started from a template here. */
+    create?: boolean;
     /** The project on the board: a spec can become a card of it (#78, S-T2). */
     projectId?: string;
     /** Opens a card the panel made. */
@@ -134,6 +137,9 @@ export function KnowledgePanel(
       {props.feed && <KnowledgeFeedSwitch store={store} hostId={hostId} path={path} />}
       {props.status && (
         <p className="text-muted-foreground text-sm">{t("projectPage.knowledge.setStatus.hint")}</p>
+      )}
+      {props.create && (
+        <KnowledgeCreate store={store} hostId={hostId} path={path} onCreated={reload} />
       )}
       {note && (
         <p role={note.ok ? "status" : "alert"} className="text-sm">
