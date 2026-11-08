@@ -16,7 +16,8 @@ export function HostsBanner(props: Readonly<{ hosts: HostView[]; t: T }>) {
   if (total === 0) return null;
   const { t } = props;
   return (
-    <output
+    <div // NOSONAR: holds flow content (paragraphs, a list or placeholders), which <output> may not
+      role="status"
       aria-label={t("hosts.bannerLabel")}
       className="mb-3 flex flex-col gap-1 rounded-md border border-status-needs-you/40 px-2 py-1 text-sm"
     >
@@ -49,6 +50,6 @@ export function HostsBanner(props: Readonly<{ hosts: HostView[]; t: T }>) {
           </ul>
         </>
       )}
-    </output>
+    </div>
   );
 }

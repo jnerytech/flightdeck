@@ -141,7 +141,7 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   } | null>(null);
   // #1090: Apply and Commit close their dialog, and the button they came from is busy or gone; the
   // focus goes to what they answered, not to the page, and the regions that say it stay mounted.
-  const said = useRef<HTMLOutputElement>(null);
+  const said = useRef<HTMLDivElement>(null);
   const refusedBox = useRef<HTMLDivElement>(null);
   const focusOutcome = useRef(false);
   useEffect(() => {
@@ -292,13 +292,14 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
       {/* Mounted before anything is said, so a screen reader reads what fills them, and live even
           though the outcome also takes the focus: a focus lost (a remount, a dialog handing it
           back) must not leave the outcome unsaid. Some readers may say it twice. */}
-      <output
+      <div // NOSONAR: holds flow content (paragraphs, a list or placeholders), which <output> may not
+        role="status"
         ref={said}
         tabIndex={-1}
-        className="block rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+        className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
       >
         {outcome && !outcome.refused && <p className="text-sm">{outcome.text}</p>}
-      </output>
+      </div>
       <div
         role="alert"
         ref={refusedBox}

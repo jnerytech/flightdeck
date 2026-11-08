@@ -230,7 +230,11 @@ export function KnowledgePanel(
         <KnowledgeCreate store={store} hostId={hostId} path={path} onCreated={reload} />
       )}
       {/* The live region for what worked stays in the page: one inserted with its text is often not read. */}
-      <output data-slot="knowledge-note" className="block empty:-mb-3">
+      <div // NOSONAR: holds flow content (paragraphs, a list or placeholders), which <output> may not
+        data-slot="knowledge-note"
+        role="status"
+        className="empty:-mb-3"
+      >
         {note?.ok && (
           <p key={note.id} className="flex flex-wrap items-center gap-2 text-sm">
             {note.text}
@@ -247,7 +251,7 @@ export function KnowledgePanel(
             )}
           </p>
         )}
-      </output>
+      </div>
       {note && !note.ok && (
         <p role="alert" className="text-sm">
           {note.text}
