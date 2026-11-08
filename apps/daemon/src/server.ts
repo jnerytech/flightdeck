@@ -353,6 +353,8 @@ export interface ServerOptions {
   features?: string[];
   /** The host's plan quota behind `quota.*` (phase 7). */
   quota?: Quota;
+  /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
+  quotaPause?: { set(pauseAt: number | null): void | Promise<void> };
   /** The Claude account behind `account.*` (phase 34). */
   account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
@@ -473,6 +475,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.doctor, "doctor.run"),
     ...when(opts.serviceInstall, FEATURE_SERVICE_INSTALL),
     ...when(opts.keepAwake, "keepAwake"),
+    ...when(opts.quotaPause, "quotaPause"),
     ...when(opts.deps, "depsCheck"),
     ...when(opts.projectTrust, "projectTrust"),
     ...when(opts.harnessStack, "harnessStack"),

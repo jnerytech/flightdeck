@@ -1521,6 +1521,7 @@ export const ptBR = {
     harnessDraft: "o rascunho de um CLAUDE.md com o Claude",
     harnessTemplates: "o compartilhamento da configuração do Claude Code como modelo",
     keepAwake: "a função de manter o computador acordado",
+    quotaPause: "a trava da cota para cartões novos",
     autoUpdate: "atualização automática do host",
   },
   daemonRefusal: {

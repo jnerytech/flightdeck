@@ -1529,6 +1529,7 @@ export const en: Dictionary = {
     harnessDraft: "drafting a CLAUDE.md with Claude",
     harnessTemplates: "sharing the Claude Code setup as a template",
     keepAwake: "keeping the computer awake",
+    quotaPause: "the quota guard for new cards",
     autoUpdate: "automatic host updates",
   },
   daemonRefusal: {

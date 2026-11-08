@@ -395,6 +395,7 @@ const validCommands: Record<CommandType, unknown> = {
   "gate.respond": { runId: "r", stepId: "approve", attempt: 1, decision: "reject", note: "não" },
   "quota.get": {},
   "quota.watch": {},
+  "quota.setPauseAt": { pauseAt: 0.8 },
   "account.get": {},
   "account.watch": {},
   "account.unwatch": {},
