@@ -169,9 +169,9 @@ const RESUME_QUOTA =
 
 /** What a worker is started with beyond the team's own setup; read only, so one copy serves every call. */
 interface WorkerSpec {
-  persona: string | null;
-  model: string | null;
-  permission: PermissionMode | null;
+  readonly persona: string | null;
+  readonly model: string | null;
+  readonly permission: PermissionMode | null;
 }
 const NO_SPEC: WorkerSpec = { persona: null, model: null, permission: null };
 
