@@ -1036,6 +1036,7 @@ export const en: Dictionary = {
     filterLabel: "Filter sessions",
     toggleProject: "Show or hide {name}",
     countChip: "{live} live of {total} sessions",
+    countShort: "{live} of {total} active",
     noHost: "No host yet",
     noOnlineHost: "No host is online",
     addHost: "Add a host",
@@ -1060,6 +1061,7 @@ export const en: Dictionary = {
       needs_you: "Needs you",
       idle: "Idle",
       ended: "Ended",
+      failed: "Failed",
     },
     stateDots: {
       running: "running",
@@ -1067,6 +1069,19 @@ export const en: Dictionary = {
       idle: "idle",
       asleep: "asleep",
       ended: "ended",
+      failed: "failed",
+    },
+    /** Issue #1132: the word under a session's title in the list. */
+    rowWord: {
+      running: "Working",
+      needs_you: "Waiting for you",
+      idle: "Idle",
+      ended: "Ended",
+      failed: "Failed",
+    },
+    rowDetail: {
+      waitingTool: "wants to run {tool}",
+      runningTool: "running {tool}",
     },
     asleep: "Asleep",
     sleepNow: "Sleep now",
@@ -1468,6 +1483,7 @@ export const en: Dictionary = {
     budgets: "budgets",
     quotaHistory: "the quota history",
     changes: "change review",
+    sessionCommits: "committing a session's changes",
     ssh: "ssh destinations",
     snippets: "snippets",
     personaSessions: "personas in open sessions",
@@ -1839,6 +1855,27 @@ export const en: Dictionary = {
     harness_confirm: "Changing the Claude Code setup needs your confirmation.",
     harness_reformat:
       "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
+    changes_commit_confirm: "Confirm the commit before it is made.",
+    changes_commit_target:
+      "Only a session started by hand is committed here: a card has its own Open PR.",
+    changes_commit_state:
+      "The repository is busy ({state}): finish or undo it in a terminal, then commit again.",
+    changes_commit_stale: "The files changed since you looked: check them again, then commit.",
+    changes_commit_secret:
+      "{file} looks like it holds a secret, so nothing was committed: take it out first.",
+    changes_commit_message_secret:
+      "The message looks like it holds a secret, so nothing was committed: take it out first.",
+    changes_commit_too_large: "{file} is too large to check for secrets: commit it yourself.",
+    changes_commit_branch_taken: "There is already a branch {branch}: pick another name.",
+    changes_commit_hook:
+      "The commit was refused: {output}. You are on {branch} with your files as they were; fix it and commit again, or go back with git checkout {base}.",
+    changes_commit_timeout:
+      "The commit ran out of time (a hook or a signing prompt that never ended). You are on {branch} with your files as they were; go back with git checkout {base}.",
+    changes_commit_hook_withheld:
+      "The commit was refused, and what the hook said is not shown: it looks like it holds a secret. You are on {branch} with your files as they were; go back with git checkout {base}.",
+    changes_commit_rewritten:
+      "{files} changed while being committed (a hook that formats, or the session still writing), so the commit was undone: look at the changes again, then commit.",
+    changes_commit_git: "Git could not make the branch or the commit in this repository.",
     harness_commit_stale:
       "The files are not as the setup wrote them: apply the setup again, then commit.",
     harness_commit_no_head: "The project has no commit yet to start a branch from.",
@@ -2609,6 +2646,8 @@ export const en: Dictionary = {
     commentText: "Comment text",
     saveComment: "Save comment",
     send: "Send review ({n})",
+    compose: "Review in the message box ({n})",
+    composed: "The review is in the message box.",
     sentVia: {
       session: "Review sent to the session.",
       card: "Review sent to the card.",

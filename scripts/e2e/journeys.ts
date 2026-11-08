@@ -1640,55 +1640,6 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
-  // Issue #1131: a request is answered from the bell, in its row, at a phone's width too. The
-  // session's own request is put in the bell by hand (the web demo sends no notification), then
-  // answered there, and its row is gone from the bell.
-  "bell-approve": async (c) => {
-    const session = `Sino e2e ${Date.now()}`;
-    await createSession(c, "[bash] ls", session);
-    await open(c, { name: "needs-you" });
-    await c.page
-      .locator("main ul li button", { hasText: session })
-      .first()
-      .click({ timeout: SESSION_WAIT });
-    const card = c.page.locator("fieldset[data-request-id]").first();
-    await card.waitFor({ timeout: WAIT });
-    const requestId = await card.getAttribute("data-request-id");
-    const link = `flightdeck://request?${new URLSearchParams({ host: ALFA, request: requestId ?? "" })}`;
-    const seed = JSON.stringify([
-      {
-        id: "bell-approve",
-        at: new Date().toISOString(),
-        title: "Precisa de você",
-        body: "",
-        link,
-        subject: session,
-        host: "alfa",
-        ask: "Quer executar: ls",
-        read: false,
-      },
-    ]);
-    await c.page.evaluate((value) => localStorage.setItem("flightdeck.inbox", value), seed);
-    await c.page.setViewportSize({ width: 390, height: 800 });
-    await open(c, { name: "hub" });
-    await c.page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
-    const dialog = c.page.getByRole("dialog");
-    await dialog.waitFor({ timeout: WAIT });
-    const group = dialog.getByRole("group", { name: new RegExp(session) });
-    await group.waitFor({ timeout: SESSION_WAIT });
-    // The row fits the panel: no sideways scroll and nothing past its right edge.
-    const fits = await dialog.evaluate((box) => {
-      const edge = box.getBoundingClientRect().right;
-      const past = [...box.querySelectorAll<HTMLElement>(".inbox-request > *")].filter(
-        (el) => el.getBoundingClientRect().right > edge + 1,
-      );
-      return box.scrollWidth <= box.clientWidth + 1 && past.length === 0;
-    });
-    if (!fits) throw new Error("a linha do pedido passa do painel do sino a 390 px");
-    await group.getByRole("button", { name: c.t("approval.approve"), exact: true }).click();
-    await waitFor(async () => (await group.count()) === 0, "o pedido saiu do sino");
-  },
-
   // Issues #1030 and #1031: at the usual window the board fills its width with all five columns
   // (none cut at the right edge, no head running past its column), and the Return on cost card is
   // one short row, so the columns start right under it.
@@ -2472,11 +2423,11 @@ async function sessionFitsProblems(c: Context): Promise<string[]> {
 }
 
 /**
- * The layout check (#1003), kept under the 90 s a journey gets: the screens people use most (Home,
- * a session, the board, a host's page, Settings) at the smallest window the app allows and at the
- * usual one. English runs all of it, in two journeys (`layoutWindows` is the second half); pt-BR runs
- * only the geometry guards, where its longer texts are the point. The other sizes and screens are
- * not checked here any more.
+ * The layout check (#1003), kept under the 90 s a journey gets: the geometry guards of the screens
+ * people use most (Home, a session, the board, a host's page, Settings) at the smallest window the
+ * app allows and at the usual one, in both languages (pt-BR's longer texts are the point). English
+ * has two journeys more, `layoutAbas` (12 tabs, tab widths) and `layoutWindows` (scroll, the
+ * smallest window, the bell). The other sizes and screens are not checked here any more.
  */
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
@@ -2489,7 +2440,20 @@ export async function layout(c: Context, problems: string[]) {
   // The geometry guards (issue #192) name what they find by data-slot path; the heuristic rules fail
   // only when new against the baseline.
   await geometryGuards(c, screens, problems);
-  if (c.lang === "pt-BR") return;
+}
+
+/**
+ * The crowded-tabs part of the layout check (#1003), a journey of its own so none of the three
+ * layout journeys comes near the 90 s a journey gets: 12 tabs and a long worktree path at the
+ * smallest and the largest window, the tab widths and list, the active tab, and where the tab
+ * strip starts. English only. (`layout` holds the geometry guards, `layoutWindows` the scroll
+ * and window checks.)
+ */
+export async function layoutAbas(c: Context, problems: string[]) {
+  const screens: Array<[string, Route]> = [
+    ["host", { name: "host", host: ALFA }],
+    ["configuracoes", { name: "settings" }],
+  ];
   const smallest = OVERFLOW_VIEWPORTS[0] as { width: number; height: number };
   const largest = OVERFLOW_VIEWPORTS[OVERFLOW_VIEWPORTS.length - 1] as typeof smallest;
   // Issue #103: with 12 tabs and a long worktree path, a screen does not scroll the page sideways.

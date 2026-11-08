@@ -3,6 +3,7 @@ import { constants } from "node:fs";
 import { open, readdir, realpath } from "node:fs/promises";
 import { join, posix } from "node:path";
 import {
+  byCodeUnit,
   KNOWLEDGE_FOLDERS,
   type KnowledgeEntry,
   type KnowledgeListResult,
@@ -39,7 +40,7 @@ export function shownHash(size: number, head: Buffer): string {
 }
 
 /** Byte order of two names, as git sorts paths. */
-const order = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+const order = byCodeUnit;
 
 /** The Markdown files below `dir` (a path from the root, with `/`), links and skipped folders left out. */
 async function walk(

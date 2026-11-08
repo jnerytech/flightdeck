@@ -20,6 +20,7 @@ export const GATES = {
   budgets: "budgets",
   central: "central",
   changes: "changes",
+  sessionCommits: "sessionCommits",
   costs: "costs",
   files: "files",
   fileLog: "logs",
