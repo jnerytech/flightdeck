@@ -1,6 +1,8 @@
 import type { KnowledgeEntry, KnowledgeListResult, KnowledgeStatus } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Panel } from "@/components/layout/panel";
+import { LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Key } from "@/i18n";
@@ -37,11 +39,19 @@ export function KnowledgePanel(
   const { t } = store.i18n;
   const [loaded, setLoaded] = useState<KnowledgeListResult | "failed" | null>(null);
   const [filter, setFilter] = useState<Status | "all">("all");
-  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [note, setNote] = useState<{
+    id: number;
+    ok: boolean;
+    text: string;
+    title?: string;
+    open?: () => void;
+  } | null>(null);
   // The specs a card is being made from: a second click waits, so it makes no second card. The ref
   // answers at once (two clicks in one tick); the state disables the button.
   const busy = useRef(new Set<string>());
   // The status each document's picker shows when it is not the file's own yet, by path.
+  // Each note gets a number: the same words said twice are a new node, so they are read twice.
+  const said = useRef(0);
   const [chosen, setChosen] = useState<Readonly<Record<string, KnowledgeStatus>>>({});
   const [making, setMaking] = useState<ReadonlySet<string>>(new Set());
 
@@ -66,6 +76,10 @@ export function KnowledgePanel(
   const pickers = useRef(new Map<string, HTMLSelectElement>());
   const filters = useRef<HTMLDivElement>(null);
   const refocus = useRef<string | null>(null);
+  // Try again keeps the failed view on screen (the button is where the focus is) until the host answers.
+  const [retrying, setRetrying] = useState(false);
+  const retryButton = useRef<HTMLButtonElement>(null);
+  const refocusRetry = useRef(false);
   // Once the list is read again: a choice the file now agrees with is done, and the focus goes back to
   // the picker of the document that was changed (or to the filter in use, when it no longer fits).
   useEffect(() => {
@@ -85,6 +99,19 @@ export function KnowledgePanel(
       filters.current?.querySelector<HTMLElement>("[aria-pressed='true']")
     )?.focus();
   }, [loaded]);
+  // After a retry the focus is on the button if it failed again, else on the first filter.
+  useEffect(() => {
+    if (retrying || !refocusRetry.current) return;
+    refocusRetry.current = false;
+    (retryButton.current ?? filters.current?.querySelector<HTMLElement>("button"))?.focus();
+  }, [retrying]);
+  const retry = async () => {
+    setRetrying(true);
+    const result = await store.hostCommand(hostId, "knowledge.list", { path });
+    refocusRetry.current = true;
+    setLoaded(result ?? "failed");
+    setRetrying(false);
+  };
   // Issue #78, S-T2: a spec becomes a card that names it, so its first start reads it first and
   // works test first. A card the host refuses is not named; the banner says why.
   const makeCard = async (entry: KnowledgeEntry, projectId: string) => {
@@ -113,10 +140,14 @@ export function KnowledgePanel(
     });
     const open = props.onOpenCard;
     const key = named ? "projectPage.knowledge.cardMade" : "projectPage.knowledge.cardMadeNoSpec";
-    store.success(
-      t(key, { title: made.title }),
-      open ? { label: t("kanban.openCard"), run: () => open(made.id) } : undefined,
-    );
+    // Said here, where the person pressed the button, with a way to open the card.
+    setNote({
+      id: ++said.current,
+      ok: true,
+      text: t(key, { title: made.title }),
+      title: made.title,
+      ...(open ? { open: () => open(made.id) } : {}),
+    });
   };
   // The file is written by the host only if it is as the list showed it; a refusal says why, and
   // the list is read again so the next try has what the file is now.
@@ -134,6 +165,7 @@ export function KnowledgePanel(
     setNote(
       result.ok
         ? {
+            id: ++said.current,
             ok: true,
             text: t("projectPage.knowledge.setStatus.changed", {
               title: entry.title,
@@ -141,6 +173,7 @@ export function KnowledgePanel(
             }),
           }
         : {
+            id: ++said.current,
             ok: false,
             text: t("projectPage.knowledge.setStatus.failed", {
               why: refusalText(result.code, result.message, t, result),
@@ -150,12 +183,35 @@ export function KnowledgePanel(
     reload();
   };
 
-  if (loaded === null) return null;
   const title = t("projectPage.knowledge.title");
+  if (loaded === null) {
+    return (
+      <Panel title={title} label={title}>
+        <LoadingState label={t("projectPage.knowledge.loading")} />
+      </Panel>
+    );
+  }
   if (loaded === "failed") {
     return (
       <Panel title={title} label={title}>
-        <p className="text-sm">{t("projectPage.knowledge.failed")}</p>
+        <InlineNotice tone="error">
+          <span>{t("projectPage.knowledge.failed")}</span>{" "}
+          <span>{t("projectPage.knowledge.failedHint")}</span>
+        </InlineNotice>
+        <Button
+          ref={retryButton}
+          type="button"
+          size="sm"
+          variant="outline"
+          className="self-start aria-disabled:pointer-events-none aria-disabled:opacity-50"
+          aria-disabled={retrying || undefined}
+          onClick={() => {
+            if (!retrying) void retry();
+          }}
+        >
+          {t("projectPage.knowledge.retry")}
+        </Button>
+        {retrying && <LoadingState label={t("projectPage.knowledge.loading")} />}
       </Panel>
     );
   }
@@ -173,8 +229,27 @@ export function KnowledgePanel(
       {props.create && (
         <KnowledgeCreate store={store} hostId={hostId} path={path} onCreated={reload} />
       )}
-      {note && (
-        <p role={note.ok ? "status" : "alert"} className="text-sm">
+      {/* The live region for what worked stays in the page: one inserted with its text is often not read. */}
+      <div data-slot="knowledge-note" role="status" className="empty:-mb-3">
+        {note?.ok && (
+          <p key={note.id} className="flex flex-wrap items-center gap-2 text-sm">
+            {note.text}
+            {note.open && note.title !== undefined && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-label={t("projectPage.knowledge.openMade", { title: note.title })}
+                onClick={note.open}
+              >
+                {t("kanban.openCard")}
+              </Button>
+            )}
+          </p>
+        )}
+      </div>
+      {note && !note.ok && (
+        <p role="alert" className="text-sm">
           {note.text}
         </p>
       )}
@@ -265,7 +340,9 @@ export function KnowledgePanel(
                       variant="outline"
                       size="sm"
                       aria-label={t("projectPage.knowledge.makeCardOf", { title: entry.title })}
-                      disabled={making.has(entry.path)}
+                      // Unavailable, not disabled: the button keeps the focus while the card is made.
+                      aria-disabled={making.has(entry.path) || undefined}
+                      className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
                       onClick={() => void makeCard(entry, props.projectId as string)}
                     >
                       {t("projectPage.knowledge.makeCard")}

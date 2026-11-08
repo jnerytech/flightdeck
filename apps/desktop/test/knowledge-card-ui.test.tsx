@@ -101,28 +101,54 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
     ]);
   });
 
-  test("the card is made with the spec's title and names the spec, then says so with a way to open it", async () => {
-    const { view, sent, store, went } = setup();
+  test("the card is made with the spec's title and names the spec, then the panel says so with a way to open it", async () => {
+    const { view, sent, went } = setup();
     render(view);
     await listed();
     const button = makeCard("Login screen");
     if (button) await act(async () => fireEvent.click(button));
-    const named = await settleMaybe(() => store.getState().notices.length > 0);
-    const notice = store.getState().notices.at(-1);
-    if (notice?.link) notice.link.run();
+    const said = await settleMaybe(
+      () => screen.queryByText("Card made from the spec: Login screen") !== null,
+    );
+    const open = screen.queryByRole("button", { name: "Open the card Login screen" });
+    if (open) await act(async () => fireEvent.click(open));
     expect([
-      named,
+      said,
       sent.find(([type]) => type === "card.create")?.[1],
       sent.find(([type]) => type === "card.update")?.[1],
-      notice?.text ?? null,
+      screen.queryByText("Card made from the spec: Login screen")?.closest("[role='status']") ===
+        null,
       went,
     ]).toEqual([
       true,
       { projectId: "p1", title: "Login screen", description: "" },
       { cardId: "c9", specPath: "docs/specs/login.md" },
-      "Card made from the spec: Login screen",
+      false,
       [{ name: "card", host: "h1", projectId: "p1", cardId: "c9" }],
     ]);
+  });
+
+  test("the made card is said in a region that was in the page before, and a second card with the same title is said again", async () => {
+    const { view, store } = setup();
+    render(view);
+    await listed();
+    const region = () => document.querySelector("[data-slot='knowledge-note']");
+    expect(region()?.getAttribute("role")).toBe("status");
+    expect(region()?.textContent).toBe("");
+    const said = () => screen.queryByText("Card made from the spec: Login screen");
+    const press = async () => {
+      const button = makeCard("Login screen");
+      if (button) await act(async () => fireEvent.click(button));
+    };
+    await press();
+    await settleMaybe(() => said() !== null);
+    const first = said();
+    await press();
+    // The same words in the same node are not read twice: the note is a new node each time.
+    await settleMaybe(() => said() !== null && said() !== first);
+    expect(said() !== first).toBe(true);
+    // The toast is gone: one event is not said twice.
+    expect(store.getState().notices.filter((n) => n.kind === "success")).toEqual([]);
   });
 
   test("a card the host refuses is not named", async () => {
@@ -136,20 +162,49 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
   });
 
   test("a card the host would not point at the spec is said as made without it, with a way to open it", async () => {
-    const { view, store, went } = setup({ refuseName: true });
+    const { view, went } = setup({ refuseName: true });
     render(view);
     await listed();
     const button = makeCard("Login screen");
     if (button) await act(async () => fireEvent.click(button));
-    const said = await settleMaybe(() => store.getState().notices.length > 0);
-    const notice = store.getState().notices.find((n) => n.kind === "success");
-    if (notice?.link) notice.link.run();
+    const said = await settleMaybe(
+      () =>
+        screen.queryByText(
+          "Card made without its spec: Login screen. Open it to set the spec path.",
+        ) !== null,
+    );
+    const open = screen.queryByRole("button", { name: "Open the card Login screen" });
+    if (open) await act(async () => fireEvent.click(open));
     // The card is there either way: a second click would only make another.
-    expect([said, notice?.text, went]).toEqual([
+    expect([said, went]).toEqual([
       true,
-      "Card made without its spec: Login screen. Open it to set the spec path.",
       [{ name: "card", host: "h1", projectId: "p1", cardId: "c9" }],
     ]);
+  });
+
+  test("while the card is made the button keeps the focus: it is unavailable, not disabled", async () => {
+    let finish: (value: unknown) => void = () => {};
+    const { view, store } = setup();
+    const answer = store.hostCommand;
+    store.hostCommand = (async (host: string, type: string, payload: unknown) =>
+      type === "card.create"
+        ? new Promise((resolve) => {
+            finish = resolve;
+          })
+        : (answer as (...a: unknown[]) => unknown)(host, type, payload)) as never;
+    render(view);
+    await listed();
+    const button = makeCard("Login screen") as HTMLButtonElement;
+    expect(button === null).toBe(false);
+    button.focus();
+    await act(async () => fireEvent.click(button));
+    expect([
+      button.disabled,
+      button.getAttribute("aria-disabled"),
+      document.activeElement === button,
+    ]).toEqual([false, "true", true]);
+    await act(async () => finish({ id: "c9", title: "Login screen" }));
+    await settleMaybe(() => screen.queryByText(/Card made/) !== null);
   });
 
   test("a second click while the first is making the card makes no second card", async () => {

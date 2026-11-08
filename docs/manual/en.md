@@ -372,6 +372,11 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   the file as it is, and leaves the change in the project's folder, not committed: review it with
   git. It is refused when the file changed since the list showed it (reload and try again), when
   its front matter is not clear enough to edit safely, or when the file is over 1 MB or not text.
+  While the list loads the panel says so; when the host cannot read it, the panel says what to check
+  (the host is online, the project's folder still exists) and **Try again** reads it again. **Make a
+  card** on a spec stays focusable while the card is made, and the panel then says which card was made,
+  with an **Open** button. Turning the index on or off, and a switch that could not be changed, are
+  read out by screen readers.
   Only the documents the list shows can be changed; a link, a credential name or a file outside
   the library folders cannot.
   **New document** starts a document from a template: pick a kind (ADR, RFC or PRD), type a title
