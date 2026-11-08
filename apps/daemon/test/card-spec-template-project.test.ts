@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, linkSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { newBoard } from "./board-helpers.ts";
 import { tempDir, waitFor } from "./helpers.ts";
@@ -15,7 +15,12 @@ const OURS = "# {{title}}\n\nOur shape.\n\n## Criteria\n\n{{criteria}}\n";
 const posix = process.platform !== "win32";
 
 /** Starts a card whose project asks for a spec; `trusted` decides whether the template is read. */
-async function start(options: { trusted: boolean; template?: string; link?: boolean }) {
+async function start(options: {
+  trusted: boolean;
+  template?: string;
+  link?: boolean;
+  hardLink?: boolean;
+}) {
   let repo = "";
   const ctx = newBoard({
     specTemplateRoot: async () => (options.trusted ? repo : null),
@@ -26,6 +31,10 @@ async function start(options: { trusted: boolean; template?: string; link?: bool
     const outside = join(tempDir("fd-spec-template-out-"), "spec.md");
     writeFileSync(outside, OURS);
     symlinkSync(outside, join(repo, TEMPLATE));
+  } else if (options.hardLink) {
+    const outside = join(tempDir("fd-spec-template-out-"), "spec.md");
+    writeFileSync(outside, OURS);
+    linkSync(outside, join(repo, TEMPLATE));
   } else if (options.template !== undefined) {
     writeFileSync(join(repo, TEMPLATE), options.template);
   }
@@ -78,6 +87,11 @@ describe("card-spec-template-project: a trusted project's own spec template (#78
       ]);
     },
   );
+
+  test("a template with a second name (a hard link, which may lie outside) is not read", async () => {
+    const text = await start({ trusted: true, hardLink: true });
+    expect([text.includes("Our shape."), text.includes("## Out of scope")]).toEqual([false, true]);
+  });
 
   test("a template too big, or empty, falls back to the built-in one", async () => {
     const big = await start({ trusted: true, template: `${OURS}${"x".repeat(40_000)}` });
