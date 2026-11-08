@@ -102,6 +102,31 @@ function commandsOf(entries: unknown[]): string[] {
   );
 }
 
+type Additions = Pick<Settings, "hooks" | "denyRules" | "conflicts">;
+
+/** Adds the formatter hook unless one is there; a `hooks` key that cannot take it is a conflict. */
+function addFormatterHook(out: Additions, settings: Record<string, unknown>, format: string): void {
+  const hooks = orEmpty(settings.hooks, {});
+  const after = isObject(hooks) ? orEmpty(hooks.PostToolUse, []) : null;
+  if (!isObject(hooks)) out.conflicts.push("hooks");
+  else if (!Array.isArray(after)) out.conflicts.push("hooks.PostToolUse");
+  else {
+    const [, event, pattern] = FORMATTER;
+    if (!commandsOf(after).some((command) => pattern.test(command))) {
+      out.hooks.push({ event, matcher: EDIT_MATCHER, command: format });
+    }
+  }
+}
+
+/** Adds the deny rules not there yet; a `permissions` key that cannot take them is a conflict. */
+function addDenyRules(out: Additions, settings: Record<string, unknown>): void {
+  const permissions = orEmpty(settings.permissions, {});
+  const deny = isObject(permissions) ? orEmpty(permissions.deny, []) : null;
+  if (!isObject(permissions)) out.conflicts.push("permissions");
+  else if (!Array.isArray(deny)) out.conflicts.push("permissions.deny");
+  else out.denyRules = DENY_RULES.filter((rule) => !deny.includes(rule));
+}
+
 /**
  * What the settings would gain: the formatter hook, unless one is there, and the deny rules not
  * there yet. A key that holds something other than what can be appended to is a conflict.
@@ -110,31 +135,10 @@ function additions(
   settings: Record<string, unknown>,
   parts: readonly PreviewPart[],
   format: string | null,
-): Pick<Settings, "hooks" | "denyRules" | "conflicts"> {
-  const out: Pick<Settings, "hooks" | "denyRules" | "conflicts"> = {
-    hooks: [],
-    denyRules: [],
-    conflicts: [],
-  };
-  if (parts.includes("hooks") && format !== null) {
-    const hooks = orEmpty(settings.hooks, {});
-    const after = isObject(hooks) ? orEmpty(hooks.PostToolUse, []) : null;
-    if (!isObject(hooks)) out.conflicts.push("hooks");
-    else if (!Array.isArray(after)) out.conflicts.push("hooks.PostToolUse");
-    else {
-      const [, event, pattern] = FORMATTER;
-      if (!commandsOf(after).some((command) => pattern.test(command))) {
-        out.hooks.push({ event, matcher: EDIT_MATCHER, command: format });
-      }
-    }
-  }
-  if (parts.includes("permissions")) {
-    const permissions = orEmpty(settings.permissions, {});
-    const deny = isObject(permissions) ? orEmpty(permissions.deny, []) : null;
-    if (!isObject(permissions)) out.conflicts.push("permissions");
-    else if (!Array.isArray(deny)) out.conflicts.push("permissions.deny");
-    else out.denyRules = DENY_RULES.filter((rule) => !deny.includes(rule));
-  }
+): Additions {
+  const out: Additions = { hooks: [], denyRules: [], conflicts: [] };
+  if (parts.includes("hooks") && format !== null) addFormatterHook(out, settings, format);
+  if (parts.includes("permissions")) addDenyRules(out, settings);
   return out;
 }
 

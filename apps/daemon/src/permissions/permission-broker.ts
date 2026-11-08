@@ -60,6 +60,9 @@ const STATUS_OF: Record<"allow" | "deny" | "cancelled", Exclude<PermissionStatus
  * Turns `canUseTool` calls into persisted `pending` requests and resolves them when a client
  * answers, the turn is interrupted (`cancelled`) or the daemon restarts (`expired`).
  */
+/** The answer a closed request gets when none was given: a new one per call, never shared. */
+const cancelled = (): PermissionDecision => ({ behavior: "deny", message: "cancelado" });
+
 export class PermissionBroker {
   private readonly open = new Map<string, Pending>();
   /** The open requests whose `permission.requested` went out: a summary lists only these. */
@@ -228,7 +231,7 @@ export class PermissionBroker {
     id: string,
     decision: "allow" | "deny" | "cancelled",
     message?: string,
-    result: PermissionDecision = { behavior: "deny", message: "cancelado" },
+    result: PermissionDecision = cancelled(),
     auto?: AutoApproval,
     answers?: Record<string, string>,
   ): void {

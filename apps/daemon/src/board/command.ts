@@ -97,6 +97,16 @@ export function git(cwd: string, ...args: string[]): Promise<CommandResult> {
   return runCommand([whichOnPath("git") ?? "git", ...args], cwd);
 }
 
+/** The rarer settings of a capped run (S107: no eighth positional parameter). */
+export interface LimitedMore {
+  /** The byte the output is cut after when it goes past `limit`: a line break, or NUL for `-z`. */
+  separator?: number;
+  /** Aborting it kills the program like the time limit does, and the result says `aborted` (#905). */
+  signal?: AbortSignal;
+  /** Added to the process's environment for this call. */
+  env?: Record<string, string>;
+}
+
 /**
  * Like `git`, but reads at most `limit` bytes of output: when git writes more it is killed and the
  * result says `truncated`, with the output cut at its last whole line (a change of 200 MB must not
@@ -120,24 +130,10 @@ export function gitLimitedFor(
   args: string[],
   timeoutMs?: number,
   kill: (pid: number) => Promise<void> = killTree,
-  /** The byte the output is cut after when it goes past `limit`: a line break, or NUL for `-z`. */
-  separator = 10,
-  /** Aborting it kills the program like the time limit does, and the result says `aborted` (#905). */
-  signal?: AbortSignal,
-  /** Added to the process's environment for this call. */
-  env?: Record<string, string>,
+  more?: LimitedMore,
 ): Promise<CommandResult & { truncated: boolean }> {
   // git-arg: the capped git helper: its callers are what the git-args ratchet checks
-  return runLimited(
-    [whichOnPath("git") ?? "git", ...args],
-    cwd,
-    limit,
-    timeoutMs,
-    kill,
-    separator,
-    signal,
-    env,
-  );
+  return runLimited([whichOnPath("git") ?? "git", ...args], cwd, limit, timeoutMs, kill, more);
 }
 
 /** The most stderr `runLimited` keeps; the rest is read and dropped (#806). */
@@ -166,10 +162,9 @@ export async function runLimited(
   limit: number,
   timeoutMs?: number,
   kill: (pid: number) => Promise<void> = killTree,
-  separator = 10,
-  signal?: AbortSignal,
-  env?: Record<string, string>,
+  more?: LimitedMore,
 ): Promise<CommandResult & { truncated: boolean }> {
+  const { separator = 10, signal, env } = more ?? {};
   const proc = Bun.spawn(cmd, {
     cwd,
     env: { ...process.env, ...env },

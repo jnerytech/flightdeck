@@ -106,7 +106,10 @@ export class TeleportPackages {
     return run;
   }
 
-  private async make(sessionId: string): Promise<TeleportManifest> {
+  /** The session, its Claude id and its transcript file, or why the session cannot be packaged. */
+  private async eligible(
+    sessionId: string,
+  ): Promise<{ session: TeleportSession; claudeId: string; file: string }> {
     if (this.stopped) throw refuse("invalid_state", "teleport_stopped");
     const session = this.deps.session(sessionId);
     if (session.status !== "idle" && session.status !== "ended") {
@@ -121,6 +124,11 @@ export class TeleportPackages {
     if (!UUID.test(claudeId)) throw refuse("bad_request", "teleport_unsafe_transcript");
     const file = await this.deps.transcriptOf(claudeId);
     if (!file) throw refuse("not_found", "teleport_no_transcript");
+    return { session, claudeId, file };
+  }
+
+  private async make(sessionId: string): Promise<TeleportManifest> {
+    const { session, claudeId, file } = await this.eligible(sessionId);
     // A session has one package at a time: a new one replaces the old once it is stored.
     const old = [...this.entries].find(([, entry]) => entry.manifest.sessionId === sessionId)?.[0];
     if (this.entries.size - (old ? 1 : 0) >= TELEPORT_MAX_LIVE) {

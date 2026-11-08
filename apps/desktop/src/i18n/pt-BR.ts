@@ -818,6 +818,31 @@ export const ptBR = {
         "Este backup é grande demais para ser restaurado depois (mais de 1 MiB), então não foi salvo. Remova personas ou snippets grandes e tente de novo.",
     },
   },
+  backupSchedule: {
+    title: "Backups agendados",
+    intro:
+      "O backup é feito sozinho numa pasta que você escolhe, e só os últimos arquivos ficam. A frase-senha é pedida uma vez a cada abertura do app e fica só na memória.",
+    cadenceLegend: "Com que frequência",
+    cadence: { off: "Desligado", daily: "Todo dia", weekly: "Toda semana" },
+    folder: "Pasta",
+    noFolder: "Nenhuma pasta escolhida",
+    chooseFolder: "Escolher pasta",
+    keep: "Arquivos a manter",
+    passphrase: "Frase-senha desta sessão",
+    passphraseHelp:
+      "Pelo menos 12 caracteres. Fica na memória até você fechar o Flightdeck e nunca é salva.",
+    usePassphrase: "Usar",
+    passphraseNeeds: "Digite uma frase-senha de pelo menos 12 caracteres.",
+    passphraseSet: "Frase-senha definida até você fechar o Flightdeck.",
+    lastRun: "Último backup: {when}",
+    neverRun: "Ainda não houve backup agendado.",
+    pruneFailed: "O backup foi salvo, mas não deu para apagar os arquivos antigos.",
+    skipped: {
+      "no-folder": "Há um backup a fazer, mas nenhuma pasta está escolhida. Escolha uma pasta.",
+      "no-passphrase": "Há um backup a fazer, mas ele espera a frase-senha. Digite-a abaixo.",
+      failed: "O último backup não pôde ser salvo. Veja se a pasta ainda existe e tem espaço.",
+    },
+  },
   approval: {
     label: "Pedido de {tool}",
     title: "Permissão para",

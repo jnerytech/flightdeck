@@ -326,9 +326,7 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
     ],
     TIMEOUT_MS,
     undefined,
-    undefined,
-    signal,
-    scratch,
+    { signal, env: scratch },
   );
   if (moved.truncated) throw refuse("teleport_too_large", { max });
   // A git that failed or ran out of time (killed at TIMEOUT_MS).

@@ -103,6 +103,80 @@ async function until(check: () => boolean, what: string): Promise<void> {
 const percentile = (sorted: number[], p: number) =>
   sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
 
+type Envelope = Client["events"][number];
+
+async function createSession(
+  client: Client,
+  project: string,
+): Promise<{ sessionId: string; before: number; lastPersisted: number }> {
+  step = "create the session";
+  const { sessionId } = await client.call<{ sessionId: string }>("session.create", {
+    cwd: project,
+    prompt: "hi",
+    name: "perf",
+  });
+  await client.call("session.subscribe", { sessionId, sinceSeq: 0 });
+  await until(() => client.events.some((e) => e.event.type === "turn.result"), "first turn");
+  await until(
+    () => client.events.some((e) => e.event.type === "session.status" && e.event.status === "idle"),
+    "the session to be idle",
+  );
+  const before = client.events.length;
+  const lastPersisted = Math.max(
+    ...client.events.filter((e) => e.event.type !== "message.delta").map((e) => e.seq),
+  );
+  return { sessionId, before, lastPersisted };
+}
+
+async function streamAnswer(client: Client, sessionId: string): Promise<number[]> {
+  step = "stream the answer";
+  await client.call("session.send", { sessionId, text: PROMPT });
+  const roundTrips: number[] = [];
+  while (client.events.filter((e) => e.event.type === "turn.result").length < 2) {
+    const started = performance.now();
+    await client.call("host.info", {}); // NOSONAR: each round trip is timed alone, so they cannot overlap
+    roundTrips.push(performance.now() - started);
+    await Bun.sleep(20); // NOSONAR: a poll, one look per pause
+    if (roundTrips.length > 4000) throw new Error("the answer never ended");
+  }
+  return roundTrips;
+}
+
+function checkFrames(fresh: Envelope[]): void {
+  step = "check the frames";
+  const frames = fresh.filter((e) => e.event.type === "message.delta");
+  const text = frames.map((e) => (e.event.type === "message.delta" ? e.event.text : "")).join("");
+  if (text !== `Echo: ${PROMPT}`) throw new Error("the text of the frames is not the answer");
+  const share = frames.length / DELTAS;
+  log(`${DELTAS} deltas of the runtime arrived as ${frames.length} frames (${share.toFixed(2)})`);
+  if (share > MAX_FRAME_SHARE) {
+    throw new Error(`too many frames: ${frames.length} of ${DELTAS} (limit ${MAX_FRAME_SHARE})`);
+  }
+}
+
+function checkSeqs(fresh: Envelope[], lastPersisted: number): void {
+  step = "check the seqs";
+  let last = lastPersisted;
+  for (const envelope of fresh) {
+    if (envelope.event.type === "message.delta") {
+      if (envelope.seq !== last)
+        throw new Error(`a text frame at seq ${envelope.seq}, not ${last}`);
+    } else {
+      if (envelope.seq !== last + 1) throw new Error(`a hole before seq ${envelope.seq}`);
+      last = envelope.seq;
+    }
+  }
+}
+
+function checkResponsiveness(roundTrips: number[]): void {
+  step = "check the responsiveness";
+  roundTrips.sort((a, b) => a - b);
+  const p99 = percentile(roundTrips, 0.99);
+  log(`host.info while streaming: ${roundTrips.length} calls, p99 ${p99.toFixed(1)} ms`);
+  if (p99 > MAX_P99_MS)
+    throw new Error(`p99 of ${p99.toFixed(1)} ms over the ${MAX_P99_MS} ms limit`);
+}
+
 async function run(): Promise<void> {
   const work = realTempDir("flightdeck-smoke-perf-");
   const projectRoot = join(work, "projects");
@@ -147,64 +221,12 @@ async function run(): Promise<void> {
     await client.open();
     await client.call("hello", { token, client: "smoke-perf" });
 
-    step = "create the session";
-    const { sessionId } = await client.call<{ sessionId: string }>("session.create", {
-      cwd: project,
-      prompt: "hi",
-      name: "perf",
-    });
-    await client.call("session.subscribe", { sessionId, sinceSeq: 0 });
-    await until(() => client.events.some((e) => e.event.type === "turn.result"), "first turn");
-    await until(
-      () =>
-        client.events.some((e) => e.event.type === "session.status" && e.event.status === "idle"),
-      "the session to be idle",
-    );
-    const before = client.events.length;
-    const lastPersisted = Math.max(
-      ...client.events.filter((e) => e.event.type !== "message.delta").map((e) => e.seq),
-    );
-
-    step = "stream the answer";
-    await client.call("session.send", { sessionId, text: PROMPT });
-    const roundTrips: number[] = [];
-    while (client.events.filter((e) => e.event.type === "turn.result").length < 2) {
-      const started = performance.now();
-      await client.call("host.info", {}); // NOSONAR: each round trip is timed alone, so they cannot overlap
-      roundTrips.push(performance.now() - started);
-      await Bun.sleep(20); // NOSONAR: a poll, one look per pause
-      if (roundTrips.length > 4000) throw new Error("the answer never ended");
-    }
-
-    step = "check the frames";
+    const { sessionId, before, lastPersisted } = await createSession(client, project);
+    const roundTrips = await streamAnswer(client, sessionId);
     const fresh = client.events.slice(before);
-    const frames = fresh.filter((e) => e.event.type === "message.delta");
-    const text = frames.map((e) => (e.event.type === "message.delta" ? e.event.text : "")).join("");
-    if (text !== `Echo: ${PROMPT}`) throw new Error("the text of the frames is not the answer");
-    const share = frames.length / DELTAS;
-    log(`${DELTAS} deltas of the runtime arrived as ${frames.length} frames (${share.toFixed(2)})`);
-    if (share > MAX_FRAME_SHARE) {
-      throw new Error(`too many frames: ${frames.length} of ${DELTAS} (limit ${MAX_FRAME_SHARE})`);
-    }
-
-    step = "check the seqs";
-    let last = lastPersisted;
-    for (const envelope of fresh) {
-      if (envelope.event.type === "message.delta") {
-        if (envelope.seq !== last)
-          throw new Error(`a text frame at seq ${envelope.seq}, not ${last}`);
-      } else {
-        if (envelope.seq !== last + 1) throw new Error(`a hole before seq ${envelope.seq}`);
-        last = envelope.seq;
-      }
-    }
-
-    step = "check the responsiveness";
-    roundTrips.sort((a, b) => a - b);
-    const p99 = percentile(roundTrips, 0.99);
-    log(`host.info while streaming: ${roundTrips.length} calls, p99 ${p99.toFixed(1)} ms`);
-    if (p99 > MAX_P99_MS)
-      throw new Error(`p99 of ${p99.toFixed(1)} ms over the ${MAX_P99_MS} ms limit`);
+    checkFrames(fresh);
+    checkSeqs(fresh, lastPersisted);
+    checkResponsiveness(roundTrips);
 
     step = "close the session";
     await client.call("session.close", { sessionId });

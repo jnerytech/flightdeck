@@ -307,6 +307,33 @@ async function agentArgs(
   return interactive.args;
 }
 
+/** Deletes the files of a launch and its folder, when it made one. */
+async function removeLaunch(files: string[], folder?: Promise<LaunchFolder | null>): Promise<void> {
+  await removeAll(files);
+  const own = folder ? ((await folder)?.own ?? null) : null;
+  if (own) await removeFolder(own);
+}
+
+/**
+ * The system prompt arguments of a launch: the persona's role and the knowledge index, in one file.
+ * The user's own system prompt wins: claude takes one, so the index is not put beside it.
+ */
+async function systemPromptArgs(
+  opts: RunClaudeOptions,
+  args: string[],
+  persona: ResolvedPersonaResult | null,
+  name: string,
+  write: (name: string, content: string) => Promise<string>,
+): Promise<string[]> {
+  const own = passed(args, "--append-system-prompt") || passed(args, "--append-system-prompt-file");
+  const knowledge = own ? null : await fetchKnowledge(opts.config, opts.cwd ?? process.cwd());
+  if (persona) {
+    const body = knowledge ? `${persona.persona.body}\n\n${knowledge}` : persona.persona.body;
+    return personaArgs(persona.persona, await write(name, body), args);
+  }
+  return knowledge ? ["--append-system-prompt-file", await write(name, knowledge)] : [];
+}
+
 /** Deletes the files that exist; one that cannot be taken away (or is not under a folder) is passed over. */
 async function removeAll(paths: string[]): Promise<void> {
   await inSequence(paths, async (path) => {
@@ -375,16 +402,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
         "flightdeckd: the Flightdeck daemon is down; opening claude without the channel (the app will not be able to send messages)",
       );
     }
-    // The user's own system prompt wins: claude takes one, so the index is not put beside it.
-    const own =
-      passed(args, "--append-system-prompt") || passed(args, "--append-system-prompt-file");
-    const knowledge = own ? null : await fetchKnowledge(opts.config, opts.cwd ?? process.cwd());
-    if (persona) {
-      const body = knowledge ? `${persona.persona.body}\n\n${knowledge}` : persona.persona.body;
-      added.push(...personaArgs(persona.persona, await write(`${launchId}.md`, body), args));
-    } else if (knowledge) {
-      added.push("--append-system-prompt-file", await write(`${launchId}.md`, knowledge));
-    }
+    added.push(...(await systemPromptArgs(opts, args, persona, `${launchId}.md`, write)));
     added.push(...(await agentArgs(opts, { claude, args, print, launchId }, write)));
     const proc = Bun.spawn(
       buildClaudeLaunch({
@@ -408,11 +426,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   } finally {
     // `claude --bg` returns at once and the session goes on: its channel config and persona
     // files are still read, so they stay (a few small files per background session).
-    if (!background) {
-      await removeAll(files);
-      const own = made.folder ? ((await made.folder)?.own ?? null) : null;
-      if (own) await removeFolder(own);
-    }
+    if (!background) await removeLaunch(files, made.folder);
   }
 }
 

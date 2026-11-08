@@ -58,6 +58,13 @@ export function HarnessShare(props: Readonly<HarnessShareProps>) {
     });
     said.current?.focus();
   };
+  /** The name field says what is missing once something is typed, and the id it will get once there is one. */
+  const nameNote = () => {
+    if (title.trim() !== "" && id === "")
+      return { error: t("projectPage.harness.share.needsName") };
+    if (id !== "") return { help: t("projectPage.harness.share.idHint", { id }) };
+    return {};
+  };
   return (
     <Stack gap={2}>
       <div>
@@ -89,14 +96,7 @@ export function HarnessShare(props: Readonly<HarnessShareProps>) {
           onCancel={() => setAsking(false)}
           onConfirm={() => void share()}
         >
-          <Field
-            label={t("projectPage.harness.share.name")}
-            {...(title.trim() !== "" && id === ""
-              ? { error: t("projectPage.harness.share.needsName") }
-              : id !== ""
-                ? { help: t("projectPage.harness.share.idHint", { id }) }
-                : {})}
-          >
+          <Field label={t("projectPage.harness.share.name")} {...nameNote()}>
             {(control) => (
               <Input
                 {...control}

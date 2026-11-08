@@ -106,7 +106,7 @@ describe("opencode-security", () => {
     agent.update({ sessionUpdate: "config_option_update", configOptions: configOptions() });
     agent.endPrompt();
     expect(await poll(() => ok.out.events.some((e) => e.type === "turn.result"))).toBe(true);
-    expect(ok.out.error).toBe(null);
+    expect(ok.out.error).toBeNull();
     const bad = setup();
     const agent2 = await bad.open();
     agent2.update({ sessionUpdate: "current_mode_update", currentModeId: "build" });
@@ -120,7 +120,7 @@ describe("opencode-security", () => {
     await toolRuns(agent, "t1", "shell", { command: "ls", cwd: "/w" }, true);
     agent.endPrompt();
     expect(await poll(() => same.out.events.some((e) => e.type === "turn.result"))).toBe(true);
-    expect(same.out.error).toBe(null);
+    expect(same.out.error).toBeNull();
     const changed = setup(["fp", "fp2"]);
     const agent2 = await changed.open();
     await toolRuns(agent2, "t1", "shell", { command: "ls", cwd: "/w" }, true);
@@ -159,7 +159,7 @@ describe("opencode-security", () => {
     await toolRuns(agent, "t5", "shell", { command: "late", cwd: "/w" }, false);
     agent.endPrompt({ stopReason: "cancelled" });
     expect(await poll(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
-    expect(out.error).toBe(null);
+    expect(out.error).toBeNull();
   });
 
   test("a command that is not text is never shown as [object Object] when it trips (S6551)", async () => {

@@ -171,8 +171,7 @@ async function search(root: string, input: Search, opts: SearchOptions): Promise
     [...GIT_SAFE, "rev-parse", "--show-toplevel"],
     opts.timeoutMs ?? TIMEOUT_MS,
     undefined,
-    undefined,
-    opts.signal,
+    { signal: opts.signal },
   );
   if (top.code !== 0) throw notRepository(root);
   // A `core.worktree` in the repository's config sends git to another tree: its files are not
@@ -240,8 +239,7 @@ async function byName(root: string, query: string, opts: SearchOptions): Promise
     [...GIT_SAFE, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
     opts.timeoutMs ?? TIMEOUT_MS,
     undefined,
-    NUL,
-    opts.signal,
+    { separator: NUL, signal: opts.signal },
   );
   if (result.code !== 0 && !cut(result)) throw notRepository(root);
   const wanted = query.toLowerCase();
@@ -285,8 +283,7 @@ async function withRg(rg: string, root: string, query: string, opts: SearchOptio
     opts.maxBytes ?? MAX_BYTES,
     opts.timeoutMs ?? TIMEOUT_MS,
     undefined,
-    undefined,
-    opts.signal,
+    { signal: opts.signal },
   );
   const matches: FileSearchMatch[] = [];
   for (const line of result.stdout.split("\n")) {
@@ -333,8 +330,7 @@ async function withGitGrep(root: string, query: string, opts: SearchOptions): Pr
     ],
     opts.timeoutMs ?? TIMEOUT_MS,
     undefined,
-    undefined,
-    opts.signal,
+    { signal: opts.signal },
   );
   if (result.code > 1 && !cut(result)) throw failed("git grep", result.code);
   const matches: FileSearchMatch[] = [];

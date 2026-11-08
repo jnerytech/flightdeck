@@ -149,7 +149,14 @@ interface Candidate {
   flagged: string[];
 }
 
-async function run(work: string): Promise<void> {
+const FIXTURE_COMMANDS = new Set([
+  "git status",
+  "docker compose up -d",
+  "bun test",
+  "Get-ChildItem -Recurse",
+]);
+
+function writeHistoryFixtures(work: string): { appData: string; fixtures: Record<string, string> } {
   // Fixture histories, where this daemon will look: the guard's home and a temporary APPDATA.
   const appData = join(work, "appdata");
   const sources = defaultHistorySources({
@@ -177,12 +184,200 @@ async function run(work: string): Promise<void> {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, content);
   }
-  const FIXTURE_COMMANDS = new Set([
-    "git status",
-    "docker compose up -d",
-    "bun test",
-    "Get-ChildItem -Recurse",
-  ]);
+  return { appData, fixtures };
+}
+
+async function checkHostSnippet(client: Client): Promise<void> {
+  step = "snippet do host e segredo recusado";
+  await client.call("snippets.save", {
+    scope: "host",
+    name: "status",
+    type: "command",
+    run: "git status",
+    tags: ["git"],
+  });
+  const refused = await client.fail("snippets.save", {
+    scope: "host",
+    name: "com-token",
+    type: "command",
+    run: `gh auth login --with-token ${GITHUB}`,
+  });
+  if (!refused.includes("snippet_secret") || refused.includes(GITHUB)) {
+    throw new Error(`devia recusar o segredo sem repeti-lo: ${refused}`);
+  }
+  log(
+    "o snippet do host foi salvo e o que tem token foi recusado (snippet_secret), sem repetir o token",
+  );
+}
+
+async function checkProjectFile(
+  client: Client,
+  project: string,
+): Promise<{ tests: Snip; review: Snip; hash: string }> {
+  step = "o arquivo do projeto";
+  const listed = await client.call<{
+    snippets: Snip[];
+    file: { hash: string; trusted: boolean };
+  }>("snippets.list", { projectPath: project });
+  const byName = Object.fromEntries(listed.snippets.map((s) => [s.name, s]));
+  const tests = byName["testes-rapidos"];
+  const review = byName["revisar-seguranca"];
+  if (!tests || !review || tests.runnable || !review.runnable || listed.file.trusted) {
+    throw new Error(
+      `o comando do arquivo devia esperar confiança e o prompt não: ${JSON.stringify(listed)}`,
+    );
+  }
+  log("o comando do arquivo versionado espera confiança; o prompt não precisa");
+  return { tests, review, hash: listed.file.hash };
+}
+
+async function checkPasteAndRun(
+  client: Client,
+  project: string,
+  tests: Snip,
+  hash: string,
+): Promise<void> {
+  step = "colar e rodar no terminal";
+  const scriptTerminal = async () => {
+    const opened = await client.call<{ terminalId: string }>("terminal.open", {
+      cwd: project,
+      command: [process.execPath, "-e", SCRIPT],
+      cols: 100,
+      rows: 30,
+    });
+    await client.call("terminal.attach", { terminalId: opened.terminalId });
+    const seen = (text: string) => (client.output.get(opened.terminalId) ?? "").includes(text);
+    await until(() => seen("READY"), "o script do terminal");
+    return { terminalId: opened.terminalId, seen };
+  };
+  // Untrusted: it may be pasted without Enter (into a terminal of its own), never run.
+  const scratch = await scriptTerminal();
+  await client.call("snippets.use", {
+    id: tests.id,
+    action: "paste",
+    terminalId: scratch.terminalId,
+  });
+  const untrusted = await client.fail("snippets.use", {
+    id: tests.id,
+    action: "paste",
+    terminalId: scratch.terminalId,
+    enter: true,
+  });
+  if (!untrusted.includes("snippet_untrusted"))
+    throw new Error(`devia pedir confiança: ${untrusted}`);
+  await client.call("snippets.trust", { projectPath: project, hash: hash });
+  const live = await scriptTerminal();
+  const unsafe = await client.fail("snippets.use", {
+    id: tests.id,
+    action: "paste",
+    terminalId: live.terminalId,
+    enter: true,
+    values: { arquivo: "a.ts\nrm -rf x" },
+  });
+  if (!unsafe.includes("bad_request"))
+    throw new Error(`devia recusar a quebra de linha: ${unsafe}`);
+  const ran = await client.call<{ text: string }>("snippets.use", {
+    id: tests.id,
+    action: "paste",
+    terminalId: live.terminalId,
+    enter: true,
+    values: { arquivo: "x.test.ts" },
+  });
+  await until(() => live.seen("ECHO:bun test x.test.ts"), "o eco do comando");
+  if (ran.text !== "bun test x.test.ts") {
+    throw new Error(`o terminal devia ter recebido o comando: ${ran.text}`);
+  }
+  log(
+    "o comando foi colado sem Enter, recusado com Enter sem confiança, e depois da confiança chegou ao terminal",
+  );
+}
+
+async function checkSendPrompt(client: Client, project: string, review: Snip): Promise<void> {
+  step = "enviar o prompt à sessão";
+  const { sessionId } = await client.call<{ sessionId: string }>("session.create", {
+    cwd: project,
+    prompt: "olá",
+    name: "smoke-snippets",
+  });
+  await client.call("session.subscribe", { sessionId, sinceSeq: 0 });
+  await until(() => client.events.some((e) => e.event.type === "turn.result"), "o primeiro turno");
+  const sent = await client.call<{ text: string }>("snippets.use", {
+    id: review.id,
+    action: "send",
+    sessionId,
+    context: { file: "src/app.ts" },
+  });
+  const expected =
+    "Revise src/app.ts procurando injeção, segredos expostos e validação faltando. Responda em tópicos.";
+  await until(
+    () => client.events.some((e) => e.event.type === "message.user" && e.event.text === expected),
+    "o prompt chegar à sessão",
+  );
+  if (sent.text !== expected) throw new Error(`texto inesperado: ${sent.text}`);
+  log("o prompt do arquivo, sem confiança, chegou à sessão com {{file}} preenchido");
+}
+
+async function checkImportHistory(client: Client, fixtures: Record<string, string>): Promise<void> {
+  step = "importar do histórico";
+  const before = Object.keys(fixtures).map((path) => readFileSync(path, "utf8"));
+  const preview = await client.call<{
+    candidates: Candidate[];
+    sources: Array<{ found: boolean }>;
+  }>("snippets.importHistory", {});
+  const text = JSON.stringify(preview);
+  for (const secret of SECRETS) {
+    if (text.includes(secret)) throw new Error("a prévia do histórico mostrou um segredo");
+  }
+  const shown = preview.candidates
+    .filter((c) => c.command !== null)
+    .map((c) => c.command as string);
+  const foreign = shown.filter((command) => !FIXTURE_COMMANDS.has(command));
+  if (foreign.length > 0) throw new Error(`comando que não é das fixtures: ${foreign.join(" | ")}`);
+  const hidden = preview.candidates.filter((c) => c.hidden);
+  if (hidden.length !== 2 || hidden.some((c) => c.selectable || c.command !== null)) {
+    throw new Error(`as duas linhas com segredo deviam estar ocultas: ${text}`);
+  }
+  const git = preview.candidates.find((c) => c.command === "docker compose up -d");
+  if (!git) throw new Error("faltou docker compose na prévia");
+  const imported = await client.call<{
+    created: Array<{ name: string; scope: string }>;
+    skipped: unknown[];
+  }>("snippets.importHistory", { select: [git.id, ...hidden.map((c) => c.id)] });
+  if (
+    imported.created.length !== 1 ||
+    imported.created[0]?.scope !== "host" ||
+    imported.skipped.length !== 2
+  ) {
+    throw new Error(`devia importar só o docker compose para o host: ${JSON.stringify(imported)}`);
+  }
+  const after = Object.keys(fixtures).map((path) => readFileSync(path, "utf8"));
+  if (JSON.stringify(before) !== JSON.stringify(after))
+    throw new Error("um histórico foi alterado");
+  log(
+    "o histórico só das fixtures: as 2 linhas com segredo ficaram ocultas e não importáveis, docker compose foi para o host",
+  );
+}
+
+async function checkNoSecretInFile(client: Client, project: string, hash: string): Promise<void> {
+  step = "o arquivo versionado não recebe segredo";
+  const toFile = await client.fail("snippets.save", {
+    scope: "project",
+    target: "file",
+    projectPath: project,
+    name: "com-senha",
+    type: "command",
+    run: "mysql password=hunter2hunter2",
+  });
+  if (!toFile.includes("snippet_secret")) throw new Error(`devia recusar no arquivo: ${toFile}`);
+  const unchanged = readFileSync(join(project, ".flightdeck", "snippets.yaml"), "utf8");
+  if (createHash("sha256").update(unchanged).digest("hex") !== hash) {
+    throw new Error("o arquivo do projeto mudou");
+  }
+  log("salvar um segredo no snippets.yaml foi recusado e o arquivo não mudou");
+}
+
+async function run(work: string): Promise<void> {
+  const { appData, fixtures } = writeHistoryFixtures(work);
 
   const projects = join(work, "projects");
   const project = join(projects, "app");
@@ -215,179 +410,12 @@ async function run(work: string): Promise<void> {
     const client = new Client(url);
     await client.open(token);
 
-    step = "snippet do host e segredo recusado";
-    await client.call("snippets.save", {
-      scope: "host",
-      name: "status",
-      type: "command",
-      run: "git status",
-      tags: ["git"],
-    });
-    const refused = await client.fail("snippets.save", {
-      scope: "host",
-      name: "com-token",
-      type: "command",
-      run: `gh auth login --with-token ${GITHUB}`,
-    });
-    if (!refused.includes("snippet_secret") || refused.includes(GITHUB)) {
-      throw new Error(`devia recusar o segredo sem repeti-lo: ${refused}`);
-    }
-    log(
-      "o snippet do host foi salvo e o que tem token foi recusado (snippet_secret), sem repetir o token",
-    );
-
-    step = "o arquivo do projeto";
-    const listed = await client.call<{
-      snippets: Snip[];
-      file: { hash: string; trusted: boolean };
-    }>("snippets.list", { projectPath: project });
-    const byName = Object.fromEntries(listed.snippets.map((s) => [s.name, s]));
-    const tests = byName["testes-rapidos"];
-    const review = byName["revisar-seguranca"];
-    if (!tests || !review || tests.runnable || !review.runnable || listed.file.trusted) {
-      throw new Error(
-        `o comando do arquivo devia esperar confiança e o prompt não: ${JSON.stringify(listed)}`,
-      );
-    }
-    log("o comando do arquivo versionado espera confiança; o prompt não precisa");
-
-    step = "colar e rodar no terminal";
-    const scriptTerminal = async () => {
-      const opened = await client.call<{ terminalId: string }>("terminal.open", {
-        cwd: project,
-        command: [process.execPath, "-e", SCRIPT],
-        cols: 100,
-        rows: 30,
-      });
-      await client.call("terminal.attach", { terminalId: opened.terminalId });
-      const seen = (text: string) => (client.output.get(opened.terminalId) ?? "").includes(text);
-      await until(() => seen("READY"), "o script do terminal");
-      return { terminalId: opened.terminalId, seen };
-    };
-    // Untrusted: it may be pasted without Enter (into a terminal of its own), never run.
-    const scratch = await scriptTerminal();
-    await client.call("snippets.use", {
-      id: tests.id,
-      action: "paste",
-      terminalId: scratch.terminalId,
-    });
-    const untrusted = await client.fail("snippets.use", {
-      id: tests.id,
-      action: "paste",
-      terminalId: scratch.terminalId,
-      enter: true,
-    });
-    if (!untrusted.includes("snippet_untrusted"))
-      throw new Error(`devia pedir confiança: ${untrusted}`);
-    await client.call("snippets.trust", { projectPath: project, hash: listed.file.hash });
-    const live = await scriptTerminal();
-    const unsafe = await client.fail("snippets.use", {
-      id: tests.id,
-      action: "paste",
-      terminalId: live.terminalId,
-      enter: true,
-      values: { arquivo: "a.ts\nrm -rf x" },
-    });
-    if (!unsafe.includes("bad_request"))
-      throw new Error(`devia recusar a quebra de linha: ${unsafe}`);
-    const ran = await client.call<{ text: string }>("snippets.use", {
-      id: tests.id,
-      action: "paste",
-      terminalId: live.terminalId,
-      enter: true,
-      values: { arquivo: "x.test.ts" },
-    });
-    await until(() => live.seen("ECHO:bun test x.test.ts"), "o eco do comando");
-    if (ran.text !== "bun test x.test.ts") {
-      throw new Error(`o terminal devia ter recebido o comando: ${ran.text}`);
-    }
-    log(
-      "o comando foi colado sem Enter, recusado com Enter sem confiança, e depois da confiança chegou ao terminal",
-    );
-
-    step = "enviar o prompt à sessão";
-    const { sessionId } = await client.call<{ sessionId: string }>("session.create", {
-      cwd: project,
-      prompt: "olá",
-      name: "smoke-snippets",
-    });
-    await client.call("session.subscribe", { sessionId, sinceSeq: 0 });
-    await until(
-      () => client.events.some((e) => e.event.type === "turn.result"),
-      "o primeiro turno",
-    );
-    const sent = await client.call<{ text: string }>("snippets.use", {
-      id: review.id,
-      action: "send",
-      sessionId,
-      context: { file: "src/app.ts" },
-    });
-    const expected =
-      "Revise src/app.ts procurando injeção, segredos expostos e validação faltando. Responda em tópicos.";
-    await until(
-      () => client.events.some((e) => e.event.type === "message.user" && e.event.text === expected),
-      "o prompt chegar à sessão",
-    );
-    if (sent.text !== expected) throw new Error(`texto inesperado: ${sent.text}`);
-    log("o prompt do arquivo, sem confiança, chegou à sessão com {{file}} preenchido");
-
-    step = "importar do histórico";
-    const before = Object.keys(fixtures).map((path) => readFileSync(path, "utf8"));
-    const preview = await client.call<{
-      candidates: Candidate[];
-      sources: Array<{ found: boolean }>;
-    }>("snippets.importHistory", {});
-    const text = JSON.stringify(preview);
-    for (const secret of SECRETS) {
-      if (text.includes(secret)) throw new Error("a prévia do histórico mostrou um segredo");
-    }
-    const shown = preview.candidates
-      .filter((c) => c.command !== null)
-      .map((c) => c.command as string);
-    const foreign = shown.filter((command) => !FIXTURE_COMMANDS.has(command));
-    if (foreign.length > 0)
-      throw new Error(`comando que não é das fixtures: ${foreign.join(" | ")}`);
-    const hidden = preview.candidates.filter((c) => c.hidden);
-    if (hidden.length !== 2 || hidden.some((c) => c.selectable || c.command !== null)) {
-      throw new Error(`as duas linhas com segredo deviam estar ocultas: ${text}`);
-    }
-    const git = preview.candidates.find((c) => c.command === "docker compose up -d");
-    if (!git) throw new Error("faltou docker compose na prévia");
-    const imported = await client.call<{
-      created: Array<{ name: string; scope: string }>;
-      skipped: unknown[];
-    }>("snippets.importHistory", { select: [git.id, ...hidden.map((c) => c.id)] });
-    if (
-      imported.created.length !== 1 ||
-      imported.created[0]?.scope !== "host" ||
-      imported.skipped.length !== 2
-    ) {
-      throw new Error(
-        `devia importar só o docker compose para o host: ${JSON.stringify(imported)}`,
-      );
-    }
-    const after = Object.keys(fixtures).map((path) => readFileSync(path, "utf8"));
-    if (JSON.stringify(before) !== JSON.stringify(after))
-      throw new Error("um histórico foi alterado");
-    log(
-      "o histórico só das fixtures: as 2 linhas com segredo ficaram ocultas e não importáveis, docker compose foi para o host",
-    );
-
-    step = "o arquivo versionado não recebe segredo";
-    const toFile = await client.fail("snippets.save", {
-      scope: "project",
-      target: "file",
-      projectPath: project,
-      name: "com-senha",
-      type: "command",
-      run: "mysql password=hunter2hunter2",
-    });
-    if (!toFile.includes("snippet_secret")) throw new Error(`devia recusar no arquivo: ${toFile}`);
-    const unchanged = readFileSync(join(project, ".flightdeck", "snippets.yaml"), "utf8");
-    if (createHash("sha256").update(unchanged).digest("hex") !== listed.file.hash) {
-      throw new Error("o arquivo do projeto mudou");
-    }
-    log("salvar um segredo no snippets.yaml foi recusado e o arquivo não mudou");
+    await checkHostSnippet(client);
+    const { tests, review, hash } = await checkProjectFile(client, project);
+    await checkPasteAndRun(client, project, tests, hash);
+    await checkSendPrompt(client, project, review);
+    await checkImportHistory(client, fixtures);
+    await checkNoSecretInFile(client, project, hash);
     client.close();
   } finally {
     daemon.kill();

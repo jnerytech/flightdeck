@@ -227,6 +227,137 @@ class FakeClaude {
   }
 }
 
+function check(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+async function declareActions(app: App): Promise<void> {
+  step = "declarar as ações";
+  // `console.log(process.env.TOKEN)` prints the token the daemon put in the environment.
+  await app.call("actions.save", {
+    definition: {
+      name: "echo-token",
+      description: "Imprime o token do deploy (só para o smoke)",
+      run: [process.execPath, "-e", "console.log(process.env.TOKEN)"],
+      env: { TOKEN: "{{secret.deploy-token}}" },
+    },
+    secretIds: ["deploy-token"],
+  });
+  await app.call("actions.save", {
+    definition: {
+      name: "diz",
+      description: "Diz uma palavra",
+      run: [process.execPath, "-e", "console.log(process.argv[1])", "{{param.palavra}}"],
+      params: { palavra: { pattern: "^[a-z]{1,8}$", default: "oi" } },
+    },
+  });
+}
+
+function writeMcpConfig(work: string, config: object, url: string): string {
+  step = "o Claude falso pelo MCP";
+  // The MCP command finds the daemon by the port in its config; the daemon chose its own.
+  const port = new URL(url).port;
+  const mcpConfig = join(work, "mcp-config.json");
+  writeFileSync(mcpConfig, JSON.stringify({ ...config, port: Number(port) }));
+  return mcpConfig;
+}
+
+async function checkMcpTools(claude: FakeClaude): Promise<void> {
+  const tools = await claude.start();
+  for (const name of ["list_actions", "run_action", "run_with_secret"]) {
+    check(tools.includes(name), `falta a ferramenta ${name}`);
+  }
+}
+
+async function checkListActions(claude: FakeClaude): Promise<void> {
+  step = "list_actions sem segredos";
+  const listed = await claude.callTool("list_actions", {});
+  check(listed.text.includes("echo-token"), `list_actions: ${listed.text}`);
+  check(
+    !(listed.text.includes("deploy-token") || listed.text.includes("TOKEN")),
+    "list_actions mostrou o segredo ou a variável dele",
+  );
+  log("o Claude vê as ações, sem segredo nenhum");
+}
+
+async function checkRunActionMasked(claude: FakeClaude, app: App): Promise<void> {
+  step = "run_action mascarado";
+  const echoed = await claude.callTool("run_action", { name: "echo-token" });
+  check(!echoed.error, `run_action falhou: ${echoed.text}`);
+  check(echoed.text.includes("•••(deploy-token)"), `a saída não veio mascarada: ${echoed.text}`);
+  check(
+    app.requests.length === 1 && app.requests[0]?.requester === "claude",
+    "o app devia ter recebido um pedido do Claude",
+  );
+  log("a ação imprimiu o próprio token e o Claude recebeu •••(deploy-token)");
+}
+
+async function checkInvalidParam(claude: FakeClaude, app: App): Promise<void> {
+  step = "parâmetro inválido recusado";
+  const before = app.requests.length;
+  const refused = await claude.callTool("run_action", {
+    name: "diz",
+    params: { palavra: "NÃO; permitido" },
+  });
+  check(
+    refused.error && refused.text.includes("bad_request"),
+    `a ação com parâmetro inválido não foi recusada: ${refused.text}`,
+  );
+  const said = await claude.callTool("run_action", { name: "diz", params: { palavra: "ola" } });
+  check(!said.error && said.text.includes("ola"), `diz: ${said.text}`);
+  check(app.requests.length === before, "o parâmetro inválido chegou a pedir segredo");
+  log("o parâmetro fora do padrão foi recusado; o válido rodou");
+}
+
+async function checkUnapprovedFreeCommand(
+  claude: FakeClaude,
+  app: App,
+  work: string,
+): Promise<void> {
+  step = "run_with_secret sem aprovação não roda";
+  const marker = join(work, "rodou.txt");
+  const command = `${JSON.stringify(process.execPath)} -e "require('node:fs').writeFileSync(process.argv[1], 'x')" ${JSON.stringify(marker)}`;
+  app.mode = "deny";
+  const blocked = await claude.callTool("run_with_secret", {
+    command,
+    secrets: ["deploy-token"],
+  });
+  const free = app.requests.at(-1);
+  check(blocked.error, `o comando livre sem aprovação não falhou: ${blocked.text}`);
+  check(
+    free?.approval === "always" && free.command === command,
+    `o pedido do comando livre devia ser always e levar o comando: ${JSON.stringify(free)}`,
+  );
+  check(!existsSync(marker), "o comando rodou sem a aprovação");
+  log("o comando livre pediu aprovação, foi recusado e não rodou");
+}
+
+async function checkApprovedFreeCommand(claude: FakeClaude, app: App): Promise<void> {
+  step = "run_with_secret aprovado roda, mascarado";
+  app.mode = "approve";
+  const approved = await claude.callTool("run_with_secret", {
+    command: `${JSON.stringify(process.execPath)} -e "console.log(process.env.DEPLOY_TOKEN)"`,
+    secrets: ["deploy-token"],
+  });
+  check(
+    !approved.error && approved.text.includes("•••(deploy-token)"),
+    `run_with_secret aprovado: ${approved.text}`,
+  );
+  log("aprovado, o comando livre rodou e a saída veio mascarada");
+}
+
+function checkSecretAbsent(haystacks: Buffer[], secret: string): void {
+  for (const needle of [
+    secret,
+    Buffer.from(secret).toString("base64"),
+    Buffer.from(secret).toString("hex"),
+  ]) {
+    check(
+      !haystacks.some((hay) => hay.includes(needle)),
+      "o valor do segredo apareceu nos logs, no banco ou no que o Claude recebeu",
+    );
+  }
+}
 async function run(work: string): Promise<void> {
   mkdirSync(work, { recursive: true });
   const token = crypto.randomUUID().replaceAll("-", "");
@@ -264,100 +395,17 @@ async function run(work: string): Promise<void> {
     const app = new App(url, vault);
     await app.open(token);
 
-    step = "declarar as ações";
-    // `console.log(process.env.TOKEN)` prints the token the daemon put in the environment.
-    await app.call("actions.save", {
-      definition: {
-        name: "echo-token",
-        description: "Imprime o token do deploy (só para o smoke)",
-        run: [process.execPath, "-e", "console.log(process.env.TOKEN)"],
-        env: { TOKEN: "{{secret.deploy-token}}" },
-      },
-      secretIds: ["deploy-token"],
-    });
-    await app.call("actions.save", {
-      definition: {
-        name: "diz",
-        description: "Diz uma palavra",
-        run: [process.execPath, "-e", "console.log(process.argv[1])", "{{param.palavra}}"],
-        params: { palavra: { pattern: "^[a-z]{1,8}$", default: "oi" } },
-      },
-    });
+    await declareActions(app);
 
-    step = "o Claude falso pelo MCP";
-    // The MCP command finds the daemon by the port in its config; the daemon chose its own.
-    const port = new URL(url).port;
-    const mcpConfig = join(work, "mcp-config.json");
-    writeFileSync(mcpConfig, JSON.stringify({ ...config, port: Number(port) }));
+    const mcpConfig = writeMcpConfig(work, config, url);
     claude = new FakeClaude(["mcp", "--config", mcpConfig]);
-    const tools = await claude.start();
-    for (const name of ["list_actions", "run_action", "run_with_secret"]) {
-      if (!tools.includes(name)) throw new Error(`falta a ferramenta ${name}`);
-    }
+    await checkMcpTools(claude);
 
-    step = "list_actions sem segredos";
-    const listed = await claude.callTool("list_actions", {});
-    if (!listed.text.includes("echo-token")) throw new Error(`list_actions: ${listed.text}`);
-    if (listed.text.includes("deploy-token") || listed.text.includes("TOKEN")) {
-      throw new Error("list_actions mostrou o segredo ou a variável dele");
-    }
-    log("o Claude vê as ações, sem segredo nenhum");
-
-    step = "run_action mascarado";
-    const echoed = await claude.callTool("run_action", { name: "echo-token" });
-    if (echoed.error) throw new Error(`run_action falhou: ${echoed.text}`);
-    if (!echoed.text.includes("•••(deploy-token)")) {
-      throw new Error(`a saída não veio mascarada: ${echoed.text}`);
-    }
-    if (app.requests.length !== 1 || app.requests[0]?.requester !== "claude") {
-      throw new Error("o app devia ter recebido um pedido do Claude");
-    }
-    log("a ação imprimiu o próprio token e o Claude recebeu •••(deploy-token)");
-
-    step = "parâmetro inválido recusado";
-    const before = app.requests.length;
-    const refused = await claude.callTool("run_action", {
-      name: "diz",
-      params: { palavra: "NÃO; permitido" },
-    });
-    if (!refused.error || !refused.text.includes("bad_request")) {
-      throw new Error(`a ação com parâmetro inválido não foi recusada: ${refused.text}`);
-    }
-    const said = await claude.callTool("run_action", { name: "diz", params: { palavra: "ola" } });
-    if (said.error || !said.text.includes("ola")) throw new Error(`diz: ${said.text}`);
-    if (app.requests.length !== before)
-      throw new Error("o parâmetro inválido chegou a pedir segredo");
-    log("o parâmetro fora do padrão foi recusado; o válido rodou");
-
-    step = "run_with_secret sem aprovação não roda";
-    const marker = join(work, "rodou.txt");
-    const command = `${JSON.stringify(process.execPath)} -e "require('node:fs').writeFileSync(process.argv[1], 'x')" ${JSON.stringify(marker)}`;
-    app.mode = "deny";
-    const blocked = await claude.callTool("run_with_secret", {
-      command,
-      secrets: ["deploy-token"],
-    });
-    const free = app.requests.at(-1);
-    if (!blocked.error)
-      throw new Error(`o comando livre sem aprovação não falhou: ${blocked.text}`);
-    if (free?.approval !== "always" || free.command !== command) {
-      throw new Error(
-        `o pedido do comando livre devia ser always e levar o comando: ${JSON.stringify(free)}`,
-      );
-    }
-    if (existsSync(marker)) throw new Error("o comando rodou sem a aprovação");
-    log("o comando livre pediu aprovação, foi recusado e não rodou");
-
-    step = "run_with_secret aprovado roda, mascarado";
-    app.mode = "approve";
-    const approved = await claude.callTool("run_with_secret", {
-      command: `${JSON.stringify(process.execPath)} -e "console.log(process.env.DEPLOY_TOKEN)"`,
-      secrets: ["deploy-token"],
-    });
-    if (approved.error || !approved.text.includes("•••(deploy-token)")) {
-      throw new Error(`run_with_secret aprovado: ${approved.text}`);
-    }
-    log("aprovado, o comando livre rodou e a saída veio mascarada");
+    await checkListActions(claude);
+    await checkRunActionMasked(claude, app);
+    await checkInvalidParam(claude, app);
+    await checkUnapprovedFreeCommand(claude, app, work);
+    await checkApprovedFreeCommand(claude, app);
     app.close();
   } finally {
     await claude?.stop();
@@ -372,15 +420,7 @@ async function run(work: string): Promise<void> {
     Buffer.from(err.join("")),
     Buffer.from(seen.join("\n")),
   ];
-  for (const needle of [
-    secret,
-    Buffer.from(secret).toString("base64"),
-    Buffer.from(secret).toString("hex"),
-  ]) {
-    if (haystacks.some((hay) => hay.includes(needle))) {
-      throw new Error("o valor do segredo apareceu nos logs, no banco ou no que o Claude recebeu");
-    }
-  }
+  checkSecretAbsent(haystacks, secret);
   log(
     `${filesOf(dataDir).length} arquivos do daemon, os logs e o que o Claude recebeu sem o valor`,
   );

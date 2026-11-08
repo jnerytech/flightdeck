@@ -1,6 +1,7 @@
 import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { AssistantSettings } from "@/components/assistant/assistant-settings";
 import { BackupAllPanel } from "@/components/backup/backup-all-panel";
+import { BackupSchedulePanel } from "@/components/backup/backup-schedule-panel";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -448,7 +449,12 @@ export const Settings = memo(function Settings(props: {
       id: "backup",
       label: t("settingsRail.backup"),
       words: t("settingsRail.words.backup"),
-      node: <BackupAllPanel store={props.store} />,
+      node: (
+        <>
+          <BackupAllPanel store={props.store} />
+          <BackupSchedulePanel store={props.store} />
+        </>
+      ),
     },
     {
       id: "webhooks",

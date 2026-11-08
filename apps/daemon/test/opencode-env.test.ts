@@ -64,7 +64,7 @@ describe("opencode-env", () => {
     expect((agents.flightdeck as { description?: string } | undefined)?.description).toBe(
       "Flightdeck",
     );
-    expect(Object.keys(agents).length).toBe(8);
+    expect(Object.keys(agents)).toHaveLength(8);
   });
 
   test("the env drops the daemon's OPENCODE_* but the provider key, and adds project config off and the document", () => {

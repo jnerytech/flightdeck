@@ -821,6 +821,32 @@ export const en: Dictionary = {
         "This backup is too big to be restored later (over 1 MiB), so it was not saved. Remove large personas or snippets and try again.",
     },
   },
+  backupSchedule: {
+    title: "Scheduled backups",
+    intro:
+      "A backup is made on its own into a folder you choose, and only the last few files stay. The passphrase is asked once each time the app starts and stays in memory.",
+    cadenceLegend: "How often",
+    cadence: { off: "Off", daily: "Every day", weekly: "Every week" },
+    folder: "Folder",
+    noFolder: "No folder chosen",
+    chooseFolder: "Choose folder",
+    keep: "Files to keep",
+    passphrase: "Passphrase for this session",
+    passphraseHelp:
+      "At least 12 characters. Kept in memory until you close Flightdeck, never saved.",
+    usePassphrase: "Use it",
+    passphraseNeeds: "Type a passphrase of at least 12 characters.",
+    passphraseSet: "Passphrase set until you close Flightdeck.",
+    lastRun: "Last backup: {when}",
+    neverRun: "No scheduled backup yet.",
+    pruneFailed: "The backup was saved, but the old files could not be removed.",
+    skipped: {
+      "no-folder": "A backup is due, but no folder is chosen. Choose a folder.",
+      "no-passphrase": "A backup is due, but it waits for the passphrase. Type it below.",
+      failed:
+        "The last backup could not be saved. Check that the folder still exists and has room.",
+    },
+  },
   approval: {
     label: "Request for {tool}",
     title: "Permission for",

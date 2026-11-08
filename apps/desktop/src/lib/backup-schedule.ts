@@ -1,5 +1,5 @@
 import type { Platform } from "../platform/types.ts";
-import { type BackupOptions, type BackupPlatform, createBackup } from "./backup-bundle.ts";
+import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
 
 /** Issue #1264: scheduled backups to a picked folder, keeping the last N files. */
 export const SCHEDULE_KEY = "flightdeck.backupSchedule";
@@ -115,6 +115,8 @@ export async function runScheduledBackup(deps: {
   const keep = Math.max(1, Math.floor(schedule.keep));
   const name = backupFileName(now);
   try {
+    // Loaded when a backup runs, so the encryption library stays out of the start-up chunk.
+    const { createBackup } = await import("./backup-bundle.ts");
     const text = await createBackup(platform, passphrase, passphrase, deps.options);
     await folder.write(name, text);
   } catch {

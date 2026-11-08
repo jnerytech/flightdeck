@@ -57,7 +57,7 @@ describe("opencode-discovery", () => {
   test("the version comes from `opencode vX.Y.Z`", () => {
     expect(parseOpenCodeVersion("opencode v2.2.5\n")).toBe("2.2.5");
     expect(parseOpenCodeVersion("opencode v10.0.1-beta")).toBe("10.0.1-beta");
-    expect(parseOpenCodeVersion("hello")).toBe(null);
+    expect(parseOpenCodeVersion("hello")).toBeNull();
   });
 
   test("on the real file system: a file's size and mtime, and whether it is there; a missing one is null and false", async () => {
@@ -66,7 +66,7 @@ describe("opencode-discovery", () => {
     const info = statSync(file);
     expect(await fileStamp(file)).toBe(`5:${info.mtimeMs}`);
     expect(await fileExists(file)).toBe(true);
-    expect(await fileStamp(`${file}-missing`)).toBe(null);
+    expect(await fileStamp(`${file}-missing`)).toBeNull();
     expect(await fileExists(`${file}-missing`)).toBe(false);
   });
 
@@ -92,7 +92,7 @@ describe("opencode-discovery", () => {
     expect(await resolveOpenCodePath(undefined, win)).toBe(
       join("C:/Users/u", ".opencode", "bin", "opencode.exe"),
     );
-    expect(await resolveOpenCodePath(undefined, { ...d, which: () => null })).toBe(null);
+    expect(await resolveOpenCodePath(undefined, { ...d, which: () => null })).toBeNull();
   });
 
   test("available: path, version, verified; the canary runs in Flightdeck's folder with project config off", async () => {
@@ -107,7 +107,7 @@ describe("opencode-discovery", () => {
     expect(canary?.argv).toEqual(["/bin/opencode", "api", "GET", "/api/config", "--standalone"]);
     expect(canary?.cwd).toBe(join(dataDir, "opencode-canary"));
     expect(canary?.env.OPENCODE_DISABLE_PROJECT_CONFIG).toBe("1");
-    expect(canary?.env.OPENCODE_CONFIG).toBe(undefined);
+    expect(canary?.env.OPENCODE_CONFIG).toBeUndefined();
     expect(canary?.timeoutMs).toBe(30_000);
     const file = join(dataDir, "opencode-canary", "opencode.json");
     expect(existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null).toEqual({

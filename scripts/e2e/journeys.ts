@@ -2100,16 +2100,22 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const row = c.page.getByRole("listitem", {
       name: c.t("teamsUi.row", { name: DEMO_CLOSED_TEAM }),
     });
-    await row.waitFor({ timeout: WAIT });
-    await row
-      .getByRole("button", { name: c.t("teamsUi.menu", { name: DEMO_CLOSED_TEAM }) })
-      .click();
-    await c.page.getByRole("menuitem", { name: c.t("teamsUi.delete"), exact: true }).click();
+    // The page has loaded once the active team is listed. The two languages share the demo of a
+    // shard, so the second finds the closed team already deleted by the first: that is the delete done.
     await c.page
-      .getByRole("alertdialog")
-      .getByRole("button", { name: c.t("teamsUi.delete"), exact: true })
-      .click();
-    await row.waitFor({ state: "detached", timeout: WAIT });
+      .getByRole("listitem", { name: c.t("teamsUi.row", { name: DEMO_ACTIVE_TEAM }) })
+      .waitFor({ timeout: WAIT });
+    if ((await row.count()) > 0) {
+      await row
+        .getByRole("button", { name: c.t("teamsUi.menu", { name: DEMO_CLOSED_TEAM }) })
+        .click();
+      await c.page.getByRole("menuitem", { name: c.t("teamsUi.delete"), exact: true }).click();
+      await c.page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: c.t("teamsUi.delete"), exact: true })
+        .click();
+      await row.waitFor({ state: "detached", timeout: WAIT });
+    }
     // The coordinator's session is still there, and open.
     await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
     await c.page.getByLabel(c.t("session.message"), { exact: true }).waitFor({ timeout: WAIT });

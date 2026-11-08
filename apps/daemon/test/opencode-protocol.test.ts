@@ -101,7 +101,7 @@ describe("opencode-protocol", () => {
     ]);
     expect(data?.features ?? []).not.toContain("opencode");
     const none = await ask(host(null), "host.info", {});
-    expect(none?.ok ? (none.data as protocol.HostInfoResult).runtimes : "no ack").toBe(undefined);
+    expect(none?.ok ? (none.data as protocol.HostInfoResult).runtimes : "no ack").toBeUndefined();
   });
 
   test("runtime.models answers OpenCode's models, and refuses with runtime_unavailable when it is not there", async () => {
