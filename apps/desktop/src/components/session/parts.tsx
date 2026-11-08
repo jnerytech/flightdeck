@@ -202,6 +202,8 @@ function clearToasts(card: HTMLElement | null): (() => void) | undefined {
   const root = card.ownerDocument.documentElement;
   const win = card.ownerDocument.defaultView;
   const apply = () => {
+    // A box taken off the page without React's cleanup lifts nothing.
+    for (const box of composerTops.keys()) if (!box.isConnected) composerTops.delete(box);
     const highest = Math.max(0, ...composerTops.values());
     if (composerTops.size === 0) root.style.removeProperty("--composer-clear");
     else root.style.setProperty("--composer-clear", `calc(${highest}px + 0.75rem)`);
