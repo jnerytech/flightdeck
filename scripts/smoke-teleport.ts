@@ -66,12 +66,12 @@ let step = "prepare";
 const log = (msg: string) => console.log(`  · ${msg}`);
 
 function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, fail) =>
-      setTimeout(() => fail(new Error(`timeout: ${what}`)), TIMEOUT_MS),
-    ),
-  ]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<never>((_, fail) => {
+    timer = setTimeout(() => fail(new Error(`timeout: ${what}`)), TIMEOUT_MS);
+  });
+  // Cleared once answered: a pending timer would keep a green run alive for its 20 s.
+  return Promise.race([promise, limit]).finally(() => clearTimeout(timer));
 }
 
 function git(cwd: string, ...args: string[]): string {
