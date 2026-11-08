@@ -47,6 +47,42 @@ export type ConnectionStatus =
   /** The daemon does not speak this app's protocol: no retries until it is updated. */
   | "incompatible";
 
+/** What ended a link (#939): the socket's close code and reason, or the watchdog giving up. */
+export interface Drop {
+  code: number;
+  reason: string;
+  byWatchdog: boolean;
+  /** How long nothing had come from the host when the link went down. */
+  silentMs: number;
+  /** Whether the link was online, or still trying to get there. */
+  wasOnline: boolean;
+}
+
+/**
+ * The app log's line for a status change: a drop of a link that was online is the one WARN, with
+ * why; the tries that follow, and coming back, are INFO.
+ */
+export function statusLine(
+  name: string,
+  status: ConnectionStatus,
+  drop: Drop | null,
+): { level: "info" | "warn"; text: string } {
+  if (status !== "offline" || drop === null) {
+    const level = status === "online" || status === "connecting" ? "info" : "warn";
+    return { level, text: `${name}: ${status}` };
+  }
+  const silent = `${Math.round(drop.silentMs / 1000)} s silent`;
+  // 1006 is the browser's own code for a link that ended without a close frame.
+  const by = drop.code === 1006 ? "" : " by the host";
+  const close = `${drop.code}${drop.reason ? ` ${drop.reason}` : ""}`;
+  const why = drop.byWatchdog
+    ? `given up by the app after ${silent}`
+    : `closed${by} (${close}), ${silent}`;
+  // A line of the app's own log, not text on a screen: it stays in English, as every log line does.
+  const line = `${name}: offline, ${why}`;
+  return { level: drop.wasOnline ? "warn" : "info", text: line };
+}
+
 /** Silence after which a link counts as dead: three of the daemon's 15 s heartbeats. */
 export const STALE_MS = 45_000;
 
@@ -161,6 +197,8 @@ export class HostConnection {
   latencyMs: number | null = null;
   /** Set while the host is offline and a try is scheduled; `null` otherwise. */
   retry: RetryState | null = null;
+  /** Why the link last went down (#939): what the log tells of a drop. */
+  lastDrop: Drop | null = null;
   /** When the current try started, and whether the watchdog (not the socket) ended it. */
   private triedAt = 0;
   private gaveUp = false;
@@ -261,7 +299,7 @@ export class HostConnection {
         pending?.reject(new RequestError(code, text, reason, params, items, this.opts.hostId));
       }
     });
-    ws.addEventListener("close", (event) => this.onClose(ws, event.code));
+    ws.addEventListener("close", (event) => this.onClose(ws, event.code, event.reason));
   }
 
   /** Hands a pushed message to the callback that listens for its type; false for the ones handled here (ping, ack). */
@@ -449,6 +487,8 @@ export class HostConnection {
     if (this.timer) clearTimeout(this.timer);
     this.stopWatchdog();
     this.ws?.close();
+    // Letting go of the link is no drop: the log must not tell the last one again.
+    this.lastDrop = null;
     this.setStatus("offline");
   }
 
@@ -510,8 +550,16 @@ export class HostConnection {
     this.stopCheck = null;
   }
 
-  private onClose(ws: WebSocket, code: number): void {
+  private onClose(ws: WebSocket, code: number, reason = ""): void {
     if (ws !== this.ws) return;
+    this.lastDrop = {
+      code,
+      // The host chooses the reason: one plain line, so it cannot forge lines in the log.
+      reason: reason.replaceAll(/\p{Cc}+/gu, " ").slice(0, 123),
+      byWatchdog: this.gaveUp,
+      silentMs: (this.opts.watchdog ?? REAL_WATCHDOG).now() - this.lastHeard,
+      wasOnline: this.status === "online",
+    };
     this.ws = null;
     this.stopWatchdog();
     for (const pending of this.pending.values())

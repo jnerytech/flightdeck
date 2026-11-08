@@ -1500,7 +1500,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       if (error instanceof FlightdeckError)
         return ackError(ws, id, error.code, error.message, error);
       console.error(`[flightdeckd] erro em ${parsed.data.type}:`, error);
-      ackError(ws, id, "internal", "erro interno do daemon");
+      ackError(ws, id, "internal", "internal daemon error");
     }
   }
 
@@ -1542,7 +1542,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           frame = decode(raw);
         } catch {
           if (!ws.data.authed) return unauthorized(ws);
-          return ackError(ws, "", "bad_request", "JSON inválido");
+          return ackError(ws, "", "bad_request", "invalid JSON");
         }
         // Before hello every frame, a pong included, goes to onHello (non-hello closes 4401).
         if (!ws.data.authed) return onHello(ws, frame);

@@ -266,6 +266,35 @@ describe("bg-ui: Iniciar em segundo plano", () => {
     expect(store.router.current.name).toBe("hub");
   });
 
+  test("with the background option and no prompt, Criar sessão is off and says why, and no bg.start leaves (#940)", async () => {
+    const { daemon } = await newSession();
+    // Without the option an empty prompt is fine.
+    expect(
+      (screen.queryByRole("button", { name: "Criar sessão" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    await act(async () => {
+      fireEvent.click(screen.queryByLabelText("Iniciar em segundo plano") as HTMLInputElement);
+    });
+    const create = screen.queryByRole("button", { name: "Criar sessão" }) as HTMLButtonElement;
+    expect(create.disabled).toBe(true);
+    expect(
+      screen.queryByText("Escreva o primeiro prompt para iniciar em segundo plano."),
+    ).not.toBeNull();
+    // Writing the prompt turns it on; the reason goes.
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Primeiro prompt") as HTMLTextAreaElement, {
+        target: { value: "limpe os logs" },
+      });
+    });
+    expect(
+      (screen.queryByRole("button", { name: "Criar sessão" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect(
+      screen.queryByText("Escreva o primeiro prompt para iniciar em segundo plano."),
+    ).toBeNull();
+    expect(daemon.commands.some((c) => c.type === "bg.start")).toBe(false);
+  });
+
   test("a host without bg has no such option", async () => {
     await newSession([]);
     expect(screen.queryByLabelText("Iniciar em segundo plano")).toBeNull();
