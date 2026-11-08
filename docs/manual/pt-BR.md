@@ -1672,6 +1672,15 @@ passaram do limite. Os cards vêm marcados como texto do agente, mostram o selo 
 aprovação automática desligada, porque o que um agente lê em um repositório pode ter sido escrito
 por qualquer pessoa.
 
+### Executar de novo uma execução que falhou
+
+Uma execução de workflow que falhou, ou que terminou porque o card foi parado, mostra **Executar de
+novo** abaixo do motivo, no card. Ela inicia o card de novo com o mesmo workflow e as mesmas
+entradas, na branch do próprio card, e a execução anterior continua no histórico do card. O botão
+fica desligado, com o motivo ao lado e **Abrir Workflows** para a página de Workflows do projeto,
+quando o problema é o arquivo: o workflow mudou desde que você confiou nele, tem erros, ou não está
+mais na branch base. Se o host recusar o início, a recusa aparece no próprio lugar.
+
 ### Modelos
 
 Três workflows já vêm com o Flightdeck, para trabalho recorrente:
