@@ -65,11 +65,13 @@ async function launch(
     aclThrows?: boolean;
     /** Something done to the folder right after icacls, as a hostile or broken disk would. */
     afterAcl?: (folder: string) => void;
+    /** A fake claude already installed (its shim is what the config names). */
+    fake?: ReturnType<typeof installFakeClaude>;
   } = {},
 ) {
   const acls: Acl[] = [];
   const errors: string[] = [];
-  const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+  const fake = options.fake ?? installFakeClaude([{ do: "exit", code: 0 }]);
   cleanups.push(fake.restore);
   await runCli(["claude", "-c"], {
     env: { ...process.env, FLIGHTDECK_CONFIG: file, ...options.env },
@@ -147,7 +149,7 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
     chmodSync(shim, 0o755);
     fake.restore();
     const { file } = host(["a&b%TEMP%", "data"], shim);
-    const run = await launch(file, { platform: "win32", env: WINDOWS_ENV(programData) });
+    const run = await launch(file, { platform: "win32", env: WINDOWS_ENV(programData), fake });
     expect([
       PLAIN_PATH.test(run.configPath ?? ""),
       (run.configPath ?? "").startsWith(programData),

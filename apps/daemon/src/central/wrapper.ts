@@ -3,6 +3,8 @@ import { join } from "node:path";
 import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
+import type { Exec } from "../exec.ts";
+import { spawnExec } from "../exec.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
 import { ulid } from "../ulid.ts";
@@ -54,8 +56,12 @@ async function telemetryTarget(config: Config): Promise<TelemetryTarget | null> 
   }
 }
 
-/** The characters a path may hold for claude to read it back whatever starts it (#936). */
-export const PLAIN_PATH = /^$/;
+/**
+ * The characters a path may hold for claude to read it back whatever starts it (#936): a `.cmd`
+ * shim has its command line re-parsed by cmd.exe (`&`, `^`, `%`), and an accent can be lost in the
+ * console's code page. A space is out too: the shim's quoting is not something to rely on.
+ */
+export const PLAIN_PATH = /^[A-Za-z0-9\\/:._-]+$/;
 
 /** The local daemon's receptor URL, if it answers within `timeoutMs`. */
 export async function liveReceptor(dataDir: string, timeoutMs: number): Promise<string | null> {
@@ -138,6 +144,8 @@ export interface RunClaudeOptions {
   timeoutMs: number;
   /** The platform claude runs on; the process's when absent. Injected in tests. */
   platform?: NodeJS.Platform;
+  /** Runs `icacls` for the folder that holds the channel config on Windows; the real one when absent. */
+  exec?: Exec;
 }
 
 /** The persona the launch asked for; "failed" (after saying why) when it cannot be had. */
@@ -153,32 +161,76 @@ async function requestedPersona(
   }
 }
 
+/** What is said when the channel config cannot be written: the session opens with neither flag. */
+const CHANNEL_NOTICE =
+  "flightdeckd: não foi possível gravar a configuração do canal; abrindo o claude sem o canal (o app não poderá mandar mensagens)";
+
 /**
- * Writes the MCP config that gives the session the Flightdeck channel; returns its path, or `null`
- * when it cannot be written: the session then opens with neither flag, since `--mcp-config` of a
- * file that is not there and a channel named after a server that is not configured make claude
- * print a warning for a channel that does nothing (#936).
+ * A folder only `user` can open, made for this launch, with a plain path (#936). It is restricted
+ * before anything goes into it, so the token is never in a file others can read. `false` when it
+ * cannot be made or restricted: it is then removed, and the caller goes without the channel.
+ */
+async function restrictedFolder(opts: RunClaudeOptions, folder: string, user: string) {
+  let restricted = false;
+  try {
+    await mkdir(folder, { mode: 0o700 });
+    const acl = ["icacls", folder, "/inheritance:r", "/grant:r", `${user}:(OI)(CI)F`];
+    restricted = (await (opts.exec ?? spawnExec)(acl)).code === 0;
+  } catch {
+    restricted = false;
+  }
+  if (!restricted) await rm(folder, { recursive: true, force: true });
+  return restricted;
+}
+
+/** Where the channel config goes: the data folder, or on Windows a plain private folder when that path is not plain. */
+async function configFolder(
+  opts: RunClaudeOptions,
+  launchId: string,
+): Promise<{ dir: string; own: boolean } | null> {
+  const dir = join(opts.config.dataDir, "channels");
+  const windows = (opts.platform ?? process.platform) === "win32";
+  if (!windows || PLAIN_PATH.test(join(dir, `${launchId}.json`))) return { dir, own: false };
+  const { ProgramData, PROGRAMDATA, PUBLIC, USERDOMAIN, USERNAME } = opts.env;
+  if (!USERNAME) return null;
+  const user = USERDOMAIN ? `${USERDOMAIN}\\${USERNAME}` : USERNAME;
+  for (const base of [ProgramData ?? PROGRAMDATA, PUBLIC]) {
+    const folder = base && PLAIN_PATH.test(base) ? join(base, `Flightdeck-${launchId}`) : null;
+    if (folder && (await restrictedFolder(opts, folder, user))) return { dir: folder, own: true };
+  }
+  return null;
+}
+
+/**
+ * Writes the MCP config that gives the session the Flightdeck channel; returns its path (and the
+ * private folder made for it, to remove with it), or `null` when it cannot be written: the session
+ * then opens with neither flag, since `--mcp-config` of a file that is not there and a channel named
+ * after a server that is not configured make claude print a warning for a channel that does
+ * nothing (#936). Where the data folder's path is not one claude reads back reliably, it goes to a
+ * plain folder only the user can open.
  */
 async function writeChannelConfig(
   opts: RunClaudeOptions,
   launchId: string,
   url: string,
   token: string,
-): Promise<string | null> {
-  const dir = join(opts.config.dataDir, "channels");
-  const path = join(dir, `${launchId}.json`);
+): Promise<{ path: string; folder: string | null } | null> {
+  const where = await configFolder(opts, launchId);
   const [command, ...rest] = opts.self;
   const args = [...rest, "channel", "--launch", launchId, "--url", url, "--token", token];
-  try {
-    await mkdir(dir, { recursive: true });
-    await writeFile(path, JSON.stringify({ mcpServers: { flightdeck: { command, args } } }));
-  } catch {
-    opts.log.error(
-      "flightdeckd: não foi possível gravar a configuração do canal; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
-    );
-    return null;
+  if (where) {
+    const path = join(where.dir, `${launchId}.json`);
+    try {
+      await mkdir(where.dir, { recursive: true });
+      const config = JSON.stringify({ mcpServers: { flightdeck: { command, args } } });
+      await writeFile(path, config, { mode: 0o600 });
+      return { path, folder: where.own ? where.dir : null };
+    } catch {
+      if (where.own) await rm(where.dir, { recursive: true, force: true });
+    }
   }
-  return path;
+  opts.log.error(CHANNEL_NOTICE);
+  return null;
 }
 
 /** The badge only (never the body): the SessionStart hook forwards it to the central. */
@@ -221,7 +273,7 @@ async function agentArgs(
 /** Deletes the files that exist (a null path is skipped). */
 async function removeAll(paths: Array<string | null>): Promise<void> {
   await inSequence(paths, async (path) => {
-    if (path) await rm(path, { force: true });
+    if (path) await rm(path, { force: true, recursive: true });
   });
 }
 
@@ -255,7 +307,8 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   const background = args.includes("--bg") || args.includes("--background");
   const url = print ? null : await liveReceptor(opts.config.dataDir, opts.timeoutMs);
   const token = opts.config.hooks.token;
-  const mcpConfigPath = url && token ? await writeChannelConfig(opts, launchId, url, token) : null;
+  const channel = url && token ? await writeChannelConfig(opts, launchId, url, token) : null;
+  const mcpConfigPath = channel?.path ?? null;
   // Without a receptor or a token: the daemon is down. A config that failed to write said so itself.
   if (!mcpConfigPath && !print && !(url && token)) {
     opts.log.error(
@@ -308,7 +361,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   } finally {
     // `claude --bg` returns at once and the session goes on: its channel config and persona
     // files are still read, so they stay (a few small files per background session).
-    if (!background) await removeAll([mcpConfigPath, ...files]);
+    if (!background) await removeAll([mcpConfigPath, channel?.folder ?? null, ...files]);
   }
 }
 
