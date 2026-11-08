@@ -124,7 +124,7 @@ async function waitStatus(client: Client, sessionId: string, status: string): Pr
     const { sessions } = await client.call<{ sessions: SessionRow[] }>("session.list", {});
     if (sessions.find((s) => s.id === sessionId)?.status === status) return;
     if (Date.now() > deadline) throw new Error(`timeout: sessão ${sessionId} em ${status}`);
-    await Bun.sleep(50);
+    await Bun.sleep(50); // NOSONAR: a poll, one look per pause
   }
 }
 

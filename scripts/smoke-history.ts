@@ -50,7 +50,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20);
+    await Bun.sleep(20); // NOSONAR: a poll, one look per pause
   }
 }
 
@@ -161,11 +161,10 @@ async function run(work: string): Promise<void> {
     let listed = 0;
     const deadline = Date.now() + TIMEOUT_MS;
     while (listed < 2 && Date.now() < deadline) {
-      const { sessions } = await client.call<{ sessions: unknown[] }>("history.list", {
-        limit: 10,
-      });
+      const asking = client.call<{ sessions: unknown[] }>("history.list", { limit: 10 });
+      const { sessions } = await asking; // NOSONAR: a poll, one look per pause
       listed = sessions.length;
-      if (listed < 2) await Bun.sleep(50);
+      if (listed < 2) await Bun.sleep(50); // NOSONAR: a poll, one look per pause
     }
     if (listed !== 2) throw new Error(`esperava 2 sessões indexadas, veio ${listed}`);
     log("dois transcripts indexados");

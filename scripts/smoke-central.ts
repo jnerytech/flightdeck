@@ -55,7 +55,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20);
+    await Bun.sleep(20); // NOSONAR: a poll, one look per pause
   }
 }
 
@@ -268,11 +268,12 @@ async function run(work: string): Promise<void> {
     const deadline = Date.now() + TIMEOUT_MS;
     let texts: string[] = [];
     while (!texts.some((t) => t.includes(NEW_LINE)) && Date.now() < deadline) {
-      const page = await client.call<{ messages: Array<{ text: string }> }>("history.get", {
+      const asking = client.call<{ messages: Array<{ text: string }> }>("history.get", {
         claudeSessionId: SESSION,
       });
+      const page = await asking; // NOSONAR: a poll, one look per pause
       texts = page.messages.map((m) => m.text);
-      if (!texts.some((t) => t.includes(NEW_LINE))) await Bun.sleep(50);
+      if (!texts.some((t) => t.includes(NEW_LINE))) await Bun.sleep(50); // NOSONAR: a poll, one look per pause
     }
     if (!texts.some((t) => t.includes(NEW_LINE))) throw new Error(`transcript: ${texts}`);
     log("history.changed com a linha nova");
