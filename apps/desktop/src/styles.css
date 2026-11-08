@@ -2899,6 +2899,29 @@ html:not(:has([data-slot="status-bar"])) {
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
 }
+/* Add a host: the fields to fill by hand, folded under their summary (#1199). The summary is a
+   row-sized target (axe target-size wants 24 px) with a visible focus; the fields sit one step
+   below it. */
+@utility host-fold {
+  & > summary {
+    display: flex;
+    align-items: center;
+    min-height: 2rem;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    cursor: pointer;
+  }
+  & > summary:hover {
+    color: var(--foreground);
+  }
+  & > summary:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  & > :not(summary) {
+    margin-block-start: 0.5rem;
+  }
+}
 /* Health's first line: the headline, the counts, when it was read and Check again (#640). */
 @utility health-summary {
   display: flex;

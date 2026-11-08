@@ -4836,6 +4836,7 @@ export const en: Dictionary = {
   },
   hostForm: {
     fromLink: "This link came from outside the app. Check the details before saving.",
+    byHand: "Enter the address and token by hand",
     link: "Pairing link",
     name: "Name",
     namePlaceholder: "my pc",

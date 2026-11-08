@@ -1,8 +1,9 @@
 import { parsePairingLink } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useBusy } from "@/components/feedback/busy";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions } from "@/components/layout/form";
+import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { pairingErrorText } from "../lib/pairing-text.ts";
@@ -47,9 +48,15 @@ export function HostForm(
   const [link, setLink] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  // The fields to fill by hand are folded; they open on what needs them: a draft (a link from
+  // outside), a pasted link they now show, or an error to fix there (#1199).
+  const [byHand, setByHand] = useState(props.initial !== undefined);
   const set = (key: keyof HostDraft) => (e: { target: { value: string } }) =>
     setDraft({ ...draft, [key]: e.target.value });
   const error = problem ?? props.error ?? null;
+  useEffect(() => {
+    if (error) setByHand(true);
+  }, [error]);
 
   return (
     <Form
@@ -82,41 +89,51 @@ export function HostForm(
               setLinkError(parsed.ok || !e.target.value ? null : pairingErrorText(t, parsed.error));
               if (parsed.ok) {
                 setDraft(draftFromLink(parsed.value.url, parsed.value.name, parsed.value.token));
+                setByHand(true);
               }
             }}
           />
         )}
       </Field>
-      <Field label={t("hostForm.name")}>
-        {(control) => (
-          <Input
-            {...control}
-            value={draft.name}
-            onChange={set("name")}
-            placeholder={t("hostForm.namePlaceholder")}
-          />
-        )}
-      </Field>
-      <Field label={t("hostForm.address")}>
-        {(control) => (
-          <Input
-            {...control}
-            value={draft.address}
-            onChange={set("address")}
-            placeholder="100.64.0.1" // NOSONAR: an example address in a placeholder
-          />
-        )}
-      </Field>
-      <Field label={t("hostForm.port")}>
-        {(control) => (
-          <Input {...control} value={draft.port} onChange={set("port")} inputMode="numeric" />
-        )}
-      </Field>
-      <Field label={t("hostForm.token")}>
-        {(control) => (
-          <Input {...control} type="password" value={draft.token} onChange={set("token")} />
-        )}
-      </Field>
+      <details
+        className="host-fold"
+        open={byHand}
+        onToggle={(event) => setByHand(event.currentTarget.open)}
+      >
+        <summary>{t("hostForm.byHand")}</summary>
+        <Stack gap={4}>
+          <Field label={t("hostForm.name")}>
+            {(control) => (
+              <Input
+                {...control}
+                value={draft.name}
+                onChange={set("name")}
+                placeholder={t("hostForm.namePlaceholder")}
+              />
+            )}
+          </Field>
+          <Field label={t("hostForm.address")}>
+            {(control) => (
+              <Input
+                {...control}
+                value={draft.address}
+                onChange={set("address")}
+                placeholder="100.64.0.1" // NOSONAR: an example address in a placeholder
+              />
+            )}
+          </Field>
+          <Field label={t("hostForm.port")}>
+            {(control) => (
+              <Input {...control} value={draft.port} onChange={set("port")} inputMode="numeric" />
+            )}
+          </Field>
+          <Field label={t("hostForm.token")}>
+            {(control) => (
+              <Input {...control} type="password" value={draft.token} onChange={set("token")} />
+            )}
+          </Field>
+        </Stack>
+      </details>
       {error && (
         <p role="alert" className="text-sm text-status-error">
           {error}

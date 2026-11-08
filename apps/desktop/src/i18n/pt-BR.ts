@@ -4849,6 +4849,7 @@ export const ptBR = {
   },
   hostForm: {
     fromLink: "Este link veio de fora do app. Confira os dados antes de salvar.",
+    byHand: "Informar o endereço e o token manualmente",
     link: "Link de pareamento",
     name: "Nome",
     namePlaceholder: "meu pc",
