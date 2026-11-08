@@ -789,6 +789,23 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     {
+      // #1271: New action, the longest Form dialog; narrow, its buttons rest on the sheet's bottom.
+      name: "acoes-nova",
+      route: {
+        name: "actions",
+        host: ALFA,
+        projectId: ids.knowledgeProject,
+        projectName: "design-system",
+      },
+      async prepare(page) {
+        await page
+          .getByRole("button", { name: /^(New action|Nova ação)$/ })
+          .first()
+          .click();
+        await page.getByRole("dialog", { name: /^(New action|Nova ação)$/ }).waitFor();
+      },
+    },
+    {
       // #1249: New card on the design-system board with the project's card template picked: the
       // picker and what the template starts the card with (workflow, persona, pin, spec).
       name: "card-novo-modelo",
