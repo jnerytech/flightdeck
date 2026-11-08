@@ -1,0 +1,116 @@
+import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import type { FlightdeckError } from "../src/errors.ts";
+import type { CheckRunner } from "../src/workflows/check-runner.ts";
+import { git } from "./board-helpers.ts";
+import { commitWorkflow, workflowCard } from "./workflow-helpers.ts";
+
+setDefaultTimeout(30_000);
+
+/**
+ * Issue #1266: a failed workflow run resumes from its failed step, in place. The steps before it
+ * give back what they stored and do not run again; a changed workflow file, a moved branch, a run
+ * with no recorded HEAD or one that did not fail refuses the resume with its reason.
+ */
+const YAML = [
+  "steps:",
+  "  - id: a",
+  "    check: fd-check a",
+  "  - id: b",
+  "    check: fd-check b",
+  "  - id: c",
+  "    check: fd-check c",
+  "  - id: d",
+  "    check: fd-check d",
+].join("\n");
+
+/** a, b and d pass; c fails the first time and passes after. */
+function scripted() {
+  const calls: string[] = [];
+  const runner: CheckRunner = {
+    run: async (command) => {
+      calls.push(command);
+      const name = command.split(" ").at(-1) ?? "";
+      const failing = name === "c" && calls.filter((call) => call === command).length === 1;
+      return failing
+        ? { exitCode: 1, output: "c broke" }
+        : { exitCode: 0, output: name.toUpperCase() };
+    },
+  };
+  return { calls, runner };
+}
+
+async function failedAtC() {
+  const { calls, runner } = scripted();
+  const made = await workflowCard(YAML, { board: { checks: runner } });
+  await made.start();
+  const failed = await made.runWhen((run) => run.status === "failed");
+  return { ...made, calls, runId: failed?.id ?? "" };
+}
+
+const refusal = async (call: () => Promise<unknown>) => {
+  try {
+    await call();
+    return "ok";
+  } catch (error) {
+    return (error as FlightdeckError).reason ?? String(error);
+  }
+};
+
+describe("run-resume: a failed run resumes from its failed step (#1266)", () => {
+  test("a run that failed at step 3 of 4 resumes at 3 with steps 1 and 2's outputs, which do not run again", async () => {
+    const { board, calls, runId, runWhen } = await failedAtC();
+    const offered = await board.resumeRun(runId, false);
+    await board.resumeRun(runId, true);
+    const done = await runWhen((run) => run.status === "completed");
+    expect([
+      offered,
+      done?.id,
+      calls.map((call) => call.split(" ").at(-1)),
+      done?.steps.map((step) => `${step.stepId} ${step.status} ${step.output}`),
+    ]).toEqual([
+      { from: "c", ok: true },
+      runId,
+      ["a", "b", "c", "c", "d"],
+      ["a completed A", "b completed B", "c completed C", "d completed D"],
+    ]);
+  });
+
+  test("a changed workflow file refuses the resume, with its reason, on the offer and on the confirm", async () => {
+    const { board, repo, runId } = await failedAtC();
+    commitWorkflow(repo, "wf", `${YAML}\n  - id: e\n    check: fd-check e\n`);
+    expect([
+      await board.resumeRun(runId, false),
+      await refusal(() => board.resumeRun(runId, true)),
+    ]).toEqual([
+      { from: "c", ok: false, reason: "run_resume_workflow_changed" },
+      "run_resume_workflow_changed",
+    ]);
+  });
+
+  test("a branch moved since the run ended, a run with no recorded HEAD, and a run that did not fail are refused", async () => {
+    const moved = await failedAtC();
+    const worktree = moved.board.getCard(moved.card.id).worktreePath ?? "";
+    writeFileSync(join(worktree, "later.txt"), "later\n");
+    git(worktree, "add", "--", "later.txt");
+    git(worktree, "commit", "-q", "-m", "Later");
+    const old = await failedAtC();
+    // As a run that ended before the column was there.
+    old.store.db.query("UPDATE workflow_runs SET head_at_end = NULL WHERE id = ?").run(old.runId);
+    const done = await failedAtC();
+    await done.board.resumeRun(done.runId, true);
+    await done.runWhen((run) => run.status === "completed");
+    expect([
+      (await moved.board.resumeRun(moved.runId, false)).reason,
+      (await old.board.resumeRun(old.runId, false)).reason,
+      (await done.board.resumeRun(done.runId, false)).reason,
+      await refusal(() => old.board.resumeRun(old.runId, true)),
+    ]).toEqual([
+      "run_resume_branch_moved",
+      "run_resume_no_head",
+      "run_resume_not_failed",
+      "run_resume_no_head",
+    ]);
+  });
+});
