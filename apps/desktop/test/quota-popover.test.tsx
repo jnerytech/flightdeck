@@ -227,7 +227,8 @@ for (const [lang, dict] of [
         fireEvent.keyDown(popover, { key: "Escape" });
       });
       expect(screen.queryByRole("dialog", { name: dict.quota.popover.label })).toBeNull();
-      expect(document.activeElement === glance()).toBe(true);
+      // Radix gives the focus back after the popover unmounts, not in the same tick.
+      await settle(() => document.activeElement === glance());
     });
 
     test("the host's own link opens its page and closes the popover", async () => {
