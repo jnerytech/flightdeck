@@ -360,6 +360,8 @@ export class Board {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private readonly prRoundListeners = new Set<() => void>();
   private polling = false;
+  /** The last PR poll round, finished or not (a failed one counts as finished): see `idle`. */
+  private lastRound: Promise<void> = Promise.resolve();
   /** Set by stop(): the database may be closed, so a start still in flight writes nothing. */
   private stopped = false;
   private readonly watchers = new Set<(card: Card) => void>();
@@ -2119,6 +2121,12 @@ export class Board {
   /** Asks the provider about every card with an open PR; one round at a time. */
   async pollPrs(): Promise<void> {
     if (this.polling) return;
+    const round = this.pollRound();
+    this.lastRound = round.catch(() => {});
+    await round;
+  }
+
+  private async pollRound(): Promise<void> {
     this.polling = true;
     try {
       const open = this.db
@@ -2194,7 +2202,7 @@ export class Board {
 
   /** Resolves when no PR poll round is running (stop() lets the one in flight finish). */
   idle(): Promise<void> {
-    return Promise.resolve();
+    return this.lastRound;
   }
 
   stop(): void {
