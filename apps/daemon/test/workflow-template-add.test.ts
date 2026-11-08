@@ -101,40 +101,70 @@ describe("adding a workflow template from the app (#1221)", () => {
     expect(created[0]?.body ?? "").toContain(FILE);
   });
 
-  test("it is refused, with nothing made or opened, without confirm, for a template the host lacks, with no PR host, when the base already has the file, or with no git identity", async () => {
-    const cases: [string, boolean, string, boolean, boolean, boolean][] = [
-      ["no confirm", false, "alert-fixer", true, false, true],
-      ["unknown template", true, "not-a-template", true, false, true],
-      ["no PR host", true, "alert-fixer", false, false, true],
-      ["already on the base", true, "alert-fixer", true, true, true],
-      ["no identity", true, "alert-fixer", true, false, false],
+  test("it is refused, with nothing made or opened, without confirm, for a template the host lacks, with no PR host, when either base has the file, with no origin copy of the base, or with no git identity", async () => {
+    interface Case {
+      name: string;
+      confirm?: boolean;
+      id?: string;
+      withHost?: boolean;
+      identity?: boolean;
+      /** Changes the repository before the call. */
+      arrange?: (repo: string) => void;
+    }
+    /** The template's file, committed on the current branch. */
+    const commitFile = (repo: string) => {
+      mkdirSync(join(repo, ".flightdeck", "workflows"), { recursive: true });
+      writeFileSync(join(repo, FILE), "steps: []\n");
+      git(repo, "add", "--", FILE);
+      git(repo, "commit", "-q", "-m", "workflow");
+    };
+    const cases: Case[] = [
+      { name: "no confirm", confirm: false },
+      { name: "unknown template", id: "not-a-template" },
+      { name: "no PR host", withHost: false },
+      { name: "on the local base", arrange: commitFile },
+      {
+        name: "on origin's base only",
+        arrange: (repo) => {
+          git(repo, "checkout", "-q", "-b", "elsewhere");
+          commitFile(repo);
+          git(repo, "push", "-q", "origin", "elsewhere:main");
+          git(repo, "checkout", "-q", "main");
+          git(repo, "branch", "-q", "-D", "elsewhere");
+          git(repo, "fetch", "-q", "origin");
+        },
+      },
+      {
+        name: "no origin copy of the base",
+        arrange: (repo) => git(repo, "update-ref", "-d", "refs/remotes/origin/main"),
+      },
+      { name: "no identity", identity: false },
     ];
     const seen: string[] = [];
-    for (const [name, confirm, id, withHost, onBase, identity] of cases) {
-      const { repo } = project(identity);
-      if (onBase) {
-        mkdirSync(join(repo, ".flightdeck", "workflows"), { recursive: true });
-        writeFileSync(join(repo, FILE), "steps: []\n");
-        git(repo, "add", "--", FILE);
-        git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "workflow");
-      }
+    for (const c of cases) {
+      const { repo } = project(c.identity ?? true);
+      c.arrange?.(repo);
       const before = branches(repo);
       const { provider, created } = host();
       const reason = await reasonOf(() =>
-        addWorkflowTemplate({ path: repo, baseBranch: "main" }, TEMPLATES, id, confirm, {
-          provider: withHost ? provider : null,
-          now: AT,
-        }),
+        addWorkflowTemplate(
+          { path: repo, baseBranch: "main" },
+          TEMPLATES,
+          c.id ?? "alert-fixer",
+          c.confirm ?? true,
+          { provider: (c.withHost ?? true) ? provider : null, now: AT },
+        ),
       );
-      seen.push(
-        `${name}: ${reason}, branches ${branches(repo) === before ? "same" : "changed"}, PRs ${created.length}`,
-      );
+      const same = branches(repo) === before ? "same" : "changed";
+      seen.push(`${c.name}: ${reason}, branches ${same}, PRs ${created.length}`);
     }
     expect(seen).toEqual([
       "no confirm: workflow_template_confirm, branches same, PRs 0",
       "unknown template: workflow_template_unknown, branches same, PRs 0",
       "no PR host: project_no_pr_provider, branches same, PRs 0",
-      "already on the base: workflow_template_exists, branches same, PRs 0",
+      "on the local base: workflow_template_exists, branches same, PRs 0",
+      "on origin's base only: workflow_template_exists, branches same, PRs 0",
+      "no origin copy of the base: workflow_template_no_head, branches same, PRs 0",
       "no identity: workflow_template_identity, branches same, PRs 0",
     ]);
   });

@@ -28,6 +28,8 @@ const STACK: HarnessStack = {
 async function serve(
   harnessStack?: (path: string) => Promise<HarnessStack>,
   prHost?: Pick<PrProvider, "create">,
+  /** A peer address: anything but loopback is a far connection. */
+  peer?: string,
 ) {
   const ctx = await workflowCard(
     "steps:\n  - id: lint\n    check: fd-lint\n",
@@ -46,6 +48,8 @@ async function serve(
     token: TOKEN,
     allowedRoots: [ctx.root],
     ...(harnessStack ? { harnessStack } : {}),
+    // A far peer is let in by the network list, so the command's own gate is what refuses it.
+    ...(peer ? { peerOf: () => peer, allowedNetworks: ["0.0.0.0/0", "::/0"] } : {}),
   });
   cleanups.push(() => server.stop());
   const client = new FrameClient(server.url);
@@ -160,5 +164,30 @@ describe("workflow.template.add (issue #1221)", () => {
       await reasonOf({ templateId: "alert-fixer" }),
       await reasonOf({ templateId: "nope", confirm: true }),
     ]).toEqual(["workflow_template_confirm", "workflow_template_unknown"]);
+  });
+
+  test("a far connection is refused before any branch is made: it pushes and runs the repository's hooks", async () => {
+    const asked: string[] = [];
+    const { client, project, repo } = await serve(
+      async () => STACK,
+      {
+        create: async (opts) => {
+          asked.push(opts.head);
+          return URL;
+        },
+      },
+      "8.8.8.8",
+    );
+    const before = git(repo, "for-each-ref", "--format=%(refname)", "refs/heads/");
+    const answer = await client.request("workflow.template.add", {
+      projectId: project.id,
+      templateId: "alert-fixer",
+      confirm: true,
+    });
+    expect((answer as { error?: { reason?: string } }).error?.reason ?? "ok").toBe(
+      "transport_refused",
+    );
+    expect(git(repo, "for-each-ref", "--format=%(refname)", "refs/heads/")).toBe(before);
+    expect(asked).toEqual([]);
   });
 });
