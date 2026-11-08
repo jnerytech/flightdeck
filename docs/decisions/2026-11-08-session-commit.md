@@ -82,6 +82,21 @@ branch of the checkout.
 - **The base.** The branch the checkout was on is kept, by checkout and branch, for the PR step (D2).
   It is kept in memory only: after a restart, the PR step falls back to the remote's default branch.
 
+## The PR (slice D2)
+
+- `changes.pr {target, title, body, confirm}` pushes the session's current branch to `origin` with
+  its upstream and opens its PR, near only and confirmed (`changes_pr_confirm`).
+- One core does this for a card and a session (`board/publish-pr.ts`). The title and body are
+  scanned (`pr_secret`, `pr_title_secret`), then the branch is pushed, then the provider opens the
+  PR. A card's base is now checked before its push, not after.
+- **The base.** It is the branch the commit started from, kept in memory, or else the remote's
+  default branch (`origin/HEAD`). Neither known refuses (`changes_pr_base`).
+- **Never the base.** A checkout on its base (`changes_pr_on_base`) or on no branch
+  (`changes_pr_detached`) refuses, so the base itself is never pushed.
+- **The provider.** It is the board project's that holds the checkout, else GitHub (`gh`). A project
+  set to none refuses (`project_no_pr_provider`).
+- A card's target or worktree refuses (`changes_pr_target`): a card has its own Open PR.
+
 ## Alternatives discarded
 
 - **#1080's temporary index.** The checkout would stay on its old branch with the same edits still

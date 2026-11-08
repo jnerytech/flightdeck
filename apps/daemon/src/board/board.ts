@@ -59,6 +59,7 @@ import {
 import { pinnedPrompt } from "./pins.ts";
 import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
+import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
 import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
@@ -1940,20 +1941,7 @@ export class Board {
         .filter((part) => part?.trim())
         .join("\n\n");
     const title = options.title ?? card.title;
-    for (const [field, text, reason] of [
-      ["description", body, "pr_secret"],
-      ["title", title, "pr_title_secret"],
-    ] as const) {
-      const found = this.opts.scanner?.scan(text) ?? [];
-      if (found.length > 0) {
-        throw new FlightdeckError(
-          "bad_request",
-          `the ${field} looks like it has a secret (${found.join(", ")}): take it out before opening the PR`,
-          reason,
-          { found: found.join(", ") },
-        );
-      }
-    }
+    assertNoSecretInPr(this.opts.scanner, title, body);
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
     if (!provider)
@@ -1969,19 +1957,12 @@ export class Board {
         "the card has no worktree yet",
         "card_no_worktree",
       );
-    must(await git(cwd, "push", "-u", "origin", refArg(branch)), "git push");
     // The provider's CLI takes the base as a plain argument (`az` reads `@file` as a file): a base an
-    // older daemon stored without checking is refused here (issue #369).
+    // older daemon stored without checking is refused here (issue #369), before anything is pushed.
     const base = assertBranchName(project.baseBranch);
-    const url = await provider.create({
-      cwd,
-      base,
-      head: branch,
-      // Phase 40: the title the person confirmed, else the card's.
-      title,
-      // The provider links the PR to the issue and closes it on merge (`Fixes #n`, `AB#id`).
-      body,
-    });
+    // Phase 40: the title the person confirmed, else the card's. The provider links the PR to the
+    // issue and closes it on merge (`Fixes #n`, `AB#id`).
+    const url = await publishPr({ cwd, branch, base, title, body, provider });
     this.db
       .query(
         "UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = NULL, notice = NULL WHERE id = ?",

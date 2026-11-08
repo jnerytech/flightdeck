@@ -1460,6 +1460,7 @@ export const en: Dictionary = {
     quotaHistory: "the quota history",
     changes: "change review",
     sessionCommits: "committing a session's changes",
+    sessionPrs: "opening a session's PR",
     ssh: "ssh destinations",
     snippets: "snippets",
     personaSessions: "personas in open sessions",
@@ -1849,6 +1850,13 @@ export const en: Dictionary = {
       "The commit ran out of time (a hook or a signing prompt that never ended). You are on {branch} with your files as they were; go back with git checkout {base}.",
     changes_commit_hook_withheld:
       "The commit was refused, and what the hook said is not shown: it looks like it holds a secret. You are on {branch} with your files as they were; go back with git checkout {base}.",
+    changes_pr_confirm: "Confirm the PR before it is opened.",
+    changes_pr_target:
+      "Only a session started by hand opens its PR here: a card has its own Open PR.",
+    changes_pr_on_base: "The checkout is on the base branch: commit on a new branch first.",
+    changes_pr_detached: "The checkout is on no branch: commit on a new branch first.",
+    changes_pr_base:
+      "The branch to open the PR into is not known: open it from a terminal, or set the remote's default branch.",
     changes_commit_rewritten:
       "{files} changed while being committed (a hook that formats, or the session still writing), so the commit was undone: look at the changes again, then commit.",
     changes_commit_git: "Git could not make the branch or the commit in this repository.",

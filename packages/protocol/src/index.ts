@@ -1110,6 +1110,10 @@ export const ChangesCommitted = z.object({
 });
 export type ChangesCommitted = z.infer<typeof ChangesCommitted>;
 
+/** #1133, slice D2: the PR `changes.pr` opened, and the branches it joins. */
+export const ChangesPrOpened = z.object({ url: z.string(), branch: z.string(), base: z.string() });
+export type ChangesPrOpened = z.infer<typeof ChangesPrOpened>;
+
 // Phase 14: terminals embedded in the host (a real shell behind a PTY).
 export const TerminalInfo = z.object({
   terminalId: z.string(),
@@ -4642,6 +4646,21 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /**
+   * #1133, slice D2: pushes the plain session's current branch to `origin` and opens its PR with the
+   * title and description the person confirmed; the base is the branch `changes.commit` started from.
+   */
+  cmd(
+    "changes.pr",
+    z
+      .object({
+        target: ReviewTarget,
+        title: z.string().min(1).max(256),
+        body: z.string().max(65_536),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
   cmd(
     "changes.undoRevert",
     z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
@@ -5620,6 +5639,7 @@ export interface CommandResults {
   /** Undo with `changes.undoRevert` until `undoUntil`. */
   "changes.revert": { path: string; undoUntil: string };
   "changes.commit": ChangesCommitted;
+  "changes.pr": ChangesPrOpened;
   "changes.undoRevert": { path: string };
   /** `hash`: sha256 of the bytes, hex, for `file.write`. */
   "file.read": { path: string; text: string; hash: string; size: number };

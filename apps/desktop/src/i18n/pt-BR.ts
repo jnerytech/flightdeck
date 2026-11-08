@@ -1455,6 +1455,7 @@ export const ptBR = {
     quotaHistory: "o histórico da cota",
     changes: "a revisão de mudanças",
     sessionCommits: "o commit das mudanças de uma sessão",
+    sessionPrs: "a abertura do PR de uma sessão",
     ssh: "os destinos ssh",
     snippets: "os snippets",
     personaSessions: "as personas em sessões abertas",
@@ -1849,6 +1850,14 @@ export const ptBR = {
       "O commit passou do tempo (um hook ou um pedido de assinatura que não terminou). Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
     changes_commit_hook_withheld:
       "O commit foi recusado, e o que o hook disse não aparece: parece conter um segredo. Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
+    changes_pr_confirm: "Confirme o PR antes que ele seja aberto.",
+    changes_pr_target:
+      "Só uma sessão iniciada à mão abre o seu PR aqui: um cartão tem o seu próprio Abrir PR.",
+    changes_pr_on_base: "O checkout está no branch base: faça o commit num branch novo antes.",
+    changes_pr_detached:
+      "O checkout não está em nenhum branch: faça o commit num branch novo antes.",
+    changes_pr_base:
+      "Não se sabe para qual branch abrir o PR: abra-o num terminal, ou defina o branch padrão do remoto.",
     changes_commit_rewritten:
       "{files} mudou durante o commit (um hook que formata, ou a sessão ainda escrevendo), então o commit foi desfeito: confira as mudanças de novo e faça o commit.",
     changes_commit_git: "O git não conseguiu criar o branch ou o commit neste repositório.",
