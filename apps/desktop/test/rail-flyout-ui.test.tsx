@@ -144,6 +144,29 @@ describe("rail-flyout-ui: the Projects icon of the collapsed rail opens the proj
     expect(railButton("Projects").getAttribute("aria-expanded")).toBe("false");
   });
 
+  test("opened, the focus is inside the panel, on its first control", async () => {
+    setup();
+    await open("Projects");
+    expect(await isOpen("Projects")).toBe(true);
+    const panel = flyout("Projects") as HTMLElement;
+    expect(await settleMaybe(() => panel.contains(document.activeElement))).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+  });
+
+  test("moving the focus to another control closes it and leaves the focus there", async () => {
+    setup();
+    await open("Projects");
+    expect(await isOpen("Projects")).toBe(true);
+    const board = railButton("Board");
+    await act(async () => {
+      board.focus();
+    });
+    expect(await isClosed("Projects")).toBe(true);
+    // The icon does not take the focus back from where the person went.
+    expect(await settleMaybe(() => document.activeElement === railButton("Projects"))).toBe(false);
+    expect(document.activeElement === board).toBe(true);
+  });
+
   test("with no project to list, the icon goes straight to the Projects page", async () => {
     const { went } = setup({ projects: [] });
     expect(railButton("Projects").getAttribute("aria-haspopup")).toBeNull();
