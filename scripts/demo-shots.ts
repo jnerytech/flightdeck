@@ -778,12 +778,13 @@ function shots(ids: DemoIds): Shot[] {
     // #168: the screens shipped on 2026-11-06 and 07, in both themes and languages, with axe and the
     // layout guards (the narrow ones in NARROW_SHOTS).
     {
-      // #931: New project on the Projects page, its host picker open (two hosts in the demo).
+      // #931: New project on the Projects page, open.
       name: "projetos-novo",
       route: { name: "all-projects" },
       async prepare(page) {
         await page.getByRole("button", { name: /^(New project|Novo projeto)$/ }).click();
-        await page.getByRole("menuitem", { name: /^(On|Em) alfa$/ }).waitFor();
+        // The page shows the switcher's host (#948): one host opens its form, several ask which first.
+        await page.getByRole("menu").or(page.getByRole("dialog")).first().waitFor();
       },
     },
     {
