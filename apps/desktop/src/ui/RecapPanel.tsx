@@ -57,6 +57,8 @@ export function RecapPanel(
     stamp?: string;
     /** How long to wait before asking again while the host has no summary yet. */
     retryMs?: number;
+    /** The project folder a decision record drafted from the summary is written in (#1039). */
+    libraryPath?: string;
   }>,
 ) {
   const t = useT();
