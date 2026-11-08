@@ -228,3 +228,31 @@ describe("botao-motivo-linha: in a dialog's footer the reason grows inward (#106
     ]).toEqual([true, true, true, true, true, false]);
   });
 });
+
+// #1270: a field with its action (a card's Save spec file, Send adjustment) puts the button at the
+// row's right end, at the card's edge. Its reason hung from the button's left and grew right, past
+// the card at 1280 and cut by the window at 640. There it hangs from the button's right and grows
+// left, under the field. happy-dom has no layout: this reads the rule; the narrow guard measures it.
+describe("botao-motivo-linha: beside a field the reason grows inward (#1270)", () => {
+  const RULE = /\.field-with-action > \.action-button-box \.action-reason \{([^}]*)\}/;
+
+  test("the reason of a field's action button hangs from the button's right", () => {
+    const { container } = render(
+      <div className="field-with-action">
+        <input aria-label="Spec file" />
+        <ActionButton disabled disabledReason="Type the spec file's path to save it.">
+          Save spec file
+        </ActionButton>
+      </div>,
+    );
+    const row = container.querySelector(".field-with-action");
+    const box = screen.queryByText("Type the spec file's path to save it.")?.parentElement ?? null;
+    const rule = css.match(RULE)?.[1] ?? "";
+    expect([
+      box?.parentElement === row,
+      /right: 0;/.test(rule),
+      /left: auto;/.test(rule),
+      /text-align: right;/.test(rule),
+    ]).toEqual([true, true, true, true]);
+  });
+});
