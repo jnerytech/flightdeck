@@ -453,7 +453,8 @@ describe("worktrees-seguranca: the card keeps a truthful record (F6)", () => {
       .query("UPDATE cards SET worktree_path = '/a', branch = 'fd/gone' WHERE id = ?")
       .run(card.id);
     ctx.board.releaseWorktree(card.id, "/a", true);
-    await ctx.board.discardCard(card.id, true);
+    const last = await ctx.board.discardCard(card.id, true);
+    expect(last).toMatchObject({ id: card.id, discarded: true });
     ctx.board.stop();
   });
 
