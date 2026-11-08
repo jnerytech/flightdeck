@@ -140,8 +140,8 @@ describe("board-contracts-ui: Review asks for a PR and passing checks", () => {
     await ready();
     await dragTo("A", "In review");
     const ask = dialog();
-    expect(ask === null).toBe(false);
-    expect(within(ask as HTMLElement).getByText("Move to In review anyway?") === null).toBe(false);
+    expect(ask).not.toBeNull();
+    expect(within(ask as HTMLElement).getByText("Move to In review anyway?")).not.toBeNull();
     expect((ask as HTMLElement).textContent).toContain("A lacks: a PR link");
     expect(w.moves()).toEqual([]);
   });
@@ -151,7 +151,7 @@ describe("board-contracts-ui: Review asks for a PR and passing checks", () => {
     await ready();
     await dragTo("A", "In review");
     await click(within(dialog() as HTMLElement).getByRole("button", { name: "Cancel" }));
-    expect(dialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(w.moves()).toEqual([]);
     // The keyboard goes back to the card it asked about.
     await settle(() => li("A").contains(document.activeElement));
@@ -168,7 +168,7 @@ describe("board-contracts-ui: Review asks for a PR and passing checks", () => {
     const w = setup();
     await ready();
     await dragTo("P", "In review");
-    expect(dialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(w.moves()).toEqual([["h1", "card.move", { cardId: "P", column: "review" }]]);
   });
 
@@ -208,8 +208,8 @@ describe("board-contracts-ui: Review asks for a PR and passing checks", () => {
     await ready();
     await dragTo("N", "In review");
     await dragTo("A", "Done");
-    expect(dialog() === null).toBe(true);
-    expect(w.moves().length).toBe(2);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+    expect(w.moves()).toHaveLength(2);
   });
 });
 
@@ -220,8 +220,8 @@ describe("board-contracts-ui: many cards, one question", () => {
     await pick("A", "C", "P");
     await moveSelectedToReview();
     const ask = dialog() as HTMLElement;
-    expect(ask === null).toBe(false);
-    expect(screen.queryAllByRole("alertdialog").length).toBe(1);
+    expect(ask).not.toBeNull();
+    expect(screen.queryAllByRole("alertdialog").length).toBe(1); // NOSONAR: toHaveLength would print the DOM nodes on failure
     expect(ask.textContent).toContain("2 cards lack something In review needs");
     expect(
       within(ask)
@@ -265,7 +265,7 @@ describe("board-contracts-ui: many cards, one question", () => {
     await ready();
     await pick("P", "Q");
     await moveSelectedToReview();
-    expect(dialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => w.requests.length === 2);
   });
 });
@@ -274,18 +274,18 @@ describe("board-contracts-ui: a card says what it lacks, and a column says what 
   test("In progress never asks, and a card there without criteria wears Needs: acceptance criteria", async () => {
     const w = setup();
     await ready();
-    expect(within(li("D")).queryByText("Needs: acceptance criteria") === null).toBe(false);
-    expect(within(li("G")).queryByText("Needs: acceptance criteria") === null).toBe(true);
+    expect(within(li("D")).queryByText("Needs: acceptance criteria")).not.toBeNull();
+    expect(within(li("G")).queryByText("Needs: acceptance criteria") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await dragTo("A", "In progress");
-    expect(dialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(w.moves()).toEqual([["h1", "card.move", { cardId: "A", column: "in_progress" }]]);
   });
 
   test("a card in Review without a PR, or with failing checks, wears what it lacks", async () => {
     setup();
     await ready();
-    expect(within(li("N")).queryByText("Needs: a PR link") === null).toBe(false);
-    expect(within(li("F")).queryByText("Needs: passing checks") === null).toBe(false);
+    expect(within(li("N")).queryByText("Needs: a PR link")).not.toBeNull();
+    expect(within(li("F")).queryByText("Needs: passing checks")).not.toBeNull();
   });
 
   test("while a card is dragged, the columns that ask something say what; they stop when it lets go", async () => {
@@ -302,7 +302,7 @@ describe("board-contracts-ui: a card says what it lacks, and a column says what 
       fireEvent.dragEnd(li("A"));
     });
     expect(lane("In review").getAttribute("data-needs")).toBeNull();
-    expect(lane("In review").querySelector(".column-hint") === null).toBe(true);
+    expect(lane("In review").querySelector(".column-hint") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 
   test("it all reads in Portuguese too", async () => {
@@ -315,9 +315,9 @@ describe("board-contracts-ui: a card says what it lacks, and a column says what 
       fireEvent.drop(screen.getByRole("region", { name: "Em revisão" }));
     });
     const ask = dialog() as HTMLElement;
-    expect(ask === null).toBe(false);
+    expect(ask).not.toBeNull();
     expect(ask.textContent).toContain("A não tem: um link de PR");
-    expect(within(ask).getByRole("button", { name: "Mover mesmo assim" }) === null).toBe(false);
+    expect(within(ask).getByRole("button", { name: "Mover mesmo assim" })).not.toBeNull();
   });
 });
 
@@ -366,7 +366,7 @@ describe("board-contracts-ui: the project's contracts, force and the recorded no
     });
     await settle(() => screen.queryByRole("heading", { name: "Board of api" }) !== null);
     await dragTo("A", "In review");
-    expect(dialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => w.moves().length === 1);
     await dragTo("C", "Done");
     expect((dialog() as HTMLElement).textContent).toContain("C lacks: a PR link");
@@ -375,7 +375,7 @@ describe("board-contracts-ui: the project's contracts, force and the recorded no
   test("a card in a column wears what the project's contract asks of it, not the default's", async () => {
     setup({ project: { contractByColumn: { review: { enforce: "confirm", checks: [] } } } });
     await ready();
-    expect(within(li("N")).queryByText("Needs: a PR link") === null).toBe(true);
+    expect(within(li("N")).queryByText("Needs: a PR link") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 
   test("the notice a forced move left says what the card lacked, in the app's language", async () => {
@@ -433,7 +433,7 @@ describe("board-contracts-ui: Start asks only when In progress confirms criteria
     setup();
     await ready();
     await startFromMenu("A");
-    expect(dialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => startDialog() !== null);
   });
 
@@ -442,23 +442,23 @@ describe("board-contracts-ui: Start asks only when In progress confirms criteria
     await ready();
     await startFromMenu("A");
     const ask = dialog() as HTMLElement;
-    expect(ask === null).toBe(false);
+    expect(ask).not.toBeNull();
     expect(ask.textContent).toContain("Start A anyway?");
     expect(ask.textContent).toContain("A lacks: acceptance criteria");
-    expect(startDialog() === null).toBe(true);
+    expect(startDialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await click(within(ask).getByRole("button", { name: "Start anyway" }));
     await settle(() => startDialog() !== null);
-    expect(dialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 
   test("Cancel starts nothing and gives the card its focus back", async () => {
     setup({ project: ASKING });
     await ready();
     await startFromMenu("A");
-    expect(dialog() === null).toBe(false);
+    expect(dialog()).not.toBeNull();
     await click(within(dialog() as HTMLElement).getByRole("button", { name: "Cancel" }));
-    expect(dialog() === null).toBe(true);
-    expect(startDialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+    expect(startDialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => li("A").contains(document.activeElement));
   });
 
@@ -466,7 +466,7 @@ describe("board-contracts-ui: Start asks only when In progress confirms criteria
     setup({ project: ASKING });
     await ready();
     await startFromMenu("G");
-    expect(dialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => startDialog() !== null);
   });
 
@@ -476,10 +476,10 @@ describe("board-contracts-ui: Start asks only when In progress confirms criteria
     await openMenu("A", "Ações de A");
     await click(await screen.findByRole("menuitem", { name: "Iniciar card" }));
     const ask = dialog() as HTMLElement;
-    expect(ask === null).toBe(false);
+    expect(ask).not.toBeNull();
     expect(ask.textContent).toContain("Iniciar A mesmo assim?");
     expect(ask.textContent).toContain("A não tem: critérios de aceite");
-    expect(within(ask).getByRole("button", { name: "Iniciar mesmo assim" }) === null).toBe(false);
+    expect(within(ask).getByRole("button", { name: "Iniciar mesmo assim" })).not.toBeNull();
   });
 });
 
@@ -507,20 +507,20 @@ describe("board-contracts-ui: a column that asks for a spec", () => {
     const w = setup({ cards, project: ASKS_SPEC });
     await ready();
     await dragTo("S", "In review");
-    expect(dialog() === null).toBe(true);
+    expect(dialog() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => w.moves().length === 1);
   });
 
   test("a card in the column without a spec wears what it lacks", async () => {
     setup({ cards, project: ASKS_SPEC });
     await ready();
-    expect(within(li("M")).queryByText("Needs: a spec") === null).toBe(false);
+    expect(within(li("M")).queryByText("Needs: a spec")).not.toBeNull();
   });
 
   test("it reads in Portuguese too", async () => {
     setup({ cards, project: ASKS_SPEC, language: "pt-BR" });
     await settle(() => screen.queryByRole("heading", { name: "Board de api" }) !== null);
-    expect(within(li("M")).queryByText("Precisa de: uma especificação") === null).toBe(false);
+    expect(within(li("M")).queryByText("Precisa de: uma especificação")).not.toBeNull();
   });
 
   test("the host's refusal names the spec in both languages", async () => {

@@ -79,12 +79,12 @@ async function setup() {
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   });
-  await waitFor(() => expect(move.args !== undefined).toBe(true));
+  await waitFor(() => expect(move.args).not.toBeUndefined());
   return { store, move, to, closed: () => closed };
 }
 
 const press = async (name: string) => {
-  await waitFor(() => expect(screen.queryByRole("button", { name }) !== null).toBe(true));
+  await waitFor(() => expect(screen.queryByRole("button", { name }) !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
   await act(async () => {
     fireEvent.click(screen.queryByRole("button", { name }) as HTMLElement);
   });
@@ -109,7 +109,7 @@ async function reachFinishing(move: Awaited<ReturnType<typeof setup>>["move"]) {
   await act(async () => {
     move.args?.onProgress(10, 10);
   });
-  await waitFor(() => expect(screen.queryByText(/Finishing on beta/) !== null).toBe(true));
+  await waitFor(() => expect(screen.queryByText(/Finishing on beta/) !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
 }
 
 const toasts = (store: InstanceType<typeof AppStore>) =>
@@ -126,7 +126,7 @@ describe("teleport-toast: a move that ends after its dialog closed says so (#100
     await act(async () => {
       move.end?.({ kind: "moved", sessionId: "s2", worktree: "/work/app-2", branch: "feature" });
     });
-    await waitFor(() => expect(store.getState().notices.length).toBe(1));
+    await waitFor(() => expect(store.getState().notices).toHaveLength(1));
     expect(toasts(store)).toEqual([
       { kind: "success", text: "The session moved to beta.", link: "Open it there" },
     ]);
@@ -143,7 +143,7 @@ describe("teleport-toast: a move that ends after its dialog closed says so (#100
     await act(async () => {
       move.fail?.(new RequestError("conflict", "the host says: /etc/passwd", "teleport_too_large"));
     });
-    await waitFor(() => expect(store.getState().notices.length).toBe(1));
+    await waitFor(() => expect(store.getState().notices).toHaveLength(1));
     const [toast] = store.getState().notices;
     expect([toast?.kind, toast?.text.includes("passwd"), (toast?.text ?? "").length > 0]).toEqual([
       "error",
@@ -158,8 +158,8 @@ describe("teleport-toast: a move that ends after its dialog closed says so (#100
     await act(async () => {
       move.end?.({ kind: "moved", sessionId: "s2", worktree: "/work/app-2", branch: "feature" });
     });
-    await waitFor(() =>
-      expect(screen.queryByText(/The session is on beta now/) !== null).toBe(true),
+    await waitFor(
+      () => expect(screen.queryByText(/The session is on beta now/) !== null).toBe(true), // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
     );
     expect(toasts(store)).toEqual([]);
   });
