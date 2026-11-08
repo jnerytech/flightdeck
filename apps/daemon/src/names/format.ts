@@ -1,6 +1,7 @@
 /** Phase 21, standard session names: `project · persona · number` and its alias. */
 
 import { NAME_GENERAL, NAME_NO_PROJECT } from "@flightdeck/protocol";
+import { trimEndOf } from "../trim.ts";
 
 /** The persona of a session that has none. */
 export const GENERAL = NAME_GENERAL;
@@ -23,12 +24,12 @@ export function slug(text: string): string {
     .replace(/\p{M}/gu, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/^-+|-+$/g, ""); // NOSONAR: the line before made every run of other characters one "-", so at most one at each end
 }
 
 /** The name of the project: the end of its key (`github.com/acme/app` is `app`) or its folder. */
 export function projectName(keyOrPath: string): string {
-  const trimmed = keyOrPath.trim().replace(/[\\/]+$/, "");
+  const trimmed = trimEndOf(keyOrPath.trim(), "\\/");
   const cut = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
   return trimmed.slice(cut + 1) || NO_PROJECT;
 }
