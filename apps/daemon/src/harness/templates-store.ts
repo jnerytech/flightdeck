@@ -7,7 +7,7 @@
  */
 import { lstat, mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import type { HarnessTemplateInfo, SecretScanner } from "@flightdeck/protocol";
+import { byCodeUnit, type HarnessTemplateInfo, type SecretScanner } from "@flightdeck/protocol";
 import { createInside, readInside } from "../create-inside.ts";
 import { FlightdeckError } from "../errors.ts";
 
@@ -38,7 +38,7 @@ async function namesIn(root: string, rel: string): Promise<string[]> {
   const folder = await folderInside(root, rel);
   if (folder === null) return [];
   const names = await readdir(folder).catch(() => [] as string[]);
-  return names.filter((name) => NAME.test(name) && !name.startsWith(".")).sort();
+  return names.filter((name) => NAME.test(name) && !name.startsWith(".")).sort(byCodeUnit);
 }
 
 /**
@@ -117,7 +117,7 @@ export class HarnessTemplates {
   async list(): Promise<HarnessTemplateInfo[]> {
     const ids = (await readdir(this.dir).catch(() => [] as string[])).filter((id) => ID.test(id));
     const out: HarnessTemplateInfo[] = [];
-    for (const id of ids.sort()) {
+    for (const id of ids.sort(byCodeUnit)) {
       const at = join(this.dir, id);
       const meta = await readInside(at, META, MAX_FILE);
       if (meta === null) continue;
