@@ -98,7 +98,7 @@ export class GithubLogin {
    */
   private async stop(proc: ReturnType<typeof Bun.spawn> | undefined): Promise<void> {
     // Already gone: its pid may be somebody else's by now.
-    if (!proc || proc.exitCode !== null) return;
+    if (proc?.exitCode !== null) return;
     await (this.opts.kill ?? killTree)(proc.pid).catch(() => proc.kill());
     let timer: ReturnType<typeof setTimeout> | undefined;
     const patience = new Promise<void>((resolve) => {

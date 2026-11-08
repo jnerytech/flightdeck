@@ -293,6 +293,9 @@ function readSettings(
 }
 
 /** What the project's own files would bring into a session: read, never run. */
+/** Code-unit order, the same on every host and locale. */
+const byCode = (a: string, b: string) => (a < b ? -1 : Number(a > b));
+
 export async function inspectProject(path: string): Promise<ProjectLoad> {
   const root = await realpath(resolve(path)).catch(() => resolve(path));
   const unreadable: string[] = [];
@@ -332,14 +335,14 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
       load.mcpServers.push({ name, file: ".mcp.json", command: show(command) });
     }
   }
-  const keys = [...new Set(load.envKeys)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const keys = [...new Set(load.envKeys)].sort(byCode);
   load.omitted.envKeys = Math.max(0, keys.length - MAX_ITEMS);
   load.envKeys = keys.slice(0, MAX_ITEMS);
   load.omitted.allowRules = Math.max(0, load.allowRules.length - MAX_ITEMS);
   load.allowRules = load.allowRules.slice(0, MAX_ITEMS);
   load.omitted.denyRules = Math.max(0, load.denyRules.length - MAX_ITEMS);
   load.denyRules = load.denyRules.slice(0, MAX_ITEMS);
-  load.otherKeys = [...otherKeys].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  load.otherKeys = [...otherKeys].sort(byCode);
   load.extras = [
     ...(await headers(root, ".claude/agents", false, unreadable)),
     ...(await headers(root, ".claude/skills", true, unreadable)),

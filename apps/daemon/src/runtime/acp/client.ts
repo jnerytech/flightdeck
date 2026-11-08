@@ -76,7 +76,7 @@ export class AcpClient {
     private readonly transport: AcpTransport,
     private readonly opts: AcpClientOptions = {},
   ) {
-    this.closed = this.read();
+    this.closed = this.read(); // NOSONAR: the read loop starts with the client, `closed` is its end
   }
 
   /** `timeoutMs: null` waits for as long as it takes (a prompt turn). */

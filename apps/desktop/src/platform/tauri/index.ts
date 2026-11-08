@@ -98,6 +98,13 @@ export function tauriPlatform(
       removeFile: (path) => call("vault_remove_file", { path }),
     },
     pickFolder: () => call<string | null>("pick_folder"),
+    backupFolder: {
+      pick: () => call<string | null>("backup_folder_pick"),
+      current: () => call<string | null>("backup_folder_current"),
+      write: (name, text) => call("backup_folder_write", { name, text }),
+      list: () => call<string[]>("backup_folder_list"),
+      remove: (name) => call("backup_folder_remove", { name }),
+    },
     async notify(notification) {
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";
       if (!granted) return false;
