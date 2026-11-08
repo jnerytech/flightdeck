@@ -1,6 +1,6 @@
 {
   "name": "@flightdeck/protocol",
-  "version": "0.37.14",
+  "version": "0.37.15",
   "private": true,
   "type": "module",
   "main": "src/index.ts",
