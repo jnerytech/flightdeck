@@ -89,7 +89,7 @@ async function filesUnder(root: string): Promise<{ files: string[]; links: strin
       if (files.length > MAX_FILES) {
         throw new FlightdeckError(
           "bad_request",
-          `plugin com arquivos demais (mais de ${MAX_FILES})`,
+          `plugin has too many files (more than ${MAX_FILES})`,
           "plugin_too_many_files",
           { max: MAX_FILES },
         );
@@ -114,7 +114,7 @@ async function inside(reading: Reading, key: string, rel: string): Promise<strin
   const target = resolve(reading.root, rel);
   const real = await realpath(target).catch(() => target);
   if (!isInside(reading.root, real)) {
-    reading.problems.push(`${key}: caminho fora do plugin: ${rel}`);
+    reading.problems.push(`${key}: path outside the plugin: ${rel}`);
     return null;
   }
   return (await exists(real)) ? real : null;
@@ -124,7 +124,7 @@ async function readJson(reading: Reading, path: string, label: string): Promise<
   try {
     return JSON.parse(await readFile(path, "utf8"));
   } catch {
-    reading.problems.push(`${label}: não é um JSON válido`);
+    reading.problems.push(`${label}: not valid JSON`);
     return undefined;
   }
 }
@@ -345,7 +345,7 @@ async function serversOf(reading: Reading, manifestJson: Json | null): Promise<P
 
 export async function inspectPlugin(dir: string): Promise<PluginInventory> {
   if (!(await exists(dir)))
-    throw new FlightdeckError("not_found", `${dir} não existe`, "plugin_dir_missing", { dir });
+    throw new FlightdeckError("not_found", `${dir} does not exist`, "plugin_dir_missing", { dir });
   const reading: Reading = { root: await realpath(resolve(dir)), problems: [] };
   const { root } = reading;
 

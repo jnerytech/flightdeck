@@ -168,7 +168,7 @@ const bad = (message: string, reason: string, params?: Params) =>
 
 /** A value that goes to the CLI as an argument: never one that would read as an option. */
 function arg(value: string): string {
-  if (value.startsWith("-")) throw bad(`valor recusado: ${value}`, "plugin_arg_refused", { value });
+  if (value.startsWith("-")) throw bad(`value refused: ${value}`, "plugin_arg_refused", { value });
   return value;
 }
 
@@ -262,7 +262,7 @@ export class Plugins {
     arg(id);
     const found = (await this.list()).installed.find((plugin) => plugin.id === id);
     if (!found)
-      throw new FlightdeckError("not_found", `${id} não está instalado`, "plugin_not_installed", {
+      throw new FlightdeckError("not_found", `${id} is not installed`, "plugin_not_installed", {
         id,
       });
     return found;
@@ -316,7 +316,7 @@ export class Plugins {
     const refreshed = await this.cli(["marketplace", "update", marketplace, "--json"]);
     if (refreshed.code !== 0) {
       throw invalid(
-        `não deu para atualizar o marketplace ${marketplace}: ${refreshed.stderr.trim()}`,
+        `could not update the marketplace ${marketplace}: ${refreshed.stderr.trim()}`,
         "marketplace_update_failed",
         { marketplace, why: refreshed.stderr.trim() },
       );
@@ -325,7 +325,7 @@ export class Plugins {
     const next = await this.preview({ plugin: id });
     if (!next.inventory || !installed.inventory) {
       throw invalid(
-        `o conteúdo de ${id} não pode ser mostrado antes de atualizar`,
+        `the content of ${id} cannot be shown before updating`,
         "plugin_preview_unavailable_update",
         { id },
       );
@@ -356,7 +356,7 @@ export class Plugins {
       const shown = await this.preview({ dir: input.dir });
       if (!shown.validation?.success) {
         const errors = shown.validation?.errors.join("; ") ?? "";
-        throw invalid(`o validate recusou o plugin: ${errors}`, "plugin_validate_refused", {
+        throw invalid(`validate refused the plugin: ${errors}`, "plugin_validate_refused", {
           errors,
         });
       }
@@ -368,7 +368,7 @@ export class Plugins {
       const shown = await this.preview({ plugin: name });
       if (shown.hash === null)
         throw invalid(
-          `o conteúdo de ${name} não pode ser mostrado antes de instalar`,
+          `the content of ${name} cannot be shown before installing`,
           "plugin_preview_unavailable_install",
           { name },
         );
@@ -392,13 +392,13 @@ export class Plugins {
     const pin = (await this.opts.pins.all())[input.plugin];
     if (pin)
       throw invalid(
-        `${input.plugin} está fixado na versão ${pin.version}; solte antes de atualizar`,
+        `${input.plugin} is pinned to version ${pin.version}; unpin it before updating`,
         "plugin_pinned",
         { id: input.plugin, version: pin.version },
       );
     const next = await this.previewUpdate(input.plugin);
     if (next.unchanged)
-      return { outcome: "unchanged", message: "já está na versão do marketplace" };
+      return { outcome: "unchanged", message: "already at the marketplace version" };
     this.sameContent(next.to.hash, input.confirmHash);
     const result = await this.change(
       input.plugin,
@@ -418,7 +418,7 @@ export class Plugins {
     confirm: boolean;
   }): Promise<ChangeResult> {
     arg(input.plugin);
-    if (!input.confirm) throw invalid("remover pede confirm: true", "plugin_remove_confirm");
+    if (!input.confirm) throw invalid("removing needs confirm: true", "plugin_remove_confirm");
     const args = [
       "uninstall",
       input.plugin,
@@ -440,7 +440,7 @@ export class Plugins {
   }): Promise<ChangeResult> {
     arg(input.source);
     if (!input.confirm)
-      throw invalid("adicionar um marketplace pede confirm: true", "marketplace_add_confirm");
+      throw invalid("adding a marketplace needs confirm: true", "marketplace_add_confirm");
     const args = [
       "marketplace",
       "add",
@@ -456,7 +456,7 @@ export class Plugins {
   async marketplaceRemove(input: { name: string; confirm: boolean }): Promise<ChangeResult> {
     arg(input.name);
     if (!input.confirm)
-      throw invalid("remover um marketplace pede confirm: true", "marketplace_remove_confirm");
+      throw invalid("removing a marketplace needs confirm: true", "marketplace_remove_confirm");
     const result = await this.change(input.name, ["marketplace", "remove", input.name, "--json"]);
     if (result.outcome === "ok") await this.record("marketplace-remove", input.name);
     return result;
@@ -488,7 +488,7 @@ export class Plugins {
     if (!found?.inventory) {
       return {
         outcome: "failed",
-        message: `não foi possível conferir o conteúdo instalado de ${target}`,
+        message: `could not check the installed content of ${target}`,
       };
     }
     if (found.inventory.hash === confirmHash) return null;
@@ -502,14 +502,14 @@ export class Plugins {
     await this.record("rollback", found.id, confirmHash);
     return {
       outcome: "rolled-back",
-      message: `o conteúdo instalado de ${found.id} é diferente do que foi mostrado; o plugin foi removido (${undone.outcome})`,
+      message: `the installed content of ${found.id} differs from what was shown; the plugin was removed (${undone.outcome})`,
     };
   }
 
   private sameContent(shown: string | null, confirmed: string) {
     if (shown !== confirmed) {
       throw invalid(
-        "o conteúdo mudou desde que foi mostrado: veja a prévia de novo",
+        "the content changed since it was shown: view the preview again",
         "plugin_content_changed",
       );
     }
@@ -536,7 +536,7 @@ export class Plugins {
     if (!location)
       throw new FlightdeckError(
         "not_found",
-        `o marketplace ${marketplace} não existe`,
+        `the marketplace ${marketplace} does not exist`,
         "marketplace_missing",
         { marketplace },
       );
@@ -547,7 +547,7 @@ export class Plugins {
       );
     } catch {
       throw invalid(
-        `o catálogo do marketplace ${marketplace} não pôde ser lido`,
+        `the catalog of the marketplace ${marketplace} could not be read`,
         "marketplace_catalog_unreadable",
         { marketplace },
       );
@@ -558,7 +558,7 @@ export class Plugins {
     if (!entry)
       throw new FlightdeckError(
         "not_found",
-        `${id} não existe no marketplace`,
+        `${id} does not exist in the marketplace`,
         "plugin_not_in_marketplace",
         { id },
       );
@@ -585,7 +585,7 @@ export class Plugins {
         .map((e) => `${text(e.path) ?? ""}: ${text(e.message) ?? ""}`);
       return { success: report.success === true && result.code === 0, errors };
     } catch {
-      return { success: false, errors: [result.stderr.trim() || "o validate não respondeu"] };
+      return { success: false, errors: [result.stderr.trim() || "validate did not answer"] };
     }
   }
 
@@ -596,7 +596,7 @@ export class Plugins {
   private async change(key: string, args: string[], acceptCommand?: string): Promise<ChangeResult> {
     if (acceptCommand !== undefined && this.shown.get(key) !== acceptCommand) {
       throw invalid(
-        "só se aceita o comando que foi mostrado: peça de novo para ver",
+        "only the command that was shown is accepted: ask to see it again",
         "plugin_command_mismatch",
       );
     }
@@ -606,7 +606,7 @@ export class Plugins {
     if (!parsed || typeof parsed.outcome !== "string") {
       return result.code === 0
         ? { outcome: "ok", message: result.stdout.trim() }
-        : { outcome: "failed", message: result.stderr.trim() || `código ${result.code}` };
+        : { outcome: "failed", message: result.stderr.trim() || `code ${result.code}` };
     }
     const message = text(parsed.message) ?? "";
     const shown = parsed.outcome !== "ok" ? shownCommandOf(parsed.shownCommand) : null;
@@ -641,7 +641,7 @@ export class Plugins {
 
   /** Runs the CLI unless the manager was closed: nothing starts after a stop. */
   private cli(args: string[]): Promise<CliResult> {
-    if (this.closed) throw invalid("o gerenciador de plugins foi parado", "plugins_stopped");
+    if (this.closed) throw invalid("the plugin manager was stopped", "plugins_stopped");
     return this.opts.cli.run(args);
   }
 
@@ -649,8 +649,8 @@ export class Plugins {
   private async json(args: string[]): Promise<unknown> {
     const result = await this.cli(args);
     if (result.code !== 0) {
-      const why = result.stderr.trim() || `código ${result.code}`;
-      throw invalid(`claude plugin ${args[0]} falhou: ${why}`, "plugin_cli_failed", {
+      const why = result.stderr.trim() || `code ${result.code}`;
+      throw invalid(`claude plugin ${args[0]} failed: ${why}`, "plugin_cli_failed", {
         command: args[0] ?? "",
         why,
       });
@@ -658,7 +658,7 @@ export class Plugins {
     try {
       return JSON.parse(result.stdout);
     } catch {
-      throw invalid(`claude plugin ${args[0]} não devolveu JSON`, "plugin_cli_not_json", {
+      throw invalid(`claude plugin ${args[0]} did not return JSON`, "plugin_cli_not_json", {
         command: args[0] ?? "",
       });
     }
@@ -672,7 +672,7 @@ export function claudeCli(
   return {
     run: async (args) => {
       const executable = (options.executable ?? (() => whichOnPath("claude")))();
-      if (!executable) throw invalid("o claude não foi encontrado no PATH", "claude_not_found");
+      if (!executable) throw invalid("claude was not found on the PATH", "claude_not_found");
       const proc = Bun.spawn([executable, "plugin", ...args], {
         env: process.env,
         stdin: "ignore",
