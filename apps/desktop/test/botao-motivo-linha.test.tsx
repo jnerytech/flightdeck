@@ -193,12 +193,21 @@ describe("botao-motivo-linha: allowed folders", () => {
 // 1280. In a footer the reason hangs from the button's right and grows left, inside the dialog.
 // happy-dom has no layout: this reads the rule, and the projetos-novo print shows the fit.
 describe("botao-motivo-linha: in a dialog's footer the reason grows inward (#1063)", () => {
-  test("the reason of a footer's button sits in the footer, and the stylesheet anchors it to the button's right", () => {
+  // Only the footer's last button is at the dialog's right edge. A button first in the row (the
+  // snippet dialog's Run, with no terminal) is at its left edge: hung from its right, its reason
+  // would grow past the left edge instead, so it keeps hanging from its left.
+  const RULE =
+    /\[data-slot="dialog-footer"\] > \.action-button-box:last-child \.action-reason \{([^}]*)\}/;
+
+  test("the reason of a footer's last button hangs from its right; a button before it keeps the left", () => {
     render(
       <Dialog open>
         <DialogContent>
           <DialogTitle>Add project</DialogTitle>
           <DialogFooter>
+            <ActionButton disabled disabledReason="Run needs a folder.">
+              Run
+            </ActionButton>
             <ActionButton disabled disabledReason="Pick or type a folder.">
               Add
             </ActionButton>
@@ -206,13 +215,16 @@ describe("botao-motivo-linha: in a dialog's footer the reason grows inward (#106
         </DialogContent>
       </Dialog>,
     );
-    const reason = screen.queryByText("Pick or type a folder.");
-    const rule = css.match(/\[data-slot="dialog-footer"\] \.action-reason \{([^}]*)\}/)?.[1] ?? "";
+    const footer = document.querySelector('[data-slot="dialog-footer"]');
+    const box = (text: string) => screen.queryByText(text)?.parentElement ?? null;
+    const rule = css.match(RULE)?.[1] ?? "";
     expect([
-      reason?.closest('[data-slot="dialog-footer"]') != null,
+      box("Pick or type a folder.") === footer?.lastElementChild,
+      box("Run needs a folder.") === footer?.firstElementChild,
       /right: 0;/.test(rule),
       /left: auto;/.test(rule),
       /text-align: right;/.test(rule),
-    ]).toEqual([true, true, true, true]);
+      css.includes('[data-slot="dialog-footer"] .action-reason {'),
+    ]).toEqual([true, true, true, true, true, false]);
   });
 });
