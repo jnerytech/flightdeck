@@ -4906,7 +4906,9 @@ export const HOOK_KINDS: ReadonlyArray<readonly [HookKind, string, RegExp]> = [
   [
     "format",
     "PostToolUse",
-    /\b(biome|prettier|eslint --fix|ruff format|black|gofmt|rustfmt|cargo fmt|dotnet format|(npm|pnpm|yarn|bun) run (format|fmt)\b)/,
+    // A script named format:check or format-check checks; it formats nothing. `black` counts only as
+    // the command run, not as a word in one (`echo black`).
+    /\b(biome|prettier|eslint --fix|ruff format|gofmt|go fmt|deno fmt|rustfmt|cargo fmt|dotnet format|(npm|pnpm|yarn|bun) run (format|fmt)(?![\w:-]))|(^|[;&|]\s*)black\b/,
   ],
   ["gitAdd", "PreToolUse", /\bgit add\b/],
   ["secrets", "PreToolUse", /(\.env\b|credentials|secrets?\b|\.pem\b|id_rsa)/],
