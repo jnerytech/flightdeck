@@ -88,7 +88,7 @@ const click = (el: Element) =>
 /** Presses the button, or fails the test by assertion when it is not there. */
 async function press(name: string) {
   const target = button(name);
-  expect(target !== null).toBe(true);
+  expect(target).not.toBeNull();
   if (target) await click(target);
 }
 const button = (name: string) => screen.queryByRole("button", { name });
@@ -114,8 +114,8 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
   test("the page offers Add from a template, and asks the host only when it is opened", async () => {
     const { asked } = setup();
     await loaded();
-    expect(button("Add from a template") !== null).toBe(true);
-    expect(asked().length).toBe(0);
+    expect(button("Add from a template")).not.toBeNull();
+    expect(asked()).toHaveLength(0);
     await press("Add from a template");
     await settleMaybe(() => asked().length === 1);
     expect(asked()).toEqual([["h1", "workflow.templates", { projectId: "p1" }]]);
@@ -125,42 +125,42 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     setup();
     await open();
     await settleMaybe(() => screen.queryByRole("list", { name: "Templates" }) !== null);
-    expect(dialog("Workflow templates") !== null).toBe(true);
+    expect(dialog("Workflow templates")).not.toBeNull();
     const list = screen.queryByRole("list", { name: "Templates" });
-    expect(list !== null).toBe(true);
+    expect(list).not.toBeNull();
     const items = within(list ?? document.body);
-    expect(items.queryByText("Alert fixer") !== null).toBe(true);
-    expect(items.queryByText("Fixes one alert on the card's branch.") !== null).toBe(true);
-    expect(items.queryByText("Post-mortem draft") !== null).toBe(true);
-    expect(screen.queryByText(/Nothing is written for you/) !== null).toBe(true);
+    expect(items.queryByText("Alert fixer")).not.toBeNull();
+    expect(items.queryByText("Fixes one alert on the card's branch.")).not.toBeNull();
+    expect(items.queryByText("Post-mortem draft")).not.toBeNull();
+    expect(screen.queryByText(/Nothing is written for you/)).not.toBeNull();
   });
 
   test("while the host answers, the dialog says it is loading", async () => {
     setup({ templates: () => new Promise(() => {}) });
     await open();
-    expect(screen.queryByRole("status", { name: "Loading templates" }) !== null).toBe(true);
+    expect(screen.queryByRole("status", { name: "Loading templates" })).not.toBeNull();
   });
 
   test("a host that does not answer says so, and offers no list", async () => {
     setup({ templates: async () => null });
     await open();
     await settleMaybe(() => screen.queryByText(/Could not load the templates/) !== null);
-    expect(screen.queryByRole("list", { name: "Templates" }) === null).toBe(true);
-    expect(screen.queryByRole("status", { name: "Loading templates" }) === null).toBe(true);
+    expect(screen.queryByRole("list", { name: "Templates" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByRole("status", { name: "Loading templates" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("showing a template puts the file, where to commit it and what it asks for in front of you", async () => {
     setup();
     await open("Add from a template", "Show Alert fixer");
     const heading = screen.queryByRole("heading", { name: "Alert fixer" });
-    expect(heading !== null).toBe(true);
-    expect(document.activeElement === heading).toBe(true);
-    expect(screen.queryByText("Persona: dev") !== null).toBe(true);
-    expect(screen.queryByText("Asks for: alert") !== null).toBe(true);
-    expect(screen.queryByText("Tries the fix up to 3 times.") !== null).toBe(true);
-    expect(screen.queryByText("Commit it to .flightdeck/workflows/alert-fixer.yaml") !== null).toBe(
-      true,
-    );
+    expect(heading).not.toBeNull();
+    expect(document.activeElement === heading).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByText("Persona: dev")).not.toBeNull();
+    expect(screen.queryByText("Asks for: alert")).not.toBeNull();
+    expect(screen.queryByText("Tries the fix up to 3 times.")).not.toBeNull();
+    expect(
+      screen.queryByText("Commit it to .flightdeck/workflows/alert-fixer.yaml"),
+    ).not.toBeNull();
     const file = screen.queryByRole("region", {
       name: "File .flightdeck/workflows/alert-fixer.yaml",
     });
@@ -171,13 +171,13 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
   test("Copy puts the file on the clipboard and leaves a note saying what to do next", async () => {
     const { copied } = setup();
     await open("Add from a template", "Show Alert fixer");
-    expect(screen.queryByText(/^Copied\./) === null).toBe(true);
+    expect(screen.queryByText(/^Copied\./) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await press("Copy the file");
     await settleMaybe(() => screen.queryByText(/^Copied\./) !== null);
     expect(copied).toEqual([FIXER.yaml]);
     expect(
-      screen.queryByText("Copied. Commit it to the base branch, then trust it here.") !== null,
-    ).toBe(true);
+      screen.queryByText("Copied. Commit it to the base branch, then trust it here."),
+    ).not.toBeNull();
   });
 
   test("when the copy fails, the note does not say it worked", async () => {
@@ -186,7 +186,7 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     await press("Copy the file");
     await settleMaybe(() => copied.length === 1);
     expect(copied).toEqual([FIXER.yaml]);
-    expect(screen.queryByText(/^Copied\./) === null).toBe(true);
+    expect(screen.queryByText(/^Copied\./) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Back returns to the list with the focus on the template that was open", async () => {
@@ -195,8 +195,8 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     await press("Back to the templates");
     await settleMaybe(() => screen.queryByRole("list", { name: "Templates" }) !== null);
     const shown = button("Show Alert fixer");
-    expect(shown !== null).toBe(true);
-    expect(document.activeElement === shown).toBe(true);
+    expect(shown).not.toBeNull();
+    expect(document.activeElement === shown).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the check line says whether it holds the project's test command or a placeholder", async () => {
@@ -205,9 +205,9 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     expect(
       screen.queryByText(
         "The check line holds this project's test command. Review it before you trust the workflow.",
-      ) !== null,
-    ).toBe(true);
-    expect(screen.queryByText(/placeholder that fails/) === null).toBe(true);
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByText(/placeholder that fails/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a placeholder check line is a warning to fix before the commit", async () => {
@@ -216,16 +216,16 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     expect(
       screen.queryByText(
         "The check line holds a placeholder that fails. Replace it with your test command before you commit the file.",
-      ) !== null,
-    ).toBe(true);
-    expect(screen.queryByText(/holds this project's test command/) === null).toBe(true);
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByText(/holds this project's test command/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a template with no check line shows neither note", async () => {
     setup();
     await open("Add from a template", "Show Post-mortem draft");
-    expect(screen.queryByText(/The check line holds/) === null).toBe(true);
-    expect(screen.queryByText("Asks for: incident") !== null).toBe(true);
+    expect(screen.queryByText(/The check line holds/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByText("Asks for: incident")).not.toBeNull();
   });
 
   test("Escape closes the dialog and the focus goes back to the button that opened it", async () => {
@@ -233,26 +233,26 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     await open();
     await settleMaybe(() => dialog("Workflow templates") !== null);
     const shown = dialog("Workflow templates");
-    expect(shown !== null).toBe(true);
+    expect(shown).not.toBeNull();
     await act(async () => {
       fireEvent.keyDown(shown ?? document.body, { key: "Escape" });
     });
     // The dialog hands the focus back a tick after it unmounts, so wait for the focus itself.
     await settleMaybe(() => document.activeElement === button("Add from a template"));
-    expect(dialog("Workflow templates") === null).toBe(true);
-    expect(document.activeElement === button("Add from a template")).toBe(true);
+    expect(dialog("Workflow templates") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(document.activeElement === button("Add from a template")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("in Portuguese the button, the dialog and the template texts follow the language", async () => {
     setup({ language: "pt-BR" });
     await open("Adicionar de um modelo");
     await settleMaybe(() => screen.queryByRole("list", { name: "Modelos" }) !== null);
-    expect(dialog("Modelos de workflow") !== null).toBe(true);
-    expect(screen.queryByText("Corretor de alertas") !== null).toBe(true);
+    expect(dialog("Modelos de workflow")).not.toBeNull();
+    expect(screen.queryByText("Corretor de alertas")).not.toBeNull();
     await press("Ver Corretor de alertas");
-    expect(button("Copiar o arquivo") !== null).toBe(true);
+    expect(button("Copiar o arquivo")).not.toBeNull();
     expect(
-      screen.queryByText("Faça commit em .flightdeck/workflows/alert-fixer.yaml") !== null,
-    ).toBe(true);
+      screen.queryByText("Faça commit em .flightdeck/workflows/alert-fixer.yaml"),
+    ).not.toBeNull();
   });
 });
