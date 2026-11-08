@@ -328,4 +328,44 @@ describe("main-red: one claim per red main (#1246)", () => {
     const red = fakeGh({ runs: [RED_RUN] });
     expect((await mainRedWithin(red, 1000)) ?? "").toContain("unclaimed");
   });
+
+  test("from the second review: CRLF bodies, job names with commas, stale claims after a green run, and Windows (fail) lines", async () => {
+    // A body saved by the web editor, with CRLF, is still read.
+    const crlf = {
+      ...issue(30, "fd-qa", ["a > b"]),
+      body: issue(30, "fd-qa", ["a > b"]).body.replaceAll("\n", "\r\n"),
+    };
+    const [read] = await openClaims(fakeGh({ claims: [crlf] }));
+    expect([read?.owner, read?.failing]).toEqual(["fd-qa", ["a > b"]]);
+    // A matrix job with a comma in its name is one job, written and read back whole.
+    const matrix = fakeGh({
+      runs: [RED_RUN],
+      log: LOG,
+      jobs: [{ name: "test (ubuntu, 20)", conclusion: "failure" }],
+    });
+    expect(await run(["claim", "matrix"], matrix).code).toBe(0);
+    const [create] = created(matrix.asked);
+    const body = create?.[create.indexOf("--body") + 1] ?? "";
+    const [back] = await openClaims(
+      fakeGh({ claims: [{ number: 31, title: "main red: matrix", body }] }),
+    );
+    expect(back?.jobs).toEqual(["test (ubuntu, 20)"]);
+    // A claim older than the latest green run is about an earlier red: it neither covers nor blocks.
+    const earlier = issue(30, "fd-qa", ["card detail > opens on changes"]);
+    const newerRed = { ...RED_RUN, databaseId: 11, createdAt: "2026-11-08T23:00:00Z" };
+    const stale = fakeGh({ runs: [newerRed, GREEN_RUN, RED_RUN], log: LOG, claims: [earlier] });
+    expect((await mainRedLine(stale)) ?? "").toContain("unclaimed");
+    const again = fakeGh({ runs: [newerRed, GREEN_RUN, RED_RUN], log: LOG, claims: [earlier] });
+    expect(await run(["claim", "it is back"], again).code).toBe(0);
+    // A (fail) line of the Windows job (it gates nothing) is never a failing test of a claim.
+    const windows = fakeGh({
+      runs: [RED_RUN],
+      log: `${LOG}\ntest (windows-latest)\tRun tests\t2026-11-08T21:10:03Z (fail) only on windows > x [1.00ms]`,
+    });
+    expect(await run(["claim", "w"], windows).code).toBe(0);
+    const [wcreate] = created(windows.asked);
+    expect((wcreate?.[wcreate.indexOf("--body") + 1] ?? "").includes("only on windows")).toBe(
+      false,
+    );
+  });
 });
