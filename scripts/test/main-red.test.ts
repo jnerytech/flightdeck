@@ -161,13 +161,15 @@ describe("main-red: one claim per red main (#1246)", () => {
     expect([created(other.asked).length, created(mine.asked).length]).toEqual([0, 0]);
   });
 
-  test("with no test name in the log, the failed jobs are what a claim holds", async () => {
+  test("with no test name in the log, the failed jobs (not Windows) are what a claim holds", async () => {
     const fake = fakeGh({
       runs: [RED_RUN],
       log: "",
       jobs: [
         { name: "typecheck", conclusion: "failure" },
         { name: "lint", conclusion: "success" },
+        // Windows is a signal that gates nothing (#534): never what a claim holds.
+        { name: "test (windows-latest)", conclusion: "failure" },
       ],
     });
     const { code } = run(["claim", "typecheck", "--by", "fd-dev"], fake);
