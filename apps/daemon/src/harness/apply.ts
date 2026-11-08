@@ -11,6 +11,7 @@ import { createInside } from "../create-inside.ts";
 import { FlightdeckError } from "../errors.ts";
 import { layoutLike } from "../json-text.ts";
 import { samePath } from "../paths.ts";
+import type { HarnessDrafts } from "./draft.ts";
 import {
   type Current,
   fileLook,
@@ -38,6 +39,8 @@ export interface ApplyOptions {
   /** The person accepted that writing the settings back changes their layout (`reformats`). */
   reformat?: boolean;
   fs?: ApplyFs;
+  /** The drafts the host holds (#75, G1): a file whose digest is a held draft's is that draft. */
+  drafts?: Pick<HarnessDrafts, "held">;
 }
 
 const diskFs: ApplyFs = { open: (path, flags) => open(path, flags) };
@@ -157,11 +160,20 @@ export async function applyHarness(
   const root = path;
   let handle: FileHandle | null = null;
   try {
-    const plan = await planHarness(root, parts, async (at) => {
-      const opened = await openSettings(at, fs);
-      handle = opened.handle;
-      return opened.look;
-    });
+    const drafted = (name: string) => {
+      const digest = digests[name];
+      return digest && options.drafts ? options.drafts.held(root, name, digest) : null;
+    };
+    const plan = await planHarness(
+      root,
+      parts,
+      async (at) => {
+        const opened = await openSettings(at, fs);
+        handle = opened.handle;
+        return opened.look;
+      },
+      drafted,
+    );
     // Everything is checked before anything is written.
     if (!sameDigests(digestsOf(plan.preview), digests)) throw stale();
     const { settings, files } = plan.preview;
