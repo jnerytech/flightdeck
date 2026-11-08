@@ -349,13 +349,13 @@ export function childEnv(env: Record<string, string | undefined>): Record<string
   return kept;
 }
 
-/** Runs a command in a folder and gives its exit code and stdout. */
 /** A command's exit code and stdout. */
 export interface EvalRun {
   code: number;
   out: string;
 }
 
+/** Runs a command in a folder and gives its exit code and stdout. */
 export type EvalRunner = (command: string[], cwd: string) => EvalRun;
 
 /**
