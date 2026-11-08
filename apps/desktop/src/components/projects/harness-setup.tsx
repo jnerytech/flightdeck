@@ -22,6 +22,8 @@ export interface HarnessSetupProps {
   onApplied(): Promise<void>;
   /** The host can commit what apply wrote on a new branch (#75, C1). */
   canCommit?: boolean;
+  /** The host can draft a CLAUDE.md with its model (#75, G1). */
+  canDraft?: boolean;
 }
 
 /** One titled list in the dialog; nothing when the list is empty. */
@@ -42,8 +44,20 @@ function Group(props: Readonly<{ title: string; items: string[]; note?: string |
 }
 
 /** What the setup would add, with what each part does not promise. */
-function Details(props: Readonly<{ preview: HarnessPreview; trusted: boolean; t: T }>) {
-  const { preview, trusted, t } = props;
+/** The CLAUDE.md's draft step (#75, G1): offered, under way, its note, or its refusal. */
+interface DraftStep {
+  offered: boolean;
+  busy: boolean;
+  /** The template was replaced by the host's draft. */
+  drafted: boolean;
+  refusal: string | null;
+  run(): void;
+}
+
+function Details(
+  props: Readonly<{ preview: HarnessPreview; trusted: boolean; t: T; draft: DraftStep }>,
+) {
+  const { preview, trusted, t, draft } = props;
   const hooks = preview.settings?.hooks ?? [];
   const deny = preview.settings?.denyRules ?? [];
   return (
@@ -64,6 +78,22 @@ function Details(props: Readonly<{ preview: HarnessPreview; trusted: boolean; t:
           {preview.files.map((file) => (
             <details key={file.path}>
               <summary className="font-mono text-xs">{file.path}</summary>
+              {file.path === "CLAUDE.md" && draft.offered && (
+                <Stack gap={1}>
+                  {draft.drafted ? (
+                    <p className="text-sm text-status-needs-you">
+                      {t("projectPage.harness.setup.drafted")}
+                    </p>
+                  ) : (
+                    <div>
+                      <ActionButton variant="outline" pending={draft.busy} onClick={draft.run}>
+                        {t("projectPage.harness.setup.draft")}
+                      </ActionButton>
+                    </div>
+                  )}
+                  {draft.refusal && <p className="text-sm">{draft.refusal}</p>}
+                </Stack>
+              )}
               <pre
                 className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2 font-mono text-xs"
                 // biome-ignore lint/a11y/noNoninteractiveTabindex: a long file scrolls, and focus lets the keyboard do it
@@ -104,11 +134,17 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     null,
   );
   const [askingCommit, setAskingCommit] = useState(false);
+  // The CLAUDE.md draft (#75, G1): under way, done (the template replaced), or refused.
+  const [drafting, setDrafting] = useState(false);
+  const [drafted, setDrafted] = useState(false);
+  const [draftRefusal, setDraftRefusal] = useState<string | null>(null);
   // Apply is under way: no second preview may start, or its apply would race this one.
   const [busy, setBusy] = useState(false);
 
   const preview = async () => {
     setOutcome(null);
+    setDrafted(false);
+    setDraftRefusal(null);
     // What an older apply wrote is not what the next one will: no commit of it.
     setWrote(null);
     setTicked(false);
@@ -168,6 +204,33 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     });
   };
 
+  // The host's draft takes the template's place in the preview on screen; apply then sends the
+  // draft's digest, and the host writes the draft it holds, never text from here.
+  const draftClaudeMd = async () => {
+    if (drafting) return;
+    setDrafting(true);
+    setDraftRefusal(null);
+    const result = await store
+      .hostRequest(hostId, "project.harness.draft", { path, part: "claudeMd" })
+      .finally(() => setDrafting(false));
+    if (!result.ok) {
+      setDraftRefusal(refusalText(result.code, result.message, t, result));
+      return;
+    }
+    const { content, digest } = result.data;
+    setShown((now) =>
+      now
+        ? {
+            ...now,
+            files: now.files.map((file) =>
+              file.path === "CLAUDE.md" ? { ...file, content, digest } : file,
+            ),
+          }
+        : now,
+    );
+    setDrafted(true);
+  };
+
   const nothing = shown !== null && addsNothing(shown);
   const tick = shown !== null && needsReformat(shown);
   return (
@@ -224,7 +287,18 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
         >
           {/* A long preview scrolls, so Apply and Cancel stay in sight on a small window. */}
           <div className="max-h-[60vh] overflow-y-auto">
-            <Details preview={shown} trusted={trusted} t={t} />
+            <Details
+              preview={shown}
+              trusted={trusted}
+              t={t}
+              draft={{
+                offered: props.canDraft === true,
+                busy: drafting,
+                drafted,
+                refusal: draftRefusal,
+                run: () => void draftClaudeMd(),
+              }}
+            />
           </div>
           {tick && (
             <label className="flex items-start gap-2 text-sm">
