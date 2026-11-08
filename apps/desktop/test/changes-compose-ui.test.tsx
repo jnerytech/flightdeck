@@ -203,10 +203,20 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Review in the message box (2)" }));
     });
-    expect(handed).toEqual([reviewMessage(comments)]);
-    expect(handed[0]).toContain("`app.ts` linha 2");
-    expect(handed[0]).toContain("`cart.ts` linha 1");
+    expect(handed).toEqual([reviewMessage(comments, "en")]);
+    expect(handed[0]).toContain("`app.ts` line 2");
+    expect(handed[0]).toContain("`cart.ts` line 1");
     expect(calls.some((c) => c.type === "review.send")).toBe(false);
+  });
+
+  test("Send review asks the host for the review in the app's language", async () => {
+    const { calls } = await show({ comments: [draft("c1", "app.ts", 2, "use total")] });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Send review (1)" }));
+    });
+    expect(calls.filter((c) => c.type === "review.send").map((c) => c.payload.language)).toEqual([
+      "en",
+    ]);
   });
 
   test("a panel with nowhere to hand the review over (a card) keeps only the direct send", async () => {
