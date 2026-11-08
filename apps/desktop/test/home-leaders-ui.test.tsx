@@ -69,6 +69,8 @@ function setup(
     costs?: boolean;
     /** While `now` is true every costs request is refused (the host is busy or went away). */
     failing?: { now: boolean };
+    /** The costs requests for these ranges (`from|to`) are always refused. */
+    refuse?: string[];
     refreshMs?: number;
   } = {},
 ) {
@@ -82,7 +84,9 @@ function setup(
     if (command === "usage.summary") return { ok: true, data: usage };
     const { from, to } = payload as { from: string; to: string };
     ranges.push(`${from}|${to}`);
-    if (options.failing?.now) return { ok: false, code: "internal", message: "no" };
+    if (options.failing?.now || options.refuse?.includes(`${from}|${to}`)) {
+      return { ok: false, code: "internal", message: "no" };
+    }
     const summary = emptySummary(from, to);
     if (!options.empty) Object.assign(summary, SHARES[`${from}|${to}`]);
     return { ok: true, data: summary };
@@ -251,6 +255,23 @@ describe("home-leaders-ui: where the tokens of the 7 days went", () => {
         ) !== null,
       none: screen.queryByText("No tokens in the last 7 days.") !== null,
     }).toEqual({ unavailable: true, none: false });
+  });
+
+  test("a host whose week of costs fails did not answer, even though its usage came (#363)", async () => {
+    setup({ refuse: ["2026-10-04|2026-10-10"] });
+    await settleMaybe(() => screen.queryByText("Some hosts did not answer: host1.") !== null);
+    expect(screen.queryByText("Some hosts did not answer: host1.") !== null).toBe(true);
+  });
+
+  test("with the second half of the trend refused there is no leaderboard, not one with a half trend (#363)", async () => {
+    setup({ refuse: ["2026-10-07|2026-10-09"] });
+    await loaded("Where the tokens went");
+    const unavailable = "Could not read where the tokens went. Home tries again in a minute.";
+    await settleMaybe(() => screen.queryByText(unavailable) !== null);
+    expect({
+      unavailable: screen.queryByText(unavailable) !== null,
+      rows: rows("Where the tokens went", [["app", "60%"]]),
+    }).toEqual({ unavailable: true, rows: [] });
   });
 
   test("a refresh whose costs fail keeps the shares read before", async () => {
