@@ -99,6 +99,20 @@ describe("acoes-ui-form: criar, editar e remover uma ação do app", () => {
     expect(dialog()).toBeNull();
   });
 
+  // #1271: in a wide window the fields scroll in a box of their own, so the buttons stay in view.
+  // Below 640 px the dialog is a full-screen sheet that scrolls by itself: there the box drops its
+  // height cap, or the buttons stop mid-sheet. happy-dom has no media queries: the narrow print's
+  // guard measures it.
+  test("below 640 px the fields scroll with the sheet, not in a box of their own", async () => {
+    await online();
+    await click("Nova ação");
+    const box = screen.queryByLabelText("Nome da ação")?.closest(".overflow-y-auto") ?? null;
+    expect([
+      box?.classList.contains("max-sm:max-h-none"),
+      box?.classList.contains("max-sm:overflow-visible"),
+    ]).toEqual([true, true]);
+  });
+
   test("o que o daemon recusa aparece no formulário, que continua aberto", async () => {
     const d = await online();
     await click("Nova ação");
