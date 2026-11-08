@@ -35,6 +35,8 @@ export function TrustPanel(
     path: string;
     /** The host can preview and apply a harness setup (#75): the checklist offers it. */
     canSetUp?: boolean;
+    /** The host can also commit what the setup wrote on a new branch (#75, C1). */
+    canCommit?: boolean;
   }>,
 ) {
   const { store, hostId, path } = props;
@@ -190,7 +192,16 @@ export function TrustPanel(
           load={load}
           t={t}
           setup={
-            props.canSetUp ? { store, hostId, path, trusted: state.trusted, onApplied: read } : null
+            props.canSetUp
+              ? {
+                  store,
+                  hostId,
+                  path,
+                  trusted: state.trusted,
+                  onApplied: read,
+                  canCommit: props.canCommit === true,
+                }
+              : null
           }
         />
       )}

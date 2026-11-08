@@ -376,4 +376,136 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       toggles.every((el) => el.className.split(" ").includes("hit-24")),
     ]).toEqual([true, true]);
   });
+
+  test("after an apply, a host that can commit offers it, asks first, and sends the digests apply gave (#75 C1)", async () => {
+    const digests = { [SETTINGS]: "w-settings", "CLAUDE.md": "w-claude" };
+    const { view, sent } = setup({
+      features: [...FEATURES, "harnessCommit"],
+      answers: [
+        { ok: true, data: { written: [SETTINGS, "CLAUDE.md"], digests } },
+        {
+          ok: true,
+          data: { branch: "flightdeck/claude-setup-x", commit: "abc", files: [SETTINGS] },
+        },
+      ],
+    });
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    const offered = await settleMaybe(() => button("Commit on a new branch") !== null);
+    await click("Commit on a new branch");
+    const asked = await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    const said = dialogText();
+    await click("Commit on a new branch", true);
+    const done = await settleMaybe(
+      () => screen.queryByText(/Committed on flightdeck\/claude-setup-x/) !== null,
+    );
+    expect([
+      offered,
+      asked,
+      said.includes("committed whole"),
+      said.includes(".claude/settings.json"),
+      sent.find(([type]) => type === "project.harness.commit")?.[1],
+      done,
+    ]).toEqual([true, true, true, true, { path: "/work/api", digests, confirm: true }, true]);
+  });
+
+  test("a host without the commit feature offers no commit after an apply", async () => {
+    const { view } = setup();
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    await settleMaybe(() => screen.queryByText(/Set up:/) !== null);
+    expect(button("Commit on a new branch") !== null).toBe(false);
+  });
+
+  test("a refused commit says why, in the app's words", async () => {
+    const { view } = setup({
+      features: [...FEATURES, "harnessCommit"],
+      answers: [
+        { ok: true, data: { written: [SETTINGS], digests: { [SETTINGS]: "w" } } },
+        { ok: false, code: "invalid_state", message: "refused", reason: "harness_commit_identity" },
+      ],
+    });
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    await settleMaybe(() => button("Commit on a new branch") !== null);
+    await click("Commit on a new branch");
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    await click("Commit on a new branch", true);
+    const said = await settleMaybe(() => screen.queryByText(/Git has no name and email/) !== null);
+    expect(said).toBe(true);
+  });
+
+  test("the commit offer follows the apply: none with no digests, none after a stale refusal, a retry after another", async () => {
+    const applied = (digests: Record<string, string>) =>
+      ({ ok: true, data: { written: [SETTINGS], digests } }) as const;
+    const refused = (reason: string) =>
+      ({ ok: false, code: "invalid_state", message: "refused", reason }) as const;
+    const run = async (
+      answers: Answer[],
+      steps: (count: (t: string) => number) => Promise<unknown>,
+    ) => {
+      const { view, count } = setup({ features: [...FEATURES, "harnessCommit"], answers });
+      render(view);
+      await listing();
+      await open();
+      await click("Apply the setup", true);
+      await settleMaybe(() => screen.queryByText(/Set up:/) !== null);
+      const result = await steps(count);
+      cleanup();
+      return result;
+    };
+    const commitOnce = async () => {
+      await click("Commit on a new branch");
+      await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+      await click("Commit on a new branch", true);
+    };
+    const empty = await run([applied({})], async () => button("Commit on a new branch") !== null);
+    const stale = await run(
+      [applied({ [SETTINGS]: "w" }), refused("harness_commit_stale")],
+      async (count) => {
+        await commitOnce();
+        await settleMaybe(() => screen.queryByText(/apply the setup again/) !== null);
+        return [count("project.harness.commit"), button("Commit on a new branch") !== null];
+      },
+    );
+    const retry = await run(
+      [applied({ [SETTINGS]: "w" }), refused("harness_commit_identity")],
+      async (count) => {
+        await commitOnce();
+        await settleMaybe(() => screen.queryByText(/Git has no name and email/) !== null);
+        return [count("project.harness.commit"), button("Commit on a new branch") !== null];
+      },
+    );
+    const cancelled = await run([applied({ [SETTINGS]: "w" })], async (count) => {
+      await click("Commit on a new branch");
+      await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+      await click(/^Cancel/, true);
+      await settleMaybe(() => screen.queryByRole("alertdialog") === null);
+      return count("project.harness.commit");
+    });
+    expect([empty, stale, retry, cancelled]).toEqual([false, [1, false], [1, true], 0]);
+  });
+
+  test("a new preview forgets the last apply: no commit of what an older apply wrote", async () => {
+    const { view } = setup({
+      features: [...FEATURES, "harnessCommit"],
+      answers: [{ ok: true, data: { written: [SETTINGS], digests: { [SETTINGS]: "w" } } }],
+    });
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    const offered = await settleMaybe(() => button("Commit on a new branch") !== null);
+    await click("Set up Claude Code");
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    await click(/^Cancel/, true);
+    await settleMaybe(() => screen.queryByRole("alertdialog") === null);
+    expect([offered, button("Commit on a new branch") !== null]).toEqual([true, false]);
+  });
 });

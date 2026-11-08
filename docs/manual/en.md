@@ -970,6 +970,10 @@ live; the list is the project's, so a session of another project never shows her
   The project's name folds its branches (the arrow keys left and right fold and unfold it); the fold
   is remembered on this computer, and a folded project that holds the picked branch shows a check
   on its name.
+  In the narrow icon rail, which has no room for the tree, the **Projects** icon opens it in a panel
+  beside the rail (the same tree, with **All projects (N)** always at its end): picking a branch or
+  that link closes the panel, Esc or pressing the icon again closes it too, and the focus goes back
+  to the icon. With no project to list, the icon opens the Projects page as before.
   The tree lists at most 5 projects: the ones you **pinned** (the pin on a project's row), then the
   most recently active, and always the project of the picked branch. Below them, **All projects (N)**
   opens the Projects page. With more than 5 projects a **Filter projects** field narrows the list by
@@ -1105,7 +1109,13 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   says what the host found ("Spec found: <first heading>" or "No spec file at <path>") and **Check
   again** looks once more; a move to a column that asks for it looks at the file first. The host
   checks only that the file is there (a plain, non-empty file, not a link, inside the worktree) and
-  reads its first heading: it never reads or sends the rest.
+  reads its first heading: it never reads or sends the rest. When a card starts for the first time
+  and its project asks for a spec, the host writes one from a template, as a draft
+  (`draft: true`, which keeps the spec check unmet until it is completed). A trusted project can
+  supply its own template as `.flightdeck/templates/spec.md` in its checkout (`{{title}}` and
+  `{{criteria}}` are filled in); when a template is there but cannot be used, the built-in one is
+  written and the card says why: the project is not trusted, the file is a link or has a second
+  name, is over 32 KiB, or is empty. The notice never quotes the template.
 - **Pinned documents** (#76). On a host with a project library, the card page has a **Pinned
   documents** panel: choose a document of the library (ADRs, RFCs, PRDs, specs) to pin it, up to
   10, and **Unpin** takes one off. When the card starts, its first prompt lists each pinned document

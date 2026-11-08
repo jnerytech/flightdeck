@@ -1492,6 +1492,7 @@ export const en: Dictionary = {
     harnessPreview: "previewing Claude Code setup changes",
     harnessApply: "applying Claude Code setup changes",
     harnessCommit: "committing the Claude Code setup on a branch",
+    harnessDraft: "drafting a CLAUDE.md with Claude",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
@@ -1539,6 +1540,14 @@ export const en: Dictionary = {
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
     spec_template_failed:
       "The spec template could not be written at {path} (a link or a file is in the way): the session started without it.",
+    spec_template_untrusted:
+      "This project has its own spec template, but the project is not trusted, so the built-in one was used. Trust the project to use it.",
+    spec_template_unsafe:
+      "The project's spec template was not used (it is a link, has a second name or is not a plain file): the built-in one was.",
+    spec_template_too_big:
+      "The project's spec template was not used (it is over 32 KiB): the built-in one was.",
+    spec_template_empty:
+      "The project's spec template was not used (it is empty): the built-in one was.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
     remote_not_github: "The remote {url} is not a GitHub one.",
@@ -1829,6 +1838,9 @@ export const en: Dictionary = {
     harness_commit_git: "Git could not make the setup's commit or branch in this repository.",
     harness_commit_ignored:
       "{file} is ignored by git in this project, so it was not committed: commit it yourself if you mean to.",
+    harness_draft_exists: "The project already has a CLAUDE.md: a draft only creates one.",
+    harness_draft_failed: "The model did not answer with a CLAUDE.md: try again.",
+    harness_draft_secret: "The draft held a secret, so it was dropped: try again.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",
@@ -4379,6 +4391,11 @@ export const en: Dictionary = {
           "Rewrite .claude/settings.json with a new layout. Spacing changes, and a repeated key or a very large number may be rewritten.",
         done: "Set up: {files}",
         again: "Preview again",
+        commit: "Commit on a new branch",
+        commitMessage:
+          "The setup's files go on a new branch Flightdeck names, with your git name and email. They are committed whole: changes you made to them before the setup are in the commit too. Your checkout keeps them as changes on your current branch.",
+        commitFiles: "Files to commit",
+        committed: "Committed on {branch}. Push it when you are ready.",
       },
     },
     trust: {

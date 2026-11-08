@@ -28,7 +28,7 @@ describe("workflow templates (issue #79)", () => {
   });
 
   test("each template has the protocol's shape, with both languages", () => {
-    expect(all.length > 0).toBe(true);
+    expect(all.length).toBeGreaterThan(0);
     for (const template of all) {
       expect(WorkflowTemplate.safeParse(template).success).toBe(true);
       for (const text of [template.title, template.description, template.limits]) {
@@ -38,26 +38,26 @@ describe("workflow templates (issue #79)", () => {
   });
 
   test("each template is committed to .flightdeck/workflows/<id>.yaml", () => {
-    expect(all.length > 0).toBe(true);
+    expect(all.length).toBeGreaterThan(0);
     for (const template of all) {
       expect(template.path).toBe(`.flightdeck/workflows/${template.id}.yaml`);
     }
   });
 
   test("each file passes the workflow validation with no issue", () => {
-    expect(all.length > 0).toBe(true);
+    expect(all.length).toBeGreaterThan(0);
     for (const template of all) {
       expect(parseWorkflow(template.yaml).errors).toEqual([]);
     }
   });
 
   test("each file names the inputs the template lists, and its agents run in a pack persona", () => {
-    expect(all.length > 0).toBe(true);
+    expect(all.length).toBeGreaterThan(0);
     for (const template of all) {
       const parsed = parseWorkflow(template.yaml).workflow;
       expect(parsed?.inputs).toEqual(template.inputs);
       const personas = agentPersonas(stepsOf(template.yaml));
-      expect(personas.length > 0).toBe(true);
+      expect(personas.length).toBeGreaterThan(0);
       expect(personas.every((persona) => persona === template.persona)).toBe(true);
       expect(PACK_IDS.includes(template.persona)).toBe(true);
     }
@@ -87,7 +87,7 @@ describe("workflow templates (issue #79)", () => {
   });
 
   test("each file sets a budget of turns and minutes, and fans no agents out", () => {
-    expect(all.length > 0).toBe(true);
+    expect(all.length).toBeGreaterThan(0);
     for (const template of all) {
       const parsed = parseWorkflow(template.yaml).workflow;
       expect(typeof parsed?.budget.maxTurns).toBe("number");
@@ -140,7 +140,7 @@ describe("workflow templates (issue #79)", () => {
     const fixer = workflowTemplates(null).find((template) => template.id === "alert-fixer");
     expect(fixer?.checkFilled).toBe(false);
     const commands = checkCommands(parseWorkflow(fixer?.yaml ?? "").workflow ?? emptyWorkflow());
-    expect(commands.length).toBe(1);
+    expect(commands).toHaveLength(1);
     expect(commands[0]).toContain("your test command");
     expect(commands[0]).toEndWith("&& false");
   });
