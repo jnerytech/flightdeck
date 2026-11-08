@@ -65,6 +65,10 @@ function setup(
     answers?: Array<Answer | Promise<Answer>>;
     /** The host's setup templates (`harness.templates.list`). */
     templates?: Array<{ id: string; title: string; files: string[]; bytes: number }>;
+    /** What each later listing says (the last one repeats): a template deleted meanwhile. */
+    laterTemplates?: Array<Array<{ id: string; title: string; files: string[]; bytes: number }>>;
+    /** A preview that names a template is refused (it is gone): the banner, and no preview. */
+    previewRefusesTemplate?: boolean;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -83,8 +87,16 @@ function setup(
       return { items: [{ path: "/work/api", trusted: options.trusted ?? false, via: null }] };
     }
     if (type === "project.trust.inspect") return LOAD;
-    if (type === "project.harness.preview") return options.preview ?? PREVIEW;
-    if (type === "harness.templates.list") return { templates: options.templates ?? [] };
+    if (type === "project.harness.preview") {
+      const named = (payload as { template?: string }).template !== undefined;
+      return options.previewRefusesTemplate && named ? null : (options.preview ?? PREVIEW);
+    }
+    if (type === "harness.templates.list") {
+      const asked = sent.filter(([sentType]) => sentType === "harness.templates.list").length;
+      const later = options.laterTemplates;
+      const now = asked > 1 && later ? (later[Math.min(asked - 2, later.length - 1)] ?? []) : null;
+      return { templates: now ?? options.templates ?? [] };
+    }
     return null;
   }) as never;
   store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
@@ -834,5 +846,64 @@ describe("harness-setup-ui: the set-up dialog can start from one of the host's t
       [...(select?.options ?? [])].map((option) => option.textContent),
       dialogText().includes("Deixado de fora do modelo"),
     ]).toEqual([true, ["Arquivos do próprio Flightdeck", "Shop setup"], true]);
+  });
+
+  test("a template that is gone when the preview is asked drops the choice back to Flightdeck's own files", async () => {
+    const { view, sent } = setup({
+      features: TEMPLATE_FEATURES,
+      templates: [SHOP],
+      laterTemplates: [[]],
+      previewRefusesTemplate: true,
+    });
+    render(view);
+    await listing();
+    await settleMaybe(() => startFrom() !== null);
+    await choose("shop");
+    await click("Set up Claude Code");
+    await settleMaybe(() => startFrom() === null, 3000);
+    const choiceGone = startFrom() === null;
+    await click("Set up Claude Code");
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    const previews = sent.filter(([type]) => type === "project.harness.preview").map(([, p]) => p);
+    expect([choiceGone, previews]).toEqual([
+      true,
+      [
+        { path: "/work/api", parts: ALL, template: "shop" },
+        { path: "/work/api", parts: ALL },
+      ],
+    ]);
+  });
+
+  test("a template that is gone when apply is asked is dropped from the choice, and the list is read again", async () => {
+    const gone: Answer = {
+      ok: false,
+      code: "invalid_state",
+      message: "there is no template shop",
+      reason: "harness_template_missing",
+      params: { id: "shop" },
+    };
+    const { view, sent } = setup({
+      features: TEMPLATE_FEATURES,
+      templates: [SHOP],
+      laterTemplates: [[], []],
+      preview: FROM_TEMPLATE,
+      answers: [gone],
+      trusted: true,
+    });
+    render(view);
+    await listing();
+    await settleMaybe(() => startFrom() !== null);
+    await choose("shop");
+    await open();
+    await click("Apply the setup", true);
+    const alerted = await settleMaybe(
+      () => screen.queryByRole("alert")?.textContent?.includes("pick another") === true,
+    );
+    await settleMaybe(() => startFrom() === null, 3000);
+    expect([
+      alerted,
+      startFrom() === null,
+      sent.filter(([type]) => type === "harness.templates.list").length >= 2,
+    ]).toEqual([true, true, true]);
   });
 });
