@@ -55,13 +55,13 @@ export interface RunConfigInfo {
   config: RunConfig | null;
 }
 
-const text = z.string().min(1, "não pode ser vazio");
+const text = z.string().min(1, "cannot be empty");
 const argv = z
   .array(text, { error: "precisa ser uma lista de textos" })
-  .min(1, "precisa de ao menos um item");
+  .min(1, "needs at least one item");
 
 const ProcessSchema = z.strictObject({
-  name: z.string().regex(/^[\w-]+$/, "nome inválido"),
+  name: z.string().regex(/^[\w-]+$/, "invalid name"),
   cmd: argv,
   env: z.record(z.string(), z.string()).default({}),
   ready: z.strictObject({ http: text }).optional(),
@@ -69,24 +69,24 @@ const ProcessSchema = z.strictObject({
 const RunConfigSchema = z.strictObject({
   exclusive: z.boolean().default(false),
   setup: argv.optional(),
-  run: z.array(ProcessSchema).min(1, "precisa de ao menos um item"),
+  run: z.array(ProcessSchema).min(1, "needs at least one item"),
   ports: z
-    .array(z.string().regex(/^[\w-]+$/, "nome de porta inválido"))
-    .max(PORT_BLOCK, `no máximo ${PORT_BLOCK} portas por card`)
+    .array(z.string().regex(/^[\w-]+$/, "invalid port name"))
+    .max(PORT_BLOCK, `at most ${PORT_BLOCK} ports per card`)
     .default([]),
 });
 
 /** Messages for what the schemas above leave to zod's defaults. */
 function message(issue: core.$ZodRawIssue): string {
-  if (issue.code === "unrecognized_keys") return `campo desconhecido: ${issue.keys.join(", ")}`;
-  if (issue.input === undefined) return "obrigatório";
+  if (issue.code === "unrecognized_keys") return `unknown field: ${issue.keys.join(", ")}`;
+  if (issue.input === undefined) return "required";
   return issue.code === "invalid_type" && issue.expected === "object"
-    ? "precisa ser um objeto"
-    : "tipo inválido";
+    ? "must be an object"
+    : "invalid type";
 }
 
 const where = (path: readonly PropertyKey[]) =>
-  path.length === 0 ? "(raiz)" : path.map(String).join(".");
+  path.length === 0 ? "(root)" : path.map(String).join(".");
 
 /** `{{ expression }}` inside commands, variables and the ready URL. */
 const REFERENCE = /\{\{\s*(.*?)\s*\}\}/g;
@@ -101,20 +101,20 @@ function validate(config: RunConfig): string[] {
   const seenPorts = new Set<string>();
   config.ports.forEach((name, i) => {
     const variable = portVariable(name);
-    if (seenPorts.has(variable)) errors.push(`ports.${i}: porta repetida: ${name}`);
+    if (seenPorts.has(variable)) errors.push(`ports.${i}: repeated port: ${name}`);
     seenPorts.add(variable);
   });
   const declared = new Set(config.ports);
   const references = (path: string, value: string) => {
     for (const [raw, expression] of value.matchAll(REFERENCE)) {
       const port = /^port\.([\w-]+)$/.exec(expression ?? "")?.[1];
-      if (port === undefined) errors.push(`${path}: referência desconhecida: ${raw}`);
-      else if (!declared.has(port)) errors.push(`${path}: porta não declarada: ${port}`);
+      if (port === undefined) errors.push(`${path}: unknown reference: ${raw}`);
+      else if (!declared.has(port)) errors.push(`${path}: port not declared: ${port}`);
     }
   };
   const names = new Set<string>();
   config.run.forEach((proc, i) => {
-    if (names.has(proc.name)) errors.push(`run.${i}: nome repetido: ${proc.name}`);
+    if (names.has(proc.name)) errors.push(`run.${i}: repeated name: ${proc.name}`);
     names.add(proc.name);
     for (const [j, part] of proc.cmd.entries()) references(`run.${i}.cmd.${j}`, part);
     for (const [key, value] of Object.entries(proc.env)) references(`run.${i}.env.${key}`, value);
@@ -135,12 +135,11 @@ function urlProblem(url: string): string | null {
     // A port placeholder stands for a number here: the real one only exists per card.
     parsed = new URL(url.replace(REFERENCE, "1"));
   } catch {
-    return "URL inválida";
+    return "invalid URL";
   }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
-    return "precisa ser http ou https";
-  if (parsed.username || parsed.password) return "sem usuário nem senha no endereço";
-  return LOOPBACK.has(parsed.hostname) ? null : "só 127.0.0.1 e localhost";
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "must be http or https";
+  if (parsed.username || parsed.password) return "no user or password in the address";
+  return LOOPBACK.has(parsed.hostname) ? null : "only 127.0.0.1 and localhost";
 }
 
 const LOOPBACK: ReadonlySet<string> = new Set(["127.0.0.1", "localhost"]);
@@ -151,7 +150,7 @@ export function parseRunConfig(source: string): ParsedRunConfig {
   try {
     raw = Bun.YAML.parse(source);
   } catch (error) {
-    return { config: null, errors: [`YAML inválido: ${(error as Error).message}`] };
+    return { config: null, errors: [`invalid YAML: ${(error as Error).message}`] };
   }
   const parsed = RunConfigSchema.safeParse(raw, { error: message });
   if (!parsed.success) {

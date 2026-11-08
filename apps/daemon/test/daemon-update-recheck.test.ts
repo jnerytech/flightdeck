@@ -74,7 +74,7 @@ describe("atualizacao-rechecar: the daemon checks for an update when asked", () 
     release.state.status = 503;
     const failed = await updates.checkNow();
     expect(failed).toMatchObject({ available: false, version: null });
-    expect(failed.error).toBe("o servidor respondeu HTTP 503");
+    expect(failed.error).toBe("the server answered HTTP 503");
     // Two checks ran, so one timer waits: the next check comes one interval after the last.
     expect(time.pending.filter((timer) => !timer.cleared)).toHaveLength(1);
     release.state.status = 200;
