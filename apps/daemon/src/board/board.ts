@@ -7,6 +7,7 @@ import {
   AutoApproveSettings,
   BoardColumn as BoardColumnSchema,
   type BoardResult,
+  type CardTemplates,
   ColumnContract,
   type ContractOverrides,
   contractOf,
@@ -309,6 +310,8 @@ interface CardRow {
   validation_note: string | null;
   spec_path: string | null;
   pinned_docs: string | null;
+  start_workflow: string | null;
+  start_persona: string | null;
   spec_checked_path: string | null;
   spec_found: number;
   spec_heading: string | null;
@@ -741,6 +744,8 @@ export class Board {
       validationNote: row.validation_note,
       specPath: row.spec_path,
       pinnedDocs: pinnedDocsOf(row.pinned_docs),
+      startWorkflow: row.start_workflow,
+      startPersona: row.start_persona,
       specState:
         row.spec_checked_path === null
           ? null
@@ -763,6 +768,21 @@ export class Board {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+  }
+
+  /** Issue #1201: the project's card templates; stub. */
+  async cardTemplates(projectId: string): Promise<CardTemplates> {
+    this.getProject(projectId);
+    return { templates: [], dropped: 0, ignored: null };
+  }
+
+  /** Issue #1201: a card made from one of the project's templates; stub. */
+  async createCardFrom(
+    projectId: string,
+    input: Parameters<Board["createCard"]>[1] & { templateId?: string },
+  ): Promise<Card> {
+    const { templateId: _templateId, ...rest } = input;
+    return this.createCard(projectId, rest);
   }
 
   /** A new card goes to the end of the column it is born in: the Backlog unless it says another. */

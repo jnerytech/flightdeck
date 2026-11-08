@@ -1374,8 +1374,10 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.create": {
         const { projectId, ...input } = command.payload;
-        return ok(command.type, board().createCard(projectId, input));
+        return ok(command.type, await board().createCardFrom(projectId, input));
       }
+      case "card.templates":
+        return ok(command.type, await board().cardTemplates(command.payload.projectId));
       case "card.update": {
         const { cardId, ...patch } = command.payload;
         const updated = board().updateCard(cardId, patch);
