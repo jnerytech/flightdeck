@@ -509,9 +509,16 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
     render(view);
     await listing();
     await open();
+    // The step and its note are in sight, not inside a closed disclosure.
+    const inClosed = (node: Element | null | undefined) => {
+      const box = node?.closest("details");
+      return box !== null && box !== undefined && !box.open;
+    };
+    const visibleButton = !inClosed(button("Draft with Claude"));
     const offered = await click("Draft with Claude", true);
     const shown = await settleMaybe(() => dialogText().includes("# Drafted shop"));
-    const said = dialogText().includes("Read it before you apply");
+    const note = screen.queryByText(/Read it before you apply/);
+    const said = note !== null && !inClosed(note);
     // Without a draft, the queued answers are not the apply's.
     if (offered) await click("Apply the setup", true);
     await settleMaybe(() => sent.some(([type]) => type === "project.harness.apply"));
@@ -519,6 +526,7 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       | { digests?: Record<string, string> }
       | undefined;
     expect([
+      visibleButton,
       offered,
       sent.find(([type]) => type === "project.harness.draft")?.[1],
       shown,
@@ -526,6 +534,7 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       applied?.digests?.["CLAUDE.md"],
       applied?.digests?.[SETTINGS],
     ]).toEqual([
+      true,
       true,
       { path: "/work/api", part: "claudeMd" },
       true,
