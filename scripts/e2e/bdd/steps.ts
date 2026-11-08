@@ -309,6 +309,84 @@ step(Then, "the card says it is already done", async (c) => {
     .waitFor({ timeout: WAIT });
 });
 
+// The board by keyboard and at a phone's width (#1198).
+/** The title of the board card that has the focus, or "" when none has it. */
+const focusedCard = (c: Context) =>
+  c.page.evaluate(
+    () =>
+      document.activeElement
+        ?.closest("[data-slot='board-columns'] li")
+        ?.getAttribute("data-card") ?? "",
+  );
+/** The column of the board card that has the focus. */
+const focusedColumn = (c: Context) =>
+  c.page.evaluate(
+    () => document.activeElement?.closest("section[data-column]")?.getAttribute("aria-label") ?? "",
+  );
+
+step(When, "I press Tab from the board's filter until a card has the focus", async (c) => {
+  await c.page.getByLabel(c.t("kanban.filter"), { exact: true }).focus();
+  // A few stops sit between the filter and the board (the toolbar, the return on cost card).
+  for (let i = 0; i < 15 && (await focusedCard(c)) === ""; i++) await c.page.keyboard.press("Tab");
+  await waitFor(async () => (await focusedCard(c)) !== "", "a board card with the focus");
+});
+
+step(Then, "the card that has the focus is in the column {string}", async (c, column = "") =>
+  waitFor(async () => (await focusedColumn(c)) === columnName(c, column), `the focus in ${column}`),
+);
+
+step(
+  When,
+  "I press the right arrow until a card in the column {string} has the focus",
+  async (c, column = "") => {
+    for (let i = 0; i < 5 && (await focusedColumn(c)) !== columnName(c, column); i++) {
+      await c.page.keyboard.press("ArrowRight");
+    }
+    await waitFor(
+      async () => (await focusedColumn(c)) === columnName(c, column),
+      `the focus in ${column}`,
+    );
+    const title = await c.page.evaluate(() => document.activeElement?.textContent ?? "");
+    mine(c).card = title;
+  },
+);
+
+step(When, "I press Enter on that card", async (c) => c.page.keyboard.press("Enter"));
+
+step(Then, "that card opens", async (c) =>
+  c.page
+    .getByRole("heading", { name: mine(c).card ?? "", exact: true })
+    .first()
+    .waitFor({ timeout: WAIT }),
+);
+
+step(Given, "I open the board of the demo project at a phone's width", async (c) => {
+  await c.page.setViewportSize({ width: 390, height: 844 });
+  await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+});
+
+/** The board's columns that show, by name. */
+const shownColumns = (c: Context) =>
+  c.page
+    .locator("[data-slot='board-columns'] > section[data-column]:not([hidden])")
+    .evaluateAll((sections) => sections.map((s) => s.getAttribute("aria-label") ?? ""));
+
+step(Then, "the board shows only the column {string}", async (c, column = "") => {
+  const want = columnName(c, column);
+  await waitFor(
+    async () => JSON.stringify(await shownColumns(c)) === JSON.stringify([want]),
+    `only ${column} on the board`,
+  );
+});
+
+step(When, "I pick the column {string} from the board's column buttons", async (c, column = "") => {
+  const name = columnName(c, column);
+  await c.page
+    .getByRole("group", { name: c.t("board.columns"), exact: true })
+    .getByRole("button", { name: new RegExp(`^${name}, `) })
+    .click();
+});
+
 // Set up Claude Code: a project the scenario makes, set up, then committed on a branch.
 step(Given, "a git project of my own is added to host {string}", async (c) => {
   const name = unique(c, "setup");
