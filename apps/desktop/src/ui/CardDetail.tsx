@@ -8,6 +8,7 @@ import { CardPins } from "@/components/card/card-pins";
 import { CardRunForm } from "@/components/card/card-run-form";
 import { CardHeaderActions, type CardTab, CardWork } from "@/components/card/card-work";
 import { PostMortem } from "@/components/card/post-mortem";
+import { RunAgain } from "@/components/card/run-again";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
@@ -39,6 +40,8 @@ export const CardDetail = memo(function CardDetail(props: {
   onBack(): void;
   /** Opens another card of the project (the post-mortem that was just started). */
   onOpenCard(cardId: string): void;
+  /** Opens the project's Workflows page (issue #1219: a failed run whose file is the problem). */
+  onOpenWorkflows(project: { id: string; name: string }): void;
 }) {
   const t = useT();
   const { store, hostId, cardId } = props;
@@ -74,8 +77,10 @@ export const CardDetail = memo(function CardDetail(props: {
   const run = runId ? state.runs[sessionKey(hostId, runId)] : undefined;
   /** Step opened from the timeline: its conversation or its check output. */
   const [opened, setOpened] = useState<{ stepId: string; attempt: number } | null>(null);
-  /** Workflows the card can start with: trusted and valid on the project's base branch. */
-  const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
+  /** Every workflow of the project's base branch, as the host reads it. */
+  const [allWorkflows, setAllWorkflows] = useState<WorkflowInfo[]>([]);
+  /** The ones the card can start with: trusted and valid. */
+  const workflows = allWorkflows.filter((w) => w.trusted && w.errors.length === 0);
   /** The host has answered `workflow.list`: until then an empty list means nothing. */
   const [workflowsKnown, setWorkflowsKnown] = useState(false);
   const projectId = card?.projectId ?? "";
@@ -105,7 +110,7 @@ export const CardDetail = memo(function CardDetail(props: {
     // The project is known once the card is (a direct route loads it).
     if (!projectId) return;
     void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
-      setWorkflows((result?.workflows ?? []).filter((w) => w.trusted && w.errors.length === 0));
+      setAllWorkflows(result?.workflows ?? []);
       setWorkflowsKnown(result !== null);
     });
   }, [store, hostId, projectId]);
@@ -282,6 +287,23 @@ export const CardDetail = memo(function CardDetail(props: {
               formatTime={(iso) => store.formatTime(iso)}
               costUsd={runCost}
               onOpenStep={openStep}
+              action={
+                <RunAgain
+                  store={store}
+                  hostId={hostId}
+                  cardId={cardId}
+                  run={run}
+                  workflow={allWorkflows.find((w) => w.name === run.workflowName)}
+                  known={workflowsKnown}
+                  onOpenWorkflows={() =>
+                    props.onOpenWorkflows({
+                      id: card.projectId,
+                      name:
+                        state.projects[hostId]?.find((p) => p.id === card.projectId)?.name ?? "",
+                    })
+                  }
+                />
+              }
             />
           )}
           {withSync && card.externalUrl && (
