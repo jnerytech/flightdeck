@@ -347,6 +347,21 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   Each is **Found** or **Missing**, and the card says how many of the six are there. It only reads:
   nothing in the project changes, and environment variables are never shown in it. When some of
   the project's files cannot be read, it says so: a part shown as missing may be there.
+- **Project knowledge** lists the project's PRDs, RFCs, ADRs and specs (the Markdown files in
+  `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` and `docs/specs`), each with its title, path,
+  type and the status it says it has in its front matter (`status: valid`, `transitional` or
+  `obsolete`). A document without a status is **Not classified**. The filters count the documents of
+  each status, and a note appears when a valid document points at an obsolete one. It only reads:
+  nothing in the project changes. Only the first 500 documents are shown.
+  A session that Flightdeck starts in a **trusted** project (`flightdeckd claude`, "Claude here",
+  background sessions) is also given a short index of those documents in its system prompt: the
+  path and title of each **valid** document, and of each **transitional** one marked as such.
+  Documents without a status and obsolete ones are never given. The index is capped at 4 KiB, and a
+  line says how many documents were left out. The titles are marked as the repository's data, not
+  instructions. A worktree is read from the trusted main folder, not from the branch. A system
+  prompt you pass yourself (`--append-system-prompt`) is left alone, with no index beside it. To
+  turn it off for a project, list its folder in the host's config file:
+  `"knowledge": { "feedOff": ["/path/to/project"] }` (everything inside the folder is off too).
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
@@ -858,12 +873,19 @@ fake OpenCode.
 
 ## Projects
 
-The **Projects** item of the sidebar (between Needs you and Board) lists every project of every
-host as a card: its name, host, base branch, the live sessions, the cards in progress, the ones
+The **Projects** item of the sidebar (between Needs you and Board) lists the projects of the host
+chosen in the top bar's switcher (every host's with **Tabs of all hosts**) as cards, so opening
+one never lands on another host: its name, host, base branch, the live sessions, the cards in progress, the ones
 that need you, the last activity and what it cost over the last seven days. The cost is a dash
 when the host does not report costs. Type in the search box to narrow the list by name, host,
 branch or folder, and use **Sort by** to order it by last activity, name, cost this week or what
 needs attention first.
+
+**New project**, at the top right of the page, adds a project: it opens the add form (the folders of
+recent sessions, a typed or browsed folder, **Add**) and the project's page opens once it is added.
+With one host online, or with a host filter on, the form is for that host; with several hosts
+online it first asks which one ("On alfa", "On beta"). With no host online the button is off and
+says so.
 
 Click a card to open the project's page. It links the project's **Board**, **Sessions**,
 **Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
@@ -919,7 +941,8 @@ live; the list is the project's, so a session of another project never shows her
   badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
   folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
-- Under **Projects**, each project of an online host lists its **branches**: the main checkout
+- Under **Projects**, each project of the switcher's host (every online host's with **Tabs of all
+  hosts**) lists its **branches**: the main checkout
   (badge **primary**, the base branch) and one line per card that has a worktree, each with a state
   dot, the branch and the base below it. Picking one narrows the board and the Sessions list to
   that checkout (a chip with the branch clears it); picking it again clears it too. Picked from the Sessions list, it narrows the list in place and does not open the board; from anywhere else it opens the project's board. A pick whose branch, project or host is gone does nothing and shows no chip. The tree comes
@@ -2517,6 +2540,12 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - take a member out: its session is stopped, the coordinator is told, and its card stays on the
     board;
   - close the team, with a confirmation.
+- **Deleting a closed team:** a closed team keeps its card until you delete it. Its card's **⋯**
+  menu has **Delete team**: off on an open team (it says "Close the team first"), and on a closed
+  one it asks first, naming the team. What goes is the team record and its card on the Teams page.
+  What stays is every member's session, with its transcript and history, and their board cards:
+  they are only taken out of the team. The host refuses while a member is at work (running, or
+  waiting for an answer); try again once they rest. Every connected app drops the card.
 - **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
   itself. You get a notification, and the row says "paused by the quota". When the window
   restarts, the team resumes and tells you.

@@ -58,9 +58,16 @@ export function summarizeHookLog(text: string): string {
   const byHook = new Map<string, HookLogEntry[]>();
   const byRule = new Map<string, number>();
   const waivedByRule = new Map<string, number>();
+  const passesByReason = new Map<string, number>();
   for (const e of entries) {
     // The slot is no hook: its entries take no time to decide, so they stay out of the timings (#833).
     if (e.hook !== SLOT) byHook.set(e.hook, [...(byHook.get(e.hook) ?? []), e]);
+    // #741: a push push-wait let through is no block: counted by its reason.
+    if (e.rule === "push-wait" && e.decision === "allow") {
+      const reason = printable(e.detail ?? "?");
+      passesByReason.set(reason, (passesByReason.get(reason) ?? 0) + 1);
+      continue;
+    }
     // A long hold is no block and no waiver: it has its own section (#865 review: only it).
     const counts = e.decision === "waived" ? waivedByRule : byRule;
     if (e.rule && e.rule !== "long-hold") counts.set(e.rule, (counts.get(e.rule) ?? 0) + 1);
@@ -77,6 +84,7 @@ export function summarizeHookLog(text: string): string {
   for (const [title, counts] of [
     ["blocks by rule:", byRule],
     ["waivers by rule:", waivedByRule],
+    ["pushes push-wait let through, by reason:", passesByReason],
   ] as const) {
     if (counts.size === 0) continue;
     const ruleWidth = Math.max(...[...counts.keys()].map((r) => r.length)) + 2;

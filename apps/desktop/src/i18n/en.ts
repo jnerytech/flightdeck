@@ -398,6 +398,8 @@ export const en: Dictionary = {
     noHost: "No online host reports this.",
   },
   toast: {
+    switchedHost: "Switched to {host}",
+    backTo: "Back to {host}",
     copied: "Copied",
     details: "Details",
     close: "Close",
@@ -1478,6 +1480,7 @@ export const en: Dictionary = {
     bg: "background sessions",
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
+    knowledge: "reading the project's documents",
     harnessPreview: "previewing Claude Code setup changes",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
@@ -1517,7 +1520,7 @@ export const en: Dictionary = {
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
     card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
     spec_path_invalid:
-      "The spec path must be a relative path to a Markdown file inside the worktree, like docs/specs/name.md.",
+      "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
@@ -1580,6 +1583,9 @@ export const en: Dictionary = {
     team_close_confirm: "Closing the team {name} needs your confirmation.",
     team_coordinator_stays: "The coordinator does not leave the team: close the team instead.",
     team_closed: "The team {name} is closed.",
+    team_delete_open: "The team {name} is still open: close it first.",
+    team_delete_live:
+      "The team {name} still has {members} member(s) at work: wait until they rest, then delete it.",
     agentcfg_file_missing: "{path} does not exist in this project.",
     agentcfg_path_invalid: "{path} is not a valid path for this kind of file ({kind}).",
     agentcfg_confirm: "Writing the file needs your confirmation.",
@@ -3245,6 +3251,8 @@ export const en: Dictionary = {
     title: "Teams",
     subtitle: "A coordinator session and its workers, each in a card",
     host: "Host",
+    otherHost: "{wanted} has no teams. Showing {shown}.",
+    otherHostOffline: "{wanted} is offline. Showing {shown}.",
     noHost: "No connected host with teams",
     noHostLink: "Add a host",
     openSession: "Open session",
@@ -3310,6 +3318,11 @@ export const en: Dictionary = {
     close: "Close {name}",
     closeButton: "Close",
     closeMessage: "Close the team {name}? Its sessions are told to stop.",
+    menu: "Actions for {name}",
+    delete: "Delete team",
+    deleteOpen: "Close the team first",
+    deleteMessage:
+      "Delete the team {name}? The team record and its card on this page go. The sessions of its members stay, with their transcripts and history, and so do their board cards: they are only taken out of the team.",
   },
   clients: {
     title: "Clients",
@@ -3716,7 +3729,7 @@ export const en: Dictionary = {
     saveValidation: "Save validation note",
     specFile: "Spec file",
     saveSpec: "Save spec file",
-    specPathInvalid: "Use a path to a Markdown file inside the worktree, like docs/specs/name.md.",
+    specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
     specFound: "Spec found: {heading}",
     specFoundPlain: "Spec found",
     specMissing: "No spec file at {path}",
@@ -4133,6 +4146,32 @@ export const en: Dictionary = {
     notHere: "This project is not on this host.",
     baseInvalid:
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
+    knowledge: {
+      title: "Project knowledge",
+      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter. Read only: nothing here changes the project.",
+      filter: "{status} ({n})",
+      all: "All",
+      status: {
+        valid: "Valid",
+        transitional: "Transitional",
+        obsolete: "Obsolete",
+        unclassified: "Not classified",
+      },
+      type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
+      changed: "Changed {date}",
+      referencesObsolete: "Points at an obsolete document: {path}",
+      problem: {
+        status_unknown:
+          "The status in the front matter is not valid, so agents are not given this document.",
+        type_unknown: "The type in the front matter is not prd, rfc, adr or spec.",
+        frontmatter_invalid: "The front matter could not be read.",
+        supersedes_invalid: "supersedes is not a path to a document.",
+        supersedes_missing: "It replaces a document that is not in the library.",
+      },
+      empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
+      truncated: "The list is cut: only the first documents are shown.",
+      failed: "The documents could not be read from this host.",
+    },
     harness: {
       title: "Claude Code setup",
       hint: "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Read-only: nothing here changes the project.",
@@ -4218,10 +4257,15 @@ export const en: Dictionary = {
   projectsOverview: {
     title: "Projects",
     subtitle: "Every project of every host, with what is running in it.",
+    subtitleHost: "The projects of {host}, with what is running in them.",
+    hostOffline: "{host} is offline. Its projects show again when it reconnects.",
     search: "Search projects",
     searchPlaceholder: "Name, host, branch or folder",
     sortBy: "Sort by",
     clearHost: "Clear host filter: {host}",
+    newProject: "New project",
+    newOn: "On {host}",
+    noHostOnline: "No host is online to add a project to.",
     sorts: {
       activity: "Last activity",
       name: "Name",
@@ -4625,6 +4669,7 @@ export const en: Dictionary = {
     endTitle: "End process",
     endMessage: "End process {pid} ({name})? The host's daemon started it and no session owns it.",
     endFailed: "That process could not be ended.",
+    unreadable: "This host's resources could not be read. They show when the host answers.",
   },
   worktrees: {
     title: "Worktrees",

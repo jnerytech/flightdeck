@@ -386,6 +386,11 @@ export const SessionEvent = z.discriminatedUnion("type", [
     status: SessionStatus,
     reason: z.string().optional(),
   }),
+  /** #935: the mode the session runs in now, after a change the run took (the start mode stays the limit). */
+  z.object({
+    type: z.literal("session.mode"),
+    permissionMode: PermissionMode,
+  }),
   z.object({
     type: z.literal("session.init"),
     claudeSessionId: z.string(),
@@ -968,6 +973,45 @@ export const ReviewTarget = z
     /^(session|card|terminal|project):.+$/,
     "target session:<id>, card:<id>, terminal:<id> or project:<id>",
   );
+
+/** Issue #76: a project's library of PRDs, RFCs, ADRs and specs, each with a lifecycle status. */
+export const KnowledgeStatus = z.enum(["valid", "transitional", "obsolete"]);
+export type KnowledgeStatus = z.infer<typeof KnowledgeStatus>;
+export const KnowledgeType = z.enum(["prd", "rfc", "adr", "spec"]);
+export type KnowledgeType = z.infer<typeof KnowledgeType>;
+
+export interface KnowledgeEntry {
+  /** Relative to the project, with `/`. */
+  path: string;
+  title: string;
+  type: KnowledgeType | null;
+  /** `unclassified`: no status in its front matter, so agents are not given it. */
+  status: KnowledgeStatus | "unclassified";
+  /** The document this one replaces, as a project path. */
+  supersedes: string | null;
+  bytes: number;
+  /** ISO time of the last change. */
+  changedAt: string;
+  /** What is wrong with the document itself, as codes (`status_unknown`, `supersedes_missing`, ...). */
+  problems: string[];
+  /** A valid document that points at an obsolete one: `references_obsolete:<path>`. */
+  warnings: string[];
+}
+
+export interface KnowledgeListResult {
+  entries: KnowledgeEntry[];
+  /** More documents than the list holds. */
+  truncated: boolean;
+}
+
+/** What a session is given of the library: Markdown for its system prompt, empty when it is not given any. */
+export interface KnowledgeIndexResult {
+  text: string;
+  /** Documents named in the text. */
+  fed: number;
+  /** Documents that qualify were left out to stay under the cap. */
+  truncated: boolean;
+}
 
 /** Issue #797: a search over a repository, by path or by content; a fixed string, never a pattern. */
 export const FileSearchPayload = z
@@ -2455,6 +2499,8 @@ export const ExternalSession = z.object({
   persona: SessionPersona.optional(),
   meta: SessionMeta.optional(),
   summary: SessionLine.optional(),
+  /** #935: the mode its hooks last reported (Shift+Tab in the terminal included); absent until one does. */
+  permissionMode: PermissionMode.optional(),
 });
 export type ExternalSession = z.infer<typeof ExternalSession>;
 
@@ -3524,6 +3570,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("teams.pause", z.object({ team: z.string().min(1) })),
   cmd("teams.resume", z.object({ team: z.string().min(1) })),
   cmd("teams.close", z.object({ team: z.string().min(1), confirm: z.boolean().optional() })),
+  /** Issue #934: deletes a closed team whose members are not at work; its sessions stay. */
+  cmd("teams.delete", z.object({ team: z.string().min(1) })),
   /** A message from Flightdeck to every member ("mandar a todos"). */
   cmd("teams.message", z.object({ team: z.string().min(1), text: z.string().min(1) })),
   /** With `as`, only a member of the team may ask (the MCP tool does). */
@@ -4405,6 +4453,10 @@ export const Command = z.discriminatedUnion("type", [
   cmd("file.list", z.object({ target: ReviewTarget, dir: z.string() })),
   /** Issue #797: a search over the target's repository, by name or by content. */
   cmd("file.search", FileSearchPayload),
+  /** Issue #76: the library of documents of the project at `path`, read only. */
+  cmd("knowledge.list", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** Issue #76: the index of the project's current documents that a session is given in its system prompt. */
+  cmd("knowledge.index", z.object({ path: z.string().min(1).max(4096) }).strict()),
   /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
   cmd(
     "file.write",
@@ -5088,6 +5140,7 @@ export interface CommandResults {
   "teams.pause": TeamInfo;
   "teams.resume": TeamInfo;
   "teams.close": TeamInfo;
+  "teams.delete": TeamInfo;
   "teams.message": { delivered: number; refused: number };
   "teams.status": TeamStatus;
   "teams.watch": undefined;
@@ -5287,6 +5340,8 @@ export interface CommandResults {
   "file.read": { path: string; text: string; hash: string; size: number };
   "file.list": FileListing;
   "file.search": FileSearchResult;
+  "knowledge.list": KnowledgeListResult;
+  "knowledge.index": KnowledgeIndexResult;
   "file.write": { path: string; hash: string; size: number };
 }
 

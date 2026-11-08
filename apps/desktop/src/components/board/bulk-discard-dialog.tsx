@@ -22,12 +22,14 @@ function goesWith(card: Card, t: T): string | null {
 }
 
 /** One confirmation for discarding many cards: each is listed, with what goes with it. */
-export function BulkDiscardDialog(props: {
-  cards: Card[];
-  t: T;
-  onCancel(): void;
-  onConfirm(): void;
-}) {
+export function BulkDiscardDialog(
+  props: Readonly<{
+    cards: Card[];
+    t: T;
+    onCancel(): void;
+    onConfirm(): void;
+  }>,
+) {
   const { t, cards } = props;
   const n = cards.length;
   const started = cards.filter(hasStartedWork).length;

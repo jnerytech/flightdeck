@@ -132,6 +132,16 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     expect(menu("alfa")).not.toBeNull();
   });
 
+  test("a route for every host (from Home) adds every host up for that visit, over a kept host scope", async () => {
+    const { store } = await setup();
+    await act(async () => store.dataScope.set({ kind: "host", hostId: "ha" }));
+    await act(async () => store.router.push({ name: "costs", host: "__all__" }));
+    await settle(() => total() === "US$ 7.00");
+    expect(total()).toBe("US$ 7.00");
+    expect(menu(ptBR.scope.all)).not.toBeNull();
+    expect(store.dataScope.value).toEqual({ kind: "host", hostId: "ha" });
+  });
+
   test("a scoped host that reports no costs gets a notice and no numbers, and Show all hosts brings them back", async () => {
     const { store } = await setup();
     await act(async () => store.dataScope.set({ kind: "host", hostId: "hc" }));

@@ -268,6 +268,7 @@ const validCommands: Record<CommandType, unknown> = {
   "teams.pause": { team: "t1" },
   "teams.resume": { team: "t1" },
   "teams.close": { team: "t1", confirm: true },
+  "teams.delete": { team: "t1" },
   "teams.message": { team: "t1", text: "parem" },
   "teams.status": { team: "t1" },
   "teams.watch": {},
@@ -569,6 +570,8 @@ const validCommands: Record<CommandType, unknown> = {
   "file.read": { target: "session:s", path: "a.ts" },
   "file.list": { target: "session:s", dir: "" },
   "file.search": { target: "project:p", mode: "name", query: "a" },
+  "knowledge.list": { path: "/p" },
+  "knowledge.index": { path: "/p" },
   "file.write": { target: "session:s", path: "a.ts", text: "x", expectedHash: "h" },
 };
 

@@ -125,6 +125,8 @@ export function HostResources(
   const t = useT();
   const lang = store.i18n.lang;
   const [snap, setSnap] = useState<ResourcesSnapshot | null>(null);
+  /** The last read was refused: said in the panel while there are no numbers to show. */
+  const [refused, setRefused] = useState(false);
   const [ending, setEnding] = useState<ResourcesSnapshot["orphans"][number] | null>(null);
   const offered = hasFeature(host.hostInfo?.features, "resources", false);
   const reading = offered && host.status === "online" && props.active !== false;
@@ -134,8 +136,10 @@ export function HostResources(
     if (inFlight.current) return;
     inFlight.current = true;
     try {
-      const next = await store.hostCommand(host.id, "resources.get", {});
-      if (next) setSnap(next);
+      // A timed read: a refusal keeps the last numbers quietly, instead of an error every tick (#937).
+      const next = await store.hostRequest(host.id, "resources.get", {});
+      if (next.ok) setSnap(next.data);
+      setRefused(!next.ok);
     } finally {
       inFlight.current = false;
     }
@@ -151,6 +155,9 @@ export function HostResources(
   const note = snap ? emptyNote(snap.measured, rows.length) : null;
   return (
     <Panel title={t("resources.title")} label={t("resources.title")} slot="host-resources">
+      {!snap && refused && (
+        <p className="text-muted-foreground text-sm">{t("resources.unreadable")}</p>
+      )}
       {snap && (
         <>
           <Meter

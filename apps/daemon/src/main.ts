@@ -66,6 +66,8 @@ import { previewHarness } from "./harness/preview.ts";
 import { detectStack } from "./harness/stack.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
+import { listKnowledge } from "./knowledge/list.ts";
+import { knowledgeFeedFor } from "./knowledge/serve.ts";
 import { linesOf } from "./lines.ts";
 import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
@@ -1433,6 +1435,14 @@ export async function startDaemon(
       },
     },
     harnessStack: detectStack,
+    knowledge: listKnowledge,
+    knowledgeFeed: knowledgeFeedFor({
+      off: () => config.knowledge.feedOff,
+      trust: async (path) => {
+        await projectTrust.prepare(path);
+        return projectTrust.sessionTrust(path);
+      },
+    }),
     harnessPreview: previewHarness,
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
@@ -1633,7 +1643,8 @@ export async function startDaemon(
     resources: await createResources({
       dataDir: config.dataDir,
       sessions: manager.list.bind(manager),
-      terminals: terminals.list.bind(terminals),
+      // With the terminal off there are none to list, and the read must not fail on it (#937).
+      terminals: () => (terminals.enabled ? terminals.list() : []),
       pidOf: terminals.pidOf.bind(terminals),
       ...(options.resourcesProc ? { proc: options.resourcesProc } : {}),
     }),

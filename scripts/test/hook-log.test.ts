@@ -154,6 +154,37 @@ describe("hook-log", () => {
     ]);
   });
 
+  test("#741: the pushes push-wait let through are no blocks: they are counted by reason", () => {
+    const pass = (detail: string, minutes?: number): HookLogEntry => ({
+      ...entry("guard", 40),
+      rule: "push-wait",
+      decision: "allow",
+      detail,
+      ...(minutes === undefined ? {} : { minutes }),
+    });
+    const text = [
+      pass("failed check"),
+      pass("old run", 25),
+      pass("failed check"),
+      pass("no run"),
+      entry("guard", 40, "push-wait"),
+    ]
+      .map((e) => JSON.stringify(e))
+      .join("\n");
+    expect(summarizeHookLog(text).split("\n")).toEqual([
+      "hook   calls  blocks  p50 ms  p95 ms",
+      "guard      5       1      40      40",
+      "",
+      "blocks by rule:",
+      "  push-wait  1",
+      "",
+      "pushes push-wait let through, by reason:",
+      "  failed check  2",
+      "  no run        1",
+      "  old run       1",
+    ]);
+  });
+
   test("#821 review: a line with a time or a reason that is not text is skipped, not a crash", () => {
     const bad = (over: Record<string, unknown>) =>
       JSON.stringify({

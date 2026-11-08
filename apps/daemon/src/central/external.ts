@@ -5,6 +5,7 @@ import {
   type ExternalSession,
   type ExternalStatus,
   inSequence,
+  PermissionMode,
   SessionPersona,
 } from "@flightdeck/protocol";
 
@@ -41,6 +42,7 @@ interface Row {
   ended_at: string | null;
   persona_open: string | null;
   persona_applied: string | null;
+  permission_mode: PermissionMode | null;
 }
 
 /** State after each hook event (docs/SPEC-fase-5.md); Notification depends on its type. */
@@ -79,6 +81,7 @@ const toSession = (row: Row): ExternalSession => ({
   ...(row.persona_applied || row.persona_open
     ? { persona: JSON.parse((row.persona_applied ?? row.persona_open) as string) as SessionPersona }
     : {}),
+  ...(row.permission_mode ? { permissionMode: row.permission_mode } : {}),
 });
 
 /** Last modification of a transcript, or 0 when it is unreadable. */
@@ -147,6 +150,13 @@ export class ExternalSessions {
         at,
         id,
       );
+    // Every hook carries the mode the session runs in, Shift+Tab in the terminal included (#935).
+    const mode = PermissionMode.safeParse(payload.permission_mode);
+    if (mode.success) {
+      this.db
+        .query("UPDATE external_sessions SET permission_mode = ? WHERE claude_session_id = ?")
+        .run(mode.data, id);
+    }
     if (event === "SessionStart") this.started(id, payload);
     return this.emit(id);
   }

@@ -1,8 +1,9 @@
 import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { Copy, UsersRound } from "lucide-react";
+import { Copy, MoreHorizontal, UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, FieldRow, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
@@ -12,9 +13,16 @@ import { PersonaPicker, useSuggestedPersona } from "@/components/personas/person
 import { AddProject } from "@/components/projects/add-project";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSwitcherHostId } from "@/hooks/use-switcher-hosts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
@@ -509,7 +517,7 @@ function Team(
   } | null>(null);
   const modes = useModes(store, hostId);
   const [confirm, setConfirm] = useState<
-    { kind: "close" } | { kind: "remove"; member: string } | null
+    { kind: "close" } | { kind: "delete" } | { kind: "remove"; member: string } | null
   >(null);
   const open = team.state !== "closed";
   const addMember = (member: { persona: string; model: string; permission: PermissionChoice }) => {
@@ -531,6 +539,23 @@ function Team(
     if (updated) props.onChanged(updated);
     return updated !== null;
   };
+  type Confirming = NonNullable<typeof confirm>;
+  const confirmMessage = (c: Confirming) => {
+    if (c.kind === "close") return t("teamsUi.closeMessage", { name: team.name });
+    if (c.kind === "delete") return t("teamsUi.deleteMessage", { name: team.name });
+    return t("teamsUi.removeMessage", { name: c.member });
+  };
+  const confirmLabel = (c: Confirming) => {
+    if (c.kind === "close") return t("teamsUi.closeButton");
+    return c.kind === "delete" ? t("teamsUi.delete") : t("teamsUi.removeButton");
+  };
+  const confirmed = (c: Confirming) => {
+    if (c.kind === "close") {
+      return store.hostCommand(hostId, "teams.close", { team: team.id, confirm: true });
+    }
+    if (c.kind === "delete") return store.hostCommand(hostId, "teams.delete", { team: team.id });
+    return store.hostCommand(hostId, "teams.update", { team: team.id, removeMember: c.member });
+  };
   const reportOf = (name: string) =>
     props.status?.members.find((m) => m.name === name)?.lastReport ?? null;
   const rowClass = `flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm${props.focused ? " ring-2 ring-ring" : ""}`;
@@ -546,6 +571,19 @@ function Team(
         {team.pausedBy === "quota" && (
           <span className="text-status-needs-you text-xs">{t("teamsUi.pausedByQuota")}</span>
         )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label={t("teamsUi.menu", { name: team.name })}>
+              <MoreHorizontal aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {/* Only a closed team can be deleted; an open one says what to do first. */}
+            <DropdownMenuItem disabled={open} onSelect={() => setConfirm({ kind: "delete" })}>
+              {open ? `${t("teamsUi.delete")} · ${t("teamsUi.deleteOpen")}` : t("teamsUi.delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <p className="text-muted-foreground whitespace-pre-wrap">{team.goal}</p>
       <ul className="flex flex-col gap-1">
@@ -664,25 +702,12 @@ function Team(
       )}
       {confirm && (
         <ConfirmDialog
-          message={
-            confirm.kind === "close"
-              ? t("teamsUi.closeMessage", { name: team.name })
-              : t("teamsUi.removeMessage", { name: confirm.member })
-          }
-          confirmLabel={t(
-            confirm.kind === "close" ? "teamsUi.closeButton" : "teamsUi.removeButton",
-          )}
+          message={confirmMessage(confirm)}
+          confirmLabel={confirmLabel(confirm)}
           destructive
           onConfirm={() => {
             setConfirm(null);
-            void act(
-              confirm.kind === "close"
-                ? store.hostCommand(hostId, "teams.close", { team: team.id, confirm: true })
-                : store.hostCommand(hostId, "teams.update", {
-                    team: team.id,
-                    removeMember: confirm.member,
-                  }),
-            );
+            void act(confirmed(confirm));
           }}
           onCancel={() => setConfirm(null)}
         />
@@ -707,12 +732,25 @@ export const TeamsPage = memo(function TeamsPage(props: {
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "teams", false),
   );
-  const [hostId, setHostId] = useState(props.host ?? "");
+  // The host shown: the route's (an alert), else a pick in the page's own select, else the
+  // switcher's (#932), so the page never shows another host than the top bar without saying so.
+  const switcherId = useSwitcherHostId(store) ?? "";
+  /** A host picked in the page's own select: it holds until the next switch or alert. */
+  const [picked, setPicked] = useState("");
+  const lastSwitcher = useRef(switcherId);
+  useEffect(() => {
+    if (lastSwitcher.current === switcherId) return;
+    lastSwitcher.current = switcherId;
+    setPicked("");
+  }, [switcherId]);
   // A later alert opens another host while the screen is already up.
   useEffect(() => {
-    if (props.host) setHostId(props.host);
+    if (props.host) setPicked("");
   }, [props.host]);
-  const host = hosts.find((h) => h.id === hostId) ?? hosts[0];
+  const wanted = picked || props.host || switcherId;
+  const host = hosts.find((h) => h.id === wanted) ?? hosts[0];
+  /** The host asked for when it has no teams to show: the page names it and the one shown. */
+  const missed = host && wanted !== host.id ? state.hosts.find((h) => h.id === wanted) : undefined;
   const current = host?.id ?? "";
   const [teams, setTeams] = useState<TeamInfo[]>([]);
   const [statuses, setStatuses] = useState<Record<string, TeamStatus>>({});
@@ -762,7 +800,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
               inline
               aria-label={t("teamsUi.host")}
               value={current}
-              onChange={(e) => setHostId(e.target.value)}
+              onChange={(e) => setPicked(e.target.value)}
             >
               {hosts.map((h) => (
                 <option key={h.id} value={h.id}>
@@ -775,6 +813,14 @@ export const TeamsPage = memo(function TeamsPage(props: {
         </div>
       }
     >
+      {missed && (
+        <InlineNotice tone="info">
+          {t(missed.status === "online" ? "teamsUi.otherHost" : "teamsUi.otherHostOffline", {
+            wanted: missed.name,
+            shown: host.name,
+          })}
+        </InlineNotice>
+      )}
       {creating && (
         <NewTeam
           store={store}

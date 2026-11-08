@@ -204,6 +204,13 @@ export const Config = z.object({
     .default(() => ({ extraHigh: [] })),
   /** The ssh the destinos run (phase 15); the system one when absent. */
   ssh: z.object({ path: z.string().min(1).optional() }).default(() => ({})),
+  /** Issue #76: the library of documents a session is given the index of. */
+  knowledge: z
+    .object({
+      /** Project folders (and what is inside them) whose sessions are not given the index. */
+      feedOff: z.array(z.string()).default([]),
+    })
+    .default(() => ({ feedOff: [] })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
@@ -263,6 +270,7 @@ export async function loadConfig(path: string = defaultConfigPath()): Promise<Co
     ...config,
     dataDir: resolve(expandHome(config.dataDir)),
     allowedRoots: config.allowedRoots.map((r) => resolve(expandHome(r))),
+    knowledge: { feedOff: config.knowledge.feedOff.map((r) => resolve(expandHome(r))) },
     history: {
       roots: config.history.roots.map((r) => resolve(expandHome(r))),
       // Compared with the transcripts' cwd as written, so only `~` is expanded.

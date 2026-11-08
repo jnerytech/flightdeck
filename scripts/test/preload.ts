@@ -2,7 +2,7 @@
 // `az`, nor a real shell command from a workflow `check`, nor read the real `~/.claude`, nor reach
 // the Tauri shell (the terminal opened by "Abrir no terminal").
 import { afterAll, setDefaultTimeout } from "bun:test";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { offerToOomKiller } from "../lib/oom-guard.ts";
 import { assertBinaryUntouched, installBinaryGuard } from "./binary-guard.ts";
@@ -13,6 +13,7 @@ import { reapFakes } from "./fake-cli.ts";
 import { installGitEnvGuard } from "./git-env.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { captureGlobals, installBetweenFiles } from "./isolation.ts";
+import { captureResources, type ProcReader } from "./leak-guard.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
 import { scrubOpenCodeEnv } from "./opencode-env-guard.ts";
 import { assertPathUntouched, assertRepoUntouched, installRepoGuard } from "./repo-guard.ts";
@@ -68,7 +69,7 @@ const repo = installRepoGuard(join(import.meta.dir, "../.."));
 const pathBefore = process.env.PATH;
 // Everything above is in place: this is the state each test file starts from. A file that leaves a
 // timer, Date, fetch or env variable changed does not hand that to the next one (issue #274).
-installBetweenFiles(captureGlobals());
+installBetweenFiles(captureGlobals(), undefined, procWatch());
 
 // `Bun.which(name)` without options keeps the PATH the process started with; code must pass the
 // current one. Make sure that lookup now lands on the sentinel, or stop before any test runs.
@@ -107,4 +108,34 @@ function assertGuards(): void {
   if (existsSync(serviceGuard)) {
     throw new Error(`controlador de serviço real chamado: ${readFileSync(serviceGuard, "utf8")}`);
   }
+}
+
+/** Servers and children left running by the file before are looked for on Linux (issue #747). */
+function procWatch(): { capture(): ReturnType<typeof captureResources> } | undefined {
+  if (process.platform !== "linux") return undefined;
+  const proc: ProcReader = {
+    pid: process.pid,
+    list: (path) => {
+      try {
+        return readdirSync(path);
+      } catch {
+        return [];
+      }
+    },
+    read: (path) => {
+      try {
+        return readFileSync(path, "utf8");
+      } catch {
+        return null;
+      }
+    },
+    link: (path) => {
+      try {
+        return readlinkSync(path);
+      } catch {
+        return null;
+      }
+    },
+  };
+  return { capture: () => captureResources(proc) };
 }

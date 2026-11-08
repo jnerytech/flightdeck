@@ -3,9 +3,16 @@
 // <stateDir>/script.json the way Claude Code would: command hooks through the shell, http hooks
 // with the installed headers, the transcript under ~/.claude/projects and the MCP server from
 // --mcp-config, whose channel notifications it logs.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { FakeClaudeStep } from "./fake-claude.ts";
@@ -33,6 +40,14 @@ const appended =
   args.includes("--append-system-prompt-file") && appendedPath && existsSync(appendedPath)
     ? readFileSync(appendedPath, "utf8")
     : null;
+// Who may read it: the mode of the file and of the folder it is in.
+const appendedModes =
+  appended === null || !appendedPath
+    ? null
+    : {
+        file: statSync(appendedPath).mode & 0o777,
+        dir: statSync(dirname(appendedPath)).mode & 0o777,
+      };
 // The subagents arrive inline (interactive claude takes only JSON) or, in print mode, as a file.
 const agentsArg = args[args.indexOf("--agents") + 1] ?? null;
 const agentsInline = args.includes("--agents") && agentsArg?.startsWith("{") === true;
@@ -65,6 +80,7 @@ log({
   mcpConfig,
   appended,
   appendedPath: appended === null ? null : appendedPath,
+  appendedModes,
   agents,
   agentsPath: agents === null ? null : agentsPath,
   agentsInline,

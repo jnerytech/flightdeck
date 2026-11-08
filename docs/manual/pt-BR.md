@@ -339,6 +339,22 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
   variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
   avisa: uma parte marcada como faltando pode existir.
+- **Conhecimento do projeto** lista os PRDs, RFCs, ADRs e specs do projeto (os arquivos Markdown em
+  `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` e `docs/specs`), cada um com título, caminho,
+  tipo e o status que diz ter no front matter (`status: valid`, `transitional` ou `obsolete`). Um
+  documento sem status aparece como **Sem classificação**. Os filtros contam os documentos de cada
+  status, e um aviso aparece quando um documento válido aponta para um obsoleto. Ele só lê: nada no
+  projeto muda. Só os primeiros 500 documentos aparecem.
+  Uma sessão que o Flightdeck inicia em um projeto **confiável** (`flightdeckd claude`, "Claude
+  aqui", sessões em segundo plano) também recebe, no prompt de sistema, um índice curto desses
+  documentos: o caminho e o título de cada documento **válido**, e de cada **transitório** marcado
+  como tal. Documentos sem status e obsoletos nunca são entregues. O índice tem no máximo 4 KiB, e
+  uma linha diz quantos documentos ficaram de fora. Os títulos são marcados como dados do
+  repositório, não como instruções. Um worktree é lido da pasta principal confiável, não da branch.
+  Um prompt de sistema que você mesmo passar (`--append-system-prompt`) fica como está, sem o
+  índice ao lado. Para desligar em um projeto, liste a pasta dele no arquivo de configuração do
+  host: `"knowledge": { "feedOff": ["/caminho/do/projeto"] }` (tudo dentro da pasta também fica
+  desligado).
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
@@ -853,12 +869,19 @@ criou. Rode depois de cada atualização do OpenCode; ele nunca faz parte dos te
 
 ## Projetos
 
-O item **Projetos** da barra lateral (entre Precisa de você e Board) lista todos os projetos de
-todos os hosts como cartões: nome, host, branch base, sessões ativas, cards em andamento, os que
+O item **Projetos** da barra lateral (entre Precisa de você e Board) lista os projetos do host
+escolhido no seletor da barra do topo (os de todos com **Abas de todos os hosts**) como cartões,
+para que abrir um nunca leve a outro host: nome, host, branch base, sessões ativas, cards em andamento, os que
 precisam de você, a última atividade e quanto custou nos últimos sete dias. O custo aparece como
 um traço quando o host não informa custos. Digite na busca para filtrar por nome, host, branch ou
 pasta, e use **Ordenar por** para ordenar por última atividade, nome, custo da semana ou o que
 precisa de atenção primeiro.
+
+**Novo projeto**, no alto à direita da página, adiciona um projeto: abre o formulário de adição (as
+pastas das sessões recentes, uma pasta digitada ou escolhida, **Adicionar**) e a página do projeto
+abre quando ele é adicionado. Com um host online, ou com o filtro de host ligado, o formulário é
+daquele host; com vários hosts online ele pergunta primeiro qual ("Em alfa", "Em beta"). Sem
+nenhum host online o botão fica desligado e diz isso.
 
 Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às **Sessões** (a lista, filtrada pelo projeto: um chip "Projeto: nome" com × limpa o filtro), aos
 **Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
@@ -916,7 +939,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   Equipes acaba na 0.39, o Novo de Conversas na 0.38). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
   uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
-- Em **Projetos**, cada projeto de um host online lista seus **branches**: o checkout principal
+- Em **Projetos**, cada projeto do host do seletor (de todo host online com **Abas de todos os
+  hosts**) lista seus **branches**: o checkout principal
   (selo **principal**, o branch base) e uma linha por card que tem worktree, cada uma com o pontinho
   de estado, o branch e a base logo abaixo. Escolher um reduz o board e a lista de Sessões àquele
   checkout (um chip com o branch limpa); escolher de novo também limpa. Escolhido na lista de Sessões, ele reduz a lista ali mesmo, sem abrir o board; de outro lugar, abre o board do projeto. Uma escolha cujo branch, projeto ou host sumiu não faz nada e não mostra chip. A árvore vem do que o app já
@@ -2525,6 +2549,12 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
     recebe o aviso com o nome e o card da nova executora);
   - tirar um membro: a sessão dele é parada, a coordenadora é avisada e o card fica no board;
   - encerrar o time, com confirmação.
+- **Excluir um time encerrado:** um time encerrado mantém o card dele até você excluí-lo. O menu **⋯**
+  do card tem **Excluir time**: desligado num time aberto (diz "Encerre o time primeiro"), e num
+  encerrado pergunta antes, com o nome do time. O que sai é o registro do time e o card dele na
+  página Times. O que fica é a sessão de cada membro, com a transcrição e o histórico, e os cards
+  deles no board: só deixam de ser do time. O host recusa enquanto um membro trabalha (rodando ou
+  esperando uma resposta); tente de novo quando descansarem. Todos os apps conectados tiram o card.
 - **A cota:** quando a cota do plano passa do limite (`quota.pauseAt`), o time pausa sozinho. Você
   recebe uma notificação, e a linha diz "pausado pela cota". Quando a janela reinicia, o time
   retoma e avisa.
