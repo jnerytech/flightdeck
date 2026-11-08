@@ -186,11 +186,12 @@ export async function commitHarness(
       const listing = must(path, ["ls-files", "-s", "--", name], index);
       const known = await listing; // NOSONAR: the index is read and then written file by file
       const mode = known.startsWith("100755 ") ? "100755" : "100644";
-      await must(
+      const adding = must(
         path,
         ["update-index", "--add", "--cacheinfo", `${mode},${blob},${at}${name}`],
         index,
       );
+      await adding; // NOSONAR: the one index takes one file at a time
     }
     const tree = await must(path, ["write-tree"], index);
     const message = `Set up Claude Code\n\nWritten by Flightdeck: ${files.map(([name]) => name).join(", ")}`;

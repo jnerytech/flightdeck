@@ -276,7 +276,8 @@ export class HarnessTemplates {
       // A broken meta costs its title, never the whole list.
       const title = titleOf(meta);
       const files: Array<[string, string]> = [];
-      for (const [name] of await parts(at, "")) {
+      const placed = await parts(at, ""); // NOSONAR: one template at a time, as above
+      for (const [name] of placed) {
         const reading = readInside(at, name, MAX_FILE);
         const text = await reading; // NOSONAR: a hand-placed template can hold many files, so they are opened one at a time
         if (text !== null) files.push([name, text]);
