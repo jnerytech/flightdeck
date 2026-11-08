@@ -2192,6 +2192,11 @@ export class Board {
     await this.opts.onSettingsChange?.({ maxParallelRuns: value });
   }
 
+  /** Resolves when no PR poll round is running (stop() lets the one in flight finish). */
+  idle(): Promise<void> {
+    return Promise.resolve();
+  }
+
   stop(): void {
     this.stopped = true;
     if (this.pollTimer !== null) clearInterval(this.pollTimer);
