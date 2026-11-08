@@ -42,7 +42,10 @@ export function knowledgeSwitchFor(deps: KnowledgeSwitchDeps): KnowledgeSwitch {
     // The checkout a worktree is read from counts too: a worktree can lie outside its project.
     const names = await rootNames(configRoot ? [path, configRoot] : [path]);
     const offBy = await offFolder(deps.off(), names);
-    return { on: offBy === null, trusted, offBy, own: false };
+    // Whether that entry is the project itself, under whatever name (a link, another case).
+    const mine = offBy === null ? [] : await rootNames([offBy]);
+    const own = (await rootNames([path])).some((name) => mine.some((p) => samePath(p, name)));
+    return { on: offBy === null, trusted, offBy, own };
   };
   const apply = async (path: string, enabled: boolean) => {
     if (!enabled) {

@@ -33,7 +33,7 @@ export function KnowledgeFeedSwitch(
 
   const problem = failed && <p className="text-sm">{t("projectPage.knowledge.feed.failed")}</p>;
   if (state === null) return problem || null;
-  const own = state.offBy === path;
+  const own = state.own;
   const change = (enabled: boolean) => {
     void store.hostCommand(hostId, "knowledge.setFeed", { path, enabled }).then(received);
   };
