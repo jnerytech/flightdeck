@@ -38,6 +38,7 @@ export const JOURNEYS: readonly string[] = [
   "orcamento-alcance",
   "modo-simples-alcance",
   "layout-medido",
+  "board-fit",
   "teleport-mover",
   "time-novo-alcance",
   "board-arquivos",
