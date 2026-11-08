@@ -535,6 +535,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "cardPins"),
     // Issue #1201: a project's card templates; New card offers them.
     ...when(opts.board, "cardTemplates"),
+    // Issue #1196: a card merges its open PR (`card.pr.merge`).
+    ...when(opts.board, "cardPrMerge"),
     ...when(opts.issues, "issues"),
     ...when(opts.automations, "automation"),
     ...when(opts.autoApprove, "autoapprove"),

@@ -2986,6 +2986,17 @@ export const ptBR = {
     passing: "checks passando",
     failing: "checks falhando",
   },
+  cardMergePr: {
+    action: "Fazer merge do PR",
+    message:
+      "Faz o merge do pull request deste card. O card vai para Concluído quando o GitHub fizer o merge. As regras da branch e os checks obrigatórios continuam valendo.",
+    pr: "Pull request",
+    how: "Como fazer o merge",
+    merge: "Commit de merge",
+    squash: "Squash e merge",
+    openPr: "Abrir o PR",
+    done: "O merge do PR foi feito.",
+  },
   teleportUi: {
     menu: "Mover para outro host…",
     title: "Mover para outro host",

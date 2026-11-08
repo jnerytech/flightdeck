@@ -1,4 +1,4 @@
-import type { Card, StepRun } from "@flightdeck/protocol";
+import type { Card, ChangesResult, StepRun } from "@flightdeck/protocol";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,13 @@ export function CardHeaderActions(
 
 export type CardTab = "conversation" | "diff";
 
+/** What goes above a card's files: its review, given the changes it shows. */
+const reviewPanel =
+  (store: AppStore, hostId: string, card: Card) =>
+  (changes: ChangesResult, refresh: () => Promise<void>) => (
+    <CardReview store={store} hostId={hostId} card={card} changes={changes} refresh={refresh} />
+  );
+
 /**
  * What the card did: Conversation or Diff, and under it the diff and the PR's comments, a check's
  * output, a step's conversation or the card's own. It always renders, so the conversation keeps
@@ -130,15 +137,7 @@ export function CardWork(
             store={store}
             hostId={hostId}
             target={`card:${cardId}`}
-            extra={(changes, refresh) => (
-              <CardReview
-                store={store}
-                hostId={hostId}
-                card={card}
-                changes={changes}
-                refresh={refresh}
-              />
-            )}
+            extra={reviewPanel(store, hostId, card)}
           />
         </div>
       );

@@ -121,6 +121,7 @@ describe("protocolo-compat", () => {
       "deps",
       "cardPins",
       "cardTemplates",
+      "cardPrMerge",
     ]);
     const custom = new FrameClient(serve({ features: ["central", "maintenance"] }).url);
     cleanups.push(() => custom.close());

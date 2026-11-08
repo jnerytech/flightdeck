@@ -4,6 +4,7 @@ import { CardSyncLog } from "@/components/board/board-sync";
 import { CardAdjustment, CardRuns } from "@/components/card/card-adjustment";
 import { CardArena } from "@/components/card/card-arena";
 import { CardFields } from "@/components/card/card-fields";
+import { CardMergePr } from "@/components/card/card-merge-pr";
 import { CardPins } from "@/components/card/card-pins";
 import { CardRunForm } from "@/components/card/card-run-form";
 import { CardHeaderActions, type CardTab, CardWork } from "@/components/card/card-work";
@@ -11,8 +12,10 @@ import { PostMortem } from "@/components/card/post-mortem";
 import { RunAgain } from "@/components/card/run-again";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
+import { Button } from "@/components/ui/button";
 import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
 import { useT } from "@/i18n/context";
+import { canMergeCardPr } from "@/lib/card-merge-pr";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
@@ -70,6 +73,9 @@ export const CardDetail = memo(function CardDetail(props: {
   const withRoi = has("roi");
   const withPersonas = has("personas");
   const withWatch = has("watch");
+  const withMergePr = has("cardPrMerge");
+  /** The Merge PR confirm is open (issue #1196). */
+  const [mergeOpen, setMergeOpen] = useState(false);
   /** Estimated cost of every session of the card, and of the open run's (phase 8). */
   const [cardCost, setCardCost] = useState<number | null>(null);
   const [runCost, setRunCost] = useState<number | null>(null);
@@ -237,6 +243,24 @@ export const CardDetail = memo(function CardDetail(props: {
                   onDiscarded={props.onBack}
                   onShowDiff={() => setTab("diff")}
                 />
+                {withMergePr && (
+                  <>
+                    {canMergeCardPr(card) && (
+                      <div>
+                        <Button variant="outline" size="sm" onClick={() => setMergeOpen(true)}>
+                          {t("cardMergePr.action")}
+                        </Button>
+                      </div>
+                    )}
+                    <CardMergePr
+                      store={store}
+                      hostId={hostId}
+                      card={card}
+                      open={mergeOpen}
+                      onOpenChange={setMergeOpen}
+                    />
+                  </>
+                )}
                 {withWatch && card.prUrl && (
                   <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />
                 )}

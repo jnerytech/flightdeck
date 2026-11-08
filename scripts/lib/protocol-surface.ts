@@ -35,7 +35,9 @@ export function walkSchema(name: string, schema: unknown): string[] {
       (list ?? []).forEach((child, i) => {
         // A discriminated union is named by its tag, so reordering its members changes nothing.
         const tag = child?.properties?.type?.const;
-        walk(child, tag === undefined ? `${path}|${i}` : `${path}[type=${String(tag)}]`);
+        // A tag is a literal: text as it is, anything else (a number, a boolean) as JSON writes it.
+        const named = typeof tag === "string" ? tag : JSON.stringify(tag);
+        walk(child, tag === undefined ? `${path}|${i}` : `${path}[type=${named}]`);
       });
     }
     walk(node.items, `${path}[]`);
