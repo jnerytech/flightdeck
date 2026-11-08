@@ -230,9 +230,7 @@ describe("plugins: o inventário", () => {
     expect(inventory.hooks).toEqual([]);
     expect(inventory.attention).toBe(false);
     expect(inventory.skills).toEqual([]);
-    expect(inventory.problems).toEqual([
-      "hooks: caminho fora do plugin: ../../outside/hooks.json",
-    ]);
+    expect(inventory.problems).toEqual(["hooks: caminho fora do plugin: ../../outside/hooks.json"]);
   });
 
   test("manifesto quebrado vira um problema, não uma falha; pasta que não existe é not_found", async () => {
