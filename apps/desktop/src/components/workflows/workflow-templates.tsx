@@ -1,4 +1,4 @@
-import type { WorkflowTemplate } from "@flightdeck/protocol";
+import type { WorkflowTemplate, WorkflowTemplateAdded } from "@flightdeck/protocol";
 import { FilePlus2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AppDialogContent } from "@/components/feedback/dialog-content";
@@ -15,18 +15,27 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
+import { useStoreSlice } from "../../lib/use-store.ts";
+import { hasFeature } from "../../lib/version.ts";
 
 /**
  * Issue #79: "Add from a template" on the Workflows screen. A template is a file: the host lists
  * them (the check line already holds the project's test command when it is known) and the person
- * copies one and commits it to the base branch. The host writes nothing, and trust stays on the
- * page behind this dialog.
+ * copies one and commits it to the base branch. Issue #1221: a host that offers it can also add
+ * the template itself, on a new branch with its PR; never on the base branch. Trust stays on the
+ * page behind this dialog, after the merge.
  */
 export function WorkflowTemplates(
   props: Readonly<{ store: AppStore; hostId: string; projectId: string }>,
 ) {
   const t = useT();
   const { store, hostId, projectId } = props;
+  const { hosts } = useStoreSlice(store, ["hosts"]);
+  const canAdd = hasFeature(
+    hosts.find((host) => host.id === hostId)?.hostInfo?.features,
+    "workflowTemplateAdd",
+    false,
+  );
   /** Null until the host answers. */
   const [templates, setTemplates] = useState<WorkflowTemplate[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -86,7 +95,9 @@ export function WorkflowTemplates(
       <AppDialogContent>
         <DialogHeader>
           <DialogTitle>{t("workflowsUi.templates.title")}</DialogTitle>
-          <DialogDescription>{t("workflowsUi.templates.intro")}</DialogDescription>
+          <DialogDescription>
+            {t(canAdd ? "workflowsUi.templates.introAdd" : "workflowsUi.templates.intro")}
+          </DialogDescription>
         </DialogHeader>
         {failed && <InlineNotice tone="error">{t("workflowsUi.templates.failed")}</InlineNotice>}
         {!failed && templates === null && (
@@ -105,6 +116,7 @@ export function WorkflowTemplates(
         {shown && (
           <TemplateFile
             template={shown}
+            add={canAdd ? { store, hostId, projectId } : null}
             copied={copied}
             headingRef={heading}
             onCopy={() => void copy(shown)}
@@ -143,10 +155,50 @@ function ListedTemplates(
   ));
 }
 
+/**
+ * Issue #1221: Add to the project, asked first. Idle, asking (the question and its two buttons), or
+ * busy while the host commits and opens the PR. The focus goes to the question's answer, and back
+ * to Add when the person cancels or the host refuses (the store shows why).
+ */
+function useTemplateAdd(
+  where: Readonly<{ store: AppStore; hostId: string; projectId: string }> | null,
+  template: WorkflowTemplate,
+) {
+  const [phase, setPhase] = useState<"idle" | "asking" | "busy">("idle");
+  const [added, setAdded] = useState<WorkflowTemplateAdded | null>(null);
+  const [backToAdd, setBackToAdd] = useState(false);
+  const addRef = useRef<HTMLButtonElement>(null);
+  const goRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (phase === "asking") goRef.current?.focus();
+    if (phase === "idle" && backToAdd) {
+      addRef.current?.focus();
+      setBackToAdd(false);
+    }
+  }, [phase, backToAdd]);
+  const cancel = () => {
+    setPhase("idle");
+    setBackToAdd(true);
+  };
+  const go = async () => {
+    if (!where) return;
+    setPhase("busy");
+    const { store, hostId, projectId } = where;
+    const payload = { projectId, templateId: template.id, confirm: true };
+    const result = await store.hostCommand(hostId, "workflow.template.add", payload);
+    setAdded(result);
+    setPhase("idle");
+    if (!result) setBackToAdd(true);
+  };
+  return { phase, added, addRef, goRef, ask: () => setPhase("asking"), cancel, go };
+}
+
 /** A template opened: its limits, where to commit it, the file itself and how to copy it. */
 function TemplateFile(
   props: Readonly<{
     template: WorkflowTemplate;
+    /** Where Add to the project sends the template; null when the host does not offer it. */
+    add: Readonly<{ store: AppStore; hostId: string; projectId: string }> | null;
     copied: "worked" | "refused" | null;
     headingRef: React.RefObject<HTMLHeadingElement | null>;
     onCopy(): void;
@@ -155,6 +207,8 @@ function TemplateFile(
 ) {
   const t = useT();
   const { template } = props;
+  const adding = useTemplateAdd(props.add, template);
+  const name = template.title[t.lang];
   return (
     <Stack gap={3}>
       <h3 ref={props.headingRef} tabIndex={-1} className="font-semibold text-base outline-none">
@@ -183,11 +237,66 @@ function TemplateFile(
         <pre className="font-mono text-xs">{template.yaml}</pre>
       </section>
       <Inline gap={2}>
-        <Button onClick={props.onCopy}>{t("workflowsUi.templates.copy")}</Button>
+        {props.add && adding.phase === "idle" && !adding.added && (
+          <Button ref={adding.addRef} onClick={adding.ask}>
+            {t("workflowsUi.templates.add")}
+          </Button>
+        )}
+        <Button variant={props.add ? "outline" : "default"} onClick={props.onCopy}>
+          {t("workflowsUi.templates.copy")}
+        </Button>
         <Button variant="outline" onClick={props.onBack}>
           {t("workflowsUi.templates.back")}
         </Button>
       </Inline>
+      {adding.phase !== "idle" && (
+        <fieldset aria-label={t("workflowsUi.templates.addAsk", { name })}>
+          <Stack gap={2}>
+            <InlineNotice tone="info">
+              {t("workflowsUi.templates.addConfirm", { path: template.path })}
+            </InlineNotice>
+            <Inline gap={2}>
+              <Button
+                ref={adding.goRef}
+                disabled={adding.phase === "busy"}
+                onClick={() => void adding.go()}
+              >
+                {t(
+                  adding.phase === "busy"
+                    ? "workflowsUi.templates.addBusy"
+                    : "workflowsUi.templates.addGo",
+                )}
+              </Button>
+              <Button variant="outline" disabled={adding.phase === "busy"} onClick={adding.cancel}>
+                {t("workflowsUi.templates.addCancel")}
+              </Button>
+            </Inline>
+          </Stack>
+        </fieldset>
+      )}
+      {/* Always in the page: a live region inserted with its text is often not read. */}
+      <div // NOSONAR: holds flow content (a paragraph), which <output> may not
+        data-slot="add-status"
+        role="status"
+      >
+        {adding.added && (
+          <p className="text-sm">
+            {t("workflowsUi.templates.added", { branch: adding.added.branch })}
+          </p>
+        )}
+      </div>
+      {adding.added && props.add && (
+        <Inline gap={2}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (adding.added) props.add?.store.openLink(adding.added.url);
+            }}
+          >
+            {t("workflowsUi.templates.viewPr")}
+          </Button>
+        </Inline>
+      )}
       {props.copied === "refused" && (
         <InlineNotice tone="error">{t("workflowsUi.templates.copyFailed")}</InlineNotice>
       )}

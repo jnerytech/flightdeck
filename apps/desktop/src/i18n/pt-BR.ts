@@ -1517,6 +1517,7 @@ export const ptBR = {
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
     harnessApply: "a aplicação de mudanças na configuração do Claude Code",
     harnessCommit: "o commit da configuração do Claude Code em um branch",
+    workflowTemplateAdd: "adicionar um modelo de workflow como pull request",
     harnessDraft: "o rascunho de um CLAUDE.md com o Claude",
     harnessTemplates: "o compartilhamento da configuração do Claude Code como modelo",
     keepAwake: "a função de manter o computador acordado",
@@ -1906,6 +1907,16 @@ export const ptBR = {
       "{file} é ignorado pelo git neste projeto, então não foi para o commit: faça o commit você mesmo se quiser.",
     harness_commit_withheld:
       "{file} poderia rodar um comando ou dar uma permissão ao carregar, então não foi para o commit: faça o commit você mesmo se quiser.",
+    workflow_template_confirm: "Adicionar o modelo precisa da sua confirmação antes.",
+    workflow_template_unknown: "Este host não tem o modelo {id}: abra os modelos de novo.",
+    workflow_template_exists:
+      "{path} já está em {base}: o projeto já tem este workflow. Veja na página de Workflows.",
+    workflow_template_no_head: "A branch base ainda não tem commit de onde começar uma branch.",
+    workflow_template_identity:
+      "O git não tem nome e e-mail para este repositório: defina user.name e user.email e adicione o modelo.",
+    workflow_template_branch_taken: "A branch {branch} já existe: tente de novo em um minuto.",
+    workflow_template_git:
+      "O git não conseguiu fazer o commit ou a branch do modelo neste repositório.",
     harness_draft_exists: "O projeto já tem um CLAUDE.md: um rascunho só cria um.",
     harness_draft_failed: "O modelo não respondeu com um CLAUDE.md: tente de novo.",
     harness_draft_secret: "O rascunho tinha um segredo, então foi descartado: tente de novo.",
@@ -4119,6 +4130,18 @@ export const ptBR = {
         "A linha check tem o comando de teste deste projeto. Confira antes de confiar no workflow.",
       checkPlaceholder:
         "A linha check tem um texto provisório que falha. Troque pelo seu comando de teste antes de fazer o commit do arquivo.",
+      introAdd:
+        "Cada modelo é um arquivo. Adicione ao projeto como um pull request, ou copie e faça o commit você mesmo. Depois do merge, confie nele nesta página.",
+      add: "Adicionar ao projeto",
+      addAsk: "Adicionar {name} ao projeto",
+      addConfirm:
+        "O Flightdeck faz o commit de {path} em uma branch nova e abre um pull request para a branch base. A branch base não muda até você fazer o merge, e o workflow não roda até você confiar nele nesta página.",
+      addGo: "Abrir o pull request",
+      addBusy: "Abrindo o pull request…",
+      addCancel: "Cancelar",
+      added:
+        "Pull request aberto a partir de {branch}. Faça o merge e confie no workflow nesta página.",
+      viewPr: "Ver o pull request",
     },
   },
   sessionViews: { label: "Visões da sessão", terminal: "Terminal" },
