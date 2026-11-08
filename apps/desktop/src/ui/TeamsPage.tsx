@@ -11,6 +11,7 @@ import { ModelSelect } from "@/components/personas/model-select";
 import { type PermissionChoice, PermissionSelect } from "@/components/personas/permission-select";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { AddProject } from "@/components/projects/add-project";
+import { TeamOutcome } from "@/components/teams/team-outcome";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -286,7 +287,25 @@ function NewTeam(
 }
 
 /** What a member's row reads: the names and personas of its host (issue #101). */
-const MEMBER_KEYS = ["names", "personas"] as const;
+const MEMBER_KEYS = ["names", "personas", "cards"] as const;
+
+/** #1220: how many files a worker's card changed, asked of its host once the row shows. */
+function useChangedFiles(store: AppStore, hostId: string, cardId: string | null): number | null {
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => {
+    // Another card's number never shows while this one's is asked.
+    setCount(null);
+    if (!cardId) return;
+    let live = true;
+    void store.hostRequest(hostId, "changes.get", { target: `card:${cardId}` }).then((result) => {
+      if (live && result.ok) setCount(result.data.files.length);
+    });
+    return () => {
+      live = false;
+    };
+  }, [store, hostId, cardId]);
+  return count;
+}
 
 /** One member: its role, persona, state, card and last report, and the persona to switch to. */
 export function TeamMemberRow(
@@ -304,7 +323,13 @@ export function TeamMemberRow(
 ) {
   const { store, member } = props;
   const { t } = store.i18n;
-  const { names, personas } = useStoreSlice(store, MEMBER_KEYS);
+  const { names, personas, cards } = useStoreSlice(store, MEMBER_KEYS);
+  const branch = member.cardId ? (cards[`${props.hostId}/${member.cardId}`]?.branch ?? null) : null;
+  const changed = useChangedFiles(
+    store,
+    props.hostId,
+    member.role === "worker" ? member.cardId : null,
+  );
   const [persona, setPersona, savedPersona] = useDraft(member.persona ?? "");
   const listed = personas[props.hostId];
   // Issue #101: the member's name in the person's language, by its persona, as everywhere else.
@@ -397,6 +422,17 @@ export function TeamMemberRow(
       {props.report && (
         <p className="text-muted-foreground">
           {t("teamsUi.lastReport")}: {props.report.text}
+        </p>
+      )}
+      {(branch || changed !== null) && (
+        <p className="min-w-0 text-muted-foreground [overflow-wrap:anywhere]">
+          {branch && <span>{t("teamsUi.branch", { branch })}</span>}
+          {branch && changed !== null && " · "}
+          {changed !== null && (
+            <span>
+              {changed === 1 ? t("teamsUi.changedOne") : t("teamsUi.changedMany", { n: changed })}
+            </span>
+          )}
         </p>
       )}
       {props.open && (
@@ -585,6 +621,7 @@ function Team(
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      {props.status?.outcome && <TeamOutcome t={t} outcome={props.status.outcome} />}
       <p className="text-muted-foreground whitespace-pre-wrap">{team.goal}</p>
       <ul className="flex flex-col gap-1">
         {team.members.map((member) => (
