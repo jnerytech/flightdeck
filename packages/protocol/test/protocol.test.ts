@@ -369,6 +369,7 @@ const validCommands: Record<CommandType, unknown> = {
   "hooks.uninstall": { confirm: true },
   "workflow.list": { projectId: "p" },
   "workflow.templates": { projectId: "p" },
+  "alert.list": { projectId: "p" },
   "workflow.validate": { projectId: "p", name: "feature" },
   "workflow.trust": { projectId: "p", name: "feature", hash: "abc" },
   "runenv.config": { projectId: "p" },
