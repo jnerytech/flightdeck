@@ -71,17 +71,14 @@ function filesText(recap: IncidentInput["recap"]): string {
 export function incidentText(input: IncidentInput): string {
   const { card, run, recap } = input;
   const failedSteps = (run?.steps ?? []).filter((step) => step.status === "failed");
+  const statusReason = clean(run?.statusReason, FIELD_MAX);
+  const reason = statusReason ? ` (${statusReason})` : "";
   const lines = [
     ...fact("Card", clean(card.title, FIELD_MAX)),
     ...fact("Pull request", clean(card.prUrl, FIELD_MAX)),
     ...fact("Problem on the card", clean(card.notice, FIELD_MAX)),
     ...(run
-      ? fact(
-          "Workflow run",
-          `${clean(run.workflowName, 100)}, ${clean(run.status, 40)}${
-            clean(run.statusReason, FIELD_MAX) ? ` (${clean(run.statusReason, FIELD_MAX)})` : ""
-          }`,
-        )
+      ? fact("Workflow run", `${clean(run.workflowName, 100)}, ${clean(run.status, 40)}${reason}`)
       : []),
     ...failedSteps.slice(0, STEPS_MAX).flatMap((step) => {
       const output = clean(step.output, STEP_OUTPUT_MAX);
