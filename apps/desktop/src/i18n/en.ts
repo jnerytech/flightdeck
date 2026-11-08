@@ -398,6 +398,8 @@ export const en: Dictionary = {
     noHost: "No online host reports this.",
   },
   toast: {
+    switchedHost: "Switched to {host}",
+    backTo: "Back to {host}",
     copied: "Copied",
     details: "Details",
     close: "Close",
