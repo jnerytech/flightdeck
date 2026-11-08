@@ -22,8 +22,8 @@ const FAST = { workFactor: 4 };
 const HOUR = 3_600_000;
 const NOON = Date.UTC(2026, 10, 8, 12, 0, 0);
 
-function platformWith(): BackupPlatform {
-  const items = new Map<string, string>([["flightdeck.theme", "dark"]]);
+function platformWith(withTheme = true): BackupPlatform {
+  const items = new Map<string, string>(withTheme ? [["flightdeck.theme", "dark"]] : []);
   const tokens = new Map<string, string>();
   const keyring = new Map<string, string>();
   return {
@@ -141,7 +141,7 @@ describe("backup-schedule: a run (#1264)", () => {
     const name = backupFileName(NOON);
     const text = files.get(name) ?? "";
     // The preview reads the file the run wrote; with nothing written there is nothing to read.
-    const preview = text === "" ? null : await previewRestore(platformWith(), text, PASS);
+    const preview = text === "" ? null : await previewRestore(platformWith(false), text, PASS);
     expect([
       report,
       [...files.keys()].sort(),

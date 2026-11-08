@@ -200,6 +200,16 @@ export interface Platform {
    * in a browser. A folder it gives is only a suggestion: the host checks it against its roots.
    */
   pickFolder?(): Promise<string | null>;
+  /**
+   * A folder of backups on THIS machine (issue #1264): it writes, lists and removes only files named
+   * `flightdeck-backup-YYYYMMDD-HHMMSS.fdbackup` in a folder that exists, and refuses any other name.
+   * Absent in a browser, which has no file system.
+   */
+  backupFolder?: {
+    write(dir: string, name: string, text: string): Promise<void>;
+    list(dir: string): Promise<string[]>;
+    remove(dir: string, name: string): Promise<void>;
+  };
   /** Saves `text` through the system's save dialog; `false` when the user cancels. */
   saveFile(name: string, text: string): Promise<boolean>;
   /** The system's language (`navigator.language`), for the app's first language (phase 10). */
