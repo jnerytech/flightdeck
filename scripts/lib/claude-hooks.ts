@@ -907,8 +907,11 @@ export function pushWaitCheck(
   return { violation: null, passes };
 }
 
-/** Why a push may go past this run, or null when it would cancel it while young and green. */
-function pushWaitPass(run: PrRun): PushWaitPass | null {
+/**
+ * Why a push may go past this run, or null when it would cancel it while young and green; `pr
+ * update` asks it too (#741).
+ */
+export function pushWaitPass(run: PrRun): PushWaitPass | null {
   // A failed check or a conflict makes the push a fix that must go out (#756 review).
   if (run.failed) return { reason: "failed check" };
   if (run.conflicting) return { reason: "conflicts" };
