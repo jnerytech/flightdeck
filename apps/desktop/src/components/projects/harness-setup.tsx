@@ -81,7 +81,9 @@ function Details(
               <Stack key={file.path} gap={1}>
                 {/* A drafted file opens, so what will be written is in front of the person. */}
                 <details open={step && draft.drafted}>
-                  <summary className="font-mono text-xs">{file.path}</summary>
+                  <summary className="hit-24 cursor-pointer font-mono text-xs leading-6">
+                    {file.path}
+                  </summary>
                   <pre
                     className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2 font-mono text-xs"
                     // biome-ignore lint/a11y/noNoninteractiveTabindex: a long file scrolls, and focus lets the keyboard do it

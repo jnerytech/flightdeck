@@ -361,6 +361,22 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
     ]).toEqual([true, true, true, true]);
   });
 
+  // #168 round 3: the claude-code-preparar print's axe found each new file's toggle under 24 px
+  // (WCAG 2.5.8, target-size). Each summary carries the shared 24 px target class.
+  test("each new file's toggle is a 24 px target", async () => {
+    const { view } = setup();
+    render(view);
+    await listing();
+    expect(await open()).toBe(true);
+    const toggles = Array.from(
+      screen.queryByRole("alertdialog")?.querySelectorAll("details > summary") ?? [],
+    );
+    expect([
+      toggles.length > 0,
+      toggles.every((el) => el.className.split(" ").includes("hit-24")),
+    ]).toEqual([true, true]);
+  });
+
   test("after an apply, a host that can commit offers it, asks first, and sends the digests apply gave (#75 C1)", async () => {
     const digests = { [SETTINGS]: "w-settings", "CLAUDE.md": "w-claude" };
     const { view, sent } = setup({
