@@ -60,8 +60,8 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
   test("the corner's offset is one variable: over the status bar with the card's gap, sonner's own without a bar, lifted over the update card", () => {
     expect(CSS).toContain("--corner-bottom: calc(var(--status-bar-height) + 0.75rem);");
     expect(CSS).toContain('html:not(:has([data-slot="status-bar"])) {\n  --corner-bottom: 24px;');
-    expect(CSS).toContain(
-      "--toast-bottom: max(calc(var(--corner-bottom) + var(--update-card-lift, 0px)), var(--composer-clear, 0px));",
+    expect(CSS.replace(/\s+/g, " ")).toContain(
+      "--toast-bottom: max( calc(var(--corner-bottom) + var(--update-card-lift, 0px)), var(--composer-clear, 0px) );",
     );
     expect(CSS).toContain("bottom: var(--corner-bottom);");
     expect(CSS).not.toContain("bottom: calc(var(--status-bar-height, 0rem) + 0.75rem);");
