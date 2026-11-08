@@ -2845,6 +2845,11 @@ export class AppStore {
     return true;
   }
 
+  /** Whether a backup file can be picked here: false in a browser, which has no file dialog (#1264). */
+  canReadBackup(): boolean {
+    return this.platform.vault.canPick !== false;
+  }
+
   /** Whether this app can open the system's folder dialog (the desktop app, not a browser). */
   canPickFolder(): boolean {
     return this.platform.pickFolder !== undefined;
