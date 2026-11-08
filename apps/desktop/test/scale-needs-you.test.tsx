@@ -70,4 +70,34 @@ describe("scale-needs-you: a burst of one session's summaries at 200 sessions (#
     });
     store.dispose();
   });
+
+  test("a row still redraws when what it shows changes: a session that finishes, the language, a host's name", () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
+    const hidden = store as unknown as {
+      state: Record<string, unknown>;
+      onEvent(hostId: string, envelope: unknown): void;
+    };
+    hidden.state = { ...store.getState(), ...scaleState({ hosts: 1, perHost: 4 }) };
+    render(<Page store={store} />);
+    // The first summary starts the turn, the second ends it: the session finished.
+    for (const envelope of summaryBurst(0, 0, 2)) {
+      act(() => hidden.onEvent("host-0", envelope));
+    }
+    const finished = () =>
+      [...document.querySelectorAll("button[aria-label]")]
+        .map((button) => button.getAttribute("aria-label") ?? "")
+        .filter((label) => label.includes("task 0"));
+    const appeared = finished();
+    act(() => store.i18n.setLang("en"));
+    const translated = finished();
+    act(() => {
+      store.renameHost("host-0", "alfa");
+    });
+    expect([appeared, translated, finished()]).toEqual([
+      ["machine 0 · task 0: Concluída"],
+      ["machine 0 · task 0: Finished"],
+      ["alfa · task 0: Finished"],
+    ]);
+    store.dispose();
+  });
 });
