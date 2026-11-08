@@ -11,6 +11,7 @@ import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { Timers } from "../quota/quota.ts";
+import { withDigests } from "./session-commit.ts";
 
 /** Watches a folder recursively; `filename` is relative to it (`null` when the OS does not say). */
 export type WatchFn = (
@@ -201,8 +202,16 @@ export class Changes {
 
   async get(target: string): Promise<ChangesResult> {
     const { root, base, branch } = await this.resolve(target);
-    if (base === null)
-      return { target, root, base, files: await workingDiff(root), position: null };
+    // Against `HEAD` (a session): each uncommitted file has its digest, for a commit (#1133).
+    if (base === null) {
+      return {
+        target,
+        root,
+        base,
+        files: await withDigests(root, await workingDiff(root)),
+        position: null,
+      };
+    }
     const { files } = await cardDiff(root, base);
     return {
       target,

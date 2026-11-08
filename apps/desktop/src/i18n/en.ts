@@ -1830,6 +1830,21 @@ export const en: Dictionary = {
     harness_confirm: "Changing the Claude Code setup needs your confirmation.",
     harness_reformat:
       "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
+    changes_commit_confirm: "Confirm the commit before it is made.",
+    changes_commit_target:
+      "Only a session started by hand is committed here: a card has its own Open PR.",
+    changes_commit_state:
+      "The repository is busy ({state}): finish or undo it in a terminal, then commit again.",
+    changes_commit_stale: "The files changed since you looked: check them again, then commit.",
+    changes_commit_secret:
+      "{file} looks like it holds a secret, so nothing was committed: take it out first.",
+    changes_commit_message_secret:
+      "The message looks like it holds a secret, so nothing was committed: take it out first.",
+    changes_commit_too_large: "{file} is too large to check for secrets: commit it yourself.",
+    changes_commit_branch_taken: "There is already a branch {branch}: pick another name.",
+    changes_commit_hook:
+      "The commit was refused: {output}. You are on {branch} with your files as they were; fix it and commit again, or go back with git switch {base}.",
+    changes_commit_git: "Git could not make the branch or the commit in this repository.",
     harness_commit_stale:
       "The files are not as the setup wrote them: apply the setup again, then commit.",
     harness_commit_no_head: "The project has no commit yet to start a branch from.",

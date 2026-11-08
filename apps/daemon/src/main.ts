@@ -114,6 +114,7 @@ import { createResources } from "./resources/wiring.ts";
 import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
+import { SessionCommits } from "./review/session-commit.ts";
 import { SessionFiles } from "./review/session-files.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
@@ -1051,6 +1052,12 @@ export async function startDaemon(
     // A project's checkout is one too, inside these (#797).
     allowedRoots: config.allowedRoots,
   });
+  // #1133: a plain session's changes committed on a new branch in its own checkout.
+  const sessionCommits = new SessionCommits({
+    changes,
+    scanner: snippetScanner,
+    isCardWorktree: (root) => board.projectForCwd(root)?.card != null,
+  });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
   const boardSyncStore = new BoardSyncStore(store.db);
@@ -1638,6 +1645,7 @@ export async function startDaemon(
     budgets,
     quotaHistory,
     changes,
+    sessionCommits,
     review: new ReviewComments({ db: store.db, changes, manager, board, central }),
     sessionFiles: new SessionFiles({ db: store.db }),
     ssh: sshTargets,
