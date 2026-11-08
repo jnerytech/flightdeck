@@ -158,9 +158,7 @@ export function ActionForm(
           </DialogTitle>
         </DialogHeader>
         <Form variant="dialog" onSubmit={() => saving.run(save)}>
-          {/* The fields scroll in a box of their own so the buttons stay in view; below 640 px the
-              dialog is a sheet that scrolls itself and keeps the buttons at its bottom (#1271). */}
-          <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1 max-sm:max-h-none max-sm:overflow-visible max-sm:pr-0">
+          <div className="dialog-fields">
             {field("actionsUi.form.name", draft.name, (name) => set({ name }), initial !== null)}
             {field("actionsUi.form.description", draft.description, (description) =>
               set({ description }),

@@ -1122,8 +1122,8 @@ html:not(:has([data-slot="status-bar"])) {
     border-width: 0;
     border-radius: 0;
     /* #1271: a field that takes focus under the sticky footer scrolls clear of it (WCAG 2.4.11):
-       room for the buttons (about 5rem) and a reason under them. */
-    scroll-padding-bottom: 6rem;
+       room for the buttons (about 5rem) and a reason line or a wrapped row under them. */
+    scroll-padding-bottom: 8rem;
   }
   /* A form that holds the fields and the footer (New card) fills the sheet, as the content does. */
   [data-slot="dialog-content"] > form {
@@ -1643,6 +1643,22 @@ html:not(:has([data-slot="status-bar"])) {
   border-top-width: 1px;
   background-color: var(--background);
   padding-block: 0.75rem;
+}
+/* #1271: a dialog's fields in a box of their own, so its buttons stay in view while they scroll.
+   Below 640 px the dialog is a sheet that scrolls itself and keeps the buttons at its bottom: a
+   second scroller there would stop them mid-sheet, so the box shows all it holds. */
+@utility dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  @media (width < 40rem) {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
 }
 @utility legend-tight {
   margin-bottom: 0.25rem;
