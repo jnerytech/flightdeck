@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { translator } from "../src/i18n/index.ts";
 import {
   type HubGroup,
@@ -137,5 +139,24 @@ describe("hub-row-state: a failed session is over, like an ended one (#1132)", (
   test("a kept Failed filter comes back on reload", () => {
     const storage = { getItem: () => JSON.stringify({ state: "failed" }) };
     expect(loadHubFilter(storage).state).toBe("failed");
+  });
+});
+
+// #1144's e2e (sleep-wake): in the compact 32 px row the status line and the Asleep mark took the
+// whole width and the title shrank to nothing, so it could not be clicked. The title keeps a
+// minimum and the status gives way first. happy-dom has no layout: this reads the rules, and the
+// journey and the 390 print check the fit.
+describe("hub-row-state: the title keeps its room beside the status (#1132)", () => {
+  const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+  const block = (name: string) =>
+    css.match(new RegExp(`@utility ${name} \\{([^}]*)\\}`))?.[1] ?? "";
+  test("the row's title has a minimum width, and the status line shrinks before it", () => {
+    const hub = readFileSync(join(import.meta.dir, "../src/ui/SessionsHub.tsx"), "utf8");
+    expect([
+      /min-width: min\(/.test(block("row-title")),
+      /flex-shrink: (\d+)/.exec(block("row-status"))?.[1] !== undefined &&
+        Number(/flex-shrink: (\d+)/.exec(block("row-status"))?.[1]) > 1,
+      hub.includes("row-title"),
+    ]).toEqual([true, true, true]);
   });
 });
