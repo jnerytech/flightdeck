@@ -360,4 +360,68 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       text.includes("Aplicar a configuração"),
     ]).toEqual([true, true, true, true]);
   });
+
+  test("after an apply, a host that can commit offers it, asks first, and sends the digests apply gave (#75 C1)", async () => {
+    const digests = { [SETTINGS]: "w-settings", "CLAUDE.md": "w-claude" };
+    const { view, sent } = setup({
+      features: [...FEATURES, "harnessCommit"],
+      answers: [
+        { ok: true, data: { written: [SETTINGS, "CLAUDE.md"], digests } },
+        {
+          ok: true,
+          data: { branch: "flightdeck/claude-setup-x", commit: "abc", files: [SETTINGS] },
+        },
+      ],
+    });
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    const offered = await settleMaybe(() => button("Commit on a new branch") !== null);
+    await click("Commit on a new branch");
+    const asked = await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    const said = dialogText();
+    await click("Commit on a new branch", true);
+    const done = await settleMaybe(
+      () => screen.queryByText(/Committed on flightdeck\/claude-setup-x/) !== null,
+    );
+    expect([
+      offered,
+      asked,
+      said.includes("committed whole"),
+      said.includes(".claude/settings.json"),
+      sent.find(([type]) => type === "project.harness.commit")?.[1],
+      done,
+    ]).toEqual([true, true, true, true, { path: "/work/api", digests, confirm: true }, true]);
+  });
+
+  test("a host without the commit feature offers no commit after an apply", async () => {
+    const { view } = setup();
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    await settleMaybe(() => screen.queryByText(/Set up:/) !== null);
+    expect(button("Commit on a new branch") !== null).toBe(false);
+  });
+
+  test("a refused commit says why, in the app's words", async () => {
+    const { view } = setup({
+      features: [...FEATURES, "harnessCommit"],
+      answers: [
+        { ok: true, data: { written: [SETTINGS], digests: { [SETTINGS]: "w" } } },
+        { ok: false, code: "invalid_state", message: "refused", reason: "harness_commit_identity" },
+      ],
+    });
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    await settleMaybe(() => button("Commit on a new branch") !== null);
+    await click("Commit on a new branch");
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    await click("Commit on a new branch", true);
+    const said = await settleMaybe(() => screen.queryByText(/Git has no name and email/) !== null);
+    expect(said).toBe(true);
+  });
 });
