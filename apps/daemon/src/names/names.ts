@@ -127,8 +127,7 @@ export class Names {
   rename(id: string, display: string): SessionName {
     const current = this.row(id);
     const name = display.trim();
-    if (!name)
-      throw new FlightdeckError("bad_request", "o nome não pode ficar em branco", "name_blank");
+    if (!name) throw new FlightdeckError("bad_request", "the name cannot be blank", "name_blank");
     this.db.transaction(() => {
       this.db.query("UPDATE session_names SET display = ? WHERE session_id = ?").run(name, id);
       const alias = slug(name);
@@ -197,7 +196,7 @@ export class Names {
       .query<Row, [string]>("SELECT * FROM session_names WHERE session_id = ?")
       .get(id);
     if (!row)
-      throw new FlightdeckError("not_found", `a sessão ${id} não tem nome`, "session_unnamed", {
+      throw new FlightdeckError("not_found", `session ${id} has no name`, "session_unnamed", {
         id,
       });
     return row;
