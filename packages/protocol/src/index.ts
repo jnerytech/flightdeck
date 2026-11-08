@@ -14,6 +14,7 @@ import {
   SPEC_PATH_MAX,
   SpecState,
   specPathProblem,
+  type ValidationTemplate,
 } from "./board-contracts.ts";
 import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
@@ -3354,6 +3355,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.get", CardIdPayload),
   /** Issue #78: looks at the card's spec file again and answers the card. */
   cmd("card.spec", CardIdPayload),
+  /** Issue #1058: the project's own shape for a validation note, or why it was not used. */
+  cmd("card.validationTemplate", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
   /** Issue #100: teleport, the source side (feature `teleport`). */
@@ -5378,6 +5381,7 @@ export interface CommandResults {
   "hooks.uninstall": HooksStatusResult;
   "card.get": Card;
   "card.spec": Card;
+  "card.validationTemplate": ValidationTemplate;
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.templates": { templates: WorkflowTemplate[] };
   "alert.list": { alerts: RepoAlert[]; unavailable: AlertsUnavailable[] };
