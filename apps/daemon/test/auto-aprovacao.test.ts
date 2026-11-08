@@ -371,6 +371,34 @@ describe("auto-aprovacao", () => {
     expect(await auto.decide(ask(cwd, "qualquer-sessao"))).toMatchObject({ decision: "allow" });
   });
 
+  test("suspendCard keeps approval off on a card's sessions with the reason it was given, and only there", async () => {
+    const cwd = tempDir("fd-auto-");
+    const other = tempDir("fd-auto-");
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const auto = new AutoApprover({
+      db: store.db,
+      runtime: new FakeRuntime(),
+      dataDir: tempDir(),
+      context: (dir) => ({ projectId: "p1", settings: ON, cardId: dir === cwd ? "c1" : "c2" }),
+    });
+    auto.suspendCard("c1", "card raised from an agent's findings");
+    const ask = (dir: string): AutoApproveRequest => ({
+      sessionKey: "s",
+      requestId: "r",
+      toolName: "Write",
+      input: {},
+      cwd: dir,
+      risk: { level: "medium", reason: "x", network: false },
+    });
+    expect(await auto.decide(ask(cwd))).toMatchObject({
+      decision: "ask",
+      reason: expect.stringContaining("card raised from an agent's findings"),
+    });
+    expect(await auto.decide(ask(other))).toMatchObject({ decision: "allow" });
+    expect(auto.suspended().map((entry) => entry.sessionKey)).toEqual(["card:c1"]);
+  });
+
   test("registro: cada decisão em auto_approvals, com filtros; a consulta entra no uso com origem auto-approve", async () => {
     const { auto, request, store } = setup({
       judge: () => ({ decision: "allow", reason: "seguro", tokens: TOKENS }),

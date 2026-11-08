@@ -46,8 +46,11 @@ export function ModeChip(
     setOpen(false);
     props.onPick(next);
   };
+  // Not modal (#1004): a modal menu marks the rest of the page aria-hidden while its controls stay
+  // focusable (axe's aria-hidden-focus). The menu still takes the focus and Escape closes it; a
+  // click on another control closes it and reaches that control in the same click.
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -65,6 +68,9 @@ export function ModeChip(
         side="top"
         align="end"
         className="mode-menu"
+        // Like a modal menu, it closes on Escape or a press outside, never on a focus (#1004): Radix
+        // puts the focus back on a chip a tick after a pick, and a menu opened by then stays open.
+        onFocusOutside={(e) => e.preventDefault()}
         onKeyDown={(e) => {
           const row = /^[1-9]$/.test(e.key) ? rows[Number(e.key) - 1] : undefined;
           if (!row) return;

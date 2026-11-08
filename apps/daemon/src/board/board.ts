@@ -29,6 +29,7 @@ import {
   type WorkflowInfo,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { UNTRUSTED_MARK } from "../issues/issues.ts";
 import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
 import { isProjectRule } from "../permissions/permission-updates.ts";
@@ -40,6 +41,7 @@ import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
+import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
@@ -91,6 +93,13 @@ export interface FixResult {
 
 const PENDING_NOTICE = "worktree com alterações pendentes: não foi removida";
 
+/** Issue #79: a card done this recently still covers the key of the finding it was raised from. */
+const DONE_COVERS_MS = 30 * 24 * 60 * 60 * 1000;
+/** Two titles are the same when only their case and spacing differ. */
+const sameTitle = (title: string) => title.trim().replace(/\s+/g, " ").toLowerCase();
+const raisedBy = (origin: { workflow: string; runId: string }) =>
+  `Raised by the workflow ${origin.workflow} (run ${origin.runId}) from what its agent found in the repository. The text below is the agent's and has not been reviewed.`;
+
 export const DEFAULT_PROMPT_TEMPLATE =
   "Trabalhe somente nesta worktree, sem mexer em outras pastas do repositório, e faça commits " +
   "com mensagens descritivas a cada passo concluído.";
@@ -128,6 +137,8 @@ export interface BoardOptions {
   worktreeIncludeLimit?: number;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
   idle?: () => Promise<void>;
+  /** Issue #79: keeps automatic approval off a card made from an agent's findings. */
+  suspendApproval?: (cardId: string, reason: string) => void;
 }
 
 interface ProjectRow {
@@ -374,6 +385,8 @@ export class Board {
         takeSlots: (cardId, count) => this.takeSlots(cardId, count),
         waitQuota: () => this.waitQuota(),
         createPr: async (cardId) => (await this.createPr(cardId)).prUrl as string,
+        raiseCards: (cardId, findings, origin) =>
+          this.raiseCards(this.getCard(cardId).projectId, findings, origin),
         card: (cardId) => this.getCard(cardId),
       },
       checks: opts.checks ?? shellCheckRunner(),
@@ -580,6 +593,68 @@ export class Board {
     return project ? { project, card: null } : null;
   }
 
+  /**
+   * Issue #79: raises the findings of a workflow's agent step as Backlog cards, skipping those a
+   * card of the project already covers (by key, or by title among the open ones) and creating at
+   * most `CARDS_PER_RUN`. The text is the agent's: marked as such, with approval kept off.
+   */
+  raiseCards(
+    projectId: string,
+    findings: readonly Finding[],
+    origin: { workflow: string; runId: string },
+  ): CardsRaised {
+    this.getProject(projectId);
+    const at = (this.opts.clock ?? Date.now)();
+    // A key is covered by any card that has it, except one done longer ago than the window.
+    const covered = new Set<string>();
+    for (const row of this.db
+      .query<{ source_key: string; board_column: string; updated_at: string }, [string]>(
+        `SELECT source_key, board_column, updated_at FROM cards
+         WHERE project_id = ? AND source_key IS NOT NULL`,
+      )
+      .all(projectId)) {
+      if (row.board_column !== "done" || at - Date.parse(row.updated_at) < DONE_COVERS_MS) {
+        covered.add(row.source_key);
+      }
+    }
+    const titles = new Set(
+      this.db
+        .query<{ title: string }, [string]>(
+          "SELECT title FROM cards WHERE project_id = ? AND board_column <> 'done'",
+        )
+        .all(projectId)
+        .map((row) => sameTitle(row.title)),
+    );
+    const raised: CardsRaised = { created: [], duplicates: 0, overCap: 0 };
+    for (const finding of findings) {
+      if (covered.has(finding.key) || titles.has(sameTitle(finding.title))) {
+        raised.duplicates++;
+      } else if (raised.created.length >= CARDS_PER_RUN) {
+        raised.overCap++;
+      } else {
+        const card = this.createCard(projectId, {
+          title: finding.title,
+          description: [UNTRUSTED_MARK, raisedBy(origin), finding.body]
+            .filter((part) => part !== "")
+            .join("\n\n"),
+          issueExternal: true,
+          sourceKey: finding.key,
+        });
+        covered.add(finding.key);
+        titles.add(sameTitle(finding.title));
+        try {
+          this.opts.suspendApproval?.(card.id, "card raised from an agent's findings");
+        } catch (error) {
+          // A card without its suspension must not stay: the ones before it have theirs.
+          this.removeFromBoard(card.id, "discarded");
+          throw error;
+        }
+        raised.created.push(card.id);
+      }
+    }
+    return raised;
+  }
+
   getCard(id: string): Card {
     const row = this.db.query<CardRow, [string]>("SELECT * FROM cards WHERE id = ?").get(id);
     if (!row)
@@ -660,6 +735,8 @@ export class Board {
       column?: BoardColumn;
       issueRef?: string;
       issueExternal?: boolean;
+      /** Issue #79: the key of the finding it was raised from. */
+      sourceKey?: string;
       /** Phase 31: what the card waits for. */
       blockedBy?: string[];
       unblockWhen?: UnblockWhen;
@@ -691,8 +768,9 @@ export class Board {
     this.db
       .query(
         `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
-           issue_external, arena_of, variant, unblock_when, auto_start, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           issue_external, arena_of, variant, unblock_when, auto_start, created_at, updated_at,
+           source_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -709,6 +787,7 @@ export class Board {
         autoStartOf(input.autoStart),
         at,
         at,
+        input.sourceKey ?? null,
       );
     this.storeBlockers(id, blockedBy);
     this.noteWaiting(id);
@@ -760,6 +839,8 @@ export class Board {
         const variant = this.createCard(card.projectId, {
           title: `${card.title} (${label})`,
           description: card.description,
+          // Third-party or agent text stays marked, and approval stays off, on every variant.
+          issueExternal: card.issueExternal,
           arenaOf: cardId,
           variant: {
             label,
@@ -769,6 +850,9 @@ export class Board {
           },
         });
         made.push(variant.id);
+        if (card.issueExternal) {
+          this.opts.suspendApproval?.(variant.id, "arena variant of a card with outside content");
+        }
         await this.startCard(variant.id, {
           workflow: input.workflow,
           inputs: input.inputs,

@@ -1358,13 +1358,16 @@ export const en: Dictionary = {
     parallel_empty: "parallel needs at least one item.",
     input_name_invalid: "An input name takes letters, digits, hyphens and underscores.",
     persona_invalid: "The persona id is not valid.",
-    step_one_action: "A step needs exactly one action: agent, check, gate, loop, parallel or pr.",
+    step_one_action:
+      "A step needs exactly one action: agent, check, gate, loop, parallel, pr or cards.",
     step_id_duplicate: "Another step has this id.",
     inner_one_action: "{where} needs exactly one action: agent or check.",
     continue_unknown: "continue points to a step that does not exist: {step}.",
     persona_with_continue:
       "persona does not apply with continue: that step's session already exists.",
     reference_unknown: "Unknown reference: {ref}.",
+    cards_from_unknown:
+      "cards.from must name an agent step that comes before it, and {step} is not one.",
   },
   actionIssue: {
     not_object: "The action must be a block of fields.",
@@ -1523,6 +1526,9 @@ export const en: Dictionary = {
     messaging_policy_invalid: "The messaging rules are not valid: {errors}",
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
     card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
+    findings_missing: "The reply of step {step} has no list of findings, so no card was created.",
+    findings_invalid:
+      "The reply of step {step} is not a valid list of findings ({where}), so no card was created.",
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",

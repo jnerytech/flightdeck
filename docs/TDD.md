@@ -73,6 +73,9 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     **What to test** (#1002, the person's decision, 2026-11-08): business logic and the important
     flows. The coverage gate is 80% of each file's lines and functions; a test written only to
     reach a line is not needed.
+    *Legacy, until #1003 removes the last one:* the paragraph below describes the
+    `// unstable:` skips still in the repository and the checks that keep their notes honest. It
+    does not allow a new skip.
     A test that bets on the machine (wall-clock polls, a timer against a limit, a child process on
     a loaded Windows runner) is written `test.skipIf(notLinux)(…)` (`notLinux` is in
     `scripts/test/not-linux.ts`; `process.platform !== "linux"` also counts) with
