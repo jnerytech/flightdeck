@@ -110,7 +110,7 @@ export function checkChanged(lcov: string, targets: readonly string[]): Coverage
  * #996: every file of a whole-suite lcov report below 100%, with what it misses. Bun's
  * threshold fails such a run with exit code 1 and no word on which file.
  */
-export function belowFull(lcov: string): string[] {
+export function filesBelowGate(lcov: string): string[] {
   return [...readLcov(lcov)]
     .map(([file, gaps]) => ({ file, gaps: gapsOf(gaps) }))
     .filter(({ gaps }) => gaps !== "")
@@ -122,7 +122,7 @@ export function wholeSuiteVerdict(code: number, lcov: string | null): string | n
   if (code === 0) return null;
   const lead = `test:related: the whole suite exited with ${code}`;
   if (lcov === null) return `${lead} and left no coverage report`;
-  const below = belowFull(lcov);
+  const below = filesBelowGate(lcov);
   if (below.length === 0) {
     return `${lead} with every file at 100%: a failing test, a file that did not load, the isolation guard or a timeout stopped it (see above)`;
   }
