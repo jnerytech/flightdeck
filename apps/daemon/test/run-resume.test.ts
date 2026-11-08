@@ -84,7 +84,7 @@ describe("run-resume: a failed run resumes from its failed step (#1266)", () => 
       await board.resumeRun(runId, false),
       await refusal(() => board.resumeRun(runId, true)),
     ]).toEqual([
-      { from: "c", ok: false, reason: "run_resume_workflow_changed" },
+      { from: "c", ok: false, reason: "run_resume_workflow_changed", params: { name: "wf" } },
       "run_resume_workflow_changed",
     ]);
   });
