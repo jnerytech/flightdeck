@@ -1,4 +1,4 @@
-import type { Budget, BudgetInput } from "@flightdeck/protocol";
+import type { Budget, BudgetInput, QuotaBudgetInput } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
@@ -10,13 +10,20 @@ import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { hasFeature } from "@/lib/version";
 import type { AppStore } from "../lib/app-store.ts";
 import { budgetLabel, budgetLine, projectName } from "../lib/budgets.ts";
 import { periodRange } from "../lib/costs.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** What the client filter reads: the selection, the clients and where each project belongs. */
-const BUDGETS_KEYS = ["clientSelection", "clientList", "clientOverrides", "projects"] as const;
+const BUDGETS_KEYS = [
+  "clientSelection",
+  "clientList",
+  "clientOverrides",
+  "projects",
+  "hosts",
+] as const;
 
 interface Draft {
   id?: string;
@@ -24,8 +31,12 @@ interface Draft {
   projectKey: string;
   /** The project is one the list does not have: its key is typed. */
   other: boolean;
-  period: Budget["period"];
+  /** What the limit is measured in: dollars, or a share of a plan quota window (issue #1248). */
+  unit: "usd" | QuotaBudgetInput["window"];
+  period: BudgetInput["period"];
   limitUsd: string;
+  /** The share of the window, in percent as typed. */
+  limitPct: string;
   action: Budget["action"];
 }
 
@@ -39,10 +50,15 @@ const EMPTY: Draft = {
   scope: "host",
   projectKey: "",
   other: false,
+  unit: "usd",
   period: "day",
   limitUsd: "",
+  limitPct: "",
   action: "notify",
 };
+
+/** The smallest share the daemon takes, in percent. */
+const MIN_PCT = 0.1;
 
 /** A host's budgets with what each one spent in its period, and a form to create or edit one. */
 export function BudgetsSection(
@@ -58,14 +74,21 @@ export function BudgetsSection(
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [removing, setRemoving] = useState<Budget | null>(null);
   const saving = useBusy();
-  const editing = props.budgets.find((b) => b.id === draft.id);
+  const { budgets } = props;
+  const editing = budgets.find((b) => b.id === draft.id);
   // The selected client's project budgets, and the host's own, which cap everything on the host.
   const scope = store.clientScope();
-  const { clientSelection: selection } = useStoreSlice(store, BUDGETS_KEYS);
-  const visible = props.budgets.filter(
+  const { clientSelection: selection, hosts } = useStoreSlice(store, BUDGETS_KEYS);
+  // A host that runs the quota can measure a budget in a share of its plan window.
+  const byWindow = hasFeature(
+    hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+    "quotaBudgets",
+    false,
+  );
+  const visible = budgets.filter(
     (b) => b.scope === "host" || scope.includes(selection, b.projectKey ?? ""),
   );
-  const hidden = props.budgets.length - visible.length;
+  const hidden = budgets.length - visible.length;
   const [spentOn, setSpentOn] = useState<string[]>([]);
   // The keys a project budget can name are the ones the host has seen: those with usage in the
   // last 30 days and those a budget already uses.
@@ -77,7 +100,7 @@ export function BudgetsSection(
   const keys = [
     ...new Set([
       ...spentOn,
-      ...props.budgets.flatMap((b) => (b.projectKey ? [b.projectKey] : [])),
+      ...budgets.flatMap((b) => (b.projectKey ? [b.projectKey] : [])),
       ...(draft.projectKey ? [draft.projectKey] : []),
     ]),
   ];
@@ -90,20 +113,33 @@ export function BudgetsSection(
     .sort((a, b) => a.label.localeCompare(b.label));
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const save = async () => {
-    const input: BudgetInput = {
+    const common = {
       ...(draft.id ? { id: draft.id } : {}),
       scope: draft.scope,
       ...(draft.scope === "project" ? { projectKey: draft.projectKey } : {}),
-      period: draft.period,
-      limitUsd: Number(draft.limitUsd),
       action: draft.action,
     };
-    await store.setBudget(hostId, input);
+    if (draft.unit === "usd") {
+      await store.setBudget(hostId, {
+        ...common,
+        period: draft.period,
+        limitUsd: Number(draft.limitUsd),
+      });
+    } else {
+      await store.setQuotaBudget(hostId, {
+        ...common,
+        window: draft.unit,
+        limitPct: Number(draft.limitPct) / 100,
+      });
+    }
     setDraft(EMPTY);
   };
-  const limit = Number(draft.limitUsd);
+  const byShare = draft.unit !== "usd";
+  const limit = Number(byShare ? draft.limitPct : draft.limitUsd);
   let needs: string | null = null;
-  if (Number.isNaN(limit) || limit <= 0) needs = t("budgetsUi.limitNeeded");
+  if (byShare && (draft.limitPct.trim() === "" || !(limit >= MIN_PCT && limit <= 100))) {
+    needs = t("budgetsUi.pctNeeded");
+  } else if (Number.isNaN(limit) || limit <= 0) needs = t("budgetsUi.limitNeeded");
   else if (draft.scope === "project" && draft.projectKey.trim() === "") {
     needs = t("budgetsUi.projectNeeded");
   }
@@ -112,7 +148,7 @@ export function BudgetsSection(
     <section aria-label={title}>
       <Panel title={title}>
         <Stack gap={4}>
-          {props.budgets.length === 0 ? (
+          {budgets.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t("budgetsUi.none")}</p>
           ) : (
             <Stack as="ul" gap={2}>
@@ -140,8 +176,16 @@ export function BudgetsSection(
                                 scope: budget.scope,
                                 projectKey: budget.projectKey ?? "",
                                 other: false,
-                                period: budget.period,
-                                limitUsd: String(budget.limitUsd),
+                                unit:
+                                  budget.limitPct === null
+                                    ? "usd"
+                                    : (budget.period as Draft["unit"]),
+                                period: budget.period === "month" ? "month" : "day",
+                                limitUsd: budget.limitPct === null ? String(budget.limitUsd) : "",
+                                limitPct:
+                                  budget.limitPct === null
+                                    ? ""
+                                    : String(Math.round(budget.limitPct * 1000) / 10),
                                 action: budget.action,
                               })
                             }
@@ -245,30 +289,66 @@ export function BudgetsSection(
                   )}
                 </Field>
               )}
-              <Field label={t("budgetsUi.period")}>
-                {(control) => (
-                  <NativeSelect
-                    {...control}
-                    value={draft.period}
-                    onChange={(e) => set({ period: e.target.value as Draft["period"] })}
-                  >
-                    <option value="day">{t("budgets.day")}</option>
-                    <option value="month">{t("budgets.month")}</option>
-                  </NativeSelect>
-                )}
-              </Field>
-              <Field label={t("budgetsUi.limit")}>
-                {(control) => (
-                  <Input
-                    {...control}
-                    type="number"
-                    min={0}
-                    step="any"
-                    value={draft.limitUsd}
-                    onChange={(e) => set({ limitUsd: e.target.value })}
-                  />
-                )}
-              </Field>
+              {(byWindow || byShare) && (
+                <Field label={t("budgetsUi.unit")}>
+                  {(control) => (
+                    <NativeSelect
+                      {...control}
+                      value={draft.unit}
+                      onChange={(e) => set({ unit: e.target.value as Draft["unit"] })}
+                    >
+                      <option value="usd">{t("budgetsUi.unitUsd")}</option>
+                      <option value="five_hour">{t("budgetsUi.unitFiveHour")}</option>
+                      <option value="seven_day">{t("budgetsUi.unitSevenDay")}</option>
+                    </NativeSelect>
+                  )}
+                </Field>
+              )}
+              {!byShare && (
+                <Field label={t("budgetsUi.period")}>
+                  {(control) => (
+                    <NativeSelect
+                      {...control}
+                      value={draft.period}
+                      onChange={(e) => set({ period: e.target.value as Draft["period"] })}
+                    >
+                      <option value="day">{t("budgets.day")}</option>
+                      <option value="month">{t("budgets.month")}</option>
+                    </NativeSelect>
+                  )}
+                </Field>
+              )}
+              {byShare ? (
+                <Field
+                  label={t("budgetsUi.limitPct")}
+                  help={draft.scope === "project" ? t("budgetsUi.estimateHelp") : undefined}
+                >
+                  {(control) => (
+                    <Input
+                      {...control}
+                      type="number"
+                      min={MIN_PCT}
+                      max={100}
+                      step="any"
+                      value={draft.limitPct}
+                      onChange={(e) => set({ limitPct: e.target.value })}
+                    />
+                  )}
+                </Field>
+              ) : (
+                <Field label={t("budgetsUi.limit")}>
+                  {(control) => (
+                    <Input
+                      {...control}
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={draft.limitUsd}
+                      onChange={(e) => set({ limitUsd: e.target.value })}
+                    />
+                  )}
+                </Field>
+              )}
               <Field
                 label={t("budgetsUi.action")}
                 help={t(draft.action === "queue" ? "budgetsUi.queueHelp" : "budgetsUi.notifyHelp")}

@@ -955,6 +955,10 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE teams ADD COLUMN report_at TEXT;
   ALTER TABLE teams ADD COLUMN report_done INTEGER NOT NULL DEFAULT 0;
   `,
+  // Issue #1248: a budget can be a share of a plan quota window (period five_hour or seven_day).
+  `
+  ALTER TABLE budgets ADD COLUMN limit_pct REAL;
+  `,
   // Issue #1266: the HEAD a failed run's worktree had, and each resume of a run.
   `
   ALTER TABLE workflow_runs ADD COLUMN head_at_end TEXT;

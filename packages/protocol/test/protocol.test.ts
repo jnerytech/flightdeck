@@ -437,6 +437,12 @@ const validCommands: Record<CommandType, unknown> = {
     limitUsd: 50,
     action: "queue",
   },
+  "budget.setQuota": {
+    scope: "host",
+    window: "five_hour",
+    limitPct: 0.8,
+    action: "notify",
+  },
   "budget.remove": { id: "b" },
   "budget.watch": {},
   "quota.history": { window: "five_hour", hours: 24 },

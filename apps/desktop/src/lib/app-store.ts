@@ -33,6 +33,7 @@ import type {
   PersonaRef,
   PlainInfo,
   Project,
+  QuotaBudgetInput,
   QuotaState,
   ReleaseNote,
   RiskLevel,
@@ -86,7 +87,7 @@ import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
-import { budgetLabel } from "./budgets.ts";
+import { budgetLabel, budgetLimitText, estimateNote, share } from "./budgets.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
@@ -2292,16 +2293,20 @@ export class AppStore {
    * What the palette lists besides live state: the Sessões lists, each host's projects and their
    * cards. Quiet: a host without a board (or offline) just lists less.
    */
+  /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
+  async loadBoard(hostId: string, projectId: string): Promise<void> {
+    const conn = this.connections.get(hostId);
+    if (!conn) return;
+    const board = await quiet(conn.request("board.get", { projectId }));
+    for (const card of cardsIn(board)) this.onCard(hostId, card);
+  }
+
   async loadPalette(): Promise<void> {
     const boards = this.state.hosts
       .filter((host) => host.status === "online")
       .map(async (host) => {
-        const conn = this.connections.get(host.id) as HostConnection;
         const projects = await this.loadProjects(host.id);
-        await inSequence(projects ?? [], async (project) => {
-          const board = await quiet(conn.request("board.get", { projectId: project.id }));
-          for (const card of cardsIn(board)) this.onCard(host.id, card);
-        });
+        await inSequence(projects ?? [], (project) => this.loadBoard(host.id, project.id));
       });
     const targets = this.state.hosts
       .filter(
@@ -2838,6 +2843,11 @@ export class AppStore {
     if (value === null || !(await this.copyText(value))) return false;
     setTimeout(() => void this.platform.copyText("").catch(() => {}), clearMs);
     return true;
+  }
+
+  /** Whether a backup file can be picked here: false in a browser, which has no file dialog (#1264). */
+  canReadBackup(): boolean {
+    return this.platform.vault.canPick !== false;
   }
 
   /** Whether this app can open the system's folder dialog (the desktop app, not a browser). */
@@ -3894,6 +3904,12 @@ export class AppStore {
   /** Creates a budget or changes the one with `input.id`; the list follows the answer. */
   async setBudget(hostId: string, input: BudgetInput): Promise<void> {
     const budget = await this.hostCommand(hostId, "budget.set", input);
+    if (budget) this.keepBudget(hostId, budget, false);
+  }
+
+  /** The same for a budget in terms of a plan quota window (issue #1248). */
+  async setQuotaBudget(hostId: string, input: QuotaBudgetInput): Promise<void> {
+    const budget = await this.hostCommand(hostId, "budget.setQuota", input);
     if (budget) this.keepBudget(hostId, budget, false);
   }
 
@@ -5194,16 +5210,18 @@ export class AppStore {
       { id: hostId, name: host.name },
       budgetLabel(update.budget, this.i18n.t),
       Math.round(update.threshold * 100),
-      usd(update.budget.limitUsd),
+      budgetLimitText(update.budget, this.i18n.t),
     );
+    const window = update.budget.limitPct !== null;
     this.notifyUser(
       {
         title: this.i18n.t("messages.budgetTitle"),
-        body: this.i18n.t("messages.budgetBody", {
+        body: this.i18n.t(window ? "messages.budgetBodyQuota" : "messages.budgetBody", {
           host: host.name,
           label: budgetLabel(update.budget, this.i18n.t),
           percent: Math.round(update.threshold * 100),
-          limit: usd(update.budget.limitUsd),
+          limit: window ? share(update.budget.limitPct ?? 0) : usd(update.budget.limitUsd),
+          estimate: estimateNote(update.budget, this.i18n.t),
         }),
       },
       {
