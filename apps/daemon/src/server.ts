@@ -30,6 +30,7 @@ import {
   PROTOCOL_VERSION,
   type ProjectLoad,
   type ProjectTrustState,
+  type SessionEventOf,
   type SessionLine,
   type SessionStatus,
   type SessionSummary,
@@ -616,6 +617,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       daemonVersion: DAEMON_VERSION,
       protocolVersion: PROTOCOL_VERSION,
       allowedRoots: [...opts.allowedRoots],
+      // #1191: `sessions.watch` can carry the current summaries in its ack.
+      features: ["watch.snapshot"],
     };
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
@@ -1649,6 +1652,14 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatch?.();
         const watch = manager.watchSummaries((envelope) => send(ws, envelope));
         ws.data.unwatch = watch.unwatch;
+        // #1191: asked to, the current summaries ride in the ack, one frame for them all.
+        if (command.payload.snapshot === "ack") {
+          return ok(command.type, {
+            summaries: watch.snapshot.map(
+              (envelope) => envelope.event as SessionEventOf<"session.summary">,
+            ),
+          });
+        }
         ok(command.type);
         for (const envelope of watch.snapshot) send(ws, envelope);
         return;

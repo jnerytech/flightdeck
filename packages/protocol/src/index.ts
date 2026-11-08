@@ -3258,7 +3258,11 @@ export const Command = z.discriminatedUnion("type", [
   cmd("session.subscribe", SessionSubscribePayload),
   cmd("session.unsubscribe", SessionIdPayload),
   cmd("permission.respond", PermissionRespondPayload),
-  cmd("sessions.watch", z.object({}).strict()),
+  /**
+   * `snapshot: "ack"` (#1191, feature `watch.snapshot`): the current summaries come in the ack, one
+   * frame for them all, not one frame each.
+   */
+  cmd("sessions.watch", z.object({ snapshot: z.literal("ack").optional() }).strict()),
   cmd("host.info", z.object({}).strict()),
   cmd("history.list", HistoryListPayload),
   cmd("history.get", HistoryGetPayload),
@@ -4766,6 +4770,11 @@ export const HelloResult = z.object({
   daemonVersion: z.string(),
   protocolVersion: z.number().int(),
   allowedRoots: z.array(z.string()),
+  /**
+   * What this connection can ask for before `host.info` answers (#1191): `watch.snapshot`, the
+   * current summaries in the ack of `sessions.watch`. Absent from an older host.
+   */
+  features: z.array(z.string()).optional(),
 });
 export type HelloResult = z.infer<typeof HelloResult>;
 
@@ -5370,7 +5379,8 @@ export interface CommandResults {
   "session.subscribe": SessionSubscribeResult;
   "session.unsubscribe": undefined;
   "permission.respond": undefined;
-  "sessions.watch": undefined;
+  /** With `snapshot: "ack"`: every session's current summary; otherwise nothing. */
+  "sessions.watch": { summaries: SessionEventOf<"session.summary">[] } | undefined;
   "host.info": HostInfoResult;
   "history.list": HistoryListResult;
   "history.get": HistoryGetResult;
