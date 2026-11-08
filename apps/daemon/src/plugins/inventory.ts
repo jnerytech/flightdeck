@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { lstat, readdir, readFile, readlink, realpath, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
-import { inSequence } from "@flightdeck/protocol";
+import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
@@ -369,13 +369,14 @@ export async function inspectPlugin(dir: string): Promise<PluginInventory> {
   );
   const mcpServers = await serversOf(reading, manifestJson);
 
-  const byText = (a: string, b: string) => (a < b ? -1 : Number(a > b));
+  skills.sort(byCodeUnit);
+  agents.sort(byCodeUnit);
   return {
     manifest: manifestOf(manifestJson),
     hooks,
     monitors,
-    skills: skills.sort(byText),
-    agents: agents.sort(byText),
+    skills,
+    agents,
     commands,
     mcpServers,
     attention: hooks.some((h) => h.sensitive),
