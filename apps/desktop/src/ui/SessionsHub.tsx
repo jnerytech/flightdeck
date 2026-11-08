@@ -766,7 +766,7 @@ export function SessionsHub(
                                   setCursor(listed.findIndex((r) => r.key === row.key));
                                   props.onOpen(row);
                                 }}
-                                className="min-w-0 flex-1 truncate text-left font-medium text-sm"
+                                className="row-title min-w-0 flex-1 truncate text-left font-medium text-sm"
                               >
                                 {row.title}
                               </button>

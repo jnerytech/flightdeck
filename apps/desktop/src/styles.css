@@ -1787,12 +1787,18 @@ html:not(:has([data-slot="status-bar"])) {
   display: inline-flex;
 }
 
+/* #1132: a sessions row's title keeps a minimum beside its status line, chips and marks (in the
+   32 px row they took the whole width and the title shrank to nothing). */
+@utility row-title {
+  min-width: min(8rem, 40%);
+}
+
 /* #1132: a sessions row's state in words ("Waiting for you · wants to run Bash"): beside the title
    on a wide row, it gives way to the title first and is cut with an ellipsis. */
 @utility row-status {
   min-width: 0;
   max-width: 45%;
-  flex-shrink: 2;
+  flex-shrink: 4;
   overflow: hidden;
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
