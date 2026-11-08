@@ -1480,7 +1480,10 @@ export const ptBR = {
     projectTrust: "a confiança em projetos",
     harnessStack: "a leitura do stack do projeto",
     knowledge: "a leitura dos documentos do projeto",
+    knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
+    knowledgeStatus: "a mudança do status de um documento",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
+    harnessApply: "a aplicação de mudanças na configuração do Claude Code",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
@@ -1742,6 +1745,8 @@ export const ptBR = {
     review_text_big: "O texto passa de 1 MB: encurte-o ou edite o arquivo fora do Flightdeck.",
     review_file_changed:
       "O arquivo {path} mudou desde que foi aberto: recarregue e aplique a edição de novo.",
+    knowledge_frontmatter:
+      "O front matter de {path} não pode ser mudado com segurança por aqui: edite o arquivo à mão.",
     review_revert_confirm: "Confirme o revert para continuar.",
     review_undo_confirm: "Confirme o desfazer para continuar.",
     review_undo_nothing:
@@ -1796,6 +1801,11 @@ export const ptBR = {
       "Isto só funciona por uma conexão próxima: este computador (loopback) ou a Tailscale, que o WireGuard cifra. Para um host WSL, adicione-o como ws://localhost:<porta> (o WSL repassa a porta) ou pelo endereço da Tailscale.",
     trust_root_refused:
       "Esta pasta é uma pasta permitida com vários projetos, ou fica acima de uma: confie na pasta do próprio projeto.",
+    harness_stale:
+      "O projeto mudou desde a prévia, ou a prévia não era destas partes: faça a prévia de novo.",
+    harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
+    harness_reformat:
+      "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
@@ -4202,6 +4212,24 @@ export const ptBR = {
       empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
       truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
       failed: "Não foi possível ler os documentos neste host.",
+      setStatus: {
+        hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
+        label: "Status de {title}",
+        changed:
+          "{title} agora está {status}. O arquivo foi mudado na pasta do projeto e não foi commitado.",
+        failed: "Não foi possível mudar o status. {why}",
+      },
+      feed: {
+        on: "As sessões que o Flightdeck inicia aqui recebem um índice dos documentos válidos.",
+        onUntrusted:
+          "Ligado, mas este projeto não é confiável, então as sessões não recebem o índice.",
+        off: "Desligado: as sessões daqui não recebem o índice.",
+        offBy:
+          "Desligado por {path}, uma pasta acima deste projeto, na configuração do host. Ligue lá.",
+        turnOff: "Desligar",
+        turnOn: "Ligar",
+        failed: "Não foi possível ler ou mudar o interruptor do índice neste host.",
+      },
     },
     harness: {
       title: "Configuração do Claude Code",

@@ -8,18 +8,15 @@
  * environment, and its files are scoped to the clone; the tests it writes still run as you, so
  * run it only where that is acceptable. It costs real quota: opt-in only, never in the suite or CI,
  * and never under the slot (the model's turn is not a heavy run).
+ * Linux and macOS only: it refuses Windows, where its git deny patterns miss backslash paths.
  */
-import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { whichOnPath } from "../apps/daemon/src/which.ts";
+import { startEval } from "./eval-start.ts";
 import {
-  childEnv,
   type EvalCommit,
-  type EvalRunner,
   type EvalTask,
-  evalOptions,
   parseStream,
   prepareClone,
   type RunFacts,
@@ -44,34 +41,8 @@ const TASKS: EvalTask[] = [
   },
 ];
 
-const options = evalOptions(process.argv.slice(2));
-if (typeof options === "string") {
-  console.error(`harness-eval: ${options}`);
-  process.exit(2);
-}
-const claude = whichOnPath("claude");
-if (!claude) {
-  console.error("harness-eval: claude is not on the PATH");
-  process.exit(2);
-}
-const env = childEnv(process.env);
-
-const run: EvalRunner = (command, cwd) => {
-  const proc = spawnSync(command[0] ?? "", command.slice(1), {
-    cwd,
-    env,
-    encoding: "utf8",
-    maxBuffer: 1 << 28,
-  });
-  return { code: proc.status ?? 1, out: proc.stdout ?? "" };
-};
-const top = run(["git", "rev-parse", "--show-toplevel"], process.cwd());
-if (top.code !== 0) {
-  console.error("harness-eval: run it inside the flightdeck repository");
-  process.exit(2);
-}
-const root = top.out.trim();
-const head = run(["git", "rev-parse", "HEAD"], root).out.trim();
+const options = startEval("harness-eval", process.argv.slice(2));
+const { claude, run, root, head } = options;
 // Transcripts and the report hold what the session read and ran: a 0700 folder, 0600 files.
 const outDir = mkdtempSync(join(tmpdir(), "fd-harness-eval-"));
 const save = (name: string, text: string) => {

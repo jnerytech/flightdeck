@@ -1,7 +1,8 @@
 import type { KnowledgeIndexResult } from "@flightdeck/protocol";
-import { isInside, rootNames } from "../paths.ts";
+import { rootNames } from "../paths.ts";
 import { feedIndex } from "./feed.ts";
 import { listKnowledge } from "./list.ts";
+import { offFolder } from "./switch.ts";
 
 /**
  * Issue #76: what a session in a project is given of its library. Nothing unless the project is
@@ -24,11 +25,9 @@ export function knowledgeFeedFor(
   return async (path) => {
     const { trusted, configRoot } = await deps.trust(path);
     if (!trusted) return nothing();
-    // A folder is one place under its real name and the one it was given by. The checkout a
-    // worktree is read from counts too: a worktree can lie outside the project it belongs to.
+    // The checkout a worktree is read from counts too: a worktree can lie outside its project.
     const where = await rootNames(configRoot ? [path, configRoot] : [path]);
-    const off = await rootNames(deps.off());
-    if (off.some((folder) => where.some((name) => isInside(folder, name)))) return nothing();
+    if ((await offFolder(deps.off(), where)) !== null) return nothing();
     return feedIndex((await listKnowledge(configRoot ?? path)).entries);
   };
 }
