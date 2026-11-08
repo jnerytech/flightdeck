@@ -207,6 +207,17 @@ describe("listAlerts (issue #79)", () => {
     expect(alert?.title).toBe("Title");
   });
 
+  test("a gh that throws is a failure of that source, not of the whole list", async () => {
+    const gh: GhIn = async (args) => {
+      if (args[1] === CODE) throw new Error("spawn exploded: secret-token-123");
+      return ok([dependabotAlert(5)]);
+    };
+    const list = await listAlerts(gh, "/w");
+    expect(list.unavailable).toEqual([{ kind: "code-scanning", reason: "failed" }]);
+    expect(ids(list)).toEqual(["dependabot:5"]);
+    expect(JSON.stringify(list).includes("secret-token-123")).toBe(false);
+  });
+
   test("without gh both sources say so, and there are no alerts", async () => {
     const list = await listAlerts(async () => null, "/w");
     expect(list).toEqual({
