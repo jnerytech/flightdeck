@@ -56,6 +56,7 @@ import { statuslineData } from "./costs/statusline.ts";
 import { coalesceDeltas, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
 import { listDirs, listFiles } from "./fs-dirs.ts";
+import type { AlertList } from "./github/alerts.ts";
 import type { GithubService } from "./github/service.ts";
 import type { PreviewPart } from "./harness/preview.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
@@ -181,6 +182,8 @@ export interface ServerOptions {
   ) => string;
   /** #75: a project's stack and commands, read from its manifest files, never run. */
   harnessStack?: (path: string) => Promise<HarnessStack>;
+  /** Issue #79: the open alerts of the repository in a folder, read with `gh`. */
+  alerts?: (cwd: string) => Promise<AlertList>;
   /** Issue #76: the library of documents of a project, read only. */
   knowledge?: (path: string) => Promise<KnowledgeListResult>;
   /** #76: the index of the project's current documents for a session's system prompt. */
@@ -434,6 +437,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.deps, "depsCheck"),
     ...when(opts.projectTrust, "projectTrust"),
     ...when(opts.harnessStack, "harnessStack"),
+    ...when(opts.alerts, "alerts"),
     // Issue #76: the project's library of documents, with their lifecycle status.
     ...when(opts.knowledge, "knowledge"),
     ...when(opts.knowledgeFeedSwitch, "knowledgeFeed"),

@@ -503,6 +503,7 @@ export const DAEMON_FEATURES = [
   "worktrees",
   "projectTrust",
   "harnessStack",
+  "alerts",
   "knowledge",
   "knowledgeFeed",
   "knowledgeStatus",

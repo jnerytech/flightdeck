@@ -40,6 +40,9 @@ export const runsHandlers = {
     const stack = await server.opts.harnessStack?.(project.path).catch(() => null);
     return { templates: workflowTemplates(stack?.commands.test ?? null) };
   },
+  "alert.list": () => {
+    return { alerts: [], unavailable: [] };
+  },
   "workflow.validate": async (payload, { server }) => {
     const { projectId, name } = payload;
     return await server.need("board").validateWorkflow(projectId, name);
