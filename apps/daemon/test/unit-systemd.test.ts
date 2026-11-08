@@ -37,8 +37,8 @@ describe("unit-systemd", () => {
   });
 
   test("caminho relativo é recusado", () => {
-    expect(() => systemdUnit(["flightdeckd"])).toThrow("caminho absoluto");
-    expect(() => systemdUnit(["./bin/flightdeckd"])).toThrow("caminho absoluto");
+    expect(() => systemdUnit(["flightdeckd"])).toThrow("absolute path");
+    expect(() => systemdUnit(["./bin/flightdeckd"])).toThrow("absolute path");
   });
 
   test("comando do daemon: binário compilado direto, código-fonte via bun run", () => {

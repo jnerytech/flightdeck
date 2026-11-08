@@ -140,7 +140,7 @@ describe("times-cota: a pausa e a retomada pela cota do plano", () => {
     expect(why?.reason).toBe("team_quota_until");
     expect(why?.params).toEqual({ until: new Date(clock.at + 2 * HOUR).toISOString() });
     expect(error).toContain("invalid_state");
-    expect(error).toContain("cota");
+    expect(error).toContain("plan quota is over the limit");
     expect(error).toContain(new Date(clock.at + 2 * HOUR).toISOString());
     expect(teams.list()).toEqual([]);
   });

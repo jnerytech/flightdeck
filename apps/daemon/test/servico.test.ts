@@ -131,7 +131,7 @@ describe("servico", () => {
         config: file,
       }),
     );
-    expect(text).toContain("claude não encontrado no PATH");
+    expect(text).toContain("claude not found on the PATH");
     expect(os.calls).toEqual([]);
     expect(os.written.size).toBe(0);
     expect(readFileSync(file, "utf8")).toBe(before);
@@ -194,7 +194,7 @@ describe("servico", () => {
     expect(JSON.parse(readFileSync(file, "utf8")).claude?.executablePath ?? "").toBe(
       "C:\\npm\\claude.cmd",
     );
-    expect(out.join("\n")).toContain("aviso: C:\\npm\\claude.cmd não é um .exe");
+    expect(out.join("\n")).toContain("warning: C:\\npm\\claude.cmd is not a .exe");
   });
 
   test("install no Linux instala a unit e registra o caminho do claude", async () => {
@@ -205,7 +205,7 @@ describe("servico", () => {
     expect(exits).toEqual([0]);
     expect(os.written.has("/home/dev/.config/systemd/user/flightdeckd.service")).toBe(true);
     expect((await loadConfig(file)).claude?.executablePath ?? "").toBe("/usr/local/bin/claude");
-    expect(out.join("\n")).toContain("serviço flightdeckd habilitado e iniciado");
+    expect(out.join("\n")).toContain("flightdeckd service enabled and started");
     expect(out.join("\n")).toContain("daemon do serviço respondendo");
   });
 
@@ -278,7 +278,7 @@ describe("servico", () => {
     expect(exits).toEqual([0]);
     expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Delete", "query"]);
     expect(await acquireLock(dataDir)).not.toBeNull();
-    expect(out.join("\n")).toContain("serviço removido");
+    expect(out.join("\n")).toContain("service removed");
   });
 
   /** A Windows service context whose task runs `exe start --config <file>`, recording commands. */
@@ -443,7 +443,7 @@ describe("servico", () => {
     ]);
     expect(await run(fakeOs("linux"), linux())).toEqual([
       "active",
-      "config: padrão (~/.flightdeck/config.json)",
+      "config: default (~/.flightdeck/config.json)",
     ]);
     const exe = "C:\\Users\\dev\\bin\\flightdeckd.exe";
     const xml = windowsTaskXml([exe], {
@@ -470,14 +470,14 @@ describe("servico", () => {
       log: { log: (m) => out.push(m), error: (m) => out.push(m) },
       serviceContext: ctx,
     });
-    expect(out).toEqual(["não instalado"]);
+    expect(out).toEqual(["not installed"]);
   });
 
   test("sistema sem suporte e ação inválida saem com erro", async () => {
     const mac = cli(fakeOs("darwin"));
     await runCli(["service", "install", "--config", configFile()], mac.deps);
     expect(mac.exits).toEqual([1]);
-    expect(mac.out.join("\n")).toContain("não suportado");
+    expect(mac.out.join("\n")).toContain("not supported");
     const bad = cli(fakeOs("linux"));
     await runCli(["service", "explodir"], bad.deps);
     expect(bad.exits).toEqual([1]);
