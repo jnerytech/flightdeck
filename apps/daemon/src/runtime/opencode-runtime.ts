@@ -218,10 +218,14 @@ class Connection {
       },
       timers: deps.timers,
     });
+    this.watchExit();
+  }
+
+  /** When the process exits: whatever it left running in its group goes with it, and the owner hears. */
+  private watchExit(): void {
     void this.proc.exited.then((code) => {
-      // Whatever the process left running in its group goes with it.
-      deps.runtime.ledger?.release(this.proc.pid);
-      if (!this.closing) deps.onExit(code);
+      this.deps.runtime.ledger?.release(this.proc.pid);
+      if (!this.closing) this.deps.onExit(code);
     });
   }
 
