@@ -32,6 +32,21 @@ describe("weak-assert (#1141)", () => {
     ).toBe(false);
   });
 
+  test("replay of 200 PRs: `expect(x !== null).toBe(true)` to `expect(x).not.toBeNull()` does not weaken", () => {
+    expect(
+      weakensAssertions(
+        `expect(x !== null)${m("toBe", "true")};`,
+        `expect(x).not${m("toBeNull")};`,
+      ),
+    ).toBe(false);
+    expect(
+      weakensAssertions(`expect(ok)${m("toBe", "false")};`, `expect(ok)${m("toBeFalsy")};`),
+    ).toBe(false);
+    // The formatter's line break after `toBe(` changes nothing.
+    const wrapped = `expect(x !== null)${m("toBe", "\n      true,\n    ")};`;
+    expect(weakensAssertions(wrapped, `expect(x).not${m("toBeNull")};`)).toBe(false);
+  });
+
   test("deleting a test, adding one, or a stricter swap does not weaken", () => {
     const strict = `expect(a)${m("toBe", "1")};\nexpect(b)${m("toBeTruthy")};`;
     expect(weakensAssertions(strict, "")).toBe(false);
