@@ -796,6 +796,7 @@ export const ptBR = {
     },
     line: "{kind}: {added} novos, {same} iguais, {conflicting} diferentes",
     conflictList: "Diferentes aqui",
+    newHosts: "Hosts novos",
     choiceLegend: "Quando for diferente",
     nothingToRestore: "Nada aqui é novo. Escolha substituir uma diferença para restaurar.",
     keep: "Manter o que está aqui",

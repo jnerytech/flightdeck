@@ -799,6 +799,7 @@ export const en: Dictionary = {
     },
     line: "{kind}: {added} new, {same} the same, {conflicting} different",
     conflictList: "Different here",
+    newHosts: "New hosts",
     choiceLegend: "When it differs",
     nothingToRestore: "Nothing here is new. Choose to replace a difference to restore it.",
     keep: "Keep what is here",

@@ -57,6 +57,8 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
     if (outcome.ok) {
       setPreview(outcome.preview);
       setChoice("skip");
+      // The decrypted bundle is held by the preview; the passphrase is not needed again.
+      setFilePassphrase("");
     } else if (outcome.code !== "cancelled") {
       setImportNote({ tone: "error", text: t(`backupAll.error.${outcome.code}`) });
     }
@@ -186,6 +188,14 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
                     </p>
                   ))}
                 </Stack>
+                {preview.hosts.added.length > 0 && (
+                  // A host brings its address and token: name each one before it is added.
+                  <Stack as="ul" gap={1} label={t("backupAll.newHosts")}>
+                    {preview.hosts.added.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </Stack>
+                )}
                 {differing.length > 0 && (
                   <>
                     <Stack as="ul" gap={1} label={t("backupAll.conflictList")}>

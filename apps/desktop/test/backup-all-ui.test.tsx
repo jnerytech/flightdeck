@@ -223,6 +223,20 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
     expect([named, waiting, restore()?.disabled]).toEqual([true, true, false]);
   });
 
+  test("the preview names the hosts it would add, and the file passphrase is gone once it is read", async () => {
+    const text = await backupText();
+    open({ picked: text });
+    await type("File passphrase", PASS);
+    await click("Read backup");
+    const named = await settleMaybe(
+      () =>
+        screen.queryByRole("list", { name: "New hosts" })?.textContent?.includes("Workstation") ===
+        true,
+      3000,
+    );
+    expect([named, field("File passphrase")?.value]).toEqual([true, ""]);
+  });
+
   test("the pt-BR panel is in Portuguese", async () => {
     open({ language: "pt-BR" });
     const shown = await settleMaybe(
