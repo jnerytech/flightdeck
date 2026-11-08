@@ -359,9 +359,12 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   Documents without a status and obsolete ones are never given. The index is capped at 4 KiB, and a
   line says how many documents were left out. The titles are marked as the repository's data, not
   instructions. A worktree is read from the trusted main folder, not from the branch. A system
-  prompt you pass yourself (`--append-system-prompt`) is left alone, with no index beside it. To
-  turn it off for a project, list its folder in the host's config file:
-  `"knowledge": { "feedOff": ["/path/to/project"] }` (everything inside the folder is off too).
+  prompt you pass yourself (`--append-system-prompt`) is left alone, with no index beside it. The
+  panel says whether the project is given the index, and **Turn off** / **Turn on** switch it for
+  that project only. The choice is kept in the host's config file as
+  `"knowledge": { "feedOff": ["/path/to/project"] }`, and a folder in that list switches off
+  everything inside it too: a project off through a folder above it says so, and is switched on
+  by editing that entry in the file. An untrusted project is not given the index, on or off.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.

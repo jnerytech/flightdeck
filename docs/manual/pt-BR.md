@@ -352,9 +352,11 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   uma linha diz quantos documentos ficaram de fora. Os títulos são marcados como dados do
   repositório, não como instruções. Um worktree é lido da pasta principal confiável, não da branch.
   Um prompt de sistema que você mesmo passar (`--append-system-prompt`) fica como está, sem o
-  índice ao lado. Para desligar em um projeto, liste a pasta dele no arquivo de configuração do
-  host: `"knowledge": { "feedOff": ["/caminho/do/projeto"] }` (tudo dentro da pasta também fica
-  desligado).
+  índice ao lado. O painel diz se o projeto recebe o índice, e **Desligar** / **Ligar** mudam isso
+  só para aquele projeto. A escolha fica no arquivo de configuração do host, como
+  `"knowledge": { "feedOff": ["/caminho/do/projeto"] }`, e uma pasta dessa lista desliga tudo
+  dentro dela também: um projeto desligado por uma pasta acima diz isso, e é religado editando
+  essa entrada no arquivo. Um projeto sem confiança não recebe o índice, ligado ou desligado.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.

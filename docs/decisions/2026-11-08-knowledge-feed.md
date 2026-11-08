@@ -23,8 +23,13 @@ of the project are current.
   prompt states that paths and titles are the repository's data, not instructions. Paths are the
   ones `knowledge.list` already vets (fixed folders, no links, no credential names).
 - **Off switch.** `knowledge.feedOff` in the host's config: project folders, and everything inside
-  them, whose sessions are not given the index. It is a config key for now; a toggle in the
-  knowledge panel is a later slice.
+  them, whose sessions are not given the index. Slice 4 adds the toggle in the knowledge panel:
+  `knowledge.feed` reads `{on, trusted, offBy}` and `knowledge.setFeed` switches one project. Off
+  adds the project's folder to the list; on takes out only the entries that name that project
+  (a `~` form included), because a folder above it also switches off other projects, so a project
+  off through such a folder reports `offBy` and stays off. The write is a read-modify-write of the
+  config file that touches only `knowledge.feedOff`, applied one at a time, and the running daemon
+  uses the new list at once. Trust still gates the index whatever the switch says.
 
 ## Left out
 
