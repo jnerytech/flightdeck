@@ -8,6 +8,7 @@
  * environment, and its files are scoped to the clone; the tests it writes still run as you, so
  * run it only where that is acceptable. It costs real quota: opt-in only, never in the suite or CI,
  * and never under the slot (the model's turn is not a heavy run).
+ * Linux and macOS only: it refuses Windows, where its git deny patterns miss backslash paths.
  */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -20,6 +21,7 @@ import {
   type EvalRunner,
   type EvalTask,
   evalOptions,
+  evalPlatformRefusal,
   parseStream,
   prepareClone,
   type RunFacts,
@@ -47,6 +49,11 @@ const TASKS: EvalTask[] = [
 const options = evalOptions(process.argv.slice(2));
 if (typeof options === "string") {
   console.error(`harness-eval: ${options}`);
+  process.exit(2);
+}
+const refusal = evalPlatformRefusal(process.platform);
+if (refusal) {
+  console.error(`harness-eval: ${refusal}`);
   process.exit(2);
 }
 const claude = whichOnPath("claude");

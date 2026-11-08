@@ -6,13 +6,20 @@
  * `claude -p --agent ux-reviewer` on it with no Edit or Write, and grades the report with the
  * deterministic checks of scripts/lib/ux-review-eval.ts. The session gets no token or key from the
  * environment. It costs real quota: opt-in only, never in the suite or CI, and never under the slot.
+ * Linux and macOS only: it refuses Windows, where its git deny patterns miss backslash paths.
  */
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { whichOnPath } from "../apps/daemon/src/which.ts";
-import { childEnv, type EvalRunner, evalOptions, prepareClone } from "./lib/harness-eval.ts";
+import {
+  childEnv,
+  type EvalRunner,
+  evalOptions,
+  evalPlatformRefusal,
+  prepareClone,
+} from "./lib/harness-eval.ts";
 import {
   applyCase,
   gradeReport,
@@ -31,6 +38,11 @@ const options = evalOptions([
 ]);
 if (typeof options === "string") {
   console.error(`ux-review-eval: ${options}`);
+  process.exit(2);
+}
+const refusal = evalPlatformRefusal(process.platform);
+if (refusal) {
+  console.error(`ux-review-eval: ${refusal}`);
   process.exit(2);
 }
 const claude = whichOnPath("claude");

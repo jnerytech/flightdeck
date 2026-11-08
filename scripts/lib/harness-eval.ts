@@ -175,8 +175,12 @@ export interface EvalOptions {
 }
 
 /** Why the evals refuse to run on this platform, or null. */
-export function evalPlatformRefusal(_platform: string): string | null {
-  return null;
+export function evalPlatformRefusal(platform: string): string | null {
+  // The git deny patterns match / paths only, `core.hooksPath=/dev/null` and a spawn without a
+  // shell (no claude.cmd) are POSIX, and the home check is case-sensitive (#986 review).
+  return platform === "win32"
+    ? "the evals run on Linux and macOS only: on Windows their git deny patterns miss backslash paths"
+    : null;
 }
 
 /** The options from `argv`, or the reason they are refused. */

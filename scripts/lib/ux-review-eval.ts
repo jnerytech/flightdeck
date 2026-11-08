@@ -13,6 +13,8 @@ export interface UxExpect {
   line: number | null;
   /** At least one of these words is on the finding's line, any case. */
   words: string[];
+  /** When set, one of these is on that line too: what makes the mention a finding. */
+  also?: string[];
 }
 
 /** One file a case writes: a new file, or lines inserted after an anchor line of an existing one. */
@@ -86,7 +88,12 @@ export const UX_CASES: UxCase[] = [
     subject: "feat(draft): the save draft label",
     files: [{ path: EN, after: EN_ANCHOR, content: '  evalDraft: { save: "Save draft" },' }],
     // The finding names the dictionary that lacks the key, with or without ".ts".
-    expect: { file: "pt-BR", line: null, words: ["evalDraft"] },
+    expect: {
+      file: "pt-BR",
+      line: null,
+      words: ["evalDraft"],
+      also: ["missing", "lacks", "absent", "not in", "no "],
+    },
   },
   {
     name: "no-focus",
@@ -140,7 +147,10 @@ export function reportOf(jsonl: string): string {
 }
 
 /** A table row of the report that marks a high finding. */
-const HIGH_ROW = /\|\s*\**high\**\s*\|/i;
+const HIGH_ROW = /\|\s*[*`_]*high\b[^|]*\|/i;
+
+/** What every review has, and an error, a quota message or a refusal does not. */
+const REVIEW_SHAPE = /\baccept\b|\|\s*File:line\s*\|/i;
 
 /** Escapes a path for a regex. */
 function escaped(text: string): string {
@@ -148,13 +158,14 @@ function escaped(text: string): string {
 }
 
 /**
- * Whether the report judged the case right: a clean change has no high finding; a bad one has a
- * line of the report that names the file (at the expected line, give or take 2) and one of the
- * words.
+ * Whether the report judged the case right: a clean change has a verdict or a findings table and
+ * no high finding; a bad one has a line of the report that names the file (at the expected line,
+ * give or take 2) and one of the words.
  */
 export function gradeReport(expect: UxExpect | null, report: string): boolean {
   const lines = report.split("\n");
-  if (expect === null) return report.trim() !== "" && !lines.some((line) => HIGH_ROW.test(line));
+  if (expect === null)
+    return REVIEW_SHAPE.test(report) && !lines.some((line) => HIGH_ROW.test(line));
   const base = expect.file.slice(expect.file.lastIndexOf("/") + 1);
   const at = new RegExp(`${escaped(base)}(?::(\\d+))?`);
   return lines.some((line) => {
@@ -162,7 +173,8 @@ export function gradeReport(expect: UxExpect | null, report: string): boolean {
     if (!hit) return false;
     if (expect.line !== null && Math.abs(Number(hit[1] ?? -99) - expect.line) > 2) return false;
     const lower = line.toLowerCase();
-    return expect.words.some((word) => lower.includes(word.toLowerCase()));
+    const has = (words: string[]) => words.some((word) => lower.includes(word.toLowerCase()));
+    return has(expect.words) && (expect.also === undefined || has(expect.also));
   });
 }
 
