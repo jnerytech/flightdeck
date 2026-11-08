@@ -163,10 +163,10 @@ describe("mcp", () => {
   test("sem daemon ou com token errado, sai com 1 e diz por quê", async () => {
     const closed = await setup({ port: 1 });
     expect(closed.exits).toEqual([1]);
-    expect(closed.errors[0] ?? "").toContain("não consegui conectar no daemon");
+    expect(closed.errors[0] ?? "").toContain("could not connect to the daemon");
     const refused = await setup({ token: "outro-token-0123456789abcdef" });
     expect(refused.exits).toEqual([1]);
-    expect(refused.errors[0] ?? "").toContain("não consegui conectar no daemon");
+    expect(refused.errors[0] ?? "").toContain("could not connect to the daemon");
   });
 
   test("endereço do daemon a partir da config", () => {

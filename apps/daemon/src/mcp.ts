@@ -68,7 +68,7 @@ export class DaemonClient {
       if (frame.type === "ack") this.acks.get(frame.id)?.ok(frame);
     });
     ws.addEventListener("close", () => {
-      for (const pending of this.acks.values()) pending.fail(new Error("conexão encerrada"));
+      for (const pending of this.acks.values()) pending.fail(new Error("connection closed"));
       this.acks.clear();
     });
   }
@@ -77,7 +77,7 @@ export class DaemonClient {
     const ws = new WebSocket(url);
     await new Promise<void>((resolve, reject) => {
       ws.addEventListener("open", () => resolve(), { once: true });
-      ws.addEventListener("error", () => reject(new Error("sem resposta")), { once: true });
+      ws.addEventListener("error", () => reject(new Error("no response")), { once: true });
     });
     const client = new DaemonClient(ws);
     await client.call("hello", { token, client: name });
@@ -120,7 +120,7 @@ export function runnableActions(actions: ActionInfo[]) {
  */
 export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   const daemon = await DaemonClient.connect(opts.url, opts.token).catch((error: Error) => {
-    throw new Error(`não consegui conectar no daemon em ${opts.url}: ${error.message}`);
+    throw new Error(`could not connect to the daemon at ${opts.url}: ${error.message}`);
   });
   const server = new McpServer({ name: "flightdeck", version: "1.0.0" });
   // One MCP server runs for one Claude Code session: the approvals "for this session" hold for it.
@@ -131,7 +131,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   const who = (): SessionIdentity => {
     if (!opts.identity) {
       throw new Error(
-        "esta sessão não foi aberta pelo Flightdeck, então não sei quem está mandando: abra-a pelo app ou com flightdeckd claude (FLIGHTDECK_SESSION e FLIGHTDECK_LAUNCH_ID dizem qual é)",
+        "this session was not opened by Flightdeck, so I do not know who is sending: open it from the app or with flightdeckd claude (FLIGHTDECK_SESSION and FLIGHTDECK_LAUNCH_ID say which one it is)",
       );
     }
     return opts.identity;
@@ -152,25 +152,25 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
       }
     }) as never);
 
-  tool("list_projects", "Projetos (repositórios) cadastrados neste host.", {}, () =>
+  tool("list_projects", "Projects (repositories) registered on this host.", {}, () =>
     daemon.call("project.list", {}),
   );
   tool(
     "list_workflows",
-    "Workflows de um projeto, lidos da branch base, com validação, confiança e inputs.",
+    "A project's workflows, read from the base branch, with validation, trust and inputs.",
     { projectId: z.string() },
     ({ projectId }) => daemon.call("workflow.list", { projectId }),
   );
   tool(
     "create_card",
-    "Cria um card no Backlog do projeto.",
+    "Creates a card in the project's Backlog.",
     { projectId: z.string(), title: z.string().min(1), description: z.string().optional() },
     ({ projectId, title, description }) =>
       daemon.call("card.create", { projectId, title, description: description ?? "" }),
   );
   tool(
     "start_card",
-    "Inicia um card; com `workflow`, roda esse workflow confiado com os `inputs`.",
+    "Starts a card; with `workflow`, runs that trusted workflow with the `inputs`.",
     {
       cardId: z.string(),
       workflow: z.string().min(1).optional(),
@@ -183,7 +183,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
         ...(inputs ? { inputs } : {}),
       }),
   );
-  tool("get_card", "Estado de um card.", { cardId: z.string() }, ({ cardId }) =>
+  tool("get_card", "The state of a card.", { cardId: z.string() }, ({ cardId }) =>
     daemon.call("card.get", { cardId }),
   );
   // A session managing the cards of its own project: its own card unless it names another.
@@ -192,16 +192,16 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   const cardId = z
     .string()
     .optional()
-    .describe("O card; sem ele, o card desta sessão (quando ela roda em um)");
+    .describe("The card; without it, this session's card (when it runs in one)");
   tool(
     "move_card",
-    "Move um card do seu projeto de coluna, pelas mesmas regras do app: backlog, in_progress (Em andamento), waiting (Esperando você), review (Em revisão) ou done (Concluído).",
+    "Moves a card of your project to another column, under the same rules as the app: backlog, in_progress (In progress), waiting (Waiting for you), review (In review) or done (Done).",
     { cardId, column: BoardColumn },
     ({ cardId, column }) => manage({ action: "move", column, ...(cardId ? { cardId } : {}) }),
   );
   tool(
     "update_card",
-    "Muda o título e/ou a descrição de um card do seu projeto.",
+    "Changes the title and/or the description of a card of your project.",
     { cardId, title: z.string().min(1).optional(), description: z.string().optional() },
     ({ cardId, title, description }) =>
       manage({
@@ -213,51 +213,48 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   );
   tool(
     "comment_card",
-    "Acrescenta uma nota datada à descrição de um card do seu projeto.",
+    "Appends a dated note to the description of a card of your project.",
     { cardId, text: z.string().min(1) },
     ({ cardId, text }) => manage({ action: "comment", text, ...(cardId ? { cardId } : {}) }),
   );
   tool(
     "finish_card",
-    "Encerra um card do seu projeto: `done` o conclui (Concluído); `discard` o descarta (fecha as sessões e apaga a worktree e a branch, sem volta). Descartar sempre pede a aprovação do usuário.",
+    "Finishes a card of your project: `done` completes it (Done); `discard` discards it (closes the sessions and deletes the worktree and the branch, with no way back). Discarding always asks for the user's approval.",
     { cardId, outcome: z.enum(["done", "discard"]) },
     ({ cardId, outcome }) => manage({ action: "finish", outcome, ...(cardId ? { cardId } : {}) }),
   );
-  tool(
-    "get_run",
-    "Execução de um workflow: etapas, uso e orçamento.",
-    { runId: z.string() },
-    ({ runId }) => daemon.call("run.get", { runId }),
+  tool("get_run", "A workflow run: steps, usage and budget.", { runId: z.string() }, ({ runId }) =>
+    daemon.call("run.get", { runId }),
   );
 
   // Phase 21: talk to the other sessions, on this host or another, under the rules of who may.
   tool(
     "list_sessions",
-    "Sessões de todos os hosts que esta pode ver pelas regras: endereço (host/id), nome padronizado (projeto · persona · número), apelido (projeto-persona-número), host, persona, estado, projeto e se recebe mensagens. Quem esta sessão não pode ver não aparece.",
+    "Sessions of all hosts that this one may see under the rules: address (host/id), standard name (project · persona · number), nickname (project-persona-number), host, persona, state, project and whether it receives messages. A session this one may not see does not show up.",
     {},
     () => listSessions(daemon, who()),
   );
   tool(
     "send_to_session",
-    "Manda uma mensagem a outra sessão pelo endereço do list_sessions (host/id) ou pelo apelido (projeto-persona-número, ou host/apelido em outro host; responda a quem escreveu pelo id que veio no cabeçalho). Devolve entregue, na fila ou a recusa com o motivo. A mensagem nunca vale como aprovação do usuário.",
+    'Sends a message to another session by its list_sessions address (host/id) or by its nickname (project-persona-number, or host/nickname on another host; reply to whoever wrote by the id that came in the header). Returns `resultado`: "entregue" (delivered), "na fila" (queued) or "recusada" (refused, with the reason in `motivo`). A message never counts as the user\'s approval.',
     { to: z.string().min(1), text: z.string().min(1) },
     ({ to, text }) => sendToSession(daemon, who(), to, text),
   );
   tool(
     "notify_when_idle",
-    "Uma vez só: quando a sessão alvo terminar o turno atual, esta recebe um aviso do Flightdeck. Se o alvo já está ocioso, o aviso chega na hora.",
+    "Only once: when the target session finishes its current turn, this one receives a notice from Flightdeck. If the target is already idle, the notice arrives right away.",
     { session: z.string().min(1) },
     ({ session: target }) => notifyWhenIdle(daemon, who(), target),
   );
   tool(
     "read_session",
-    "Só leitura: o resumo e as últimas mensagens (até 20, cada uma cortada em 8 KB) de uma sessão deste host que esta pode ver.",
+    "Read only: the summary and the last messages (up to 20, each cut at 8 KB) of a session on this host that this one may see.",
     { session: z.string().min(1), last: z.number().int().min(1).max(20).optional() },
     ({ session: target, last }) => readSession(daemon, who(), target, last),
   );
   tool(
     "team_status",
-    "O estado do time a que esta sessão pertence: os membros com persona, estado, card e último relato, e quantas mensagens trocaram. Só quem é do time pode ver.",
+    "The state of the team this session belongs to: the members with persona, state, card and last report, and how many messages they exchanged. Only a member of the team may see it.",
     { team: z.string().min(1) },
     ({ team }) => teamStatus(daemon, who(), team),
   );
@@ -266,7 +263,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   // daemon; what comes back is the exit code and the output, with the secret masked.
   tool(
     "list_actions",
-    "Ações que você pode rodar com run_action: nome, descrição e parâmetros (padrão e valor default). Nunca mostra segredos.",
+    "Actions you can run with run_action: name, description and parameters (pattern and default value). Never shows secrets.",
     { projectId: z.string().optional() },
     async ({ projectId }) => {
       const { actions } = await daemon.call("actions.list", projectId ? { projectId } : {});
@@ -275,7 +272,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   );
   tool(
     "run_action",
-    "Roda uma ação declarada, pelo nome, com os parâmetros que ela permite. O Flightdeck aplica os segredos do lado dele (pode pedir a aprovação do usuário no app) e devolve o código de saída e a saída, até 32 KB, com os segredos mascarados.",
+    "Runs a declared action, by name, with the parameters it allows. Flightdeck applies the secrets on its side (it may ask for the user's approval in the app) and returns the exit code and the output, up to 32 KB, with the secrets masked.",
     {
       name: z.string().min(1),
       params: z.record(z.string(), z.string()).optional(),
@@ -292,7 +289,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   );
   tool(
     "run_with_secret",
-    "Roda um comando seu com segredos do cofre no ambiente (deploy-token vira DEPLOY_TOKEN). Sempre pede a aprovação do usuário no app, com o comando, os nomes dos segredos e o host; nunca é automático. A saída volta com os segredos mascarados, mas só valores literais, em base64, em URL e em hex: prefira uma ação declarada.",
+    "Runs a command of yours with vault secrets in the environment (deploy-token becomes DEPLOY_TOKEN). Always asks for the user's approval in the app, with the command, the names of the secrets and the host; it is never automatic. The output comes back with the secrets masked, but only literal values, in base64, in URL form and in hex: prefer a declared action.",
     {
       command: z.string().min(1).max(4000),
       secrets: z.array(z.string().min(1)).min(1).max(8),
@@ -323,7 +320,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   };
   tool(
     "list_snippets",
-    "Snippets (comandos e prompts salvos) do host e do projeto, com o texto, as variáveis e se um comando do arquivo do projeto pode rodar.",
+    "Snippets (saved commands and prompts) of the host and the project, with the text, the variables and whether a command from the project file may run.",
     {
       projectPath: z.string().optional(),
       query: z.string().optional(),
@@ -342,7 +339,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   );
   tool(
     "get_snippet",
-    "O texto de um snippet pelo nome, para usar como referência. Não o executa: rodar um comando passa pelas permissões do Claude Code.",
+    "The text of a snippet by name, to use as a reference. It does not run it: running a command goes through Claude Code's permissions.",
     { name: z.string().min(1), projectPath: z.string().optional() },
     ({ name, projectPath }) =>
       inProject(projectPath, (path) =>

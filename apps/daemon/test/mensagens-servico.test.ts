@@ -24,7 +24,7 @@ describe("mensagens-regras: o que o serviço aplica", () => {
     endpoints.add("s2", { projectKey: OTHER });
     const refused = messaging.send({ as: { session: "s1" }, to: "s2", text: "oi" });
     expect(refused.status).toBe("refused");
-    expect(refused.reason).toContain("projeto");
+    expect(refused.reason).toContain("same project");
     expect(endpoints.sent).toEqual([]);
 
     teams.set("s1", "t1");
@@ -70,7 +70,7 @@ describe("mensagens-regras: o que o serviço aplica", () => {
       reason: null,
     });
     expect(seen.find((s) => s.id === "P1")).toMatchObject({ receives: false, reason: "sem canal" });
-    expect(() => messaging.sessions({ session: "fantasma" })).toThrow("não existe");
+    expect(() => messaging.sessions({ session: "fantasma" })).toThrow("does not exist");
   });
 
   test("20 por hora por par: a 21ª é recusada com o motivo e a hora seguinte libera", () => {
@@ -87,7 +87,7 @@ describe("mensagens-regras: o que o serviço aplica", () => {
     }
     const refused = messaging.send({ as: { session: "s1" }, to: "s2", text: "21" });
     expect(refused.status).toBe("refused");
-    expect(refused.reason).toContain("20 por hora");
+    expect(refused.reason).toContain("20 per hour");
     now.at = NOW + 20 * 2 * MINUTE + HOUR;
     expect(messaging.send({ as: { session: "s1" }, to: "s2", text: "depois" }).status).toBe(
       "delivered",
@@ -107,7 +107,7 @@ describe("mensagens-regras: o que o serviço aplica", () => {
     }
     const refused = messaging.send({ as: { session: "s1" }, to: "t100", text: "oi" });
     expect(refused.status).toBe("refused");
-    expect(refused.reason).toContain("100 por hora");
+    expect(refused.reason).toContain("100 per hour");
   });
 
   test("o laço pausa o par, avisa, mantém pausado até a política liberar e vale nos dois sentidos", () => {
@@ -124,14 +124,14 @@ describe("mensagens-regras: o que o serviço aplica", () => {
     now.at = NOW + 100_000;
     const loop = messaging.send({ as: { session: "s1" }, to: "s2", text: "11" });
     expect(loop.status).toBe("refused");
-    expect(loop.reason).toContain("laço");
+    expect(loop.reason).toContain("loop");
     expect(messaging.pausedPairs()).toEqual(["pc/s1|pc/s2"]);
     const alert = frames.find((f) => f.type === "messaging.alert") as Extract<
       MessagingFrame,
       { type: "messaging.alert" }
     >;
     expect(alert).toMatchObject({ kind: "loop", from: "pc/s1", to: "pc/s2" });
-    expect(alert.message).toContain("pausado");
+    expect(alert.message).toContain("paused");
 
     // Paused for both directions, even after the ten minutes pass.
     now.at = NOW + 2 * HOUR;
@@ -141,7 +141,7 @@ describe("mensagens-regras: o que o serviço aplica", () => {
     ] as const) {
       const again = messaging.send({ as: { session: from }, to, text: "ainda" });
       expect(again.status).toBe("refused");
-      expect(again.reason).toContain("pausado");
+      expect(again.reason).toContain("paused");
     }
     // The policy frees it.
     const freed = messaging.setPolicy({}, ["pc/s1|pc/s2"]);
@@ -203,7 +203,7 @@ describe("mensagens-seguranca", () => {
     expect(endpoints.sent[0]?.text.split("\n")).toContain(UNTRUSTED_MARK);
     expect(endpoints.suspended).toHaveLength(1);
     expect(endpoints.suspended[0]).toMatchObject({ id: "s2" });
-    expect(endpoints.suspended[0]?.reason).toContain("terceiros");
+    expect(endpoints.suspended[0]?.reason).toContain("third-party");
     // A trusted sender leaves both alone.
     messaging.send({ as: { session: "s3" }, to: "s2", text: "limpo" });
     expect(endpoints.sent[1]?.text).not.toContain(UNTRUSTED_MARK);

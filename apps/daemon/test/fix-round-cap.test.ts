@@ -79,7 +79,7 @@ describe("fix-round-cap: the watch alone fixes a watched PR, and hands it over (
       auto.sent,
       f.fixer.rounds(f.card.id).length,
       f.watcher.status(f.card.id).status,
-    ]).toEqual([[["ok", `enviado ao card ${f.card.id}`]], [f.card.id], 0, "watching"]);
+    ]).toEqual([[["ok", `sent to card ${f.card.id}`]], [f.card.id], 0, "watching"]);
   });
 
   test("a watched card gets nothing from the automation: the watch fixes it", async () => {
