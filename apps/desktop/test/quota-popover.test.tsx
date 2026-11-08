@@ -64,6 +64,43 @@ async function online(language: "en" | "pt-BR", features?: string[]) {
   return { quota, store };
 }
 
+/** Two online hosts, each on its own quota, both read; the app shows them in one popover. */
+async function twoHosts(language: "en" | "pt-BR") {
+  const time = manualTime(START);
+  const quotas = {
+    alfa: new Quota({ pauseAt: 0.9, now: time.now, timers: time.timers }),
+    beta: new Quota({ pauseAt: 0.9, now: time.now, timers: time.timers }),
+  };
+  const mem = memoryPlatform(false, language);
+  const store = new AppStore(mem.platform, {
+    baseDelayMs: 60_000,
+    now: () => time.now() + 12 * MINUTE,
+    formatTime: utcTime,
+  });
+  render(<App store={store} />);
+  for (const name of ["alfa", "beta"] as const) {
+    const server = makeDaemon(cleanups, { quota: quotas[name] }).listen();
+    await act(async () => {
+      await store.addHost({ name, url: server.url, token: TOKEN });
+    });
+  }
+  await settle(() => store.getState().hosts.filter((h) => h.status === "online").length === 2);
+  await act(async () => {
+    for (const quota of Object.values(quotas)) {
+      quota.record([
+        {
+          window: "five_hour",
+          utilization: 0.5,
+          status: "allowed",
+          resetsAt: START + 2 * HOUR,
+        },
+      ]);
+    }
+  });
+  await settle(() => Object.keys(store.getState().quota).length === 2);
+  return { quotas, store };
+}
+
 const glance = () => document.querySelector<HTMLElement>('[data-slot="status-bar"] .status-quota');
 
 async function openPopover(dict: typeof en | typeof ptBR) {
@@ -77,8 +114,11 @@ async function openPopover(dict: typeof en | typeof ptBR) {
   return popover as HTMLElement;
 }
 
-const guardOf = (scope: HTMLElement, dict: typeof en | typeof ptBR) =>
-  scope.querySelector<HTMLSelectElement>(`select[aria-label="${dict.quota.guard.label}"]`);
+/** The guard select of a host, found by the name that says whose it is. */
+const guardOf = (scope: HTMLElement, dict: typeof en | typeof ptBR, host = "alfa") =>
+  scope.querySelector<HTMLSelectElement>(
+    `select[aria-label="${dict.quota.guard.labelFor.replace("{host}", host)}"]`,
+  );
 
 for (const [lang, dict] of [
   ["en", en],
@@ -178,6 +218,46 @@ for (const [lang, dict] of [
       expect(
         within(popover).queryByText(dict.quota.guard.readOnly.replace("{pct}", "90")),
       ).not.toBeNull();
+    });
+
+    test("Escape closes the popover and gives the focus back to the quota button", async () => {
+      await online(lang);
+      const popover = await openPopover(dict);
+      await act(async () => {
+        fireEvent.keyDown(popover, { key: "Escape" });
+      });
+      expect(screen.queryByRole("dialog", { name: dict.quota.popover.label })).toBeNull();
+      expect(document.activeElement === glance()).toBe(true);
+    });
+
+    test("the host's own link opens its page and closes the popover", async () => {
+      const { store } = await online(lang);
+      const popover = await openPopover(dict);
+      const link = within(popover).queryByRole("button", {
+        name: dict.quota.popover.openHostOf.replace("{host}", "alfa"),
+      });
+      expect(link).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(link as HTMLElement);
+      });
+      const route = store.router.current;
+      expect(route.name === "host" && route.host === store.getState().hosts[0]?.id).toBe(true);
+      expect(screen.queryByRole("dialog", { name: dict.quota.popover.label })).toBeNull();
+    });
+
+    test("with two hosts each guard carries its host's name and sets its own host", async () => {
+      const { quotas } = await twoHosts(lang);
+      const popover = await openPopover(dict);
+      const alfa = guardOf(popover, dict, "alfa");
+      const beta = guardOf(popover, dict, "beta");
+      expect(alfa).not.toBeNull();
+      expect(beta).not.toBeNull();
+      expect(alfa === beta).toBe(false);
+      await act(async () => {
+        fireEvent.change(beta as HTMLElement, { target: { value: "0.6" } });
+      });
+      await settle(() => quotas.beta.state().pauseAt === 0.6);
+      expect(quotas.alfa.state().pauseAt).toBe(0.9);
     });
   });
 }

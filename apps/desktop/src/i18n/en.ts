@@ -1336,6 +1336,7 @@ export const en: Dictionary = {
     hotNotice: "{host}: over {pct}%: new cards wait for the quota; manual sessions go on.",
     guard: {
       label: "New cards wait from",
+      labelFor: "New cards wait from, on {host}",
       off: "Never",
       hint: "Sessions already running are never stopped.",
       readOnly:
@@ -1346,6 +1347,7 @@ export const en: Dictionary = {
       label: "Plan quota of the hosts",
       showRunning: "Show what is running",
       openHost: "Open the host page",
+      openHostOf: "Open the page of {host}",
     },
     projection: {
       few: "too few readings to project",

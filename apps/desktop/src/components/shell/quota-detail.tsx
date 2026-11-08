@@ -16,9 +16,9 @@ const QUOTA_DETAIL_KEYS = ["quota", "hosts"] as const;
  * resets, the guard "new cards wait from N%" to change on each, and the way to what is running.
  */
 export const QuotaDetail = memo(function QuotaDetail(
-  props: Readonly<{ store: AppStore; hostId: string; onClose(): void }>,
+  props: Readonly<{ store: AppStore; onClose(): void }>,
 ) {
-  const { store, hostId, onClose } = props;
+  const { store, onClose } = props;
   const t = useT();
   const state = useStoreSlice(store, QUOTA_DETAIL_KEYS);
   const hosts = state.hosts.filter(
@@ -62,15 +62,22 @@ export const QuotaDetail = memo(function QuotaDetail(
               </Stack>
             ))}
             <QuotaGuard store={store} host={host} pauseAt={quota?.pauseAt ?? null} />
+            <Inline gap={2}>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t("quota.popover.openHostOf", { host: host.name })}
+                onClick={() => go({ name: "host", host: host.id })}
+              >
+                {t("quota.popover.openHost")}
+              </Button>
+            </Inline>
           </Stack>
         );
       })}
       <Inline gap={2}>
         <Button variant="outline" size="sm" onClick={() => go({ name: "activity" })}>
           {t("quota.popover.showRunning")}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => go({ name: "host", host: hostId })}>
-          {t("quota.popover.openHost")}
         </Button>
       </Inline>
     </Stack>

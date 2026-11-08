@@ -1330,6 +1330,7 @@ export const ptBR = {
     read: "lida {ago}",
     guard: {
       label: "Cartões novos esperam a partir de",
+      labelFor: "Cartões novos esperam a partir de, em {host}",
       off: "Nunca",
       hint: "Sessões que já estão rodando nunca são paradas.",
       readOnly:
@@ -1341,6 +1342,7 @@ export const ptBR = {
       label: "Cota do plano dos hosts",
       showRunning: "Mostrar o que está rodando",
       openHost: "Abrir a página do host",
+      openHostOf: "Abrir a página de {host}",
     },
     hotNotice: "{host}: cota acima de {pct}%: cards novos esperam a cota; sessões manuais seguem.",
     projection: {

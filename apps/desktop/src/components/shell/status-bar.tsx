@@ -108,6 +108,7 @@ export function QuotaGlanceButton(
       <PopoverContent
         side="top"
         align="start"
+        collisionPadding={8}
         aria-label={t("quota.popover.label")}
         className="max-h-[70vh] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto"
       >
@@ -309,7 +310,7 @@ export function StatusBarSlot(
       {...(store && glance
         ? {
             quotaDetail: (close: () => void) => (
-              <QuotaDetail store={store} hostId={glance.hostId} onClose={close} />
+              <QuotaDetail store={store} onClose={close} />
             ),
           }
         : {})}

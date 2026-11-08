@@ -1,3 +1,5 @@
+import { useId } from "react";
+import { NativeSelect } from "@/components/layout/form";
 import { Inline, Stack } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
@@ -18,6 +20,7 @@ export function QuotaGuard(
 ) {
   const { store, host, pauseAt } = props;
   const t = useT();
+  const id = useId();
   if (!hasFeature(host.hostInfo?.features, "quotaPause", false)) {
     return (
       <p className="text-muted-foreground text-xs">
@@ -34,14 +37,14 @@ export function QuotaGuard(
   return (
     <Stack gap={1}>
       <Inline gap={2}>
-        <label htmlFor={`quota-guard-${host.id}`} className="text-sm">
+        <label htmlFor={id} className="text-sm">
           {t("quota.guard.label")}
         </label>
-        <select
-          id={`quota-guard-${host.id}`}
-          aria-label={t("quota.guard.label")}
+        <NativeSelect
+          id={id}
+          inline
+          aria-label={t("quota.guard.labelFor", { host: host.name })}
           value={pauseAt === null ? OFF : String(pauseAt)}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           onChange={(event) =>
             void store.setQuotaPause(
               host.id,
@@ -55,7 +58,7 @@ export function QuotaGuard(
             </option>
           ))}
           <option value={OFF}>{t("quota.guard.off")}</option>
-        </select>
+        </NativeSelect>
       </Inline>
       <p className="text-muted-foreground text-xs">{t("quota.guard.hint")}</p>
     </Stack>
