@@ -13,8 +13,9 @@ this record covers slice G1a, the daemon.
   files). No hook, permission, MCP server or script comes from a model: a model writing allow or
   deny rules would be granting permissions.
 - **What the model is told.** The detected stack, its commands (test, lint, format, build), and the
-  project's top-level names: not hidden ones, at most 60, any name the secret scanner flags left
-  out. Never a file's content, so the files cannot inject instructions and no `env` value goes out.
+  project's top-level names, as a JSON array marked as data. A name is told only when it is plain
+  (letters, digits, `. _ - @ +` and spaces, at most 64), so no name can read as a prompt line. Hidden
+  names are left out, at most 60 are told, and any name the secret scanner flags is left out. Never a file's content, so the files cannot inject instructions and no `env` value goes out.
   The system prompt forbids inventing commands or paths, and writing hooks, permissions or scripts.
 - **How it runs.** A one-shot `complete` on the host's runtime, in the assistant's scratch folder,
   with low effort and no thinking. The model is the careful host default. The call is refused
