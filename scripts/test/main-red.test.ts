@@ -42,7 +42,7 @@ function issue(
       `Owner: ${owner}`,
       "Run: https://github.com/o/r/actions/runs/7",
       "Run at: 2026-11-08T21:07:02Z",
-      `Jobs: ${jobs.join(", ")}`,
+      `Jobs: ${JSON.stringify(jobs)}`,
       "Failing:",
       ...failing.map((f) => `- ${f}`),
     ].join("\n"),
@@ -105,7 +105,13 @@ const created = (asked: string[][]) => asked.filter((a) => a[0] === "issue" && a
 describe("main-red: one claim per red main (#1246)", () => {
   test("main's state is its latest run that finished green or red, a cancelled one skipped", async () => {
     const red = await latestMainRun(fakeGh({ runs: [CANCELLED, RED_RUN, GREEN_RUN] }));
-    expect(red).toEqual({ id: 7, url: RED_RUN.url, createdAt: RED_RUN.createdAt, red: true });
+    expect(red).toEqual({
+      id: 7,
+      url: RED_RUN.url,
+      createdAt: RED_RUN.createdAt,
+      red: true,
+      lastGreenAt: GREEN_RUN.createdAt,
+    });
     expect((await latestMainRun(fakeGh({ runs: [GREEN_RUN] })))?.red).toBe(false);
     expect(await latestMainRun(fakeGh({ runs: [CANCELLED] }))).toBe(null);
   });
@@ -166,7 +172,7 @@ describe("main-red: one claim per red main (#1246)", () => {
       "Owner: fd-harness",
       `Run: ${RED_RUN.url}`,
       `Run at: ${RED_RUN.createdAt}`,
-      "Jobs: ",
+      "Jobs: []",
       "Failing:",
       "- protocolo-compat > host.info traz os recursos",
       "- card detail > opens on changes",

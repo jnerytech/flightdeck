@@ -18,6 +18,8 @@ export interface MainRun {
   url: string;
   createdAt: string;
   red: boolean;
+  /** When main's latest green run among those read started; a claim older than that is stale. */
+  lastGreenAt: string;
 }
 
 /** An open `main-red` issue, read back from its title and body. */
@@ -78,22 +80,27 @@ export async function latestMainRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
   ]);
   const runs = listed.code === 0 ? parsed(listed.stdout) : null;
   if (!Array.isArray(runs)) return null;
-  const run = (
-    runs as Array<{ databaseId: number; conclusion: string; createdAt: string; url: string }>
-  ).find((r) => r.conclusion === "success" || r.conclusion === "failure");
+  const finished = runs as Array<{
+    databaseId: number;
+    conclusion: string;
+    createdAt: string;
+    url: string;
+  }>;
+  const run = finished.find((r) => r.conclusion === "success" || r.conclusion === "failure");
   if (!run) return null;
   return {
     id: run.databaseId,
     url: run.url,
     createdAt: run.createdAt,
     red: run.conclusion !== "success",
+    lastGreenAt: finished.find((r) => r.conclusion === "success")?.createdAt ?? "",
   };
 }
 
 /** The value of `<key>: <value>` in an issue body the tool wrote. */
 const field = (body: string, key: string) =>
   body
-    .split("\n")
+    .split(/\r?\n/)
     .find((line) => line.startsWith(`${key}: `))
     ?.slice(key.length + 2)
     .trim() ?? "";
@@ -115,7 +122,8 @@ export async function openClaims(deps: Pick<MainRedDeps, "gh">): Promise<Claim[]
   if (!Array.isArray(issues)) throw new Error("gh issue list did not answer with JSON");
   return (issues as Array<{ number: number; title: string; body: string }>).map(
     ({ number, title, body }) => {
-      const lines = body.split("\n");
+      // A body edited on the web has CRLF line ends.
+      const lines = body.split(/\r?\n/).map((line) => line.trimEnd());
       const from = lines.indexOf("Failing:");
       const failing =
         from === -1
@@ -123,8 +131,10 @@ export async function openClaims(deps: Pick<MainRedDeps, "gh">): Promise<Claim[]
           : lines
               .slice(from + 1)
               .flatMap((line) => (line.startsWith("- ") ? [oneLine(line.slice(2), 200)] : []));
-      const jobs = field(body, "Jobs")
-        .split(",")
+      // Written as JSON, so a matrix job with a comma in its name stays one job.
+      const listed = parsed(field(body, "Jobs"));
+      const jobs = (Array.isArray(listed) ? listed : [])
+        .filter((job): job is string => typeof job === "string")
         .map((job) => oneLine(job, 100))
         .filter(Boolean);
       return {
@@ -157,14 +167,21 @@ async function failingOf(
 ): Promise<string[]> {
   const log = await deps.gh(["run", "view", String(run.id), "--log-failed"]);
   const tests: string[] = [];
-  for (const match of (log.code === 0 ? log.stdout : "").matchAll(
-    /\(fail\) (.+?) \[\d+(?:\.\d+)?m?s\]/g,
-  )) {
-    const name = oneLine(match[1] ?? "", 200);
+  // Each log line starts with its job's name: Windows lines are left out (#534), as its jobs are.
+  const lines = (log.code === 0 ? log.stdout : "")
+    .split(/\r?\n/)
+    .filter((line) => !/windows/i.test(line.split("\t")[0] ?? ""));
+  for (const line of lines) {
+    const match = /\(fail\) (.+?) \[\d+(?:\.\d+)?m?s\]/.exec(line);
+    const name = oneLine(match?.[1] ?? "", 200);
     if (name && !tests.includes(name)) tests.push(name);
   }
   return tests.length > 0 ? tests : jobs.map((job) => `job: ${job}`);
 }
+
+/** The claims still about this red: none made before main's latest green run. */
+const current = (claims: Claim[], run: MainRun) =>
+  claims.filter((c) => !(c.runAt && run.lastGreenAt && c.runAt < run.lastGreenAt));
 
 const owned = (claim: Claim) => `#${claim.number} by ${claim.owner} (${claim.cause})`;
 
@@ -173,7 +190,7 @@ export async function mainRedLine(deps: Pick<MainRedDeps, "gh">): Promise<string
   try {
     const run = await latestMainRun(deps);
     if (!run?.red) return null;
-    const claims = await openClaims(deps);
+    const claims = current(await openClaims(deps), run);
     const unclaimed = `main is red since ${run.url}, unclaimed: bun run main-red -- claim "<cause>" before fixing it`;
     if (claims.length === 0) return unclaimed;
     // A claim covers this red when its jobs failed here too; one that does not say still counts.
@@ -270,7 +287,7 @@ async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<n
     );
     return 1;
   }
-  const held = holder(await openClaims(deps), failing);
+  const held = holder(current(await openClaims(deps), run), failing);
   if (held && held.owner === owner) {
     deps.log(`already yours: #${held.number}`);
     return 0;
@@ -284,7 +301,7 @@ async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<n
     `Owner: ${owner}`,
     `Run: ${run.url}`,
     `Run at: ${run.createdAt}`,
-    `Jobs: ${jobs.join(", ")}`,
+    `Jobs: ${JSON.stringify(jobs)}`,
     "Failing:",
     ...failing.map((name) => `- ${name}`),
   ].join("\n");
@@ -310,7 +327,7 @@ async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<n
   const url = made.stdout.trim();
   // Two sessions can claim at the same moment: the older issue stays, this one closes itself.
   const mine = Number(/\/issues\/(\d+)/.exec(url)?.[1] ?? 0);
-  const rival = holder(await openClaims(deps), failing, mine);
+  const rival = holder(current(await openClaims(deps), run), failing, mine);
   if (rival && mine > 0 && rival.number < mine) {
     await deps.gh([
       "issue",
