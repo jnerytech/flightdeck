@@ -154,7 +154,7 @@ export interface BoardOptions {
    * worktree's project), or null when the project is not trusted: its template would reach the
    * agent before the person trusted it.
    */
-  specTemplateRoot?: (worktree: string) => Promise<string | null>;
+  specTemplateRoot?: (cwd: string, own?: true) => Promise<string | null>;
   /** Lines for the daemon's log (no card content goes there). */
   log?: (line: string) => void;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */

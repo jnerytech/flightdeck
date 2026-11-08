@@ -168,6 +168,9 @@ export function toSlashes(path: string, platform: string): string {
  * or null for an untrusted project. A card runs in a worktree, so the checkout is always named; when
  * it is not, null, never the worktree, whose content is the branch's.
  */
-export function templateRootOf(trust: { trusted: boolean; configRoot?: string }): string | null {
+export function templateRootOf(
+  trust: { trusted: boolean; configRoot?: string },
+  _ownFolder?: string,
+): string | null {
   return trust.trusted && trust.configRoot ? trust.configRoot : null;
 }

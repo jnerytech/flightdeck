@@ -21,10 +21,13 @@ async function ask(options: {
 }) {
   let repo = "";
   const ctx = newBoard({
-    specTemplateRoot: async () => {
+    // As main.ts asks: a card with no worktree is asked for by its project's own folder, which the
+    // trust store judges with no checkout named (there is no worktree to take one from).
+    specTemplateRoot: async (cwd, own) => {
       if (options.trustFails) throw new Error("trust store unreadable");
       return templateRootOf(
-        options.trusted ? { trusted: true, configRoot: repo } : { trusted: false },
+        options.trusted ? { trusted: true } : { trusted: false },
+        own ? cwd : undefined,
       );
     },
   });
