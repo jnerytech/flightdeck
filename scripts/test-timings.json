@@ -910,7 +910,6 @@
   "scripts/test/theme-contrast.test.ts": 0.014,
   "scripts/test/timeout.test.ts": 0,
   "scripts/test/typecheck-plan.test.ts": 0.001,
-  "scripts/test/unstable-skip-ratchet.test.ts": 0.003,
   "scripts/test/visual.test.ts": 0.029,
   "scripts/test/wait-ratchet.test.ts": 0.053
 }

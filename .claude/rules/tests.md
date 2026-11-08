@@ -17,8 +17,9 @@ paths:
 - A test that scans the whole repository (`git ls-files` on the root) carries a `// repo-wide`
   comment line (#1108), so CI's quick job runs it on every PR; `repo-wide.test.ts` checks it.
 - A flaky test is deleted, never skipped. When it is the only check of a business flow, replace it
-  with a fast deterministic one (#1003). The `// unstable: #<issue>` skips left are removed under
-  #1003; until then the hook, the TDD audit and the unstable-skip ratchet still check their notes.
+  with a fast deterministic one (#1003). No note excuses a `.skip(`: the hook and the TDD audit
+  refuse every one (#169). A test that cannot run on a platform uses `test.skipIf(<the platform
+  condition>)`, with the reason in a comment.
 - Too slow on CI: a test over 5 s, a test file over 60 s, an e2e journey over 90 s. Make it faster,
   or delete it when it checks nothing a faster test does not. CI's slow-test check fails a PR on a
   test over 5 s or a file over 60 s (from the run's JUnit times) unless `slow-tests-allowlist.json`

@@ -18,7 +18,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   fail), `security-reviewer` (spawns, paths, secrets, pairing) and `ux-reviewer` (a UI change's
   literals, missing keys, focus, keyboard, layout and axe; `bun run scripts/ux-review-eval.ts` measures
   it on planted bad changes, real quota, #983), all read-only; hooks that block wide `git add`, edits of
-  generated files, test edits that add `.only`/`test.todo`/`toMatchSnapshot` or an unnoted skip, commits
+  generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot` (a platform `skipIf` passes), commits
   that break `type(scope): text` or the TDD order, heavy runs outside the slot, a worker's full
   coverage run (#674), and a push (or a `bun run pr -- update`) that would cancel the branch's PR run while it is still green (#741:
   younger than 20 minutes with no failed job, or GitHub unread twice; `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push
@@ -127,8 +127,8 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - Forbidden in committed code: `.only`, `test.todo`, `toMatchSnapshot` on the first run,
   weakening an assertion. Tests aim at business logic and the important flows; the gate is 80%
   per file (#1002). A flaky test is deleted, never skipped; when it is the only check of a business
-  flow, it is replaced by a fast deterministic one (#1003, which removes the `// unstable:` skips
-  left; until then the unstable-skip ratchet still checks their notes). A test over 5 s, a test
+  flow, it is replaced by a fast deterministic one (#1003); no note excuses a skip, and only a
+  `skipIf` for a platform, with the reason in a comment, passes (#169). A test over 5 s, a test
   file over 60 s or an e2e journey over 90 s on CI is too slow: make it faster, or delete it. CI's
   `scripts/slow-tests.ts` fails a PR on the first two, from its run's JUnit times, unless
   `slow-tests-allowlist.json` names the test with the issue that cuts it.

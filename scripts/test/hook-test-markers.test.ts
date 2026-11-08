@@ -26,7 +26,7 @@ describe("hook-test-markers", () => {
     }
   });
 
-  test("a bare .skip is blocked too, and the reason says how to note it under its issue (#494)", () => {
+  test("a .skip is blocked too, and the reason says a flaky test is deleted (#1003)", () => {
     const reason = edit("apps/daemon/test/a.test.ts", "", `describe${SKIP}"b", () => {})`) ?? "";
     expect(reason).toContain("is blocked");
     expect(reason).toContain("a flaky test is deleted, never skipped (#1003)");

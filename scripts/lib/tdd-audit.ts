@@ -1,5 +1,3 @@
-import { notedIssue } from "./unstable-skip.ts";
-
 export interface Commit {
   hash: string;
   subject: string;
@@ -23,7 +21,27 @@ export const FORBIDDEN_MARKERS = [
   { pattern: /\.only\(/g, text: ".only(" },
   { pattern: /\.skip\(/g, text: ".skip(" },
   { pattern: /\btest\.todo\(/g, text: "test.todo(" },
+  // A skipIf whose condition is always true is a skip under another name (#1057 review).
+  { pattern: /\.skipIf\(\s*(?:true|1|!0)\s*\)/g, text: "skipIf(true)" },
 ];
+
+/** A skipIf off Linux: the old way to hide a flaky test elsewhere (#288, #1057 review). */
+const OFF_LINUX = /\.skipIf\(\s*(?:notLinux|process\.platform\s*!==\s*(?:"linux"|'linux'))\s*\)/;
+
+/**
+ * The 0-based lines of a source that skip off Linux with no reason in a comment, after the skipIf
+ * on its line or alone on the line above (#1057 review): a Linux-only feature says why.
+ */
+export function uncommentedOffLinux(source: string): number[] {
+  const lines = source.split("\n");
+  return lines.flatMap((line, i) => {
+    const match = OFF_LINUX.exec(line);
+    if (!match) return [];
+    const after = line.slice(match.index + match[0].length);
+    const commented = after.includes("//") || /^\s*\/\/\s*\S/.test(lines[i - 1] ?? "");
+    return commented ? [] : [i];
+  });
+}
 
 /** The log format `parseCommits` reads: hash, subject and the `TDD-Waiver` trailer's value. */
 export const LOG_FORMAT =
@@ -63,15 +81,25 @@ export function auditCommits(commits: Commit[]): Violation[] {
   return violations;
 }
 
-/** Finds focused, skipped (with no `// unstable: #N` note) or todo tests left in test files. */
+/**
+ * Finds focused, skipped or todo tests left in test files. A flaky test is deleted, never skipped
+ * (#1003), so no note excuses a `.skip(` (#169). A `skipIf` for a platform passes; off Linux it
+ * says why in a comment, and an always-true one is refused (#1057 review).
+ */
 export function findForbiddenMarkers(files: { path: string; content: string }[]): Violation[] {
   const violations: Violation[] = [];
   for (const file of files) {
     const lines = file.content.split("\n");
+    const offLinux = new Set(uncommentedOffLinux(file.content));
     lines.forEach((line, i) => {
+      if (offLinux.has(i)) {
+        violations.push({
+          commit: `${file.path}:${i + 1}`,
+          scope: "-",
+          reason: "uso proibido de skipIf off Linux with no reason comment",
+        });
+      }
       for (const { pattern, text } of FORBIDDEN_MARKERS) {
-        // A skip noted under its open issue is allowed (#494); CI checks the issue is still open.
-        if (text === ".skip(" && notedIssue(lines, i) !== null) continue;
         if (line.search(pattern) !== -1) {
           violations.push({
             commit: `${file.path}:${i + 1}`,
