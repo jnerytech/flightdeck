@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { LocalizedText, WorkflowTemplate } from "@flightdeck/protocol";
 import { PACK_IDS } from "../src/personas/pack.ts";
+import { parseFindings } from "../src/workflows/findings.ts";
 import { checkCommands, parseWorkflow, type Step } from "../src/workflows/schema.ts";
 import { workflowTemplates } from "../src/workflows/templates.ts";
 
@@ -93,6 +94,13 @@ describe("workflow templates (issue #79)", () => {
       expect(typeof parsed?.budget.maxMinutes).toBe("number");
       expect(stepsOf(template.yaml).some((step) => "parallel" in step)).toBe(false);
     }
+  });
+
+  test("the example block in the scan's prompt is itself a valid list of findings", () => {
+    const first = stepsOf(byId("tech-debt-scan")?.yaml ?? "")[0];
+    const prompt = first && "agent" in first ? first.agent.prompt : "";
+    const read = parseFindings(prompt);
+    expect(read.ok && read.findings.length).toBe(1);
   });
 
   test("the alert fixer takes the alert, tries at most 3 times, then asks before it pushes", () => {
