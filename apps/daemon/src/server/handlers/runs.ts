@@ -40,6 +40,15 @@ export const runsHandlers = {
     const stack = await server.opts.harnessStack?.(project.path).catch(() => null);
     return { templates: workflowTemplates(stack?.commands.test ?? null) };
   },
+  "workflow.template.add": async (payload, { server }) => {
+    const board = server.need("board");
+    const project = board.getProject(payload.projectId);
+    // The same templates the list shows, the check line filled the same way.
+    const stack = await server.opts.harnessStack?.(project.path).catch(() => null);
+    const templates = workflowTemplates(stack?.commands.test ?? null);
+    const { projectId, templateId, confirm } = payload;
+    return await board.addWorkflowTemplate(projectId, templates, templateId, confirm === true);
+  },
   "alert.list": async (payload, { server }) => {
     if (!server.opts.alerts) throw featureOff("alerts");
     // The project's own folder: `gh` fills the repo in from its remote.

@@ -485,6 +485,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.roi, "roi"),
     ...when(opts.central, "central"),
     ...when(opts.board, "workflows"),
+    // Issue #1221: a template committed on a new branch and opened as a PR.
+    ...when(opts.board, "workflowTemplateAdd"),
     // Phase 24: the run.yaml of a card and its processes.
     ...when(opts.runenv && opts.board, "runenv"),
     ...when(opts.maintenance, "maintenance"),

@@ -29,6 +29,8 @@ import {
   specPathProblem,
   type UnblockWhen,
   type WorkflowInfo,
+  type WorkflowTemplate,
+  type WorkflowTemplateAdded,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
@@ -44,6 +46,7 @@ import { ulid } from "../ulid.ts";
 import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
+import { addWorkflowTemplate } from "../workflows/template-add.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
@@ -1910,6 +1913,21 @@ export class Board {
   /** Trusts the workflow's current content (`hash`), which lets its `check` commands run. */
   trustWorkflow(projectId: string, name: string, hash: string): Promise<WorkflowInfo> {
     return this.workflows.trust(this.getProject(projectId), name, hash);
+  }
+
+  /** Issue #1221: one of `templates` on a new branch and a PR into the base, never on the base. */
+  addWorkflowTemplate(
+    projectId: string,
+    templates: readonly WorkflowTemplate[],
+    templateId: string,
+    confirm: boolean,
+  ): Promise<WorkflowTemplateAdded> {
+    const project = this.getProject(projectId);
+    const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
+    return addWorkflowTemplate(project, templates, templateId, confirm, {
+      provider,
+      ...(this.opts.scanner ? { scanner: this.opts.scanner } : {}),
+    });
   }
 
   /** Commits since the base plus uncommitted changes, per file. */
