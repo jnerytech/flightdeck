@@ -17,8 +17,9 @@ The worktree and the base (default: `git merge-base HEAD main`). Work inside the
 
 ## How
 
-1. List what changed: `git diff --stat <base>..HEAD -- apps/desktop/src`. With no change there,
-   say so in one line and stop.
+1. When the prompt carries the diff, use it and run no git. Otherwise list what changed:
+   `git diff --stat <base>..HEAD -- apps/desktop/src`. With no change there, say so in one line
+   and stop.
 2. Read each changed file's diff (`git diff <base>..HEAD -- <file>`), and the whole file where the
    diff alone does not show the element. Cite `file:line` as the line is in HEAD.
 3. Look for these:

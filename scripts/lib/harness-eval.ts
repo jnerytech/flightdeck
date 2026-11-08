@@ -225,6 +225,10 @@ export const DENIED_TOOLS = [
   "Bash(git diff * ~*)",
   "Bash(git diff ../*)",
   "Bash(git diff *../*)",
+  // A variable ($HOME) or a drive letter (C:/) names a path outside the clone too.
+  "Bash(git diff $*)",
+  "Bash(git diff *$*)",
+  "Bash(git diff *:*)",
 ];
 
 /** The path without its trailing slashes and backslashes (a regex on a long run of them is quadratic). */
