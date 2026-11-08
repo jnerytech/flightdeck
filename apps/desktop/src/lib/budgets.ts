@@ -20,8 +20,9 @@ const PERIOD_KEYS: Record<Budget["period"], Key> = {
   seven_day: "budgets.sevenDay",
 };
 
-/** A share of the plan as text: 0.2 is "20%", 0.125 is "12.5%". */
-export const share = (fraction: number) => `${Math.round(fraction * 1000) / 10}%`;
+/** A share of the plan as text in the language's own marks: 0.2 is "20%", 0.125 is "12.5%" or "12,5%". */
+export const share = (fraction: number, lang: string) =>
+  new Intl.NumberFormat(lang, { style: "percent", maximumFractionDigits: 1 }).format(fraction);
 
 /** "orçamento do host (dia)". */
 export function budgetLabel(
@@ -46,7 +47,7 @@ export const estimateNote = (budget: Budget, t: T) =>
 export const budgetLimitText = (budget: Budget, t: T = PT): string =>
   budget.limitPct === null
     ? usd(budget.limitUsd)
-    : t("budgets.limitQuota", { limit: share(budget.limitPct) });
+    : t("budgets.limitQuota", { limit: share(budget.limitPct, t.lang) });
 
 /** "orçamento do host (dia) · notificar · US$ 6.00 de US$ 10.00 (60%)". */
 export function budgetLine(budget: Budget, t: T = PT): string {
@@ -54,8 +55,8 @@ export function budgetLine(budget: Budget, t: T = PT): string {
     return t("budgets.lineQuota", {
       label: budgetLabel(budget, t),
       action: t(`budgets.${budget.action}` as Key),
-      spent: share(budget.spentPct ?? 0),
-      limit: share(budget.limitPct),
+      spent: share(budget.spentPct ?? 0, t.lang),
+      limit: share(budget.limitPct, t.lang),
       percent: Math.round(budget.fraction * 100),
       estimate: estimateNote(budget, t),
     });
@@ -96,7 +97,7 @@ export function budgetAlerts(state: AppState, t: T = PT): BudgetAlert[] {
                 host: host.name,
                 label: budgetLabel(b, t),
                 percent: Math.round(b.fraction * 100),
-                limit: share(b.limitPct),
+                limit: share(b.limitPct, t.lang),
                 estimate: estimateNote(b, t),
               }),
       })),
