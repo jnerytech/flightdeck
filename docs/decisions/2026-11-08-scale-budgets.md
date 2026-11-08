@@ -47,12 +47,15 @@ Nothing measured the app or the daemon at a few hundred sessions across hosts. A
   - Budget (`scale-needs-you.test.tsx`): a burst of 10 summaries of one session, at 200 sessions,
     redraws at most 3 rows per summary. It was 529. The test wraps the row's module and keeps the
     row's own memo, so a row that is not memoized counts every render of the list.
-- **Next, one PR each, red budget first:**
-  - the Sessions and sidebar rows;
-  - `App`'s root `useStoreState`.
-  Each of these is measured as the rows of the other sessions that render on one session's burst.
-  Batching inside `update()` comes last, and only if a budget still fails: many tests assume its
-  listeners run at once.
+- **Sessions and the sidebar get guard budgets, not a rewrite.** Per summary, their render time
+  stayed nearly flat from 20 to 800 sessions (Sessions 9 → 20 ms, sidebar 14 → 18 ms in
+  happy-dom). Their rows are inline JSX with many closures, and memoizing them would be a large
+  change for little gain. `scale-screens.test.tsx` keeps what holds now: at 200 sessions, a burst
+  renders each screen at most once per summary, and the Sessions page sends no request on it. A
+  mutation that made it ask on every summary turns the test red.
+- **Left for later, only if a budget fails or 800 sessions matter:** `App`'s root
+  `useStoreState`, the Sessions and sidebar rows, and batching inside `update()` (many tests assume
+  its listeners run at once).
 
 ## Discarded alternatives
 
