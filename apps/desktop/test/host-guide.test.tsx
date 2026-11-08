@@ -120,5 +120,23 @@ describe("host-guide: Add a host (issue #1199)", () => {
       expect(fold(text.byHand)?.open).toBe(true);
       expect(screen.queryByText(text.missing)).not.toBeNull();
     });
+
+    test(`${language}: the same error twice opens a fold the person closed in between`, async () => {
+      const { text } = await secondHostPage(language);
+      const press = () =>
+        act(async () => {
+          fireEvent.click(screen.queryByRole("button", { name: text.submit }) as HTMLElement);
+        });
+      await press();
+      const manual = fold(text.byHand) as HTMLDetailsElement;
+      expect(manual.open).toBe(true);
+      await act(async () => {
+        manual.open = false;
+        manual.dispatchEvent(new Event("toggle"));
+      });
+      expect(fold(text.byHand)?.open).toBe(false);
+      await press();
+      expect(fold(text.byHand)?.open).toBe(true);
+    });
   }
 });
