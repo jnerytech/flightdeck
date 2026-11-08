@@ -10,15 +10,19 @@ import { tempDir } from "./helpers.ts";
 
 /**
  * Sonar S6551 (#203): a value that is not text is never turned into "[object Object]" or its
- * pieces. Each place reads only a string, and anything else counts as empty, as the risk level
- * already did for a shell command.
+ * pieces. Each place reads only a string. Anything else counts as empty, except a shell command,
+ * which fails closed: it is high risk and a network call, so it never runs without a person.
  */
 describe("S6551: what is not text counts as empty (#203)", () => {
-  test("a shell command that is not text is no network call, as its risk level already reads it", () => {
+  test("a shell command that is not text fails closed: high, and a network call, so a person decides", () => {
     const risk = new RiskClassifier({ allowedRoots: [], home: "/home/u" });
     const odd = risk.classify("Bash", { command: ["curl https://example.com"] }, "/w");
-    const empty = risk.classify("Bash", { command: "" }, "/w");
-    expect([odd.network, odd.level]).toEqual([false, empty.level]);
+    expect([odd.level, odd.network]).toEqual(["high", true]);
+    // A command that is text keeps its own reading.
+    expect(risk.classify("Bash", { command: "ls" }, "/w")).toMatchObject({
+      level: "medium",
+      network: false,
+    });
     expect(risk.classify("Bash", { command: "curl https://example.com" }, "/w").network).toBe(true);
   });
 
