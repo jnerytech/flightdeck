@@ -20,6 +20,7 @@ import { IconTip } from "@/components/feedback/icon-tip";
 import { HostVersionTip, hostVersionText } from "@/components/hosts/host-version";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { ProjectTree } from "@/components/projects/project-tree";
+import { RailFlyout } from "@/components/projects/rail-flyout";
 import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { ProgressRing } from "@/components/status/progress-ring";
@@ -90,6 +91,8 @@ function NavButton(
     chevron?: boolean;
     /** A recent feature: a small badge after the label, already translated ("Beta", "New"). */
     badge?: string;
+    /** The item opens a panel instead of a screen: said to assistive technology, with its state. */
+    opens?: { expanded: boolean };
   }>,
 ) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
@@ -103,6 +106,8 @@ function NavButton(
         aria-current={props.active ? "page" : undefined}
         aria-describedby={props.badge ? badgeId : undefined}
         aria-keyshortcuts={props.keys}
+        aria-haspopup={props.opens ? "dialog" : undefined}
+        aria-expanded={props.opens?.expanded}
         className={cn(
           ITEM,
           props.collapsed && "justify-center px-0",
@@ -356,6 +361,10 @@ export function Sidebar(
     setFolded(next);
     props.store.setSidebarFolded(next);
   };
+  // The project tree beside the rail's Projects icon (#689). Only a collapsed bar has it open, so
+  // a bar that was expanded meanwhile does not bring it back on the next collapse.
+  const [projectsFlyout, setProjectsFlyout] = useState(false);
+  const projectsOpen = collapsed && projectsFlyout;
   /** The host whose removal is being confirmed. */
   const [removing, setRemoving] = useState<HostView | null>(null);
   const [renaming, setRenaming] = useState<HostView | null>(null);
@@ -591,13 +600,46 @@ export function Sidebar(
                 )
               }
             />
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
-              active={here === "projects"}
-              label={t("sidebar.projects")}
-              onClick={() => go({ name: "all-projects" })}
-            />
+            {collapsed && tree.length > 0 ? (
+              // The rail has no room for the tree: the icon opens it beside the rail instead.
+              <RailFlyout
+                label={t("sidebar.projects")}
+                open={projectsOpen}
+                onOpenChange={setProjectsFlyout}
+                trigger={
+                  <NavButton
+                    collapsed={collapsed}
+                    icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
+                    active={here === "projects"}
+                    label={t("sidebar.projects")}
+                    opens={{ expanded: projectsOpen }}
+                    onClick={() => setProjectsFlyout(!projectsOpen)}
+                  />
+                }
+              >
+                <ProjectTree
+                  store={props.store}
+                  tree={tree}
+                  filter={activeWorktreeFilter(state)}
+                  stay={here === "sessions"}
+                  allLink
+                  onPicked={() => setProjectsFlyout(false)}
+                  t={t}
+                  go={(route) => {
+                    setProjectsFlyout(false);
+                    go(route);
+                  }}
+                />
+              </RailFlyout>
+            ) : (
+              <NavButton
+                collapsed={collapsed}
+                icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
+                active={here === "projects"}
+                label={t("sidebar.projects")}
+                onClick={() => go({ name: "all-projects" })}
+              />
+            )}
             {!collapsed && tree.length > 0 && (
               <ProjectTree
                 store={props.store}
