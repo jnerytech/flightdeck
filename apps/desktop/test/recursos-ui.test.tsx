@@ -364,4 +364,25 @@ describe("recursos-ui: a refused read", () => {
       errors: w.store.appLog.recent(50).filter((line) => line.includes("ERROR")).length,
     }).toEqual({ shown: true, toasts: 0, errors: 0 });
   });
+  for (const [language, text] of [
+    ["en", "This host's resources could not be read. They show when the host answers."],
+    ["pt-BR", "Não deu para ler os recursos deste host. Eles aparecem quando o host responder."],
+  ] as const) {
+    test(`a first read that is refused says so in the panel, with no toast (${language})`, async () => {
+      const w = setup({ language });
+      (w.store as unknown as { dispatch: unknown }).dispatch = (async (
+        _h: string,
+        type: string,
+      ) => {
+        w.asked.push([type, null]);
+        throw new RequestError("terminal_disabled", "the terminal is off on this host");
+      }) as never;
+      render(w.view());
+      await settle(() => reads(w.asked).length >= 2);
+      expect({
+        said: screen.queryByText(text) !== null,
+        toasts: w.store.getState().notices.length,
+      }).toEqual({ said: true, toasts: 0 });
+    });
+  }
 });
