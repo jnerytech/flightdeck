@@ -41,6 +41,8 @@ export function KnowledgePanel(
   // The specs a card is being made from: a second click waits, so it makes no second card. The ref
   // answers at once (two clicks in one tick); the state disables the button.
   const busy = useRef(new Set<string>());
+  // The status each document's picker shows when it is not the file's own yet, by path.
+  const [chosen, setChosen] = useState<Readonly<Record<string, KnowledgeStatus>>>({});
   const [making, setMaking] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
@@ -100,6 +102,8 @@ export function KnowledgePanel(
       status,
       expectedHash: entry.hash,
     });
+    // A change that went through is the file's status now: the choice is not a pending one anymore.
+    if (result.ok) setChosen(({ [entry.path]: _applied, ...rest }) => rest);
     setNote(
       result.ok
         ? {
@@ -180,10 +184,15 @@ export function KnowledgePanel(
                         title: entry.title,
                       })}
                       className="rounded-md border border-input bg-background px-2 py-1 text-sm"
-                      value={entry.status === "unclassified" ? "" : entry.status}
-                      onChange={(event) =>
-                        void change(entry, event.target.value as KnowledgeStatus)
+                      value={
+                        chosen[entry.path] ?? (entry.status === "unclassified" ? "" : entry.status)
                       }
+                      // Choosing only picks: an arrow key on a closed select fires a change for each
+                      // value it passes, and each would write the file (#1089).
+                      onChange={(event) => {
+                        const next = event.target.value as KnowledgeStatus;
+                        setChosen((now) => ({ ...now, [entry.path]: next }));
+                      }}
                     >
                       {entry.status === "unclassified" && (
                         <option value="" disabled>
@@ -196,6 +205,24 @@ export function KnowledgePanel(
                         </option>
                       ))}
                     </select>
+                  )}
+                  {props.status && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={t("projectPage.knowledge.setStatus.applyLabel", {
+                        title: entry.title,
+                      })}
+                      disabled={
+                        chosen[entry.path] === undefined || chosen[entry.path] === entry.status
+                      }
+                      onClick={() => {
+                        const next = chosen[entry.path];
+                        if (next !== undefined) void change(entry, next);
+                      }}
+                    >
+                      {t("projectPage.knowledge.setStatus.apply")}
+                    </Button>
                   )}
                   {entry.type && (
                     <span className="text-muted-foreground text-xs">
