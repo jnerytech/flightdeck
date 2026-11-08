@@ -859,10 +859,28 @@ describe("times-ui: the host follows the switcher", () => {
     await act(async () => store.pickHost(alfa as string));
     await click("Times");
     await settleMaybe(() => hostField()?.value === alfa);
-    expect({ first: first === beta, after: hostField()?.value === alfa }).toEqual({
-      first: true,
-      after: true,
-    });
+    expect({
+      first: first === beta,
+      after: hostField()?.value === alfa,
+      notice: screen.queryByText(/não tem times|está offline\. Mostrando/) !== null,
+    }).toEqual({ first: true, after: true, notice: false });
+  });
+
+  // Review of #964: an alert's host is the route's, and a later switch does not drop it.
+  test("a route's host (an alert) wins over the switcher, with no notice", async () => {
+    fakeGh();
+    const { store } = await open();
+    const other = await daemonWithProject("pi");
+    await act(() => store.addHost({ name: "beta", url: other.url, token: other.token }));
+    await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
+    const [alfa, beta] = store.getState().hosts.map((h) => h.id);
+    await act(async () => store.pickHost(alfa as string));
+    await act(async () => store.router.push({ name: "teams", host: beta as string }));
+    await settleMaybe(() => hostField()?.value === beta);
+    expect({
+      shown: hostField()?.value === beta,
+      notice: screen.queryByText(/não tem times|está offline\. Mostrando/) !== null,
+    }).toEqual({ shown: true, notice: false });
   });
 
   test("a switcher host with no teams is named, with the host the page shows instead", async () => {
