@@ -78,6 +78,13 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   ui: "ui.mode",
   updater: "updater",
   updates: "updater",
+  // The knowledge gates moved out of the switch with the knowledge domain (issue #1288): the
+  // index is gated by `knowledgeFeed` but names `knowledge`, and the feed switch names `knowledgeFeed`.
+  knowledge: "knowledge",
+  knowledgeFeed: "knowledge",
+  knowledgeStatus: "knowledgeStatus",
+  knowledgeCreate: "knowledgeCreate",
+  knowledgeFeedSwitch: "knowledgeFeed",
 };
 
 /** What `need` answers for an option: the service, or the refusal's reason and feature. */

@@ -76,6 +76,13 @@ export const GATES = {
   ui: "ui.mode",
   updater: "updater",
   updates: "updater",
+  // The knowledge gates: the index is gated by `knowledgeFeed` but names `knowledge`, and the
+  // feed switch names `knowledgeFeed`.
+  knowledge: "knowledge",
+  knowledgeFeed: "knowledge",
+  knowledgeStatus: "knowledgeStatus",
+  knowledgeCreate: "knowledgeCreate",
+  knowledgeFeedSwitch: "knowledgeFeed",
 } as const satisfies Partial<Record<keyof ServerOptions, string>>;
 
 export type GatedOption = keyof typeof GATES;
