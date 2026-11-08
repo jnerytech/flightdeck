@@ -83,7 +83,9 @@ export async function writeSpec(
       () => false,
     );
     if (there) return "exists";
-    return (await createInside(root, path, content)) ? "written" : "failed";
+    // On Windows a backslash separates folders too: split on it, so every folder on the way is checked.
+    const rel = process.platform === "win32" ? path.replace(/\\/g, "/") : path;
+    return (await createInside(root, rel, content)) ? "written" : "failed";
   } catch {
     return "failed";
   }
