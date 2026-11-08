@@ -215,6 +215,25 @@ for (const [lang, t] of [
 
 // Issue #78, slice 3a: the validation note and the question before starting.
 describe("card-form (en): the validation note and starting a card with no criteria", () => {
+  test("an empty validation note shows the template's shape, in each language, and saves nothing on its own (#78)", async () => {
+    const shapes: string[] = [];
+    for (const language of ["en", "pt-BR"] as const) {
+      const { d, card } = await openCard(language);
+      const label = language === "en" ? "Validation note" : ptBR.cardUi.validation;
+      await settle(() => screen.queryByLabelText(label) !== null);
+      const field = screen.queryByLabelText(label) as HTMLTextAreaElement | null;
+      shapes.push(field?.placeholder ?? "");
+      // Only what the person writes is a note: the shape alone never meets the validation check.
+      expect(d.board.getCard(card.id).validationNote).toBeNull();
+      cleanup();
+    }
+    expect([
+      shapes[0]?.includes("What was checked"),
+      shapes[0]?.includes("Result"),
+      shapes[1]?.includes("O que foi verificado"),
+    ]).toEqual([true, true, true]);
+  });
+
   test("the validation note is a labelled field that saves on the card, and clears with empty text", async () => {
     const { d, card, store } = await openCard("en");
     await settle(() => screen.queryByLabelText("Description") !== null);
