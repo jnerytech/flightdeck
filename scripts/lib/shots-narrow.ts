@@ -30,6 +30,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "times-apagar",
   "workflows-modelos",
   "board-contrato",
+  // #994: a toast on a session page, above the message box.
+  "sessao-aviso",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

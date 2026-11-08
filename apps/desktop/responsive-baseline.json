@@ -32,5 +32,17 @@
   },
   "nested-scroll|dark pt-BR 390x844 board-contrato|page > page-body > board-columns > ul.flex": {
     "count": 1
+  },
+  "overflow-x|dark en 1024x700 sessao-aviso|svg": {
+    "count": 1,
+    "worst": 3
+  },
+  "overflow-x|dark en 640x800 sessao-aviso|svg": {
+    "count": 1,
+    "worst": 3
+  },
+  "overflow-x|dark en 390x844 sessao-aviso|svg": {
+    "count": 1,
+    "worst": 3
   }
 }
