@@ -13,6 +13,7 @@ import {
   type ExternalStatus,
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
+  type HarnessApplied,
   type HarnessPreview,
   type HarnessStack,
   type HostRuntime,
@@ -195,6 +196,13 @@ export interface ServerOptions {
   ) => Promise<KnowledgeEntry>;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
+  /** #75: writes what the preview proposed, when `digests` still match the proposals. */
+  harnessApply?: (
+    path: string,
+    parts: readonly PreviewPart[],
+    digests: Readonly<Record<string, string>>,
+    options: { reformat: boolean },
+  ) => Promise<HarnessApplied>;
   projectTrust?: {
     /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
     refresh(): Promise<void>;
@@ -431,6 +439,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.knowledgeFeedSwitch, "knowledgeFeed"),
     ...when(opts.knowledgeStatus, "knowledgeStatus"),
     ...when(opts.harnessPreview, "harnessPreview"),
+    ...when(opts.harnessApply, "harnessApply"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
@@ -1181,6 +1190,25 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.harnessPreview) throw featureOff("harnessPreview");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.harnessPreview(path, command.payload.parts));
+      }
+      case "project.harness.apply": {
+        if (!opts.harnessApply) throw featureOff("harnessApply");
+        // A hook written here runs its command in every session of a trusted project: a near
+        // connection only, like project.trust.set, and only once the person confirmed.
+        requireVaultTransport(ws.data.origin, "project.harness.apply", opts.log);
+        const { parts, digests, confirm, reformat } = command.payload;
+        if (confirm !== true) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "changing the Claude Code setup needs confirm: true",
+            "harness_confirm",
+          );
+        }
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(
+          command.type,
+          await opts.harnessApply(path, parts, digests, { reformat: reformat === true }),
+        );
       }
       case "project.trust.set": {
         if (!opts.projectTrust) throw featureOff("projectTrust");

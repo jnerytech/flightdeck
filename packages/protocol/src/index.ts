@@ -3216,6 +3216,26 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /**
+   * #75, slice S4: writes what the preview proposed. The daemon makes the proposals again and never
+   * takes content from the app; `digests` (each proposal's, by path) must match them all, else
+   * `harness_stale`. Writing hooks lets commands run in sessions: a near connection and `confirm`.
+   */
+  cmd(
+    "project.harness.apply",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        parts: z.array(z.enum(HARNESS_PREVIEW_PARTS)).min(1).max(HARNESS_PREVIEW_PARTS.length),
+        digests: z
+          .record(z.string().max(256), z.string().max(128))
+          .refine((digests) => Object.keys(digests).length <= HARNESS_PREVIEW_PARTS.length),
+        confirm: z.boolean().optional(),
+        /** The person accepted the settings being rewritten with another layout (the preview's `reformats`). */
+        reformat: z.boolean().optional(),
+      })
+      .strict(),
+  ),
   cmd(
     "project.trust.set",
     z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
@@ -4860,12 +4880,19 @@ export const HarnessPreview = z.object({
       conflicts: z.array(z.string()),
       /** Writing the file back would change its layout, not only add entries. */
       reformats: z.boolean(),
+      /** Binds the file's hash and what would be added: apply refuses when it differs (S4). */
+      digest: z.string(),
     })
     .nullable(),
-  files: z.array(z.object({ path: z.string(), content: z.string() })),
+  /** A new file, whole; `digest` is the sha256 of `content`. */
+  files: z.array(z.object({ path: z.string(), content: z.string(), digest: z.string() })),
   unreadable: z.array(z.string()),
 });
 export type HarnessPreview = z.infer<typeof HarnessPreview>;
+
+/** #75, slice S4: the project files `project.harness.apply` wrote, in the preview's order. */
+export const HarnessApplied = z.object({ written: z.array(z.string()) });
+export type HarnessApplied = z.infer<typeof HarnessApplied>;
 
 /** #75: what a hook command is for, when its command says so. */
 export type HookKind = "format" | "gitAdd" | "secrets";
@@ -5106,6 +5133,7 @@ export interface CommandResults {
   "project.trust.inspect": ProjectLoad;
   "project.harness.stack": HarnessStack;
   "project.harness.preview": HarnessPreview;
+  "project.harness.apply": HarnessApplied;
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;
