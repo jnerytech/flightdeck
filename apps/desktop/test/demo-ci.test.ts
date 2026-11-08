@@ -141,6 +141,7 @@ describe("demo-prints: axe e CI", () => {
       "update-card",
       "status-bar",
       "trust-revoke",
+      "mode-chip",
       "workflow-templates",
       "card-pins",
       "stage-contract",

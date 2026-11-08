@@ -1,0 +1,297 @@
+import { describe, expect, test } from "bun:test";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { SecretScanner } from "@flightdeck/protocol";
+import { applyHarness } from "../src/harness/apply.ts";
+import { commitHarness } from "../src/harness/commit.ts";
+import { previewHarness } from "../src/harness/preview.ts";
+import { startServer } from "../src/server.ts";
+import { git } from "./board-helpers.ts";
+import { newManager, tempDir } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
+
+/**
+ * Issue #75, slice C1: what the harness apply wrote is committed on a new branch the host names,
+ * through a temporary index, with the person's identity: their branch, index and files stay as they
+ * are, no hook of the repository runs, and a secret or a changed file refuses.
+ */
+const ALL = ["claudeMd", "hooks", "skills", "agents", "permissions"] as const;
+const AT = () => new Date("2026-11-08T14:05:00Z");
+const TOKEN = "harness-commit-token-0123456789ab";
+const posix = process.platform !== "win32";
+
+/** A repository with one commit, a person's identity, and a Bun project to set up. */
+function repo(
+  options: { identity?: boolean; commit?: boolean; files?: Record<string, string> } = {},
+) {
+  const root = tempDir("fd-harness-commit-");
+  git(root, "init", "-q", "-b", "main");
+  for (const [name, text] of Object.entries(options.files ?? {})) {
+    mkdirSync(join(root, name, ".."), { recursive: true });
+    writeFileSync(join(root, name), text);
+  }
+  if (options.identity ?? true) {
+    git(root, "config", "user.name", "Ana");
+    git(root, "config", "user.email", "ana@example.com");
+  }
+  writeFileSync(
+    join(root, "package.json"),
+    JSON.stringify({ scripts: { test: "bun test", format: "biome format ." } }),
+  );
+  writeFileSync(join(root, "bun.lock"), "");
+  if (options.commit ?? true) {
+    git(root, "add", "--", "package.json", "bun.lock", ...Object.keys(options.files ?? {}));
+    git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "start");
+  }
+  return root;
+}
+
+async function applied(root: string) {
+  const preview = await previewHarness(root, ALL);
+  const digests: Record<string, string> = {};
+  if (preview.settings) digests[preview.settings.path] = preview.settings.digest;
+  for (const file of preview.files) digests[file.path] = file.digest;
+  return applyHarness(root, ALL, digests);
+}
+
+const scanner = (values: string[] = []) => new SecretScanner(() => values);
+
+/** A git call whose failure (a branch that is not there) is a value, not an error. */
+function maybe(cwd: string, ...args: string[]): string | null {
+  try {
+    return git(cwd, ...args);
+  } catch {
+    return null;
+  }
+}
+
+async function outcome(run: Promise<unknown>): Promise<string> {
+  try {
+    await run;
+    return "ok";
+  } catch (error) {
+    return (error as { reason?: string }).reason ?? String(error);
+  }
+}
+
+describe("harness-commit: the setup is committed on a new branch, nothing else moves (#75)", () => {
+  test("the files apply wrote are committed whole on a new branch, with the person's identity", async () => {
+    const root = repo();
+    const done = await applied(root);
+    const before = git(root, "status", "--porcelain");
+    const made = await commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT });
+    const branch = "flightdeck/claude-setup-20261108-1405";
+    expect([
+      made.branch,
+      made.files.sort(),
+      git(root, "rev-parse", "--abbrev-ref", "HEAD"),
+      git(root, "status", "--porcelain") === before,
+      maybe(root, "log", "-1", "--format=%an <%ae>", branch),
+      // Each file on the branch is the file as written (the helper trims both the same way).
+      done.written.every(
+        (file) =>
+          maybe(root, "show", `${branch}:${file}`) ===
+          readFileSync(join(root, file), "utf8").trim(),
+      ),
+      maybe(root, "rev-parse", `${branch}^`) === git(root, "rev-parse", "main"),
+    ]).toEqual([
+      branch,
+      [...done.written].sort(),
+      "main",
+      true,
+      "Ana <ana@example.com>",
+      true,
+      true,
+    ]);
+  });
+
+  test("a file changed since the apply, or a path that is not the setup's, is refused and no branch is made", async () => {
+    const root = repo();
+    const done = await applied(root);
+    writeFileSync(join(root, "CLAUDE.md"), "# Mine now\n");
+    writeFileSync(join(root, ".env"), "KEY=1\n");
+    const changed = await outcome(
+      commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    const other = await outcome(
+      commitHarness(root, { ".env": "x".repeat(64) }, { scanner: scanner(), now: AT }),
+    );
+    expect([changed, other, git(root, "branch", "--list", "flightdeck/*")]).toEqual([
+      "harness_commit_stale",
+      "harness_commit_stale",
+      "",
+    ]);
+  });
+
+  test("a repository with no commit, or no identity, refuses with its reason", async () => {
+    const empty = repo({ commit: false });
+    const nameless = repo({ identity: false });
+    const noHead = await outcome(
+      applied(empty).then((done) =>
+        commitHarness(empty, done.digests ?? {}, { scanner: scanner(), now: AT }),
+      ),
+    );
+    const noName = await outcome(
+      applied(nameless).then((done) =>
+        commitHarness(nameless, done.digests ?? {}, { scanner: scanner(), now: AT }),
+      ),
+    );
+    expect([noHead, noName]).toEqual(["harness_commit_no_head", "harness_commit_identity"]);
+  });
+
+  test("a secret in a file to commit refuses, and the same name twice is refused, never moved", async () => {
+    const root = repo();
+    const done = await applied(root);
+    const secret = await outcome(
+      commitHarness(root, done.digests ?? {}, {
+        // A vault value that the written CLAUDE.md holds.
+        scanner: scanner(["bun run test"]),
+        now: AT,
+      }),
+    );
+    const first = await outcome(
+      commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    const tip = maybe(root, "rev-parse", "flightdeck/claude-setup-20261108-1405");
+    const again = await outcome(
+      commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    expect([
+      secret,
+      first,
+      again,
+      tip !== null && maybe(root, "rev-parse", "flightdeck/claude-setup-20261108-1405") === tip,
+    ]).toEqual(["harness_commit_secret", "ok", "harness_commit_branch_taken", true]);
+  });
+
+  test.skipIf(!posix)(
+    "no hook of the repository runs, a reference-transaction hook included",
+    async () => {
+      const root = repo();
+      const hooks = join(root, "my-hooks");
+      mkdirSync(hooks);
+      const marker = join(root, "hook-ran");
+      for (const name of ["reference-transaction", "post-commit", "pre-commit"]) {
+        writeFileSync(join(hooks, name), `#!/bin/sh\ntouch "${marker}"\n`);
+        chmodSync(join(hooks, name), 0o755);
+      }
+      git(root, "config", "core.hooksPath", hooks);
+      const done = await applied(root);
+      const made = await outcome(
+        commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+      );
+      expect([
+        made,
+        maybe(root, "rev-parse", "flightdeck/claude-setup-20261108-1405") !== null,
+        existsSync(marker),
+      ]).toEqual(["ok", true, false]);
+    },
+  );
+
+  test("the server commits over a near connection, with confirm, inside the allowed roots only", async () => {
+    const root = repo();
+    const done = await applied(root);
+    const { manager } = newManager();
+    const commit = (path: string, digests: Readonly<Record<string, string>>) =>
+      commitHarness(path, digests, { scanner: scanner(), now: AT });
+    const base = {
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [root],
+      allowedNetworks: ["0.0.0.0/0", "::/0"],
+    };
+    const servers = [
+      startServer({ ...base, harnessCommit: commit }),
+      startServer({ ...base, harnessCommit: commit, peerOf: () => "8.8.8.8" }),
+      startServer(base),
+    ];
+    const clients = servers.map((server) => new FrameClient(server.url));
+    try {
+      for (const client of clients) await client.request("hello", { token: TOKEN, client: "t" });
+      const [near, far, off] = clients as [FrameClient, FrameClient, FrameClient];
+      const answer = async (client: FrameClient, payload: Record<string, unknown>) => {
+        const ack = await client.request("project.harness.commit", payload);
+        const error = ack.error as { reason?: string } | undefined;
+        return ack.ok === true ? (ack.data as { branch?: string }).branch : (error?.reason ?? null);
+      };
+      const asked = { path: root, digests: done.digests ?? {} };
+      expect([
+        await answer(near, asked),
+        await answer(far, { ...asked, confirm: true }),
+        await answer(off, { ...asked, confirm: true }),
+        await answer(near, { ...asked, path: tempDir("fd-elsewhere-"), confirm: true }),
+        await answer(near, { ...asked, confirm: true }),
+      ]).toEqual([
+        "harness_confirm",
+        "transport_refused",
+        "feature_off",
+        "cwd_outside_roots",
+        "flightdeck/claude-setup-20261108-1405",
+      ]);
+    } finally {
+      for (const client of clients) client.close();
+      for (const server of servers) await server.stop();
+    }
+  });
+
+  test("a project in a folder of a larger repository commits its files at their place in it", async () => {
+    const top = repo();
+    const app = join(top, "sub", "app");
+    mkdirSync(app, { recursive: true });
+    writeFileSync(
+      join(app, "package.json"),
+      JSON.stringify({ scripts: { format: "biome format ." } }),
+    );
+    writeFileSync(join(app, "bun.lock"), "");
+    const done = await applied(app);
+    const made = await outcome(
+      commitHarness(app, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    const branch = "flightdeck/claude-setup-20261108-1405";
+    expect([
+      made,
+      maybe(top, "cat-file", "-e", `${branch}:sub/app/.claude/settings.json`),
+      maybe(top, "cat-file", "-e", `${branch}:.claude/settings.json`),
+    ]).toEqual(["ok", "", null]);
+  });
+
+  test("a setup file the person ignores in git is refused, never committed for them", async () => {
+    const root = repo({ files: { ".gitignore": "CLAUDE.md\n" } });
+    const done = await applied(root);
+    const made = await outcome(
+      commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    expect([made, git(root, "branch", "--list", "flightdeck/*")]).toEqual([
+      "harness_commit_ignored",
+      "",
+    ]);
+  });
+
+  test("a branch that cannot be made for another reason than its name being taken says so", async () => {
+    const root = repo();
+    // A branch named `flightdeck` keeps `flightdeck/...` from being made: not a taken name.
+    git(root, "branch", "flightdeck");
+    const done = await applied(root);
+    const made = await outcome(
+      commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    expect(made).toBe("harness_commit_git");
+  });
+
+  test("a token in the settings' env, kept by the merge, keeps the commit from being made", async () => {
+    const token = `ghp_${"a1B2c3D4e5".repeat(4)}`;
+    const root = repo({
+      files: {
+        ".claude/settings.json": `${JSON.stringify({ env: { GITHUB_TOKEN: token } }, null, 2)}\n`,
+      },
+    });
+    const done = await applied(root);
+    const made = await outcome(
+      commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    expect(made).toBe("harness_commit_secret");
+  });
+});
