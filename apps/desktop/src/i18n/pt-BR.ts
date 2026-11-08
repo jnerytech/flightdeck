@@ -3759,6 +3759,8 @@ export const ptBR = {
     saveDescription: "Salvar descrição",
     validation: "Nota de validação",
     saveValidation: "Salvar nota de validação",
+    validationShape:
+      "O que foi verificado:\nComo (comandos, passos, dados):\nResultado:\nO que não foi verificado:",
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
     specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",

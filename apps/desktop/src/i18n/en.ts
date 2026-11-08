@@ -3754,6 +3754,8 @@ export const en: Dictionary = {
     saveDescription: "Save description",
     validation: "Validation note",
     saveValidation: "Save validation note",
+    validationShape:
+      "What was checked:\nHow (commands, steps, data):\nResult:\nWhat was not checked:",
     specFile: "Spec file",
     saveSpec: "Save spec file",
     specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
