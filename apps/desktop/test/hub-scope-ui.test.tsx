@@ -332,4 +332,28 @@ describe("hub-scope-ui: a project scope (#126 slice 4)", () => {
       menu: true,
     });
   });
+  for (const [language, text, button] of [
+    ["en", "proj-gone has no sessions.", "Show all hosts"],
+    ["pt-BR", "proj-gone não tem sessões.", "Mostrar todos os hosts"],
+  ] as const) {
+    test(`a project scope with no sessions says so and offers every host (${language})`, async () => {
+      const { store } = setup({
+        kept: '{"kind":"project","projectKey":"host:alfa:/work/proj-gone"}',
+        language,
+      });
+      await settleMaybe(() => screen.queryByText(text) !== null);
+      const said = screen.queryByText(text) !== null;
+      const all = screen.queryByRole("button", { name: button });
+      expect(all).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(all as HTMLElement);
+      });
+      await settleMaybe(() => shown("on alfa") && shown("on beta"));
+      expect({ said, scope: store.dataScope.value, alfa: shown("on alfa") }).toEqual({
+        said: true,
+        scope: { kind: "all" },
+        alfa: true,
+      });
+    });
+  }
 });
