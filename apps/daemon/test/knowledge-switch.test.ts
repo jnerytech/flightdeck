@@ -14,7 +14,10 @@ function host(initial: string[], trusted = true) {
     trust: async () => ({ trusted }),
     change: async (update) => {
       writes += 1;
-      entries.splice(0, entries.length, ...update([...entries]));
+      // Read, wait, write: as the config file is rewritten, so two at once would lose one.
+      const read = [...entries];
+      await Promise.resolve();
+      entries.splice(0, entries.length, ...update(read));
     },
   });
   return { sw, entries, writes: () => writes };
@@ -71,5 +74,29 @@ describe("knowledge-switch: who has the index switched off (#76)", () => {
     const h = host([]);
     const state = await h.sw.set(project, true);
     expect([h.writes(), state.on]).toEqual([0, true]);
+  });
+
+  test("two switches asked together both land: each one sees what the other wrote", async () => {
+    const parent = tempDir("fd-switch-");
+    const [a, b] = [join(parent, "a"), join(parent, "b")];
+    const h = host([]);
+    await Promise.all([h.sw.set(a, false), h.sw.set(b, false)]);
+    expect(h.entries.sort()).toEqual([a, b]);
+  });
+
+  test("a write that fails is reported, and the next switch still goes through", async () => {
+    const project = tempDir("fd-switch-");
+    let fail = true;
+    const sw = knowledgeSwitchFor({
+      off: () => [],
+      trust: async () => ({ trusted: true }),
+      change: async () => {
+        if (fail) throw new Error("disk full");
+      },
+    });
+    const first = await Promise.allSettled([sw.set(project, false)]);
+    fail = false;
+    const second = await Promise.allSettled([sw.set(project, false)]);
+    expect([first[0]?.status, second[0]?.status]).toEqual(["rejected", "fulfilled"]);
   });
 });
