@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { pollUntil } from "./smoke-poll";
+import { pollUntil } from "../lib/smoke-poll";
 
 const QUICK = { timeoutMs: 1000, pauseMs: 1 };
 
