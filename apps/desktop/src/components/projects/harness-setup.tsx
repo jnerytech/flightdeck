@@ -287,11 +287,24 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
           {t("projectPage.harness.setup.action")}
         </ActionButton>
       </div>
-      {/* Mounted before anything is said, so a screen reader reads what fills them. */}
-      <div role="status" ref={said} tabIndex={-1}>
+      {/* The outcome takes the focus, and the focus is what reads it: a live announcement on top
+          would read it twice, so the regions keep their roles with aria-live off. */}
+      <div
+        role="status"
+        aria-live="off"
+        ref={said}
+        tabIndex={-1}
+        className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+      >
         {outcome && !outcome.refused && <p className="text-sm">{outcome.text}</p>}
       </div>
-      <div role="alert" ref={refusedBox} tabIndex={-1}>
+      <div
+        role="alert"
+        aria-live="off"
+        ref={refusedBox}
+        tabIndex={-1}
+        className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+      >
         {outcome?.refused && <p className="text-sm">{outcome.text}</p>}
       </div>
       {outcome?.again && (
