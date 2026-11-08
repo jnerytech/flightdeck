@@ -95,7 +95,7 @@ async function createCard(title: string, description = "faça") {
 /** Em revisão asks for a PR before a card goes there (#78): these cards have none, so go on anyway. */
 async function moveAnyway() {
   const ask = await screen.findByRole("alertdialog");
-  expect(ask.textContent).toContain("não tem: um link de PR");
+  expect(ask.textContent).toContain("ainda precisa de um link de PR");
   await act(async () => {
     fireEvent.click(within(ask).getByRole("button", { name: "Mover mesmo assim" }));
   });
