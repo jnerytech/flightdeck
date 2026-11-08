@@ -1710,7 +1710,8 @@ Um modelo é um arquivo. Na tela **Workflows**, **Adicionar de um modelo** lista
 um para ler o arquivo. Depois, adicione de um destes dois jeitos:
 
 - **Adicionar ao projeto** (num host a partir desta versão). O Flightdeck pergunta antes, faz o
-  commit do arquivo em `.flightdeck/workflows/` numa branch nova,
+  commit do arquivo em `.flightdeck/workflows/` numa branch nova, a partir da cópia da branch
+  base no origin (os seus commits ainda não enviados ficam de fora),
   `flightdeck/workflow-<modelo>-<data>`, envia e abre um pull request para a branch base, como um
   card faz. **Ver o pull request** abre o PR. A branch base e o seu checkout não mudam: a sua
   branch atual, o seu índice e os arquivos não salvos ficam como estão. O commit usa o `user.name`

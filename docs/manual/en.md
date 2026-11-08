@@ -1699,7 +1699,8 @@ A template is a file. On the **Workflows** screen, **Add from a template** lists
 read its file. Then add it in one of two ways:
 
 - **Add to the project** (a host from this version on). Flightdeck asks first, then commits the file
-  to `.flightdeck/workflows/` on a new branch, `flightdeck/workflow-<template>-<date>`, pushes it
+  to `.flightdeck/workflows/` on a new branch from origin's copy of the base branch (your
+  commits not pushed yet stay out), `flightdeck/workflow-<template>-<date>`, pushes it
   and opens a pull request into the base branch, as a card does. **View the pull request** opens
   it. The base branch and your checkout do not change: your current branch, your index and your
   unsaved files stay as they are. The commit uses the repository's `user.name` and `user.email`,
