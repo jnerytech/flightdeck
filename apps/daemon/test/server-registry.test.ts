@@ -14,6 +14,29 @@ describe("server-registry", () => {
     expect(Object.keys(HANDLERS).sort()).toEqual([...owners.keys()].sort());
   });
 
+  // Issue #1288: the sign-in with GitHub and the board sync left the switch of server.ts.
+  test("the github domain owns the github.* and boardsync.* commands", () => {
+    expect(Object.keys(DOMAINS.github ?? {}).sort()).toEqual(
+      [
+        "boardsync.boards",
+        "boardsync.link",
+        "boardsync.log",
+        "boardsync.setMap",
+        "boardsync.setPush",
+        "boardsync.status",
+        "boardsync.syncNow",
+        "boardsync.unlink",
+        "github.issues",
+        "github.login.cancel",
+        "github.login.start",
+        "github.logout",
+        "github.repos",
+        "github.start",
+        "github.status",
+      ].sort(),
+    );
+  });
+
   // Issue #1288: the knowledge commands left the switch of server.ts.
   test("the knowledge domain owns the knowledge.* commands", () => {
     expect(Object.keys(DOMAINS.knowledge ?? {}).sort()).toEqual(

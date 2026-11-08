@@ -165,7 +165,7 @@ describe("opencode-preflight", () => {
         { type: "document", path: join(GLOBAL, name), info: { model: "a/b" } },
         ...goodConfig(),
       ];
-      expect(await refusal(setup({ config }).preflight.check("/w"))).toBe(null);
+      expect(await refusal(setup({ config }).preflight.check("/w"))).toBeNull();
     }
     const other = [{ type: "document", path: join(GLOBAL, "extra.json") }, ...goodConfig()];
     expect((await refusal(setup({ config: other }).preflight.check("/w")))?.params).toEqual({
@@ -327,7 +327,7 @@ describe("opencode-preflight", () => {
         stop: async () => {},
       }),
     });
-    expect(await refusal(preflight.check("/work/project"))).toBe(null);
+    expect(await refusal(preflight.check("/work/project"))).toBeNull();
     const saved = JSON.parse(fixture("api-permission-saved.json")) as { data: unknown[] };
     expect(await refusal(setup({ saved: saved.data }).preflight.check("/w"))).toMatchObject({
       reason: "opencode_saved_rules",
@@ -358,7 +358,7 @@ describe("opencode-preflight", () => {
       {},
       { exe: { fingerprint: "100:5", current: async () => now } },
     );
-    expect(await refusal(preflight.check("/w"))).toBe(null);
+    expect(await refusal(preflight.check("/w"))).toBeNull();
     now = "200:9";
     expect(await refusal(preflight.check("/other"))).toEqual({
       reason: "opencode_changed",

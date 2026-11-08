@@ -9,6 +9,7 @@ import { formatPairingLink } from "@flightdeck/protocol";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
+import { DEMO_PR_CARD, DEMO_PR_URL } from "../../lib/e2e-journeys.ts";
 import { type Context, createSession, open, SESSION_WAIT, WAIT, waitFor } from "../journeys.ts";
 import { Given, Then, When } from "./fixtures.ts";
 
@@ -205,6 +206,7 @@ const made = new WeakMap<
     entry?: string;
     counts?: number[];
     guard?: string;
+    backup?: string;
     origin?: string;
   }
 >();
@@ -1205,6 +1207,118 @@ step(Then, "I put the guard of host {string} back to what it was", async (c, hos
   );
 });
 
+// Settings > Backup: one encrypted file with everything, a restore that previews before it changes anything (issue #1241).
+// The page's save dialog is replaced by one that keeps what is written; the file dialog of a restore is answered by the test.
+const PASSPHRASE = "a long enough passphrase";
+const WRONG_PASSPHRASE = "another long passphrase";
+const backupField = (
+  c: Context,
+  key: "backupAll.passphrase" | "backupAll.confirm" | "backupAll.filePassphrase",
+) => c.page.getByLabel(c.t(key), { exact: true });
+
+step(Given, "I am on Settings > Backup and files are saved into the page", async (c) => {
+  await open(c, { name: "settings", section: "backup" });
+  await c.page.evaluate(() => {
+    const kept = window as unknown as { __saved?: { name: string; text: string } };
+    (window as unknown as { showSaveFilePicker: unknown }).showSaveFilePicker = async (options: {
+      suggestedName: string;
+    }) => ({
+      createWritable: async () => ({
+        write: async (text: string) => {
+          kept.__saved = { name: options.suggestedName, text };
+        },
+        close: async () => {},
+      }),
+    });
+  });
+  await c.page.getByLabel(c.t("backupAll.passphrase"), { exact: true }).waitFor({ timeout: WAIT });
+});
+
+const savedFile = (c: Context) =>
+  c.page.evaluate(
+    () => (window as unknown as { __saved?: { name: string; text: string } }).__saved ?? null,
+  );
+
+step(When, "I back up everything with a passphrase", async (c) => {
+  await backupField(c, "backupAll.passphrase").fill(PASSPHRASE);
+  await backupField(c, "backupAll.confirm").fill(PASSPHRASE);
+  await c.page.getByRole("button", { name: c.t("backupAll.export"), exact: true }).click();
+});
+
+step(When, "I back up everything with two passphrases that differ", async (c) => {
+  await backupField(c, "backupAll.passphrase").fill(PASSPHRASE);
+  await backupField(c, "backupAll.confirm").fill(WRONG_PASSPHRASE);
+  await c.page.getByRole("button", { name: c.t("backupAll.export"), exact: true }).click();
+});
+
+step(Then, "the panel says the backup was saved", async (c) => {
+  await c.page.getByText(c.t("backupAll.saved"), { exact: true }).waitFor({ timeout: WAIT });
+  const file = await savedFile(c);
+  mine(c).backup = file?.text;
+});
+
+step(Then, "the saved file is encrypted and does not hold the passphrase", async (c) => {
+  const file = await savedFile(c);
+  if (!file) throw new Error("no file was saved");
+  if (!file.text.startsWith("-----BEGIN AGE ENCRYPTED FILE-----")) {
+    throw new Error("the saved file is not an encrypted file");
+  }
+  if (file.text.includes(PASSPHRASE)) throw new Error("the passphrase is in the file");
+});
+
+step(Then, "the panel says the passphrases do not match and nothing was saved", async (c) => {
+  await c.page
+    .getByText(c.t("backupAll.error.mismatch"), { exact: true })
+    .waitFor({ timeout: WAIT });
+  if ((await savedFile(c)) !== null) throw new Error("a file was saved");
+});
+
+/** Reads the backup made earlier in the scenario, answering the file dialog with it. */
+async function readBackup(c: Context, passphrase: string) {
+  const text = mine(c).backup;
+  if (!text) throw new Error("no backup was made earlier in this scenario");
+  await backupField(c, "backupAll.filePassphrase").fill(passphrase);
+  const chooser = c.page.waitForEvent("filechooser");
+  await c.page.getByRole("button", { name: c.t("backupAll.read"), exact: true }).click();
+  await (await chooser).setFiles({
+    name: "flightdeck-backup.fdbackup",
+    mimeType: "text/plain",
+    buffer: Buffer.from(text),
+  });
+}
+
+step(When, "I read that backup with a wrong passphrase", async (c) =>
+  readBackup(c, WRONG_PASSPHRASE),
+);
+
+step(When, "I read that backup with its passphrase", async (c) => readBackup(c, PASSPHRASE));
+
+step(Then, "the panel says the file could not be read and offers no Restore", async (c) => {
+  await c.page
+    .getByText(c.t("backupAll.error.unreadable"), { exact: true })
+    .waitFor({ timeout: WAIT });
+  const restore = await c.page
+    .getByRole("button", { name: c.t("backupAll.restore"), exact: true })
+    .count();
+  if (restore > 0) throw new Error("Restore is offered for a file that could not be read");
+});
+
+step(Then, "the panel previews what the backup holds and nothing is restored yet", async (c) => {
+  const kinds = ["settings", "personas", "snippets", "hosts", "vault"] as const;
+  await c.page
+    .getByText(c.t("backupAll.nothingToRestore"), { exact: true })
+    .waitFor({ timeout: WAIT });
+  const body = ((await c.page.locator("body").textContent()) ?? "").toLowerCase();
+  const first = c.t(`backupAll.kinds.${kinds[0]}`).toLowerCase();
+  if (!body.includes(first)) throw new Error("the preview does not name the kinds it holds");
+  const done = await c.page
+    .getByText(c.t("backupAll.result", { added: "0", overwritten: "0", skipped: "0" }), {
+      exact: false,
+    })
+    .count();
+  if (done > 0) throw new Error("something was restored before the confirm");
+});
+
 // A workflow template added from the app: a new branch and a pull request, never the base branch (issue #1221).
 step(
   Given,
@@ -1282,4 +1396,59 @@ step(
     if (git("status", "--porcelain").trim() !== "") throw new Error("the checkout changed");
     if (git("rev-parse", "--abbrev-ref", "HEAD").trim() !== "main") throw new Error("HEAD moved");
   },
+);
+
+// Merge PR: the demo's In review card has an open pull request whose merge GitHub holds for a review.
+const mergeButton = (c: Context) =>
+  c.page.getByRole("button", { name: dictionary(c).cardMergePr.action, exact: true });
+
+/** The In review card's detail page, from its tile on the board. */
+async function openPrCard(c: Context) {
+  const title = DEMO_PR_CARD;
+  mine(c).card = title;
+  await tile(c).getByRole("button", { name: title, exact: true }).click({ timeout: WAIT });
+}
+
+/** The Merge PR dialog of that card, with its pull request on show. */
+async function askToMerge(c: Context) {
+  await openPrCard(c);
+  await mergeButton(c).click();
+  const dialog = c.page.getByRole("alertdialog");
+  await dialog.getByText(DEMO_PR_URL, { exact: true }).waitFor({ timeout: WAIT });
+  return dialog;
+}
+
+step(When, "I open the card whose pull request is open and ask to merge it", async (c) => {
+  await askToMerge(c);
+});
+
+step(When, "I choose to squash and merge", async (c) => {
+  const text = dictionary(c).cardMergePr;
+  const dialog = c.page.getByRole("alertdialog");
+  await dialog.getByLabel(text.how, { exact: true }).selectOption({ label: text.squash });
+  await dialog.getByRole("button", { name: text.action, exact: true }).click();
+});
+
+step(When, "I cancel the merge", async (c) => {
+  const dialog = c.page.getByRole("alertdialog");
+  await dialog.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+  await dialog.waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(
+  Then,
+  "the card says the merge waits for a review and links to the pull request",
+  async (c) => {
+    const refusal = c.page.getByRole("alert").filter({
+      hasText: c.t("daemonRefusal.card_pr_review_required"),
+    });
+    await refusal.waitFor({ timeout: WAIT });
+    await refusal
+      .getByRole("link", { name: dictionary(c).cardMergePr.openPr, exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+);
+
+step(Then, "the card still offers Merge PR", async (c) =>
+  mergeButton(c).waitFor({ timeout: WAIT }),
 );
