@@ -198,6 +198,7 @@ describe("personas-sessao-nova: gerenciada", () => {
     const denied = await canUseTool?.("Write", { file_path: "a.ts" }, ctx);
     expect(denied).toMatchObject({ behavior: "deny" });
     expect((denied as { message: string }).message).toMatch(/Revisor do host/);
+    expect((denied as { message: string }).message).toContain("does not use the tool Write");
     const mcp = await canUseTool?.("mcp__github__create_issue", {}, ctx);
     expect(mcp).toMatchObject({ behavior: "deny" });
     // A tool on the list is decided as usual: here it waits for the person.
