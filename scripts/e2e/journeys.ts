@@ -15,7 +15,9 @@ import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
   CONTRACT_CARD,
   DANGER_SESSION,
+  DEMO_ACTIVE_TEAM,
   DEMO_CLOSED_TEAM,
+  DEMO_TEAM_REPORT,
   OVERFLOW_VIEWPORTS,
   REACH_VIEWPORTS,
 } from "../lib/e2e-journeys.ts";
@@ -1504,6 +1506,14 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         .click();
       await goal.fill(`Objetivo e2e ${Date.now()}`);
       await inReach(c, `${c.t("teamsUi.create")} a ${size.width}x${size.height}`, create);
+      // Issue #1222: below 640 px the first worker's persona gets the row's whole width, where the
+      // fixed model and permission columns used to leave it a few dozen pixels.
+      if (size.width < 640) {
+        const row = c.page.locator('[data-slot="worker-row"]').first();
+        const persona = c.page.getByLabel(c.t("teamsUi.workerPersona", { n: 1 }), { exact: true });
+        const [rowBox, personaBox] = [await row.boundingBox(), await persona.boundingBox()];
+        expect(personaBox?.width ?? 0).toBeGreaterThanOrEqual((rowBox?.width ?? Infinity) - 1);
+      }
     }
   },
 
@@ -2080,6 +2090,24 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // The coordinator's session is still there, and open.
     await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
     await c.page.getByLabel(c.t("session.message"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // Issue #1222: the demo's active team lists its members with their last reports, in a
+  // phone-sized window and a desktop one, so what the team did is read on its page.
+  "time-rodando": async (c) => {
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "teams", host: ALFA });
+      const row = c.page.getByRole("listitem", {
+        name: c.t("teamsUi.row", { name: DEMO_ACTIVE_TEAM }),
+      });
+      const report = row.getByText(DEMO_TEAM_REPORT);
+      await report.waitFor({ timeout: WAIT });
+      // The report wraps inside the window: none of it runs past the right edge.
+      await report.scrollIntoViewIfNeeded();
+      const box = await report.boundingBox();
+      expect(box === null ? Infinity : box.x + box.width).toBeLessThanOrEqual(size.width + 0.5);
+    }
   },
 
   "escopo-dados": async (c) => {
