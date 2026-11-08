@@ -96,6 +96,7 @@ import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionCommits } from "./review/session-commit.ts";
 import type { SessionFiles } from "./review/session-files.ts";
+import type { SessionPrs } from "./review/session-pr.ts";
 import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
@@ -370,6 +371,8 @@ export interface ServerOptions {
   changes?: Changes;
   /** #1133: a plain session's files committed on a new branch in its own checkout. */
   sessionCommits?: SessionCommits;
+  /** #1133: a plain session's branch pushed and its PR opened. */
+  sessionPrs?: SessionPrs;
   /** The ssh destinos behind `ssh.*` (phase 15). */
   ssh?: SshTargets;
   /** The read-only import of `~/.ssh/config` behind `ssh.import.*` (phase 15). */

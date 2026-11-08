@@ -12,6 +12,7 @@ import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { Timers } from "../quota/quota.ts";
 import { commitHooks, withDigests } from "./session-commit.ts";
+import { pushAddress } from "./session-pr.ts";
 
 /** Watches a folder recursively; `filename` is relative to it (`null` when the OS does not say). */
 export type WatchFn = (
@@ -57,6 +58,8 @@ export interface ChangesResult {
   position: { ahead: number; behind: number } | null;
   /** The commit hooks a commit of this checkout runs (#1133); only against `HEAD`. */
   hooks?: string[];
+  /** Where a PR's push would go, with no password (#1133); only against `HEAD`. */
+  remote?: string;
 }
 
 const DEBOUNCE_MS = 500;
@@ -213,8 +216,9 @@ export class Changes {
         base,
         files: await withDigests(root, await workingDiff(root)),
         position: null,
-        // The hooks a commit would run, named before the person confirms one.
+        // The hooks a commit would run, and where a PR's push would go, shown before a confirm.
         ...(await commitHooks(root).then((hooks) => (hooks ? { hooks } : {}))),
+        ...(await pushAddress(root).then((remote) => (remote ? { remote } : {}))),
       };
     }
     const { files } = await cardDiff(root, base);
