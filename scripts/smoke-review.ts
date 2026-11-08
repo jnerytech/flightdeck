@@ -211,7 +211,10 @@ async function run(work: string): Promise<void> {
       lineEnd: 1,
       body: "explique esta linha",
     });
-    const sent = await client.call<{ via: string; text: string }>("review.send", { target });
+    const sent = await client.call<{ via: string; text: string }>("review.send", {
+      target,
+      language: "pt-BR",
+    });
     const expected =
       "Revisão das mudanças:\n1. `fake-2.txt` linha 1:\n   > [commit]\n   explique esta linha";
     if (sent.via !== "card" || sent.text !== expected) {
