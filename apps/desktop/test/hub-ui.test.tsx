@@ -281,19 +281,27 @@ describe("hub-ui", () => {
   });
 
   // #1132: the row says in words what the session is doing (the dot alone did not), and the
-  // group's count says what it counts.
-  test("each row says its state in words, and the group's count reads 'N de M ativas'", async () => {
+  // group's count says what it counts. In the compact row (the default) a live session's word takes
+  // the time's place, the time kept in its tooltip; a past session keeps its time. The row's
+  // summary carries the word and its detail.
+  test("each live row shows its state word where the time was, and the group's count reads 'N de M ativas'", async () => {
     await setup();
-    const says = (title: string, word: string) => (item(title)?.textContent ?? "").includes(word);
+    const word = (title: string) =>
+      item(title)?.querySelector('[data-slot="row-word"]')?.textContent ?? null;
+    const summary = (title: string) =>
+      item(title)?.querySelector('[data-slot="summary"]')?.textContent ?? "";
     const chips = Array.from(document.querySelectorAll("output[aria-label]")).map(
       (o) => o.textContent ?? "",
     );
     expect([
-      says("repo-ask", "Esperando você"),
-      says("repo-run", "Trabalhando"),
-      says("Gerenciada", "Ociosa"),
+      word("repo-ask"),
+      word("repo-run"),
+      word("Gerenciada"),
+      summary("repo-ask").startsWith("Esperando você"),
+      word("Do histórico"),
+      item("Do histórico")?.querySelector("time") !== null,
       chips.length > 0 && chips.every((text) => /^\d+ de \d+ ativas$/.test(text)),
-    ]).toEqual([true, true, true, true]);
+    ]).toEqual(["Esperando você", "Trabalhando", "Ociosa", true, null, true, true]);
   });
 
   test("as ações ficam num menu no fim da linha, sem ícones soltos: renomear, fixar, arquivar e copiar o comando", async () => {
