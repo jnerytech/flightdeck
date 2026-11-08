@@ -30,6 +30,8 @@ function setup(
     language?: "en" | "pt-BR";
     templates?: HarnessTemplateInfo[];
     delete?: "ok" | "refused";
+    /** The first listing fails (the host does not answer), the next ones work. */
+    listFailsOnce?: boolean;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -37,10 +39,17 @@ function setup(
   });
   store.i18n.start();
   let templates = [...(options.templates ?? [SHOP, SOLO])];
-  const sent: Array<[string, unknown]> = [];
-  store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
-    sent.push([type, payload]);
-    if (type === "harness.templates.list") return { templates };
+  const sent: Array<[string, unknown, unknown]> = [];
+  let listFailed = false;
+  store.hostCommand = (async (_host: string, type: string, payload: unknown, asked?: unknown) => {
+    sent.push([type, payload, asked]);
+    if (type === "harness.templates.list") {
+      if (options.listFailsOnce && !listFailed) {
+        listFailed = true;
+        return null;
+      }
+      return { templates };
+    }
     if (type === "harness.templates.delete") {
       if (options.delete === "refused") return null;
       const { id } = payload as { id: string };
@@ -114,7 +123,36 @@ describe("harness-templates-ui: the host lists its Claude Code setup templates a
       afterCancel,
       deletes(),
       shown("Solo"),
-    ]).toEqual([true, 0, [["harness.templates.delete", { id: "shop", confirm: true }]], true]);
+    ]).toEqual([
+      true,
+      0,
+      [["harness.templates.delete", { id: "shop", confirm: true }, { retry: false }]],
+      true,
+    ]);
+  });
+
+  test("Cancel gives the focus back to the Delete button that opened the dialog", async () => {
+    const { view } = setup();
+    render(view);
+    await settle(() => button("Delete template Shop setup") !== null, 5000, "the Delete button");
+    await click(button("Delete template Shop setup"));
+    await settle(() => dialog() !== null, 5000, "the confirmation");
+    await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Cancel" }));
+    await settle(
+      () => document.activeElement?.getAttribute("aria-label") === "Delete template Shop setup",
+      5000,
+      "the focus back on the Delete button",
+    );
+  });
+
+  test("a listing that fails says so and offers to try again, instead of looking for ever", async () => {
+    const { view } = setup({ listFailsOnce: true });
+    render(view);
+    await settle(() => shown("Could not load the templates."), 5000, "the failure note");
+    const looking = shown("Looking for templates…");
+    await click(button("Try again"));
+    await settle(() => shown("Shop setup"), 5000, "the listing after trying again");
+    expect([looking, shown("Could not load the templates.")]).toEqual([false, false]);
   });
 
   test("a refused delete leaves the template in the list", async () => {
