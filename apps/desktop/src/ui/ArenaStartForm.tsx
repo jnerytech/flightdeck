@@ -62,8 +62,11 @@ export function ArenaStartForm(
               const n = i + 1;
               return (
                 // The rows have no identity beyond their position: the last one is what goes.
-                // biome-ignore lint/suspicious/noArrayIndexKey: positional rows
-                <div key={i} className="flex items-center gap-2">
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: positional rows
+                  key={i} // NOSONAR: positional rows, the last one is what goes
+                  className="flex items-center gap-2"
+                >
                   <Input
                     aria-label={t("arenaUi.model", { n })}
                     placeholder={t("arenaUi.modelPlaceholder")}
