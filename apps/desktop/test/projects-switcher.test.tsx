@@ -4,7 +4,7 @@ import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { act, cleanup, render, screen } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { ProjectsOverview } = await import("../src/ui/ProjectsOverview.tsx");
 const { Sidebar } = await import("../src/ui/Sidebar.tsx");
@@ -143,5 +143,45 @@ describe("projects-switcher: the sidebar's project tree follows the switcher too
       api: screen.queryByRole("list", { name: "Branches of api" }) !== null,
       docs: screen.queryByRole("list", { name: "Branches of docs" }) !== null,
     }).toEqual({ api: true, docs: false });
+  });
+  // The Board and Workflows buttons open a host's screen: the switcher's, not the host of the
+  // session selected earlier (which opened another host's board and switched the window there).
+  test("with beta chosen in the switcher, Board and Workflows open beta's, whatever session was selected", () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
+    store.pickHost("h2");
+    const state = {
+      ...store.getState(),
+      hosts: [host("h1", "alfa"), host("h2", "beta")],
+      selected: { hostId: "h1", sessionId: "s1" },
+    } as never as ReturnType<typeof store.getState>;
+    const opened: string[] = [];
+    render(
+      <TooltipProvider>
+        <Sidebar
+          store={store}
+          state={state}
+          collapsed={false}
+          route={undefined as never}
+          t={store.i18n.t}
+          go={() => {}}
+          onOpenProjectScreen={(hostId, kind) => void opened.push(`${kind}:${hostId}`)}
+          onNewSession={() => {}}
+          onRemoveHost={() => {}}
+          onRenameHost={() => null}
+          onOpenSearch={() => {}}
+          onNewTab={() => {}}
+          onToggleTheme={() => {}}
+        />
+      </TooltipProvider>,
+    );
+    for (const name of ["Board", "Workflows"]) {
+      const button = screen.queryByRole("button", { name });
+      expect(button).not.toBeNull();
+      act(() => {
+        fireEvent.click(button as HTMLElement);
+      });
+    }
+    expect(opened).toEqual(["board:h2", "workflows:h2"]);
   });
 });

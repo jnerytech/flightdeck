@@ -62,12 +62,15 @@ import { buildChildEnv } from "./env.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
+import { applyHarness } from "./harness/apply.ts";
 import { previewHarness } from "./harness/preview.ts";
 import { detectStack } from "./harness/stack.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
 import { listKnowledge } from "./knowledge/list.ts";
 import { knowledgeFeedFor } from "./knowledge/serve.ts";
+import { setKnowledgeStatus } from "./knowledge/status.ts";
+import { knowledgeSwitchFor } from "./knowledge/switch.ts";
 import { linesOf } from "./lines.ts";
 import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
@@ -890,6 +893,11 @@ export async function startDaemon(
     },
     log: (line) => logger.log(line),
   });
+  // The library's index (#76) goes to a trusted folder only, read from its trusted checkout.
+  const trustForKnowledge = async (path: string) => {
+    await projectTrust.prepare(path);
+    return projectTrust.sessionTrust(path);
+  };
   const manager = new SessionManager({
     folderLocks,
     store,
@@ -1436,14 +1444,28 @@ export async function startDaemon(
     },
     harnessStack: detectStack,
     knowledge: listKnowledge,
+    knowledgeStatus: setKnowledgeStatus,
     knowledgeFeed: knowledgeFeedFor({
       off: () => config.knowledge.feedOff,
-      trust: async (path) => {
-        await projectTrust.prepare(path);
-        return projectTrust.sessionTrust(path);
+      trust: trustForKnowledge,
+    }),
+    knowledgeFeedSwitch: knowledgeSwitchFor({
+      off: () => config.knowledge.feedOff,
+      trust: trustForKnowledge,
+      change: async (update) => {
+        let next: string[] = [];
+        await updateConfigFile(configFile, (raw) => {
+          const section = (typeof raw.knowledge === "object" ? raw.knowledge : null) ?? {};
+          const listed = (section as { feedOff?: unknown }).feedOff;
+          const entries = Array.isArray(listed) ? listed.filter((e) => typeof e === "string") : [];
+          next = update(entries);
+          return { ...raw, knowledge: { ...section, feedOff: next } };
+        });
+        config.knowledge.feedOff = next.map((entry) => resolve(expandHome(entry)));
       },
     }),
     harnessPreview: previewHarness,
+    harnessApply: applyHarness,
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) => paths.map(trustState),
@@ -1884,8 +1906,9 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
   const base = ctxOf(false);
   const stable = stableBinPath(base.home, base.platform);
   let command = base.command;
-  const prompt = createPrompt(linesOf(deps.stdin ?? Bun.stdin.stream()), (text) =>
-    process.stdout.write(text),
+  const prompt = createPrompt(
+    linesOf(deps.stdin ?? Bun.stdin.stream()),
+    deps.stdout ?? process.stdout.write.bind(process.stdout),
   );
   const install = (): CliArgs => ({ command: "service", action: "install", config: file });
   await runSetup(
@@ -2311,6 +2334,8 @@ export interface CliDeps {
   binaryVersion?: (bin: string) => Promise<string | null>;
   /** Standard input (`hook session-start` reads the hook's JSON); the process's if absent. */
   stdin?: ReadableStream<Uint8Array>;
+  /** Where `setup` writes its questions; the process's stdout if absent. */
+  stdout?: (text: string) => void;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
   /** How long `service uninstall` waits for the daemon to free its lock (10 s when absent). */

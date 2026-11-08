@@ -1482,7 +1482,10 @@ export const en: Dictionary = {
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
     knowledge: "reading the project's documents",
+    knowledgeFeed: "the switch for the documents index in agents' prompts",
+    knowledgeStatus: "changing a document's status",
     harnessPreview: "previewing Claude Code setup changes",
+    harnessApply: "applying Claude Code setup changes",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
@@ -1738,6 +1741,8 @@ export const en: Dictionary = {
     review_text_big: "The text is over 1 MB: shorten it or edit the file outside Flightdeck.",
     review_file_changed:
       "The file {path} changed since it was opened: reload it and apply your edit again.",
+    knowledge_frontmatter:
+      "The front matter of {path} cannot be changed safely from here: edit the file by hand.",
     review_revert_confirm: "Confirm the revert to go on.",
     review_undo_confirm: "Confirm the undo to go on.",
     review_undo_nothing:
@@ -1792,6 +1797,11 @@ export const en: Dictionary = {
       "This only works over a near connection: this computer (loopback) or Tailscale, which WireGuard encrypts. For a WSL host, add it as ws://localhost:<port> (WSL forwards the port) or by its Tailscale address.",
     trust_root_refused:
       "This folder is an allowed folder that holds several projects, or a folder above one: trust the project's own folder instead.",
+    harness_stale:
+      "The project changed since the preview, or the preview was not of these parts: preview again.",
+    harness_confirm: "Changing the Claude Code setup needs your confirmation.",
+    harness_reformat:
+      "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",
@@ -4194,6 +4204,23 @@ export const en: Dictionary = {
       empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
       truncated: "The list is cut: only the first documents are shown.",
       failed: "The documents could not be read from this host.",
+      setStatus: {
+        hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
+        label: "Status of {title}",
+        changed:
+          "{title} is now {status}. The file is changed in the project's folder and not committed.",
+        failed: "The status could not be changed. {why}",
+      },
+      feed: {
+        on: "Sessions that Flightdeck starts here are given an index of the valid documents.",
+        onUntrusted: "On, but this project is not trusted, so sessions are not given the index.",
+        off: "Off: sessions here are not given the index.",
+        offBy:
+          "Off through {path}, a folder above this project, in the host's config. Switch it on there.",
+        turnOff: "Turn off",
+        turnOn: "Turn on",
+        failed: "The index switch could not be read or changed on this host.",
+      },
     },
     harness: {
       title: "Claude Code setup",

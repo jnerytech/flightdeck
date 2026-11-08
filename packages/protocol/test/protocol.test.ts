@@ -100,6 +100,12 @@ const validCommands: Record<CommandType, unknown> = {
   "project.trust.inspect": { path: "/work/app" },
   "project.harness.stack": { path: "/work/app" },
   "project.harness.preview": { path: "/work/app", parts: ["hooks", "permissions"] },
+  "project.harness.apply": {
+    path: "/work/app",
+    parts: ["permissions"],
+    digests: { ".claude/settings.json": "a".repeat(64) },
+    confirm: true,
+  },
   "project.trust.set": { path: "/work/app", trusted: true },
   "card.manage": { as: { session: "s1" }, action: "move", column: "review" },
   "board.watch": {},
@@ -573,6 +579,14 @@ const validCommands: Record<CommandType, unknown> = {
   "file.search": { target: "project:p", mode: "name", query: "a" },
   "knowledge.list": { path: "/p" },
   "knowledge.index": { path: "/p" },
+  "knowledge.feed": { path: "/p" },
+  "knowledge.setStatus": {
+    path: "/p",
+    file: "docs/adr/0001-a.md",
+    status: "valid",
+    expectedHash: "h",
+  },
+  "knowledge.setFeed": { path: "/p", enabled: false },
   "file.write": { target: "session:s", path: "a.ts", text: "x", expectedHash: "h" },
 };
 

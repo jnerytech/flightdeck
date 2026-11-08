@@ -15,7 +15,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - `.claude/`: the shared Claude Code setup. Skills `tdd-area` (one TDD area) and `new-phase`
   (open or close a phase); agents `spec-verifier` (checks a phase against its spec),
   `tauri-rust-reviewer` (for changes in `src-tauri`), `test-quality-reviewer` (tests that cannot
-  fail) and `security-reviewer` (spawns, paths, secrets, pairing), all read-only; hooks that block wide `git add`, edits of
+  fail), `security-reviewer` (spawns, paths, secrets, pairing) and `ux-reviewer` (a UI change's
+  literals, missing keys, focus, keyboard, layout and axe; `bun run scripts/ux-review-eval.ts` measures
+  it on planted bad changes, real quota, #983), all read-only; hooks that block wide `git add`, edits of
   generated files, test edits that add `.only`/`test.todo`/`toMatchSnapshot` or an unnoted skip, commits
   that break `type(scope): text` or the TDD order, heavy runs outside the slot, a worker's full
   coverage run (#674), and a push (or a `bun run pr -- update`) that would cancel the branch's PR run while it is still green (#741:

@@ -151,7 +151,7 @@ describe("harness-config", () => {
   });
 
   test("the reviewer agents exist, are read-only, name their model and say how they report", () => {
-    for (const name of ["test-quality-reviewer", "security-reviewer"]) {
+    for (const name of ["test-quality-reviewer", "security-reviewer", "ux-reviewer"]) {
       const file = join(ROOT, ".claude/agents", `${name}.md`);
       const meta = existsSync(file) ? frontmatter(file) : "missing";
       const tools = typeof meta === "string" ? [] : String(meta.tools ?? "").split(/,\s*/);
