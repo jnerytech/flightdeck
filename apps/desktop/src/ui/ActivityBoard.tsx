@@ -27,15 +27,17 @@ const CLOCK_TICK_MS = 30_000;
  * Every live session of every host by state: Needs you, Working, Done and (when asked for) Idle.
  * The screen to leave open on a second monitor.
  */
-export function ActivityBoard(props: {
-  store: AppStore;
-  go(route: Route): void;
-  onOpen(row: HubRow, newTab: boolean): void;
-  /** Test seam: the hold time of a high-risk approval. */
-  holdMs?: number;
-  /** Test seam: how often the board reads the clock again. */
-  tickMs?: number;
-}) {
+export function ActivityBoard(
+  props: Readonly<{
+    store: AppStore;
+    go(route: Route): void;
+    onOpen(row: HubRow, newTab: boolean): void;
+    /** Test seam: the hold time of a high-risk approval. */
+    holdMs?: number;
+    /** Test seam: how often the board reads the clock again. */
+    tickMs?: number;
+  }>,
+) {
   const { store } = props;
   const state = useStoreSlice(store, ACTIVITY_KEYS);
   const { t } = store.i18n;

@@ -10,6 +10,7 @@ import {
   parseDemoHosts,
   seedDemoHosts,
 } from "./demo/boot.ts";
+import { reactRootErrorHandlers } from "./lib/app-log.ts";
 import { AppStore } from "./lib/app-store.ts";
 import { createWebPlatform } from "./platform/web/index.ts";
 import { App } from "./ui/App.tsx";
@@ -27,4 +28,7 @@ const route = initialRoute(window.location.search);
 if (route) store.router.push(route);
 demoToast(store, window);
 
-createRoot(document.getElementById("root") as HTMLElement).render(<App store={store} />);
+createRoot(
+  document.getElementById("root") as HTMLElement,
+  reactRootErrorHandlers(store.appLog, () => store.router.current.name),
+).render(<App store={store} />);

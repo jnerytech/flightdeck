@@ -32,6 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
@@ -304,9 +305,11 @@ export function Sidebar(
     ],
   );
   const pinned = rows.filter((row) => row.pinned && !row.archived);
+  // The tree lists the hosts the switcher shows (#932), as the Projects page does.
+  const treeHosts = useSwitcherHosts(props.store, state.hosts);
   const tree = useMemo(
-    () => projectTree({ hosts: state.hosts, projects: state.projects, cards: state.cards }, rows),
-    [state.hosts, state.projects, state.cards, rows],
+    () => projectTree({ hosts: treeHosts, projects: state.projects, cards: state.cards }, rows),
+    [treeHosts, state.projects, state.cards, rows],
   );
   // Who is signed in to GitHub is asked when the account menu opens, not on every render.
   const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);
