@@ -165,7 +165,7 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
     ]);
   });
 
-  test("the file holds no secret in clear, and the preview names things without their values", async () => {
+  test("the file holds no secret in clear, and the preview names things and hosts without any value", async () => {
     const source = await filled();
     const text = await createBackup(source.platform, PASS, PASS, FAST);
     const preview = await previewRestore(newProfile().platform, text, PASS);
@@ -175,7 +175,7 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
       everything.includes("host-token-ONE"),
       everything.includes("VAULT-SECRET"),
       everything.includes("ws://10.0.0.1"),
-    ]).toEqual([true, false, false, false]);
+    ]).toEqual([true, false, false, true]);
   });
 
   test("a short or unconfirmed passphrase writes nothing", async () => {

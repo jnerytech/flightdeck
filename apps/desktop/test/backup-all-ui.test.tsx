@@ -43,6 +43,8 @@ function open(options: { language?: "en" | "pt-BR"; picked?: string | null } = {
     saved.push({ name, text });
     return true;
   };
+  // The fixture is the web platform, which has no file dialog; these tests stand in for the desktop.
+  platform.vault.canPick = true;
   platform.vault.pickFile = async () =>
     options.picked == null ? null : { path: "backup.fdbackup", text: options.picked };
   const store = new AppStore(platform, { baseDelayMs: 600_000, vaultWorkFactor: 4 });
@@ -263,7 +265,7 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
 
   test("a platform with no file dialog (the web build) offers no Read backup and says why", async () => {
     const { platform } = memoryPlatform(false, "en");
-    platform.vault.canPick = false;
+    // The web platform as it is: no file dialog.
     const store = new AppStore(platform, { baseDelayMs: 600_000, vaultWorkFactor: 4 });
     store.i18n.start();
     render(

@@ -786,6 +786,7 @@ export const ptBR = {
     importTitle: "Restaurar um backup",
     filePassphrase: "Frase-senha do arquivo",
     read: "Ler backup",
+    needsDesktop: "Restaurar um backup precisa do app para desktop: o navegador não abre arquivos.",
     readNeeds: "Digite a frase-senha do arquivo.",
     kinds: {
       settings: "Configurações",

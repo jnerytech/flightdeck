@@ -71,6 +71,7 @@ export function createWebPlatform(
         return Promise.resolve();
       },
       generateKey: () => Promise.reject(new Error("ssh-keygen needs the desktop app")),
+      canPick: false,
       pickFile: () => Promise.resolve(null),
       removeFile: async () => {},
     },
