@@ -100,22 +100,27 @@ describe("mode-chip: the chips' menus next to a live region", () => {
     });
   }
 
-  // Radix puts the focus back on the chip a tick after a pick; a menu opened again within that
-  // tick took it as a focus outside and closed, which a slow full run hit.
+  // Radix puts the focus back on a chip a tick after a pick; a menu opened again within that tick
+  // (the same chip's, or the other chip's) took it as a focus outside and closed, which a slow full
+  // run hit. Like a modal menu, a chip's menu closes on Escape or a press outside, not on a focus.
   for (const [name, chip] of [
     ["Mode", modeChip("en")],
     ["Model", modelChip("en")],
   ] as const) {
-    test(`the open ${name} menu stays open when the focus lands on its own chip`, async () => {
-      page(chip);
-      const trigger = await openChip(
-        name === "Mode" ? "Permission mode: Default" : "Model: Default model",
-      );
-      await act(async () => {
-        trigger.focus();
+    for (const target of ["its own chip", "another control"] as const) {
+      test(`the open ${name} menu stays open when the focus lands on ${target}`, async () => {
+        page(chip);
+        const trigger = await openChip(
+          name === "Mode" ? "Permission mode: Default" : "Model: Default model",
+        );
+        const back = screen.queryByRole("button", { name: "Back", hidden: true });
+        expect(back).not.toBeNull();
+        await act(async () => {
+          (target === "its own chip" ? trigger : (back as HTMLElement)).focus();
+        });
+        expect(screen.queryByRole("menu") !== null).toBe(true);
       });
-      expect(screen.queryByRole("menu") !== null).toBe(true);
-    });
+    }
   }
 
   test("the open Mode menu takes the focus, a number key picks its row, and Escape closes it", async () => {
