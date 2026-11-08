@@ -1,5 +1,5 @@
 import { Radio } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { AssistField } from "@/components/assistant/assist-field";
 import { PersonaSwitch } from "@/components/personas/persona-switch";

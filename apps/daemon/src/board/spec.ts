@@ -132,7 +132,7 @@ function firstHeading(text: string, cut: boolean): string | null {
     const opener = /^ {0,3}#{1,6}[ \t]+/.exec(line);
     if (!opener) continue;
     // A tab separates words; the other controls and invisible characters just go.
-    const text = withoutClosing(line.slice(opener[0].length).replace(/\t/g, " ")).replace(
+    const text = withoutClosing(line.slice(opener[0].length).replaceAll("\t", " ")).replace(
       NOT_FOR_A_HEADING,
       "",
     );

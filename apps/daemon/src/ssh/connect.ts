@@ -429,8 +429,11 @@ export class SshConnector {
     // ssh -J starts each jump with only -F: what a hop needs has to be in this file.
     for (const hop of hops) {
       if (hop.auth !== "key-file") continue;
-      lines.push(`Host ${hop.host}`, `  IdentityFile ${this.value(hop.secretRef as string)}`);
-      lines.push("  IdentitiesOnly yes");
+      lines.push(
+        `Host ${hop.host}`,
+        `  IdentityFile ${this.value(hop.secretRef as string)}`,
+        "  IdentitiesOnly yes",
+      );
     }
     const config = await this.named("config-", `${lines.join("\n")}\n`);
     return { config, knownHosts };

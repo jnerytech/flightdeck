@@ -97,7 +97,7 @@ function merged(current: Record<string, unknown>, settings: Settings): Record<st
   const out = { ...current };
   if (settings.hooks.length > 0) {
     // The preview proposes hooks only where `hooks` and each event are free or lists.
-    const hooks = { ...((out.hooks as Record<string, unknown[]> | undefined) ?? {}) };
+    const hooks = { ...(out.hooks as Record<string, unknown[]> | undefined) };
     for (const hook of settings.hooks) {
       hooks[hook.event] = [
         ...(hooks[hook.event] ?? []),
@@ -107,7 +107,7 @@ function merged(current: Record<string, unknown>, settings: Settings): Record<st
     out.hooks = hooks;
   }
   if (settings.denyRules.length > 0) {
-    const permissions = { ...((out.permissions as Record<string, unknown> | undefined) ?? {}) };
+    const permissions = { ...(out.permissions as Record<string, unknown> | undefined) };
     permissions.deny = [
       ...((permissions.deny as unknown[] | undefined) ?? []),
       ...settings.denyRules,

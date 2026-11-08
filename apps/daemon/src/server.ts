@@ -1141,7 +1141,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
           ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
-          ...(opts.terminal ?? {}),
+          ...opts.terminal,
         });
       case "history.list": {
         const { projectKey, ...filter } = command.payload;

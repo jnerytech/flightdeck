@@ -82,8 +82,9 @@ function toYaml(defs: SnippetDef[]): string {
   if (defs.length === 0) return "[]\n";
   const lines: string[] = [];
   for (const def of defs) {
-    lines.push(`- name: ${quoted(def.name)}`, `  type: ${def.type}`);
     lines.push(
+      `- name: ${quoted(def.name)}`,
+      `  type: ${def.type}`,
       def.type === "command"
         ? `  run: ${quoted(def.run as string)}`
         : `  text: ${quoted(def.text as string)}`,

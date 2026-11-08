@@ -146,7 +146,7 @@ export class Traces {
       ...(fixes.length > 0 ? ["## Fixes after review", fixes.join("\n")] : []),
       trace.workItem ? closingLine(trace.workItem) : null,
     ]
-      .filter((part) => part)
+      .filter(Boolean)
       .join("\n\n");
     // Session text can carry a token or a password: a line that looks like one is taken out.
     let redacted = 0;
