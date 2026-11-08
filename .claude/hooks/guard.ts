@@ -91,12 +91,17 @@ if (typeof command === "string") {
 if (typeof filePath === "string") {
   const root = checkoutRoot(filePath, ROOT);
   if (root) block("generated", generatedViolation(relative(root, resolve(ROOT, filePath))));
+  // Read once for the three test-edit checks (#1143 review).
+  const cache = new Map<string, string | null>();
   const readTest = (path: string) => {
-    try {
-      return readFileSync(resolve(ROOT, path), "utf8");
-    } catch {
-      return null;
+    if (!cache.has(path)) {
+      try {
+        cache.set(path, readFileSync(resolve(ROOT, path), "utf8"));
+      } catch {
+        cache.set(path, null);
+      }
     }
+    return cache.get(path) ?? null;
   };
   block("test-marker", testEditViolation(String(input?.tool_name), input.tool_input, readTest));
   block("weak-assert", weakAssertViolation(String(input?.tool_name), input.tool_input, readTest));

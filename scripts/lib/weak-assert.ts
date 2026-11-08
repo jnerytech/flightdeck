@@ -1,35 +1,120 @@
 /**
  * A weakened assertion (#1141): docs/TDD.md forbids weakening an assertion to make a test pass. An
- * edit weakens when, within that one edit, strict matchers go down and weak ones go up. A weak
- * matcher on a line with `// weaker: <why>` is a reviewed swap and does not count.
+ * edit weakens when, within that one edit, strict matchers go down and weak ones go up, or when an
+ * `expect(subject)` that had a strict matcher keeps only a weak one (#1143 review). A weak matcher
+ * on a line with `// weaker: <why>` is a reviewed swap and does not count.
  */
 
-/**
- * A matcher that names the value it expects. `toEqual(expect.anything())` names none, and
- * `toBe(true)` / `toBe(false)` count as neither: `expect(x !== null).toBe(true)` says no more than
- * `expect(x).not.toBeNull()`, the swap Sonar asks for.
- */
-const STRICT =
-  /\.(?:toBe|toEqual|toStrictEqual|toContain|toContainEqual|toMatch|toMatchObject|toThrow|toHaveLength)\((?!\s*expect\.anything\(\))(?!\s*(?:true|false)(?:\s*,)?\s*\))/g;
+type Kind = "strict" | "weak" | "neutral";
 
-/** A matcher that only says something is there, or is truthy. */
-const WEAK =
-  /\.(?:toBeTruthy|toBeDefined|toBeFalsy)\(\)|\.not\.(?:toBeNull|toBeUndefined)\(\)|\bexpect\.anything\(\)/g;
+/** One `expect(subject)…matcher(args)` of a text. */
+interface Assertion {
+  subject: string;
+  kind: Kind;
+  escaped: boolean;
+}
+
+/** Matchers that name the value they expect. */
+const STRICT = new Set([
+  "toBe",
+  "toEqual",
+  "toStrictEqual",
+  "toContain",
+  "toContainEqual",
+  "toMatch",
+  "toMatchObject",
+  "toThrow",
+  "toHaveLength",
+  "toHaveBeenCalledWith",
+  "toHaveBeenNthCalledWith",
+  "toHaveBeenLastCalledWith",
+]);
+
+/** Matchers that only say something is there, is truthy, or is of a kind. */
+const WEAK = new Set([
+  "toBeTruthy",
+  "toBeDefined",
+  "toBeFalsy",
+  "toHaveBeenCalled",
+  "toBeInstanceOf",
+]);
+
+/** An argument that names no value: `expect.anything()`, `expect.any(…)`, an empty object. */
+const VAGUE_ARG =
+  /^(?:expect\.anything\(\)|expect\.any\(|expect\.objectContaining\(\{\s*\}\)$|\{\s*\}$)/;
+
+/** A subject that is itself a comparison, so `toBe(true)` says no more than `not.toBeNull()`. */
+const COMPARISON = /[!=]==?|[<>]/;
 
 /** The reviewed escape: `// weaker: ` and at least one word of why. */
 const ESCAPE = /\/\/ weaker: \S/;
 
-const count = (text: string, pattern: RegExp) => [...text.matchAll(pattern)].length;
+/** The index just past the `)` that closes the `(` before `from`, skipping strings; -1 if none. */
+function closing(text: string, from: number, limit = 2000): number {
+  let depth = 1;
+  let quote = "";
+  const end = Math.min(text.length, from + limit);
+  for (let i = from; i < end; i++) {
+    const c = text[i];
+    if (quote) {
+      if (c === "\\") i++;
+      else if (c === quote) quote = "";
+    } else if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (c === "(") depth++;
+    else if (c === ")" && --depth === 0) return i + 1;
+  }
+  return -1;
+}
 
-/** How many strict and weak matchers a text holds; `escaped` counts the `// weaker:` lines. */
+/** The matcher after a subject: `.not`, `.resolves`, `.rejects` and then `.<name>(`. */
+const MATCHER = /^(?:\s*\.\s*(not|resolves|rejects))*\s*\.\s*(\w+)\(/;
+
+function kindOf(name: string, negated: boolean, args: string, subject: string): Kind {
+  const arg = args.trim();
+  if (negated) return name === "toBeNull" || name === "toBeUndefined" ? "weak" : "neutral";
+  if (WEAK.has(name)) return "weak";
+  if (name === "toBeGreaterThan" && arg === "0") return "weak";
+  if (!STRICT.has(name)) return "neutral";
+  if (name === "toThrow" && arg === "") return "weak";
+  if (VAGUE_ARG.test(arg)) return "weak";
+  if (name === "toBe" && /^(?:true|false)\s*,?$/.test(arg) && COMPARISON.test(subject)) {
+    return "neutral";
+  }
+  return "strict";
+}
+
+/** Every assertion of a text, with its subject, kind and escape. */
+function assertions(text: string): Assertion[] {
+  const found: Assertion[] = [];
+  let at = text.indexOf("expect(");
+  while (at !== -1) {
+    const open = at + "expect(".length;
+    const close = closing(text, open);
+    if (close === -1) break;
+    const matcher = MATCHER.exec(text.slice(close, close + 200));
+    if (matcher) {
+      const argsFrom = close + matcher[0].length;
+      const argsTo = closing(text, argsFrom);
+      const args = argsTo === -1 ? "" : text.slice(argsFrom, argsTo - 1);
+      const subject = text.slice(open, close - 1).replace(/\s+/g, "");
+      const lineEnd = text.indexOf("\n", argsFrom);
+      const line = text.slice(text.lastIndexOf("\n", at) + 1, lineEnd === -1 ? undefined : lineEnd);
+      const negated = /\.\s*not\b/.test(matcher[0]);
+      const kind = kindOf(matcher[2] ?? "", negated, args, subject);
+      found.push({ subject, kind, escaped: kind === "weak" && ESCAPE.test(line) });
+    }
+    at = text.indexOf("expect(", close);
+  }
+  return found;
+}
+
+/** How many strict and weak matchers a text holds; `escaped` counts the `// weaker:` ones. */
 export function assertionCounts(text: string): { strict: number; weak: number; escaped: number } {
-  // Strict over the whole text, since a formatter puts `true,` on the line after `toBe(`; weak per
-  // line, where its escape is.
-  const counts = { strict: count(text, STRICT), weak: 0, escaped: 0 };
-  for (const line of text.split("\n")) {
-    const weak = count(line, WEAK);
-    if (weak > 0 && ESCAPE.test(line)) counts.escaped += 1;
-    else counts.weak += weak;
+  const counts = { strict: 0, weak: 0, escaped: 0 };
+  for (const a of assertions(text)) {
+    if (a.kind === "strict") counts.strict += 1;
+    else if (a.kind === "weak" && a.escaped) counts.escaped += 1;
+    else if (a.kind === "weak") counts.weak += 1;
   }
   return counts;
 }
@@ -38,5 +123,21 @@ export function assertionCounts(text: string): { strict: number; weak: number; e
 export function weakensAssertions(before: string, after: string): boolean {
   const was = assertionCounts(before);
   const now = assertionCounts(after);
-  return now.strict < was.strict && now.weak > was.weak;
+  if (now.strict < was.strict && now.weak > was.weak) return true;
+  // Per subject: one that had a strict check and keeps only an unescaped weak one.
+  const strictBefore = new Set(
+    assertions(before)
+      .filter((a) => a.kind === "strict")
+      .map((a) => a.subject),
+  );
+  const nowBySubject = new Map<string, Assertion[]>();
+  for (const a of assertions(after))
+    nowBySubject.set(a.subject, [...(nowBySubject.get(a.subject) ?? []), a]);
+  for (const subject of strictBefore) {
+    const now = nowBySubject.get(subject) ?? [];
+    if (now.some((a) => a.kind === "weak" && !a.escaped) && !now.some((a) => a.kind === "strict")) {
+      return true;
+    }
+  }
+  return false;
 }

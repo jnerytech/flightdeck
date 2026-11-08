@@ -219,8 +219,11 @@ export function weakerEscape(
   const edit = testEditTexts(tool, input, readFile);
   if (!edit) return null;
   if (assertionCounts(edit.after).escaped <= assertionCounts(edit.before).escaped) return null;
-  const old = new Set(edit.before.split("\n"));
-  const added = edit.after.split("\n").filter((line) => !old.has(line));
+  // Logged only when the escape let the edit through (#1143 review): without it, it would block.
+  const unescaped = edit.after.replace(/\/\/ weaker: [^\r\n]*/g, "");
+  if (!weakensAssertions(edit.before, unescaped)) return null;
+  const old = new Set(edit.before.split(/\r?\n/));
+  const added = edit.after.split(/\r?\n/).filter((line) => !old.has(line));
   const reason = added.map((line) => /\/\/ weaker: (\S.*)$/.exec(line)?.[1]).find(Boolean);
   // Cut, so a long comment never fills the hook log (security review).
   return reason ? reason.trim().slice(0, 200) : null;
