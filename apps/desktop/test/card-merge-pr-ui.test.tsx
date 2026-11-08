@@ -109,6 +109,18 @@ describe("card-merge-pr-ui: a card merges its open PR from the card (#1196)", ()
     ]).toEqual([true, true, true, false, false, false, false]);
   });
 
+  test("before any outcome the card has no empty alert or status box, so a toast elsewhere is the only alert", () => {
+    const { store } = setup();
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <CardMergePr store={store} hostId="h1" card={card()} open={false} onOpenChange={() => {}} />
+      </TContext.Provider>,
+    );
+    expect([screen.queryAllByRole("alert").length, screen.queryAllByRole("status").length]).toEqual(
+      [0, 0],
+    );
+  });
+
   test("the dialog shows the PR's address and its checks, and nothing is sent before the confirm", async () => {
     const { view, sent } = setup();
     render(view);
