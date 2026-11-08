@@ -9,7 +9,12 @@ const STABLE_WIN = "C:\\Users\\dev\\.flightdeck\\bin\\flightdeckd.exe";
 /** A service manager that records what it is asked and touches nothing. */
 function fake(
   platform: "linux" | "win32" | "darwin",
-  opts: { linger?: "yes" | "no"; systemctl?: boolean } = {},
+  opts: {
+    linger?: "yes" | "no";
+    systemctl?: boolean;
+    userBus?: boolean;
+    failEnable?: boolean;
+  } = {},
 ) {
   const calls: string[][] = [];
   const written = new Map<string, string>();
@@ -30,6 +35,9 @@ function fake(
     exec: async (cmd) => {
       calls.push(cmd);
       if (cmd[0] === "loginctl") return { code: 0, stdout: `Linger=${opts.linger ?? "yes"}\n` };
+      if (cmd.includes("show-environment"))
+        return { code: opts.userBus === false ? 1 : 0, stdout: "" };
+      if (opts.failEnable && cmd.includes("enable")) return { code: 1, stdout: "" };
       return { code: 0, stdout: "" };
     },
     writeFile: (path, content) => {
@@ -110,11 +118,12 @@ describe("service from the app (#1200)", () => {
     expect(result).toEqual({ startsAt: "logon", lingerOff: false, user: "PC\\dev" });
   });
 
-  test("it is refused, with a reason and before touching anything, without confirm, on macOS, or with no systemd", async () => {
+  test("it is refused, with a reason and before touching anything, without confirm, on macOS, with no systemd or with no user bus", async () => {
     const cases: [string, ReturnType<typeof fake>, boolean][] = [
       ["no confirm", fake("linux"), false],
       ["macOS", fake("darwin"), true],
       ["no systemd", fake("linux", { systemctl: false }), true],
+      ["no user bus", fake("linux", { userBus: false }), true],
     ];
     const seen: string[] = [];
     for (const [name, os, confirm] of cases) {
@@ -125,6 +134,28 @@ describe("service from the app (#1200)", () => {
       "no confirm: service_confirm, wrote 0, ran 0",
       "macOS: service_unsupported, wrote 0, ran 0",
       "no systemd: service_unsupported, wrote 0, ran 0",
+      "no user bus: service_unsupported, wrote 0, ran 1",
     ]);
+  });
+
+  test("the unit starts the stable binary, with --config only when the daemon was started with one", async () => {
+    const unit = "/home/dev/.config/systemd/user/flightdeckd.service";
+    const plain = fake("linux");
+    await installServiceFromApp(plain.deps, true);
+    const withConfig = fake("linux");
+    await installServiceFromApp({ ...withConfig.deps, config: "/abs/c.json" }, true);
+    const execStart = (written: Map<string, string>) =>
+      /^ExecStart=(.*)$/m.exec(written.get(unit) ?? "")?.[1] ?? "";
+    expect([execStart(plain.written), execStart(withConfig.written)]).toEqual([
+      `${STABLE_LINUX} start`,
+      `${STABLE_LINUX} start --config /abs/c.json`,
+    ]);
+  });
+
+  test("a failed enable leaves the config's claude as it was", async () => {
+    const os = fake("linux", { failEnable: true });
+    const reason = await reasonOf(() => installServiceFromApp(os.deps, true));
+    expect(reason === "resolved").toBe(false);
+    expect(os.recorded).toEqual([]);
   });
 });
