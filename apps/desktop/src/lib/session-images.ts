@@ -23,7 +23,7 @@ export async function readImage(file: Blob): Promise<SessionImage> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   let binary = "";
   for (let at = 0; at < bytes.length; at += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
+    binary += String.fromCodePoint(...bytes.subarray(at, at + 0x8000));
   }
   return { mediaType: file.type as SessionImage["mediaType"], data: btoa(binary) };
 }

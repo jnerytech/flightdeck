@@ -44,7 +44,7 @@ export function NotificationPrefs(
       let binary = "";
       const bytes = new Uint8Array(buffer);
       for (let i = 0; i < bytes.length; i += 0x8000) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        binary += String.fromCodePoint(...bytes.subarray(i, i + 0x8000));
       }
       const url = `data:${file.type || "audio/mpeg"};base64,${btoa(binary)}`;
       if (!controller.setSoundFile(file.name, url)) setProblem(t("notifyPrefs.tooLarge"));
