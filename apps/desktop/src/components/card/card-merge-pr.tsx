@@ -59,7 +59,9 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
   // After the render, and a tick later: the closing dialog gives the focus back to its button in a
   // timeout of its own, which the outcome's box must come after.
   useEffect(() => {
-    const box = refused ? refusedBox.current : merged ? said.current : null;
+    let box: HTMLElement | null = null;
+    if (refused) box = refusedBox.current;
+    else if (merged) box = said.current;
     if (!box) return;
     const timer = setTimeout(() => box.focus(), 0);
     return () => clearTimeout(timer);

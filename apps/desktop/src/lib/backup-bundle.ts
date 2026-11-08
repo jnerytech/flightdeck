@@ -200,11 +200,9 @@ interface Judgement {
 const judgeItems = (locals: Item[], incoming: Item[], name: (item: Item) => string) =>
   incoming.map((item): Judged<Item> => {
     const mine = locals.find((other) => other.id === item.id);
-    const status: Status = !mine
-      ? "added"
-      : JSON.stringify(mine) === JSON.stringify(item)
-        ? "same"
-        : "conflicting";
+    let status: Status = "conflicting";
+    if (!mine) status = "added";
+    else if (JSON.stringify(mine) === JSON.stringify(item)) status = "same";
     return { id: item.id, name: name(item), status, item };
   });
 
