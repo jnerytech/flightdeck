@@ -92,8 +92,13 @@ function assertions(text: string): Assertion[] {
   let at = text.indexOf("expect(");
   while (at !== -1) {
     const open = at + "expect(".length;
-    const close = closing(text, open);
-    if (close === -1) break;
+    // A subject is short; its matcher's arguments may be a whole object.
+    const close = closing(text, open, 500);
+    if (close === -1) {
+      // An unclosed `expect(` (in a comment, say) hides nothing after it.
+      at = text.indexOf("expect(", open);
+      continue;
+    }
     const matcher = MATCHER.exec(text.slice(close, close + 200));
     if (matcher) {
       const argsFrom = close + matcher[0].length;
