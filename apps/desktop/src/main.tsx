@@ -19,6 +19,8 @@ installGlobalLog(
 );
 
 // A minimized window's page is not frozen while it holds a lock: the hosts' heartbeats go on (#939).
-holdAwake(navigator.locks);
+holdAwake(navigator.locks, (error) =>
+  store.appLog.log("warn", "app", `keep-awake lock refused: ${String(error)}`),
+);
 
 createRoot(document.getElementById("root") as HTMLElement).render(<App store={store} />);
