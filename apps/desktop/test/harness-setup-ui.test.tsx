@@ -62,7 +62,7 @@ function setup(
     features?: string[];
     trusted?: boolean;
     preview?: HarnessPreview;
-    answers?: Answer[];
+    answers?: Array<Answer | Promise<Answer>>;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -233,7 +233,7 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
     const stale: Answer = {
       ok: false,
       code: "invalid_state",
-      message: "the project changed since the preview: preview again",
+      message: "refused",
       reason: "harness_stale",
     };
     const { view, count } = setup({ answers: [stale] });
@@ -241,7 +241,10 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
     await listing();
     await open();
     await click("Apply the setup", true);
-    const said = await settleMaybe(() => screen.queryByText(/changed since the preview/) !== null);
+    // Only the translation has this: the daemon's own message here says something else.
+    const said = await settleMaybe(
+      () => screen.queryByText(/or the preview was not of these parts/) !== null,
+    );
     // Watched for a while: the count leaves 1 (a second apply, or none) or it does not.
     const oneApply = () => settleMaybe(() => count("project.harness.apply") !== 1, 300);
     const movedBefore = await oneApply();
@@ -256,6 +259,59 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       movedAfter,
       count("project.harness.preview"),
     ]).toEqual([true, false, true, true, false, 2]);
+  });
+
+  test("a refusal a new preview cannot fix (a far connection) says why, with no Preview again", async () => {
+    const far: Answer = {
+      ok: false,
+      code: "invalid_state",
+      message: "refused",
+      reason: "transport_refused",
+    };
+    const { view } = setup({ answers: [far] });
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    const said = await settleMaybe(() => screen.queryByText(/near connection/) !== null);
+    expect([said, button("Preview again") !== null]).toEqual([true, false]);
+  });
+
+  test("while apply runs, Set up waits: a second preview cannot race the first apply", async () => {
+    let answer: (value: Answer) => void = () => {};
+    const slow = new Promise<Answer>((resolve) => {
+      answer = resolve;
+    });
+    const { view } = setup({ answers: [slow] });
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    const waits = await settleMaybe(
+      () => (button("Set up Claude Code") as HTMLButtonElement | null)?.disabled === true,
+    );
+    await act(async () => answer({ ok: true, data: { written: ["CLAUDE.md"] } }));
+    const free = await settleMaybe(
+      () => (button("Set up Claude Code") as HTMLButtonElement | null)?.disabled === false,
+    );
+    expect([waits, free]).toEqual([true, true]);
+  });
+
+  test("the card's hint promises a setup only on a host that can apply one", async () => {
+    const both = setup();
+    render(both.view);
+    await listing();
+    const promises = await settleMaybe(
+      () => screen.queryByText(/Nothing changes until you read a setup and apply it/) !== null,
+    );
+    cleanup();
+    const older = setup({ features: ["projectTrust", "harnessPreview"] });
+    render(older.view);
+    await listing();
+    const readOnly = await settleMaybe(
+      () => screen.queryByText(/Read-only: nothing here changes the project/) !== null,
+    );
+    expect([promises, readOnly]).toEqual([true, true]);
   });
 
   test("Cancel closes the dialog and applies nothing", async () => {
