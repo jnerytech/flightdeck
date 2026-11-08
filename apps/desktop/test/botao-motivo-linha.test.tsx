@@ -234,7 +234,12 @@ describe("botao-motivo-linha: in a dialog's footer the reason grows inward (#106
 // the card at 1280 and cut by the window at 640. There it hangs from the button's right and grows
 // left, under the field. happy-dom has no layout: this reads the rule; the narrow guard measures it.
 describe("botao-motivo-linha: beside a field the reason grows inward (#1270)", () => {
-  const RULE = /\.field-with-action > \.action-button-box \.action-reason \{([^}]*)\}/;
+  // Inside the field-with-action utility: the stylesheet keeps no class selectors of its own (base-ui).
+  const utility = () => {
+    const at = css.indexOf("@utility field-with-action {");
+    return at < 0 ? "" : css.slice(at, css.indexOf("\n}\n", at));
+  };
+  const RULE = /& > \.action-button-box \.action-reason \{([^}]*)\}/;
 
   test("the reason of a field's action button hangs from the button's right", () => {
     const { container } = render(
@@ -247,7 +252,7 @@ describe("botao-motivo-linha: beside a field the reason grows inward (#1270)", (
     );
     const row = container.querySelector(".field-with-action");
     const box = screen.queryByText("Type the spec file's path to save it.")?.parentElement ?? null;
-    const rule = css.match(RULE)?.[1] ?? "";
+    const rule = utility().match(RULE)?.[1] ?? "";
     expect([
       box?.parentElement === row,
       /right: 0;/.test(rule),
