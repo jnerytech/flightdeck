@@ -1396,6 +1396,7 @@ export class AppStore {
         if (notifyUpdates || autoUpdate) void this.checkAppUpdate();
       }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
     }
+    void this.backupScheduler.start();
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
@@ -3124,6 +3125,7 @@ export class AppStore {
     this.offTrayAction = null;
     if (this.updateTimer) clearInterval(this.updateTimer);
     this.updateTimer = null;
+    this.backupScheduler.dispose();
     if (this.clientBudgetTimer) clearInterval(this.clientBudgetTimer);
     this.clientBudgetTimer = null;
     if (this.vaultScopeTimer) clearTimeout(this.vaultScopeTimer);
