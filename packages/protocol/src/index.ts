@@ -991,6 +991,8 @@ export interface KnowledgeEntry {
   problems: string[];
   /** A valid document that points at an obsolete one: `references_obsolete:<path>`. */
   warnings: string[];
+  /** What the list read of the file (its size and start); `knowledge.setStatus` writes only if it still holds. */
+  hash: string;
 }
 
 export interface KnowledgeListResult {
@@ -4464,6 +4466,18 @@ export const Command = z.discriminatedUnion("type", [
   cmd("knowledge.index", z.object({ path: z.string().min(1).max(4096) }).strict()),
   /** Issue #76: whether sessions in the project at `path` are given that index. */
   cmd("knowledge.feed", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** Issue #76: the `status:` line of one library document, written only if the file is as it was listed. */
+  cmd(
+    "knowledge.setStatus",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        file: z.string().min(1).max(512),
+        status: KnowledgeStatus,
+        expectedHash: z.string().min(1).max(128),
+      })
+      .strict(),
+  ),
   /** Issue #76: switch the index on or off for the project at `path`, in the host's config. */
   cmd(
     "knowledge.setFeed",
@@ -5355,6 +5369,7 @@ export interface CommandResults {
   "knowledge.list": KnowledgeListResult;
   "knowledge.index": KnowledgeIndexResult;
   "knowledge.feed": KnowledgeFeedState;
+  "knowledge.setStatus": KnowledgeEntry;
   "knowledge.setFeed": KnowledgeFeedState;
   "file.write": { path: string; hash: string; size: number };
 }

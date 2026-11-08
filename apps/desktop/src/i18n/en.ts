@@ -1480,6 +1480,7 @@ export const en: Dictionary = {
     harnessStack: "reading the project's stack",
     knowledge: "reading the project's documents",
     knowledgeFeed: "the switch for the documents index in agents' prompts",
+    knowledgeStatus: "changing a document's status",
     harnessPreview: "previewing Claude Code setup changes",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
@@ -1736,6 +1737,8 @@ export const en: Dictionary = {
     review_text_big: "The text is over 1 MB: shorten it or edit the file outside Flightdeck.",
     review_file_changed:
       "The file {path} changed since it was opened: reload it and apply your edit again.",
+    knowledge_frontmatter:
+      "The front matter of {path} cannot be changed safely from here: edit the file by hand.",
     review_revert_confirm: "Confirm the revert to go on.",
     review_undo_confirm: "Confirm the undo to go on.",
     review_undo_nothing:

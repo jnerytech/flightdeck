@@ -124,6 +124,7 @@ export async function listKnowledge(
         changedAt: start.changedAt,
         problems: parsed.problems,
         warnings: [],
+        hash: "",
       },
     });
   }

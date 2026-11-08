@@ -17,8 +17,10 @@ import {
   type HarnessStack,
   type HostRuntime,
   type KeepAwakeStatus,
+  type KnowledgeEntry,
   type KnowledgeIndexResult,
   type KnowledgeListResult,
+  type KnowledgeStatus,
   MIN_PROTOCOL_VERSION,
   Pong,
   PROTOCOL_VERSION,
@@ -184,6 +186,13 @@ export interface ServerOptions {
   knowledgeFeed?: (path: string) => Promise<KnowledgeIndexResult>;
   /** #76: whether sessions in a project are given that index, and the person's switch for it. */
   knowledgeFeedSwitch?: KnowledgeSwitch;
+  /** #76: the status of one library document, written into its front matter. */
+  knowledgeStatus?: (
+    path: string,
+    file: string,
+    status: KnowledgeStatus,
+    expectedHash: string,
+  ) => Promise<KnowledgeEntry>;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
   projectTrust?: {
@@ -420,6 +429,7 @@ function featuresOf(opts: ServerOptions): string[] {
     // Issue #76: the project's library of documents, with their lifecycle status.
     ...when(opts.knowledge, "knowledge"),
     ...when(opts.knowledgeFeedSwitch, "knowledgeFeed"),
+    ...when(opts.knowledgeStatus, "knowledgeStatus"),
     ...when(opts.harnessPreview, "harnessPreview"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
@@ -1145,6 +1155,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.knowledgeFeed) throw featureOff("knowledge");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.knowledgeFeed(path));
+      }
+      case "knowledge.setStatus": {
+        if (!opts.knowledgeStatus) throw featureOff("knowledgeStatus");
+        const { path: asked, file, status, expectedHash } = command.payload;
+        const path = await resolveAllowedCwd(asked, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeStatus(path, file, status, expectedHash));
       }
       case "knowledge.feed": {
         if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");

@@ -16,6 +16,7 @@ const entry = (
   changedAt: "2026-01-01T00:00:00.000Z",
   problems: [],
   warnings: [],
+  hash: "h",
 });
 
 describe("knowledge-feed: the index a session is given (#76)", () => {

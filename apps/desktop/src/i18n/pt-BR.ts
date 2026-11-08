@@ -1477,6 +1477,7 @@ export const ptBR = {
     harnessStack: "a leitura do stack do projeto",
     knowledge: "a leitura dos documentos do projeto",
     knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
+    knowledgeStatus: "a mudança do status de um documento",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
@@ -1735,6 +1736,8 @@ export const ptBR = {
     review_text_big: "O texto passa de 1 MB: encurte-o ou edite o arquivo fora do Flightdeck.",
     review_file_changed:
       "O arquivo {path} mudou desde que foi aberto: recarregue e aplique a edição de novo.",
+    knowledge_frontmatter:
+      "O front matter de {path} não pode ser mudado com segurança por aqui: edite o arquivo à mão.",
     review_revert_confirm: "Confirme o revert para continuar.",
     review_undo_confirm: "Confirme o desfazer para continuar.",
     review_undo_nothing:

@@ -303,6 +303,7 @@ const REASONS = [
   "review_file_binary",
   "review_text_big",
   "review_file_changed",
+  "knowledge_frontmatter",
   "review_revert_confirm",
   "review_undo_confirm",
   "review_undo_nothing",
