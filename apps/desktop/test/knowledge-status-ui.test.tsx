@@ -342,8 +342,16 @@ describe("knowledge-status-ui: the status shows once (#1105)", () => {
     const atRest = badges("Use the outbox");
     fireEvent.change(picker("Use the outbox"), { target: { value: "obsolete" } });
     const pending = badges("Use the outbox");
+    // After the select and Change, so the select does not move under the pointer; it says it is
+    // the file's status, not a second choice.
+    const afterChange = apply("Use the outbox")?.nextElementSibling?.textContent;
     fireEvent.change(picker("Use the outbox"), { target: { value: "valid" } });
-    expect([atRest, pending, badges("Use the outbox")]).toEqual([[], ["Valid"], []]);
+    expect([atRest, pending, afterChange, badges("Use the outbox")]).toEqual([
+      [],
+      ["In the file: Valid"],
+      "In the file: Valid",
+      [],
+    ]);
   });
 
   test("where the status cannot be changed, the badge shows it", async () => {
