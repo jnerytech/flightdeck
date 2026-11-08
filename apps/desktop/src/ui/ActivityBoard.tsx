@@ -44,7 +44,7 @@ export function ActivityBoard(
   const [filter, setFilter] = useState<ActivityFilter>(NO_ACTIVITY_FILTER);
   const [showIdle, setShowIdle] = useState(() => store.activityIdle());
   // The screen stays open for hours: the ages and the Done window follow the clock.
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), props.tickMs ?? CLOCK_TICK_MS);
     return () => clearInterval(id);

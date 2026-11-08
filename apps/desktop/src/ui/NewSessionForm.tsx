@@ -68,14 +68,14 @@ export function NewSessionForm(
   const t = useT();
   const roots = props.host.info?.allowedRoots ?? [];
   // The folder picked, else the host's first: its folders may arrive after the form opened.
-  const [picked, setRoot] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   // The folder the last session here started in (issue #1135), while the host still allows it.
   const prefs = props.store?.newSessionPrefs;
   const kept = prefs?.folderOf(props.host.id);
   const keptHere = kept && roots.includes(kept.root) ? kept : undefined;
   const root = picked ?? keptHere?.root ?? roots[0] ?? "";
   // The subfolder typed; before that, the remembered one (only with the remembered folder).
-  const [typedSub, setSub] = useState<string | null>(null);
+  const [typedSub, setTypedSub] = useState<string | null>(null);
   const sub = typedSub ?? (picked === null && keptHere ? keptHere.sub : "");
   // The person's own click on More options; until then it follows `wanted` (below).
   const [moreOpen, setMoreOpen] = useState<boolean | null>(null);
@@ -93,12 +93,12 @@ export function NewSessionForm(
     // The configured root that holds it, the longest one; its rest is the subfolder.
     const holder = roots.filter((r) => isInside(path, r)).sort((a, b) => b.length - a.length)[0];
     if (holder) {
-      setRoot(holder);
-      setSub(path.slice(trimTrailingSeparators(holder).length).replace(/^[\\/]+/, ""));
+      setPicked(holder);
+      setTypedSub(path.slice(trimTrailingSeparators(holder).length).replace(/^[\\/]+/, ""));
     } else {
       setExtra(path);
-      setRoot(path);
-      setSub("");
+      setPicked(path);
+      setTypedSub("");
     }
   };
   const { onFolder } = props;
@@ -247,7 +247,7 @@ export function NewSessionForm(
         </Field>
         <Field label={t("newSession.folder")}>
           {(control) => (
-            <NativeSelect {...control} value={root} onChange={(e) => setRoot(e.target.value)}>
+            <NativeSelect {...control} value={root} onChange={(e) => setPicked(e.target.value)}>
               {folders.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -343,7 +343,7 @@ export function NewSessionForm(
                 <Input
                   {...control}
                   value={sub}
-                  onChange={(e) => setSub(e.target.value)}
+                  onChange={(e) => setTypedSub(e.target.value)}
                   placeholder={t("newSession.optional")}
                 />
               )}

@@ -1441,6 +1441,7 @@ export const ptBR = {
       "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
   },
   daemonFeature: {
+    serviceInstall: "iniciar no boot pelo app",
     assistant: "o assistente de IA",
     teleport: "mudar uma sessão de host",
     github: "o login do GitHub",
@@ -1532,6 +1533,9 @@ export const ptBR = {
     terminal_enable_confirm:
       "Ligar o terminal dá um shell completo neste host: confirme para seguir.",
     central_confirm: "Mexer no ~/.claude/settings.json do host pede a sua confirmação.",
+    service_confirm: "Instalar o serviço no host pede a sua confirmação.",
+    service_unsupported:
+      "Este host não tem um gerenciador de serviços que inicie o flightdeckd com o computador ({platform}).",
     permission_request_closed: "O pedido de permissão {id} não está aberto.",
     hold_required: "Um pedido de risco alto só é aprovado segurando o botão.",
     input_changed: "Um pedido é aprovado como foi feito: a resposta muda o que ele executa.",
@@ -1988,6 +1992,14 @@ export const ptBR = {
       "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider: "O projeto não tem provedor de PR.",
     card_no_pr: "O card não tem PR.",
+    card_pr_not_open: "O PR do card não está aberto.",
+    card_pr_merge_unsupported:
+      "Este host de PR não faz merge pelo Flightdeck: faça o merge do PR lá.",
+    card_pr_checks_failing:
+      "Os checks estão falhando ou ainda rodando: o PR ainda não pode ser mesclado.",
+    card_pr_review_required: "O PR precisa de uma revisão antes de ser mesclado.",
+    card_pr_conflict: "O PR tem conflito com a branch base: resolva o conflito antes.",
+    card_pr_merge_failed: "Não foi possível fazer o merge do PR: {detail}",
     pr_no_comment: "Nenhum comentário foi escolhido.",
     card_running: "O card está em execução: espere o agente terminar.",
     merge_confirm: "Confirme o merge.",
@@ -4937,6 +4949,20 @@ export const ptBR = {
     okHide: "Ocultar {n} itens sem nada a fazer",
     optionalAbsent: "Opcional · não instalado",
     okList: "Funcionando",
+    service: {
+      turnOn: "Ligar",
+      messageLinux:
+        "O Flightdeck vai instalar um serviço do usuário em ~/.config/systemd/user/flightdeckd.service, para o flightdeckd iniciar no próximo boot ou login. O daemon que está rodando agora continua como está.",
+      messageWindows:
+        "O Flightdeck vai criar a tarefa {task} no Agendador de Tarefas, para o flightdeckd iniciar no seu próximo login. O daemon que está rodando agora continua como está.",
+      noteLabel: "Iniciar no boot",
+      boot: "Iniciar no boot está ligado: o flightdeckd inicia com este computador a partir do próximo boot. O daemon que está rodando agora continua como está.",
+      logon:
+        "Iniciar no boot está ligado: o flightdeckd inicia no seu próximo login. O daemon que está rodando agora continua como está.",
+      lingerOff:
+        "O linger está desligado, então o flightdeckd espera um login. Para iniciar no boot, rode isto num terminal do host. O app nunca roda sudo:",
+      copyLinger: "Copiar o comando do linger",
+    },
   },
   hostDeps: {
     installPage: "Página de instalação",
