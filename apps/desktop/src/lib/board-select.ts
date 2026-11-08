@@ -39,6 +39,11 @@ export function shownSelection(selected: string[], shown: string[]): string[] {
 export const COLUMN_WIDTH = { default: 260, min: 220, max: 520, step: 20 } as const;
 export const COLUMN_WIDTH_KEY = "flightdeck.boardColumnWidth";
 
+/** Issue #1030: the width that lets `count` columns, `gap` px apart, share a board `board` px wide. */
+export function fitColumnWidth(_board: number, _count: number, _gap: number): number {
+  return 0;
+}
+
 export function clampWidth(width: number): number {
   if (Number.isNaN(width)) return COLUMN_WIDTH.default;
   return Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, Math.round(width)));
@@ -47,6 +52,8 @@ export function clampWidth(width: number): number {
 /** The columns' width, kept across starts. */
 export class BoardWidth {
   value: number;
+  /** True once the person has set a width, or one was kept: until then the columns share the board. */
+  chosen = false;
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly storage: Platform["storage"]) {
