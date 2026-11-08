@@ -396,6 +396,7 @@ export const ptBR = {
     saveHours: "Salvar horas",
     cardHoursInvalid: "Digite um número de horas de 0 a 1000, ou deixe vazio.",
     cardHoursSave: "Salvar as horas do card",
+    cardHoursEmpty: "Digite as horas para salvar.",
     projectRate: "Valor da hora deste projeto",
     saveRate: "Salvar valor",
     cardHours: "Horas estimadas deste card",
@@ -3813,6 +3814,7 @@ export const ptBR = {
     },
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
+    specEmpty: "Digite o caminho do arquivo da especificação para salvar.",
     specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",
     pins: {
       title: "Documentos fixados",
@@ -4361,6 +4363,7 @@ export const ptBR = {
       setStatus: {
         hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
         label: "Status de {title}",
+        inFile: "No arquivo: {status}",
         apply: "Alterar",
         applyLabel: "Alterar o status de {title}",
         changed:

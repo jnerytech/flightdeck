@@ -387,3 +387,61 @@ describe("card-form (en): the spec file", () => {
     expect(d.board.getCard(card.id).specPath).toBe("notes/mine.md");
   });
 });
+
+// #1106: on a card with no spec path and no hours, Save spec file and Save the card's hours were off
+// with nothing saying why. An empty field now says what to type; once something is typed, the
+// reason goes and Save is on.
+describe("card-form: an empty field says what Save waits for (#1106)", () => {
+  for (const [lang, names] of [
+    [
+      "en",
+      {
+        spec: "Spec file",
+        saveSpec: "Save spec file",
+        specReason: "Type the spec file's path to save it.",
+        hours: "Estimated hours of this card",
+        saveHours: "Save the card's hours",
+        hoursReason: "Type the hours to save them.",
+      },
+    ],
+    [
+      "pt-BR",
+      {
+        spec: "Arquivo da especificação",
+        saveSpec: "Salvar arquivo da especificação",
+        specReason: "Digite o caminho do arquivo da especificação para salvar.",
+        hours: "Horas estimadas deste card",
+        saveHours: "Salvar as horas do card",
+        hoursReason: "Digite as horas para salvar.",
+      },
+    ],
+  ] as const) {
+    test(`${lang}: Save spec file and Save the card's hours say why they are off while their field is empty`, async () => {
+      await openCard(lang);
+      await settle(() => screen.queryByLabelText(names.hours) !== null);
+      const said = (button: string, reason: string) => {
+        const el = screen.queryByRole("button", { name: button });
+        const line = screen.queryByText(reason);
+        return (
+          el?.hasAttribute("disabled") === true &&
+          line !== null &&
+          (el.getAttribute("aria-describedby") ?? "").split(" ").includes(line.id)
+        );
+      };
+      expect([
+        said(names.saveSpec, names.specReason),
+        said(names.saveHours, names.hoursReason),
+      ]).toEqual([true, true]);
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText(names.spec), {
+          target: { value: "docs/specs/x.md" },
+        });
+        fireEvent.change(screen.getByLabelText(names.hours), { target: { value: "3" } });
+      });
+      expect([
+        screen.queryByText(names.specReason) === null,
+        screen.queryByText(names.hoursReason) === null,
+      ]).toEqual([true, true]);
+    });
+  }
+});

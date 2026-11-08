@@ -392,6 +392,7 @@ export const en: Dictionary = {
     saveHours: "Save hours",
     cardHoursInvalid: "Type a number of hours from 0 to 1000, or leave it empty.",
     cardHoursSave: "Save the card's hours",
+    cardHoursEmpty: "Type the hours to save them.",
     projectRate: "Hourly rate for this project",
     saveRate: "Save rate",
     cardHours: "Estimated hours of this card",
@@ -3805,6 +3806,7 @@ export const en: Dictionary = {
     },
     specFile: "Spec file",
     saveSpec: "Save spec file",
+    specEmpty: "Type the spec file's path to save it.",
     specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
     pins: {
       title: "Pinned documents",
@@ -4356,6 +4358,7 @@ export const en: Dictionary = {
       setStatus: {
         hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
         label: "Status of {title}",
+        inFile: "In the file: {status}",
         apply: "Change",
         applyLabel: "Change the status of {title}",
         changed:

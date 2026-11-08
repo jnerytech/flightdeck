@@ -38,6 +38,11 @@ function CardTextField(
     savable(text: string): boolean;
     /** Why the text cannot be saved at all, when it cannot: said under the disabled Save. */
     problem?(text: string): string | null;
+    /**
+     * What to type, said under the disabled Save while the field and the card are both empty
+     * (#1106): an unchanged filled field needs no line, an empty one does not say what it waits for.
+     */
+    emptyReason?: string;
     /** What the empty field stands for. */
     placeholder?: string;
     /** True once the host took it. */
@@ -49,7 +54,9 @@ function CardTextField(
   const [value, setValue, saved, { stale, saving, drop }] = useDraft(source);
   // Typing the card's own text back is no edit any more: the field follows the card again.
   const edit = (text: string) => (text === source ? drop() : setValue(text));
-  const problem = props.problem?.(value) ?? null;
+  const problem =
+    props.problem?.(value) ??
+    (props.emptyReason && value.trim() === "" && source === "" ? props.emptyReason : null);
   return (
     <Field label={props.label}>
       {(control) => {
@@ -207,6 +214,7 @@ export function CardFields(
         label={t("cardUi.specFile")}
         saveLabel={t("cardUi.saveSpec")}
         source={card.specPath ?? ""}
+        emptyReason={t("cardUi.specEmpty")}
         placeholder={card.slug ? `docs/specs/${card.slug}.md` : "docs/specs/<card>.md"}
         stored={(text) => text.trim()}
         savable={(text) => text.trim() !== (card.specPath ?? "")}
