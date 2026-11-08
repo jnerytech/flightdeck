@@ -134,15 +134,26 @@ async function bytesOf(root: string, path: string): Promise<Read | null | "too l
   }
 }
 
-/** The hooks a commit runs, by name, in the order git runs them. */
-const COMMIT_HOOKS = ["pre-commit", "prepare-commit-msg", "commit-msg", "post-commit"];
+/**
+ * The hooks a commit from the app runs: the commit's own, and those the new branch's switch, the
+ * ref update and the index write run.
+ */
+const COMMIT_HOOKS = [
+  "pre-commit",
+  "prepare-commit-msg",
+  "commit-msg",
+  "post-commit",
+  "post-checkout",
+  "reference-transaction",
+  "post-index-change",
+];
 
 /**
  * The commit hooks a commit of the checkout at `root` runs: those present (and executable, outside
  * Windows) in the folder git takes them from, which accounts for `core.hooksPath` and a linked
  * worktree. The person sees them before confirming a commit.
  */
-export async function commitHooks(root: string): Promise<string[]> {
+export async function commitHooks(root: string): Promise<string[] | undefined> {
   const found = await runCommand(
     [whichOnPath("git") ?? "git", "rev-parse", "--git-path", "hooks"],
     root,
@@ -151,7 +162,8 @@ export async function commitHooks(root: string): Promise<string[]> {
     killTree,
     ENV,
   );
-  if (found.code !== 0) return [];
+  // Unknown, never "none": the person must not read a failed look as no hook at all.
+  if (found.code !== 0) return undefined;
   const folder = resolve(root, found.stdout.trim());
   const out: string[] = [];
   for (const name of COMMIT_HOOKS) {

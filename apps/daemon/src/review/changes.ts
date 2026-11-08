@@ -214,7 +214,7 @@ export class Changes {
         files: await withDigests(root, await workingDiff(root)),
         position: null,
         // The hooks a commit would run, named before the person confirms one.
-        hooks: await commitHooks(root),
+        ...(await commitHooks(root).then((hooks) => (hooks ? { hooks } : {}))),
       };
     }
     const { files } = await cardDiff(root, base);

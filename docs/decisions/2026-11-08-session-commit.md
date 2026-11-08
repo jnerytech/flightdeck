@@ -50,10 +50,16 @@ branch of the checkout.
     hashes a large artifact, and choosing it refuses at once.
 - **One at a time.** Commits of one checkout run one after the other. A second one (a double click,
   two windows) then finds its files committed and refuses as stale.
-- **The hooks that will run are shown.** For a session, `changes.get` names the commit hooks a
-  commit runs (`pre-commit`, `prepare-commit-msg`, `commit-msg`, `post-commit`). It takes them
+- **The hooks that will run are shown.** For a session, `changes.get` names the hooks a commit from
+  the app runs: `pre-commit`, `prepare-commit-msg`, `commit-msg` and `post-commit`, plus
+  `post-checkout`, `reference-transaction` and `post-index-change`, which the switch to the new
+  branch, the ref update and the index write run. It takes them
   from the folder `git rev-parse --git-path hooks` gives, which accounts for `core.hooksPath` and
-  for a linked worktree. The app shows them in the confirm (slice A).
+  for a linked worktree. The app shows them in the confirm (slice A), together with a line saying
+  that other programs the repository's settings name may run too.
+  - The list is read when the person looks, not pinned: a hook can change before the commit.
+  - When git cannot say where the hooks are, the field is absent, and the app says they are
+    unknown, never "none".
 - **A failing hook.**
   - The person stays on the new branch, with their files untouched and their index put back from a
     copy taken before.
