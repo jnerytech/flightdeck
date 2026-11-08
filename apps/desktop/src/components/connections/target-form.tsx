@@ -317,11 +317,9 @@ export const TargetForm = memo(function TargetForm(props: {
         cancel={t("common.cancel")}
         onCancel={props.onClose}
         extra={
-          <>
-            <ActionButton type="button" variant="outline" disabled={!target} onClick={() => test()}>
-              {t("connections.form.test")}
-            </ActionButton>
-          </>
+          <ActionButton type="button" variant="outline" disabled={!target} onClick={() => test()}>
+            {t("connections.form.test")}
+          </ActionButton>
         }
       />
       {forgetting && (
