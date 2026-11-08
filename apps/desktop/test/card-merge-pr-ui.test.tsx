@@ -181,6 +181,55 @@ describe("card-merge-pr-ui: a card merges its open PR from the card (#1196)", ()
     ]).toEqual([true, true, true, null, [PR_URL]]);
   });
 
+  test("while a merge is under way the confirm is off, so one PR is never merged twice", async () => {
+    const hang = Promise.withResolvers<Answer>();
+    const { store, sent } = setup();
+    store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
+      sent.push([type, payload]);
+      return hang.promise;
+    }) as never;
+    // A parent that keeps the dialog on screen shows what a second try would meet.
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <CardMergePr store={store} hostId="h1" card={card()} open onOpenChange={() => {}} />
+      </TContext.Provider>,
+    );
+    await opened("Merge PR");
+    await click(inDialog("Merge PR"));
+    const off = await settleMaybe(
+      () => inDialog("Merge PR")?.hasAttribute("disabled") === true,
+      3000,
+    );
+    await click(inDialog("Merge PR"));
+    hang.resolve({ ok: true, data: card({ prState: "merged" }) });
+    expect([off, sent.length]).toEqual([true, 1]);
+  });
+
+  test("a refusal goes away when the PR is no longer open", async () => {
+    const { store } = setup({
+      answer: { ok: false, code: "invalid_state", message: "x", reason: "card_pr_conflict" },
+    });
+    const tree = (current: Card) => (
+      <TContext.Provider value={store.i18n.t}>
+        <CardMergePr store={store} hostId="h1" card={current} open onOpenChange={() => {}} />
+      </TContext.Provider>
+    );
+    const view = render(tree(card()));
+    await opened("Merge PR");
+    await click(inDialog("Merge PR"));
+    const shown = await settleMaybe(
+      () =>
+        screen.queryAllByRole("alert").some((box) => (box.textContent ?? "").includes("conflicts")),
+      3000,
+    );
+    view.rerender(tree(card({ prState: "merged" })));
+    const gone = await settleMaybe(
+      () => screen.queryAllByRole("alert").every((box) => (box.textContent ?? "") === ""),
+      3000,
+    );
+    expect([shown, gone]).toEqual([true, true]);
+  });
+
   test("a merged PR says so, and the pt-BR dialog is in Portuguese", async () => {
     const english = setup();
     render(english.view);
