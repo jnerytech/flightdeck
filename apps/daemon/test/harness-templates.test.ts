@@ -62,7 +62,7 @@ describe("harness-templates: a project's Markdown harness shared as a host templ
         id: "shop",
         title: "Shop setup",
         files: ["CLAUDE.md", "agents/reviewer.md", "skills/tdd/SKILL.md"],
-        bytes: 22 + 11 + 6,
+        bytes: [SHOP["CLAUDE.md"], "# Reviewer\n", "# TDD\n"].join("").length,
       },
       SHOP["CLAUDE.md"],
       "# Reviewer\n",
