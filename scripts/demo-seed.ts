@@ -24,7 +24,12 @@ import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
 import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo-teleport.ts";
-import { acoesActions, DANGER_SESSION, DEMO_CLOSED_TEAM } from "./lib/e2e-journeys.ts";
+import {
+  acoesActions,
+  CONTRACT_CARD,
+  DANGER_SESSION,
+  DEMO_CLOSED_TEAM,
+} from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
@@ -733,6 +738,12 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     });
     projectIds[name] = added.id;
   }
+  // Issue #78: a card with no PR in a project whose board asks for one before Review.
+  await client.call("card.create", {
+    projectId: projectIds["design-system"],
+    title: CONTRACT_CARD,
+    description: "Explain how the design tokens are used.",
+  });
   const card = (title: string, description: string) =>
     client.call<{ id: string }>("card.create", { projectId: project.id, title, description });
   await card("Documentar a API pública", "Escreva o guia de uso.");

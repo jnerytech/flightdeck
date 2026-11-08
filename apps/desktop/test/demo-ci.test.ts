@@ -141,6 +141,7 @@ describe("demo-prints: axe e CI", () => {
       "update-card",
       "status-bar",
       "trust-revoke",
+      "stage-contract",
       "knowledge-panel",
       "files-viewer",
       "terminal-copy",
