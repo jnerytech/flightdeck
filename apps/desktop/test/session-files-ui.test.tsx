@@ -64,7 +64,14 @@ describe("session-files-ui: the session's own files say where they come from (#1
     });
 
     test(`${language}: with files, the titled block lists them and keeps the Bash note`, async () => {
-      show(language, [{ path: "src/app.ts", edits: 2, lastAt: "2026-11-08T10:00:00.000Z" }]);
+      show(language, [
+        {
+          path: "src/app.ts",
+          edits: 2,
+          firstAt: "2026-11-08T09:00:00.000Z",
+          lastAt: "2026-11-08T10:00:00.000Z",
+        },
+      ]);
       await waitFor(() =>
         expect(screen.queryByRole("region", { name: names.title })).not.toBeNull(),
       );
