@@ -20,6 +20,8 @@ const MAX_BYTES = 1024 * 1024;
 const BLOCK = /^---(\r?\n)([\s\S]*?)(\r?\n---(?:\r?\n|$))/;
 /** A front matter opened and never closed. */
 const OPENED = /^---[ \t]*(?:\r?\n|$)/;
+/** The same key written in quotes: not rewritten here, and a second plain one beside it would be a duplicate. */
+const QUOTED = /(?<![^\n])["']status["'][ \t]*:/;
 /** A top-level `status:` line, from its key to the end of the line. */
 const KEY = /(?<![^\n])status[ \t]*:[^\r\n]*(?=\r?\n|$)/g;
 /** Such a line holding one plain word, maybe quoted, maybe with a comment: the only shape rewritten. */
@@ -40,7 +42,7 @@ export function withStatus(text: string, status: KnowledgeStatus): string | null
   const [whole, eol = "\n", inner = "", closing = ""] = block;
   const keys = [...inner.matchAll(KEY)];
   let changed = `${inner}${eol}status: ${status}`;
-  if (keys.length > 1) return null;
+  if (keys.length > 1 || QUOTED.test(inner)) return null;
   const key = keys[0];
   if (key) {
     const line = PLAIN.exec(key[0]);
@@ -95,7 +97,9 @@ export async function setKnowledgeStatus(
     throw refuse("bad_request", "knowledge_frontmatter", file);
   }
   if (next === text) return listed;
-  const mode = (await lstat(full)).mode & 0o777;
+  // Anything but a plain file by now (swapped in since the read) gets the strictest mode, not its own.
+  const info = await lstat(full);
+  const mode = info.isFile() ? info.mode & 0o777 : 0o600;
   const tmp = join(dirname(full), `.${basename(full)}.${ulid()}.tmp`);
   try {
     await writeFile(tmp, next, { flag: "wx", mode });

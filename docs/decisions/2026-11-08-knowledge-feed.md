@@ -52,7 +52,13 @@ of the project are current.
   file; the mode is kept. Nothing is staged or committed: the change is left in the project's
   folder for the person. Files over 1 MB, with a NUL, or that are not UTF-8 are refused.
 - **Not gated by trust.** Trust decides what text reaches an agent's prompt; this is the person
-  editing their own file. Like `file.write`, it needs no near connection.
+  editing their own file. Like `file.write`, it needs no near connection. The one added effect of a
+  remote caller is promoting a document to `valid`, so its path and title enter the index given to
+  trusted projects' sessions; that text was already in the repository.
+- **Known limits.** Between reading the file and renaming over it, an editor or a git operation
+  that writes the same file is overwritten (the hash check narrows the window, it does not close
+  it), git's `index.lock` is not honoured, and there is no `fsync` before the rename. A basename
+  near the name-length limit makes the temp name too long and the write fails with an error.
 
 ## Left out
 
