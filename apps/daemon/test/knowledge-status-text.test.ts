@@ -54,6 +54,9 @@ describe("knowledge-status-text: only the status line moves (#76)", () => {
       "---\nstatus: >\n  valid\n---\nx\n",
       "---\nstatus:\n  valid\n---\nx\n",
       "---\nstatus: [valid]\n---\nx\n",
+      // a status key written in quotes: a second one would be a duplicate
+      '---\n"status": valid\n---\nx\n',
+      "---\n'status': valid\n---\nx\n",
       // not YAML at all
       "---\nstatus: valid: still\n  bad: [\n---\nx\n",
     ];
