@@ -24,6 +24,8 @@ export interface SessionPrDeps {
   projectProvider: (root: string) => PrProviderKind | null;
   /** The provider of a kind (`gh`, `az`); the real CLIs when absent. */
   prProvider?: (kind: PrProviderKind) => PrProvider | null;
+  /** How long the push may take. */
+  pushTimeoutMs?: number;
 }
 
 const refuse = (reason: string, message: string) =>
@@ -85,6 +87,15 @@ export class SessionPrs {
         "the branch moved since the app's commit: open its PR from a terminal",
       );
     }
+    // The commit goes out with every ancestor `origin` lacks: only the one the person saw may.
+    // git-arg: the commit is the daemon's own, from `rev-parse`.
+    const outgoing = await git(root, "rev-list", commit, "--not", "--remotes=origin");
+    if (outgoing.code !== 0 || outgoing.stdout.trim() !== commit) {
+      throw refuse(
+        "changes_pr_ahead",
+        `${base} has commits that are not on origin: they would go out with the PR`,
+      );
+    }
     // Where the push goes, as the person saw it: the session can change `origin` in between.
     if ((await pushAddress(root)) !== input.remote) {
       throw refuse("changes_pr_remote", "the push address changed since it was shown: look again");
@@ -97,6 +108,8 @@ export class SessionPrs {
       body: input.body,
       provider,
       commit,
+      scanner: this.deps.scanner,
+      ...(this.deps.pushTimeoutMs === undefined ? {} : { timeoutMs: this.deps.pushTimeoutMs }),
     });
     return { url, branch, base };
   }

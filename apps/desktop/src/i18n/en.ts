@@ -1868,6 +1868,8 @@ export const en: Dictionary = {
       "This branch was not made by a commit from the app, so its base is not known: open its PR from a terminal.",
     changes_pr_remote:
       "Where the push goes changed since you looked: check it again, then open the PR.",
+    changes_pr_ahead:
+      "The base branch has commits that are not on origin yet, and they would go out with this PR: push them first, or open the PR from a terminal.",
     changes_pr_moved:
       "The branch moved since the app's commit (other commits, or another point), so only a terminal opens its PR.",
     changes_commit_rewritten:
@@ -1949,6 +1951,10 @@ export const en: Dictionary = {
       "The description looks like it has a secret ({found}): take it out before opening the PR.",
     pr_title_secret:
       "The title looks like it has a secret ({found}): take it out before opening the PR.",
+    pr_push_timeout:
+      "The push took too long and was stopped, so no PR was opened: try again, or push from a terminal.",
+    pr_push_withheld:
+      "The push failed, and its output looks like it has a secret ({found}), so it is not shown: push from a terminal to see it.",
     merge_message_secret:
       "The merge message looks like it has a secret ({found}): take it out before merging.",
     project_no_pr_provider: "The project has no PR provider.",

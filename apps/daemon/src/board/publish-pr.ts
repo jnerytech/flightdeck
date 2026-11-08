@@ -34,8 +34,13 @@ export function assertNoSecretInPr(
   }
 }
 
-/** How long the push may take: a credential helper or a host prompt never waits for good. */
-const PUSH_TIMEOUT_MS = 120_000;
+/**
+ * How long the push may take: a credential helper or a host prompt never waits for good, and a
+ * card's first push of a large branch still fits.
+ */
+const PUSH_TIMEOUT_MS = 600_000;
+/** How much of a failed push's output reaches the app: enough to say why. */
+const OUTPUT_LIMIT = 2000;
 /** No prompt can wait on a terminal the daemon does not have. */
 const PUSH_ENV = { GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" };
 
@@ -64,6 +69,9 @@ export async function publishPr(opts: {
   body: string;
   provider: PrProvider;
   commit?: string;
+  /** The host's scanner: a failed push's output (a hook's, a helper's) is withheld when it finds one. */
+  scanner?: Pick<SecretScanner, "scan">;
+  timeoutMs?: number;
 }): Promise<string> {
   const { cwd, branch, base, title, body, provider, commit } = opts;
   const git = whichOnPath("git") ?? "git";
@@ -77,13 +85,27 @@ export async function publishPr(opts: {
     [git, "push", "--no-recurse-submodules", "--no-follow-tags", "origin", ...source],
     cwd,
     undefined,
-    PUSH_TIMEOUT_MS,
+    opts.timeoutMs ?? PUSH_TIMEOUT_MS,
     killTree,
     PUSH_ENV,
   );
+  if (pushed.timedOut) {
+    throw new FlightdeckError("invalid_state", "git push ran past its limit", "pr_push_timeout");
+  }
   if (pushed.code !== 0) {
-    // Git's message names the address: what reaches the app or a log carries no credential.
-    const output = withoutCredentials(pushed.stderr.trim());
+    // Git's message names the address: what reaches the app or a log carries no credential. The
+    // rest is scanned whole, then cut: a hook or a credential helper may print a secret.
+    const shown = withoutCredentials(pushed.stderr.trim());
+    const found = opts.scanner?.scan(shown) ?? [];
+    if (found.length > 0) {
+      throw new FlightdeckError(
+        "invalid_state",
+        `git push failed, and its output looks like it has a secret (${found.join(", ")}): it is not shown`,
+        "pr_push_withheld",
+        { found: found.join(", ") },
+      );
+    }
+    const output = shown.slice(0, OUTPUT_LIMIT);
     throw new FlightdeckError("invalid_state", `git push: ${output}`, "command_failed", {
       what: "git push",
       output,

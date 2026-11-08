@@ -1962,7 +1962,8 @@ export class Board {
     const base = assertBranchName(project.baseBranch);
     // Phase 40: the title the person confirmed, else the card's. The provider links the PR to the
     // issue and closes it on merge (`Fixes #n`, `AB#id`).
-    const url = await publishPr({ cwd, branch, base, title, body, provider });
+    const scanner = this.opts.scanner;
+    const url = await publishPr({ cwd, branch, base, title, body, provider, scanner });
     this.db
       .query(
         "UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = NULL, notice = NULL WHERE id = ?",

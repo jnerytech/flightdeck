@@ -1868,6 +1868,8 @@ export const ptBR = {
     changes_pr_base:
       "Este branch não veio de um commit do app, então a base dele não é conhecida: abra o PR num terminal.",
     changes_pr_remote: "O destino do push mudou desde que você olhou: confira de novo e abra o PR.",
+    changes_pr_ahead:
+      "O branch base tem commits que ainda não estão no origin, e eles iriam junto com este PR: faça o push deles antes ou abra o PR num terminal.",
     changes_pr_moved:
       "O branch mudou desde o commit do app (outros commits ou outro ponto), então o PR dele só abre num terminal.",
     changes_commit_rewritten:
@@ -1949,6 +1951,10 @@ export const ptBR = {
     card_no_worktree: "O card ainda não tem worktree.",
     pr_secret: "A descrição parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_title_secret: "O título parece ter um segredo ({found}): tire-o antes de abrir o PR.",
+    pr_push_timeout:
+      "O push demorou demais e foi interrompido, então nenhum PR foi aberto: tente de novo ou faça o push num terminal.",
+    pr_push_withheld:
+      "O push falhou, e a saída dele parece ter um segredo ({found}), então ela não aparece: faça o push num terminal para vê-la.",
     merge_message_secret:
       "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider: "O projeto não tem provedor de PR.",
