@@ -446,7 +446,8 @@ describe("board-multi-review: what a screen reader and a mouse get from the bar"
     setup({ refuse: { A: { message: "no" } } });
     await ready();
     const status = () => document.querySelector("[data-slot='board-status']") as HTMLElement | null;
-    expect(status()?.getAttribute("role")).toBe("status");
+    // An <output> is a live region (role status) with no attribute.
+    expect(status()?.tagName).toBe("OUTPUT");
     expect(status()?.textContent).toBe("");
     await ctrl("A");
     expect(status()?.textContent).toContain("1 selected");
