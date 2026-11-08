@@ -2411,8 +2411,9 @@ async function sessionFitsProblems(c: Context): Promise<string[]> {
 /**
  * The layout check (#1003), kept under the 90 s a journey gets: the screens people use most (Home,
  * a session, the board, a host's page, Settings) at the smallest window the app allows and at the
- * usual one. English runs all of it; pt-BR runs only the geometry guards, where its longer texts
- * are the point. The other sizes and screens are not checked here any more.
+ * usual one. English runs all of it, in two journeys (`layoutWindows` is the second half); pt-BR runs
+ * only the geometry guards, where its longer texts are the point. The other sizes and screens are
+ * not checked here any more.
  */
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
@@ -2468,6 +2469,15 @@ export async function layout(c: Context, problems: string[]) {
   if (new Set(lefts).size > 1) {
     problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
   }
+}
+
+/**
+ * The second half of the layout check (#1003), a journey of its own so each stays well under the
+ * 90 s a journey gets (the whole check took 72 to 78 s on CI): the sidebar and page scroll at two
+ * window sizes, a session opens at its end, the smallest window the app allows, and the bell.
+ * English only, like the first half's extras.
+ */
+export async function layoutWindows(c: Context, problems: string[]) {
   // Issue #567: the sidebar scrolls as one area between its fixed header and footer, at the
   // usual window and at a short one, where it has to scroll at all. #785: the area around a Page
   // (the Host page, where the user saw two bars) does not scroll beside the page's own bar.
