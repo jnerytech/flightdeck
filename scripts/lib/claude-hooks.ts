@@ -222,7 +222,8 @@ export function weakerEscape(
   const old = new Set(edit.before.split("\n"));
   const added = edit.after.split("\n").filter((line) => !old.has(line));
   const reason = added.map((line) => /\/\/ weaker: (\S.*)$/.exec(line)?.[1]).find(Boolean);
-  return reason?.trim() ?? null;
+  // Cut, so a long comment never fills the hook log (security review).
+  return reason ? reason.trim().slice(0, 200) : null;
 }
 
 /** The test file an Edit or Write touches, with its text before and after; null for any other file. */

@@ -10,7 +10,7 @@
  * `expect(x).not.toBeNull()`, the swap Sonar asks for.
  */
 const STRICT =
-  /\.(?:toBe|toEqual|toStrictEqual|toContain|toContainEqual|toMatch|toMatchObject|toThrow|toHaveLength)\((?!\s*expect\.anything\(\))(?!\s*(?:true|false)\s*,?\s*\))/g;
+  /\.(?:toBe|toEqual|toStrictEqual|toContain|toContainEqual|toMatch|toMatchObject|toThrow|toHaveLength)\((?!\s*expect\.anything\(\))(?!\s*(?:true|false)(?:\s*,)?\s*\))/g;
 
 /** A matcher that only says something is there, or is truthy. */
 const WEAK =
