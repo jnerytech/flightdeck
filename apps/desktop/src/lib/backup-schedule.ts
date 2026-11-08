@@ -114,21 +114,25 @@ export async function runScheduledBackup(deps: {
   }
   // The backup exists now. Pruning keeps it and the newest others, whatever their dates say; if the
   // folder cannot be read or cleaned, the run still counts as done and says the prune failed.
+  let removed = 0;
   try {
     const others = (await folder.list())
       .filter((one) => NAME.test(one) && one !== name)
       .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     const stale = others.slice(0, Math.max(0, others.length - (keep - 1)));
-    for (const old of stale) await folder.remove(old);
+    for (const old of stale) {
+      await folder.remove(old);
+      removed += 1;
+    }
     return {
       status: "done",
       name,
       kept: others.length - stale.length + 1,
-      removed: stale.length,
+      removed,
       prune: "ok",
       at,
     };
   } catch {
-    return { status: "done", name, kept: 1, removed: 0, prune: "failed", at };
+    return { status: "done", name, kept: 1, removed, prune: "failed", at };
   }
 }

@@ -69,8 +69,8 @@ pub fn save_folder(config_dir: &Path, folder: &str) -> Result<(), String> {
 /// The folder the person picked last, if it is still there.
 pub fn load_folder(config_dir: &Path) -> Option<String> {
     let saved = std::fs::read_to_string(config_dir.join(FOLDER_FILE)).ok()?;
-    let folder = saved.trim();
-    checked_dir(folder).ok().map(|_| folder.to_string())
+    // Read back exactly as saved: a trimmed name could be a different, sibling folder.
+    checked_dir(&saved).ok().map(|_| saved)
 }
 
 fn checked_name(name: &str) -> Result<(), String> {
