@@ -2418,9 +2418,9 @@ export const en: Dictionary = {
     endConfirm: "End session",
     endChangesTitle: "Uncommitted changes",
     endChangesOne:
-      "One file in this session's checkout is not committed. Commit it on a new branch first, or end anyway: it stays where it is.",
+      "One file in this session's checkout is not committed. Commit it first, or end anyway and leave it as it is.",
     endChangesMany:
-      "{n} files in this session's checkout are not committed. Commit them on a new branch first, or end anyway: they stay where they are.",
+      "{n} files in this session's checkout are not committed. Commit them first, or end anyway and leave them as they are.",
     endCommitFirst: "Commit…",
     endAnyway: "End anyway",
     pruned: "conversation removed by retention",

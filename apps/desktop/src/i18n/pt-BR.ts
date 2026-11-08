@@ -2418,9 +2418,9 @@ export const ptBR = {
     endConfirm: "Encerrar sessão",
     endChangesTitle: "Mudanças sem commit",
     endChangesOne:
-      "Um arquivo no checkout desta sessão não está commitado. Faça o commit num branch novo antes, ou encerre assim mesmo: ele fica onde está.",
+      "Um arquivo no checkout desta sessão não está commitado. Faça o commit antes, ou encerre assim mesmo e deixe como está.",
     endChangesMany:
-      "{n} arquivos no checkout desta sessão não estão commitados. Faça o commit num branch novo antes, ou encerre assim mesmo: eles ficam onde estão.",
+      "{n} arquivos no checkout desta sessão não estão commitados. Faça o commit antes, ou encerre assim mesmo e deixe como estão.",
     endCommitFirst: "Fazer commit…",
     endAnyway: "Encerrar assim mesmo",
     pruned: "conversa removida pela retenção",
