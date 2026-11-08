@@ -3880,7 +3880,7 @@ export const en: Dictionary = {
     templateStarts: "Starts with: {parts}",
     templateWorkflow: "workflow {name}",
     templatePersona: "persona {name}",
-    templatePins: "{n} pinned documents",
+    templatePins: { one: "{n} pinned document", other: "{n} pinned documents" },
     templateSpec: "spec {path}",
     templateDropped: "Templates left out for a mistake in cards.json: {n}.",
     templateIgnored: {

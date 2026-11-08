@@ -151,7 +151,7 @@ for (const [lang, t] of [
       const parts = [
         t.kanban.templateWorkflow.replace("{name}", "fix"),
         t.kanban.templatePersona.replace("{name}", "reviewer"),
-        t.kanban.templatePins.replace("{n}", "2"),
+        (lang === "en" ? "2 pinned documents" : "2 documentos fixados"),
         t.kanban.templateSpec.replace("{path}", "docs/specs/bug.md"),
       ].join(", ");
       expect(screen.queryByText(t.kanban.templateStarts.replace("{parts}", parts))).not.toBeNull();

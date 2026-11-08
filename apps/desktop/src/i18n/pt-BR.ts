@@ -3887,7 +3887,7 @@ export const ptBR = {
     templateStarts: "Começa com: {parts}",
     templateWorkflow: "workflow {name}",
     templatePersona: "persona {name}",
-    templatePins: "{n} documentos fixados",
+    templatePins: { one: "{n} documento fixado", other: "{n} documentos fixados" },
     templateSpec: "spec {path}",
     templateDropped: "Modelos deixados de fora por erro no cards.json: {n}.",
     templateIgnored: {
