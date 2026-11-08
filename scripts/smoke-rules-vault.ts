@@ -246,6 +246,174 @@ class FakeClaude {
   }
 }
 
+function check(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+const ALL_DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+const prodRule = (days: string[]) => [
+  {
+    id: "prod-janela",
+    match: { requester: "claude", tags: ["prod"] },
+    decision: "ask",
+    window: { days, from: "00:00", to: "24:00" },
+  },
+];
+
+async function declareActionsAndRules(app: App): Promise<void> {
+  step = "declarar as ações e as regras";
+  const echo = (name: string, secret: string, tags: string[]) => ({
+    name,
+    description: `Imprime o token de ${name} (só para o smoke)`,
+    run: [process.execPath, "-e", "console.log(process.env.TOKEN)"],
+    env: { TOKEN: `{{secret.${secret}}}` },
+    tags,
+  });
+  await app.call("actions.save", {
+    definition: echo("deploy-staging", "staging-token", ["staging"]),
+  });
+  await app.call("actions.save", { definition: echo("logs-prod", "prod-token", ["prod"]) });
+  await app.call("vault.rules.set", {
+    secretId: "staging-token",
+    tags: ["staging"],
+    rules: [
+      {
+        id: "liberar-staging",
+        match: { requester: "claude", action: "deploy-staging" },
+        decision: "allow",
+      },
+    ],
+  });
+  // The ceiling: the app is refused a rule that frees prod with no window.
+  const ceiling = await app.ack("vault.rules.set", {
+    secretId: "prod-token",
+    rules: [{ id: "livre", match: { tags: ["prod"] }, decision: "allow" }],
+  });
+  check(
+    !ceiling.ok && JSON.stringify(ceiling).includes("window"),
+    "allow para prod sem janela devia ser recusado",
+  );
+  const today = ALL_DAYS[new Date().getDay()] as string;
+  await app.call("vault.rules.set", {
+    secretId: "prod-token",
+    tags: ["prod"],
+    rules: prodRule(ALL_DAYS.filter((d) => d !== today)),
+  });
+}
+
+function writeMcpConfig(work: string, config: object, url: string): string {
+  step = "o Claude falso pelo MCP";
+  const mcpConfig = join(work, "mcp-config.json");
+  writeFileSync(mcpConfig, JSON.stringify({ ...config, port: Number(new URL(url).port) }));
+  return mcpConfig;
+}
+
+async function checkStagingAllowed(claude: FakeClaude, app: App): Promise<void> {
+  step = "deploy-staging com a regra allow roda sem perguntar";
+  const staged = await claude.callTool("run_action", { name: "deploy-staging" });
+  check(
+    !staged.error && staged.text.includes("•••(staging-token)"),
+    `deploy-staging: ${staged.text}`,
+  );
+  const first = app.requests[0];
+  check(
+    first?.decision === "allow" && first.ruleId === "liberar-staging",
+    `o pedido devia ser allow pela regra: ${JSON.stringify(first)}`,
+  );
+  check(app.gateRefusals === 0, "um pedido allow não devia precisar de aprovação");
+  log("deploy-staging rodou pela regra allow, sem aprovação");
+}
+
+async function checkProdOutsideWindow(claude: FakeClaude, app: App): Promise<void> {
+  step = "logs-prod fora da janela é negado";
+  const before = app.requests.length;
+  const outside = await claude.callTool("run_action", { name: "logs-prod" });
+  check(
+    outside.error && outside.text.includes("window"),
+    `fora da janela devia ser negado: ${outside.text}`,
+  );
+  check(app.requests.length === before, "o pedido negado chegou ao app");
+  log("logs-prod fora da janela foi negado, sem incomodar o app");
+}
+
+async function checkProdInsideWindow(claude: FakeClaude, app: App): Promise<void> {
+  step = "logs-prod dentro da janela pede aprovação";
+  await app.call("vault.rules.set", {
+    secretId: "prod-token",
+    tags: ["prod"],
+    rules: prodRule(ALL_DAYS),
+  });
+  const inside = await claude.callTool("run_action", { name: "logs-prod" });
+  check(
+    !inside.error && inside.text.includes("•••(prod-token)"),
+    `logs-prod dentro da janela: ${inside.text}`,
+  );
+  const asked = app.requests.at(-1);
+  check(
+    asked?.decision === "ask" && asked.needsHold === true && asked.ruleId === "prod-janela",
+    `o pedido de prod devia perguntar, segurando o botão: ${JSON.stringify(asked)}`,
+  );
+  check(app.gateRefusals === 1, "a entrega antes da aprovação devia ter sido recusada");
+  log("logs-prod dentro da janela: o daemon recusou a entrega até a aprovação, e depois rodou");
+}
+
+async function checkAutomationDenied(automation: App): Promise<void> {
+  step = "a automação é negada pelo padrão";
+  const denied = await automation.ack("actions.run", {
+    name: "deploy-staging",
+    requestedBy: "automation",
+  });
+  check(
+    !denied.ok && JSON.stringify(denied).includes("automation"),
+    `a automação devia ser negada: ${JSON.stringify(denied)}`,
+  );
+  log("a automação foi negada pelo padrão");
+}
+
+async function checkAudit(app: App): Promise<void> {
+  step = "a auditoria";
+  const { decisions } = await app.call<{
+    decisions: Array<{
+      outcome: string;
+      requester: string;
+      secretId: string;
+      ruleId: string | null;
+    }>;
+  }>("vault.decisions", {});
+  const outcomes = decisions
+    .map((d) => `${d.requester}:${d.secretId}:${d.outcome}`)
+    .sort(byCodeUnit);
+  const expected = [
+    "automation:staging-token:refused",
+    "claude:prod-token:approved",
+    "claude:prod-token:refused",
+    "claude:staging-token:allowed",
+  ];
+  check(
+    JSON.stringify(outcomes) === JSON.stringify(expected),
+    `auditoria inesperada: ${JSON.stringify(outcomes)}`,
+  );
+  const report = await app.call<{ csv?: string }>("vault.report", { format: "csv" });
+  check(report.csv?.startsWith("secret,requester,outcome,count"), "sem CSV");
+  log("a auditoria tem as quatro decisões e o relatório sai em CSV");
+}
+
+function checkSecretsAbsent(haystacks: Buffer[], secrets: string[]): void {
+  for (const secret of secrets) {
+    for (const needle of [
+      secret,
+      Buffer.from(secret).toString("base64"),
+      Buffer.from(secret).toString("hex"),
+    ]) {
+      check(
+        !haystacks.some((hay) => hay.includes(needle)),
+        "o valor de um segredo apareceu nos logs, no banco ou no que o Claude recebeu",
+      );
+    }
+  }
+}
+
 async function run(work: string): Promise<void> {
   mkdirSync(work, { recursive: true });
   const token = crypto.randomUUID().replaceAll("-", "");
@@ -286,135 +454,18 @@ async function run(work: string): Promise<void> {
     const automation = new App(url, vault);
     await automation.open(token, false);
 
-    step = "declarar as ações e as regras";
-    const echo = (name: string, secret: string, tags: string[]) => ({
-      name,
-      description: `Imprime o token de ${name} (só para o smoke)`,
-      run: [process.execPath, "-e", "console.log(process.env.TOKEN)"],
-      env: { TOKEN: `{{secret.${secret}}}` },
-      tags,
-    });
-    await app.call("actions.save", {
-      definition: echo("deploy-staging", "staging-token", ["staging"]),
-    });
-    await app.call("actions.save", { definition: echo("logs-prod", "prod-token", ["prod"]) });
-    await app.call("vault.rules.set", {
-      secretId: "staging-token",
-      tags: ["staging"],
-      rules: [
-        {
-          id: "liberar-staging",
-          match: { requester: "claude", action: "deploy-staging" },
-          decision: "allow",
-        },
-      ],
-    });
-    // The ceiling: the app is refused a rule that frees prod with no window.
-    const ceiling = await app.ack("vault.rules.set", {
-      secretId: "prod-token",
-      rules: [{ id: "livre", match: { tags: ["prod"] }, decision: "allow" }],
-    });
-    if (ceiling.ok || !JSON.stringify(ceiling).includes("window")) {
-      throw new Error("allow para prod sem janela devia ser recusado");
-    }
-    const allDays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-    const today = allDays[new Date().getDay()] as string;
-    const prodRule = (days: string[]) => [
-      {
-        id: "prod-janela",
-        match: { requester: "claude", tags: ["prod"] },
-        decision: "ask",
-        window: { days, from: "00:00", to: "24:00" },
-      },
-    ];
-    await app.call("vault.rules.set", {
-      secretId: "prod-token",
-      tags: ["prod"],
-      rules: prodRule(allDays.filter((d) => d !== today)),
-    });
+    await declareActionsAndRules(app);
 
-    step = "o Claude falso pelo MCP";
-    const mcpConfig = join(work, "mcp-config.json");
-    writeFileSync(mcpConfig, JSON.stringify({ ...config, port: Number(new URL(url).port) }));
+    const mcpConfig = writeMcpConfig(work, config, url);
     claude = new FakeClaude(["mcp", "--config", mcpConfig]);
     const tools = await claude.start();
-    if (!tools.includes("run_action")) throw new Error("falta a ferramenta run_action");
+    check(tools.includes("run_action"), "falta a ferramenta run_action");
 
-    step = "deploy-staging com a regra allow roda sem perguntar";
-    const staged = await claude.callTool("run_action", { name: "deploy-staging" });
-    if (staged.error || !staged.text.includes("•••(staging-token)")) {
-      throw new Error(`deploy-staging: ${staged.text}`);
-    }
-    const first = app.requests[0];
-    if (first?.decision !== "allow" || first.ruleId !== "liberar-staging") {
-      throw new Error(`o pedido devia ser allow pela regra: ${JSON.stringify(first)}`);
-    }
-    if (app.gateRefusals !== 0) throw new Error("um pedido allow não devia precisar de aprovação");
-    log("deploy-staging rodou pela regra allow, sem aprovação");
-
-    step = "logs-prod fora da janela é negado";
-    const before = app.requests.length;
-    const outside = await claude.callTool("run_action", { name: "logs-prod" });
-    if (!outside.error || !outside.text.includes("window")) {
-      throw new Error(`fora da janela devia ser negado: ${outside.text}`);
-    }
-    if (app.requests.length !== before) throw new Error("o pedido negado chegou ao app");
-    log("logs-prod fora da janela foi negado, sem incomodar o app");
-
-    step = "logs-prod dentro da janela pede aprovação";
-    await app.call("vault.rules.set", {
-      secretId: "prod-token",
-      tags: ["prod"],
-      rules: prodRule(allDays),
-    });
-    const inside = await claude.callTool("run_action", { name: "logs-prod" });
-    if (inside.error || !inside.text.includes("•••(prod-token)")) {
-      throw new Error(`logs-prod dentro da janela: ${inside.text}`);
-    }
-    const asked = app.requests.at(-1);
-    if (asked?.decision !== "ask" || asked.needsHold !== true || asked.ruleId !== "prod-janela") {
-      throw new Error(
-        `o pedido de prod devia perguntar, segurando o botão: ${JSON.stringify(asked)}`,
-      );
-    }
-    if ((app.gateRefusals as number) !== 1)
-      throw new Error("a entrega antes da aprovação devia ter sido recusada");
-    log("logs-prod dentro da janela: o daemon recusou a entrega até a aprovação, e depois rodou");
-
-    step = "a automação é negada pelo padrão";
-    const denied = await automation.ack("actions.run", {
-      name: "deploy-staging",
-      requestedBy: "automation",
-    });
-    if (denied.ok || !JSON.stringify(denied).includes("automation")) {
-      throw new Error(`a automação devia ser negada: ${JSON.stringify(denied)}`);
-    }
-    log("a automação foi negada pelo padrão");
-
-    step = "a auditoria";
-    const { decisions } = await app.call<{
-      decisions: Array<{
-        outcome: string;
-        requester: string;
-        secretId: string;
-        ruleId: string | null;
-      }>;
-    }>("vault.decisions", {});
-    const outcomes = decisions
-      .map((d) => `${d.requester}:${d.secretId}:${d.outcome}`)
-      .sort(byCodeUnit);
-    const expected = [
-      "automation:staging-token:refused",
-      "claude:prod-token:approved",
-      "claude:prod-token:refused",
-      "claude:staging-token:allowed",
-    ];
-    if (JSON.stringify(outcomes) !== JSON.stringify(expected)) {
-      throw new Error(`auditoria inesperada: ${JSON.stringify(outcomes)}`);
-    }
-    const report = await app.call<{ csv?: string }>("vault.report", { format: "csv" });
-    if (!report.csv?.startsWith("secret,requester,outcome,count")) throw new Error("sem CSV");
-    log("a auditoria tem as quatro decisões e o relatório sai em CSV");
+    await checkStagingAllowed(claude, app);
+    await checkProdOutsideWindow(claude, app);
+    await checkProdInsideWindow(claude, app);
+    await checkAutomationDenied(automation);
+    await checkAudit(app);
     app.close();
     automation.close();
   } finally {
@@ -430,19 +481,7 @@ async function run(work: string): Promise<void> {
     Buffer.from(err.join("")),
     Buffer.from(seen.join("\n")),
   ];
-  for (const secret of [staging, prod]) {
-    for (const needle of [
-      secret,
-      Buffer.from(secret).toString("base64"),
-      Buffer.from(secret).toString("hex"),
-    ]) {
-      if (haystacks.some((hay) => hay.includes(needle))) {
-        throw new Error(
-          "o valor de um segredo apareceu nos logs, no banco ou no que o Claude recebeu",
-        );
-      }
-    }
-  }
+  checkSecretsAbsent(haystacks, [staging, prod]);
   log(
     `${filesOf(dataDir).length} arquivos do daemon, os logs e o que o Claude recebeu sem os valores`,
   );

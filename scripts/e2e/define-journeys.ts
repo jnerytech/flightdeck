@@ -6,7 +6,7 @@
  * finds what another language left (a card made by the issue journey) copes with either order.
  * `E2E_ONLY=a,b` keeps the journeys with those names (and no layout check, which is not a journey).
  */
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { type Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import { JOURNEYS, VIEWPORTS } from "../lib/e2e-journeys.ts";
 import { type Context, journeys, layout, layoutAbas, layoutWindows } from "./journeys.ts";
@@ -54,9 +54,7 @@ export function defineJourneys(lang: Lang): void {
       const { url, ids } = demo();
       const problems: string[] = [];
       await layout({ page, url, lang, ids, repeat: 0, t: translator(lang) }, problems);
-      if (problems.length > 0) {
-        throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
-      }
+      expect(problems, `e2e: ${problems.length} problemas`).toEqual([]);
     });
 
     // The crowded-tabs part of the layout check, in English only: a journey of its own, so no
@@ -66,9 +64,7 @@ export function defineJourneys(lang: Lang): void {
         const { url, ids } = demo();
         const problems: string[] = [];
         await layoutAbas({ page, url, lang, ids, repeat: 0, t: translator(lang) }, problems);
-        if (problems.length > 0) {
-          throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
-        }
+        expect(problems, `e2e: ${problems.length} problemas`).toEqual([]);
       });
     }
 
@@ -79,9 +75,7 @@ export function defineJourneys(lang: Lang): void {
         const { url, ids } = demo();
         const problems: string[] = [];
         await layoutWindows({ page, url, lang, ids, repeat: 0, t: translator(lang) }, problems);
-        if (problems.length > 0) {
-          throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
-        }
+        expect(problems, `e2e: ${problems.length} problemas`).toEqual([]);
       });
     }
   });
