@@ -470,7 +470,7 @@ export class Actions {
     try {
       const action: ActionDef = {
         name: FREE,
-        description: "comando livre com segredos no ambiente",
+        description: "free command with secrets in the environment",
         run: line ? line.argv : ["sh", "-c", input.command],
         env: Object.fromEntries(ids.map((id) => [envName(id), `{{secret.${id}}}`])),
         params: {},
@@ -753,7 +753,7 @@ export class Actions {
           ...verdict,
           decision: "allow",
           once: false,
-          reason: `${verdict.reason}; já aprovado nesta sessão`,
+          reason: `${verdict.reason}; already approved in this session`,
         },
         rememberedKey: key,
         remembered: true,
@@ -793,7 +793,7 @@ export class Actions {
         "new-requester",
         secretId,
         ask.requester,
-        `${ask.requester} usou o segredo ${secretId} pela primeira vez`,
+        `${ask.requester} used the secret ${secretId} for the first time`,
       );
     }
     if (verdict.granted) return;

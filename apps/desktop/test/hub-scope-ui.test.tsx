@@ -272,7 +272,7 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
   test("em português", async () => {
     setup({ language: "pt-BR" });
     await settle(() => shown("on alfa"));
-    expect(screen.queryByRole("button", { name: "Dados de Todos os hosts" }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Dados de Todos os hosts" }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("em português, o host fora do ar oferece todos os hosts", async () => {
@@ -280,7 +280,7 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     await settleMaybe(
       () => screen.queryByRole("button", { name: "Mostrar todos os hosts" }) !== null,
     );
-    expect(screen.queryByRole("button", { name: "Mostrar todos os hosts" }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Mostrar todos os hosts" }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });
 

@@ -114,7 +114,7 @@ describe("cota-ui", () => {
     await settle(() => card() !== null);
     expect(within(card() as HTMLElement).queryByText("sem leitura ainda")).not.toBeNull();
     expect(within(card() as HTMLElement).queryByRole("heading", { name: "alfa" })).not.toBeNull();
-    expect(within(card() as HTMLElement).queryAllByRole("meter").length).toBe(0);
+    expect(within(card() as HTMLElement).queryAllByRole("meter").length).toBe(0); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(bar("five_hour")).toBeNull();
   });
 

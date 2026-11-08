@@ -389,11 +389,11 @@ describe("board-contracts-ui: the project's contracts, force and the recorded no
       ],
     });
     await ready();
-    expect(
+    const absent =
       within(li("A")).queryByText(
         "Moved to In review anyway; it lacked a PR link, passing checks.",
-      ) === null,
-    ).toBe(false);
+      ) === null;
+    expect(absent).toBe(false);
   });
 
   test("the host's refusal reads as what the card lacks, in Portuguese too", async () => {

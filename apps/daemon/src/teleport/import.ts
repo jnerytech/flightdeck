@@ -9,18 +9,7 @@
  * aside, never deleted (#870, docs/decisions/2026-11-07-teleport-return.md).
  */
 import { constants } from "node:fs";
-import {
-  access,
-  copyFile,
-  lstat,
-  mkdir,
-  open,
-  readdir,
-  realpath,
-  rename,
-  rm,
-  stat,
-} from "node:fs/promises";
+import { copyFile, lstat, mkdir, open, realpath, rename, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { PermissionMode, SessionStatus } from "@flightdeck/protocol";
 import { refArg } from "../board/ref-arg.ts";
@@ -28,6 +17,7 @@ import { addWorktree } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { git, must } from "./git.ts";
+import { onDisk } from "./on-disk.ts";
 import type { TeleportReceived } from "./receive.ts";
 
 /** A received package taken out of the inbox for the import: nothing else removes it meanwhile. */
@@ -357,28 +347,6 @@ export interface TeleportImportWiring {
     close(sessionId: string): Promise<void>;
   };
   meta: { set(claudeSessionId: string, patch: { archived: boolean }): unknown } | undefined;
-}
-
-/** The transcript of a session in any project folder of the history roots, or null. */
-async function onDisk(roots: readonly string[], claudeSessionId: string): Promise<string | null> {
-  // A session id is a UUID: a name with a separator or a dot never reaches the path.
-  if (!/^[0-9a-f-]{36}$/i.test(claudeSessionId)) return null;
-  for (const root of roots) {
-    // A root that is not there (yet) holds no transcript.
-    const folders = await readdir(root, { withFileTypes: true }).catch(() => []);
-    for (const folder of folders) {
-      if (!folder.isDirectory()) continue;
-      const file = join(root, folder.name, `${claudeSessionId}.jsonl`);
-      if (
-        await access(file).then(
-          () => true,
-          () => false,
-        )
-      )
-        return file;
-    }
-  }
-  return null;
 }
 
 /** The real deps of an import. */

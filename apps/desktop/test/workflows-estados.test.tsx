@@ -36,7 +36,7 @@ test("a workflow with no commands draws no empty list under its name", async () 
   });
   expect(screen.queryByRole("listitem", { name: "Workflow feature" })).not.toBeNull();
   // An empty <ul> has no list role for testing-library, so look it up by its label.
-  expect(document.querySelector("[aria-label='Comandos de feature']") === null).toBe(true);
+  expect(document.querySelector("[aria-label='Comandos de feature']") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
 });
 
 test("a host that does not answer leaves a message saying so, not an endless loading", async () => {
@@ -48,5 +48,5 @@ test("a host that does not answer leaves a message saying so, not an endless loa
       "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
     ),
   ).not.toBeNull();
-  expect(screen.queryByRole("status", { name: "Carregando workflows" }) === null).toBe(true);
+  expect(screen.queryByRole("status", { name: "Carregando workflows" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
 });

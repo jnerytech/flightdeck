@@ -339,6 +339,11 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
   variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
   avisa: uma parte marcada como faltando pode existir.
+- Em um host que guarda modelos de configuração, **Compartilhar como modelo**, abaixo da checklist,
+  pede um nome e guarda o `CLAUDE.md`, os agentes e as skills do projeto como um modelo do qual
+  qualquer projeto desse host pode partir. As configurações (hooks, permissões, servidores MCP)
+  nunca são compartilhadas, cada arquivo é verificado em busca de segredos antes, e um nome já
+  usado é recusado.
 - A página de um host também lista seus **modelos de configuração do Claude Code**, os compartilhados
   da configuração de um projeto, com seus arquivos e tamanho. **Apagar** pergunta antes e remove só
   esse modelo: os projetos configurados com ele ficam com os arquivos. Funciona deste computador ou

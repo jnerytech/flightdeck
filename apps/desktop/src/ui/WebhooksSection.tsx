@@ -202,9 +202,9 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                       }
                     />
                     {results[target.id] && (
-                      <p role="status" className="text-muted-foreground text-xs">
+                      <output className="block text-muted-foreground text-xs">
                         {results[target.id]}
-                      </p>
+                      </output>
                     )}
                   </Stack>
                 </li>

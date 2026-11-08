@@ -86,7 +86,7 @@ const badRequest = (reason: SnippetReason, message: string, params: SnippetParam
 /** Control characters other than the ones `allow` lets through (tab for a command, tab and lines for a prompt). */
 export function hasControl(text: string, allow: string): boolean {
   return [...text].some((char) => {
-    const code = char.charCodeAt(0);
+    const code = char.codePointAt(0) ?? 0;
     return (code < 32 || code === 127) && !allow.includes(char);
   });
 }

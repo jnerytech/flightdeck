@@ -317,6 +317,7 @@ jobs:
         run: |
           bun run smoke
           bun run smoke:multi
+          bun run smoke:teleport
           bun run smoke:history
           bun run smoke:board
           bun run smoke:deps
@@ -586,6 +587,7 @@ jobs:
         run: |
           bun run smoke
           bun run smoke:multi
+          bun run smoke:teleport
           bun run smoke:history
           bun run smoke:board
           bun run smoke:deps

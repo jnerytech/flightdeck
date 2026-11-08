@@ -72,7 +72,7 @@ const button = (name: string) => screen.queryByRole("button", { name });
 /** The button, after saying it is there: a miss fails on its expect, not on a missing element. */
 const need = (name: string): HTMLElement => {
   const found = button(name);
-  expect(found === null).toBe(false);
+  expect(found === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   return found as HTMLElement;
 };
 const click = (el: Element) =>
@@ -97,8 +97,8 @@ describe("projetos-novo-ui: New project on the Projects page", () => {
     const w = setup();
     render(w.view());
     const add = button("New project");
-    expect(add === null).toBe(false);
-    expect(add?.closest('[data-slot="page-actions"]') === null).toBe(false);
+    expect(add === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(add?.closest('[data-slot="page-actions"]') === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("with one host it opens the add form for that host and the project is added there", async () => {
@@ -106,7 +106,7 @@ describe("projetos-novo-ui: New project on the Projects page", () => {
     render(w.view());
     await click(need("New project"));
     await addFolder("/work/new");
-    await waitFor(() => expect(w.sent.length).toBe(1));
+    await waitFor(() => expect(w.sent).toHaveLength(1));
     expect(w.sent).toEqual([["h1", "project.add", { path: "/work/new" }]]);
     await waitFor(() => expect(w.added).toEqual([["h1", "p-new"]]));
   });

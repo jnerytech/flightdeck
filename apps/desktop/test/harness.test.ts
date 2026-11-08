@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { HarnessPreview, ProjectLoad } from "@flightdeck/protocol";
-import { addsNothing, harnessParts, needsReformat } from "../src/lib/harness.ts";
+import { addsNothing, harnessParts, needsReformat, templateIdFrom } from "../src/lib/harness.ts";
 
 /** Issue #75, slice S1: a project's harness as a checklist, from what the host already lists. */
 const EMPTY: ProjectLoad = {
@@ -188,5 +188,29 @@ describe("harness: what a set-up preview would write (#75, S4b)", () => {
     const adds = { ...settings, denyRules: ["Read(./.env)"] };
     const preview: HarnessPreview = { settings: adds, files: [], unreadable: [] };
     expect([addsNothing(preview), needsReformat(preview)]).toEqual([false, true]);
+  });
+});
+
+describe("harness: the id a shared template gets from its title (#75)", () => {
+  test("a title becomes lower case words joined by dashes, with accents dropped", () => {
+    expect([
+      templateIdFrom("Shop setup"),
+      templateIdFrom("  Configuração da Loja!! "),
+      templateIdFrom("API v2 / backend"),
+    ]).toEqual(["shop-setup", "configuracao-da-loja", "api-v2-backend"]);
+  });
+
+  test("an id is at most 40 characters and never starts or ends with a dash", () => {
+    const id = templateIdFrom(`${"a".repeat(39)} bbbbb`);
+    expect([id.length <= 40, id.endsWith("-"), id.startsWith("a")]).toEqual([true, false, true]);
+    expect(templateIdFrom("---x---")).toBe("x");
+  });
+
+  test("a title with no letter or digit has no id, so nothing can be shared under it", () => {
+    expect([templateIdFrom(""), templateIdFrom("!!! ???"), templateIdFrom("日本語")]).toEqual([
+      "",
+      "",
+      "",
+    ]);
   });
 });

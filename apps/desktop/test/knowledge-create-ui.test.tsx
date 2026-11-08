@@ -232,7 +232,7 @@ describe("knowledge-create-ui: the form says what each box is and what Create wa
       fireEvent.change(inside.getByRole("textbox", { name: names.labels[1] }), {
         target: { value: "Use the queue" },
       });
-      await waitFor(() => expect(inside.queryByText(names.reason) === null).toBe(true));
+      await waitFor(() => expect(inside.queryByText(names.reason) === null).toBe(true)); // NOSONAR: the boolean keeps a DOM node out of the failure diff
       expect(create?.hasAttribute("disabled")).toBe(false);
     });
   }

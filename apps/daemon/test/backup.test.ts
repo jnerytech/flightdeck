@@ -153,17 +153,17 @@ describe("backup", () => {
         return (error as Error).message;
       }
     };
-    expect(await refuse(good)).toContain("pare o daemon");
+    expect(await refuse(good)).toContain("stop the daemon");
     await lock?.release();
     store.close();
     const broken = join(tempDir(), "quebrado.db");
     writeFileSync(broken, "isto não é sqlite");
-    expect(await refuse(broken)).toContain("integridade");
+    expect(await refuse(broken)).toContain("integrity check");
     const future = join(tempDir(), "futuro.db");
     const db = new Database(future);
     db.exec(`PRAGMA user_version = ${MIGRATIONS.length + 1}`);
     db.close();
-    expect(await refuse(future)).toContain("mais nova");
+    expect(await refuse(future)).toContain("newer flightdeckd");
     const result = await restoreBackup({ file: good, dataDir });
     expect(result.beforeRestore).toBe(join(dataDir, "flightdeck.db.before-restore"));
     const restored = new EventStore(join(dataDir, "flightdeck.db"));

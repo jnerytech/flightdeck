@@ -31,7 +31,7 @@ describe("host-tabs-store: each host has its own tabs in the app's store (issue 
     // The first host kept its own tab.
     store.hostTabs.switchHost("ha");
     expect(store.router.current).toEqual({ name: "projects", host: "ha" });
-    expect(store.tabs === store.hostTabs.workspace?.tabs).toBe(true);
+    expect<unknown>(store.tabs).toBe(store.hostTabs.workspace?.tabs);
   });
 
   test("a shared screen shows in the shared set, and store.tabs is the active set's tabs", () => {
@@ -39,7 +39,7 @@ describe("host-tabs-store: each host has its own tabs in the app's store (issue 
     store.router.push({ name: "projects", host: "ha" });
     store.router.push({ name: "settings" });
     expect(store.hostTabs.onShared).toBe(true);
-    expect(store.tabs === store.hostTabs.shared).toBe(true);
+    expect(store.tabs).toBe(store.hostTabs.shared);
     expect(store.router.current).toEqual({ name: "settings" });
     // The fresh window's Home and Settings are pinned: they sit at the left of every host's row.
     expect(store.hostTabs.shared.tabs.map((tab) => tab.router.current.name)).toEqual([

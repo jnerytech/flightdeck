@@ -149,7 +149,7 @@ describe("risco-ui: o alto pede para segurar", () => {
       />,
     );
     const group = screen.getByRole("group", { name: "Pedido de ExitPlanMode" });
-    expect(button(group, "Aprovar plano") === null).toBe(true);
+    expect(button(group, "Aprovar plano") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const hold = button(group, "Segurar para aprovar");
     expect(hold).not.toBeNull();
     await act(async () => {

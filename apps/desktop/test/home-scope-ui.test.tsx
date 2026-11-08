@@ -175,7 +175,7 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     act(() => store.projectKeys.note(["github.com/x/z"]));
     await settle(() => /\$2\.00/.test(spend()));
     const trigger = screen.queryByRole("button", { name: "Data from All hosts" });
-    expect(trigger !== null).toBe(true);
+    expect(trigger !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.pointerDown(trigger as HTMLElement, {
         button: 0,
@@ -184,7 +184,7 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
       });
     });
     const entry = screen.queryByRole("menuitemradio", { name: "github.com/x/z" });
-    expect(entry !== null).toBe(true);
+    expect(entry !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.click(entry as HTMLElement);
     });
@@ -197,7 +197,7 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
     act(() => store.projectKeys.note(["github.com/x/y", "github.com/x/z"]));
     await settle(() => /\$7\.00/.test(spend()));
     const trigger = screen.queryByRole("button", { name: "Data from All hosts" });
-    expect(trigger !== null).toBe(true);
+    expect(trigger !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.pointerDown(trigger as HTMLElement, {
         button: 0,
@@ -206,11 +206,11 @@ describe("home-scope-ui: Home adds up the hosts in the data scope (#126)", () =>
       });
     });
     const group = screen.queryByRole("group", { name: "Projects" });
-    expect(group !== null).toBe(true);
+    expect(group !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const entry = within(group as HTMLElement).queryByRole("menuitemradio", {
       name: "github.com/x/z",
     });
-    expect(entry !== null).toBe(true);
+    expect(entry !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.click(entry as HTMLElement);
     });

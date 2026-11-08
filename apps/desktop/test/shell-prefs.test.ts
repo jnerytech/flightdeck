@@ -26,7 +26,7 @@ describe("shell-prefs: what the shell hides is kept", () => {
     const before = prefs.value;
     prefs.set({ hideBadges: true });
     expect(prefs.value).toEqual({ hideBadges: true, hideWhatsNew: false });
-    expect(prefs.value === before).toBe(false);
+    expect(prefs.value).not.toBe(before);
     expect(heard).toBe(1);
     expect(new ShellPrefs(store).value).toEqual({ hideBadges: true, hideWhatsNew: false });
     prefs.set({ hideWhatsNew: true });

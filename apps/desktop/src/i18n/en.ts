@@ -2652,6 +2652,8 @@ export const en: Dictionary = {
     showInFolder: "Show in folder",
     showInFolderLabel: "Show {path} in its folder",
     noLines: "No lines to show.",
+    commentHint:
+      "Click a line number to comment; Shift+click picks a range. Keys: arrows between lines, Enter to comment.",
     commentLine: "Comment on line {line} of {path}",
     commentOldLine: "Comment on old line {line} of {path}",
     composer: "New comment",
@@ -4507,6 +4509,18 @@ export const en: Dictionary = {
         format: "a formatter after edits",
         gitAdd: "a check before git add",
         secrets: "a check on secret files",
+      },
+      share: {
+        action: "Share as template",
+        message:
+          "Keeps this project's CLAUDE.md, agents and skills as a template any project on this host can start from. Settings stay out: never hooks, permissions or MCP servers. Every file is checked for secrets first.",
+        name: "Template name",
+        idHint: "Saved as {id}.",
+        needsName: "Use at least one letter or digit (a-z, 0-9).",
+        confirm: "Share",
+        filesOne: "1 file",
+        filesMany: "{n} files",
+        done: "Shared as the template {title} ({files}).",
       },
       setup: {
         startFrom: "Start from",

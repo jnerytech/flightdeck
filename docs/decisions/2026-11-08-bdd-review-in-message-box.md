@@ -1,0 +1,5 @@
+# The review in the message box is a Gherkin scenario (issue #1146)
+
+- **Done.** `scripts/e2e/bdd/features/review-in-message-box.feature`, en and pt-BR. The scenario makes a git folder with an edited file and a session in it, opens the session's Changes view, comments on line 1, hands the review over with "Review in the message box (1)", sees the comment in the message box and the session back on its conversation ("The review is in the message box."), sends it, and finds the review in the conversation. Red when the hand-over is cut.
+- **Not done.** The keyboard path (comment by keyboard, Ctrl+Enter and Esc in the comment box) stays with the unit tests of `changes-compose-ui`. The plain journey `revisao-comentar-e-enviar` (the card's diff, "Send review") is a different flow and stays.
+- **Seen on the way, not changed here.** The review message the app sends starts with a Portuguese header ("Revisão das mudanças:") in the English app too: the text comes from `packages/protocol/src/review-message.ts`. It is the model's input, not a screen, but it is worth a decision (fd-frontend).
