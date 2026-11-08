@@ -75,7 +75,12 @@ export function saveSchedule(storage: BackupPlatform["storage"], schedule: Backu
 /** Whether a run is owed: a cadence is set, a folder is chosen, and a period passed since the last. */
 export function isDue(schedule: BackupSchedule, now: number): boolean {
   if (schedule.cadence === "off" || schedule.folder === "") return false;
-  return schedule.lastRunAt === null || now - schedule.lastRunAt >= PERIOD[schedule.cadence];
+  // A last run ahead of now (the clock moved back) cannot stand for a period that passed.
+  return (
+    schedule.lastRunAt === null ||
+    schedule.lastRunAt > now ||
+    now - schedule.lastRunAt >= PERIOD[schedule.cadence]
+  );
 }
 
 export function backupFileName(now: number): string {
