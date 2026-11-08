@@ -33,6 +33,10 @@ export const NARROW_SHOTS: readonly string[] = [
   // #1052: the onboarding journey, the first screens a new person sees.
   "primeira-execucao",
   "host-novo",
+  // #168, round 3: the surfaces shipped on 2026-11-07 and 08.
+  "projeto-conhecimento",
+  "claude-code-preparar",
+  "card-fixados",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

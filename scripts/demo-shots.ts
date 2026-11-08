@@ -817,13 +817,47 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     {
-      // #76: the project's knowledge panel, scrolled into view on its page.
+      // #76: the project's knowledge panel, scrolled into view on its page. The design-system
+      // project has the demo's library (one document of each status), so the print shows the
+      // filters, the statuses and the pickers, not the empty panel (#168, round 3).
       name: "projeto-conhecimento",
-      route: { name: "project", host: ALFA, projectId: ids.project },
+      route: { name: "project", host: ALFA, projectId: ids.knowledgeProject },
       async prepare(page) {
         const panel = page.getByRole("region", {
           name: /^(Project knowledge|Conhecimento do projeto)$/,
         });
+        await panel.waitFor({ timeout: 15_000 });
+        await panel.getByText(/^(Design tokens come from one file)$/).waitFor({ timeout: 15_000 });
+        await panel.scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #75: Set up Claude Code's preview on the empty project: what it would add, before anything
+      // is written (the preview writes nothing, so the other prints see the same project).
+      name: "claude-code-preparar",
+      route: { name: "project", host: ALFA, projectId: ids.emptyProject },
+      async prepare(page) {
+        await page
+          .getByRole("button", { name: /^(Set up Claude Code|Configurar o Claude Code)$/ })
+          .click();
+        await page
+          .getByRole("alertdialog")
+          .getByRole("button", { name: /^(Apply the setup|Aplicar a configuração)$/ })
+          .waitFor({ timeout: 15_000 });
+      },
+    },
+    {
+      // #76: a card's pinned documents, scrolled into view on the card's page, with the picker of
+      // the project's library (nothing pinned: pinning would change the demo for the next prints).
+      name: "card-fixados",
+      route: {
+        name: "card",
+        host: ALFA,
+        projectId: ids.knowledgeProject,
+        cardId: ids.contractCard,
+      },
+      async prepare(page) {
+        const panel = page.getByRole("region", { name: /^(Pinned documents|Documentos fixados)$/ });
         await panel.waitFor({ timeout: 15_000 });
         await panel.scrollIntoViewIfNeeded();
       },
