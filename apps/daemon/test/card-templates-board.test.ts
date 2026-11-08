@@ -170,3 +170,23 @@ describe("card-templates-board: a card made from a template (#1201)", () => {
     expect(error.reason).toBe("card_template_unknown");
   });
 });
+
+describe("card-templates-board: createCard judges what it stores (#1201)", () => {
+  test("a spec path outside the worktree or a pin outside the library makes no card", async () => {
+    const { board, projectId } = await project();
+    const made = [];
+    for (const extra of [{ specPath: "../outside.md" }, { pinnedDocs: ["README.md"] }]) {
+      const error = await refusal(async () =>
+        board.createCard(projectId, { title: "x", description: "", ...extra }),
+      );
+      made.push([error.code, error.reason]);
+    }
+    expect([made, board.getBoard(projectId).columns.flatMap((c) => c.cards).length]).toEqual([
+      [
+        ["bad_request", "spec_path_invalid"],
+        ["bad_request", "pinned_doc_invalid"],
+      ],
+      0,
+    ]);
+  });
+});
