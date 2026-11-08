@@ -570,7 +570,7 @@ describe("pr-flow: open", () => {
     });
     expect(await prFlow(["open", "a"], f.deps)).toBe(0);
     expect(f.writes).toEqual([]);
-    expect(f.out()).toContain("a already has PR #12\n");
+    expect(f.out()).toMatch(/^a already has PR #12$/m);
   });
 
   test("a branch not pushed, one whose commits name no issue, or an unreadable issue is refused", async () => {

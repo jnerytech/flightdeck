@@ -11,6 +11,7 @@
  *
  * The logic is here; the effects (git, gh, bun, the files) come in through `ReleaseDeps`.
  */
+import { BRANCH_PR_JQ, branchPr, otherPrsMessage } from "./branch-pr.ts";
 import { PACKAGES } from "./release.ts";
 
 export interface ReleaseResult {
@@ -183,12 +184,16 @@ async function prepare(run: Run, from: string): Promise<number> {
     "api",
     `repos/{owner}/{repo}/pulls?head={owner}:${branch}&state=open`,
     "--jq",
-    ".[].number",
+    BRANCH_PR_JQ,
   ]);
-  const waiting = open.stdout.trim().split("\n")[0];
-  if (waiting) {
+  const { own: waiting, others } = branchPr(open.stdout, branch);
+  if (waiting !== null) {
     say(run, `${branch} has PR #${waiting} open: run this again once it merged`);
     return 0;
+  }
+  if (others.length > 0) {
+    say(run, otherPrsMessage(branch, others));
+    return 1;
   }
   const start = (await deps.git(["rev-parse", "--abbrev-ref", "HEAD"])).stdout.trim() || MAIN;
   if ((await deps.git(["switch", "-c", branch, `origin/${MAIN}`])).code !== 0) {
