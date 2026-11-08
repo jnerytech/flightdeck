@@ -69,13 +69,13 @@ export function CardPins(
               <li key={pin} className="flex flex-wrap items-center gap-2 text-sm">
                 {known ? (
                   <>
-                    <span className="font-medium">{known.title}</span>
-                    <span className="text-muted-foreground">{pin}</span>
+                    <span className="min-w-0 break-all font-medium">{known.title}</span>
+                    <span className="min-w-0 break-all text-muted-foreground">{pin}</span>
                     <Badge variant="outline">{word(known)}</Badge>
                   </>
                 ) : (
                   <>
-                    <span className="font-medium">{pin}</span>
+                    <span className="min-w-0 break-all font-medium">{pin}</span>
                     {entries.length > 0 && (
                       <span className="text-muted-foreground">{t("cardUi.pins.unlisted")}</span>
                     )}
