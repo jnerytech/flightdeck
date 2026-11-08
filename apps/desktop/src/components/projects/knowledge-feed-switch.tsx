@@ -51,7 +51,7 @@ export function KnowledgeFeedSwitch(
   }
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* A live region from the first draw, so turning the index on or off is read out. */}
+      {/* A live region: a later change of the words (the index on or off) is read out. */}
       <p role="status" className="text-sm">
         {words}
       </p>
