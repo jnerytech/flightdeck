@@ -21,7 +21,7 @@ const PERIOD_KEYS: Record<Budget["period"], Key> = {
 };
 
 /** A share of the plan as text: 0.2 is "20%", 0.125 is "12.5%". */
-const share = (fraction: number) => `${Math.round(fraction * 1000) / 10}%`;
+export const share = (fraction: number) => `${Math.round(fraction * 1000) / 10}%`;
 
 /** "orçamento do host (dia)". */
 export function budgetLabel(
@@ -39,7 +39,14 @@ export function budgetLabel(
 }
 
 /** The note on a project's share of a window: the plan does not say who used it. */
-const estimateNote = (budget: Budget, t: T) => (budget.estimated ? t("budgets.estimate") : "");
+export const estimateNote = (budget: Budget, t: T) =>
+  budget.estimated ? t("budgets.estimate") : "";
+
+/** The limit of a budget as text: dollars, or "50% of the plan" for a window one. */
+export const budgetLimitText = (budget: Budget, t: T = PT): string =>
+  budget.limitPct === null
+    ? usd(budget.limitUsd)
+    : t("budgets.limitQuota", { limit: share(budget.limitPct) });
 
 /** "orçamento do host (dia) · notificar · US$ 6.00 de US$ 10.00 (60%)". */
 export function budgetLine(budget: Budget, t: T = PT): string {
