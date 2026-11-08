@@ -184,6 +184,29 @@ describe("nova-sessao-primeiro: the last choices are already made", () => {
     expect(store.newSessionPrefs.value.model).toBe("haiku");
   });
 
+  test("an OpenCode session keeps its folder but not its mode: those are Claude's to remember", async () => {
+    const withOpenCode = {
+      ...hostOf(["/one", "/two"]),
+      hostInfo: { runtimes: [{ kind: "opencode", available: true }] },
+    } as unknown as FormHost;
+    const { store } = open(withOpenCode, (s) =>
+      s.newSessionPrefs.remember("h1", {
+        root: "/one",
+        sub: "",
+        mode: "acceptEdits",
+        model: "opus",
+      }),
+    );
+    await fill("Agent", "opencode");
+    await fill("Folder", "/two");
+    await fill("Permission mode", "plan");
+    await fill("First prompt", "go");
+    await press("Create session");
+    expect(store.newSessionPrefs.folderOf("h1")).toEqual({ root: "/two", sub: "" });
+    expect(store.newSessionPrefs.value.mode).toBe("acceptEdits");
+    expect(store.newSessionPrefs.value.model).toBe("opus");
+  });
+
   test("bypass is never the starting point: it still asks, and the next form is not in it", async () => {
     const { store, created } = open(hostOf(["/work"], true), (s) =>
       s.newSessionPrefs.remember("h1", { root: "/work", sub: "", mode: "plan", model: "" }),
