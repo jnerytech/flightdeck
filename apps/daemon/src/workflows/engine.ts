@@ -71,6 +71,15 @@ export interface WorkflowEngineOptions {
   headOf?: (worktree: string) => Promise<string | null>;
 }
 
+/** #1266: the rows the engine names after a step: a parallel's items, a loop's check and do. */
+function childrenOf(definition: string, stepId: string): Set<string> {
+  const step = parseWorkflow(definition).workflow?.steps.find((s) => s.id === stepId);
+  if (!step) return new Set();
+  if ("parallel" in step) return new Set(step.parallel.map((_, i) => `${stepId}.${i}`));
+  if ("loop" in step) return new Set([`${stepId}.check`, `${stepId}.do`]);
+  return new Set();
+}
+
 /** The commit a worktree's HEAD is at, from git; null when it cannot say. */
 async function gitHead(worktree: string): Promise<string | null> {
   const found = await git(worktree, "rev-parse", "--verify", "--quiet", "HEAD");
@@ -309,10 +318,57 @@ export class WorkflowEngine {
       .query<RunRow, []>("SELECT * FROM workflow_runs WHERE status IN ('running', 'waiting')")
       .all();
     for (const run of runs) {
-      const { worktreePath } = this.host.card(run.card_id);
+      // A run whose card is gone fails alone: it never stops the daemon's start.
+      const card = this.cardOrNull(run.card_id);
+      if (!card?.worktreePath) {
+        this.end(run.id, "failed", "the run's card is gone");
+        continue;
+      }
       // At a gate the run holds no slot; it takes one again once the gate is approved.
       if (run.status === "running") this.host.hold(run.card_id);
-      void this.execute(run.id, worktreePath as string);
+      void this.execute(run.id, card.worktreePath);
+    }
+    // #1266: a resume that was waiting for its slot waits again, with the HEAD it was given.
+    const resumed = this.db
+      .query<RunRow & { head: string | null }, []>(
+        `SELECT r.*, (SELECT head FROM run_resumes WHERE run_id = r.id ORDER BY n DESC LIMIT 1) AS head
+         FROM workflow_runs r WHERE r.status = 'queued'
+         AND EXISTS (SELECT 1 FROM run_resumes WHERE run_id = r.id)`,
+      )
+      .all();
+    for (const run of resumed) {
+      // What a resume would refuse is never run: its card must still be the run's, its stored
+      // definition its hash, the workflow still trusted, and a HEAD recorded. Any of these
+      // failing fails that run only, never the daemon's start.
+      const card = this.cardOrNull(run.card_id);
+      const why = (() => {
+        if (!card?.worktreePath || card.discarded || card.workflowRunId !== run.id) {
+          return "run_resume_card";
+        }
+        if (
+          hashOf(run.definition) !== run.workflow_hash ||
+          !this.trusted(card.projectId, run.workflow_name, run.workflow_hash)
+        ) {
+          return "run_resume_workflow_changed";
+        }
+        return run.head ? null : "run_resume_no_head";
+      })();
+      if (why || !card?.worktreePath || !run.head) {
+        this.end(run.id, "failed", "the resume cannot go on after the restart");
+        this.setReasonKey(run.id, why ?? "run_resume_card", {});
+        if (card) this.host.place(run.card_id, { type: "workflow", state: "waiting" });
+        continue;
+      }
+      this.resuming.add(run.id);
+      void this.afterSlot(run.id, run.card_id, card.worktreePath, run.head);
+    }
+  }
+
+  private cardOrNull(cardId: string): Card | null {
+    try {
+      return this.host.card(cardId);
+    } catch {
+      return null;
     }
   }
 
@@ -449,6 +505,21 @@ export class WorkflowEngine {
     const worktree = card.worktreePath;
     const head = run.head_at_end;
     this.resuming.add(run.id);
+    try {
+      this.write(run, check.from, head);
+    } catch (error) {
+      // Nothing was written: the run stays failed, and resumable.
+      this.resuming.delete(run.id);
+      throw error;
+    }
+    this.setStatus(run.id, "queued", null);
+    void this.afterSlot(run.id, run.card_id, worktree, head);
+    return check;
+  }
+
+  /** The resume recorded, the failed step's rows gone and the run's end cleared, all or none. */
+  private write(run: RunRow, from: string, head: string | null): void {
+    const check = { from };
     this.db.transaction(() => {
       const { n } = this.db
         .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM run_resumes WHERE run_id = ?")
@@ -458,17 +529,17 @@ export class WorkflowEngine {
           "INSERT INTO run_resumes (run_id, n, from_step, reason, head, at) VALUES (?, ?, ?, ?, ?, ?)",
         )
         .run(run.id, n + 1, check.from, run.status_reason, head, now());
-      // The failed step runs from scratch, its parallel items (`<id>.<n>`) and attempts with it.
+      // The failed step runs from scratch, with its own items and attempts: the rows the engine
+      // names after it (`<id>.<n>` of a parallel, `<id>.check` and `<id>.do` of a loop), taken from
+      // its definition, so a step whose id only looks like one of them keeps its result.
+      const own = childrenOf(run.definition, from);
       const stale = this.db
         .query<{ step_id: string; attempt: number; status: string }, [string]>(
           "SELECT step_id, attempt, status FROM step_runs WHERE run_id = ?",
         )
         .all(run.id)
         .filter(
-          (row) =>
-            row.status !== "completed" ||
-            row.step_id === check.from ||
-            row.step_id.startsWith(`${check.from}.`),
+          (row) => row.status !== "completed" || row.step_id === check.from || own.has(row.step_id),
         );
       for (const row of stale) {
         this.db
@@ -482,9 +553,6 @@ export class WorkflowEngine {
         )
         .run(run.id);
     })();
-    this.setStatus(run.id, "queued", null);
-    void this.afterSlot(run.id, run.card_id, worktree, head);
-    return check;
   }
 
   /**
@@ -497,13 +565,17 @@ export class WorkflowEngine {
     worktree: string,
     head: string | null,
   ): Promise<void> {
+    let held = false;
     try {
       await this.host.acquire(cardId);
+      held = true;
       if (this.row(runId).status !== "queued") {
         this.host.release(cardId);
         return;
       }
-      if ((await this.headOf(worktree).catch(() => null)) !== head) {
+      if (head === null || (await this.headOf(worktree).catch(() => null)) !== head) {
+        // The HEAD stays: asked again, the run says the branch moved, not that it has none.
+        this.restoreHead(runId, head);
         this.end(runId, "failed", "the card's branch moved while the run waited");
         this.setReasonKey(runId, "run_resume_branch_moved", {});
         this.host.place(cardId, { type: "workflow", state: "waiting" });
@@ -512,11 +584,25 @@ export class WorkflowEngine {
       }
       this.host.place(cardId, { type: "workflow", state: "running" });
       this.begin(runId, worktree);
+      // From here the run owns the slot: its own end gives it back, not this catch.
+      held = false;
     } catch (error) {
-      this.end(runId, "failed", reason(error));
+      // The run may be gone (its card discarded meanwhile): its slot still goes back.
+      if (held) this.host.release(cardId);
+      try {
+        this.restoreHead(runId, head);
+        this.end(runId, "failed", reason(error));
+        this.host.place(cardId, { type: "workflow", state: "waiting" });
+      } catch {
+        // Nothing left to end.
+      }
     } finally {
       this.resuming.delete(runId);
     }
+  }
+
+  private restoreHead(runId: string, head: string | null): void {
+    this.db.query("UPDATE workflow_runs SET head_at_end = ? WHERE id = ?").run(head, runId);
   }
 
   /** "Parar": interrupts the turns going on; the interrupted step fails the run. */
