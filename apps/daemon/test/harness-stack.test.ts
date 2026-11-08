@@ -61,6 +61,13 @@ describe("harness-stack: what a project is built with, read from its manifests (
     ]);
   });
 
+  test("a python project that formats with black and has no ruff is formatted by black", async () => {
+    expect(await detectStack(repo({ "pyproject.toml": "[tool.black]\n" }))).toEqual({
+      stacks: ["python"],
+      commands: { test: null, lint: null, format: "black .", build: null },
+    });
+  });
+
   test("python, go, rust and dotnet projects get their tools' fixed commands", async () => {
     const at = (files: Record<string, string>) => detectStack(repo(files));
     expect([
