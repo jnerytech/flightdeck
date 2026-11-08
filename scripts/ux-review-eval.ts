@@ -13,13 +13,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { whichOnPath } from "../apps/daemon/src/which.ts";
-import {
-  childEnv,
-  type EvalRunner,
-  evalOptions,
-  evalPlatformRefusal,
-  prepareClone,
-} from "./lib/harness-eval.ts";
+import { type EvalHost, evalContext, evalOptions, prepareClone } from "./lib/harness-eval.ts";
 import {
   applyCase,
   gradeReport,
@@ -40,18 +34,7 @@ if (typeof options === "string") {
   console.error(`ux-review-eval: ${options}`);
   process.exit(2);
 }
-const refusal = evalPlatformRefusal(process.platform);
-if (refusal) {
-  console.error(`ux-review-eval: ${refusal}`);
-  process.exit(2);
-}
-const claude = whichOnPath("claude");
-if (!claude) {
-  console.error("ux-review-eval: claude is not on the PATH");
-  process.exit(2);
-}
-const env = childEnv(process.env);
-const run: EvalRunner = (command, cwd) => {
+const spawn: EvalHost["spawn"] = (command, cwd, env) => {
   const proc = spawnSync(command[0] ?? "", command.slice(1), {
     cwd,
     env,
@@ -60,13 +43,18 @@ const run: EvalRunner = (command, cwd) => {
   });
   return { code: proc.status ?? 1, out: proc.stdout ?? "" };
 };
-const top = run(["git", "rev-parse", "--show-toplevel"], process.cwd());
-if (top.code !== 0) {
-  console.error("ux-review-eval: run it inside the flightdeck repository");
+const context = evalContext("ux-review-eval", {
+  platform: process.platform,
+  which: whichOnPath,
+  spawn,
+  cwd: process.cwd(),
+  env: process.env,
+});
+if (typeof context === "string") {
+  console.error(context);
   process.exit(2);
 }
-const root = top.out.trim();
-const head = run(["git", "rev-parse", "HEAD"], root).out.trim();
+const { claude, run, root, head } = context;
 // The reports hold what the agent read: a 0700 folder, 0600 files.
 const outDir = mkdtempSync(join(tmpdir(), "fd-ux-review-eval-"));
 

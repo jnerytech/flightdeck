@@ -192,8 +192,17 @@ export interface EvalContext {
 }
 
 /** The context of an eval named `tag`, or why it cannot start (prefixed with the tag). */
-export function evalContext(_tag: string, _host: EvalHost): EvalContext | string {
-  return "";
+export function evalContext(tag: string, host: EvalHost): EvalContext | string {
+  const refusal = evalPlatformRefusal(host.platform);
+  if (refusal) return `${tag}: ${refusal}`;
+  const claude = host.which("claude");
+  if (!claude) return `${tag}: claude is not on the PATH`;
+  const env = childEnv(host.env);
+  const run: EvalRunner = (command, cwd) => host.spawn(command, cwd, env);
+  const top = run(["git", "rev-parse", "--show-toplevel"], host.cwd);
+  if (top.code !== 0) return `${tag}: run it inside the flightdeck repository`;
+  const root = top.out.trim();
+  return { claude, run, root, head: run(["git", "rev-parse", "HEAD"], root).out.trim() };
 }
 
 /** Why the evals refuse to run on this platform, or null. */

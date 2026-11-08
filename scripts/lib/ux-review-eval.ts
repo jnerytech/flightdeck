@@ -154,7 +154,7 @@ const REVIEW_SHAPE = /\baccept\b|\|\s*File:line\s*\|/i;
 
 /** Escapes a path for a regex. */
 function escaped(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 /**
@@ -167,7 +167,7 @@ export function gradeReport(expect: UxExpect | null, report: string): boolean {
   if (expect === null)
     return REVIEW_SHAPE.test(report) && !lines.some((line) => HIGH_ROW.test(line));
   const base = expect.file.slice(expect.file.lastIndexOf("/") + 1);
-  const at = new RegExp(`${escaped(base)}(?::(\\d+))?`);
+  const at = new RegExp(String.raw`${escaped(base)}(?::(\d+))?`);
   return lines.some((line) => {
     const hit = at.exec(line);
     if (!hit) return false;
