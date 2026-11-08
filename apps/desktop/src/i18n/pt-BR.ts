@@ -4675,6 +4675,7 @@ export const ptBR = {
     endMessage:
       "Encerrar o processo {pid} ({name})? O daemon do host o iniciou e nenhuma sessão é dona dele.",
     endFailed: "Não foi possível encerrar esse processo.",
+    unreadable: "Não deu para ler os recursos deste host. Eles aparecem quando o host responder.",
   },
   worktrees: {
     title: "Worktrees",
