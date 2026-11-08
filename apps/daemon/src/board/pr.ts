@@ -189,7 +189,7 @@ export async function cliOk(
  * send it away. A line break has no place in a name either.
  */
 function urlName(what: string, value: string): string {
-  const control = [...value].some((char) => char.charCodeAt(0) < 32);
+  const control = [...value].some((char) => (char.codePointAt(0) ?? 0) < 32);
   if (value === "" || value.startsWith("@") || control) {
     throw new FlightdeckError(
       "invalid_state",
