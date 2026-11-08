@@ -43,6 +43,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "card-novo-modelo",
   "claude-code-preparar",
   "card-fixados",
+  // #1271: a Form dialog in the narrow sheet, its buttons at the sheet's bottom.
+  "acoes-nova",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
