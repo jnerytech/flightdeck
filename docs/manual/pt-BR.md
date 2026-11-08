@@ -1568,6 +1568,28 @@ validação e os comandos `check`. **Confiar** mostra esses comandos e pede conf
   execução e que esse conteúdo continua confiado. Qualquer outro comando é recusado sem chegar
   ao shell.
 
+### Modelos
+
+Dois workflows já vêm com o Flightdeck, para trabalho recorrente que termina em um pull request:
+
+- **Corretor de alertas:** pega um alerta de lint ou de segurança que você cola, corrige na branch
+  do card com um teste (até 3 tentativas com o seu comando de teste), pergunta a você e abre o
+  pull request.
+- **Rascunho de post-mortem:** redige o post-mortem de um incidente (resumo, impacto, linha do
+  tempo, causa, ações) em um arquivo Markdown, marca o que não conseguiu confirmar, pergunta a você
+  e abre o pull request.
+
+Os dois param em uma aprovação antes de enviar qualquer coisa e têm um orçamento de turnos e de
+minutos. Com o pull request aberto, vale para ele o limite de rodadas do Vigiar PRs.
+
+Um modelo é um arquivo, e o Flightdeck não grava nada no seu repositório. Na tela **Workflows**,
+**Adicionar de um modelo** lista os modelos. Abra um para ler o arquivo, use **Copiar o arquivo**,
+faça commit em `.flightdeck/workflows/` na branch base e **confie** nele na mesma tela, como em
+qualquer workflow. A linha `check` do corretor de alertas já traz o comando de teste do projeto
+quando o Flightdeck consegue descobrir (`npm run test`, `cargo test`...). Quando não consegue, a
+linha traz um texto provisório que falha de propósito: troque pelo seu comando de teste antes do
+commit.
+
 ### Rodar e acompanhar
 
 No detalhe do card, escolha o workflow (ou **Nenhum**, para o card simples), preencha os
