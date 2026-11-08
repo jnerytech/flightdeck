@@ -225,6 +225,10 @@ describe("harness-eval: what the session may touch", () => {
       "Bash(git diff * ~*)",
       "Bash(git diff ../*)",
       "Bash(git diff *../*)",
+      // A variable or a drive letter names a path outside the clone too (re-review of #986).
+      "Bash(git diff $*)",
+      "Bash(git diff *$*)",
+      "Bash(git diff *:*)",
     ]) {
       expect(denied).toContain(tool);
     }
