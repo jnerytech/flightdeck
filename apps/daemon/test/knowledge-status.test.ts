@@ -75,6 +75,14 @@ describe("knowledge-status: setting the status of a document (#76)", () => {
     expect(done).toEqual(await entryOf(root, "docs/adr/a.md"));
   });
 
+  test("a status the library does not know is replaced by one it does, which is how it gets fixed", async () => {
+    const root = tempDir("fd-status-");
+    put(root, "docs/adr/a.md", DOC.replace("transitional", "draft"));
+    const shown = await entryOf(root, "docs/adr/a.md");
+    const done = await setKnowledgeStatus(root, "docs/adr/a.md", "valid", shown.hash);
+    expect([shown.problems, done.problems, done.status]).toEqual([["status_unknown"], [], "valid"]);
+  });
+
   test("a document with no front matter gets a block with the status alone", async () => {
     const root = tempDir("fd-status-");
     put(root, "docs/rfc/plain.md", "# Plain\n\nBody\n");
