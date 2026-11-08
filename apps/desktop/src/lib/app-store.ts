@@ -439,6 +439,7 @@ export type HostCommandType = Extract<
   | "knowledge.feed"
   | "knowledge.setFeed"
   | "knowledge.setStatus"
+  | "knowledge.create"
   | "host.updates.set"
   | `ssh.${string}`
   | `snippets.${string}`
