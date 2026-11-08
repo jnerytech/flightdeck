@@ -862,6 +862,12 @@ function shots(ids: DemoIds): Shot[] {
         await page.getByRole("menu").waitFor();
       },
     },
+    // #994: on a session page a toast sits above the message box, never on Send or the mode chip.
+    {
+      name: "sessao-aviso",
+      route: { name: "session", host: ALFA, id: ids.idleSession },
+      prepare: showToast,
+    },
     {
       name: "erro",
       route: { name: "reader", target: { hostId: ALFA, claudeSessionId: "nao-existe" } },
