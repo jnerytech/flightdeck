@@ -422,6 +422,8 @@ export function NeedsYou(
               store={store}
               chip={entry.kind === "request" ? chipOf(entry.item.sessionId) : null}
               minute={minute}
+              lang={t.lang}
+              hostName={entry.kind === "finished" ? hostNameOf(store, entry.finish.hostId) : ""}
               onActivate={activate}
             />
           </Fragment>

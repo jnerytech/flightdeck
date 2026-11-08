@@ -81,6 +81,10 @@ interface EntryRowProps {
   chip: { name: string; color: ClientColor } | null;
   /** The minute of the clock: a row's "time ago" moves on with it, not on every render. */
   minute: number;
+  /** The language the row speaks: it translates inside, so a switch redraws it. */
+  lang: string;
+  /** The name of the host of a finished session, as the list shows it now. */
+  hostName: string;
   onActivate(index: number): void;
 }
 
@@ -117,7 +121,7 @@ function EntryRowImpl(props: Readonly<EntryRowProps>) {
   if (entry.kind === "finished") {
     const { finish } = entry;
     const outcome = t(`needsYou.finishedOutcome.${finish.outcome}` as Key);
-    const who = `${hostNameOf(store, finish.hostId)} · ${finish.name}`;
+    const who = `${props.hostName} · ${finish.name}`;
     return (
       <RowButton
         active={active}
@@ -196,6 +200,8 @@ function sameRow(a: Readonly<EntryRowProps>, b: Readonly<EntryRowProps>): boolea
     a.selected === b.selected &&
     a.store === b.store &&
     a.minute === b.minute &&
+    a.lang === b.lang &&
+    a.hostName === b.hostName &&
     a.onActivate === b.onActivate &&
     a.chip?.name === b.chip?.name &&
     a.chip?.color === b.chip?.color &&
