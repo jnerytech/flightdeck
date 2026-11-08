@@ -224,7 +224,9 @@ export function evalOptions(argv: string[]): EvalOptions | string {
   if (!Number.isInteger(samples) || samples < 1)
     return "--samples must be a whole number of at least 1";
   const budget = option("--budget", "1");
-  if (!(Number(budget) > 0)) return "--budget must be a positive number of USD";
+  const amount = Number(budget);
+  // Not a number counts as wrong too: a plain `<=` would let NaN through.
+  if (!Number.isFinite(amount) || amount <= 0) return "--budget must be a positive number of USD";
   return { samples, budget, model: option("--model", "sonnet"), keep: argv.includes("--keep") };
 }
 
