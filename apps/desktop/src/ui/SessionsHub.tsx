@@ -29,13 +29,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "../components/feedback/inline-notice.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { ALL_CLIENTS } from "../lib/client-scope.ts";
 import { UNASSIGNED } from "../lib/clients.ts";
-import { usd } from "../lib/costs.ts";
+import { projectLabel, usd } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope, scopeHosts } from "../lib/data-scope.ts";
 import type { Density } from "../lib/density.ts";
 import {
@@ -122,6 +123,8 @@ export function SessionsHub(
   if (visitAll) hostScope = ALL_SCOPE;
   else if (visiting) hostScope = { kind: "host", hostId: visiting.id };
   const scoped = hostScope.kind === "host" ? hostScope.hostId : "";
+  /** A project scope (#126 slice 4): that project's sessions, on every host it is on. */
+  const scopedProject = hostScope.kind === "project" ? hostScope.projectKey : "";
   /** The scoped host, when it is offline (not still connecting): the hub says so and offers all. */
   const away = scoped
     ? scopeHosts(state.hosts, hostScope).find(
@@ -185,24 +188,11 @@ export function SessionsHub(
   );
   // Only what the rows are made of recomputes them (a typing indicator or an error does not).
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
-  const rows = useMemo(
+  const allRows = useMemo(
     () =>
-      store
-        .clientScope()
-        .filter(hubRows(state, t), state.clientSelection, (row) => row.projectKey)
-        .filter((row) => !scoped || row.hostId === scoped)
-        .filter(
-          (row) => !only || (row.hostId === only.hostId && row.projectKey === only.projectKey),
-        )
-        .filter((row) => {
-          // The branch picked in the sidebar tree keeps the sessions of that checkout.
-          if (!picked || !pickedProject) return true;
-          return rowInFilter(row, picked, pickedProject, worktrees);
-        }),
+      store.clientScope().filter(hubRows(state, t), state.clientSelection, (row) => row.projectKey),
     [
       store,
-      scoped,
-      only,
       state.hosts,
       state.hub,
       state.meta,
@@ -211,13 +201,41 @@ export function SessionsHub(
       state.background,
       state.personas,
       t,
-      picked,
-      pickedProject,
-      worktrees,
       state.clientList,
       state.clientOverrides,
       state.clientSelection,
     ],
+  );
+  // The hub's projects, for the Projects group of the scope menu (as Home and Costs offer theirs).
+  const projectKeys = useMemo(
+    () =>
+      [...new Set([...allRows.map((row) => row.projectKey), scopedProject])].filter(
+        (key) => key !== "",
+      ),
+    [allRows, scopedProject],
+  );
+  const projectNames = useProjectLabels(store, projectKeys);
+  const projects = useMemo(
+    () =>
+      projectKeys
+        .map((key) => ({ key, label: projectNames.get(key) ?? projectLabel(key) }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [projectKeys, projectNames],
+  );
+  const rows = useMemo(
+    () =>
+      allRows
+        .filter((row) => !scoped || row.hostId === scoped)
+        .filter((row) => !scopedProject || row.projectKey === scopedProject)
+        .filter(
+          (row) => !only || (row.hostId === only.hostId && row.projectKey === only.projectKey),
+        )
+        .filter((row) => {
+          // The branch picked in the sidebar tree keeps the sessions of that checkout.
+          if (!picked || !pickedProject) return true;
+          return rowInFilter(row, picked, pickedProject, worktrees);
+        }),
+    [allRows, scoped, scopedProject, only, picked, pickedProject, worktrees],
   );
   const allGroups = useMemo(() => hubGroups(rows, filter), [rows, filter]);
   /** How many rows are drawn: the cap, and one more cap for each "show more". */
@@ -411,8 +429,8 @@ export function SessionsHub(
     (rows.length === 0 && !state.hosts.some((h) => h.status === "online"));
   const toolbar = (
     <Toolbar label={t("hub.filters")}>
-      {state.hostsLoaded && state.hosts.length > 1 && (
-        <ScopeMenu store={store} hosts={state.hosts} scope={hostScope} />
+      {state.hostsLoaded && (state.hosts.length > 1 || scopedProject !== "") && (
+        <ScopeMenu store={store} hosts={state.hosts} projects={projects} scope={hostScope} />
       )}
       <ViewToggle
         view={view}
