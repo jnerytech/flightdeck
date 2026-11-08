@@ -1664,6 +1664,8 @@ commit it to `.flightdeck/workflows/` on the base branch, and **Trust** it on th
 like any other workflow. The `check` line of the alert fixer already holds the project's test
 command when Flightdeck can tell it (`npm run test`, `cargo test`...). When it cannot, the line
 holds a placeholder that fails on purpose: replace it with your test command before you commit.
+If the clipboard refuses the copy, the dialog says so as an alert: select the text of the file shown
+there and copy it by hand. A host with no templates says that instead of showing an empty list.
 
 ### Running and following
 

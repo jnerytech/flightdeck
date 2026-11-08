@@ -3989,6 +3989,9 @@ export const ptBR = {
       file: "Arquivo {path}",
       copy: "Copiar o arquivo",
       copied: "Copiado. Faça commit na branch base e confie nele aqui.",
+      copyFailed:
+        "A área de transferência recusou a cópia. Selecione o texto do arquivo acima e copie à mão.",
+      none: "Este host não oferece modelos.",
       checkFilled:
         "A linha check tem o comando de teste deste projeto. Confira antes de confiar no workflow.",
       checkPlaceholder:
