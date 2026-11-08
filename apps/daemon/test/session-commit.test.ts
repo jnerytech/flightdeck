@@ -437,10 +437,10 @@ describe("session-commit: a plain session's files committed on a new branch (#11
         outcome(commits.commit(TARGET, { files, message: "m", branch })),
       ),
     );
-    expect([both, git(repo, "branch", "--list", "work/*").replaceAll(/[ *]/g, "")]).toEqual([
-      ["ok", "changes_commit_stale"],
-      "work/first",
-    ]);
+    // One after the other, in whichever order they reach the checkout: one goes in, the other then
+    // finds its file committed.
+    const branches = git(repo, "branch", "--list", "work/*").replaceAll(/[ *]/g, "").split("\n");
+    expect([[...both].sort(), branches.length]).toEqual([["changes_commit_stale", "ok"], 1]);
   });
 
   test.skipIf(!posix)(
