@@ -1571,6 +1571,25 @@ and their `check` commands. **Trust** shows those commands and asks for confirma
 - **Before each check:** the daemon verifies that the command is literally in the run's workflow
   and that this content is still trusted. Any other command is refused before reaching the shell.
 
+### Templates
+
+Two workflows ship with Flightdeck, for recurring work that ends in a pull request:
+
+- **Alert fixer:** takes one lint or security alert that you paste in, fixes it on the card's branch
+  with a test (up to 3 attempts against your test command), asks you, then opens the pull request.
+- **Post-mortem draft:** drafts a post-mortem of an incident (summary, impact, timeline, cause,
+  actions) as a Markdown file, marks what it could not verify, asks you, then opens the pull request.
+
+Both stop at an approval before anything is pushed, and both have a budget of turns and minutes.
+Once the pull request is open, the PR watch's round limit applies to it.
+
+A template is a file, and Flightdeck writes nothing to your repository. On the **Workflows**
+screen, **Add from a template** lists them. Open one to read its file, then **Copy the file**,
+commit it to `.flightdeck/workflows/` on the base branch, and **Trust** it on the same screen
+like any other workflow. The `check` line of the alert fixer already holds the project's test
+command when Flightdeck can tell it (`npm run test`, `cargo test`...). When it cannot, the line
+holds a placeholder that fails on purpose: replace it with your test command before you commit.
+
 ### Running and following
 
 In the card detail, pick the workflow (or **None (plain card)**), fill in the `inputs` and click

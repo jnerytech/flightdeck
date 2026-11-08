@@ -3837,6 +3837,28 @@ export const en: Dictionary = {
     empty: "No workflows on the base branch yet.",
     failed:
       "Could not read the workflows. Check that the host is connected, then open the page again.",
+    templates: {
+      open: "Add from a template",
+      title: "Workflow templates",
+      intro:
+        "Each template is a file. Copy it, commit it to .flightdeck/workflows/ on the base branch, then trust it on this page. Nothing is written for you.",
+      loading: "Loading templates",
+      failed:
+        "Could not load the templates. The host may be offline or need a newer version of Flightdeck.",
+      list: "Templates",
+      show: "Show {name}",
+      back: "Back to the templates",
+      persona: "Persona: {persona}",
+      inputs: "Asks for: {inputs}",
+      path: "Commit it to {path}",
+      file: "File {path}",
+      copy: "Copy the file",
+      copied: "Copied. Commit it to the base branch, then trust it here.",
+      checkFilled:
+        "The check line holds this project's test command. Review it before you trust the workflow.",
+      checkPlaceholder:
+        "The check line holds a placeholder that fails. Replace it with your test command before you commit the file.",
+    },
   },
   sessionViews: { label: "Session views", terminal: "Terminal" },
   shortcuts: {

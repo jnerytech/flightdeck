@@ -1851,6 +1851,27 @@ export const WorkflowInfo = z.object({
 export type WorkflowInfo = z.infer<typeof WorkflowInfo>;
 
 /**
+ * Issue #79: a workflow that ships with the product, to copy into `.flightdeck/workflows/` and
+ * commit to the base branch (the host never writes there; trust stays on the Workflows screen).
+ */
+export const WorkflowTemplate = z.object({
+  id: z.string(),
+  title: LocalizedText,
+  description: LocalizedText,
+  /** What bounds a run: rounds, budget, cards, where it stops for approval. */
+  limits: LocalizedText,
+  /** The persona the template's agent steps run in. */
+  persona: z.string(),
+  inputs: z.array(z.string()),
+  /** Where to commit the file, relative to the repository. */
+  path: z.string(),
+  yaml: z.string(),
+  /** The `check` line: true when it holds the project's own test command, false when it holds a placeholder that fails, null when the template has none. */
+  checkFilled: z.boolean().nullable(),
+});
+export type WorkflowTemplate = z.infer<typeof WorkflowTemplate>;
+
+/**
  * `waiting`: a gate is open. `paused`: budget or loop limit reached. `failed`: a step (or the
  * card's preparation) failed. The last four are final.
  */
@@ -3871,6 +3892,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("external.message", z.object({ claudeSessionId: z.string(), text: z.string().min(1) })),
   // Phase 6: workflows of a project (read from its base branch) and their runs.
   cmd("workflow.list", z.object({ projectId: z.string() })),
+  /** Issue #79: the workflow templates, with the check line filled from the project's stack. */
+  cmd("workflow.templates", z.object({ projectId: z.string() })),
   cmd("workflow.validate", z.object({ projectId: z.string(), name: z.string().min(1) })),
   /** `hash` is the content the user reviewed; a workflow that changed since is refused. */
   cmd(
@@ -5195,6 +5218,7 @@ export interface CommandResults {
   "card.get": Card;
   "card.spec": Card;
   "workflow.list": { workflows: WorkflowInfo[] };
+  "workflow.templates": { templates: WorkflowTemplate[] };
   "workflow.validate": WorkflowInfo;
   "workflow.trust": WorkflowInfo;
   "runenv.config": RunConfigInfo;
