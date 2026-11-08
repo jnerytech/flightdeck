@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -18,9 +17,6 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-/** A card with changes leads with Revisar mudanças: Abrir PR waits in the card's menu (#1197). */
-const openPr = () =>
-  chooseFromCardMenu({ act, fireEvent, screen } as never, "Ações de Login", "Abrir PR");
 const click = async (name: string | RegExp) => {
   const button = screen.queryByRole("button", { name });
   expect(button).not.toBeNull();
@@ -342,7 +338,7 @@ describe("vigiar-ui: the PR description is the person's to confirm", () => {
   test("Abrir PR only offers the generated text; nothing is opened until the person confirms the edited text", async () => {
     const { daemon } = await open({ prUrl: null, prState: null });
     daemon.watch.describe = { text: "## Login\n\nFazer o login", redacted: 0 };
-    await openPr();
+    await click("Abrir PR");
     const box = await (async () => {
       await settle(() => screen.queryByRole("textbox", { name: "Descrição do PR" }) !== null);
       return screen.queryByRole("textbox", {
@@ -369,7 +365,7 @@ describe("vigiar-ui: the PR description is the person's to confirm", () => {
       text: "## Login\n\n[line removed: it looked like a secret]",
       redacted: 1,
     };
-    await openPr();
+    await click("Abrir PR");
     await settle(() => screen.queryByText(/1 linha tirada/) !== null);
     expect(screen.queryByText("1 linha tirada por parecer um segredo")).not.toBeNull();
     await click("Cancelar");
@@ -380,7 +376,7 @@ describe("vigiar-ui: the PR description is the person's to confirm", () => {
   test("Esc closes the description like Cancelar: nothing is opened", async () => {
     const { daemon } = await open({ prUrl: null, prState: null });
     daemon.watch.describe = { text: "## Login", redacted: 0 };
-    await openPr();
+    await click("Abrir PR");
     await settle(() => screen.queryByRole("textbox", { name: "Descrição do PR" }) !== null);
     const box = screen.queryByRole("textbox", { name: "Descrição do PR" });
     expect(box).not.toBeNull();
@@ -395,7 +391,7 @@ describe("vigiar-ui: the PR description is the person's to confirm", () => {
   test("two lines taken out say so in the plural", async () => {
     const { daemon } = await open({ prUrl: null, prState: null });
     daemon.watch.describe = { text: "## Login", redacted: 2 };
-    await openPr();
+    await click("Abrir PR");
     await settle(() => screen.queryByText(/2 linhas tiradas/) !== null);
     expect(screen.queryByText("2 linhas tiradas por parecerem segredos")).not.toBeNull();
   });
