@@ -2821,9 +2821,8 @@ Cada turno de uma sessão gerenciada traz a cota do plano do Claude. Todas as se
 usam o mesmo login, então a cota é do host. O daemon guarda a última leitura de cada janela (5
 horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janela reinicia.
 
-- **Na tela Custos:** numa assinatura o bloco **Cota do plano** abre a tela, com as barras de
-  cada host, antes dos dólares (uma estimativa a preços de API que o plano não cobra). Um host com
-  chave de API não tem janela do plano, então a tela dele começa pelos dólares.
+- **Na tela Custos:** numa assinatura o bloco **Cota do plano** abre a tela, com as barras de cada
+  host, antes dos dólares (estimados a preços de API, que o plano não cobra). Com chave de API a tela começa pelos dólares.
 - **No app:** o topo da tela Sessões mostra, para cada conta do Claude, as barras de 5 horas e de 7
   dias (hosts com a mesma conta compartilham um cartão, com o nome de todos), com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
   - A barra fica vermelha a partir de `quota.pauseAt`.
@@ -2994,13 +2993,11 @@ Em **Configurações**, cada host com custos tem a seção **Orçamentos**:
   - **segurar cards novos:** em 100%, os cards novos daquele escopo esperam na fila com o
     motivo `budget`. Eles saem sozinhos no período seguinte ou quando o limite sobe.
   - Sessões do terminal e sessões manuais nunca são seguradas.
-- **Medido em:** num host que informa a cota do plano (uma assinatura), **Medido em** também oferece uma parte da **janela de 5 horas**
-  ou da **janela semanal** do plano, em vez de dólares. O limite vira um percentual dessa janela
-  (de 0,1% a 100%) e a janela é o período: os alertas e a retenção recomeçam quando ela reinicia.
-  A parte do host é o uso da própria janela; a de um projeto é esse uso vezes a parte do projeto
-  no custo estimado desde o início da janela, e por isso a lista marca **estimativa** (o plano
-  não diz quem usou). Uma leitura nova do plano conta na hora. Sem leitura da janela o orçamento
-  fica em zero e nada alerta. Um host com flightdeckd mais antigo só tem o formulário em dólares.
+- **Medido em:** num host que informa a cota do plano (uma assinatura), também oferece uma parte da
+  **janela de 5 horas** ou da **janela semanal**, em vez de dólares. O limite é um percentual da janela
+  (de 0,1% a 100%) e a janela é o período: alertas e retenção recomeçam quando ela reinicia. Num
+  projeto o uso é estimado pela parte dele no custo da janela (a lista marca **estimativa**). Sem
+  leitura da janela o orçamento fica em zero. Um flightdeckd mais antigo só tem o formulário em dólares.
 
 ### Histórico da cota
 
