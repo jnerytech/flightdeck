@@ -30,7 +30,7 @@ function connect(opts: ChannelOptions): Promise<WebSocket> {
   } as unknown as string[]);
   return new Promise((resolve, reject) => {
     ws.addEventListener("open", () => resolve(ws), { once: true });
-    ws.addEventListener("error", () => reject(new Error("o receptor recusou a conexão")), {
+    ws.addEventListener("error", () => reject(new Error("the receiver refused the connection")), {
       once: true,
     });
   });

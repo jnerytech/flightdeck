@@ -83,10 +83,10 @@ describe("mcp-mensagens: flightdeckd message", () => {
       last: 5,
     });
     expect(parseArgs(["message", "team", "t1"])).toMatchObject({ action: "team", team: "t1" });
-    expect(() => parseArgs(["message", "apagar"])).toThrow("ação");
-    expect(() => parseArgs(["message", "send", "pc/s2"])).toThrow("texto");
-    expect(() => parseArgs(["message", "idle"])).toThrow("sessão");
-    expect(() => parseArgs(["message", "team"])).toThrow("time");
+    expect(() => parseArgs(["message", "apagar"])).toThrow("invalid message action");
+    expect(() => parseArgs(["message", "send", "pc/s2"])).toThrow("missing the text");
+    expect(() => parseArgs(["message", "idle"])).toThrow("missing the session");
+    expect(() => parseArgs(["message", "team"])).toThrow("missing the team");
     expect(() => parseArgs(["message", "read", "pc/s2", "--last", "muitas"])).toThrow("--last");
   });
 

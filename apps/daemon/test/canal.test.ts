@@ -155,6 +155,7 @@ describe("canal", () => {
       channelTransport: serverSide,
     });
     expect(code).toBe(1);
-    expect(out.join("\n")).toContain("canal do Flightdeck");
+    expect(out.join("\n")).toContain("could not open the Flightdeck channel");
+    expect(out.join("\n")).toContain("the receiver refused the connection");
   });
 });
