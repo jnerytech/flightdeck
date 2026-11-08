@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { mkdirSync, symlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { testHome } from "../../../scripts/test/temp-dir.ts";
 import { expandHome } from "../src/config.ts";
@@ -98,5 +99,16 @@ describe("knowledge-switch: who has the index switched off (#76)", () => {
     fail = false;
     const second = await Promise.allSettled([sw.set(project, false)]);
     expect([first[0]?.status, second[0]?.status]).toEqual(["rejected", "fulfilled"]);
+  });
+
+  test("switching on takes out an entry that is a link to the project too", async () => {
+    const parent = tempDir("fd-switch-");
+    const project = join(parent, "real");
+    mkdirSync(project);
+    const link = join(parent, "link");
+    symlinkSync(project, link);
+    const h = host([link, "/keep/this"]);
+    const state = await h.sw.set(project, true);
+    expect([h.entries, state.on]).toEqual([["/keep/this"], true]);
   });
 });
