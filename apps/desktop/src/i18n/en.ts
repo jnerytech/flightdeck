@@ -2168,6 +2168,7 @@ export const en: Dictionary = {
     commit_message: "Commit message",
     pr_title: "Pull request title",
     pr_description: "Pull request description",
+    adr_draft: "Decision record (ADR) draft",
   },
   modelPicker: {
     search: "Search models",
@@ -3168,6 +3169,15 @@ export const en: Dictionary = {
     testTitle: "Flightdeck test",
     testBody: "This is a test message.",
   },
+  adrDraft: {
+    title: "Draft a decision record",
+    hint: "The session summary is the starting text. Use the wand to write an ADR from it, edit it, and save: it goes to docs/adr in the project as a draft, not committed.",
+    titleLabel: "Decision title",
+    bodyLabel: "Decision record text",
+    save: "Save as ADR",
+    saved: "Saved {path}. It is a draft and is not committed.",
+    failed: "Could not save: {why}",
+  },
   recap: {
     region: "Session summary",
     asked: "Asked",
@@ -3178,6 +3188,7 @@ export const en: Dictionary = {
     question: "Open question",
     state: "State",
     copy: "Copy summary",
+    draftAdr: "Draft ADR",
     empty: "The summary appears after the session's first turn and refreshes by itself.",
   },
   webhooks: {

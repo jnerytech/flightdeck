@@ -71,8 +71,20 @@ const slugOf = (title: string) =>
 const DEVICE_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/;
 const fileSlug = (slug: string) => (DEVICE_NAME.test(slug) ? `${slug}-doc` : slug);
 
-const textOf = (kind: KnowledgeKind, title: string) =>
-  `---\nstatus: transitional\n---\n# ${title}\n\n${SECTIONS[kind].map((s) => `## ${s}`).join("\n\n")}\n`;
+/** Characters a reader cannot see but a later session would read: marks, zero-width, tags. */
+const INVISIBLE = /[\p{Cf}\p{Co}\p{Cn}\p{Variation_Selector}]/gu;
+
+/** A body as plain text: line breaks as `\n`, no control or invisible character, no blank ends. */
+const cleanBody = (body: string) =>
+  body
+    .replace(/\r\n?|[\u2028\u2029]/g, "\n")
+    .replace(/\p{Cc}/gu, (c) => (c === "\n" || c === "\t" ? c : ""))
+    .replace(INVISIBLE, "")
+    .trim();
+
+/** The file: front matter, the heading, then the given body or the kind's template sections. */
+const textOf = (kind: KnowledgeKind, title: string, body: string) =>
+  `---\nstatus: transitional\n---\n# ${title}\n\n${body === "" ? SECTIONS[kind].map((s) => `## ${s}`).join("\n\n") : body}\n`;
 
 /** One level of the library path: a real folder, made when it is not there. */
 async function ensureFolder(path: string): Promise<boolean> {
@@ -112,6 +124,7 @@ export async function createKnowledgeDoc(
   root: string,
   kind: KnowledgeKind,
   title: string,
+  body = "",
 ): Promise<KnowledgeEntry> {
   const clean = oneLine(title);
   const slug = fileSlug(slugOf(clean));
@@ -126,7 +139,7 @@ export async function createKnowledgeDoc(
       `docs/${kind} is a link or lies outside the project`,
     );
   }
-  const text = textOf(kind, clean);
+  const text = textOf(kind, clean, cleanBody(body));
   for (let attempt = 1; ; attempt++) {
     const number = NUMBERED.has(kind)
       ? `${String(await nextNumber(folder)).padStart(4, "0")}-`

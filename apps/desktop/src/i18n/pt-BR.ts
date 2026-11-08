@@ -2166,6 +2166,7 @@ export const ptBR = {
     commit_message: "Mensagem de commit",
     pr_title: "Título do pull request",
     pr_description: "Descrição do pull request",
+    adr_draft: "Rascunho de registro de decisão (ADR)",
   },
   modelPicker: {
     search: "Buscar modelos",
@@ -3169,6 +3170,15 @@ export const ptBR = {
     testTitle: "Teste do Flightdeck",
     testBody: "Esta é uma mensagem de teste.",
   },
+  adrDraft: {
+    title: "Rascunhar um registro de decisão",
+    hint: "O resumo da sessão é o texto inicial. Use a varinha para escrever um ADR a partir dele, edite e salve: ele vai para docs/adr no projeto como rascunho, sem commit.",
+    titleLabel: "Título da decisão",
+    bodyLabel: "Texto do registro de decisão",
+    save: "Salvar como ADR",
+    saved: "Salvo em {path}. É um rascunho e não tem commit.",
+    failed: "Não foi possível salvar: {why}",
+  },
   recap: {
     region: "Resumo da sessão",
     asked: "Pedido",
@@ -3179,6 +3189,7 @@ export const ptBR = {
     question: "Pergunta em aberto",
     state: "Estado",
     copy: "Copiar resumo",
+    draftAdr: "Rascunhar ADR",
     empty: "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
   },
   webhooks: {

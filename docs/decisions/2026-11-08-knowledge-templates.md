@@ -26,3 +26,18 @@ template. Slice 2 (a draft ADR from a session) comes after.
   The file is left uncommitted, mode 0644.
 - **Not decided here.** The template text is English; a project that wants its own template edits
   the file after it is made.
+
+## Slice 2: a draft ADR from a session's summary
+
+- **No new model path.** The draft is an assistant kind, `adr.draft` (careful profile, 1500
+  tokens), not a daemon command: it goes through the same providers, secret scanner, quota and
+  usage records as the other wands. The text it takes is the session summary the host already
+  builds with no model call (phase 30), so the transcript itself never leaves the host for this.
+- **The person writes the record.** The summary is the starting text of an editable box; the wand
+  proposes an ADR (Context, Decision, Consequences, "Not stated in the session." where the summary
+  says nothing), and nothing is saved until **Save as ADR**.
+- **`knowledge.create` takes an optional `body`** (up to 100,000 characters). It goes under the
+  `# heading` instead of the template's sections; the front matter is still written by the host
+  (`status: transitional`), so a body that starts with `---` cannot change it. Line breaks become
+  `\n`, control characters other than the tab are dropped. A blank body is the template.
+- **Where it is written.** The project that holds the session's folder, else the session's folder.
