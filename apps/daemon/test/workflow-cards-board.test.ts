@@ -36,7 +36,7 @@ describe("Board.raiseCards (issue #79)", () => {
     const { board, project, backlog } = await setup();
     const raised = board.raiseCards(project.id, [finding(1), finding(2)], ORIGIN);
     expect(raised).toMatchObject({ duplicates: 0, overCap: 0 });
-    expect(raised.created.length).toBe(2);
+    expect(raised.created).toHaveLength(2);
     expect(backlog().map((card) => card.title)).toEqual([
       "Remove the TODO in file1.ts",
       "Remove the TODO in file2.ts",
@@ -58,7 +58,7 @@ describe("Board.raiseCards (issue #79)", () => {
   test("automatic approval stays off on every card it makes", async () => {
     const { board, project, suspended } = await setup();
     const raised = board.raiseCards(project.id, [finding(1), finding(2)], ORIGIN);
-    expect(suspended.length).toBe(2);
+    expect(suspended).toHaveLength(2);
     expect(suspended.map(([cardId]) => cardId)).toEqual(raised.created);
     expect(suspended.every(([, reason]) => reason.length > 0)).toBe(true);
   });
@@ -69,7 +69,7 @@ describe("Board.raiseCards (issue #79)", () => {
     // Same key, another title: the key decides.
     const again = board.raiseCards(project.id, [finding(1, { title: "Another words" })], ORIGIN);
     expect(again).toEqual({ created: [], duplicates: 1, overCap: 0 });
-    expect(backlog().length).toBe(1);
+    expect(backlog()).toHaveLength(1);
   });
 
   test("a key repeated inside the list is raised once", async () => {
@@ -79,7 +79,7 @@ describe("Board.raiseCards (issue #79)", () => {
       [finding(1), finding(1, { title: "Twice" })],
       ORIGIN,
     );
-    expect(raised.created.length).toBe(1);
+    expect(raised.created).toHaveLength(1);
     expect(raised.duplicates).toBe(1);
   });
 
@@ -88,7 +88,7 @@ describe("Board.raiseCards (issue #79)", () => {
     board.createCard(project.id, { title: "  remove the TODO   in FILE1.ts ", description: "" });
     const raised = board.raiseCards(project.id, [finding(1)], ORIGIN);
     expect(raised).toEqual({ created: [], duplicates: 1, overCap: 0 });
-    expect(backlog().length).toBe(1);
+    expect(backlog()).toHaveLength(1);
   });
 
   test("a card of another project does not cover it", async () => {
@@ -96,9 +96,9 @@ describe("Board.raiseCards (issue #79)", () => {
     // A copy of the repository, with its history, is another folder and so another project.
     cpSync(repo, join(root, "repo2"), { recursive: true });
     const other = await board.addProject({ path: join(root, "repo2"), promptTemplate: "" });
-    expect(board.raiseCards(other.id, [finding(1)], ORIGIN).created.length).toBe(1);
+    expect(board.raiseCards(other.id, [finding(1)], ORIGIN).created).toHaveLength(1);
     const raised = board.raiseCards(project.id, [finding(1)], ORIGIN);
-    expect(raised.created.length).toBe(1);
+    expect(raised.created).toHaveLength(1);
     expect(raised.duplicates).toBe(0);
   });
 
@@ -107,13 +107,13 @@ describe("Board.raiseCards (issue #79)", () => {
     let skew = 0;
     const { board, project } = await setup({ clock: () => Date.now() + skew });
     const [first] = board.raiseCards(project.id, [finding(1)], ORIGIN).created;
-    expect(first !== undefined).toBe(true);
+    expect(first).toBeDefined();
     if (first) board.moveCard(first, "done");
     skew = 29 * day;
     expect(board.raiseCards(project.id, [finding(1)], ORIGIN).duplicates).toBe(1);
     skew = 31 * day;
     const later = board.raiseCards(project.id, [finding(1)], ORIGIN);
-    expect(later.created.length).toBe(1);
+    expect(later.created).toHaveLength(1);
     expect(later.duplicates).toBe(0);
   });
 
@@ -124,9 +124,9 @@ describe("Board.raiseCards (issue #79)", () => {
     const raised = board.raiseCards(project.id, many, ORIGIN);
     // finding(0) was a duplicate; of the other 11, the first 10 are raised.
     expect(raised.duplicates).toBe(1);
-    expect(raised.created.length).toBe(CARDS_PER_RUN);
+    expect(raised.created).toHaveLength(CARDS_PER_RUN);
     expect(raised.overCap).toBe(1);
-    expect(backlog().length).toBe(CARDS_PER_RUN + 1);
+    expect(backlog()).toHaveLength(CARDS_PER_RUN + 1);
     expect(backlog().at(-1)?.title).toBe(`Remove the TODO in file${CARDS_PER_RUN}.ts`);
   });
 
@@ -148,10 +148,10 @@ describe("Board.raiseCards (issue #79)", () => {
   test("the variants of an arena started on a raised card keep the mark and the suspension", async () => {
     const { board, project, suspended } = await setup();
     const [raisedId] = board.raiseCards(project.id, [finding(1)], ORIGIN).created;
-    expect(raisedId !== undefined).toBe(true);
+    expect(raisedId).toBeDefined();
     suspended.length = 0;
     const arena = await board.startArena(raisedId ?? "", { variants: [{}, {}] });
-    expect(arena.variants.length).toBe(2);
+    expect(arena.variants).toHaveLength(2);
     for (const variant of arena.variants) {
       const card = board.getCard(variant.id);
       expect(card.issueExternal).toBe(true);

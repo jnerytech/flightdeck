@@ -5,6 +5,7 @@ import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
+import { referencesIn, replaceReferences } from "../references.ts";
 import { hashOf } from "../workflows/repo.ts";
 
 /** Where a project's run environment is declared, read from the base branch only. */
@@ -88,9 +89,6 @@ function message(issue: core.$ZodRawIssue): string {
 const where = (path: readonly PropertyKey[]) =>
   path.length === 0 ? "(root)" : path.map(String).join(".");
 
-/** `{{ expression }}` inside commands, variables and the ready URL. */
-const REFERENCE = /\{\{\s*(.*?)\s*\}\}/g;
-
 /** The variable that carries a port: `FLIGHTDECK_PORT_<NAME>`. */
 export const portVariable = (name: string) =>
   `FLIGHTDECK_PORT_${name.toUpperCase().replaceAll("-", "_")}`;
@@ -106,8 +104,8 @@ function validate(config: RunConfig): string[] {
   });
   const declared = new Set(config.ports);
   const references = (path: string, value: string) => {
-    for (const [raw, expression] of value.matchAll(REFERENCE)) {
-      const port = /^port\.([\w-]+)$/.exec(expression ?? "")?.[1];
+    for (const { raw, expression } of referencesIn(value)) {
+      const port = /^port\.([\w-]+)$/.exec(expression)?.[1];
       if (port === undefined) errors.push(`${path}: unknown reference: ${raw}`);
       else if (!declared.has(port)) errors.push(`${path}: port not declared: ${port}`);
     }
@@ -133,7 +131,7 @@ function urlProblem(url: string): string | null {
   let parsed: URL;
   try {
     // A port placeholder stands for a number here: the real one only exists per card.
-    parsed = new URL(url.replace(REFERENCE, "1"));
+    parsed = new URL(replaceReferences(url, () => "1"));
   } catch {
     return "invalid URL";
   }

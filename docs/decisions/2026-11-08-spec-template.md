@@ -100,6 +100,23 @@ project's harness (#75). The design is on #78. This record covers slice S-T1.
   `{{criteria}}` gets none of the card's criteria: the project chose its own shape. A template with a
   front matter of its own keeps it below the host's, which is the one the check reads.
 
+## Slice S-T3c: a notice when a project's template is ignored (issue #1058)
+
+- **What is said.** When the project has a spec template that was not used, the card gets a notice
+  with a reason of its own, in both languages and without the template's text:
+  `spec_template_untrusted` (the project is not trusted), `spec_template_unsafe` (a link, a second
+  name or not a plain file), `spec_template_too_big` (over 32 KiB) and `spec_template_empty`.
+  A project with no template says nothing. The run starts with the built-in template either way.
+- **Untrusted projects.** The host does not read their checkout. It only looks whether the card's
+  worktree carries the template (a walk that follows no link on the way and reads nothing, so it
+  cannot tell what lies behind a link), so a template that is not committed to the branch is not
+  noticed. A failed trust check, or a spec that was already there, gives no notice.
+- **Why the notice is a refusal reason.** The card's notice already carries a reason the app
+  translates (`spec_template_failed`); one reason per cause keeps the text out of the host and the
+  words in the dictionaries.
+- **Still open.** The project's own validation template (`.flightdeck/templates/validation.md`),
+  which builds on the validation placeholder (#1054, merged).
+
 ## Slice S-T3b: the shape of a validation note
 
 - **What it does.** The card's validation note field shows the shape of a note as its placeholder,
