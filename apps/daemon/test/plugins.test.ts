@@ -230,7 +230,7 @@ describe("plugins: o inventário", () => {
     expect(inventory.hooks).toEqual([]);
     expect(inventory.attention).toBe(false);
     expect(inventory.skills).toEqual([]);
-    expect(inventory.problems).toEqual(["hooks: caminho fora do plugin: ../../outside/hooks.json"]);
+    expect(inventory.problems).toEqual(["hooks: path outside the plugin: ../../outside/hooks.json"]);
   });
 
   test("manifesto quebrado vira um problema, não uma falha; pasta que não existe é not_found", async () => {
@@ -239,7 +239,7 @@ describe("plugins: o inventário", () => {
     );
     expect(inventory.manifest).toBeNull();
     expect(inventory.skills).toEqual(["a"]);
-    expect(inventory.problems).toEqual(["plugin.json: não é um JSON válido"]);
+    expect(inventory.problems).toEqual(["plugin.json: not valid JSON"]);
     expect(await codeOf(() => inspectPlugin(join(tempDir("fd-none-"), "nada")))).toBe("not_found");
   });
 
@@ -316,7 +316,7 @@ describe("plugins: o inventário", () => {
       ["prompt", "diga oi"],
       ["command", undefined],
     ]);
-    expect(inventory.problems).toEqual(["hooks/hooks.json: não é um JSON válido"]);
+    expect(inventory.problems).toEqual(["hooks/hooks.json: not valid JSON"]);
   });
 
   test("um plugin com arquivos demais é recusado", async () => {
@@ -1058,7 +1058,7 @@ describe("plugins: pela CLI", () => {
     const bad = world((ctx) => everything(ctx, [{ args: ["marketplace", "update"], code: 3 }]));
     expect(await bad.plugins.marketplaceUpdate("acme")).toEqual({
       outcome: "failed",
-      message: "código 3",
+      message: "code 3",
     });
   });
 

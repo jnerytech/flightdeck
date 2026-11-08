@@ -120,7 +120,7 @@ describe("daemon-update-apply", () => {
     expect(assetKey("win32", "x64")).toBe("windows-x64");
     expect(assetKey("linux", "x64")).toBe("linux-x64");
     expect(assetKey("linux", "arm64")).toBe("linux-arm64");
-    expect(() => assetKey("darwin", "arm64")).toThrow("sem binário do daemon para darwin-arm64");
+    expect(() => assetKey("darwin", "arm64")).toThrow("no daemon binary for darwin-arm64");
   });
 
   test("Linux: baixa, confere sha256 e assinatura e dispara o update por systemd-run, fora do serviço", async () => {
@@ -227,7 +227,7 @@ describe("daemon-update-apply", () => {
     } catch (error) {
       message = (error as Error).message;
     }
-    expect(message).toBe("o manifesto 0.9.0 não tem binário para windows-arm64");
+    expect(message).toBe("the manifest 0.9.0 has no binary for windows-arm64");
     const manifest = release();
     for (const asset of Object.values(manifest.assets)) asset.url = `${asset.url}-sumiu`;
     const gone = new DaemonUpdater({
@@ -244,7 +244,7 @@ describe("daemon-update-apply", () => {
     } catch (error) {
       message = (error as Error).message;
     }
-    expect(message).toBe("o download respondeu HTTP 404");
+    expect(message).toBe("the download answered HTTP 404");
   });
 
   test("flightdeckd start: o daemon confere com a chave do projeto e recusa a assinatura da chave de teste", async () => {
@@ -278,14 +278,14 @@ describe("daemon-update-apply", () => {
     while (Date.now() < deadline) {
       ack = await client.request("daemon.update.apply", { confirm: true });
       const error = ack.error as { message?: string } | undefined;
-      if (!error?.message?.includes("ainda não verificou")) break;
+      if (!error?.message?.includes("has not checked the manifest yet")) break;
       await Bun.sleep(20);
     }
     expect(ack).toMatchObject({
       ok: false,
       error: {
         code: "update_verification_failed",
-        message: "a assinatura é de outra chave, não da chave do Flightdeck",
+        message: "the signature is from another key, not the Flightdeck key",
       },
     });
   });

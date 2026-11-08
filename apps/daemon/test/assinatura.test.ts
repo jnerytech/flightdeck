@@ -43,25 +43,25 @@ describe("assinatura", () => {
   test("recusa arquivo alterado, assinatura de outra chave e comentário confiável trocado", () => {
     const altered = Buffer.from(SAMPLE);
     altered[0] = (altered[0] as number) ^ 1;
-    expect(check(altered, SAMPLE_SIG, TAURI_PUB)).toBe("a assinatura não confere com o arquivo");
+    expect(check(altered, SAMPLE_SIG, TAURI_PUB)).toBe("the signature does not match the file");
     expect(check(SAMPLE, SAMPLE_SIG, TEST_PUBLIC_KEY)).toBe(
-      "a assinatura é de outra chave, não da chave do Flightdeck",
+      "the signature is from another key, not the Flightdeck key",
     );
     const tampered = withLine(SAMPLE_SIG, 2, "trusted comment: timestamp:1\tfile:outro.bin");
     expect(check(SAMPLE, tampered, TAURI_PUB)).toBe(
-      "o comentário confiável da assinatura foi alterado",
+      "the signature's trusted comment was altered",
     );
   });
 
   test("recusa formato inválido de assinatura e de chave", () => {
     const data = new TextEncoder().encode("x");
     expect(check(data, "não é base64 de minisign", TEST_PUBLIC_KEY)).toBe(
-      "formato de assinatura inválido",
+      "invalid signature format",
     );
     expect(check(data, withLine(signForTest(data), 1, "QUJD"), TEST_PUBLIC_KEY)).toBe(
-      "formato de assinatura inválido",
+      "invalid signature format",
     );
-    expect(check(data, signForTest(data), "lixo")).toBe("formato de chave pública inválido");
+    expect(check(data, signForTest(data), "lixo")).toBe("invalid public key format");
   });
 
   test("as chaves de teste não são a chave pública do produto", () => {

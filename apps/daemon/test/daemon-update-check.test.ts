@@ -96,19 +96,19 @@ describe("daemon-update-check", () => {
     const { updates, time } = checker(release.url);
     await updates.start();
     expect(updates.status()).toMatchObject({ available: false, version: null });
-    expect(updates.status()?.error).toStartWith("manifesto inválido");
+    expect(updates.status()?.error).toStartWith("invalid manifest");
     release.state.body = "<html>não é JSON</html>";
     time.advance(24 * HOUR);
     await Bun.sleep(20);
-    expect(updates.status()?.error).toStartWith("manifesto inválido");
+    expect(updates.status()?.error).toStartWith("invalid manifest");
     release.state.status = 404;
     release.state.body = "não achei";
     time.advance(24 * HOUR);
     await Bun.sleep(20);
-    expect(updates.status()?.error).toBe("o servidor respondeu HTTP 404");
+    expect(updates.status()?.error).toBe("the server answered HTTP 404");
     const down = checker("http://127.0.0.1:9/daemon-latest.json");
     await down.updates.start();
-    expect(down.updates.status()?.error).toStartWith("não consegui baixar o manifesto");
+    expect(down.updates.status()?.error).toStartWith("could not download the manifest");
   });
 
   test("host.info traz o update quando o daemon verifica; sem verificação, não traz", async () => {

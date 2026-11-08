@@ -59,62 +59,62 @@ describe("run-config: o esquema", () => {
     const run = 'run:\n  - { name: a, cmd: ["x"] }\n';
     expect(parseRunConfig(`exclusive: true\n${run}`).config?.exclusive).toBe(true);
     expect(parseRunConfig(`exclusive: false\n${run}`).config?.exclusive).toBe(false);
-    expect(errorsOf(`exclusive: sim\n${run}`)).toEqual(["exclusive: tipo inválido"]);
+    expect(errorsOf(`exclusive: sim\n${run}`)).toEqual(["exclusive: invalid type"]);
   });
 
   test("YAML quebrado e campo desconhecido são erros, e a configuração fica nula", () => {
-    expect(errorsOf("run: [")[0] ?? "").toContain("YAML inválido");
+    expect(errorsOf("run: [")[0] ?? "").toContain("invalid YAML");
     expect(parseRunConfig("run: [").config).toBeNull();
     expect(errorsOf('run:\n  - name: a\n    cmd: ["x"]\nshell: true\n')).toEqual([
-      "(raiz): campo desconhecido: shell",
+      "(root): unknown field: shell",
     ]);
   });
 
   test("tipos errados dizem o que faltou: run que não é lista, processo que não é objeto", () => {
-    expect(errorsOf("run: 5\n")).toEqual(["run: tipo inválido"]);
-    expect(errorsOf("run:\n  - 3\n")).toEqual(["run.0: precisa ser um objeto"]);
+    expect(errorsOf("run: 5\n")).toEqual(["run: invalid type"]);
+    expect(errorsOf("run:\n  - 3\n")).toEqual(["run.0: must be an object"]);
   });
 
   test("o comando é uma lista de textos: um texto só (que iria a um shell) é recusado", () => {
     expect(errorsOf('run:\n  - name: a\n    cmd: "bun run dev"\n')).toEqual([
-      "run.0.cmd: precisa ser uma lista de textos",
+      "run.0.cmd: must be a list of strings",
     ]);
     expect(errorsOf('setup: "bun install"\nrun:\n  - name: a\n    cmd: ["x"]\n')).toEqual([
-      "setup: precisa ser uma lista de textos",
+      "setup: must be a list of strings",
     ]);
     expect(errorsOf("run:\n  - name: a\n    cmd: []\n")).toEqual([
-      "run.0.cmd: precisa de ao menos um item",
+      "run.0.cmd: needs at least one item",
     ]);
   });
 
   test("precisa de ao menos um processo, de nomes únicos e simples", () => {
-    expect(errorsOf("run: []\n")).toEqual(["run: precisa de ao menos um item"]);
-    expect(errorsOf("ports: [a]\n")).toEqual(["run: obrigatório"]);
+    expect(errorsOf("run: []\n")).toEqual(["run: needs at least one item"]);
+    expect(errorsOf("ports: [a]\n")).toEqual(["run: required"]);
     expect(errorsOf('run:\n  - { name: a, cmd: ["x"] }\n  - { name: a, cmd: ["y"] }\n')).toEqual([
-      "run.1: nome repetido: a",
+      "run.1: repeated name: a",
     ]);
     expect(errorsOf('run:\n  - { name: "a b", cmd: ["x"] }\n')).toEqual([
-      "run.0.name: nome inválido",
+      "run.0.name: invalid name",
     ]);
   });
 
   test("as portas: nomes simples e únicos, no máximo as 10 de um bloco", () => {
     const run = 'run:\n  - { name: a, cmd: ["x"] }\n';
-    expect(errorsOf(`${run}ports: [web, web]\n`)).toEqual(["ports.1: porta repetida: web"]);
-    expect(errorsOf(`${run}ports: ["a b"]\n`)).toEqual(["ports.0: nome de porta inválido"]);
+    expect(errorsOf(`${run}ports: [web, web]\n`)).toEqual(["ports.1: repeated port: web"]);
+    expect(errorsOf(`${run}ports: ["a b"]\n`)).toEqual(["ports.0: invalid port name"]);
     const eleven = Array.from({ length: 11 }, (_, i) => `p${i}`).join(", ");
-    expect(errorsOf(`${run}ports: [${eleven}]\n`)).toEqual(["ports: no máximo 10 portas por card"]);
+    expect(errorsOf(`${run}ports: [${eleven}]\n`)).toEqual(["ports: at most 10 ports per card"]);
   });
 
   test("{{port.nome}} só vale para uma porta declarada, e nenhuma outra {{…}} existe", () => {
     expect(errorsOf('run:\n  - { name: a, cmd: ["x", "{{port.web}}"] }\nports: [api]\n')).toEqual([
-      "run.0.cmd.1: porta não declarada: web",
+      "run.0.cmd.1: port not declared: web",
     ]);
     expect(errorsOf('run:\n  - { name: a, cmd: ["x"], env: { P: "{{port.nope}}" } }\n')).toEqual([
-      "run.0.env.P: porta não declarada: nope",
+      "run.0.env.P: port not declared: nope",
     ]);
     expect(errorsOf('run:\n  - { name: a, cmd: ["x", "{{inputs.nome}}"] }\n')).toEqual([
-      "run.0.cmd.1: referência desconhecida: {{inputs.nome}}",
+      "run.0.cmd.1: unknown reference: {{inputs.nome}}",
     ]);
   });
 
@@ -124,14 +124,14 @@ describe("run-config: o esquema", () => {
     expect(errorsOf(withReady("http://127.0.0.1:3000/"))).toEqual([]);
     expect(errorsOf(withReady("https://localhost/"))).toEqual([]);
     expect(errorsOf(withReady("http://example.com/"))).toEqual([
-      "run.0.ready.http: só 127.0.0.1 e localhost",
+      "run.0.ready.http: only 127.0.0.1 and localhost",
     ]);
     expect(errorsOf(withReady("ftp://127.0.0.1/"))).toEqual([
-      "run.0.ready.http: precisa ser http ou https",
+      "run.0.ready.http: must be http or https",
     ]);
-    expect(errorsOf(withReady("não é url"))).toEqual(["run.0.ready.http: URL inválida"]);
+    expect(errorsOf(withReady("não é url"))).toEqual(["run.0.ready.http: invalid URL"]);
     expect(errorsOf(withReady("http://user:pw@127.0.0.1:3000/"))).toEqual([
-      "run.0.ready.http: sem usuário nem senha no endereço",
+      "run.0.ready.http: no user or password in the address",
     ]);
   });
 });
@@ -224,7 +224,7 @@ describe("run-config: confiança pelo hash", () => {
   test("um arquivo com erros mostra os erros, não se confia nele e não roda", async () => {
     const { configs, project } = await projectWith('run:\n  - name: a\n    cmd: "x"\n');
     const info = await configs.info(project);
-    expect(info.errors).toEqual(["run.0.cmd: precisa ser uma lista de textos"]);
+    expect(info.errors).toEqual(["run.0.cmd: must be a list of strings"]);
     expect(info.config).toBeNull();
     await expect(configs.trust(project, info.hash ?? "")).rejects.toThrow("validation errors");
     await expect(configs.resolve(project)).rejects.toThrow("validation errors");

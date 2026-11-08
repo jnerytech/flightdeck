@@ -377,7 +377,7 @@ describe("recusas-revisao: the run environment says why it will not run", () => 
     });
     const resolved = await refused(() => bad.configs.resolve(bad.project));
     expect(resolved).toMatchObject({ code: "invalid_state", reason: "run_config_invalid" });
-    expect(resolved.params?.errors).toBe("run.0.cmd: precisa ser uma lista de textos");
+    expect(resolved.params?.errors).toBe("run.0.cmd: must be a list of strings");
   });
 
   test("a card with no worktree, and a project that runs one card at a time", async () => {
