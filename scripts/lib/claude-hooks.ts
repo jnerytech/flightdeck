@@ -818,7 +818,7 @@ export function prRunFrom(
     const view = parsedView(pr);
     return {
       id: latest.databaseId,
-      url: String(latest.url ?? ""),
+      url: typeof latest.url === "string" ? latest.url : "",
       inProgress: latest.status !== "completed",
       failed: (view.statusCheckRollup ?? []).some((check) =>
         FAILED_CHECK.has(check.conclusion ?? check.state ?? ""),

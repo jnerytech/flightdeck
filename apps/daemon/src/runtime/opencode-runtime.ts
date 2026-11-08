@@ -641,7 +641,9 @@ class OpenCodeRun implements AgentRun {
       ["Read", "Glob", "Grep"].includes(tool?.name ?? "") &&
       (!path || isInside(this.opts.cwd, resolve(this.opts.cwd, path)));
     if (!this.requested.has(id) && !this.interrupted && !quietRead) {
-      const what = String(input.command ?? path ?? input.url ?? "");
+      // The first of these that is text; a value that is not names nothing.
+      const what =
+        [input.command, path, input.url].find((v): v is string => typeof v === "string") ?? "";
       this.violate(overridden(`${tool?.name ?? id} ${maskResource(what)} ran without a question`));
       return;
     }
