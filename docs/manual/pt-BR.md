@@ -357,7 +357,9 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   `"knowledge": { "feedOff": ["/caminho/do/projeto"] }`, e uma pasta dessa lista desliga tudo
   dentro dela também: um projeto desligado por uma pasta acima diz isso, e é religado editando
   essa entrada no arquivo. Um projeto sem confiança não recebe o índice, ligado ou desligado.
-  Cada documento tem um seletor de status. Escolher um escreve só a linha `status:` do front matter
+  Cada documento tem um seletor de status e um botão **Alterar**: escolher um status só o seleciona (as
+  setas podem percorrer a lista sem escrever nada), e **Alterar**, ligado enquanto a escolha difere do
+  status do arquivo, o escreve. Escreve só a linha `status:` do front matter
   daquele arquivo (um documento sem front matter ganha um bloco com essa linha), mantém o resto do
   arquivo como está e deixa a mudança na pasta do projeto, sem commit: revise com o git. A mudança
   é recusada quando o arquivo mudou desde que a lista o mostrou (recarregue e tente de novo),
@@ -1674,6 +1676,8 @@ qualquer workflow. A linha `check` do corretor de alertas já traz o comando de 
 quando o Flightdeck consegue descobrir (`npm run test`, `cargo test`...). Quando não consegue, a
 linha traz um texto provisório que falha de propósito: troque pelo seu comando de teste antes do
 commit.
+Se a área de transferência recusar a cópia, o diálogo avisa como alerta: selecione o texto do arquivo
+mostrado ali e copie à mão. Um host sem modelos diz isso, em vez de mostrar uma lista vazia.
 
 ### Rodar e acompanhar
 

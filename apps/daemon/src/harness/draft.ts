@@ -8,7 +8,12 @@
 import { createHash } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { DEFAULT_MODELS, type HarnessDraft, type SecretScanner } from "@flightdeck/protocol";
+import {
+  byCodeUnit,
+  DEFAULT_MODELS,
+  type HarnessDraft,
+  type SecretScanner,
+} from "@flightdeck/protocol";
 import { walkInside } from "../create-inside.ts";
 import { FlightdeckError } from "../errors.ts";
 import { samePath } from "../paths.ts";
@@ -153,7 +158,7 @@ export class HarnessDrafts {
           PLAIN_NAME.test(name) &&
           this.deps.scanner.scan(name).length === 0,
       )
-      .sort()
+      .sort(byCodeUnit)
       .slice(0, MAX_NAMES);
     const command = (label: string, value: string | null) => `- ${label}: ${value ?? "none found"}`;
     return [

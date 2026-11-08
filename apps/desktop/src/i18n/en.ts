@@ -3982,6 +3982,9 @@ export const en: Dictionary = {
       file: "File {path}",
       copy: "Copy the file",
       copied: "Copied. Commit it to the base branch, then trust it here.",
+      copyFailed:
+        "The clipboard refused the copy. Select the file's text above and copy it by hand.",
+      none: "This host offers no templates.",
       checkFilled:
         "The check line holds this project's test command. Review it before you trust the workflow.",
       checkPlaceholder:
@@ -4341,6 +4344,8 @@ export const en: Dictionary = {
       setStatus: {
         hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
         label: "Status of {title}",
+        apply: "Change",
+        applyLabel: "Change the status of {title}",
         changed:
           "{title} is now {status}. The file is changed in the project's folder and not committed.",
         failed: "The status could not be changed. {why}",

@@ -3989,6 +3989,9 @@ export const ptBR = {
       file: "Arquivo {path}",
       copy: "Copiar o arquivo",
       copied: "Copiado. Faça commit na branch base e confie nele aqui.",
+      copyFailed:
+        "A área de transferência recusou a cópia. Selecione o texto do arquivo acima e copie à mão.",
+      none: "Este host não oferece modelos.",
       checkFilled:
         "A linha check tem o comando de teste deste projeto. Confira antes de confiar no workflow.",
       checkPlaceholder:
@@ -4345,6 +4348,8 @@ export const ptBR = {
       setStatus: {
         hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
         label: "Status de {title}",
+        apply: "Alterar",
+        applyLabel: "Alterar o status de {title}",
         changed:
           "{title} agora está {status}. O arquivo foi mudado na pasta do projeto e não foi commitado.",
         failed: "Não foi possível mudar o status. {why}",
