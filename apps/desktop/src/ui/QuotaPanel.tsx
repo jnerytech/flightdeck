@@ -1,6 +1,8 @@
 import type { QuotaHistory } from "@flightdeck/protocol";
 import { memo, useEffect, useState } from "react";
+import { QuotaGuard } from "@/components/hosts/quota-guard";
 import { Grid } from "@/components/layout/stack";
+import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore, HostView } from "../lib/app-store.ts";
@@ -102,9 +104,19 @@ function HostQuota(
           </div>
         ))}
       {bars.some((bar) => bar.hot) && (
-        <p className="text-sm text-status-needs-you">
-          {t("quota.hotNotice", { host: names, pct: pauseAt })}
-        </p>
+        <>
+          <p className="text-sm text-status-needs-you">
+            {t("quota.hotNotice", { host: names, pct: pauseAt })}
+          </p>
+          <QuotaGuard store={store} host={host} pauseAt={quota?.pauseAt ?? null} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => store.router.push({ name: "activity" })}
+          >
+            {t("quota.popover.showRunning")}
+          </Button>
+        </>
       )}
     </section>
   );

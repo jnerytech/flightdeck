@@ -67,9 +67,9 @@ async function open(first: object, before = false) {
         hostId="h1"
         cardId="c1"
         onOpenSettings={() => {}}
+        onOpenWorkflows={() => {}}
         onBack={() => {}}
         onOpenCard={() => {}}
-        onOpenWorkflows={() => {}}
       />
     </TContext.Provider>,
   );

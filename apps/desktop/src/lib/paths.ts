@@ -1,6 +1,5 @@
 /** Last path segment, for both `/` and `\` separators. */
-export const basename = (path: string): string =>
-  path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
+export const basename = (path: string): string => path.split(/[\\/]/).findLast(Boolean) ?? path;
 
 /** `path` without trailing `/` or `\` separators. */
 export function trimTrailingSeparators(path: string): string {

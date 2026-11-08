@@ -631,6 +631,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             <StatusBarSlot
               t={t}
               state={state}
+              store={store}
               now={Date.now()}
               terminalTabs={terminalTabs}
               refreshing={refreshingQuota}

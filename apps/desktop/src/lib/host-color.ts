@@ -6,7 +6,7 @@ export function hostColorIndex(hostId: string): number {
   // FNV-1a over the id's UTF-16 units: stable, cheap, and it spreads short ids well.
   let hash = 0x811c9dc5;
   for (let i = 0; i < hostId.length; i++) {
-    hash = Math.imul(hash ^ hostId.charCodeAt(i), 0x01000193);
+    hash = Math.imul(hash ^ hostId.charCodeAt(i), 0x01000193); // NOSONAR: UTF-16 units on purpose; codePointAt would change the saved color of a host whose id has an astral character
   }
   return (hash >>> 0) % HOST_COLORS;
 }

@@ -1144,6 +1144,16 @@ aparece mascarado e como **Oculto**, e não abre.
   quando há um modelo que não pode ser usado, o embutido é escrito e o card diz o motivo: o projeto
   não é confiável, o arquivo é um link ou tem um segundo nome, passa de 32 KiB ou está vazio. O aviso
   nunca cita o modelo.
+- **Modelos de card** (#1201). Um projeto confiável pode listar modelos de card em
+  `.flightdeck/templates/cards.json` (até 32 KiB, 12 modelos): cada um tem um `id`, um `name` e,
+  se quiser, `description`, `criteria` (uma lista, escrita como itens `- [ ]`), `workflow`,
+  `persona`, `pins` (documentos da biblioteca) e um arquivo de `spec`. O **Novo card** passa a
+  oferecer **A partir de um modelo**; escolher um preenche a descrição vazia e diz com o que mais o
+  card começa. O card recebe o arquivo de spec e os documentos fixados do modelo, e a página dele
+  abre com o workflow e a persona do modelo já escolhidos, quando o projeto e o host ainda os têm.
+  Um modelo com erro fica de fora e é contado; um arquivo que não pode ser usado (o projeto não é
+  confiável, é um link, é grande demais, está vazio, não é uma lista) é dito no **Novo card** com o
+  motivo.
 - **Documentos fixados** (#76). Num host com a biblioteca do projeto, a página do card tem o painel
   **Documentos fixados**: escolha um documento da biblioteca (ADRs, RFCs, PRDs, specs) para fixá-lo,
   até 10, e **Desafixar** tira um. Quando o card começa, o primeiro prompt lista cada documento
@@ -1324,8 +1334,15 @@ descrição do card:
   vem de `az repos pr show`, e os checks das políticas, de `az repos pr policy list`.
 
 O CLI precisa estar instalado e autenticado no host do daemon (`gh auth login`, `az login` com a
-extensão `azure-devops`). O daemon só o invoca, procurando-o no PATH. O merge continua no
-provedor. Os cards com PR aberto são consultados a cada 60 s, ou a cada
+extensão `azure-devops`). O daemon só o invoca, procurando-o no PATH. O merge segue as regras
+do provedor: no GitHub, **Fazer merge do PR** num card com PR aberto (e checks que não estejam
+falhando) pergunta antes, com o endereço do PR, os checks e o jeito de fazer o merge (commit de
+merge ou squash), e então roda `gh pr merge` com esse jeito e nada mais: sem `--admin`, sem
+`--auto`, sem apagar a branch, então os checks e revisões obrigatórios continuam valendo. Se o
+GitHub recusar, o card diz por quê (revisão pendente, checks falhando ou ainda rodando, conflito, ou
+as palavras do próprio GitHub) com um link para o PR, e o card fica onde está; quando o merge
+acontece, o card vai para Concluído. Funciona por uma conexão próxima (este computador ou
+Tailscale), e os cards do Azure DevOps fazem o merge no Azure DevOps. Os cards com PR aberto são consultados a cada 60 s, ou a cada
 `board.prPollIntervalMs` da config. PR mesclado leva o card a Concluído; fechado sem merge, a
 Esperando você.
 
@@ -2782,8 +2799,13 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   nome da janela aparece a partir de 1024 px de largura), e um botão **Atualizar o consumo do plano**
   que pergunta aos hosts de novo. A partir de 80% ele ganha uma marca de alerta na cor de "precisa de
   você", e em 100% (ou a partir do `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome
-  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem
-  leitura, nem o medidor nem o botão aparecem.
+  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre um painel com as duas janelas
+  de cada host online e a hora em que reiniciam. Nele, **Cartões novos esperam a partir de** muda a
+  trava (`quota.pauseAt`) de cada host: de 50% a 100%, ou **Nunca**. Um host com flightdeckd antigo
+  mostra só o texto. **Mostrar o que está rodando** abre a atividade de todas as sessões, e cada
+  host tem o seu link para a página dele. O aviso de cota alta no cartão da conta traz a mesma
+  trava e a mesma ação. Mudar a trava nunca para uma sessão que já está rodando. Sem leitura, nem o
+  medidor nem o botão aparecem.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
 
