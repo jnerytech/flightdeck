@@ -3241,6 +3241,7 @@ export const ptBR = {
     subtitle: "Uma sessão coordenadora e as executoras, cada uma num card",
     host: "Host",
     otherHost: "{wanted} não tem times. Mostrando {shown}.",
+    otherHostOffline: "{wanted} está offline. Mostrando {shown}.",
     noHost: "Nenhum host conectado com times",
     noHostLink: "Adicionar host",
     openSession: "Abrir sessão",

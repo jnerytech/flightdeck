@@ -3240,6 +3240,7 @@ export const en: Dictionary = {
     subtitle: "A coordinator session and its workers, each in a card",
     host: "Host",
     otherHost: "{wanted} has no teams. Showing {shown}.",
+    otherHostOffline: "{wanted} is offline. Showing {shown}.",
     noHost: "No connected host with teams",
     noHostLink: "Add a host",
     openSession: "Open session",
