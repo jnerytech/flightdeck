@@ -43,8 +43,11 @@ const WEAK = new Set([
 const VAGUE_ARG =
   /^(?:expect\.anything\(\)|expect\.any\(|expect\.objectContaining\(\{\s*\}\)$|\{\s*\}$)/;
 
-/** A subject that is itself a comparison, so `toBe(true)` says no more than `not.toBeNull()`. */
-const COMPARISON = /[!=]==?|[<>]/;
+/**
+ * A subject that is itself a comparison or a type test, so `toBe(true)` says no more than
+ * `not.toBeNull()` or `toBeInstanceOf(X)`.
+ */
+const COMPARISON = /[!=]==?|[<>]|\binstanceof\b|\btypeof\b/;
 
 /** The reviewed escape: `// weaker: ` and at least one word of why. */
 const ESCAPE = /\/\/ weaker: \S/;
@@ -96,11 +99,12 @@ function assertions(text: string): Assertion[] {
       const argsFrom = close + matcher[0].length;
       const argsTo = closing(text, argsFrom);
       const args = argsTo === -1 ? "" : text.slice(argsFrom, argsTo - 1);
-      const subject = text.slice(open, close - 1).replace(/\s+/g, "");
+      const raw = text.slice(open, close - 1);
+      const subject = raw.replace(/\s+/g, "");
       const lineEnd = text.indexOf("\n", argsFrom);
       const line = text.slice(text.lastIndexOf("\n", at) + 1, lineEnd === -1 ? undefined : lineEnd);
       const negated = /\.\s*not\b/.test(matcher[0]);
-      const kind = kindOf(matcher[2] ?? "", negated, args, subject);
+      const kind = kindOf(matcher[2] ?? "", negated, args, raw);
       found.push({ subject, kind, escaped: kind === "weak" && ESCAPE.test(line) });
     }
     at = text.indexOf("expect(", close);
