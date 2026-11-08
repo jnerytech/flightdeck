@@ -122,6 +122,21 @@ describe("knowledge-create: a document from a template (#1039)", () => {
     ]);
   });
 
+  test("a body carries no invisible character: direction marks, zero-width and tag characters are dropped", async () => {
+    const root = project();
+    const body = "a\u202Eb\u200Bc\u{E0041}d\u2028e\uFE0F\u2066";
+    const entry = await createKnowledgeDoc(root, "adr", "Hidden", body);
+    expect(readFileSync(join(root, entry.path), "utf8")).toBe(
+      "---\nstatus: transitional\n---\n# Hidden\n\nabcd\ne\n",
+    );
+  });
+
+  test("a body of invisible characters only is the template", async () => {
+    const root = project();
+    const entry = await createKnowledgeDoc(root, "adr", "Hidden", "\u200B\u202E\u{E0041} ");
+    expect(readFileSync(join(root, entry.path), "utf8")).toContain("## Decision");
+  });
+
   test("a blank body is the template", async () => {
     const root = project();
     const entry = await createKnowledgeDoc(root, "adr", "Use SQLite", " \n\t ");
