@@ -155,7 +155,7 @@ export async function pinnedOnceSettled(page: Page): Promise<string | null> {
   const deadline = Date.now() + WAIT;
   let reading = await page.evaluate(pinnedProblem);
   while (reading !== null && Date.now() < deadline) {
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(150); // NOSONAR: a poll with a deadline that reads the problem back, which waitForFunction cannot
     reading = await page.evaluate(pinnedProblem);
   }
   return reading;
