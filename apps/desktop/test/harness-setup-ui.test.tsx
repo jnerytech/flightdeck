@@ -564,4 +564,52 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
     await open();
     expect([said, kept, button("Draft with Claude") !== null]).toEqual([true, true, false]);
   });
+
+  test("a draft still running keeps Apply off, and one that comes back after Cancel and a new preview changes nothing", async () => {
+    let answer: (value: Answer) => void = () => {};
+    const slow = new Promise<Answer>((resolve) => {
+      answer = resolve;
+    });
+    const { view, sent, count } = setup({
+      features: [...FEATURES, "harnessDraft"],
+      answers: [
+        slow,
+        { ok: true, data: { written: ["CLAUDE.md"], digests: { "CLAUDE.md": "w" } } },
+      ],
+    });
+    render(view);
+    await listing();
+    await open();
+    await click("Draft with Claude", true);
+    const applyOff = (
+      within(screen.queryByRole("alertdialog") as HTMLElement).queryByRole("button", {
+        name: "Apply the setup",
+      }) as HTMLButtonElement | null
+    )?.disabled;
+    await click(/^Cancel/, true);
+    await settleMaybe(() => screen.queryByRole("alertdialog") === null);
+    await click("Set up Claude Code");
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    // The old draft comes back now: it belongs to no preview on screen.
+    await act(async () =>
+      answer({
+        ok: true,
+        data: { path: "CLAUDE.md", content: "# Late draft\n", digest: "d-late" },
+      }),
+    );
+    const stillTemplate = !dialogText().includes("# Late draft");
+    const canDraft = (button("Draft with Claude") as HTMLButtonElement | null)?.disabled === false;
+    await click("Apply the setup", true);
+    await settleMaybe(() => sent.some(([type]) => type === "project.harness.apply"));
+    const applied = sent.find(([type]) => type === "project.harness.apply")?.[1] as
+      | { digests?: Record<string, string> }
+      | undefined;
+    expect([
+      applyOff,
+      stillTemplate,
+      canDraft,
+      applied?.digests?.["CLAUDE.md"],
+      count("project.harness.draft"),
+    ]).toEqual([true, true, true, "d-claude", 1]);
+  });
 });
