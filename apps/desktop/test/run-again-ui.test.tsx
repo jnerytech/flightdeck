@@ -144,6 +144,31 @@ describe("run-again-ui: Run again on a failed run (#1219)", () => {
     ]);
   });
 
+  test("the next failed run of the card gets its button back, not the last run's started note", async () => {
+    const { store, sent } = setup();
+    const tree = (failed: WorkflowRun) => (
+      <TContext.Provider value={store.i18n.t}>
+        <RunAgain
+          store={store}
+          hostId="h1"
+          cardId="c1"
+          run={failed}
+          workflow={workflow()}
+          known
+          onOpenWorkflows={() => {}}
+        />
+      </TContext.Provider>
+    );
+    const view = render(tree(run({ id: "r1" })));
+    await click(button("Run again"));
+    const started = await settleMaybe(() => startedNote() !== null, 3000);
+    view.rerender(tree(run({ id: "r2" })));
+    const back = await settleMaybe(() => button("Run again") !== null, 3000);
+    await click(button("Run again"));
+    await settleMaybe(() => sent.length === 2, 3000);
+    expect([started, back, sent.length]).toEqual([true, true, 2]);
+  });
+
   test("the run's reason stays above the button, and the button waits for the host's answer on the file", async () => {
     const ready = setup();
     render(ready.view);
