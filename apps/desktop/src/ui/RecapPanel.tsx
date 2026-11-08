@@ -2,7 +2,7 @@ import type { SessionRecap } from "@flightdeck/protocol";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
-import { Stack } from "@/components/layout/stack";
+import { Inline, Stack } from "@/components/layout/stack";
 import { AdrDraftDialog } from "@/components/session/adr-draft-dialog";
 import { useTight } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
@@ -143,7 +143,7 @@ export function RecapPanel(
         </Stack>
       )}
       {open && lines.length > 0 && (
-        <div>
+        <Inline gap={2}>
           <Button
             variant="outline"
             size="sm"
@@ -156,7 +156,7 @@ export function RecapPanel(
               {t("recap.draftAdr")}
             </Button>
           )}
-        </div>
+        </Inline>
       )}
       {drafting && props.libraryPath && (
         <AdrDraftDialog

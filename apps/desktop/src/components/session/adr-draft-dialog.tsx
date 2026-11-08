@@ -89,7 +89,10 @@ export function AdrDraftDialog(
           )}
         </AssistField>
         {note && (
-          <p role={note.ok ? "status" : "alert"} className="text-sm">
+          <p
+            role={note.ok ? "status" : "alert"}
+            className={note.ok ? "text-sm" : "text-destructive text-sm"}
+          >
             {note.text}
           </p>
         )}

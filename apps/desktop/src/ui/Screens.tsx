@@ -278,7 +278,7 @@ function ManagedSession(
                 hostId={hostId}
                 claudeSessionId={claudeId}
                 stamp={status}
-                {...(owner?.path || cwd ? { libraryPath: owner?.path ?? cwd } : {})}
+                {...(owner?.path || cwd ? { libraryPath: owner?.path || cwd } : {})}
               />
             )}
           </>
