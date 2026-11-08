@@ -257,6 +257,8 @@ export const DAEMON_REASONS = [
   "bg_no_message_path",
   "transport_refused",
   "trust_root_refused",
+  "harness_stale",
+  "harness_confirm",
   "secret_expired",
   "vault_full",
   "vault_action_unknown",
@@ -501,6 +503,7 @@ export const DAEMON_FEATURES = [
   "harnessStack",
   "knowledge",
   "harnessPreview",
+  "harnessApply",
   "keepAwake",
   "autoUpdate",
 ] as const;

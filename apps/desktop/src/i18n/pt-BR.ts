@@ -1479,6 +1479,7 @@ export const ptBR = {
     harnessStack: "a leitura do stack do projeto",
     knowledge: "a leitura dos documentos do projeto",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
+    harnessApply: "a aplicação de mudanças na configuração do Claude Code",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
@@ -1790,6 +1791,9 @@ export const ptBR = {
       "Isto só funciona por uma conexão próxima: este computador (loopback) ou a Tailscale, que o WireGuard cifra. Para um host WSL, adicione-o como ws://localhost:<porta> (o WSL repassa a porta) ou pelo endereço da Tailscale.",
     trust_root_refused:
       "Esta pasta é uma pasta permitida com vários projetos, ou fica acima de uma: confie na pasta do próprio projeto.",
+    harness_stale:
+      "O projeto mudou desde a prévia, ou a prévia não era destas partes: faça a prévia de novo.",
+    harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",

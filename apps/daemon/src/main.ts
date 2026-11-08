@@ -62,6 +62,7 @@ import { buildChildEnv } from "./env.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
+import { applyHarness } from "./harness/apply.ts";
 import { previewHarness } from "./harness/preview.ts";
 import { detectStack } from "./harness/stack.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
@@ -1436,6 +1437,7 @@ export async function startDaemon(
     harnessStack: detectStack,
     knowledge: listKnowledge,
     harnessPreview: previewHarness,
+    harnessApply: applyHarness,
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) => paths.map(trustState),
