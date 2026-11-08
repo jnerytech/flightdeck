@@ -1,5 +1,13 @@
 import { CheckCheck, MousePointerClick } from "lucide-react";
-import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { GateText } from "@/components/approval/gate-text";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -320,11 +328,21 @@ export function NeedsYou(
     [store],
   );
   const chosen = entries.find((e) => e.key === selected);
+  // One handler for every row, reading the list as it is now: a row's memo holds across renders.
+  const latest = useRef({ entries, open: (_entry: Entry) => {} });
+  const activate = useCallback((i: number) => {
+    const entry = latest.current.entries[i];
+    if (!entry) return;
+    setCursor(i);
+    latest.current.open(entry);
+  }, []);
+  const minute = Math.floor(store.now() / 60_000);
   const open = (entry: Entry) => {
     if (entry.kind === "alert")
       go(entry.clientId ? { name: "clients" } : { name: "settings", section: "budgets" });
     else setSelected(entry.key);
   };
+  latest.current = { entries, open };
 
   // J and K move the cursor, Enter opens the row under it.
   useEffect(() => {
@@ -398,14 +416,13 @@ export function NeedsYou(
             )}
             <EntryRow
               entry={entry}
+              index={i}
               active={cursor === i}
               selected={selected === entry.key}
               store={store}
-              chipOf={chipOf}
-              onActivate={() => {
-                setCursor(i);
-                open(entry);
-              }}
+              chip={entry.kind === "request" ? chipOf(entry.item.sessionId) : null}
+              minute={minute}
+              onActivate={activate}
             />
           </Fragment>
         ))}

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { ClientChip } from "@/components/clients/client-chip";
 import { StatusDot } from "@/components/status/status-dot";
 import { formatAgo } from "@/i18n/format";
@@ -70,17 +70,23 @@ function DotLine(props: Readonly<{ t: T; text: string; children?: ReactNode }>) 
 }
 
 /** A line of the list, by the kind of entry it is. */
-export function EntryRow(
-  props: Readonly<{
-    entry: Entry;
-    active: boolean;
-    selected: boolean;
-    store: AppStore;
-    chipOf(sessionId: string): { name: string; color: ClientColor } | null;
-    onActivate(): void;
-  }>,
-) {
-  const { entry, active, selected, store, onActivate } = props;
+interface EntryRowProps {
+  entry: Entry;
+  /** Its place in the list: what `onActivate` is called with. */
+  index: number;
+  active: boolean;
+  selected: boolean;
+  store: AppStore;
+  /** The client chip of a request's session; null for none. */
+  chip: { name: string; color: ClientColor } | null;
+  /** The minute of the clock: a row's "time ago" moves on with it, not on every render. */
+  minute: number;
+  onActivate(index: number): void;
+}
+
+function EntryRowImpl(props: Readonly<EntryRowProps>) {
+  const { entry, active, selected, store } = props;
+  const onActivate = () => props.onActivate(props.index);
   const { t } = store.i18n;
   if (entry.kind === "alert") {
     return (
@@ -134,7 +140,7 @@ export function EntryRow(
     );
   }
   const { item } = entry;
-  const chip = props.chipOf(item.sessionId);
+  const { chip } = props;
   // A workflow gate is not a tool: its line says which step waits (issue #175).
   const what = pendingText(item, t);
   const who = `${item.hostName} · ${item.sessionName}`;
@@ -162,3 +168,42 @@ const FINISH_TONE = { done: "idle", failed: "error", ended: "ended" } as const;
 export function hostNameOf(store: AppStore, hostId: string): string {
   return store.getState().hosts.find((h) => h.id === hostId)?.name ?? hostId;
 }
+
+/** What an entry shows: its own record (the request, the alert, the finish), field by field. */
+function inner(entry: Entry): object {
+  if (entry.kind === "request") return entry.item;
+  if (entry.kind === "finished") return entry.finish;
+  if (entry.kind === "alert") return entry;
+  return entry.alert;
+}
+
+function shallowSame(a: object, b: object): boolean {
+  const left = Object.entries(a);
+  const right = b as Record<string, unknown>;
+  return (
+    left.length === Object.keys(b).length && left.every(([key, value]) => right[key] === value)
+  );
+}
+
+/**
+ * Same row, same look (#1191): the list builds its entries anew on every change of the state, so a
+ * row compares what it shows, not the objects; at 200 sessions a summary redraws its own row only.
+ */
+function sameRow(a: Readonly<EntryRowProps>, b: Readonly<EntryRowProps>): boolean {
+  return (
+    a.index === b.index &&
+    a.active === b.active &&
+    a.selected === b.selected &&
+    a.store === b.store &&
+    a.minute === b.minute &&
+    a.onActivate === b.onActivate &&
+    a.chip?.name === b.chip?.name &&
+    a.chip?.color === b.chip?.color &&
+    a.entry.key === b.entry.key &&
+    a.entry.kind === b.entry.kind &&
+    shallowSame(inner(a.entry), inner(b.entry))
+  );
+}
+
+/** A line of the list, by the kind of entry it is; redrawn only when what it shows changed. */
+export const EntryRow = memo(EntryRowImpl, sameRow);
