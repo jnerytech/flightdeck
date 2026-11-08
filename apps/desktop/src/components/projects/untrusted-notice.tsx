@@ -32,7 +32,8 @@ export function UntrustedNotice(
   // while a request waits for the person (#488).
   const short = useTight();
   useEffect(() => {
-    if (!announced || stale) return;
+    // No folder yet (the session page before its summary): nothing to ask, and the host refuses "".
+    if (!announced || stale || !cwd) return;
     let current = true;
     void store.hostCommand(hostId, "project.trust.state", { paths: [cwd] }).then((answer) => {
       if (current) setUntrusted(answer?.items[0]?.trusted === false);
