@@ -4348,6 +4348,8 @@ export const ptBR = {
       setStatus: {
         hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
         label: "Status de {title}",
+        apply: "Alterar",
+        applyLabel: "Alterar o status de {title}",
         changed:
           "{title} agora está {status}. O arquivo foi mudado na pasta do projeto e não foi commitado.",
         failed: "Não foi possível mudar o status. {why}",

@@ -41,6 +41,8 @@ export function KnowledgePanel(
   // The specs a card is being made from: a second click waits, so it makes no second card. The ref
   // answers at once (two clicks in one tick); the state disables the button.
   const busy = useRef(new Set<string>());
+  // The status each document's picker shows when it is not the file's own yet, by path.
+  const [chosen, setChosen] = useState<Readonly<Record<string, KnowledgeStatus>>>({});
   const [making, setMaking] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
@@ -58,6 +60,31 @@ export function KnowledgePanel(
       setLoaded(result ?? "failed");
     });
   };
+  // A write is on its way until the list read again shows it: a second press (a double click, a held
+  // Enter) comes before the host answers and would write with the hash the first one used up.
+  const writing = useRef(new Set<string>());
+  const pickers = useRef(new Map<string, HTMLSelectElement>());
+  const filters = useRef<HTMLDivElement>(null);
+  const refocus = useRef<string | null>(null);
+  // Once the list is read again: a choice the file now agrees with is done, and the focus goes back to
+  // the picker of the document that was changed (or to the filter in use, when it no longer fits).
+  useEffect(() => {
+    if (loaded === null || loaded === "failed") return;
+    writing.current.clear();
+    setChosen((now) => {
+      const kept = Object.entries(now).filter(
+        ([file, status]) => loaded.entries.find((e) => e.path === file)?.status !== status,
+      );
+      return kept.length === Object.keys(now).length ? now : Object.fromEntries(kept);
+    });
+    const wanted = refocus.current;
+    if (wanted === null) return;
+    refocus.current = null;
+    (
+      pickers.current.get(wanted) ??
+      filters.current?.querySelector<HTMLElement>("[aria-pressed='true']")
+    )?.focus();
+  }, [loaded]);
   // Issue #78, S-T2: a spec becomes a card that names it, so its first start reads it first and
   // works test first. A card the host refuses is not named; the banner says why.
   const makeCard = async (entry: KnowledgeEntry, projectId: string) => {
@@ -94,12 +121,16 @@ export function KnowledgePanel(
   // The file is written by the host only if it is as the list showed it; a refusal says why, and
   // the list is read again so the next try has what the file is now.
   const change = async (entry: KnowledgeEntry, status: KnowledgeStatus) => {
+    if (writing.current.has(entry.path)) return;
+    writing.current.add(entry.path);
     const result = await store.hostRequest(hostId, "knowledge.setStatus", {
       path,
       file: entry.path,
       status,
       expectedHash: entry.hash,
     });
+    if (result.ok) refocus.current = entry.path;
+    else writing.current.delete(entry.path);
     setNote(
       result.ok
         ? {
@@ -151,7 +182,7 @@ export function KnowledgePanel(
         <p className="text-sm">{t("projectPage.knowledge.empty")}</p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
+          <div ref={filters} className="flex flex-wrap gap-2">
             {(["all", ...STATUSES] as const).map((status) => (
               <Button
                 key={status}
@@ -176,14 +207,23 @@ export function KnowledgePanel(
                   <Badge variant="outline">{word(entry.status)}</Badge>
                   {props.status && (
                     <select
+                      ref={(el) => {
+                        if (el) pickers.current.set(entry.path, el);
+                        else pickers.current.delete(entry.path);
+                      }}
                       aria-label={t("projectPage.knowledge.setStatus.label", {
                         title: entry.title,
                       })}
                       className="rounded-md border border-input bg-background px-2 py-1 text-sm"
-                      value={entry.status === "unclassified" ? "" : entry.status}
-                      onChange={(event) =>
-                        void change(entry, event.target.value as KnowledgeStatus)
+                      value={
+                        chosen[entry.path] ?? (entry.status === "unclassified" ? "" : entry.status)
                       }
+                      // Choosing only picks: an arrow key on a closed select fires a change for each
+                      // value it passes, and each would write the file (#1089).
+                      onChange={(event) => {
+                        const next = event.target.value as KnowledgeStatus;
+                        setChosen((now) => ({ ...now, [entry.path]: next }));
+                      }}
                     >
                       {entry.status === "unclassified" && (
                         <option value="" disabled>
@@ -196,6 +236,24 @@ export function KnowledgePanel(
                         </option>
                       ))}
                     </select>
+                  )}
+                  {props.status && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={t("projectPage.knowledge.setStatus.applyLabel", {
+                        title: entry.title,
+                      })}
+                      disabled={
+                        chosen[entry.path] === undefined || chosen[entry.path] === entry.status
+                      }
+                      onClick={() => {
+                        const next = chosen[entry.path];
+                        if (next !== undefined) void change(entry, next);
+                      }}
+                    >
+                      {t("projectPage.knowledge.setStatus.apply")}
+                    </Button>
                   )}
                   {entry.type && (
                     <span className="text-muted-foreground text-xs">

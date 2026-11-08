@@ -800,7 +800,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // The status changes in the document's file, and the counts follow it.
     const select = (title: string) =>
       panel.getByLabel(c.t("projectPage.knowledge.setStatus.label", { title }), { exact: true });
+    const apply = (title: string) =>
+      panel.getByRole("button", {
+        name: c.t("projectPage.knowledge.setStatus.applyLabel", { title }),
+        exact: true,
+      });
     await select(titles.obsolete).selectOption({ label: word("valid") });
+    await apply(titles.obsolete).click();
     await panel
       .getByRole("status")
       .filter({
@@ -812,6 +818,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
     await filter("valid", 2).waitFor({ timeout: WAIT });
     await select(titles.obsolete).selectOption({ label: word("obsolete") });
+    await apply(titles.obsolete).click();
     await filter("obsolete", 1).waitFor({ timeout: WAIT });
     // The index for sessions: off, then on again. The demo's project is not trusted, so "on" reads
     // as the untrusted kind of on.

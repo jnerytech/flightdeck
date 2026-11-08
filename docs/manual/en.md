@@ -365,7 +365,9 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   `"knowledge": { "feedOff": ["/path/to/project"] }`, and a folder in that list switches off
   everything inside it too: a project off through a folder above it says so, and is switched on
   by editing that entry in the file. An untrusted project is not given the index, on or off.
-  Each document has a status picker. Choosing one writes only the `status:` line of that file's
+  Each document has a status picker and a **Change** button: choosing a status only picks it (the arrow
+  keys can browse the list without writing anything), and **Change**, on while the choice differs from
+  the file's status, writes it. It writes only the `status:` line of that file's
   front matter (a document with no front matter gets a block holding that line), keeps the rest of
   the file as it is, and leaves the change in the project's folder, not committed: review it with
   git. It is refused when the file changed since the list showed it (reload and try again), when
