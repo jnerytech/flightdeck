@@ -82,8 +82,10 @@ export function ModelChip(
     setOpen(false);
     props.onPickEffort(level);
   };
+  // Not modal, like the Mode chip's menu beside it (#1004): a modal menu leaves the page's
+  // controls focusable under aria-hidden.
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -99,6 +101,9 @@ export function ModelChip(
         side="top"
         align="end"
         className="mode-menu"
+        // Like a modal menu, it closes on Escape or a press outside, never on a focus (#1004): Radix
+        // puts the focus back on a chip a tick after a pick, and a menu opened by then stays open.
+        onFocusOutside={(e) => e.preventDefault()}
         onKeyDown={(e) => {
           const value = /^[1-9]$/.test(e.key) ? top[Number(e.key) - 1] : undefined;
           if (value === undefined) return;

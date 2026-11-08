@@ -1,7 +1,7 @@
 /**
  * What `sonar-project.properties` tells SonarCloud (#283): which files are excluded, which are test
  * code, and which count for coverage. SonarCloud Code Analysis on the PR is the only Sonar check;
- * sonar-coverage.test.ts uses these to keep SonarCloud's coverage on exactly our 100% gate's files.
+ * sonar-coverage.test.ts uses these to keep SonarCloud's coverage on exactly our coverage gate's files.
  */
 
 /** The comma-separated globs of one property of a sonar-project.properties file. */

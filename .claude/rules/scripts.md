@@ -8,7 +8,7 @@ paths:
 - Functional core, imperative shell: the logic is a function in `scripts/lib/` that takes its
   effects (git, fs, clock, spawn) as a deps object, such as `runAudit({ since, git, readFile })`;
   the entry file in `scripts/` only wires the real ones. `scripts/test/` calls the function with
-  fakes, at 100% lines and functions.
+  fakes, at the coverage gate (80% of lines and functions, #1002).
 - The rules of the Claude Code hooks live in `scripts/lib/claude-hooks.ts`; the files in
   `.claude/hooks/` only read stdin, call it and exit. A hook fails open on its own errors.
 - A ratchet is a bun test with a baseline that only goes down (`overBaseline` in

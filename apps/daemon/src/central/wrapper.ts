@@ -203,14 +203,23 @@ async function restrictedFolder(opts: RunClaudeOptions, folder: string, user: st
   return restricted;
 }
 
-/** Where the channel config goes: the data folder, or on Windows a plain private folder when that path is not plain. */
-async function configFolder(
+/**
+ * Where the files claude is given by path go (#936). `own` is a private folder made for this launch
+ * when the data folder's path is not one claude reads back reliably (Windows, a `.cmd` shim or an
+ * accent); `null` when the data folder's own is fine. The whole answer is `null` when a plain folder
+ * was needed and could not be had.
+ */
+type LaunchFolder = { own: string | null };
+
+/** Where the files go: the data folder, or on Windows a plain private folder when that path is not plain. */
+async function launchFolder(
   opts: RunClaudeOptions,
   launchId: string,
-): Promise<{ dir: string; own: boolean } | null> {
-  const dir = join(opts.config.dataDir, "channels");
+): Promise<LaunchFolder | null> {
   const windows = (opts.platform ?? process.platform) === "win32";
-  if (!windows || PLAIN_PATH.test(join(dir, `${launchId}.json`))) return { dir, own: false };
+  // The longest name any of the files has: they all share the data folder's prefix.
+  const probe = join(opts.config.dataDir, "personas", `${launchId}-agents.json`);
+  if (!windows || PLAIN_PATH.test(probe)) return { own: null };
   const { ProgramData, PROGRAMDATA, PUBLIC, USERDOMAIN, USERNAME } = opts.env;
   // The account is the process's own, from its environment: a name that could mean anything else is no account.
   const named = (name: string | undefined) => name !== undefined && ACCOUNT.test(name);
@@ -218,38 +227,40 @@ async function configFolder(
   const user = USERDOMAIN ? `${USERDOMAIN}\\${USERNAME}` : USERNAME;
   for (const base of [ProgramData ?? PROGRAMDATA, PUBLIC]) {
     const folder = base && localBase(base) ? join(base, `Flightdeck-${launchId}`) : null;
-    if (folder && (await restrictedFolder(opts, folder, user))) return { dir: folder, own: true };
+    if (folder && (await restrictedFolder(opts, folder, user))) return { own: folder };
   }
   return null;
 }
 
 /**
- * Writes the MCP config that gives the session the Flightdeck channel; returns its path (and the
- * private folder made for it, to remove with it), or `null` when it cannot be written: the session
- * then opens with neither flag, since `--mcp-config` of a file that is not there and a channel named
- * after a server that is not configured make claude print a warning for a channel that does
- * nothing (#936). Where the data folder's path is not one claude reads back reliably, it goes to a
- * plain folder only the user can open.
+ * Writes the MCP config that gives the session the Flightdeck channel; returns its path, or `null`
+ * when it cannot be written: the session then opens with neither flag, since `--mcp-config` of a
+ * file that is not there and a channel named after a server that is not configured make claude
+ * print a warning for a channel that does nothing (#936). The path is in `files` before it is
+ * written, so a half-written config is taken away with the rest.
  */
 async function writeChannelConfig(
   opts: RunClaudeOptions,
   launchId: string,
   url: string,
   token: string,
-): Promise<{ path: string; folder: string | null } | null> {
-  const where = await configFolder(opts, launchId);
+  where: LaunchFolder | null,
+  files: string[],
+): Promise<string | null> {
   const [command, ...rest] = opts.self;
   const args = [...rest, "channel", "--launch", launchId, "--url", url, "--token", token];
   if (where) {
-    const path = join(where.dir, `${launchId}.json`);
+    const dir = where.own ?? join(opts.config.dataDir, "channels");
+    const path = join(dir, `${launchId}.json`);
+    files.push(path);
     try {
-      await mkdir(where.dir, { recursive: true });
+      await mkdir(dir, { recursive: true });
       const config = JSON.stringify({ mcpServers: { flightdeck: { command, args } } });
       // In the plain folder the file must be new: one already there is not ours.
       await writeFile(path, config, { mode: 0o600, flag: where.own ? "wx" : "w" });
-      return { path, folder: where.own ? where.dir : null };
+      return path;
     } catch {
-      if (where.own) await removeFolder(where.dir);
+      // Said below, and the half-written file goes with the others.
     }
   }
   opts.log.error(CHANNEL_NOTICE);
@@ -293,10 +304,10 @@ async function agentArgs(
   return interactive.args;
 }
 
-/** Deletes the files that exist (a null path is skipped). */
-async function removeAll(paths: Array<string | null>): Promise<void> {
+/** Deletes the files that exist; one that cannot be taken away (or is not under a folder) is passed over. */
+async function removeAll(paths: string[]): Promise<void> {
   await inSequence(paths, async (path) => {
-    if (path) await rm(path, { force: true });
+    await Promise.allSettled([rm(path, { force: true })]);
   });
 }
 
@@ -332,20 +343,29 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   const token = opts.config.hooks.token;
   // The body and, in print mode, the subagents travel in files that only live while claude runs (nine bodies of
   // 8 KB do not fit on a Windows command line).
-  const dir = join(opts.config.dataDir, "personas");
   const files: string[] = [];
-  let channel: Awaited<ReturnType<typeof writeChannelConfig>> = null;
+  // Made when the first file needs it, once for the launch: the channel config and these files share it.
+  const made: { folder?: Promise<LaunchFolder | null> } = {};
+  const where = () => {
+    made.folder ??= launchFolder(opts, launchId);
+    return made.folder;
+  };
   const write = async (name: string, content: string) => {
+    const own = (await where())?.own ?? null;
+    const dir = own ?? join(opts.config.dataDir, "personas");
     // Only the owner reads them: a persona's body and the library's index are not for other users.
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const file = join(dir, name);
-    await writeFile(file, content, { mode: 0o600 });
     files.push(file);
+    await writeFile(file, content, { mode: 0o600, flag: own ? "wx" : "w" });
     return file;
   };
   const added: string[] = [];
   try {
-    channel = url && token ? await writeChannelConfig(opts, launchId, url, token) : null;
+    const channel =
+      url && token
+        ? await writeChannelConfig(opts, launchId, url, token, await where(), files)
+        : null;
     // Without a receptor or a token: the daemon is down. A config that failed to write said so itself.
     if (!channel && !print && !(url && token)) {
       opts.log.error(
@@ -367,7 +387,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
       buildClaudeLaunch({
         claude,
         args: [...added, ...args],
-        mcpConfigPath: channel?.path ?? null,
+        mcpConfigPath: channel,
       }),
       {
         env: {
@@ -386,8 +406,9 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     // `claude --bg` returns at once and the session goes on: its channel config and persona
     // files are still read, so they stay (a few small files per background session).
     if (!background) {
-      await removeAll([channel?.path ?? null, ...files]);
-      if (channel?.folder) await removeFolder(channel.folder);
+      await removeAll(files);
+      const own = made.folder ? ((await made.folder)?.own ?? null) : null;
+      if (own) await removeFolder(own);
     }
   }
 }

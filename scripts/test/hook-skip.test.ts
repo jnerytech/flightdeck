@@ -20,7 +20,9 @@ describe("hook-skip: a test skipped off Linux names the issue that owns its fix"
     for (const head of ["test", "it", "describe"]) {
       const reason = edit("", bare(head)) ?? "";
       expect(reason).toContain("is blocked");
-      expect(reason).toContain("// unstable: #<issue> <reason>");
+      // #1011 review: the hook says what the rule says now (#1003): delete it, never skip it.
+      expect(reason).toContain("a flaky test is deleted, never skipped");
+      expect(reason).toContain("#1003");
       expect(reason).toContain("docs/TDD.md");
     }
     expect(edit("", bare("test", 'process.platform !== "linux"')) ?? "").toContain("is blocked");
@@ -66,7 +68,7 @@ describe("hook-skip: a test skipped off Linux names the issue that owns its fix"
     const note = "// unstable: #484 reads the status late on a loaded runner\n";
     expect(edit("", `${note}describe${SKIP}"x", () => {})`)).toBeNull();
     expect(edit("", `test${SKIP}"x", () => {}) // unstable: #492 the palette races`)).toBeNull();
-    expect(edit("", `test${SKIP}"x", () => {})`) ?? "").toContain("// unstable: #<issue> <reason>");
+    expect(edit("", `test${SKIP}"x", () => {})`) ?? "").toContain("never skipped");
     // Any receiver: test.concurrent.skip and each(...).skip need the note too (#494 review).
     expect(edit("", `test.concurrent${SKIP}"x", () => {})`) ?? "").toContain("is blocked");
   });

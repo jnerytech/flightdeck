@@ -129,7 +129,7 @@ function commentLine(comment: PrComment, i: number): string {
 }
 
 /** The prompt of a round: the rules, then what failed, with the third parties' text as data. */
-function buildPrompt(input: {
+export function buildPrompt(input: {
   n: number;
   maxRounds: number;
   branch: string;

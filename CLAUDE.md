@@ -35,7 +35,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 
 - Test a single file: `bun --config=bunfig.area.toml test <file>`. A plain `bun test <file>`
   exits with 1 even when it passes, because of the global coverage threshold.
-- Full suite (with the 100% line and function threshold): `bun run slot -- bun run test`.
+- Full suite (with the 80% line and function threshold per file, #1002): `bun run slot -- bun run test`.
 - The heavy commands go through the slot: `bun run slot -- <command...>` (for example
   `bun run slot -- bun run test`). It is one exclusive lock for the whole machine, with a queue;
   waiters take it first come, first served. `bun run slot -- --status` shows the holder (with a
@@ -53,9 +53,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   changed since the merge-base with `main` (or `<ref>`), picks the changed test files plus every
   test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
   path, prints each with the reason, and runs them in one call (through the slot above 60 files). The run also collects coverage and fails unless every
-  changed source file is at 100% lines and functions, listing the uncovered `file:line` and the
+  changed source file is at 80% of its lines and functions, listing the uncovered `file:line` and the
   uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A file that a
-  changed test newly imports is held to 100% too, with the tests that import it directly, since
+  changed test newly imports is held to 80% too, with the tests that import it directly, since
   loading it puts it in the full suite's gate even outside `scripts/lib` (#762; direct imports only,
   not what that file loads in turn). `--pr` (#309) is what a PR's
   CI runs: every unit and component test plus the related tests, with the same changed-file gate, or
@@ -71,11 +71,11 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
   `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
   gate). A PR's CI runs `--pr`: every unit and component test plus the related tests of the other
-  tiers, with 100% on the changed files. A push to main runs the same, from the commit before it
+  tiers, with 80% on the changed files. A push to main runs the same, from the commit before it
   (#444). The e2e journeys run when the change touches what they read (the screens, the journeys,
   the demo, the daemon). Windows is not part of a PR's or a push's run (#534): the person tests it
   by hand. The schedule (every 3 hours) and a run by hand run the whole suite with the whole-repo
-  100% gate (on Linux, 3 shards × Bun lines and istanbul functions, merged fail-closed by
+  80% gate (on Linux, 3 shards × Bun lines and istanbul functions, merged fail-closed by
   `scripts/shard-gate.ts`, #296), Windows included as a signal that gates nothing (`test:shards`, 30 s per test there);
   `pr tag` tags only a commit with such a full green run. `bun run test:tiers` prints the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
@@ -87,7 +87,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - Sonar: SonarCloud analyses each PR and each full run of main, never a main push (#283, #296);
   there is no local copy to run before a push. `// NOSONAR: <reason>` on the flagged line suppresses a reviewed false
   positive there. `sonar-project.properties` keeps SonarCloud's coverage on exactly the files of
-  the 100% gate (`sonar-coverage.test.ts`).
+  the coverage gate (`sonar-coverage.test.ts`).
 - Before hand-off from a session: `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit`
   and `test:related` in order, then reads the required checks of HEAD on GitHub (`ci=`: push the
   branch first; `--base <ref>` for a branch stacked on another) and the security gate (`security=`,
@@ -125,11 +125,11 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   by every worktree, so a pop can apply another session's changes. Keep work aside with
   `git diff > /tmp/<name>.patch` and `git apply`, or a WIP commit on your branch.
 - Forbidden in committed code: `.only`, `test.todo`, `toMatchSnapshot` on the first run,
-  weakening an assertion. The one exception: a flaky test that hurts CI may be skipped
-  (`test.skip`, `it.skip`, `describe.skip`, or `test.skipIf(notLinux)`) with
-  `// unstable: #<issue> <reason>` on its line or the line above, naming the open issue of its fix.
-  There are at most 10, and CI fails once that issue is closed, or on the PR that closes it while
-  the skip is still in (#552), so the skip comes out with the fix (#494, docs/TDD.md).
+  weakening an assertion. Tests aim at business logic and the important flows; the gate is 80%
+  per file (#1002). A flaky test is deleted, never skipped; when it is the only check of a business
+  flow, it is replaced by a fast deterministic one (#1003, which removes the `// unstable:` skips
+  left; until then the unstable-skip ratchet still checks their notes). A test over 5 s, a test
+  file over 60 s or an e2e journey over 90 s on CI is too slow: make it faster, or delete it.
 - Tests touch nothing real. The preload replaces `claude` on the PATH with a sentinel and
   `HOME` with a temporary folder, so nothing reads or writes the real `~/.claude`. Other CLIs
   (`gh`, `az`, `ssh`, check commands) are fakes on the test PATH, with a `.cmd` version on

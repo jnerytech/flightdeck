@@ -330,8 +330,11 @@ describe("card-spec: the card keeps what it found", () => {
   });
 
   // #996: only timing reached this line before; a run where it did not missed the 100% gate.
-  test("a look that ends after the board stopped, or the card went away, writes nothing", async () => {
+  test("a look that ends after the board stopped writes nothing, and one after the card went away gives it back", async () => {
     const stopped = await withCard();
+    // A spec is there, so a look that missed the stop would write spec_found = 1 (#1000 review).
+    mkdirSync(join(stopped.tree, "docs/specs"), { recursive: true });
+    writeFileSync(join(stopped.tree, "docs/specs/login-screen.md"), "# Login\n");
     const look = stopped.board.refreshSpec(stopped.card.id);
     stopped.board.stop();
     expect((await look).specState).toBeNull();
