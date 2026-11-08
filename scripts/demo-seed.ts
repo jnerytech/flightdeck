@@ -477,6 +477,9 @@ async function host(work: string, name: string): Promise<HostRun> {
     { command: "start", config, runtime: "fake" },
     { ...process.env },
     quiet,
+    // The health check asks the machine's service manager; the demo says what no machine can change
+    // (issue #1200): the service is not installed, and linger is on, so every run reads the same.
+    { serviceInstalled: async () => false, linger: async () => "on" },
   );
   const client = await Client.open(daemon.url, token);
   return {
