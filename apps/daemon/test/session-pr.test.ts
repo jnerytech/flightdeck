@@ -280,7 +280,9 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
       }
     })();
     expect([
-      await outcome(slow.prs.open(TARGET, { title: "t", body: "b", remote: await seenRemote(slow) })),
+      await outcome(
+        slow.prs.open(TARGET, { title: "t", body: "b", remote: await seenRemote(slow) }),
+      ),
       withheld,
       said.includes("k3y-in-the-vault"),
       [slow, leaky].flatMap((made) => made.created),
