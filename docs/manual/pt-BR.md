@@ -2525,6 +2525,12 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
     recebe o aviso com o nome e o card da nova executora);
   - tirar um membro: a sessão dele é parada, a coordenadora é avisada e o card fica no board;
   - encerrar o time, com confirmação.
+- **Excluir um time encerrado:** um time encerrado mantém o card dele até você excluí-lo. O menu **⋯**
+  do card tem **Excluir time**: desligado num time aberto (diz "Encerre o time primeiro"), e num
+  encerrado pergunta antes, com o nome do time. O que sai é o registro do time e o card dele na
+  página Times. O que fica é a sessão de cada membro, com a transcrição e o histórico, e os cards
+  deles no board: só deixam de ser do time. O host recusa enquanto um membro trabalha (rodando ou
+  esperando uma resposta); tente de novo quando descansarem. Todos os apps conectados tiram o card.
 - **A cota:** quando a cota do plano passa do limite (`quota.pauseAt`), o time pausa sozinho. Você
   recebe uma notificação, e a linha diz "pausado pela cota". Quando a janela reinicia, o time
   retoma e avisa.

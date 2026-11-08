@@ -113,6 +113,16 @@ export class Names {
     if (this.get(id)) this.writeTeam(id, team);
   }
 
+  /** A session leaves its team (issue #934): the team, role and number of its name go; the name stays. */
+  clearTeam(id: string): void {
+    if (!this.get(id)) return;
+    this.db
+      .query(
+        "UPDATE session_names SET team = NULL, team_role = NULL, team_number = NULL WHERE session_id = ?",
+      )
+      .run(id);
+  }
+
   /** A new display name; the old alias keeps working and the new name adds one if it is free. */
   rename(id: string, display: string): SessionName {
     const current = this.row(id);
