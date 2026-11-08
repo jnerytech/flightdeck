@@ -110,6 +110,68 @@ describe("harness-share-ui: the setup card shares the project's Markdown as a ho
     ]).toEqual([true, true, true, true, false]);
   });
 
+  test("the dialog says the id the name becomes, and why a name with no letter or digit cannot be shared", async () => {
+    const { view } = setup();
+    render(view);
+    await open("Share as template");
+    await type("Template name", "Shop setup");
+    const hint = dialog()?.textContent?.includes("Saved as shop-setup.");
+    await type("Template name", "日本語");
+    expect([
+      hint,
+      dialog()?.textContent?.includes("Use at least one letter or digit (a-z, 0-9)."),
+    ]).toEqual([true, true]);
+  });
+
+  test("the name field has the focus when the dialog opens, and Enter shares", async () => {
+    const { view, sent } = setup();
+    render(view);
+    await open("Share as template");
+    const focused = await settleMaybe(
+      () => document.activeElement === nameField("Template name"),
+      2000,
+    );
+    await type("Template name", "Shop setup");
+    const field = nameField("Template name");
+    if (field) await act(async () => fireEvent.keyDown(field, { key: "Enter" }));
+    await settle(() => sent.length === 1, 5000, "the export sent by Enter");
+    expect(focused).toBe(true);
+  });
+
+  test("Enter does nothing while the name has no letter or digit", async () => {
+    const { view, sent } = setup();
+    render(view);
+    await open("Share as template");
+    await type("Template name", "!!!");
+    const field = nameField("Template name");
+    if (field) await act(async () => fireEvent.keyDown(field, { key: "Enter" }));
+    await uiIdle();
+    expect(sent.length).toBe(0);
+  });
+
+  test("an older answer is gone when the next attempt starts", async () => {
+    const { view, sent } = setup();
+    render(view);
+    await open("Share as template");
+    await type("Template name", "Shop setup");
+    await click(confirm("Share"));
+    await settle(
+      () => screen.queryByText("Shared as the template Shop setup (2 files).") !== null,
+      5000,
+      "the first answer",
+    );
+    await click(button("Share as template"));
+    await settle(() => dialog() !== null, 5000, "the dialog again");
+    await type("Template name", "Other");
+    await click(confirm("Share"));
+    await settle(() => sent.length === 2, 5000, "the second export");
+    await settle(
+      () => screen.queryByText("Shared as the template Shop setup (2 files).") === null,
+      5000,
+      "the first answer cleared",
+    );
+  });
+
   test("sharing sends the path, an id made from the name and the title, then says what was shared", async () => {
     const { view, sent } = setup();
     render(view);
