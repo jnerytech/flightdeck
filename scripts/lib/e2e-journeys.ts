@@ -117,3 +117,6 @@ export const DEMO_ACTIVE_TEAM = "checkout-crew";
 
 /** The last report of the active team's first worker, as its team page shows it (issue #1222). */
 export const DEMO_TEAM_REPORT = "Somei o frete no total do carrinho; os testes passam.";
+
+/** The coordinator's report the active team shows as its outcome, marked done (issue #1220). */
+export const DEMO_TEAM_OUTCOME = "Total do carrinho corrigido; o PR está pronto para revisão.";
