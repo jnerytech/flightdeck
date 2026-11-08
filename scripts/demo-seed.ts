@@ -735,9 +735,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
         ? { "README.md": `# ${name}\n`, ...KNOWLEDGE_DOCS }
         : { "README.md": `# ${name}\n` },
     );
-    const added = await client.call<{ id: string }>("project.add", {
-      path: join(alfa.projects, name),
-    });
+    const adding = client.call<{ id: string }>("project.add", { path: join(alfa.projects, name) });
+    const added = await adding; // NOSONAR: projects are added in this order; the sidebar lists them as registered
     projectIds[name] = added.id;
   }
   // Issue #78: a card with no PR in a project whose board asks for one before Review.

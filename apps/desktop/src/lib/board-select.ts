@@ -152,7 +152,7 @@ export async function moveMany(
 ): Promise<BulkRefusal[]> {
   const refused: BulkRefusal[] = [];
   for (const [index, card] of cards.entries()) {
-    const answer = await request(card.id, column, positions?.[index]);
+    const answer = await request(card.id, column, positions?.[index]); // NOSONAR: the cards move in the order given; the host numbers each position after the one before
     if (!answer.ok) refused.push({ card, ...answerOf(answer) });
   }
   return refused;

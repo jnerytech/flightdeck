@@ -226,18 +226,19 @@ async function relay(run: TeleportRun, manifest: TeleportManifest, id: string): 
   for (const part of manifest.parts) {
     let offset = 0;
     while (offset < part.size) {
-      const chunk = await unlessCancelled(
-        run.signal,
-        run.source("teleport.read", { id: manifest.id, part: part.name, offset }),
-      );
+      const reading = run.source("teleport.read", { id: manifest.id, part: part.name, offset });
+      const chunk = await unlessCancelled(run.signal, reading); // NOSONAR: each chunk starts where the last one ended
       // A chunk that does not move on, or goes past the part, ends the move: a broken source never
       // keeps the app spinning.
       if (chunk.next <= offset) throw refused("teleport_incomplete");
       if (chunk.next > part.size) throw refused("teleport_corrupt");
-      await unlessCancelled(
-        run.signal,
-        run.target("teleport.write", { id, part: part.name, offset, data: chunk.data }),
-      );
+      const writing = run.target("teleport.write", {
+        id,
+        part: part.name,
+        offset,
+        data: chunk.data,
+      });
+      await unlessCancelled(run.signal, writing); // NOSONAR: the target takes the chunks in order, at their offsets
       sent += chunk.next - offset;
       offset = chunk.next;
       run.onProgress?.(sent, total);
