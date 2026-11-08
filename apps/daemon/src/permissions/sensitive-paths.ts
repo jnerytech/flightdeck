@@ -5,6 +5,8 @@
  * permission must never cover). Every other check derives from these lists.
  */
 
+import { ntfsName } from "../ntfs-name.ts";
+
 /** A file whose name starts with one of these holds a secret: `.env`, `.env.local`, `id_rsa`. */
 export const SECRET_PREFIXES: readonly string[] = [".env", "id_"];
 /** Files that hold a token, a password or a history of commands (issue #439). */
@@ -91,6 +93,18 @@ export const pathParts = (text: string): string[] =>
     .split("/")
     .filter((part) => part !== "" && part !== ".");
 
+/**
+ * The two ways a path can be read (issue #1064): as written, which is how a POSIX filesystem sees
+ * it (`host:8080.key` is one name, and a stream or a tilde means nothing there), and with each step
+ * as an NTFS volume names it (`GIT~1` and `.git::$INDEX_ALLOCATION` are `.git`). A check refuses a
+ * path that either reading matches, so the second can only add refusals.
+ */
+const readings = (text: string): string[][] => {
+  const written = pathParts(text);
+  const ntfs = written.map(ntfsName).filter((part) => part !== "" && part !== ".");
+  return [written, ntfs];
+};
+
 const follows = (parts: readonly string[], dir: string, next: string) =>
   parts.some((part, i) => part === dir && parts[i + 1] === next);
 
@@ -99,15 +113,16 @@ const follows = (parts: readonly string[], dir: string, next: string) =>
  * compared without case, with either slash, and with no regard to an empty or `.` step.
  */
 export function credential(text: string): boolean {
-  const parts = pathParts(text);
-  const name = parts.at(-1) ?? "";
-  return (
-    SECRET_PREFIXES.some((prefix) => name.startsWith(prefix)) ||
-    SECRET_NAMES.has(name) ||
-    SECRET_EXTENSIONS.some((extension) => name.endsWith(extension)) ||
-    SECRET_DIRS.some((dir) => parts.includes(dir)) ||
-    SECRET_PAIRS.some(([dir, next]) => follows(parts, dir, next))
-  );
+  return readings(text).some((parts) => {
+    const name = parts.at(-1) ?? "";
+    return (
+      SECRET_PREFIXES.some((prefix) => name.startsWith(prefix)) ||
+      SECRET_NAMES.has(name) ||
+      SECRET_EXTENSIONS.some((extension) => name.endsWith(extension)) ||
+      SECRET_DIRS.some((dir) => parts.includes(dir)) ||
+      SECRET_PAIRS.some(([dir, next]) => follows(parts, dir, next))
+    );
+  });
 }
 
 /** The read globs OpenCode asks about: one family of paths for each entry of the lists. */
@@ -139,10 +154,10 @@ export const CONTROL_PAIRS: ReadonlyArray<readonly [string, string]> = [
  * session end every hold, so no rule may cover them.
  */
 export function isControl(path: string): boolean {
-  const parts = pathParts(path);
-  return (
-    CONTROL_DIRS.some((dir) => parts.includes(dir)) ||
-    CONTROL_NAMES.includes(parts.at(-1) ?? "") ||
-    CONTROL_PAIRS.some(([dir, next]) => follows(parts, dir, next))
+  return readings(path).some(
+    (parts) =>
+      CONTROL_DIRS.some((dir) => parts.includes(dir)) ||
+      CONTROL_NAMES.includes(parts.at(-1) ?? "") ||
+      CONTROL_PAIRS.some(([dir, next]) => follows(parts, dir, next)),
   );
 }
