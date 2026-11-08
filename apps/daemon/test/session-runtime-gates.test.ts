@@ -71,7 +71,7 @@ describe("session-runtime-gates", () => {
     const { sessionId } = await start({ cwd: project, prompt: "hi", runtime: "opencode" });
     expect(await poll(() => manager.get(sessionId).status === "awaiting_permission")).toBe(true);
     expect(decided()).toBe(0);
-    expect(store.listSessions().length).toBe(1);
+    expect(store.listSessions()).toHaveLength(1);
   });
 
   test("the turn callback says which runtime ran the turn", async () => {

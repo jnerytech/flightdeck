@@ -98,8 +98,8 @@ describe("isolation: what a file leaves in the globals is put back before the ne
       "localStorage",
       "sessionStorage",
     ]);
-    expect(localStorage.length).toBe(0);
-    expect(sessionStorage.length).toBe(0);
+    expect(localStorage).toHaveLength(0);
+    expect(sessionStorage).toHaveLength(0);
     expect(document.body.innerHTML).toBe("");
   });
 });

@@ -259,7 +259,7 @@ describe("release: the bump and its PR", () => {
     expect(redRun).toBeGreaterThan(-1);
     expect(testCommit).toBeGreaterThan(redRun);
     expect(firstPackage).toBeGreaterThan(testCommit);
-    expect(calls.filter((c) => c.includes(`test ${VERSAO}`)).length).toBe(2);
+    expect(calls.filter((c) => c.includes(`test ${VERSAO}`))).toHaveLength(2);
   });
 
   test("the PR is made by the command, titled for the release and never closing an issue", async () => {

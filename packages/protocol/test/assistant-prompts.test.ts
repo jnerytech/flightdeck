@@ -208,7 +208,7 @@ describe("assistant-prompts", () => {
       reason: "assistant_too_long",
       params: { max: ASSISTANT_MAX_INPUT },
     });
-    expect(refusal(() => run("prompt", "x".repeat(ASSISTANT_MAX_INPUT)))).toBe(null);
+    expect(refusal(() => run("prompt", "x".repeat(ASSISTANT_MAX_INPUT)))).toBeNull();
   });
 
   test("the normalizer strips a fence, a preamble line and wrapping quotes, and keeps one line where one is asked", () => {

@@ -160,7 +160,7 @@ describe("assistant-context", () => {
     expect(bundle.truncated).toBe(true);
     expect(bundle.notShown.length).toBeGreaterThan(0);
     expect(bundle.notShown).toContain("big.txt");
-    expect(bundle.stat.split("\n").length).toBe(14);
+    expect(bundle.stat.split("\n")).toHaveLength(14);
     const perFile = bundle.diff.split("\n--- ").map((part) => part.length);
     expect(Math.max(...perFile)).toBeLessThanOrEqual(6 * 1024 + 64);
   });
@@ -234,7 +234,7 @@ describe("assistant-context", () => {
       const outcome = await repoContext({ kind: "worktree", cwd: repo }, deps(repo)).catch(
         (error: unknown) => ({ failed: String(error) }),
       );
-      expect("failed" in outcome ? outcome.failed : null).toBe(null);
+      expect("failed" in outcome ? outcome.failed : null).toBeNull();
       const bundle = outcome as Awaited<ReturnType<typeof repoContext>>;
       const all = JSON.stringify(bundle);
       expect([

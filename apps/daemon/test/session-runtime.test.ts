@@ -78,7 +78,7 @@ describe("session-runtime", () => {
     const { manager, start, project, runtime, opencode } = setup();
     const { sessionId } = await start({ cwd: project, prompt: "hi", runtime: "opencode" });
     expect(opencode.preflights).toEqual([project]);
-    expect(opencode.starts.length).toBe(1);
+    expect(opencode.starts).toHaveLength(1);
     expect((runtime as unknown as { starts?: unknown[] }).starts?.length ?? 0).toBe(0);
     expect(manager.get(sessionId).runtime).toBe("opencode");
     expect(await poll(() => manager.get(sessionId).status === "idle")).toBe(true);

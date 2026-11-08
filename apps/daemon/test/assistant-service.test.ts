@@ -401,7 +401,7 @@ describe("assistant-service: the factory and the server", () => {
 
   test("a runtime that cannot complete gives no assistant", () => {
     const { complete: _ignored, ...plain } = { complete: 1, start: () => {} };
-    expect(assistantService(factoryDeps({ runtime: plain }))).toBe(undefined);
+    expect(assistantService(factoryDeps({ runtime: plain }))).toBeUndefined();
   });
 
   test("the server announces the assistant and answers its commands; without it they are off", async () => {

@@ -75,9 +75,9 @@ describe("listAlerts (issue #79)", () => {
     const { gh } = fakeGh({ code: ok([codeAlert(12)]) });
     const list = await listAlerts(gh, "/work/app");
     expect(list.unavailable).toEqual([]);
-    expect(list.alerts.length).toBe(1);
+    expect(list.alerts).toHaveLength(1);
     const [alert] = list.alerts;
-    expect(alert !== undefined).toBe(true);
+    expect(alert).toBeDefined();
     expect(RepoAlert.safeParse(alert).success).toBe(true);
     expect(alert).toMatchObject({
       id: "code-scanning:12",
@@ -105,7 +105,7 @@ describe("listAlerts (issue #79)", () => {
   test("a Dependabot alert names the package and its manifest", async () => {
     const { gh } = fakeGh({ dependabot: ok([dependabotAlert(5)]) });
     const [alert] = (await listAlerts(gh, "/work/app")).alerts;
-    expect(alert !== undefined).toBe(true);
+    expect(alert).toBeDefined();
     expect(alert).toMatchObject({
       id: "dependabot:5",
       kind: "dependabot",
@@ -155,7 +155,7 @@ describe("listAlerts (issue #79)", () => {
       ),
     });
     const list = await listAlerts(gh, "/w");
-    expect(list.alerts.length).toBe(ALERTS_MAX);
+    expect(list.alerts).toHaveLength(ALERTS_MAX);
     // high (code 7), then the 30 mediums newest first, then lows newest first.
     expect(ids(list).slice(0, 3)).toEqual(["code-scanning:7", "dependabot:229", "dependabot:228"]);
     expect(ids(list)[31]).toBe("code-scanning:139");
@@ -259,7 +259,7 @@ describe("listAlerts (issue #79)", () => {
       },
     });
     const [alert] = (await listAlerts(fakeGh({ code: ok([dirty]) }).gh, "/w")).alerts;
-    expect(alert !== undefined).toBe(true);
+    expect(alert).toBeDefined();
     expect((alert?.title.length ?? 0) <= TITLE_MAX).toBe(true);
     expect((alert?.text.length ?? 0) <= TEXT_MAX).toBe(true);
     // Controls (a newline too) and invisible formatting are gone from a title and a location.
@@ -288,7 +288,7 @@ describe("listAlerts (issue #79)", () => {
       security_advisory: { summary: "s", severity: "high", description: hostile },
     });
     const list = await listAlerts(fakeGh({ code: ok([code]), dependabot: ok([dep]) }).gh, "/w");
-    expect(list.alerts.length).toBe(2);
+    expect(list.alerts).toHaveLength(2);
     for (const alert of list.alerts) {
       const lines = alert.text.split("\n");
       expect(alert.text.includes("Real detail.")).toBe(true);

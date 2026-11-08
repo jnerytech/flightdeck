@@ -563,7 +563,7 @@ describe("push-wait: the gh calls the guard makes (#756 review)", () => {
         return args[0] === "run" ? listed : view;
       };
       expect(prRunVia(gh, () => now)("fix-x", CWD)).toBe(read);
-      expect(calls.length).toBe(1);
+      expect(calls).toHaveLength(1);
     }
     // The run listed but its PR unread: the run's age decides (#945 review).
     expect(

@@ -330,7 +330,7 @@ describe("resources-security: a bounded read (F4)", () => {
       { sessions: [session("s", "/x")] },
     );
     const names = (await r.snapshot()).rows[0]?.names ?? [];
-    expect(names.length).toBe(2);
+    expect(names).toHaveLength(2);
     expect(
       [...names.join("")].some((ch) => ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127),
     ).toBe(false);

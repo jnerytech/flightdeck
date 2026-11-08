@@ -12,8 +12,8 @@ describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () =>
   });
 
   test("a light print, or a print not in the list, is not", () => {
-    expect(narrowSizes("light", "board").length).toBe(0);
-    expect(narrowSizes("dark", "paleta").length).toBe(0);
+    expect(narrowSizes("light", "board")).toHaveLength(0);
+    expect(narrowSizes("dark", "paleta")).toHaveLength(0);
   });
 
   test("#677: a name in the list that is not a print is named, so a typo cannot skip one in silence", () => {
