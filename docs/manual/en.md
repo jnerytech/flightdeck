@@ -1138,6 +1138,15 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   `{{criteria}}` are filled in); when a template is there but cannot be used, the built-in one is
   written and the card says why: the project is not trusted, the file is a link or has a second
   name, is over 32 KiB, or is empty. The notice never quotes the template.
+- **Card templates** (#1201). A trusted project can list card templates in
+  `.flightdeck/templates/cards.json` (at most 32 KiB, 12 templates): each has an `id`, a `name`, and
+  optionally a `description`, `criteria` (a list, written as `- [ ]` items), a `workflow`, a
+  `persona`, `pins` (library documents) and a `spec` file. **New card** then offers **From a
+  template**; picking one fills the empty description and says what else the card starts with. The
+  card gets the template's spec file and pinned documents, and its page opens with the template's
+  workflow and persona already chosen, when the project and the host still have them. A template
+  with a mistake is left out and counted; a file that cannot be used (the project is not trusted, a
+  link, too big, empty, not a list) is said in **New card** with the reason.
 - **Pinned documents** (#76). On a host with a project library, the card page has a **Pinned
   documents** panel: choose a document of the library (ADRs, RFCs, PRDs, specs) to pin it, up to
   10, and **Unpin** takes one off. When the card starts, its first prompt lists each pinned document

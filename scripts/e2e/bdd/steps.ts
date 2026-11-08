@@ -399,18 +399,23 @@ step(When, "I pick the column {string} from the board's column buttons", async (
 });
 
 // Set up Claude Code: a project the scenario makes, set up, then committed on a branch.
-step(Given, "a git project of my own is added to host {string}", async (c) => {
+/** A git project of the scenario's own, with `files` committed, added to the host through the Add project dialog. */
+async function addOwnProject(c: Context, files: Record<string, string> = {}) {
   const name = unique(c, "setup");
   const folder = join(dirname(c.ids.freshRepo), name);
   mkdirSync(folder, { recursive: true });
   writeFileSync(join(folder, "README.md"), `# ${name}\n`);
+  for (const [path, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(folder, path)), { recursive: true });
+    writeFileSync(join(folder, path), text);
+  }
   const git = (...args: string[]) =>
     execFileSync("git", ["-C", folder, ...args], { stdio: "ignore" });
   git("init", "-q", "-b", "main");
   git("config", "user.name", "BDD");
   git("config", "user.email", "bdd@flightdeck.invalid");
   git("config", "commit.gpgsign", "false");
-  git("add", "README.md");
+  git("add", ".");
   git("commit", "-q", "-m", "first");
   mine(c).project = name;
   await open(c, { name: "all-projects", host: ALFA });
@@ -421,7 +426,9 @@ step(Given, "a git project of my own is added to host {string}", async (c) => {
   await dialog.getByLabel(c.t("addProject.folder"), { exact: true }).fill(folder);
   await dialog.getByRole("button", { name: c.t("addProject.add"), exact: true }).click();
   await dialog.waitFor({ state: "detached", timeout: WAIT });
-});
+}
+
+step(Given, "a git project of my own is added to host {string}", async (c) => addOwnProject(c));
 
 step(When, "I open that project", async (c) => {
   await open(c, { name: "all-projects", host: ALFA });
@@ -822,3 +829,115 @@ step(Then, "the conversation shows my review with {string}", async (c, text = ""
   );
   await c.page.getByText(text).first().waitFor({ timeout: SESSION_WAIT });
 });
+
+// Card templates: a project's .flightdeck/templates/cards.json, offered by New card (issue #1201).
+const TEMPLATE = {
+  id: "bug",
+  name: "Bug fix",
+  description: "Reproduce it, fix it, prove it.",
+  criteria: ["a test fails before the fix"],
+  persona: "revisor",
+  // A path inside the scenario's own repository, built so it is not read as a doc of this one.
+  pins: [["docs", "specs", "bug-fix.md"].join("/")],
+  spec: ["docs", "specs", "bug-fix.md"].join("/"),
+};
+
+step(Given, "a git project of my own with a card template is added to host {string}", async (c) =>
+  addOwnProject(c, { ".flightdeck/templates/cards.json": JSON.stringify([TEMPLATE]) }),
+);
+
+step(Given, "I trust that project", async (c) => {
+  await step_openProject(c);
+  await c.page.getByRole("button", { name: c.t("projectPage.trust.action"), exact: true }).click();
+  await c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: c.t("projectPage.trust.action"), exact: true })
+    .click();
+  await c.page
+    .getByRole("button", { name: c.t("projectPage.trust.revoke"), exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+async function step_openProject(c: Context) {
+  await open(c, { name: "all-projects", host: ALFA });
+  await c.page
+    .locator(`li[data-project="${mine(c).project}"]`)
+    .getByRole("button")
+    .first()
+    .click({
+      timeout: WAIT,
+    });
+}
+
+/** The board of the scenario's own project, opened from the host's project list. */
+async function openOwnBoard(c: Context) {
+  await open(c, { name: "projects", host: ALFA });
+  await c.page
+    .getByRole("button", { name: c.t("projectsUi.openBoard", { name: mine(c).project ?? "" }) })
+    .click({ timeout: WAIT });
+}
+
+step(
+  When,
+  "I create a card from the template {string} with a title of my own",
+  async (c, name = "") => {
+    const title = unique(c, "bdd card");
+    mine(c).card = title;
+    await openOwnBoard(c);
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+    await c.page.getByLabel(c.t("kanban.template"), { exact: true }).selectOption({ label: name });
+    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+  },
+);
+
+step(
+  Then,
+  "the card starts with the template's criteria, spec file, pinned document and persona",
+  async (c) => {
+    await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+    const field = (label: string) => c.page.getByLabel(label, { exact: true });
+    await waitFor(
+      async () =>
+        (await field(c.t("cardUi.description")).inputValue()).includes(
+          `- [ ] ${TEMPLATE.criteria[0]}`,
+        ),
+      "the description has the template's criteria",
+    );
+    await waitFor(
+      async () => (await field(c.t("cardUi.specFile")).inputValue()) === TEMPLATE.spec,
+      "the spec file is the template's",
+    );
+    await c.page
+      .getByRole("button", { name: c.t("cardUi.pins.unpin", { path: TEMPLATE.pins[0] ?? "" }) })
+      .waitFor({ timeout: WAIT });
+    // The persona is chosen in the start dialog, which Start opens for a card from a template.
+    await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
+    const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
+    await start.waitFor({ timeout: WAIT });
+    await waitFor(
+      async () =>
+        (await start.getByLabel(c.t("personas.picker.card"), { exact: true }).inputValue()) ===
+        `host:${TEMPLATE.persona}`,
+      "the persona is the template's",
+    );
+  },
+);
+
+step(When, "I open New card on the board of that project", async (c) => {
+  await openOwnBoard(c);
+  await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+});
+
+step(
+  Then,
+  "New card says the project's card templates were not used because it is not trusted",
+  async (c) => {
+    await c.page
+      .getByText(c.t("kanban.templateIgnored.untrusted"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await c.page
+      .getByLabel(c.t("kanban.template"), { exact: true })
+      .waitFor({ state: "detached", timeout: WAIT });
+  },
+);

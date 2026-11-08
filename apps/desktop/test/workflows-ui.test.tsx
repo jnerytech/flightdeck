@@ -137,6 +137,34 @@ describe("workflows-ui", () => {
     expect(screen.queryByRole("region", { name: "Execução do workflow" })).not.toBeNull();
   });
 
+  test("o Iniciar de um card de um modelo abre o diálogo com o workflow do modelo já escolhido, e só se o projeto o tem", async () => {
+    const plan =
+      "inputs: [task]\nsteps:\n  - id: plan\n    agent: { prompt: 'plano de {{inputs.task}}' }\n";
+    const { board, project } = await online({ plan }, ["plan"]);
+    board.createCard(project.id, { title: "Do modelo", description: "x", startWorkflow: "plan" });
+    board.createCard(project.id, { title: "Sumiu", description: "x", startWorkflow: "gone" });
+    await click("Abrir board de repo");
+    const chosenFor = async (title: string) => {
+      await settle(() => screen.queryByLabelText(`Card ${title}`) !== null);
+      await act(async () => {
+        fireEvent.click(
+          screen.queryByLabelText(`Card ${title}`)?.querySelector("button") as HTMLElement,
+        );
+      });
+      await click("Iniciar");
+      await settle(
+        () =>
+          (screen.queryByLabelText("Workflow") as HTMLSelectElement | null)?.options.length === 2,
+      );
+      return (screen.queryByLabelText("Workflow") as HTMLSelectElement).value;
+    };
+    const fromTemplate = await chosenFor("Do modelo");
+    await click("Cancelar");
+    await click("Voltar");
+    const gone = await chosenFor("Sumiu");
+    expect([fromTemplate, gone]).toEqual(["plan", ""]);
+  });
+
   test("Iniciar card from the board menu asks for the workflow (only the trusted ones) and its inputs; Abrir in the toast opens the card", async () => {
     const plan =
       "inputs: [task]\nsteps:\n  - id: plan\n    agent: { prompt: 'plano de {{inputs.task}}' }\n";

@@ -3927,6 +3927,27 @@ export const ptBR = {
     descriptionLabel: "Descrição do card",
     descriptionPlaceholder: "Descrição",
     newCard: "Novo card",
+    /** Issue #1201: the project's card templates, offered in New card. */
+    template: "A partir de um modelo",
+    templateNone: "Card em branco",
+    templateStarts: "Começa com: {parts}",
+    templateWorkflow: "workflow {name}",
+    templatePersona: "persona {name}",
+    templatePins: { one: "{n} documento fixado", other: "{n} documentos fixados" },
+    templateSpec: "spec {path}",
+    templateDropped: {
+      one: "{n} modelo deixado de fora por erro no cards.json.",
+      other: "{n} modelos deixados de fora por erro no cards.json.",
+    },
+    templateIgnored: {
+      untrusted: "Os modelos de card do projeto não foram usados: o projeto não é confiável.",
+      unsafe:
+        "Os modelos de card do projeto não foram usados: o arquivo é um link ou tem mais de um nome.",
+      too_big: "Os modelos de card do projeto não foram usados: o arquivo passa de 32 KiB.",
+      empty: "Os modelos de card do projeto não foram usados: o arquivo está vazio.",
+      invalid:
+        "Os modelos de card do projeto não foram usados: o cards.json não é uma lista de modelos.",
+    },
     created: "Card criado: {title}",
     started: "Card iniciado: {title}",
     openCard: "Abrir",
