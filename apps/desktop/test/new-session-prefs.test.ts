@@ -57,6 +57,15 @@ describe("new-session-prefs: the form starts from what the last session used", (
     expect(new NewSessionPrefs(store).value.mode).toBe("plan");
   });
 
+  test("a model the form does not offer is not kept, read or written", () => {
+    const tampered = new NewSessionPrefs(storage('{"mode":"plan","model":"--dangerous"}'));
+    expect(tampered.value.model).toBe("");
+    const prefs = new NewSessionPrefs(storage());
+    prefs.remember("h1", { root: "/a", sub: "", mode: "plan", model: "sonnet" });
+    prefs.remember("h1", { root: "/a", sub: "", mode: "plan", model: "gpt-x" });
+    expect(prefs.value.model).toBe("sonnet");
+  });
+
   test("anything unreadable kept there starts from nothing", () => {
     for (const bad of [
       "{nope",
