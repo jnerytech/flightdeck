@@ -20,7 +20,6 @@ export interface PlatformInfo {
   home: string;
 }
 
-/** Folders of the system itself, and the ones that hold secrets or the user's whole application data. */
 /** This machine's platform, environment and home folder. */
 const currentPlatform = (): PlatformInfo => ({
   platform: process.platform,
@@ -28,6 +27,7 @@ const currentPlatform = (): PlatformInfo => ({
   home: userHome(),
 });
 
+/** Folders of the system itself, and the ones that hold secrets or the user's whole application data. */
 function systemFolders(info: PlatformInfo): string[] {
   const p = info.platform === "win32" ? win32 : posix;
   const secrets = [".ssh", ".claude", ".flightdeck", ".gnupg", ".aws"].map((d) =>
