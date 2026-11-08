@@ -101,6 +101,8 @@ const validCommands: Record<CommandType, unknown> = {
   "project.harness.stack": { path: "/work/app" },
   "project.harness.preview": { path: "/work/app", parts: ["hooks", "permissions"] },
   "project.harness.draft": { path: "/work/app", part: "claudeMd" },
+  "project.harness.export": { path: "/work/app", id: "shop", title: "Shop" },
+  "harness.templates.list": {},
   "project.harness.commit": {
     path: "/work/app",
     digests: { ".claude/settings.json": "a".repeat(64) },

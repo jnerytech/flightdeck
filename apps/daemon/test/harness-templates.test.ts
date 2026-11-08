@@ -3,7 +3,9 @@ import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { HarnessTemplates } from "../src/harness/templates-store.ts";
-import { tempDir } from "./helpers.ts";
+import { startServer } from "../src/server.ts";
+import { newManager, tempDir } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 
 /**
  * Issue #75, slice T1a: a project's Markdown harness (CLAUDE.md, agents, skills) is shared as a host
@@ -101,5 +103,56 @@ describe("harness-templates: a project's Markdown harness shared as a host templ
     const { templates } = store();
     const info = await templates.export(root, "linked", "Linked");
     expect(info.files).toEqual(["agents/reviewer.md"]);
+  });
+
+  test("the server shares over a near connection, inside the allowed roots only, and lists for any", async () => {
+    const root = project(SHOP);
+    const { templates } = store();
+    const { manager } = newManager();
+    const base = {
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: "harness-templates-token-0123456789",
+      allowedRoots: [root],
+      allowedNetworks: ["0.0.0.0/0", "::/0"],
+    };
+    const servers = [
+      startServer({ ...base, harnessTemplates: templates }),
+      startServer({ ...base, harnessTemplates: templates, peerOf: () => "8.8.8.8" }),
+      startServer(base),
+    ];
+    const clients = servers.map((server) => new FrameClient(server.url));
+    try {
+      for (const client of clients)
+        await client.request("hello", { token: base.token, client: "t" });
+      const [near, far, off] = clients as [FrameClient, FrameClient, FrameClient];
+      const share = async (client: FrameClient, path: string) => {
+        const ack = await client.request("project.harness.export", {
+          path,
+          id: "shop",
+          title: "Shop",
+        });
+        const error = ack.error as { reason?: string } | undefined;
+        return ack.ok === true ? (ack.data as { id?: string }).id : (error?.reason ?? null);
+      };
+      const listed = async (client: FrameClient) => {
+        const ack = await client.request("harness.templates.list", {});
+        return ack.ok === true
+          ? (ack.data as { templates: Array<{ id: string }> }).templates.map((t) => t.id)
+          : null;
+      };
+      expect([
+        await share(far, root),
+        await share(off, root),
+        await share(near, tempDir("fd-elsewhere-")),
+        await share(near, root),
+        await listed(far),
+      ]).toEqual(["transport_refused", "feature_off", "cwd_outside_roots", "shop", ["shop"]]);
+    } finally {
+      for (const client of clients) client.close();
+      for (const server of servers) await server.stop();
+    }
   });
 });
