@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
   existsSync,
+  linkSync,
   mkdirSync,
   readFileSync,
   renameSync,
@@ -215,6 +216,42 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
         await outcome(applyHarness(root, ["agents"], digestsOf(preview))),
         existsSync(join(outside, "agents")),
       ]).toEqual(["harness_stale", false]);
+    },
+  );
+
+  test("a settings file hard-linked to a file elsewhere is refused: writing it would change that file", async () => {
+    const text = json({ model: "opus" });
+    const root = repo(bunProject);
+    const elsewhere = join(tempDir("fd-apply-out-"), "settings.json");
+    writeFileSync(elsewhere, text);
+    mkdirSync(join(root, ".claude"));
+    linkSync(elsewhere, join(root, SETTINGS));
+    const preview = await previewHarness(root, ["permissions"]);
+    expect([
+      await outcome(applyHarness(root, ["permissions"], digestsOf(preview))),
+      readFileSync(elsewhere, "utf8") === text,
+    ]).toEqual(["harness_stale", true]);
+  });
+
+  test.skipIf(onWindows)(
+    "a folder swapped for a link right before a new file is opened gets nothing written through it",
+    async () => {
+      const root = repo(bunProject);
+      const outside = tempDir("fd-apply-out-");
+      const preview = await previewHarness(root, ["agents"]);
+      const fs: ApplyFs = {
+        open: async (path, flags) => {
+          // The folders were made and checked; now one of them leads out of the project.
+          renameSync(join(root, ".claude/agents"), join(root, ".claude/was-agents"));
+          symlinkSync(outside, join(root, ".claude/agents"));
+          return open(path, flags);
+        },
+      };
+      expect([
+        await outcome(applyHarness(root, ["agents"], digestsOf(preview), fs)),
+        existsSync(join(outside, "reviewer.md")) &&
+          readFileSync(join(outside, "reviewer.md"), "utf8"),
+      ]).toEqual(["harness_stale", ""]);
     },
   );
 
