@@ -106,10 +106,20 @@ async function demoHostsOnline(c: Context): Promise<boolean> {
   return true;
 }
 
+/** Unfolds More options on the New session screen: the name and the subfolder are under it (#1135). */
+async function moreOptions(c: Context) {
+  const toggle = c.page.getByRole("button", { name: c.t("newSession.moreOptions"), exact: true });
+  // It opens by itself to show a remembered subfolder: a click then would fold it.
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+}
+
 /** Starts a session of the fake runtime from the New session screen. */
 export async function createSession(c: Context, prompt: string, name?: string) {
   await open(c, { name: "new-session", host: ALFA });
-  if (name) await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+  if (name) {
+    await moreOptions(c);
+    await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+  }
   await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill(prompt);
   await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
 }
@@ -662,6 +672,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // answer, so the run is still alive when the trust is removed.
     const name = `e2e-revoga-${c.lang}-${Date.now()}`;
     await open(c, { name: "new-session", host: ALFA });
+    await moreOptions(c);
     await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).fill("flightdeck-web");
     await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
     await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill("[bash] ls");

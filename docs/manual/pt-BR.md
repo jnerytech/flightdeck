@@ -1153,6 +1153,18 @@ aparece mascarado e como **Oculto**, e não abre.
 - **Card novo numa coluna.** O botão **Novo card** no fim de uma coluna cria o card ali (aparece ao
   passar o mouse e ao focar, e sempre numa tela sem ponteiro).
 
+### Iniciar uma sessão pela tarefa
+
+**Nova sessão** abre em **Primeiro prompt**, com o cursor nele: escreva a tarefa e aperte **Criar
+sessão** (ou **Ctrl+Enter**). A pasta, o modo de permissão e o modelo começam como a última sessão
+daquele host os usou (**Bypass permissions** nunca: ele pergunta toda vez). O agente, a subpasta, o
+nome, o esforço e a persona ficam em **Mais opções**, que abre sozinho para mostrar uma subpasta
+lembrada.
+
+Na paleta **Ctrl+K**, uma frase digitada com um projeto no escopo oferece **Iniciar em <projeto>:
+<texto>**: **Enter** inicia uma sessão na pasta desse projeto com o texto como primeiro prompt, no
+mesmo modo e modelo, e a abre.
+
 ### Escolher uma pasta
 
 **Nova sessão** e o formulário do projeto têm um botão **Procurar…** ao lado da pasta. Ele abre

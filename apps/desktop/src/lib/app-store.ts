@@ -144,6 +144,7 @@ import {
 } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
+import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import {
   type AboutNotification,
@@ -1061,6 +1062,7 @@ export class AppStore {
     this.sidebarFold = new SidebarFoldController(platform.storage);
     this.dataScope = new DataScopeController(platform.storage);
     this.shellPrefs = new ShellPrefs(platform.storage);
+    this.newSessionPrefs = new NewSessionPrefs(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
@@ -1162,6 +1164,8 @@ export class AppStore {
   readonly projectKeys = new ProjectKeys();
   /** What the shell hides: the New and Beta badges, What's new (issue #282). */
   readonly shellPrefs: ShellPrefs;
+  /** What the New session form starts from: the last mode, model and folder (issue #1135). */
+  readonly newSessionPrefs: NewSessionPrefs;
   /** The board columns' width, one for all, kept across starts (issue #161). */
   readonly boardWidth: BoardWidth;
   /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */

@@ -1185,6 +1185,9 @@ export const en: Dictionary = {
     sectionClients: "Clients",
     sectionRecent: "Recent",
     sectionCreate: "Create",
+    sectionStart: "Start",
+    startIn: "Start in {project}: {text}",
+    startDetail: "New session",
     createCard: "Create card “{title}” in {project}",
     createCardIssue: "Create card from issue {issue} in {project}",
     createDetail: "New card",
@@ -2465,6 +2468,7 @@ export const en: Dictionary = {
     needPrompt: "Write the first prompt to start in the background.",
     addFolder: "Add a folder on {host}'s page",
     host: "Host",
+    moreOptions: "More options",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {

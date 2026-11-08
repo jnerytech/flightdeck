@@ -1184,6 +1184,9 @@ export const ptBR = {
     sectionClients: "Clientes",
     sectionRecent: "Recentes",
     sectionCreate: "Criar",
+    sectionStart: "Iniciar",
+    startIn: "Iniciar em {project}: {text}",
+    startDetail: "Nova sessão",
     createCard: "Criar card “{title}” em {project}",
     createCardIssue: "Criar card da issue {issue} em {project}",
     createDetail: "Card novo",
@@ -2465,6 +2468,7 @@ export const ptBR = {
     needPrompt: "Escreva o primeiro prompt para iniciar em segundo plano.",
     addFolder: "Adicionar uma pasta na página de {host}",
     host: "Host",
+    moreOptions: "Mais opções",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {
