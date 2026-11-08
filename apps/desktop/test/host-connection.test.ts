@@ -122,16 +122,26 @@ describe("desktop: conexão com o host", () => {
   });
 
   test("an unreachable host carries what failed, when it was tried and when the next try is due", async () => {
-    const before = Date.now();
-    const { conn } = connect("ws://127.0.0.1:1/v1/ws");
-    await waitFor(() => conn.retry !== null, "retry state");
-    const retry = conn.retry;
-    expect(retry?.kind).toBe("refused");
-    expect(retry?.lastTryAt).toBeGreaterThanOrEqual(before);
-    expect(retry?.lastTryAt).toBeLessThanOrEqual(Date.now());
-    // The first delay is the base one (10 ms here).
-    expect((retry?.nextRetryAt ?? 0) - (retry?.lastTryAt ?? 0)).toBeGreaterThanOrEqual(10);
-    expect((retry?.nextRetryAt ?? 0) - (retry?.lastTryAt ?? 0)).toBeLessThanOrEqual(40);
+    // A slow runner: the refusal is seen 100 ms after the dial started. The clock is moved, not waited for.
+    const realNow = Date.now;
+    let skew = 0;
+    Date.now = () => realNow() + skew;
+    try {
+      const before = Date.now();
+      const { conn } = connect("ws://127.0.0.1:1/v1/ws");
+      skew = 100;
+      await waitFor(() => conn.retry !== null, "retry state");
+      const read = Date.now();
+      const retry = conn.retry;
+      expect(retry?.kind).toBe("refused");
+      expect(retry?.lastTryAt).toBeGreaterThanOrEqual(before);
+      expect(retry?.lastTryAt).toBeLessThanOrEqual(read);
+      // The first delay is the base one (10 ms here), counted from when the refusal was seen.
+      expect((retry?.nextRetryAt ?? 0) - (retry?.lastTryAt ?? 0)).toBeGreaterThanOrEqual(10);
+      expect(retry?.nextRetryAt ?? 0).toBeLessThanOrEqual(read + 10);
+    } finally {
+      Date.now = realNow;
+    }
   });
 
   test("a link that drops after being online is lost, and coming back online clears the state", async () => {
