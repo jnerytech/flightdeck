@@ -534,7 +534,7 @@ describe("update", () => {
     expect(existsSync(stableBinPath(service.ctx.home, "win32"))).toBe(true);
     const missing = await run(["update", "--config", config]);
     expect(missing.code).toBe(1);
-    expect(missing.out).toContain("update precisa de --from");
+    expect(missing.out).toContain("update needs --from");
   });
 
   test("CLI: com serviço, confere GET /health no endereço da config", async () => {

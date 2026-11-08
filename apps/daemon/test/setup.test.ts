@@ -393,7 +393,7 @@ describe("setup command", () => {
     expect(h.exits).toEqual([0]);
     expect((await loadConfig(h.file)).allowedRoots).toEqual([project]);
     expect(h.written.has(`${h.dir}/.config/systemd/user/flightdeckd.service`)).toBe(true);
-    expect(h.out.join("\n")).toContain("daemon do serviço respondendo");
+    expect(h.out.join("\n")).toContain("the service's daemon is answering");
     expect(h.out.join("\n")).toContain("flightdeck://127.0.0.1:");
   });
 

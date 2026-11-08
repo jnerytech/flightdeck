@@ -67,7 +67,7 @@ describe("reindex", () => {
       action: "reindex",
       config: "c.json",
     });
-    expect(() => parseArgs(["history", "apagar"])).toThrow("ação de histórico inválida");
+    expect(() => parseArgs(["history", "apagar"])).toThrow("invalid history action");
   });
 
   test("history reindex apaga o índice e reconstrói com a mesma contagem de mensagens", async () => {
@@ -96,7 +96,7 @@ describe("reindex", () => {
     const cli = deps();
     expect(await runCli(["history", "reindex", "--config", file], cli.cli)).toBeNull();
     expect(cli.exits).toEqual([0]);
-    expect(cli.out.at(-1)).toBe("histórico reconstruído: 2 sessões, 3 mensagens");
+    expect(cli.out.at(-1)).toBe("history rebuilt: 2 sessions, 3 messages");
     expect(counts(db)).toEqual(before);
 
     // The rebuilt index serves search like before.
@@ -116,6 +116,6 @@ describe("reindex", () => {
     await runCli(["history", "reindex", "--config", file], cli.cli);
     await daemon?.stop();
     expect(cli.exits).toEqual([3]);
-    expect(cli.errors.join("\n")).toContain("pare o daemon");
+    expect(cli.errors.join("\n")).toContain("stop the daemon");
   });
 });

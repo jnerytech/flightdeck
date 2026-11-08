@@ -101,8 +101,8 @@ describe("acoes-cli", () => {
       actionName: "diz",
       params: { palavra: "ola", x: "a=b" },
     });
-    expect(() => parseArgs(["action", "apagar"])).toThrow("ação");
-    expect(() => parseArgs(["action", "run"])).toThrow("nome");
+    expect(() => parseArgs(["action", "apagar"])).toThrow("invalid action");
+    expect(() => parseArgs(["action", "run"])).toThrow("missing the action name");
     expect(() => parseArgs(["action", "run", "diz", "--param", "sem-igual"])).toThrow("--param");
   });
 

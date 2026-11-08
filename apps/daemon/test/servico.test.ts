@@ -166,7 +166,7 @@ describe("servico", () => {
       ],
       ["schtasks", "/Run", "/TN", "Flightdeck\\flightdeckd"],
     ]);
-    expect(out.join("\n")).toContain("daemon do serviço respondendo");
+    expect(out.join("\n")).toContain("the service's daemon is answering");
     const saved = JSON.parse(readFileSync(file, "utf8"));
     expect(saved.claude).toEqual({ executablePath: "C:\\Users\\dev\\.local\\bin\\claude.exe" });
     expect(saved.allowedRoots).toEqual(["C:\\code"]);
@@ -183,7 +183,7 @@ describe("servico", () => {
     await runCli(["service", "install", "--config", file], deps);
     expect(exits).toEqual([1]);
     expect(os.calls.map((c) => c[1])).toEqual(["/Create", "/Run"]);
-    expect(out.join("\n")).toContain("não respondeu em /health");
+    expect(out.join("\n")).toContain("did not answer on /health");
   });
 
   test("só o claude.cmd no Windows: grava e avisa", async () => {
@@ -206,7 +206,7 @@ describe("servico", () => {
     expect(os.written.has("/home/dev/.config/systemd/user/flightdeckd.service")).toBe(true);
     expect((await loadConfig(file)).claude?.executablePath ?? "").toBe("/usr/local/bin/claude");
     expect(out.join("\n")).toContain("flightdeckd service enabled and started");
-    expect(out.join("\n")).toContain("daemon do serviço respondendo");
+    expect(out.join("\n")).toContain("the service's daemon is answering");
   });
 
   test("uninstall e status no Linux e no Windows", async () => {
@@ -318,7 +318,7 @@ describe("servico", () => {
     expect(exits).toEqual([0]);
     expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/End"]);
     expect(await acquireLock(dataDir)).not.toBeNull();
-    expect(out.join("\n")).toContain("daemon do serviço parado");
+    expect(out.join("\n")).toContain("the service's daemon stopped");
   });
 
   test("service stop que não consegue parar sai com 1 sem matar outro programa; sem serviço, avisa", async () => {
@@ -330,13 +330,13 @@ describe("servico", () => {
     stuck.deps.serviceStopTimeoutMs = 50;
     await runCli(["service", "stop"], stuck.deps);
     expect(stuck.exits).toEqual([1]);
-    expect(stuck.out.join("\n")).toContain("o daemon do serviço não parou");
+    expect(stuck.out.join("\n")).toContain("the service's daemon did not stop");
     expect(await acquireLock(dataDir)).toBeNull();
     const none = fakeOs("linux");
     const noneCli = cli(none);
     await runCli(["service", "stop"], noneCli.deps);
     expect(noneCli.exits).toEqual([1]);
-    expect(noneCli.out.join("\n")).toContain("nenhum serviço instalado");
+    expect(noneCli.out.join("\n")).toContain("no service installed");
   });
 
   test("service start sobe a tarefa e espera o /health da config do serviço", async () => {
@@ -355,7 +355,7 @@ describe("servico", () => {
     expect(exits).toEqual([0]);
     expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/Run"]);
     expect(hits).toEqual(["/health"]);
-    expect(out.join("\n")).toContain("daemon do serviço respondendo");
+    expect(out.join("\n")).toContain("the service's daemon is answering");
   });
 
   test("service start sem resposta no /health sai com 1", async () => {
@@ -367,7 +367,7 @@ describe("servico", () => {
     deps.serviceHealthTimeoutMs = 100;
     await runCli(["service", "start"], deps);
     expect(exits).toEqual([1]);
-    expect(out.join("\n")).toContain("não respondeu em /health");
+    expect(out.join("\n")).toContain("did not answer on /health");
   });
 
   test("uninstall com o daemon que não para: remove o serviço e avisa, sem matar outro programa", async () => {
@@ -390,7 +390,7 @@ describe("servico", () => {
     await runCli(["service", "uninstall"], deps);
     expect(exits).toEqual([0]);
     expect(os.calls.map((c) => c[2])).toEqual(["cat", "stop", "disable", "daemon-reload"]);
-    expect(out.join("\n")).toContain("o daemon do serviço continua rodando");
+    expect(out.join("\n")).toContain("the service's daemon is still running");
     expect(await acquireLock(dataDir)).toBeNull();
   });
 
@@ -481,7 +481,7 @@ describe("servico", () => {
     const bad = cli(fakeOs("linux"));
     await runCli(["service", "explodir"], bad.deps);
     expect(bad.exits).toEqual([1]);
-    expect(bad.out.join("\n")).toContain("ação de serviço inválida: explodir");
+    expect(bad.out.join("\n")).toContain("invalid service action: explodir");
   });
 
   test("o daemon usa claude.executablePath da config, com prioridade sobre claudePath", async () => {

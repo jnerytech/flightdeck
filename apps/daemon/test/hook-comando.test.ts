@@ -133,6 +133,6 @@ describe("hook-comando", () => {
       onSignal: () => {},
     });
     expect(code).toBe(1);
-    expect(out.join("\n")).toContain("hook inválido: pre-tool-use");
+    expect(out.join("\n")).toContain("invalid hook: pre-tool-use");
   });
 });

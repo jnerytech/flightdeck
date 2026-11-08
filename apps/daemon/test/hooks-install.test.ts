@@ -230,13 +230,13 @@ describe("hooks-install: CLI", () => {
       timeout: 5,
     });
     await runCli(["hooks", "status", "--config", file], deps);
-    expect(out.join("\n")).toContain("hooks: instalados");
+    expect(out.join("\n")).toContain("hooks: installed");
     await runCli(["hooks", "install", "--config", file], deps);
     expect((await loadConfig(file)).hooks.token).toBe(token);
     await runCli(["hooks", "uninstall", "--config", file], deps);
     expect(read(settings)).toEqual({});
     await runCli(["hooks", "status", "--config", file], deps);
-    expect(out.join("\n")).toContain("hooks: ausentes");
+    expect(out.join("\n")).toContain("hooks: absent");
   });
 
   test("ação de hooks desconhecida é recusada", async () => {
@@ -246,7 +246,7 @@ describe("hooks-install: CLI", () => {
     } catch (error) {
       message = (error as Error).message;
     }
-    expect(message).toContain("ação de hooks inválida: limpar");
+    expect(message).toContain("invalid hooks action: limpar");
   });
 
   test("hooks.port 0 é recusado: o receptor não teria endereço fixo", async () => {

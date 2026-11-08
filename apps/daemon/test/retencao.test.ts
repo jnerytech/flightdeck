@@ -204,7 +204,7 @@ describe("retencao", () => {
     } catch (error) {
       message = (error as Error).message;
     }
-    expect(message).toContain("ação de db inválida: vacuum");
+    expect(message).toContain("invalid db action: vacuum");
   });
 
   test("flightdeckd db prune [--dry-run] imprime as contagens por tabela", async () => {
@@ -231,7 +231,7 @@ describe("retencao", () => {
     };
     const simulated = await run(["db", "prune", "--dry-run", "--config", file]);
     expect(simulated.code).toBe(0);
-    expect(simulated.out).toContain("simulação");
+    expect(simulated.out).toContain("dry run");
     expect(simulated.out).toContain("events: 6");
     expect(simulated.out).toContain("external_sessions: 1");
     const done = await run(["db", "prune", "--config", file]);

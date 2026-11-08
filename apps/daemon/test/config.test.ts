@@ -132,8 +132,8 @@ describe("daemon", () => {
     expect(out.lines.some((l) => /listening on \S+ \(runtime=fake, boot \d+ ms\)/.test(l))).toBe(
       true,
     );
-    expect(out.lines.some((l) => l.includes("allowedRoots está vazio"))).toBe(true);
-    expect(out.lines.some((l) => l.includes('rode "flightdeckd setup"'))).toBe(true);
+    expect(out.lines.some((l) => l.includes("allowedRoots is empty"))).toBe(true);
+    expect(out.lines.some((l) => l.includes('run "flightdeckd setup"'))).toBe(true);
     expect(out.lines.join("\n")).not.toContain("t".repeat(32));
     const health = await fetch(daemon.url.replace("ws://", "http://").replace("/v1/ws", "/health"));
     expect(await health.json()).toEqual({ ok: true });
@@ -147,7 +147,7 @@ describe("daemon", () => {
     const daemon = await startDaemon({ command: "start", config: file }, {}, out);
     expect(daemon.runtime).toBeInstanceOf(ClaudeSdkRuntime);
     expect(out.lines.some((l) => l.includes("runtime=claude"))).toBe(true);
-    expect(out.lines.some((l) => l.includes("allowedRoots está vazio"))).toBe(false);
+    expect(out.lines.some((l) => l.includes("allowedRoots is empty"))).toBe(false);
     await daemon.stop();
     expect(dir).toBeTruthy();
   });
@@ -179,6 +179,6 @@ describe("daemon", () => {
     });
     expect(daemon).toBeNull();
     expect(exits).toEqual([1]);
-    expect(out.lines[0]).toContain("argumento desconhecido");
+    expect(out.lines[0]).toContain("unknown argument");
   });
 });

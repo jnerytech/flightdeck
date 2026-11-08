@@ -80,8 +80,8 @@ describe("snippets-cli: flightdeckd snippet list and get, the bridge the mod use
       action: "get",
       snippetName: "revisar",
     });
-    expect(() => parseArgs(["snippet", "apagar"])).toThrow("snippet");
-    expect(() => parseArgs(["snippet", "get"])).toThrow("nome");
+    expect(() => parseArgs(["snippet", "apagar"])).toThrow("invalid snippet action");
+    expect(() => parseArgs(["snippet", "get"])).toThrow("missing the snippet name");
   });
 
   test("snippet list prints the host's and the project's snippets as JSON", async () => {

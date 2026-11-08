@@ -35,7 +35,7 @@ describe("instancia-unica", () => {
     const second = deps();
     expect(await runCli(["--config", file, "--runtime", "fake"], second.cli)).toBeNull();
     expect(second.exits).toEqual([3]);
-    expect(second.errors.join("\n")).toContain("já em execução");
+    expect(second.errors.join("\n")).toContain("already running");
 
     await daemon?.stop();
     const third = deps();
