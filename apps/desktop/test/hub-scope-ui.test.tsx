@@ -279,3 +279,53 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     expect(screen.queryByRole("button", { name: "Mostrar todos os hosts" }) !== null).toBe(true);
   });
 });
+
+// #126 slice 4: a project scope (picked here, on Home or on Costs) lists that project's sessions,
+// on every host it is on, and the menu offers the hub's projects.
+describe("hub-scope-ui: a project scope (#126 slice 4)", () => {
+  const ALFA_PROJECT = '{"kind":"project","projectKey":"host:alfa:/work/proj-alfa"}';
+
+  test("a kept project scope lists that project's sessions only, and the menu names it", async () => {
+    setup({ kept: ALFA_PROJECT });
+    await settle(() => shown("on alfa"));
+    expect({
+      alfa: shown("on alfa"),
+      beta: shown("on beta"),
+      menu: hasMenu("Data from proj-alfa"),
+    }).toEqual({ alfa: true, beta: false, menu: true });
+  });
+
+  test("the menu lists the hub's projects; picking one lists its sessions and keeps the scope", async () => {
+    const { store } = setup();
+    await settle(() => shown("on alfa") && shown("on beta"));
+    expect(hasMenu("Data from All hosts")).toBe(true);
+    const trigger = screen.queryByRole("button", { name: "Data from All hosts" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    const entry = screen.queryByRole("menuitemradio", { name: "proj-beta" });
+    expect(entry).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(entry as HTMLElement);
+    });
+    await settleMaybe(() => !shown("on alfa"));
+    expect({
+      alfa: shown("on alfa"),
+      beta: shown("on beta"),
+      scope: store.dataScope.value,
+    }).toEqual({
+      alfa: false,
+      beta: true,
+      scope: { kind: "project", projectKey: "host:beta:/work/proj-beta" },
+    });
+  });
+
+  test("em português, o menu nomeia o projeto do escopo", async () => {
+    setup({ kept: ALFA_PROJECT, language: "pt-BR" });
+    await settle(() => shown("on alfa"));
+    expect({ beta: shown("on beta"), menu: hasMenu("Dados de proj-alfa") }).toEqual({
+      beta: false,
+      menu: true,
+    });
+  });
+});
