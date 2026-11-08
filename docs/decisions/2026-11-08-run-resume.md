@@ -45,6 +45,13 @@ engine can already continue a run without repeating what finished: after a daemo
   near-only (`requireVaultTransport`), stricter than starting a card, since it runs the
   project's commands again. The check answers anywhere.
 
+- **After a restart.** A resume still waiting for its slot when the daemon stops continues once
+  the daemon is back, with the HEAD its resume recorded. It still needs the same HEAD once it
+  gets a slot. A run with no recorded HEAD, or whose card is gone or has no worktree, fails
+  instead (`run_resume_no_head`, `run_resume_card`). Like a run that was running or waiting at a
+  gate, it does not check the workflow's hash or trust again. It runs the definition stored with
+  it, whose hash the resume checked.
+
 ## Discarded alternatives
 
 - **A new run that copies the outputs of the earlier steps.** Two runs would describe one piece of

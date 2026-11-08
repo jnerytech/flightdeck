@@ -323,9 +323,21 @@ export class WorkflowEngine {
       )
       .all();
     for (const run of resumed) {
-      const { worktreePath } = this.host.card(run.card_id);
+      // A card gone, with no worktree, or a resume with no HEAD fails that run only, never the
+      // daemon's start: what a resume would refuse is never run.
+      let worktree: string | null = null;
+      try {
+        worktree = this.host.card(run.card_id).worktreePath;
+      } catch {
+        worktree = null;
+      }
+      if (!worktree || !run.head) {
+        this.end(run.id, "failed", "the resume cannot go on after the restart");
+        this.setReasonKey(run.id, worktree ? "run_resume_no_head" : "run_resume_card", {});
+        continue;
+      }
       this.resuming.add(run.id);
-      void this.afterSlot(run.id, run.card_id, worktreePath as string, run.head);
+      void this.afterSlot(run.id, run.card_id, worktree, run.head);
     }
   }
 
@@ -522,13 +534,15 @@ export class WorkflowEngine {
     worktree: string,
     head: string | null,
   ): Promise<void> {
+    let held = false;
     try {
       await this.host.acquire(cardId);
+      held = true;
       if (this.row(runId).status !== "queued") {
         this.host.release(cardId);
         return;
       }
-      if ((await this.headOf(worktree).catch(() => null)) !== head) {
+      if (head === null || (await this.headOf(worktree).catch(() => null)) !== head) {
         // The HEAD stays: asked again, the run says the branch moved, not that it has none.
         this.restoreHead(runId, head);
         this.end(runId, "failed", "the card's branch moved while the run waited");
@@ -540,8 +554,14 @@ export class WorkflowEngine {
       this.host.place(cardId, { type: "workflow", state: "running" });
       this.begin(runId, worktree);
     } catch (error) {
-      this.restoreHead(runId, head);
-      this.end(runId, "failed", reason(error));
+      // The run may be gone (its card discarded meanwhile): its slot still goes back.
+      if (held) this.host.release(cardId);
+      try {
+        this.restoreHead(runId, head);
+        this.end(runId, "failed", reason(error));
+      } catch {
+        // Nothing left to end.
+      }
     } finally {
       this.resuming.delete(runId);
     }
