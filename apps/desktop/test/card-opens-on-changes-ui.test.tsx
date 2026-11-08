@@ -47,7 +47,36 @@ const card = (over: object = {}) =>
     ...over,
   }) as never;
 
-async function open(first: object, before = false) {
+const run = (steps: object[]) =>
+  ({
+    id: "r1",
+    cardId: "c1",
+    workflowName: "ship",
+    workflowHash: "h",
+    status: "waiting",
+    statusReason: null,
+    budget: {},
+    usage: { turns: 0, minutes: 0, costUsd: 0 },
+    inputs: {},
+    startedAt: "2026-11-08T12:00:00.000Z",
+    endedAt: null,
+    steps,
+    quotaUntil: null,
+  }) as never;
+const gate = (status: string) => ({
+  stepId: "approve",
+  attempt: 1,
+  type: "gate",
+  status,
+  message: "Ship it?",
+  output: null,
+  sessionId: null,
+  usage: null,
+  startedAt: "2026-11-08T12:01:00.000Z",
+  endedAt: null,
+});
+
+async function open(first: object, before = false, runSteps?: object[]) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   store.hostCommand = (async () => null) as never;
@@ -56,6 +85,7 @@ async function open(first: object, before = false) {
     act(async () => {
       (store as unknown as { update(patch: object): void }).update({
         cards: { [sessionKey("h1", "c1")]: card(over) },
+        ...(runSteps ? { runs: { [sessionKey("h1", "r1")]: run(runSteps) } } : {}),
       });
     });
   // A card the store already has is there on the first render: the page opens on its tab at once.
@@ -119,5 +149,28 @@ describe("card-opens-on-changes-ui: a finished run opens on its changes (#1197)"
     expect(pressed("Conversation")).toBe("true");
     await put({ ...FINISHED, updatedAt: "2026-11-08T12:05:00.000Z" });
     expect([pressed("Changes"), pressed("Conversation")]).toEqual(["false", "true"]);
+  });
+});
+
+describe("card-opens-on-changes-ui: a gate waiting is the card's one primary (#1269)", () => {
+  const names = () =>
+    Array.from(document.querySelectorAll('[data-slot="card-run"] button')).map(
+      (el) => el.getAttribute("aria-label") ?? el.textContent?.trim() ?? "",
+    );
+  const asked = { ...FINISHED, workflowRunId: "r1" };
+
+  test("with a gate waiting, the run panel leads with nothing and the gate has Approve", async () => {
+    await open(asked, true, [gate("waiting")]);
+    await settle(() => pressed("Conversation") !== null);
+    expect(screen.queryByRole("button", { name: "Open PR" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Review changes" })).toBeNull();
+    expect(names()).toEqual(["Actions for Cart screen"]);
+    expect(screen.queryByRole("button", { name: "Approve" })).not.toBeNull();
+  });
+
+  test("once the gate is answered, the run panel leads with Open PR again", async () => {
+    await open(asked, true, [gate("approved")]);
+    await settle(() => pressed("Conversation") !== null);
+    expect(names()).toEqual(["Open PR", "Actions for Cart screen"]);
   });
 });

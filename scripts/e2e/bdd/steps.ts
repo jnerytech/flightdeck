@@ -206,6 +206,7 @@ const made = new WeakMap<
     counts?: number[];
     guard?: string;
     backup?: string;
+    origin?: string;
   }
 >();
 const mine = (c: Context) => {
@@ -408,7 +409,11 @@ step(When, "I pick the column {string} from the board's column buttons", async (
 
 // Set up Claude Code: a project the scenario makes, set up, then committed on a branch.
 /** A git project of the scenario's own, with `files` committed, added to the host through the Add project dialog. */
-async function addOwnProject(c: Context, files: Record<string, string> = {}) {
+async function addOwnProject(
+  c: Context,
+  files: Record<string, string> = {},
+  options: { origin?: boolean } = {},
+) {
   const name = unique(c, "setup");
   const folder = join(dirname(c.ids.freshRepo), name);
   mkdirSync(folder, { recursive: true });
@@ -425,6 +430,14 @@ async function addOwnProject(c: Context, files: Record<string, string> = {}) {
   git("config", "commit.gpgsign", "false");
   git("add", ".");
   git("commit", "-q", "-m", "first");
+  if (options.origin) {
+    // A local bare repository stands for the remote: the base branch is pushed there.
+    const bare = `${folder}-origin.git`;
+    execFileSync("git", ["init", "-q", "--bare", "-b", "main", bare], { stdio: "ignore" });
+    git("remote", "add", "origin", bare);
+    git("push", "-q", "origin", "main");
+    mine(c).origin = bare;
+  }
   mine(c).project = name;
   await open(c, { name: "all-projects", host: ALFA });
   await c.page
@@ -1304,3 +1317,82 @@ step(Then, "the panel previews what the backup holds and nothing is restored yet
     .count();
   if (done > 0) throw new Error("something was restored before the confirm");
 });
+
+// A workflow template added from the app: a new branch and a pull request, never the base branch (issue #1221).
+step(
+  Given,
+  "a git project of my own with a remote and GitHub as its PR host is added to host {string}",
+  async (c) => {
+    await addOwnProject(c, {}, { origin: true });
+    const name = mine(c).project ?? "";
+    await open(c, { name: "projects", host: ALFA });
+    await c.page
+      .getByRole("button", { name: c.t("projectsUi.edit", { name }), exact: true })
+      .click();
+    await c.page.getByLabel(c.t("projectsUi.prProvider"), { exact: true }).selectOption("github");
+    await c.page.getByRole("button", { name: c.t("projectsUi.save"), exact: true }).click();
+    // The edit form closes once the host has the choice.
+    await c.page
+      .getByText(c.t("projectsUi.editTitle"), { exact: true })
+      .waitFor({ state: "detached", timeout: WAIT });
+  },
+);
+
+step(
+  When,
+  "I add the workflow template {string} to that project from its Workflows page",
+  async (c, id = "") => {
+    await open(c, { name: "projects", host: ALFA });
+    await c.page
+      .getByRole("button", { name: c.t("projectsUi.workflows", { name: mine(c).project ?? "" }) })
+      .click({ timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("workflowsUi.templates.open"), exact: true })
+      .click({ timeout: WAIT });
+    await c.page.locator(`button[data-template="${id}"]`).click({ timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("workflowsUi.templates.add"), exact: true })
+      .click({ timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("workflowsUi.templates.addGo"), exact: true })
+      .click({ timeout: WAIT });
+  },
+);
+
+step(
+  Then,
+  "the page says a pull request was opened from a new branch and offers to view it",
+  async (c) => {
+    await c.page
+      .getByText(pattern(dictionary(c).workflowsUi.templates.added))
+      .waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("workflowsUi.templates.viewPr"), exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+);
+
+step(
+  Then,
+  "the project's base branch and checkout are untouched and the remote has the new branch",
+  async (c) => {
+    const name = mine(c).project ?? "";
+    const folder = join(dirname(c.ids.freshRepo), name);
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", folder, ...args], { encoding: "utf8" });
+    const heads = execFileSync(
+      "git",
+      ["-C", mine(c).origin ?? "", "branch", "--list", "flightdeck/*"],
+      {
+        encoding: "utf8",
+      },
+    );
+    if (!/flightdeck\/workflow-/.test(heads))
+      throw new Error(`the remote has no workflow branch: ${heads}`);
+    const onBase = git("ls-tree", "-r", "--name-only", "main");
+    if (onBase.includes(".flightdeck/workflows"))
+      throw new Error("the base branch holds the workflow");
+    if (git("status", "--porcelain").trim() !== "") throw new Error("the checkout changed");
+    if (git("rev-parse", "--abbrev-ref", "HEAD").trim() !== "main") throw new Error("HEAD moved");
+  },
+);

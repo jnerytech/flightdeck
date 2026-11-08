@@ -77,7 +77,7 @@ function until<T>(check: () => T | Pending, what: string): Promise<T> {
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
   output = new Map<string, string>();
   events: EventEnvelope[] = [];
