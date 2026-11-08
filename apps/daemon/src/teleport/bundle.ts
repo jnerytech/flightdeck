@@ -203,11 +203,11 @@ async function sweepRefs(top: string, signal?: AbortSignal): Promise<void> {
   if (folder?.status !== "fulfilled" || !folder.value.isDirectory()) return;
   for (const name of await readdir(dir)) {
     // A ref a bundle in progress takes off meanwhile is no error here.
-    const [looked] = await Promise.allSettled([lstat(join(dir, name))]);
+    const [looked] = await Promise.allSettled([lstat(join(dir, name))]); // NOSONAR: one ref at a time: each look decides the update-ref that follows
     const info = looked?.status === "fulfilled" ? looked.value : null;
     if (!info?.isFile() || !ID.test(name) || Date.now() - info.mtimeMs < STALE_MS) continue;
     // git-arg: the name was read from the ref folder and checked against ID
-    await git(top, ["update-ref", "-d", `refs/flightdeck/teleport/${name}`], {}, signal);
+    await git(top, ["update-ref", "-d", `refs/flightdeck/teleport/${name}`], {}, signal); // NOSONAR: git ref updates of one repository run one at a time
   }
 }
 

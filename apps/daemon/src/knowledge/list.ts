@@ -55,7 +55,7 @@ async function walk(
     if (seen.n++ > MAX_SCANNED) return;
     const path = `${dir}/${entry.name}`;
     if (entry.isDirectory() && !SKIPPED.has(entry.name)) {
-      await walk(root, path, depth + 1, found, seen);
+      await walk(root, path, depth + 1, found, seen); // NOSONAR: depth first in name order: the walk shares the found list and the scan budget
     } else if (entry.isFile() && /\.md$/i.test(entry.name) && !credential(path)) {
       found.push(path);
     }
@@ -110,16 +110,16 @@ export async function listKnowledge(
   for (const folder of KNOWLEDGE_FOLDERS) {
     // The folder must be where its name says it is: a link above it, out of the project or to another
     // folder of it (a credential folder), would list what the name does not show.
-    const [at] = await Promise.allSettled([realpath(`${root}/${folder}`)]);
+    const [at] = await Promise.allSettled([realpath(`${root}/${folder}`)]); // NOSONAR: one folder at a time, in the order of KNOWLEDGE_FOLDERS: they share the found list and the scan budget
     if (at.status === "fulfilled" && samePath(at.value, join(real, folder))) {
-      await walk(root, folder, 0, found, seen);
+      await walk(root, folder, 0, found, seen); // NOSONAR: one folder at a time, in the order of KNOWLEDGE_FOLDERS: they share the found list and the scan budget
     }
   }
   found.sort(order);
   const max = opts.maxFiles ?? MAX_FILES;
   const read = new Map<string, { text: string; entry: KnowledgeEntry }>();
   for (const path of found.slice(0, max)) {
-    const start = await readStart(`${root}/${path}`);
+    const start = await readStart(`${root}/${path}`); // NOSONAR: the files are opened one at a time, so a long list never holds many handles at once
     if (!start) continue;
     const parsed = parseKnowledge(path, start.text);
     read.set(path, {

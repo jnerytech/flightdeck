@@ -54,8 +54,10 @@ export function knowledgeSwitchFor(deps: KnowledgeSwitchDeps): KnowledgeSwitch {
       const names = await rootNames([path]);
       // The entries that are this project under some name: its path, `~`, or a link to it.
       const ours = new Set<string>();
-      for (const entry of deps.off()) {
-        const places = await rootNames([entry]);
+      const entries = deps.off();
+      const placed = await Promise.all(entries.map((entry) => rootNames([entry])));
+      for (const [at, entry] of entries.entries()) {
+        const places = placed[at] ?? [];
         if (places.some((place) => names.some((name) => samePath(place, name)))) ours.add(entry);
       }
       const named = (entry: string) => ours.has(resolve(expandHome(entry)));

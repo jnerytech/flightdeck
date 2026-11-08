@@ -275,9 +275,10 @@ async function replacing<T>(
   // Every record of it here ends first: none writes into the copy while it is set aside. One that
   // will not end stops the return before the copy is touched.
   for (const id of mine) {
-    await deps.close(id).catch(() => {
+    const closing = deps.close(id).catch(() => {
       throw refuse("invalid_state", "teleport_exists");
     });
+    await closing; // NOSONAR: each record ends before the next, and the first that will not end stops the return before the copy is touched
   }
   const aside = `${here}.replaced-${deps.now().toISOString().replace(/[:.]/g, "-")}`;
   await rename(here, aside);

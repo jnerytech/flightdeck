@@ -37,7 +37,7 @@ export async function secretLines(
     // The scan runs about 20 patterns per line: every slice of text gives the event loop back.
     if (start - mark >= pace.every) {
       mark = start;
-      await pace.pause();
+      await pace.pause(); // NOSONAR: the pause is the point: it gives the event loop back between slices
     }
     const end = text.indexOf("\n", start);
     const line = text.slice(start, end === -1 ? text.length : end);

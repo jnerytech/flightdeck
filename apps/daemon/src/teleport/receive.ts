@@ -81,7 +81,7 @@ export class TeleportInbox {
     this.check(manifest);
     // A session has one package under way: a new one replaces the old.
     for (const [old, entry] of this.entries) {
-      if (entry.manifest.claudeSessionId === manifest.claudeSessionId) await this.abort(old);
+      if (entry.manifest.claudeSessionId === manifest.claudeSessionId) await this.abort(old); // NOSONAR: one package at a time: each abort edits the entries this loop walks
     }
     if (this.entries.size >= TELEPORT_MAX_LIVE) throw refuse("invalid_state", "teleport_too_many");
     const id = this.deps.newId();
@@ -89,7 +89,7 @@ export class TeleportInbox {
     await mkdir(this.deps.dir, { recursive: true, mode: 0o700 });
     await mkdir(folder, { mode: 0o700 });
     for (const part of manifest.parts) {
-      await writeFile(join(folder, part.name), "", { mode: 0o600, flag: "wx" });
+      await writeFile(join(folder, part.name), "", { mode: 0o600, flag: "wx" }); // NOSONAR: one file at a time: a failure stops before the next is created
     }
     const timer = this.deps.timers.setTimeout(() => this.track(this.drop(id)), TELEPORT_TTL_MS);
     // A package's timer never holds the daemon open.
@@ -118,8 +118,9 @@ export class TeleportInbox {
       }
     }
     for (const part of entry.manifest.parts) {
-      if ((await fileSha256(join(entry.folder, part.name))) !== part.sha256) {
-        await this.abort(id);
+      const sha = await fileSha256(join(entry.folder, part.name)); // NOSONAR: one part at a time, stopping at the first corrupt one before the rest is read
+      if (sha !== part.sha256) {
+        await this.abort(id); // NOSONAR: the first corrupt part ends the loop (the throw follows)
         throw refuse("bad_request", "teleport_corrupt");
       }
     }
