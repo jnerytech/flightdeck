@@ -8,9 +8,9 @@ import { lstat, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import {
   BoardColumn,
-  CHECKLIST_ITEM,
   type ContractOverrides,
   contractOf,
+  hasChecklistItem,
   specPathProblem,
 } from "@flightdeck/protocol";
 import { createInside, readInsideWhy, walkInside } from "../create-inside.ts";
@@ -52,7 +52,7 @@ export function renderSpec(
 ): string {
   // One line, so it can neither end the heading nor the front matter early.
   const title = card.title.replace(/[\r\n]+/g, " ").trim();
-  const items = card.description.split(/\r?\n/).filter((line) => CHECKLIST_ITEM.test(line));
+  const items = card.description.split(/\r?\n/).filter(hasChecklistItem);
   const values: Record<string, string> = {
     title,
     criteria: items.length > 0 ? items.join("\n") : "- [ ] ",
