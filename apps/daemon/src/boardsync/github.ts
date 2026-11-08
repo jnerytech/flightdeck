@@ -60,11 +60,16 @@ interface GhNode {
   } | null;
 }
 
+/** The text of the first `[...]` with something inside, which is where gh names the missing scopes. */
+export function firstBracketed(text: string): string | undefined {
+  return /\[([^\]]+)\]/.exec(text)?.[1];
+}
+
 /** The refusal a gh failure means; what it said is never repeated beyond its last line. */
 function failure(result: GhResult): FlightdeckError {
   const text = `${result.stderr}\n${result.stdout}`;
   if (/required scopes?/i.test(text) || /INSUFFICIENT_SCOPES/.test(text)) {
-    const scope = /\[([^\]]+)\]/.exec(text)?.[1]?.split(",").pop()?.trim() ?? "project";
+    const scope = firstBracketed(text)?.split(",").pop()?.trim() ?? "project";
     return refuse("board_sync_scope_missing", `the GitHub login lacks the ${scope} scope`, {
       scope,
     });
