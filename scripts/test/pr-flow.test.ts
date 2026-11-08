@@ -112,7 +112,8 @@ function fake(
         return ok(
           prs
             .filter((p) => (opts.ignoreHead || p.head === head) && p.state === "open")
-            .map((p) => `${p.number} ${p.head}\n`)
+            // As BRANCH_PR_JQ prints it: number, whether the head is this repository, head ref.
+            .map((p) => `${p.number} ${p.headRepo === undefined} ${p.head}\n`)
             .join(""),
         );
       }
@@ -571,6 +572,27 @@ describe("pr-flow: open", () => {
     expect(await prFlow(["open", "a"], f.deps)).toBe(0);
     expect(f.writes).toEqual([]);
     expect(f.out()).toMatch(/^a already has PR #12$/m);
+  });
+
+  test("#1124 review: a fork's PR on a branch of the same name, or a longer name, is not the branch's own", async () => {
+    for (const listed of [pr(14, "a", { headRepo: "someone/fork" }), pr(15, "a-2")]) {
+      const f = fake({
+        pushed: ["a"],
+        prs: [listed],
+        subjects: { a: ["fix(a): x (#1)"] },
+        ignoreHead: true,
+      });
+      expect(`#${listed.number}: ${await prFlow(["open", "a"], f.deps)} ${f.writes.length}`).toBe(
+        `#${listed.number}: 1 0`,
+      );
+    }
+  });
+
+  test("#1124 review: a lookup GitHub does not answer stops pr open, so no second PR is made", async () => {
+    const f = fake({ pushed: ["a"], subjects: { a: ["fix(a): x (#1)"] }, fail: /pulls\?head=/ });
+    expect(await prFlow(["open", "a"], f.deps)).toBe(1);
+    expect(f.writes).toEqual([]);
+    expect(f.out()).toContain("open PRs of a cannot be read");
   });
 
   test("a branch not pushed, one whose commits name no issue, or an unreadable issue is refused", async () => {
