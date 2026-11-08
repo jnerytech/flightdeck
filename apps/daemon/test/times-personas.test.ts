@@ -76,7 +76,7 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
         workers: 1,
         coordinatorPersona: "nao-existe",
       }),
-    ).toMatchObject({ ok: false, error: { message: "a persona nao-existe não existe" } });
+    ).toMatchObject({ ok: false, error: { message: "persona nao-existe does not exist" } });
     type Teams = {
       teams: Array<{ id: string; members: Array<{ name: string; persona: string | null }> }>;
     };
