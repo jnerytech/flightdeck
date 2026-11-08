@@ -283,6 +283,28 @@ function pinnedDocsOf(stored: string | null): string[] {
 }
 
 /** The auto-start as the cards table keeps it. */
+/** A spec path a card is given must be a relative Markdown path inside the worktree. */
+function judgeSpecPath(path: string | null | undefined): void {
+  if (typeof path === "string" && specPathProblem(path) !== null) {
+    throw new FlightdeckError(
+      "bad_request",
+      "the spec path must be a relative path to a Markdown file inside the worktree",
+      "spec_path_invalid",
+    );
+  }
+}
+
+/** Pinned documents a card is given: Markdown files in the library's folders, at most 10. */
+function judgePins(pins: string[]): void {
+  if (pins.length > PINNED_DOCS_MAX || pins.some((doc) => pinnedDocProblem(doc) !== null)) {
+    throw new FlightdeckError(
+      "bad_request",
+      "a pinned document must be a Markdown file in the project's docs folders, and a card pins at most 10",
+      "pinned_doc_invalid",
+    );
+  }
+}
+
 const autoStartOf = (autoStart: { workflow: string | null } | null | undefined) =>
   autoStart ? JSON.stringify(autoStart) : null;
 
@@ -851,6 +873,8 @@ export class Board {
     },
   ): Card {
     this.getProject(projectId);
+    judgeSpecPath(input.specPath);
+    if (input.pinnedDocs !== undefined) judgePins(input.pinnedDocs);
     const blockedBy = input.blockedBy ?? [];
     this.checkBlockers(null, projectId, blockedBy);
     const column = input.column ?? "backlog";
@@ -1123,26 +1147,11 @@ export class Board {
     if (patch.blockedBy) this.checkBlockers(id, card.projectId, patch.blockedBy);
     const specPath = patch.specPath === undefined ? card.specPath : patch.specPath;
     // Only a path that comes in the patch is judged: one stored earlier does not block an edit.
-    if (typeof patch.specPath === "string" && specPathProblem(patch.specPath) !== null) {
-      throw new FlightdeckError(
-        "bad_request",
-        "the spec path must be a relative path to a Markdown file inside the worktree",
-        "spec_path_invalid",
-      );
-    }
+    judgeSpecPath(patch.specPath);
     const pinned =
       patch.pinnedDocs === undefined ? card.pinnedDocs : [...new Set(patch.pinnedDocs)];
     // Only pins that come in the patch are judged: ones stored earlier do not block an edit.
-    if (
-      patch.pinnedDocs !== undefined &&
-      (pinned.length > PINNED_DOCS_MAX || pinned.some((doc) => pinnedDocProblem(doc) !== null))
-    ) {
-      throw new FlightdeckError(
-        "bad_request",
-        "a pinned document must be a Markdown file in the project's docs folders, and a card pins at most 10",
-        "pinned_doc_invalid",
-      );
-    }
+    if (patch.pinnedDocs !== undefined) judgePins(pinned);
     this.db
       .query(
         `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, validation_note = ?,
