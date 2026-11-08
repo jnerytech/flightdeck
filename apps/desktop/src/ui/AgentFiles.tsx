@@ -340,9 +340,9 @@ export function AgentFiles(
                   {t("agent.files.save")}
                 </Button>
                 {justSaved && !dirty && (
-                  <span role="status" className="text-muted-foreground text-sm">
+                  <output className="text-muted-foreground text-sm">
                     {t("agent.files.saved")}
-                  </span>
+                  </output>
                 )}
               </div>
             )}

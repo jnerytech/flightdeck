@@ -309,7 +309,7 @@ export const TargetForm = memo(function TargetForm(props: {
           </Button>
         </div>
       )}
-      {testResult && <p role="status">{testResult}</p>}
+      {testResult && <output className="block">{testResult}</output>}
       <FormActions
         submit={t("connections.form.save")}
         busy={saving.busy}

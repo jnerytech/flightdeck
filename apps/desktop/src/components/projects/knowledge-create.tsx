@@ -98,7 +98,10 @@ export function KnowledgeCreate(
         </ActionButton>
       </FieldRow>
       {note && (
-        <p role={note.ok ? "status" : "alert"} className="text-sm">
+        <p // NOSONAR: the role follows the outcome (status or alert), which <output> cannot do
+          role={note.ok ? "status" : "alert"}
+          className="text-sm"
+        >
           {note.text}
         </p>
       )}

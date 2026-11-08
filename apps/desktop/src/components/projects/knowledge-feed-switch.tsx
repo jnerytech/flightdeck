@@ -52,9 +52,7 @@ export function KnowledgeFeedSwitch(
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* A live region: a later change of the words (the index on or off) is read out. */}
-      <p role="status" className="text-sm">
-        {words}
-      </p>
+      <output className="block text-sm">{words}</output>
       {(state.on || own) && (
         <Button type="button" size="sm" variant="outline" onClick={() => change(!state.on)}>
           {t(state.on ? "projectPage.knowledge.feed.turnOff" : "projectPage.knowledge.feed.turnOn")}

@@ -192,13 +192,13 @@ function TemplateFile(
         <InlineNotice tone="error">{t("workflowsUi.templates.copyFailed")}</InlineNotice>
       )}
       {/* Always in the page: a live region inserted with its text is often not read. */}
-      <div data-slot="copy-status" role="status">
+      <output data-slot="copy-status" className="block">
         {props.copied === "worked" && (
           <p className="rounded-md border px-3 py-2 text-muted-foreground text-sm">
             {t("workflowsUi.templates.copied")}
           </p>
         )}
-      </div>
+      </output>
     </Stack>
   );
 }

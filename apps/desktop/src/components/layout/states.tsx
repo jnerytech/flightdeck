@@ -35,8 +35,7 @@ export function LoadingState(props: Readonly<{ label: string; shape?: LoadingSha
   // Announced at once; the placeholders wait 200 ms so a quick load flashes nothing.
   const drawn = useAfter(IN_FLIGHT.deferMs);
   return (
-    <div
-      role="status"
+    <output
       aria-busy="true"
       aria-label={props.label}
       data-shape={shape}
@@ -49,7 +48,7 @@ export function LoadingState(props: Readonly<{ label: string; shape?: LoadingSha
       {drawn &&
         shape === "tiles" &&
         [0, 1, 2, 3].map((n) => <Skeleton key={n} className="h-20 rounded-lg" />)}
-    </div>
+    </output>
   );
 }
 

@@ -76,7 +76,7 @@ export function SplitView(
   const detail = props.detail ?? props.empty;
   const group = (children: ReactNode, columns: string) => (
     // biome-ignore lint/a11y/useSemanticElements: a layout group, not a fieldset
-    <div
+    <div // NOSONAR: a layout group, not a fieldset
       ref={box}
       role="group"
       className="grid h-full min-h-0"
@@ -112,7 +112,7 @@ export function SplitView(
     <>
       <div className="@container min-h-0 min-w-0 overflow-hidden">{props.list}</div>
       {/* biome-ignore lint/a11y/useSemanticElements: a focusable window splitter, which <hr> is not */}
-      <div
+      <div // NOSONAR: a focusable window splitter, which <hr> is not
         role="separator"
         aria-orientation="vertical"
         aria-label={props.labels.resize}

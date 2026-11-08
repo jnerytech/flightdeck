@@ -103,11 +103,11 @@ export function FileImport(
         </>
       )}
       {message.length > 0 && (
-        <div role="status">
+        <output className="block">
           {message.map((line) => (
             <p key={line}>{line}</p>
           ))}
-        </div>
+        </output>
       )}
     </div>
   );

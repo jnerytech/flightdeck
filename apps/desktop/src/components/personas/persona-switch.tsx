@@ -78,9 +78,9 @@ export function PersonaSwitch(
         </>
       )}
       {answered?.delivery && (
-        <p role="status" className="text-xs">
+        <output className="block text-xs">
           {t(`personas.apply.delivery.${answered.delivery}`)}
-        </p>
+        </output>
       )}
     </div>
   );

@@ -89,7 +89,7 @@ export function AdrDraftDialog(
           )}
         </AssistField>
         {note && (
-          <p
+          <p // NOSONAR: the role follows the outcome (status or alert), which <output> cannot do
             role={note.ok ? "status" : "alert"}
             className={note.ok ? "text-sm" : "text-destructive text-sm"}
           >

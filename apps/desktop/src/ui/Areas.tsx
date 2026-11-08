@@ -154,7 +154,7 @@ export function Areas(
         if (i === 0 || !split) return [pane];
         return [
           // biome-ignore lint/a11y/useSemanticElements: a focusable window splitter, unlike hr
-          <div
+          <div // NOSONAR: a focusable window splitter, which <hr> is not
             key="divider"
             role="separator"
             aria-orientation={split}

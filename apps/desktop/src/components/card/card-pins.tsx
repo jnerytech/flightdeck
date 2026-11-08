@@ -34,7 +34,7 @@ export function CardPins(
   /** What the last Pin or Unpin did, read out by the status line that is always there. */
   const [said, setSaid] = useState("");
   const picker = useRef<HTMLSelectElement>(null);
-  const statusLine = useRef<HTMLParagraphElement>(null);
+  const statusLine = useRef<HTMLOutputElement>(null);
   /**
    * Where the focus goes once a save is done (#1088): the picker, or the status line when the
    * picker cannot take it (the pin filled the card, or there is none). Moved after the render, so a
@@ -174,9 +174,9 @@ export function CardPins(
           )}
         </>
       )}
-      <p ref={statusLine} role="status" tabIndex={-1} className="text-sm">
+      <output ref={statusLine} tabIndex={-1} className="block text-sm">
         {said}
-      </p>
+      </output>
       {problem && (
         <p role="alert" className="text-sm">
           {problem}

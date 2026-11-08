@@ -219,11 +219,11 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
         />
       )}
       {importMessage.length > 0 && (
-        <div role="status" className="text-sm">
+        <output className="block text-sm">
           {importMessage.map((line) => (
             <p key={line}>{line}</p>
           ))}
-        </div>
+        </output>
       )}
       {hostId && editing !== null && (
         <TargetForm
