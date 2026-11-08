@@ -170,6 +170,16 @@ for (const language of ["en", "pt-BR"] as const) {
       expect(rows(w.region)).toEqual([w.dollarRow]);
     });
 
+    test("editing shows the share as it was saved, not rounded to one decimal", async () => {
+      const { w } = await online(language);
+      await choose(w.unit, "five_hour");
+      await choose(w.limitPct, "33.33");
+      await click(w.create);
+      await settle(() => rows(w.region).length === 1);
+      await click(w.edit(w.hostLabel));
+      expect((field(w.limitPct) as HTMLInputElement).value).toBe("33.33");
+    });
+
     test("a share outside 0.1% to 100% cannot be saved, and says why", async () => {
       const { w } = await online(language);
       await choose(w.unit, "seven_day");

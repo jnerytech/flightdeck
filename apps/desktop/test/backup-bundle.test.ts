@@ -149,7 +149,7 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
       [...fresh.keyring.values()].sort(),
       JSON.parse(fresh.storage.get("flightdeck.personas") ?? "[]").length,
     ]).toEqual([
-      ["Pi", "Workstation"],
+      ["Pi (ws://10.0.0.2:7777)", "Workstation (ws://10.0.0.1:7777)"],
       ["Reviewer", "Writer"],
       ["Release notes"],
       ["Deploy key", "GitHub"],
@@ -165,7 +165,7 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
     ]);
   });
 
-  test("the file holds no secret in clear, and the preview names things without their values", async () => {
+  test("the file holds no secret in clear, and the preview names things and hosts without any value", async () => {
     const source = await filled();
     const text = await createBackup(source.platform, PASS, PASS, FAST);
     const preview = await previewRestore(newProfile().platform, text, PASS);
@@ -175,7 +175,7 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
       everything.includes("host-token-ONE"),
       everything.includes("VAULT-SECRET"),
       everything.includes("ws://10.0.0.1"),
-    ]).toEqual([true, false, false, false]);
+    ]).toEqual([true, false, false, true]);
   });
 
   test("a short or unconfirmed passphrase writes nothing", async () => {
@@ -243,7 +243,7 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
       target.tokens.get("h2"),
     ]).toEqual([
       ["theme"],
-      ["Pi"],
+      ["Pi (ws://10.0.0.2:7777)"],
       [],
       ["Reviewer", "Writer"],
       true,
@@ -253,6 +253,28 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
       "dark",
       "host-token-TWO",
     ]);
+  });
+
+  test("a host is named with where it points, and never with a login or a query it might carry", async () => {
+    const source = newProfile();
+    source.storage.set(
+      "flightdeck.hosts",
+      JSON.stringify([
+        {
+          id: "h1",
+          name: "Tunnel",
+          url: "wss://user:pw-IN-URL@box.example:8443/ws?key=QUERY-SECRET",
+        },
+        { id: "h2", name: "Broken", url: "not a url" },
+      ]),
+    );
+    const text = await createBackup(source.platform, PASS, PASS, FAST);
+    const preview = await previewRestore(newProfile().platform, text, PASS);
+    const shown = JSON.stringify(preview.hosts);
+    expect([
+      [...preview.hosts.added].sort(),
+      shown.includes("pw-IN-URL") || shown.includes("QUERY-SECRET"),
+    ]).toEqual([["Broken", "Tunnel (wss://box.example:8443)"], false]);
   });
 
   test("a failure in the middle of the apply puts every kind back as it was", async () => {

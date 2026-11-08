@@ -43,6 +43,8 @@ function open(options: { language?: "en" | "pt-BR"; picked?: string | null } = {
     saved.push({ name, text });
     return true;
   };
+  // The fixture is the web platform, which has no file dialog; these tests stand in for the desktop.
+  platform.vault.canPick = true;
   platform.vault.pickFile = async () =>
     options.picked == null ? null : { path: "backup.fdbackup", text: options.picked };
   const store = new AppStore(platform, { baseDelayMs: 600_000, vaultWorkFactor: 4 });
@@ -259,6 +261,22 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
     await click("Read backup");
     const told = await settleMaybe(() => said("Something went wrong"), 3000);
     expect([told, said("too big to be a key")]).toEqual([true, false]);
+  });
+
+  test("a platform with no file dialog (the web build) offers no Read backup and says why", async () => {
+    const { platform } = memoryPlatform(false, "en");
+    // The web platform as it is: no file dialog.
+    const store = new AppStore(platform, { baseDelayMs: 600_000, vaultWorkFactor: 4 });
+    store.i18n.start();
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <BackupAllPanel store={store} />
+      </TContext.Provider>,
+    );
+    const noButton = screen.queryByRole("button", { name: "Read backup" }) === null;
+    const said = (document.body.textContent ?? "").includes("needs the desktop app");
+    const exportStays = screen.queryByRole("button", { name: "Back up now" }) !== null;
+    expect([noButton, said, exportStays]).toEqual([true, true, true]);
   });
 
   test("the pt-BR panel is in Portuguese", async () => {

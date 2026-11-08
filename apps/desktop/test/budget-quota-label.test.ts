@@ -67,6 +67,16 @@ describe("budget-quota-label: a window budget in each language (#1248)", () => {
     );
   });
 
+  test("pt-BR writes a fractional share with a comma, en with a dot", () => {
+    const fraction = window({ spentPct: 0.125, limitPct: 0.333, fraction: 0.38 });
+    expect(budgetLine(fraction, translator("pt-BR"))).toBe(
+      "orçamento do host (janela de 5 horas) · notificar · 12,5% de 33,3% do plano (38%)",
+    );
+    expect(budgetLine(fraction, translator("en"))).toBe(
+      "host budget (5-hour window) · notify · 12.5% of 33.3% of the plan (38%)",
+    );
+  });
+
   test("a dollar budget reads as it did", () => {
     const t = translator("en");
     const dollars = window({

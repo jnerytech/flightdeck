@@ -205,6 +205,22 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
     expect(budgets.list()).toEqual([]);
   });
 
+  test("a window the plan rejected without saying how much was used counts as fully used", () => {
+    const { budgets, quota, time, thresholds } = setup();
+    budgets.setWindow({ ...HOST_5H, action: "queue" });
+    quota.record([
+      {
+        window: "five_hour",
+        utilization: null,
+        status: "rejected",
+        resetsAt: time.now() + 2 * HOUR,
+      },
+    ]);
+    expect(budgets.list()[0]).toMatchObject({ spentPct: 1, crossed: [0.5, 0.8, 1] });
+    expect(budgets.blocked("kA")).toBe(true);
+    expect(thresholds()).toEqual([1]);
+  });
+
   test("a dollar budget still works beside a window one, and says it is not a share of a window", () => {
     const { budgets } = setup();
     const dollars = budgets.set({ scope: "host", period: "day", limitUsd: 10, action: "notify" });
