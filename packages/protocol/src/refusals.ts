@@ -649,7 +649,6 @@ export const WORKFLOW_ISSUE_CODES = [
   "persona_invalid",
   "step_one_action",
   "step_id_duplicate",
-  "step_id_dot",
   "inner_one_action",
   "continue_unknown",
   "persona_with_continue",

@@ -1447,7 +1447,6 @@ export const ptBR = {
     step_one_action:
       "Uma etapa precisa de exatamente uma ação: agent, check, gate, loop, parallel, pr ou cards.",
     step_id_duplicate: "Outra etapa tem esse id.",
-    step_id_dot: "O id de uma etapa não pode ter ponto.",
     inner_one_action: "{where} precisa de exatamente uma ação: agent ou check.",
     continue_unknown: "continue aponta para uma etapa que não existe: {step}.",
     persona_with_continue: "persona não vale com continue: a sessão dessa etapa já existe.",

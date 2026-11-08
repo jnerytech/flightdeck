@@ -1454,7 +1454,6 @@ export const en: Dictionary = {
     step_one_action:
       "A step needs exactly one action: agent, check, gate, loop, parallel, pr or cards.",
     step_id_duplicate: "Another step has this id.",
-    step_id_dot: "A step's id cannot have a dot.",
     inner_one_action: "{where} needs exactly one action: agent or check.",
     continue_unknown: "continue points to a step that does not exist: {step}.",
     persona_with_continue:

@@ -47,10 +47,15 @@ engine can already continue a run without repeating what finished: after a daemo
 
 - **After a restart.** A resume still waiting for its slot when the daemon stops continues once
   the daemon is back, with the HEAD its resume recorded. It still needs the same HEAD once it
-  gets a slot. A run with no recorded HEAD, or whose card is gone or has no worktree, fails
-  instead (`run_resume_no_head`, `run_resume_card`). Like a run that was running or waiting at a
-  gate, it does not check the workflow's hash or trust again. It runs the definition stored with
-  it, whose hash the resume checked.
+  gets a slot. Before that, it fails instead of running, for any of these reasons:
+  - its card is gone or discarded, has no worktree, or runs another run (`run_resume_card`);
+  - its stored definition no longer matches its hash, or the workflow is no longer trusted
+    (`run_resume_workflow_changed`);
+  - it has no recorded HEAD (`run_resume_no_head`).
+
+  A step's own rows are the ones the engine names after it: `<id>.<n>` for a parallel item, and
+  `<id>.check` and `<id>.do` for a loop. A resume clears exactly those, so a step whose id only
+  looks like one of them keeps its result.
 
 ## Discarded alternatives
 
