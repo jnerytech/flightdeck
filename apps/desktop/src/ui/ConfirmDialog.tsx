@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type ReactNode, useRef } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,10 @@ export function ConfirmDialog(
     confirmLabel: string;
     /** The confirming button is red: what it does cannot be undone. */
     destructive?: boolean;
+    /** What the person reads before confirming, below the message (lists, a choice). */
+    children?: ReactNode;
+    /** The confirming button is off: nothing to do yet, or a choice is still to be made. */
+    confirmDisabled?: boolean;
     onConfirm(): void;
     onCancel(): void;
   }>,
@@ -44,10 +48,12 @@ export function ConfirmDialog(
           <AlertDialogDescription>{props.message}</AlertDialogDescription>
           {props.warning && <p className="text-sm text-status-needs-you">{props.warning}</p>}
         </AlertDialogHeader>
+        {props.children}
         <AlertDialogFooter>
           <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             variant={props.destructive ? "destructive" : "default"}
+            disabled={props.confirmDisabled}
             onClick={() => {
               confirmed.current = true;
               props.onConfirm();

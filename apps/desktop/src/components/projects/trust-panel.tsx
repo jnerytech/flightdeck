@@ -33,6 +33,8 @@ export function TrustPanel(
     hostName: string;
     projectName: string;
     path: string;
+    /** The host can preview and apply a harness setup (#75): the checklist offers it. */
+    canSetUp?: boolean;
   }>,
 ) {
   const { store, hostId, path } = props;
@@ -183,7 +185,15 @@ export function TrustPanel(
           />
         )}
       </Panel>
-      {load && <HarnessPanel load={load} t={t} />}
+      {load && (
+        <HarnessPanel
+          load={load}
+          t={t}
+          setup={
+            props.canSetUp ? { store, hostId, path, trusted: state.trusted, onApplied: read } : null
+          }
+        />
+      )}
     </>
   );
 }

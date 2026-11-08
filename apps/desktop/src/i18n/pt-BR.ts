@@ -4229,6 +4229,8 @@ export const ptBR = {
     harness: {
       title: "Configuração do Claude Code",
       hint: "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Só leitura: nada aqui muda o projeto.",
+      hintSetup:
+        "O que ajuda o Claude Code a trabalhar bem neste projeto: as instruções, os hooks que rodam sozinhos, skills, subagentes, permissões e servidores MCP. Nada muda até você ler uma configuração e aplicá-la.",
       summary: "{n} de {total} partes encontradas",
       found: "Encontrado",
       missing: "Faltando",
@@ -4248,6 +4250,29 @@ export const ptBR = {
         format: "um formatador após edições",
         gitAdd: "uma verificação antes do git add",
         secrets: "uma verificação de arquivos de segredo",
+      },
+      setup: {
+        action: "Configurar o Claude Code",
+        apply: "Aplicar a configuração",
+        message:
+          "Isto acrescenta o que falta no projeto. Só acrescenta: nada que já existe é alterado ou removido.",
+        nothing:
+          "Nada a acrescentar: o projeto já tem todas as partes que esta configuração grava.",
+        hooks: "Hooks a acrescentar",
+        hookLine: "{event} ({matcher}): {command}",
+        formatterNote:
+          "Isto roda o script de formatação do próprio projeto: o que ele faz vem dos arquivos do projeto, e um pull pode mudá-lo.",
+        deny: "Regras de bloqueio a acrescentar (melhor esforço)",
+        denyNote:
+          "Elas impedem a ferramenta Read do Claude Code nestes arquivos e estas formas de git add. Não impedem um comando de shell como cat .env.",
+        files: "Arquivos novos",
+        conflicts: "Ficam como estão: estas chaves já guardam outra coisa",
+        unreadable: "Não lidos, então ficam como estão",
+        untrusted: "Estes hooks e regras só carregam depois que você confiar neste projeto.",
+        reformat:
+          "Regravar .claude/settings.json com outro layout. O espaçamento muda, e uma chave repetida ou um número muito grande podem ser reescritos.",
+        done: "Configurado: {files}",
+        again: "Fazer a prévia de novo",
       },
     },
     trust: {

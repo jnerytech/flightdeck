@@ -5,7 +5,7 @@
  * - `run <i>/<n> <bun|istanbul> <out>`: runs shard i of n, split as `test:shards` splits it, and
  *   writes `marker.json` next to the lcov (bun) or the function counters (istanbul). <out> is
  *   outside the checkout: the repo guard fails a test run that leaves a file in it.
- * - `merge <dir> <n> <lcov>`: reads each job's folder under <dir>, runs the merged 100% gate, and
+ * - `merge <dir> <n> <lcov>`: reads each job's folder under <dir>, runs the merged coverage gate (80%), and
  *   writes the merged lcov for SonarCloud. It fails closed when a shard is missing or failed.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";

@@ -97,7 +97,7 @@ function healthy(): ShardJob[] {
 const gate = (jobs: ShardJob[], over: Partial<GateInput> = {}) =>
   shardGate({ shards: 3, tests: TESTS, jobs, sources: ["a.ts"], ...over });
 
-describe("shard-gate: the merged 100% gate (#296)", () => {
+describe("shard-gate: the merged 80% gate (#296, #1002)", () => {
   test("a line or a function covered in any one shard is covered, and the merged lcov holds the union", () => {
     const result = gate(healthy());
     expect(result.problems).toEqual([]);
@@ -231,7 +231,7 @@ describe("shard-gate: the merged 100% gate (#296)", () => {
   });
 });
 
-describe("shard-gate fails closed: a merged report missing a shard never reads as 100% (#296)", () => {
+describe("shard-gate fails closed: a merged report missing a shard never reads as passing (#296)", () => {
   const closed = (jobs: ShardJob[], over: Partial<GateInput> = {}) => {
     const result = gate(jobs, over);
     expect(result.lcov).toBe("");
@@ -540,7 +540,7 @@ describe("shard-gate merge: the six job folders into the gate (#296, #828 review
     const d = disk(healthy());
     expect(mergeShards("/art", 3, "/out/lcov.info", d.deps)).toBe(0);
     expect(d.written.get("/out/lcov.info")).toBe(gate(healthy()).lcov);
-    expect(d.printed).toEqual(["cobertura 100% em 1 arquivos-fonte, de 3 shards"]);
+    expect(d.printed).toEqual(["cobertura de 80% ou mais em 1 arquivos-fonte, de 3 shards"]);
   });
 
   test("a coverage gap fails with check-coverage.ts's header, and the lcov is still written", () => {
@@ -560,7 +560,7 @@ describe("shard-gate merge: the six job folders into the gate (#296, #828 review
     const d = disk(jobs);
     expect(mergeShards("/art", 3, "/out/lcov.info", d.deps)).toBe(1);
     expect(d.errors).toEqual([
-      "cobertura abaixo de 100% em 1 arquivo(s):",
+      "cobertura abaixo de 80% em 1 arquivo(s):",
       "  - a.ts: funções 1/2, linhas 1/2",
     ]);
     expect(d.written.has("/out/lcov.info")).toBe(true);

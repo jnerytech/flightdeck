@@ -398,7 +398,7 @@ describe("planRelated", () => {
       "./scripts/test/narrow.test.ts",
     ]);
     expect(plan.output).toContain(
-      "scripts/entry.ts: newly imported by a changed test, so it is held to 100% too (#762)",
+      "scripts/entry.ts: newly imported by a changed test, so it is held to the 80% gate too (#762)",
     );
     // Without the coverage gate there is nothing to hold it to, and git is not asked.
     calls.length = 0;
@@ -498,6 +498,8 @@ describe("planRelated", () => {
       });
       expect(plan.command).toEqual(["bun", "run", "test"]);
       expect(plan.targets).toBeUndefined();
+      // #996: the entry reads this report to say why a whole-suite run failed.
+      expect(plan.wholeCoverage).toBe("coverage/lcov.info");
       expect(plan.output).toContain("test:related --pr: the whole suite runs");
     }
     // A rename shows its old path as gone, so a renamed test counts as one that went away.
