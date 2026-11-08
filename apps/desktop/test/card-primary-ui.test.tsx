@@ -170,7 +170,7 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     await click(button("Review changes"));
     expect(w.seen.shown).toBe(1);
     await openMenu();
-    expect(item("Open PR") === null).toBe(false);
+    expect(item("Open PR") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("with the changes on show it leads with Open PR, which opens the PR", async () => {
@@ -189,8 +189,8 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     render(w.form({ ...finished, prUrl: "https://x/pr/1", prState: "open" }));
     expect(shown()).toEqual(["Actions for Cart screen"]);
     await openMenu();
-    expect(item("Open PR") === null).toBe(true);
-    expect(item("Finish…") === null).toBe(false);
+    expect(item("Open PR") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(item("Finish…") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("an idle session can still be stopped from the menu, and a card that ran can start again", async () => {
@@ -198,7 +198,7 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     render(w.form({ ...finished, sessionStatus: "idle" }));
     expect(shown()).toEqual(["Review changes", "Actions for Cart screen"]);
     await openMenu();
-    expect(item("Stop") === null).toBe(false);
+    expect(item("Stop") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await click(item("Stop"));
     await settle(() => w.commands.some(([, type]) => type === "card.stop"));
     expect(w.commands.filter(([, type]) => type === "card.stop")).toEqual([
@@ -210,7 +210,7 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     const w = setup();
     render(w.form(finished));
     await openMenu();
-    expect(item("Stop") === null).toBe(true);
+    expect(item("Stop") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await click(item("Start"));
     await settle(() => w.commands.some(([, type]) => type === "card.start"));
     expect(w.commands.filter(([, type]) => type === "card.start")).toEqual([
@@ -225,10 +225,10 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     expect(lead).not.toBeNull();
     lead?.focus();
     view.rerender(w.form(finished, "diff"));
-    expect(document.activeElement === lead).toBe(true);
+    expect(document.activeElement === lead).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(lead?.textContent?.trim()).toBe("Open PR");
     view.rerender(w.form({ ...finished, sessionStatus: "running" }, "diff"));
-    expect(document.activeElement === lead).toBe(true);
+    expect(document.activeElement === lead).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(lead?.textContent?.trim()).toBe("Stop");
   });
 
@@ -255,7 +255,7 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
       fireEvent.keyDown(trigger, { key: "Enter" });
     });
     await settle(() => item("Discard") !== null);
-    expect(item("Discard") === null).toBe(false);
+    expect(item("Discard") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("in Portuguese the buttons and the menu speak Portuguese", async () => {
@@ -263,8 +263,8 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     render(w.form(finished));
     expect(shown()).toEqual(["Revisar mudanças", "Ações de Cart screen"]);
     await openMenu("Ações de Cart screen");
-    expect(item("Abrir PR") === null).toBe(false);
-    expect(item("Iniciar com workflow ou persona…") === null).toBe(false);
-    expect(item("Descartar") === null).toBe(false);
+    expect(item("Abrir PR") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(item("Iniciar com workflow ou persona…") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(item("Descartar") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

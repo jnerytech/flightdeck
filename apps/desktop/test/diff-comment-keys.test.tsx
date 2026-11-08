@@ -61,7 +61,7 @@ describe("diff-comment-keys: a diff line can be found and commented by keyboard 
       expect(screen.queryByText(new RegExp(hint))).not.toBeNull();
       cleanup();
       render(view(language));
-      expect(screen.queryByText(new RegExp(hint)) === null).toBe(true);
+      expect(screen.queryByText(new RegExp(hint)) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
   }
 
@@ -117,7 +117,7 @@ describe("diff-comment-keys: what the line numbers leave alone (#1177)", () => {
         <DiffView files={[]} mode="unified" selection={null} composer={null} onPick={() => {}} />
       </TContext.Provider>,
     );
-    expect(screen.queryByText(/Click a line number to comment/) === null).toBe(true);
+    expect(screen.queryByText(/Click a line number to comment/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });
 
