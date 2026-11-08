@@ -282,7 +282,6 @@ function pinnedDocsOf(stored: string | null): string[] {
   }
 }
 
-/** The auto-start as the cards table keeps it. */
 /** A spec path a card is given must be a relative Markdown path inside the worktree. */
 function judgeSpecPath(path: string | null | undefined): void {
   if (typeof path === "string" && specPathProblem(path) !== null) {
@@ -305,6 +304,7 @@ function judgePins(pins: string[]): void {
   }
 }
 
+/** The auto-start as the cards table keeps it. */
 const autoStartOf = (autoStart: { workflow: string | null } | null | undefined) =>
   autoStart ? JSON.stringify(autoStart) : null;
 
@@ -874,7 +874,8 @@ export class Board {
   ): Card {
     this.getProject(projectId);
     judgeSpecPath(input.specPath);
-    if (input.pinnedDocs !== undefined) judgePins(input.pinnedDocs);
+    const pins = [...new Set(input.pinnedDocs ?? [])];
+    judgePins(pins);
     const blockedBy = input.blockedBy ?? [];
     this.checkBlockers(null, projectId, blockedBy);
     const column = input.column ?? "backlog";
@@ -909,7 +910,7 @@ export class Board {
         at,
         input.sourceKey ?? null,
         input.specPath ?? null,
-        input.pinnedDocs?.length ? JSON.stringify(input.pinnedDocs) : null,
+        pins.length > 0 ? JSON.stringify(pins) : null,
         input.startWorkflow ?? null,
         input.startPersona ?? null,
       );

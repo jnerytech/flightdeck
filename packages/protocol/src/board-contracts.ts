@@ -183,8 +183,8 @@ export const SPEC_PATH_MAX = 200;
  */
 export function specPathProblem(path: string): string | null {
   if (path.length === 0 || path.length > SPEC_PATH_MAX) return "length";
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
-  if (/[\u0000-\u001f\u007f]/.test(path)) return "control";
+  // The path goes into a prompt: no control character, line break (U+0085, U+2028/9) or direction mark.
+  if (/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(path)) return "control";
   if (/^[\\/]/.test(path) || /^[A-Za-z]:/.test(path)) return "absolute";
   const parts = path.split(/[\\/]/);
   if (parts.some((part) => part === "" || part === "." || part === "..")) return "segment";
@@ -222,7 +222,5 @@ export const PINNED_DOCS_MAX = 10;
 export function pinnedDocProblem(path: string): string | null {
   const problem = specPathProblem(path);
   if (problem !== null) return problem;
-  // The path goes into a prompt: no line break (U+0085, U+2028/9) or direction mark (format chars).
-  if (/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(path)) return "control";
   return KNOWLEDGE_FOLDERS.some((folder) => path.startsWith(`${folder}/`)) ? null : "folder";
 }
