@@ -4402,6 +4402,9 @@ export const en: Dictionary = {
         commitMessage:
           "The setup's files go on a new branch Flightdeck names, with your git name and email. They are committed whole: changes you made to them before the setup are in the commit too. Your checkout keeps them as changes on your current branch.",
         commitFiles: "Files to commit",
+        draft: "Draft with Claude",
+        drafted:
+          "Drafted by Claude from the project's commands and file names. Read it before you apply: it becomes the instructions your sessions follow.",
         committed: "Committed on {branch}. Push it when you are ready.",
       },
     },

@@ -37,6 +37,8 @@ export function TrustPanel(
     canSetUp?: boolean;
     /** The host can also commit what the setup wrote on a new branch (#75, C1). */
     canCommit?: boolean;
+    /** The host can draft a CLAUDE.md with its model (#75, G1). */
+    canDraft?: boolean;
   }>,
 ) {
   const { store, hostId, path } = props;
@@ -200,6 +202,7 @@ export function TrustPanel(
                   trusted: state.trusted,
                   onApplied: read,
                   canCommit: props.canCommit === true,
+                  canDraft: props.canDraft === true,
                 }
               : null
           }
