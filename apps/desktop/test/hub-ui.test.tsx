@@ -291,7 +291,7 @@ describe("hub-ui", () => {
     expect([
       says("repo-ask", "Esperando você"),
       says("repo-run", "Trabalhando"),
-      says("Gerenciada", "Concluída"),
+      says("Gerenciada", "Ociosa"),
       chips.length > 0 && chips.every((text) => /^\d+ de \d+ ativas$/.test(text)),
     ]).toEqual([true, true, true, true]);
   });

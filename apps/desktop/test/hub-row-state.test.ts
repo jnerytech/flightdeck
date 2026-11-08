@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
-import { type HubRow, hubRows, rowStatus } from "../src/lib/hub.ts";
+import {
+  type HubGroup,
+  type HubRow,
+  hubRows,
+  hubView,
+  loadHubFilter,
+  rowStatus,
+} from "../src/lib/hub.ts";
 
 /**
  * Issue #1132: each row of the sessions list says what the session is doing: a state word and one
@@ -71,7 +78,7 @@ describe("hub-row-state: each row's word and detail (#1132)", () => {
         ["Waiting for you", "wants to run Bash"],
         ["Working", "running Edit"],
         ["Working", ""],
-        ["Finished", "3 min ago"],
+        ["Idle", "3 min ago"],
         ["Ended", "3 min ago"],
         ["Failed", "3 min ago"],
       ],
@@ -82,7 +89,7 @@ describe("hub-row-state: each row's word and detail (#1132)", () => {
         ["Esperando você", "quer rodar Bash"],
         ["Trabalhando", "rodando Edit"],
         ["Trabalhando", ""],
-        ["Concluída", "há 3 min"],
+        ["Ociosa", "há 3 min"],
         ["Encerrada", "há 3 min"],
         ["Falhou", "há 3 min"],
       ],
@@ -104,4 +111,31 @@ describe("hub-row-state: each row's word and detail (#1132)", () => {
       expect(said).toEqual(expected.map((pair) => [...pair]));
     });
   }
+});
+
+// ux-review of #1132: a failed session is over, like an ended one: it folds into the earlier
+// sessions and is not counted as active, and a kept Failed filter survives a reload.
+describe("hub-row-state: a failed session is over, like an ended one (#1132)", () => {
+  test("it goes to the earlier sessions, not the live ones", () => {
+    const group = {
+      key: "g",
+      foldKey: "g",
+      name: "api",
+      rows: [
+        row({ key: "a", state: "running" }),
+        row({ key: "b", state: "failed" as HubRow["state"] }),
+        row({ key: "c", state: "ended" }),
+      ],
+    } as unknown as HubGroup;
+    const [view] = hubView([group], { g: true }, {}, false);
+    expect([view?.live.map((r) => r.key), view?.earlier.map((r) => r.key).sort()]).toEqual([
+      ["a"],
+      ["b", "c"],
+    ]);
+  });
+
+  test("a kept Failed filter comes back on reload", () => {
+    const storage = { getItem: () => JSON.stringify({ state: "failed" }) };
+    expect(loadHubFilter(storage).state).toBe("failed");
+  });
 });
