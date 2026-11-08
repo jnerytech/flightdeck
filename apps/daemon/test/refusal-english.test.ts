@@ -28,10 +28,6 @@ const PORTUGUESE =
  */
 const SHOWN_TO_THE_PERSON: Array<{ file: string; fragment: string }> = [
   { file: "plugins/inventory.ts", fragment: ": caminho fora do plugin: " },
-  {
-    file: "plugins/plugins.ts",
-    fragment: "é diferente do que foi mostrado; o plugin foi removido",
-  },
   { file: "runenv/config.ts", fragment: "precisa ser uma lista de textos" },
   { file: "runenv/manager.ts", fragment: "o setup falhou (código " },
 ];
@@ -305,5 +301,73 @@ describe("refusal-english: the daemon's entry file (#957)", () => {
     ];
     expect(old.filter((text) => !MSGS4_PORTUGUESE.test(text))).toEqual([]);
     expect(fresh.filter((text) => MSGS4_PORTUGUESE.test(text))).toEqual([]);
+  });
+});
+
+/**
+ * Issue #957 (english-msgs5): the refusal, log and error text of the backup restore, the action and
+ * snippet CLIs, the vault requests, the ssh askpass helper, the session manager, the SDK runtime,
+ * the plugins and the actions is English. The rolled-back plugin message the app shows as it is was
+ * kept in Portuguese by the first slice; it is English now, so it left the list above.
+ */
+const MSGS5_FILES = [
+  "maintenance/backup.ts",
+  "actions/cli.ts",
+  "vault/requests.ts",
+  "ssh/askpass.ts",
+  "sessions/session-manager.ts",
+  "runtime/claude-sdk-runtime.ts",
+  "plugins/plugins.ts",
+  "actions/actions.ts",
+];
+
+/** The Portuguese words of the earlier detectors, plus the ones these files used. */
+const MSGS5_PORTUGUESE = new RegExp(
+  `${MSGS4_PORTUGUESE.source}|\\b(falar|pedem|segredos?|veio|conhece|usa|ferramenta|livre|comando|consulta|terminou|resultado|retomada|encerrou|inesperadamente|mostrado|removido|aprovado|nesta|primeira|vez|usou|diferente)\\b`,
+  "i",
+);
+
+describe("refusal-english: backup, CLIs, vault requests, askpass, sessions, SDK runtime, plugins and actions (#957)", () => {
+  test.each(MSGS5_FILES)("%s has no Portuguese refusal, log or error text", async (file) => {
+    const source = await Bun.file(`${SRC}${file}`).text();
+    const portuguese = quoted(source)
+      .filter(({ text }) => MSGS5_PORTUGUESE.test(text))
+      .map(({ line, text }) => `${file}:${line}: ${text}`);
+    expect(portuguese).toEqual([]);
+  });
+
+  test("the words of the old text are caught, and their English wording passes", () => {
+    const old = [
+      "o backup não passou na verificação de integridade (ilegível)",
+      "não consegui conectar no daemon: x",
+      "só o Claude, uma automação ou um workflow pedem segredos ao app por este caminho",
+      "sem ticket do askpass (FLIGHTDECK_ASKPASS_TICKET)",
+      "a persona p não usa a ferramenta Write",
+      "resposta sem decisão (error)",
+      "a consulta terminou sem resultado",
+      "retomada do histórico",
+      "o runtime encerrou inesperadamente",
+      "o conteúdo instalado de p é diferente do que foi mostrado; o plugin foi removido (ok)",
+      "r; já aprovado nesta sessão",
+      "comando livre com segredos no ambiente",
+      "claude usou o segredo s pela primeira vez",
+    ];
+    const fresh = [
+      "the backup failed the integrity check (unreadable)",
+      "could not connect to the daemon: x",
+      "only Claude, an automation or a workflow ask the app for secrets this way",
+      "no askpass ticket (FLIGHTDECK_ASKPASS_TICKET)",
+      "the persona p does not use the tool Write",
+      "answer without a decision (error)",
+      "the query ended without a result",
+      "resumed from history",
+      "the runtime ended unexpectedly",
+      "the installed content of p differs from what was shown; the plugin was removed (ok)",
+      "r; already approved in this session",
+      "free command with secrets in the environment",
+      "claude used the secret s for the first time",
+    ];
+    expect(old.filter((text) => !MSGS5_PORTUGUESE.test(text))).toEqual([]);
+    expect(fresh.filter((text) => MSGS5_PORTUGUESE.test(text))).toEqual([]);
   });
 });

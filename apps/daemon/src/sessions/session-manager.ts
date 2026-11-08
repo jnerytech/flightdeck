@@ -423,7 +423,7 @@ export class SessionManager {
     });
     this.emit(id, { type: "session.status", status: "starting" });
     this.startRun(id, opts.claudeSessionId);
-    this.setStatus(id, "idle", "retomada do histórico");
+    this.setStatus(id, "idle", "resumed from history");
     return { sessionId: id };
   }
 
@@ -549,7 +549,7 @@ export class SessionManager {
     // Phase 39: an OpenCode session is checked again before it reopens; a refusal leaves it ended.
     if (session.runtime === "opencode") await this.runtimeOf(session).preflight?.(session.cwd);
     this.startRun(sessionId, session.claudeSessionId ?? undefined);
-    this.setStatus(sessionId, "idle", "retomada");
+    this.setStatus(sessionId, "idle", "resumed");
   }
 
   /** Accepted `updatedPermissions` also go to these listeners (the board's project rules). */
@@ -745,7 +745,7 @@ export class SessionManager {
     if (persona && !toolAllowed(persona.tools, toolName)) {
       return Promise.resolve({
         behavior: "deny" as const,
-        message: `a persona ${persona.name} não usa a ferramenta ${toolName}`,
+        message: `the persona ${persona.name} does not use the tool ${toolName}`,
       });
     }
     return this.broker.request(
@@ -814,7 +814,7 @@ export class SessionManager {
         this.handle(sessionId, live, event);
       }
       if (!live.closing)
-        this.fail(sessionId, live, "runtime_exit", "o runtime encerrou inesperadamente");
+        this.fail(sessionId, live, "runtime_exit", "the runtime ended unexpectedly");
     } catch (error) {
       if (!live.closing) this.failFrom(sessionId, live, error);
     }

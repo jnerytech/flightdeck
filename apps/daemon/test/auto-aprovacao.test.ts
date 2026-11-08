@@ -282,7 +282,7 @@ describe("auto-aprovacao", () => {
       cwd: tempDir(),
       signal: controller.signal,
     });
-    expect(judged).toEqual({ decision: "ask", reason: "a consulta terminou sem resultado" });
+    expect(judged).toEqual({ decision: "ask", reason: "the query ended without a result" });
     expect(seen[0]?.abortController?.signal.aborted).toBe(false);
     controller.abort();
     expect(seen[0]?.abortController?.signal.aborted).toBe(true);

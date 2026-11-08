@@ -297,16 +297,16 @@ describe("askpass: o helper flightdeckd askpass", () => {
     };
     // Nobody is watching.
     expect(await failed(ok)).toMatch(/app/);
-    expect(await failed({ FLIGHTDECK_CONFIG: file })).toMatch(/ticket/);
+    expect(await failed({ FLIGHTDECK_CONFIG: file })).toMatch(/no askpass ticket/);
     expect(await failed({ ...ok, FLIGHTDECK_ASKPASS_TICKET: "0".repeat(32) })).toMatch(
       /unauthorized/,
     );
     expect(await failed({ ...ok, FLIGHTDECK_CONFIG: join(tempDir(), "nao-existe.json") })).toMatch(
-      /config/,
+      /no Flightdeck config/,
     );
     const down = join(tempDir(), "config.json");
     writeFileSync(down, JSON.stringify({ token: TOKEN, port: 1, dataDir: tempDir() }));
-    expect(await failed({ ...ok, FLIGHTDECK_CONFIG: down })).toMatch(/daemon/);
+    expect(await failed({ ...ok, FLIGHTDECK_CONFIG: down })).toMatch(/could not reach the daemon/);
     // The app refuses.
     await app.request("askpass.watch", {});
     const running = failed(ok);

@@ -159,7 +159,7 @@ describe("acoes-cli", () => {
       onSignal: () => {},
     });
     expect(exits).toEqual([1]);
-    expect(errors.join(" ")).toContain("não consegui conectar no daemon");
+    expect(errors.join(" ")).toContain("could not connect to the daemon");
   });
 
   test("um erro do daemon vira erro do comando, com o código e a mensagem", async () => {
