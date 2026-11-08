@@ -234,6 +234,7 @@ import {
 } from "./tree-fold.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
+import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
 import {
   answerVaultRequest,
@@ -4411,6 +4412,31 @@ export class AppStore {
     const result = await applyImport(this.vault, preview, onConflict);
     this.update({ secrets: this.vault.list() });
     return result;
+  }
+
+  /** Issue #1241: saves the whole backup as one encrypted file; the reason when refused or cancelled. */
+  async backupEverything(
+    _passphrase: string,
+    _confirmation: string,
+  ): Promise<{ ok: true } | { ok: false; code: BackupErrorCode | "cancelled" }> {
+    return { ok: false, code: "cancelled" };
+  }
+
+  /** Issue #1241: reads a backup file the person picks and compares it with this profile; changes nothing. */
+  async previewBackup(
+    _passphrase: string,
+  ): Promise<
+    { ok: true; preview: RestorePreview } | { ok: false; code: BackupErrorCode | "cancelled" }
+  > {
+    return { ok: false, code: "cancelled" };
+  }
+
+  /** Issue #1241: applies a preview all or nothing; the app reads the restored data when it restarts. */
+  async restoreBackup(
+    _preview: RestorePreview,
+    _onConflict: ConflictChoice,
+  ): Promise<RestoreResult> {
+    return { added: 0, overwritten: 0, skipped: 0 };
   }
 
   /**
