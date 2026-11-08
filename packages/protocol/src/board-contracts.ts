@@ -60,6 +60,11 @@ export function contractOf(
 /** A checklist item in the description is what the card calls its acceptance criteria. */
 export const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
 
+/** Whether a text holds a checklist item at the start of a line (`- [ ] x`, `* [x] y`). */
+export function hasChecklistItem(text: string): boolean {
+  return CHECKLIST_ITEM.test(text);
+}
+
 type Lookable = Pick<
   Card,
   "description" | "prUrl" | "checksState" | "validationNote" | "specState" | "specPath" | "slug"
