@@ -247,19 +247,6 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
     expect([missing.configPath, noIcacls.configPath, missing.acls.length]).toEqual([null, null, 0]);
   });
 
-  test("a config that cannot be written into the plain folder leaves nothing behind", async () => {
-    const programData = tempDir();
-    const { file } = host(["João Silva", "data"]);
-    // The folder is made, restricted, and then the file cannot go in: a file stands in its place.
-    const run = await launch(file, {
-      platform: "win32",
-      env: WINDOWS_ENV(programData),
-      afterAcl: (folder) =>
-        writeFileSync(join(folder, `${launchIdOf(folder)}.json`), "x", { mode: 0o400 }),
-    });
-    expect([run.configPath, readdirSync(programData)]).toEqual([null, []]);
-  });
-
   test("a file planted in the new folder before it was restricted: the token is not written into it", async () => {
     const programData = tempDir();
     const { file } = host(["João Silva", "data"]);
@@ -312,11 +299,13 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
   test("a user name that could name another principal is not given the folder", async () => {
     const { file } = host(["João Silva", "data"]);
     const names = ["*S-1-1-0", "Everyone:(OI)(CI)F", "a/b", "a;b", "a,b", " "];
-    const runs = await Promise.all(
-      names.map((USERNAME) =>
-        launch(file, { platform: "win32", env: WINDOWS_ENV(tempDir(), { USERNAME }) }),
-      ),
-    );
+    // One after the other: each launch puts its own fake claude first on the PATH.
+    const runs: Awaited<ReturnType<typeof launch>>[] = [];
+    for (const USERNAME of names) {
+      runs.push(
+        await launch(file, { platform: "win32", env: WINDOWS_ENV(tempDir(), { USERNAME }) }),
+      );
+    }
     expect([runs.map((r) => r.configPath), runs.map((r) => r.acls.length)]).toEqual([
       names.map(() => null),
       names.map(() => 0),
@@ -332,14 +321,12 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
     const { file } = host(["João Silva", "data"]);
     const publicFolder = tempDir();
     const bases = ["\\\\server\\share", "//server/share", "relative/dir", "C:rel", "/tmp/a/../b"];
-    const runs = await Promise.all(
-      bases.map((base) =>
-        launch(file, {
-          platform: "win32",
-          env: WINDOWS_ENV(base, { PUBLIC: publicFolder }),
-        }),
-      ),
-    );
+    const runs: Awaited<ReturnType<typeof launch>>[] = [];
+    for (const base of bases) {
+      runs.push(
+        await launch(file, { platform: "win32", env: WINDOWS_ENV(base, { PUBLIC: publicFolder }) }),
+      );
+    }
     expect(runs.map((r) => (r.configPath ?? "").startsWith(publicFolder))).toEqual(
       bases.map(() => true),
     );

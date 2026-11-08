@@ -1,5 +1,5 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
+import { join, win32 } from "node:path";
 import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
@@ -165,21 +165,41 @@ async function requestedPersona(
 const CHANNEL_NOTICE =
   "flightdeckd: não foi possível gravar a configuração do canal; abrindo o claude sem o canal (o app não poderá mandar mensagens)";
 
+/** A user name icacls can be given as one principal: no wildcard, SID marker, separator or list. */
+const ACCOUNT = /^[^\p{Cc}\\/:*?"<>|;,=+[\]]+$/u;
+
+/** A base folder on a local drive: no network share, no relative path, no `..`. */
+const localBase = (base: string) =>
+  PLAIN_PATH.test(base) &&
+  win32.isAbsolute(base) &&
+  !/^[\\/]{2}/.test(base) &&
+  !/(^|[\\/])\.\.($|[\\/])/.test(base);
+
+/** Takes a folder we made away again, if it is empty; one with anything in it is left as it is. */
+async function removeFolder(folder: string) {
+  await Promise.allSettled([rmdir(folder)]);
+}
+
 /**
- * A folder only `user` can open, made for this launch, with a plain path (#936). It is restricted
- * before anything goes into it, so the token is never in a file others can read. `false` when it
- * cannot be made or restricted: it is then removed, and the caller goes without the channel.
+ * A folder only `user` can open, made for this launch, with a plain path (#936). The folder must be
+ * new (one already there is not ours and is left alone), is restricted before anything goes into
+ * it, and must still be empty afterwards, so no one's file is in it when the token goes in.
+ * `false` when it cannot be made or restricted: it is then taken away, and the caller goes on
+ * without the channel.
  */
 async function restrictedFolder(opts: RunClaudeOptions, folder: string, user: string) {
+  const [made] = await Promise.allSettled([mkdir(folder, { mode: 0o700 })]);
+  if (made.status !== "fulfilled") return false;
   let restricted = false;
   try {
-    await mkdir(folder, { mode: 0o700 });
-    const acl = ["icacls", folder, "/inheritance:r", "/grant:r", `${user}:(OI)(CI)F`];
-    restricted = (await (opts.exec ?? spawnExec)(acl)).code === 0;
+    const system = win32.join(opts.env.SystemRoot ?? opts.env.windir ?? "C:\\Windows", "System32");
+    const acl = [win32.join(system, "icacls.exe"), folder, "/inheritance:r", "/grant:r"];
+    const done = await (opts.exec ?? spawnExec)([...acl, `${user}:(OI)(CI)F`]);
+    restricted = done.code === 0 && (await readdir(folder)).length === 0;
   } catch {
     restricted = false;
   }
-  if (!restricted) await rm(folder, { recursive: true, force: true });
+  if (!restricted) await removeFolder(folder);
   return restricted;
 }
 
@@ -192,10 +212,12 @@ async function configFolder(
   const windows = (opts.platform ?? process.platform) === "win32";
   if (!windows || PLAIN_PATH.test(join(dir, `${launchId}.json`))) return { dir, own: false };
   const { ProgramData, PROGRAMDATA, PUBLIC, USERDOMAIN, USERNAME } = opts.env;
-  if (!USERNAME) return null;
+  // The account is the process's own, from its environment: a name that could mean anything else is no account.
+  const named = (name: string | undefined) => name !== undefined && ACCOUNT.test(name);
+  if (!USERNAME?.trim() || !named(USERNAME) || (USERDOMAIN && !named(USERDOMAIN))) return null;
   const user = USERDOMAIN ? `${USERDOMAIN}\\${USERNAME}` : USERNAME;
   for (const base of [ProgramData ?? PROGRAMDATA, PUBLIC]) {
-    const folder = base && PLAIN_PATH.test(base) ? join(base, `Flightdeck-${launchId}`) : null;
+    const folder = base && localBase(base) ? join(base, `Flightdeck-${launchId}`) : null;
     if (folder && (await restrictedFolder(opts, folder, user))) return { dir: folder, own: true };
   }
   return null;
@@ -223,10 +245,11 @@ async function writeChannelConfig(
     try {
       await mkdir(where.dir, { recursive: true });
       const config = JSON.stringify({ mcpServers: { flightdeck: { command, args } } });
-      await writeFile(path, config, { mode: 0o600 });
+      // In the plain folder the file must be new: one already there is not ours.
+      await writeFile(path, config, { mode: 0o600, flag: where.own ? "wx" : "w" });
       return { path, folder: where.own ? where.dir : null };
     } catch {
-      if (where.own) await rm(where.dir, { recursive: true, force: true });
+      if (where.own) await removeFolder(where.dir);
     }
   }
   opts.log.error(CHANNEL_NOTICE);
@@ -273,7 +296,7 @@ async function agentArgs(
 /** Deletes the files that exist (a null path is skipped). */
 async function removeAll(paths: Array<string | null>): Promise<void> {
   await inSequence(paths, async (path) => {
-    if (path) await rm(path, { force: true, recursive: true });
+    if (path) await rm(path, { force: true });
   });
 }
 
@@ -307,18 +330,11 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   const background = args.includes("--bg") || args.includes("--background");
   const url = print ? null : await liveReceptor(opts.config.dataDir, opts.timeoutMs);
   const token = opts.config.hooks.token;
-  const channel = url && token ? await writeChannelConfig(opts, launchId, url, token) : null;
-  const mcpConfigPath = channel?.path ?? null;
-  // Without a receptor or a token: the daemon is down. A config that failed to write said so itself.
-  if (!mcpConfigPath && !print && !(url && token)) {
-    opts.log.error(
-      "flightdeckd: daemon do Flightdeck fora do ar; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
-    );
-  }
   // The body and, in print mode, the subagents travel in files that only live while claude runs (nine bodies of
   // 8 KB do not fit on a Windows command line).
   const dir = join(opts.config.dataDir, "personas");
   const files: string[] = [];
+  let channel: Awaited<ReturnType<typeof writeChannelConfig>> = null;
   const write = async (name: string, content: string) => {
     // Only the owner reads them: a persona's body and the library's index are not for other users.
     await mkdir(dir, { recursive: true, mode: 0o700 });
@@ -328,22 +344,30 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     return file;
   };
   const added: string[] = [];
-  // The user's own system prompt wins: claude takes one, so the index is not put beside it.
-  const own = passed(args, "--append-system-prompt") || passed(args, "--append-system-prompt-file");
-  const knowledge = own ? null : await fetchKnowledge(opts.config, opts.cwd ?? process.cwd());
-  if (persona) {
-    const body = knowledge ? `${persona.persona.body}\n\n${knowledge}` : persona.persona.body;
-    added.push(...personaArgs(persona.persona, await write(`${launchId}.md`, body), args));
-  } else if (knowledge) {
-    added.push("--append-system-prompt-file", await write(`${launchId}.md`, knowledge));
-  }
-  added.push(...(await agentArgs(opts, { claude, args, print, launchId }, write)));
   try {
+    channel = url && token ? await writeChannelConfig(opts, launchId, url, token) : null;
+    // Without a receptor or a token: the daemon is down. A config that failed to write said so itself.
+    if (!channel && !print && !(url && token)) {
+      opts.log.error(
+        "flightdeckd: daemon do Flightdeck fora do ar; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
+      );
+    }
+    // The user's own system prompt wins: claude takes one, so the index is not put beside it.
+    const own =
+      passed(args, "--append-system-prompt") || passed(args, "--append-system-prompt-file");
+    const knowledge = own ? null : await fetchKnowledge(opts.config, opts.cwd ?? process.cwd());
+    if (persona) {
+      const body = knowledge ? `${persona.persona.body}\n\n${knowledge}` : persona.persona.body;
+      added.push(...personaArgs(persona.persona, await write(`${launchId}.md`, body), args));
+    } else if (knowledge) {
+      added.push("--append-system-prompt-file", await write(`${launchId}.md`, knowledge));
+    }
+    added.push(...(await agentArgs(opts, { claude, args, print, launchId }, write)));
     const proc = Bun.spawn(
       buildClaudeLaunch({
         claude,
         args: [...added, ...args],
-        mcpConfigPath,
+        mcpConfigPath: channel?.path ?? null,
       }),
       {
         env: {
@@ -361,7 +385,10 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   } finally {
     // `claude --bg` returns at once and the session goes on: its channel config and persona
     // files are still read, so they stay (a few small files per background session).
-    if (!background) await removeAll([mcpConfigPath, channel?.folder ?? null, ...files]);
+    if (!background) {
+      await removeAll([channel?.path ?? null, ...files]);
+      if (channel?.folder) await removeFolder(channel.folder);
+    }
   }
 }
 

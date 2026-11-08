@@ -16,16 +16,28 @@ console's code page reaches claude changed. The person has not sent the data pat
   changes; a plain data path on Windows is used as before.
 - **Where.** `%ProgramData%\Flightdeck-<launch id>\`, else `%PUBLIC%\Flightdeck-<launch id>\`
   (each only if its own path is plain). A folder per launch, because a standard user can create
-  folders in `ProgramData` but not files in a folder another user made. `GetShortPathName` was not
-  used: it needs 8.3 names, which many volumes have off, and it would add a native call.
-- **Private before the token is in it.** The folder is made empty and restricted with
-  `icacls <folder> /inheritance:r /grant:r <DOMAIN\user>:(OI)(CI)F` (the same call the SSH key
-  delivery uses), and only then is the config, which holds the channel token, written into it. If
-  the folder cannot be made, `icacls` fails or cannot run, or there is no user name or plain base
-  folder, nothing is written and claude opens with neither channel flag and one line saying so
-  (the behaviour of #949), never with a token file others could read.
-- **Gone after the launch.** The file and the folder are removed when claude exits, as the file in
-  the data folder is. A background session (`--bg`) leaves them, as it leaves the file now.
+  folders in `ProgramData`. `GetShortPathName` was not used: it needs 8.3 names, which many
+  volumes have off, and it would add a native call. The base must be a local absolute path (no
+  network share, no relative path, no `..`), and `icacls` is run from `%SystemRoot%\System32`, not
+  looked up by name.
+- **Private before the token is in it.** The folder is made new (one already there is not ours and
+  is left alone) and restricted with `icacls <folder> /inheritance:r /grant:r
+  <DOMAIN\user>:(OI)(CI)F` (the same call the SSH key delivery uses). Until that runs, the folder
+  has the default ACL of its parent, so another user could put a file in it first: after `icacls`
+  the folder must still be empty, and the config is created with `wx` (it fails if a file by that
+  name exists), so a planted file or link never receives the token. If any step fails (folder
+  exists, `icacls` fails or cannot run, the folder is not empty, no valid user name, no local
+  base, the write fails), nothing is written, the folder is taken away if it is empty (one with
+  something planted in it is left alone, never deleted recursively) and claude opens with neither
+  channel flag and one line saying so (the behaviour of #949).
+- **The account.** `USERDOMAIN\USERNAME` from the environment, refused if it holds anything
+  `icacls` would read as more than one plain account (`* : / \ ; , = + ? " < > | [ ]`, control
+  characters, only spaces). A SID from `whoami /user` would be stricter; it is left for the
+  person's Windows check.
+- **Gone after the launch.** The file is deleted and the (empty) folder removed when claude exits,
+  as the file in the data folder is, and also when something fails between writing the config and
+  starting claude. A background session (`--bg`) leaves them, as it leaves the file now. A hard
+  kill of the wrapper leaves them too (ACL'd to the user).
 - **Also.** The config file in the data folder is now created with mode 0600 (it was 0644; the
   token is in it).
 
