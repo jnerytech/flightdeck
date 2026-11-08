@@ -2416,6 +2416,13 @@ export const en: Dictionary = {
     end: "End",
     endMessage: "End this session? Claude Code stops; you can resume it later.",
     endConfirm: "End session",
+    endChangesTitle: "Uncommitted changes",
+    endChangesOne:
+      "One file in this session's checkout is not committed. Commit it first, or end anyway and leave it as it is.",
+    endChangesMany:
+      "{n} files in this session's checkout are not committed. Commit them first, or end anyway and leave them as they are.",
+    endCommitFirst: "Commit…",
+    endAnyway: "End anyway",
     pruned: "conversation removed by retention",
     earlier: {
       title: "Before resuming",
