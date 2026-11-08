@@ -1799,9 +1799,14 @@ html:not(:has([data-slot="status-bar"])) {
   font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* A narrow list (#1167): the word would be one letter; the dot still says the state. */
+  @container (width < 20rem) {
+    display: none;
+  }
 }
 @utility row-title {
-  min-width: min(4rem, 25%);
+  /* The title is the row's name: it keeps up to 45% of the row before the word gives way (#1167). */
+  min-width: min(9rem, 45%);
 }
 
 /* The / menu: a popover above the message box, so it takes no room in the page and scrolls inside. */
