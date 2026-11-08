@@ -61,7 +61,9 @@ function Details(props: Readonly<{ preview: HarnessPreview; trusted: boolean; t:
           <p className="font-medium">{t("projectPage.harness.setup.files")}</p>
           {preview.files.map((file) => (
             <details key={file.path}>
-              <summary className="font-mono text-xs">{file.path}</summary>
+              <summary className="hit-24 cursor-pointer font-mono text-xs leading-6">
+                {file.path}
+              </summary>
               <pre
                 className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2 font-mono text-xs"
                 // biome-ignore lint/a11y/noNoninteractiveTabindex: a long file scrolls, and focus lets the keyboard do it
