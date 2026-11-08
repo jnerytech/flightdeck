@@ -5,7 +5,7 @@ import {
   type PendingItem,
   sessionKey,
 } from "./app-store.ts";
-import { groupName, type HubRow, type HubRowState, hubRows } from "./hub.ts";
+import { groupName, type HubRow, type HubRowState, hubRows, isOver } from "./hub.ts";
 
 /** The parts of the state the board is made of: its rows, the requests and what was not opened. */
 export const ACTIVITY_KEYS = [
@@ -59,7 +59,7 @@ export interface ActivityBoardData {
 }
 
 /** The rows the board is about: live sessions, not the history and not what was archived. */
-const live = (row: HubRow) => row.origin !== "history" && !row.archived && row.state !== "ended";
+const live = (row: HubRow) => row.origin !== "history" && !row.archived && !isOver(row.state);
 
 const columnOf = (row: HubRow, unread: boolean, now: number, changedAt: number): ActivityColumn => {
   if (row.state === "needs_you") return "needs_you";

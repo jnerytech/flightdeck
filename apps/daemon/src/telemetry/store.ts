@@ -65,7 +65,7 @@ const KINDS: Record<string, TelemetryItem["kind"] | undefined> = {
 
 /** A permission a person answered (not settings, a hook or the classifier). */
 const person = (row: TelemetryRow) =>
-  row.name === "tool_decision" && /^user_/.test(row.source ?? "");
+  row.name === "tool_decision" && (row.source ?? "").startsWith("user_");
 
 type Attrs = OtlpEvent["attrs"];
 const text = (attrs: Attrs, key: string) => (typeof attrs[key] === "string" ? attrs[key] : null);

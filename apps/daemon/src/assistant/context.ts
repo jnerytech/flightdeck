@@ -5,11 +5,12 @@
  */
 import { readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
-import type {
-  AssistantContextBundle,
-  CommitSource,
-  DiffFile,
-  SecretScanner,
+import {
+  type AssistantContextBundle,
+  byCodeUnit,
+  type CommitSource,
+  type DiffFile,
+  type SecretScanner,
 } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { cardDiff, parseUnifiedDiff, workingDiff } from "../board/diff.ts";
@@ -211,10 +212,11 @@ export async function repoContext(
   const recent = log.code === 0 ? log.stdout.split("\n").filter(Boolean) : [];
   const conventional =
     recent.length > 0 && recent.filter((s) => CONVENTIONAL.test(s)).length * 2 >= recent.length;
+  notShown.sort(byCodeUnit);
   return {
     stat: stat(files),
     diff: shown.join("\n"),
-    notShown: notShown.sort((a, b) => (a < b ? -1 : Number(a > b))),
+    notShown,
     redactedLines: rendered.reduce((sum, f) => sum + f.redacted, 0),
     truncated,
     rules: await extractRules(root),

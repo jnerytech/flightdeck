@@ -230,7 +230,8 @@ describe("direcao-visual: ajustes finos", () => {
     const options = [...(screen.queryByLabelText("State")?.querySelectorAll("option") ?? [])].map(
       (o) => o.textContent,
     );
-    expect(options).toEqual(["All states", "Running", "Needs you", "Idle", "Ended"]);
+    // #1132: a session that stopped on an error is Failed, a state of its own.
+    expect(options).toEqual(["All states", "Running", "Needs you", "Idle", "Ended", "Failed"]);
     expect(within(list).queryByRole("img", { name: "idle" })).not.toBeNull();
     expect(within(list).queryByRole("button", { name: "Actions of Alpha" })).not.toBeNull();
     expect(list.textContent ?? "").not.toMatch(

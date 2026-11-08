@@ -1787,6 +1787,23 @@ html:not(:has([data-slot="status-bar"])) {
   display: inline-flex;
 }
 
+/* #1132: in the compact sessions list a live row shows its state word where its time was. The
+   row has no free width (a 23rem list, chips, the menu), so the word gives way first, cut with an
+   ellipsis (the whole word and the time are in its tooltip), and the title keeps a small minimum. */
+@utility row-word {
+  min-width: 0;
+  max-width: 40%;
+  flex-shrink: 1;
+  overflow: hidden;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@utility row-title {
+  min-width: min(4rem, 25%);
+}
+
 /* The / menu: a popover above the message box, so it takes no room in the page and scrolls inside. */
 @utility prompt-menu {
   position: absolute;

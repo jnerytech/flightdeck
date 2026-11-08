@@ -226,7 +226,7 @@ class Client {
 }
 
 async function until<T>(
-  check: () => Promise<T | null | undefined | false>,
+  check: () => T | null | undefined | false | Promise<T | null | undefined | false>,
   what: string,
 ): Promise<T> {
   const deadline = Date.now() + 20_000;
@@ -1011,7 +1011,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       async () => (await snapshotsOf()).length >= snapshotsAfter - 1,
       "snapshot do turno",
     );
-    await until(async () => client.requests.get(rewind.sessionId), "pedido do carrinho");
+    await until(() => client.requests.get(rewind.sessionId), "pedido do carrinho");
     edit();
     await client.call("permission.respond", {
       requestId: client.requests.get(rewind.sessionId),

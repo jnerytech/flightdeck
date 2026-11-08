@@ -46,14 +46,19 @@ export function ProjectHeader(
   );
 }
 
-/** The project's numbers as a chip: the live sessions out of all of them. */
-export function CountChip(props: Readonly<{ live: number; total: number; label: string }>) {
+/**
+ * The project's numbers as a chip: the live sessions out of all of them, in words ("13 of 91
+ * active", #1132: "13/91" said nothing a person could read).
+ */
+export function CountChip(
+  props: Readonly<{ live: number; total: number; label: string; text: string }>,
+) {
   return (
     <output
       aria-label={props.label}
       className="rounded-full bg-muted px-2 text-muted-foreground tabular-nums"
     >
-      {props.live}/{props.total}
+      {props.text}
     </output>
   );
 }
