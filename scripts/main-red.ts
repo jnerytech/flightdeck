@@ -11,10 +11,16 @@ const gh = async (args: string[]) => {
   const ran = await runCommand(["gh", ...args], process.cwd(), undefined, 30_000);
   return { code: ran.timedOut ? 124 : ran.code, stdout: ran.stdout, stderr: ran.stderr };
 };
+// A tmux that is not there leaves the owner to the next fallback; it never stops the command.
 const tmux = process.env.TMUX
-  ? (
-      await runCommand(["tmux", "display-message", "-p", "#S"], process.cwd(), undefined, 2000)
-    ).stdout.trim()
+  ? ((
+      await runCommand(
+        ["tmux", "display-message", "-p", "#S"],
+        process.cwd(),
+        undefined,
+        2000,
+      ).catch(() => null)
+    )?.stdout.trim() ?? "")
   : "";
 process.exit(
   await mainRed(process.argv.slice(2), {
