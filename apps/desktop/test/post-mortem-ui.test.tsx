@@ -159,6 +159,7 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
       ],
     ]);
     await settleMaybe(() => dialog("Draft a post-mortem") === null);
+    expect(dialog("Draft a post-mortem") === null).toBe(true);
     expect(success.map((s) => s.text)).toEqual(["Post-mortem started: Post-mortem: Fix the login"]);
     success[0]?.open?.();
     expect(opened).toEqual(["new1"]);
@@ -167,7 +168,7 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
   test("a project without the post-mortem workflow says how to get it, and cannot start", async () => {
     const { sent } = setup({ workflows: [] });
     await open();
-    expect(screen.queryByText(/workflow is not set up in this project/) !== null).toBe(true);
+    expect(screen.queryByText(/draft workflow is not set up in this project/i) !== null).toBe(true);
     const start = button("Start the post-mortem") as HTMLButtonElement | null;
     expect(start?.disabled).toBe(true);
     expect(sent).toEqual([]);
@@ -176,11 +177,16 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
   test("a card the host refuses to make keeps the dialog and the text, and starts nothing", async () => {
     const { sent, success } = setup({ created: false });
     await open();
+    const before = incident()?.value ?? "";
     await press("Start the post-mortem");
     await settleMaybe(() => sent.length === 1);
+    await act(async () => {
+      await Bun.sleep(50);
+    });
     expect(sent.map(([type]) => type)).toEqual(["card.create"]);
     expect(dialog("Draft a post-mortem") !== null).toBe(true);
-    expect((incident()?.value ?? "").length > 0).toBe(true);
+    expect(before.length > 0).toBe(true);
+    expect(incident()?.value).toBe(before);
     expect(success).toEqual([]);
   });
 
