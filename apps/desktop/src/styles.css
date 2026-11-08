@@ -1118,6 +1118,8 @@ html:not(:has([data-slot="status-bar"])) {
     /* The sheet's padding is the form's own, so the footer's bleed to the edges stays inside it (#1249). */
     margin: 0 -1.5rem -1.5rem;
     padding: 0 1.5rem 1.5rem;
+    /* A Form of variant "dialog" is w-full: auto lets it stretch to both edges with its margins. */
+    width: auto;
   }
   [data-slot="dialog-content"] [data-slot="dialog-footer"] {
     position: sticky;
