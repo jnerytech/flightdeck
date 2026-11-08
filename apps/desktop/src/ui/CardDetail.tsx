@@ -138,6 +138,9 @@ export const CardDetail = memo(function CardDetail(props: {
 
   if (!card) return <p className="p-6 text-muted-foreground text-sm">{t("cardUi.notFound")}</p>;
 
+  /** The steps of the run that wait at a gate for the person (#227). */
+  const waiting =
+    run?.steps.filter((step) => step.type === "gate" && step.status === "waiting") ?? [];
   const openStep = (step: StepRun) => {
     setTab("conversation");
     setOpened({ stepId: step.stepId, attempt: step.attempt });
@@ -192,9 +195,8 @@ export const CardDetail = memo(function CardDetail(props: {
             </InlineNotice>
           )}
           {/* Issue #227: a gate waiting for the person is the first thing on the card, not under the form. */}
-          {run?.steps
-            .filter((step) => step.type === "gate" && step.status === "waiting")
-            .map((step) => (
+          {run &&
+            waiting.map((step) => (
               <GateCard
                 key={`${step.stepId}/${step.attempt}`}
                 step={step}
@@ -241,7 +243,7 @@ export const CardDetail = memo(function CardDetail(props: {
                   arenaStart={arena.start}
                   onDiscarded={props.onBack}
                   canMerge={withMergePr && canMergeCardPr(card)}
-                  gateWaiting={false}
+                  gateWaiting={waiting.length > 0}
                   onMerge={() => setMergeOpen(true)}
                   onShowDiff={() => setTab("diff")}
                 />

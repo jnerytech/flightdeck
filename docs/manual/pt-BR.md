@@ -1314,7 +1314,9 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   ele não é oferecido). O resto está no menu **⋯** ao
   lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do board),
   **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Fazer merge do PR**,
-  **Finalizar…** e **Descartar**. Um card cuja execução terminou abre em **Mudanças**.
+  **Finalizar…** e **Descartar**. Um card cuja execução terminou abre em **Mudanças**. Enquanto uma
+  execução espera num portão, **Aprovar** e **Negar** do próprio portão, no alto da página, são
+  os únicos botões principais: o painel Executar não lidera com nada até o portão ser respondido.
 - **Editar e excluir:** o menu **⋯** do card tem **Editar…**, que abre o card com o título pronto
   para mudar (a página do card também edita a descrição e, com o ROI ligado, a estimativa), e
   **Excluir…**, que cita o card e pergunta antes. Excluir vale só para um card que nunca começou

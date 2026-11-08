@@ -1306,7 +1306,9 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
   failing checks it is not offered). The rest is under the **⋯** menu next to it: **Start with a workflow or
   persona…** (the same dialog as the board's **Start card**), **Start**, **Start in the
   background**, **Stop**, **Open PR**, **Merge PR**, **Finish…** and **Discard**. A card whose run
-  is done opens on **Changes**.
+  is done opens on **Changes**. While a run waits at a gate, the gate's own **Approve** and
+  **Deny** at the top of the page are the only primary buttons: the Run panel leads with nothing
+  until the gate is answered.
 - **Edit and delete:** the card's **⋯** menu has **Edit…**, which opens the card with its title ready
   to change (the card page also edits the description and, with ROI on, the estimate), and
   **Delete…**, which names the card and asks first. Delete is only for a card that never started
