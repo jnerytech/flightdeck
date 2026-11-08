@@ -17,7 +17,7 @@ export interface FeedHost {
 }
 
 const basename = (path: string | null): string | null =>
-  path?.split(/[\\/]/).filter(Boolean).pop() ?? null;
+  path?.split(/[\\/]/).findLast(Boolean) ?? null;
 
 export class WebhookFeed {
   constructor(

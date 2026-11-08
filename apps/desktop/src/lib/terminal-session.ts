@@ -40,7 +40,8 @@ const defaultSchedule: Schedule = (run, ms) => {
 };
 
 /** base64 to bytes with what the browser has (Node's Buffer is not there). */
-const decode = (base64: string) => Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+const decode = (base64: string) =>
+  Uint8Array.from(atob(base64), (char) => char.codePointAt(0) ?? 0);
 
 /** One terminal as the app follows it: attach, draw, type, resize, detach and close. */
 export class TerminalSession {
