@@ -271,6 +271,9 @@ export const DAEMON_REASONS = [
   "harness_commit_branch_taken",
   "harness_commit_git",
   "harness_commit_ignored",
+  "harness_draft_exists",
+  "harness_draft_failed",
+  "harness_draft_secret",
   "secret_expired",
   "vault_full",
   "vault_action_unknown",
@@ -525,6 +528,7 @@ export const DAEMON_FEATURES = [
   "harnessPreview",
   "harnessApply",
   "harnessCommit",
+  "harnessDraft",
   "keepAwake",
   "autoUpdate",
 ] as const;

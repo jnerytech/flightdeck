@@ -15,6 +15,7 @@ import {
   FEATURE_RESUME_OFFER,
   type HarnessApplied,
   type HarnessCommitted,
+  type HarnessDraft,
   type HarnessPreview,
   type HarnessStack,
   type HostRuntime,
@@ -210,6 +211,8 @@ export interface ServerOptions {
     digests: Readonly<Record<string, string>>,
     options: { reformat: boolean },
   ) => Promise<HarnessApplied>;
+  /** #75, slice G1: drafts a CLAUDE.md with the host's model and holds it by its digest. */
+  harnessDraft?: (path: string) => Promise<HarnessDraft>;
   /** #75, slice C1: commits what apply wrote (by its digests) on a new branch. */
   harnessCommit?: (
     path: string,
@@ -455,6 +458,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.harnessPreview, "harnessPreview"),
     ...when(opts.harnessApply, "harnessApply"),
     ...when(opts.harnessCommit, "harnessCommit"),
+    ...when(opts.harnessDraft, "harnessDraft"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
@@ -1213,6 +1217,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.harnessPreview) throw featureOff("harnessPreview");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.harnessPreview(path, command.payload.parts));
+      }
+      case "project.harness.draft": {
+        if (!opts.harnessDraft) throw featureOff("harnessDraft");
+        // A model call on the plan, whose text a later apply may write: a near connection only.
+        requireVaultTransport(ws.data.origin, "project.harness.draft", opts.log);
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.harnessDraft(path));
       }
       case "project.harness.commit": {
         if (!opts.harnessCommit) throw featureOff("harnessCommit");

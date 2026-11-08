@@ -3256,6 +3256,15 @@ export const Command = z.discriminatedUnion("type", [
       .strict(),
   ),
   /**
+   * #75, slice G1: drafts a CLAUDE.md with the host's model from the detected stack and the
+   * project's top-level names (never a file's content). The host holds the draft; an apply whose
+   * digest for CLAUDE.md is the draft's writes it. Never hooks or permissions from a model.
+   */
+  cmd(
+    "project.harness.draft",
+    z.object({ path: z.string().min(1).max(4096), part: z.literal("claudeMd") }).strict(),
+  ),
+  /**
    * #75, slice C1: commits what `project.harness.apply` wrote (by its `digests`) on a new branch the
    * host names, through a temporary index: the person's branch, index and files stay as they are.
    */
@@ -4976,6 +4985,14 @@ export const HarnessApplied = z.object({
 });
 export type HarnessApplied = z.infer<typeof HarnessApplied>;
 
+/** #75, slice G1: a CLAUDE.md drafted by the host's model, held by the host by its digest. */
+export const HarnessDraft = z.object({
+  path: z.literal("CLAUDE.md"),
+  content: z.string(),
+  digest: z.string(),
+});
+export type HarnessDraft = z.infer<typeof HarnessDraft>;
+
 /** #75, slice C1: the branch made, its commit, and the files it holds. */
 export const HarnessCommitted = z.object({
   branch: z.string(),
@@ -5234,6 +5251,7 @@ export interface CommandResults {
   "project.harness.preview": HarnessPreview;
   "project.harness.apply": HarnessApplied;
   "project.harness.commit": HarnessCommitted;
+  "project.harness.draft": HarnessDraft;
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;

@@ -198,6 +198,8 @@ export async function planHarness(
   root: string,
   parts: readonly PreviewPart[],
   readSettings: (root: string) => Promise<Look>,
+  /** A held draft to propose instead of the template (#75, G1), by file; null for the template. */
+  drafted: (name: string) => string | null = () => null,
 ): Promise<Plan> {
   const { commands } = await detectStack(root);
   const unreadable: string[] = [];
@@ -211,7 +213,7 @@ export async function planHarness(
     const file = await look(root, name);
     if (file.state === "refused") unreadable.push(name);
     else if (file.state === "absent") {
-      const content = template(commands);
+      const content = drafted(name) ?? template(commands);
       files.push({ path: name, content, digest: sha256(content) });
     }
   }
