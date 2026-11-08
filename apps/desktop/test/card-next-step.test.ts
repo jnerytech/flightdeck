@@ -12,9 +12,10 @@ const card = (over: Record<string, unknown> = {}) =>
     ...over,
   }) as never;
 const finished = { worktreePath: "/w", sessionId: "s1", sessionStatus: "ended" };
-const view = (tab: "conversation" | "diff" = "conversation", canMerge = true) => ({
+const view = (tab: "conversation" | "diff" = "conversation", canMerge = true, gate = false) => ({
   tab,
   canMerge,
+  gate,
 });
 
 describe("card-next-step: the one button a card leads with (#1197)", () => {
@@ -50,6 +51,17 @@ describe("card-next-step: the one button a card leads with (#1197)", () => {
     expect(nextStep(card({ ...withPr, prState: null }), view("conversation", true))).toBe(
       "merge-pr",
     );
+  });
+
+  test("a run waiting at a gate leads with the gate, never with Open PR or Merge PR (#1269)", () => {
+    expect(nextStep(card(finished), view("diff", true, true))).toBe("gate");
+    expect(nextStep(card(finished), view("conversation", true, true))).toBe("gate");
+    const withPr = { ...finished, prUrl: "https://x/pr/1", prState: "open" };
+    expect(nextStep(card(withPr), view("conversation", true, true))).toBe("gate");
+    // A card that never started has no run to wait on, and a live session still leads with Stop.
+    expect(
+      nextStep(card({ sessionStatus: "running", sessionId: "s1" }), view("diff", true, true)),
+    ).toBe("stop");
   });
 
   test("a merged or closed PR leaves nothing waiting", () => {
