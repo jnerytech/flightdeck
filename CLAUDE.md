@@ -19,11 +19,11 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   generated files, test edits that add `.only`/`test.todo`/`toMatchSnapshot` or an unnoted skip, commits
   that break `type(scope): text` or the TDD order, heavy runs outside the slot, a worker's full
   coverage run (#674), and a push that would cancel the branch's PR run while it is still green (#741:
-  younger than 20 minutes with no failed job; `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push
+  younger than 20 minutes with no failed job, or GitHub unread twice; `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push
   lets it through), and that run
   Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
   `bun run harness:stats` shows how often each rule blocked and how long the hooks took, and lists
-  each push-wait override with its reason and the cancelled run's age (#741). Rules per
+  each push-wait override with its reason and the cancelled run's age, and counts the pushes it let through by reason (#741). Rules per
   area live in `.claude/rules/` (ui, protocol, daemon, tests, scripts) and load when a matching file
   is touched; a SessionStart hook states the branch, the tested scopes and the slot, and after a
   compact reminds that those rules come back only with a matching file. Personal settings go to

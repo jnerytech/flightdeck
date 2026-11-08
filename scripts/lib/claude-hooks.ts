@@ -601,6 +601,7 @@ export function guardAllowLogs(
   command: string | undefined,
   env: Record<string, string | undefined>,
   push?: { cwd: string; deps: PushWaitDeps },
+  passes: PushWaitPass[] = [],
 ): Array<{ rule: string | null; decision: "allow" | "waived"; detail?: string; minutes?: number }> {
   const waived: Array<{ rule: string; decision: "waived"; detail?: string; minutes?: number }> = [];
   if (typeof command === "string") {
@@ -612,7 +613,17 @@ export function guardAllowLogs(
     const override = env.FLIGHTDECK_COORDINATOR ? null : pushNowOverride(command, push);
     if (override) waived.push({ rule: "push-wait", decision: "waived", ...override });
   }
-  return waived.length > 0 ? waived : [{ rule: null, decision: "allow" }];
+  if (waived.length > 0) return waived;
+  // #741: a push the rule let through logs why, in place of the plain allow.
+  if (passes.length > 0) {
+    return passes.map(({ reason, minutes }) => ({
+      rule: "push-wait",
+      decision: "allow" as const,
+      detail: reason,
+      ...(minutes === undefined ? {} : { minutes }),
+    }));
+  }
+  return [{ rule: null, decision: "allow" }];
 }
 
 /** The package scripts that run only through the slot (CLAUDE.md). */
@@ -722,25 +733,38 @@ export interface PrRun {
 }
 
 export interface PushWaitDeps extends PushGuardDeps {
-  /** The branch's latest PR run, read in `dir`; null when it has none or GitHub cannot be read (fail open). */
-  prRun: (branch: string, dir: string) => PrRun | null;
+  /** The branch's latest PR run, read in `dir`: "none" when it has none, null when GitHub cannot be read. */
+  prRun: (branch: string, dir: string) => PrRun | "none" | null;
+  /** Why no lookup could answer (gh missing, no time left), which lets the push go; null holds it. */
+  whyUnread?: () => string | null;
+}
+
+/** Why push-wait let a push through to one branch (#741: logged, so the passes can be read). */
+export interface PushWaitPass {
+  reason: string;
+  /** The age of an old run. */
+  minutes?: number;
 }
 
 /**
  * A branch's latest PR run from `gh run list --json databaseId,status,startedAt,url`, with its PR's
- * conflict and failed checks from `gh pr view --json mergeable,statusCheckRollup`; null when there
- * is none or the output does not read.
+ * conflict and failed checks from `gh pr view --json mergeable,statusCheckRollup`: "none" when
+ * the list is empty, null when the list is missing or does not read (#741: GitHub unread); a PR
+ * unread leaves the run's age to decide (#945 review).
  */
-export function prRunFrom(runs: string | null, pr: string | null, now: number): PrRun | null {
+export function prRunFrom(
+  runs: string | null,
+  pr: string | null,
+  now: number,
+): PrRun | "none" | null {
   try {
-    const latest = (JSON.parse(runs ?? "") as Array<Record<string, unknown>>)[0];
+    const list = JSON.parse(runs ?? "") as Array<Record<string, unknown>>;
+    if (Array.isArray(list) && list.length === 0) return "none";
+    const latest = list[0];
     if (!latest || typeof latest.databaseId !== "number") return null;
     const started = Date.parse(String(latest.startedAt));
     if (Number.isNaN(started)) return null;
-    const view = JSON.parse(pr ?? "") as {
-      mergeable?: string;
-      statusCheckRollup?: Array<{ conclusion?: string; state?: string }>;
-    };
+    const view = parsedView(pr);
     return {
       id: latest.databaseId,
       url: String(latest.url ?? ""),
@@ -756,6 +780,21 @@ export function prRunFrom(runs: string | null, pr: string | null, now: number): 
   }
 }
 
+/**
+ * The PR's mergeable state and checks, or none known when `gh pr view` failed or printed no JSON:
+ * the run's age decides then (#945 review), so a PR unread alone never holds a push.
+ */
+function parsedView(text: string | null): {
+  mergeable?: string;
+  statusCheckRollup?: Array<{ conclusion?: string; state?: string }>;
+} {
+  try {
+    return JSON.parse(text ?? "") ?? {};
+  } catch {
+    return {};
+  }
+}
+
 /** Runs gh with these arguments in a folder; its output, or null when it fails. */
 export type Gh = (args: string[], dir: string) => string | null;
 
@@ -763,7 +802,10 @@ export type Gh = (args: string[], dir: string) => string | null;
  * The guard's reader of a branch's latest PR run (#756 review: the gh calls are tested here, not
  * left as glue): `gh run list`, then `gh pr view` only when there is a run.
  */
-export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: string) => PrRun | null {
+export function prRunVia(
+  gh: Gh,
+  now: () => number,
+): (branch: string, dir: string) => PrRun | "none" | null {
   return (branch, dir) => {
     // The branch goes as one `--branch=` word, so no name reads as a flag.
     const runs = gh(
@@ -777,7 +819,8 @@ export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: strin
       ],
       dir,
     );
-    if (!runs || runs.trim() === "[]") return null;
+    if (runs === null) return null;
+    if (runs.trim() === "[]") return "none";
     // `--` ends the flags, so the branch is always the PR to view.
     const pr = gh(["pr", "view", "--json=mergeable,statusCheckRollup", "--", branch], dir);
     return prRunFrom(runs, pr, now());
@@ -801,26 +844,76 @@ export const PUSH_WAIT_MINUTES = 20;
  * branch's run in progress (`cancel-in-progress`); 10% of the PR runner-minutes went to runs a push
  * cancelled while still green. A PR with a failed check or a conflict (the push is a fix), an
  * ended or older run, no run, a release-v* branch, the coordinator and
- * `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push pass.
+ * `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push pass. When GitHub cannot be read, twice,
+ * the push holds too, with the same override line: a silent pass let green runs be cancelled.
  */
 export function pushWaitViolation(command: string, cwd: string, deps: PushWaitDeps): string | null {
-  if (deps.env.FLIGHTDECK_COORDINATOR) return null;
+  return pushWaitCheck(command, cwd, deps).violation;
+}
+
+/**
+ * The push-wait decision of a command (#741): the refusal, or, for each pushed branch the rule
+ * looked at and let go, why. A delete, a release-v* branch, an override and the coordinator are
+ * not looked at, so they log no pass.
+ */
+export function pushWaitCheck(
+  command: string,
+  cwd: string,
+  deps: PushWaitDeps,
+): { violation: string | null; passes: PushWaitPass[] } {
+  const passes: PushWaitPass[] = [];
+  if (deps.env.FLIGHTDECK_COORDINATOR) return { violation: null, passes };
   for (const call of gitCalls(command, cwd)) {
     if (call.sub !== "push" || call.dir === null) continue;
     if (deps.inProject && !deps.inProject(call.dir)) continue;
     const segment = command.slice(call.start, call.end);
     if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) continue;
     const dir = call.dir;
+    // Unprintable characters out first, so none reaches the terminal or splits a secret (#945 review).
+    const override = `FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(printable(segment.trim()))}`;
     for (const branch of pushedBranches(call, (args) => deps.git(args, dir))) {
-      const run = deps.prRun(branch, dir);
-      // A failed check or a conflict makes the push a fix that must go out (#756 review).
-      if (!run?.inProgress || run.failed || run.conflicting) continue;
-      if (run.minutes >= PUSH_WAIT_MINUTES) continue;
+      // The name comes from the command or from git: unprintable characters out first (so none splits a secret), then secrets hidden (#945 review).
+      const shown = redacted(printable(branch));
+      // A reason an earlier branch's lookups left is not this branch's (#945 security review).
+      deps.whyUnread?.();
+      // One more try: a gh call can time out once on a busy machine.
+      const run = deps.prRun(branch, dir) ?? deps.prRun(branch, dir);
+      if (run === null) {
+        // No lookup could answer (gh missing, no time left): retrying would not help, so it goes,
+        // logged with why (#945 review). GitHub that answered with a failure holds.
+        const why = deps.whyUnread?.() ?? null;
+        if (why) {
+          passes.push({ reason: why });
+          continue;
+        }
+        const violation = `GitHub could not be read to check the PR run of ${shown}, twice (#741). Push again in a minute, or push now with:\n  ${override}`;
+        return { violation, passes };
+      }
+      if (run === "none") {
+        passes.push({ reason: "no run" });
+        continue;
+      }
+      const pass = pushWaitPass(run);
+      if (pass) {
+        passes.push(pass);
+        continue;
+      }
       // Only GitHub's own https address; the echoed push hides credentials (security review).
       const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
-      return `a push now cancels CI run ${run.id} on the PR of ${branch}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(segment.trim())}`;
+      const violation = `a push now cancels CI run ${run.id} on the PR of ${shown}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  ${override}`;
+      return { violation, passes };
     }
   }
+  return { violation: null, passes };
+}
+
+/** Why a push may go past this run, or null when it would cancel it while young and green. */
+function pushWaitPass(run: PrRun): PushWaitPass | null {
+  // A failed check or a conflict makes the push a fix that must go out (#756 review).
+  if (run.failed) return { reason: "failed check" };
+  if (run.conflicting) return { reason: "conflicts" };
+  if (!run.inProgress) return { reason: "run ended" };
+  if (run.minutes >= PUSH_WAIT_MINUTES) return { reason: "old run", minutes: run.minutes };
   return null;
 }
 
@@ -840,6 +933,35 @@ function pushedBranches(call: GitCall, git: (args: string[]) => string | null): 
   return targets.flatMap(({ dst, tag }) =>
     dst && !tag && !dst.startsWith("release-v") ? [dst] : [],
   );
+}
+
+/** The guard's gh for push-wait (#945 review): calls start only before `limit`; why nothing answered. */
+export function budgetedGh(
+  spawn: (args: string[], dir: string) => { stdout: string | null; missing: boolean },
+  exists: (dir: string) => boolean,
+  now: () => number,
+  limit: number,
+): { gh: Gh; whyUnread: () => string | null } {
+  let why: string | null = null;
+  return {
+    gh: (args, dir) => {
+      if (now() > limit) {
+        why ??= "no time";
+        return null;
+      }
+      const ran = spawn(args, dir);
+      // spawn says ENOENT for a folder that does not exist too: only an existing one means gh is
+      // missing (#945 security review: `cd nowhere; git push` must not pass).
+      if (ran.missing && exists(dir)) why ??= "gh missing";
+      return ran.stdout;
+    },
+    // Read once: the next branch's lookups start with no reason left over (#945 security review).
+    whyUnread: () => {
+      const said = why;
+      why = null;
+      return said;
+    },
+  };
 }
 
 /**
@@ -924,7 +1046,7 @@ function pushNowOverride(
     if (!push || dir === null) return { detail };
     const ages = pushedBranches(call, (args) => push.deps.git(args, dir)).flatMap((branch) => {
       const run = push.deps.prRun(branch, dir);
-      return run?.inProgress ? [run.minutes] : [];
+      return run && run !== "none" && run.inProgress ? [run.minutes] : [];
     });
     return ages.length > 0 ? { detail, minutes: Math.min(...ages) } : { detail };
   }
