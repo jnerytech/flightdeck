@@ -57,6 +57,17 @@ interface Acl {
   listing: string[];
 }
 
+/**
+ * This process's environment without the variables the launch reads to find a plain folder: on a
+ * Windows runner the real ProgramData, PUBLIC and account would answer for a test that leaves them out.
+ */
+function ownEnv(): Record<string, string | undefined> {
+  const own = Object.entries(process.env).filter(
+    ([name]) => !/^(programdata|public|userdomain|username)$/i.test(name),
+  );
+  return Object.fromEntries(own);
+}
+
 async function launch(
   file: string,
   options: {
@@ -80,7 +91,7 @@ async function launch(
   const fake = options.fake ?? installFakeClaude([{ do: "exit", code: 0 }]);
   cleanups.push(fake.restore);
   const run = runCli(["claude", "-c"], {
-    env: { ...process.env, FLIGHTDECK_CONFIG: file, ...options.env },
+    env: { ...ownEnv(), FLIGHTDECK_CONFIG: file, ...options.env },
     log: { log: () => {}, error: (m) => errors.push(m) },
     exit: () => {},
     onSignal: () => {},
@@ -157,9 +168,12 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
   test("claude as a .cmd shim, with a path cmd.exe would change (& or %): the same plain folder", async () => {
     const programData = tempDir();
     const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    // On Windows the fake already has its own claude.cmd; elsewhere the script stands in for one.
     const shim = join(fake.dir, "claude.cmd");
-    copyFileSync(join(fake.dir, "claude"), shim);
-    chmodSync(shim, 0o755);
+    if (process.platform !== "win32") {
+      copyFileSync(join(fake.dir, "claude"), shim);
+      chmodSync(shim, 0o755);
+    }
     fake.restore();
     const { file } = host(["a&b%TEMP%", "data"], shim);
     const run = await launch(file, { platform: "win32", env: WINDOWS_ENV(programData), fake });
@@ -183,7 +197,7 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
 
   test("on Linux an accent and a space change nothing: the config stays in the data folder", async () => {
     const { file, dataDir } = host(["João Silva", "data"]);
-    const run = await launch(file, { env: WINDOWS_ENV(tempDir()) });
+    const run = await launch(file, { platform: "linux", env: WINDOWS_ENV(tempDir()) });
     expect([(run.configPath ?? "").startsWith(join(dataDir, "channels")), run.acls.length]).toEqual(
       [true, 0],
     );

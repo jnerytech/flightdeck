@@ -275,7 +275,9 @@ describe("board-contracts: what moves cards on its own is never refused", () => 
         const path = join(dir, entry.name);
         if (entry.isDirectory()) walk(path);
         else if (path.endsWith(".ts") && readFileSync(path, "utf8").includes("moveByHand(")) {
-          users.push(path.slice(path.indexOf("apps/daemon/src/")));
+          // Windows joins with backslashes: the paths are compared in the form git and the docs write.
+          const slashed = path.replaceAll("\\", "/");
+          users.push(slashed.slice(slashed.indexOf("apps/daemon/src/")));
         }
       }
     };

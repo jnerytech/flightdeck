@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { fileURLToPath } from "node:url";
 
 /**
  * Issue #957 widens it to the folders `updates/`, `plugins/` and `runenv/`.
@@ -61,7 +62,7 @@ describe("refusal-english: the raw text of a refusal is English (#940)", () => {
   test("the files of updates/, plugins/ and runenv/ have no Portuguese refusal text (#957)", async () => {
     const portuguese: string[] = [];
     for (const folder of FOLDERS) {
-      const dir = new URL(`${folder}/`, import.meta.url).pathname;
+      const dir = fileURLToPath(new URL(`${folder}/`, import.meta.url));
       for await (const name of new Bun.Glob("*.ts").scan(dir)) {
         const source = await Bun.file(`${dir}${name}`).text();
         for (const { line, text } of strings(source, true)) {
@@ -124,7 +125,7 @@ describe("refusal-english: mcp, the vault rules, messaging, issues and automatio
   test("the files of messaging/, issues/ and automations/ have no Portuguese text", async () => {
     const portuguese: string[] = [];
     for (const folder of MSGS2_FOLDERS) {
-      const dir = new URL(`${folder}/`, import.meta.url).pathname;
+      const dir = fileURLToPath(new URL(`${folder}/`, import.meta.url));
       for await (const name of new Bun.Glob("*.ts").scan(dir)) {
         const source = await Bun.file(`${dir}${name}`).text();
         for (const { line, text } of quoted(source)) {
@@ -206,7 +207,7 @@ const MSGS3_SHOWN: Record<string, string[]> = {
   ],
 };
 
-const SRC = new URL("../src/", import.meta.url).pathname;
+const SRC = fileURLToPath(new URL("../src/", import.meta.url));
 
 /** What the detector flags in a file once the text that is shown as it is has been left out. */
 async function portugueseIn(file: string): Promise<string[]> {

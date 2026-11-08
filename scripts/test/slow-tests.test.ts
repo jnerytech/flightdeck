@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import {
   FILE_LIMIT_S,
   missingReport,
@@ -114,10 +114,11 @@ describe("slow-tests (#1003)", () => {
 
   test("#1022 Sonar: the report is read only from under the repository or a temp folder", () => {
     const roots = ["/r/flightdeck", "/tmp", "/runner/_temp"];
-    expect(reportPath("/runner/_temp/junit.xml", roots)).toBe("/runner/_temp/junit.xml");
-    expect(reportPath("/tmp/x/../junit.xml", roots)).toBe("/tmp/junit.xml");
+    // The answer is the resolved path: on Windows a rooted path gets its drive.
+    expect(reportPath("/runner/_temp/junit.xml", roots)).toBe(resolve("/runner/_temp/junit.xml"));
+    expect(reportPath("/tmp/x/../junit.xml", roots)).toBe(resolve("/tmp/junit.xml"));
     expect(reportPath("/r/flightdeck/coverage/junit.xml", roots)).toBe(
-      "/r/flightdeck/coverage/junit.xml",
+      resolve("/r/flightdeck/coverage/junit.xml"),
     );
     for (const outside of [
       "/etc/passwd",
