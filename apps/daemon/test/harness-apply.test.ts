@@ -238,6 +238,35 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
     },
   );
 
+  test("a settings file that starts with a UTF-8 BOM is read, and keeps its BOM when written (#927)", async () => {
+    const text = `\uFEFF${json({ model: "opus" })}`;
+    const root = repo({ ...bunProject, [SETTINGS]: text });
+    const preview = await previewHarness(root, ["permissions"]);
+    const applied = await applyHarness(root, ["permissions"], digestsOf(preview));
+    const after = read(root, SETTINGS);
+    expect([
+      preview.unreadable,
+      preview.settings?.reformats,
+      applied.written,
+      after.startsWith("\uFEFF"),
+      after.slice(1) === json({ model: "opus", permissions: { deny: DENY } }),
+    ]).toEqual([[], false, [SETTINGS], true, true]);
+  });
+
+  test("a Windows settings file (BOM, CRLF, 4 spaces) is written back in the same layout", async () => {
+    const crlf = (text: string) => text.replace(/\n/g, "\r\n");
+    const text = `\uFEFF${crlf(json({ model: "opus" }, 4))}`;
+    const root = repo({ ...bunProject, [SETTINGS]: text });
+    const preview = await previewHarness(root, ["permissions"]);
+    const done = await outcome(applyHarness(root, ["permissions"], digestsOf(preview)));
+    expect([
+      preview.settings?.reformats,
+      done,
+      read(root, SETTINGS) ===
+        `\uFEFF${crlf(json({ model: "opus", permissions: { deny: DENY } }, 4))}`,
+    ]).toEqual([false, "ok", true]);
+  });
+
   test("a settings file hard-linked to a file elsewhere gets no proposal, and one linked after the preview is refused", async () => {
     const text = json({ model: "opus" });
     const elsewhere = join(tempDir("fd-apply-out-"), "settings.json");

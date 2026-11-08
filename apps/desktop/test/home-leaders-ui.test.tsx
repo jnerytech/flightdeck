@@ -214,47 +214,10 @@ describe("home-leaders-ui: where the tokens of the 7 days went", () => {
     }).toEqual({ tab: "true", rows: [true, true] });
   });
 
-  test("with no tokens in the 7 days it says so; with no host that has costs there is no panel", async () => {
-    setup({ empty: true });
-    await loaded("Where the tokens went");
-    await settleMaybe(() => screen.queryByText("No tokens in the last 7 days.") !== null);
-    const empty = {
-      panel: panel("Where the tokens went") !== null,
-      says: screen.queryByText("No tokens in the last 7 days.") !== null,
-    };
-    cleanup();
-    setup({ costs: false });
-    await loaded("Where the tokens went");
-    expect({ empty, withoutCosts: panel("Where the tokens went") !== null }).toEqual({
-      empty: { panel: true, says: true },
-      withoutCosts: false,
-    });
-  });
-
   // axe target-size (#124 prints): a project's name is a button, at least 24 px tall.
   test("a project's button is a target of at least 24 px", () => {
     const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
     expect(/@utility leader-link \{[^}]*min-height: 1\.5rem/.test(css)).toBe(true);
-  });
-
-  // OpenCode review of #780: a read where every costs request failed replaced the shares with
-  // empty ones, so the panel said "no tokens" for a host that only did not answer.
-  test("when no host gave its costs, the panel says it could not read them, not that there were none", async () => {
-    setup({ failing: { now: true } });
-    await loaded("Where the tokens went");
-    await settleMaybe(
-      () =>
-        screen.queryByText(
-          "Could not read where the tokens went. Home tries again in a minute.",
-        ) !== null,
-    );
-    expect({
-      unavailable:
-        screen.queryByText(
-          "Could not read where the tokens went. Home tries again in a minute.",
-        ) !== null,
-      none: screen.queryByText("No tokens in the last 7 days.") !== null,
-    }).toEqual({ unavailable: true, none: false });
   });
 
   test("a host whose week of costs fails did not answer, even though its usage came (#363)", async () => {

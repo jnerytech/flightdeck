@@ -1618,6 +1618,14 @@ Three workflows ship with Flightdeck, for recurring work:
 Both stop at an approval before anything is pushed, and both have a budget of turns and minutes.
 Once the pull request is open, the PR watch's round limit applies to it.
 
+To start the alert fixer, start a card with it and fill the `alert` field. **Choose an alert** beside
+the field lists the repository's open code-scanning and Dependabot alerts, the worst first, read by the
+host with its own `gh` (read-only; Flightdeck holds no GitHub token). Picking one copies its text into
+the field: read it before you start, since an alert's words come from a scanner or an advisory. A
+source that cannot be read (code scanning is off, or `gh` has no access or is not signed in) is named
+beside the list, and the list never says "no open alerts" when one of them failed. The button shows
+only when the host can read alerts.
+
 A template is a file, and Flightdeck writes nothing to your repository. On the **Workflows**
 screen, **Add from a template** lists them. Open one to read its file, then **Copy the file**,
 commit it to `.flightdeck/workflows/` on the base branch, and **Trust** it on the same screen

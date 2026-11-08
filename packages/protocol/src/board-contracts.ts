@@ -32,6 +32,8 @@ export const SpecState = z.object({
   path: z.string(),
   found: z.boolean(),
   heading: z.string().nullable(),
+  /** The file's front matter says `draft: true` (#78): a spec still being written meets no check. */
+  draft: z.boolean().optional(),
 });
 export type SpecState = z.infer<typeof SpecState>;
 
@@ -56,7 +58,7 @@ export function contractOf(
 }
 
 /** A checklist item in the description is what the card calls its acceptance criteria. */
-const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
+export const CHECKLIST_ITEM = /^\s*[-*]\s+\[[ xX]\]\s/m;
 
 type Lookable = Pick<
   Card,
@@ -78,7 +80,9 @@ const LACKING: Record<ContractCheck, (card: Lookable) => ContractNeed[]> = {
   validation: (card) => (card.validationNote?.trim() ? [] : ["validation"]),
   // What was found counts only for the path the card names now.
   spec: (card) =>
-    card.specState?.found && card.specState.path === specExpectedPath(card) ? [] : ["spec"],
+    card.specState?.found && !card.specState.draft && card.specState.path === specExpectedPath(card)
+      ? []
+      : ["spec"],
 };
 
 /** What `card` lacks for `column`; nothing when the column asks nothing or the card has it all. */

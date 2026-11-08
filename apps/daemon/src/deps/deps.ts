@@ -120,8 +120,11 @@ function hooksDepState(state: string): DepResult["state"] {
   return state === "outdated" ? "outdated" : "missing";
 }
 
-/** The first `1.2.3` (or `1.2`) in a program's `--version` line. */
-const versionOf = (text: string | null) => /\d+\.\d+(?:\.\d+)*/.exec(text ?? "")?.[0];
+/**
+ * The first `1.2.3` (or `1.2`) in a program's `--version` line. A match starts at the start of a
+ * run of digits (the lookbehind), so a long run is not tried again from each of its digits.
+ */
+export const versionOf = (text: string | null) => /(?<!\d)\d+\.\d+(?:\.\d+)*/.exec(text ?? "")?.[0];
 
 async function tool(env: DepsEnv, id: keyof typeof TOOLS): Promise<DepResult> {
   const spec = TOOLS[id];

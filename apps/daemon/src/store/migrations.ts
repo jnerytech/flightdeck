@@ -940,4 +940,8 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE cards ADD COLUMN source_key TEXT;
   CREATE INDEX cards_source_key ON cards (project_id, source_key);
   `,
+  // Issue #78: the spec the host last found says draft: true in its front matter.
+  `
+  ALTER TABLE cards ADD COLUMN spec_draft INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
