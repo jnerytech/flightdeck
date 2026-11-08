@@ -4708,7 +4708,7 @@ export const en: Dictionary = {
   budgets: {
     label: "{scope} budget ({period})",
     scopeHost: "host",
-    scopeProject: "of {project}",
+    scopeProject: "{project}",
     day: "day",
     month: "month",
     line: "{label} · {action} · {spent} of {limit} ({percent}%)",
