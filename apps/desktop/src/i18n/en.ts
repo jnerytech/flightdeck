@@ -1533,6 +1533,9 @@ export const en: Dictionary = {
     terminal_enable_confirm:
       "Turning the terminal on gives a full shell on this host: confirm it to go on.",
     central_confirm: "Changing the host's ~/.claude/settings.json needs your confirmation.",
+    service_confirm: "Installing the service on the host needs your confirmation.",
+    service_unsupported:
+      "This host has no service manager that can start flightdeckd at boot ({platform}).",
     permission_request_closed: "The permission request {id} is not open.",
     hold_required: "A high-risk request is approved only by holding the button.",
     input_changed: "A request is approved as it was asked: the answer changes what it runs.",

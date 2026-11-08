@@ -1527,6 +1527,9 @@ export const ptBR = {
     terminal_enable_confirm:
       "Ligar o terminal dá um shell completo neste host: confirme para seguir.",
     central_confirm: "Mexer no ~/.claude/settings.json do host pede a sua confirmação.",
+    service_confirm: "Instalar o serviço no host pede a sua confirmação.",
+    service_unsupported:
+      "Este host não tem um gerenciador de serviços que inicie o flightdeckd com o computador ({platform}).",
     permission_request_closed: "O pedido de permissão {id} não está aberto.",
     hold_required: "Um pedido de risco alto só é aprovado segurando o botão.",
     input_changed: "Um pedido é aprovado como foi feito: a resposta muda o que ele executa.",

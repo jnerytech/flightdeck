@@ -4,7 +4,9 @@
  * the daemon that asked keeps running, and a handover that failed would leave the host offline
  * with no way back from the app. The app never runs sudo; it shows the linger line to copy.
  */
-import type { ServiceContext } from "./service.ts";
+import { FlightdeckError } from "./errors.ts";
+import { lingerState } from "./linger.ts";
+import { installService, resolveServiceClaude, type ServiceContext } from "./service.ts";
 
 /** What the app is told after the install. */
 export interface AppServiceResult {
@@ -22,11 +24,12 @@ export interface AppServiceResult {
  * e2e journeys) or from elsewhere never offers it.
  */
 export function appCanInstallService(
-  _self: readonly string[],
-  _stable: string,
-  _platform: string,
+  self: readonly string[],
+  stable: string,
+  platform: string,
 ): boolean {
-  return false;
+  if (platform !== "linux" && platform !== "win32") return false;
+  return self.length === 1 && self[0] === stable;
 }
 
 export interface AppServiceDeps {
@@ -40,8 +43,34 @@ export interface AppServiceDeps {
 
 /** Installs and enables the service for the next boot or login; refused without `confirm`. */
 export async function installServiceFromApp(
-  _deps: AppServiceDeps,
-  _confirm: boolean,
+  deps: AppServiceDeps,
+  confirm: boolean,
 ): Promise<AppServiceResult> {
-  return { startsAt: "boot", lingerOff: false, user: "" };
+  const { ctx } = deps;
+  if (!confirm) {
+    throw new FlightdeckError(
+      "invalid_state",
+      "installing the service on the host needs confirm: true",
+      "service_confirm",
+    );
+  }
+  const supported =
+    ctx.platform === "win32" || (ctx.platform === "linux" && ctx.which("systemctl") !== null);
+  if (!supported) {
+    throw new FlightdeckError(
+      "invalid_state",
+      `this host has no service manager to start flightdeckd at boot (${ctx.platform})`,
+      "service_unsupported",
+      { platform: ctx.platform },
+    );
+  }
+  const claude = resolveServiceClaude(ctx);
+  if (claude.path) await deps.recordClaude(claude.path);
+  await installService(ctx, deps.config, { start: false });
+  const linger = await lingerState(ctx);
+  return {
+    startsAt: ctx.platform === "linux" && linger === "on" ? "boot" : "logon",
+    lingerOff: linger === "off",
+    user: ctx.user,
+  };
 }

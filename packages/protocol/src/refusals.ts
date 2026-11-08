@@ -6,6 +6,8 @@ export const DAEMON_REASONS = [
   "autoapprove_resume_confirm",
   "terminal_enable_confirm",
   "central_confirm",
+  "service_confirm",
+  "service_unsupported",
   "permission_request_closed",
   "hold_required",
   "input_changed",
