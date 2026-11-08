@@ -18,9 +18,7 @@ describe("inbox-about: what a notification says it is about", () => {
       asking("AskUserQuestion", { questions: [{ question: "Which DB?" }] }),
       "wsl · Sessão A",
       false,
-      undefined,
-      en,
-      names,
+      { t: en, names },
     );
     expect(n?.about).toEqual({
       subject: "Sessão A",
@@ -38,15 +36,13 @@ describe("inbox-about: what a notification says it is about", () => {
       { ...base, status: "idle" },
       "wsl · Sessão A",
       false,
-      undefined,
-      en,
-      names,
+      { t: en, names },
     );
     expect(out[0]?.about).toEqual({ subject: "Sessão A", host: "wsl" });
   });
 
   test("without names a notification carries no about, as before", () => {
-    const [n] = summaryNotifications(base, asking("Bash"), "x", false, undefined, en);
+    const [n] = summaryNotifications(base, asking("Bash"), "x", false, { t: en });
     expect(n).not.toHaveProperty("about");
   });
 

@@ -23,14 +23,18 @@ export function summaryNotifications(
   next: SummarySnapshot,
   label: string,
   focused: boolean,
-  /** The `flightdeck://` link of a request, opened by a click on its notification (phase 8). */
-  linkFor?: (requestId: string) => string,
-  t: T = translator("pt-BR"),
-  names?: { subject: string; host: string; group: string },
-  /** The host is in simple mode: a request with its wording is told in the plain sentence (issue #88). */
-  simple = false,
+  extras: {
+    /** The `flightdeck://` link of a request, opened by a click on its notification (phase 8). */
+    linkFor?: (requestId: string) => string;
+    t?: T;
+    names?: { subject: string; host: string; group: string };
+    /** The host is in simple mode: a request with its wording is told in the plain sentence (issue #88). */
+    simple?: boolean;
+  } = {},
 ): AboutNotification[] {
   if (focused || !prev) return [];
+  const { linkFor, names, simple = false } = extras;
+  const t = extras.t ?? translator("pt-BR");
   const known = new Set(prev.pendingPermissions.map((p) => p.requestId));
   const notifications: AboutNotification[] = next.pendingPermissions
     .filter((p) => !known.has(p.requestId))
