@@ -14,7 +14,7 @@ import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
 import { demoFinished, demoInbox } from "./lib/demo-seeds.ts";
-import { DEMO_TEAM_REPORT } from "./lib/e2e-journeys.ts";
+import { DEMO_PR_CARD, DEMO_PR_URL, DEMO_TEAM_REPORT } from "./lib/e2e-journeys.ts";
 import {
   type Finding,
   GAP_BOXES,
@@ -785,6 +785,19 @@ function shots(ids: DemoIds): Shot[] {
       async prepare(page) {
         const team = page.getByRole("listitem", { name: /^(Team|Time) checkout-crew$/ });
         await team.getByText(DEMO_TEAM_REPORT).scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #1244: Merge PR on the card with an open PR asks first: the PR, its checks, how to merge.
+      name: "card-merge-pr",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        await page
+          .locator(`li[aria-label$="${DEMO_PR_CARD}"]`)
+          .getByRole("button", { name: DEMO_PR_CARD, exact: true })
+          .click();
+        await page.getByRole("button", { name: /^(Merge PR|Fazer merge do PR)$/ }).click();
+        await page.getByRole("alertdialog").getByText(DEMO_PR_URL, { exact: true }).waitFor();
       },
     },
     {
