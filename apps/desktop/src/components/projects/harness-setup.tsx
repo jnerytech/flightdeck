@@ -287,11 +287,11 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
           {t("projectPage.harness.setup.action")}
         </ActionButton>
       </div>
-      {/* The outcome takes the focus, and the focus is what reads it: a live announcement on top
-          would read it twice, so the regions keep their roles with aria-live off. */}
+      {/* Mounted before anything is said, so a screen reader reads what fills them, and live even
+          though the outcome also takes the focus: a focus lost (a remount, a dialog handing it
+          back) must not leave the outcome unsaid. Some readers may say it twice. */}
       <div
         role="status"
-        aria-live="off"
         ref={said}
         tabIndex={-1}
         className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
@@ -300,7 +300,6 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
       </div>
       <div
         role="alert"
-        aria-live="off"
         ref={refusedBox}
         tabIndex={-1}
         className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
