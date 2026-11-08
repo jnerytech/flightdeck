@@ -2,6 +2,7 @@
 import { createRoot } from "react-dom/client";
 import { installGlobalLog, reactRootErrorHandlers } from "./lib/app-log.ts";
 import { AppStore } from "./lib/app-store.ts";
+import { holdAwake } from "./lib/keep-awake.ts";
 import { tauriPlatform } from "./platform/tauri/index.ts";
 import { App } from "./ui/App.tsx";
 import "./styles.css";
@@ -18,6 +19,11 @@ installGlobalLog(
   console,
   // Only the route's name is logged with a React error: where the person was, nothing they typed.
   () => store.router.current.name,
+);
+
+// A minimized window's page is not frozen while it holds a lock: the hosts' heartbeats go on (#939).
+holdAwake(navigator.locks, (error) =>
+  store.appLog.log("warn", "app", `keep-awake lock refused: ${String(error)}`),
 );
 
 createRoot(
