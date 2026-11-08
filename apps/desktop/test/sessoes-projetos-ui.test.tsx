@@ -162,7 +162,8 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     expect(heading.className).toContain("font-semibold");
     expect(heading.className).not.toContain("text-muted-foreground");
     expect(region.querySelector("svg.lucide-folder")).not.toBeNull();
-    expect(within(region).getByText("1/4").getAttribute("aria-label")).toBe(
+    // #1132: the chip reads in words; its name keeps the long form.
+    expect(within(region).getByText("1 de 4 ativas").getAttribute("aria-label")).toBe(
       "1 ao vivo de 4 sessões",
     );
     expect(within(region).getByRole("button", { name: "Abrir o host alfa" })).toBeTruthy();
@@ -177,7 +178,7 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     setup({ needsYou: true });
     await settle(() => titles().length > 0);
     expect(titles()).toEqual(["pedido"]);
-    expect(screen.getByText("2/5")).toBeTruthy();
+    expect(screen.getByText("2 de 5 ativas")).toBeTruthy();
   });
 
   test("opening a project shows its live sessions, its old ones behind a count; folding it again hides them", async () => {
