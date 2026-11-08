@@ -9,6 +9,7 @@ import { formatPairingLink } from "@flightdeck/protocol";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
+import { DEMO_ACTIVE_TEAM, DEMO_TEAM_OUTCOME, DEMO_TEAM_REPORT } from "../../lib/e2e-journeys.ts";
 import { type Context, createSession, open, SESSION_WAIT, WAIT, waitFor } from "../journeys.ts";
 import { Given, Then, When } from "./fixtures.ts";
 
@@ -1283,3 +1284,38 @@ step(
     if (git("rev-parse", "--abbrev-ref", "HEAD").trim() !== "main") throw new Error("HEAD moved");
   },
 );
+
+// A team's outcome: the coordinator's report of the goal done, on top of the team's card (issue #1220).
+const teamRow = (c: Context) =>
+  c.page.getByRole("listitem", { name: c.t("teamsUi.row", { name: DEMO_ACTIVE_TEAM }) });
+
+step(Given, "I open the Teams page of host {string}", async (c) =>
+  open(c, { name: "teams", host: ALFA }),
+);
+
+/** The outcome box of the demo's active team, found by its title. */
+const outcomeBox = (c: Context) =>
+  teamRow(c).getByRole("region", { name: dictionary(c).teamsUi.outcome, exact: true });
+
+step(Then, "the active team shows the coordinator's outcome marked Done", async (c) => {
+  const box = outcomeBox(c);
+  await box.getByText(DEMO_TEAM_OUTCOME, { exact: true }).waitFor({ timeout: WAIT });
+  await box
+    .getByText(dictionary(c).teamsUi.outcomeDone, { exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(Then, "the outcome sits above the last report of each worker", async (c) => {
+  const above = await outcomeBox(c).boundingBox();
+  const report = await teamRow(c).getByText(DEMO_TEAM_REPORT).boundingBox();
+  if (!above || !report) throw new Error("the outcome or the worker's report is not on the page");
+  if (above.y + above.height > report.y) throw new Error("the outcome is not above the report");
+});
+
+step(Then, "the outcome can be reached with the keyboard", async (c) => {
+  await outcomeBox(c).focus();
+  await waitFor(
+    async () => outcomeBox(c).evaluate((node) => node === document.activeElement),
+    "the outcome box has the focus",
+  );
+});

@@ -33,6 +33,7 @@ import {
   DEMO_CLOSED_TEAM,
   DEMO_PR_CARD,
   DEMO_PR_URL,
+  DEMO_TEAM_OUTCOME,
   DEMO_TEAM_REPORT,
 } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
@@ -1051,6 +1052,10 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       INSTRUCTIONS_VERSION,
       new Date().toISOString(),
     );
+  // Issue #1220: the coordinator's report of the goal done, the outcome on top of the team's card.
+  teams
+    .query("UPDATE teams SET report_text = ?, report_at = ?, report_done = 1 WHERE id = ?")
+    .run(DEMO_TEAM_OUTCOME, new Date().toISOString(), activeTeam);
   // The reports: what the first worker told the coordinator, and the coordinator's answer.
   const reports: Array<[string, string, string]> = [
     [diffSession, longTitle.sessionId, DEMO_TEAM_REPORT],
