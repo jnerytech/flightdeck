@@ -1,5 +1,6 @@
 import type { Card, WorkflowInfo } from "@flightdeck/protocol";
 import { Fragment, type ReactNode, useState } from "react";
+import { startPersonaOf, startWorkflowOf } from "@/components/board/card-template-field";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
@@ -12,6 +13,7 @@ import { AlertPicker } from "@/components/workflows/alert-picker";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { useStoreSlice } from "@/lib/use-store";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { CardFinishDialog } from "./card-finish.tsx";
 
@@ -51,12 +53,26 @@ export function CardRunForm(
   const t = useT();
   const { store, hostId, card, features } = props;
   const cardId = card.id;
-  const [workflow, setWorkflow] = useState("");
+  /** Issue #1201: until a workflow is picked, the card's own (a template's) when the project has it. */
+  const [pickedWorkflow, setWorkflow] = useState<string | null>(null);
+  const workflow =
+    pickedWorkflow ??
+    startWorkflowOf(
+      card,
+      props.workflows.map((w) => w.name),
+    );
   const [inputs, setInputs] = useState<Record<string, string>>({});
   /** Phase 20: the persona the card starts in, a picker value; `null` until picked (the Developer shows). */
   const [picked, setPersona] = useState<string | null>(null);
   const suggested = useSuggestedPersona(store, hostId, "dev");
-  const persona = picked ?? suggested;
+  const hostPersonas = useStoreSlice(store, ["personas"]).personas[hostId];
+  const persona =
+    picked ??
+    startPersonaOf(
+      card,
+      (hostPersonas ?? []).map((p) => p.id),
+    ) ??
+    suggested;
   /** The project's contracts decide whether a card with no criteria is asked about (issue #78). */
   const contracts = projectContracts(store, hostId, card.projectId);
   const startAsk = useStartAsk();
