@@ -157,6 +157,19 @@ for (const [lang, t] of [
       expect(screen.queryByText(t.kanban.templateStarts.replace("{parts}", parts))).not.toBeNull();
     });
 
+    test("one pinned document is not 'documents'", async () => {
+      await show(OFFER({ templates: [{ ...BUG, pins: ["docs/adr/0001-style.md"] }] }), {
+        value: "bug",
+      });
+      await settle(() => select() !== null);
+      const help = document.querySelector("p[id$='-help']")?.textContent ?? "";
+      const one = lang === "en" ? "1 pinned document," : "1 documento fixado,";
+      expect([help.includes(one), /1 (pinned documents|documentos fixados)/.test(help)]).toEqual([
+        true,
+        false,
+      ]);
+    });
+
     test("a template that sets nothing says nothing, and no template picked says nothing", async () => {
       await show(OFFER(), { value: "plain" });
       await settle(() => select() !== null);
