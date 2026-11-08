@@ -454,6 +454,7 @@ export type HostCommandType = Extract<
   | `external.${string}`
   | "session.meta.set"
   | `workflow.${string}`
+  | "alert.list"
   | `run.${string}`
   | `gate.${string}`
   | `maintenance.${string}`

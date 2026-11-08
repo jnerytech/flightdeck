@@ -6,6 +6,7 @@ import { Panel } from "@/components/layout/panel";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
 import { AlertPicker } from "@/components/workflows/alert-picker";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
@@ -120,15 +121,27 @@ export function CardRunForm(
           {chosen?.inputs.map((name) => (
             <Fragment key={name}>
               <Field label={t("cardUi.input", { name })}>
-                {(control) => (
-                  <Input
-                    {...control}
-                    placeholder={name}
-                    className="w-48"
-                    value={inputs[name] ?? ""}
-                    onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
-                  />
-                )}
+                {(control) =>
+                  name === "alert" ? (
+                    // The alert is several lines (what, where, why): one line would glue them together.
+                    <Textarea
+                      {...control}
+                      placeholder={name}
+                      rows={4}
+                      className="w-80"
+                      value={inputs[name] ?? ""}
+                      onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+                    />
+                  ) : (
+                    <Input
+                      {...control}
+                      placeholder={name}
+                      className="w-48"
+                      value={inputs[name] ?? ""}
+                      onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+                    />
+                  )
+                }
               </Field>
               {name === "alert" && (
                 <AlertPicker
