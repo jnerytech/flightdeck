@@ -1506,14 +1506,26 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         .click();
       await goal.fill(`Objetivo e2e ${Date.now()}`);
       await inReach(c, `${c.t("teamsUi.create")} a ${size.width}x${size.height}`, create);
-      // Issue #1222: below 640 px the first worker's persona gets the row's whole width, where the
-      // fixed model and permission columns used to leave it a few dozen pixels.
-      if (size.width < 640) {
-        const row = c.page.locator('[data-slot="worker-row"]').first();
-        const persona = c.page.getByLabel(c.t("teamsUi.workerPersona", { n: 1 }), { exact: true });
-        const [rowBox, personaBox] = [await row.boundingBox(), await persona.boundingBox()];
-        expect(personaBox?.width ?? 0).toBeGreaterThanOrEqual((rowBox?.width ?? Infinity) - 1);
-      }
+      // Issue #1222: at every width the first worker's persona gets the row's whole width, and the
+      // model's label stays on one line, where a fixed 7 rem column wrapped it even at 1280.
+      const row = c.page.locator('[data-slot="worker-row"]').first();
+      const persona = c.page.getByLabel(c.t("teamsUi.workerPersona", { n: 1 }), { exact: true });
+      const model = row.getByText(c.t("teamsUi.workerModel", { n: 1 }), { exact: true });
+      const [rowBox, personaBox, modelBox] = [
+        await row.boundingBox(),
+        await persona.boundingBox(),
+        await model.boundingBox(),
+      ];
+      // A line-height of "normal" reads as NaN: about 1.2 times the font size then.
+      const lineHeight = await model.evaluate((el) => {
+        const style = getComputedStyle(el);
+        const set = Number.parseFloat(style.lineHeight);
+        return Number.isNaN(set) ? Number.parseFloat(style.fontSize) * 1.2 : set;
+      });
+      expect([
+        (personaBox?.width ?? 0) >= (rowBox?.width ?? Infinity) - 1,
+        (modelBox?.height ?? Infinity) < lineHeight * 1.5,
+      ]).toEqual([true, true]);
     }
   },
 
