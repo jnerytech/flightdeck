@@ -140,7 +140,8 @@ export async function commitHarness(
   const at = prefix.stdout.trim();
   // A file the person keeps out of git (local-only settings) is never committed for them.
   for (const [name] of files) {
-    if ((await git(path, ["check-ignore", "-q", "--", name])).code === 0) {
+    const ignored = (await git(path, ["check-ignore", "-q", "--", name])).code;
+    if (ignored === 0) {
       throw refuse(
         "harness_commit_ignored",
         `${name} is ignored by git here: it is not committed`,
@@ -148,6 +149,10 @@ export async function commitHarness(
           file: name,
         },
       );
+    }
+    // 1 is "not ignored"; anything else is git failing to say, which commits nothing.
+    if (ignored !== 1) {
+      throw new FlightdeckError("internal", "git check-ignore failed", "harness_commit_git");
     }
   }
   const author = await identity(path);
@@ -176,6 +181,7 @@ export async function commitHarness(
       author,
     );
     const ref = `refs/heads/${branch}`;
+    // git-arg: `ref` is the host's own branch name, through refArg; nothing of the app's goes in it.
     if ((await git(path, ["show-ref", "--verify", "-q", ref])).code === 0) {
       throw refuse("harness_commit_branch_taken", `the branch ${branch} is already there`, {
         branch,
