@@ -48,7 +48,7 @@ const reasonOf = async (call: () => Promise<unknown>) => {
 };
 
 /** A durable host whose run failed at b, then left as a resume waiting for its slot. */
-async function waitingAfterRestart(moveBranch: boolean) {
+async function waitingAfterRestart(moveBranch: boolean, noHead = false) {
   const { runner } = scripted();
   const made = await durableWorkflowCard(YAML, { checks: runner });
   const { host } = made;
@@ -63,7 +63,7 @@ async function waitingAfterRestart(moveBranch: boolean) {
     .query(
       "INSERT INTO run_resumes (run_id, n, from_step, reason, head, at) VALUES (?, 1, 'b', 'b broke', ?, ?)",
     )
-    .run(host.runId, head ?? null, new Date().toISOString());
+    .run(host.runId, noHead ? null : (head ?? null), new Date().toISOString());
   host.store.db
     .query(
       "UPDATE workflow_runs SET status = 'queued', ended_at = NULL, head_at_end = NULL WHERE id = ?",
@@ -115,5 +115,15 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
       kept === head,
       (await host.board.resumeRun(host.runId, false)).reason,
     ]).toEqual(["run_resume_branch_moved", true, "run_resume_branch_moved"]);
+  });
+
+  test("a queued resume with no recorded HEAD fails after a restart, and never runs", async () => {
+    const { runWhen } = await waitingAfterRestart(false, true);
+    const failed = await runWhen((run) => run.status === "failed");
+    // b, the step the resume would run, has no row: nothing ran.
+    expect([failed?.reasonKey, failed?.steps.map((step) => step.stepId)]).toEqual([
+      "run_resume_no_head",
+      ["a"],
+    ]);
   });
 });
