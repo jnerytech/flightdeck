@@ -112,6 +112,23 @@ describe("harness: a project's Claude Code setup as a checklist (#75)", () => {
     ]).toEqual([["format"], ["format"], ["format"], []]);
   });
 
+  test("a format check is not a formatter; go fmt and deno fmt are; black counts only as the command run (#927)", () => {
+    const hooks = (commands: string[]) =>
+      harnessParts({
+        ...EMPTY,
+        hooks: [{ event: "PostToolUse", file: ".claude/settings.json", commands }],
+      })[1]?.detail;
+    expect([
+      hooks(["bun run format:check"]),
+      hooks(["npm run format-check"]),
+      hooks(["go fmt ./..."]),
+      hooks(["deno fmt"]),
+      hooks(["black ."]),
+      hooks(["cd api && black ."]),
+      hooks(["echo black"]),
+    ]).toEqual([[], [], ["format"], ["format"], ["format"], ["format"], []]);
+  });
+
   test("permissions count what the project denies too, and a host older than deny rules counts none (#75)", () => {
     const denies = { ...EMPTY, denyRules: ["Read(./.env)", "Read(~/.ssh/**)"] };
     const allowsOnly = { ...EMPTY, allowRules: ["Read"], denyRules: [] };
