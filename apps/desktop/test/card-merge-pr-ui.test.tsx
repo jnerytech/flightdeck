@@ -8,6 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
 const { useState } = await import("react");
 const { AppStore } = await import("../src/lib/app-store.ts");
+const { TContext } = await import("../src/i18n/context.tsx");
 const { CardMergePr } = await import("../src/components/card/card-merge-pr.tsx");
 const { canMergeCardPr } = await import("../src/lib/card-merge-pr.ts");
 
@@ -43,16 +44,18 @@ function Harness(
 ) {
   const [open, setOpen] = useState(true);
   return (
-    <CardMergePr
-      store={props.store}
-      hostId="h1"
-      card={props.card}
-      open={open}
-      onOpenChange={(next) => {
-        props.onOpenChange(next);
-        setOpen(next);
-      }}
-    />
+    <TContext.Provider value={props.store.i18n.t}>
+      <CardMergePr
+        store={props.store}
+        hostId="h1"
+        card={props.card}
+        open={open}
+        onOpenChange={(next) => {
+          props.onOpenChange(next);
+          setOpen(next);
+        }}
+      />
+    </TContext.Provider>
   );
 }
 
