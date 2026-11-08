@@ -216,22 +216,32 @@ for (const [lang, t] of [
 // Issue #78, slice 3a: the validation note and the question before starting.
 describe("card-form (en): the validation note and starting a card with no criteria", () => {
   test("an empty validation note shows the template's shape, in each language, and saves nothing on its own (#78)", async () => {
-    const shapes: string[] = [];
-    for (const language of ["en", "pt-BR"] as const) {
+    const seen: unknown[] = [];
+    for (const [language, words] of [
+      ["en", en],
+      ["pt-BR", ptBR],
+    ] as const) {
       const { d, card } = await openCard(language);
-      const label = language === "en" ? "Validation note" : ptBR.cardUi.validation;
-      await settle(() => screen.queryByLabelText(label) !== null);
-      const field = screen.queryByLabelText(label) as HTMLTextAreaElement | null;
-      shapes.push(field?.placeholder ?? "");
-      // Only what the person writes is a note: the shape alone never meets the validation check.
-      expect(d.board.getCard(card.id).validationNote).toBeNull();
+      await settle(() => screen.queryByLabelText(words.cardUi.validation) !== null);
+      const field = screen.queryByLabelText(words.cardUi.validation) as HTMLTextAreaElement | null;
+      const save = screen.queryByRole("button", {
+        name: words.cardUi.saveValidation,
+      }) as HTMLButtonElement | null;
+      // The shape is only shown: the field is empty and there is nothing to save, so a template
+      // put in as the value (which would meet the validation check unedited) fails here.
+      seen.push([
+        language,
+        field?.placeholder === words.cardUi.validationShape,
+        field?.value,
+        save?.disabled,
+        d.board.getCard(card.id).validationNote,
+      ]);
       cleanup();
     }
-    expect([
-      shapes[0]?.includes("What was checked"),
-      shapes[0]?.includes("Result"),
-      shapes[1]?.includes("O que foi verificado"),
-    ]).toEqual([true, true, true]);
+    expect(seen).toEqual([
+      ["en", true, "", true, null],
+      ["pt-BR", true, "", true, null],
+    ]);
   });
 
   test("the validation note is a labelled field that saves on the card, and clears with empty text", async () => {
