@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe } from "./wait.ts";
+import { settleMaybe, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -217,9 +217,7 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
     const before = incident()?.value ?? "";
     await press("Start the post-mortem");
     await settleMaybe(() => sent.length === 1);
-    await act(async () => {
-      await Bun.sleep(50);
-    });
+    await stays(() => sent.length === 1);
     expect(sent.map(([type]) => type)).toEqual(["card.create"]);
     expect(dialog("Draft a post-mortem") !== null).toBe(true);
     expect(before.length > 0).toBe(true);
