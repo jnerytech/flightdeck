@@ -304,6 +304,18 @@ export class EventStore {
     return { type: "event", sessionId, seq, ts, event: parsed };
   }
 
+  /** The mode a session last reported with `session.mode` (#935), or null when it never did. */
+  lastMode(sessionId: string): PermissionMode | null {
+    const row = this.db
+      .query(
+        "SELECT payload FROM events WHERE session_id = ? AND type = 'session.mode' ORDER BY seq DESC LIMIT 1",
+      )
+      .get(sessionId) as { payload: string } | null;
+    return row
+      ? (JSON.parse(row.payload) as { permissionMode: PermissionMode }).permissionMode
+      : null;
+  }
+
   eventsSince(sessionId: string, sinceSeq = 0): EventEnvelope[] {
     const rows = this.db
       .query(
