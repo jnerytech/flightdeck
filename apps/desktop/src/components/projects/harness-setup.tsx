@@ -292,7 +292,7 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
       {/* Mounted before anything is said, so a screen reader reads what fills them, and live even
           though the outcome also takes the focus: a focus lost (a remount, a dialog handing it
           back) must not leave the outcome unsaid. Some readers may say it twice. */}
-      <div
+      <div // NOSONAR: holds flow content (paragraphs, a list or placeholders), which <output> may not
         role="status"
         ref={said}
         tabIndex={-1}

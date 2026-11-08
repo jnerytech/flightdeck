@@ -182,7 +182,9 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
                 {props.repoField(target, repo, setRepo)}
               </>
             )}
-            {phase.at === "preparing" && <p role="status">{t("teleportUi.preparing")}</p>}
+            {phase.at === "preparing" && (
+              <output className="block">{t("teleportUi.preparing")}</output>
+            )}
             <FormActions
               submit={t("teleportUi.next")}
               disabled={!target || !repo.trim()}
@@ -216,11 +218,11 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
         {phase.at === "moving" && (
           // Move stays where it was, busy: a double-click or Enter never lands on Cancel.
           <Form variant="dialog" onSubmit={() => {}}>
-            <p role="status">
+            <output className="block">
               {phase.finishing
                 ? t("teleportUi.finishing", { host })
                 : t("teleportUi.moving", { percent: phase.percent })}
-            </p>
+            </output>
             <FormActions
               submit={t("teleportUi.move")}
               busy
@@ -238,7 +240,7 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
               close();
             }}
           >
-            <p role="status">{t("teleportUi.done", { host })}</p>
+            <output className="block">{t("teleportUi.done", { host })}</output>
             <FormActions
               submit={t("teleportUi.open")}
               cancel={t("teleportUi.close")}

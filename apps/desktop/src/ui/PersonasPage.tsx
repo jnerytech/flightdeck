@@ -168,11 +168,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
           )}
         </Field>
       </div>
-      {message && (
-        <p role="status" className="text-sm">
-          {message}
-        </p>
-      )}
+      {message && <output className="block text-sm">{message}</output>}
       {personas.length === 0 ? (
         <EmptyState icon={Drama} title={t("personas.empty")} />
       ) : (

@@ -168,7 +168,11 @@ describe("knowledge-states-ui: the index switch says what happened (#1091)", () 
   test("the switch's words are a live region, so turning it on or off is announced", async () => {
     render(setup().view);
     await settleMaybe(() => inPanel().queryByText(switchedOn) !== null);
-    expect(inPanel().queryByText(switchedOn)?.getAttribute("role")).toBe("status");
+    expect(
+      inPanel()
+        .queryAllByRole("status")
+        .some((live) => live.textContent === switchedOn),
+    ).toBe(true);
   });
 
   test("a switch the host could not change is an alert", async () => {

@@ -285,12 +285,12 @@ export function ChangesPanel(
         </Button>
       </div>
       {undo && (
-        <div role="status" className="flex items-center gap-2 text-sm">
+        <output className="flex items-center gap-2 text-sm">
           <span>{t("changes.reverted", { path: undo.path })}</span>
           <Button variant="outline" size="sm" onClick={() => void undoRevert(undo.path)}>
             {t("changes.undo")}
           </Button>
-        </div>
+        </output>
       )}
       {changes.files.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("changes.empty")}</p>

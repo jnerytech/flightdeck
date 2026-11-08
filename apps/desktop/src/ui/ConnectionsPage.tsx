@@ -219,7 +219,10 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
         />
       )}
       {importMessage.length > 0 && (
-        <div role="status" className="text-sm">
+        <div // NOSONAR: holds flow content (paragraphs, a list or placeholders), which <output> may not
+          role="status"
+          className="text-sm"
+        >
           {importMessage.map((line) => (
             <p key={line}>{line}</p>
           ))}

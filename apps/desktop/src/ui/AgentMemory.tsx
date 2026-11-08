@@ -217,9 +217,7 @@ export function AgentMemory(
                   {t("memoryUi.save")}
                 </ActionButton>
                 {justSaved && !dirty && (
-                  <span role="status" className="text-muted-foreground text-sm">
-                    {t("memoryUi.saved")}
-                  </span>
+                  <output className="text-muted-foreground text-sm">{t("memoryUi.saved")}</output>
                 )}
               </FieldRow>
             </Stack>
