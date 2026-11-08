@@ -64,6 +64,8 @@ function setup(
     features?: string[];
     /** The answer to `workflow.template.add`; null is a refusal the store already showed. */
     added?: object | null;
+    /** Answers the next adds by hand: each call waits for its resolver. */
+    addBy?: Array<(answer: object | null) => void>;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -95,8 +97,11 @@ function setup(
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
     sent.push([hostId, type, payload]);
     if (type === "workflow.list") return { workflows: [] };
-    if (type === "workflow.template.add")
+    if (type === "workflow.template.add") {
+      const by = options.addBy;
+      if (by) return new Promise((resolve) => by.push(resolve));
       return options.added === undefined ? ADDED : options.added;
+    }
     if (type === "workflow.templates") {
       return options.templates
         ? options.templates()
@@ -390,8 +395,30 @@ describe("adding a template to the project from the app (issue #1221)", () => {
     const status = document.querySelector('[data-slot="add-status"]');
     expect(status?.getAttribute("role") ?? "").toBe("status");
     expect(status?.textContent ?? "").toContain(ADDED.branch);
+    expect(document.activeElement === button("View the pull request")).toBe(true);
     await press("View the pull request");
     expect(opened).toEqual([ADDED.url]);
+  });
+
+  test("the answer is described by the question, and keeps the focus while the host works", async () => {
+    const addBy: Array<(answer: object | null) => void> = [];
+    const { adds } = setup({ features: OFFERED, addBy });
+    await open("Add from a template", "Show Alert fixer");
+    await press("Add to the project");
+    const go = button("Open the pull request");
+    const described = document.getElementById(go?.getAttribute("aria-describedby") ?? "");
+    expect(described?.textContent ?? "").toContain(".flightdeck/workflows/alert-fixer.yaml");
+    await press("Open the pull request");
+    const busy = button("Opening the pull request…");
+    expect([busy?.getAttribute("aria-disabled") ?? "", document.activeElement === busy]).toEqual([
+      "true",
+      true,
+    ]);
+    await press("Opening the pull request…");
+    expect(adds()).toHaveLength(1);
+    await act(async () => addBy[0]?.(ADDED));
+    await settleMaybe(() => button("View the pull request") !== null);
+    expect(button("View the pull request")).not.toBeNull();
   });
 
   test("Cancel sends nothing and gives the focus back to Add to the project", async () => {
