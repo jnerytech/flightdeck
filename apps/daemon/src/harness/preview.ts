@@ -119,7 +119,7 @@ export function layoutLike(text: string | null, value: unknown): string {
   // Windows line endings stay Windows line endings (JSON.stringify escapes any newline in a value).
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const newline = text.endsWith("\n") ? eol : "";
-  return `${bom}${JSON.stringify(value, null, indent).replace(/\n/g, eol)}${newline}`;
+  return `${bom}${JSON.stringify(value, null, indent).replaceAll("\n", eol)}${newline}`;
 }
 
 /** The commands of the hooks already on an event, whatever else their entries hold. */
