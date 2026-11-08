@@ -1517,6 +1517,10 @@ export const ptBR = {
     project_no_issues:
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
     card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",
+    findings_missing:
+      "A resposta da etapa {step} não traz uma lista de achados, então nenhum card foi criado.",
+    findings_invalid:
+      "A resposta da etapa {step} não é uma lista de achados válida ({where}), então nenhum card foi criado.",
     spec_path_invalid:
       "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",

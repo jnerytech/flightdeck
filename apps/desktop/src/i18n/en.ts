@@ -1523,6 +1523,9 @@ export const en: Dictionary = {
     messaging_policy_invalid: "The messaging rules are not valid: {errors}",
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
     card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
+    findings_missing: "The reply of step {step} has no list of findings, so no card was created.",
+    findings_invalid:
+      "The reply of step {step} is not a valid list of findings ({where}), so no card was created.",
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
