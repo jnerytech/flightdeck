@@ -1637,9 +1637,44 @@ export class AppStore {
     if (decision.sound && prefs.sound.mode !== "off") this.soundPlayer();
   }
 
+  /** The requests waiting now, and every one this run has seen waiting (`host/request`). */
+  private waiting = new Set<string>();
+  private everWaiting = new Set<string>();
+
+  /** Remembers what waits, so a request that stops waiting is known to have been answered. */
+  private rememberWaiting(): void {
+    const now = new Set(needsYou(this.state).map((i) => `${i.hostId}/${i.requestId}`));
+    let changed = now.size !== this.waiting.size;
+    for (const key of now) {
+      this.everWaiting.add(key);
+      if (!this.waiting.has(key)) changed = true;
+    }
+    this.waiting = now;
+    // The bell hides an answered request, so its count and the taskbar badge change with it.
+    if (changed) this.syncBadge();
+  }
+
+  /**
+   * Whether a request this run saw waiting is answered: it no longer waits and its host is up to say
+   * so. One never seen waiting (answered while the app was closed) is not claimed to be answered.
+   */
+  requestAnswered(hostId: string, requestId: string): boolean {
+    const key = `${hostId}/${requestId}`;
+    if (!this.everWaiting.has(key) || this.waiting.has(key)) return false;
+    return this.state.hosts.find((h) => h.id === hostId)?.status === "online";
+  }
+
+  /** The bell's entries: a request answered since it was sent is not among them. */
+  visibleInbox(): InboxEntry[] {
+    return this.state.inbox.filter((entry) => {
+      const request = entry.link ? parseRequestLink(entry.link) : null;
+      return !(request && this.requestAnswered(request.hostId, request.requestId));
+    });
+  }
+
   /** The bell's unread count as a taskbar badge, told only when it changes. */
   private syncBadge(): void {
-    const count = unreadRows(this.state.inbox, new Date(this.now()));
+    const count = unreadRows(this.visibleInbox(), new Date(this.now()));
     if (count === this.badgeShown) return;
     this.badgeShown = count;
     // A taskbar that cannot show it is not worth a toast: the bell has the same count.
@@ -5018,6 +5053,7 @@ export class AppStore {
 
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
+    if (patch.hosts || patch.externalRequests) this.rememberWaiting();
     if (patch.secrets) void this.rememberVaultValues();
     if (patch.hosts || patch.uiChoices) this.syncTray();
     if (

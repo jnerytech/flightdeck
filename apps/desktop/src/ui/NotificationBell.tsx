@@ -10,6 +10,7 @@ import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import type { T } from "../i18n/index.ts";
 import { type AppStore, needsYou, sessionKey } from "../lib/app-store.ts";
 import {
+  describeRequest,
   type InboxEntry,
   type InboxRow,
   inboxTarget,
@@ -44,13 +45,11 @@ export function NotificationBell(
           null)
       : null;
   };
-  /** A request answered elsewhere leaves the bell, once its host is up to say it no longer waits. */
-  const answered = (entry: InboxEntry) => {
+  /** A request answered since it was sent leaves the bell (the store says which). */
+  const inbox = props.inbox.filter((entry) => {
     const request = entry.link ? parseRequestLink(entry.link) : null;
-    if (!request || itemOf(entry)) return false;
-    return state.hosts.find((h) => h.id === request.hostId)?.status === "online";
-  };
-  const inbox = props.inbox.filter((entry) => !answered(entry));
+    return !(request && store.requestAnswered(request.hostId, request.requestId));
+  });
   const unread = unreadRows(inbox, new Date());
   const cardExists = (r: Extract<Route, { name: "card" }>) =>
     sessionKey(r.host, r.cardId) in state.cards;
@@ -74,6 +73,7 @@ export function NotificationBell(
     const item = itemOf(entry);
     if (!item || item.gate || item.vault || ASKED_IN_FULL.has(item.toolName)) return null;
     return {
+      says: `${item.hostName} · ${describeRequest(item.toolName, item.input, t)}`,
       risk: item.risk,
       ...(item.riskReason ? { reason: item.riskReason } : {}),
       pending: answering.has(`${item.hostId}/${item.requestId}`),
