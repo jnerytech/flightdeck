@@ -122,6 +122,14 @@ describe("session-commit: a plain session's files committed on a new branch (#11
     });
   });
 
+  test("a session started when its first record says: managed, opened in a terminal, or in the history", () => {
+    const { changes } = setup();
+    expect([changes.startedAt("s-1"), changes.startedAt("nobody")]).toEqual([
+      Date.parse("2026-10-01T00:00:00.000Z"),
+      null,
+    ]);
+  });
+
   test("the chosen files are committed on a new branch, the rest stay as they were", async () => {
     const { repo, changes, commits } = setup();
     writeFileSync(join(repo, "a.txt"), "one, changed\n");
