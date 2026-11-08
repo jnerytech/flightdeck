@@ -42,7 +42,7 @@ function promptsOf(body: string): { en: string; "pt-BR": string } {
     .slice(1)
     .reduce<string[][]>((pairs, piece, index) => {
       if (index % 2 === 0) pairs.push([piece]);
-      else pairs[pairs.length - 1]?.push(piece);
+      else pairs.at(-1)?.push(piece);
       return pairs;
     }, [])) {
     sections[part[0] as string] = (part[1] ?? "").trim();

@@ -17,7 +17,7 @@ function useOnScreen<T extends Element>(active: boolean) {
     const el = ref.current;
     if (!active || !el || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver((entries) => {
-      const last = entries[entries.length - 1];
+      const last = entries.at(-1);
       if (last) setVisible(last.isIntersecting);
     });
     observer.observe(el);
