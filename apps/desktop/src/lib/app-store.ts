@@ -181,7 +181,7 @@ import {
   type SessionState,
 } from "./session-state.ts";
 import { SessionViews } from "./session-views.ts";
-import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
+import { probeAfter, type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { ShellPrefs } from "./shell-prefs.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { SidebarFoldController } from "./sidebar-fold.ts";
@@ -2626,21 +2626,12 @@ export class AppStore {
     ]);
     // The host may have gone while it was asked.
     if (!this.state.hosts.some((h) => h.id === hostId)) return;
-    const before = this.state.setupProbes[hostId];
-    let githubKnown = before?.github ?? null;
-    if (wantsGithub)
-      githubKnown = github?.ok ? github.data.installed && github.data.loggedIn : null;
-    const projectList = wantsProjects && projects?.ok ? projects.data.projects : before?.projects;
     // At connect the probe's list is also the screens' (the sidebar tree needs it on any page, #721):
     // one request, not two.
     if (options.connect === true && wantsProjects && projects?.ok) {
       this.rememberProjects(hostId, projects.data.projects);
     }
-    const probe: SetupProbe = {
-      hooks: hooks?.ok ? hooks.data.status : null,
-      github: githubKnown,
-      ...(projectList ? { projects: projectList } : {}),
-    };
+    const probe = probeAfter(this.state.setupProbes[hostId], wants, { hooks, github, projects });
     this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
   }
 
@@ -3463,11 +3454,22 @@ export class AppStore {
       this.update({ unread: { ...this.state.unread, [key]: true } });
     }
     this.webhookFeed.managed({ id: hostId, name: host.name }, prev, next);
-    const label = `${host.name} · ${next.name ?? basename(next.cwd)}`;
+    this.tellAboutSummary(hostId, host.name, prev, next);
+  }
+
+  /** What a changed summary tells the person: the notifications it raises, or folds into its team's. */
+  private tellAboutSummary(
+    hostId: string,
+    hostName: string,
+    prev: SidebarSession | undefined,
+    next: SidebarSession,
+  ): void {
+    const key = sessionKey(hostId, next.id);
+    const label = `${hostName} · ${next.name ?? basename(next.cwd)}`;
     const linkFor = (requestId: string) => requestLink(hostId, requestId);
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
-    const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
+    const names = { subject: next.name ?? basename(next.cwd), host: hostName, group: key };
     const project = this.sessionProject(hostId, next.cwd);
     const team = this.teamOf.get(key);
     const simple = this.uiMode(hostId).mode === "simple";

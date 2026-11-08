@@ -13,7 +13,7 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
    do commit de teste.
 3. **Rode só o arquivo:** `bun --config=bunfig.area.toml test <arquivo>`. O `bunfig.area.toml` é o
    mesmo bunfig sem o limite global de cobertura; `bun test <arquivo>` puro sai com 1 mesmo com
-   tudo passando, porque um arquivo sozinho não cobre 100% dos módulos que toca.
+   tudo passando, porque um arquivo sozinho não cobre 80% dos módulos que toca.
 4. **O vermelho precisa ser de asserção** (`expect(...)`), não de import, sintaxe, tipo, timeout
    de helper ou elemento ausente. Se a rodada falhar por erro, ajuste o teste e rode de novo. A
    evidência que conta é a rodada vermelha por asserção imediatamente antes do commit de teste.
@@ -49,7 +49,7 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
 5. **Commit só do teste**, com caminhos explícitos (`git add <arquivo>`, nunca `git add -A`), e
    confira `git status --short` antes: `test(<área>): <comportamento>`.
 6. **Implementação mínima**, mesmo comando verde, depois a suíte inteira
-   (`bun run slot -- bun run test`, que inclui o limite de 100% e o verificador de arquivos-fonte),
+   (`bun run slot -- bun run test`, que inclui o limite de 80% por arquivo e o verificador de arquivos-fonte),
    ou `bun run test:related -- --fast` numa sessão (a suíte inteira roda no CI), `bun run typecheck` e
    `bun run lint`, encadeados (`&&` ou `set -o pipefail`) para o commit não acontecer depois de
    uma falha. Commit `feat(<área>): ...`.
@@ -64,8 +64,15 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     controlada com código 1, não crash) e é commitado num `test(<área>)`.
 11. **Proibido:** implementação antes do teste, enfraquecer ou apagar asserção para passar,
     `.only`, `.skip` ou `test.todo` em código commitado.
-    **The one exception: an unstable test may be skipped** (issue #288 off Ubuntu, 2026-11-05;
-    #494 on any platform, 2026-11-06: "testes intermitentes que prejudicam o CI pode dar skip").
+    **A flaky test is deleted, never skipped** (#1003, 2026-11-08, the person: "excluir testes
+    intermitentes / lentos demais"). When it is the only check of a business flow, it is replaced
+    by a fast deterministic test. The skip rules below (#288, #494) describe the `// unstable:`
+    skips still in the repository; #1003 removes them, and no new one is added.
+    **Too slow on CI** (#1003): a test over 5 s, a test file over 60 s, or an e2e journey over
+    90 s. Make it faster, or delete it when a faster test already checks the same thing.
+    **What to test** (#1002, the person's decision, 2026-11-08): business logic and the important
+    flows. The coverage gate is 80% of each file's lines and functions; a test written only to
+    reach a line is not needed.
     A test that bets on the machine (wall-clock polls, a timer against a limit, a child process on
     a loaded Windows runner) is written `test.skipIf(notLinux)(…)` (`notLinux` is in
     `scripts/test/not-linux.ts`; `process.platform !== "linux"` also counts) with
@@ -119,11 +126,11 @@ many commits were waived.
 que mudou desde o merge-base com `main` (os arquivos de teste alterados e os que importam, direta ou
 indiretamente, um arquivo alterado), e imprime cada um com o motivo. **`--fast`** (the hand-off
 default, #219) keeps only the tests that import a changed file directly, plus the changed tests
-and the tests that name a changed path, and still demands 100% coverage of the changed source
+and the tests that name a changed path, and still demands 80% coverage (#1002) of the changed source
 files. On a hub file the set shrinks a lot (`packages/protocol/src/index.ts`: 688 tests
 transitively, 141 directly; `apps/desktop/src/i18n/en.ts`: 359 and 19). The transitive set runs
 in CI on the pushed branch. A suíte completa
-(`bun run slot -- bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador
+(`bun run slot -- bun run test`, com o limiar de 80%) roda na barreira de versão do orquestrador
 e no CI. A worker session never runs the full form itself (#674): the guard hook refuses a plain,
 `--base` or `--pr` `test:related`, which holds the slot 12 to 25 minutes for what the PR's CI runs
 anyway, and names the allowed forms (`--fast --tier unit,component`, the touched test files with
@@ -319,7 +326,7 @@ em vez de depender de cuidado.
   or one by hand), and pushes the tag alone as `refs/tags/vX`.
 - The full run's Linux suite runs in 3 shards, each twice: Bun's coverage gives the lines (and
   SonarCloud's lcov), istanbul gives the functions (#296). `scripts/shard-gate.ts` merges the six
-  into the 100% gate and fails closed: a missing or failed shard is a red gate, never 100%.
+  into the 80% gate and fails closed: a missing or failed shard is a red gate, never a pass.
 
 ## Evidência para o /goal
 

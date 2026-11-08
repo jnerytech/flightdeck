@@ -47,3 +47,17 @@ console's code page reaches claude changed. The person has not sent the data pat
   path from the data folder and would have the same problem behind a shim; they are not moved here.
 - Cause 3 in the issue (a policy that hides servers from `--mcp-config`) is not something a path
   can fix. The person's data path and `where claude` still decide whether this was the cause.
+
+## The other files claude is given by path
+
+The same cmd.exe re-parse hits every file Flightdeck names on claude's command line, not only
+`--mcp-config`: `--append-system-prompt-file` (the persona body and the library's index, one file)
+and `--agents` in print mode (the subagents' JSON). They come out of the data folder's `personas`
+folder, so a non-plain data path breaks them the same way. They now go through the same rule and
+the same folder: one private folder per launch holds the channel config, the persona/index file and
+the subagents file, made when the first of them is written, restricted once, and taken away with
+them. They are created with `wx` there too. Where the plain folder cannot be had, these files stay
+in the data folder as before (a persona or an index that claude cannot read is not worse than
+before), while the channel stays off as above. A file is noted before it is written, so a
+half-written one is taken away with the rest, and a file that cannot be taken away never fails the
+launch. The interactive `--agents` is inline JSON, not a path, and is unchanged.

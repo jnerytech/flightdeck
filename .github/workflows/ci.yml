@@ -189,7 +189,7 @@ jobs:
 
       # Typecheck, lint and the TDD audit ran in the quick job (#272).
       # The test pyramid (#309): a PR runs every unit and component test plus the tests of the other
-      # tiers that reach a changed file, and every changed source file must be at 100% lines and
+      # tiers that reach a changed file, and every changed source file must be at the 80% gate of lines and
       # functions from them. The coverage report stays in coverage/ for SonarCloud.
       # A push to main does the same from the commit it came after (#444).
       - name: Testes da seleção (pirâmide)
@@ -198,7 +198,7 @@ jobs:
           BASE: ${{ needs.quick.outputs.base }}
         run: bun run test:related -- --pr --base "$BASE" --keep-coverage coverage
 
-      # The schedule (every 3 hours) and a dispatch: the whole suite and the whole-repo 100% gate,
+      # The schedule (every 3 hours) and a dispatch: the whole suite and the whole-repo 80% gate,
       # merged from the shard jobs (#296). A missing report reaches the merge, which names it.
       - name: Relatórios dos shards
         if: needs.quick.outputs.base == ''
@@ -208,7 +208,7 @@ jobs:
           pattern: shard-*
           path: ${{ runner.temp }}/shards
 
-      - name: Testes (cobertura 100%, 3 shards)
+      - name: Testes (cobertura 80%, 3 shards)
         if: needs.quick.outputs.base == ''
         run: bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info
 
@@ -428,7 +428,7 @@ jobs:
           fi
 
   # The base of the test pyramid holds (#309): every source fast-coverage-baseline.json lists stays
-  # at 100% from the unit and component tiers alone. On PRs too (#358): a drop fails the PR through
+  # at the 80% gate from the unit and component tiers alone. On PRs too (#358): a drop fails the PR through
   # the required test (ubuntu-latest) check, instead of turning main red after the merge.
   fast-coverage:
     name: fast coverage (ubuntu-latest)
@@ -459,7 +459,7 @@ jobs:
         run: bun run fast-coverage
 
   # Windows, the slowest leg (#220: 33 minutes, 25 of them tests), runs the suite in three shards
-  # with no coverage: the 100% gate is Linux's. Since #534 it runs only in the schedule's and a
+  # with no coverage: the coverage gate is Linux's. Since #534 it runs only in the schedule's and a
   # run by hand's full runs, as a signal: a PR and a push to main plan no Windows, and a red
   # Windows job (continue-on-error) leaves the run green, so nothing that gates waits for it.
   test-windows-shard:
@@ -511,7 +511,7 @@ jobs:
       # refreshes the timing file from the reports of the three shards.
       # On a PR, the selection the Linux suite runs (#309, #399): every unit and component test plus
       # the integration and e2e tests related to the changed files, or the whole suite when a file
-      # every test reads changed. No coverage gate on Windows: Linux holds the 100% gate.
+      # every test reads changed. No coverage gate on Windows: Linux holds the coverage gate.
       - name: Testes da seleção (shard ${{ matrix.shard }}/${{ strategy.job-total }}, test:related)
         if: needs.quick.outputs.base != ''
         env:
