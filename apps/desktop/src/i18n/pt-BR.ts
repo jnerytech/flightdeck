@@ -2633,7 +2633,9 @@ export const ptBR = {
     sessionLast: "última em {when}",
     sessionSpan: "de {from} a {to}",
     sessionFiles: "Arquivos que a sessão escreveu",
-    sessionFilesNone: "A sessão ainda não escreveu arquivos.",
+    sessionFilesTitle: "Arquivos que a sessão editou direto (Write, Edit)",
+    sessionFilesNone:
+      "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
     bashNote: "Mudanças feitas pelo Bash não entram.",
   },
   cardReview: {
