@@ -5,6 +5,7 @@
  */
 import { join, resolve } from "node:path";
 import { isInside } from "../paths.ts";
+import { trimEndOf, trimStartOf } from "../trim.ts";
 import { credential } from "./sensitive-paths.ts";
 
 export { credential };
@@ -116,12 +117,7 @@ function segments(command: string): string[][] {
 
 /** A word as a program name: no quotes, no folder, no `\` alias escape, no `.exe`, lowercase. */
 const program = (word: string) =>
-  (
-    word
-      .replace(/^["'\\]+|["']+$/g, "")
-      .split(/[\\/]/)
-      .at(-1) as string
-  )
+  (trimEndOf(trimStartOf(word, `"'\\`), `"'`).split(/[\\/]/).at(-1) as string)
     .toLowerCase()
     .replace(/\.exe$/, "");
 

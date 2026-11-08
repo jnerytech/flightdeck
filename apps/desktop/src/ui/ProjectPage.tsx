@@ -143,6 +143,7 @@ export function ProjectPage(
             hasFeature(host?.hostInfo?.features, "harnessPreview", false) &&
             hasFeature(host?.hostInfo?.features, "harnessApply", false)
           }
+          canCommit={hasFeature(host?.hostInfo?.features, "harnessCommit", false)}
         />
       )}
       {hasFeature(host?.hostInfo?.features, "knowledge", false) && (
@@ -152,6 +153,7 @@ export function ProjectPage(
           path={project.path}
           feed={hasFeature(host?.hostInfo?.features, "knowledgeFeed", false)}
           status={hasFeature(host?.hostInfo?.features, "knowledgeStatus", false)}
+          create={hasFeature(host?.hostInfo?.features, "knowledgeCreate", false)}
           projectId={project.id}
           onOpenCard={(cardId) =>
             props.go({ name: "card", host: hostId, projectId: project.id, cardId })

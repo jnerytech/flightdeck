@@ -14,12 +14,15 @@ import {
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
   type HarnessApplied,
+  type HarnessCommitted,
+  type HarnessDraft,
   type HarnessPreview,
   type HarnessStack,
   type HostRuntime,
   type KeepAwakeStatus,
   type KnowledgeEntry,
   type KnowledgeIndexResult,
+  type KnowledgeKind,
   type KnowledgeListResult,
   type KnowledgeStatus,
   MIN_PROTOCOL_VERSION,
@@ -197,6 +200,13 @@ export interface ServerOptions {
     status: KnowledgeStatus,
     expectedHash: string,
   ) => Promise<KnowledgeEntry>;
+  /** #1039: a new library document from a template, in the project's folder for its kind. */
+  knowledgeCreate?: (
+    path: string,
+    kind: KnowledgeKind,
+    title: string,
+    body?: string,
+  ) => Promise<KnowledgeEntry>;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
   /** #75: writes what the preview proposed, when `digests` still match the proposals. */
@@ -206,6 +216,13 @@ export interface ServerOptions {
     digests: Readonly<Record<string, string>>,
     options: { reformat: boolean },
   ) => Promise<HarnessApplied>;
+  /** #75, slice G1: drafts a CLAUDE.md with the host's model and holds it by its digest. */
+  harnessDraft?: (path: string) => Promise<HarnessDraft>;
+  /** #75, slice C1: commits what apply wrote (by its digests) on a new branch. */
+  harnessCommit?: (
+    path: string,
+    digests: Readonly<Record<string, string>>,
+  ) => Promise<HarnessCommitted>;
   projectTrust?: {
     /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
     refresh(): Promise<void>;
@@ -442,8 +459,11 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.knowledge, "knowledge"),
     ...when(opts.knowledgeFeedSwitch, "knowledgeFeed"),
     ...when(opts.knowledgeStatus, "knowledgeStatus"),
+    ...when(opts.knowledgeCreate, "knowledgeCreate"),
     ...when(opts.harnessPreview, "harnessPreview"),
     ...when(opts.harnessApply, "harnessApply"),
+    ...when(opts.harnessCommit, "harnessCommit"),
+    ...when(opts.harnessDraft, "harnessDraft"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
@@ -1177,6 +1197,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         const path = await resolveAllowedCwd(asked, opts.allowedRoots);
         return ok(command.type, await opts.knowledgeStatus(path, file, status, expectedHash));
       }
+      case "knowledge.create": {
+        if (!opts.knowledgeCreate) throw featureOff("knowledgeCreate");
+        const { path: asked, kind, title, body } = command.payload;
+        const path = await resolveAllowedCwd(asked, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeCreate(path, kind, title, body));
+      }
       case "knowledge.feed": {
         if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
@@ -1196,6 +1222,27 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.harnessPreview) throw featureOff("harnessPreview");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.harnessPreview(path, command.payload.parts));
+      }
+      case "project.harness.draft": {
+        if (!opts.harnessDraft) throw featureOff("harnessDraft");
+        // A model call on the plan, whose text a later apply may write: a near connection only.
+        requireVaultTransport(ws.data.origin, "project.harness.draft", opts.log);
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.harnessDraft(path));
+      }
+      case "project.harness.commit": {
+        if (!opts.harnessCommit) throw featureOff("harnessCommit");
+        // A branch made in the person's repository, one push from public: near only, and confirmed.
+        requireVaultTransport(ws.data.origin, "project.harness.commit", opts.log);
+        if (command.payload.confirm !== true) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "committing the Claude Code setup needs confirm: true",
+            "harness_confirm",
+          );
+        }
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.harnessCommit(path, command.payload.digests));
       }
       case "project.harness.apply": {
         if (!opts.harnessApply) throw featureOff("harnessApply");

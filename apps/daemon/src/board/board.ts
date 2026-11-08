@@ -62,7 +62,16 @@ import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./p
 import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
-import { hasTddSkill, renderSpec, specFirstLine, wantsSpec, writeSpec } from "./spec-template.ts";
+import {
+  hasTddSkill,
+  projectTemplate,
+  renderSpec,
+  specFirstLine,
+  type TemplateIgnored,
+  untrustedTemplate,
+  wantsSpec,
+  writeSpec,
+} from "./spec-template.ts";
 import type {
   BoardColumn,
   Card,
@@ -139,6 +148,14 @@ export interface BoardOptions {
   projectKeys?: { known(path: string): string; resolve?(path: string): Promise<string> };
   /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
   worktreeIncludeLimit?: number;
+  /**
+   * Issue #78: the folder a card's spec template may be read from (the trusted checkout of the
+   * worktree's project), or null when the project is not trusted: its template would reach the
+   * agent before the person trusted it.
+   */
+  specTemplateRoot?: (worktree: string) => Promise<string | null>;
+  /** Lines for the daemon's log (no card content goes there). */
+  log?: (line: string) => void;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
   idle?: () => Promise<void>;
   /** Issue #79: keeps automatic approval off a card made from an agent's findings. */
@@ -340,7 +357,7 @@ function skippedNotice(left: number, limit: number): string {
     left === 1
       ? "1 arquivo do .worktreeinclude não copiado"
       : left + " arquivos do .worktreeinclude não copiados";
-  return files + ": passou do limite de " + Math.round((limit / 1024 / 1024) * 100) / 100 + " MB";
+  return `${files}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
 }
 
 /** The reason and params of a refusal; `null` for any other error. */
@@ -471,7 +488,7 @@ export class Board {
   getProject(id: string): Project {
     const row = this.db.query<ProjectRow, [string]>("SELECT * FROM projects WHERE id = ?").get(id);
     if (!row)
-      throw new FlightdeckError("not_found", `projeto ${id} não existe`, "project_not_found", {
+      throw new FlightdeckError("not_found", `project ${id} does not exist`, "project_not_found", {
         id,
       });
     return toProject(row);
@@ -1601,7 +1618,26 @@ export class Board {
     const card = this.getCard(id);
     const path = specExpectedPath(card);
     if (path === null || !wantsSpec(contracts, card.specPath)) return null;
-    const result = await writeSpec(worktree, path, renderSpec(card));
+    // A trusted project's own template, from its trusted checkout; anything else gets the built-in.
+    let checked = true;
+    const root = this.opts.specTemplateRoot
+      ? await this.opts.specTemplateRoot(worktree).catch((error: unknown) => {
+          // The built-in template then, but a trust bug must not go unseen. Trust is unknown, so
+          // the card says nothing about a template.
+          checked = false;
+          this.opts.log?.(
+            `spec template: trust check failed for ${worktree}, built-in template used: ${String(error)}`,
+          );
+          return null;
+        })
+      : null;
+    const template = root ? await projectTemplate(root) : null;
+    const ignored: TemplateIgnored | null = root
+      ? (template?.ignored ?? null)
+      : checked && (await untrustedTemplate(worktree))
+        ? "untrusted"
+        : null;
+    const result = await writeSpec(worktree, path, renderSpec(card, template?.body ?? undefined));
     if (result === "failed") {
       // The app says it in its language; the prompt sends the agent to no spec that is not there.
       const why = new FlightdeckError(
@@ -1613,6 +1649,16 @@ export class Board {
       this.setNotice(id, why.message, why);
       this.changed(id);
       return null;
+    }
+    if (ignored && result === "written") {
+      // The built-in template was used; the project's own is named by its reason, never quoted.
+      const why = new FlightdeckError(
+        "invalid_state",
+        `the project's spec template was not used (${ignored})`,
+        `spec_template_${ignored}`,
+      );
+      this.setNotice(id, why.message, why);
+      this.changed(id);
     }
     return specFirstLine(path, await hasTddSkill(worktree));
   }

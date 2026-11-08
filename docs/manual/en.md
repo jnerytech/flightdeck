@@ -372,6 +372,15 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   its front matter is not clear enough to edit safely, or when the file is over 1 MB or not text.
   Only the documents the list shows can be changed; a link, a credential name or a file outside
   the library folders cannot.
+  **New document** starts a document from a template: pick a kind (ADR, RFC or PRD), type a title
+  and press **Create from template**. The file goes in `docs/adr`, `docs/rfc` or `docs/prd` of the
+  project (an ADR or RFC is numbered, `0004-<title>.md`; a PRD is `<title>.md`), as a draft with
+  `status: transitional`, and is left uncommitted. It never replaces a file that is there, and it
+  is refused when `docs/<kind>` is a link or lies outside the project.
+  **Draft ADR**, in a session's summary, starts a decision record from what the session did: the
+  summary is the first text, the assistant's wand can write an ADR (Context, Decision,
+  Consequences) from it, you edit it and give it a title, and **Save as ADR** writes it to
+  `docs/adr` of the project as a draft, uncommitted, the same way as above.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
@@ -961,6 +970,10 @@ live; the list is the project's, so a session of another project never shows her
   The project's name folds its branches (the arrow keys left and right fold and unfold it); the fold
   is remembered on this computer, and a folded project that holds the picked branch shows a check
   on its name.
+  In the narrow icon rail, which has no room for the tree, the **Projects** icon opens it in a panel
+  beside the rail (the same tree, with **All projects (N)** always at its end): picking a branch or
+  that link closes the panel, Esc or pressing the icon again closes it too, and the focus goes back
+  to the icon. With no project to list, the icon opens the Projects page as before.
   The tree lists at most 5 projects: the ones you **pinned** (the pin on a project's row), then the
   most recently active, and always the project of the picked branch. Below them, **All projects (N)**
   opens the Projects page. With more than 5 projects a **Filter projects** field narrows the list by
@@ -1096,7 +1109,13 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   says what the host found ("Spec found: <first heading>" or "No spec file at <path>") and **Check
   again** looks once more; a move to a column that asks for it looks at the file first. The host
   checks only that the file is there (a plain, non-empty file, not a link, inside the worktree) and
-  reads its first heading: it never reads or sends the rest.
+  reads its first heading: it never reads or sends the rest. When a card starts for the first time
+  and its project asks for a spec, the host writes one from a template, as a draft
+  (`draft: true`, which keeps the spec check unmet until it is completed). A trusted project can
+  supply its own template as `.flightdeck/templates/spec.md` in its checkout (`{{title}}` and
+  `{{criteria}}` are filled in); when a template is there but cannot be used, the built-in one is
+  written and the card says why: the project is not trusted, the file is a link or has a second
+  name, is over 32 KiB, or is empty. The notice never quotes the template.
 - **Pinned documents** (#76). On a host with a project library, the card page has a **Pinned
   documents** panel: choose a document of the library (ADRs, RFCs, PRDs, specs) to pin it, up to
   10, and **Unpin** takes one off. When the card starts, its first prompt lists each pinned document
@@ -1110,8 +1129,10 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   host cannot discard a card, the notice says it may be partly cleaned up. Cards that never started are deleted; started ones are discarded.
   Cancelling leaves everything as it was.
 - **Column width.** The handle at the right edge of a column (drag it, or Tab to it and press the
-  arrows, 20 px a step, or Home and End; only the last column's handle takes a Tab stop) sets one width for all the columns, between 220 and 520 px (260 by
-  default), and it is kept on this computer. The board scrolls inside itself, never the page.
+  arrows, 20 px a step, or Home and End; only the last column's handle takes a Tab stop) sets one width for all the columns, between 180 and 520 px, and it is kept on this computer.
+  Until you set one, the five columns share the width of the window (at 1280 px each is about 187 px,
+  and wider windows make them wider), so none is cut at the right edge. When the window is too narrow
+  for that, or once you set a width, the board scrolls inside itself, never the page.
 - **Counts.** Each column shows how many cards it has; with a filter on it reads `n / total`, and a
   column the filter emptied says "No matches" instead of offering a new card.
 - **New card in a column.** The **New card** button at the bottom of a column creates the card
@@ -2850,7 +2871,8 @@ gains a **project table**, a **people table** and a settings block. It answers o
 for what it cost?* Every figure is correlated and estimated: hours and rates are typed, not measured, and a card done is
 not a verified result. The screens never call it profit or savings.
 
-- **The card.** Choose 7 days, 30 days or this month. The first line says how many items were delivered (cards done,
+- **The card.** It starts folded to one row (the title, the first line below, and **Details**), so the board
+  begins right under it; **Details** opens it and the choice is kept. Choose 7 days, 30 days or this month. The first line says how many items were delivered (cards done,
   split into *planned*, which were on the board before the period began, and *unplanned*, created and done inside it),
   what the agents cost, and whether that is more, fewer or about the same (within 5%) as the period before, with the
   cost per item of both. Below it: cards done and PRs merged, cost per card and per PR, the rework line (fix rounds and

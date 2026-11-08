@@ -364,6 +364,15 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   quando o front matter não é claro o bastante para editar com segurança, ou quando o arquivo passa
   de 1 MB ou não é texto. Só os documentos que a lista mostra podem ser mudados; um link, um nome
   de credencial ou um arquivo fora das pastas da biblioteca não podem.
+  **Novo documento** começa um documento a partir de um modelo: escolha o tipo (ADR, RFC ou PRD),
+  digite um título e use **Criar a partir do modelo**. O arquivo vai para `docs/adr`, `docs/rfc` ou
+  `docs/prd` do projeto (ADR e RFC são numerados, `0004-<título>.md`; um PRD é `<título>.md`), como
+  rascunho com `status: transitional`, sem commit. Ele nunca substitui um arquivo que já existe, e é
+  recusado quando `docs/<tipo>` é um link ou fica fora do projeto.
+  **Rascunhar ADR**, no resumo de uma sessão, começa um registro de decisão a partir do que a
+  sessão fez: o resumo é o primeiro texto, a varinha do assistente pode escrever um ADR (Contexto,
+  Decisão, Consequências) a partir dele, você edita, dá um título e **Salvar como ADR** grava em
+  `docs/adr` do projeto como rascunho, sem commit, do mesmo jeito que acima.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
@@ -957,6 +966,10 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   (e **Mostrar menos**) para o resto; o branch escolhido sempre aparece. O nome do projeto dobra
   seus branches (as setas esquerda e direita dobram e desdobram); a dobra é lembrada neste
   computador, e um projeto dobrado que guarda o branch escolhido mostra uma marca no nome.
+  No trilho estreito de ícones, que não tem espaço para a árvore, o ícone de **Projetos** a abre num
+  painel ao lado do trilho (a mesma árvore, com **Todos os projetos (N)** sempre no fim): escolher um
+  branch ou esse link fecha o painel, Esc ou apertar o ícone de novo também fecha, e o foco volta para
+  o ícone. Sem nenhum projeto para listar, o ícone abre a página de Projetos como antes.
   A árvore lista no máximo 5 projetos: os que você **fixou** (o alfinete na linha do projeto), depois
   os de atividade mais recente, e sempre o projeto do branch escolhido. Abaixo deles, **Todos os
   projetos (N)** abre a página de Projetos. Com mais de 5 projetos, um campo **Filtrar projetos**
@@ -1101,7 +1114,13 @@ aparece mascarado e como **Oculto**, e não abre.
   especificação em <caminho>") e **Verificar de novo** olha mais uma vez; um movimento para uma
   coluna que pede isso olha o arquivo antes. O host só confere que o arquivo existe (um arquivo
   comum, não vazio, que não seja um link, dentro do worktree) e lê o primeiro título: nunca lê nem
-  envia o resto.
+  envia o resto. Quando um card começa pela primeira vez e o projeto pede uma especificação, o host
+  escreve uma a partir de um modelo, como rascunho (`draft: true`, que mantém a verificação sem ser
+  atendida até ser completada). Um projeto confiável pode ter o próprio modelo em
+  `.flightdeck/templates/spec.md` no seu checkout (`{{title}}` e `{{criteria}}` são preenchidos);
+  quando há um modelo que não pode ser usado, o embutido é escrito e o card diz o motivo: o projeto
+  não é confiável, o arquivo é um link ou tem um segundo nome, passa de 32 KiB ou está vazio. O aviso
+  nunca cita o modelo.
 - **Documentos fixados** (#76). Num host com a biblioteca do projeto, a página do card tem o painel
   **Documentos fixados**: escolha um documento da biblioteca (ADRs, RFCs, PRDs, specs) para fixá-lo,
   até 10, e **Desafixar** tira um. Quando o card começa, o primeiro prompt lista cada documento
@@ -1116,8 +1135,10 @@ aparece mascarado e como **Oculto**, e não abre.
   parcialmente limpo. Cards que nunca começaram são excluídos; os que começaram são
   descartados. Cancelar deixa tudo como estava.
 - **Largura das colunas.** A alça na borda direita de uma coluna (arraste-a, ou vá até ela com Tab e
-  use as setas, 20 px por vez, ou Home e End; só a alça da última coluna recebe Tab) define uma só largura para todas, entre 220 e 520 px (260 por
-  padrão), guardada neste computador. O board rola dentro de si, nunca a página.
+  use as setas, 20 px por vez, ou Home e End; só a alça da última coluna recebe Tab) define uma só largura para todas, entre 180 e 520 px, guardada neste computador. Até você
+  definir uma, as cinco colunas dividem a largura da janela (a 1280 px cada uma tem uns 187 px, e janelas
+  maiores as deixam mais largas), então nenhuma é cortada na borda direita. Com a janela estreita demais
+  para isso, ou depois de você definir uma largura, o board rola dentro de si, nunca a página.
 - **Contagens.** Cada coluna mostra quantos cards tem; com um filtro ligado ela lê `n / total`, e
   uma coluna que o filtro esvaziou diz "Nenhuma correspondência" em vez de oferecer um card novo.
 - **Card novo numa coluna.** O botão **Novo card** no fim de uma coluna cria o card ali (aparece ao
@@ -2864,7 +2885,8 @@ de Custos ganha uma **tabela de projetos**, uma **tabela de pessoas** e um bloco
 *entregamos mais pelo que custou?* Todos os números são correlacionados e estimados: horas e valores são digitados, não
 medidos, e um card concluído não é um resultado verificado. As telas nunca falam em lucro nem em economia.
 
-- **O cartão.** Escolha 7 dias, 30 dias ou este mês. A primeira linha diz quantos itens foram entregues (cards
+- **O cartão.** Começa dobrado numa só linha (o título, a primeira linha abaixo e **Detalhes**), então o
+  board começa logo abaixo dele; **Detalhes** abre e a escolha é lembrada. Escolha 7 dias, 30 dias ou este mês. A primeira linha diz quantos itens foram entregues (cards
   concluídos, separados em *planejados*, que já estavam no board quando o período começou, e *não planejados*, criados e
   concluídos dentro dele), quanto os agentes custaram e se isso é mais, menos ou praticamente o mesmo (dentro de 5%) que
   no período anterior, com o custo por item dos dois. Abaixo: cards concluídos e PRs mesclados, custo por card e por PR,

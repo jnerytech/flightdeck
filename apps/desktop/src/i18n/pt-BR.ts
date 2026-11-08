@@ -850,7 +850,7 @@ export const ptBR = {
       },
       hint: "Precisa de: {needs}",
       title: "Mover para {column} mesmo assim?",
-      lacksOne: "{title} não tem: {needs}.",
+      lacksOne: "{title} ainda precisa de {needs}.",
       lacksMany: "{count} cards não têm algo de que {column} precisa:",
       item: "{title} — {needs}",
       moveAnyway: "Mover mesmo assim",
@@ -913,7 +913,7 @@ export const ptBR = {
     quotaLabelNoReset: "Cota do plano {state}: {window} em {percent}% em {host}",
     quotaLevels: { ok: "tranquila", near: "perto do limite", reached: "no limite" },
     host: "Host: {host}",
-    noHost: "Nenhum host ainda",
+    noHost: "Nenhum host",
     allHostsTabs: "Abas de todos os hosts",
     hostItem: "{host}, {state}",
     hostItemVersion: "{host}, {state}, flightdeckd {version}",
@@ -1483,8 +1483,11 @@ export const ptBR = {
     knowledge: "a leitura dos documentos do projeto",
     knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
     knowledgeStatus: "a mudança do status de um documento",
+    knowledgeCreate: "a criação de um documento a partir de um modelo",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
     harnessApply: "a aplicação de mudanças na configuração do Claude Code",
+    harnessCommit: "o commit da configuração do Claude Code em um branch",
+    harnessDraft: "o rascunho de um CLAUDE.md com o Claude",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
@@ -1532,6 +1535,14 @@ export const ptBR = {
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
     spec_template_failed:
       "Não deu para gravar o modelo de spec em {path} (um link ou arquivo está no caminho): a sessão começou sem ele.",
+    spec_template_untrusted:
+      "Este projeto tem um modelo de spec próprio, mas o projeto não é confiável, então foi usado o embutido. Confie no projeto para usar o dele.",
+    spec_template_unsafe:
+      "O modelo de spec do projeto não foi usado (é um link, tem um segundo nome ou não é um arquivo comum): foi usado o embutido.",
+    spec_template_too_big:
+      "O modelo de spec do projeto não foi usado (passa de 32 KiB): foi usado o embutido.",
+    spec_template_empty:
+      "O modelo de spec do projeto não foi usado (está vazio): foi usado o embutido.",
     contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
     remote_not_github: "O remoto {url} não é do GitHub.",
@@ -1752,6 +1763,10 @@ export const ptBR = {
       "O arquivo {path} mudou desde que foi aberto: recarregue e aplique a edição de novo.",
     knowledge_frontmatter:
       "O front matter de {path} não pode ser mudado com segurança por aqui: edite o arquivo à mão.",
+    knowledge_title_invalid: "Dê ao documento um título com letras ou dígitos.",
+    knowledge_folder_unsafe:
+      "A pasta deste documento é um link ou fica fora do projeto: nada foi gravado.",
+    knowledge_exists: "Já existe um documento chamado {path}: nada foi sobrescrito.",
     review_revert_confirm: "Confirme o revert para continuar.",
     review_undo_confirm: "Confirme o desfazer para continuar.",
     review_undo_nothing:
@@ -1811,6 +1826,20 @@ export const ptBR = {
     harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
     harness_reformat:
       "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
+    harness_commit_stale:
+      "Os arquivos não estão como a configuração os gravou: aplique a configuração de novo e faça o commit.",
+    harness_commit_no_head: "O projeto ainda não tem commit de onde começar um branch.",
+    harness_commit_identity:
+      "O git não tem nome e e-mail para este repositório: defina user.name e user.email e faça o commit.",
+    harness_commit_secret: "{file} contém um segredo, então não foi para o commit.",
+    harness_commit_branch_taken: "O branch {branch} já existe: tente de novo em um minuto.",
+    harness_commit_git:
+      "O git não conseguiu fazer o commit ou o branch da configuração neste repositório.",
+    harness_commit_ignored:
+      "{file} é ignorado pelo git neste projeto, então não foi para o commit: faça o commit você mesmo se quiser.",
+    harness_draft_exists: "O projeto já tem um CLAUDE.md: um rascunho só cria um.",
+    harness_draft_failed: "O modelo não respondeu com um CLAUDE.md: tente de novo.",
+    harness_draft_secret: "O rascunho tinha um segredo, então foi descartado: tente de novo.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
@@ -2149,6 +2178,7 @@ export const ptBR = {
     commit_message: "Mensagem de commit",
     pr_title: "Título do pull request",
     pr_description: "Descrição do pull request",
+    adr_draft: "Rascunho de registro de decisão (ADR)",
   },
   modelPicker: {
     search: "Buscar modelos",
@@ -3152,6 +3182,15 @@ export const ptBR = {
     testTitle: "Teste do Flightdeck",
     testBody: "Esta é uma mensagem de teste.",
   },
+  adrDraft: {
+    title: "Rascunhar um registro de decisão",
+    hint: "O resumo da sessão é o texto inicial. Use a varinha para escrever um ADR a partir dele, edite e salve: ele vai para docs/adr no projeto como rascunho, sem commit.",
+    titleLabel: "Título da decisão",
+    bodyLabel: "Texto do registro de decisão",
+    save: "Salvar como ADR",
+    saved: "Salvo em {path}. É um rascunho e não tem commit.",
+    failed: "Não foi possível salvar: {why}",
+  },
   recap: {
     region: "Resumo da sessão",
     asked: "Pedido",
@@ -3162,6 +3201,7 @@ export const ptBR = {
     question: "Pergunta em aberto",
     state: "Estado",
     copy: "Copiar resumo",
+    draftAdr: "Rascunhar ADR",
     empty: "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
   },
   webhooks: {
@@ -3754,6 +3794,8 @@ export const ptBR = {
     saveDescription: "Salvar descrição",
     validation: "Nota de validação",
     saveValidation: "Salvar nota de validação",
+    validationShape:
+      "O que foi verificado:\nComo (comandos, passos, dados):\nResultado:\nO que não foi verificado:",
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
     specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",
@@ -3922,7 +3964,7 @@ export const ptBR = {
       open: "Adicionar de um modelo",
       title: "Modelos de workflow",
       intro:
-        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. Nada é gravado para você.",
+        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. O app não grava nenhum arquivo por você.",
       loading: "Carregando modelos",
       failed:
         "Não deu para carregar os modelos. O host pode estar offline ou precisar de uma versão mais nova do Flightdeck.",
@@ -4249,7 +4291,7 @@ export const ptBR = {
   projectPage: {
     knowledge: {
       title: "Conhecimento do projeto",
-      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter. Só leitura: nada aqui muda o projeto.",
+      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter.",
       filter: "{status} ({n})",
       all: "Todos",
       status: {
@@ -4276,6 +4318,18 @@ export const ptBR = {
       empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
       truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
       failed: "Não foi possível ler os documentos neste host.",
+      create: {
+        title: "Novo documento",
+        hint: "Começa um documento a partir de um modelo na pasta docs do projeto, como rascunho (transitório). Nada é commitado.",
+        kind: "Tipo",
+        titleLabel: "Título",
+        adr: "Registro de decisão (ADR)",
+        rfc: "Proposta (RFC)",
+        prd: "Requisitos do produto (PRD)",
+        button: "Criar a partir do modelo",
+        created: "{path} criado. O arquivo está na pasta do projeto e não foi commitado.",
+        failed: "Não foi possível criar o documento. {why}",
+      },
       setStatus: {
         hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
         label: "Status de {title}",
@@ -4342,6 +4396,11 @@ export const ptBR = {
           "Regravar .claude/settings.json com outro layout. O espaçamento muda, e uma chave repetida ou um número muito grande podem ser reescritos.",
         done: "Configurado: {files}",
         again: "Fazer a prévia de novo",
+        commit: "Fazer commit em um branch novo",
+        commitMessage:
+          "Os arquivos da configuração vão para um branch novo que o Flightdeck nomeia, com o seu nome e e-mail do git. O commit é do arquivo inteiro: mudanças que você fez neles antes da configuração vão junto. O seu checkout continua com eles como mudanças no branch atual.",
+        commitFiles: "Arquivos do commit",
+        committed: "Commit feito em {branch}. Faça o push quando quiser.",
       },
     },
     trust: {

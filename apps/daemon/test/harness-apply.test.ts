@@ -438,7 +438,7 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
       "feature_off",
       "cwd_outside_roots",
       false,
-      { written: [SETTINGS] },
+      { written: [SETTINGS], digests: { [SETTINGS]: expect.any(String) } },
       // The same digests again: the project is no longer as previewed.
       "harness_stale",
     ]);

@@ -21,6 +21,11 @@ export const JOURNEYS: readonly string[] = [
   "update-card",
   "status-bar",
   "trust-revoke",
+  "mode-chip",
+  "workflow-templates",
+  "card-pins",
+  "stage-contract",
+  "knowledge-panel",
   "harness-setup",
   "files-viewer",
   "terminal-copy",
@@ -39,6 +44,7 @@ export const JOURNEYS: readonly string[] = [
   "orcamento-alcance",
   "modo-simples-alcance",
   "layout-medido",
+  "board-fit",
   "teleport-mover",
   "time-novo-alcance",
   "board-arquivos",
@@ -92,6 +98,9 @@ export const OVERFLOW_VIEWPORTS: ReadonlyArray<{ width: number; height: number }
   { width: 1024, height: 768 },
   { width: 1919, height: 1080 },
 ];
+
+/** The card the demo keeps in the design-system backlog, with no PR: Review asks for one (issue #78). */
+export const CONTRACT_CARD = "Write the token guide";
 
 /** The name of the demo session that holds the high-risk request (the issue-e-risco journey). */
 export const DANGER_SESSION = "Limpar a pasta build";

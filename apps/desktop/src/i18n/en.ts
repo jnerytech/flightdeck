@@ -1488,8 +1488,11 @@ export const en: Dictionary = {
     knowledge: "reading the project's documents",
     knowledgeFeed: "the switch for the documents index in agents' prompts",
     knowledgeStatus: "changing a document's status",
+    knowledgeCreate: "creating a document from a template",
     harnessPreview: "previewing Claude Code setup changes",
     harnessApply: "applying Claude Code setup changes",
+    harnessCommit: "committing the Claude Code setup on a branch",
+    harnessDraft: "drafting a CLAUDE.md with Claude",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
@@ -1537,6 +1540,14 @@ export const en: Dictionary = {
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
     spec_template_failed:
       "The spec template could not be written at {path} (a link or a file is in the way): the session started without it.",
+    spec_template_untrusted:
+      "This project has its own spec template, but the project is not trusted, so the built-in one was used. Trust the project to use it.",
+    spec_template_unsafe:
+      "The project's spec template was not used (it is a link, has a second name or is not a plain file): the built-in one was.",
+    spec_template_too_big:
+      "The project's spec template was not used (it is over 32 KiB): the built-in one was.",
+    spec_template_empty:
+      "The project's spec template was not used (it is empty): the built-in one was.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
     remote_not_github: "The remote {url} is not a GitHub one.",
@@ -1754,6 +1765,10 @@ export const en: Dictionary = {
       "The file {path} changed since it was opened: reload it and apply your edit again.",
     knowledge_frontmatter:
       "The front matter of {path} cannot be changed safely from here: edit the file by hand.",
+    knowledge_title_invalid: "Give the document a title with letters or digits.",
+    knowledge_folder_unsafe:
+      "The folder for this document is a link or lies outside the project: nothing was written.",
+    knowledge_exists: "A document named {path} already exists: nothing was overwritten.",
     review_revert_confirm: "Confirm the revert to go on.",
     review_undo_confirm: "Confirm the undo to go on.",
     review_undo_nothing:
@@ -1813,6 +1828,19 @@ export const en: Dictionary = {
     harness_confirm: "Changing the Claude Code setup needs your confirmation.",
     harness_reformat:
       "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
+    harness_commit_stale:
+      "The files are not as the setup wrote them: apply the setup again, then commit.",
+    harness_commit_no_head: "The project has no commit yet to start a branch from.",
+    harness_commit_identity:
+      "Git has no name and email for this repository: set user.name and user.email, then commit.",
+    harness_commit_secret: "{file} holds a secret, so it was not committed.",
+    harness_commit_branch_taken: "The branch {branch} is already there: try again in a minute.",
+    harness_commit_git: "Git could not make the setup's commit or branch in this repository.",
+    harness_commit_ignored:
+      "{file} is ignored by git in this project, so it was not committed: commit it yourself if you mean to.",
+    harness_draft_exists: "The project already has a CLAUDE.md: a draft only creates one.",
+    harness_draft_failed: "The model did not answer with a CLAUDE.md: try again.",
+    harness_draft_secret: "The draft held a secret, so it was dropped: try again.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",
@@ -2152,6 +2180,7 @@ export const en: Dictionary = {
     commit_message: "Commit message",
     pr_title: "Pull request title",
     pr_description: "Pull request description",
+    adr_draft: "Decision record (ADR) draft",
   },
   modelPicker: {
     search: "Search models",
@@ -3152,6 +3181,15 @@ export const en: Dictionary = {
     testTitle: "Flightdeck test",
     testBody: "This is a test message.",
   },
+  adrDraft: {
+    title: "Draft a decision record",
+    hint: "The session summary is the starting text. Use the wand to write an ADR from it, edit it, and save: it goes to docs/adr in the project as a draft, not committed.",
+    titleLabel: "Decision title",
+    bodyLabel: "Decision record text",
+    save: "Save as ADR",
+    saved: "Saved {path}. It is a draft and is not committed.",
+    failed: "Could not save: {why}",
+  },
   recap: {
     region: "Session summary",
     asked: "Asked",
@@ -3162,6 +3200,7 @@ export const en: Dictionary = {
     question: "Open question",
     state: "State",
     copy: "Copy summary",
+    draftAdr: "Draft ADR",
     empty: "The summary appears after the session's first turn and refreshes by itself.",
   },
   webhooks: {
@@ -3749,6 +3788,8 @@ export const en: Dictionary = {
     saveDescription: "Save description",
     validation: "Validation note",
     saveValidation: "Save validation note",
+    validationShape:
+      "What was checked:\nHow (commands, steps, data):\nResult:\nWhat was not checked:",
     specFile: "Spec file",
     saveSpec: "Save spec file",
     specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
@@ -4247,7 +4288,7 @@ export const en: Dictionary = {
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
     knowledge: {
       title: "Project knowledge",
-      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter. Read only: nothing here changes the project.",
+      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter.",
       filter: "{status} ({n})",
       all: "All",
       status: {
@@ -4274,6 +4315,18 @@ export const en: Dictionary = {
       empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
       truncated: "The list is cut: only the first documents are shown.",
       failed: "The documents could not be read from this host.",
+      create: {
+        title: "New document",
+        hint: "Starts a document from a template in this project's docs folder, as a draft (transitional). Nothing is committed.",
+        kind: "Kind",
+        titleLabel: "Title",
+        adr: "Decision record (ADR)",
+        rfc: "Proposal (RFC)",
+        prd: "Product requirements (PRD)",
+        button: "Create from template",
+        created: "Created {path}. The file is in the project's folder and not committed.",
+        failed: "The document could not be created. {why}",
+      },
       setStatus: {
         hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
         label: "Status of {title}",
@@ -4338,6 +4391,11 @@ export const en: Dictionary = {
           "Rewrite .claude/settings.json with a new layout. Spacing changes, and a repeated key or a very large number may be rewritten.",
         done: "Set up: {files}",
         again: "Preview again",
+        commit: "Commit on a new branch",
+        commitMessage:
+          "The setup's files go on a new branch Flightdeck names, with your git name and email. They are committed whole: changes you made to them before the setup are in the commit too. Your checkout keeps them as changes on your current branch.",
+        commitFiles: "Files to commit",
+        committed: "Committed on {branch}. Push it when you are ready.",
       },
     },
     trust: {

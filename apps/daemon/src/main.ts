@@ -14,9 +14,11 @@ import { runActionCli, runSnippetCli } from "./actions/cli.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
 import { assistantService } from "./assistant/factory.ts";
+import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
+import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
 import { BoardSyncLoop } from "./boardsync/loop.ts";
@@ -59,15 +61,19 @@ import { doctorExitCode, formatDeps } from "./deps/format.ts";
 import { probeVersion } from "./deps/probe.ts";
 import { type OpenCodeState, runDoctor } from "./doctor.ts";
 import { buildChildEnv } from "./env.ts";
+import { featureOff } from "./errors.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { listAlerts } from "./github/alerts.ts";
 import { runGh, runGhIn } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
 import { applyHarness } from "./harness/apply.ts";
+import { commitHarness } from "./harness/commit.ts";
+import { HarnessDrafts } from "./harness/draft.ts";
 import { previewHarness } from "./harness/preview.ts";
 import { detectStack } from "./harness/stack.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
+import { createKnowledgeDoc } from "./knowledge/create.ts";
 import { listKnowledge } from "./knowledge/list.ts";
 import { knowledgeFeedFor } from "./knowledge/serve.ts";
 import { setKnowledgeStatus } from "./knowledge/status.ts";
@@ -995,6 +1001,9 @@ export async function startDaemon(
   const board = new Board({
     folderLocks,
     preparePersonas: prepare,
+    // Issue #78: a card's spec template comes from a trusted project's trusted checkout only.
+    specTemplateRoot: async (worktree) => templateRootOf(await trustForKnowledge(worktree)),
+    log: (line) => logger.log(line),
     db: store.db,
     manager,
     quota,
@@ -1381,6 +1390,15 @@ export async function startDaemon(
   // `prepare` answers every filesystem error itself (a folder it cannot read is a boundary).
   await projectTrust.prepareSessions(manager.list());
   // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
+  // Issue #75, slice G1: CLAUDE.md drafts on this host's claude, held by digest until applied.
+  const harnessDrafts = new HarnessDrafts({
+    complete: (opts) =>
+      runtime.complete ? runtime.complete(opts) : Promise.reject(featureOff("harnessDraft")),
+    quota,
+    scanner: snippetScanner,
+    cwd: assistantDir(config.dataDir),
+    allowApiKey: config.allowApiKey,
+  });
   const assistant = assistantService({
     runtime,
     usage: usageIndex,
@@ -1449,6 +1467,7 @@ export async function startDaemon(
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: listKnowledge,
     knowledgeStatus: setKnowledgeStatus,
+    knowledgeCreate: createKnowledgeDoc,
     knowledgeFeed: knowledgeFeedFor({
       off: () => config.knowledge.feedOff,
       trust: trustForKnowledge,
@@ -1469,7 +1488,11 @@ export async function startDaemon(
       },
     }),
     harnessPreview: previewHarness,
-    harnessApply: applyHarness,
+    harnessApply: (path, parts, digests, options) =>
+      applyHarness(path, parts, digests, { ...options, drafts: harnessDrafts }),
+    // Only a runtime that can run a one-shot drafts: the feature is not offered otherwise.
+    ...(runtime.complete ? { harnessDraft: (path: string) => harnessDrafts.draft(path) } : {}),
+    harnessCommit: (path, digests) => commitHarness(path, digests, { scanner: snippetScanner }),
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) => paths.map(trustState),

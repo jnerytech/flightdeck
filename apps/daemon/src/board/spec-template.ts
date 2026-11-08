@@ -13,7 +13,7 @@ import {
   contractOf,
   specPathProblem,
 } from "@flightdeck/protocol";
-import { createInside } from "../create-inside.ts";
+import { createInside, readInsideWhy, walkInside } from "../create-inside.ts";
 
 /** The project's TDD skill, as the harness setup writes it (#75). */
 const TDD_SKILL = ".claude/skills/tdd/SKILL.md";
@@ -46,7 +46,10 @@ export function wantsSpec(contracts: ContractOverrides, specPath: string | null)
 }
 
 /** The card's spec from the template: front matter, title and the checklist of its description. */
-export function renderSpec(card: { id: string; title: string; description: string }): string {
+export function renderSpec(
+  card: { id: string; title: string; description: string },
+  template: string = BODY,
+): string {
   // One line, so it can neither end the heading nor the front matter early.
   const title = card.title.replace(/[\r\n]+/g, " ").trim();
   const items = card.description.split(/\r?\n/).filter((line) => CHECKLIST_ITEM.test(line));
@@ -55,7 +58,7 @@ export function renderSpec(card: { id: string; title: string; description: strin
     criteria: items.length > 0 ? items.join("\n") : "- [ ] ",
   };
   // One pass: a criterion that names a placeholder stays as it is.
-  const body = BODY.replace(/\{\{(title|criteria)\}\}/g, (_, key: string) => values[key] ?? "");
+  const body = template.replace(/\{\{(title|criteria)\}\}/g, (_, key: string) => values[key] ?? "");
   const front = [
     "---",
     `card: ${card.id}`,
@@ -90,6 +93,42 @@ export async function writeSpec(
   }
 }
 
+/** The project's own spec template, and the most of it read: a template is a page, not a book. */
+const PROJECT_TEMPLATE = ".flightdeck/templates/spec.md";
+const TEMPLATE_MAX = 32 * 1024;
+
+/** Why a project's template that is there was not used. */
+export type TemplateIgnored = "untrusted" | "unsafe" | "too_big" | "empty";
+
+/**
+ * The body a trusted project gives its specs (`.flightdeck/templates/spec.md` under `root`, the
+ * trusted checkout), or why it gives none: nothing is there (`ignored` null), or it is empty, too
+ * big, or reached through a link or a second name. The host adds the front matter (with
+ * `draft: true`) either way.
+ */
+export async function projectTemplate(
+  root: string,
+): Promise<{ body: string | null; ignored: TemplateIgnored | null }> {
+  const read = await readInsideWhy(root, PROJECT_TEMPLATE, TEMPLATE_MAX);
+  if ("why" in read) return { body: null, ignored: read.why === "absent" ? null : read.why };
+  return read.text.trim() ? { body: read.text, ignored: null } : { body: null, ignored: "empty" };
+}
+
+/**
+ * For a project that is not trusted: whether its worktree carries a template that is therefore not
+ * read. Only a look at the name (never the text), so an untrusted file stays unread.
+ */
+export async function untrustedTemplate(worktree: string): Promise<boolean> {
+  try {
+    // A link anywhere on the way is refused, not followed: the look never leaves the worktree, so
+    // it cannot tell whether something lies behind a link.
+    const found = await walkInside(await realpath(worktree), PROJECT_TEMPLATE, TEMPLATE_MAX);
+    return found.state !== "absent";
+  } catch {
+    return false;
+  }
+}
+
 /** Whether the worktree has the TDD skill the first prompt can name. */
 export async function hasTddSkill(worktree: string): Promise<boolean> {
   return lstat(join(worktree, TDD_SKILL)).then(
@@ -114,4 +153,13 @@ export function specFirstLine(path: string, skill: boolean): string {
  */
 export function toSlashes(path: string, platform: string): string {
   return platform === "win32" ? path.replaceAll("\\", "/") : path;
+}
+
+/**
+ * The folder a project's spec template may be read from: the trusted checkout `sessionTrust` names,
+ * or null for an untrusted project. A card runs in a worktree, so the checkout is always named; when
+ * it is not, null, never the worktree, whose content is the branch's.
+ */
+export function templateRootOf(trust: { trusted: boolean; configRoot?: string }): string | null {
+  return trust.trusted && trust.configRoot ? trust.configRoot : null;
 }

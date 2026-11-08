@@ -41,6 +41,10 @@ export function ProjectTree(
     filter: WorktreeFilter | null;
     /** On the Sessions list a pick narrows it in place instead of opening the board. */
     stay?: boolean;
+    /** The All projects link always, not only past the cap: the rail's flyout has no other way to it. */
+    allLink?: boolean;
+    /** A branch was picked (or cleared): the flyout closes. */
+    onPicked?(): void;
     t: T;
     go(route: Route): void;
   }>,
@@ -54,6 +58,7 @@ export function ProjectTree(
       path: node.path,
       branch: node.branch,
     };
+    props.onPicked?.();
     if (same(filter, next)) return props.store.setWorktreeFilter(null);
     props.store.setWorktreeFilter(next);
     if (props.stay) return;
@@ -224,7 +229,7 @@ export function ProjectTree(
           </div>
         );
       })}
-      {total > PROJECT_CAP && (
+      {(props.allLink || total > PROJECT_CAP) && (
         <button
           type="button"
           className="project-tree-more"

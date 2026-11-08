@@ -28,6 +28,7 @@ export const AssistantKind = z.enum([
   "commit.message",
   "pr.title",
   "pr.description",
+  "adr.draft",
 ]);
 export type AssistantKind = z.infer<typeof AssistantKind>;
 

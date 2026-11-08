@@ -1,8 +1,8 @@
 /**
- * Creates a new file inside a folder, never through a link and never over a file (#75, #78): the
- * harness apply and a card's spec template both write into a project this way.
+ * Files inside a folder, never through a link (#75, #78): the harness preview and apply and a card's
+ * spec template read and create project files this way, and a new file never goes over one.
  */
-import { constants } from "node:fs";
+import { type BigIntStats, constants } from "node:fs";
 import { type FileHandle, lstat, mkdir, open, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { samePath } from "./paths.ts";
@@ -51,4 +51,72 @@ export async function createInside(
   } finally {
     await handle.close();
   }
+}
+
+/** Where a walk inside a folder ends: missing, refused, or a plain file at `at` whose `lstat` was `info`. */
+export type Walk =
+  | { state: "absent" }
+  | { state: "refused"; big?: true }
+  | { state: "file"; at: string; info: BigIntStats };
+
+/**
+ * A file inside the real folder `root`, walked one name at a time: missing, a plain file of at most
+ * `max` bytes, or refused. A link anywhere on the way is refused, dangling or not, out of the folder
+ * or into it, so what is read or written is where the path says.
+ */
+export async function walkInside(root: string, name: string, max: number): Promise<Walk> {
+  let at = root;
+  let info: BigIntStats | null = null;
+  for (const segment of name.split("/")) {
+    // What came before this name must be a folder.
+    if (info !== null && !info.isDirectory()) return { state: "refused" };
+    at = join(at, segment);
+    info = await orNull(lstat(at, { bigint: true }));
+    if (info === null) return { state: "absent" };
+    if (info.isSymbolicLink()) return { state: "refused" };
+  }
+  if (!info?.isFile()) return { state: "refused" };
+  if (info.size > BigInt(max)) return { state: "refused", big: true };
+  return { state: "file", at, info };
+}
+
+/** Why a read gave nothing: no such file, refused (a link, a second name, not a plain file), over the cap. */
+export type ReadWhy = "absent" | "unsafe" | "too_big";
+
+/**
+ * The text of a plain file inside `root` of at most `max` bytes, or why not. The file must have one
+ * name only (a hard link may lie outside), and it is read through a handle that follows no link and
+ * must be the very file the walk found, so a swap in between reads nothing.
+ */
+export async function readInsideWhy(
+  root: string,
+  name: string,
+  max: number,
+): Promise<{ text: string } | { why: ReadWhy }> {
+  const found = await walkInside(root, name, max);
+  if (found.state === "absent") return { why: "absent" };
+  if (found.state === "refused") return { why: found.big ? "too_big" : "unsafe" };
+  if (found.info.nlink !== 1n) return { why: "unsafe" };
+  const flags = constants.O_RDONLY | NO_FOLLOW | (constants.O_NONBLOCK ?? 0);
+  const handle = await orNull(open(found.at, flags));
+  if (handle === null) return { why: "unsafe" };
+  try {
+    const info = await handle.stat({ bigint: true });
+    const same = info.dev === found.info.dev && info.ino === found.info.ino;
+    if (!same || !info.isFile() || info.nlink !== 1n) return { why: "unsafe" };
+    if (info.size > BigInt(max)) return { why: "too_big" };
+    // At most one byte past the cap: a file that grew since the stat is refused, not read whole.
+    const { bytesRead, buffer } = await handle.read(Buffer.alloc(max + 1), 0, max + 1, 0);
+    return bytesRead > max
+      ? { why: "too_big" }
+      : { text: buffer.subarray(0, bytesRead).toString("utf8") };
+  } finally {
+    await handle.close();
+  }
+}
+
+/** The text of a plain file inside `root` of at most `max` bytes; null when missing or refused. */
+export async function readInside(root: string, name: string, max: number): Promise<string | null> {
+  const read = await readInsideWhy(root, name, max);
+  return "text" in read ? read.text : null;
 }

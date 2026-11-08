@@ -14,9 +14,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { shortPath } from "@/lib/approval";
 import { suggestFolders } from "@/lib/project-suggestions";
 import { hasFeature } from "@/lib/version";
 import { FolderPicker } from "@/ui/FolderPicker";
+
+/** How many characters of a suggested folder fit a row of the dialog at 390 px. */
+const SUGGESTED_MAX = 40;
 
 /**
  * The one flow that registers a folder of a host as a project (Board, Workflows, Teams and the
@@ -76,17 +80,24 @@ export function AddProject(
               <DialogDescription>{t("addProject.description")}</DialogDescription>
             </DialogHeader>
             {suggestions.length > 0 && (
-              <section aria-label={t("addProject.suggested")} className="flex flex-col gap-1">
+              <section
+                aria-label={t("addProject.suggested")}
+                className="flex min-w-0 flex-col gap-1"
+              >
                 <p className="text-muted-foreground text-xs">{t("addProject.suggested")}</p>
                 {suggestions.map((folder) => (
+                  // #1049: a worktree's folder is wider than the dialog. Whole, it pushed Cancel and
+                  // Add out of the dialog; cut at its end, the rows read the same. Cut in the middle,
+                  // the end that tells them apart shows, and the whole path is the tooltip.
                   <Button
                     key={folder}
                     variant="outline"
                     size="sm"
-                    className="justify-start font-mono text-xs"
+                    title={folder}
+                    className="min-w-0 justify-start font-mono text-xs"
                     onClick={() => void add(folder)}
                   >
-                    {folder}
+                    <span className="truncate">{shortPath(folder, SUGGESTED_MAX)}</span>
                   </Button>
                 ))}
               </section>

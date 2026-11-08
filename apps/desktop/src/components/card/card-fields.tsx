@@ -58,6 +58,7 @@ function CardTextField(
               {...assist}
               value={value}
               className="min-h-20 w-full"
+              {...(props.placeholder ? { placeholder: props.placeholder } : {})}
               onChange={(e) => edit(e.target.value)}
             />
           ) : (
@@ -174,6 +175,8 @@ export function CardFields(
         label={t("cardUi.validation")}
         saveLabel={t("cardUi.saveValidation")}
         source={card.validationNote ?? ""}
+        // Issue #78: the shape of a validation note, shown and never saved, so it alone meets no check.
+        placeholder={t("cardUi.validationShape")}
         multiline
         stored={(text) => text.trim()}
         savable={(text) => text.trim() !== (card.validationNote ?? "")}

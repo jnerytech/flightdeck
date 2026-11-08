@@ -361,7 +361,7 @@ describe("board-multi-ui: resizable columns (issue #161)", () => {
     expect(handles()).toHaveLength(5);
     const first = handles()[0] as HTMLElement;
     expect(first.getAttribute("aria-orientation")).toBe("vertical");
-    expect(first.getAttribute("aria-valuemin")).toBe("220");
+    expect(first.getAttribute("aria-valuemin")).toBe("180");
     expect(first.getAttribute("aria-valuemax")).toBe("520");
     expect(first.getAttribute("aria-valuenow")).toBe("260");
     expect(first.getAttribute("aria-valuetext")).toBe("260 px");
@@ -384,8 +384,8 @@ describe("board-multi-ui: resizable columns (issue #161)", () => {
         fireEvent.keyDown(first, { key: "ArrowLeft" });
       });
     }
-    expect(grid().style.gridAutoColumns).toBe("220px");
-    expect(w.store.boardWidth.value).toBe(220);
+    expect(grid().style.gridAutoColumns).toBe("180px");
+    expect(w.store.boardWidth.value).toBe(180);
   });
 
   test("dragging the handle changes the width by the distance, and the width is kept", async () => {

@@ -5,15 +5,15 @@
  * See docs/decisions/2026-11-07-harness-preview.md.
  */
 import { createHash } from "node:crypto";
-import { type BigIntStats, constants } from "node:fs";
-import { access, lstat, readFile, realpath } from "node:fs/promises";
-import { join } from "node:path";
+import { constants } from "node:fs";
+import { access, readFile, realpath } from "node:fs/promises";
 import {
   type HARNESS_PREVIEW_PARTS,
   type HarnessPreview,
   type HarnessStack,
   HOOK_KINDS,
 } from "@flightdeck/protocol";
+import { type Walk, walkInside } from "../create-inside.ts";
 import { layoutLike, parseJsonText } from "../json-text.ts";
 import { detectStack } from "./stack.ts";
 import { claudeMd, DENY_RULES, EDIT_MATCHER, reviewerAgent, tddSkill } from "./templates.ts";
@@ -39,12 +39,6 @@ export type Look =
   | { state: "refused" }
   | { state: "file"; text: string; hash: string };
 
-/** Where a walk ends: missing, refused, or a plain file at `at` whose `lstat` was `info`. */
-export type Walk =
-  | { state: "absent" }
-  | { state: "refused" }
-  | { state: "file"; at: string; info: BigIntStats };
-
 const sha256 = (data: string | Buffer): string => createHash("sha256").update(data).digest("hex");
 
 export const orNull = <T>(promise: Promise<T>): Promise<T | null> =>
@@ -62,23 +56,9 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 /**
  * A project file as it is now, walked one name at a time from the project's real root: missing (and
  * every folder above it a real folder of the project, where S4 may create it), a plain file of a sane
- * size, or refused. A link anywhere on the way is refused, dangling or not, out of the project or
- * into it: a write must land where the path says.
+ * size, or refused (a link anywhere on the way). See `walkInside`.
  */
-export async function walk(root: string, name: string): Promise<Walk> {
-  let at = root;
-  let info: BigIntStats | null = null;
-  for (const segment of name.split("/")) {
-    // What came before this name must be a folder.
-    if (info !== null && !info.isDirectory()) return { state: "refused" };
-    at = join(at, segment);
-    info = await orNull(lstat(at, { bigint: true }));
-    if (info === null) return { state: "absent" };
-    if (info.isSymbolicLink()) return { state: "refused" };
-  }
-  if (!info?.isFile() || info.size > BigInt(MAX_FILE)) return { state: "refused" };
-  return { state: "file", at, info };
-}
+export const walk = (root: string, name: string): Promise<Walk> => walkInside(root, name, MAX_FILE);
 
 /** A file's bytes as the preview sees them: its text and sha256. */
 export const fileLook = (bytes: Buffer): Look => ({
@@ -218,6 +198,8 @@ export async function planHarness(
   root: string,
   parts: readonly PreviewPart[],
   readSettings: (root: string) => Promise<Look>,
+  /** A held draft to propose instead of the template (#75, G1), by file; null for the template. */
+  drafted: (name: string) => string | null = () => null,
 ): Promise<Plan> {
   const { commands } = await detectStack(root);
   const unreadable: string[] = [];
@@ -231,7 +213,7 @@ export async function planHarness(
     const file = await look(root, name);
     if (file.state === "refused") unreadable.push(name);
     else if (file.state === "absent") {
-      const content = template(commands);
+      const content = drafted(name) ?? template(commands);
       files.push({ path: name, content, digest: sha256(content) });
     }
   }

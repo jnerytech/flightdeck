@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { trimTrailingSeparators } from "../lib/paths.ts";
 
 /**
  * The default project rule: the exact command for Bash, the exact file for a tool that names one,
@@ -26,7 +27,7 @@ export function defaultRule(
  */
 function ruleFile(path: string, cwd: string | undefined): string {
   const file = path.replaceAll("\\", "/");
-  const folder = (cwd ?? "").replaceAll("\\", "/").replace(/\/+$/, "");
+  const folder = trimTrailingSeparators((cwd ?? "").replaceAll("\\", "/"));
   if (folder !== "" && file === folder) return ".";
   if (folder !== "" && file.startsWith(`${folder}/`)) return file.slice(folder.length + 1);
   return file.startsWith("/") ? `/${file}` : file;
