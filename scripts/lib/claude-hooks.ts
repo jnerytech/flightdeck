@@ -188,9 +188,9 @@ export function testEditViolation(
   );
   if (!added) {
     if (undocumentedSkips(after) <= undocumentedSkips(before)) return null;
-    return `Adding a skip to ${file} is blocked: a flaky test is skipped only with \`// unstable: #<issue> <reason>\` on the same line or the line above, naming the open issue that owns its fix (docs/TDD.md).`;
+    return `Adding a skip to ${file} is blocked: a flaky test is deleted, never skipped (#1003); when it is the only check of a business flow, replace it with a fast deterministic test (docs/TDD.md).`;
   }
-  return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, test.todo or first-run toMatchSnapshot, and a .skip only with an \`// unstable: #<issue>\` note (docs/TDD.md). Write the assertion with a hand-written literal.`;
+  return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, test.todo or first-run toMatchSnapshot, and no .skip: a flaky test is deleted, never skipped (#1003). Write the assertion with a hand-written literal (docs/TDD.md).`;
 }
 
 export interface CommitGateDeps {
