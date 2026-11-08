@@ -1138,7 +1138,9 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await opts.knowledge(path));
       }
       case "knowledge.index": {
-        return ok(command.type, { text: "", fed: 0, truncated: false });
+        if (!opts.knowledgeFeed) throw featureOff("knowledge");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeFeed(path));
       }
       case "project.harness.stack": {
         if (!opts.harnessStack) throw featureOff("harnessStack");
