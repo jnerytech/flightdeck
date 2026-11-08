@@ -2462,6 +2462,7 @@ export const en: Dictionary = {
     needPrompt: "Write the first prompt to start in the background.",
     addFolder: "Add a folder on {host}'s page",
     host: "Host",
+    moreOptions: "More options",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {

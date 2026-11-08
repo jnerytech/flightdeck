@@ -2462,6 +2462,7 @@ export const ptBR = {
     needPrompt: "Escreva o primeiro prompt para iniciar em segundo plano.",
     addFolder: "Adicionar uma pasta na página de {host}",
     host: "Host",
+    moreOptions: "Mais opções",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {
