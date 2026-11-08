@@ -1,7 +1,7 @@
 import type { KnowledgeKind } from "@flightdeck/protocol";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
-import { Field, FieldRow } from "@/components/layout/form";
+import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import type { Key } from "@/i18n";
 import { refusalText } from "@/i18n/errors";
@@ -58,6 +58,7 @@ export function KnowledgeCreate(
       className="flex flex-col gap-2"
       onSubmit={(event) => {
         event.preventDefault();
+        if (busy || title.trim() === "") return;
         void create();
       }}
     >
@@ -67,9 +68,9 @@ export function KnowledgeCreate(
       <FieldRow align="end">
         <Field label={t("projectPage.knowledge.create.kind")}>
           {(control) => (
-            <select
+            <NativeSelect
               {...control}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+              inline
               value={kind}
               onChange={(event) => setKind(event.target.value as KnowledgeKind)}
             >
@@ -78,10 +79,10 @@ export function KnowledgeCreate(
                   {t(`projectPage.knowledge.create.${k}` as Key)}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           )}
         </Field>
-        <Field label={t("projectPage.knowledge.create.titleLabel")} className="min-w-0 flex-1">
+        <Field label={t("projectPage.knowledge.create.titleLabel")} className="min-w-48 flex-1">
           {(control) => (
             <Input {...control} value={title} onChange={(event) => setTitle(event.target.value)} />
           )}
