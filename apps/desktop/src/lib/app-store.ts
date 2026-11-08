@@ -990,7 +990,10 @@ export class AppStore {
       const { t } = this.i18n;
       const name = (id: string) => this.state.hosts.find((host) => host.id === id)?.name ?? id;
       const back = from
-        ? { label: t("toast.backTo", { host: name(from) }), run: () => this.router.back() }
+        ? {
+            label: t("toast.backTo", { host: name(from) }),
+            run: () => this.hostTabs.returnAcross(left),
+          }
         : undefined;
       this.success(t("toast.switchedHost", { host: name(to) }), back);
     });

@@ -219,6 +219,14 @@ export class HostTabs {
     return () => this.switchListeners.delete(listener);
   }
 
+  /**
+   * The way back of the switch that left `from` (the toast's button, #932): only while that
+   * switch is still the last one, so a later pick or switch is not undone.
+   */
+  returnAcross(from: string | null): void {
+    if (this.cameFrom && this.cameFrom.hostId === from) this.returnFrom();
+  }
+
   /** Back past a switch: the host and the kind of tab the window was on (#932). */
   private returnFrom(): void {
     const left = this.cameFrom;
@@ -306,6 +314,8 @@ export class HostTabs {
   }
 
   activate(tabId: string): void {
+    // A tab the person picks is where they want to be: no way back across it (#932).
+    if (tabId !== this.activeId) this.cameFrom = null;
     if (this.shared.tabs.some((tab) => tab.id === tabId)) {
       this.shared.activate(tabId);
       this.onShared = true;
@@ -387,6 +397,8 @@ export class HostTabs {
   private go(route: Route): void {
     const host = routeHost(route);
     if (host === null) {
+      // A shared screen leaves the host behind: Back from it does not cross the earlier switch.
+      this.cameFrom = null;
       if (this.onShared) this.shared.router.push(route);
       else this.showShared(route);
       this.onShared = true;
