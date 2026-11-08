@@ -28,6 +28,9 @@ export async function git(
   env: Record<string, string> = {},
   signal?: AbortSignal,
 ): Promise<string | null> {
+  // A daemon that has stopped starts nothing: a git started and killed afterwards can still write
+  // (on Windows `taskkill` is not instant) into the folder the caller is about to clean.
+  if (signal?.aborted) return null;
   // git-arg: a forwarder: every caller passes a checked revision (refArg/HEAD) or a value git gave
   const result = await runCommand(
     [whichOnPath("git") ?? "git", ...SAFE, ...args],

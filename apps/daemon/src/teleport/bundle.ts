@@ -168,13 +168,15 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
     // The objects the bundle was built from and the repository that names it: neither reaches the
     // person's repository (#715). A removal that fails (a lock on Windows) changes no answer.
     await Promise.allSettled(
-      [OBJECTS, MIRROR].map((name) =>
+      [OBJECTS, MIRROR, INDEX, `${INDEX}.lock`].map((name) =>
         rm(join(input.folder, name), { recursive: true, force: true }),
       ),
     );
   }
 }
 
+/** The copy of the person's index the WIP commit is built from, inside the package's folder. */
+const INDEX = "index";
 /** The temporary object folder inside the package's folder. */
 const OBJECTS = "objects";
 /** The bare repository inside the package's folder that holds the ref the bundle is made from. */
@@ -242,7 +244,7 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
   }
   const branch = await git(top, ["symbolic-ref", "--quiet", "--short", HEAD], {}, signal);
   // The working tree as a commit, through a copy of the index: the person's index stays as it is.
-  const index = join(input.folder, "index");
+  const index = join(input.folder, INDEX);
   const real = await must(
     top,
     ["rev-parse", "--path-format=absolute", "--git-path", "index"],
