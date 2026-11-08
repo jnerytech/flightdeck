@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test";
-import { hooksOff, SAFE } from "../src/teleport/git.ts";
+import { describe, expect, spyOn, test } from "bun:test";
+import { git, hooksOff, must, SAFE } from "../src/teleport/git.ts";
+import { tempDir } from "./helpers.ts";
 
 /**
  * Issue #100 (#715): the git calls of a teleport run no hook of the repository. `/dev/null` is a
@@ -24,5 +25,21 @@ describe("teleport-git: where the hooks point (#715)", () => {
       "-c",
       "log.showSignature=false",
     ]);
+  });
+});
+
+describe("teleport-git: a daemon that has stopped starts no git (#715, #1110)", () => {
+  test("a signal that has already fired spawns nothing: the call answers as a failed one", async () => {
+    const spawned = spyOn(Bun, "spawn");
+    try {
+      const out = await git(tempDir(), ["status"], {}, AbortSignal.abort());
+      const refused = await must(tempDir(), ["status"], {}, AbortSignal.abort()).then(
+        () => "ran",
+        (error: { reason?: string }) => error.reason ?? "refused",
+      );
+      expect([out, refused, spawned.mock.calls.length]).toEqual([null, "teleport_git", 0]);
+    } finally {
+      spawned.mockRestore();
+    }
   });
 });

@@ -61,6 +61,16 @@ describe("teleport-bundle: a daemon that stops kills the git calls (#715)", () =
     );
     expect([refusal, state(repo), await readdir(folder)]).toEqual(["teleport_stopped", before, []]);
   });
+
+  test("what a git killed half way left in the package's folder goes with it: the copy of the index and its lock", async () => {
+    const { repo, folder } = await working();
+    await writeFile(join(folder, "index"), "a copy of the index");
+    await writeFile(join(folder, "index.lock"), "");
+    const refusal = await reason(() =>
+      bundleCode({ cwd: repo, folder, id: "pkg-1", scan: () => [], signal: AbortSignal.abort() }),
+    );
+    expect([refusal, await readdir(folder)]).toEqual(["teleport_stopped", []]);
+  });
 });
 
 /** Whether the repository has an object (a blob, a tree or a commit) in its own store. */
