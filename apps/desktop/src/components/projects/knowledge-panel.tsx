@@ -204,7 +204,12 @@ export function KnowledgePanel(
               <li key={entry.path} className="flex flex-col gap-1 rounded-md border p-2">
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{entry.title}</span>
-                  <Badge variant="outline">{word(entry.status)}</Badge>
+                  {/* #1105: the select shows the status; the badge only where it cannot be
+                      changed, or while another one is chosen and not yet written. */}
+                  {(!props.status ||
+                    (chosen[entry.path] !== undefined && chosen[entry.path] !== entry.status)) && (
+                    <Badge variant="outline">{word(entry.status)}</Badge>
+                  )}
                   {props.status && (
                     <select
                       ref={(el) => {
