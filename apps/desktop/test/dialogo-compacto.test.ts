@@ -87,6 +87,13 @@ describe("dialogo-compacto: below 640 px a dialog is a full-screen sheet", () =>
     }
   });
 
+  // #1271: a field that takes focus under the footer is scrolled clear of it (WCAG 2.4.11, focus
+  // not obscured): the sheet keeps room at its bottom for the buttons and a reason under them.
+  test("a focused field is scrolled clear of the footer, not left under it", () => {
+    const content = compactRule('[data-slot="dialog-content"]');
+    expect(content.includes("scroll-padding-bottom: 6rem")).toBe(true);
+  });
+
   test("a confirmation is not part of the sheet: a two-line question stays a centered box", () => {
     const start = css.indexOf("@media (width < 40rem) {");
     expect(start >= 0).toBe(true);
