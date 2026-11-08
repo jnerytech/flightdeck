@@ -67,7 +67,9 @@ export function loadSchedule(storage: BackupPlatform["storage"]): BackupSchedule
 }
 
 export function saveSchedule(storage: BackupPlatform["storage"], schedule: BackupSchedule): void {
-  storage.setItem(SCHEDULE_KEY, JSON.stringify(schedule));
+  // Only the four fields: whatever else the object carries is not written.
+  const { cadence, folder, keep, lastRunAt } = schedule;
+  storage.setItem(SCHEDULE_KEY, JSON.stringify({ cadence, folder, keep, lastRunAt }));
 }
 
 /** Whether a run is owed: a cadence is set, a folder is chosen, and a period passed since the last. */
@@ -107,21 +109,26 @@ export async function runScheduledBackup(deps: {
   try {
     const text = await createBackup(platform, passphrase, passphrase, deps.options);
     await folder.write(name, text);
-    // Only names that look like a backup are ever considered, whatever the folder lists.
-    const mine = (await folder.list())
-      .filter((one) => NAME.test(one))
+  } catch {
+    return { status: "skipped", reason: "failed", at };
+  }
+  // The backup exists now. Pruning keeps it and the newest others, whatever their dates say; if the
+  // folder cannot be read or cleaned, the run still counts as done and says the prune failed.
+  try {
+    const others = (await folder.list())
+      .filter((one) => NAME.test(one) && one !== name)
       .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-    const stale = mine.slice(0, Math.max(0, mine.length - keep));
+    const stale = others.slice(0, Math.max(0, others.length - (keep - 1)));
     for (const old of stale) await folder.remove(old);
     return {
       status: "done",
       name,
-      kept: mine.length - stale.length,
+      kept: others.length - stale.length + 1,
       removed: stale.length,
       prune: "ok",
       at,
     };
   } catch {
-    return { status: "skipped", reason: "failed", at };
+    return { status: "done", name, kept: 1, removed: 0, prune: "failed", at };
   }
 }

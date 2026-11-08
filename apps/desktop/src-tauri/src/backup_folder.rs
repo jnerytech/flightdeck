@@ -5,13 +5,15 @@
 //! checks run without the Tauri runtime.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 const PREFIX: &str = "flightdeck-backup-";
 const SUFFIX: &str = ".fdbackup";
 /// A backup is a few KiB to a few MiB (the app refuses one over 1 MiB); a bigger text is not one.
 pub const MAX_BACKUP_BYTES: usize = 8 * 1024 * 1024;
 
-/// Whether `name` is exactly a backup's file name: no folder part, no other text.
+/// Whether `name` is exactly a backup's file name: no folder part, no other text, and a stamp that
+/// is a real UTC date and time.
 pub fn is_backup_name(name: &str) -> bool {
     let Some(stamp) = name
         .strip_prefix(PREFIX)
@@ -21,11 +23,20 @@ pub fn is_backup_name(name: &str) -> bool {
     };
     // YYYYMMDD-HHMMSS, ASCII digits only: a separator or a dot cannot hide in it.
     let bytes = stamp.as_bytes();
-    bytes.len() == 15
+    let well_formed = bytes.len() == 15
         && bytes
             .iter()
             .enumerate()
-            .all(|(i, b)| if i == 8 { *b == b'-' } else { b.is_ascii_digit() })
+            .all(|(i, b)| if i == 8 { *b == b'-' } else { b.is_ascii_digit() });
+    if !well_formed {
+        return false;
+    }
+    let number = |from: usize, to: usize| stamp[from..to].parse::<u32>().unwrap_or(u32::MAX);
+    (1..=12).contains(&number(4, 6))
+        && (1..=31).contains(&number(6, 8))
+        && number(9, 11) < 24
+        && number(11, 13) < 60
+        && number(13, 15) < 60
 }
 
 /// An absolute folder that exists. Nothing is created.
@@ -43,15 +54,23 @@ fn checked_dir(dir: &str) -> Result<PathBuf, String> {
     Ok(path.to_path_buf())
 }
 
+/// Where the picked folder is kept, inside the app's own config folder.
+const FOLDER_FILE: &str = "backup-folder";
+
 /// Remembers the folder the person picked, in the app's own config folder, so the webview cannot
-/// point the backups anywhere else. Only a pick (a native dialog) calls this.
-pub fn save_folder(_config_dir: &Path, _folder: &str) -> Result<(), String> {
-    Ok(())
+/// point the backups anywhere else. Only a pick (a native dialog) calls this; a folder that is not
+/// there is refused and the last one stays.
+pub fn save_folder(config_dir: &Path, folder: &str) -> Result<(), String> {
+    checked_dir(folder)?;
+    std::fs::create_dir_all(config_dir).map_err(|e| e.to_string())?;
+    std::fs::write(config_dir.join(FOLDER_FILE), folder).map_err(|e| e.to_string())
 }
 
 /// The folder the person picked last, if it is still there.
-pub fn load_folder(_config_dir: &Path) -> Option<String> {
-    Some("/".to_string())
+pub fn load_folder(config_dir: &Path) -> Option<String> {
+    let saved = std::fs::read_to_string(config_dir.join(FOLDER_FILE)).ok()?;
+    let folder = saved.trim();
+    checked_dir(folder).ok().map(|_| folder.to_string())
 }
 
 fn checked_name(name: &str) -> Result<(), String> {
@@ -62,10 +81,21 @@ fn checked_name(name: &str) -> Result<(), String> {
     }
 }
 
-/// Writes `text` as the backup `name` in `dir`; an existing file is never replaced. The text goes
-/// to a temporary file first and is renamed, so a crash leaves no half-written backup.
-pub fn write_backup(dir: &str, name: &str, text: &str) -> Result<(), String> {
+static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// Writes the text to a new file that did not exist, and flushes it to disk.
+fn write_part(part: &Path, text: &str) -> std::io::Result<()> {
     use std::io::Write;
+    // create_new fails on anything already there, a link included.
+    let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(part)?; // NOSONAR: runs on the blocking pool, on a name this module built
+    file.write_all(text.as_bytes())?;
+    file.sync_all()
+}
+
+/// Writes `text` as the backup `name` in `dir`; an existing file is never replaced. The text goes
+/// to a temporary file of its own (a name no other call uses), then is linked into place, so a crash
+/// leaves no half-written backup and two writers cannot take each other's temporary file.
+pub fn write_backup(dir: &str, name: &str, text: &str) -> Result<(), String> {
     checked_name(name)?;
     if text.len() > MAX_BACKUP_BYTES {
         return Err("the backup is too big".to_string());
@@ -76,22 +106,21 @@ pub fn write_backup(dir: &str, name: &str, text: &str) -> Result<(), String> {
     if std::fs::symlink_metadata(&target).is_ok() {
         return Err("a backup with that name already exists".to_string());
     }
-    let part = dir.join(format!("{name}.part"));
-    let written = (|| {
-        // create_new fails on anything already there, a link included.
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&part)?; // NOSONAR: runs on the blocking pool, on a name this module built
-        file.write_all(text.as_bytes())?;
-        file.sync_all()?;
-        std::fs::rename(&part, &target)
-    })();
-    if let Err(error) = written {
+    let unique = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let part = dir.join(format!("{name}.{}-{unique}.part", std::process::id()));
+    write_part(&part, text).map_err(|e| {
         let _ = std::fs::remove_file(&part);
-        return Err(error.to_string());
-    }
-    Ok(())
+        e.to_string()
+    })?;
+    // A hard link fails when the target appeared meanwhile; a file system without links falls back
+    // to a rename, after the check above.
+    let placed = match std::fs::hard_link(&part, &target) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Err(e),
+        Err(_) => std::fs::rename(&part, &target),
+    };
+    let _ = std::fs::remove_file(&part);
+    placed.map_err(|e| e.to_string())
 }
 
 /// The backups in `dir`, by name, oldest first; anything else in the folder is not listed.

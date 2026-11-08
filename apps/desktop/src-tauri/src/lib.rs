@@ -1031,22 +1031,63 @@ async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     .await
 }
 
-/// Writes a scheduled backup into the backup folder (issue #1264); the module checks the name and the folder.
-#[tauri::command]
-async fn backup_folder_write(dir: String, name: String, text: String) -> Result<(), String> {
-    spawn_blocking_result(move || backup_folder::write_backup(&dir, &name, &text)).await
+/// Where the backup folder's pick is kept: the app's own config folder (no path comes from the webview).
+fn backup_config(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    app.path().app_config_dir().map_err(|e| e.to_string())
 }
 
-/// The backups in the backup folder, oldest first.
-#[tauri::command]
-async fn backup_folder_list(dir: String) -> Result<Vec<String>, String> {
-    spawn_blocking_result(move || backup_folder::list_backups(&dir)).await
+/// The folder every backup command works in: the one the person picked, never one the webview names.
+fn backup_dir(app: &tauri::AppHandle) -> Result<String, String> {
+    backup_folder::load_folder(&backup_config(app)?)
+        .ok_or_else(|| "no backup folder is chosen".to_string())
 }
 
-/// Removes one old backup from the backup folder; nothing named otherwise.
+/// Opens the system folder dialog for the scheduled backups (issue #1264) and keeps the pick; `None`
+/// when it is cancelled. The other backup commands use only this folder.
 #[tauri::command]
-async fn backup_folder_remove(dir: String, name: String) -> Result<(), String> {
-    spawn_blocking_result(move || backup_folder::remove_backup(&dir, &name)).await
+async fn backup_folder_pick(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    spawn_blocking_result(move || {
+        let Some(picked) = app.dialog().file().blocking_pick_folder() else {
+            return Ok(None);
+        };
+        let path = picked.into_path().map_err(|e| e.to_string())?;
+        let text = path
+            .to_str()
+            .ok_or_else(|| "the folder's name is not valid text".to_string())?;
+        backup_folder::save_folder(&backup_config(&app)?, text)?;
+        Ok(Some(text.to_string()))
+    })
+    .await
+}
+
+/// The folder picked last, if it is still there.
+#[tauri::command]
+async fn backup_folder_current(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    spawn_blocking_result(move || Ok(backup_folder::load_folder(&backup_config(&app)?))).await
+}
+
+/// Writes a scheduled backup into the picked folder; the module checks the name.
+#[tauri::command]
+async fn backup_folder_write(
+    app: tauri::AppHandle,
+    name: String,
+    text: String,
+) -> Result<(), String> {
+    spawn_blocking_result(move || backup_folder::write_backup(&backup_dir(&app)?, &name, &text))
+        .await
+}
+
+/// The backups in the picked folder, oldest first.
+#[tauri::command]
+async fn backup_folder_list(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    spawn_blocking_result(move || backup_folder::list_backups(&backup_dir(&app)?)).await
+}
+
+/// Removes one old backup from the picked folder; nothing named otherwise.
+#[tauri::command]
+async fn backup_folder_remove(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    spawn_blocking_result(move || backup_folder::remove_backup(&backup_dir(&app)?, &name)).await
 }
 
 /// Deletes the file `vault_pick_file` returned last, and nothing else.
@@ -1449,6 +1490,8 @@ pub fn run() {
             vault_generate_key,
             vault_pick_file,
             pick_folder,
+            backup_folder_pick,
+            backup_folder_current,
             backup_folder_write,
             backup_folder_list,
             backup_folder_remove,

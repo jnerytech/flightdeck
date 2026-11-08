@@ -25,6 +25,8 @@ const COMMANDS = [
   "vault_generate_key",
   "vault_pick_file",
   "pick_folder",
+  "backup_folder_pick",
+  "backup_folder_current",
   "backup_folder_write",
   "backup_folder_list",
   "backup_folder_remove",
