@@ -222,7 +222,7 @@ async function behindBy(deps: PrFlowDeps, base: string, head: string): Promise<n
  * `type(scope): ` prefix and trailing `(#N)`, or null when the branch has none (#909).
  */
 export function sliceTitle(subjects: string[]): string | null {
-  const first = subjects.filter((s) => !s.startsWith("Merge ")).at(-1);
+  const first = subjects.findLast((s) => !s.startsWith("Merge "));
   if (!first) return null;
   const text = first
     .replace(/^[a-z]+(?:\([^)]*\))?!?: /, "")
