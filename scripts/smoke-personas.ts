@@ -136,6 +136,252 @@ interface Listed {
   }>;
 }
 
+function check(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+type FakeClaudeHandle = ReturnType<typeof installFakeClaude>;
+type Wrapper = (...args: string[]) => Promise<{ code: number; stderr: string }>;
+interface FakeStart {
+  args: string[];
+  appended: string | null;
+  appendedPath: string | null;
+  agents: Record<string, { description: string }> | null;
+  agentsPath: string | null;
+}
+
+async function checkPack(client: Client): Promise<void> {
+  step = "o pacote";
+  const pack = await client.call<Listed>("personas.list", { scope: "host" });
+  check(
+    pack.personas.map((p) => p.id).join(",") === PACK.join(",") &&
+      pack.personas.every((p) => p.scope === "pack"),
+    `o pacote devia ter as onze, na ordem: ${pack.personas.map((p) => p.id).join(",")}`,
+  );
+  const english = await client.call<Listed>("personas.list", { scope: "host", language: "en" });
+  check(
+    english.personas.some((p) => p.name === "Security reviewer"),
+    "faltou o pacote em inglês",
+  );
+  log("as nove personas do pacote, em pt-BR e em inglês");
+}
+
+async function checkEditAndReset(client: Client): Promise<void> {
+  step = "editar e restaurar";
+  const secret = `ghp_${"0123456789abcdef".repeat(2)}0123`;
+  const refused = await client.fail("personas.save", {
+    scope: "host",
+    persona: { id: "ruim", name: "Ruim", description: "d", body: `Use ${secret}` },
+  });
+  check(
+    refused.includes("persona_secret") && !refused.includes(secret),
+    `devia recusar o segredo sem repeti-lo: ${refused}`,
+  );
+  await client.call("personas.save", {
+    scope: "host",
+    persona: { id: "qa", name: "Meu QA", description: "Editada", body: "Seja breve." },
+  });
+  const edited = await client.call<Listed>("personas.list", { scope: "host" });
+  check(
+    edited.personas.find((p) => p.id === "qa")?.modified,
+    "a edição devia aparecer como modificada",
+  );
+  await client.call("personas.reset", { id: "qa" });
+  const back = await client.call<Listed>("personas.list", { scope: "host" });
+  check(back.personas.find((p) => p.id === "qa")?.scope === "pack", "reset devia voltar ao pacote");
+  log("um segredo foi recusado sem ser repetido; a edição do pacote foi feita e desfeita");
+}
+
+async function checkManagedSession(client: Client, project: string): Promise<void> {
+  step = "sessão gerenciada com persona";
+  const { sessionId } = await client.call<{ sessionId: string }>("session.create", {
+    cwd: project,
+    prompt: "[persona] quem é você?",
+    persona: { id: "seguranca" },
+  });
+  await client.call("session.subscribe", { sessionId, sinceSeq: 0 });
+  await until(
+    () => client.of(sessionId).some((e) => e.type === "turn.result"),
+    "a resposta da sessão",
+  );
+  const reply = client
+    .of(sessionId)
+    .flatMap((e) => (e.type === "message.assistant" ? e.blocks : []))
+    .map((b) => (b.type === "text" ? b.text : ""))
+    .join("\n");
+  for (const part of [
+    "Persona: Você atua como revisor de segurança sênior.",
+    "esforço=high",
+    "ferramentas=Read,Grep,Glob,Bash",
+    "persona-qa",
+  ]) {
+    check(reply.includes(part), `a sessão devia ter aberto no papel (${part}): ${reply}`);
+  }
+  const listed = await client.call<{
+    sessions: Array<{ id: string; permissionMode: string; persona?: { id: string } }>;
+  }>("session.list", {});
+  const mine = listed.sessions.find((s) => s.id === sessionId);
+  check(
+    mine?.persona?.id === "seguranca" && mine.permissionMode === "plan",
+    `selo e modo plan esperados: ${JSON.stringify(mine)}`,
+  );
+  log(
+    "a sessão abriu como revisor de segurança: corpo, esforço, ferramentas, subagentes, modo plan e selo",
+  );
+}
+
+async function checkApplyAndClear(client: Client, project: string): Promise<void> {
+  step = "aplicar e voltar ao normal";
+  const open = await client.call<{ sessionId: string }>("session.create", {
+    cwd: project,
+    prompt: "olá",
+  });
+  await client.call("session.subscribe", { sessionId: open.sessionId, sinceSeq: 0 });
+  await until(
+    () => client.of(open.sessionId).some((e) => e.type === "turn.result"),
+    "o primeiro turno",
+  );
+  await client.call("session.applyPersona", { sessionId: open.sessionId, persona: { id: "qa" } });
+  await until(
+    () =>
+      client
+        .of(open.sessionId)
+        .some((e) => e.type === "message.user" && e.text.includes("A partir de agora, atue como")),
+    "a mensagem de troca de papel",
+  );
+  check(
+    client.of(open.sessionId).some((e) => e.type === "persona.applied"),
+    "faltou persona.applied",
+  );
+  await until(
+    () => client.of(open.sessionId).filter((e) => e.type === "turn.result").length >= 2,
+    "o turno da troca",
+  );
+  await client.call("session.clearPersona", { sessionId: open.sessionId });
+  await until(
+    () =>
+      client
+        .of(open.sessionId)
+        .some((e) => e.type === "message.user" && e.text.includes("Saia do papel")),
+    "a mensagem de saída",
+  );
+  check(
+    client.of(open.sessionId).some((e) => e.type === "persona.cleared"),
+    "faltou persona.cleared",
+  );
+  log("aplicar e voltar ao normal: as duas mensagens e as duas marcas na linha do tempo");
+}
+
+async function checkVersionedTrust(client: Client, project: string): Promise<void> {
+  step = "persona versionada pede confiança";
+  const dir = join(project, ".flightdeck", "personas");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    join(dir, "do-projeto.md"),
+    "---\nid: do-projeto\nname: Do projeto\ndescription: Persona do repositório\n---\nVocê é a persona do projeto.\n",
+  );
+  const untrusted = await client.fail("session.create", {
+    cwd: project,
+    prompt: "oi",
+    persona: { id: "do-projeto" },
+  });
+  check(untrusted.includes("persona_untrusted"), `devia pedir confiança: ${untrusted}`);
+  const project1 = await client.call<Listed>("personas.list", {
+    scope: "project",
+    projectPath: project,
+  });
+  const versioned = project1.personas.find((p) => p.id === "do-projeto");
+  check(versioned?.hash && !versioned.trusted, "a versionada devia vir com hash e sem confiança");
+  await client.call("personas.trust", {
+    projectPath: project,
+    id: "do-projeto",
+    hash: versioned.hash,
+  });
+  await client.call("session.create", {
+    cwd: project,
+    prompt: "oi",
+    persona: { id: "do-projeto" },
+  });
+  log("a persona do repositório recusada sem confiança e aceita depois de confiar no hash");
+}
+
+function makeWrapper(project: string, configPath: string): Wrapper {
+  return async (...args: string[]) => {
+    const proc = Bun.spawn([process.execPath, "run", BIN, "claude", ...args], {
+      cwd: project,
+      env: { ...process.env, FLIGHTDECK_CONFIG: configPath },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    return { code: await proc.exited, stderr: await new Response(proc.stderr).text() };
+  };
+}
+
+async function checkInteractiveWrapper(wrapper: Wrapper, starts: () => FakeStart[]): Promise<void> {
+  const done = await wrapper("--persona", "qa");
+  check(done.code === 0, `o wrapper devia sair com 0: ${done.code} ${done.stderr}`);
+  const start = starts()[0];
+  const argv = start?.args ?? [];
+  check(
+    argv.includes("--append-system-prompt-file") &&
+      argv[argv.indexOf("--model") + 1] === "claude-sonnet-5-5",
+    `faltou o arquivo do prompt ou o modelo: ${argv.join(" ")}`,
+  );
+  if (!start?.appended?.includes("engenheiro de QA sênior"))
+    throw new Error("o claude devia ver o corpo da persona no arquivo");
+  // A Windows runner finds the fake as claude.cmd, a shim that gets no inline --agents.
+  if (process.platform === "win32") {
+    check(
+      !argv.includes("--agents") && done.stderr.includes("--agents"),
+      `um claude.cmd não devia receber --agents, e o aviso devia sair: ${done.stderr}`,
+    );
+  } else {
+    const inline = Object.keys(start.agents ?? {});
+    check(
+      inline.includes("persona-revisor") && inline.includes("persona-do-projeto"),
+      `faltaram agentes: ${inline.join(",")}`,
+    );
+  }
+  check(!existsSync(start.appendedPath ?? ""), "o arquivo temporário do corpo devia ter sumido");
+}
+
+async function checkPrintWrapper(wrapper: Wrapper, starts: () => FakeStart[]): Promise<void> {
+  // Print mode takes the subagents from a file, on every platform.
+  const printed = await wrapper("--persona", "qa", "-p", "oi");
+  check(printed.code === 0, `o wrapper -p devia sair com 0: ${printed.code} ${printed.stderr}`);
+  const print = starts()[1];
+  const agentNames = Object.keys(print?.agents ?? {});
+  check(
+    agentNames.includes("persona-revisor") && agentNames.includes("persona-do-projeto"),
+    `faltaram agentes: ${agentNames.join(",")}`,
+  );
+  check(
+    !(existsSync(print?.appendedPath ?? "") || existsSync(print?.agentsPath ?? "")),
+    "os arquivos temporários deviam ter sumido",
+  );
+  log(
+    "o claude do terminal recebeu o corpo, o modelo e os subagentes (inline ou por arquivo), e os arquivos sumiram no fim",
+  );
+}
+
+async function checkWrapper(
+  fake: FakeClaudeHandle,
+  project: string,
+  configPath: string,
+): Promise<void> {
+  step = "flightdeckd claude --persona";
+  const wrapper = makeWrapper(project, configPath);
+  const starts = () => fake.events().filter((e) => e.type === "start") as unknown as FakeStart[];
+  await checkInteractiveWrapper(wrapper, starts);
+  await checkPrintWrapper(wrapper, starts);
+  const missing = await wrapper("--persona", "nao-existe");
+  check(
+    missing.code === 1 && starts().length === 2,
+    `uma persona inexistente não devia abrir o claude: ${missing.code} ${missing.stderr}`,
+  );
+  log("uma persona que não existe não abre o claude");
+}
+
 async function run(work: string): Promise<void> {
   const projects = join(work, "projects");
   const project = join(projects, "app");
@@ -168,218 +414,12 @@ async function run(work: string): Promise<void> {
     const client = new Client(url);
     await client.open(token);
 
-    step = "o pacote";
-    const pack = await client.call<Listed>("personas.list", { scope: "host" });
-    if (
-      pack.personas.map((p) => p.id).join(",") !== PACK.join(",") ||
-      pack.personas.some((p) => p.scope !== "pack")
-    ) {
-      throw new Error(
-        `o pacote devia ter as onze, na ordem: ${pack.personas.map((p) => p.id).join(",")}`,
-      );
-    }
-    const english = await client.call<Listed>("personas.list", { scope: "host", language: "en" });
-    if (!english.personas.some((p) => p.name === "Security reviewer"))
-      throw new Error("faltou o pacote em inglês");
-    log("as nove personas do pacote, em pt-BR e em inglês");
-
-    step = "editar e restaurar";
-    const secret = `ghp_${"0123456789abcdef".repeat(2)}0123`;
-    const refused = await client.fail("personas.save", {
-      scope: "host",
-      persona: { id: "ruim", name: "Ruim", description: "d", body: `Use ${secret}` },
-    });
-    if (!refused.includes("persona_secret") || refused.includes(secret)) {
-      throw new Error(`devia recusar o segredo sem repeti-lo: ${refused}`);
-    }
-    await client.call("personas.save", {
-      scope: "host",
-      persona: { id: "qa", name: "Meu QA", description: "Editada", body: "Seja breve." },
-    });
-    const edited = await client.call<Listed>("personas.list", { scope: "host" });
-    if (!edited.personas.find((p) => p.id === "qa")?.modified)
-      throw new Error("a edição devia aparecer como modificada");
-    await client.call("personas.reset", { id: "qa" });
-    const back = await client.call<Listed>("personas.list", { scope: "host" });
-    if (back.personas.find((p) => p.id === "qa")?.scope !== "pack")
-      throw new Error("reset devia voltar ao pacote");
-    log("um segredo foi recusado sem ser repetido; a edição do pacote foi feita e desfeita");
-
-    step = "sessão gerenciada com persona";
-    const { sessionId } = await client.call<{ sessionId: string }>("session.create", {
-      cwd: project,
-      prompt: "[persona] quem é você?",
-      persona: { id: "seguranca" },
-    });
-    await client.call("session.subscribe", { sessionId, sinceSeq: 0 });
-    await until(
-      () => client.of(sessionId).some((e) => e.type === "turn.result"),
-      "a resposta da sessão",
-    );
-    const reply = client
-      .of(sessionId)
-      .flatMap((e) => (e.type === "message.assistant" ? e.blocks : []))
-      .map((b) => (b.type === "text" ? b.text : ""))
-      .join("\n");
-    for (const part of [
-      "Persona: Você atua como revisor de segurança sênior.",
-      "esforço=high",
-      "ferramentas=Read,Grep,Glob,Bash",
-      "persona-qa",
-    ]) {
-      if (!reply.includes(part))
-        throw new Error(`a sessão devia ter aberto no papel (${part}): ${reply}`);
-    }
-    const listed = await client.call<{
-      sessions: Array<{ id: string; permissionMode: string; persona?: { id: string } }>;
-    }>("session.list", {});
-    const mine = listed.sessions.find((s) => s.id === sessionId);
-    if (mine?.persona?.id !== "seguranca" || mine.permissionMode !== "plan") {
-      throw new Error(`selo e modo plan esperados: ${JSON.stringify(mine)}`);
-    }
-    log(
-      "a sessão abriu como revisor de segurança: corpo, esforço, ferramentas, subagentes, modo plan e selo",
-    );
-
-    step = "aplicar e voltar ao normal";
-    const open = await client.call<{ sessionId: string }>("session.create", {
-      cwd: project,
-      prompt: "olá",
-    });
-    await client.call("session.subscribe", { sessionId: open.sessionId, sinceSeq: 0 });
-    await until(
-      () => client.of(open.sessionId).some((e) => e.type === "turn.result"),
-      "o primeiro turno",
-    );
-    await client.call("session.applyPersona", { sessionId: open.sessionId, persona: { id: "qa" } });
-    await until(
-      () =>
-        client
-          .of(open.sessionId)
-          .some(
-            (e) => e.type === "message.user" && e.text.includes("A partir de agora, atue como"),
-          ),
-      "a mensagem de troca de papel",
-    );
-    if (!client.of(open.sessionId).some((e) => e.type === "persona.applied"))
-      throw new Error("faltou persona.applied");
-    await until(
-      () => client.of(open.sessionId).filter((e) => e.type === "turn.result").length >= 2,
-      "o turno da troca",
-    );
-    await client.call("session.clearPersona", { sessionId: open.sessionId });
-    await until(
-      () =>
-        client
-          .of(open.sessionId)
-          .some((e) => e.type === "message.user" && e.text.includes("Saia do papel")),
-      "a mensagem de saída",
-    );
-    if (!client.of(open.sessionId).some((e) => e.type === "persona.cleared"))
-      throw new Error("faltou persona.cleared");
-    log("aplicar e voltar ao normal: as duas mensagens e as duas marcas na linha do tempo");
-
-    step = "persona versionada pede confiança";
-    const dir = join(project, ".flightdeck", "personas");
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(
-      join(dir, "do-projeto.md"),
-      "---\nid: do-projeto\nname: Do projeto\ndescription: Persona do repositório\n---\nVocê é a persona do projeto.\n",
-    );
-    const untrusted = await client.fail("session.create", {
-      cwd: project,
-      prompt: "oi",
-      persona: { id: "do-projeto" },
-    });
-    if (!untrusted.includes("persona_untrusted"))
-      throw new Error(`devia pedir confiança: ${untrusted}`);
-    const project1 = await client.call<Listed>("personas.list", {
-      scope: "project",
-      projectPath: project,
-    });
-    const versioned = project1.personas.find((p) => p.id === "do-projeto");
-    if (!versioned?.hash || versioned.trusted)
-      throw new Error("a versionada devia vir com hash e sem confiança");
-    await client.call("personas.trust", {
-      projectPath: project,
-      id: "do-projeto",
-      hash: versioned.hash,
-    });
-    await client.call("session.create", {
-      cwd: project,
-      prompt: "oi",
-      persona: { id: "do-projeto" },
-    });
-    log("a persona do repositório recusada sem confiança e aceita depois de confiar no hash");
-
-    step = "flightdeckd claude --persona";
-    const wrapper = async (...args: string[]) => {
-      const proc = Bun.spawn([process.execPath, "run", BIN, "claude", ...args], {
-        cwd: project,
-        env: { ...process.env, FLIGHTDECK_CONFIG: configPath },
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-      return { code: await proc.exited, stderr: await new Response(proc.stderr).text() };
-    };
-    const starts = () =>
-      fake.events().filter((e) => e.type === "start") as unknown as Array<{
-        args: string[];
-        appended: string | null;
-        appendedPath: string | null;
-        agents: Record<string, { description: string }> | null;
-        agentsPath: string | null;
-      }>;
-    const done = await wrapper("--persona", "qa");
-    if (done.code !== 0) throw new Error(`o wrapper devia sair com 0: ${done.code} ${done.stderr}`);
-    const start = starts()[0];
-    const argv = start?.args ?? [];
-    if (
-      !argv.includes("--append-system-prompt-file") ||
-      argv[argv.indexOf("--model") + 1] !== "claude-sonnet-5-5"
-    ) {
-      throw new Error(`faltou o arquivo do prompt ou o modelo: ${argv.join(" ")}`);
-    }
-    if (!start?.appended?.includes("engenheiro de QA sênior"))
-      throw new Error("o claude devia ver o corpo da persona no arquivo");
-    // A Windows runner finds the fake as claude.cmd, a shim that gets no inline --agents.
-    if (process.platform === "win32") {
-      if (argv.includes("--agents") || !done.stderr.includes("--agents")) {
-        throw new Error(
-          `um claude.cmd não devia receber --agents, e o aviso devia sair: ${done.stderr}`,
-        );
-      }
-    } else {
-      const inline = Object.keys(start.agents ?? {});
-      if (!inline.includes("persona-revisor") || !inline.includes("persona-do-projeto")) {
-        throw new Error(`faltaram agentes: ${inline.join(",")}`);
-      }
-    }
-    if (existsSync(start.appendedPath ?? "")) {
-      throw new Error("o arquivo temporário do corpo devia ter sumido");
-    }
-    // Print mode takes the subagents from a file, on every platform.
-    const printed = await wrapper("--persona", "qa", "-p", "oi");
-    if (printed.code !== 0)
-      throw new Error(`o wrapper -p devia sair com 0: ${printed.code} ${printed.stderr}`);
-    const print = starts()[1];
-    const agentNames = Object.keys(print?.agents ?? {});
-    if (!agentNames.includes("persona-revisor") || !agentNames.includes("persona-do-projeto")) {
-      throw new Error(`faltaram agentes: ${agentNames.join(",")}`);
-    }
-    if (existsSync(print?.appendedPath ?? "") || existsSync(print?.agentsPath ?? "")) {
-      throw new Error("os arquivos temporários deviam ter sumido");
-    }
-    log(
-      "o claude do terminal recebeu o corpo, o modelo e os subagentes (inline ou por arquivo), e os arquivos sumiram no fim",
-    );
-    const missing = await wrapper("--persona", "nao-existe");
-    if (missing.code !== 1 || starts().length !== 2) {
-      throw new Error(
-        `uma persona inexistente não devia abrir o claude: ${missing.code} ${missing.stderr}`,
-      );
-    }
-    log("uma persona que não existe não abre o claude");
+    await checkPack(client);
+    await checkEditAndReset(client);
+    await checkManagedSession(client, project);
+    await checkApplyAndClear(client, project);
+    await checkVersionedTrust(client, project);
+    await checkWrapper(fake, project, configPath);
     client.close();
   } finally {
     fake.restore();
