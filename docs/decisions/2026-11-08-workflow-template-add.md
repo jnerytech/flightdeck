@@ -11,7 +11,9 @@ new branch without touching the checkout (the harness setup, #75), and opens PRs
 
 - **The command.** `workflow.template.add {projectId, templateId, confirm}` returns
   `{path, branch, base, url}`. The host offers it as the `workflowTemplateAdd` feature, with the
-  board. Without `confirm: true` it is refused (`workflow_template_confirm`).
+  board. Without `confirm: true` it is refused (`workflow_template_confirm`). It is near only
+  (`requireVaultTransport`, `transport_refused` otherwise), as the harness commit and `changes.pr`
+  are: it pushes from the person's repository, with its pre-push hook running.
 - **The content is the host's.** The app names a template by id. The file and its path come from
   the host's own `workflowTemplates()`, with the check line filled the same way the list fills it.
   The command carries no file and no path (the schema is strict). An id the host does not have is
@@ -42,7 +44,13 @@ new branch without touching the checkout (the harness setup, #75), and opens PRs
 
 - **A failed push keeps the local branch.** The branch is made before the push, so a push that
   fails leaves it in the repository. A retry in the same minute is `workflow_template_branch_taken`,
-  and the next minute makes a new one. The daemon does not delete branches.
+  and the next minute makes a new one. When the push went through and only the provider failed to
+  open the PR, the branch is on origin too, with no PR: the provider's refusal says why, and the
+  person opens the PR from that branch or deletes it. The daemon does not delete branches.
+- **No fetch first.** The branch starts from the last fetched `origin/<base>`, and the file check
+  reads that tip and the local base. A stale ref gives a PR on an older base; a file added upstream
+  since the last fetch makes the PR conflict, which the PR host shows, and nothing is overwritten.
+  A fetch would add a network call with the repository's credential helper to every add.
 - **The push runs the repository's own `pre-push` hook and credential helper**, as a card's push
   does (`publishPr`); only the commit plumbing runs disarmed.
 - **No secret scan of the file.** It is the host's own template plus the project's test command,
