@@ -365,6 +365,13 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   `"knowledge": { "feedOff": ["/path/to/project"] }`, and a folder in that list switches off
   everything inside it too: a project off through a folder above it says so, and is switched on
   by editing that entry in the file. An untrusted project is not given the index, on or off.
+  Each document has a status picker. Choosing one writes only the `status:` line of that file's
+  front matter (a document with no front matter gets a block holding that line), keeps the rest of
+  the file as it is, and leaves the change in the project's folder, not committed: review it with
+  git. It is refused when the file changed since the list showed it (reload and try again), when
+  its front matter is not clear enough to edit safely, or when the file is over 1 MB or not text.
+  Only the documents the list shows can be changed; a link, a credential name or a file outside
+  the library folders cannot.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.

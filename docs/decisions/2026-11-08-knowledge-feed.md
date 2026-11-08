@@ -31,6 +31,29 @@ of the project are current.
   config file that touches only `knowledge.feedOff`, applied one at a time, and the running daemon
   uses the new list at once. Trust still gates the index whatever the switch says.
 
+## Changing a status from the panel (slice 5)
+
+- `knowledge.setStatus {path, file, status, expectedHash}` writes the `status:` line of one
+  document's front matter. The file must be one the list shows (library folders, no link, no
+  credential name, a file of its own), so it inherits the list's vetting.
+- **The hash check.** Each listed entry carries `hash`, a sha256 of the file's size and the start
+  the list read (8 KiB). A whole-file hash would mean reading up to 1 MB of each of 500 files for
+  every list. The write recomputes it from the file as it is now and refuses (`file_conflict`,
+  `review_file_changed`) on any difference. The rest of the file past the start is covered by the
+  size.
+- **What is written.** Only that line: a plain-word value is replaced (a comment after it stays), a
+  front matter without the key gets the line before its closing `---`, a document with no front
+  matter gets a block of that line alone. Line endings and a BOM are kept; every other byte stays.
+  Anything not clear (an unclosed block, not a mapping, two `status` keys, a value that is not one
+  plain word) is refused with `knowledge_frontmatter` and the file is not touched. After the
+  rewrite the new text is parsed again: it must give the asked status and the same title, type and
+  `supersedes` as before, or nothing is written.
+- **Where it goes.** A temp file beside the document, then a rename, so a reader never sees half a
+  file; the mode is kept. Nothing is staged or committed: the change is left in the project's
+  folder for the person. Files over 1 MB, with a NUL, or that are not UTF-8 are refused.
+- **Not gated by trust.** Trust decides what text reaches an agent's prompt; this is the person
+  editing their own file. Like `file.write`, it needs no near connection.
+
 ## Left out
 
 - Document bodies. The agent reads a document with its own tools, as it reads any file.
