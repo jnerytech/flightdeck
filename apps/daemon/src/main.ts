@@ -68,6 +68,7 @@ import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
 import { listKnowledge } from "./knowledge/list.ts";
 import { knowledgeFeedFor } from "./knowledge/serve.ts";
+import { setKnowledgeStatus } from "./knowledge/status.ts";
 import { knowledgeSwitchFor } from "./knowledge/switch.ts";
 import { linesOf } from "./lines.ts";
 import { lingerState } from "./linger.ts";
@@ -1442,6 +1443,7 @@ export async function startDaemon(
     },
     harnessStack: detectStack,
     knowledge: listKnowledge,
+    knowledgeStatus: setKnowledgeStatus,
     knowledgeFeed: knowledgeFeedFor({
       off: () => config.knowledge.feedOff,
       trust: trustForKnowledge,
