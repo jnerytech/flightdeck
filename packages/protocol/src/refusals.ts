@@ -259,6 +259,7 @@ export const DAEMON_REASONS = [
   "trust_root_refused",
   "harness_stale",
   "harness_confirm",
+  "harness_reformat",
   "secret_expired",
   "vault_full",
   "vault_action_unknown",

@@ -186,6 +186,7 @@ export interface ServerOptions {
     path: string,
     parts: readonly PreviewPart[],
     digests: Readonly<Record<string, string>>,
+    options: { reformat: boolean },
   ) => Promise<HarnessApplied>;
   projectTrust?: {
     /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
@@ -1157,7 +1158,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         // A hook written here runs its command in every session of a trusted project: a near
         // connection only, like project.trust.set, and only once the person confirmed.
         requireVaultTransport(ws.data.origin, "project.harness.apply", opts.log);
-        const { parts, digests, confirm } = command.payload;
+        const { parts, digests, confirm, reformat } = command.payload;
         if (confirm !== true) {
           throw new FlightdeckError(
             "invalid_state",
@@ -1166,7 +1167,10 @@ export function startServer(opts: ServerOptions): RunningServer {
           );
         }
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.harnessApply(path, parts, digests));
+        return ok(
+          command.type,
+          await opts.harnessApply(path, parts, digests, { reformat: reformat === true }),
+        );
       }
       case "project.trust.set": {
         if (!opts.projectTrust) throw featureOff("projectTrust");

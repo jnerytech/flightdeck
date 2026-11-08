@@ -34,10 +34,15 @@ would then write a command the person never saw.
   - A key that holds another shape is a conflict in the preview, and gets nothing.
   - A settings proposal with only conflicts writes nothing.
   - The file is written back with its own indent and final newline. When that changes its layout
-    (`reformats`), apply still writes it: the preview showed it and the person confirmed.
+    (`reformats`), a JSON round trip may also change values (a number past 2^53, an escape, a
+    repeated key). Apply then refuses with `harness_reformat` unless the call carries
+    `reformat: true`: the person saw `reformats` in the preview and accepted it.
 - **Where it writes.**
   - Every check happens before any write.
-  - The project path must still resolve to itself: the server resolved it inside the allowed roots.
+  - The project path must still resolve to itself (`samePath`, so case and form differences on
+    Windows do not count): the server resolved it inside the allowed roots.
+  - The preview checks the settings as apply will: a file with a second name (a hard link) or one the
+    host cannot write is listed as unreadable, so the preview never offers what apply refuses.
   - `settings.json` is walked again with no link allowed anywhere on the path. It is then opened with
     `O_NOFOLLOW` (where the platform has it), and the handle must be the same file (device and inode,
     compared as bigints) the walk found, with one name only. A hard link would write a file elsewhere
@@ -67,8 +72,8 @@ would then write a command the person never saw.
   nothing more than the handle's identity check does.
 - **Ask for trust again on every apply.** It needs a configuration fingerprint in the trust records,
   which they do not have. That is its own change, if it is wanted.
-- **Refuse a write that reformats.** The person already sees `reformats` in the preview, and the
-  merge keeps every value.
+- **Write a reformatted file without asking.** A JSON round trip can change values, which breaks
+  condition 1, so it needs the person's explicit yes.
 
 ## Consequences
 
@@ -79,9 +84,10 @@ would then write a command the person never saw.
 - Node has no `openat`, so a folder swapped between the last check and the open can still place an
   empty new file outside the project. The check after the open refuses before any content is
   written, and `O_EXCL` means the file is one this call made.
-- The settings are written as truncate, then write, through the handle. An edit made by someone else
-  between the read and the write is lost, and a crash in between leaves the file short. The window is
-  the length of one write, during an apply the person started.
+- The settings are written over the old bytes, then cut to length, through the handle. A write that
+  fails or is cut short puts the old bytes back before the error goes out. An edit made by someone
+  else between the read and the write is lost, and a crash in the middle of the write can leave a
+  mix of the two. The window is the length of one write, during an apply the person started.
 - An apply that refuses with `harness_stale` after a late file appeared may have created the new
   files before it. They are template files that were missing, and nothing of the person's changes.
 - S4b, the app's confirm step, shows the formatter command and says it runs the project's own

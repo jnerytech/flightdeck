@@ -1795,6 +1795,8 @@ export const en: Dictionary = {
     harness_stale:
       "The project changed since the preview, or the preview was not of these parts: preview again.",
     harness_confirm: "Changing the Claude Code setup needs your confirmation.",
+    harness_reformat:
+      "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",

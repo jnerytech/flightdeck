@@ -1794,6 +1794,8 @@ export const ptBR = {
     harness_stale:
       "O projeto mudou desde a prévia, ou a prévia não era destas partes: faça a prévia de novo.",
     harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
+    harness_reformat:
+      "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",

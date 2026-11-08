@@ -3187,6 +3187,8 @@ export const Command = z.discriminatedUnion("type", [
           .record(z.string().max(256), z.string().max(128))
           .refine((digests) => Object.keys(digests).length <= HARNESS_PREVIEW_PARTS.length),
         confirm: z.boolean().optional(),
+        /** The person accepted the settings being rewritten with another layout (the preview's `reformats`). */
+        reformat: z.boolean().optional(),
       })
       .strict(),
   ),

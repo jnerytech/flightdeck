@@ -5,8 +5,8 @@
  * See docs/decisions/2026-11-07-harness-preview.md.
  */
 import { createHash } from "node:crypto";
-import type { BigIntStats } from "node:fs";
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { type BigIntStats, constants } from "node:fs";
+import { access, lstat, readFile, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import {
   type HARNESS_PREVIEW_PARTS,
@@ -91,6 +91,22 @@ async function look(root: string, name: string): Promise<Look> {
   if (found.state !== "file") return found;
   const bytes = await orNull(readFile(found.at));
   return bytes === null ? { state: "refused" } : fileLook(bytes);
+}
+
+/**
+ * The settings as apply would find them: a file with a second name (a hard link, which may lie
+ * outside the project) or one the host cannot write is refused here too, so the preview never offers
+ * what apply would turn down.
+ */
+async function settingsLook(root: string): Promise<Look> {
+  const found = await walk(root, SETTINGS);
+  if (found.state !== "file") return found;
+  const writable = await access(found.at, constants.W_OK).then(
+    () => true,
+    () => false,
+  );
+  if (found.info.nlink !== 1n || !writable) return { state: "refused" };
+  return look(root, SETTINGS);
 }
 
 /** `value` as JSON laid out like `text` (its indent and final newline); 2 spaces and a newline for a new file. */
@@ -238,5 +254,5 @@ export async function previewHarness(
   parts: readonly PreviewPart[],
 ): Promise<HarnessPreview> {
   const root = (await orNull(realpath(path))) ?? path;
-  return (await planHarness(root, parts, (at) => look(at, SETTINGS))).preview;
+  return (await planHarness(root, parts, settingsLook)).preview;
 }

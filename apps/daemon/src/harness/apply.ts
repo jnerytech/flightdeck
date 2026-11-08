@@ -8,6 +8,7 @@ import { type FileHandle, lstat, mkdir, open, realpath } from "node:fs/promises"
 import { join } from "node:path";
 import type { HarnessApplied, HarnessPreview } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { samePath } from "../paths.ts";
 import {
   type Current,
   fileLook,
@@ -30,6 +31,12 @@ const NO_FOLLOW = constants.O_NOFOLLOW ?? 0;
 export interface ApplyFs {
   open(path: string, flags: number): Promise<FileHandle>;
 }
+export interface ApplyOptions {
+  /** The person accepted that writing the settings back changes their layout (`reformats`). */
+  reformat?: boolean;
+  fs?: ApplyFs;
+}
+
 const diskFs: ApplyFs = { open: (path, flags) => open(path, flags) };
 
 const stale = () =>
@@ -120,7 +127,7 @@ async function create(root: string, name: string, content: string, fs: ApplyFs):
   try {
     // A folder on the way swapped for a link since the loop: the new file is not where the path says.
     // It is still empty, and was made by this call (O_EXCL), so nothing of the person's is touched.
-    if ((await orNull(realpath(at))) !== at) throw stale();
+    if (!samePath((await orNull(realpath(at))) ?? "", at)) throw stale();
     await handle.writeFile(content);
   } finally {
     await handle.close();
@@ -136,8 +143,19 @@ async function writeSettings(
 ): Promise<void> {
   const text = layoutLike(current.text, merged(current.parsed, settings));
   if (handle === null) return create(root, SETTINGS, text, fs);
-  await handle.truncate(0);
-  await handle.write(text, 0, "utf8");
+  // Written over the old bytes, then cut to length: never truncated first, so a write that fails
+  // leaves something to put back, and the person's bytes (their env included) are put back.
+  const bytes = Buffer.from(text, "utf8");
+  const before = Buffer.from(current.text ?? "", "utf8");
+  try {
+    const { bytesWritten } = await handle.write(bytes, 0, bytes.length, 0);
+    if (bytesWritten !== bytes.length) throw new Error("settings write was cut short");
+    await handle.truncate(bytes.length);
+  } catch (error) {
+    await handle.write(before, 0, before.length, 0);
+    await handle.truncate(before.length);
+    throw error;
+  }
 }
 
 /** Writes the chosen parts into the project at `path`, when `digests` match the proposals now. */
@@ -145,10 +163,11 @@ export async function applyHarness(
   path: string,
   parts: readonly PreviewPart[],
   digests: Readonly<Record<string, string>>,
-  fs: ApplyFs = diskFs,
+  options: ApplyOptions = {},
 ): Promise<HarnessApplied> {
+  const fs = options.fs ?? diskFs;
   // `path` is real (the server resolved it inside the allowed roots): it must still be.
-  if ((await orNull(realpath(path))) !== path) throw stale();
+  if (!samePath((await orNull(realpath(path))) ?? "", path)) throw stale();
   const root = path;
   let handle: FileHandle | null = null;
   try {
@@ -160,10 +179,21 @@ export async function applyHarness(
     // Everything is checked before anything is written.
     if (!sameDigests(digestsOf(plan.preview), digests)) throw stale();
     const { settings, files } = plan.preview;
+    const writesSettings =
+      settings !== null && settings.hooks.length + settings.denyRules.length > 0;
+    // A JSON round trip may also change values (big numbers, escapes, a repeated key): the person
+    // saw `reformats` in the preview and says yes to it, or the settings are not written.
+    if (writesSettings && settings?.reformats && options.reformat !== true) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "writing the settings back would change their layout: confirm with reformat: true",
+        "harness_reformat",
+      );
+    }
     // New files first: one that appeared since the check refuses before the settings change.
     for (const file of files) await create(root, file.path, file.content, fs);
     const written = files.map((file) => file.path);
-    if (settings && plan.current && settings.hooks.length + settings.denyRules.length > 0) {
+    if (writesSettings && settings && plan.current) {
       await writeSettings(root, handle, plan.current, settings, fs);
       written.unshift(SETTINGS);
     }
