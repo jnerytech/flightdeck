@@ -139,6 +139,21 @@ describe("adding a workflow template from the app (#1221)", () => {
     ]);
   });
 
+  test("the branch starts from origin's base: a local commit not pushed yet never goes up with it", async () => {
+    const { repo, remote } = project();
+    const pushed = git(repo, "rev-parse", "main");
+    writeFileSync(join(repo, "private.txt"), "not pushed\n");
+    git(repo, "add", "--", "private.txt");
+    git(repo, "commit", "-q", "-m", "local only");
+    const { provider } = host();
+    await addWorkflowTemplate({ path: repo, baseBranch: "main" }, TEMPLATES, "alert-fixer", true, {
+      provider,
+      now: AT,
+    });
+    expect(maybe(repo, "rev-parse", `${BRANCH}^`)).toBe(pushed);
+    expect(maybe(remote, "cat-file", "-t", git(repo, "rev-parse", "main"))).toBe(null);
+  });
+
   test("a second add in the same minute finds its branch taken and opens no second PR", async () => {
     const { repo } = project();
     const { provider, created } = host();
