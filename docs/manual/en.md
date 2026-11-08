@@ -1105,7 +1105,7 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   Cancelling leaves everything as it was.
 - **Column width.** The handle at the right edge of a column (drag it, or Tab to it and press the
   arrows, 20 px a step, or Home and End; only the last column's handle takes a Tab stop) sets one width for all the columns, between 180 and 520 px, and it is kept on this computer.
-  Until you set one, the five columns share the width of the window (at 1280 px each is about 188 px,
+  Until you set one, the five columns share the width of the window (at 1280 px each is about 187 px,
   and wider windows make them wider), so none is cut at the right edge. When the window is too narrow
   for that, or once you set a width, the board scrolls inside itself, never the page.
 - **Counts.** Each column shows how many cards it has; with a filter on it reads `n / total`, and a

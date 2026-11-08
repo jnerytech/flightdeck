@@ -1434,23 +1434,31 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
     const grid = c.page.locator("[data-slot='board-columns']");
     await grid.waitFor({ timeout: WAIT });
-    const fits = () =>
+    const measure = () =>
       grid.evaluate((el) => {
         const box = el.getBoundingClientRect();
         const lanes = [...el.querySelectorAll("section[data-column]")].map((lane) =>
           lane.getBoundingClientRect(),
         );
         const last = lanes[lanes.length - 1];
-        return (
-          lanes.length === 5 &&
-          el.scrollWidth <= el.clientWidth + 1 &&
-          lanes.every((lane) => lane.right <= window.innerWidth) &&
+        return {
+          lanes: lanes.length,
+          scroll: el.scrollWidth,
+          client: el.clientWidth,
+          inside: lanes.every((lane) => lane.right <= window.innerWidth),
           // The columns share the width: the last one reaches (almost) the row's right edge.
-          last !== undefined &&
-          last.right >= box.right - 24
-        );
+          gap: last === undefined ? Number.NaN : box.right - last.right,
+        };
       });
-    await waitFor(fits, "as cinco colunas cabem na largura do quadro, a 1280");
+    const fits = async () => {
+      const m = await measure();
+      return m.lanes === 5 && m.scroll <= m.client + 1 && m.inside && m.gap <= 24;
+    };
+    try {
+      await waitFor(fits, "as cinco colunas cabem na largura do quadro, a 1280");
+    } catch (error) {
+      throw new Error(`${(error as Error).message}: ${JSON.stringify(await measure())}`);
+    }
     // A head is one line: its items share a top, and none runs past the lane's right edge.
     const heads = await grid.evaluate((el) =>
       [...el.querySelectorAll("section[data-column]")].flatMap((lane) => {

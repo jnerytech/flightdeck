@@ -1111,7 +1111,7 @@ aparece mascarado e como **Oculto**, e não abre.
   descartados. Cancelar deixa tudo como estava.
 - **Largura das colunas.** A alça na borda direita de uma coluna (arraste-a, ou vá até ela com Tab e
   use as setas, 20 px por vez, ou Home e End; só a alça da última coluna recebe Tab) define uma só largura para todas, entre 180 e 520 px, guardada neste computador. Até você
-  definir uma, as cinco colunas dividem a largura da janela (a 1280 px cada uma tem uns 188 px, e janelas
+  definir uma, as cinco colunas dividem a largura da janela (a 1280 px cada uma tem uns 187 px, e janelas
   maiores as deixam mais largas), então nenhuma é cortada na borda direita. Com a janela estreita demais
   para isso, ou depois de você definir uma largura, o board rola dentro de si, nunca a página.
 - **Contagens.** Cada coluna mostra quantos cards tem; com um filtro ligado ela lê `n / total`, e

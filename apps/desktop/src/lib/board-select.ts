@@ -42,10 +42,18 @@ export const COLUMN_WIDTH_KEY = "flightdeck.boardColumnWidth";
 /** The gap between two columns, in px: the board row's `gap-3`. */
 export const COLUMN_GAP = 12;
 
-/** Issue #1030: the width that lets `count` columns, `gap` px apart, share a board `board` px wide. */
+/** The room the last column's resize handle takes past its edge, in px (`-right-2`, 8 px wide). */
+export const HANDLE_ROOM = 8;
+
+/**
+ * Issue #1030: the width that lets `count` columns, `gap` px apart, share a board `board` px wide,
+ * with room for the last handle so the row does not scroll. A board too narrow for columns of
+ * the minimum width keeps the usual width and scrolls, as it always did.
+ */
 export function fitColumnWidth(board: number, count: number, gap: number): number {
   if (board <= 0) return COLUMN_WIDTH.default;
-  return clampWidth(Math.floor((board - gap * (count - 1)) / count));
+  const fit = Math.floor((board - HANDLE_ROOM - gap * (count - 1)) / count);
+  return fit < COLUMN_WIDTH.min ? COLUMN_WIDTH.default : clampWidth(fit);
 }
 
 export function clampWidth(width: number): number {
