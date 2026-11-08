@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { Budget, BudgetInput, QuotaBudgetInput, QuotaState } from "@flightdeck/protocol";
-import { FlightdeckError, featureOff } from "../errors.ts";
+import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
 import { localDay } from "../quota/usage.ts";
 import { ulid } from "../ulid.ts";
@@ -104,7 +104,6 @@ export class Budgets {
 
   /** The same for a budget in terms of a quota window: its period is the window. */
   setWindow(input: QuotaBudgetInput): Budget {
-    if (!this.opts.quota) throw featureOff("quotaBudgets");
     return this.save({
       id: input.id,
       scope: input.scope,

@@ -1,6 +1,7 @@
 /**
  * Issue #248: the costs domain: costs, budgets, the plan quota, the account, usage and telemetry.
  */
+import { featureOff } from "../../errors.ts";
 import type { Handlers } from "../dispatch.ts";
 
 export const costsHandlers = {
@@ -50,7 +51,10 @@ export const costsHandlers = {
     return server.need("budgets").set(payload);
   },
   "budget.setQuota": (payload, { server }) => {
-    return server.need("budgets").setWindow(payload);
+    const budgets = server.need("budgets");
+    // A host without the plan quota does not announce `quotaBudgets`: it refuses the command.
+    if (!budgets.opts.quota) throw featureOff("quotaBudgets");
+    return budgets.setWindow(payload);
   },
   "budget.remove": (payload, { server }) => {
     server.need("budgets").remove(payload.id);

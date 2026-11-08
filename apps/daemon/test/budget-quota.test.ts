@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { Budget } from "@flightdeck/protocol";
 import { Budgets, type BudgetUpdate } from "../src/costs/budgets.ts";
 import { Quota } from "../src/quota/quota.ts";
+import { costsHandlers } from "../src/server/handlers/costs.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { manualTime } from "./time-helpers.ts";
 
@@ -191,7 +192,12 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
   test("a window budget needs the plan quota: a host without it refuses, as feature_off", () => {
     const db = new EventStore(":memory:").db;
     const budgets = new Budgets({ db });
-    expect(refusal(() => budgets.setWindow(HOST_5H))).toMatchObject({
+    const server = { need: () => budgets };
+    const handler = costsHandlers["budget.setQuota"] as unknown as (
+      payload: unknown,
+      ctx: { server: typeof server },
+    ) => unknown;
+    expect(refusal(() => handler(HOST_5H, { server }))).toMatchObject({
       code: "invalid_state",
       reason: "feature_off",
       params: { feature: "quotaBudgets" },
