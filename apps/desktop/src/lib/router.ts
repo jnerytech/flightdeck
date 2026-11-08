@@ -102,12 +102,15 @@ export type Route =
   | { name: "add-host"; draft?: HostDraft; key?: number };
 
 /** The route in use and a history to go back and forward through (Alt+←/→, mouse buttons). */
+/** A fresh home route each call: an object literal as a default parameter would be one shared object. */
+export const homeRoute = (): Route => ({ name: "home" });
+
 export class Router {
   private stack: Route[];
   private index = 0;
   private readonly listeners = new Set<() => void>();
 
-  constructor(initial: Route = { name: "home" }) {
+  constructor(initial: Route = homeRoute()) {
     this.stack = [initial];
   }
 
