@@ -6,7 +6,7 @@ import type {
   SessionPersona,
   SessionStatus,
 } from "@flightdeck/protocol";
-import { type T, translator } from "../i18n/index.ts";
+import { type Key, type T, translator } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
 import { rowTitle } from "./hub-title.ts";
 import { basename } from "./paths.ts";
@@ -15,7 +15,7 @@ import { sessionLabel } from "./session-label.ts";
 const PT = translator("pt-BR");
 
 export type HubOrigin = "flightdeck" | "terminal" | "history" | "background";
-export type HubState = "running" | "needs_you" | "idle" | "ended";
+export type HubState = "running" | "needs_you" | "idle" | "ended" | "failed";
 
 /** One line of the Sessões screen, whatever the session's origin. */
 export interface HubRow {
@@ -167,7 +167,8 @@ const MANAGED: Record<SessionStatus, HubState> = {
   awaiting_permission: "needs_you",
   idle: "idle",
   ended: "ended",
-  error: "ended",
+  // A session that stopped on an error failed: it is not one closed on purpose (#1132).
+  error: "failed",
 };
 
 const EXTERNAL: Record<ExternalStatus, HubState> = {
@@ -210,7 +211,7 @@ const BACKGROUND: Record<string, HubState> = {
   working: "running",
   blocked: "needs_you",
   done: "idle",
-  failed: "ended",
+  failed: "failed",
   stopped: "ended",
 };
 
@@ -512,6 +513,24 @@ function idleFor(ms: number, t: T): string {
   if (minutes < 1) return t("line.lessThanMinute");
   if (minutes < 60) return t("line.minutes", { n: minutes });
   return t("line.hours", { n: Math.floor(minutes / 60) });
+}
+
+/**
+ * Issue #1132: what a row says it is doing, under its title: a state word and one detail (the
+ * tool it runs or waits on, or how long ago it finished, ended or failed).
+ */
+export function rowStatus(row: HubRow, nowMs: number, t: T = PT): { word: string; detail: string } {
+  const word = t(`hub.rowWord.${row.state}` as Key);
+  const tool = row.summary?.tool ?? null;
+  if (row.state === "needs_you") {
+    return { word, detail: tool ? t("hub.rowDetail.waitingTool", { tool }) : "" };
+  }
+  if (row.state === "running") {
+    return { word, detail: tool ? t("hub.rowDetail.runningTool", { tool }) : "" };
+  }
+  // Finished, ended or failed: how long ago, from the line or the row's last activity.
+  const since = row.summary?.since ?? row.lastActivity;
+  return { word, detail: idleFor(nowMs - Date.parse(since), t) };
 }
 
 /** What every row of a group shares (shown once, in its header); null where the rows differ. */

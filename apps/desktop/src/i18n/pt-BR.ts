@@ -1053,6 +1053,7 @@ export const ptBR = {
       needs_you: "Precisa de você",
       idle: "Ociosa",
       ended: "Encerrada",
+      failed: "Falhou",
     },
     asleep: "Dormindo",
     sleepNow: "Dormir agora",
@@ -1062,6 +1063,18 @@ export const ptBR = {
       needs_you: "precisa de você",
       idle: "ociosa",
       ended: "encerrada",
+      failed: "falhou",
+    },
+    rowWord: {
+      running: "Trabalhando",
+      needs_you: "Esperando você",
+      idle: "Concluída",
+      ended: "Encerrada",
+      failed: "Falhou",
+    },
+    rowDetail: {
+      waitingTool: "quer rodar {tool}",
+      runningTool: "rodando {tool}",
     },
     origins: {
       flightdeck: "Flightdeck",

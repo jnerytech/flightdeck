@@ -1054,6 +1054,7 @@ export const en: Dictionary = {
       needs_you: "Needs you",
       idle: "Idle",
       ended: "Ended",
+      failed: "Failed",
     },
     stateDots: {
       running: "running",
@@ -1061,6 +1062,19 @@ export const en: Dictionary = {
       idle: "idle",
       asleep: "asleep",
       ended: "ended",
+      failed: "failed",
+    },
+    /** Issue #1132: the word under a session's title in the list. */
+    rowWord: {
+      running: "Working",
+      needs_you: "Waiting for you",
+      idle: "Finished",
+      ended: "Ended",
+      failed: "Failed",
+    },
+    rowDetail: {
+      waitingTool: "wants to run {tool}",
+      runningTool: "running {tool}",
     },
     asleep: "Asleep",
     sleepNow: "Sleep now",

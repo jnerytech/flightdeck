@@ -485,6 +485,7 @@ export function SessionsHub(
             <option value="needs_you">{t("hub.states.needs_you")}</option>
             <option value="idle">{t("hub.states.idle")}</option>
             <option value="ended">{t("hub.states.ended")}</option>
+            <option value="failed">{t("hub.states.failed")}</option>
           </NativeSelect>
           {personas.length > 0 && (
             <NativeSelect
