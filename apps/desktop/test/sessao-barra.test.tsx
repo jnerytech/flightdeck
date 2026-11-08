@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -108,6 +109,9 @@ describe("sessao-barra: the composer toolbar", () => {
     await act(
       async () => void fireEvent.click(screen.getByRole("menuitemradio", { name: /^Opus/ })),
     );
+    // The menu is not modal: the focus goes back to the chip a tick after a pick, and a menu
+    // opened before that would take it as a focus outside and close.
+    await settle(() => document.activeElement === chip(), undefined, "the focus back on the chip");
     await openChip();
     await act(
       async () =>

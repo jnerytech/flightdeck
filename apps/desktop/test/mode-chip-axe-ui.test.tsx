@@ -117,6 +117,6 @@ describe("mode-chip: the chips' menus next to a live region", () => {
       fireEvent.keyDown(document.activeElement as HTMLElement, { key: "Escape" });
     });
     await settle(() => screen.queryByRole("menu") === null, undefined, "the menu to close");
-    expect(document.activeElement === trigger).toBe(true);
+    await settle(() => document.activeElement === trigger, undefined, "the focus back on the chip");
   });
 });
