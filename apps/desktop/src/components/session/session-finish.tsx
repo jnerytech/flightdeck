@@ -1,5 +1,5 @@
 import type { ChangesResult } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -50,6 +50,8 @@ export function SessionFinish(
 ) {
   const t = useT();
   const { store, hostId, target, changes } = props;
+  const id = useId();
+  const reasonId = (path: string) => `${id}-${files.findIndex((file) => file.path === path)}`;
   const key = `${hostId}\0${target}`;
   const [made, setMade] = useState(() => recallCommit(key));
   const [form, setForm] = useState<CommitForm | null>(null);
@@ -88,9 +90,12 @@ export function SessionFinish(
       })
       .finally(() => setBusy(false));
     if (!result.ok) {
+      // The dialog comes back as the person left it, with why under it.
       setOutcome(refusalText(result.code, result.message, t, result));
+      setForm(asked);
       return;
     }
+    setOutcome(null);
     const record = { ...result.data, message: asked.message };
     rememberCommit(key, record);
     setMade(record);
@@ -128,6 +133,7 @@ export function SessionFinish(
           size="sm"
           pending={busy}
           disabled={!files.some(committable)}
+          {...(files.some(committable) ? {} : { disabledReason: t("sessionFinish.nothing") })}
           onClick={ask}
         >
           {t("sessionFinish.commit")}
@@ -144,36 +150,43 @@ export function SessionFinish(
           </ActionButton>
         )}
       </Inline>
-      {outcome && <InlineNotice tone="error">{outcome}</InlineNotice>}
+      {outcome && !form && <InlineNotice tone="error">{outcome}</InlineNotice>}
       {form && (
         <ConfirmDialog
           message={t("sessionFinish.commitMessage")}
+          warning={ready ? null : t("sessionFinish.needs")}
           confirmLabel={t("sessionFinish.commit")}
           confirmDisabled={!ready}
           onCancel={() => setForm(null)}
           onConfirm={() => void commit(form)}
         >
           <Stack gap={3}>
-            <Stack gap={1} label={t("sessionFinish.files")}>
-              {files.map((file) => (
-                <Stack gap={1} key={file.path}>
-                  <CheckField
-                    checked={committable(file) && form.picked[file.path] === true}
-                    disabled={!committable(file)}
-                    onChange={(checked) =>
-                      setForm({ ...form, picked: { ...form.picked, [file.path]: checked } })
-                    }
-                  >
-                    {file.path}
-                  </CheckField>
-                  {!committable(file) && (
-                    <p className="text-muted-foreground text-xs">
-                      {t("sessionFinish.tooLarge", { path: file.path })}
-                    </p>
-                  )}
-                </Stack>
-              ))}
-            </Stack>
+            {outcome && <InlineNotice tone="error">{outcome}</InlineNotice>}
+            <fieldset>
+              <legend className="text-sm">{t("sessionFinish.files")}</legend>
+              {/* A long list scrolls: the fields and the buttons stay on the screen. */}
+              <Stack gap={1} className="max-h-48 overflow-y-auto">
+                {files.map((file) => (
+                  <Stack gap={1} key={file.path}>
+                    <CheckField
+                      checked={committable(file) && form.picked[file.path] === true}
+                      disabled={!committable(file)}
+                      {...(committable(file) ? {} : { describedBy: reasonId(file.path) })}
+                      onChange={(checked) =>
+                        setForm({ ...form, picked: { ...form.picked, [file.path]: checked } })
+                      }
+                    >
+                      {file.path}
+                    </CheckField>
+                    {!committable(file) && (
+                      <p id={reasonId(file.path)} className="text-muted-foreground text-xs">
+                        {t("sessionFinish.tooLarge")}
+                      </p>
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+            </fieldset>
             <Field label={t("sessionFinish.branch")}>
               {(control) => (
                 <Input
