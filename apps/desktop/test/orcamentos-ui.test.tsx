@@ -404,7 +404,7 @@ describe("orcamentos-ui", () => {
     await act(async () => {
       fireEvent.change(search, { target: { value: "orçamentos" } });
     });
-    expect(document.activeElement === search).toBe(true);
+    expect(document.activeElement === search).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Custos offers to set a budget, and the link opens the budgets", async () => {

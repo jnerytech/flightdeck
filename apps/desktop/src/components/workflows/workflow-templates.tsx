@@ -192,7 +192,10 @@ function TemplateFile(
         <InlineNotice tone="error">{t("workflowsUi.templates.copyFailed")}</InlineNotice>
       )}
       {/* Always in the page: a live region inserted with its text is often not read. */}
-      <div data-slot="copy-status" role="status">
+      <div // NOSONAR: holds flow content (paragraphs, a list or placeholders), which <output> may not
+        data-slot="copy-status"
+        role="status"
+      >
         {props.copied === "worked" && (
           <p className="rounded-md border px-3 py-2 text-muted-foreground text-sm">
             {t("workflowsUi.templates.copied")}

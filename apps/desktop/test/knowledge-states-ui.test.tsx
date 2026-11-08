@@ -79,7 +79,7 @@ describe("knowledge-states-ui: loading and a list that cannot be read (#1091)", 
     render(setup({ lists: [() => new Promise(() => {})] }).view);
     const shown = await settleMaybe(() => panel() !== null);
     expect(shown).toBe(true);
-    expect(inPanel().queryByRole("status", { name: "Loading documents" }) === null).toBe(false);
+    expect(inPanel().queryByRole("status", { name: "Loading documents" }) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a list that cannot be read says what to check and offers Try again, which reads it again", async () => {
@@ -89,14 +89,14 @@ describe("knowledge-states-ui: loading and a list that cannot be read (#1091)", 
       () => inPanel().queryByText("The documents could not be read from this host.") !== null,
     );
     expect(said).toBe(true);
-    expect(
+    const absent =
       inPanel().queryByText(
         "Check that the host is online and that the project's folder still exists, then try again.",
-      ) === null,
-    ).toBe(false);
-    expect(inPanel().queryByRole("alert") === null).toBe(false);
+      ) === null;
+    expect(absent).toBe(false);
+    expect(inPanel().queryByRole("alert") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const retry = inPanel().queryByRole("button", { name: "Try again" });
-    expect(retry === null).toBe(false);
+    expect(retry === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.click(retry as HTMLElement);
     });
@@ -138,11 +138,11 @@ describe("knowledge-states-ui: loading and a list that cannot be read (#1091)", 
   test("in Portuguese the loading line is in Portuguese", async () => {
     render(setup({ language: "pt-BR", lists: [() => new Promise(() => {})] }).view);
     await settleMaybe(() => panel("Conhecimento do projeto") !== null);
-    expect(
+    const absent2 =
       inPanel("Conhecimento do projeto").queryByRole("status", {
         name: "Carregando os documentos",
-      }) === null,
-    ).toBe(false);
+      }) === null;
+    expect(absent2).toBe(false);
   });
 
   test("in Portuguese the hint and Try again are in Portuguese", async () => {
@@ -153,11 +153,11 @@ describe("knowledge-states-ui: loading and a list that cannot be read (#1091)", 
         null,
     );
     expect(said).toBe(true);
-    expect(
+    const absent3 =
       inPanel("Conhecimento do projeto").queryByText(
         "Confira se o host está online e se a pasta do projeto ainda existe, e tente de novo.",
-      ) === null,
-    ).toBe(false);
+      ) === null;
+    expect(absent3).toBe(false);
   });
 });
 
@@ -168,7 +168,11 @@ describe("knowledge-states-ui: the index switch says what happened (#1091)", () 
   test("the switch's words are a live region, so turning it on or off is announced", async () => {
     render(setup().view);
     await settleMaybe(() => inPanel().queryByText(switchedOn) !== null);
-    expect(inPanel().queryByText(switchedOn)?.getAttribute("role")).toBe("status");
+    expect(
+      inPanel()
+        .queryAllByRole("status")
+        .some((live) => live.textContent === switchedOn),
+    ).toBe(true);
   });
 
   test("a switch the host could not change is an alert", async () => {

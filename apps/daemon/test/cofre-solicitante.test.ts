@@ -21,6 +21,9 @@ describe("cofre-solicitante", () => {
       expect(decision.requester).toBe(daemon ? (requester as Requester) : "unknown");
     }
     expect(decideRequest({ requester: "claude" }).reason).toContain("app");
+    expect(decideRequest({ requester: "you" }).reason).toContain(
+      "only Claude, an automation or a workflow ask the app for secrets",
+    );
   });
 
   test("o frame vault.request só aceita os solicitantes do daemon: com you ele não é um pedido válido", () => {

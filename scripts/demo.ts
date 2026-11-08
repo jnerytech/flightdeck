@@ -66,7 +66,7 @@ const vite = Bun.spawn(commands.serve, {
 
 const url = `http://localhost:${PORT}/`;
 /** Terminal color codes (ESC [ … m), which split Vite's words. */
-const ANSI_COLOR = new RegExp(String.raw`${String.fromCharCode(27)}\[[0-9;]*m`, "g");
+const ANSI_COLOR = new RegExp(String.raw`${String.fromCodePoint(27)}\[[0-9;]*m`, "g");
 // Vite announces itself on stdout when ready.
 const decoder = new TextDecoder();
 let banner = "";

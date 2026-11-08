@@ -52,7 +52,7 @@ export function decideRequest(
     return {
       granted: false,
       requester,
-      reason: "só o Claude, uma automação ou um workflow pedem segredos ao app por este caminho",
+      reason: "only Claude, an automation or a workflow ask the app for secrets this way",
       decision: "deny",
       ruleId: null,
       limited: false,

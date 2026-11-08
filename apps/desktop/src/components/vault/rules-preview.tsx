@@ -73,7 +73,7 @@ export function RulesPreview(props: Readonly<{ store: AppStore; secretId: string
         {t("vaultRulesUi.preview.run")}
       </ActionButton>
       {result !== null && (
-        <p role="status" aria-label={t("vaultRulesUi.preview.result")}>
+        <output aria-label={t("vaultRulesUi.preview.result")} className="block">
           {result === "none"
             ? t("vaultRulesUi.preview.noHost")
             : [
@@ -83,7 +83,7 @@ export function RulesPreview(props: Readonly<{ store: AppStore; secretId: string
                 ...(result.needsHold ? [t("vaultRulesUi.preview.hold")] : []),
                 ...(result.limited ? [t("vaultRulesUi.preview.limited")] : []),
               ].join(" · ")}
-        </p>
+        </output>
       )}
     </fieldset>
   );

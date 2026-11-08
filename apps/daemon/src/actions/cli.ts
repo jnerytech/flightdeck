@@ -20,7 +20,7 @@ export async function runActionCli(
 ): Promise<unknown> {
   const daemon = await DaemonClient.connect(daemonUrl(config), config.token).catch(
     (error: Error) => {
-      throw new Error(`não consegui conectar no daemon: ${error.message}`);
+      throw new Error(`could not connect to the daemon: ${error.message}`);
     },
   );
   try {
@@ -57,7 +57,7 @@ export async function runSnippetCli(
 ): Promise<unknown> {
   const daemon = await DaemonClient.connect(daemonUrl(config), config.token).catch(
     (error: Error) => {
-      throw new Error(`não consegui conectar no daemon: ${error.message}`);
+      throw new Error(`could not connect to the daemon: ${error.message}`);
     },
   );
   try {

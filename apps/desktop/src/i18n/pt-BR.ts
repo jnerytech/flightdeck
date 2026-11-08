@@ -2653,6 +2653,8 @@ export const ptBR = {
     showInFolder: "Mostrar na pasta",
     showInFolderLabel: "Mostrar {path} na pasta",
     noLines: "Sem linhas para mostrar.",
+    commentHint:
+      "Clique no número de uma linha para comentar; Shift+clique seleciona um intervalo. Teclas: setas entre as linhas, Enter comenta.",
     commentLine: "Comentar a linha {line} de {path}",
     commentOldLine: "Comentar a linha antiga {line} de {path}",
     composer: "Novo comentário",
@@ -4516,6 +4518,18 @@ export const ptBR = {
         format: "um formatador após edições",
         gitAdd: "uma verificação antes do git add",
         secrets: "uma verificação de arquivos de segredo",
+      },
+      share: {
+        action: "Compartilhar como modelo",
+        message:
+          "Guarda o CLAUDE.md, os agentes e as skills deste projeto como um modelo do qual qualquer projeto deste host pode partir. As configurações ficam de fora: nunca hooks, permissões ou servidores MCP. Cada arquivo é verificado em busca de segredos antes.",
+        name: "Nome do modelo",
+        idHint: "Salvo como {id}.",
+        needsName: "Use pelo menos uma letra ou um dígito (a-z, 0-9).",
+        confirm: "Compartilhar",
+        filesOne: "1 arquivo",
+        filesMany: "{n} arquivos",
+        done: "Compartilhado como o modelo {title} ({files}).",
       },
       setup: {
         action: "Configurar o Claude Code",

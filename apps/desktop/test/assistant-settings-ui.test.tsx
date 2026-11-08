@@ -371,7 +371,7 @@ describe("assistant-settings-ui: the models and the profiles", () => {
     await click(button("Advanced"));
     const table = screen.getByRole("table");
     const rows = within(table).getAllByRole("row");
-    expect(rows.length).toBe(1 + 12);
+    expect(rows.length).toBe(1 + 12); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const select = within(table).getByLabelText("Card title") as HTMLSelectElement;
     expect(select.value).toBe("quick");
     await act(async () => {

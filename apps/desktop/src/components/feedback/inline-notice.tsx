@@ -22,7 +22,7 @@ export function InlineNotice(
   }>,
 ) {
   return (
-    <p
+    <p // NOSONAR: the role follows the tone (status or alert), which <output> cannot do
       id={props.id}
       role={props.tone === "error" ? "alert" : "status"}
       className={cn("rounded-md border px-3 py-2 text-sm", TONE[props.tone ?? "warn"])}

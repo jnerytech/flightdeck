@@ -152,7 +152,7 @@ for (const [lang, dict] of [
       await act(async () => {
         fireEvent.click(close as HTMLElement);
       });
-      expect(card() === null).toBe(true);
+      expect(card() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
 
     test("Quit with a downloaded update installs it on the way out, then exits (#402)", async () => {

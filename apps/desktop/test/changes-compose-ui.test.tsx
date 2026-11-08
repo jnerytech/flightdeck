@@ -120,7 +120,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
   test("every line number offers a visible Comment affordance", async () => {
     await show();
     const button = screen.getByRole("button", { name: "Comment on line 1 of app.ts" });
-    expect(button.querySelector("[data-slot='comment-affordance']") !== null).toBe(true);
+    expect(button.querySelector("[data-slot='comment-affordance']") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(button.getAttribute("title")).toBe("Comment on line 1 of app.ts");
   });
 
@@ -128,7 +128,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     await show();
     await pick("Comment on line 2 of app.ts");
     const box = screen.getByRole("textbox", { name: "Comment" });
-    expect(document.activeElement === box).toBe(true);
+    expect(document.activeElement === box).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Ctrl+Enter adds the comment, and an empty one is not added", async () => {
@@ -152,7 +152,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
       lineEnd: 2,
       body: "use total",
     });
-    expect(screen.queryByRole("textbox", { name: "Comment" }) === null).toBe(true);
+    expect(screen.queryByRole("textbox", { name: "Comment" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Esc closes the comment box and keeps nothing", async () => {
@@ -163,7 +163,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
       fireEvent.change(box, { target: { value: "half a thought" } });
       fireEvent.keyDown(box, { key: "Escape" });
     });
-    expect(screen.queryByRole("textbox", { name: "Comment" }) === null).toBe(true);
+    expect(screen.queryByRole("textbox", { name: "Comment" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(calls.some((c) => c.type === "review.add")).toBe(false);
   });
 
@@ -178,7 +178,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     await act(async () => {
       fireEvent.keyDown(box, { key: "Escape" });
     });
-    expect(document.activeElement === line).toBe(true);
+    expect(document.activeElement === line).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       line.focus();
       fireEvent.click(line);
@@ -192,7 +192,7 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
         ctrlKey: true,
       });
     });
-    expect(document.activeElement === line).toBe(true);
+    expect(document.activeElement === line).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("with drafts, Review in the message box hands over the review as one message and sends nothing", async () => {
@@ -203,15 +203,25 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Review in the message box (2)" }));
     });
-    expect(handed).toEqual([reviewMessage(comments)]);
-    expect(handed[0]).toContain("`app.ts` linha 2");
-    expect(handed[0]).toContain("`cart.ts` linha 1");
+    expect(handed).toEqual([reviewMessage(comments, "en")]);
+    expect(handed[0]).toContain("`app.ts` line 2");
+    expect(handed[0]).toContain("`cart.ts` line 1");
     expect(calls.some((c) => c.type === "review.send")).toBe(false);
+  });
+
+  test("Send review asks the host for the review in the app's language", async () => {
+    const { calls } = await show({ comments: [draft("c1", "app.ts", 2, "use total")] });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Send review (1)" }));
+    });
+    expect(calls.filter((c) => c.type === "review.send").map((c) => c.payload.language)).toEqual([
+      "en",
+    ]);
   });
 
   test("a panel with nowhere to hand the review over (a card) keeps only the direct send", async () => {
     await show({ comments: [draft("c1", "app.ts", 2, "use total")] });
     expect(screen.getByRole("button", { name: "Send review (1)" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /message box/ }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: /message box/ }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

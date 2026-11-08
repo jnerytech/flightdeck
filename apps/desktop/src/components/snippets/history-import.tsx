@@ -176,7 +176,7 @@ export function HistoryImport(
           </Button>
         )}
       </FieldRow>
-      {message && <p role="status">{message}</p>}
+      {message && <output className="block">{message}</output>}
     </div>
   );
 }

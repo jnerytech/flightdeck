@@ -98,7 +98,7 @@ for (const [lang, dict] of [
       await act(async () => {
         store.hostTabs.open({ name: "projects", host: "a" });
       });
-      expect(store.workspace.tabs.activeId === opened.id).toBe(false);
+      expect(store.workspace.tabs.activeId).not.toBe(opened.id);
       const brought: string[] = [];
       store.workspace.focusArea = ((area: number) => brought.push(`area:${area}`)) as never;
       store.hostTabs.activate = ((id: string) => brought.push(`tab:${id}`)) as never;

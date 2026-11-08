@@ -1,6 +1,6 @@
 import type { DiffFile, ReviewComment } from "@flightdeck/protocol";
 import { MessageSquarePlus } from "lucide-react";
-import type { ReactNode } from "react";
+import { type KeyboardEvent, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,35 @@ const TONE = {
 /** How a line's number looks, as a button or as plain text. */
 const NUMBER = "w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums";
 
+/** Arrows, Home and End move between the line numbers of one file's diff (#1177). */
+function moveBetweenLines(e: KeyboardEvent<HTMLButtonElement>) {
+  // A modified key keeps its own meaning: Alt+Arrow goes back, Ctrl+Home scrolls to the top.
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  const numbers = [
+    ...(e.currentTarget
+      .closest("table")
+      ?.querySelectorAll<HTMLButtonElement>("button[data-line-number]") ?? []),
+  ];
+  const at = numbers.indexOf(e.currentTarget);
+  const moves: Record<string, number> = {
+    ArrowDown: Math.min(at + 1, numbers.length - 1),
+    ArrowUp: Math.max(at - 1, 0),
+    Home: 0,
+    End: numbers.length - 1,
+  };
+  const to = Object.hasOwn(moves, e.key) ? moves[e.key] : undefined;
+  // Past the first or last number the key is left to the page, so it still scrolls.
+  if (to === undefined || at < 0 || to === at) return;
+  e.preventDefault();
+  numbers[to]?.focus();
+}
+
+/**
+ * The side whose number a row shows (#1177): a removed line its old number, any other its new one.
+ * The split view draws a context line's old number as a blank, so it has one number too.
+ */
+const sideOf = (row: LineRow): ReviewComment["side"] => (row.op === "-" ? "old" : "new");
+
 /** The number of a line, a button that starts (or, with shift, extends) a comment on it. */
 function LineNumber(
   props: Readonly<{
@@ -26,6 +55,9 @@ function LineNumber(
     side: ReviewComment["side"];
     line: number;
     picked: boolean;
+    /** The file's one Tab stop (#1177): the others are reached with the arrows. */
+    tabbable: boolean;
+    onFocus(): void;
     /** Starts a comment on a line; without it the numbers are plain text. */
     onPick?(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
   }>,
@@ -43,6 +75,10 @@ function LineNumber(
       aria-label={label}
       title={label}
       aria-pressed={props.picked}
+      data-line-number=""
+      tabIndex={props.tabbable ? 0 : -1}
+      onFocus={props.onFocus}
+      onKeyDown={moveBetweenLines}
       className={cn(
         NUMBER,
         "group hit-24 hover:text-foreground aria-pressed:text-foreground focus-visible:text-foreground",
@@ -75,6 +111,8 @@ function FileDiff(
   const { file, selection, onPick } = props;
   const path = file.path;
   const rows = diffRows(file);
+  // #1177: the file is one Tab stop: the line last focused, else the picked one, else the first.
+  const [focused, setFocused] = useState<string | null>(null);
   if (file.secret) {
     return <p className="text-muted-foreground text-xs">{t("changes.secretNote")}</p>;
   }
@@ -106,14 +144,32 @@ function FileDiff(
   if (rows.length === 0) {
     return <p className="text-muted-foreground text-xs">{t("changes.noLines")}</p>;
   }
+  const lineOf = (row: LineRow, side: ReviewComment["side"]) =>
+    (side === "old" ? row.oldLine : row.newLine) as number;
+  // Every number in the order the rows show them: one per row, in both views.
+  const numbers = rows.flatMap((row) =>
+    row.kind === "line" ? [{ side: sideOf(row), line: lineOf(row, sideOf(row)) }] : [],
+  );
+  const keyOf = (side: ReviewComment["side"], line: number) => `${side}:${line}`;
+  const keys = numbers.map((n) => keyOf(n.side, n.line));
+  const picked = numbers.find((n) => selected(selection, path, n.side, n.line));
+  const stop =
+    focused !== null && keys.includes(focused)
+      ? focused
+      : picked
+        ? keyOf(picked.side, picked.line)
+        : keys[0];
   const number = (row: LineRow, side: ReviewComment["side"]) => {
-    const line = (side === "old" ? row.oldLine : row.newLine) as number;
+    const line = lineOf(row, side);
+    const key = keyOf(side, line);
     return (
       <LineNumber
         path={path}
         side={side}
         line={line}
         picked={selected(selection, path, side, line)}
+        tabbable={key === stop}
+        onFocus={() => setFocused(key)}
         onPick={onPick}
       />
     );
@@ -134,7 +190,7 @@ function FileDiff(
         // biome-ignore lint/suspicious/noArrayIndexKey: rows are immutable and ordered
         <tr key={i} className={TONE[row.op]}>
           <td className="flex">
-            {number(row, row.op === "-" ? "old" : "new")}
+            {number(row, sideOf(row))}
             <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
               {`${row.op}${row.text}`}
             </span>
@@ -191,6 +247,10 @@ export function DiffView(
       aria-label={props.mode === "unified" ? t("diff.unifiedLabel") : t("diff.splitLabel")}
       className="flex flex-col gap-4"
     >
+      {/* #1177: the comment mark shows only on hover or focus, so the view says how to comment. */}
+      {props.onPick && props.files.length > 0 && (
+        <p className="text-muted-foreground text-xs">{t("changes.commentHint")}</p>
+      )}
       {props.files.map((file) => (
         <div key={`${file.path}:${file.uncommitted}`} className="flex flex-col gap-2">
           <h4 className="font-medium font-mono text-xs">{file.path}</h4>

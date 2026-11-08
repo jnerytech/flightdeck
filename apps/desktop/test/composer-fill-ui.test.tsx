@@ -37,7 +37,7 @@ describe("composer-fill-ui: a review handed to the message box (#1146)", () => {
     render(view("Revisão das mudanças:\n1. `a.ts` linha 1:", () => taken++));
     await act(async () => {});
     expect(box().value).toBe("Revisão das mudanças:\n1. `a.ts` linha 1:");
-    expect(document.activeElement === box()).toBe(true);
+    expect(document.activeElement === box()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(taken).toBe(1);
   });
 

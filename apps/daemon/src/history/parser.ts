@@ -30,7 +30,7 @@ export interface TranscriptTitle {
 /** The title of a run of lines: the last `custom-title`, else the last `agent-name`. */
 export function lastTitle(records: readonly HistoryRecord[]): TranscriptTitle | null {
   const titles = records.flatMap((record) => (record.title ? [record.title] : []));
-  return titles.filter((title) => title.kind === "custom").at(-1) ?? titles.at(-1) ?? null;
+  return titles.findLast((title) => title.kind === "custom") ?? titles.at(-1) ?? null;
 }
 
 export interface ParseResult {

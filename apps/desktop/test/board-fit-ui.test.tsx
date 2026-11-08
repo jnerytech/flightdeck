@@ -137,7 +137,7 @@ describe("board-fit-ui: the columns share the window until the person picks a wi
     const { restore } = setup();
     await ready();
     const heads = [...document.querySelectorAll("[data-slot='board-columns'] .column-head")];
-    expect(heads.length).toBe(5);
+    expect(heads.length).toBe(5); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(heads.every((head) => head.classList.contains("flex-nowrap"))).toBe(true);
     restore();
   });

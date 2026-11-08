@@ -35,7 +35,7 @@ export function LoadingState(props: Readonly<{ label: string; shape?: LoadingSha
   // Announced at once; the placeholders wait 200 ms so a quick load flashes nothing.
   const drawn = useAfter(IN_FLIGHT.deferMs);
   return (
-    <div
+    <div // NOSONAR: holds flow content (paragraphs, a list or placeholders), which <output> may not
       role="status"
       aria-busy="true"
       aria-label={props.label}

@@ -100,9 +100,9 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
       {rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("modelPicker.none")}</p>
       ) : (
-        <div
+        <div // NOSONAR: custom listbox with grouped options and search; a native select cannot render it (ARIA APG listbox)
           id={`${base}-list`}
-          role="listbox" // NOSONAR: custom listbox with grouped options and search; a native select cannot render it (ARIA APG listbox)
+          role="listbox"
           aria-label={props.label}
           className="max-h-56 overflow-y-auto rounded-md border"
         >
@@ -136,9 +136,9 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
               items
             ) : (
               // biome-ignore lint/a11y/useSemanticElements: a listbox holds options and role=group, not a fieldset
-              <div
+              <div // NOSONAR: the group lives inside the listbox, where a fieldset's legend would be a child that is not an option (ARIA APG grouped listbox)
                 key={group.name}
-                role="group" // NOSONAR: the group lives inside the listbox, where a fieldset's legend would be a child that is not an option (ARIA APG grouped listbox)
+                role="group"
                 aria-label={group.name}
               >
                 <p

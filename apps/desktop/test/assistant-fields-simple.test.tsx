@@ -93,7 +93,7 @@ describe("assistant-fields-simple: Ask for changes in simple mode (issue #160)",
     // The preview leaves with its scroll lock and its aria-hidden on the page: the next test
     // must not start before it is gone (#727).
     await waitFor(
-      () => expect(screen.queryByRole("dialog", { name: "AI suggestion" }) === null).toBe(true),
+      () => expect(screen.queryByRole("dialog", { name: "AI suggestion" }) === null).toBe(true), // NOSONAR: the boolean keeps a DOM node out of the failure diff
       WAIT,
     );
     expect(box.value).toBe(ANSWER.text);

@@ -81,10 +81,10 @@ export function SessionMessages(
             </Button>
           </div>
           {result && (
-            <p role="status" aria-label={t("sessionMessages.result")}>
+            <output aria-label={t("sessionMessages.result")} className="block">
               {t(`conversationsUi.statuses.${result.status}`)}
               {result.reason ? ` · ${result.reason}` : ""}
-            </p>
+            </output>
           )}
         </div>
       ) : (

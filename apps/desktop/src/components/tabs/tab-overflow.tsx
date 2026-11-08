@@ -146,7 +146,7 @@ function TabList(
             return (
               // The wrapper is invisible to the listbox: the option and its × are siblings in it,
               // as on the strip, so no control sits inside an option (axe's nested-interactive).
-              <div
+              <div // NOSONAR: the wrapper only groups the option and its close button for the listbox (ARIA APG), no native element has this role
                 key={row.id}
                 role="presentation"
                 className={cn(

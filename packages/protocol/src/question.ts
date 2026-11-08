@@ -32,7 +32,7 @@ export interface PlainQuestion {
 }
 
 const SEP = /[\\/]/;
-const baseName = (path: string) => path.split(SEP).filter(Boolean).at(-1) ?? path;
+const baseName = (path: string) => path.split(SEP).findLast(Boolean) ?? path;
 /** The folder a path sits in, by name; empty when it has none. */
 const folderName = (path: string) => path.split(SEP).filter(Boolean).at(-2) ?? "";
 

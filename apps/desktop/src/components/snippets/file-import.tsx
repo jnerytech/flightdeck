@@ -103,7 +103,9 @@ export function FileImport(
         </>
       )}
       {message.length > 0 && (
-        <div role="status">
+        <div // NOSONAR: holds flow content (paragraphs, a list or placeholders), which <output> may not
+          role="status"
+        >
           {message.map((line) => (
             <p key={line}>{line}</p>
           ))}

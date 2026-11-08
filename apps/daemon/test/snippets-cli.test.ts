@@ -123,6 +123,6 @@ describe("snippets-cli: flightdeckd snippet list and get, the bridge the mod use
       onSignal: () => {},
     });
     expect(exits).toEqual([1]);
-    expect(errors.join(" ")).toContain("não consegui conectar no daemon");
+    expect(errors.join(" ")).toContain("could not connect to the daemon");
   });
 });

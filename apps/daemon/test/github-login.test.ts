@@ -161,6 +161,20 @@ describe("github-login: the device flow through gh", () => {
     });
   });
 
+  test("the detail is the last non-empty line gh said, trimmed", async () => {
+    fakeGh([
+      {
+        args: ["auth", "login"],
+        code: 1,
+        stderr: "first line\n  error: device flow failed  \n\n \n",
+      },
+    ]);
+    await expect(login().start()).rejects.toMatchObject({
+      reason: "login_failed",
+      params: { detail: "error: device flow failed" },
+    });
+  });
+
   test("gh is not installed: gh_missing", async () => {
     await expect(login({ find: () => null }).start()).rejects.toMatchObject({
       reason: "gh_missing",

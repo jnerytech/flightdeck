@@ -71,6 +71,10 @@ const REVIEW = [
   "   ok?",
 ].join("\n");
 
+const REVIEW_EN = REVIEW.replace("Revisão das mudanças:", "Review of the changes:")
+  .replace("linhas 2–3", "lines 2–3")
+  .replace("linha 1", "line 1");
+
 describe("revisao-inline", () => {
   test("comentários em rascunho por alvo, com o trecho lido do arquivo; editar e remover", async () => {
     const { review, target } = await session();
@@ -136,7 +140,11 @@ describe("revisao-inline", () => {
       body: "troque isto\ne aquilo",
     });
     await review.add({ target, path: "b.txt", side: "old", lineStart: 1, lineEnd: 1, body: "ok?" });
-    expect(await review.send(target)).toEqual({ via: "session", text: REVIEW, comments: 2 });
+    expect(await review.send(target, "pt-BR")).toEqual({
+      via: "session",
+      text: REVIEW,
+      comments: 2,
+    });
     await poll(() => received(ctx, ctx.sessionId, "Revisão das mudanças:"));
     expect(received(ctx, ctx.sessionId, "Revisão das mudanças:")).toBe(true);
     const listed = await review.list(target);
@@ -147,6 +155,23 @@ describe("revisao-inline", () => {
     // Nothing left to send; a sent comment is history, not a draft.
     expect(await code(review.send(target))).toBe("invalid_state");
     expect(await code(review.update(listed[0]?.id ?? "", "outro"))).toBe("invalid_state");
+  });
+
+  test("a revisão sai em inglês quando o app não diz a língua, e no idioma pedido quando diz", async () => {
+    const ctx = await session();
+    const { review, target } = ctx;
+    const one = {
+      path: "a.txt",
+      side: "new" as const,
+      lineStart: 2,
+      lineEnd: 3,
+      body: "troque isto\ne aquilo",
+    };
+    await review.add({ target, ...one });
+    await review.add({ target, path: "b.txt", side: "old", lineStart: 1, lineEnd: 1, body: "ok?" });
+    expect((await review.send(target)).text).toBe(REVIEW_EN);
+    await review.add({ target, ...one });
+    expect((await review.send(target, "pt-BR")).text.split("\n")[0]).toBe("Revisão das mudanças:");
   });
 
   test("terminal controlável recebe pelo canal; não controlável vira Copiar revisão", async () => {
@@ -174,7 +199,7 @@ describe("revisao-inline", () => {
     const one = { path: "b.txt", side: "old" as const, lineStart: 1, lineEnd: 1, body: "ok?" };
     await ctx.review.add({ target: "session:e-1", ...one });
     await ctx.review.add({ target: "session:e-2", ...one });
-    const text = ["Revisão das mudanças:", "1. `b.txt` linha 1:", "   > bê", "   ok?"].join("\n");
+    const text = ["Review of the changes:", "1. `b.txt` line 1:", "   > bê", "   ok?"].join("\n");
     expect(await ctx.review.send("session:e-1")).toEqual({ via: "terminal", text, comments: 1 });
     expect(sent).toEqual([["launch-1", text]]);
     expect(await ctx.review.send("session:e-2")).toEqual({ via: "copy", text, comments: 1 });
@@ -329,9 +354,10 @@ describe("revisao-inline", () => {
       target,
     });
     expect(listed?.comments.map((c) => c.body)).toEqual(["um!"]);
-    expect(await client.data("review.send", { target })).toMatchObject({
+    expect(await client.data("review.send", { target, language: "pt-BR" })).toMatchObject({
       via: "session",
       comments: 1,
+      text: expect.stringContaining("Revisão das mudanças:"),
     });
   });
 

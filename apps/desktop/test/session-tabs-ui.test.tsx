@@ -106,7 +106,7 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
       );
     });
     expect(selected()).toEqual(["Conversa"]);
-    expect(within(document.body).queryByRole("tabpanel", { name: "Conversa" }) !== null).toBe(true);
+    expect(within(document.body).queryByRole("tabpanel", { name: "Conversa" }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(store.getState().composerFill["pc/a"]).toContain("`app.ts` linha 2");
   });
 
@@ -119,10 +119,10 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
         within(document.body).queryByRole("button", { name: /^(Send review|Enviar revisão)/ }) !==
         null,
     );
-    expect(
+    const absent =
       within(document.body).queryByRole("button", { name: /message box|caixa de mensagem/ }) ===
-        null,
-    ).toBe(true);
+      null;
+    expect(absent).toBe(true);
   });
 
   test("the views are one tablist, one tab is selected and only it is in the tab order", () => {

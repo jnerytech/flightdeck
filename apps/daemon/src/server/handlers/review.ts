@@ -120,7 +120,7 @@ export const reviewHandlers = {
     server.need("review").remove(payload.id);
   },
   "review.send": async (payload, { server }) => {
-    return await server.need("review").send(payload.target);
+    return await server.need("review").send(payload.target, payload.language);
   },
   "changes.revert": async (payload, { server }) => {
     const { target, path, confirm } = payload;
