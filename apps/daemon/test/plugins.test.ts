@@ -908,7 +908,7 @@ describe("plugins: pela CLI", () => {
     const hash = await hashOf(marketplace, "deploy-tools");
     const result = await plugins.install({ plugin: "deploy-tools@acme", confirmHash: hash });
     expect(result.outcome).toBe("rolled-back");
-    expect(result.message).toContain("diferente");
+    expect(result.message).toContain("differs from what was shown");
     expect(changes(fake)).toEqual([
       "plugin install deploy-tools@acme --scope user --json",
       "plugin uninstall deploy-tools@acme --scope user --json",
@@ -955,7 +955,7 @@ describe("plugins: pela CLI", () => {
       confirmHash: await hashOf(marketplace, "deploy-tools"),
     });
     expect(result.outcome).toBe("failed");
-    expect(result.message).toContain("conferir");
+    expect(result.message).toContain("could not check the installed content");
     expect(changes(fake).filter((c) => c.includes("uninstall"))).toEqual([]);
     expect(decisions).toEqual([]);
   });
