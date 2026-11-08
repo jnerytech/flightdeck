@@ -8,6 +8,7 @@ import {
   AssistantRunPayload,
 } from "./assistant.ts";
 import {
+  type CardTemplates,
   ColumnContract,
   PINNED_DOCS_MAX,
   pinnedDocProblem,
@@ -862,6 +863,9 @@ export const Card = z.object({
   specState: SpecState.nullable().default(null),
   /** Issue #76: the library documents the person pinned to this card, relative paths in order. */
   pinnedDocs: z.array(z.string()).default([]),
+  /** Issue #1201: the workflow and the persona the card is meant to start with (a template's); `null`: the default. */
+  startWorkflow: z.string().nullable().default(null),
+  startPersona: z.string().nullable().default(null),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -3392,9 +3396,12 @@ export const Command = z.discriminatedUnion("type", [
       description: z.string(),
       /** The column the card is born in; the Backlog when absent (an older daemon ignores it). */
       column: BoardColumn.optional(),
+      /** Issue #1201: a card template of the project; the host fills the card from it. */
+      templateId: z.string().min(1).max(60).optional(),
       ...CardDeps,
     }),
   ),
+  cmd("card.templates", z.object({ projectId: z.string() })),
   cmd(
     "card.update",
     z.object({
@@ -5587,6 +5594,7 @@ export interface CommandResults {
   "card.get": Card;
   "card.spec": Card;
   "card.validationTemplate": ValidationTemplate;
+  "card.templates": CardTemplates;
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.templates": { templates: WorkflowTemplate[] };
   "alert.list": { alerts: RepoAlert[]; unavailable: AlertsUnavailable[] };

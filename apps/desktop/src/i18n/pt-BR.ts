@@ -1566,6 +1566,8 @@ export const ptBR = {
       "A resposta da etapa {step} não é uma lista de achados válida ({where}), então nenhum card foi criado.",
     spec_path_invalid:
       "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
+    card_template_unknown:
+      "Este projeto não oferece um modelo de card com esse nome: escolha outro ou crie um card em branco.",
     pinned_doc_invalid:
       "Um documento fixado deve ser um arquivo Markdown da pasta docs do projeto (decisions, adr, rfc, prd ou specs), e um card fixa no máximo 10.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",

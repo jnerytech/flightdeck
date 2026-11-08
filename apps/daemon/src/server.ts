@@ -531,6 +531,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "deps"),
     // Issue #76: a card pins library documents; the app offers the picker.
     ...when(opts.board, "cardPins"),
+    // Issue #1201: a project's card templates; New card offers them.
+    ...when(opts.board, "cardTemplates"),
     ...when(opts.issues, "issues"),
     ...when(opts.automations, "automation"),
     ...when(opts.autoApprove, "autoapprove"),
@@ -1393,8 +1395,10 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.create": {
         const { projectId, ...input } = command.payload;
-        return ok(command.type, board().createCard(projectId, input));
+        return ok(command.type, await board().createCardFrom(projectId, input));
       }
+      case "card.templates":
+        return ok(command.type, await board().cardTemplates(command.payload.projectId));
       case "card.update": {
         const { cardId, ...patch } = command.payload;
         const updated = board().updateCard(cardId, patch);
