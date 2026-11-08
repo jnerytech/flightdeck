@@ -6,7 +6,9 @@ import { SecretScanner } from "@flightdeck/protocol";
 import { applyHarness } from "../src/harness/apply.ts";
 import { type DraftDeps, HarnessDrafts } from "../src/harness/draft.ts";
 import { previewHarness } from "../src/harness/preview.ts";
-import { tempDir } from "./helpers.ts";
+import { startServer } from "../src/server.ts";
+import { newManager, tempDir } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 
 /**
  * Issue #75, slice G1a: the host drafts a CLAUDE.md with its model from the detected stack and the
@@ -119,5 +121,46 @@ describe("harness-draft: a CLAUDE.md drafted by the host's model, held, and appl
       "harness_draft_secret",
       "harness_draft_failed",
     ]);
+  });
+
+  test("the server drafts over a near connection, inside the allowed roots only", async () => {
+    const { held } = drafts();
+    const root = project();
+    const { manager } = newManager();
+    const base = {
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: "harness-draft-token-0123456789abcd",
+      allowedRoots: [root],
+      allowedNetworks: ["0.0.0.0/0", "::/0"],
+    };
+    const draft = (path: string) => held.draft(path);
+    const servers = [
+      startServer({ ...base, harnessDraft: draft }),
+      startServer({ ...base, harnessDraft: draft, peerOf: () => "8.8.8.8" }),
+      startServer(base),
+    ];
+    const clients = servers.map((server) => new FrameClient(server.url));
+    try {
+      for (const client of clients)
+        await client.request("hello", { token: base.token, client: "t" });
+      const [near, far, off] = clients as [FrameClient, FrameClient, FrameClient];
+      const answer = async (client: FrameClient, path: string) => {
+        const ack = await client.request("project.harness.draft", { path, part: "claudeMd" });
+        const error = ack.error as { reason?: string } | undefined;
+        return ack.ok === true ? (ack.data as { digest?: string }).digest : (error?.reason ?? null);
+      };
+      expect([
+        await answer(far, root),
+        await answer(off, root),
+        await answer(near, tempDir("fd-elsewhere-")),
+        await answer(near, root),
+      ]).toEqual(["transport_refused", "feature_off", "cwd_outside_roots", sha(DRAFTED)]);
+    } finally {
+      for (const client of clients) client.close();
+      for (const server of servers) await server.stop();
+    }
   });
 });
