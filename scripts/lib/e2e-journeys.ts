@@ -21,6 +21,7 @@ export const JOURNEYS: readonly string[] = [
   "update-card",
   "status-bar",
   "trust-revoke",
+  "knowledge-panel",
   "harness-setup",
   "files-viewer",
   "terminal-copy",
