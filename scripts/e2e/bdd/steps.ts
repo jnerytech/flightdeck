@@ -5,6 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { formatPairingLink } from "@flightdeck/protocol";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
@@ -939,5 +940,75 @@ step(
     await c.page
       .getByLabel(c.t("kanban.template"), { exact: true })
       .waitFor({ state: "detached", timeout: WAIT });
+  },
+);
+
+// Add a host: the first-run guide is on the page when a host exists too, and a pairing link fills the form (issue #1199).
+step(When, "I open the Add a host page", async (c) => open(c, { name: "add-host" }));
+
+step(Then, "the page lists the first steps with copy buttons for setup and doctor", async (c) => {
+  const steps = c.page.getByRole("list", { name: c.t("welcome.stepsLabel"), exact: true });
+  await steps.waitFor({ timeout: WAIT });
+  const count = await steps.getByRole("listitem").count();
+  if (count !== 4) throw new Error(`the guide has ${count} steps, not 4`);
+  for (const command of ["flightdeckd setup", "flightdeckd doctor"]) {
+    await c.page
+      .getByRole("button", { name: c.t("welcome.copy", { command }), exact: true })
+      .waitFor({ timeout: WAIT });
+  }
+});
+
+/** The fold around the four manual fields, found by its summary. */
+const manualFold = (c: Context) =>
+  c.page.locator("details", { has: c.page.getByText(c.t("hostForm.byHand"), { exact: true }) });
+
+step(
+  Then,
+  "the address and token fields are folded away and the pairing link is in view",
+  async (c) => {
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).waitFor({ timeout: WAIT });
+    const open = await manualFold(c).evaluate((details) => (details as HTMLDetailsElement).open);
+    if (open) throw new Error("the manual fields are open before anything was typed");
+  },
+);
+
+step(When, "I paste a pairing link named {string}", async (c, name = "") => {
+  const link = formatPairingLink({ address: "100.64.0.9", port: 7421, name, token: "abc" });
+  await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).fill(link);
+});
+
+step(Then, "the manual fields open with the name {string}", async (c, name = "") => {
+  await waitFor(
+    () => manualFold(c).evaluate((details) => (details as HTMLDetailsElement).open),
+    "the manual fields open",
+  );
+  const field = c.page.getByLabel(c.t("hostForm.name"), { exact: true });
+  await waitFor(async () => (await field.inputValue()) === name, "the name is filled");
+});
+
+// Start at boot: a host run from source (the demo) shows the command to run by hand and no Turn it on (issue #1200).
+const serviceRow = (c: Context) =>
+  c.page.getByRole("listitem", { name: c.t("hostDeps.names.service"), exact: true });
+
+step(When, "I open the health of host {string}", async (c) =>
+  open(c, { name: "host", host: ALFA }),
+);
+
+step(Then, "the Service row says it is missing and shows the command to run by hand", async (c) => {
+  const row = serviceRow(c);
+  await row.getByText(c.t("hostDeps.state.missing"), { exact: true }).waitFor({ timeout: WAIT });
+  await row.getByText("flightdeckd service install", { exact: true }).waitFor({ timeout: WAIT });
+});
+
+step(
+  Then,
+  "the app does not offer Turn it on, because this host does not run the installed binary",
+  async (c) => {
+    const row = serviceRow(c);
+    await row.waitFor({ timeout: WAIT });
+    const offered = await row
+      .getByRole("button", { name: c.t("hostHealth.service.turnOn"), exact: true })
+      .count();
+    if (offered > 0) throw new Error("Turn it on is offered on a host that runs from source");
   },
 );
