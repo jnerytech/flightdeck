@@ -20,7 +20,7 @@ export interface Locks {
  */
 export function holdAwake(locks: Locks | undefined, onError: (error: unknown) => void): boolean {
   if (!locks) return false;
-  try {
+  try /* NOSONAR: request() can throw synchronously; .catch covers only its rejection */ {
     // The callback's promise never settles, so the lock is held until the page goes away.
     locks
       .request("flightdeck-awake", { mode: "shared" }, () => new Promise<never>(() => {}))
