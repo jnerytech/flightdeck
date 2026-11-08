@@ -88,13 +88,20 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
   // tab of the session) has no box at all, as in a browser.
   describe("the message box lifts the toasts (#994)", () => {
     const clear = () => document.documentElement.style.getPropertyValue("--composer-clear");
-    const lifted = (top: number) => `calc(${window.innerHeight - top}px + 0.75rem)`;
-    const proto = HTMLElement.prototype;
-    const realRect = proto.getBoundingClientRect;
-    const realRects = proto.getClientRects;
+    const lifted = (top: number) =>
+      `calc(${(document.defaultView?.innerHeight ?? 0) - top}px + 0.75rem)`;
+    // The boxes and their wrappers are divs: the stub goes on the div's own prototype, the nearest
+    // one, so nothing between it and the element (as another file of the full run may leave on
+    // HTMLElement's) shadows it. The exact descriptors come back after each test.
+    let proto: HTMLDivElement;
+    const kept = new Map<string, PropertyDescriptor | undefined>();
     const RealObserver = globalThis.ResizeObserver;
     const observers: Array<{ fire(target: Element): void }> = [];
     beforeEach(() => {
+      proto = Object.getPrototypeOf(document.createElement("div"));
+      for (const name of ["getBoundingClientRect", "getClientRects"]) {
+        kept.set(name, Object.getOwnPropertyDescriptor(proto, name));
+      }
       proto.getBoundingClientRect = function (this: HTMLElement) {
         const top = Number(this.closest("[data-top]")?.getAttribute("data-top") ?? 0);
         return {
@@ -130,8 +137,10 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
       } as unknown as typeof ResizeObserver;
     });
     afterEach(() => {
-      proto.getBoundingClientRect = realRect;
-      proto.getClientRects = realRects;
+      for (const [name, descriptor] of kept) {
+        if (descriptor) Object.defineProperty(proto, name, descriptor);
+        else delete (proto as unknown as Record<string, unknown>)[name];
+      }
       globalThis.ResizeObserver = RealObserver;
       observers.length = 0;
     });
@@ -178,7 +187,7 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
       for (const o of observers) o.fire(dock);
       expect(clear()).toBe(lifted(420));
       dock.setAttribute("data-top", "380");
-      window.dispatchEvent(new Event("resize"));
+      document.defaultView?.dispatchEvent(new Event("resize"));
       expect(clear()).toBe(lifted(380));
     });
   });
