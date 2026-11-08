@@ -164,13 +164,14 @@ export function toSlashes(path: string, platform: string): string {
 }
 
 /**
- * The folder a project's spec template may be read from: the trusted checkout `sessionTrust` names,
+ * The folder a project's own templates may be read from: the trusted checkout `sessionTrust` names,
  * or null for an untrusted project. A card runs in a worktree, so the checkout is always named; when
- * it is not, null, never the worktree, whose content is the branch's.
+ * it is not, null, never the worktree, whose content is the branch's. `ownFolder` is a card's
+ * project folder itself (a card with no worktree), which is the checkout, so a trusted one stands.
  */
 export function templateRootOf(
   trust: { trusted: boolean; configRoot?: string },
-  _ownFolder?: string,
+  ownFolder?: string,
 ): string | null {
-  return trust.trusted && trust.configRoot ? trust.configRoot : null;
+  return trust.trusted ? (trust.configRoot ?? ownFolder ?? null) : null;
 }

@@ -152,7 +152,8 @@ export interface BoardOptions {
   /**
    * Issue #78: the folder a card's spec template may be read from (the trusted checkout of the
    * worktree's project), or null when the project is not trusted: its template would reach the
-   * agent before the person trusted it.
+   * agent before the person trusted it. `own` says `cwd` is the project's own folder, not a worktree
+   * (a card with no worktree).
    */
   specTemplateRoot?: (cwd: string, own?: true) => Promise<string | null>;
   /** Lines for the daemon's log (no card content goes there). */
@@ -1755,9 +1756,10 @@ export class Board {
   private async templateFor(
     cwd: string,
     name: TemplateName,
+    own?: true,
   ): Promise<{ body: string | null; ignored: TemplateIgnored | null }> {
     if (!this.opts.specTemplateRoot) return { body: null, ignored: null };
-    const asked = await this.opts.specTemplateRoot(cwd).then(
+    const asked = await this.opts.specTemplateRoot(cwd, own).then(
       (root) => ({ root }),
       (error: unknown) => {
         // The built-in template then, but a trust bug must not go unseen. Trust is unknown, so
@@ -1776,14 +1778,16 @@ export class Board {
   /**
    * The project's own shape for a validation note (`.flightdeck/templates/validation.md`, trusted
    * projects only), given to the app as a placeholder and never saved; or why it was ignored
-   * (issue #1058). Looked for in the card's worktree, else in its project's folder.
+   * (issue #1058). Read from the trusted checkout; the card's worktree is only looked at by name
+   * for an untrusted project, and a card with no worktree is asked for by its project's folder.
    */
   async validationTemplate(
     id: string,
   ): Promise<{ text: string | null; ignored: TemplateIgnored | null }> {
     const card = this.getCard(id);
-    const cwd = card.worktreePath ?? this.getProject(card.projectId).path;
-    const found = await this.templateFor(cwd, "validation");
+    const found = card.worktreePath
+      ? await this.templateFor(card.worktreePath, "validation")
+      : await this.templateFor(this.getProject(card.projectId).path, "validation", true);
     return { text: found.body, ignored: found.ignored };
   }
 
