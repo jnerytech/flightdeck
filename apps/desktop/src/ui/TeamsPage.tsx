@@ -293,6 +293,8 @@ const MEMBER_KEYS = ["names", "personas", "cards"] as const;
 function useChangedFiles(store: AppStore, hostId: string, cardId: string | null): number | null {
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
+    // Another card's number never shows while this one's is asked.
+    setCount(null);
     if (!cardId) return;
     let live = true;
     void store.hostRequest(hostId, "changes.get", { target: `card:${cardId}` }).then((result) => {
@@ -423,7 +425,7 @@ export function TeamMemberRow(
         </p>
       )}
       {(branch || changed !== null) && (
-        <p className="text-muted-foreground">
+        <p className="min-w-0 text-muted-foreground [overflow-wrap:anywhere]">
           {branch && <span>{t("teamsUi.branch", { branch })}</span>}
           {branch && changed !== null && " · "}
           {changed !== null && (
