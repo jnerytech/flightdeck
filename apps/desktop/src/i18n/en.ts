@@ -1484,6 +1484,7 @@ export const en: Dictionary = {
     bg: "background sessions",
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
+    alerts: "reading the repository's alerts",
     knowledge: "reading the project's documents",
     knowledgeFeed: "the switch for the documents index in agents' prompts",
     knowledgeStatus: "changing a document's status",
@@ -1532,6 +1533,8 @@ export const en: Dictionary = {
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
+    spec_template_failed:
+      "The spec template could not be written at {path} (a link or a file is in the way): the session started without it.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
     remote_not_github: "The remote {url} is not a GitHub one.",
@@ -3849,6 +3852,33 @@ export const en: Dictionary = {
     started: "Post-mortem started: {title}",
     notStarted:
       'The card "{title}" was made but did not start. Press Start to try again; it will not make another.',
+  alertsUi: {
+    open: "Choose an alert",
+    title: "Choose an alert",
+    intro:
+      "Open code-scanning and Dependabot alerts of this repository, the worst first. The alert's own words go into the field: read them before you start.",
+    loading: "Loading alerts",
+    failed:
+      "Could not read the alerts. The host may be offline or need a newer version of Flightdeck.",
+    list: "Alerts",
+    use: "Use alert {title}",
+    useShort: "Use",
+    empty: "No open alerts.",
+    kind: { "code-scanning": "Code scanning", dependabot: "Dependabot" },
+    severity: {
+      critical: "Critical",
+      high: "High",
+      medium: "Medium",
+      low: "Low",
+      unknown: "No severity",
+    },
+    reason: {
+      gh_missing: "{source}: the GitHub CLI (gh) is not installed on the host.",
+      not_signed_in: "{source}: gh on the host is not signed in to an account.",
+      unavailable:
+        "{source}: not available for this repository. It may be off, or gh on the host may lack access.",
+      failed: "{source}: could not be read.",
+    },
   },
   workflowsUi: {
     title: "Workflows of {project}",

@@ -830,13 +830,27 @@ function shots(ids: DemoIds): Shot[] {
       name: "board-contrato",
       route: { name: "board", host: ALFA, projectId: ids.project },
       async prepare(page) {
-        await page
-          .getByRole("button", { name: /^(Actions for|Ações de) Documentar a API pública$/ })
-          .click();
+        // The open menu hides the rest of the page, its trigger too: the trigger is found hidden.
+        const actions = page.getByRole("button", {
+          name: /^(Actions for|Ações de) Documentar a API pública$/,
+          includeHidden: true,
+        });
+        await actions.click();
+        const menuId = await actions.getAttribute("aria-controls", { timeout: 5000 });
         await page
           .getByRole("menuitem", { name: /^(Move to|Mover para) .*(eview|evisão)/ })
           .click();
         await page.getByRole("alertdialog").or(page.getByRole("dialog")).first().waitFor();
+        // #1005: when the confirm shows, the card's actions menu is still on its way out (closed,
+        // its exit animation running, gone some 50 ms later). The print turns animations off,
+        // which drew that closing menu whole under the confirm: the print waits until it is gone.
+        // A menu that stays only shows in the print; it does not end the job.
+        if (menuId) {
+          await page
+            .locator(`[id="${menuId}"]`)
+            .waitFor({ state: "detached", timeout: 5000 })
+            .catch(() => undefined);
+        }
       },
     },
     {

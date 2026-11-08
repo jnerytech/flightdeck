@@ -1886,6 +1886,33 @@ export const WorkflowTemplate = z.object({
 export type WorkflowTemplate = z.infer<typeof WorkflowTemplate>;
 
 /**
+ * Issue #79: an open alert of the project's repository, read by the host with `gh` (code scanning
+ * or Dependabot). `text` is what goes into a workflow's `alert` input: the alert's own words, which
+ * come from a scanner or an advisory and are data, never instructions.
+ */
+export const RepoAlert = z.object({
+  /** `<kind>:<number>`, unique in the list. */
+  id: z.string(),
+  kind: z.enum(["code-scanning", "dependabot"]),
+  number: z.number().int(),
+  severity: z.enum(["critical", "high", "medium", "low", "unknown"]),
+  title: z.string(),
+  /** `path:line` for code scanning, the manifest for Dependabot. */
+  location: z.string().nullable(),
+  /** The alert's page on GitHub; empty when it was not an https link. */
+  url: z.string(),
+  text: z.string(),
+});
+export type RepoAlert = z.infer<typeof RepoAlert>;
+
+/** Why a source of alerts could not be read, said without `gh`'s own text. */
+export const AlertsUnavailable = z.object({
+  kind: z.enum(["code-scanning", "dependabot"]),
+  reason: z.enum(["gh_missing", "not_signed_in", "unavailable", "failed"]),
+});
+export type AlertsUnavailable = z.infer<typeof AlertsUnavailable>;
+
+/**
  * `waiting`: a gate is open. `paused`: budget or loop limit reached. `failed`: a step (or the
  * card's preparation) failed. The last four are final.
  */
@@ -3928,6 +3955,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("workflow.list", z.object({ projectId: z.string() })),
   /** Issue #79: the workflow templates, with the check line filled from the project's stack. */
   cmd("workflow.templates", z.object({ projectId: z.string() })),
+  /** Issue #79: the open code-scanning and Dependabot alerts of the project's repository, read-only. */
+  cmd("alert.list", z.object({ projectId: z.string() })),
   cmd("workflow.validate", z.object({ projectId: z.string(), name: z.string().min(1) })),
   /** `hash` is the content the user reviewed; a workflow that changed since is refused. */
   cmd(
@@ -5289,6 +5318,7 @@ export interface CommandResults {
   "card.spec": Card;
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.templates": { templates: WorkflowTemplate[] };
+  "alert.list": { alerts: RepoAlert[]; unavailable: AlertsUnavailable[] };
   "workflow.validate": WorkflowInfo;
   "workflow.trust": WorkflowInfo;
   "runenv.config": RunConfigInfo;

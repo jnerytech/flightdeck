@@ -1621,6 +1621,15 @@ Três workflows já vêm com o Flightdeck, para trabalho recorrente:
 Os dois param em uma aprovação antes de enviar qualquer coisa e têm um orçamento de turnos e de
 minutos. Com o pull request aberto, vale para ele o limite de rodadas do Vigiar PRs.
 
+Para iniciar o corretor de alertas, inicie um card com ele e preencha o campo `alert`. **Escolher um
+alerta**, ao lado do campo, lista os alertas abertos de code scanning e do Dependabot do repositório,
+os mais graves primeiro, lidos pelo host com o próprio `gh` (só leitura; o Flightdeck não guarda token
+do GitHub). Escolher um copia o texto dele para o campo: leia antes de iniciar, porque as palavras de
+um alerta vêm de um scanner ou de um aviso. Uma fonte que não dá para ler (o code scanning está
+desligado, ou o `gh` não tem acesso ou não está conectado) aparece citada ao lado da lista, e a lista
+nunca diz "nenhum alerta aberto" quando uma delas falhou. O botão só aparece quando o host sabe ler
+alertas.
+
 **Post-mortem de um card que falhou.** Um card que parou com um problema, ou cuja execução de
 workflow falhou, mostra **Redigir um post-mortem** no detalhe. Abre os fatos que o Flightdeck tem do
 incidente: o card, o problema, os passos que falharam na execução e o resumo da sessão. São linhas

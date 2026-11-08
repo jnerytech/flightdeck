@@ -27,9 +27,15 @@ three proposed (the alert fixer and the post-mortem draft) and a read-only view 
   key (a card done in the last 30 days still counts, an older one does not, because debt that
   returns is news), or an open card has the same title. The cards carry the agent mark, the external
   seal and no automatic approval.
-- **Alerts are read by the daemon, later.** The alert fixer takes the alert as text for now. A
-  later slice reads code-scanning and Dependabot alerts with a read-only `gh api` call by the daemon,
-  so the agent sessions get no network.
+- **Alerts are read by the host with its own `gh` (slice 3).** `alert.list` runs two plain GETs
+  (`gh api repos/{owner}/{repo}/code-scanning/alerts` and `.../dependabot/alerts`, 30 open each) in
+  the project's own folder, so `gh` fills `{owner}` and `{repo}` from that folder's remote and the
+  host builds no URL. It holds no token, returns at most 50 alerts (worst first, then newest), and
+  names a source it could not read by a short reason (`gh_missing`, `not_signed_in`, `unavailable`,
+  `failed`) without `gh`'s own text. The alert's words come from a scanner or an advisory, so the host
+  strips control and invisible characters, cuts the lengths, and drops a link that is not https. The
+  app copies the text into the `alert` input of the card's workflow, as a multi-line box, and the
+  alert-fixer prompt fences it as data. The agent sessions get no network.
 - **A post-mortem starts from a failed card in the app (slice 4).** A card with a problem, or whose
   run failed, offers "Draft a post-mortem". The app builds the `incident` text from what it already
   holds (the card, its problem, the failed steps of its run, and the session summary the host
