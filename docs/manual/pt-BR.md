@@ -2789,8 +2789,13 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   nome da janela aparece a partir de 1024 px de largura), e um botão **Atualizar o consumo do plano**
   que pergunta aos hosts de novo. A partir de 80% ele ganha uma marca de alerta na cor de "precisa de
   você", e em 100% (ou a partir do `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome
-  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem
-  leitura, nem o medidor nem o botão aparecem.
+  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre um painel com as duas janelas
+  de cada host online e a hora em que reiniciam. Nele, **Cartões novos esperam a partir de** muda a
+  trava (`quota.pauseAt`) de cada host: de 50% a 100%, ou **Nunca**. Um host com flightdeckd antigo
+  mostra só o texto. **Mostrar o que está rodando** abre a atividade de todas as sessões, e cada
+  host tem o seu link para a página dele. O aviso de cota alta no cartão da conta traz a mesma
+  trava e a mesma ação. Mudar a trava nunca para uma sessão que já está rodando. Sem leitura, nem o
+  medidor nem o botão aparecem.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
 

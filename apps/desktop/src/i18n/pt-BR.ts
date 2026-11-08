@@ -1328,6 +1328,22 @@ export const ptBR = {
     noReading: "sem leitura ainda",
     resets: "reinicia às {time}",
     read: "lida {ago}",
+    guard: {
+      label: "Cartões novos esperam a partir de",
+      labelFor: "Cartões novos esperam a partir de, em {host}",
+      off: "Nunca",
+      hint: "Sessões que já estão rodando nunca são paradas.",
+      readOnly:
+        "Cartões novos esperam a partir de {pct}%. Este host não deixa mudar pelo app: atualize o flightdeckd.",
+      readOnlyOff:
+        "A trava está desligada. Este host não deixa mudar pelo app: atualize o flightdeckd.",
+    },
+    popover: {
+      label: "Cota do plano dos hosts",
+      showRunning: "Mostrar o que está rodando",
+      openHost: "Abrir a página do host",
+      openHostOf: "Abrir a página de {host}",
+    },
     hotNotice: "{host}: cota acima de {pct}%: cards novos esperam a cota; sessões manuais seguem.",
     projection: {
       few: "poucas leituras para projetar",

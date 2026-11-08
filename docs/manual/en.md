@@ -2773,8 +2773,13 @@ window resets.
   resets (the window's name shows from 1024 px wide), and a **Refresh the plan usage** button that
   asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
   from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
-  host and the time left. Clicking it opens that host's page. With no reading, neither the meter
-  nor the refresh shows.
+  host and the time left. Clicking it opens a panel with both windows of every online host and
+  their reset times. In it, **New cards wait from** sets the guard (`quota.pauseAt`) of each host:
+  50% to 100%, or **Never**. A host with an older flightdeckd shows it as text only. **Show what is
+  running** opens the activity of every session, and each host has its own link to its page. The
+  near-limit notice on the account card carries the same setting and the same action. Changing the
+  guard never stops a session that is already running. With no reading, neither the meter nor the
+  refresh shows.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
   sees empty or stale bars until a card or a managed session runs on the host.
 

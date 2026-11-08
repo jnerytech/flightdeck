@@ -583,6 +583,7 @@ export function daemon(
       history,
       board,
       quota,
+      quotaPause: { set: (pauseAt) => quota.setPauseAt(pauseAt) },
       ...(options.account ? { account: options.account } : {}),
       usage,
       central,
