@@ -1493,6 +1493,7 @@ export const en: Dictionary = {
     harnessApply: "applying Claude Code setup changes",
     harnessCommit: "committing the Claude Code setup on a branch",
     harnessDraft: "drafting a CLAUDE.md with Claude",
+    harnessTemplates: "sharing the Claude Code setup as a template",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
@@ -1841,6 +1842,10 @@ export const en: Dictionary = {
     harness_draft_exists: "The project already has a CLAUDE.md: a draft only creates one.",
     harness_draft_failed: "The model did not answer with a CLAUDE.md: try again.",
     harness_draft_secret: "The draft held a secret, so it was dropped: try again.",
+    harness_template_id: "A template's id is lower case letters, digits and dashes, up to 40.",
+    harness_template_secret: "{file} holds a secret, so nothing was shared.",
+    harness_template_empty: "The project has no CLAUDE.md, agent or skill to share.",
+    harness_template_taken: "A template named {id} is already on this host: pick another name.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",

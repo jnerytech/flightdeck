@@ -62,6 +62,7 @@ import { listDirs, listFiles } from "./fs-dirs.ts";
 import type { AlertList } from "./github/alerts.ts";
 import type { GithubService } from "./github/service.ts";
 import type { PreviewPart } from "./harness/preview.ts";
+import type { HarnessTemplates } from "./harness/templates-store.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
@@ -216,6 +217,8 @@ export interface ServerOptions {
     digests: Readonly<Record<string, string>>,
     options: { reformat: boolean },
   ) => Promise<HarnessApplied>;
+  /** #75, slice T1: the host's harness templates, shared from projects. */
+  harnessTemplates?: Pick<HarnessTemplates, "export" | "list">;
   /** #75, slice G1: drafts a CLAUDE.md with the host's model and holds it by its digest. */
   harnessDraft?: (path: string) => Promise<HarnessDraft>;
   /** #75, slice C1: commits what apply wrote (by its digests) on a new branch. */
@@ -464,6 +467,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.harnessApply, "harnessApply"),
     ...when(opts.harnessCommit, "harnessCommit"),
     ...when(opts.harnessDraft, "harnessDraft"),
+    ...when(opts.harnessTemplates, "harnessTemplates"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
@@ -1222,6 +1226,18 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.harnessPreview) throw featureOff("harnessPreview");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.harnessPreview(path, command.payload.parts));
+      }
+      case "project.harness.export": {
+        if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
+        // It reads a project's instructions into a store any project of the host can use: near only.
+        requireVaultTransport(ws.data.origin, "project.harness.export", opts.log);
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        const { id, title } = command.payload;
+        return ok(command.type, await opts.harnessTemplates.export(path, id, title));
+      }
+      case "harness.templates.list": {
+        if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
+        return ok(command.type, { templates: await opts.harnessTemplates.list() });
       }
       case "project.harness.draft": {
         if (!opts.harnessDraft) throw featureOff("harnessDraft");
