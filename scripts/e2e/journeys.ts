@@ -920,6 +920,73 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await none.waitFor({ timeout: WAIT });
   },
 
+  // Workflow templates (issue #79): Add from a template lists the templates, a template opens with
+  // where to commit it and the file itself, Copy puts the file on the clipboard and says so, and
+  // Back returns to the list. Nothing is written to the project.
+  "workflow-templates": async (c) => {
+    await c.page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await open(c, {
+      name: "workflows",
+      host: ALFA,
+      projectId: c.ids.project,
+      projectName: c.ids.projectName,
+    });
+    await c.page
+      .getByRole("button", { name: c.t("workflowsUi.templates.open"), exact: true })
+      .click();
+    const dialog = c.page.getByRole("dialog", { name: c.t("workflowsUi.templates.title") });
+    await dialog.waitFor({ timeout: WAIT });
+    // The first template of the list, whatever its name: "Show <name>" in the language of the app.
+    const show = c.t("workflowsUi.templates.show", { name: "\u0000" }).split("\u0000")[0] ?? "";
+    const templates = dialog.getByRole("button").filter({ hasText: show });
+    await templates.first().click();
+    const copy = dialog.getByRole("button", {
+      name: c.t("workflowsUi.templates.copy"),
+      exact: true,
+    });
+    await copy.waitFor({ timeout: WAIT });
+    await copy.click();
+    await dialog
+      .getByText(c.t("workflowsUi.templates.copied"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    const copied = await c.page.evaluate(() => navigator.clipboard.readText());
+    if (!copied.includes("steps")) {
+      throw new Error("workflow-templates: the clipboard has no workflow file");
+    }
+    await dialog
+      .getByRole("button", { name: c.t("workflowsUi.templates.back"), exact: true })
+      .click();
+    await templates.first().waitFor({ timeout: WAIT });
+  },
+
+  // The mode chip (issues #935, #961): the chip under the composer names the session's permission
+  // mode, its menu changes the mode, and a page opened again still shows the mode the session has
+  // (it once said Default for a session in plan mode). The journey puts the mode back to Default.
+  "mode-chip": async (c) => {
+    const route = { name: "session", host: ALFA, id: c.ids.idleSession } as const;
+    const chip = (mode: "default" | "plan") =>
+      c.page.getByRole("button", {
+        name: c.t("session.modeChip", { mode: c.t(`modes.${mode}.name`) }),
+        exact: true,
+      });
+    const pick = async (from: "default" | "plan", to: "default" | "plan") => {
+      await chip(from).click();
+      await c.page
+        .getByRole("menuitemradio", { name: new RegExp(`^${c.t(`modes.${to}.name`)}`) })
+        .click();
+      await chip(to).waitFor({ timeout: WAIT });
+    };
+    await open(c, route);
+    // A run that stopped half way left the session in plan mode: start from the same place anyway.
+    await chip("default").or(chip("plan")).first().waitFor({ timeout: WAIT });
+    if ((await chip("plan").count()) > 0) await pick("plan", "default");
+    await pick("default", "plan");
+    // Opened again, the page shows the mode the session has, not the one it started with.
+    await open(c, route);
+    await chip("plan").waitFor({ timeout: WAIT });
+    await pick("plan", "default");
+  },
+
   // 25. The Files tab of a session opens a file read only; when the session rewrites it (a second
   // window sends the message) the open file offers its diff, live, and the diff toggles back (#506).
   // The demo keeps its state: after the first run README.md is already changed, so only a fresh

@@ -1,5 +1,6 @@
 import { posix, win32 } from "node:path";
 import type { ServiceContext } from "./service.ts";
+import { trimEndOf } from "./trim.ts";
 
 /** What the PATH helpers need of the OS: the platform, the home and a way to run commands. */
 export type PathEnv = Pick<ServiceContext, "platform" | "home" | "exec"> & {
@@ -22,12 +23,13 @@ export function binDir(env: PathEnv): string {
 /** An entry as Windows would compare it: `%USERPROFILE%` expanded, one slash, no trailing one, no case. */
 function sameFolder(env: PathEnv, a: string, b: string): boolean {
   const norm = (entry: string) =>
-    entry
-      .trim()
-      .replace(/%USERPROFILE%/gi, env.home)
-      .replaceAll("/", "\\")
-      .replace(/\\+$/, "")
-      .toLowerCase();
+    trimEndOf(
+      entry
+        .trim()
+        .replace(/%USERPROFILE%/gi, env.home)
+        .replaceAll("/", "\\"),
+      "\\",
+    ).toLowerCase();
   return norm(a) === norm(b);
 }
 

@@ -913,7 +913,7 @@ export const ptBR = {
     quotaLabelNoReset: "Cota do plano {state}: {window} em {percent}% em {host}",
     quotaLevels: { ok: "tranquila", near: "perto do limite", reached: "no limite" },
     host: "Host: {host}",
-    noHost: "Nenhum host ainda",
+    noHost: "Nenhum host",
     allHostsTabs: "Abas de todos os hosts",
     hostItem: "{host}, {state}",
     hostItemVersion: "{host}, {state}, flightdeckd {version}",
@@ -1486,6 +1486,7 @@ export const ptBR = {
     knowledgeCreate: "a criação de um documento a partir de um modelo",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
     harnessApply: "a aplicação de mudanças na configuração do Claude Code",
+    harnessCommit: "o commit da configuração do Claude Code em um branch",
     keepAwake: "a função de manter o computador acordado",
     autoUpdate: "atualização automática do host",
   },
@@ -1816,6 +1817,17 @@ export const ptBR = {
     harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
     harness_reformat:
       "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
+    harness_commit_stale:
+      "Os arquivos não estão como a configuração os gravou: aplique a configuração de novo e faça o commit.",
+    harness_commit_no_head: "O projeto ainda não tem commit de onde começar um branch.",
+    harness_commit_identity:
+      "O git não tem nome e e-mail para este repositório: defina user.name e user.email e faça o commit.",
+    harness_commit_secret: "{file} contém um segredo, então não foi para o commit.",
+    harness_commit_branch_taken: "O branch {branch} já existe: tente de novo em um minuto.",
+    harness_commit_git:
+      "O git não conseguiu fazer o commit ou o branch da configuração neste repositório.",
+    harness_commit_ignored:
+      "{file} é ignorado pelo git neste projeto, então não foi para o commit: faça o commit você mesmo se quiser.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
