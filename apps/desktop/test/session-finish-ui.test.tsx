@@ -50,6 +50,7 @@ function setup(
   target: string,
   seen: ChangesResult,
   refuse?: { reason: string; params: Record<string, string> },
+  refusePr?: { reason: string },
 ) {
   const sent: Array<[string, unknown]> = [];
   const items = new Map<string, string>();
@@ -68,6 +69,9 @@ function setup(
       sent.push([type, payload]);
       if (type === "changes.commit" && refuse) {
         return { ok: false, code: "invalid_state", message: "refused", ...refuse };
+      }
+      if (type === "changes.pr" && refusePr) {
+        return { ok: false, code: "invalid_state", message: "refused", ...refusePr };
       }
       if (type === "changes.commit") {
         const { branch } = payload as { branch: string };
@@ -107,7 +111,12 @@ const NAMES = {
   en: {
     commit: "Commit on a new branch",
     openPr: "Open PR",
-    hooks: "These hooks run: pre-commit, pre-push.",
+    hooks: "These hooks run: pre-commit.",
+    secret:
+      "The app does not commit this file, since it may hold a secret: commit it from a terminal if it should go.",
+    pushesPlain: `session/update-a-txt will be pushed to ${REMOTE}.`,
+    prRefused: "Where the push goes changed since you looked: check it again, then open the PR.",
+    prTitle: "PR title",
     others: "Other programs your git settings name may also run.",
     tooLarge: "Too large to commit from here.",
     files: "Files",
@@ -128,7 +137,12 @@ const NAMES = {
   "pt-BR": {
     commit: "Fazer commit num branch novo",
     openPr: "Abrir PR",
-    hooks: "Estes hooks rodam: pre-commit, pre-push.",
+    hooks: "Estes hooks rodam: pre-commit.",
+    secret:
+      "O app não faz commit deste arquivo, porque ele pode ter um segredo: faça o commit num terminal se ele deve ir.",
+    pushesPlain: `session/atualiza-a-txt será enviado para ${REMOTE}.`,
+    prRefused: "O destino do push mudou desde que você olhou: confira de novo e abra o PR.",
+    prTitle: "Título do PR",
     others: "Outros programas que as configurações do git indicam também podem rodar.",
     tooLarge: "Grande demais para commitar por aqui.",
     files: "Arquivos",
@@ -290,6 +304,35 @@ describe("session-finish-ui: a plain session's commit on a new branch, then its 
         true,
         true,
       ]);
+    });
+
+    test(`${lang}: a file the app does not commit says why, and a refused PR keeps the text the person wrote`, async () => {
+      const seen = changes({ hooks: ["pre-commit"] });
+      seen.files = [seen.files[0], { ...seen.files[0], path: ".env", digest: undefined }] as never;
+      setup(lang, `session:${lang}-5`, seen, undefined, { reason: "changes_pr_remote" });
+      await press(screen.queryByRole("button", { name: n.commit }));
+      const env = screen.queryByRole("checkbox", { name: ".env" }) as HTMLInputElement | null;
+      const why = document.getElementById(env?.getAttribute("aria-describedby") ?? "")?.textContent;
+      await press(
+        within(screen.queryByRole("alertdialog") as HTMLElement).queryByRole("button", {
+          name: n.commit,
+        }),
+      );
+      await press(screen.queryByRole("button", { name: n.openPr }));
+      const plain = screen.queryByText(n.pushesPlain) !== null;
+      await act(async () => {
+        fireEvent.change(screen.queryByRole("textbox", { name: n.prTitle }) as HTMLElement, {
+          target: { value: "My title" },
+        });
+      });
+      await press(screen.queryByRole("button", { name: n.confirmPr }));
+      const title = screen.queryByRole("textbox", { name: n.prTitle }) as HTMLInputElement | null;
+      expect([
+        why,
+        plain,
+        title?.value,
+        screen.queryByRole("alert")?.textContent?.includes(n.prRefused) ?? false,
+      ]).toEqual([n.secret, true, "My title", true]);
     });
   }
 });
