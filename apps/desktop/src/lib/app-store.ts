@@ -1396,7 +1396,8 @@ export class AppStore {
         if (notifyUpdates || autoUpdate) void this.checkAppUpdate();
       }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
     }
-    void this.backupScheduler.start();
+    // A schedule that cannot start (storage full) must not stop the app from starting.
+    this.backupScheduler.start().catch(() => {});
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));

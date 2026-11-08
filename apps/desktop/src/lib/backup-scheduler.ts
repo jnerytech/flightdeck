@@ -72,6 +72,11 @@ export class BackupScheduler {
 
   async setCadence(cadence: Cadence): Promise<void> {
     this.current.cadence = cadence;
+    if (cadence === "off") {
+      // Nothing is owed any more: the passphrase is not kept for a schedule that is not there.
+      this.passphrase = null;
+      this.report = { status: "idle" };
+    }
     this.save();
     await this.tick();
   }

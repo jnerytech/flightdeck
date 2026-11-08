@@ -75,6 +75,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
                 type="number"
                 min={1}
                 value={keepText}
+                onBlur={() => setKeepText(String(scheduler.schedule().keep))}
                 onChange={(event) => {
                   setKeepText(event.target.value);
                   const keep = Number(event.target.value);
@@ -89,8 +90,9 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
             variant="inline"
             onSubmit={() =>
               using.run(async () => {
-                await scheduler.setPassphrase(passphrase);
+                const given = passphrase;
                 setPassphrase("");
+                await scheduler.setPassphrase(given);
               })
             }
           >
