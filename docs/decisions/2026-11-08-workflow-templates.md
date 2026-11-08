@@ -20,6 +20,12 @@ three proposed (the alert fixer and the post-mortem draft) and a read-only view 
   findings into Backlog cards, with a cap per run and a dedupe key. That step takes untrusted agent
   output into the board and goes to the security reviewer, so the scan ships with it (slice 2), not
   as a file the engine cannot run today. The agent is not given `create_card`.
-- **Alerts are read by the daemon, later.** The alert fixer takes the alert as text for now. A
-  later slice reads code-scanning and Dependabot alerts with a read-only `gh api` call by the daemon,
-  so the agent sessions get no network.
+- **Alerts are read by the host with its own `gh` (slice 3).** `alert.list` runs two plain GETs
+  (`gh api repos/{owner}/{repo}/code-scanning/alerts` and `.../dependabot/alerts`, 30 open each) in
+  the project's own folder, so `gh` fills `{owner}` and `{repo}` from that folder's remote and the
+  host builds no URL. It holds no token, returns at most 50 alerts (worst first, then newest), and
+  names a source it could not read by a short reason (`gh_missing`, `not_signed_in`, `unavailable`,
+  `failed`) without `gh`'s own text. The alert's words come from a scanner or an advisory, so the host
+  strips control and invisible characters, cuts the lengths, and drops a link that is not https. The
+  app copies the text into the `alert` input of the card's workflow, as a multi-line box, and the
+  alert-fixer prompt fences it as data. The agent sessions get no network.

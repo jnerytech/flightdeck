@@ -1601,6 +1601,15 @@ Dois workflows já vêm com o Flightdeck, para trabalho recorrente que termina e
 Os dois param em uma aprovação antes de enviar qualquer coisa e têm um orçamento de turnos e de
 minutos. Com o pull request aberto, vale para ele o limite de rodadas do Vigiar PRs.
 
+Para iniciar o corretor de alertas, inicie um card com ele e preencha o campo `alert`. **Escolher um
+alerta**, ao lado do campo, lista os alertas abertos de code scanning e do Dependabot do repositório,
+os mais graves primeiro, lidos pelo host com o próprio `gh` (só leitura; o Flightdeck não guarda token
+do GitHub). Escolher um copia o texto dele para o campo: leia antes de iniciar, porque as palavras de
+um alerta vêm de um scanner ou de um aviso. Uma fonte que não dá para ler (o code scanning está
+desligado, ou o `gh` não tem acesso ou não está conectado) aparece citada ao lado da lista, e a lista
+nunca diz "nenhum alerta aberto" quando uma delas falhou. O botão só aparece quando o host sabe ler
+alertas.
+
 Um modelo é um arquivo, e o Flightdeck não grava nada no seu repositório. Na tela **Workflows**,
 **Adicionar de um modelo** lista os modelos. Abra um para ler o arquivo, use **Copiar o arquivo**,
 faça commit em `.flightdeck/workflows/` na branch base e **confie** nele na mesma tela, como em
