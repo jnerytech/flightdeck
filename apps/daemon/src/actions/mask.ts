@@ -24,8 +24,8 @@ function forms(value: string): string[] {
     json,
     base64,
     base64.replaceAll("+", "-").replaceAll("/", "_"),
-    base64.replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, ""),
-    base64.replace(/=+$/, ""),
+    base64.replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, ""), // NOSONAR: base64 of a secret ends in at most two "="
+    base64.replace(/=+$/, ""), // NOSONAR: base64 of a secret ends in at most two "="
     url,
     url.toLowerCase(),
     url.replaceAll("%20", "+"),

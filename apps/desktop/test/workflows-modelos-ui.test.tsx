@@ -50,6 +50,8 @@ function setup(
     templates?: Answer;
     fixer?: object;
     copyWorks?: boolean;
+    /** Answers the next copies by hand: each call waits for its resolver. */
+    copyBy?: Array<(worked: boolean) => void>;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -70,6 +72,8 @@ function setup(
   }) as never;
   store.copyText = (async (text: string) => {
     copied.push(text);
+    const by = options.copyBy;
+    if (by) return new Promise<boolean>((resolve) => by.push(resolve));
     return options.copyWorks !== false;
   }) as never;
   render(
@@ -189,6 +193,57 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     expect(screen.queryByText(/^Copied\./) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
+  test("when the copy fails, an alert says the clipboard refused and to copy the text by hand", async () => {
+    setup({ copyWorks: false });
+    await open("Add from a template", "Show Alert fixer");
+    await press("Copy the file");
+    const said = await settleMaybe(() =>
+      Boolean(
+        screen
+          .queryByRole("alert")
+          ?.textContent?.includes(
+            "The clipboard refused the copy. Select the file's text above and copy it by hand.",
+          ),
+      ),
+    );
+    expect(said).toBe(true);
+  });
+
+  test("Copied is announced by a region that stays in the page, and said again for each copy", async () => {
+    const pending: Array<(worked: boolean) => void> = [];
+    setup({ copyBy: pending });
+    await open("Add from a template", "Show Alert fixer");
+    const region = () => document.querySelector("[data-slot='copy-status']");
+    // The live region is there before anything is copied, empty: text put into a region that was
+    // just inserted is often not read.
+    expect(region()?.getAttribute("role")).toBe("status");
+    expect(region()?.textContent).toBe("");
+    await press("Copy the file");
+    await settleMaybe(() => pending.length === 1);
+    await act(async () => pending[0]?.(true));
+    expect(await settleMaybe(() => Boolean(region()?.textContent?.startsWith("Copied.")))).toBe(
+      true,
+    );
+    // A second copy empties the region first and fills it when it works, so it is read again.
+    await press("Copy the file");
+    await settleMaybe(() => pending.length === 2);
+    expect(region()?.textContent).toBe("");
+    await act(async () => pending[1]?.(true));
+    expect(await settleMaybe(() => Boolean(region()?.textContent?.startsWith("Copied.")))).toBe(
+      true,
+    );
+  });
+
+  test("a host with no templates says so instead of showing an empty list", async () => {
+    setup({ templates: async () => ({ templates: [] }) });
+    await open();
+    const said = await settleMaybe(
+      () => screen.queryByText("This host offers no templates.") !== null,
+    );
+    expect(said).toBe(true);
+    expect(screen.queryByRole("list", { name: "Templates" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
   test("Back returns to the list with the focus on the template that was open", async () => {
     setup();
     await open("Add from a template", "Show Alert fixer");
@@ -241,6 +296,22 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     await settleMaybe(() => document.activeElement === button("Add from a template"));
     expect(dialog("Workflow templates") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(document.activeElement === button("Add from a template")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
+  test("in Portuguese the refused copy and the empty list are said in Portuguese", async () => {
+    setup({ language: "pt-BR", copyWorks: false });
+    await open("Adicionar de um modelo", "Ver Corretor de alertas");
+    await press("Copiar o arquivo");
+    const said = await settleMaybe(() =>
+      Boolean(screen.queryByRole("alert")?.textContent?.includes("recusou a cópia")),
+    );
+    expect(said).toBe(true);
+    cleanup();
+    setup({ language: "pt-BR", templates: async () => ({ templates: [] }) });
+    await open("Adicionar de um modelo");
+    expect(
+      await settleMaybe(() => screen.queryByText("Este host não oferece modelos.") !== null),
+    ).toBe(true);
   });
 
   test("in Portuguese the button, the dialog and the template texts follow the language", async () => {

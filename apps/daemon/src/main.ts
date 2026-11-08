@@ -1002,7 +1002,8 @@ export async function startDaemon(
     folderLocks,
     preparePersonas: prepare,
     // Issue #78: a card's spec template comes from a trusted project's trusted checkout only.
-    specTemplateRoot: async (worktree) => templateRootOf(await trustForKnowledge(worktree)),
+    specTemplateRoot: async (cwd, own) =>
+      templateRootOf(await trustForKnowledge(cwd), own ? cwd : undefined),
     log: (line) => logger.log(line),
     db: store.db,
     manager,

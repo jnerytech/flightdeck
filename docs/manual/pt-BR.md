@@ -357,7 +357,9 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   `"knowledge": { "feedOff": ["/caminho/do/projeto"] }`, e uma pasta dessa lista desliga tudo
   dentro dela também: um projeto desligado por uma pasta acima diz isso, e é religado editando
   essa entrada no arquivo. Um projeto sem confiança não recebe o índice, ligado ou desligado.
-  Cada documento tem um seletor de status. Escolher um escreve só a linha `status:` do front matter
+  Cada documento tem um seletor de status e um botão **Alterar**: escolher um status só o seleciona (as
+  setas podem percorrer a lista sem escrever nada), e **Alterar**, ligado enquanto a escolha difere do
+  status do arquivo, o escreve. Escreve só a linha `status:` do front matter
   daquele arquivo (um documento sem front matter ganha um bloco com essa linha), mantém o resto do
   arquivo como está e deixa a mudança na pasta do projeto, sem commit: revise com o git. A mudança
   é recusada quando o arquivo mudou desde que a lista o mostrou (recarregue e tente de novo),
@@ -1102,7 +1104,9 @@ aparece mascarado e como **Oculto**, e não abre.
 - **Uma nota de validação e iniciar sem critérios** (#78). Um card tem uma **Nota de validação** nos
   Detalhes: uma ou duas linhas sobre como você conferiu o trabalho. Um projeto pode fazer uma coluna
   pedir isso (um contrato com a verificação `validation`), e o card passa a dizer "Precisa de: uma
-  nota de validação". **Iniciar** (o menu do card, a seção Executar do card ou a paleta Ctrl+K)
+  nota de validação". Uma nota vazia mostra o formato de uma nota como dica, nunca salva: um projeto
+  confiável pode dar o seu em `.flightdeck/templates/validation.md` no checkout (até 32 KiB), e o
+  card diz o motivo quando esse arquivo existe mas não foi usado. **Iniciar** (o menu do card, a seção Executar do card ou a paleta Ctrl+K)
   pergunta antes só num projeto cujo contrato de Em andamento confirma critérios de aceite, e só
   para um card sem eles (nenhum item `- [ ] …` na descrição): **Iniciar mesmo assim** segue. Por
   padrão Em andamento só avisa, então Iniciar não pergunta nada.
@@ -1672,6 +1676,8 @@ qualquer workflow. A linha `check` do corretor de alertas já traz o comando de 
 quando o Flightdeck consegue descobrir (`npm run test`, `cargo test`...). Quando não consegue, a
 linha traz um texto provisório que falha de propósito: troque pelo seu comando de teste antes do
 commit.
+Se a área de transferência recusar a cópia, o diálogo avisa como alerta: selecione o texto do arquivo
+mostrado ali e copie à mão. Um host sem modelos diz isso, em vez de mostrar uma lista vazia.
 
 ### Rodar e acompanhar
 

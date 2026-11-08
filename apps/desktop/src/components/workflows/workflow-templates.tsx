@@ -31,7 +31,8 @@ export function WorkflowTemplates(
   const [templates, setTemplates] = useState<WorkflowTemplate[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [shownId, setShownId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  /** What the last copy did: nothing yet (or one is on its way), it worked, or the clipboard refused. */
+  const [copied, setCopied] = useState<"worked" | "refused" | null>(null);
   /** The template whose button takes the focus back when the list is shown again. */
   const [restore, setRestore] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -57,11 +58,11 @@ export function WorkflowTemplates(
     setTemplates(null);
     setFailed(false);
     setShownId(null);
-    setCopied(false);
+    setCopied(null);
     void load();
   };
   const show = (template: WorkflowTemplate) => {
-    setCopied(false);
+    setCopied(null);
     setShownId(template.id);
   };
   const back = () => {
@@ -69,7 +70,9 @@ export function WorkflowTemplates(
     setShownId(null);
   };
   const copy = async (template: WorkflowTemplate) => {
-    setCopied(await store.copyText(template.yaml));
+    // Emptied first, so a second copy that works is announced again, not left as the same text.
+    setCopied(null);
+    setCopied((await store.copyText(template.yaml)) ? "worked" : "refused");
   };
 
   return (
@@ -89,7 +92,10 @@ export function WorkflowTemplates(
         {!failed && templates === null && (
           <LoadingState label={t("workflowsUi.templates.loading")} />
         )}
-        {templates && !shown && (
+        {templates?.length === 0 && (
+          <InlineNotice tone="info">{t("workflowsUi.templates.none")}</InlineNotice>
+        )}
+        {templates && templates.length > 0 && !shown && (
           <div ref={list}>
             <Stack as="ul" label={t("workflowsUi.templates.list")} gap={3}>
               <ListedTemplates templates={templates} onShow={show} />
@@ -141,7 +147,7 @@ function ListedTemplates(
 function TemplateFile(
   props: Readonly<{
     template: WorkflowTemplate;
-    copied: boolean;
+    copied: "worked" | "refused" | null;
     headingRef: React.RefObject<HTMLHeadingElement | null>;
     onCopy(): void;
     onBack(): void;
@@ -182,7 +188,17 @@ function TemplateFile(
           {t("workflowsUi.templates.back")}
         </Button>
       </Inline>
-      {props.copied && <InlineNotice tone="info">{t("workflowsUi.templates.copied")}</InlineNotice>}
+      {props.copied === "refused" && (
+        <InlineNotice tone="error">{t("workflowsUi.templates.copyFailed")}</InlineNotice>
+      )}
+      {/* Always in the page: a live region inserted with its text is often not read. */}
+      <div data-slot="copy-status" role="status">
+        {props.copied === "worked" && (
+          <p className="rounded-md border px-3 py-2 text-muted-foreground text-sm">
+            {t("workflowsUi.templates.copied")}
+          </p>
+        )}
+      </div>
     </Stack>
   );
 }
