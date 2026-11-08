@@ -103,6 +103,7 @@ export class BoardWidth {
 }
 
 /** A column's count: `3`. */
+// NOSONAR: the board names the step it shows, and tests call it by that name
 export function columnCount(shown: number): string {
   return String(shown);
 }
