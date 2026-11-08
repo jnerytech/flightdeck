@@ -154,4 +154,31 @@ describe("run-resume: a failed run resumes from its failed step (#1266)", () => 
       for (const server of servers) await server.stop();
     }
   });
+
+  test("a tampered stored definition refuses; two resumes at once run the steps once; a start meanwhile is refused", async () => {
+    const tampered = await failedAtC();
+    tampered.store.db
+      .query(
+        "UPDATE workflow_runs SET definition = replace(definition, 'fd-check d', 'fd-check evil') WHERE id = ?",
+      )
+      .run(tampered.runId);
+    const twice = await failedAtC();
+    const both = await Promise.all([
+      refusal(() => twice.board.resumeRun(twice.runId, true)),
+      refusal(() => twice.board.resumeRun(twice.runId, true)),
+    ]);
+    const started = await refusal(() => twice.start());
+    await twice.runWhen((run) => run.status === "completed");
+    expect([
+      (await tampered.board.resumeRun(tampered.runId, false)).reason,
+      both.filter((outcome) => outcome === "ok").length,
+      started,
+      twice.calls.map((call) => call.split(" ").at(-1)),
+    ]).toEqual([
+      "run_resume_workflow_changed",
+      1,
+      "card_workflow_running",
+      ["a", "b", "c", "c", "d"],
+    ]);
+  });
 });
