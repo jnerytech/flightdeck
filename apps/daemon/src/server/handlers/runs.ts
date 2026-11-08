@@ -32,6 +32,9 @@ export const runsHandlers = {
       workflows: await server.need("board").listWorkflows(payload.projectId),
     };
   },
+  "workflow.templates": () => {
+    return { templates: [] };
+  },
   "workflow.validate": async (payload, { server }) => {
     const { projectId, name } = payload;
     return await server.need("board").validateWorkflow(projectId, name);
