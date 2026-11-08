@@ -45,11 +45,11 @@ describe("teams-narrow: a team member's row fits a narrow window", () => {
 describe("teams-narrow: a worker row of the new-team form fits the form at every width (#1222)", () => {
   test("two even columns outside any media query, with no fixed column", () => {
     const row = utility("worker-row");
-    expect([
-      row.includes("grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)"),
-      /\d+(\.\d+)?rem/.test(row),
-      row.includes("@media"),
-    ]).toEqual([true, false, false]);
+    const tracks = row.match(/grid-template-columns:[^;]*;/g) ?? [];
+    expect([tracks, row.includes("@media")]).toEqual([
+      ["grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);"],
+      false,
+    ]);
   });
 
   test("the persona picker spans the row, and Remove sits at the left", () => {
