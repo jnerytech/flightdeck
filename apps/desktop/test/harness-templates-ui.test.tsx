@@ -6,6 +6,7 @@ import { settle, settleMaybe, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
+const { TContext } = await import("../src/i18n/context.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { HarnessTemplatesSection } = await import("../src/ui/HarnessTemplatesSection.tsx");
 
@@ -48,7 +49,12 @@ function setup(
     }
     return null;
   }) as never;
-  const view = <HarnessTemplatesSection store={store} hostId="h1" />;
+  // App provides the translator of the language in use; a bare render gets pt-BR.
+  const view = (
+    <TContext.Provider value={store.i18n.t}>
+      <HarnessTemplatesSection store={store} hostId="h1" />
+    </TContext.Provider>
+  );
   const deletes = () => sent.filter(([type]) => type === "harness.templates.delete");
   return { view, sent, deletes };
 }

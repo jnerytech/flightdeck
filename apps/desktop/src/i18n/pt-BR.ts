@@ -5144,6 +5144,21 @@ export const ptBR = {
     reconnect: "Reconectar",
     remove: "Remover host",
   },
+  harnessTemplates: {
+    title: "Modelos de configuração do Claude Code",
+    hint: "Compartilhados da configuração do Claude Code de um projeto. Outro projeto pode partir de um deles.",
+    asking: "Procurando modelos…",
+    none: "Nenhum modelo ainda. Compartilhe a configuração de um projeto para criar um.",
+    filesOne: "1 arquivo",
+    filesMany: "{n} arquivos",
+    facts: "{files} · {size}",
+    delete: "Apagar",
+    deleteLabel: "Apagar o modelo {title}",
+    confirmMessage: "Apagar o modelo {title}?",
+    confirmWarning: "Os projetos já configurados com ele ficam com os arquivos.",
+    confirmButton: "Apagar modelo",
+    deleted: "Modelo {title} apagado.",
+  },
   maintenance: {
     title: "Manutenção",
     fields: {
