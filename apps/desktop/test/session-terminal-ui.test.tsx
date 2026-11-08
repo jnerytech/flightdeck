@@ -289,14 +289,11 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     await settle(() => tab("Terminal") !== null);
     await clickTab("Terminal");
     await settle(() => screen.queryByText("Ao vivo") !== null);
-    expect({
-      before,
-      toasts: store.getState().notices.length,
-      live: (await live(store, hostId)).length,
-    }).toEqual({
+    // The shell is up on the host; read after it, a refusal of the open would be a toast by now.
+    await waitFor(async () => expect(await live(store, hostId)).toHaveLength(1));
+    expect({ before, toasts: store.getState().notices.length }).toEqual({
       before: false,
       toasts: 0,
-      live: 1,
     });
   });
 
