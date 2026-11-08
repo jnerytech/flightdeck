@@ -1177,6 +1177,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         const path = await resolveAllowedCwd(asked, opts.allowedRoots);
         return ok(command.type, await opts.knowledgeStatus(path, file, status, expectedHash));
       }
+      case "knowledge.create":
+        throw featureOff("knowledgeCreate");
       case "knowledge.feed": {
         if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
