@@ -3884,7 +3884,10 @@ export const en: Dictionary = {
     templatePersona: "persona {name}",
     templatePins: { one: "{n} pinned document", other: "{n} pinned documents" },
     templateSpec: "spec {path}",
-    templateDropped: "Templates left out for a mistake in cards.json: {n}.",
+    templateDropped: {
+      one: "{n} template left out for a mistake in cards.json.",
+      other: "{n} templates left out for a mistake in cards.json.",
+    },
     templateIgnored: {
       untrusted: "The project's card templates were not used: the project is not trusted.",
       unsafe:

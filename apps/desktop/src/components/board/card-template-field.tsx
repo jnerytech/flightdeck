@@ -74,6 +74,7 @@ export function CardTemplateField(
   const [offer, setOffer] = useState<CardTemplates | null>(null);
   useEffect(() => {
     if (!enabled) return;
+    setOffer(null);
     let live = true;
     void store.hostRequest(hostId, "card.templates", { projectId }).then((result) => {
       if (live && result.ok) setOffer(result.data);
@@ -82,8 +83,13 @@ export function CardTemplateField(
       live = false;
     };
   }, [store, hostId, projectId, enabled]);
+  const { value, onPick } = props;
+  const picked = offer?.templates.find((template) => template.id === value) ?? null;
+  // A template the project no longer offers (its file changed, its trust was revoked) is not sent.
+  useEffect(() => {
+    if (offer && value !== null && picked === null) onPick(null);
+  }, [offer, value, picked, onPick]);
   if (!enabled || !offer) return null;
-  const picked = offer.templates.find((template) => template.id === props.value) ?? null;
   return (
     <>
       {offer.ignored && (

@@ -3891,7 +3891,10 @@ export const ptBR = {
     templatePersona: "persona {name}",
     templatePins: { one: "{n} documento fixado", other: "{n} documentos fixados" },
     templateSpec: "spec {path}",
-    templateDropped: "Modelos deixados de fora por erro no cards.json: {n}.",
+    templateDropped: {
+      one: "{n} modelo deixado de fora por erro no cards.json.",
+      other: "{n} modelos deixados de fora por erro no cards.json.",
+    },
     templateIgnored: {
       untrusted: "Os modelos de card do projeto não foram usados: o projeto não é confiável.",
       unsafe:

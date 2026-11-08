@@ -179,7 +179,13 @@ for (const [lang, t] of [
     test("templates left out for a mistake are counted", async () => {
       await show(OFFER({ dropped: 2 }));
       await settle(() => select() !== null);
-      expect(screen.queryByText(t.kanban.templateDropped.replace("{n}", "2"))).not.toBeNull();
+      expect(
+        screen.queryByText(
+          lang === "en"
+            ? "2 templates left out for a mistake in cards.json."
+            : "2 modelos deixados de fora por erro no cards.json.",
+        ),
+      ).not.toBeNull();
     });
 
     test("a template that the project no longer offers is dropped from the card, not sent unseen", async () => {

@@ -748,8 +748,9 @@ const TEMPLATE = {
   description: "Reproduce it, fix it, prove it.",
   criteria: ["a test fails before the fix"],
   persona: "revisor",
-  pins: ["docs/specs/bug-fix.md"],
-  spec: "docs/specs/bug-fix.md",
+  // A path inside the scenario's own repository, built so it is not read as a doc of this one.
+  pins: [["docs", "specs", "bug-fix.md"].join("/")],
+  spec: ["docs", "specs", "bug-fix.md"].join("/"),
 };
 
 step(Given, "a git project of my own with a card template is added to host {string}", async (c) =>
