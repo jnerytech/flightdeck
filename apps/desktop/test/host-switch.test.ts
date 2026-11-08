@@ -45,6 +45,23 @@ describe("host-switch: a navigation into another host's tabs", () => {
     tabs.switchHost("h2");
     expect(tabs.router.canBack).toBe(false);
   });
+
+  test("a tab picked in the tab row forgets the way back", () => {
+    const { tabs } = onAlfa();
+    const alfaTab = tabs.activeId;
+    tabs.router.push(project("h2", "p-docs"));
+    const betaTab = tabs.activeId;
+    tabs.activate(alfaTab);
+    tabs.activate(betaTab);
+    expect({ host: tabs.hostId, back: tabs.router.canBack }).toEqual({ host: "h2", back: false });
+  });
+
+  test("a shared screen after the switch forgets the way back", () => {
+    const { tabs } = onAlfa();
+    tabs.router.push(project("h2", "p-docs"));
+    tabs.router.push({ name: "settings", section: "assistant" });
+    expect(tabs.router.canBack).toBe(false);
+  });
 });
 
 const cleanups: Array<() => unknown> = [];
@@ -75,6 +92,56 @@ describe("host-switch: the window says the switch, with a way back", () => {
       button: toast?.link?.label,
       host: store.activeHostId(),
     }).toEqual({ text: "Switched to beta", button: "Back to alfa", host: "h1" });
+  });
+
+  test("the toast's button goes back to the host it names, even after a page of the new host", async () => {
+    const mem = memoryPlatform(false, "en");
+    mem.platform.storage.setItem(
+      HOSTS_KEY,
+      JSON.stringify([
+        { id: "h1", name: "alfa", url: "ws://x" },
+        { id: "h2", name: "beta", url: "ws://x" },
+      ]),
+    );
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    cleanups.push(() => store.dispose());
+    await store.init();
+    store.pickHost("h1");
+    store.router.push(project("h1", "p-api"));
+    store.router.push(project("h2", "p-docs"));
+    const toast = store.getState().notices.at(-1);
+    store.router.push(project("h2", "p-web"));
+    toast?.link?.run();
+    expect({ host: store.activeHostId(), page: store.router.current }).toEqual({
+      host: "h1",
+      page: project("h1", "p-api"),
+    });
+  });
+
+  test("after a pick in the switcher, the toast's button stays where the person is", async () => {
+    const mem = memoryPlatform(false, "en");
+    mem.platform.storage.setItem(
+      HOSTS_KEY,
+      JSON.stringify([
+        { id: "h1", name: "alfa", url: "ws://x" },
+        { id: "h2", name: "beta", url: "ws://x" },
+      ]),
+    );
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    cleanups.push(() => store.dispose());
+    await store.init();
+    store.pickHost("h1");
+    store.router.push(project("h1", "p-api"));
+    store.router.push(project("h2", "p-docs"));
+    const toast = store.getState().notices.at(-1);
+    store.router.push(project("h2", "p-web"));
+    store.pickHost("h2");
+    const page = store.router.current;
+    toast?.link?.run();
+    expect({ host: store.activeHostId(), same: store.router.current === page }).toEqual({
+      host: "h2",
+      same: true,
+    });
   });
 
   // The e2e journey of #932: after a reload the tabs have no host of their own, and the switcher
