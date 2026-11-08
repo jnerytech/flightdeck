@@ -1267,7 +1267,7 @@ export class AppStore {
   private setLatency(hostId: string, latencyMs: number | null): void {
     if (this.getLatency(hostId) === latencyMs) return;
     this.latencies.set(hostId, latencyMs);
-    for (const listener of [...this.latencyListeners]) listener();
+    for (const listener of [...this.latencyListeners]) listener(); // NOSONAR: a listener may subscribe or unsubscribe while it runs: this pass goes over a copy
   }
 
   /** How the hub draws its sessions: lines or cards. */
