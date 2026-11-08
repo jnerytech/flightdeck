@@ -2006,6 +2006,8 @@ export class Board {
     // From the main repository, as the poll: a cwd inside the worktree would lock it when it goes.
     await provider.merge({ cwd: project.path, url: card.prUrl, method });
     // Read again at once: the card moves to Done and its worktree goes, as for any merged PR.
+    // A read that began before the merge landed may answer "open": let it end, then read again.
+    await this.prReads.get(id)?.catch(() => {});
     // The PR is merged by now: a failed read is a notice, and the next round reads it again.
     await this.pollPr(id).catch((error: unknown) => {
       if (!this.stopped)
@@ -2339,7 +2341,18 @@ export class Board {
     }
   }
 
-  private async pollPr(id: string): Promise<void> {
+  /** The reads in flight, by card: a poll and a merge asking at once share one answer (and one `place`). */
+  private readonly prReads = new Map<string, Promise<void>>();
+
+  private pollPr(id: string): Promise<void> {
+    const running = this.prReads.get(id);
+    if (running) return running;
+    const read = this.readPr(id).finally(() => this.prReads.delete(id));
+    this.prReads.set(id, read);
+    return read;
+  }
+
+  private async readPr(id: string): Promise<void> {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);

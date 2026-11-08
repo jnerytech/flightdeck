@@ -879,6 +879,10 @@ export const ptBR = {
     resizeValue: "{n} px",
     countOne: "1 card",
     countMany: "{n} cards",
+    keysHint:
+      "As setas passam de um card a outro, Enter abre, S inicia e M mostra as ações do card.",
+    columns: "Colunas",
+    showColumn: "{column}, {count}",
     countOfMany: "{shown} de {total} cards",
     noMatches: "Nenhuma correspondência",
     quickAdd: "Novo card em {column}",
@@ -1973,6 +1977,14 @@ export const ptBR = {
       "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider: "O projeto não tem provedor de PR.",
     card_no_pr: "O card não tem PR.",
+    card_pr_not_open: "O PR do card não está aberto.",
+    card_pr_merge_unsupported:
+      "Este host de PR não faz merge pelo Flightdeck: faça o merge do PR lá.",
+    card_pr_checks_failing:
+      "Os checks estão falhando ou ainda rodando: o PR ainda não pode ser mesclado.",
+    card_pr_review_required: "O PR precisa de uma revisão antes de ser mesclado.",
+    card_pr_conflict: "O PR tem conflito com a branch base: resolva o conflito antes.",
+    card_pr_merge_failed: "Não foi possível fazer o merge do PR: {detail}",
     pr_no_comment: "Nenhum comentário foi escolhido.",
     card_running: "O card está em execução: espere o agente terminar.",
     merge_confirm: "Confirme o merge.",
@@ -4128,6 +4140,7 @@ export const ptBR = {
       views: "Visões da sessão",
       lists: "Listas",
       approvals: "Aprovações",
+      board: "Board",
     },
     palette: "Abrir a paleta de comandos",
     toggleMode: "Alternar entre o modo simples e o app completo",
@@ -4154,6 +4167,9 @@ export const ptBR = {
     approve: "Aprovar o pedido",
     deny: "Negar o pedido",
     dismiss: "Fechar o pedido",
+    boardMove: "Passar de um card a outro no board",
+    boardStart: "Iniciar o card em foco",
+    boardActions: "Mostrar as ações do card em foco",
   },
   sidebarGroups: {
     main: "Principal",
@@ -4530,6 +4546,16 @@ export const ptBR = {
         done: "Compartilhado como o modelo {title} ({files}).",
       },
       setup: {
+        startFrom: "Partir de",
+        builtIn: "Arquivos do próprio Flightdeck",
+        withheld: "Deixado de fora do modelo",
+        withheldLine: "{path}: {why}",
+        withheldWhy: {
+          frontmatter: "o cabeçalho dele poderia executar um comando ou conceder uma permissão",
+          secret: "ele contém um segredo",
+          import: "ele importa um arquivo de fora do projeto",
+          command: "ele executa um comando ao carregar",
+        },
         action: "Configurar o Claude Code",
         apply: "Aplicar a configuração",
         message:

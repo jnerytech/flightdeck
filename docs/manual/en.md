@@ -354,6 +354,11 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
 - A host's page also lists its **Claude Code setup templates**, the ones shared from a project's setup,
   with their files and size. **Delete** asks first and removes only that template: the projects set
   up from it keep their files. It works from this computer or over Tailscale, not from afar.
+- When the host has setup templates, the set-up dialog's **Start from** choice picks one instead of
+  Flightdeck's own files. The preview then shows that template's files, lists under **Left out of
+  the template** any file it did not propose and why (front matter that could run a command or grant
+  a permission, a secret, an import from outside the project, a command that runs as it loads), and
+  does not offer the CLAUDE.md draft.
 - **Project knowledge** lists the project's PRDs, RFCs, ADRs and specs (the Markdown files in
   `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` and `docs/specs`), each with its title, path,
   type and the status it says it has in its front matter (`status: valid`, `transitional` or

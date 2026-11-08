@@ -244,6 +244,16 @@ function ghParts(url: string): { owner: string; repo: string; number: string; pr
   return { owner, repo, number, prUrl: `https://github.com/${owner}/${repo}/pull/${number}` };
 }
 
+/** A CLI's words with what looks like a token left out: GitHub tokens, auth headers and URL credentials. */
+function withoutTokens(text: string): string {
+  return text
+    .replace(/\bgh[pousr]_\w+/g, "[token]")
+    .replace(/\bgithub_pat_\w+/g, "[token]")
+    .replace(/\bBearer\s+\S+/gi, "[token]")
+    .replace(/\bBasic\s+\S+/g, "[token]")
+    .replace(/\/\/[^/@\s]+@/g, "//[token]@");
+}
+
 const GH_BUCKETS: Record<string, PrCheck["state"]> = {
   pass: "passing",
   skipping: "passing",
@@ -309,14 +319,12 @@ export class GithubCli extends CliProvider implements PrProvider {
     const result = await this.call("gh", ["pr", "merge", prUrl, `--${method}`], cwd);
     if (result.code === 0) return;
     const reason = await this.whyNotMergeable(cwd, prUrl);
-    const detail = result.stderr.trim().slice(0, 300);
-    const unknown = reason === "card_pr_merge_failed";
-    throw new FlightdeckError(
-      "invalid_state",
-      unknown ? `the PR could not be merged: ${detail}` : "the PR could not be merged",
-      reason,
-      { url: prUrl, ...(unknown ? { detail } : {}) },
-    );
+    // gh's words travel as the detail of the unknown refusal only, never the message, and without tokens.
+    const detail = withoutTokens(result.stderr.trim()).slice(0, 300);
+    throw new FlightdeckError("invalid_state", "the PR could not be merged", reason, {
+      url: prUrl,
+      ...(reason === "card_pr_merge_failed" ? { detail } : {}),
+    });
   }
 
   /** Why GitHub holds the PR back, from its merge state, its review decision and its checks. */

@@ -348,6 +348,11 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   da configuração de um projeto, com seus arquivos e tamanho. **Apagar** pergunta antes e remove só
   esse modelo: os projetos configurados com ele ficam com os arquivos. Funciona deste computador ou
   pelo Tailscale, não de longe.
+- Quando o host tem modelos de configuração, a escolha **Partir de** no diálogo de configuração
+  escolhe um deles em vez dos arquivos do próprio Flightdeck. A prévia mostra então os arquivos desse
+  modelo, lista em **Deixado de fora do modelo** o que ele não propôs e por quê (cabeçalho que
+  poderia executar um comando ou conceder uma permissão, um segredo, uma importação de fora do
+  projeto, um comando que roda ao carregar), e não oferece o rascunho do CLAUDE.md.
 - **Conhecimento do projeto** lista os PRDs, RFCs, ADRs e specs do projeto (os arquivos Markdown em
   `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` e `docs/specs`), cada um com título, caminho,
   tipo e o status que diz ter no front matter (`status: valid`, `transitional` ou `obsolete`). Um
