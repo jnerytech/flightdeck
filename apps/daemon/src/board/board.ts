@@ -1497,8 +1497,6 @@ export class Board {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     let worktree = card.worktreePath;
-    // This launch makes the worktree: the card's first run, the one a spec template is for.
-    const first = !worktree;
     if (!worktree) {
       const limit = this.opts.worktreeIncludeLimit ?? WORKTREE_INCLUDE_LIMIT;
       // A card that waited for blockers starts from the base as it is after they merged.
@@ -1525,7 +1523,9 @@ export class Board {
     await this.closeRuns(id, runId);
     // A workflow run executes its steps instead of sending the description to one session.
     if (this.workflows.has(runId)) return this.workflows.begin(runId, worktree);
-    const specLine = first ? await this.startSpec(id, project.contractByColumn, worktree) : null;
+    const specLine = this.firstSession(id, runId)
+      ? await this.startSpec(id, project.contractByColumn, worktree)
+      : null;
     const prompt = [card.description, specLine ?? "", project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");
@@ -1569,15 +1569,29 @@ export class Board {
     if (path === null || !wantsSpec(contracts, card.specPath)) return null;
     const result = await writeSpec(worktree, path, renderSpec(card));
     if (result === "failed") {
-      const notice = [card.notice, `spec template not written: ${path}`]
-        .filter((part) => part)
-        .join("; ");
-      this.db
-        .query("UPDATE cards SET notice = ?, updated_at = ? WHERE id = ?")
-        .run(notice, now(), id);
+      // The app says it in its language; the prompt sends the agent to no spec that is not there.
+      const why = new FlightdeckError(
+        "invalid_state",
+        `spec template not written: ${path}`,
+        "spec_template_failed",
+        { path },
+      );
+      this.setNotice(id, why.message, why);
       this.changed(id);
+      return null;
     }
     return specFirstLine(path, await hasTddSkill(worktree));
+  }
+
+  /**
+   * No earlier run of the card reached a session: the card's first start, the one a spec template
+   * is for. A first start that failed before its session (a setup script) still counts as first.
+   */
+  private firstSession(id: string, runId: string): boolean {
+    const earlier = this.db
+      .query("SELECT 1 FROM card_runs WHERE card_id = ? AND id <> ? AND session_id IS NOT NULL")
+      .get(id, runId);
+    return earlier === null;
   }
 
   /** Closes the card's sessions and ends its open runs, except `keep` (the one launching). */

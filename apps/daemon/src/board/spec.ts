@@ -107,20 +107,22 @@ export async function stillThere(
 /** What a heading must not carry: controls, invisible and direction-changing characters, breaks. */
 const NOT_FOR_A_HEADING = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
 
-/** The first ATX heading of the start of a file, plain text of at most 120 characters. */
 /**
- * A front matter block (`---` lines at the very start): whether it says `draft: true`, and the text
- * after it, where the heading is looked for. Nothing else of it is kept.
+ * A front matter block (`---` lines at the very start): whether it says `draft: true` (as YAML
+ * writes it: any case, quoted or not), and the text after it, where the heading is looked for.
+ * Nothing else of it is kept. A block that does not close within what was read counts as a draft:
+ * the check fails closed.
  */
 function frontMatter(text: string): { draft: boolean; body: string } {
   const block = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
-  if (!block) return { draft: false, body: text };
+  if (!block) return { draft: /^\uFEFF?---\r?\n/.test(text), body: text };
   return {
-    draft: /^draft:[ \t]*true[ \t]*\r?$/m.test(block[1] ?? ""),
+    draft: /^draft:[ \t]*(["']?)true\1[ \t]*\r?$/im.test(block[1] ?? ""),
     body: text.slice(block[0].length),
   };
 }
 
+/** The first ATX heading of the start of a file, plain text of at most 120 characters. */
 function firstHeading(text: string, cut: boolean): string | null {
   const lines = text.split(/\r?\n/);
   // A start that ended mid-line has a last line that may be half a heading.

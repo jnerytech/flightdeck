@@ -1532,6 +1532,8 @@ export const en: Dictionary = {
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
+    spec_template_failed:
+      "The spec template could not be written at {path} (a link or a file is in the way): the session started without it.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
     remote_not_github: "The remote {url} is not a GitHub one.",

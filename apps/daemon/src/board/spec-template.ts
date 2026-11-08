@@ -83,8 +83,7 @@ export async function writeSpec(
       () => false,
     );
     if (there) return "exists";
-    // On Windows a backslash separates folders too: split on it, so every folder on the way is checked.
-    const rel = process.platform === "win32" ? path.replace(/\\/g, "/") : path;
+    const rel = toSlashes(path, process.platform);
     return (await createInside(root, rel, content)) ? "written" : "failed";
   } catch {
     return "failed";
@@ -103,8 +102,16 @@ export async function hasTddSkill(worktree: string): Promise<boolean> {
 export function specFirstLine(path: string, skill: boolean): string {
   const how = skill ? ` The project's tdd skill (${TDD_SKILL}) describes how.` : "";
   return (
-    `Start with the spec at ${path}: read it, and if it is a draft, complete it and remove ` +
+    `Start with the spec at \`${path}\`: read it, and if it is a draft, complete it and remove ` +
     `"draft: true" from its front matter. Then work test first: for each acceptance criterion, ` +
     `write a failing test and commit it, then the code that makes it pass.${how}`
   );
+}
+
+/**
+ * A spec path as `/`-separated folders: on Windows a backslash separates them too, so each folder on
+ * the way is checked; elsewhere a backslash is part of a name, as `readSpec` reads it.
+ */
+export function toSlashes(path: string, platform: string): string {
+  return platform === "win32" ? path.replaceAll("\\", "/") : path;
 }
