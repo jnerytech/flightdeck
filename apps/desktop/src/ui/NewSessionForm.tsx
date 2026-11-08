@@ -41,6 +41,25 @@ export function joinPath(root: string, sub: string): string {
   return clean ? `${trimTrailingSeparators(root)}${sep}${clean}` : root;
 }
 
+/** The configured root that holds `path` (the longest one) and the rest of it as a subfolder; null when none holds it. */
+function underRoot(path: string, roots: string[]): { root: string; sub: string } | null {
+  const holder = roots.filter((r) => isInside(path, r)).sort((a, b) => b.length - a.length)[0];
+  if (!holder) return null;
+  return {
+    root: holder,
+    sub: path.slice(trimTrailingSeparators(holder).length).replace(/^[\\/]+/, ""),
+  };
+}
+
+/** What the last session chose, while it is still a choice the form offers; else the default. */
+function rememberedOr<T>(value: T | undefined, offered: readonly T[], fallback: T): T {
+  return value !== undefined && offered.includes(value) ? value : fallback;
+}
+
+/** `onCreate` may answer with a promise: the button stays busy until it settles. */
+const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+  typeof (value as PromiseLike<unknown> | undefined)?.then === "function";
+
 /** New session on a host: folder inside one of its allowedRoots, name, permission mode, prompt. */
 export function NewSessionForm(
   props: Readonly<{
@@ -90,11 +109,11 @@ export function NewSessionForm(
   const folders = extra && !roots.includes(extra) ? [...roots, extra] : roots;
   const pick = (path: string) => {
     setBrowsing(false);
-    // The configured root that holds it, the longest one; its rest is the subfolder.
-    const holder = roots.filter((r) => isInside(path, r)).sort((a, b) => b.length - a.length)[0];
-    if (holder) {
-      setPicked(holder);
-      setTypedSub(path.slice(trimTrailingSeparators(holder).length).replace(/^[\\/]+/, ""));
+    // The configured root that holds it; its rest is the subfolder.
+    const held = underRoot(path, roots);
+    if (held) {
+      setPicked(held.root);
+      setTypedSub(held.sub);
     } else {
       setExtra(path);
       setPicked(path);
@@ -106,11 +125,9 @@ export function NewSessionForm(
   useEffect(() => onFolder?.(cwd), [onFolder, cwd]);
   const [name, setName] = useState("");
   const [mode, setMode] = useState<PermissionMode>(
-    prefs && MODES.includes(prefs.value.mode) ? prefs.value.mode : "default",
+    rememberedOr(prefs?.value.mode, MODES, "default"),
   );
-  const [model, setModel] = useState(
-    prefs && MODELS.includes(prefs.value.model) ? prefs.value.model : "",
-  );
+  const [model, setModel] = useState(rememberedOr<string>(prefs?.value.model, MODELS, ""));
   /** Phase 39: the agent, offered when the host has OpenCode on; its models come from the host. */
   const [runtime, setRuntime] = useState<Runtime>("claude");
   const opencode = runtime === "opencode";
@@ -177,10 +194,10 @@ export function NewSessionForm(
       ...(name.trim() ? { name: name.trim() } : {}),
       ...(opencode ? { runtime: "opencode" as const, ...(effort ? { effort } : {}) } : {}),
     });
-    if (typeof (done as PromiseLike<unknown> | undefined)?.then === "function") {
+    if (isThenable(done)) {
       setCreating(true);
       const finished = () => setCreating(false);
-      (done as PromiseLike<unknown>).then(finished, finished);
+      done.then(finished, finished);
     }
   };
   return (
