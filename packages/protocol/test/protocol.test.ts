@@ -382,6 +382,7 @@ const validCommands: Record<CommandType, unknown> = {
   "hooks.uninstall": { confirm: true },
   "workflow.list": { projectId: "p" },
   "workflow.templates": { projectId: "p" },
+  "workflow.template.add": { projectId: "p", templateId: "alert-fixer", confirm: true },
   "alert.list": { projectId: "p" },
   "workflow.validate": { projectId: "p", name: "feature" },
   "workflow.trust": { projectId: "p", name: "feature", hash: "abc" },
@@ -731,6 +732,18 @@ describe("protocolo", () => {
         payload: { path: "/work/app", parts },
       }).success;
     expect([parse([]), parse(["mcp"]), parse(["hooks"])]).toEqual([false, false, true]);
+  });
+
+  test("workflow.template.add names a project and one of the host's templates, and carries no file (#1221)", () => {
+    const parse = (payload: unknown) =>
+      Command.safeParse({ id: "1", type: "workflow.template.add", payload }).success;
+    expect([
+      parse({ projectId: "p", templateId: "alert-fixer", confirm: true }),
+      parse({ projectId: "p", templateId: "alert-fixer" }),
+      parse({ projectId: "p", templateId: "" }),
+      parse({ projectId: "p", templateId: "alert-fixer", yaml: "steps: []" }),
+      parse({ projectId: "p", templateId: "alert-fixer", path: ".flightdeck/workflows/x.yaml" }),
+    ]).toEqual([true, true, false, false, false]);
   });
 
   test.each(Object.entries(validCommands))("comando %s válido passa no schema", (type, payload) => {

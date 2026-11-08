@@ -10,9 +10,14 @@ afterEach(cleanup);
 
 // With no translator above it the page speaks pt-BR, the app's default language.
 
-const page = (hostCommand: () => Promise<unknown>) => (
-  <WorkflowsPage store={{ hostCommand } as never} hostId="h1" projectId="p1" projectName="app" />
-);
+/** One state for every read: a new object each time would never settle. */
+const NO_HOSTS = { hosts: [] };
+
+/** A store that answers commands and knows no host (the templates dialog reads the hosts, #1221). */
+const page = (hostCommand: () => Promise<unknown>) => {
+  const store = { hostCommand, getState: () => NO_HOSTS, subscribe: () => () => {} };
+  return <WorkflowsPage store={store as never} hostId="h1" projectId="p1" projectName="app" />;
+};
 
 test("while the host answers, the page says it is loading the workflows", async () => {
   await act(async () => {

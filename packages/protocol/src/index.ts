@@ -1934,6 +1934,15 @@ export const WorkflowTemplate = z.object({
 });
 export type WorkflowTemplate = z.infer<typeof WorkflowTemplate>;
 
+/** Issue #1221: where the template went: its file, the new branch, the base the PR targets, the PR. */
+export const WorkflowTemplateAdded = z.object({
+  path: z.string(),
+  branch: z.string(),
+  base: z.string(),
+  url: z.string(),
+});
+export type WorkflowTemplateAdded = z.infer<typeof WorkflowTemplateAdded>;
+
 /**
  * Issue #79: an open alert of the project's repository, read by the host with `gh` (code scanning
  * or Dependabot). `text` is what goes into a workflow's `alert` input: the alert's own words, which
@@ -4103,6 +4112,21 @@ export const Command = z.discriminatedUnion("type", [
   cmd("workflow.list", z.object({ projectId: z.string() })),
   /** Issue #79: the workflow templates, with the check line filled from the project's stack. */
   cmd("workflow.templates", z.object({ projectId: z.string() })),
+  /**
+   * Issue #1221: the host commits one of its own templates (by id; the app sends no file and no
+   * path) on a new branch of the project and opens its PR, as a card does. Never the base branch:
+   * the file is listed, untrusted, once the PR is merged. Refused without `confirm: true`.
+   */
+  cmd(
+    "workflow.template.add",
+    z
+      .object({
+        projectId: z.string(),
+        templateId: z.string().min(1).max(200),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
   /** Issue #79: the open code-scanning and Dependabot alerts of the project's repository, read-only. */
   cmd("alert.list", z.object({ projectId: z.string() })),
   cmd("workflow.validate", z.object({ projectId: z.string(), name: z.string().min(1) })),
@@ -5597,6 +5621,7 @@ export interface CommandResults {
   "card.templates": CardTemplates;
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.templates": { templates: WorkflowTemplate[] };
+  "workflow.template.add": WorkflowTemplateAdded;
   "alert.list": { alerts: RepoAlert[]; unavailable: AlertsUnavailable[] };
   "workflow.validate": WorkflowInfo;
   "workflow.trust": WorkflowInfo;
