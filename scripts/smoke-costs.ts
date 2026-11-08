@@ -10,6 +10,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { type Pending, pollUntil } from "./lib/smoke-poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -57,14 +58,8 @@ const localDay = (ms: number) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-async function until<T>(check: () => Promise<T | null | undefined | false>, what: string) {
-  const deadline = Date.now() + TIMEOUT_MS;
-  for (;;) {
-    const value = await check();
-    if (value) return value;
-    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50); // NOSONAR: a poll, one look per pause
-  }
+function until<T>(check: () => Promise<T | Pending>, what: string): Promise<T> {
+  return pollUntil(check, what, { timeoutMs: TIMEOUT_MS, pauseMs: 50 });
 }
 
 class Client {

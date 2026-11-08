@@ -15,6 +15,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { pollUntil } from "./lib/smoke-poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -96,11 +97,7 @@ function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
 }
 
 async function until(check: () => boolean, what: string): Promise<void> {
-  const deadline = Date.now() + TIMEOUT_MS;
-  while (!check()) {
-    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(10); // NOSONAR: a poll, one look per pause
-  }
+  await pollUntil(check, what, { timeoutMs: TIMEOUT_MS, pauseMs: 10 });
 }
 
 const percentile = (sorted: number[], p: number) =>

@@ -9,9 +9,15 @@ export type Pending = null | undefined | false;
 
 /** Looks until `check` gives something, pausing between looks; a timeout names what it waited for. */
 export async function pollUntil<T>(
-  _check: () => T | Pending | Promise<T | Pending>,
-  _what: string,
-  _options: PollOptions,
+  check: () => T | Pending | Promise<T | Pending>,
+  what: string,
+  options: PollOptions,
 ): Promise<T> {
-  return undefined as T;
+  const deadline = Date.now() + options.timeoutMs;
+  for (;;) {
+    const value = await check();
+    if (value) return value;
+    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
+    await Bun.sleep(options.pauseMs); // NOSONAR: a poll, one look per pause
+  }
 }
