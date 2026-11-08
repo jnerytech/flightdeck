@@ -29,16 +29,24 @@ function moveBetweenLines(e: KeyboardEvent<HTMLButtonElement>) {
       ?.querySelectorAll<HTMLButtonElement>("button[data-line-number]") ?? []),
   ];
   const at = numbers.indexOf(e.currentTarget);
-  const to = {
+  const moves: Record<string, number> = {
     ArrowDown: Math.min(at + 1, numbers.length - 1),
     ArrowUp: Math.max(at - 1, 0),
     Home: 0,
     End: numbers.length - 1,
-  }[e.key];
-  if (to === undefined || at < 0) return;
+  };
+  const to = Object.hasOwn(moves, e.key) ? moves[e.key] : undefined;
+  // Past the first or last number the key is left to the page, so it still scrolls.
+  if (to === undefined || at < 0 || to === at) return;
   e.preventDefault();
   numbers[to]?.focus();
 }
+
+/**
+ * The side whose number a row shows (#1177): a removed line its old number, any other its new one.
+ * The split view draws a context line's old number as a blank, so it has one number too.
+ */
+const sideOf = (row: LineRow): ReviewComment["side"] => (row.op === "-" ? "old" : "new");
 
 /** The number of a line, a button that starts (or, with shift, extends) a comment on it. */
 function LineNumber(
@@ -138,15 +146,10 @@ function FileDiff(
   }
   const lineOf = (row: LineRow, side: ReviewComment["side"]) =>
     (side === "old" ? row.oldLine : row.newLine) as number;
-  // Every number in the order the rows show them: the old side before the new in a split row.
-  const numbers = rows.flatMap((row) => {
-    if (row.kind !== "line") return [];
-    const sides: ReviewComment["side"][] =
-      props.mode === "unified" ? [row.op === "-" ? "old" : "new"] : [];
-    if (props.mode === "split" && row.op !== "+") sides.push("old");
-    if (props.mode === "split" && row.op !== "-") sides.push("new");
-    return sides.map((side) => ({ side, line: lineOf(row, side) }));
-  });
+  // Every number in the order the rows show them: one per row, in both views.
+  const numbers = rows.flatMap((row) =>
+    row.kind === "line" ? [{ side: sideOf(row), line: lineOf(row, sideOf(row)) }] : [],
+  );
   const keyOf = (side: ReviewComment["side"], line: number) => `${side}:${line}`;
   const keys = numbers.map((n) => keyOf(n.side, n.line));
   const picked = numbers.find((n) => selected(selection, path, n.side, n.line));
@@ -187,7 +190,7 @@ function FileDiff(
         // biome-ignore lint/suspicious/noArrayIndexKey: rows are immutable and ordered
         <tr key={i} className={TONE[row.op]}>
           <td className="flex">
-            {number(row, row.op === "-" ? "old" : "new")}
+            {number(row, sideOf(row))}
             <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
               {`${row.op}${row.text}`}
             </span>
