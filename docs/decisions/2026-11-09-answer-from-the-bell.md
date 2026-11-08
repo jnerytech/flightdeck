@@ -28,5 +28,6 @@ bell's row now holds the decision.
 - After an answer the focus goes to the row that took the answered one's place, or the panel's title.
 - The `bell-approve` journey answers a request from the bell at 390 px (the web demo sends no
   notification, so the entry is put in the bell by hand).
-- A click on the OS notification already opens the session with the focus on that request
-  (`openRequestLink`); a test pins it. Two strings (`inbox.keys`, `inbox.keysHigh`) in both languages.
+- A click on the OS notification of the web build and a `flightdeck://request` link opened from
+  outside open the session with the focus on that request (`openRequestLink`). On the desktop app
+  this arrived with the click decision of the same issue (`2026-11-09-os-click-opens-request.md`). Two strings (`inbox.keys`, `inbox.keysHigh`) in both languages.

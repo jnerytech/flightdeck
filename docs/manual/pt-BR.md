@@ -2341,6 +2341,9 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
 - Uma linha lida tem **Marcar como não lida** (passe o mouse ou foque nela) para voltar a ela depois.
 - As notificações do sistema saem como antes, a menos que você as ajuste (abaixo). A central só
   guarda uma cópia: uma que nunca é enviada (a janela estava em foco) também não entra nela.
+- Clique na notificação do sistema de um pedido e o app vem à frente nesse pedido: a sessão abre
+  com o foco nele, com a janela minimizada, atrás de outras ou na bandeja. Uma notificação que não
+  é de um pedido não abre nada.
 
 ### Ajustar as notificações
 
