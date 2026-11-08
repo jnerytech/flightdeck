@@ -2,6 +2,7 @@ import type { ProjectLoad } from "@flightdeck/protocol";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
 import { HarnessSetup, type HarnessSetupProps } from "@/components/projects/harness-setup";
+import type { HarnessShareProps } from "@/components/projects/harness-share";
 import type { AppStore } from "@/lib/app-store";
 import { type HarnessItem, harnessParts } from "@/lib/harness";
 
@@ -42,7 +43,13 @@ function detail(item: HarnessItem, t: T): string {
  * preview and apply, it also offers to set up what is missing (slice S4b).
  */
 export function HarnessPanel(
-  props: Readonly<{ load: ProjectLoad; t: T; setup?: HarnessSetupProps | null }>,
+  props: Readonly<{
+    load: ProjectLoad;
+    t: T;
+    setup?: HarnessSetupProps | null;
+    /** The host can keep a project's Markdown setup as a template (#75, T2). */
+    share?: HarnessShareProps | null;
+  }>,
 ) {
   const { load, t } = props;
   const items = harnessParts(load);
