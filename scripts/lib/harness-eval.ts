@@ -231,11 +231,6 @@ export function sessionArgs(
   options: Pick<EvalOptions, "model" | "budget">,
   places: { dir: string; home: string },
 ): string[] {
-  const home = trimSeparators(places.home);
-  const inHome =
-    places.dir === home ||
-    (places.dir.startsWith(home) && /^[\\/]/.test(places.dir.slice(home.length)));
-  const homeDenied = inHome ? [] : ["Read(~/**)", "Edit(~/**)", "Write(~/**)"];
   return [
     "-p",
     prompt,
@@ -253,8 +248,17 @@ export function sessionArgs(
     ...ALLOWED_TOOLS,
     "--disallowedTools",
     ...DENIED_TOOLS,
-    ...homeDenied,
+    ...homeDenials(places),
   ];
+}
+
+/** The home folder's deny rules, when the clone is outside it; none when it is inside. */
+export function homeDenials(places: { dir: string; home: string }): string[] {
+  const home = trimSeparators(places.home);
+  const inHome =
+    places.dir === home ||
+    (places.dir.startsWith(home) && /^[\\/]/.test(places.dir.slice(home.length)));
+  return inHome ? [] : ["Read(~/**)", "Edit(~/**)", "Write(~/**)"];
 }
 
 /** The environment variables a sample's processes keep: no token, key or other secret. */
