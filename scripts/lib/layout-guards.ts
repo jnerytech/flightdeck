@@ -22,7 +22,8 @@ export type Rule =
   | "chip-gap"
   | "overflow-x"
   | "nested-scroll"
-  | "header-clipped";
+  | "header-clipped"
+  | "sheet-actions";
 
 export interface Finding {
   rule: Rule;
@@ -573,12 +574,68 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       if (!hidden(header)) headerClipped(header, rows, rules.title);
     }
   };
+  /** The nearest ancestor that scrolls vertically: the box that moves an element into view. */
+  const scrollerOf = (el: Element) => {
+    let up = el.parentElement;
+    while (up && up !== document.body && !scrolls(getComputedStyle(up).overflowY)) {
+      up = up.parentElement;
+    }
+    return up;
+  };
+  /** A dialog that fills the window: below 640 px every dialog is a full-screen sheet (#641). */
+  const isSheet = (el: Element) => {
+    const box = rectOf(el);
+    return (
+      box.left <= 1 &&
+      box.top <= 1 &&
+      box.right >= window.innerWidth - 1 &&
+      box.bottom >= window.innerHeight - 1
+    );
+  };
+  /**
+   * #1271: a sheet's form buttons rest on its bottom edge, and at the end of the sheet's scroll no
+   * field the sheet scrolls is left under them. A field in a scroller of its own is that box's.
+   */
+  const checkSheetActions = (sheet: Element, actions: Element) => {
+    const bar = rectOf(actions.parentElement ?? actions);
+    const room = rectOf(sheet);
+    const short = room.bottom - bar.bottom;
+    if (short > 1) {
+      add(
+        "sheet-actions",
+        pathOf(actions, true),
+        `ends ${Math.round(short)} px above the sheet's bottom`,
+        short,
+      );
+    }
+    const left = Math.max(0, sheet.scrollHeight - sheet.clientHeight - sheet.scrollTop);
+    for (const field of sheet.querySelectorAll("input, select, textarea")) {
+      if (hidden(field) || actions.parentElement?.contains(field)) continue;
+      if (scrollerOf(field) !== sheet) continue;
+      const box = rectOf(field);
+      const over =
+        box.bottom - left > bar.top + 1 &&
+        box.top - left < bar.bottom &&
+        box.left < bar.right &&
+        bar.left < box.right;
+      if (over) add("sheet-actions", pathOf(field, true), `under ${pathOf(actions, true)}`);
+    }
+  };
+  const checkSheets = () => {
+    for (const sheet of document.querySelectorAll('[data-slot="dialog-content"]')) {
+      if (hidden(sheet) || !isSheet(sheet)) continue;
+      for (const actions of sheet.querySelectorAll('[data-slot="form-actions"]')) {
+        if (!hidden(actions)) checkSheetActions(sheet, actions);
+      }
+    }
+  };
   const checkNarrow = () => {
     if (!narrow) return;
     const shown = [...document.querySelectorAll("body *")].filter(seenBy);
     checkOverflowX(shown);
     checkNestedScroll(shown);
     checkHeader(narrow);
+    checkSheets();
   };
 
   checkSideways();
@@ -677,7 +734,12 @@ export interface ResponsiveRules {
 }
 
 /** The narrow-window rules: heuristic, judged against apps/desktop/responsive-baseline.json. */
-export const RESPONSIVE_RULES: Rule[] = ["overflow-x", "nested-scroll", "header-clipped"];
+export const RESPONSIVE_RULES: Rule[] = [
+  "overflow-x",
+  "nested-scroll",
+  "header-clipped",
+  "sheet-actions",
+];
 
 export const RESPONSIVE: ResponsiveRules = {
   header: '[data-slot="page-header"]',
