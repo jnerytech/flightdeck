@@ -37,6 +37,7 @@ export const en: Dictionary = {
     offlineSessions: "{host} is offline. Its sessions show again when it reconnects.",
     incompatible: "{host} needs a daemon update before its data shows here.",
     showAll: "Show all hosts",
+    projectNoSessions: "{project} has no sessions.",
     noCosts: "{host} does not report costs.",
     projectEmpty: "{project} has no costs in this period.",
   },

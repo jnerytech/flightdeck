@@ -554,6 +554,19 @@ export function SessionsHub(
             </Button>
           </InlineNotice>
         )}
+        {/* A project picked on Home or Costs can have no session here: the list says so (#126). */}
+        {!hostless && scopedProject && rows.length === 0 && (
+          <InlineNotice tone="info">
+            <span>
+              {t("scope.projectNoSessions", {
+                project: projectNames.get(scopedProject) ?? projectLabel(scopedProject),
+              })}{" "}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>
+              {t("scope.showAll")}
+            </Button>
+          </InlineNotice>
+        )}
         {hostless ? (
           <EmptyState
             icon={Server}

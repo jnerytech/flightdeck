@@ -39,6 +39,7 @@ export const ptBR = {
     offlineSessions: "{host} está offline. As sessões dele voltam quando ele reconectar.",
     incompatible: "{host} precisa de uma atualização do daemon para os dados aparecerem aqui.",
     showAll: "Mostrar todos os hosts",
+    projectNoSessions: "{project} não tem sessões.",
     noCosts: "{host} não informa custos.",
     projectEmpty: "{project} não tem custos neste período.",
   },
