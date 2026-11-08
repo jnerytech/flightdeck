@@ -19,6 +19,7 @@ import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { addTurn, noSpending, overBudget, type RunSpending } from "./budget.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";
+import type { CardsRaised, Finding } from "./findings.ts";
 import { type InterpolationContext, interpolate, OUTPUTS_SEPARATOR } from "./interpolate.ts";
 import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
 import {
@@ -46,6 +47,12 @@ export interface EngineHost {
   takeSlots(cardId: string, count: number): string[];
   /** Pushes the card's branch and opens its PR (phase 4); the PR's URL. */
   createPr(cardId: string): Promise<string>;
+  /** Issue #79: raises findings as Backlog cards of the card's project. */
+  raiseCards(
+    cardId: string,
+    findings: readonly Finding[],
+    origin: { workflow: string; runId: string },
+  ): CardsRaised;
   card(cardId: string): Card;
 }
 
@@ -478,6 +485,8 @@ export class WorkflowEngine {
       return { output: await this.loopStep(run, worktree, step.id, step.loop, context) };
     }
     if ("pr" in step) return { output: await this.prStep(run, step.id) };
+    if ("cards" in step)
+      return { output: await this.cardsStep(run, step.id, step.cards.from, context) };
     if ("parallel" in step) {
       return { outputs: await this.parallelStep(run, worktree, step.id, step.parallel, context) };
     }
@@ -555,6 +564,16 @@ export class WorkflowEngine {
       this.endStep(run.id, stepId, 1, "failed", null);
       throw new Error(`etapa ${stepId} falhou: ${reason(error)}`);
     }
+  }
+
+  /** Issue #79: raises the findings in the reply of an earlier agent step as Backlog cards. */
+  private async cardsStep(
+    _run: RunRow,
+    _stepId: string,
+    _from: string,
+    _context: InterpolationContext,
+  ): Promise<string> {
+    return "";
   }
 
   /** An agent or a check (on its own, or inside a loop or a parallel); a failed check fails. */

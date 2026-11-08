@@ -385,6 +385,8 @@ export class Board {
         takeSlots: (cardId, count) => this.takeSlots(cardId, count),
         waitQuota: () => this.waitQuota(),
         createPr: async (cardId) => (await this.createPr(cardId)).prUrl as string,
+        raiseCards: (cardId, findings, origin) =>
+          this.raiseCards(this.getCard(cardId).projectId, findings, origin),
         card: (cardId) => this.getCard(cardId),
       },
       checks: opts.checks ?? shellCheckRunner(),
