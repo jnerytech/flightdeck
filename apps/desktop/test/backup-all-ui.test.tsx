@@ -237,6 +237,30 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
     expect([named, field("File passphrase")?.value]).toEqual([true, ""]);
   });
 
+  test("a backup too big for the restore picker is refused with a reason, not saved", async () => {
+    const { platform, saved } = open();
+    platform.storage.setItem(
+      "flightdeck.personas",
+      JSON.stringify([persona("big", "Huge", "x".repeat(1_100_000))]),
+    );
+    await type("Passphrase", PASS);
+    await type("Confirm passphrase", PASS);
+    await click("Back up now");
+    const told = await settleMaybe(() => said("too big"), 5000);
+    expect([told, saved.length]).toEqual([true, 0]);
+  });
+
+  test("a picker that fails says so in the panel instead of staying silent", async () => {
+    const { platform } = open();
+    platform.vault.pickFile = async () => {
+      throw new Error("the file is too big to be a key");
+    };
+    await type("File passphrase", PASS);
+    await click("Read backup");
+    const told = await settleMaybe(() => said("Something went wrong"), 3000);
+    expect([told, said("too big to be a key")]).toEqual([true, false]);
+  });
+
   test("the pt-BR panel is in Portuguese", async () => {
     open({ language: "pt-BR" });
     const shown = await settleMaybe(
