@@ -110,6 +110,9 @@ const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
 };
 
 /** Why "Iniciar card" is off (queued or running), else null. */
+/** What a card's own text lacks: fixed in its fields, not on the card's run (#1197). */
+const FIELD_NEEDS: ReadonlySet<string> = new Set(["criteria", "validation", "spec"]);
+
 function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
   if (block === "queued") return t("board.startQueued");
   return block === "running" ? t("board.startRunning") : null;
@@ -301,7 +304,16 @@ function CardTile(
         {card.checksState && (
           <Badge variant="outline">{t(`checks.${card.checksState}` as Key)}</Badge>
         )}
-        {needs.length > 0 && <NeedsBadge t={t} needs={needs} />}
+        {needs.length > 0 && (
+          <NeedsBadge
+            t={t}
+            needs={needs}
+            // What the card's text lacks is fixed in its fields; a PR and checks, on the card.
+            onFix={() =>
+              needs.some((need) => FIELD_NEEDS.has(need)) ? props.onEdit() : props.onOpen()
+            }
+          />
+        )}
       </div>
       {card.notice && (
         <InlineNotice>
