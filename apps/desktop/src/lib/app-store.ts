@@ -85,6 +85,7 @@ import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
+import { BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { budgetLabel, budgetLimitText, estimateNote, share } from "./budgets.ts";
@@ -1089,6 +1090,9 @@ export class AppStore {
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
+    this.backupScheduler = new BackupScheduler(platform, {
+      ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
+    });
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
@@ -1201,6 +1205,8 @@ export class AppStore {
     playNotifySound(this.notifyPrefs.value.sound, this.notifyPrefs.soundFile(), browserSound());
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
+  /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
+  readonly backupScheduler: BackupScheduler;
   /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
   readonly appLog: AppLog;
   /** The screen in use and its history (phase 10). */
@@ -1390,6 +1396,8 @@ export class AppStore {
         if (notifyUpdates || autoUpdate) void this.checkAppUpdate();
       }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
     }
+    // A schedule that cannot start (storage full) must not stop the app from starting.
+    this.backupScheduler.start().catch(() => {});
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
@@ -3118,6 +3126,7 @@ export class AppStore {
     this.offTrayAction = null;
     if (this.updateTimer) clearInterval(this.updateTimer);
     this.updateTimer = null;
+    this.backupScheduler.dispose();
     if (this.clientBudgetTimer) clearInterval(this.clientBudgetTimer);
     this.clientBudgetTimer = null;
     if (this.vaultScopeTimer) clearTimeout(this.vaultScopeTimer);
