@@ -275,11 +275,10 @@ export class HarnessTemplates {
       if (meta === null) continue;
       // A broken meta costs its title, never the whole list.
       const title = titleOf(meta);
-      const names = (await parts(at, "")).map(([name]) => name);
-      const texts = await Promise.all(names.map((name) => readInside(at, name, MAX_FILE)));
       const files: Array<[string, string]> = [];
-      for (const [i, name] of names.entries()) {
-        const text = texts[i] ?? null;
+      for (const [name] of await parts(at, "")) {
+        const reading = readInside(at, name, MAX_FILE);
+        const text = await reading; // NOSONAR: a hand-placed template can hold many files, so they are opened one at a time
         if (text !== null) files.push([name, text]);
       }
       out.push(info(id, typeof title === "string" ? title : id, files));
