@@ -1,6 +1,7 @@
 import type { KnowledgeKind } from "@flightdeck/protocol";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/feedback/action-button";
+import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import type { Key } from "@/i18n";
 import { refusalText } from "@/i18n/errors";
@@ -57,34 +58,45 @@ export function KnowledgeCreate(
       className="flex flex-col gap-2"
       onSubmit={(event) => {
         event.preventDefault();
+        if (busy || title.trim() === "") return;
         void create();
       }}
     >
       <h4 className="font-medium text-sm">{t("projectPage.knowledge.create.title")}</h4>
       <p className="text-muted-foreground text-sm">{t("projectPage.knowledge.create.hint")}</p>
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          aria-label={t("projectPage.knowledge.create.kind")}
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm"
-          value={kind}
-          onChange={(event) => setKind(event.target.value as KnowledgeKind)}
+      {/* #1104: each box shows what it is, and Create says what it waits for on its own line. */}
+      <FieldRow align="end">
+        <Field label={t("projectPage.knowledge.create.kind")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              inline
+              value={kind}
+              onChange={(event) => setKind(event.target.value as KnowledgeKind)}
+            >
+              {KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {t(`projectPage.knowledge.create.${k}` as Key)}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+        <Field label={t("projectPage.knowledge.create.titleLabel")} className="min-w-48 flex-1">
+          {(control) => (
+            <Input {...control} value={title} onChange={(event) => setTitle(event.target.value)} />
+          )}
+        </Field>
+        <ActionButton
+          type="submit"
+          variant="outline"
+          pending={busy}
+          disabled={title.trim() === ""}
+          disabledReason={t("projectPage.knowledge.create.titleNeeded")}
         >
-          {KINDS.map((k) => (
-            <option key={k} value={k}>
-              {t(`projectPage.knowledge.create.${k}` as Key)}
-            </option>
-          ))}
-        </select>
-        <Input
-          aria-label={t("projectPage.knowledge.create.titleLabel")}
-          className="min-w-0 flex-1"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-        <Button type="submit" variant="outline" disabled={busy || title.trim() === ""}>
           {t("projectPage.knowledge.create.button")}
-        </Button>
-      </div>
+        </ActionButton>
+      </FieldRow>
       {note && (
         <p role={note.ok ? "status" : "alert"} className="text-sm">
           {note.text}

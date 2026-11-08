@@ -184,3 +184,53 @@ describe("knowledge-create-ui: starting a document from a template (#1039)", () 
     ]).toEqual([true, true]);
   });
 });
+
+// #1104: the title was a blank box with only an aria-label, and Create was off with no reason. Both
+// controls now show their label, and Create says what it waits for.
+describe("knowledge-create-ui: the form says what each box is and what Create waits for (#1104)", () => {
+  for (const [language, names] of [
+    [
+      "en",
+      {
+        panel: "Project knowledge",
+        labels: ["Kind", "Title"],
+        create: "Create from template",
+        reason: "Type the document's title.",
+      },
+    ],
+    [
+      "pt-BR",
+      {
+        panel: "Conhecimento do projeto",
+        labels: ["Tipo", "Título"],
+        create: "Criar a partir do modelo",
+        reason: "Digite o título do documento.",
+      },
+    ],
+  ] as const) {
+    test(`${language}: the kind and the title have visible labels, and Create's reason shows until a title is typed`, async () => {
+      render(setup({ language }).view);
+      const region = () => screen.queryByRole("region", { name: names.panel });
+      await waitFor(() => expect(region()).not.toBeNull());
+      const inside = within(region() as HTMLElement);
+      await waitFor(() =>
+        expect(inside.queryByRole("textbox", { name: names.labels[1] })).not.toBeNull(),
+      );
+      const visible = Array.from(region()?.querySelectorAll("label") ?? []).map(
+        (l) => l.textContent,
+      );
+      const create = inside.queryByRole("button", { name: names.create });
+      const reason = inside.queryByText(names.reason);
+      expect([
+        names.labels.every((label) => visible.includes(label)),
+        create?.hasAttribute("disabled") ?? null,
+        reason !== null && create?.getAttribute("aria-describedby") === reason.id,
+      ]).toEqual([true, true, true]);
+      fireEvent.change(inside.getByRole("textbox", { name: names.labels[1] }), {
+        target: { value: "Use the queue" },
+      });
+      await waitFor(() => expect(inside.queryByText(names.reason) === null).toBe(true));
+      expect(create?.hasAttribute("disabled")).toBe(false);
+    });
+  }
+});
