@@ -137,3 +137,28 @@ export function specExpectedPath(card: {
 }): string | null {
   return card.specPath ?? (card.slug ? `docs/specs/${card.slug}.md` : null);
 }
+
+/** The folders of a project's library of documents (issue #76); a card pins one from here. */
+export const KNOWLEDGE_FOLDERS = [
+  "docs/decisions",
+  "docs/adr",
+  "docs/rfc",
+  "docs/prd",
+  "docs/specs",
+] as const;
+
+/** The most documents one card pins. */
+export const PINNED_DOCS_MAX = 10;
+
+/**
+ * Why a document cannot be pinned to a card, or null when it can: a plain path to a Markdown file
+ * (`specPathProblem`) inside one of the library's folders. The host looks the file up in the
+ * worktree, and checks where it lands, when the card starts.
+ */
+export function pinnedDocProblem(path: string): string | null {
+  const problem = specPathProblem(path);
+  if (problem !== null) return problem;
+  // The path goes into a prompt: no line break (U+0085, U+2028/9) or direction mark (format chars).
+  if (/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(path)) return "control";
+  return KNOWLEDGE_FOLDERS.some((folder) => path.startsWith(`${folder}/`)) ? null : "folder";
+}
