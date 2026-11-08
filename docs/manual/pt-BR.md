@@ -1296,6 +1296,12 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   estiver limpo. Senão, o card avisa e a worktree fica.
 - **Descarte:** Descartar (com confirmação, e um aviso se houver alterações não enviadas)
   remove a worktree e a branch local.
+- **A página do card tem um botão que lidera:** o painel Executar mostra o que vem a seguir.
+  **Iniciar** para um card que ainda não rodou, **Parar** enquanto roda, **Revisar mudanças**
+  quando uma execução termina (mostra as Mudanças do card) e depois **Abrir PR**. O resto está no
+  menu **⋯** ao lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do
+  board), **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Finalizar…** e
+  **Descartar**. Um card cuja execução terminou abre em **Mudanças**.
 - **Editar e excluir:** o menu **⋯** do card tem **Editar…**, que abre o card com o título pronto
   para mudar (a página do card também edita a descrição e, com o ROI ligado, a estimativa), e
   **Excluir…**, que cita o card e pergunta antes. Excluir vale só para um card que nunca começou

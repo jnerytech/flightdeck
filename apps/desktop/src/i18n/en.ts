@@ -3905,9 +3905,6 @@ export const en: Dictionary = {
   },
   cardUi: {
     noIssueLink: "This issue has no link we can open",
-    needWorktree: "Start the card before opening its PR",
-    notRunning: "The card is not running",
-    prAlreadyOpen: "The PR is already open",
     notFound: "Card not found.",
     cost: "Card cost",
     back: "Back to the board",
@@ -3963,6 +3960,8 @@ export const en: Dictionary = {
     start: "Start",
     stop: "Stop",
     openPr: "Open PR",
+    reviewChanges: "Review changes",
+    startWith: "Start with a workflow or persona…",
     complete: "Complete",
     finish: "Finish…",
     finishTitle: "Finish this card",

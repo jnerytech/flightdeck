@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../daemon/test/helpers.ts";
+import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
@@ -115,49 +116,74 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     );
   });
 
-  test("a card suggests the Developer next to Iniciar, and None can still be picked", async () => {
-    const { store, hostId, projectId, d } = await open();
-    const card = d.board.createCard(projectId, { title: "Codar", description: "faça" });
+  const cardPage = async (title: string) => {
+    const opened = await open();
+    const card = opened.d.board.createCard(opened.projectId, { title, description: "faça" });
     const asked: Array<{ type: string; payload: unknown }> = [];
-    const command = store.hostCommand.bind(store);
-    store.hostCommand = (async (id: string, type: never, payload: never) => {
+    const command = opened.store.hostCommand.bind(opened.store);
+    opened.store.hostCommand = (async (id: string, type: never, payload: never) => {
       asked.push({ type, payload });
       return command(id, type, payload);
-    }) as typeof store.hostCommand;
+    }) as typeof opened.store.hostCommand;
     await act(async () => {
-      store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
+      opened.store.router.push({
+        name: "card",
+        host: opened.hostId,
+        projectId: opened.projectId,
+        cardId: card.id,
+      });
     });
-    await settle(() => options("Persona do card").length > 1);
-    const picker = () => screen.queryByLabelText("Persona do card") as HTMLSelectElement;
-    await settle(() => picker().value === "host:dev");
-    await click("Iniciar");
-    expect(asked.find((a) => a.type === "card.start")?.payload).toMatchObject({
-      persona: { id: "dev", language: "pt-BR" },
-    });
-    // A person who picks None keeps None: the suggestion is applied once.
-    await fill("Persona do card", "");
-    await uiIdle();
-    expect(picker().value).toBe("");
-  });
+    await settle(() => screen.queryByRole("button", { name: `Ações de ${title}` }) !== null);
+    return { asked, card };
+  };
+  const startDialog = () => screen.getByRole("dialog", { name: "Iniciar card" });
 
-  test("a card starts in the persona chosen next to Iniciar", async () => {
-    const { store, hostId, projectId, d } = await open();
-    const card = d.board.createCard(projectId, { title: "Revisar", description: "faça" });
-    const asked: Array<{ type: string; payload: unknown }> = [];
-    const command = store.hostCommand.bind(store);
-    store.hostCommand = (async (id: string, type: never, payload: never) => {
-      asked.push({ type, payload });
-      return command(id, type, payload);
-    }) as typeof store.hostCommand;
+  test("a card starts in the persona chosen in Iniciar com workflow ou persona…", async () => {
+    const { asked, card } = await cardPage("Revisar");
+    await chooseFromCardMenu(
+      { act, fireEvent, screen } as never,
+      "Ações de Revisar",
+      "Iniciar com workflow ou persona…",
+    );
+    const picker = () =>
+      within(startDialog()).queryByLabelText("Persona do card") as HTMLSelectElement | null;
+    await settle(() => (picker()?.options.length ?? 0) > 1);
     await act(async () => {
-      store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
+      fireEvent.change(picker() as HTMLSelectElement, { target: { value: "host:qa" } });
     });
-    await settle(() => options("Persona do card").length > 1);
-    await fill("Persona do card", "host:qa");
-    await click("Iniciar");
+    await act(async () => {
+      fireEvent.click(within(startDialog()).getByRole("button", { name: "Iniciar" }));
+    });
+    await uiIdle();
     expect(asked.find((a) => a.type === "card.start")?.payload).toMatchObject({
       cardId: card.id,
       persona: { id: "qa", language: "pt-BR" },
+    });
+  });
+
+  test("a card suggests the Developer: the dialog shows it, None can still be picked, and a plain Iniciar uses it", async () => {
+    const { asked } = await cardPage("Codar");
+    await chooseFromCardMenu(
+      { act, fireEvent, screen } as never,
+      "Ações de Codar",
+      "Iniciar com workflow ou persona…",
+    );
+    const picker = () =>
+      within(startDialog()).queryByLabelText("Persona do card") as HTMLSelectElement;
+    await settle(() => picker()?.value === "host:dev");
+    // A person who picks None keeps None: the suggestion is applied once.
+    await act(async () => {
+      fireEvent.change(picker(), { target: { value: "" } });
+    });
+    await uiIdle();
+    expect(picker().value).toBe("");
+    await act(async () => {
+      fireEvent.click(within(startDialog()).getByRole("button", { name: "Cancelar" }));
+    });
+    await uiIdle();
+    await click("Iniciar");
+    expect(asked.find((a) => a.type === "card.start")?.payload).toMatchObject({
+      persona: { id: "dev", language: "pt-BR" },
     });
   });
 
