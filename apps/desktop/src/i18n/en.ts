@@ -789,6 +789,7 @@ export const en: Dictionary = {
     importTitle: "Restore a backup",
     filePassphrase: "File passphrase",
     read: "Read backup",
+    needsDesktop: "Restoring a backup needs the desktop app: a browser cannot open files.",
     readNeeds: "Type the file's passphrase.",
     kinds: {
       settings: "Settings",

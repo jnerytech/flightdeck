@@ -352,7 +352,8 @@ export class Budgets {
       scoped: number;
     };
     // A plan reading is a share of 0 to 1; the CLI's `1e999` or a NaN must not reach the math.
-    const raw = reading?.utilization ?? 0;
+    // A window the plan rejected without a number is fully used.
+    const raw = reading?.utilization ?? (reading?.status === "rejected" ? 1 : 0);
     const utilization = Number.isNaN(raw) ? 0 : Math.min(Math.max(raw, 0), 1);
     const estimated = row.project_key !== null;
     const share = estimated ? (total > 0 ? scoped / total : 0) : 1;

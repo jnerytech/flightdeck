@@ -395,7 +395,7 @@ describe("adding a template to the project from the app (issue #1221)", () => {
     const status = document.querySelector('[data-slot="add-status"]');
     expect(status?.getAttribute("role") ?? "").toBe("status");
     expect(status?.textContent ?? "").toContain(ADDED.branch);
-    expect(document.activeElement === button("View the pull request")).toBe(true);
+    expect(document.activeElement === button("View the pull request")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await press("View the pull request");
     expect(opened).toEqual([ADDED.url]);
   });
@@ -427,10 +427,9 @@ describe("adding a template to the project from the app (issue #1221)", () => {
     await press("Add to the project");
     await press("Cancel");
     expect(adds()).toHaveLength(0);
-    expect(screen.queryByRole("group", { name: "Add Alert fixer to the project" }) === null).toBe(
-      true,
-    );
-    expect(document.activeElement === button("Add to the project")).toBe(true);
+    const asking = screen.queryByRole("group", { name: "Add Alert fixer to the project" });
+    expect(asking === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(document.activeElement === button("Add to the project")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a refusal leaves no note that it worked and offers Add to the project again", async () => {
@@ -440,14 +439,14 @@ describe("adding a template to the project from the app (issue #1221)", () => {
     await press("Open the pull request");
     await settleMaybe(() => button("Add to the project") !== null);
     expect(button("Add to the project")).not.toBeNull();
-    expect(button("View the pull request") === null).toBe(true);
+    expect(button("View the pull request") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a host that does not offer it keeps the copy path and its words", async () => {
     setup({ features: [] });
     await open("Add from a template", "Show Alert fixer");
     expect(button("Copy the file")).not.toBeNull();
-    expect(button("Add to the project") === null).toBe(true);
+    expect(button("Add to the project") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(screen.queryByText(/Nothing is written for you/)).not.toBeNull();
   });
 

@@ -2293,16 +2293,20 @@ export class AppStore {
    * What the palette lists besides live state: the Sessões lists, each host's projects and their
    * cards. Quiet: a host without a board (or offline) just lists less.
    */
+  /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
+  async loadBoard(hostId: string, projectId: string): Promise<void> {
+    const conn = this.connections.get(hostId);
+    if (!conn) return;
+    const board = await quiet(conn.request("board.get", { projectId }));
+    for (const card of cardsIn(board)) this.onCard(hostId, card);
+  }
+
   async loadPalette(): Promise<void> {
     const boards = this.state.hosts
       .filter((host) => host.status === "online")
       .map(async (host) => {
-        const conn = this.connections.get(host.id) as HostConnection;
         const projects = await this.loadProjects(host.id);
-        await inSequence(projects ?? [], async (project) => {
-          const board = await quiet(conn.request("board.get", { projectId: project.id }));
-          for (const card of cardsIn(board)) this.onCard(host.id, card);
-        });
+        await inSequence(projects ?? [], (project) => this.loadBoard(host.id, project.id));
       });
     const targets = this.state.hosts
       .filter(
@@ -2839,6 +2843,11 @@ export class AppStore {
     if (value === null || !(await this.copyText(value))) return false;
     setTimeout(() => void this.platform.copyText("").catch(() => {}), clearMs);
     return true;
+  }
+
+  /** Whether a backup file can be picked here: false in a browser, which has no file dialog (#1264). */
+  canReadBackup(): boolean {
+    return this.platform.vault.canPick !== false;
   }
 
   /** Whether this app can open the system's folder dialog (the desktop app, not a browser). */
@@ -5211,7 +5220,9 @@ export class AppStore {
           host: host.name,
           label: budgetLabel(update.budget, this.i18n.t),
           percent: Math.round(update.threshold * 100),
-          limit: window ? share(update.budget.limitPct ?? 0) : usd(update.budget.limitUsd),
+          limit: window
+            ? share(update.budget.limitPct ?? 0, this.i18n.t.lang)
+            : usd(update.budget.limitUsd),
           estimate: estimateNote(update.budget, this.i18n.t),
         }),
       },

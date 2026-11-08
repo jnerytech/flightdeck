@@ -144,29 +144,33 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
             <h4 id={`${id}-import`} className="font-medium">
               {t("backupAll.importTitle")}
             </h4>
-            <Form variant="inline" onSubmit={() => reading.run(doRead)}>
-              <Field label={t("backupAll.filePassphrase")}>
-                {(control) => (
-                  <Input
-                    {...control}
-                    ref={importField}
-                    type="password"
-                    autoComplete="off"
-                    value={filePassphrase}
-                    onChange={(event) => {
-                      setFilePassphrase(event.target.value);
-                      setImportNote(null);
-                    }}
-                  />
-                )}
-              </Field>
-              <FormActions
-                submit={t("backupAll.read")}
-                busy={reading.busy}
-                disabled={filePassphrase === ""}
-                disabledReason={t("backupAll.readNeeds")}
-              />
-            </Form>
+            {store.canReadBackup() ? (
+              <Form variant="inline" onSubmit={() => reading.run(doRead)}>
+                <Field label={t("backupAll.filePassphrase")}>
+                  {(control) => (
+                    <Input
+                      {...control}
+                      ref={importField}
+                      type="password"
+                      autoComplete="off"
+                      value={filePassphrase}
+                      onChange={(event) => {
+                        setFilePassphrase(event.target.value);
+                        setImportNote(null);
+                      }}
+                    />
+                  )}
+                </Field>
+                <FormActions
+                  submit={t("backupAll.read")}
+                  busy={reading.busy}
+                  disabled={filePassphrase === ""}
+                  disabledReason={t("backupAll.readNeeds")}
+                />
+              </Form>
+            ) : (
+              <p className="text-muted-foreground text-sm">{t("backupAll.needsDesktop")}</p>
+            )}
             {preview && (
               <Form
                 variant="inline"
