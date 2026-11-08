@@ -186,10 +186,43 @@ export function ComposerDock(props: Readonly<{ children: ReactNode }>) {
   );
 }
 
+/** How far above the window's bottom each message box on screen reaches, in px. */
+const composerTops = new Map<HTMLElement, number>();
+
+/**
+ * Issue #994: the toasts' corner is a session's message box, so a toast covered Send (and on a
+ * phone the whole box). While a box shows, it tells styles.css to keep the toasts above its top
+ * (--composer-clear, the highest box's top and a 0.75rem gap), following its height and the
+ * window's, and takes it back when it goes. A ref callback, so React runs the cleanup.
+ */
+function clearToasts(card: HTMLElement | null): (() => void) | undefined {
+  if (!card) return undefined;
+  const root = card.ownerDocument.documentElement;
+  const apply = () => {
+    const highest = Math.max(0, ...composerTops.values());
+    if (composerTops.size === 0) root.style.removeProperty("--composer-clear");
+    else root.style.setProperty("--composer-clear", `calc(${highest}px + 0.75rem)`);
+  };
+  const measure = () => {
+    const height = card.ownerDocument.defaultView?.innerHeight ?? 0;
+    composerTops.set(card, Math.ceil(height - card.getBoundingClientRect().top));
+    apply();
+  };
+  measure();
+  const watch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+  watch?.observe(card);
+  watch?.observe(root);
+  return () => {
+    watch?.disconnect();
+    composerTops.delete(card);
+    apply();
+  };
+}
+
 /** The floating rounded card of the message box and its buttons. */
 export function Composer(props: Readonly<{ children: ReactNode }>) {
   return (
-    <div data-slot="composer-card" className="composer-card">
+    <div ref={clearToasts} data-slot="composer-card" className="composer-card">
       {props.children}
     </div>
   );
