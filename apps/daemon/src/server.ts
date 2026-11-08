@@ -20,6 +20,7 @@ import {
   type KeepAwakeStatus,
   type KnowledgeEntry,
   type KnowledgeIndexResult,
+  type KnowledgeKind,
   type KnowledgeListResult,
   type KnowledgeStatus,
   MIN_PROTOCOL_VERSION,
@@ -197,6 +198,8 @@ export interface ServerOptions {
     status: KnowledgeStatus,
     expectedHash: string,
   ) => Promise<KnowledgeEntry>;
+  /** #1039: a new library document from a template, in the project's folder for its kind. */
+  knowledgeCreate?: (path: string, kind: KnowledgeKind, title: string) => Promise<KnowledgeEntry>;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
   /** #75: writes what the preview proposed, when `digests` still match the proposals. */
@@ -442,6 +445,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.knowledge, "knowledge"),
     ...when(opts.knowledgeFeedSwitch, "knowledgeFeed"),
     ...when(opts.knowledgeStatus, "knowledgeStatus"),
+    ...when(opts.knowledgeCreate, "knowledgeCreate"),
     ...when(opts.harnessPreview, "harnessPreview"),
     ...when(opts.harnessApply, "harnessApply"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
@@ -1177,8 +1181,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         const path = await resolveAllowedCwd(asked, opts.allowedRoots);
         return ok(command.type, await opts.knowledgeStatus(path, file, status, expectedHash));
       }
-      case "knowledge.create":
-        throw featureOff("knowledgeCreate");
+      case "knowledge.create": {
+        if (!opts.knowledgeCreate) throw featureOff("knowledgeCreate");
+        const { path: asked, kind, title } = command.payload;
+        const path = await resolveAllowedCwd(asked, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeCreate(path, kind, title));
+      }
       case "knowledge.feed": {
         if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
