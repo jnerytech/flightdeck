@@ -70,6 +70,11 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     skips still in the repository; #1003 removes them, and no new one is added.
     **Too slow on CI** (#1003): a test over 5 s, a test file over 60 s, or an e2e journey over
     90 s. Make it faster, or delete it when a faster test already checks the same thing.
+    CI enforces the first two: the PR's test run writes bun's JUnit report, and
+    `scripts/slow-tests.ts` fails the PR on a test or file over its limit that
+    `slow-tests-allowlist.json` does not name with the issue that cuts it. It sees only the tests
+    the PR's run holds; the full run's bun shard jobs keep their `junit.xml` with their report, not
+    checked yet. An entry under its limit now, or gone from a file that ran, is warned about as stale.
     **What to test** (#1002, the person's decision, 2026-11-08): business logic and the important
     flows. The coverage gate is 80% of each file's lines and functions; a test written only to
     reach a line is not needed.

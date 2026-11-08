@@ -152,6 +152,10 @@ export function ProjectPage(
           path={project.path}
           feed={hasFeature(host?.hostInfo?.features, "knowledgeFeed", false)}
           status={hasFeature(host?.hostInfo?.features, "knowledgeStatus", false)}
+          projectId={project.id}
+          onOpenCard={(cardId) =>
+            props.go({ name: "card", host: hostId, projectId: project.id, cardId })
+          }
         />
       )}
       <SessionTiles

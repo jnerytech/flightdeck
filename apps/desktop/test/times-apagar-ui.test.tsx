@@ -74,7 +74,7 @@ const click = (el: Element) =>
   });
 const openMenu = async (label: string) => {
   const button = screen.queryByRole("button", { name: label });
-  expect(button === null).toBe(false);
+  expect(button).not.toBeNull();
   await act(async () => {
     fireEvent.pointerDown(button as Element, { button: 0, ctrlKey: false, pointerType: "mouse" });
   });
@@ -87,11 +87,11 @@ describe("times-apagar-ui: Delete team", () => {
     await ready("old-crew");
     await openMenu("Actions for old-crew");
     const item = screen.queryByRole("menuitem", { name: "Delete team" });
-    expect(item === null).toBe(false);
+    expect(item).not.toBeNull();
     expect(item?.getAttribute("aria-disabled")).toBeNull();
     await click(item as Element);
     const dialog = screen.queryByRole("alertdialog");
-    expect(dialog === null).toBe(false);
+    expect(dialog).not.toBeNull();
     const text = dialog?.textContent ?? "";
     expect(text).toContain("old-crew");
     expect(text).toContain("The team record and its card on this page go");
@@ -115,7 +115,7 @@ describe("times-apagar-ui: Delete team", () => {
     expect(dialog.contains(document.activeElement)).toBe(true);
     await click(cancel);
     expect(w.deletes()).toEqual([]);
-    expect(screen.queryByRole("alertdialog") === null).toBe(true);
+    expect(screen.queryByRole("alertdialog") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await openMenu("Actions for old-crew");
     await click(screen.getByRole("menuitem", { name: "Delete team" }));
     await click(
@@ -124,7 +124,7 @@ describe("times-apagar-ui: Delete team", () => {
     await settle(() => w.deletes().length === 1);
     expect(w.deletes()).toEqual([["h1", "teams.delete", { team: "t-closed" }]]);
     await settle(() => screen.queryByRole("listitem", { name: "Team old-crew" }) === null);
-    expect(screen.queryByRole("listitem", { name: "Team live-crew" }) === null).toBe(false);
+    expect(screen.queryByRole("listitem", { name: "Team live-crew" })).not.toBeNull();
   });
 
   test("an open team's Delete team is off, and the menu says to close it first", async () => {
@@ -132,11 +132,11 @@ describe("times-apagar-ui: Delete team", () => {
     await ready("live-crew");
     await openMenu("Actions for live-crew");
     const item = screen.queryByRole("menuitem", { name: /Delete team/ });
-    expect(item === null).toBe(false);
+    expect(item).not.toBeNull();
     expect(item?.getAttribute("aria-disabled")).toBe("true");
     expect(item?.textContent).toContain("Close the team first");
     await click(item as Element);
-    expect(screen.queryByRole("alertdialog") === null).toBe(true);
+    expect(screen.queryByRole("alertdialog") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     expect(w.deletes()).toEqual([]);
   });
 

@@ -143,6 +143,7 @@ describe("demo-prints: axe e CI", () => {
       "trust-revoke",
       "stage-contract",
       "knowledge-panel",
+      "harness-setup",
       "files-viewer",
       "terminal-copy",
       "sleep-wake",
