@@ -2820,7 +2820,8 @@ export class AppStore {
     return this.onSelected((conn, sessionId) => conn.request("session.interrupt", { sessionId }));
   }
 
-  setMode(permissionMode: SettableMode): Promise<void> {
+  /** Whether the host took the mode (#935): false when it refused, or no session is open. */
+  setMode(permissionMode: SettableMode): Promise<boolean> {
     return this.onSelected((conn, sessionId) =>
       conn.request("session.setMode", { sessionId, permissionMode }),
     );
@@ -3099,14 +3100,19 @@ export class AppStore {
 
   // -- internals ------------------------------------------------------------
 
-  private async onSelected(action: (conn: HostConnection, sessionId: string) => Promise<unknown>) {
+  /** Runs an action on the open session; true when it went through, false (said why) otherwise. */
+  private async onSelected(
+    action: (conn: HostConnection, sessionId: string) => Promise<unknown>,
+  ): Promise<boolean> {
     const selected = this.state.selected;
     const conn = selected && this.connections.get(selected.hostId);
-    if (!conn || !selected?.sessionId) return;
+    if (!conn || !selected?.sessionId) return false;
     try {
       await action(conn, selected.sessionId);
+      return true;
     } catch (error) {
       this.fail(error);
+      return false;
     }
   }
 
