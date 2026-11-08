@@ -163,6 +163,11 @@ const SYSTEMD_INSTALL = [
   ["systemctl", "--user", "daemon-reload"],
   ["systemctl", "--user", "enable", "--now", "flightdeckd"],
 ];
+/** #1200: enabled for the next boot or login, not started (the daemon that asked is running). */
+const SYSTEMD_ENABLE_ONLY = [
+  ["systemctl", "--user", "daemon-reload"],
+  ["systemctl", "--user", "enable", "flightdeckd"],
+];
 const SYSTEMD_UNINSTALL = [
   ["systemctl", "--user", "disable", "--now", "flightdeckd"],
   ["systemctl", "--user", "daemon-reload"],
@@ -181,17 +186,22 @@ function requireSupported(ctx: ServiceContext): "linux" | "win32" {
 }
 
 /** Installs the user unit; enabling linger needs sudo, so it is only printed. */
-async function installSystemd(ctx: ServiceContext, config?: string | null): Promise<ServiceResult> {
+async function installSystemd(
+  ctx: ServiceContext,
+  config: string | null | undefined,
+  start: boolean,
+): Promise<ServiceResult> {
   const path = unitPath(ctx);
   const unit = systemdUnit(ctx.command, config);
+  const commands = start ? SYSTEMD_INSTALL : SYSTEMD_ENABLE_ONLY;
   if (ctx.dryRun) {
     return {
-      output: [`# ${path}`, unit, "# commands:", ...SYSTEMD_INSTALL.map(display)],
+      output: [`# ${path}`, unit, "# commands:", ...commands.map(display)],
       instructions: [],
     };
   }
   await ctx.writeFile(path, unit);
-  await inSequence(SYSTEMD_INSTALL, (cmd) => runChecked(ctx, cmd));
+  await inSequence(commands, (cmd) => runChecked(ctx, cmd));
   const linger = await ctx.exec(["loginctl", "show-user", ctx.user, "-p", "Linger"]);
   const instructions =
     linger.code === 0 && linger.stdout.trim() === "Linger=yes"
@@ -201,7 +211,10 @@ async function installSystemd(ctx: ServiceContext, config?: string | null): Prom
           `  sudo loginctl enable-linger ${ctx.user}`,
         ];
   return {
-    output: [`unit written to ${path}`, "flightdeckd service enabled and started"],
+    output: [
+      `unit written to ${path}`,
+      start ? "flightdeckd service enabled and started" : "flightdeckd service enabled",
+    ],
     instructions,
   };
 }
@@ -218,12 +231,20 @@ async function installTask(ctx: ServiceContext, config?: string | null): Promise
   return { output: [`task ${TASK_NAME} created for the logon of ${ctx.user}`], instructions: [] };
 }
 
-/** Installs the service running `ctx.command start`, with `--config <config>` when given. */
+/**
+ * Installs the service running `ctx.command start`, with `--config <config>` when given. With
+ * `start: false` (#1200, from the app) the unit is enabled for the next boot or login, not started:
+ * the daemon that asked is still running.
+ */
 export async function installService(
   ctx: ServiceContext,
   config?: string | null,
+  options: { start?: boolean } = {},
 ): Promise<ServiceResult> {
-  return requireSupported(ctx) === "linux" ? installSystemd(ctx, config) : installTask(ctx, config);
+  // The Windows task has only a logon trigger: it never starts here (`runService` starts it).
+  return requireSupported(ctx) === "linux"
+    ? installSystemd(ctx, config, options.start !== false)
+    : installTask(ctx, config);
 }
 
 export async function uninstallService(ctx: ServiceContext): Promise<ServiceResult> {

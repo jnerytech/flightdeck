@@ -103,6 +103,7 @@ const validCommands: Record<CommandType, unknown> = {
   "project.harness.draft": { path: "/work/app", part: "claudeMd" },
   "project.harness.export": { path: "/work/app", id: "shop", title: "Shop" },
   "harness.templates.list": {},
+  "card.pr.merge": { cardId: "c1", method: "squash", confirm: true },
   "harness.templates.delete": { id: "shop", confirm: true },
   "project.harness.commit": {
     path: "/work/app",
@@ -376,6 +377,7 @@ const validCommands: Record<CommandType, unknown> = {
   "autoapprove.resume": { sessionKey: "s1", confirm: true },
   "hooks.status": {},
   "hooks.install": { confirm: true },
+  "service.install": { confirm: true },
   "hooks.uninstall": { confirm: true },
   "workflow.list": { projectId: "p" },
   "workflow.templates": { projectId: "p" },

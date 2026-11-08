@@ -11,6 +11,8 @@ const enT = translator("en");
 const ptT = translator("pt-BR");
 
 const REASONS = [
+  "service_confirm",
+  "service_unsupported",
   "runtime_unavailable",
   "runtime_unsupported",
   "opencode_unsafe_global",
@@ -485,6 +487,12 @@ const REASONS = [
   "input_changed",
   "update_needs_service",
   "update_signature_failed",
+  "card_pr_not_open",
+  "card_pr_merge_unsupported",
+  "card_pr_checks_failing",
+  "card_pr_review_required",
+  "card_pr_conflict",
+  "card_pr_merge_failed",
 ];
 
 const cleanups: Array<() => unknown> = [];

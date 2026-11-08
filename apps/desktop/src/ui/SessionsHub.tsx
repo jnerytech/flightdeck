@@ -243,7 +243,9 @@ export function SessionsHub(
   /** How many rows are drawn: the cap, and one more cap for each "show more". */
   const [limit, setLimit] = useState(HUB_ROW_CAP);
   // Each project: open when it has live sessions (or a search is on), its history behind a count.
-  const [open, setOpenState] = useState<Record<string, boolean | undefined>>(() => store.hubOpen());
+  const [openState, setOpenState] = useState<Record<string, boolean | undefined>>(() =>
+    store.hubOpen(),
+  );
   /** What the person opened or folded is remembered, per project. */
   const setOpen = (next: Record<string, boolean | undefined>) => {
     setOpenState(next);
@@ -253,8 +255,8 @@ export function SessionsHub(
   // Any filter narrows the list on purpose: what it keeps is shown, not folded away.
   const searching = isSearching(filter);
   const views = useMemo(
-    () => hubView(allGroups, open, earlierOpen, searching),
-    [allGroups, open, earlierOpen, searching],
+    () => hubView(allGroups, openState, earlierOpen, searching),
+    [allGroups, openState, earlierOpen, searching],
   );
   const { groups, hidden } = useMemo(
     () =>
@@ -654,7 +656,7 @@ export function SessionsHub(
                 expanded={groupView?.expanded ?? true}
                 toggleLabel={t("hub.toggleProject", { name: label })}
                 onToggle={() =>
-                  setOpen({ ...open, [group.foldKey]: !(groupView?.expanded ?? false) })
+                  setOpen({ ...openState, [group.foldKey]: !(groupView?.expanded ?? false) })
                 }
               >
                 {clientChip && state.clientSelection === ALL_CLIENTS && (
