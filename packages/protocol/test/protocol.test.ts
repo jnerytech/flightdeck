@@ -693,6 +693,16 @@ describe("protocolo", () => {
     ]).toEqual([false, false, false, false, false, false]);
   });
 
+  test("the harness preview takes at least one part, and never mcp, which has no template (#927)", () => {
+    const parse = (parts: string[]) =>
+      Command.safeParse({
+        id: "1",
+        type: "project.harness.preview",
+        payload: { path: "/work/app", parts },
+      }).success;
+    expect([parse([]), parse(["mcp"]), parse(["hooks"])]).toEqual([false, false, true]);
+  });
+
   test.each(Object.entries(validCommands))("comando %s válido passa no schema", (type, payload) => {
     expect(Command.safeParse({ id: "1", type, payload }).success).toBe(true);
   });

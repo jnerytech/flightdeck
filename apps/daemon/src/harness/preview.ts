@@ -25,6 +25,7 @@ export const SETTINGS = ".claude/settings.json";
 /** A formatter hook is recognised as the checklist does, so a preview after an apply adds none. */
 const FORMATTER = HOOK_KINDS.find(([kind]) => kind === "format") as (typeof HOOK_KINDS)[number];
 export const MAX_FILE = 256 * 1024;
+const BOM = "\uFEFF";
 
 /** The Markdown parts: each one new file, in the order the preview lists them. */
 const FILES: ReadonlyArray<[PreviewPart, string, (commands: Commands) => string]> = [
@@ -112,9 +113,13 @@ async function settingsLook(root: string): Promise<Look> {
 /** `value` as JSON laid out like `text` (its indent and final newline); 2 spaces and a newline for a new file. */
 export function layoutLike(text: string | null, value: unknown): string {
   if (text === null) return `${JSON.stringify(value, null, 2)}\n`;
-  const indent = /^\{\r?\n([ \t]+)"/.exec(text)?.[1] ?? 2;
-  const newline = text.endsWith("\n") ? "\n" : "";
-  return `${JSON.stringify(value, null, indent)}${newline}`;
+  // A UTF-8 byte order mark some Windows editors write: kept, so writing back changes no byte of it.
+  const bom = text.startsWith(BOM) ? BOM : "";
+  const indent = /^\{\r?\n([ \t]+)"/.exec(text.slice(bom.length))?.[1] ?? 2;
+  // Windows line endings stay Windows line endings (JSON.stringify escapes any newline in a value).
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const newline = text.endsWith("\n") ? eol : "";
+  return `${bom}${JSON.stringify(value, null, indent).replaceAll("\n", eol)}${newline}`;
 }
 
 /** The commands of the hooks already on an event, whatever else their entries hold. */
@@ -184,7 +189,7 @@ async function settingsProposal(
   let parsed: unknown = {};
   if (file.state === "file") {
     try {
-      parsed = JSON.parse(file.text);
+      parsed = JSON.parse(file.text.startsWith(BOM) ? file.text.slice(BOM.length) : file.text);
     } catch {
       parsed = null;
     }
