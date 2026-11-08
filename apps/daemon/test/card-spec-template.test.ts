@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { missingFor } from "@flightdeck/protocol";
 import { readSpec } from "../src/board/spec.ts";
+import { toSlashes } from "../src/board/spec-template.ts";
 import { newBoard } from "./board-helpers.ts";
 import { tempDir, waitFor } from "./helpers.ts";
 
@@ -77,14 +78,10 @@ describe("card-spec-template: a card that needs a spec starts with one, spec fir
     };
     const before = await lacks();
     const path = join(tree, SPEC);
-    if (existsSync(path)) {
-      writeFileSync(path, readFileSync(path, "utf8").replace("draft: true\n", ""));
-    }
+    const written = existsSync(path);
+    if (written) writeFileSync(path, readFileSync(path, "utf8").replace("draft: true\n", ""));
     const after = await lacks();
-    expect([before, after]).toEqual([
-      [true, ["spec"]],
-      [undefined, []],
-    ]);
+    expect([written, before, after]).toEqual([true, [true, ["spec"]], [undefined, []]]);
   });
 
   test("a project that asks for no spec gets no file and no spec line", async () => {
@@ -105,10 +102,52 @@ describe("card-spec-template: a card that needs a spec starts with one, spec fir
     const { board, card, prompt, text } = await start({
       files: { "docs/specs": "not a folder\n" },
     });
-    expect([text, prompt.length > 0, board.getCard(card.id).notice?.includes("spec")]).toEqual([
+    const after = board.getCard(card.id);
+    // The prompt never sends the agent to a spec that is not there, and the app says why in its language.
+    expect([text, prompt.length > 0, prompt.includes(SPEC), after.noticeReason]).toEqual([
       null,
       true,
-      true,
+      false,
+      "spec_template_failed",
+    ]);
+  });
+
+  test("a first start that failed before its session gets the spec on the next start", async () => {
+    const ctx = newBoard();
+    const project = await ctx.board.addProject({
+      path: ctx.repo,
+      promptTemplate: "",
+      setupScript: "exit 3",
+    });
+    ctx.board.updateProject(project.id, {
+      contractByColumn: { review: { enforce: "confirm", checks: ["spec"] } },
+    });
+    const card = ctx.board.createCard(project.id, {
+      title: "Login screen",
+      description: "- [ ] a",
+    });
+    await ctx.board.startCard(card.id);
+    // The setup failed: the card waits for the person, with a worktree and no session.
+    await waitFor(() => ctx.board.getCard(card.id).runs.at(-1)?.endedAt, {
+      label: "the failed run",
+    });
+    ctx.board.updateProject(project.id, { setupScript: "" });
+    const prompts: string[] = [];
+    const create = ctx.manager.create.bind(ctx.manager);
+    ctx.manager.create = (async (opts: { prompt: string }, ...rest: unknown[]) => {
+      prompts.push(opts.prompt);
+      return (create as (...args: unknown[]) => unknown)(opts, ...rest);
+    }) as typeof ctx.manager.create;
+    await ctx.board.startCard(card.id);
+    const prompt = await waitFor(() => prompts[0], { label: "the second start's prompt" });
+    const tree = ctx.board.getCard(card.id).worktreePath ?? "";
+    expect([existsSync(join(tree, SPEC)), prompt.includes(SPEC)]).toEqual([true, true]);
+  });
+
+  test("a spec path with backslashes is split into folders on Windows only", () => {
+    expect([toSlashes("docs\\specs\\x.md", "win32"), toSlashes("docs\\x.md", "linux")]).toEqual([
+      "docs/specs/x.md",
+      "docs\\x.md",
     ]);
   });
 
@@ -133,5 +172,19 @@ describe("card-spec-template: what the host reads of a spec's front matter", () 
       { found: true, heading: "Ready" },
       false,
     ]);
+  });
+
+  test("draft is read as YAML writes it, and a front matter that never closes counts as a draft", async () => {
+    const root = tempDir("fd-spec-front-");
+    const files: Record<string, string> = {
+      "upper.md": "---\ndraft: True\n---\n# A\n",
+      "quoted.md": '---\ndraft: "true"\n---\n# B\n',
+      "no.md": "---\ndraft: false\n---\n# C\n",
+      "open.md": `---\ndraft: false\n${"x: y\n".repeat(3000)}`,
+    };
+    for (const [name, text] of Object.entries(files)) writeFileSync(join(root, name), text);
+    const drafts = [];
+    for (const name of Object.keys(files)) drafts.push((await readSpec(root, name)).draft ?? false);
+    expect(drafts).toEqual([true, true, false, true]);
   });
 });
