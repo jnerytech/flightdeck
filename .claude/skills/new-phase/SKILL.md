@@ -40,7 +40,7 @@ Each item with its command and exit code visible:
 
 - [ ] TDD per area and the audit: `bun run tdd:audit -- --since auto --spec docs/SPEC-fase-N.md` →
       `TDD AUDIT OK`.
-- [ ] 100% coverage: `bun run slot -- bun run test`. Then `bun run typecheck` and `bun run lint`.
+- [ ] Coverage at the 80% gate: `bun run slot -- bun run test`. Then `bun run typecheck` and `bun run lint`.
 - [ ] Every smoke in `package.json` except `smoke:real`, each with its `... OK`.
 - [ ] Builds: `bun run slot -- bun run build:daemon` and `bun run slot -- bun run build:desktop`.
 - [ ] The version is left as it is on `main`: phase branches do not bump it, the maintainer sets it

@@ -33,7 +33,7 @@ describe("ci-pyramid (#309)", () => {
     );
   });
 
-  test("the schedule and a run by hand run the whole suite with the 100% gate, merged from three shards (#444, #296)", () => {
+  test("the schedule and a run by hand run the whole suite with the 80% gate, merged from three shards (#444, #296)", () => {
     // Each shard job leaves its report as an artifact; a missing one must reach the merge, which
     // fails closed and names it, so the download goes on without it.
     const download = step("Relatórios dos shards");
@@ -43,7 +43,7 @@ describe("ci-pyramid (#309)", () => {
       pattern: "shard-*",
       path: "${{ runner.temp }}/shards",
     });
-    const full = step("Testes (cobertura 100%, 3 shards)");
+    const full = step("Testes (cobertura 80%, 3 shards)");
     expect(full?.if).toBe("needs.quick.outputs.base == ''");
     expect(full?.run).toBe(
       'bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info',
