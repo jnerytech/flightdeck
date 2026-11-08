@@ -62,6 +62,11 @@ function setup(
     error?: string | null;
     lang?: "en" | "pt-BR";
     doctor?: DoctorResult;
+    /** The host's features beyond doctor.run and depsCheck (#1200). */
+    features?: string[];
+    status?: string;
+    /** What service.install answers (#1200). */
+    service?: { startsAt: "boot" | "logon"; lingerOff: boolean; user: string };
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.lang ?? "en").platform, {
@@ -72,6 +77,7 @@ function setup(
   const calls: string[] = [];
   store.hostCommand = (async (_host: string, type: string) => {
     calls.push(type);
+    if (type === "service.install") return options.service ?? null;
     return { status: "installed", settingsPath: "~/.claude/settings.json" };
   }) as never;
   store.updateDaemon = (async () => {
@@ -80,10 +86,11 @@ function setup(
   const host = {
     id: "h1",
     name: "pc",
+    status: options.status ?? "online",
     hostInfo: {
       os: "linux",
       daemonVersion: "0.35.0",
-      features: ["doctor.run", "depsCheck"],
+      features: ["doctor.run", "depsCheck", ...(options.features ?? [])],
       ...(options.update
         ? {
             update: { available: true, version: options.update, checkedAt: "2026-11-04T11:00:00Z" },
@@ -205,6 +212,87 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
         .queryAllByRole("button")
         .map((b) => b.getAttribute("aria-label")),
     ).toEqual(["Copy the command for Start at boot (service)"]);
+  });
+
+  describe("Start at boot from the app (#1200)", () => {
+    const missingService: DepsResult = {
+      items: [
+        dep("claude", "required", "ok"),
+        dep("service", "required", "missing", {
+          breaks: ["autostart"],
+          fix: [{ os: "linux", command: "flightdeckd service install" }],
+        }),
+      ],
+    };
+    const turnOn = (name = "Turn it on") =>
+      within(row("Start at boot (service)")).queryByRole("button", { name });
+
+    test("a connected host that offers it gets Turn it on: it asks first, installs, checks again, and says when it starts", async () => {
+      const { view, calls, checks } = setup({
+        deps: missingService,
+        features: ["serviceInstall"],
+        service: { startsAt: "logon", lingerOff: false, user: "dev" },
+      });
+      render(view);
+      const button = turnOn();
+      expect(button !== null).toBe(true);
+      await act(async () => void fireEvent.click(button as HTMLElement));
+      const dialog = screen.queryByRole("alertdialog");
+      expect(calls).toEqual([]);
+      expect(dialog?.textContent ?? "").toContain("~/.config/systemd/user/flightdeckd.service");
+      expect(dialog?.textContent ?? "").toContain("The daemon running now stays as it is.");
+      const confirm = dialog ? within(dialog).queryByRole("button", { name: "Turn it on" }) : null;
+      await act(async () => void (confirm && fireEvent.click(confirm)));
+      expect(calls).toEqual(["service.install"]);
+      expect(checks()).toBe(1);
+      const note = within(section()).queryByRole("status", { name: "Start at boot" });
+      expect(note?.textContent ?? "").toContain("flightdeckd starts at your next login");
+      expect(note?.textContent ?? "").toContain("The daemon running now stays as it is.");
+    });
+
+    test("with linger off it says the service waits for a login and gives the line to copy; the app never runs sudo", async () => {
+      const { view, calls } = setup({
+        deps: missingService,
+        features: ["serviceInstall"],
+        service: { startsAt: "logon", lingerOff: true, user: "dev" },
+      });
+      render(view);
+      const button = turnOn();
+      expect(button !== null).toBe(true);
+      await act(async () => void (button && fireEvent.click(button)));
+      const dialog = screen.queryByRole("alertdialog");
+      const confirm = dialog ? within(dialog).queryByRole("button", { name: "Turn it on" }) : null;
+      await act(async () => void (confirm && fireEvent.click(confirm)));
+      const note = within(section()).queryByRole("status", { name: "Start at boot" });
+      expect(note?.textContent ?? "").toContain("sudo loginctl enable-linger dev");
+      expect(note?.textContent ?? "").toContain("The app never runs sudo");
+      expect(calls).toEqual(["service.install"]);
+    });
+
+    test("offline, without the feature, or when the fix is the linger line, only the command is offered", () => {
+      for (const [name, options] of [
+        ["offline", { deps: missingService, features: ["serviceInstall"], status: "offline" }],
+        ["no feature", { deps: missingService }],
+        ["linger line", { features: ["serviceInstall"] }],
+      ] as const) {
+        const { view } = setup(options);
+        render(view);
+        expect(`${name}: ${turnOn() === null}`).toBe(`${name}: true`);
+        cleanup();
+      }
+    });
+
+    test("it speaks Portuguese too", async () => {
+      const { view } = setup({ deps: missingService, features: ["serviceInstall"], lang: "pt-BR" });
+      render(view);
+      const fold = within(screen.getByRole("region", { name: "Saúde e dependências" })).queryByRole(
+        "listitem",
+        { name: "Iniciar no boot (serviço)" },
+      );
+      expect(fold ? within(fold).queryByRole("button", { name: "Ligar" }) !== null : false).toBe(
+        true,
+      );
+    });
   });
 
   test("Check again reads it again; before the first read it says it is checking", async () => {
