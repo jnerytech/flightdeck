@@ -210,9 +210,7 @@ describe("card-merge-pr-ui: a card merges its open PR from the card (#1196)", ()
       answer: { ok: false, code: "invalid_state", message: "x", reason: "card_pr_conflict" },
     });
     const tree = (current: Card) => (
-      <TContext.Provider value={store.i18n.t}>
-        <CardMergePr store={store} hostId="h1" card={current} open onOpenChange={() => {}} />
-      </TContext.Provider>
+      <Harness store={store} card={current} onOpenChange={() => {}} />
     );
     const view = render(tree(card()));
     await opened("Merge PR");

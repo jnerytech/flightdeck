@@ -28,6 +28,7 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
   const [method, setMethod] = useState<"merge" | "squash">("merge");
   const [refused, setRefused] = useState<Outcome>(null);
   const [merged, setMerged] = useState(false);
+  const [busy, setBusy] = useState(false);
   const said = useRef<HTMLDivElement>(null);
   const refusedBox = useRef<HTMLDivElement>(null);
   const url = card.prUrl ?? "";
@@ -36,11 +37,10 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
     props.onOpenChange(false);
     setRefused(null);
     setMerged(false);
-    const result = await store.hostRequest(hostId, "card.pr.merge", {
-      cardId: card.id,
-      method,
-      confirm: true,
-    });
+    setBusy(true);
+    const result = await store
+      .hostRequest(hostId, "card.pr.merge", { cardId: card.id, method, confirm: true })
+      .finally(() => setBusy(false));
     if (!result.ok) {
       setRefused({
         text: refusalText(result.code, result.message, t, result),
@@ -50,6 +50,11 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
     }
     setMerged(true);
   };
+
+  // A refusal is about this card's open PR: it goes with the card or with the PR's openness.
+  useEffect(() => {
+    if (card.prState !== "open") setRefused(null);
+  }, [card.prState]);
 
   // After the render, and a tick later: the closing dialog gives the focus back to its button in a
   // timeout of its own, which the outcome's box must come after.
@@ -87,6 +92,7 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
         <ConfirmDialog
           message={t("cardMergePr.message")}
           confirmLabel={t("cardMergePr.action")}
+          confirmDisabled={busy}
           onCancel={() => props.onOpenChange(false)}
           onConfirm={() => void merge()}
         >
