@@ -4335,6 +4335,7 @@ export const en: Dictionary = {
         rfc: "Proposal (RFC)",
         prd: "Product requirements (PRD)",
         button: "Create from template",
+        titleNeeded: "Type the document's title.",
         created: "Created {path}. The file is in the project's folder and not committed.",
         failed: "The document could not be created. {why}",
       },

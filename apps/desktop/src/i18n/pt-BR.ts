@@ -4339,6 +4339,7 @@ export const ptBR = {
         rfc: "Proposta (RFC)",
         prd: "Requisitos do produto (PRD)",
         button: "Criar a partir do modelo",
+        titleNeeded: "Digite o título do documento.",
         created: "{path} criado. O arquivo está na pasta do projeto e não foi commitado.",
         failed: "Não foi possível criar o documento. {why}",
       },

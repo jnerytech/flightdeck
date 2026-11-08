@@ -73,6 +73,8 @@ export function Field(
     label: ReactNode;
     help?: ReactNode;
     error?: ReactNode;
+    /** For the field's box in a row: `min-w-0 flex-1` lets a text field take the row's room. */
+    className?: string;
     children: (control: FieldControl) => ReactNode;
   }>,
 ) {
@@ -81,7 +83,7 @@ export function Field(
   const errorId = props.error ? `${id}-error` : undefined;
   const described = [helpId, errorId].filter(Boolean).join(" ");
   return (
-    <div className="flex flex-col gap-1 text-sm">
+    <div className={cn("flex flex-col gap-1 text-sm", props.className)}>
       <label htmlFor={id}>{props.label}</label>
       {props.children({
         id,
