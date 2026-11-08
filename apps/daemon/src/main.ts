@@ -2404,6 +2404,7 @@ const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       log: deps.log,
       timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
       ...(deps.platform ? { platform: deps.platform } : {}),
+      ...(deps.exec ? { exec: deps.exec } : {}),
     });
   },
   askpass: async (args, deps) => {
