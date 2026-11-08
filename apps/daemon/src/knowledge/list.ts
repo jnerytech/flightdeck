@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { open, readdir, realpath } from "node:fs/promises";
 import { join, posix } from "node:path";
@@ -21,13 +22,18 @@ const FOLDERS = ["docs/decisions", "docs/adr", "docs/rfc", "docs/prd", "docs/spe
 const SKIPPED = new Set([".git", "node_modules"]);
 const MAX_FILES = 500;
 /** The most of a document read: its front matter, its heading and the links near its top. */
-const READ_BYTES = 8 * 1024;
+export const READ_BYTES = 8 * 1024;
 /** Folders deeper than this are not walked. */
 const MAX_DEPTH = 6;
 /** The most directory entries looked at in all, so a huge tree costs a bounded walk. */
 const MAX_SCANNED = 5_000;
 /** `](./other.md)` or `](other.md#part)`: a link to a Markdown file in the project. */
 const LINK = /\]\(([^)\s#]{1,256}\.md)(?:#[^)\s]{0,64})?\)/gi;
+
+/** What the list read of a file: its size and its start. A change to either is a different file. */
+export function shownHash(size: number, head: Buffer): string {
+  return createHash("sha256").update(`${size}\n`).update(head).digest("hex");
+}
 
 /** Byte order of two names, as git sorts paths. */
 const order = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -70,6 +76,7 @@ async function readStart(file: string) {
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
     return {
       text: buffer.toString("utf8", 0, bytesRead),
+      hash: shownHash(info.size, buffer.subarray(0, bytesRead)),
       bytes: info.size,
       changedAt: new Date(info.mtimeMs).toISOString(),
     };
@@ -124,7 +131,7 @@ export async function listKnowledge(
         changedAt: start.changedAt,
         problems: parsed.problems,
         warnings: [],
-        hash: "",
+        hash: start.hash,
       },
     });
   }
