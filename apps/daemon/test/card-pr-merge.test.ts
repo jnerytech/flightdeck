@@ -188,9 +188,7 @@ describe("card-pr-merge: the card merges its open PR, after a confirm (#1196)", 
       .query("UPDATE cards SET pr_url = ? WHERE id = ?")
       .run(`${PR_URL}?next=--admin#x`, odd.cardId);
     const bad = await setup();
-    bad.store.db
-      .query("UPDATE cards SET pr_url = ? WHERE id = ?")
-      .run("--admin", bad.cardId);
+    bad.store.db.query("UPDATE cards SET pr_url = ? WHERE id = ?").run("--admin", bad.cardId);
     const refused = await reason(bad.board.mergePr(bad.cardId, "merge", true));
     await odd.board.mergePr(odd.cardId, "merge", true);
     expect([refused, gh.calls().filter((args) => args.includes("merge"))]).toEqual([

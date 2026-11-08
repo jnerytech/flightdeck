@@ -2006,7 +2006,11 @@ export class Board {
     // From the main repository, as the poll: a cwd inside the worktree would lock it when it goes.
     await provider.merge({ cwd: project.path, url: card.prUrl, method });
     // Read again at once: the card moves to Done and its worktree goes, as for any merged PR.
-    await this.pollPr(id);
+    // The PR is merged by now: a failed read is a notice, and the next round reads it again.
+    await this.pollPr(id).catch((error: unknown) => {
+      if (!this.stopped)
+        this.setNotice(id, error instanceof Error ? error.message : String(error), error);
+    });
     return this.getCard(id);
   }
 

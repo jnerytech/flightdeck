@@ -304,19 +304,18 @@ export class GithubCli extends CliProvider implements PrProvider {
     url: string;
     method: "merge" | "squash";
   }): Promise<void> {
-    const result = await this.call("gh", ["pr", "merge", url, `--${method}`], cwd);
+    // Rebuilt from its parts: the stored address never reaches gh as it is.
+    const { prUrl } = ghParts(url);
+    const result = await this.call("gh", ["pr", "merge", prUrl, `--${method}`], cwd);
     if (result.code === 0) return;
-    const reason = await this.whyNotMergeable(cwd, url);
+    const reason = await this.whyNotMergeable(cwd, prUrl);
+    const detail = result.stderr.trim().slice(0, 300);
+    const unknown = reason === "card_pr_merge_failed";
     throw new FlightdeckError(
       "invalid_state",
-      `the PR could not be merged: ${result.stderr.trim().slice(0, 300)}`,
+      unknown ? `the PR could not be merged: ${detail}` : "the PR could not be merged",
       reason,
-      {
-        url,
-        ...(reason === "card_pr_merge_failed"
-          ? { detail: result.stderr.trim().slice(0, 300) }
-          : {}),
-      },
+      { url: prUrl, ...(unknown ? { detail } : {}) },
     );
   }
 
