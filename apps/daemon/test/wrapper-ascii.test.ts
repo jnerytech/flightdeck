@@ -61,6 +61,10 @@ async function launch(
     platform?: NodeJS.Platform;
     env?: Record<string, string>;
     aclCode?: number;
+    /** `icacls` cannot run (it is missing, or the process cannot start). */
+    aclThrows?: boolean;
+    /** Something done to the folder right after icacls, as a hostile or broken disk would. */
+    afterAcl?: (folder: string) => void;
   } = {},
 ) {
   const acls: Acl[] = [];
@@ -75,7 +79,9 @@ async function launch(
     selfCommand: ["C:\\fd\\flightdeckd.exe"],
     ...(options.platform ? { platform: options.platform } : {}),
     exec: async (cmd) => {
+      if (options.aclThrows) throw new Error("icacls is not here");
       acls.push({ cmd, listing: readdirSync(cmd[1] ?? "") });
+      options.afterAcl?.(cmd[1] ?? "");
       return { code: options.aclCode ?? 0, stdout: "" };
     },
   });
@@ -86,6 +92,9 @@ async function launch(
   const at = start.args.indexOf("--mcp-config");
   return { start, acls, errors, configPath: at < 0 ? null : (start.args[at + 1] ?? null), fake };
 }
+
+/** The launch id in a folder's name: `Flightdeck-<id>`. */
+const launchIdOf = (folder: string) => folder.slice(folder.lastIndexOf("Flightdeck-") + 11);
 
 const WINDOWS_ENV = (programData: string, over: Record<string, string> = {}) => ({
   ProgramData: programData,
@@ -207,5 +216,32 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
       0,
     ]);
     expect(noBase.errors.join("\n")).toContain("configuração do canal");
+  });
+
+  test("a ProgramData that is not there, or an icacls that cannot run, is no folder: claude opens with neither flag", async () => {
+    const { file } = host(["João Silva", "data"]);
+    const missing = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(join(tempDir(), "missing")),
+    });
+    const noIcacls = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(tempDir()),
+      aclThrows: true,
+    });
+    expect([missing.configPath, noIcacls.configPath, missing.acls.length]).toEqual([null, null, 0]);
+  });
+
+  test("a config that cannot be written into the plain folder leaves nothing behind", async () => {
+    const programData = tempDir();
+    const { file } = host(["João Silva", "data"]);
+    // The folder is made, restricted, and then the file cannot go in: a file stands in its place.
+    const run = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(programData),
+      afterAcl: (folder) =>
+        writeFileSync(join(folder, `${launchIdOf(folder)}.json`), "x", { mode: 0o400 }),
+    });
+    expect([run.configPath, readdirSync(programData)]).toEqual([null, []]);
   });
 });
