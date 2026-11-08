@@ -4646,7 +4646,14 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("review.update", z.object({ id: z.string(), body: z.string().min(1) })),
   cmd("review.remove", z.object({ id: z.string() })),
-  cmd("review.send", z.object({ target: ReviewTarget })),
+  cmd(
+    "review.send",
+    z.object({
+      target: ReviewTarget,
+      /** The language the review is written in (the app's); English when absent. */
+      language: z.enum(["en", "pt-BR"]).optional(),
+    }),
+  ),
   cmd(
     "changes.revert",
     z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
