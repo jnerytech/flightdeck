@@ -171,6 +171,67 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
     ]).toEqual(["changes_pr_remote", false, false, "https://example.com/app.git"]);
   });
 
+  test("a branch moved since the app's commit is never pushed: only the commit the person made goes out", async () => {
+    const made = setup();
+    await committed(made, "work/moved-on");
+    writeFileSync(join(made.repo, "later.txt"), "added by the session afterwards\n");
+    git(made.repo, "add", "--", "later.txt");
+    git(made.repo, "commit", "-q", "-m", "Later");
+    const done = await outcome(
+      made.prs.open(TARGET, { title: "t", body: "b", remote: await seenRemote(made) }),
+    );
+    expect([done, pushed(made.remote, "work/moved-on"), made.created]).toEqual([
+      "changes_pr_moved",
+      false,
+      [],
+    ]);
+  });
+
+  test("the push sends the branch alone: no tag follows it, whatever the checkout's settings", async () => {
+    const made = setup();
+    await committed(made, "work/tagged");
+    git(made.repo, "config", "push.followTags", "true");
+    git(made.repo, "tag", "-a", "v9", "-m", "a tag the person never chose");
+    const done = await outcome(
+      made.prs.open(TARGET, { title: "t", body: "b", remote: await seenRemote(made) }),
+    );
+    const tagged = (() => {
+      try {
+        git(made.remote, "rev-parse", "--verify", "--quiet", "refs/tags/v9");
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+    expect([done, pushed(made.remote, "work/tagged"), tagged]).toEqual(["ok", true, false]);
+  });
+
+  test("no password, query or fragment of the push address reaches the person, shown or in a failed push's output", async () => {
+    const made = setup();
+    await committed(made, "work/refused");
+    // Nothing listens on port 1: the push fails at once, and git's message quotes the address.
+    git(
+      made.repo,
+      "remote",
+      "set-url",
+      "--push",
+      "origin",
+      "https://ana:p@ss@127.0.0.1:1/app.git?token=t0ken-in-query#frag",
+    );
+    const seen = await seenRemote(made);
+    let said = "";
+    try {
+      await made.prs.open(TARGET, { title: "t", body: "b", remote: seen });
+    } catch (error) {
+      said = JSON.stringify([String(error), (error as { details?: unknown }).details]);
+    }
+    expect([
+      seen,
+      said.includes("127.0.0.1"),
+      ["ana", "p@ss", "ss@", "t0ken", "frag"].filter((leak) => said.includes(leak)),
+    ]).toEqual(["https://127.0.0.1:1/app.git", true, []]);
+  });
+
   test("the base is never pushed, nor a detached checkout, nor a secret; a card opens its own PR", async () => {
     const vault = ["k3y-in-the-vault"];
     const onMain = setup({ vault });
