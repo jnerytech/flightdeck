@@ -270,7 +270,7 @@ export function istanbulTargets(tracked: readonly string[]): string[] {
 
 /** The failed tests a bun test log reports. */
 export function failedCount(log: string): number {
-  return Number(/^\s*(\d+) fail$/m.exec(log)?.[1] ?? 0);
+  return Number(/^\s*(\d+) fail$/m.exec(log)?.[1] ?? 0); // NOSONAR: a bun test log of the run, read by a CI gate
 }
 
 /** What `runShard` touches: the checkout, its tracked files and timings, and the effects. */

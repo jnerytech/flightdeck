@@ -11,7 +11,7 @@ export function tokensOf(css: string, selector: string): Map<string, string> {
   const start = css.indexOf(`\n${selector} {`);
   const body = start < 0 ? "" : css.slice(start, css.indexOf("\n}", start));
   const found = new Map<string, string>();
-  for (const m of body.matchAll(/(--[\w-]+):\s*([^;]+);/g))
+  for (const m of body.matchAll(/(--[\w-]+):\s*([^;]+);/g)) // NOSONAR: the repo's own stylesheet, read by a dev tool
     found.set(m[1] as string, (m[2] as string).trim());
   return found;
 }

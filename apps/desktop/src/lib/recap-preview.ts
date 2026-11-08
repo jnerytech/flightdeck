@@ -9,7 +9,7 @@ const MAX = 160;
 export function recapPreview(recap: SessionRecap): string {
   const plain = (recap.done ?? recap.asked ?? "")
     .replace(/[*`_]{1,3}/g, "")
-    .replace(/^\s*[-•]\s+/gm, "")
+    .replace(/^\s*[-•]\s+/gm, "") // NOSONAR: a recap field is cut at 480 chars by the daemon (summary.ts LIMITS)
     .replace(/\s+/g, " ")
     .trim();
   return plain.length <= MAX ? plain : `${plain.slice(0, MAX - 1).trimEnd()}…`;
