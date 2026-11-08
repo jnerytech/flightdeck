@@ -81,3 +81,14 @@ export function addsNothing(preview: HarnessPreview): boolean {
 export function needsReformat(preview: HarnessPreview): boolean {
   return writesSettings(preview) && preview.settings?.reformats === true;
 }
+
+/** The id a template gets from its title: lower case letters and digits joined by dashes, up to 40. */
+export function templateIdFrom(title: string): string {
+  return title
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 40)
+    .replace(/^-+|-+$/g, "");
+}

@@ -347,6 +347,10 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   Each is **Found** or **Missing**, and the card says how many of the six are there. It only reads:
   nothing in the project changes, and environment variables are never shown in it. When some of
   the project's files cannot be read, it says so: a part shown as missing may be there.
+- On a host that can keep setup templates, **Share as template** under the checklist asks for a name
+  and keeps the project's `CLAUDE.md`, agents and skills as a template any project on that host can
+  start from. Settings (hooks, permissions, MCP servers) are never shared, every file is checked for
+  secrets first, and a name already taken is refused.
 - A host's page also lists its **Claude Code setup templates**, the ones shared from a project's setup,
   with their files and size. **Delete** asks first and removes only that template: the projects set
   up from it keep their files. It works from this computer or over Tailscale, not from afar.
