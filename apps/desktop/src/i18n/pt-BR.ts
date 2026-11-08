@@ -2653,6 +2653,8 @@ export const ptBR = {
     showInFolder: "Mostrar na pasta",
     showInFolderLabel: "Mostrar {path} na pasta",
     noLines: "Sem linhas para mostrar.",
+    commentHint:
+      "Clique no número de uma linha para comentar; Shift+clique seleciona um intervalo. Teclas: setas entre as linhas, Enter comenta.",
     commentLine: "Comentar a linha {line} de {path}",
     commentOldLine: "Comentar a linha antiga {line} de {path}",
     composer: "Novo comentário",
