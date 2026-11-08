@@ -1,6 +1,7 @@
 import { type Card, type KnowledgeEntry, PINNED_DOCS_MAX } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,13 @@ export function CardPins(
   /** What the last Pin or Unpin did, read out by the status line that is always there. */
   const [said, setSaid] = useState("");
   const picker = useRef<HTMLSelectElement>(null);
+  const statusLine = useRef<HTMLParagraphElement>(null);
+  /**
+   * Where the focus goes once a save is done (#1088): the picker, or the status line when the
+   * picker cannot take it (the pin filled the card, or there is none). Moved after the render, so a
+   * picker the card's update enables again can take it, and never left on the page's body.
+   */
+  const [focusTo, setFocusTo] = useState<"picker" | "status" | null>(null);
 
   useEffect(() => {
     if (!props.library || !path) return;
@@ -47,30 +55,45 @@ export function CardPins(
 
   const pins = card.pinnedDocs;
   const titleOf = (doc: string) => entries.find((entry) => entry.path === doc)?.title ?? doc;
-  /** Sends the whole list; on success says what changed. The focus goes back to the picker. */
-  const save = async (next: string[], done: string) => {
+  const canPick = props.library && path !== null;
+  /**
+   * Sends the whole list. On success it says what changed and sends the focus on; a refusal says
+   * why and moves nothing, so the person is where they were. Returns whether it was kept.
+   */
+  const save = async (next: string[], done: string): Promise<boolean> => {
+    setSaid("");
     const result = await store.hostRequest(hostId, "card.update", {
       cardId: card.id,
       pinnedDocs: next,
     });
-    setProblem(
-      result.ok
-        ? null
-        : t("cardUi.pins.failed", {
-            why: refusalText(result.code, result.message, t, result),
-          }),
-    );
-    setSaid(result.ok ? done : "");
-    picker.current?.focus();
+    if (!result.ok) {
+      setProblem(
+        t("cardUi.pins.failed", { why: refusalText(result.code, result.message, t, result) }),
+      );
+      return false;
+    }
+    setProblem(null);
+    setSaid(done);
+    setFocusTo(canPick && next.length < PINNED_DOCS_MAX ? "picker" : "status");
+    return true;
   };
   const pin = async () => {
     if (!picked) return;
-    const doc = picked;
-    setPicked("");
-    await save([...pins, doc], t("cardUi.pins.pinned", { title: titleOf(doc) }));
+    if (await save([...pins, picked], t("cardUi.pins.pinned", { title: titleOf(picked) }))) {
+      setPicked("");
+    }
   };
   const word = (entry: KnowledgeEntry) => t(`projectPage.knowledge.status.${entry.status}` as Key);
   const full = pins.length >= PINNED_DOCS_MAX;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `full` re-runs it once the card's update enables the picker again
+  useEffect(() => {
+    if (!focusTo) return;
+    const select = picker.current;
+    // A full card's picker is enabled again only by the card's update: wait for it.
+    if (focusTo === "picker" && select?.disabled) return;
+    (focusTo === "picker" && select ? select : statusLine.current)?.focus();
+    setFocusTo(null);
+  }, [focusTo, full]);
   const offered = entries.filter((entry) => !pins.includes(entry.path));
   const title = t("cardUi.pins.title");
   return (
@@ -118,7 +141,7 @@ export function CardPins(
       )}
       {props.library && path && (
         <>
-          <div className="flex flex-wrap items-center gap-2">
+          <FieldRow>
             <select
               ref={picker}
               aria-label={t("cardUi.pins.pick")}
@@ -143,7 +166,7 @@ export function CardPins(
             >
               {t("cardUi.pins.pinAction")}
             </ActionButton>
-          </div>
+          </FieldRow>
           {full && (
             <p className="text-muted-foreground text-sm">
               {t("cardUi.pins.full", { max: PINNED_DOCS_MAX })}
@@ -151,7 +174,7 @@ export function CardPins(
           )}
         </>
       )}
-      <p role="status" className="text-sm">
+      <p ref={statusLine} role="status" tabIndex={-1} className="text-sm">
         {said}
       </p>
       {problem && (
