@@ -346,7 +346,7 @@ export function TranscriptReader(
                     part.kind === "tool" ? (
                       <ToolRow
                         // biome-ignore lint/suspicious/noArrayIndexKey: the parts of a stored message do not move
-                        key={index}
+                        key={index} // NOSONAR: the parts of a stored message do not move
                         name={part.name}
                         input={part.input}
                         label={t("reader.tool", { name: part.name })}
@@ -356,8 +356,11 @@ export function TranscriptReader(
                         )}
                       />
                     ) : (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: same
-                      <Markdown key={index} text={part.text} />
+                      <Markdown
+                        // biome-ignore lint/suspicious/noArrayIndexKey: same
+                        key={index} // NOSONAR: the parts of a stored message do not move
+                        text={part.text}
+                      />
                     ),
                   )
                 : m.text}

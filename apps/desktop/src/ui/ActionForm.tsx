@@ -196,8 +196,11 @@ export function ActionForm(
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm">{t("actionsUi.form.envTitle")}</legend>
               {draft.env.map((row, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: rows have no identity besides their place
-                <div key={i} className="flex items-center gap-2">
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: rows have no identity besides their place
+                  key={i} // NOSONAR: rows have no identity besides their place
+                  className="flex items-center gap-2"
+                >
                   <Input
                     aria-label={t("actionsUi.form.envName", { n: i + 1 })}
                     value={row.name}
@@ -246,8 +249,11 @@ export function ActionForm(
                 const edit = (patch: Partial<typeof row>) =>
                   set({ params: draft.params.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
                 return (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: rows have no identity besides their place
-                  <div key={i} className="flex items-center gap-2">
+                  <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: rows have no identity besides their place
+                    key={i} // NOSONAR: rows have no identity besides their place
+                    className="flex items-center gap-2"
+                  >
                     <Input
                       aria-label={t("actionsUi.form.paramName", { n: i + 1 })}
                       value={row.name}

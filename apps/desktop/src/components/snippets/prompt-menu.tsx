@@ -140,13 +140,20 @@ export function PromptMenu(
                   >
                     {highlight(item.name, slash ?? "").map((run, at2) =>
                       run.hit ? (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: runs are cut from one string, in order
-                        <mark key={at2} className="bg-transparent font-semibold text-foreground">
+                        <mark
+                          // biome-ignore lint/suspicious/noArrayIndexKey: runs are cut from one string, in order
+                          key={at2} // NOSONAR: runs are cut from one string, in order
+                          className="bg-transparent font-semibold text-foreground"
+                        >
                           {run.text}
                         </mark>
                       ) : (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: runs are cut from one string, in order
-                        <span key={at2}>{run.text}</span>
+                        <span
+                          // biome-ignore lint/suspicious/noArrayIndexKey: runs are cut from one string, in order
+                          key={at2} // NOSONAR: runs are cut from one string, in order
+                        >
+                          {run.text}
+                        </span>
                       ),
                     )}
                   </button>

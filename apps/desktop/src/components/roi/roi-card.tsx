@@ -248,7 +248,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
               {weekCards.map((n, i) => (
                 <span
                   // biome-ignore lint/suspicious/noArrayIndexKey: eight fixed weeks
-                  key={i}
+                  key={i} // NOSONAR: eight fixed weeks, never reordered
                   aria-hidden="true"
                   // A week with no card is a faint baseline, not a bar (issue #183).
                   data-empty={n === 0 ? "true" : undefined}
