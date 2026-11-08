@@ -264,17 +264,22 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   const dir = join(opts.config.dataDir, "personas");
   const files: string[] = [];
   const write = async (name: string, content: string) => {
-    await mkdir(dir, { recursive: true });
+    // Only the owner reads them: a persona's body and the library's index are not for other users.
+    await mkdir(dir, { recursive: true, mode: 0o700 });
     const file = join(dir, name);
-    await writeFile(file, content);
+    await writeFile(file, content, { mode: 0o600 });
     files.push(file);
     return file;
   };
   const added: string[] = [];
+  // The user's own system prompt wins: claude takes one, so the index is not put beside it.
+  const own = passed(args, "--append-system-prompt") || passed(args, "--append-system-prompt-file");
+  const knowledge = own ? null : await fetchKnowledge(opts.config, opts.cwd ?? process.cwd());
   if (persona) {
-    added.push(
-      ...personaArgs(persona.persona, await write(`${launchId}.md`, persona.persona.body), args),
-    );
+    const body = knowledge ? `${persona.persona.body}\n\n${knowledge}` : persona.persona.body;
+    added.push(...personaArgs(persona.persona, await write(`${launchId}.md`, body), args));
+  } else if (knowledge) {
+    added.push("--append-system-prompt-file", await write(`${launchId}.md`, knowledge));
   }
   added.push(...(await agentArgs(opts, { claude, args, print, launchId }, write)));
   try {
@@ -357,6 +362,29 @@ async function fetchAgents(
     );
     try {
       return (await daemon.call("personas.subagents", { projectPath: cwd })).agents;
+    } finally {
+      daemon.close();
+    }
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The index of the project's library for the system prompt (issue #76), from the daemon of this
+ * host, which gives it only to a trusted project that has not switched it off; `null` when there
+ * is none or the daemon cannot be reached (claude opens just the same).
+ */
+async function fetchKnowledge(config: Config, cwd: string): Promise<string | null> {
+  try {
+    const daemon = await DaemonClient.connect(
+      daemonUrl(config),
+      config.token,
+      "flightdeckd-claude",
+    );
+    try {
+      const { text } = await daemon.call("knowledge.index", { path: cwd });
+      return text === "" ? null : text;
     } finally {
       daemon.close();
     }

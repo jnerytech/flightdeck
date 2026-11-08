@@ -1004,6 +1004,15 @@ export interface KnowledgeListResult {
   truncated: boolean;
 }
 
+/** What a session is given of the library: Markdown for its system prompt, empty when it is not given any. */
+export interface KnowledgeIndexResult {
+  text: string;
+  /** Documents named in the text. */
+  fed: number;
+  /** Documents that qualify were left out to stay under the cap. */
+  truncated: boolean;
+}
+
 /** Issue #797: a search over a repository, by path or by content; a fixed string, never a pattern. */
 export const FileSearchPayload = z
   .object({
@@ -4446,6 +4455,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("file.search", FileSearchPayload),
   /** Issue #76: the library of documents of the project at `path`, read only. */
   cmd("knowledge.list", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** Issue #76: the index of the project's current documents that a session is given in its system prompt. */
+  cmd("knowledge.index", z.object({ path: z.string().min(1).max(4096) }).strict()),
   /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
   cmd(
     "file.write",
@@ -5330,6 +5341,7 @@ export interface CommandResults {
   "file.list": FileListing;
   "file.search": FileSearchResult;
   "knowledge.list": KnowledgeListResult;
+  "knowledge.index": KnowledgeIndexResult;
   "file.write": { path: string; hash: string; size: number };
 }
 

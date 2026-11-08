@@ -571,6 +571,7 @@ const validCommands: Record<CommandType, unknown> = {
   "file.list": { target: "session:s", dir: "" },
   "file.search": { target: "project:p", mode: "name", query: "a" },
   "knowledge.list": { path: "/p" },
+  "knowledge.index": { path: "/p" },
   "file.write": { target: "session:s", path: "a.ts", text: "x", expectedHash: "h" },
 };
 

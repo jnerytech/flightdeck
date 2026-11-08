@@ -345,6 +345,16 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   documento sem status aparece como **Sem classificação**. Os filtros contam os documentos de cada
   status, e um aviso aparece quando um documento válido aponta para um obsoleto. Ele só lê: nada no
   projeto muda. Só os primeiros 500 documentos aparecem.
+  Uma sessão que o Flightdeck inicia em um projeto **confiável** (`flightdeckd claude`, "Claude
+  aqui", sessões em segundo plano) também recebe, no prompt de sistema, um índice curto desses
+  documentos: o caminho e o título de cada documento **válido**, e de cada **transitório** marcado
+  como tal. Documentos sem status e obsoletos nunca são entregues. O índice tem no máximo 4 KiB, e
+  uma linha diz quantos documentos ficaram de fora. Os títulos são marcados como dados do
+  repositório, não como instruções. Um worktree é lido da pasta principal confiável, não da branch.
+  Um prompt de sistema que você mesmo passar (`--append-system-prompt`) fica como está, sem o
+  índice ao lado. Para desligar em um projeto, liste a pasta dele no arquivo de configuração do
+  host: `"knowledge": { "feedOff": ["/caminho/do/projeto"] }` (tudo dentro da pasta também fica
+  desligado).
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
