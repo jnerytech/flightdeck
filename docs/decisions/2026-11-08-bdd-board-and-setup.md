@@ -1,0 +1,6 @@
+# The board and Set up Claude Code are Gherkin features (issue #64)
+
+- **Done.** `scripts/e2e/bdd/features/board.feature` (a card is made, starting it asks first and can be cancelled, Finish… names its three ways, Move to Done, "already done"; and a move to In review asks first because the card lacks a PR link) and `harness-setup.feature` (a git project the scenario makes and adds, then Set up Claude Code: preview lists CLAUDE.md, apply, commit on a new branch). Each runs in en and pt-BR, makes its own state (a card with its own title, a repository of its own under the demo's projects folder), and replaces its plain journey: `finalizar-card` and `harness-setup` are gone from `scripts/e2e/journeys.ts`.
+- **Why.** The journeys a person reads are scenarios (docs/TDD.md). The plain `harness-setup` also depended on the demo keeping its state between languages, so the second run only checked the end; the scenario starts from a project that has nothing, in both.
+- **Proof.** Once locally per language (board 13 to 20 s, setup 22 to 35 s), each shown red without its key step (the apply, the "move anyway"); the PR's e2e job holds the 90 s limit.
+- **Not done.** `card-diff` stays plain: it is the diff view, not the board flow.
