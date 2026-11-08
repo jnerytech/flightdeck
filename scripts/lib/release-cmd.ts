@@ -186,6 +186,10 @@ async function prepare(run: Run, from: string): Promise<number> {
     "--jq",
     BRANCH_PR_JQ,
   ]);
+  if (open.code !== 0) {
+    say(run, `the open PRs of ${branch} cannot be read: nothing was made`);
+    return 1;
+  }
   const { own: waiting, others } = branchPr(open.stdout, branch);
   if (waiting !== null) {
     say(run, `${branch} has PR #${waiting} open: run this again once it merged`);

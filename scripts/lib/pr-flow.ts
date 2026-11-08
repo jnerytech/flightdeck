@@ -250,6 +250,10 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     "--jq",
     BRANCH_PR_JQ,
   ]);
+  if (existing.code !== 0) {
+    deps.log(`the open PRs of ${branch} cannot be read: nothing was opened`);
+    return 1;
+  }
   const { own, others } = branchPr(existing.stdout, branch);
   if (own !== null) {
     deps.log(`${branch} already has PR #${own}`);
