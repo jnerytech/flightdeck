@@ -150,9 +150,9 @@ export const SnippetUse = memo(function SnippetUse(props: {
   const fillGlobal = (): string | null => {
     try {
       return store.globalSnippets.use(snippet.id, own, context);
-    } catch (thrown) {
-      if (!(thrown instanceof SnippetModelError)) throw thrown;
-      fail(refusalText(thrown.code, thrown.message, t, thrown));
+    } catch (error_) {
+      if (!(error_ instanceof SnippetModelError)) throw error_;
+      fail(refusalText(error_.code, error_.message, t, error_));
       return null;
     }
   };
