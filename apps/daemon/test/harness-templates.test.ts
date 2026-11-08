@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { HarnessTemplates } from "../src/harness/templates-store.ts";
@@ -95,21 +103,40 @@ describe("harness-templates: a project's Markdown harness shared as a host templ
     ]).toEqual(["harness_template_taken", "harness_template_empty", "harness_template_id"]);
   });
 
-  test("a title with a secret is refused, and a template whose meta is broken is listed by its id", async () => {
+  test("a title with a secret is refused with its own reason, and a broken meta lists the template by its id", async () => {
     const { dir, templates } = store(["k3y-in-the-vault"]);
     const secretTitle = await outcome(templates.export(project(SHOP), "shop", "k3y-in-the-vault"));
     await templates.export(project(SHOP), "ok", "Fine");
     writeFileSync(join(dir, "ok", "template.json"), "{not json");
-    const listed = await outcome(
-      templates.list().then((all) => all.map((t) => `${t.id}:${t.title}`).join()),
-    );
-    const titles = await templates.list().catch(() => []);
-    expect([secretTitle, listed, titles.map((t) => t.title)]).toEqual([
-      "harness_template_secret",
-      // Listing did not throw on the broken meta; the id stands in for its title.
-      "ok",
-      ["ok"],
+    const listed = await templates.list();
+    expect([secretTitle, listed.map((t) => [t.id, t.title])]).toEqual([
+      "harness_template_title_secret",
+      [["ok", "ok"]],
     ]);
+  });
+
+  test("only what is safe is shared: no file over 32 KiB, no hidden or odd name, 16 files at most", async () => {
+    const files: Record<string, string> = {
+      "CLAUDE.md": `# Big\n${"x".repeat(33 * 1024)}`,
+      ".claude/agents/.hidden.md": "# h\n",
+      ".claude/agents/odd name.md": "# o\n",
+    };
+    for (let i = 0; i < 20; i += 1)
+      files[`.claude/agents/a${String(i).padStart(2, "0")}.md`] = "# a\n";
+    const { templates } = store();
+    const info = await templates.export(project(files), "many", "Many");
+    expect([
+      info.files.includes("CLAUDE.md"),
+      info.files.some((f) => f.includes("hidden") || f.includes(" ")),
+      info.files.length,
+    ]).toEqual([false, false, 16]);
+  });
+
+  test("the template folders are the host's own: no other user can read them", async () => {
+    const { dir, templates } = store();
+    await templates.export(project(SHOP), "shop", "Shop");
+    const mode = (path: string) => statSync(path).mode & 0o777;
+    expect(posix ? [mode(dir), mode(join(dir, "shop"))] : [0o700, 0o700]).toEqual([0o700, 0o700]);
   });
 
   test.skipIf(!posix)("a file reached through a link is not shared", async () => {
@@ -121,6 +148,24 @@ describe("harness-templates: a project's Markdown harness shared as a host templ
     const info = await templates.export(root, "linked", "Linked");
     expect(info.files).toEqual(["agents/reviewer.md"]);
   });
+
+  test.skipIf(!posix)(
+    "a linked agents folder, or a file with a second name, is not shared",
+    async () => {
+      const outside = tempDir("fd-harness-tpl-out-");
+      writeFileSync(join(outside, "spy.md"), "# Spy\n");
+      const linkedFolder = project({ "CLAUDE.md": "# C\n" });
+      mkdirSync(join(linkedFolder, ".claude"), { recursive: true });
+      symlinkSync(outside, join(linkedFolder, ".claude", "agents"));
+      const hardLinked = project({ "CLAUDE.md": "# C\n" });
+      mkdirSync(join(hardLinked, ".claude", "agents"), { recursive: true });
+      linkSync(join(outside, "spy.md"), join(hardLinked, ".claude", "agents", "spy.md"));
+      const { templates } = store();
+      const a = await templates.export(linkedFolder, "folder", "Folder");
+      const b = await templates.export(hardLinked, "hard", "Hard");
+      expect([a.files, b.files]).toEqual([["CLAUDE.md"], ["CLAUDE.md"]]);
+    },
+  );
 
   test("the server shares over a near connection, inside the allowed roots only, and lists for any", async () => {
     const root = project(SHOP);
