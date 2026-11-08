@@ -1,5 +1,5 @@
 import type { KnowledgeEntry, KnowledgeListResult, KnowledgeStatus } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,10 @@ export function KnowledgePanel(
     feed?: boolean;
     /** The host announces `knowledgeStatus`: a document's status can be changed here. */
     status?: boolean;
+    /** The project on the board: a spec can become a card of it (#78, S-T2). */
+    projectId?: string;
+    /** Opens a card the panel made. */
+    onOpenCard?(cardId: string): void;
   }>,
 ) {
   const { store, hostId, path } = props;
@@ -31,6 +35,10 @@ export function KnowledgePanel(
   const [loaded, setLoaded] = useState<KnowledgeListResult | "failed" | null>(null);
   const [filter, setFilter] = useState<Status | "all">("all");
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  // The specs a card is being made from: a second click waits, so it makes no second card. The ref
+  // answers at once (two clicks in one tick); the state disables the button.
+  const busy = useRef(new Set<string>());
+  const [making, setMaking] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     let live = true;
@@ -46,6 +54,39 @@ export function KnowledgePanel(
     void store.hostCommand(hostId, "knowledge.list", { path }).then((result) => {
       setLoaded(result ?? "failed");
     });
+  };
+  // Issue #78, S-T2: a spec becomes a card that names it, so its first start reads it first and
+  // works test first. A card the host refuses is not named; the banner says why.
+  const makeCard = async (entry: KnowledgeEntry, projectId: string) => {
+    if (busy.current.has(entry.path)) return;
+    busy.current.add(entry.path);
+    setMaking(new Set(busy.current));
+    try {
+      await makeCardOf(entry, projectId);
+    } finally {
+      busy.current.delete(entry.path);
+      setMaking(new Set(busy.current));
+    }
+  };
+  const makeCardOf = async (entry: KnowledgeEntry, projectId: string) => {
+    const made = await store.hostCommand(hostId, "card.create", {
+      projectId,
+      title: entry.title,
+      description: "",
+    });
+    if (!made) return;
+    // The card exists either way: when it could not be pointed at the spec (the banner says why),
+    // the person is told so and can open it to set the path, instead of making a second card.
+    const named = await store.hostCommand(hostId, "card.update", {
+      cardId: made.id,
+      specPath: entry.path,
+    });
+    const open = props.onOpenCard;
+    const key = named ? "projectPage.knowledge.cardMade" : "projectPage.knowledge.cardMadeNoSpec";
+    store.success(
+      t(key, { title: made.title }),
+      open ? { label: t("kanban.openCard"), run: () => open(made.id) } : undefined,
+    );
   };
   // The file is written by the host only if it is as the list showed it; a refusal says why, and
   // the list is read again so the next try has what the file is now.
@@ -153,6 +194,17 @@ export function KnowledgePanel(
                     <span className="text-muted-foreground text-xs">
                       {t(`projectPage.knowledge.type.${entry.type}` as Key)}
                     </span>
+                  )}
+                  {entry.type === "spec" && props.projectId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={t("projectPage.knowledge.makeCardOf", { title: entry.title })}
+                      disabled={making.has(entry.path)}
+                      onClick={() => void makeCard(entry, props.projectId as string)}
+                    >
+                      {t("projectPage.knowledge.makeCard")}
+                    </Button>
                   )}
                 </span>
                 <span className="text-muted-foreground text-xs">

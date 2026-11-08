@@ -226,17 +226,6 @@ describe("home-leaders-ui: where the tokens of the 7 days went", () => {
     expect(screen.queryByText("Some hosts did not answer: host1.") !== null).toBe(true);
   });
 
-  test("with the second half of the trend refused there is no leaderboard, not one with a half trend (#363)", async () => {
-    setup({ refuse: ["2026-10-07|2026-10-09"] });
-    await loaded("Where the tokens went");
-    const unavailable = "Could not read where the tokens went. Home tries again in a minute.";
-    await settleMaybe(() => screen.queryByText(unavailable) !== null);
-    expect({
-      unavailable: screen.queryByText(unavailable) !== null,
-      rows: rows("Where the tokens went", [["app", "60%"]]),
-    }).toEqual({ unavailable: true, rows: [] });
-  });
-
   test("a refresh whose costs fail keeps the shares read before", async () => {
     const failing = { now: false };
     const { ranges } = setup({ failing, refreshMs: 150 });

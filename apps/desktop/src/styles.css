@@ -92,9 +92,13 @@
   /* The status bar's height (issue #491): what floats over the window sits above it. */
   --status-bar-height: 1.5rem;
   /* Issue #581: what floats in the bottom-right corner (the update card, the toasts) sits 0.75rem
-     over the status bar; the toasts also over the update card while it shows (it sets the lift). */
+     over the status bar; the toasts also over the update card while it shows (it sets the lift),
+     and over a session's message box while one shows (#994: it sets the clearance). */
   --corner-bottom: calc(var(--status-bar-height) + 0.75rem);
-  --toast-bottom: calc(var(--corner-bottom) + var(--update-card-lift, 0px));
+  --toast-bottom: max(
+    calc(var(--corner-bottom) + var(--update-card-lift, 0px)),
+    var(--composer-clear, 0px)
+  );
   /* The weight scale: strong for titles and primary actions, label for filters and pills, text for the rest. */
   --weight-strong: 600;
   --weight-label: 500;

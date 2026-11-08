@@ -129,7 +129,9 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   per file (#1002). A flaky test is deleted, never skipped; when it is the only check of a business
   flow, it is replaced by a fast deterministic one (#1003, which removes the `// unstable:` skips
   left; until then the unstable-skip ratchet still checks their notes). A test over 5 s, a test
-  file over 60 s or an e2e journey over 90 s on CI is too slow: make it faster, or delete it.
+  file over 60 s or an e2e journey over 90 s on CI is too slow: make it faster, or delete it. CI's
+  `scripts/slow-tests.ts` fails a PR on the first two, from its run's JUnit times, unless
+  `slow-tests-allowlist.json` names the test with the issue that cuts it.
 - Tests touch nothing real. The preload replaces `claude` on the PATH with a sentinel and
   `HOME` with a temporary folder, so nothing reads or writes the real `~/.claude`. Other CLIs
   (`gh`, `az`, `ssh`, check commands) are fakes on the test PATH, with a `.cmd` version on

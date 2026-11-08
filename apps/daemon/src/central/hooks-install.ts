@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { writeFileAtomic } from "../atomic-write.ts";
+import { layoutLike, parseJsonText } from "../json-text.ts";
 
 /** Events installed as http hooks; SessionStart is a command hook (its http form never fires). */
 export const HTTP_HOOK_EVENTS = [
@@ -96,12 +97,14 @@ export const isFlightdeckHook = (hook: HookEntry) =>
 
 async function readSettings(file: string): Promise<Settings | null> {
   const text = await readFile(file, "utf8").catch(() => null);
-  return text === null ? null : (JSON.parse(text) as Settings);
+  return text === null ? null : (parseJsonText(text) as Settings);
 }
 
+/** Written in the layout the file has (its BOM, indent and line endings): only the hooks change. */
 async function writeSettings(file: string, settings: Settings): Promise<void> {
   await mkdir(dirname(file), { recursive: true });
-  await writeFileAtomic(file, `${JSON.stringify(settings, null, 2)}\n`);
+  const before = await readFile(file, "utf8").catch(() => null);
+  await writeFileAtomic(file, layoutLike(before, settings));
 }
 
 /** Drops Flightdeck's hooks; groups, events and `hooks` emptied by that go too. */

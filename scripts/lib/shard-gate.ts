@@ -241,6 +241,8 @@ export function shardRun(
   const tests = testArgs(
     "linux",
     files.map((file) => `./${file}`),
+    // The bun job keeps each test's time with its report (#1003); istanbul's times are skewed.
+    kind === "bun" ? `${out}/junit.xml` : undefined,
   );
   if (kind === "bun") {
     const [sub = "test", timeout = "", ...rest] = tests;

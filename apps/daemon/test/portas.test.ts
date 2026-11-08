@@ -136,7 +136,7 @@ describe("portas: variáveis e referências", () => {
       "http://127.0.0.1:41001/",
     );
     expect(interpolatePorts("sem referência", map)).toBe("sem referência");
-    expect(() => interpolatePorts("{{port.db}}", map)).toThrow("porta sem bloco: db");
+    expect(() => interpolatePorts("{{port.db}}", map)).toThrow("port without a block: db");
   });
 });
 

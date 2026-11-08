@@ -12,6 +12,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { writeFileAtomic } from "../atomic-write.ts";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
+import { layoutLike, parseJsonText } from "../json-text.ts";
 import { samePath } from "../paths.ts";
 
 /** What secrets (env and headers values) look like in the app. */
@@ -44,12 +45,14 @@ type Json = Record<string, unknown>;
 /** The JSON object in the file; `{}` when the file is not there (a file that does not parse throws). */
 async function readJson(path: string): Promise<Json> {
   const text = await readFile(path, "utf8").catch(() => null);
-  return text === null ? {} : (JSON.parse(text) as Json);
+  return text === null ? {} : (parseJsonText(text) as Json);
 }
 
+/** Written in the layout the file has (its BOM, indent and line endings). */
 async function writeJson(path: string, value: Json): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await writeFileAtomic(path, `${JSON.stringify(value, null, 2)}\n`);
+  const before = await readFile(path, "utf8").catch(() => null);
+  await writeFileAtomic(path, layoutLike(before, value));
 }
 
 const servers = (value: unknown) => (value ?? {}) as Record<string, McpServerConfig>;

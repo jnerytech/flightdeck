@@ -4,6 +4,7 @@ import { CardSyncLog } from "@/components/board/board-sync";
 import { CardAdjustment, CardRuns } from "@/components/card/card-adjustment";
 import { CardArena } from "@/components/card/card-arena";
 import { CardFields } from "@/components/card/card-fields";
+import { CardPins } from "@/components/card/card-pins";
 import { CardRunForm } from "@/components/card/card-run-form";
 import { CardHeaderActions, type CardTab, CardWork } from "@/components/card/card-work";
 import { PostMortem } from "@/components/card/post-mortem";
@@ -23,7 +24,7 @@ import { CardDeps } from "./CardDeps.tsx";
 import { RunPanel } from "./RunPanel.tsx";
 import { GateCard, RunTimeline } from "./RunTimeline.tsx";
 
-const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards"] as const;
+const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards", "projects"] as const;
 
 /** One card: description, runs, the active run's conversation, its diff and the actions. */
 export const CardDetail = memo(function CardDetail(props: {
@@ -239,6 +240,15 @@ export const CardDetail = memo(function CardDetail(props: {
             withRoi={withRoi}
             onOpenSettings={props.onOpenSettings}
           />
+          {has("cardPins") && (
+            <CardPins
+              store={store}
+              hostId={hostId}
+              card={card}
+              path={state.projects[hostId]?.find((p) => p.id === card.projectId)?.path ?? null}
+              library={has("knowledge")}
+            />
+          )}
           {withDeps && (
             <CardDeps
               store={store}

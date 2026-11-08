@@ -1097,6 +1097,12 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   again** looks once more; a move to a column that asks for it looks at the file first. The host
   checks only that the file is there (a plain, non-empty file, not a link, inside the worktree) and
   reads its first heading: it never reads or sends the rest.
+- **Pinned documents** (#76). On a host with a project library, the card page has a **Pinned
+  documents** panel: choose a document of the library (ADRs, RFCs, PRDs, specs) to pin it, up to
+  10, and **Unpin** takes one off. When the card starts, its first prompt lists each pinned document
+  that is in the card's worktree, with its title, and tells the session to read them. Only the path
+  and the first heading go in the prompt, never the document's contents. A pinned document marked
+  obsolete is still named: you chose it.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
 - **Discard…** shows one dialog with every selected card, and says what goes with each: a

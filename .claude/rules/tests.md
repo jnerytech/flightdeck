@@ -18,7 +18,9 @@ paths:
   with a fast deterministic one (#1003). The `// unstable: #<issue>` skips left are removed under
   #1003; until then the hook, the TDD audit and the unstable-skip ratchet still check their notes.
 - Too slow on CI: a test over 5 s, a test file over 60 s, an e2e journey over 90 s. Make it faster,
-  or delete it when it checks nothing a faster test does not.
+  or delete it when it checks nothing a faster test does not. CI's slow-test check fails a PR on a
+  test over 5 s or a file over 60 s (from the run's JUnit times) unless `slow-tests-allowlist.json`
+  names it with its issue; add an entry only for a test an issue is already cutting.
 - Nothing real: the preload puts a sentinel `claude` first on the PATH and points `HOME` at a
   temporary folder. Other CLIs (`gh`, `az`, `ssh`) are fakes on the test PATH, with a `.cmd` twin
   for Windows. No network.
