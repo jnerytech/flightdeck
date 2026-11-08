@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { runCommand } from "../apps/daemon/src/board/command.ts";
 /**
  * `bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n> | --refs <n>] | next | update <n> |
  * auto <n> | merge <n>` (issue #260, GitHub Flow; auto #271). The logic is in lib/pr-flow.ts;
@@ -6,6 +7,7 @@
  */
 import { spawnExec } from "../apps/daemon/src/exec.ts";
 import { runBounded } from "./lib/bounded-run.ts";
+import { mainRedWithin } from "./lib/main-red.ts";
 import { prFlow } from "./lib/pr-flow.ts";
 
 process.exit(
@@ -22,6 +24,21 @@ process.exit(
       },
       env: process.env,
       log: (line) => console.log(line),
+      // #1246: a red main and its claim, said before a PR moves; 3 s at most, then nothing.
+      mainRed: () =>
+        mainRedWithin(
+          {
+            gh: async (cmd) => {
+              const ran = await runCommand(["gh", ...cmd], process.cwd(), undefined, 3000);
+              return {
+                code: ran.timedOut ? 124 : ran.code,
+                stdout: ran.stdout,
+                stderr: ran.stderr,
+              };
+            },
+          },
+          3000,
+        ),
     },
   ),
 );

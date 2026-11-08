@@ -155,7 +155,7 @@ describe("service from the app (#1200)", () => {
   test("a failed enable leaves the config's claude as it was", async () => {
     const os = fake("linux", { failEnable: true });
     const reason = await reasonOf(() => installServiceFromApp(os.deps, true));
-    expect(reason === "resolved").toBe(false);
+    expect(reason).not.toBe("resolved");
     expect(os.recorded).toEqual([]);
   });
 });

@@ -2491,6 +2491,10 @@ export const QuotaHistory = z.object({
 });
 export type QuotaHistory = z.infer<typeof QuotaHistory>;
 
+/** The periods of a budget: a day or month (host time zone), or a window of the plan quota. */
+export const BudgetPeriod = z.enum(["day", "month", "five_hour", "seven_day"]);
+export type BudgetPeriod = z.infer<typeof BudgetPeriod>;
+
 /** A cost limit of the host or of one project, per day or month (host time zone). */
 export const BudgetInput = z.object({
   /** Present to change an existing budget. */
@@ -2505,18 +2509,47 @@ export const BudgetInput = z.object({
 });
 export type BudgetInput = z.infer<typeof BudgetInput>;
 
+/**
+ * A limit in terms of the plan quota instead of dollars (issue #1248): the share of a quota
+ * window the host, or one project (an estimate), may use. The window is its period.
+ */
+export const QuotaBudgetInput = z.object({
+  /** Present to change an existing budget. */
+  id: z.string().optional(),
+  scope: z.enum(["host", "project"]),
+  /** Required for `project`, ignored for `host`. */
+  projectKey: z.string().min(1).optional(),
+  window: z.enum(["five_hour", "seven_day"]),
+  /** The share of the window, from 0.1% up to 100%. */
+  limitPct: z.number().min(0.001).max(1),
+  /** `queue`: at 100% of the limit, new cards of the scope wait (sessions are never held). */
+  action: z.enum(["notify", "queue"]),
+});
+export type QuotaBudgetInput = z.infer<typeof QuotaBudgetInput>;
+
 export const Budget = z.object({
   id: z.string(),
   scope: z.enum(["host", "project"]),
   projectKey: z.string().nullable(),
-  period: z.enum(["day", "month"]),
+  period: BudgetPeriod,
+  /** 0 for a window budget. */
   limitUsd: z.number(),
+  /** The share of the window a window budget allows; `null` for dollars. */
+  limitPct: z.number().nullable().default(null),
   action: z.enum(["notify", "queue"]),
   createdAt: z.string(),
-  /** The current period: `YYYY-MM-DD` or `YYYY-MM`. */
+  /**
+   * The current period: `YYYY-MM-DD` or `YYYY-MM`, or when the window resets (`unread` while the
+   * host has no reading of it).
+   */
   periodKey: z.string(),
+  /** The estimated cost of the scope in the period (dollars, or the window so far). */
   spentUsd: z.number(),
-  /** `spentUsd / limitUsd`. */
+  /** The share of the window the scope used; `null` for dollars. */
+  spentPct: z.number().nullable().default(null),
+  /** A project's share of a window is an estimate: the plan does not say who used it. */
+  estimated: z.boolean().default(false),
+  /** `spentUsd / limitUsd`, or `spentPct / limitPct` for a window. */
   fraction: z.number(),
   /** Thresholds (0.5, 0.8, 1) already crossed in this period. */
   crossed: z.array(z.number()),
@@ -4260,6 +4293,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("costs.export", CostsFilter),
   cmd("budget.list", z.object({}).strict()),
   cmd("budget.set", BudgetInput),
+  cmd("budget.setQuota", QuotaBudgetInput),
   cmd("budget.remove", z.object({ id: z.string() })),
   /** `budget.updated` after each change, threshold crossed or new period. */
   cmd("budget.watch", z.object({}).strict()),
@@ -5695,6 +5729,7 @@ export interface CommandResults {
   "costs.export": { csv: string; filename: string };
   "budget.list": { budgets: Budget[] };
   "budget.set": Budget;
+  "budget.setQuota": Budget;
   "budget.remove": undefined;
   "budget.watch": undefined;
   "quota.history": QuotaHistory;

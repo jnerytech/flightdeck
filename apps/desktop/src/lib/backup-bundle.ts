@@ -209,6 +209,19 @@ const judgeItems = (locals: Item[], incoming: Item[], name: (item: Item) => stri
   });
 
 /**
+ * A host as the preview names it: its name and where it points (protocol, host and port), so the
+ * person sees which machine comes back. A login or a query in the address is not shown.
+ */
+function hostLabel(host: { name: string; url: string }): string {
+  try {
+    const where = new URL(host.url);
+    return `${host.name} (${where.protocol}//${where.host})`;
+  } catch {
+    return host.name;
+  }
+}
+
+/**
  * Compares the bundle with the profile as it is now. The preview shows its names; the apply runs it
  * again and decides by id, so a profile that changed since the preview is not overwritten by what
  * the preview saw, and two things with one name never share a verdict.
@@ -226,7 +239,7 @@ async function judge(platform: BackupPlatform, bundle: Bundle): Promise<Judgemen
       mine.url === host.url &&
       (await platform.secrets.get(host.id)) === host.token;
     const status: Status = !mine ? "added" : same ? "same" : "conflicting";
-    judgedHosts.push({ id: host.id, name: host.name, status, item: host });
+    judgedHosts.push({ id: host.id, name: hostLabel(host), status, item: host });
   });
   const judgedVault: Judgement["vault"] = [];
   await inSequence(bundle.vault, async (entry) => {

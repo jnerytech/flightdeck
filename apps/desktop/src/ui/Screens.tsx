@@ -131,6 +131,75 @@ const pathPicker =
       />
     );
 
+/** The pin of a session: stable between renders, so the finished messages of a long conversation are not drawn again. */
+function usePin(
+  store: AppStore,
+  hostId: string,
+  claudeId: string | null | undefined,
+  pinned: boolean,
+) {
+  return useMemo(
+    () =>
+      claudeId
+        ? { pinned, toggle: () => void store.setMeta(hostId, claudeId, { pinned: !pinned }) }
+        : undefined,
+    [store, hostId, claudeId, pinned],
+  );
+}
+
+/** Fork from here: a new session from the transcript, opened where it started; none without a transcript or the feature. */
+function useFork(
+  store: AppStore,
+  hostId: string,
+  claudeId: string | null | undefined,
+  canFork: boolean,
+  cwd: string,
+) {
+  return useMemo(
+    () =>
+      claudeId && canFork
+        ? () =>
+            void store
+              .hostCommand(hostId, "session.fork", {
+                claudeSessionId: claudeId,
+                cwd,
+                open: "flightdeck",
+              })
+              .then((result) => {
+                if (result?.sessionId) {
+                  store.router.push({ name: "session", host: hostId, id: result.sessionId });
+                }
+              })
+        : undefined,
+    [store, hostId, claudeId, canFork, cwd],
+  );
+}
+
+/**
+ * What the tabs of a session's page offer: the host's features, and Phase 39: these tabs read Claude
+ * Code's transcript, so OpenCode sessions stay out of them and out of messaging. Issue #107: a shell
+ * in the session's folder, where the host opens one for a session.
+ */
+function tabsFor(
+  host: HostView | undefined,
+  opencode: boolean,
+  sessionId: string,
+  embedded: boolean,
+) {
+  const claudeHas = (feature: string) =>
+    !opencode && hasFeature(host?.hostInfo?.features, feature, false);
+  return {
+    ...(embedded && hasFeature(host?.hostInfo?.features, "terminal.session", false)
+      ? { terminal: { session: sessionId } }
+      : {}),
+    enabled: claudeHas("review"),
+    messagingId: claudeHas("messaging") ? sessionId : null,
+    telemetry: claudeHas("telemetry"),
+    trace: claudeHas("trace"),
+    files: claudeHas("file.list"),
+  };
+}
+
 /** A managed session's conversation; selecting it subscribes to its full event stream. */
 function ManagedSession(
   props: Readonly<{
@@ -166,54 +235,18 @@ function ManagedSession(
   // The project the folder belongs to, where the person can read what it would load and trust it.
   const owner = state.projects[hostId]?.find((p) => holdsFolder(p.path, cwd));
   const canFork = hasFeature(host?.hostInfo?.features, "checkpoints", false);
-  // Stable between renders: the finished messages of a long conversation are not drawn again.
-  const pin = useMemo(
-    () =>
-      claudeId
-        ? { pinned, toggle: () => void store.setMeta(hostId, claudeId, { pinned: !pinned }) }
-        : undefined,
-    [store, hostId, claudeId, pinned],
-  );
-  const fork = useMemo(
-    () =>
-      claudeId && canFork
-        ? () =>
-            void store
-              .hostCommand(hostId, "session.fork", {
-                claudeSessionId: claudeId,
-                cwd,
-                open: "flightdeck",
-              })
-              .then((result) => {
-                if (result?.sessionId) {
-                  store.router.push({ name: "session", host: hostId, id: result.sessionId });
-                }
-              })
-        : undefined,
-    [store, hostId, claudeId, canFork, cwd],
-  );
+  const pin = usePin(store, hostId, claudeId, pinned);
+  const fork = useFork(store, hostId, claudeId, canFork, cwd);
   const costUsd = useSessionCost(store, hostId, claudeId, withCosts, status);
   return (
     <SessionTabs
       store={store}
       hostId={hostId}
       viewKey={sessionKey(hostId, sessionId)}
-      // Issue #107: a shell in the session's folder, where the host opens one for a session.
-      {...(store.embeddedTerminal(hostId) &&
-      hasFeature(host?.hostInfo?.features, "terminal.session", false)
-        ? { terminal: { session: sessionId } }
-        : {})}
       claudeSessionId={claudeId}
       // This page's message box takes a review handed over from Changes.
       reviewToComposer
-      // Phase 39: these tabs read Claude Code's transcript, and OpenCode sessions stay out of messaging.
-      enabled={!opencode && hasFeature(host?.hostInfo?.features, "review", false)}
-      messagingId={
-        !opencode && hasFeature(host?.hostInfo?.features, "messaging", false) ? sessionId : null
-      }
-      telemetry={!opencode && hasFeature(host?.hostInfo?.features, "telemetry", false)}
-      trace={!opencode && hasFeature(host?.hostInfo?.features, "trace", false)}
-      files={!opencode && hasFeature(host?.hostInfo?.features, "file.list", false)}
+      {...tabsFor(host, opencode, sessionId, store.embeddedTerminal(hostId))}
     >
       <SessionView
         t={store.i18n.t}

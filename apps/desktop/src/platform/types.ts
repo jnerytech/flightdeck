@@ -148,6 +148,8 @@ export interface Platform {
     delete(id: string): Promise<void>;
     /** Runs the local `ssh-keygen` for an ed25519 pair, deletes its files and returns the keys. */
     generateKey(comment: string): Promise<GeneratedKey>;
+    /** False where there is no file dialog (a browser): the app then offers no restore. Absent means true. */
+    canPick?: boolean;
     /** The system's file dialog; null when the user cancels. */
     pickFile(): Promise<PickedFile | null>;
     /** Deletes a file the user picked and asked to remove. */

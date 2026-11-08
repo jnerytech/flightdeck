@@ -16,6 +16,8 @@ export interface SessionFacts {
   /** Who holds the slot, or null when it is free. */
   slot: SlotHolder | null;
   now: number;
+  /** #1246: the red main's line with its claim (lib/main-red.ts), null or absent when green. */
+  mainRed?: string | null;
 }
 
 /** The facts, from git (run in the session's directory) and the slot's lock file. */
@@ -58,6 +60,7 @@ export function sessionContext(source: string, facts: SessionFacts): string {
   lines.push(
     `- slot: ${facts.slot ? describeHolder(facts.slot, facts.now) : "free"}; heavy runs go through bun run slot --.`,
   );
+  if (facts.mainRed) lines.push(`- warning: ${facts.mainRed}`);
   if (source === "compact") {
     lines.push(
       "- after this compact, the path rules in .claude/rules are back only once you touch a matching file: before editing, read the rule for that area (ui, protocol, daemon, tests, scripts).",
