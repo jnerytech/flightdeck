@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
   childEnv,
+  type EvalHost,
   type EvalRunner,
   type EvalTask,
+  evalContext,
   evalOptions,
   evalPlatformRefusal,
   grade,
@@ -165,6 +167,45 @@ describe("harness-eval", () => {
 });
 
 describe("harness-eval: the CLI's options", () => {
+  test("#986 Sonar: an eval starts from claude on the PATH, a runner with the filtered env, and the repo's root and HEAD", () => {
+    const calls: string[] = [];
+    const host = (over: Partial<EvalHost> = {}): EvalHost => ({
+      platform: "linux",
+      which: (name) => (name === "claude" ? "/bin/claude" : null),
+      spawn: (command, cwd, env) => {
+        calls.push(`${cwd} ${command.join(" ")} ${Object.keys(env).join(",")}`);
+        const out = command.includes("--show-toplevel") ? "/r/repo\n" : "abc123\n";
+        return { code: 0, out };
+      },
+      cwd: "/r/repo/scripts",
+      env: { PATH: "/bin", GH_TOKEN: "x" },
+      ...over,
+    });
+    const context = evalContext("ux-review-eval", host());
+    expect(typeof context === "string" ? context : { ...context, run: typeof context.run }).toEqual(
+      {
+        claude: "/bin/claude",
+        run: "function",
+        root: "/r/repo",
+        head: "abc123",
+      },
+    );
+    // No token reaches what it runs: only the filtered env.
+    expect(calls).toEqual([
+      "/r/repo/scripts git rev-parse --show-toplevel PATH",
+      "/r/repo git rev-parse HEAD PATH",
+    ]);
+    expect(evalContext("ux-review-eval", host({ platform: "win32" }))).toBe(
+      "ux-review-eval: the evals run on Linux and macOS only: on Windows their git deny patterns miss backslash paths",
+    );
+    expect(evalContext("harness-eval", host({ which: () => null }))).toBe(
+      "harness-eval: claude is not on the PATH",
+    );
+    expect(evalContext("harness-eval", host({ spawn: () => ({ code: 128, out: "" }) }))).toBe(
+      "harness-eval: run it inside the flightdeck repository",
+    );
+  });
+
   test("#986 review: the evals refuse Windows, where their git deny patterns and paths do not hold", () => {
     expect(evalPlatformRefusal("win32")).toBe(
       "the evals run on Linux and macOS only: on Windows their git deny patterns miss backslash paths",

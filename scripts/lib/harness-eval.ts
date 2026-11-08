@@ -174,6 +174,28 @@ export interface EvalOptions {
   keep: boolean;
 }
 
+/** The effects an eval starts from: the platform, the PATH lookup, a spawn, the folder and env. */
+export interface EvalHost {
+  platform: string;
+  which: (name: string) => string | null;
+  spawn: (command: string[], cwd: string, env: Record<string, string>) => EvalRun;
+  cwd: string;
+  env: Record<string, string | undefined>;
+}
+
+/** What an eval runs with: claude, a runner with the filtered env, the repo's root and HEAD. */
+export interface EvalContext {
+  claude: string;
+  run: EvalRunner;
+  root: string;
+  head: string;
+}
+
+/** The context of an eval named `tag`, or why it cannot start (prefixed with the tag). */
+export function evalContext(_tag: string, _host: EvalHost): EvalContext | string {
+  return "";
+}
+
 /** Why the evals refuse to run on this platform, or null. */
 export function evalPlatformRefusal(platform: string): string | null {
   // The git deny patterns match / paths only, `core.hooksPath=/dev/null` and a spawn without a
@@ -319,7 +341,13 @@ export function childEnv(env: Record<string, string | undefined>): Record<string
 }
 
 /** Runs a command in a folder and gives its exit code and stdout. */
-export type EvalRunner = (command: string[], cwd: string) => { code: number; out: string };
+/** A command's exit code and stdout. */
+export interface EvalRun {
+  code: number;
+  out: string;
+}
+
+export type EvalRunner = (command: string[], cwd: string) => EvalRun;
 
 /**
  * Clones `root` at `head` into `dir`, removes origin and installs the dependencies; the reason it
