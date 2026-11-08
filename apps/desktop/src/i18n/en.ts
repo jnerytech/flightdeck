@@ -4345,6 +4345,7 @@ export const en: Dictionary = {
       setStatus: {
         hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
         label: "Status of {title}",
+        inFile: "In the file: {status}",
         apply: "Change",
         applyLabel: "Change the status of {title}",
         changed:

@@ -204,12 +204,7 @@ export function KnowledgePanel(
               <li key={entry.path} className="flex flex-col gap-1 rounded-md border p-2">
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{entry.title}</span>
-                  {/* #1105: the select shows the status; the badge only where it cannot be
-                      changed, or while another one is chosen and not yet written. */}
-                  {(!props.status ||
-                    (chosen[entry.path] !== undefined && chosen[entry.path] !== entry.status)) && (
-                    <Badge variant="outline">{word(entry.status)}</Badge>
-                  )}
+                  {!props.status && <Badge variant="outline">{word(entry.status)}</Badge>}
                   {props.status && (
                     <select
                       ref={(el) => {
@@ -260,6 +255,18 @@ export function KnowledgePanel(
                       {t("projectPage.knowledge.setStatus.apply")}
                     </Button>
                   )}
+                  {/* #1105: the select shows the status. While another one is chosen and not yet
+                      written, a badge after Change says what the file still says; after, so the
+                      select does not move under the pointer. */}
+                  {props.status &&
+                    chosen[entry.path] !== undefined &&
+                    chosen[entry.path] !== entry.status && (
+                      <Badge variant="outline">
+                        {t("projectPage.knowledge.setStatus.inFile", {
+                          status: word(entry.status),
+                        })}
+                      </Badge>
+                    )}
                   {entry.type && (
                     <span className="text-muted-foreground text-xs">
                       {t(`projectPage.knowledge.type.${entry.type}` as Key)}
