@@ -190,7 +190,7 @@ export class Workspace {
   private join(): void {
     const [first, second] = this.areas as [Tabs, Tabs];
     this.moving = true;
-    for (const tab of [...second.tabs]) {
+    for (const tab of [...second.tabs] /* NOSONAR: take() removes each tab from it */) {
       second.take(tab.id);
       first.adopt(tab, first.tabs.length);
     }

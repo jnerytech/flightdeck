@@ -260,7 +260,7 @@ export class TeleportPackages {
   }
 
   async idle(): Promise<void> {
-    await Promise.all([...this.pending]);
+    await Promise.all(this.pending);
   }
 
   /** The transcript's bytes, read only when it is a regular file inside a history root. */
