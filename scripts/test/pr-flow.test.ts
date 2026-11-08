@@ -68,6 +68,8 @@ function fake(
     now?: number;
     /** The message GitHub's GraphQL answers with when it refuses. */
     graphqlError?: string;
+    /** GitHub ignores the head filter and lists every open PR (#1115, seen 2026-11-08). */
+    ignoreHead?: boolean;
   } = {},
 ) {
   const prs = opts.prs ?? [];
@@ -109,8 +111,8 @@ function fake(
         const head = /head=\{owner\}:([^&]+)/.exec(path)?.[1];
         return ok(
           prs
-            .filter((p) => p.head === head && p.state === "open")
-            .map((p) => `${p.number}\n`)
+            .filter((p) => (opts.ignoreHead || p.head === head) && p.state === "open")
+            .map((p) => `${p.number} ${p.head}\n`)
             .join(""),
         );
       }
@@ -543,6 +545,32 @@ describe("pr-flow: open", () => {
     expect(await prFlow(["open", "a"], f.deps)).toBe(0);
     expect(f.writes).toEqual([]);
     expect(f.out()).toContain("a already has PR #12");
+  });
+
+  test("#1115: when GitHub ignores the head filter, another branch's PR is never taken as this one's", async () => {
+    const f = fake({
+      pushed: ["repo-wide"],
+      prs: [pr(1113, "q1110-windows-tests"), pr(1111, "new-doc-label")],
+      subjects: { "repo-wide": ["feat(repo-wide): x (#1108)"] },
+      ignoreHead: true,
+    });
+    expect(await prFlow(["open", "repo-wide"], f.deps)).toBe(1);
+    expect(f.writes).toEqual([]);
+    expect(f.out()).not.toContain("already has PR");
+    expect(f.out()).toContain("#1113 (q1110-windows-tests), #1111 (new-doc-label)");
+    expect(f.out()).toContain("not repo-wide");
+  });
+
+  test("#1115: the branch's own PR is found among others GitHub lists", async () => {
+    const f = fake({
+      pushed: ["a"],
+      prs: [pr(13, "b"), pr(12, "a")],
+      subjects: { a: ["fix(a): x (#1)"] },
+      ignoreHead: true,
+    });
+    expect(await prFlow(["open", "a"], f.deps)).toBe(0);
+    expect(f.writes).toEqual([]);
+    expect(f.out()).toContain("a already has PR #12\n");
   });
 
   test("a branch not pushed, one whose commits name no issue, or an unreadable issue is refused", async () => {

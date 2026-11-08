@@ -316,12 +316,21 @@ describe("release: the bump and its PR", () => {
   });
 
   test("a release PR that is open already is waited for, with nothing written", async () => {
-    const { deps, calls, logs } = fake({ openPr: "40\n" });
+    const { deps, calls, logs } = fake({ openPr: "40 release-v0.37.0\n" });
     expect(await release(["v0.37.0"], deps)).toBe(0);
     expect(calls.some((c) => c.startsWith("write") || c.startsWith("git switch"))).toBe(false);
     expect(pushed(calls)).toBe(false);
     expect(calls.some((c) => c.includes(PR_OPEN))).toBe(true);
     expect(logs.join("\n")).toContain("#40");
+  });
+});
+
+describe("release: another branch's PR is not the release PR (#1115)", () => {
+  test("when GitHub ignores the head filter, the run refuses and writes nothing", async () => {
+    const { deps, calls, logs } = fake({ openPr: "1111 new-doc-label\n" });
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(calls.some((c) => c.startsWith("write") || c.startsWith("git switch"))).toBe(false);
+    expect(logs.join("\n")).toContain("#1111 (new-doc-label)");
   });
 });
 
