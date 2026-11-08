@@ -722,6 +722,42 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
   },
 
+  // Set up Claude Code (issue #75): the preview lists what the setup would add and writes nothing;
+  // applying writes it; a new preview then has nothing left to add. The demo keeps its state, so
+  // the second language starts from the finished setup and checks only that last part.
+  "harness-setup": async (c) => {
+    await open(c, { name: "project", host: ALFA, projectId: c.ids.emptyProject });
+    const dialog = c.page.getByRole("alertdialog");
+    const apply = dialog.getByRole("button", {
+      name: c.t("projectPage.harness.setup.apply"),
+      exact: true,
+    });
+    const adds = dialog.getByText(c.t("projectPage.harness.setup.message"), { exact: true });
+    const nothing = dialog.getByText(c.t("projectPage.harness.setup.nothing"), { exact: true });
+    const preview = async () => {
+      await c.page
+        .getByRole("button", { name: c.t("projectPage.harness.setup.action"), exact: true })
+        .click();
+      await adds.or(nothing).first().waitFor({ timeout: WAIT });
+    };
+    await preview();
+    if ((await adds.count()) > 0) {
+      // What it would write is on screen before anything is written: CLAUDE.md among the new files.
+      await dialog.getByText("CLAUDE.md", { exact: true }).first().waitFor({ timeout: WAIT });
+      await apply.click();
+      const done = c.t("projectPage.harness.setup.done", { files: "" }).trim();
+      await c.page.getByRole("status").filter({ hasText: done }).waitFor({ timeout: WAIT });
+      await dialog.waitFor({ state: "detached", timeout: WAIT });
+      await preview();
+    }
+    // Nothing left to add: the dialog says so and Apply is off.
+    await nothing.waitFor({ timeout: WAIT });
+    if (!(await apply.isDisabled()))
+      throw new Error("harness-setup: Apply is on with nothing to add");
+    await c.page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+  },
+
   // 25. The Files tab of a session opens a file read only; when the session rewrites it (a second
   // window sends the message) the open file offers its diff, live, and the diff toggles back (#506).
   // The demo keeps its state: after the first run README.md is already changed, so only a fresh

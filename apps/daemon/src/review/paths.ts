@@ -13,10 +13,14 @@ export const firstStep = (inside: string) => inside.split(/[\\/]/)[0] ?? "";
  * trailing dots or spaces (Windows drops them), with an NTFS stream after a colon
  * (`.git::$INDEX_ALLOCATION` is the folder itself), and as its 8.3 short name (`GIT~1`, issue #1034).
  */
-export function isGitDir(name: string): boolean {
-  const base = (name.split(":")[0] ?? "").replace(/[. ]+$/, "").toLowerCase();
+export const isGitDir = (name: string) => {
+  const colon = name.indexOf(":");
+  const whole = colon < 0 ? name : name.slice(0, colon);
+  let end = whole.length;
+  while (end > 0 && (whole[end - 1] === "." || whole[end - 1] === " ")) end--;
+  const base = whole.slice(0, end).toLowerCase();
   return base === ".git" || /^git~\d+$/.test(base);
-}
+};
 
 /**
  * A file of the review, given relative to the repository: never absolute, never above the root
