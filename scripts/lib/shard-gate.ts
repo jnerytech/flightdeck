@@ -8,7 +8,7 @@
 
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { testArgs } from "../test/timeout.ts";
-import { COVERAGE_GATE, checkCoverage, type FileCoverage } from "./coverage-check.ts";
+import { belowGate, COVERAGE_GATE, checkCoverage, type FileCoverage } from "./coverage-check.ts";
 import type { FunctionCoverage } from "./coverage-funcs.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
 import { TEST_FILE } from "./test-related.ts";
@@ -172,6 +172,8 @@ function functionsOf(
   if (hits.some((hit) => hit >= found)) return [found, found];
   // Each shard calls a subset; when their sizes cannot reach the total, some function never ran.
   if (hits.reduce((total, hit) => total + hit, 0) < found) return [Math.max(...hits), found];
+  // The best shard alone reaches the gate: whatever the others ran, the file passes (#1011 review).
+  if (!belowGate([Math.max(...hits), found])) return [Math.max(...hits), found];
   problems.push(
     `${path}: the shards' function counts cannot tell whether every function ran; run the suite whole`,
   );

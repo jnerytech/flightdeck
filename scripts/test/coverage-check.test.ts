@@ -44,7 +44,15 @@ describe("cobertura", () => {
 
   test("#1002: the whole suite's threshold in bunfig.toml is the same 80%", () => {
     const bunfig = readFileSync(join(import.meta.dir, "../..", "bunfig.toml"), "utf8");
-    expect(bunfig).toContain("coverageThreshold = { lines = 0.8, functions = 0.8 }");
+    // Compared by value, so spacing in the TOML does not matter (#1011 review).
+    const threshold =
+      /coverageThreshold\s*=\s*\{\s*lines\s*=\s*([\d.]+)\s*,\s*functions\s*=\s*([\d.]+)\s*\}/.exec(
+        bunfig,
+      );
+    expect([Number(threshold?.[1]), Number(threshold?.[2])]).toEqual([
+      COVERAGE_GATE / 100,
+      COVERAGE_GATE / 100,
+    ]);
   });
 
   test("aponta arquivos abaixo de 80% e arquivos nunca carregados", () => {
