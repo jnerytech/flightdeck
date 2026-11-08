@@ -100,6 +100,67 @@ const title = (tab: Tab, state: AppState, store: AppStore) => {
 // The Ctrl+Tab switcher draws the same icon and title as the strip.
 export { ICONS as TAB_ICONS, title as tabTitle };
 
+type TabFacts = {
+  t: AppStore["i18n"]["t"];
+  state: AppState;
+  store: AppStore;
+  /** The host the tab belongs to; the shared tabs belong to none. */
+  host: string | null;
+};
+
+/** What a tab of the strip shows and says: its name, kind, badge, server and the words a screen reader gets. */
+function tabFacts(tab: Tab, at: TabFacts) {
+  const { t, state, store, host } = at;
+  const label = title(tab, state, store);
+  const kind = tabKind(tab.router.current);
+  const badge = tabBadge(tab.router.current, state);
+  const pinnedLabel = badge ? `${label}, ${t(`tabs.badge.${badge}`)}` : label;
+  const ssh = sshOf(tab, store);
+  const hostName = host ? (state.hosts.find((h) => h.id === host)?.name ?? host) : undefined;
+  // A pinned tab shows no title, and a host's tab no longer carries its host's name in it: the
+  // name is set here, with the badge's words.
+  const pinnedName = tab.pinned ? pinnedLabel : undefined;
+  return {
+    label,
+    kind,
+    Icon: ICONS[kind],
+    badge,
+    cacheSince: tabIdleSince(tab.router.current, state),
+    ssh,
+    // A production server is easy to mistake for another: its tab gets a red border.
+    prod: ssh ? isProd(ssh.tags) : undefined,
+    // The host's tabs carry its color.
+    hostColor: host ? hostColorVar(host) : undefined,
+    ariaLabel: hostName ? t("tabs.named", { title: pinnedLabel, host: hostName }) : pinnedName,
+  };
+}
+
+/** The marks on a tab's wrapper: production, pinned, its host's color, the side a drag would drop on, and the classes. */
+function tabItemMarks(
+  tab: Tab,
+  marks: {
+    prod: boolean | undefined;
+    hostColor: string | undefined;
+    drop: "before" | "after" | null;
+  },
+) {
+  const { prod, hostColor, drop } = marks;
+  return {
+    ...(prod === undefined ? {} : { "data-prod": String(prod) }),
+    ...(tab.pinned ? { "data-pinned": "true" } : {}),
+    ...(hostColor
+      ? { "data-host": "true", style: { "--host-color": hostColor } as CSSProperties }
+      : {}),
+    ...(drop ? { "data-drop": drop } : {}),
+    className: cn(
+      "tab-item group relative text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
+      prod && "border-2 border-destructive",
+      drop === "before" && "border-l-2 border-l-primary",
+      drop === "after" && "border-r-2 border-r-primary",
+    ),
+  };
+}
+
 /** The tabs of the window: icon and title, pin and close. The shortcuts live in `App`. */
 export function TabBar(
   props: Readonly<{
@@ -368,28 +429,10 @@ export function TabBar(
         <div ref={tablist} role="tablist" aria-label={t("tabs.list")} className="tab-strip">
           {row.map((tab) => {
             const own = setOf(tab);
-            const label = title(tab, state, store);
-            const kind = tabKind(tab.router.current);
-            const Icon = ICONS[kind];
             const selected = selectedTab(tab);
-            const badge = tabBadge(tab.router.current, state);
-            const cacheSince = tabIdleSince(tab.router.current, state);
-            const badgeWords = badge ? t(`tabs.badge.${badge}`) : "";
-            const pinnedLabel = badge ? `${label}, ${badgeWords}` : label;
-            const ssh = sshOf(tab, store);
-            // A production server is easy to mistake for another: its tab gets a red border.
-            const prod = ssh ? isProd(ssh.tags) : undefined;
-            // The host's tabs carry its color; the shared ones belong to no host.
-            const tabHost = ownHost(tab);
-            const hostColor = tabHost ? hostColorVar(tabHost) : undefined;
-            const hostName = tabHost
-              ? (state.hosts.find((h) => h.id === tabHost)?.name ?? tabHost)
-              : undefined;
-            const pinnedName = tab.pinned ? pinnedLabel : undefined;
-            const ariaLabel = hostName
-              ? t("tabs.named", { title: pinnedLabel, host: hostName })
-              : pinnedName;
             const group = groupOf(tab);
+            const { label, kind, Icon, badge, cacheSince, ssh, prod, hostColor, ariaLabel } =
+              tabFacts(tab, { t, state, store, host: ownHost(tab) });
             const startsGroup = group !== undefined && group.tabs.tabs[0] === tab;
             return (
               <Fragment key={tab.id}>
@@ -403,20 +446,11 @@ export function TabBar(
                 {/* The wrapper is invisible to the tablist: the tab and its × are siblings inside it. */}
                 <div // NOSONAR: the wrapper is invisible to the tablist: the tab and its × are siblings inside it
                   role="presentation"
-                  {...(prod === undefined ? {} : { "data-prod": String(prod) })}
-                  {...(tab.pinned ? { "data-pinned": "true" } : {})}
-                  {...(hostColor
-                    ? { "data-host": "true", style: { "--host-color": hostColor } as CSSProperties }
-                    : {})}
-                  {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
-                  className={cn(
-                    "tab-item group relative text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
-                    prod && "border-2 border-destructive",
-                    dropOn?.id === tab.id &&
-                      (dropOn.side === "before"
-                        ? "border-l-2 border-l-primary"
-                        : "border-r-2 border-r-primary"),
-                  )}
+                  {...tabItemMarks(tab, {
+                    prod,
+                    hostColor,
+                    drop: dropOn?.id === tab.id ? dropOn.side : null,
+                  })}
                 >
                   <IconTip label={label}>
                     <button

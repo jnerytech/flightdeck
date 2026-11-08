@@ -98,7 +98,8 @@ export async function startPrivateServer(opts: ServeOptions): Promise<PrivateSer
   listening = true;
   opts.ledger?.add(child.pid);
 
-  const authorization = `Basic ${btoa(`opencode:${password}`)}`;
+  const credentials = `opencode:${password}`;
+  const authorization = `Basic ${btoa(credentials)}`;
   return {
     url,
     pid: child.pid,
