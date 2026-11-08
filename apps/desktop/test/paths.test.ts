@@ -1,7 +1,19 @@
 import { describe, expect, test } from "bun:test";
-import { breadcrumbSteps, trimTrailingSeparators } from "../src/lib/paths.ts";
+import { breadcrumbSteps, holdsFolder, trimTrailingSeparators } from "../src/lib/paths.ts";
 
 describe("paths", () => {
+  test("holdsFolder: the root itself and what is below it, with either separator, and nothing else", () => {
+    expect([
+      holdsFolder("/work/app", "/work/app"),
+      holdsFolder("/work/app/", "/work/app"),
+      holdsFolder("/work/app", "/work/app/src"),
+      holdsFolder("C:\\work\\app", "C:\\work\\app\\src"),
+      holdsFolder("/work/app", "/work/app-two"),
+      holdsFolder("/work/app", "/work"),
+      holdsFolder("/work/app", "/WORK/app"),
+    ]).toEqual([true, true, true, true, false, false, false]);
+  });
+
   test("trimTrailingSeparators drops trailing slashes and backslashes", () => {
     expect(trimTrailingSeparators("/home/me/project/")).toBe("/home/me/project");
     expect(trimTrailingSeparators("C:\\work\\project\\")).toBe("C:\\work\\project");

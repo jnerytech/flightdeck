@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { DepResult } from "@flightdeck/protocol";
 import {
   missingTools,
+  probeAfter,
   SETUP_HIDDEN_KEY,
   SETUP_NOTIFIED_KEY,
   SETUP_TOOLS_KEY,
@@ -271,5 +272,64 @@ describe("setup-steps: what the person chose (issue #164)", () => {
     expect(
       new SetupSettings(memory({ [SETUP_TOOLS_KEY]: "[1,2]" }).storage).dismissedTools(),
     ).toEqual([]);
+  });
+});
+
+describe("probeAfter: what a look at the host leaves in the probe (#363)", () => {
+  const none = { hooks: null, github: null, projects: null } as const;
+  const known: SetupProbe = {
+    hooks: "installed",
+    github: true,
+    projects: [{ id: "old" } as never],
+  };
+
+  test("hooks come only from this look: a look that did not ask leaves them unknown", () => {
+    expect(probeAfter(known, { github: false, projects: false }, none).hooks).toBeNull();
+    expect(
+      probeAfter(
+        undefined,
+        { github: false, projects: false },
+        {
+          ...none,
+          hooks: { ok: true, data: { status: "outdated" } },
+        },
+      ).hooks,
+    ).toBe("outdated");
+    expect(
+      probeAfter(known, { github: false, projects: false }, { ...none, hooks: { ok: false } })
+        .hooks,
+    ).toBeNull();
+  });
+
+  test("GitHub is the answer when it was asked (installed and logged in), unknown when refused, and the last one when not asked", () => {
+    const asked = { github: true, projects: false };
+    const said = (installed: boolean, loggedIn: boolean) => ({
+      ...none,
+      github: { ok: true, data: { installed, loggedIn } } as const,
+    });
+    expect([
+      probeAfter(known, asked, said(true, true)).github,
+      probeAfter(known, asked, said(true, false)).github,
+      probeAfter(known, asked, said(false, true)).github,
+      probeAfter(known, asked, { ...none, github: { ok: false } }).github,
+      probeAfter(known, asked, none).github,
+      probeAfter(known, { github: false, projects: false }, said(false, false)).github,
+      probeAfter(undefined, { github: false, projects: false }, none).github,
+    ]).toEqual([true, false, false, null, null, true, null]);
+  });
+
+  test("the projects are the new list when it was asked for and came, else the last list, else none", () => {
+    const fresh = [{ id: "new" }] as never;
+    const came = { ...none, projects: { ok: true, data: { projects: fresh } } } as const;
+    const asked = { github: false, projects: true };
+    expect([
+      probeAfter(known, asked, came).projects,
+      probeAfter(known, asked, { ...none, projects: { ok: false } }).projects,
+      probeAfter(known, asked, none).projects,
+      probeAfter(known, { github: false, projects: false }, came).projects,
+      "projects" in probeAfter(undefined, { github: false, projects: false }, came),
+      probeAfter(undefined, asked, { ...none, projects: { ok: true, data: { projects: [] } } })
+        .projects,
+    ]).toEqual([fresh, known.projects, known.projects, known.projects, false, []]);
   });
 });

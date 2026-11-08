@@ -9,6 +9,12 @@ export function trimTrailingSeparators(path: string): string {
   return path.slice(0, end);
 }
 
+/** Whether `folder` is `root` or below it, as written (case counts, either separator). */
+export function holdsFolder(root: string, folder: string): boolean {
+  const base = trimTrailingSeparators(root);
+  return folder === base || folder.startsWith(`${base}/`) || folder.startsWith(`${base}\\`);
+}
+
 /** Whether `path` is `root` or inside it; ignores case and treats `\` as `/`. */
 export const isInside = (path: string, root: string): boolean => {
   const norm = (p: string) => trimTrailingSeparators(p.replaceAll("\\", "/")).toLowerCase();

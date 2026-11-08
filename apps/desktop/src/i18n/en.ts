@@ -4254,6 +4254,8 @@ export const en: Dictionary = {
     harness: {
       title: "Claude Code setup",
       hint: "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Read-only: nothing here changes the project.",
+      hintSetup:
+        "What helps Claude Code work well in this project: its instructions, the hooks that run by themselves, skills, subagents, permissions and MCP servers. Nothing changes until you read a setup and apply it.",
       summary: "{n} of {total} parts found",
       found: "Found",
       missing: "Missing",
@@ -4273,6 +4275,28 @@ export const en: Dictionary = {
         format: "a formatter after edits",
         gitAdd: "a check before git add",
         secrets: "a check on secret files",
+      },
+      setup: {
+        action: "Set up Claude Code",
+        apply: "Apply the setup",
+        message:
+          "This adds what the project is missing. It only adds: nothing already there is changed or removed.",
+        nothing: "Nothing to add: the project already has every part this setup writes.",
+        hooks: "Hooks to add",
+        hookLine: "{event} ({matcher}): {command}",
+        formatterNote:
+          "This runs the project's own format script: what it does comes from the project's files, and a pull can change it.",
+        deny: "Deny rules to add (best effort)",
+        denyNote:
+          "They stop Claude Code's Read tool on these files and these git add forms. They do not stop a shell command such as cat .env.",
+        files: "New files",
+        conflicts: "Left as they are: these keys already hold something else",
+        unreadable: "Not read, so left as they are",
+        untrusted: "These hooks and rules load only once you trust this project.",
+        reformat:
+          "Rewrite .claude/settings.json with a new layout. Spacing changes, and a repeated key or a very large number may be rewritten.",
+        done: "Set up: {files}",
+        again: "Preview again",
       },
     },
     trust: {

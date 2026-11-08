@@ -1908,8 +1908,9 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
   const base = ctxOf(false);
   const stable = stableBinPath(base.home, base.platform);
   let command = base.command;
-  const prompt = createPrompt(linesOf(deps.stdin ?? Bun.stdin.stream()), (text) =>
-    process.stdout.write(text),
+  const prompt = createPrompt(
+    linesOf(deps.stdin ?? Bun.stdin.stream()),
+    deps.stdout ?? process.stdout.write.bind(process.stdout),
   );
   const install = (): CliArgs => ({ command: "service", action: "install", config: file });
   await runSetup(
@@ -2335,6 +2336,8 @@ export interface CliDeps {
   binaryVersion?: (bin: string) => Promise<string | null>;
   /** Standard input (`hook session-start` reads the hook's JSON); the process's if absent. */
   stdin?: ReadableStream<Uint8Array>;
+  /** Where `setup` writes its questions; the process's stdout if absent. */
+  stdout?: (text: string) => void;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
   /** How long `service uninstall` waits for the daemon to free its lock (10 s when absent). */
@@ -2403,6 +2406,7 @@ const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       log: deps.log,
       timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
       ...(deps.platform ? { platform: deps.platform } : {}),
+      ...(deps.exec ? { exec: deps.exec } : {}),
     });
   },
   askpass: async (args, deps) => {

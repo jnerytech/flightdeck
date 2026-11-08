@@ -54,7 +54,8 @@ would then write a command the person never saw.
     change.
   - A worktree's path is written where the path says. A session in a worktree reads its
     configuration from the trusted main checkout, so the change takes effect there once it is
-    merged. S4b says so.
+    merged. The app cannot tell a worktree from its main checkout (the trust panel shows the folder
+    that trust comes through), so the set-up dialog does not say this (S4b).
 - **Guards.**
   - Feature `harnessApply`.
   - A near connection only (loopback or Tailscale), like `project.trust.set`: a hook runs its

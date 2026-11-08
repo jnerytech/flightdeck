@@ -498,6 +498,8 @@ describe("planRelated", () => {
       });
       expect(plan.command).toEqual(["bun", "run", "test"]);
       expect(plan.targets).toBeUndefined();
+      // #996: the entry reads this report to say why a whole-suite run failed.
+      expect(plan.wholeCoverage).toBe("coverage/lcov.info");
       expect(plan.output).toContain("test:related --pr: the whole suite runs");
     }
     // A rename shows its old path as gone, so a renamed test counts as one that went away.
