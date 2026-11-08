@@ -2,8 +2,10 @@ import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FlightdeckError } from "../src/errors.ts";
+import { startServer } from "../src/server.ts";
 import type { CheckRunner } from "../src/workflows/check-runner.ts";
 import { git } from "./board-helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 import { commitWorkflow, workflowCard } from "./workflow-helpers.ts";
 
 setDefaultTimeout(30_000);
@@ -112,5 +114,44 @@ describe("run-resume: a failed run resumes from its failed step (#1266)", () => 
       "run_resume_not_failed",
       "run_resume_no_head",
     ]);
+  });
+
+  test("over the protocol, the check answers anywhere, and only a near connection resumes", async () => {
+    const { board, manager, root, runId, runWhen } = await failedAtC();
+    const token = "run-resume-token-0123456789abcd";
+    const base = {
+      manager,
+      board,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token,
+      allowedRoots: [root],
+      allowedNetworks: ["0.0.0.0/0", "::/0"],
+    };
+    const servers = [startServer(base), startServer({ ...base, peerOf: () => "8.8.8.8" })];
+    const clients = servers.map((server) => new FrameClient(server.url));
+    try {
+      for (const client of clients) await client.request("hello", { token, client: "t" });
+      const [near, far] = clients as [FrameClient, FrameClient];
+      const send = async (client: FrameClient, confirm: boolean) => {
+        const ack = await client.request("run.resume", { runId, ...(confirm ? { confirm } : {}) });
+        const error = ack.error as { reason?: string } | undefined;
+        return ack.ok === true ? ack.data : (error?.reason ?? null);
+      };
+      const checked = await send(far, false);
+      const refused = await send(far, true);
+      const resumed = await send(near, true);
+      const done = await runWhen((run) => run.status === "completed");
+      expect([checked, refused, resumed, done?.status]).toEqual([
+        { from: "c", ok: true },
+        "transport_refused",
+        { from: "c", ok: true },
+        "completed",
+      ]);
+    } finally {
+      for (const client of clients) client.close();
+      for (const server of servers) await server.stop();
+    }
   });
 });
