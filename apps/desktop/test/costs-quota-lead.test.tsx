@@ -109,6 +109,18 @@ for (const language of ["en", "pt-BR"] as const) {
       expect(bars.compareDocumentPosition(dollars) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
+    test("with several hosts each one on a subscription has its bars, and one on an API key has none", async () => {
+      await online(language, [
+        { name: "alfa", five: 0.2 },
+        { name: "beta", five: 0.5 },
+        { name: "gama" },
+      ]);
+      await settle(() => total(w.total) === "US$ 18.00");
+      expect(meter(w.five)?.value).toBeCloseTo(0.2);
+      expect(meter(w.five.replace("alfa", "beta"))?.value).toBeCloseTo(0.5);
+      expect(meter(w.five.replace("alfa", "gama"))).toBeNull();
+    });
+
     test("a host with no plan window reports leads with dollars and shows no quota block", async () => {
       await online(language, [{ name: "alfa" }]);
       await settle(() => total(w.total) === "US$ 6.00");

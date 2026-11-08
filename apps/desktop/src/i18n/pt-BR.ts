@@ -4902,6 +4902,7 @@ export const ptBR = {
   },
   costsUi: {
     setBudget: "Definir um orçamento",
+    quotaLead: "Cota do plano",
     title: "Custos",
     subtitle: "equivalente em API, estimado; em assinatura, não é cobrado",
     filters: "Filtros dos custos",

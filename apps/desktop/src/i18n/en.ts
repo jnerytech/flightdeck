@@ -4885,6 +4885,7 @@ export const en: Dictionary = {
   },
   costsUi: {
     setBudget: "Set a budget",
+    quotaLead: "Plan quota",
     title: "Costs",
     subtitle: "API-equivalent and estimated; on a subscription it is not charged",
     filters: "Cost filters",
