@@ -154,7 +154,7 @@ export async function usageReport(
   if (!call) return none;
   const raw = record(await bounded(call.call(query, { skipBehaviors: true }), timeoutMs));
   const limits = record(raw?.rate_limits);
-  if (raw === null || raw.rate_limits_available !== true || limits === null) {
+  if (raw?.rate_limits_available !== true || limits === null) {
     return { ...none, plan: normalizePlan(raw?.subscription_type) };
   }
   const windows = WINDOWS.flatMap((window): QuotaReading[] => {
