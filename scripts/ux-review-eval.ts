@@ -8,12 +8,11 @@
  * environment. It costs real quota: opt-in only, never in the suite or CI, and never under the slot.
  * Linux and macOS only: it refuses Windows, where its git deny patterns miss backslash paths.
  */
-import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { whichOnPath } from "../apps/daemon/src/which.ts";
-import { type EvalHost, evalContext, evalOptions, prepareClone } from "./lib/harness-eval.ts";
+import { startEval } from "./eval-start.ts";
+import { prepareClone } from "./lib/harness-eval.ts";
 import {
   applyCase,
   gradeReport,
@@ -25,36 +24,12 @@ import {
 } from "./lib/ux-review-eval.ts";
 
 const argv = process.argv.slice(2);
-const options = evalOptions([
+const options = startEval("ux-review-eval", [
   ...(argv.includes("--samples") ? [] : ["--samples", "1"]),
   ...(argv.includes("--budget") ? [] : ["--budget", "0.5"]),
   ...argv,
 ]);
-if (typeof options === "string") {
-  console.error(`ux-review-eval: ${options}`);
-  process.exit(2);
-}
-const spawn: EvalHost["spawn"] = (command, cwd, env) => {
-  const proc = spawnSync(command[0] ?? "", command.slice(1), {
-    cwd,
-    env,
-    encoding: "utf8",
-    maxBuffer: 1 << 28,
-  });
-  return { code: proc.status ?? 1, out: proc.stdout ?? "" };
-};
-const context = evalContext("ux-review-eval", {
-  platform: process.platform,
-  which: whichOnPath,
-  spawn,
-  cwd: process.cwd(),
-  env: process.env,
-});
-if (typeof context === "string") {
-  console.error(context);
-  process.exit(2);
-}
-const { claude, run, root, head } = context;
+const { run, root, head } = options;
 // The reports hold what the agent read: a 0700 folder, 0600 files.
 const outDir = mkdtempSync(join(tmpdir(), "fd-ux-review-eval-"));
 
@@ -97,7 +72,7 @@ for (const uxCase of UX_CASES) {
     const diff = run(["git", "diff", `${base}..HEAD`], dir).out;
     console.error(`ux-review-eval: ${uxCase.name} sample ${sample}/${options.samples} in ${dir}`);
     const session = run(
-      [claude, ...reviewArgs(reviewPrompt(base, diff), options, { dir, home: homedir() })],
+      [options.claude, ...reviewArgs(reviewPrompt(base, diff), options, { dir, home: homedir() })],
       dir,
     );
     const report = reportOf(session.out);

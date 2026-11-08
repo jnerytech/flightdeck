@@ -10,17 +10,13 @@
  * and never under the slot (the model's turn is not a heavy run).
  * Linux and macOS only: it refuses Windows, where its git deny patterns miss backslash paths.
  */
-import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { whichOnPath } from "../apps/daemon/src/which.ts";
+import { startEval } from "./eval-start.ts";
 import {
   type EvalCommit,
-  type EvalHost,
   type EvalTask,
-  evalContext,
-  evalOptions,
   parseStream,
   prepareClone,
   type RunFacts,
@@ -45,32 +41,8 @@ const TASKS: EvalTask[] = [
   },
 ];
 
-const options = evalOptions(process.argv.slice(2));
-if (typeof options === "string") {
-  console.error(`harness-eval: ${options}`);
-  process.exit(2);
-}
-const spawn: EvalHost["spawn"] = (command, cwd, env) => {
-  const proc = spawnSync(command[0] ?? "", command.slice(1), {
-    cwd,
-    env,
-    encoding: "utf8",
-    maxBuffer: 1 << 28,
-  });
-  return { code: proc.status ?? 1, out: proc.stdout ?? "" };
-};
-const context = evalContext("harness-eval", {
-  platform: process.platform,
-  which: whichOnPath,
-  spawn,
-  cwd: process.cwd(),
-  env: process.env,
-});
-if (typeof context === "string") {
-  console.error(context);
-  process.exit(2);
-}
-const { claude, run, root, head } = context;
+const options = startEval("harness-eval", process.argv.slice(2));
+const { claude, run, root, head } = options;
 // Transcripts and the report hold what the session read and ran: a 0700 folder, 0600 files.
 const outDir = mkdtempSync(join(tmpdir(), "fd-harness-eval-"));
 const save = (name: string, text: string) => {
