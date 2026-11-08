@@ -46,7 +46,7 @@ const permanent = (status: number | null): boolean =>
 /** Several events of one kind that waited together become one message. */
 function merged(events: NotifyEvent[]): NotifyEvent {
   const first = events[0] as NotifyEvent;
-  const last = events[events.length - 1] as NotifyEvent;
+  const last = events.at(-1) as NotifyEvent;
   if (events.length === 1) return first;
   return {
     ...last,

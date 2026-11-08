@@ -127,7 +127,9 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       writeFileSync(join(husky.repo, ".husky", "commit-msg"), "#!/bin/sh\nexit 0\n");
       chmodSync(join(husky.repo, ".husky", "commit-msg"), 0o755);
       writeFileSync(join(husky.repo, ".husky", "post-commit"), "not executable\n");
-      // The new branch's switch runs this one too.
+      // The new branch's switch runs this one too, and the PR's push the next.
+      writeFileSync(join(husky.repo, ".husky", "pre-push"), "#!/bin/sh\nexit 0\n");
+      chmodSync(join(husky.repo, ".husky", "pre-push"), 0o755);
       writeFileSync(join(husky.repo, ".husky", "post-checkout"), "#!/bin/sh\nexit 0\n");
       chmodSync(join(husky.repo, ".husky", "post-checkout"), 0o755);
       git(husky.repo, "config", "core.hooksPath", ".husky");
@@ -139,7 +141,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
         (await own.changes.get(TARGET)).hooks,
         (await husky.changes.get(TARGET)).hooks,
         (await linked.changes.get("session:s-2")).hooks,
-      ]).toEqual([["pre-commit"], ["commit-msg", "post-checkout"], ["pre-commit"]]);
+      ]).toEqual([["pre-commit"], ["commit-msg", "post-checkout", "pre-push"], ["pre-commit"]]);
     },
   );
 

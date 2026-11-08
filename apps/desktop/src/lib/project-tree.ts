@@ -52,11 +52,11 @@ function folderTone(
       isInside(row.cwd, path) &&
       !apart.some((other) => isInside(row.cwd, other)),
   );
-  const tones = new Set(
-    here.map((r) =>
-      r.state === "needs_you" ? "needs-you" : r.state === "running" ? "running" : "idle",
-    ),
-  );
+  const toneOf = (state: string) => {
+    if (state === "needs_you") return "needs-you";
+    return state === "running" ? "running" : "idle";
+  };
+  const tones = new Set(here.map((r) => toneOf(r.state)));
   return BY_PRIORITY.find((tone) => tones.has(tone)) ?? "idle";
 }
 

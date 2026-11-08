@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import {
+  activeCount,
   type HubGroup,
   type HubRow,
   hubRows,
@@ -137,5 +138,40 @@ describe("hub-row-state: a failed session is over, like an ended one (#1132)", (
   test("a kept Failed filter comes back on reload", () => {
     const storage = { getItem: () => JSON.stringify({ state: "failed" }) };
     expect(loadHubFilter(storage).state).toBe("failed");
+  });
+});
+
+// Review of #1144: the word, the detail and the project's count must agree with the rest of the
+// row. An asleep row says Asleep (its dot does), a background session has no end time to count
+// from, and a pinned row that ended or failed is not active.
+describe("hub-row-state: the row's word, detail and count tell the truth (#1132)", () => {
+  for (const [language, asleep] of [
+    ["en", "Asleep"],
+    ["pt-BR", "Dormindo"],
+  ] as const) {
+    test(`${language}: an asleep row says ${asleep}, not Idle`, () => {
+      const said = rowStatus(row({ state: "idle", asleep: true }), NOW, translator(language));
+      expect(said.word).toBe(asleep);
+    });
+  }
+
+  test("a background row that failed shows no time: it would count from its start", () => {
+    const background = row({
+      origin: "background",
+      state: "failed" as HubRow["state"],
+      summary: null,
+      lastActivity: "2026-11-08T11:00:00.000Z",
+    });
+    expect(rowStatus(background, NOW, translator("en"))).toEqual({ word: "Failed", detail: "" });
+  });
+
+  test("a project's active count leaves out the pinned rows that ended or failed", () => {
+    const rows = [
+      row({ key: "a", state: "running" }),
+      row({ key: "b", state: "idle" }),
+      row({ key: "c", state: "ended", pinned: true }),
+      row({ key: "d", state: "failed" as HubRow["state"], pinned: true }),
+    ];
+    expect(activeCount(rows)).toBe(2);
   });
 });

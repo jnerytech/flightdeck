@@ -1,0 +1,5 @@
+# Finished sessions in Needs you are a Gherkin feature (issue #1134)
+
+- **Done.** `scripts/e2e/bdd/features/needs-you-finished.feature`, en and pt-BR. A session waits for a command; the person approves it from the Needs you queue (so the turn ends while they are on that page), and the Finished group lists the session ("alfa · name", "Finished"); choosing the row shows the session, how it ended and "See the changes", which opens the session on its Changes view. A second scenario: leaving Needs you is the look, so coming back the group is gone. Each makes its own session.
+- **Proof.** Once locally per language (both scenarios green), and red when the scenario stays on the page. The 90 s limit is the PR's e2e job.
+- **Not done.** "N files changed" is not asserted: the demo's host does not answer the count for a session that changed nothing, and the detail then says nothing about files. The notification per finished session (never while the app has focus) is the unit tests' (a web page has no OS notification).

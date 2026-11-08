@@ -1,6 +1,7 @@
 import type { ChangesResult, DiffFile, ReviewComment } from "@flightdeck/protocol";
+import { reviewMessage } from "@flightdeck/protocol";
 import { Pencil, RotateCcw } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,8 @@ export function ChangesPanel(
     target: string;
     /** Something above the files (a card's position against its base, its PR); gets the answer. */
     extra?: (changes: ChangesResult, refresh: () => Promise<void>) => ReactNode;
+    /** Where the collected review can be put to be edited and sent (a session's message box). */
+    onCompose?: (text: string) => void;
   }>,
 ) {
   const t = useT();
@@ -48,6 +51,20 @@ export function ChangesPanel(
   const [mode, setMode] = useState<"unified" | "split">("unified");
   const [selection, setSelection] = useState<Selection | null>(null);
   const [body, setBody] = useState("");
+  const commentBox = useRef<HTMLTextAreaElement>(null);
+  /** The line button that started the comment, to give the focus back when the box closes. */
+  const picker = useRef<HTMLElement | null>(null);
+  const closeComposer = () => {
+    setSelection(null);
+    setBody("");
+    const back = picker.current;
+    picker.current = null;
+    if (back?.isConnected) back.focus();
+  };
+  // Picking a line is the start of a comment: the box takes the focus, so the keys go on from there.
+  useEffect(() => {
+    if (selection) commentBox.current?.focus();
+  }, [selection]);
   const [reverting, setReverting] = useState<string | null>(null);
   const [undo, setUndo] = useState<Undo | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -86,6 +103,9 @@ export function ChangesPanel(
   }, [store, until]);
 
   const onPick = (path: string, side: ReviewComment["side"], line: number, extend: boolean) => {
+    if (!selection && document.activeElement instanceof HTMLElement) {
+      picker.current = document.activeElement;
+    }
     setSelection((current) => select(current, path, side, line, extend));
   };
 
@@ -100,8 +120,7 @@ export function ChangesPanel(
       body: body.trim(),
     });
     if (!added) return;
-    setSelection(null);
-    setBody("");
+    closeComposer();
     await loadComments();
   };
 
@@ -152,16 +171,27 @@ export function ChangesPanel(
     <form aria-label={t("changes.composer")} className="flex flex-col gap-2 rounded-md border p-3">
       <p className="font-mono text-xs">{where}</p>
       <Textarea
+        ref={commentBox}
         aria-label={t("changes.commentLabel")}
         value={body}
         className="min-h-16"
         onChange={(e) => setBody(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            void addComment();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            closeComposer();
+          }
+        }}
       />
       <div className="flex gap-2">
         <Button type="button" size="sm" onClick={() => void addComment()}>
           {t("changes.addComment")}
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => setSelection(null)}>
+        <Button type="button" variant="outline" size="sm" onClick={closeComposer}>
           {t("common.cancel")}
         </Button>
       </div>
@@ -289,6 +319,12 @@ export function ChangesPanel(
             void store.hostCommand(hostId, "review.remove", { id }).then(loadComments)
           }
           onSend={() => void send()}
+          {...(props.onCompose
+            ? {
+                onCompose: () =>
+                  props.onCompose?.(reviewMessage(comments.filter((c) => c.state === "draft"))),
+              }
+            : {})}
         />
       )}
       {reverting && (

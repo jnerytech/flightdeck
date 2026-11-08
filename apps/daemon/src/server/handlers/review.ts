@@ -139,6 +139,19 @@ export const reviewHandlers = {
     }
     return await server.need("sessionCommits").commit(target, { files, message, branch });
   },
+  "changes.pr": async (payload, { ws, server }) => {
+    const { target, title, body, remote, confirm } = payload;
+    // A push and a PR, public from then on: near only, and confirmed.
+    requireVaultTransport(ws.data.origin, "changes.pr", server.opts.log);
+    if (confirm !== true) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "opening the session's PR needs confirm: true",
+        "changes_pr_confirm",
+      );
+    }
+    return await server.need("sessionPrs").open(target, { title, body, remote });
+  },
   "changes.undoRevert": async (payload, { server }) => {
     const { target, path, confirm } = payload;
     return await server.need("files").undoRevert(target, path, confirm === true);

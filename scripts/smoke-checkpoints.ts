@@ -222,9 +222,10 @@ async function run(work: string): Promise<void> {
     const code = await withTimeout(wrapper.exited, "flightdeckd claude terminar");
     if (code !== 0) throw new Error(`flightdeckd claude saiu com ${code}`);
     const all = await waitSnapshots(4, "snapshot depois do segundo turno");
-    log(
-      `snapshots: ${all.map((s) => `${s.n} ${s.kind}${s.prompt ? ` (${s.prompt})` : ""}`).join(", ")}`,
+    const described = all.map((s) =>
+      s.prompt ? `${s.n} ${s.kind} (${s.prompt})` : `${s.n} ${s.kind}`,
     );
+    log(`snapshots: ${described.join(", ")}`);
     if (text(join(project, "a.txt")) !== "v3\n" || !existsSync(join(project, "b.txt"))) {
       throw new Error("os turnos não deixaram a.txt e b.txt");
     }

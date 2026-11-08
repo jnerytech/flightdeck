@@ -6,7 +6,8 @@ import type { UsageEntry, UsageFilter } from "@/lib/vault-usage";
 
 const REQUESTERS = ["you", "claude", "automation", "workflow", "unknown"] as const;
 type Requester = (typeof REQUESTERS)[number];
-const isRequester = (value: string): value is Requester => REQUESTERS.some((r) => r === value);
+const isRequester = (value: string): value is Requester =>
+  (REQUESTERS as readonly string[]).includes(value);
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 

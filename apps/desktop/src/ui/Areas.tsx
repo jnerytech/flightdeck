@@ -108,6 +108,7 @@ export function Areas(
   return (
     <div ref={box} className="grid min-h-0 flex-1" style={gridStyle(split, template)}>
       {areas.flatMap((area, i) => {
+        const shared = i === 0 && !hostless ? { shared: hostTabs.shared } : {};
         const pane = (
           <section
             // The first area is one pane for every host: its tab row lives on across a switch of
@@ -119,23 +120,13 @@ export function Areas(
           >
             {inHeader ? (
               createPortal(
-                <TabBar
-                  store={store}
-                  state={state}
-                  tabs={area}
-                  {...(i === 0 && !hostless ? { shared: hostTabs.shared } : {})}
-                >
+                <TabBar store={store} state={state} tabs={area} {...shared}>
                   {i === 0 && buttons}
                 </TabBar>,
                 inHeader,
               )
             ) : (
-              <TabBar
-                store={store}
-                state={state}
-                tabs={area}
-                {...(i === 0 && !hostless ? { shared: hostTabs.shared } : {})}
-              >
+              <TabBar store={store} state={state} tabs={area} {...shared}>
                 {i === 0 && buttons}
               </TabBar>
             )}

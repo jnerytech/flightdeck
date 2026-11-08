@@ -103,7 +103,7 @@ export class BoardWidth {
 }
 
 /** A column's count: `3`. */
-export function columnCount(shown: number): string {
+export function columnCount(shown: number): string /* NOSONAR: BoardView names this step */ {
   return String(shown);
 }
 

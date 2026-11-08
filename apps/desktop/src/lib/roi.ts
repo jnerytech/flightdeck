@@ -289,4 +289,4 @@ export function headline(
   };
 }
 
-export type { RoiWeek };
+export type { RoiWeek } from "@flightdeck/protocol";

@@ -454,12 +454,12 @@ export const BoardView = memo(function BoardView(props: {
     );
     const stayed = refused.map((r) => r.card.id);
     setPicked((before) => before.filter((id) => stayed.includes(id) || !ids.includes(id)));
+    const stayedOne =
+      refused.length === 1 ? t("board.stayedOne", { names: nameRefusals(refused) }) : null;
     setNotice(
       refused.length === 0
         ? null
-        : refused.length === 1
-          ? t("board.stayedOne", { names: nameRefusals(refused) })
-          : t("board.stayed", { count: refused.length, names: nameRefusals(refused) }),
+        : (stayedOne ?? t("board.stayed", { count: refused.length, names: nameRefusals(refused) })),
     );
     setBusy(false);
     boardRef.current?.focus();
@@ -490,12 +490,13 @@ export const BoardView = memo(function BoardView(props: {
     // A discard is not atomic on the host: a card it refused may be partly cleaned up, so it is
     // not left selected for a second try that would fail on what is already gone.
     setPicked((before) => before.filter((id) => !acting.includes(id)));
+    const failedOne =
+      failed.length === 1 ? t("board.discardFailedOne", { names: nameRefusals(failed) }) : null;
     setNotice(
       failed.length === 0
         ? null
-        : failed.length === 1
-          ? t("board.discardFailedOne", { names: nameRefusals(failed) })
-          : t("board.discardFailed", { count: failed.length, names: nameRefusals(failed) }),
+        : (failedOne ??
+            t("board.discardFailed", { count: failed.length, names: nameRefusals(failed) })),
     );
     setBusy(false);
     boardRef.current?.focus();
@@ -625,6 +626,8 @@ export const BoardView = memo(function BoardView(props: {
     setDescription("");
   };
 
+  const selectedSaid =
+    acting.length === 1 ? t("board.selectedOne") : t("board.selectedCount", { n: acting.length });
   return (
     // The board fills its page (#641): the columns row takes the rest of the height and scrolls
     // sideways at the window's bottom, and each column's cards scroll by themselves.
@@ -717,14 +720,7 @@ export const BoardView = memo(function BoardView(props: {
           />
         )}
         <BoardStatus
-          text={[
-            selection.length === 0
-              ? ""
-              : acting.length === 1
-                ? t("board.selectedOne")
-                : t("board.selectedCount", { n: acting.length }),
-            notice ?? "",
-          ]
+          text={[selection.length === 0 ? "" : selectedSaid, notice ?? ""]
             .filter(Boolean)
             .join(". ")}
         />

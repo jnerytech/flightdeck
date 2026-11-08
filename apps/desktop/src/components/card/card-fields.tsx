@@ -57,6 +57,7 @@ function CardTextField(
   const problem =
     props.problem?.(value) ??
     (props.emptyReason && value.trim() === "" && source === "" ? props.emptyReason : null);
+  const placeholder = props.placeholder ? { placeholder: props.placeholder } : {};
   return (
     <Field label={props.label}>
       {(control) => {
@@ -67,7 +68,7 @@ function CardTextField(
               {...assist}
               value={value}
               className="min-h-20 w-full"
-              {...(props.placeholder ? { placeholder: props.placeholder } : {})}
+              {...placeholder}
               onChange={(e) => edit(e.target.value)}
             />
           ) : (
@@ -76,7 +77,7 @@ function CardTextField(
               {...assist}
               className="w-full"
               value={value}
-              {...(props.placeholder ? { placeholder: props.placeholder } : {})}
+              {...placeholder}
               autoFocus={props.autoFocus === true}
               onChange={(e) => edit(e.target.value)}
             />

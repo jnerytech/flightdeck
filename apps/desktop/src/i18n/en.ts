@@ -1035,7 +1035,7 @@ export const en: Dictionary = {
     back: "Back to the list",
     filterLabel: "Filter sessions",
     toggleProject: "Show or hide {name}",
-    countChip: "{live} live of {total} sessions",
+    countChip: "{live} of {total} sessions active",
     countShort: "{live} of {total} active",
     noHost: "No host yet",
     noOnlineHost: "No host is online",
@@ -1484,6 +1484,7 @@ export const en: Dictionary = {
     quotaHistory: "the quota history",
     changes: "change review",
     sessionCommits: "committing a session's changes",
+    sessionPrs: "opening a session's PR",
     ssh: "ssh destinations",
     snippets: "snippets",
     personaSessions: "personas in open sessions",
@@ -1873,6 +1874,19 @@ export const en: Dictionary = {
       "The commit ran out of time (a hook or a signing prompt that never ended). You are on {branch} with your files as they were; go back with git checkout {base}.",
     changes_commit_hook_withheld:
       "The commit was refused, and what the hook said is not shown: it looks like it holds a secret. You are on {branch} with your files as they were; go back with git checkout {base}.",
+    changes_pr_confirm: "Confirm the PR before it is opened.",
+    changes_pr_target:
+      "Only a session started by hand opens its PR here: a card has its own Open PR.",
+    changes_pr_on_base: "The checkout is on the base branch: commit on a new branch first.",
+    changes_pr_detached: "The checkout is on no branch: commit on a new branch first.",
+    changes_pr_base:
+      "This branch was not made by a commit from the app, so its base is not known: open its PR from a terminal.",
+    changes_pr_remote:
+      "Where the push goes changed since you looked: check it again, then open the PR.",
+    changes_pr_ahead:
+      "The base branch has commits that are not on origin yet, and they would go out with this PR: push them first, or open the PR from a terminal.",
+    changes_pr_moved:
+      "The branch moved since the app's commit (other commits, or another point), so only a terminal opens its PR.",
     changes_commit_rewritten:
       "{files} changed while being committed (a hook that formats, or the session still writing), so the commit was undone: look at the changes again, then commit.",
     changes_commit_git: "Git could not make the branch or the commit in this repository.",
@@ -1952,6 +1966,10 @@ export const en: Dictionary = {
       "The description looks like it has a secret ({found}): take it out before opening the PR.",
     pr_title_secret:
       "The title looks like it has a secret ({found}): take it out before opening the PR.",
+    pr_push_timeout:
+      "The push took too long and was stopped, so no PR was opened: try again, or push from a terminal.",
+    pr_push_withheld:
+      "The push failed, and its output looks like it has a secret ({found}), so it is not shown: push from a terminal to see it.",
     merge_message_secret:
       "The merge message looks like it has a secret ({found}): take it out before merging.",
     project_no_pr_provider: "The project has no PR provider.",
@@ -2646,6 +2664,8 @@ export const en: Dictionary = {
     commentText: "Comment text",
     saveComment: "Save comment",
     send: "Send review ({n})",
+    compose: "Review in the message box ({n})",
+    composed: "The review is in the message box.",
     sentVia: {
       session: "Review sent to the session.",
       card: "Review sent to the card.",

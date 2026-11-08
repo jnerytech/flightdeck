@@ -60,7 +60,7 @@ export interface ReapResult {
  */
 export function parseStat(text: string): { pgrp: number; startTicks: number } | null {
   const rest = text.slice(text.lastIndexOf(")") + 1).trim();
-  if (!rest || text.lastIndexOf(")") < 0) return null;
+  if (!rest || !text.includes(")")) return null;
   const fields = rest.split(/\s+/);
   const pgrp = Number(fields[2]);
   const startTicks = Number(fields[19]);
