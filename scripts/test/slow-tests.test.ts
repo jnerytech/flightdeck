@@ -105,8 +105,9 @@ describe("slow-tests (#1003)", () => {
     const allow = JSON.parse(
       readFileSync(join(import.meta.dir, "../..", "slow-tests-allowlist.json"), "utf8"),
     ) as SlowAllowlist;
+    // Empty is the goal (#1003): the file still has both maps, and every entry the rule's shape.
+    expect([typeof allow.tests, typeof allow.files]).toEqual(["object", "object"]);
     const entries = [...Object.entries(allow.tests), ...Object.entries(allow.files)];
-    expect(entries.length).toBeGreaterThan(0);
     for (const [id, why] of entries) {
       expect(`${id}: ${/^\S+\.test\.tsx?( > .+)?$/.test(id)} ${/#\d+/.test(why)}`).toBe(
         `${id}: true true`,
