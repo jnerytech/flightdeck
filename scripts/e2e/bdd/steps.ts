@@ -655,3 +655,81 @@ step(When, "I choose to start a session in {string} with that text", async (c, p
     .getByRole("option", { name: c.t("palette.startIn", { project, text }) })
     .click({ timeout: WAIT });
 });
+
+// Review in the message box (#1146): comments on the lines of a session's Changes go to its message box.
+step(
+  Given,
+  "a session of my own in a git folder with an edited file {string}",
+  async (c, file = "") => {
+    const folder = unique(c, "review");
+    const dir = join(dirname(c.ids.freshRepo), folder);
+    mkdirSync(dir, { recursive: true });
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", dir, ...args], { stdio: "ignore" });
+    git("init", "-q", "-b", "main");
+    git("config", "user.name", "BDD");
+    git("config", "user.email", "bdd@flightdeck.invalid");
+    git("config", "commit.gpgsign", "false");
+    writeFileSync(join(dir, file), "first line\n");
+    git("add", file);
+    git("commit", "-q", "-m", "first");
+    writeFileSync(join(dir, file), "first line, edited\n");
+    mine(c).project = folder;
+    await open(c, { name: "new-session", host: ALFA });
+    await c.page.getByRole("button", { name: c.t("newSession.moreOptions"), exact: true }).click();
+    await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).fill(folder);
+    await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill("hello");
+    await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
+    await c.page
+      .getByLabel(c.t("session.message"), { exact: true })
+      .waitFor({ timeout: SESSION_WAIT });
+  },
+);
+
+step(When, "I open the Changes view of the session", async (c) =>
+  c.page
+    .getByRole("tab", { name: c.t(VIEW_LABEL.changes), exact: true })
+    .click({ timeout: SESSION_WAIT }),
+);
+
+step(When, "I comment {string} on line 1 of {string}", async (c, text = "", file = "") => {
+  await c.page
+    .getByRole("button", { name: c.t("changes.commentLine", { line: 1, path: file }), exact: true })
+    .click({ timeout: SESSION_WAIT });
+  await c.page.getByLabel(c.t("changes.commentLabel"), { exact: true }).fill(text);
+  await c.page.getByRole("button", { name: c.t("changes.addComment"), exact: true }).click();
+});
+
+step(When, "I hand the review over to the message box", async (c) =>
+  c.page.getByRole("button", { name: c.t("changes.compose", { n: 1 }), exact: true }).click(),
+);
+
+step(
+  Then,
+  "the message box holds my comment {string} and the session is back on its conversation",
+  async (c, text = "") => {
+    await c.page
+      .getByText(c.t("changes.composed"), { exact: true })
+      .first()
+      .waitFor({ timeout: WAIT });
+    const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+    await waitFor(
+      async () => (await box.inputValue()).includes(text),
+      "the message box holds the review",
+    );
+  },
+);
+
+step(When, "I send the message", async (c) =>
+  c.page.getByLabel(c.t("session.message"), { exact: true }).press("Enter"),
+);
+
+step(Then, "the conversation shows my review with {string}", async (c, text = "") => {
+  // Sent: the box is empty again, and the text is in the conversation (the Changes view is closed).
+  const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+  await waitFor(
+    async () => (await box.inputValue()) === "",
+    "the message box was emptied by the send",
+  );
+  await c.page.getByText(text).first().waitFor({ timeout: SESSION_WAIT });
+});
