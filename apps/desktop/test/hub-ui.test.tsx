@@ -290,7 +290,7 @@ describe("hub-ui", () => {
       item(title)?.querySelector('[data-slot="row-word"]')?.textContent ?? null;
     const summary = (title: string) =>
       item(title)?.querySelector('[data-slot="summary"]')?.textContent ?? "";
-    const chips = Array.from(document.querySelectorAll("output[aria-label]")).map(
+    const chips = Array.from(document.querySelectorAll("output[aria-label]:not(.sr-only)")).map(
       (o) => o.textContent ?? "",
     );
     expect([
