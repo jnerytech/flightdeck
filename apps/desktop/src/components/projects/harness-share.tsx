@@ -33,6 +33,7 @@ export function HarnessShare(props: Readonly<HarnessShareProps>) {
 
   const share = async () => {
     const named = title.trim();
+    setOutcome(null);
     setAsking(false);
     setBusy(true);
     const result = await store
@@ -88,13 +89,27 @@ export function HarnessShare(props: Readonly<HarnessShareProps>) {
           onCancel={() => setAsking(false)}
           onConfirm={() => void share()}
         >
-          <Field label={t("projectPage.harness.share.name")}>
+          <Field
+            label={t("projectPage.harness.share.name")}
+            {...(title.trim() !== "" && id === ""
+              ? { error: t("projectPage.harness.share.needsName") }
+              : id !== ""
+                ? { help: t("projectPage.harness.share.idHint", { id }) }
+                : {})}
+          >
             {(control) => (
               <Input
                 {...control}
+                autoFocus
                 value={title}
                 maxLength={80}
                 onChange={(event) => setTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && id !== "") {
+                    event.preventDefault();
+                    void share();
+                  }
+                }}
               />
             )}
           </Field>

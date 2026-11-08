@@ -4513,6 +4513,8 @@ export const ptBR = {
         message:
           "Guarda o CLAUDE.md, os agentes e as skills deste projeto como um modelo do qual qualquer projeto deste host pode partir. As configurações ficam de fora: nunca hooks, permissões ou servidores MCP. Cada arquivo é verificado em busca de segredos antes.",
         name: "Nome do modelo",
+        idHint: "Salvo como {id}.",
+        needsName: "Use pelo menos uma letra ou um dígito (a-z, 0-9).",
         confirm: "Compartilhar",
         filesOne: "1 arquivo",
         filesMany: "{n} arquivos",

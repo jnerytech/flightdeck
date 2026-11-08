@@ -4506,6 +4506,8 @@ export const en: Dictionary = {
         message:
           "Keeps this project's CLAUDE.md, agents and skills as a template any project on this host can start from. Settings stay out: never hooks, permissions or MCP servers. Every file is checked for secrets first.",
         name: "Template name",
+        idHint: "Saved as {id}.",
+        needsName: "Use at least one letter or digit (a-z, 0-9).",
         confirm: "Share",
         filesOne: "1 file",
         filesMany: "{n} files",
