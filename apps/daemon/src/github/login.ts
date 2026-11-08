@@ -84,14 +84,16 @@ export class GithubLogin {
     return await run.device;
   }
 
-  cancel(): void {
-    this.stop(this.current?.proc);
+  /** Ends the running login; settles once gh has ended, so nothing is left running behind it. */
+  async cancel(): Promise<void> {
+    await this.stop(this.current?.proc);
   }
 
   /** Ends gh and its children; the process alone when the tree cannot be reached. */
-  private stop(proc: ReturnType<typeof Bun.spawn> | undefined): void {
+  private async stop(proc: ReturnType<typeof Bun.spawn> | undefined): Promise<void> {
     if (!proc) return;
-    void (this.opts.kill ?? killTree)(proc.pid).catch(() => proc.kill());
+    await (this.opts.kill ?? killTree)(proc.pid).catch(() => proc.kill());
+    await proc.exited;
   }
 
   /** Reads gh's output until the code shows up, and ends the run when gh ends or time runs out. */
@@ -101,10 +103,10 @@ export class GithubLogin {
       let found = false;
       const codeTimer = setTimeout(() => {
         reject(fail("login_timeout", "gh printed no one-time code in time"));
-        this.stop(proc);
+        void this.stop(proc);
       }, this.opts.codeTimeoutMs ?? CODE_TIMEOUT_MS);
       const loginTimer = setTimeout(
-        () => this.stop(proc),
+        () => void this.stop(proc),
         this.opts.loginTimeoutMs ?? LOGIN_TIMEOUT_MS,
       );
       const read = async (stream: ReadableStream<Uint8Array>) => {
