@@ -59,8 +59,11 @@ const ANY_STRING = new RegExp(STRING, "g");
 /** Letters only Portuguese uses: a string with one is text for a person. */
 const ACCENT = /[áâãàéêíóôõúç]/i;
 /** Words only Portuguese uses and no English text does (accented ones are ACCENT's). */
-const PORTUGUESE =
-  /\b(?:sem|para|este|esta|isso|fora|dados|antes|depois|erro|arquivo|resposta|desconhecido|existe|encontrad[oa]|nenhum|nenhuma|veio|confira|salvar|pasta|chamado|perdida|suportada)\b/i;
+const PORTUGUESE = [
+  /\b(?:sem|para|este|esta|isso|fora|dados|antes|depois|erro|arquivo|resposta)\b/i,
+  /\b(?:desconhecido|existe|encontrad[oa]|nenhum|nenhuma|veio|confira|salvar|pasta|chamado|perdida|suportada)\b/i,
+];
+const speaksPortuguese = (text: string) => PORTUGUESE.some((re) => re.test(text));
 /** A thrown error is for the log, but a refusal shows its message as the detail: only Portuguese counts. */
 const THROWN = /\bnew (?:Request)?Error\(|\bthrow\b/;
 /** Lines that are not code that runs: comments and imports. */
@@ -101,7 +104,7 @@ export function visibleTsLiterals(source: string, allowed: readonly string[] = [
         }
       }
       for (const m of line.matchAll(ANY_STRING)) {
-        if (ACCENT.test(m[0]) || PORTUGUESE.test(m[0].replaceAll(TEMPLATE_HOLE, ""))) {
+        if (ACCENT.test(m[0]) || speaksPortuguese(m[0].replaceAll(TEMPLATE_HOLE, ""))) {
           keep(m.index, m[0]);
         }
       }

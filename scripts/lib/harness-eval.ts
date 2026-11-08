@@ -117,7 +117,7 @@ function addBlocks(steps: EvalStep[], byId: Map<string, EvalStep>, blocks: Strea
  * `^` already matches after each one, and a `\s*` that crossed them rescanned the same blank run
  * from every line start (quadratic).
  */
-const FAIL_COUNT = /^[^\S\n\r\u2028\u2029]*[1-9]\d* fail$/m;
+const FAIL_COUNT = /^[^\S\n\r\u2028\u2029]*[1-9]\d* fail$/m; // NOSONAR: \S is not repeated in the class, it is negated with the line breaks
 
 const GRADERS = ["test-file", "test-first", "red-by-assertion", "audit", "coverage", "no-error"];
 
