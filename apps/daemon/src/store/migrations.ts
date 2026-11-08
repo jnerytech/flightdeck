@@ -931,4 +931,8 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE external_sessions ADD COLUMN permission_mode TEXT;
   `,
+  // Issue #78: the spec the host last found says draft: true in its front matter.
+  `
+  ALTER TABLE cards ADD COLUMN spec_draft INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
