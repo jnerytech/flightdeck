@@ -1,17 +1,20 @@
 import type { SessionFile } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 
 /**
  * The files a session wrote, from its transcripts (`session.files`): path, how many tool calls
- * and when. Changes made through Bash never show up here, and the text says so.
+ * and when. Changes made through Bash never show up here, and the text says so. It sits under the
+ * diff, another source: its heading names its own, and with none its line says where the diff's
+ * changes came from instead of claiming nothing was written (#1128).
  */
 export function SessionFiles(
   props: Readonly<{ store: AppStore; hostId: string; claudeSessionId: string }>,
 ) {
   const t = useT();
   const { store, hostId, claudeSessionId } = props;
+  const titleId = useId();
   const [files, setFiles] = useState<SessionFile[] | null>(null);
 
   useEffect(() => {
@@ -22,7 +25,10 @@ export function SessionFiles(
 
   if (files === null) return null;
   return (
-    <section className="flex flex-col gap-2">
+    <section aria-labelledby={titleId} className="flex flex-col gap-2">
+      <h3 id={titleId} className="font-medium text-sm">
+        {t("changes.sessionFilesTitle")}
+      </h3>
       {files.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("changes.sessionFilesNone")}</p>
       ) : (
@@ -40,7 +46,7 @@ export function SessionFiles(
           ))}
         </ul>
       )}
-      <p className="text-muted-foreground text-xs">{t("changes.bashNote")}</p>
+      {files.length > 0 && <p className="text-muted-foreground text-xs">{t("changes.bashNote")}</p>}
     </section>
   );
 }
