@@ -1805,8 +1805,9 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 @utility row-title {
-  /* The title is the row's name: it keeps up to 45% of the row before the word gives way (#1167). */
-  min-width: min(9rem, 45%);
+  /* The title is the row's name: it keeps up to 40% of the row before the word gives way (#1167);
+     45% pushed the actions menu 3 px out of the row at 640. */
+  min-width: min(9rem, 40%);
 }
 
 /* The / menu: a popover above the message box, so it takes no room in the page and scrolls inside. */
