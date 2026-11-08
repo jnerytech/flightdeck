@@ -28,7 +28,11 @@ const hostOf = (roots: string[], allowBypass = false) =>
   }) as unknown as FormHost;
 
 /** The form with a store (which keeps the last choices) and the sessions it creates. */
-function open(host: FormHost, before?: (store: InstanceType<typeof AppStore>) => void) {
+function open(
+  host: FormHost,
+  before?: (store: InstanceType<typeof AppStore>) => void,
+  more: { extra?: React.ReactNode; extraSet?: boolean } = {},
+) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
   stores.push(store);
   before?.(store);
@@ -38,6 +42,7 @@ function open(host: FormHost, before?: (store: InstanceType<typeof AppStore>) =>
       <NewSessionForm
         host={host}
         store={store}
+        {...more}
         onCreate={(payload) => void created.push(payload as Record<string, unknown>)}
       />
     </TContext.Provider>,
@@ -223,5 +228,35 @@ describe("nova-sessao-primeiro: the last choices are already made", () => {
     });
     expect(created.map((c) => c.permissionMode)).toEqual(["bypassPermissions"]);
     expect(store.newSessionPrefs.value.mode).toBe("plan");
+  });
+
+  test("emptying the subfolder that opened More options keeps it open under the cursor", async () => {
+    open(hostOf(["/one", "/two"]), remembered);
+    expect(field("Subfolder").value).toBe("api");
+    await fill("Subfolder", "");
+    expect(moreOptions()?.getAttribute("aria-expanded")).toBe("true");
+    expect(field("Subfolder").closest("[hidden]")).toBeNull();
+  });
+
+  test("a setting held by the screen (a persona, background) opens More options by itself", async () => {
+    const extra = (
+      <label>
+        Persona
+        <input aria-label="Persona" />
+      </label>
+    );
+    const view = open(hostOf(["/work"]), undefined, { extra, extraSet: true });
+    expect(moreOptions()?.getAttribute("aria-expanded")).toBe("true");
+    expect(field("Persona").closest("[hidden]")).toBeNull();
+    expect(view.created).toHaveLength(0);
+  });
+
+  test("without such a setting More options stays folded, and the person's click wins", async () => {
+    const extra = <input aria-label="Persona" />;
+    open(hostOf(["/work"]), undefined, { extra, extraSet: false });
+    expect(moreOptions()?.getAttribute("aria-expanded")).toBe("false");
+    await press("More options");
+    await press("More options");
+    expect(moreOptions()?.getAttribute("aria-expanded")).toBe("false");
   });
 });

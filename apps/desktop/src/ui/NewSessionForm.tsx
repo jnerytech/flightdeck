@@ -12,6 +12,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
+import { CLAUDE_MODELS } from "../lib/new-session-prefs.ts";
 import { isInside, trimTrailingSeparators } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -27,7 +28,7 @@ const MODES: PermissionMode[] = [
   "bypassPermissions",
 ];
 
-const MODELS = ["opus", "sonnet", "haiku"];
+const MODELS = CLAUDE_MODELS;
 
 /** Phase 39: what an OpenCode session can start in (Flightdeck's own two agents, and bypass). */
 const OPENCODE_MODES: PermissionMode[] = ["default", "plan", "bypassPermissions"];
@@ -53,6 +54,8 @@ export function NewSessionForm(
     promptRequired?: boolean;
     /** More fields above Criar sessão: the persona picker (phase 20). */
     extra?: React.ReactNode;
+    /** Something in `extra` is set (a persona, background), so More options opens (issue #1135). */
+    extraSet?: boolean;
     /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
     onFolder?(cwd: string): void;
     /** The hosts a session can start on (online); the form offers a choice when there are two or more. */
