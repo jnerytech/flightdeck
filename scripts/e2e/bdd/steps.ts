@@ -9,6 +9,7 @@ import { formatPairingLink } from "@flightdeck/protocol";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
+import { DEMO_PR_CARD, DEMO_PR_URL } from "../../lib/e2e-journeys.ts";
 import { type Context, createSession, open, SESSION_WAIT, WAIT, waitFor } from "../journeys.ts";
 import { Given, Then, When } from "./fixtures.ts";
 
@@ -1185,3 +1186,58 @@ step(Then, "I put the guard of host {string} back to what it was", async (c, hos
     "the guard is back",
   );
 });
+
+// Merge PR: the demo's In review card has an open pull request whose merge GitHub holds for a review.
+const mergeButton = (c: Context) =>
+  c.page.getByRole("button", { name: dictionary(c).cardMergePr.action, exact: true });
+
+/** The In review card's detail page, from its tile on the board. */
+async function openPrCard(c: Context) {
+  const title = DEMO_PR_CARD;
+  mine(c).card = title;
+  await tile(c).getByRole("button", { name: title, exact: true }).click({ timeout: WAIT });
+}
+
+/** The Merge PR dialog of that card, with its pull request on show. */
+async function askToMerge(c: Context) {
+  await openPrCard(c);
+  await mergeButton(c).click();
+  const dialog = c.page.getByRole("alertdialog");
+  await dialog.getByText(DEMO_PR_URL, { exact: true }).waitFor({ timeout: WAIT });
+  return dialog;
+}
+
+step(When, "I open the card whose pull request is open and ask to merge it", async (c) => {
+  await askToMerge(c);
+});
+
+step(When, "I choose to squash and merge", async (c) => {
+  const text = dictionary(c).cardMergePr;
+  const dialog = c.page.getByRole("alertdialog");
+  await dialog.getByLabel(text.how, { exact: true }).selectOption({ label: text.squash });
+  await dialog.getByRole("button", { name: text.action, exact: true }).click();
+});
+
+step(When, "I cancel the merge", async (c) => {
+  const dialog = c.page.getByRole("alertdialog");
+  await dialog.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+  await dialog.waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(
+  Then,
+  "the card says the merge waits for a review and links to the pull request",
+  async (c) => {
+    const refusal = c.page.getByRole("alert").filter({
+      hasText: c.t("daemonRefusal.card_pr_review_required"),
+    });
+    await refusal.waitFor({ timeout: WAIT });
+    await refusal
+      .getByRole("link", { name: dictionary(c).cardMergePr.openPr, exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+);
+
+step(Then, "the card still offers Merge PR", async (c) =>
+  mergeButton(c).waitFor({ timeout: WAIT }),
+);
