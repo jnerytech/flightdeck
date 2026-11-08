@@ -80,6 +80,15 @@ function readLcov(lcov: string): Map<string, FileGaps> {
   return files;
 }
 
+/** What a file of the report misses ("lines 3-4 not covered; functions 1/2 called"), or "". */
+function gapsOf(file: FileGaps): string {
+  const gaps: string[] = [];
+  if (file.uncovered.length > 0) gaps.push(`lines ${lineRanges(file.uncovered)} not covered`);
+  const [hit, found] = file.functions;
+  if (hit < found) gaps.push(`functions ${hit}/${found} called`);
+  return gaps.join("; ");
+}
+
 /** Checks the targets against an lcov report; other files in the report are ignored. */
 export function checkChanged(lcov: string, targets: readonly string[]): CoverageVerdict {
   const report = readLcov(lcov);
@@ -90,14 +99,35 @@ export function checkChanged(lcov: string, targets: readonly string[]): Coverage
       verdict.problems.push(`${target}: no related test loads this file`);
       continue;
     }
-    const gaps: string[] = [];
-    if (file.uncovered.length > 0) gaps.push(`lines ${lineRanges(file.uncovered)} not covered`);
-    const [hit, found] = file.functions;
-    if (hit < found) {
-      gaps.push(`functions ${hit}/${found} called`);
-      verdict.functionGaps.push(target);
-    }
-    if (gaps.length > 0) verdict.problems.push(`${target}: ${gaps.join("; ")}`);
+    const gaps = gapsOf(file);
+    if (file.functions[0] < file.functions[1]) verdict.functionGaps.push(target);
+    if (gaps) verdict.problems.push(`${target}: ${gaps}`);
   }
   return verdict;
+}
+
+/**
+ * #996: every file of a whole-suite lcov report below 100%, with what it misses. Bun's
+ * threshold fails such a run with exit code 1 and no word on which file.
+ */
+export function belowFull(lcov: string): string[] {
+  return [...readLcov(lcov)]
+    .map(([file, gaps]) => ({ file, gaps: gapsOf(gaps) }))
+    .filter(({ gaps }) => gaps !== "")
+    .map(({ file, gaps }) => `${file}: ${gaps}`);
+}
+
+/** #996: why a whole-suite run exited non-zero, from its lcov report; null when it passed. */
+export function wholeSuiteVerdict(code: number, lcov: string | null): string | null {
+  if (code === 0) return null;
+  const lead = `test:related: the whole suite exited with ${code}`;
+  if (lcov === null) return `${lead} and left no coverage report`;
+  const below = belowFull(lcov);
+  if (below.length === 0) {
+    return `${lead} with every file at 100%: a failing test, a file that did not load or the isolation guard stopped it (see above)`;
+  }
+  return [
+    `${lead}, and ${below.length} file(s) are below the 100% gate:`,
+    ...below.map((line) => `  - ${line}`),
+  ].join("\n");
 }
