@@ -48,7 +48,12 @@ const reasonOf = async (call: () => Promise<unknown>) => {
 };
 
 /** A durable host whose run failed at b, then left as a resume waiting for its slot. */
-async function waitingAfterRestart(moveBranch: boolean, noHead = false, cardGone = false) {
+async function waitingAfterRestart(
+  moveBranch: boolean,
+  noHead = false,
+  cardGone = false,
+  reassigned = false,
+) {
   const { runner } = scripted();
   const made = await durableWorkflowCard(YAML, { checks: runner });
   const { host } = made;
@@ -74,6 +79,14 @@ async function waitingAfterRestart(moveBranch: boolean, noHead = false, cardGone
     writeFileSync(join(worktree, "later.txt"), "later\n");
     git(worktree, "add", "--", "later.txt");
     git(worktree, "commit", "-q", "-m", "Later");
+  }
+  // As a card that has started another run since: the old run is no longer its.
+  if (reassigned) {
+    host.store.db
+      .query(
+        "INSERT INTO card_runs (id, card_id, queued_at, persona, fix_prompt) VALUES (?, ?, ?, NULL, NULL)",
+      )
+      .run("another-run", host.cardId, new Date(Date.now() + 60_000).toISOString());
   }
   // As a card the board no longer has, its run left behind.
   if (cardGone) {
@@ -160,5 +173,14 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
     const made = await waitingAfterRestart(false, false, true);
     const failed = await made.runWhen((run) => run.status === "failed");
     expect(failed?.reasonKey).toBe("run_resume_card");
+  });
+
+  test("a queued resume whose card has moved on to another run fails after a restart, and never runs", async () => {
+    const made = await waitingAfterRestart(false, false, false, true);
+    const failed = await made.runWhen((run) => run.status === "failed");
+    expect([failed?.reasonKey, failed?.steps.map((step) => step.stepId)]).toEqual([
+      "run_resume_card",
+      ["a"],
+    ]);
   });
 });
