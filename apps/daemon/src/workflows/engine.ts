@@ -314,6 +314,19 @@ export class WorkflowEngine {
       if (run.status === "running") this.host.hold(run.card_id);
       void this.execute(run.id, worktreePath as string);
     }
+    // #1266: a resume that was waiting for its slot waits again, with the HEAD it was given.
+    const resumed = this.db
+      .query<RunRow & { head: string | null }, []>(
+        `SELECT r.*, (SELECT head FROM run_resumes WHERE run_id = r.id ORDER BY n DESC LIMIT 1) AS head
+         FROM workflow_runs r WHERE r.status = 'queued'
+         AND EXISTS (SELECT 1 FROM run_resumes WHERE run_id = r.id)`,
+      )
+      .all();
+    for (const run of resumed) {
+      const { worktreePath } = this.host.card(run.card_id);
+      this.resuming.add(run.id);
+      void this.afterSlot(run.id, run.card_id, worktreePath as string, run.head);
+    }
   }
 
   /** Nothing reached an agent (worktree or setup failed); the board moves the card itself. */
@@ -449,6 +462,21 @@ export class WorkflowEngine {
     const worktree = card.worktreePath;
     const head = run.head_at_end;
     this.resuming.add(run.id);
+    try {
+      this.write(run, check.from, head);
+    } catch (error) {
+      // Nothing was written: the run stays failed, and resumable.
+      this.resuming.delete(run.id);
+      throw error;
+    }
+    this.setStatus(run.id, "queued", null);
+    void this.afterSlot(run.id, run.card_id, worktree, head);
+    return check;
+  }
+
+  /** The resume recorded, the failed step's rows gone and the run's end cleared, all or none. */
+  private write(run: RunRow, from: string, head: string | null): void {
+    const check = { from };
     this.db.transaction(() => {
       const { n } = this.db
         .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM run_resumes WHERE run_id = ?")
@@ -482,9 +510,6 @@ export class WorkflowEngine {
         )
         .run(run.id);
     })();
-    this.setStatus(run.id, "queued", null);
-    void this.afterSlot(run.id, run.card_id, worktree, head);
-    return check;
   }
 
   /**
@@ -504,6 +529,8 @@ export class WorkflowEngine {
         return;
       }
       if ((await this.headOf(worktree).catch(() => null)) !== head) {
+        // The HEAD stays: asked again, the run says the branch moved, not that it has none.
+        this.restoreHead(runId, head);
         this.end(runId, "failed", "the card's branch moved while the run waited");
         this.setReasonKey(runId, "run_resume_branch_moved", {});
         this.host.place(cardId, { type: "workflow", state: "waiting" });
@@ -513,10 +540,15 @@ export class WorkflowEngine {
       this.host.place(cardId, { type: "workflow", state: "running" });
       this.begin(runId, worktree);
     } catch (error) {
+      this.restoreHead(runId, head);
       this.end(runId, "failed", reason(error));
     } finally {
       this.resuming.delete(runId);
     }
+  }
+
+  private restoreHead(runId: string, head: string | null): void {
+    this.db.query("UPDATE workflow_runs SET head_at_end = ? WHERE id = ?").run(head, runId);
   }
 
   /** "Parar": interrupts the turns going on; the interrupted step fails the run. */

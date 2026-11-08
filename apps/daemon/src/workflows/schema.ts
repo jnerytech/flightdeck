@@ -65,6 +65,7 @@ const ENGLISH: Record<string, (params: Record<string, string>) => string> = {
   cards_from_unknown: (p) =>
     `cards.from points to an agent step that does not come before it: ${p.step}`,
   step_id_duplicate: () => "repeated id",
+  step_id_dot: () => "a step id has no dot (a parallel item is <step>.<n>)",
   inner_one_action: (p) => `${p.where}: needs exactly one action (agent or check)`,
   continue_unknown: (p) => `continue points to a step that does not exist: ${p.step}`,
   persona_with_continue: () => "persona does not apply with continue: that step's session exists",
@@ -222,6 +223,8 @@ function validate(inputs: string[], steps: RawStep[]): RuleIssue[] {
       fail("step_one_action");
     }
     if (earlier.has(step.id)) fail("step_id_duplicate");
+    // #1266: `<id>.<n>` names a parallel item; a resume clears a step's items by that prefix.
+    if (step.id.includes(".")) fail("step_id_dot");
     const inner = innerSteps(step);
     for (const [path, item] of inner) {
       if (actionsOf(item, INNER_ACTIONS).length !== 1) {
