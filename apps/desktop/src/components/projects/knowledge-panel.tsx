@@ -1,5 +1,5 @@
 import type { KnowledgeEntry, KnowledgeListResult, KnowledgeStatus } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,10 @@ export function KnowledgePanel(
   const [loaded, setLoaded] = useState<KnowledgeListResult | "failed" | null>(null);
   const [filter, setFilter] = useState<Status | "all">("all");
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  // The specs a card is being made from: a second click waits, so it makes no second card. The ref
+  // answers at once (two clicks in one tick); the state disables the button.
+  const busy = useRef(new Set<string>());
+  const [making, setMaking] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     let live = true;
@@ -54,13 +58,29 @@ export function KnowledgePanel(
   // Issue #78, S-T2: a spec becomes a card that names it, so its first start reads it first and
   // works test first. A card the host refuses is not named; the banner says why.
   const makeCard = async (entry: KnowledgeEntry, projectId: string) => {
+    if (busy.current.has(entry.path)) return;
+    busy.current.add(entry.path);
+    setMaking(new Set(busy.current));
+    try {
+      await makeCardOf(entry, projectId);
+    } finally {
+      busy.current.delete(entry.path);
+      setMaking(new Set(busy.current));
+    }
+  };
+  const makeCardOf = async (entry: KnowledgeEntry, projectId: string) => {
     const made = await store.hostCommand(hostId, "card.create", {
       projectId,
       title: entry.title,
       description: "",
     });
     if (!made) return;
-    await store.hostCommand(hostId, "card.update", { cardId: made.id, specPath: entry.path });
+    // A card that does not name the spec is not what was asked: the banner says why, no success.
+    const named = await store.hostCommand(hostId, "card.update", {
+      cardId: made.id,
+      specPath: entry.path,
+    });
+    if (!named) return;
     const open = props.onOpenCard;
     store.success(
       t("projectPage.knowledge.cardMade", { title: made.title }),
@@ -178,6 +198,8 @@ export function KnowledgePanel(
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label={t("projectPage.knowledge.makeCardOf", { title: entry.title })}
+                      disabled={making.has(entry.path)}
                       onClick={() => void makeCard(entry, props.projectId as string)}
                     >
                       {t("projectPage.knowledge.makeCard")}
