@@ -166,13 +166,22 @@ export async function commitHooks(root: string): Promise<string[] | undefined> {
   // Unknown, never "none": the person must not read a failed look as no hook at all.
   if (found.code !== 0) return undefined;
   const folder = resolve(root, found.stdout.trim());
-  const out: string[] = [];
-  for (const name of COMMIT_HOOKS) {
-    const info = await stat(join(folder, name)).catch(() => null);
+  // Plain reads of different files: together, then kept in COMMIT_HOOKS' order.
+  const infos = await Promise.all(
+    COMMIT_HOOKS.map((name) => stat(join(folder, name)).catch(() => null)),
+  );
+  return COMMIT_HOOKS.filter((_, i) => {
+    const info = infos[i];
     const runs = process.platform === "win32" || ((info?.mode ?? 0) & 0o111) !== 0;
-    if (info?.isFile() && runs) out.push(name);
-  }
-  return out;
+    return info?.isFile() === true && runs;
+  });
+}
+
+/** The digest the app was sent for a file as read now: its bytes, a link's target, or deleted. */
+function digestOf(bytes: Read | null): string {
+  if (bytes === null) return "deleted";
+  const data = bytes.link ? `link\0${bytes.data.toString("utf8")}` : bytes.data;
+  return createHash("sha256").update(data).digest("hex");
 }
 
 /** Which operation is half done in the checkout, if any: a commit now would mix into it. */
@@ -361,20 +370,15 @@ export class SessionCommits {
   ): Promise<Map<string, Read | null>> {
     const out = new Map<string, Read | null>();
     for (const file of chosen) {
-      const bytes = await bytesOf(root, file.path);
+      const reading = bytesOf(root, file.path);
+      const bytes = await reading; // NOSONAR: judged in order, so the first file that fails is the one named
       if (bytes === "other") throw stale();
       if (bytes === "too large") {
         throw refuse("changes_commit_too_large", `${file.path} is too large to check for secrets`, {
           file: file.path,
         });
       }
-      const digest =
-        bytes === null
-          ? "deleted"
-          : createHash("sha256")
-              .update(bytes.link ? `link\0${bytes.data.toString("utf8")}` : bytes.data)
-              .digest("hex");
-      if (digest !== sent[file.path]) throw stale();
+      if (digestOf(bytes) !== sent[file.path]) throw stale();
       if (bytes !== null && this.deps.scanner.scan(bytes.data.toString("utf8")).length > 0) {
         throw refuse(
           "changes_commit_secret",
@@ -387,7 +391,9 @@ export class SessionCommits {
       out.set(file.path, bytes);
       // A rename's old path goes into the commit as gone: it must be gone now, and stay gone.
       if (file.oldPath) {
-        if ((await lstat(join(root, file.oldPath)).catch(() => null)) !== null) throw stale();
+        const looking = lstat(join(root, file.oldPath)).catch(() => null);
+        const old = await looking; // NOSONAR: checked with its file, in the order the files are judged
+        if (old !== null) throw stale();
         out.set(file.oldPath, null);
       }
     }
@@ -407,7 +413,8 @@ export class SessionCommits {
     const out: string[] = [];
     for (const [path, read] of expected) {
       // `<mode> <type> <id>\t<path>`, or nothing when the commit does not hold the path.
-      const entry = (await this.must(root, ["ls-tree", "HEAD", "--", path])).split(/\s+/);
+      const listing = this.must(root, ["ls-tree", "HEAD", "--", path]);
+      const entry = (await listing).split(/\s+/); // NOSONAR: one path at a time, through the one scratch blob below
       if (read === null) {
         if (entry[0] !== "") out.push(path);
         continue;
@@ -418,10 +425,11 @@ export class SessionCommits {
         continue;
       }
       const blob = join(scratch, "blob");
-      await writeFile(blob, read.data);
-      const hashed = read.link
-        ? await this.git(root, ["hash-object", "--no-filters", "--", blob])
-        : await this.git(root, ["hash-object", `--path=${path}`, "--", blob]);
+      const writing = writeFile(blob, read.data);
+      await writing; // NOSONAR: the one scratch blob holds one path's bytes at a time
+      const filter = read.link ? "--no-filters" : `--path=${path}`;
+      const hashing = this.git(root, ["hash-object", filter, "--", blob]);
+      const hashed = await hashing; // NOSONAR: hashed before the blob is written again
       if (hashed.code !== 0 || hashed.stdout.trim() !== entry[2]) out.push(path);
     }
     return out.sort(byCodeUnit);
@@ -458,16 +466,15 @@ export class SessionCommits {
       }
       // `commit -- <paths>` takes changes, deletions and renames from the tree as it is; a new file
       // must be known to git first. Only those on disk are added: a deleted path has nothing to add.
-      const onDisk: string[] = [];
-      for (const path of paths) {
-        if (
-          await lstat(join(root, path)).then(
+      const present = await Promise.all(
+        paths.map((path) =>
+          lstat(join(root, path)).then(
             () => true,
             () => false,
-          )
-        )
-          onDisk.push(path);
-      }
+          ),
+        ),
+      );
+      const onDisk = paths.filter((_, i) => present[i]);
       const added = onDisk.length === 0 ? null : await this.git(root, ["add", "--", ...onDisk]);
       const made =
         added === null || added.code === 0

@@ -590,7 +590,8 @@ export const EXIT_ALREADY_RUNNING = 3;
 
 export class AlreadyRunningError extends Error {
   constructor(dataDir: string, hint?: string) {
-    super(`already running (dataDir ${dataDir})${hint ? `; ${hint}` : ""}`);
+    const more = hint ? `; ${hint}` : "";
+    super(`already running (dataDir ${dataDir})${more}`);
   }
 }
 
