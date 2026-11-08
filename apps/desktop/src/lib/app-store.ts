@@ -2833,10 +2833,14 @@ export class AppStore {
     return this.onSelected((conn, sessionId) => conn.request("session.interrupt", { sessionId }));
   }
 
-  setMode(permissionMode: SettableMode): Promise<void> {
-    return this.onSelected((conn, sessionId) =>
-      conn.request("session.setMode", { sessionId, permissionMode }),
-    );
+  /** Whether the host took the mode (#935): false when it refused (said why), or no session is open. */
+  async setMode(permissionMode: SettableMode): Promise<boolean> {
+    let taken = false;
+    await this.onSelected(async (conn, sessionId) => {
+      await conn.request("session.setMode", { sessionId, permissionMode });
+      taken = true;
+    });
+    return taken;
   }
 
   setModel(model: string | null): Promise<void> {

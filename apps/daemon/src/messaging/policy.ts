@@ -94,7 +94,7 @@ function validateNumbers(
     const value = raw[key];
     if (value === undefined) continue;
     if (typeof value === "number" && Number.isInteger(value) && value > 0) numbers[key] = value;
-    else errors.push(`${key} é um inteiro positivo`);
+    else errors.push(`${key} must be a positive integer`);
   }
   return numbers;
 }
@@ -107,14 +107,14 @@ function validateSelector(
   errors: string[],
 ): void {
   if (!isRecord(selector)) {
-    errors.push(`${label}: ${side} é um seletor (session, project, team, host)`);
+    errors.push(`${label}: ${side} must be a selector (session, project, team, host)`);
     return;
   }
   for (const [key, value] of Object.entries(selector)) {
     if (!(SELECTOR_KEYS as readonly string[]).includes(key)) {
-      errors.push(`${label}: ${side}.${key} não existe`);
+      errors.push(`${label}: ${side}.${key} does not exist`);
     } else if (typeof value !== "string" || value === "") {
-      errors.push(`${label}: ${side}.${key} é um texto`);
+      errors.push(`${label}: ${side}.${key} must be a text`);
     }
   }
 }
@@ -126,20 +126,20 @@ function validateId(
   ids: Set<string>,
   errors: string[],
 ) {
-  if (typeof item.id !== "string" || item.id === "") errors.push(`${label}: id é obrigatório`);
-  else if (ids.has(item.id)) errors.push(`${label}: id repetido`);
+  if (typeof item.id !== "string" || item.id === "") errors.push(`${label}: id is required`);
+  else if (ids.has(item.id)) errors.push(`${label}: id is repeated`);
   else ids.add(item.id);
 }
 
 /** The exceptions given; each one with a problem goes to `errors` and is left out. */
 function validateExceptions(given: unknown, errors: string[]): Exception[] {
-  if (given !== undefined && !Array.isArray(given)) errors.push("exceptions é uma lista");
+  if (given !== undefined && !Array.isArray(given)) errors.push("exceptions must be a list");
   const exceptions: Exception[] = [];
   const ids = new Set<string>();
   for (const [index, item] of (Array.isArray(given) ? given : []).entries()) {
-    const label = `exceção #${index + 1}`;
+    const label = `exception #${index + 1}`;
     if (!isRecord(item)) {
-      errors.push(`${label}: tem de ser um objeto`);
+      errors.push(`${label}: must be an object`);
       continue;
     }
     const before = errors.length;
@@ -147,7 +147,7 @@ function validateExceptions(given: unknown, errors: string[]): Exception[] {
     validateSelector(item.from, label, "from", errors);
     validateSelector(item.to, label, "to", errors);
     if (item.bothWays !== undefined && typeof item.bothWays !== "boolean") {
-      errors.push(`${label}: bothWays é verdadeiro ou falso`);
+      errors.push(`${label}: bothWays must be true or false`);
     }
     if (errors.length === before) exceptions.push(item as unknown as Exception);
   }
@@ -157,10 +157,10 @@ function validateExceptions(given: unknown, errors: string[]): Exception[] {
 /** The policy that is valid, or why it is not. */
 export function validatePolicy(raw: unknown): { policy: Policy; errors: string[] } {
   if (raw === undefined) return { policy: DEFAULT_POLICY, errors: [] };
-  if (!isRecord(raw)) return { policy: DEFAULT_POLICY, errors: ["a política é um objeto"] };
+  if (!isRecord(raw)) return { policy: DEFAULT_POLICY, errors: ["the policy must be an object"] };
   const errors = Object.keys(raw)
     .filter((key) => !POLICY_KEYS.has(key))
-    .map((key) => `campo desconhecido: ${key}`);
+    .map((key) => `unknown field: ${key}`);
   const numbers = validateNumbers(raw, errors);
   const exceptions = validateExceptions(raw.exceptions, errors);
   if (errors.length > 0) return { policy: DEFAULT_POLICY, errors };
@@ -180,7 +180,7 @@ export function access(from: Party, to: Party, policy: Policy): Access {
   if (addressOf(from) === addressOf(to)) {
     return {
       ok: false,
-      reason: "uma sessão não manda mensagem para si mesma",
+      reason: "a session does not message itself",
       code: "messaging_self",
     };
   }
@@ -197,16 +197,16 @@ export function access(from: Party, to: Party, policy: Policy): Access {
   return {
     ok: false,
     reason:
-      "as sessões não são do mesmo projeto nem do mesmo time, e nenhuma exceção em Configurações libera este par",
+      "the sessions are not in the same project or the same team, and no exception in Settings frees this pair",
     code: "messaging_no_route",
   };
 }
 
 /** Why the text is refused, or null. */
 export function sizeError(text: string): string | null {
-  if (text.trim() === "") return "mensagem vazia";
+  if (text.trim() === "") return "empty message";
   if (new TextEncoder().encode(text).length > MAX_TEXT_BYTES) {
-    return "mensagem acima de 32 KB";
+    return "message above 32 KB";
   }
   return null;
 }
@@ -241,7 +241,7 @@ export function limits(
     return {
       ok: false,
       kind: "loop",
-      reason: `laço: mais de ${policy.loopMessages} mensagens em ${policy.loopMinutes} minutos indo e voltando entre o par; o par foi pausado`,
+      reason: `loop: more than ${policy.loopMessages} messages in ${policy.loopMinutes} minutes going back and forth between the pair; the pair was paused`,
     };
   }
   const hour = history.pair(from, to, now - HOUR_MS);
@@ -249,14 +249,14 @@ export function limits(
     return {
       ok: false,
       kind: "pair",
-      reason: `limite de ${policy.perPairPerHour} por hora por par de sessões`,
+      reason: `limit of ${policy.perPairPerHour} per hour per pair of sessions`,
     };
   }
   if (history.sent(from, now - HOUR_MS) >= policy.perSessionPerHour) {
     return {
       ok: false,
       kind: "session",
-      reason: `limite de ${policy.perSessionPerHour} por hora por sessão`,
+      reason: `limit of ${policy.perSessionPerHour} per hour per session`,
     };
   }
   return { ok: true };

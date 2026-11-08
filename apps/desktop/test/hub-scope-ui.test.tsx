@@ -92,6 +92,11 @@ const shown = (title: string) => {
     (name) => screen.queryByRole("button", { name }) !== null,
   );
 };
+/** The menu's host items: the Projects group (#126 slice 4) has its own, labelled. */
+const hostItems = () =>
+  screen
+    .queryAllByRole("menuitemradio")
+    .filter((item) => item.closest("[role=group][aria-labelledby]") === null);
 /** The Data from menu is there: checked before a pick, so a missing menu fails as an assertion. */
 const hasMenu = (name: string) => screen.queryByRole("button", { name }) !== null;
 const pick = async (menu: string, item: string) => {
@@ -224,9 +229,8 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     await act(async () => {
       fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
     });
-    const items = screen.queryAllByRole("menuitemradio").map((item) => item.textContent);
-    const checked = screen
-      .queryAllByRole("menuitemradio")
+    const items = hostItems().map((item) => item.textContent);
+    const checked = hostItems()
       .filter((item) => item.getAttribute("aria-checked") === "true")
       .map((item) => item.textContent);
     expect({ said, items, checked }).toEqual({
@@ -244,7 +248,7 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     await act(async () => {
       fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
     });
-    const items = screen.queryAllByRole("menuitemradio").map((item) => item.textContent);
+    const items = hostItems().map((item) => item.textContent);
     expect(items).toEqual(["All hosts", "alfa"]);
   });
 
@@ -278,4 +282,78 @@ describe("hub-scope-ui: the hub lists the hosts of the data scope (#126 slice 2)
     );
     expect(screen.queryByRole("button", { name: "Mostrar todos os hosts" }) !== null).toBe(true);
   });
+});
+
+// #126 slice 4: a project scope (picked here, on Home or on Costs) lists that project's sessions,
+// on every host it is on, and the menu offers the hub's projects.
+describe("hub-scope-ui: a project scope (#126 slice 4)", () => {
+  const ALFA_PROJECT = '{"kind":"project","projectKey":"host:alfa:/work/proj-alfa"}';
+
+  test("a kept project scope lists that project's sessions only, and the menu names it", async () => {
+    setup({ kept: ALFA_PROJECT });
+    await settle(() => shown("on alfa"));
+    expect({
+      alfa: shown("on alfa"),
+      beta: shown("on beta"),
+      menu: hasMenu("Data from proj-alfa"),
+    }).toEqual({ alfa: true, beta: false, menu: true });
+  });
+
+  test("the menu lists the hub's projects; picking one lists its sessions and keeps the scope", async () => {
+    const { store } = setup();
+    await settle(() => shown("on alfa") && shown("on beta"));
+    expect(hasMenu("Data from All hosts")).toBe(true);
+    const trigger = screen.queryByRole("button", { name: "Data from All hosts" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    const entry = screen.queryByRole("menuitemradio", { name: "proj-beta" });
+    expect(entry).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(entry as HTMLElement);
+    });
+    await settleMaybe(() => !shown("on alfa"));
+    expect({
+      alfa: shown("on alfa"),
+      beta: shown("on beta"),
+      scope: store.dataScope.value,
+    }).toEqual({
+      alfa: false,
+      beta: true,
+      scope: { kind: "project", projectKey: "host:beta:/work/proj-beta" },
+    });
+  });
+
+  test("em português, o menu nomeia o projeto do escopo", async () => {
+    setup({ kept: ALFA_PROJECT, language: "pt-BR" });
+    await settle(() => shown("on alfa"));
+    expect({ beta: shown("on beta"), menu: hasMenu("Dados de proj-alfa") }).toEqual({
+      beta: false,
+      menu: true,
+    });
+  });
+  for (const [language, text, button] of [
+    ["en", "proj-gone has no sessions.", "Show all hosts"],
+    ["pt-BR", "proj-gone não tem sessões.", "Mostrar todos os hosts"],
+  ] as const) {
+    test(`a project scope with no sessions says so and offers every host (${language})`, async () => {
+      const { store } = setup({
+        kept: '{"kind":"project","projectKey":"host:alfa:/work/proj-gone"}',
+        language,
+      });
+      await settleMaybe(() => screen.queryByText(text) !== null);
+      const said = screen.queryByText(text) !== null;
+      const all = screen.queryByRole("button", { name: button });
+      expect(all).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(all as HTMLElement);
+      });
+      await settleMaybe(() => shown("on alfa") && shown("on beta"));
+      expect({ said, scope: store.dataScope.value, alfa: shown("on alfa") }).toEqual({
+        said: true,
+        scope: { kind: "all" },
+        alfa: true,
+      });
+    });
+  }
 });

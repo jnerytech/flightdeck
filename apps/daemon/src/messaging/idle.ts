@@ -50,7 +50,7 @@ export class Idle {
     if (!info) {
       throw new FlightdeckError(
         "invalid_state",
-        `a sessão ${addressOf(target)} é de outro host: o aviso de ocioso só vale para sessões deste host`,
+        `session ${addressOf(target)} is on another host: the idle notice only applies to sessions of this host`,
         "messaging_idle_other_host",
         { address: addressOf(target) },
       );
@@ -95,8 +95,8 @@ export class Idle {
     const address = `${this.opts.host}/${subscription.target}`;
     const text =
       what === "terminou"
-        ? `A sessão "${name}" (${address}) terminou.`
-        : `A sessão "${name}" (${address}) terminou o turno e está ociosa.`;
+        ? `The session "${name}" (${address}) has ended.`
+        : `The session "${name}" (${address}) finished its turn and is idle.`;
     this.opts.messaging.notice(subscription.watcher, "idle", text);
     const frame: IdleFrame = {
       type: "idle.fired",

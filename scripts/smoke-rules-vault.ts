@@ -355,7 +355,7 @@ async function run(work: string): Promise<void> {
     step = "logs-prod fora da janela é negado";
     const before = app.requests.length;
     const outside = await claude.callTool("run_action", { name: "logs-prod" });
-    if (!outside.error || !outside.text.includes("janela")) {
+    if (!outside.error || !outside.text.includes("window")) {
       throw new Error(`fora da janela devia ser negado: ${outside.text}`);
     }
     if (app.requests.length !== before) throw new Error("o pedido negado chegou ao app");

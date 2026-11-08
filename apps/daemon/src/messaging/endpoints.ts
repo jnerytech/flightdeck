@@ -96,8 +96,9 @@ const TERMINAL_STATE: Record<ExternalStatus, MessagingSession["state"]> = {
   unknown: "running",
 };
 
-const PLAIN_REASON = "claude puro, sem canal: só recebe pela troca nativa do Claude Code";
-const ENDED_REASON = "a sessão terminou";
+const PLAIN_REASON =
+  "plain claude with no channel: it only receives through Claude Code's native exchange";
+const ENDED_REASON = "the session has ended";
 const notControllableReason = (state: string): string =>
   state === "ended" ? ENDED_REASON : PLAIN_REASON;
 /** `read_session` shows at most this many messages, each cut to 8 KB. */
@@ -187,7 +188,7 @@ export class LocalEndpoints implements Endpoints {
     if (!terminal)
       throw new FlightdeckError(
         "not_found",
-        `sessão ${id} não existe`,
+        `session ${id} does not exist`,
         "messaging_session_missing",
         { id },
       );
@@ -197,7 +198,7 @@ export class LocalEndpoints implements Endpoints {
     if (!this.opts.sendToLaunch(terminal.launchId, text)) {
       throw new FlightdeckError(
         "invalid_state",
-        "o canal do terminal não está conectado",
+        "the terminal channel is not connected",
         "messaging_channel_down",
       );
     }

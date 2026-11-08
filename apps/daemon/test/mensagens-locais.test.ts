@@ -131,7 +131,7 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
     manager.respondPermission({ requestId: request?.requestId ?? "", decision: "allow" });
     await waitFor(() => messaging.list({})[0]?.status === "delivered");
     const texts = rec.find("message.user").map((e) => e.text);
-    expect(texts.at(-1)).toContain("[id para responder: pc/" + a + "]");
+    expect(texts.at(-1)).toContain("[id to reply to: pc/" + a + "]");
     expect(texts.at(-1)).toContain("quando puder");
   });
 
@@ -181,7 +181,7 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
     });
     const refused = messaging.send({ as: { session: a }, to: "P1", text: "oi" });
     expect(refused.status).toBe("refused");
-    expect(refused.reason).toContain("claude puro");
+    expect(refused.reason).toContain("plain claude");
     expect(messaging.sessions({ session: a }).find((s) => s.id === "P1")).toMatchObject({
       receives: false,
     });
@@ -245,15 +245,15 @@ describe("mensagens-entrega: o adaptador", () => {
     };
     expect(code(() => endpoints.send("fantasma", "oi"))).toContain("not_found");
     terminal("P1", "launch-p", false);
-    expect(code(() => endpoints.send("P1", "oi"))).toContain("claude puro");
+    expect(code(() => endpoints.send("P1", "oi"))).toContain("plain claude");
     terminal("T1", "launch-t");
     channels.delete("launch-t");
-    expect(code(() => endpoints.send("T1", "oi"))).toContain("canal");
+    expect(code(() => endpoints.send("T1", "oi"))).toContain("channel");
     external.apply("SessionEnd", { session_id: "T1", cwd: project, reason: "exit" });
     expect(endpoints.list().find((e) => e.id === "T1")).toMatchObject({
       state: "ended",
       controllable: false,
-      reason: "a sessão terminou",
+      reason: "the session has ended",
     });
   });
 

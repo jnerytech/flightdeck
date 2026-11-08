@@ -83,7 +83,7 @@ describe("regras-modelo: qual regra vale", () => {
       env(),
     );
     expect(verdict.ruleId).toBeNull();
-    expect(verdict.reason).toContain("padrão");
+    expect(verdict.reason).toContain("default");
     expect(evaluate([], use(), env()).ruleId).toBeNull();
   });
 
@@ -163,7 +163,7 @@ describe("regras-modelo: janela, limites e expiração", () => {
     ] as const) {
       const out = evaluate([window()], staging, env({ now: at(h, m) }));
       expect(out).toMatchObject({ decision: "deny", ruleId: "util" });
-      expect(out.reason).toContain("janela");
+      expect(out.reason).toContain("window");
     }
     expect(evaluate([window()], staging, env({ now: at(8, 0) })).decision).toBe("allow");
     expect(evaluate([window()], staging, env({ now: at(17, 59) })).decision).toBe("allow");
@@ -210,12 +210,12 @@ describe("regras-modelo: janela, limites e expiração", () => {
 
     const hourly = evaluate([limited], use(), env({ uses: { lim: 3 } }));
     expect(hourly).toMatchObject({ decision: "deny", ruleId: "lim", limited: true });
-    expect(hourly.reason).toContain("por hora");
+    expect(hourly.reason).toContain("per hour");
 
     // 3 in the last hour is the limit; 10 in the day is the other.
     const daily = evaluate([rule({ id: "dia", maxPerDay: 10 })], use(), env({ uses: { dia: 10 } }));
     expect(daily).toMatchObject({ decision: "deny", limited: true });
-    expect(daily.reason).toContain("por dia");
+    expect(daily.reason).toContain("per day");
   });
 
   test("o limite vale também para ask; uma regra deny ou sem limite não consulta o histórico", () => {

@@ -22,7 +22,7 @@ const LIMIT = 50;
  */
 function checkedId(id: string): string {
   if (!/^\d+$/.test(id)) {
-    throw new FlightdeckError("invalid_state", `id de issue inválido: ${id}`, "issue_id_invalid", {
+    throw new FlightdeckError("invalid_state", `invalid issue id: ${id}`, "issue_id_invalid", {
       id,
     });
   }

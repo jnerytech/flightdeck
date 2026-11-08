@@ -142,7 +142,7 @@ describe("regras-aprovacao: o pedido leva o que as regras decidiram", () => {
       tags: ["staging"],
       expiresAt: NOW + 3000,
     });
-    expect(f.reason).toContain("padrão");
+    expect(f.reason).toContain("default");
     t.approveAndDeliver(f);
     expect((await running).output).toBe("•••(token)\n");
     expect(JSON.stringify(t.frames)).not.toContain(VALUE);
@@ -507,7 +507,7 @@ describe("regras-aprovacao: prod e risco alto", () => {
     t.now.at = NOW + 8 * HOUR;
     const outside = await failure(t.run());
     expect(outside).toContain("invalid_state");
-    expect(outside).toContain("janela");
+    expect(outside).toContain("window");
     expect(t.requests()).toHaveLength(1);
   });
 

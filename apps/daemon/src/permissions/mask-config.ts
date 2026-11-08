@@ -49,55 +49,80 @@ const bare = (value: string) =>
  */
 export function maskConfig(lines: readonly string[], unknownStart = false): string[] {
   // The next string with no key before it is a value that belongs to something unseen.
-  let owed = unknownStart;
-  return lines.map((text) => {
-    let out = "";
-    let at = 0;
-    let key = "";
-    // Braces are counted on the line: an `env` or `headers` object ends at its own closing brace.
-    let depth = 0;
-    let privateAt = -1;
-    for (const found of text.matchAll(STRING)) {
-      const start = found.index;
-      const end = start + found[0].length;
-      for (const char of text.slice(at, start)) {
-        if (char === "{") depth += 1;
-        if (char === "}") {
-          depth -= 1;
-          if (depth <= privateAt) privateAt = -1;
-        }
-      }
-      const inPrivate = privateAt >= 0;
-      const before = text.slice(0, start).trimEnd().slice(-1);
-      const listed = text.slice(0, start).lastIndexOf("[") > text.slice(0, start).lastIndexOf("]");
-      let value = found[0];
-      if (/^\s*:/.test(text.slice(end))) {
-        key = value.slice(1, -1);
-        owed = false;
-        if (PRIVATE.has(key) && privateAt < 0) privateAt = depth;
-      } else if (before === ":") {
-        if (inPrivate || !SHOWN.has(key)) value = MASK;
-        else if (key === "url") value = bare(value);
-      } else {
-        // A flag is judged by what it was, whether or not it is shown: the next one is its value.
-        const flag = FLAG.exec(value);
-        const secret = secretName(flag?.[1] ?? "");
-        if (owed || inPrivate || SCHEME.test(value) || (listed && key !== "args")) {
-          value = MASK;
-        } else if (flag?.[2] && secret) {
-          value = `"${flag[1]}=[redacted]"`;
-        }
-        owed = flag?.[2] === undefined && secret;
-      }
-      out += text.slice(at, start) + value;
-      at = end;
+  const carry = { owed: unknownStart };
+  return lines.map((text) => maskLine(text, carry));
+}
+
+/** What one line has seen so far, a string at a time. */
+interface Scan {
+  /** The next string with no key before it is a value that belongs to something unseen. */
+  owed: boolean;
+  key: string;
+  /** Braces are counted on the line: an `env` or `headers` object ends at its own closing brace. */
+  depth: number;
+  privateAt: number;
+}
+
+/** One line masked; `carry.owed` goes in as the line starts and comes out as it ends. */
+function maskLine(text: string, carry: { owed: boolean }): string {
+  const scan: Scan = { owed: carry.owed, key: "", depth: 0, privateAt: -1 };
+  let out = "";
+  let at = 0;
+  for (const found of text.matchAll(STRING)) {
+    const start = found.index;
+    const end = start + found[0].length;
+    countBraces(scan, text.slice(at, start));
+    out += text.slice(at, start) + maskString(scan, text, found[0], start, end);
+    at = end;
+  }
+  out += text.slice(at);
+  // A key at the end of a line owes its value to the next one.
+  carry.owed = scan.owed || text.trimEnd().endsWith(":");
+  return out
+    .split(MASK)
+    .map((part) => scanner.redact(part, false))
+    .join(MASK);
+}
+
+/** The braces between two strings: an `env` or `headers` object is over at its closing brace. */
+function countBraces(scan: Scan, between: string): void {
+  for (const char of between) {
+    if (char === "{") scan.depth += 1;
+    if (char === "}") {
+      scan.depth -= 1;
+      if (scan.depth <= scan.privateAt) scan.privateAt = -1;
     }
-    out += text.slice(at);
-    // A key at the end of a line owes its value to the next one.
-    if (text.trimEnd().endsWith(":")) owed = true;
-    return out
-      .split(MASK)
-      .map((part) => scanner.redact(part, false))
-      .join(MASK);
-  });
+  }
+}
+
+/** A string of the line as it is shown: a key as it is, a value or a list item masked unless it may be read. */
+function maskString(scan: Scan, text: string, value: string, start: number, end: number): string {
+  const inPrivate = scan.privateAt >= 0;
+  if (/^\s*:/.test(text.slice(end))) {
+    scan.key = value.slice(1, -1);
+    scan.owed = false;
+    if (PRIVATE.has(scan.key) && scan.privateAt < 0) scan.privateAt = scan.depth;
+    return value;
+  }
+  const head = text.slice(0, start);
+  if (head.trimEnd().slice(-1) === ":") {
+    if (inPrivate || !SHOWN.has(scan.key)) return MASK;
+    return scan.key === "url" ? bare(value) : value;
+  }
+  return maskItem(scan, value, inPrivate, head.lastIndexOf("[") > head.lastIndexOf("]"));
+}
+
+/** A string with no key before it: a list item, a flag or the value of a flag. */
+function maskItem(scan: Scan, value: string, inPrivate: boolean, listed: boolean): string {
+  // A flag is judged by what it was, whether or not it is shown: the next one is its value.
+  const flag = FLAG.exec(value);
+  const secret = secretName(flag?.[1] ?? "");
+  let shown = value;
+  if (scan.owed || inPrivate || SCHEME.test(value) || (listed && scan.key !== "args")) {
+    shown = MASK;
+  } else if (flag?.[2] && secret) {
+    shown = `"${flag[1]}=[redacted]"`;
+  }
+  scan.owed = flag?.[2] === undefined && secret;
+  return shown;
 }

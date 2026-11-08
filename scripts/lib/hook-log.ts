@@ -55,11 +55,12 @@ export function summarizeHookLog(text: string): string {
   const lines = text.split("\n").filter((line) => line.trim() !== "");
   const entries = lines.map(parseEntry).filter((e): e is HookLogEntry => e !== null);
   if (lines.length === 0) return "no hook calls logged yet";
-  const { byHook, byRule, waivedByRule } = tally(entries);
+  const { byHook, byRule, waivedByRule, passesByReason } = tally(entries);
   const out = [
     ...timingRows(byHook),
     ...ruleSection("blocks by rule:", byRule),
     ...ruleSection("waivers by rule:", waivedByRule),
+    ...ruleSection("pushes push-wait let through, by reason:", passesByReason),
     ...overrideLines(entries),
     ...longHoldLines(entries),
   ];
@@ -68,19 +69,26 @@ export function summarizeHookLog(text: string): string {
   return out.join("\n");
 }
 
-/** The entries per hook, and the blocks and waivers per rule. */
+/** The entries per hook, the blocks and waivers per rule, and the pushes let through per reason. */
 function tally(entries: HookLogEntry[]) {
   const byHook = new Map<string, HookLogEntry[]>();
   const byRule = new Map<string, number>();
   const waivedByRule = new Map<string, number>();
+  const passesByReason = new Map<string, number>();
   for (const e of entries) {
     // The slot is no hook: its entries take no time to decide, so they stay out of the timings (#833).
     if (e.hook !== SLOT) byHook.set(e.hook, [...(byHook.get(e.hook) ?? []), e]);
+    // #741: a push push-wait let through is no block: counted by its reason.
+    if (e.rule === "push-wait" && e.decision === "allow") {
+      const reason = printable(e.detail ?? "?");
+      passesByReason.set(reason, (passesByReason.get(reason) ?? 0) + 1);
+      continue;
+    }
     // A long hold is no block and no waiver: it has its own section (#865 review: only it).
     const counts = e.decision === "waived" ? waivedByRule : byRule;
     if (e.rule && e.rule !== "long-hold") counts.set(e.rule, (counts.get(e.rule) ?? 0) + 1);
   }
-  return { byHook, byRule, waivedByRule };
+  return { byHook, byRule, waivedByRule, passesByReason };
 }
 
 /** The header and one row per hook: calls, blocks and p50/p95 milliseconds. */
