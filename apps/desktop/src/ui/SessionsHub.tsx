@@ -51,6 +51,7 @@ import {
   hubRows,
   hubView,
   isSearching,
+  isOver,
   rowStatus,
   sessionLineText,
   sharedMeta,
@@ -735,6 +736,19 @@ export function SessionsHub(
                       const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
                       const line = sessionLineText(row.summary, store.now(), t);
                       const said = rowStatus(row, store.now(), t);
+                      // #1132: the row's state in words. A live row in the compact list shows the
+                      // word where its time was (the time stays in the tooltip): the row has no
+                      // room for one more item. The summary carries the word and its detail.
+                      const showWord =
+                        props.density === "compact" &&
+                        row.origin !== "history" &&
+                        !isOver(row.state);
+                      const summaryText = [
+                        [said.word, said.detail].filter(Boolean).join(" · "),
+                        line,
+                      ]
+                        .filter(Boolean)
+                        .join(" — ");
                       // What the whole group shares is in its header; the row keeps what differs.
                       const rowMeta = [
                         shared.origin === null && row.origin !== "terminal"
@@ -766,18 +780,13 @@ export function SessionsHub(
                                   setCursor(listed.findIndex((r) => r.key === row.key));
                                   props.onOpen(row);
                                 }}
-                                className="row-title min-w-0 flex-1 truncate text-left font-medium text-sm"
+                                className="min-w-0 flex-1 truncate text-left font-medium text-sm"
                               >
                                 {row.title}
                               </button>
                             </TooltipTrigger>
                             <TooltipContent>{row.title}</TooltipContent>
                           </Tooltip>
-                          {/* #1132: what the session is doing, in words: the dot alone did not say.
-                              A reader already hears it from the dot and the row's summary. */}
-                          <span data-slot="row-status" aria-hidden="true" className="row-status">
-                            {[said.word, said.detail].filter(Boolean).join(" · ")}
-                          </span>
                           {shared.hostName === null && (
                             <HostChip
                               name={row.hostName}
@@ -821,14 +830,28 @@ export function SessionsHub(
                             </output>
                           )}
                           {cacheOf(row)}
-                          {row.lastActivity && (
-                            <time
-                              dateTime={new Date(row.lastActivity).toISOString()}
-                              title={store.formatDateTime(row.lastActivity)}
-                              className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                          {showWord ? (
+                            <span
+                              data-slot="row-word"
+                              title={
+                                row.lastActivity
+                                  ? store.formatDateTime(row.lastActivity)
+                                  : undefined
+                              }
+                              className="shrink-0 text-muted-foreground text-xs"
                             >
-                              {store.formatWhen(row.lastActivity)}
-                            </time>
+                              {said.word}
+                            </span>
+                          ) : (
+                            row.lastActivity && (
+                              <time
+                                dateTime={new Date(row.lastActivity).toISOString()}
+                                title={store.formatDateTime(row.lastActivity)}
+                                className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                              >
+                                {store.formatWhen(row.lastActivity)}
+                              </time>
+                            )
                           )}
                           {rowActions(row)}
                           <span
@@ -838,7 +861,7 @@ export function SessionsHub(
                               props.density === "compact" ? "sr-only" : "basis-full pl-4",
                             )}
                           >
-                            {line}
+                            {summaryText}
                           </span>
                         </li>
                       );
