@@ -49,8 +49,8 @@ export function KeyField(
       setReplacing(false);
       setSaid(null);
       await read();
-    } catch (failure) {
-      setError(refusalText(t, failureOf(failure)));
+    } catch (error_) {
+      setError(refusalText(t, failureOf(error_)));
     } finally {
       setBusy(false);
     }
@@ -64,8 +64,8 @@ export function KeyField(
       else if (result.detail?.startsWith("assistant_")) {
         setSaid(refusalText(t, { reason: result.detail }));
       } else setSaid(t("assistantSettings.testFailed"));
-    } catch (failure) {
-      setSaid(refusalText(t, failureOf(failure)));
+    } catch (error_) {
+      setSaid(refusalText(t, failureOf(error_)));
     } finally {
       setBusy(false);
     }

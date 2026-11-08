@@ -66,6 +66,12 @@ export const costsHandlers = {
   "quota.get": (_payload, { server }) => {
     return server.need("quota").state();
   },
+  "quota.setPauseAt": async (payload, { server }) => {
+    // The quota first: a host without it refuses before anything is written.
+    const quota = server.need("quota");
+    await server.need("quotaPause").set(payload.pauseAt);
+    return quota.state();
+  },
   "quota.watch": (_payload, { ws, send, server }) => {
     const host = server.need("quota");
     ws.data.unwatchQuota?.();

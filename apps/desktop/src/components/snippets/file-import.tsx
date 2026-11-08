@@ -38,9 +38,9 @@ export function FileImport(
     try {
       store.globalSnippets.save(snippet);
       return null;
-    } catch (thrown) {
-      if (!(thrown instanceof SnippetModelError)) throw thrown;
-      return refusalText(thrown.code, thrown.message, t, thrown);
+    } catch (error) {
+      if (!(error instanceof SnippetModelError)) throw error;
+      return refusalText(error.code, error.message, t, error);
     }
   };
 

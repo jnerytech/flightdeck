@@ -38,7 +38,7 @@ export function WideTable(props: Readonly<{ name: string; children: ReactNode }>
         data-slot="table-wide"
         aria-label={t("common.scrollsSideways", { name: props.name })}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a sideways scroller the keyboard must reach (axe scrollable-region-focusable)
-        tabIndex={0}
+        tabIndex={0} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
         className={more ? "table-wide table-wide-more" : "table-wide"}
       >
         {props.children}

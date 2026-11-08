@@ -353,6 +353,8 @@ export interface ServerOptions {
   features?: string[];
   /** The host's plan quota behind `quota.*` (phase 7). */
   quota?: Quota;
+  /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
+  quotaPause?: { set(pauseAt: number | null): void | Promise<void> };
   /** The Claude account behind `account.*` (phase 34). */
   account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
@@ -473,6 +475,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.doctor, "doctor.run"),
     ...when(opts.serviceInstall, FEATURE_SERVICE_INSTALL),
     ...when(opts.keepAwake, "keepAwake"),
+    ...when(opts.quotaPause, "quotaPause"),
     ...when(opts.deps, "depsCheck"),
     ...when(opts.projectTrust, "projectTrust"),
     ...when(opts.harnessStack, "harnessStack"),
@@ -528,6 +531,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "deps"),
     // Issue #76: a card pins library documents; the app offers the picker.
     ...when(opts.board, "cardPins"),
+    // Issue #1201: a project's card templates; New card offers them.
+    ...when(opts.board, "cardTemplates"),
     // Issue #1196: a card merges its open PR (`card.pr.merge`).
     ...when(opts.board, "cardPrMerge"),
     ...when(opts.issues, "issues"),
@@ -1392,8 +1397,10 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.create": {
         const { projectId, ...input } = command.payload;
-        return ok(command.type, board().createCard(projectId, input));
+        return ok(command.type, await board().createCardFrom(projectId, input));
       }
+      case "card.templates":
+        return ok(command.type, await board().cardTemplates(command.payload.projectId));
       case "card.update": {
         const { cardId, ...patch } = command.payload;
         const updated = board().updateCard(cardId, patch);

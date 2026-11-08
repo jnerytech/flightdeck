@@ -1290,11 +1290,21 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
   `git status` is clean. Otherwise the card warns and the worktree stays.
 - **Discard:** Discard (with confirmation, and a warning if there are unpushed changes) removes
   the worktree and the local branch.
+- **The card page leads with one button:** its Run panel shows what comes next. **Start** for a card
+  that has not run, **Stop** while it runs, **Review changes** once a run is done (it shows the
+  card's Changes), then **Open PR**. The rest is under the **⋯** menu next to it: **Start with a
+  workflow or persona…** (the same dialog as the board's **Start card**), **Start**, **Start in the
+  background**, **Stop**, **Open PR**, **Finish…** and **Discard**. A card whose run is done opens
+  on **Changes**.
 - **Edit and delete:** the card's **⋯** menu has **Edit…**, which opens the card with its title ready
   to change (the card page also edits the description and, with ROI on, the estimate), and
   **Delete…**, which names the card and asks first. Delete is only for a card that never started
   (no worktree, branch or session). For one that did, the dialog says why and offers **Discard card**
   instead. The cards that waited for a deleted card are freed of it, with a notice.
+- **The Needs: chip** on a board card is a button. For what the card's own text lacks (criteria, a
+  validation note, a spec) it opens the card with its title ready to edit; for a PR link or checks
+  it opens the card, where its next step leads. It is not a Tab stop: from the keyboard, Enter on
+  the card's title opens the card, and **M** then **Edit** opens it with its title ready to edit.
 
 ### PR providers
 

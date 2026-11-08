@@ -118,14 +118,14 @@ describe("board-clique: the board and the card say why a button is off", () => {
     expect(cardItem("Login")).not.toBeNull();
   });
 
-  test("Abrir PR is off, and says to start the card first, while the card has no worktree", async () => {
+  test("a card with no worktree leads with Iniciar and offers no Abrir PR", async () => {
     const { repo } = await setup();
     await openBoard(repo);
     await createCard("Login");
     await openCard("Login");
-    const open = screen.queryByRole("button", { name: "Abrir PR" }) as HTMLButtonElement | null;
-    expect(open?.disabled).toBe(true);
-    expect(screen.queryByText("Inicie o card antes de abrir o PR")).not.toBeNull();
+    // Nothing to open a PR from yet: the card leads with Iniciar and offers no Abrir PR (#1197).
+    expect(screen.queryByRole("button", { name: "Iniciar" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Abrir PR" }) === null).toBe(true);
   });
 
   test("the new-card dialog is a form: Enter in the title creates the card, and Cancelar does not submit", async () => {
