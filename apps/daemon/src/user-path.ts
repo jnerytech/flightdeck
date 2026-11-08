@@ -41,7 +41,7 @@ function sameFolder(env: PathEnv, a: string, b: string): boolean {
 async function readPath(env: PathEnv): Promise<{ value: string; type: string }> {
   const { code, stdout } = await env.exec(["reg", "query", KEY, "/v", "Path"]);
   const found =
-    code === 0 ? /^\s*Path\s+(REG_SZ|REG_EXPAND_SZ)(?:\s+(.*?))?\s*$/im.exec(stdout) : null; // NOSONAR: `reg query` of the local registry, a Path value is 32 767 chars at most (Windows limit)
+    code === 0 ? /^\s*Path\s+(REG_SZ|REG_EXPAND_SZ)(?:\s+(.*?))?\s*$/im.exec(stdout) : null; // NOSONAR: `reg query` of the same user's own registry (a Path value is 32 767 chars as an environment variable)
   return { value: found?.[2] ?? "", type: found?.[1] ?? DEFAULT_TYPE };
 }
 
