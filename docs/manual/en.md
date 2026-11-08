@@ -377,6 +377,10 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   project (an ADR or RFC is numbered, `0004-<title>.md`; a PRD is `<title>.md`), as a draft with
   `status: transitional`, and is left uncommitted. It never replaces a file that is there, and it
   is refused when `docs/<kind>` is a link or lies outside the project.
+  **Draft ADR**, in a session's summary, starts a decision record from what the session did: the
+  summary is the first text, the assistant's wand can write an ADR (Context, Decision,
+  Consequences) from it, you edit it and give it a title, and **Save as ADR** writes it to
+  `docs/adr` of the project as a draft, uncommitted, the same way as above.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.

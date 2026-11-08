@@ -913,7 +913,7 @@ export const ptBR = {
     quotaLabelNoReset: "Cota do plano {state}: {window} em {percent}% em {host}",
     quotaLevels: { ok: "tranquila", near: "perto do limite", reached: "no limite" },
     host: "Host: {host}",
-    noHost: "Nenhum host ainda",
+    noHost: "Nenhum host",
     allHostsTabs: "Abas de todos os hosts",
     hostItem: "{host}, {state}",
     hostItemVersion: "{host}, {state}, flightdeckd {version}",
@@ -2174,6 +2174,7 @@ export const ptBR = {
     commit_message: "Mensagem de commit",
     pr_title: "Título do pull request",
     pr_description: "Descrição do pull request",
+    adr_draft: "Rascunho de registro de decisão (ADR)",
   },
   modelPicker: {
     search: "Buscar modelos",
@@ -3177,6 +3178,15 @@ export const ptBR = {
     testTitle: "Teste do Flightdeck",
     testBody: "Esta é uma mensagem de teste.",
   },
+  adrDraft: {
+    title: "Rascunhar um registro de decisão",
+    hint: "O resumo da sessão é o texto inicial. Use a varinha para escrever um ADR a partir dele, edite e salve: ele vai para docs/adr no projeto como rascunho, sem commit.",
+    titleLabel: "Título da decisão",
+    bodyLabel: "Texto do registro de decisão",
+    save: "Salvar como ADR",
+    saved: "Salvo em {path}. É um rascunho e não tem commit.",
+    failed: "Não foi possível salvar: {why}",
+  },
   recap: {
     region: "Resumo da sessão",
     asked: "Pedido",
@@ -3187,6 +3197,7 @@ export const ptBR = {
     question: "Pergunta em aberto",
     state: "Estado",
     copy: "Copiar resumo",
+    draftAdr: "Rascunhar ADR",
     empty: "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
   },
   webhooks: {
@@ -4381,6 +4392,11 @@ export const ptBR = {
           "Regravar .claude/settings.json com outro layout. O espaçamento muda, e uma chave repetida ou um número muito grande podem ser reescritos.",
         done: "Configurado: {files}",
         again: "Fazer a prévia de novo",
+        commit: "Fazer commit em um branch novo",
+        commitMessage:
+          "Os arquivos da configuração vão para um branch novo que o Flightdeck nomeia, com o seu nome e e-mail do git. O commit é do arquivo inteiro: mudanças que você fez neles antes da configuração vão junto. O seu checkout continua com eles como mudanças no branch atual.",
+        commitFiles: "Arquivos do commit",
+        committed: "Commit feito em {branch}. Faça o push quando quiser.",
       },
     },
     trust: {

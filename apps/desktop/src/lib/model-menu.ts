@@ -19,11 +19,19 @@ const VERSIONED = new RegExp(String.raw`^claude-(${FAMILIES})-(\d+)(?:-(\d{1,2})
 const ALIAS = new RegExp(`^(${FAMILIES})$`);
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
+/** `opus[1m]` is `opus`: a trailing `[…]` with no `]` inside; the `[` is the first one after the last `]` before it. */
+function withoutContextSize(model: string): string {
+  const close = model.length - 1;
+  if (model[close] !== "]") return model;
+  const start = model.indexOf("[", model.lastIndexOf("]", close - 1) + 1);
+  return start === -1 ? model : model.slice(0, start);
+}
+
 /** A model as a person reads it ("Opus 5.5"); null for none. */
 export function modelName(model: string | null | undefined): string | null {
   if (!model) return null;
   // "[1m]" and the like select a context size, not another model.
-  const id = model.replace(/\[[^\]]*\]$/, "");
+  const id = withoutContextSize(model);
   const versioned = VERSIONED.exec(id);
   if (versioned) {
     const [, family = "", major = "", minor] = versioned;

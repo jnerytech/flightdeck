@@ -989,6 +989,9 @@ export const KnowledgeStatus = z.enum(["valid", "transitional", "obsolete"]);
 export type KnowledgeStatus = z.infer<typeof KnowledgeStatus>;
 export const KnowledgeType = z.enum(["prd", "rfc", "adr", "spec"]);
 /** The kinds of document a template exists for (issue #1039). */
+/** The longest body `knowledge.create` takes, in characters. */
+export const KNOWLEDGE_BODY_MAX = 100_000;
+
 export const KnowledgeKind = z.enum(["adr", "rfc", "prd"]);
 export type KnowledgeKind = z.infer<typeof KnowledgeKind>;
 export type KnowledgeType = z.infer<typeof KnowledgeType>;
@@ -4606,6 +4609,8 @@ export const Command = z.discriminatedUnion("type", [
         path: z.string().min(1).max(4096),
         kind: KnowledgeKind,
         title: z.string().min(1).max(200),
+        /** The text under the heading instead of the template's sections (an assistant's draft, edited). */
+        body: z.string().max(KNOWLEDGE_BODY_MAX).optional(),
       })
       .strict(),
   ),

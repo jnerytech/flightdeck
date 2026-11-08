@@ -135,7 +135,7 @@ function slug(command: string): string {
   const words = command
     .split(/\s+/)
     .slice(0, 3)
-    .map((word) => word.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))
+    .map((word) => word.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) // NOSONAR: the replace before made every run of other characters one "-", so at most one at each end
     .filter((word) => word !== "");
   return words.join("-").slice(0, 64) || "comando";
 }

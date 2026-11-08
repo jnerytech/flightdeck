@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
+import { trimEndOf } from "../trim.ts";
 import { whichOnPath } from "../which.ts";
 
 export type GitResult = { code: number; stdout: string };
@@ -44,7 +45,7 @@ export function stripRemote(url: string): string {
           .replace(/^[a-z+]+:\/\//i, "")
           .replace(/^[^@/]+@/, "")
           .replace(/^([^/:]+):\d+\//, "$1/");
-  return path.replace(/\/+$/, "").replace(/\.git$/i, "");
+  return trimEndOf(path, "/").replace(/\.git$/i, "");
 }
 
 // The common dir is the main repository's .git, also from inside a worktree.

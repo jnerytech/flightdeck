@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { Board } from "../board/board.ts";
 import { closingLine } from "../issues/providers.ts";
 import type { SecretScanner } from "../snippets/model.ts";
+import { trimEndOf } from "../trim.ts";
 import type { FixRound, PrFixer } from "./fix.ts";
 
 /** One session that worked on a card, for the trail of its PR (phase 22). */
@@ -65,7 +66,7 @@ interface RunRow {
 export const REMOVED_LINE = "[line removed: it looked like a secret]";
 
 /** A PR link without what the page adds to it: the query, the fragment, the slash at the end. */
-const plain = (url: string) => (url.split(/[?#]/)[0] ?? "").replace(/\/+$/, "");
+const plain = (url: string) => trimEndOf(url.split(/[?#]/)[0] ?? "", "/");
 
 const firstLine = (text: string | null, limit = 200) => {
   const line = (text ?? "").trim().split(/\r?\n/)[0] ?? "";

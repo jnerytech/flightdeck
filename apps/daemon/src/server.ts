@@ -200,7 +200,12 @@ export interface ServerOptions {
     expectedHash: string,
   ) => Promise<KnowledgeEntry>;
   /** #1039: a new library document from a template, in the project's folder for its kind. */
-  knowledgeCreate?: (path: string, kind: KnowledgeKind, title: string) => Promise<KnowledgeEntry>;
+  knowledgeCreate?: (
+    path: string,
+    kind: KnowledgeKind,
+    title: string,
+    body?: string,
+  ) => Promise<KnowledgeEntry>;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
   /** #75: writes what the preview proposed, when `digests` still match the proposals. */
@@ -1190,9 +1195,9 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "knowledge.create": {
         if (!opts.knowledgeCreate) throw featureOff("knowledgeCreate");
-        const { path: asked, kind, title } = command.payload;
+        const { path: asked, kind, title, body } = command.payload;
         const path = await resolveAllowedCwd(asked, opts.allowedRoots);
-        return ok(command.type, await opts.knowledgeCreate(path, kind, title));
+        return ok(command.type, await opts.knowledgeCreate(path, kind, title, body));
       }
       case "knowledge.feed": {
         if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
