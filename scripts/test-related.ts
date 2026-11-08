@@ -13,7 +13,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { checkChanged } from "./lib/related-coverage.ts";
+import { checkChanged, wholeSuiteVerdict } from "./lib/related-coverage.ts";
 import { keepCoverageProblem, listSelection, planRelated } from "./lib/test-related.ts";
 import { testTiers } from "./lib/test-tiers.ts";
 
@@ -86,6 +86,18 @@ const proc = Bun.spawn([cmd === "bun" ? process.execPath : cmd, ...rest], {
   stdio: ["inherit", "inherit", "inherit"],
 });
 let code = await proc.exited;
+
+// #996: Bun's 100% threshold fails a whole-suite run with exit code 1 and no word on why.
+if (plan.wholeCoverage) {
+  let report: string | null = null;
+  try {
+    report = readFileSync(resolve(ROOT, plan.wholeCoverage), "utf8");
+  } catch {
+    // No report: the verdict says so.
+  }
+  const verdict = wholeSuiteVerdict(code, report);
+  if (verdict) console.error(`\n${verdict}`);
+}
 
 // The changed source files must be at 100% lines and functions, as the full suite demands.
 const targets = plan.targets ?? [];

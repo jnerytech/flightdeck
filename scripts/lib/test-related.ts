@@ -171,6 +171,8 @@ function wholeSuitePlan(
     output: `test:related --pr: the whole suite runs (${why})`,
     command: slot ? ["bun", "run", "slot", "--", ...whole] : whole,
     files: "all",
+    // bunfig.toml's coverageDir and lcov reporter: where the whole suite leaves its report.
+    wholeCoverage: "coverage/lcov.info",
   };
 }
 

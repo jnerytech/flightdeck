@@ -1906,8 +1906,9 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
   const base = ctxOf(false);
   const stable = stableBinPath(base.home, base.platform);
   let command = base.command;
-  const prompt = createPrompt(linesOf(deps.stdin ?? Bun.stdin.stream()), (text) =>
-    process.stdout.write(text),
+  const prompt = createPrompt(
+    linesOf(deps.stdin ?? Bun.stdin.stream()),
+    deps.stdout ?? process.stdout.write.bind(process.stdout),
   );
   const install = (): CliArgs => ({ command: "service", action: "install", config: file });
   await runSetup(
