@@ -210,6 +210,27 @@ describe("platform", () => {
     expect(values.has("s1")).toBe(false);
   });
 
+  test("web: pickFile goes through a file input when the page can make one, and answers null when it cannot", async () => {
+    const { win } = fakeWindow();
+    const listeners = new Map<string, () => void>();
+    const input = {
+      type: "",
+      files: null as unknown,
+      click: () => listeners.get("change")?.(),
+      addEventListener: (type: string, fn: () => void) => void listeners.set(type, fn),
+    };
+    input.files = [{ name: "k.fdbackup", size: 3, text: async () => "abc" }];
+    const withInput = createWebPlatform({
+      ...win,
+      document: { ...win.document, createElement: () => input },
+    } as never);
+    const without = createWebPlatform(win);
+    expect([await withInput.vault.pickFile(), await without.vault.pickFile()]).toEqual([
+      { path: "k.fdbackup", text: "abc" },
+      null,
+    ]);
+  });
+
   test("web: notificação usa a API do navegador e a bandeja vira o título da janela", async () => {
     const { win, notifications } = fakeWindow();
     const platform = createWebPlatform(win);
