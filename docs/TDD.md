@@ -70,7 +70,9 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     the checks behind them (#288, #494, #552) were removed once #1003 deleted the last one (#169).
     A test that cannot run on a platform (no symlinks, no 8.3 names, no `ps` on Windows) is
     `test.skipIf(<the platform condition>)(…)`, with the reason in a comment; that is not a skip of
-    a flaky test, and the hook and `tdd:audit` let it through.
+    a flaky test, and the hook and `tdd:audit` let it through. They check the comment only on a
+    skip off Linux (`notLinux` or `process.platform !== "linux"`), and refuse a `skipIf(true)`;
+    any other condition's comment is left to review.
     **Too slow on CI** (#1003): a test over 5 s, a test file over 60 s, or an e2e journey over
     90 s. Make it faster, or delete it when a faster test already checks the same thing.
     CI enforces the first two: the PR's test run writes bun's JUnit report, and
@@ -101,7 +103,8 @@ every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard
   PR closes (#367);
 - it refuses an Edit or Write that adds `.only(`, `.skip(`, `test.todo(` or `toMatchSnapshot(` to
   a test file (one that keeps or removes them passes, and so does a `skipIf` for a platform). It
-  refuses the same markers `tdd:audit` does, plus the snapshot, which only a run can judge (#169).
+  refuses the same markers `tdd:audit` does, plus the snapshot, which only a run can judge (#169):
+  also a `skipIf(true)`, and a skip off Linux with no reason comment on its line or the line above.
 
 For a deliberate exception, end the commit message with a trailer line `TDD-Waiver: <why>` (or
 pass `--trailer "TDD-Waiver: <why>"`). The hook lets the commit through and `tdd:audit` lists it

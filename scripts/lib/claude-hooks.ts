@@ -5,7 +5,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
-import { auditBase, FORBIDDEN_MARKERS, parseCommits } from "./tdd-audit.ts";
+import { auditBase, FORBIDDEN_MARKERS, parseCommits, uncommentedOffLinux } from "./tdd-audit.ts";
 
 /** git options that take their value as the next word (`git -C <dir> add`). */
 const GIT_OPTIONS_WITH_VALUE = new Set([
@@ -187,7 +187,10 @@ export function testEditViolation(
   const added = TEST_MARKERS.find(
     ({ pattern }) => [...after.matchAll(pattern)].length > [...before.matchAll(pattern)].length,
   );
-  if (!added) return null;
+  if (!added) {
+    if (uncommentedOffLinux(after).length <= uncommentedOffLinux(before).length) return null;
+    return `Adding a skipIf off Linux to ${file} is blocked: give its platform reason in a comment on its line or the line above. A flaky test is deleted, never skipped (#1003, docs/TDD.md).`;
+  }
   if (added.text === ".skip(") {
     return `Adding a skip to ${file} is blocked: a flaky test is deleted, never skipped (#1003); when it is the only check of a business flow, replace it with a fast deterministic test. A test that cannot run on a platform uses skipIf(<the platform condition>), with the reason in a comment (docs/TDD.md).`;
   }

@@ -1,5 +1,7 @@
 # A flaky test may be skipped under its open issue, on any platform (issue #494)
 
+*Superseded by [2026-11-08-skip-notes-retired.md](2026-11-08-skip-notes-retired.md) (#169): no note excuses a skip any more.*
+
 - **Why.** The owner's words, relayed by fd-coordinator and confirmed in fd-harness's session on
   2026-11-06: "testes intermitentes que prejudicam o CI pode dar skip". Flaky UI tests, such as
   `keep-awake-ui` (#484) and `paleta` (#492), kept PRs red for reasons outside them.

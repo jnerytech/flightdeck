@@ -1,5 +1,7 @@
 # The five unstable tests are fixed, none is skipped off Linux (issue #288)
 
+*Superseded by [2026-11-08-skip-notes-retired.md](2026-11-08-skip-notes-retired.md) (#169): no note excuses a skip any more.*
+
 Continues the entry on `skipIf(notLinux)` and its ratchet in `docs/DECISIONS.md` (the five unstable tests).
 
 - **Four of the five are fixed (issue #288, 2026-11-05).** The hub-list ratio failed on Ubuntu CI too
