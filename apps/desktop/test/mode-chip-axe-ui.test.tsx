@@ -100,6 +100,24 @@ describe("mode-chip: the chips' menus next to a live region", () => {
     });
   }
 
+  // Radix puts the focus back on the chip a tick after a pick; a menu opened again within that
+  // tick took it as a focus outside and closed, which a slow full run hit.
+  for (const [name, chip] of [
+    ["Mode", modeChip("en")],
+    ["Model", modelChip("en")],
+  ] as const) {
+    test(`the open ${name} menu stays open when the focus lands on its own chip`, async () => {
+      page(chip);
+      const trigger = await openChip(
+        name === "Mode" ? "Permission mode: Default" : "Model: Default model",
+      );
+      await act(async () => {
+        trigger.focus();
+      });
+      expect(screen.queryByRole("menu") !== null).toBe(true);
+    });
+  }
+
   test("the open Mode menu takes the focus, a number key picks its row, and Escape closes it", async () => {
     const picked: string[] = [];
     page(modeChip("en", picked));

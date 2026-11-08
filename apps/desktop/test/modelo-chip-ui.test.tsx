@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
-import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -244,9 +243,6 @@ describe("modelo-chip: the effort", () => {
     await open();
     await openSub(/^Effort/);
     await click(row(/^High/));
-    // The menu is not modal: the focus goes back to the chip a tick after a pick, and a menu
-    // opened before that would take it as a focus outside and close.
-    await settle(() => document.activeElement === chip(), undefined, "the focus back on the chip");
     await open();
     await openSub(/^Effort/);
     await click(row(/^Default effort/));
