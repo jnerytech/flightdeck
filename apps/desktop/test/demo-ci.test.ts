@@ -174,6 +174,8 @@ describe("demo-prints: axe e CI", () => {
       "projetos-host",
       "projeto-novo",
       "time-apagar",
+      // Issue #1222: the demo's active team lists its members' last reports.
+      "time-rodando",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
