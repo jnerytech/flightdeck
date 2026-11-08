@@ -69,6 +69,7 @@ async function open(first: object, before = false) {
         onOpenSettings={() => {}}
         onBack={() => {}}
         onOpenCard={() => {}}
+        onOpenWorkflows={() => {}}
       />
     </TContext.Provider>,
   );
