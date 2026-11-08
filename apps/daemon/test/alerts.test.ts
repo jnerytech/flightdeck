@@ -43,7 +43,7 @@ const dependabotAlert = (number: number, over: Record<string, unknown> = {}) => 
   ...over,
 });
 
-type Answer = { code: number; stdout: string; stderr: string } | null;
+type Answer = { code: number; stdout: string; stderr: string; timedOut?: boolean } | null;
 const ok = (value: unknown): Answer => ({ code: 0, stdout: JSON.stringify(value), stderr: "" });
 const failed = (stderr: string): Answer => ({ code: 1, stdout: "", stderr });
 
@@ -188,6 +188,23 @@ describe("listAlerts (issue #79)", () => {
         .unavailable,
     );
     expect(everything.includes("secret-token-123")).toBe(false);
+  });
+
+  test("a gh that ran out of time is a failure, whatever its half-written text says", async () => {
+    const timedOut = { code: 143, stdout: "", stderr: "HTTP 404 gh auth login", timedOut: true };
+    const list = await listAlerts(fakeGh({ code: timedOut }).gh, "/w");
+    expect(list.unavailable).toEqual([{ kind: "code-scanning", reason: "failed" }]);
+  });
+
+  test("selectors that hide data and fillers that look empty are gone as well", async () => {
+    const hidden = [0xe0100, 0x34f, 0x115f, 0x1160, 0xffa0, 0x180b].map((c) =>
+      String.fromCodePoint(c),
+    );
+    const code = codeAlert(1, {
+      rule: { id: "r", security_severity_level: "high", description: `T${hidden.join("")}itle` },
+    });
+    const [alert] = (await listAlerts(fakeGh({ code: ok([code]) }).gh, "/w")).alerts;
+    expect(alert?.title).toBe("Title");
   });
 
   test("without gh both sources say so, and there are no alerts", async () => {
