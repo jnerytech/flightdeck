@@ -327,3 +327,28 @@ describe("knowledge-status-ui: what the panel says it does (#1050)", () => {
     });
   }
 });
+
+// #1105: where the status can be changed, a row read "Use the outbox [Valid] [Valid ▾]": the badge
+// and the select said the same thing. The select alone shows it; the badge comes back only while
+// another status is chosen and not yet written, to say what the file still says.
+describe("knowledge-status-ui: the status shows once (#1105)", () => {
+  const row = (title: string) => within(panel()).queryByText(title)?.closest("li") ?? null;
+  const badges = (title: string) =>
+    Array.from(row(title)?.querySelectorAll('[data-slot="badge"]') ?? []).map((b) => b.textContent);
+
+  test("at rest the select alone shows the status; a pending choice brings back the file's own as a badge", async () => {
+    render(setup().view);
+    await listed();
+    const atRest = badges("Use the outbox");
+    fireEvent.change(picker("Use the outbox"), { target: { value: "obsolete" } });
+    const pending = badges("Use the outbox");
+    fireEvent.change(picker("Use the outbox"), { target: { value: "valid" } });
+    expect([atRest, pending, badges("Use the outbox")]).toEqual([[], ["Valid"], []]);
+  });
+
+  test("where the status cannot be changed, the badge shows it", async () => {
+    render(setup({ features: ["knowledge"] }).view);
+    await listed();
+    expect(badges("Use the outbox")).toEqual(["Valid"]);
+  });
+});
