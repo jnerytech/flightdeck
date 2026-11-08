@@ -3769,6 +3769,8 @@ export const en: Dictionary = {
     saveDescription: "Save description",
     validation: "Validation note",
     saveValidation: "Save validation note",
+    validationShape:
+      "What was checked:\nHow (commands, steps, data):\nResult:\nWhat was not checked:",
     specFile: "Spec file",
     saveSpec: "Save spec file",
     specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
@@ -4267,7 +4269,7 @@ export const en: Dictionary = {
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
     knowledge: {
       title: "Project knowledge",
-      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter. Read only: nothing here changes the project.",
+      hint: "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter.",
       filter: "{status} ({n})",
       all: "All",
       status: {

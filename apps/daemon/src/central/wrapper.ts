@@ -163,7 +163,7 @@ async function requestedPersona(
 
 /** What is said when the channel config cannot be written: the session opens with neither flag. */
 const CHANNEL_NOTICE =
-  "flightdeckd: não foi possível gravar a configuração do canal; abrindo o claude sem o canal (o app não poderá mandar mensagens)";
+  "flightdeckd: could not write the channel config; opening claude without the channel (the app will not be able to send messages)";
 
 /** A user name icacls can be given as one principal: no wildcard, SID marker, separator or list. */
 const ACCOUNT = /^[^\p{Cc}\\/:*?"<>|;,=+[\]]+$/u;
@@ -319,7 +319,7 @@ async function removeAll(paths: string[]): Promise<void> {
 export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   const claude = opts.config.claude?.executablePath ?? whichOnPath("claude");
   if (!claude) {
-    opts.log.error("flightdeckd: claude não encontrado no PATH (nem em claude.executablePath)");
+    opts.log.error("flightdeckd: claude not found on the PATH (nor in claude.executablePath)");
     return 1;
   }
   // A terminal of the app ("Claude aqui") names the launch it started: the session it opens is
@@ -331,7 +331,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   // Print mode ignores development channels: plain claude, no channel, no warning.
   const { id: personaId, rest: args, broken } = takePersonaFlag(opts.args);
   if (broken) {
-    opts.log.error("flightdeckd: --persona pede o id da persona");
+    opts.log.error("flightdeckd: --persona needs the persona id");
     return 1;
   }
   // Asked for on purpose, so a persona that cannot be had stops here: no claude without the role.
@@ -369,7 +369,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     // Without a receptor or a token: the daemon is down. A config that failed to write said so itself.
     if (!channel && !print && !(url && token)) {
       opts.log.error(
-        "flightdeckd: daemon do Flightdeck fora do ar; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
+        "flightdeckd: the Flightdeck daemon is down; opening claude without the channel (the app will not be able to send messages)",
       );
     }
     // The user's own system prompt wins: claude takes one, so the index is not put beside it.
@@ -508,7 +508,7 @@ async function fetchPersona(
     config.token,
     "flightdeckd-claude",
   ).catch(() => {
-    throw new Error("o daemon do Flightdeck está fora do ar");
+    throw new Error("the Flightdeck daemon is down");
   });
   try {
     return await daemon.call("personas.resolve", { ref: { id }, projectPath: cwd });

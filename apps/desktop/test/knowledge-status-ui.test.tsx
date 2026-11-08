@@ -38,7 +38,14 @@ const LIST = {
 
 type Answer = { ok: true; data: unknown } | { ok: false; [key: string]: unknown };
 
-function setup(options: { language?: "en" | "pt-BR"; features?: string[]; answer?: Answer } = {}) {
+function setup(
+  options: {
+    language?: "en" | "pt-BR";
+    features?: string[];
+    answer?: Answer;
+    list?: typeof LIST;
+  } = {},
+) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
   });
@@ -48,7 +55,7 @@ function setup(options: { language?: "en" | "pt-BR"; features?: string[]; answer
   const sent: Array<[string, unknown]> = [];
   store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
-    return type === "knowledge.list" ? LIST : null;
+    return type === "knowledge.list" ? (options.list ?? LIST) : null;
   }) as never;
   store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
@@ -178,4 +185,37 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
       "Obsoleto",
     ]);
   });
+});
+
+// #1050: the panel changes a document's file (its status), so it does not call itself read-only; and
+// with no document there is no status to change, so the panel does not explain how changing one works.
+describe("knowledge-status-ui: what the panel says it does (#1050)", () => {
+  for (const [language, title, hint, setHint, empty] of [
+    [
+      "en",
+      "Project knowledge",
+      "The project's PRDs, RFCs, ADRs and specs, with the status each one says it has in its front matter.",
+      "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
+      "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
+    ],
+    [
+      "pt-BR",
+      "Conhecimento do projeto",
+      "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter.",
+      "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
+      "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
+    ],
+  ] as const) {
+    test(`${language}: the hint does not claim read-only, and with no document the status hint is gone`, async () => {
+      render(setup({ language, list: { truncated: false, entries: [] } }).view);
+      const region = () => screen.queryByRole("region", { name: title });
+      await waitFor(() => expect(region()).not.toBeNull());
+      const inside = within(region() as HTMLElement);
+      await waitFor(() => expect(inside.queryByText(empty)).not.toBeNull());
+      expect([inside.queryByText(hint) !== null, inside.queryByText(setHint) !== null]).toEqual([
+        true,
+        false,
+      ]);
+    });
+  }
 });

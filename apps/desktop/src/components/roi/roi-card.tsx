@@ -11,6 +11,7 @@ import type { AppStore } from "@/lib/app-store";
 import { periodRange, usd } from "@/lib/costs";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "@/lib/roi";
 import { useStoreSlice } from "@/lib/use-store";
+import { cn } from "@/lib/utils";
 
 /** The signals of the same project on several hosts: counts add up, the first refusal is told. */
 function mergeSignals(list: Array<RoiSignalValues | undefined>): RoiSignalValues {
@@ -137,14 +138,24 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
     store.roi.setProjectRate(key, parsed);
   };
 
+  const headlineText = t(line.key as Key, { ...line.vars, movedText });
   return (
     <section
       aria-label={t("roiUi.title")}
-      className="flex flex-col gap-3 rounded-lg border bg-card p-4"
+      className={cn("flex flex-col gap-3 rounded-lg border bg-card", open ? "p-4" : "px-3 py-1")}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-medium text-sm">{t("roiUi.title")}</h2>
-        <Button size="sm" variant="ghost" aria-expanded={open} onClick={flip}>
+      {/* Folded, the whole card is this one row: the headline gives way, so the board starts right
+          under the toolbar (#1031). */}
+      <div className="flex items-center gap-2">
+        <h2 className="shrink-0 font-medium text-sm">{t("roiUi.title")}</h2>
+        {!open && <p className="min-w-0 flex-1 truncate text-sm">{headlineText}</p>}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ms-auto shrink-0"
+          aria-expanded={open}
+          onClick={flip}
+        >
           {open ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
           {t("roiUi.details")}
         </Button>
@@ -165,7 +176,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
           ))}
         </fieldset>
       )}
-      <p className="text-sm">{t(line.key as Key, { ...line.vars, movedText })}</p>
+      {open && <p className="text-sm">{headlineText}</p>}
       {open && (
         <>
           <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">

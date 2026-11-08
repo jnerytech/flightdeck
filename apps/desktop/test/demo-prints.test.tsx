@@ -50,6 +50,21 @@ describe("demo-prints", () => {
     expect(secrets.get("demo-alfa")).toBe(TOKEN);
   });
 
+  test("?hosts=none starts the demo with no host, so a print shows the first run (#1052)", () => {
+    const json = JSON.stringify([HOST]);
+    expect([
+      parseDemoHosts(json, "?hosts=none").length,
+      parseDemoHosts(json, "?route=%7B%7D&hosts=none&lang=en").length,
+      parseDemoHosts(json, "?route=%7B%7D").length,
+      parseDemoHosts(json, "?hosts=all").length,
+    ]).toEqual([0, 0, 1, 1]);
+    // A page that kept a host from an earlier print starts with none.
+    const { platform } = memoryPlatform();
+    seedDemoHosts(platform.storage, new Map(), [HOST]);
+    seedDemoHosts(platform.storage, new Map(), parseDemoHosts(json, "?hosts=none"));
+    expect(loadHosts(platform.storage)).toEqual([]);
+  });
+
   test("o app do demo abre já conectado ao host semeado, sem passar pelo formulário", async () => {
     const d = makeDaemon(cleanups);
     const url = d.listen().url;

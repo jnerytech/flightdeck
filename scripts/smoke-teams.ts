@@ -406,7 +406,7 @@ async function run(work: string): Promise<void> {
     });
     if (status.data.members.length !== 3) throw new Error("o time devia ter três membros");
     const outsider = await claudeA1.tool("team_status", { team: team.id });
-    if (!outsider.error?.includes("não é do time"))
+    if (!outsider.error?.includes("is not in team"))
       throw new Error("quem não é do time não devia ver");
     log("o time nasceu com a coordenadora e duas executoras, e só os membros veem o estado");
 

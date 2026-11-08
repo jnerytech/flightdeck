@@ -145,7 +145,7 @@ describe("wrapper", () => {
       const { file } = config(options);
       const result = await wrapper(["-c"], file);
       expect(result.code).toBe(0);
-      expect(result.out.join("\n")).toContain("daemon do Flightdeck fora do ar");
+      expect(result.out.join("\n")).toContain("the Flightdeck daemon is down");
     }
     const starts = fake.events().filter((e) => e.type === "start");
     expect(starts.map((e) => e.args)).toEqual([["-c"], ["-c"]]);
@@ -162,10 +162,10 @@ describe("wrapper", () => {
       out: [String(error)],
     }));
     const starts = fake.events().filter((e) => e.type === "start");
-    expect([result.code, result.out.join("\n").includes("configuração do canal")]).toEqual([
-      0,
-      true,
-    ]);
+    expect([
+      result.code,
+      result.out.join("\n").includes("could not write the channel config"),
+    ]).toEqual([0, true]);
     expect(starts.map((e) => e.args)).toEqual([["-c"]]);
   });
 
@@ -200,7 +200,7 @@ describe("wrapper", () => {
     try {
       const result = await wrapper([], file);
       expect(result.code).toBe(1);
-      expect(result.out.join("\n")).toContain("claude não encontrado");
+      expect(result.out.join("\n")).toContain("claude not found");
     } finally {
       process.env.PATH = saved;
     }

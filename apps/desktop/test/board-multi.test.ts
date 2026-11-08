@@ -11,6 +11,7 @@ import {
   countLabel,
   filteredColumnCount,
   filteredCountLabel,
+  fitColumnWidth,
   moveMany,
   pruneSelection,
   rangeSelection,
@@ -65,12 +66,34 @@ describe("board-multi: the column width (issue #161)", () => {
     };
   };
 
-  test("260 px by default, between 220 and 520, in steps of 20", () => {
-    expect(COLUMN_WIDTH).toEqual({ default: 260, min: 220, max: 520, step: 20 });
-    expect(clampWidth(100)).toBe(220);
+  test("260 px by default, between 180 and 520, in steps of 20", () => {
+    expect(COLUMN_WIDTH).toEqual({ default: 260, min: 180, max: 520, step: 20 });
+    expect(clampWidth(100)).toBe(180);
     expect(clampWidth(900)).toBe(520);
     expect(clampWidth(333)).toBe(333);
     expect(clampWidth(Number.NaN)).toBe(260);
+  });
+
+  test("columns share the board's width, with room for the last handle: five fit a 992 px board at 187 px, never over 520", () => {
+    expect(fitColumnWidth(992, 5, 12)).toBe(187);
+    expect(fitColumnWidth(1700, 5, 12)).toBe(328);
+    expect(fitColumnWidth(3000, 5, 12)).toBe(520);
+    expect(fitColumnWidth(956, 5, 12)).toBe(180);
+  });
+
+  test("a board too narrow for five readable columns keeps the usual width and scrolls", () => {
+    expect(fitColumnWidth(955, 5, 12)).toBe(260);
+    expect(fitColumnWidth(600, 5, 12)).toBe(260);
+    expect(fitColumnWidth(0, 5, 12)).toBe(260);
+  });
+
+  test("a width is chosen only once the person sets one or one was kept", () => {
+    expect(new BoardWidth(memory().storage).chosen).toBe(false);
+    expect(new BoardWidth(memory({ [COLUMN_WIDTH_KEY]: "banana" }).storage).chosen).toBe(false);
+    expect(new BoardWidth(memory({ [COLUMN_WIDTH_KEY]: "300" }).storage).chosen).toBe(true);
+    const w = new BoardWidth(memory().storage);
+    w.set(240, false);
+    expect(w.chosen).toBe(true);
   });
 
   test("the width is kept and comes back after a restart; a stored nonsense is the default", () => {
@@ -88,7 +111,7 @@ describe("board-multi: the column width (issue #161)", () => {
     const read = (value: string) =>
       new BoardWidth(memory({ [COLUMN_WIDTH_KEY]: value }).storage).value;
     expect([read("10"), read("0"), read("-5"), read(""), read("300.5")]).toEqual([
-      220, 260, 260, 260, 301,
+      180, 260, 260, 260, 301,
     ]);
   });
 
@@ -131,7 +154,7 @@ describe("board-multi: the column width (issue #161)", () => {
     let told = 0;
     w.subscribe(() => told++);
     w.set(10);
-    expect(w.value).toBe(220);
+    expect(w.value).toBe(180);
     w.set(1000);
     expect(w.value).toBe(520);
     expect(told).toBe(2);
