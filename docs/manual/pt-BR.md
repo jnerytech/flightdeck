@@ -364,6 +364,11 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   quando o front matter não é claro o bastante para editar com segurança, ou quando o arquivo passa
   de 1 MB ou não é texto. Só os documentos que a lista mostra podem ser mudados; um link, um nome
   de credencial ou um arquivo fora das pastas da biblioteca não podem.
+  **Novo documento** começa um documento a partir de um modelo: escolha o tipo (ADR, RFC ou PRD),
+  digite um título e use **Criar a partir do modelo**. O arquivo vai para `docs/adr`, `docs/rfc` ou
+  `docs/prd` do projeto (ADR e RFC são numerados, `0004-<título>.md`; um PRD é `<título>.md`), como
+  rascunho com `status: transitional`, sem commit. Ele nunca substitui um arquivo que já existe, e é
+  recusado quando `docs/<tipo>` é um link ou fica fora do projeto.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.

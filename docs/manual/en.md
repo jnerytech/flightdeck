@@ -372,6 +372,11 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   its front matter is not clear enough to edit safely, or when the file is over 1 MB or not text.
   Only the documents the list shows can be changed; a link, a credential name or a file outside
   the library folders cannot.
+  **New document** starts a document from a template: pick a kind (ADR, RFC or PRD), type a title
+  and press **Create from template**. The file goes in `docs/adr`, `docs/rfc` or `docs/prd` of the
+  project (an ADR or RFC is numbered, `0004-<title>.md`; a PRD is `<title>.md`), as a draft with
+  `status: transitional`, and is left uncommitted. It never replaces a file that is there, and it
+  is refused when `docs/<kind>` is a link or lies outside the project.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
