@@ -3790,6 +3790,13 @@ export const en: Dictionary = {
     saveValidation: "Save validation note",
     validationShape:
       "What was checked:\nHow (commands, steps, data):\nResult:\nWhat was not checked:",
+    validationIgnored: {
+      untrusted: "The project's validation note template was not used: the project is not trusted.",
+      unsafe:
+        "The project's validation note template was not used: it is a link or has more than one name.",
+      too_big: "The project's validation note template was not used: it is over 32 KiB.",
+      empty: "The project's validation note template was not used: it is empty.",
+    },
     specFile: "Spec file",
     saveSpec: "Save spec file",
     specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",

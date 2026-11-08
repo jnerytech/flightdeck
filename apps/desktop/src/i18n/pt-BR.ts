@@ -3796,6 +3796,14 @@ export const ptBR = {
     saveValidation: "Salvar nota de validação",
     validationShape:
       "O que foi verificado:\nComo (comandos, passos, dados):\nResultado:\nO que não foi verificado:",
+    validationIgnored: {
+      untrusted:
+        "O modelo de nota de validação do projeto não foi usado: o projeto não é confiável.",
+      unsafe:
+        "O modelo de nota de validação do projeto não foi usado: é um link ou tem mais de um nome.",
+      too_big: "O modelo de nota de validação do projeto não foi usado: passa de 32 KiB.",
+      empty: "O modelo de nota de validação do projeto não foi usado: está vazio.",
+    },
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
     specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",

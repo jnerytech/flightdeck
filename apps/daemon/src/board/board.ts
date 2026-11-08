@@ -68,6 +68,7 @@ import {
   renderSpec,
   specFirstLine,
   type TemplateIgnored,
+  type TemplateName,
   untrustedTemplate,
   wantsSpec,
   writeSpec,
@@ -151,9 +152,10 @@ export interface BoardOptions {
   /**
    * Issue #78: the folder a card's spec template may be read from (the trusted checkout of the
    * worktree's project), or null when the project is not trusted: its template would reach the
-   * agent before the person trusted it.
+   * agent before the person trusted it. `own` says `cwd` is the project's own folder, not a worktree
+   * (a card with no worktree).
    */
-  specTemplateRoot?: (worktree: string) => Promise<string | null>;
+  specTemplateRoot?: (cwd: string, own?: true) => Promise<string | null>;
   /** Lines for the daemon's log (no card content goes there). */
   log?: (line: string) => void;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
@@ -1619,25 +1621,8 @@ export class Board {
     const path = specExpectedPath(card);
     if (path === null || !wantsSpec(contracts, card.specPath)) return null;
     // A trusted project's own template, from its trusted checkout; anything else gets the built-in.
-    let checked = true;
-    const root = this.opts.specTemplateRoot
-      ? await this.opts.specTemplateRoot(worktree).catch((error: unknown) => {
-          // The built-in template then, but a trust bug must not go unseen. Trust is unknown, so
-          // the card says nothing about a template.
-          checked = false;
-          this.opts.log?.(
-            `spec template: trust check failed for ${worktree}, built-in template used: ${String(error)}`,
-          );
-          return null;
-        })
-      : null;
-    const template = root ? await projectTemplate(root) : null;
-    const ignored: TemplateIgnored | null = root
-      ? (template?.ignored ?? null)
-      : checked && (await untrustedTemplate(worktree))
-        ? "untrusted"
-        : null;
-    const result = await writeSpec(worktree, path, renderSpec(card, template?.body ?? undefined));
+    const template = await this.templateFor(worktree, "spec");
+    const result = await writeSpec(worktree, path, renderSpec(card, template.body ?? undefined));
     if (result === "failed") {
       // The app says it in its language; the prompt sends the agent to no spec that is not there.
       const why = new FlightdeckError(
@@ -1650,6 +1635,7 @@ export class Board {
       this.changed(id);
       return null;
     }
+    const ignored = template.ignored;
     if (ignored && result === "written") {
       // The built-in template was used; the project's own is named by its reason, never quoted.
       const why = new FlightdeckError(
@@ -1760,6 +1746,49 @@ export class Board {
     );
     this.setNotice(id, lacked.message, lacked);
     return this.changed(id);
+  }
+
+  /**
+   * A project's own template from its trusted checkout, or why it gives none: the body when it is
+   * there and used, `ignored` when it is there and not (an untrusted project, a link, too big,
+   * empty), neither when there is none or the trust check failed (logged, never quoted).
+   */
+  private async templateFor(
+    cwd: string,
+    name: TemplateName,
+    own?: true,
+  ): Promise<{ body: string | null; ignored: TemplateIgnored | null }> {
+    if (!this.opts.specTemplateRoot) return { body: null, ignored: null };
+    const asked = await this.opts.specTemplateRoot(cwd, own).then(
+      (root) => ({ root }),
+      (error: unknown) => {
+        // The built-in template then, but a trust bug must not go unseen. Trust is unknown, so
+        // the card says nothing about a template.
+        this.opts.log?.(
+          `${name} template: trust check failed for ${cwd}, built-in template used: ${String(error)}`,
+        );
+        return null;
+      },
+    );
+    if (asked === null) return { body: null, ignored: null };
+    if (asked.root) return projectTemplate(asked.root, name);
+    return { body: null, ignored: (await untrustedTemplate(cwd, name)) ? "untrusted" : null };
+  }
+
+  /**
+   * The project's own shape for a validation note (`.flightdeck/templates/validation.md`, trusted
+   * projects only), given to the app as a placeholder and never saved; or why it was ignored
+   * (issue #1058). Read from the trusted checkout; the card's worktree is only looked at by name
+   * for an untrusted project, and a card with no worktree is asked for by its project's folder.
+   */
+  async validationTemplate(
+    id: string,
+  ): Promise<{ text: string | null; ignored: TemplateIgnored | null }> {
+    const card = this.getCard(id);
+    const found = card.worktreePath
+      ? await this.templateFor(card.worktreePath, "validation")
+      : await this.templateFor(this.getProject(card.projectId).path, "validation", true);
+    return { text: found.body, ignored: found.ignored };
   }
 
   /**

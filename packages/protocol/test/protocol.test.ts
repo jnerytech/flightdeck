@@ -126,6 +126,7 @@ const validCommands: Record<CommandType, unknown> = {
   },
   "card.get": { cardId: "c" },
   "card.spec": { cardId: "c" },
+  "card.validationTemplate": { cardId: "c" },
   "card.stop": { cardId: "c" },
   "card.diff": { cardId: "c" },
   "assistant.run": {
