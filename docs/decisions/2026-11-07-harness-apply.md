@@ -37,11 +37,14 @@ would then write a command the person never saw.
     (`reformats`), apply still writes it: the preview showed it and the person confirmed.
 - **Where it writes.**
   - Every check happens before any write.
+  - The project path must still resolve to itself: the server resolved it inside the allowed roots.
   - `settings.json` is walked again with no link allowed anywhere on the path. It is then opened with
-    `O_NOFOLLOW` (where the platform has it), and the handle must be the same file (device and inode)
-    the walk found. Its bytes are hashed from that handle and written back through it.
+    `O_NOFOLLOW` (where the platform has it), and the handle must be the same file (device and inode,
+    compared as bigints) the walk found, with one name only. A hard link would write a file elsewhere
+    through the same inode. Its bytes are hashed from that handle and written back through it.
   - A new file is created folder by folder: a link on the way is refused. It is opened with
-    `O_CREAT | O_EXCL`, so a file that appeared since the check is not overwritten.
+    `O_CREAT | O_EXCL`, so a file that appeared since the check is not overwritten. After the open,
+    its folder must still resolve to itself, or nothing is written into it.
   - New files are written before the settings, so such a late file refuses before the settings
     change.
   - A worktree's path is written where the path says. A session in a worktree reads its
@@ -73,6 +76,12 @@ would then write a command the person never saw.
   alone. The residual race is a folder on the path swapped for a link between the walk and the open,
   pointing at a different file: the identity check refuses it. Pointing at the same file writes
   where the person meant.
+- Node has no `openat`, so a folder swapped between the last check and the open can still place an
+  empty new file outside the project. The check after the open refuses before any content is
+  written, and `O_EXCL` means the file is one this call made.
+- The settings are written as truncate, then write, through the handle. An edit made by someone else
+  between the read and the write is lost, and a crash in between leaves the file short. The window is
+  the length of one write, during an apply the person started.
 - An apply that refuses with `harness_stale` after a late file appeared may have created the new
   files before it. They are template files that were missing, and nothing of the person's changes.
 - S4b, the app's confirm step, shows the formatter command and says it runs the project's own

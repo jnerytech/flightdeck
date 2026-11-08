@@ -65,9 +65,11 @@ async function openSettings(
   if (found.state !== "file") return { look: found, handle: null };
   const handle = await orNull(fs.open(found.at, constants.O_RDWR | NO_FOLLOW));
   if (handle === null) return { look: { state: "refused" }, handle: null };
-  const info = await handle.stat();
+  // As bigints: a Windows file index can pass 2^53, where numbers would round two files together.
+  const info = await handle.stat({ bigint: true });
   const same = info.dev === found.info.dev && info.ino === found.info.ino;
-  if (!same || !info.isFile() || info.size > MAX_FILE) {
+  // A second name for the file (a hard link) may lie outside the project: writing would change it there.
+  if (!same || info.nlink !== 1n || !info.isFile() || info.size > BigInt(MAX_FILE)) {
     await handle.close();
     return { look: { state: "refused" }, handle: null };
   }
@@ -103,7 +105,7 @@ function merged(current: Record<string, unknown>, settings: Settings): Record<st
  * Creates a new file at `name`, which must still be missing: each folder on the way is made or
  * found as a real folder (a link there is refused), and the file is opened only if it does not exist.
  */
-async function create(root: string, name: string, content: string): Promise<void> {
+async function create(root: string, name: string, content: string, fs: ApplyFs): Promise<void> {
   const names = name.split("/");
   let at = root;
   for (const segment of names.slice(0, -1)) {
@@ -113,9 +115,12 @@ async function create(root: string, name: string, content: string): Promise<void
     if (info === null || !info.isDirectory()) throw stale();
   }
   const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | NO_FOLLOW;
-  const handle = await orNull(open(join(at, names.at(-1) as string), flags));
+  const handle = await orNull(fs.open(join(at, names.at(-1) as string), flags));
   if (handle === null) throw stale();
   try {
+    // A folder on the way swapped for a link since the loop: the new file is not where the path says.
+    // It is still empty, and was made by this call (O_EXCL), so nothing of the person's is touched.
+    if ((await orNull(realpath(at))) !== at) throw stale();
     await handle.writeFile(content);
   } finally {
     await handle.close();
@@ -127,9 +132,10 @@ async function writeSettings(
   handle: FileHandle | null,
   current: Current,
   settings: Settings,
+  fs: ApplyFs,
 ): Promise<void> {
   const text = layoutLike(current.text, merged(current.parsed, settings));
-  if (handle === null) return create(root, SETTINGS, text);
+  if (handle === null) return create(root, SETTINGS, text, fs);
   await handle.truncate(0);
   await handle.write(text, 0, "utf8");
 }
@@ -141,7 +147,9 @@ export async function applyHarness(
   digests: Readonly<Record<string, string>>,
   fs: ApplyFs = diskFs,
 ): Promise<HarnessApplied> {
-  const root = (await orNull(realpath(path))) ?? path;
+  // `path` is real (the server resolved it inside the allowed roots): it must still be.
+  if ((await orNull(realpath(path))) !== path) throw stale();
+  const root = path;
   let handle: FileHandle | null = null;
   try {
     const plan = await planHarness(root, parts, async (at) => {
@@ -153,10 +161,10 @@ export async function applyHarness(
     if (!sameDigests(digestsOf(plan.preview), digests)) throw stale();
     const { settings, files } = plan.preview;
     // New files first: one that appeared since the check refuses before the settings change.
-    for (const file of files) await create(root, file.path, file.content);
+    for (const file of files) await create(root, file.path, file.content, fs);
     const written = files.map((file) => file.path);
     if (settings && plan.current && settings.hooks.length + settings.denyRules.length > 0) {
-      await writeSettings(root, handle, plan.current, settings);
+      await writeSettings(root, handle, plan.current, settings, fs);
       written.unshift(SETTINGS);
     }
     return { written };

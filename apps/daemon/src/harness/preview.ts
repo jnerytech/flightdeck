@@ -5,7 +5,7 @@
  * See docs/decisions/2026-11-07-harness-preview.md.
  */
 import { createHash } from "node:crypto";
-import type { Stats } from "node:fs";
+import type { BigIntStats } from "node:fs";
 import { lstat, readFile, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -42,7 +42,7 @@ export type Look =
 export type Walk =
   | { state: "absent" }
   | { state: "refused" }
-  | { state: "file"; at: string; info: Stats };
+  | { state: "file"; at: string; info: BigIntStats };
 
 const sha256 = (data: string | Buffer): string => createHash("sha256").update(data).digest("hex");
 
@@ -66,16 +66,16 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
  */
 export async function walk(root: string, name: string): Promise<Walk> {
   let at = root;
-  let info: Stats | null = null;
+  let info: BigIntStats | null = null;
   for (const segment of name.split("/")) {
     // What came before this name must be a folder.
     if (info !== null && !info.isDirectory()) return { state: "refused" };
     at = join(at, segment);
-    info = await orNull(lstat(at));
+    info = await orNull(lstat(at, { bigint: true }));
     if (info === null) return { state: "absent" };
     if (info.isSymbolicLink()) return { state: "refused" };
   }
-  if (!info?.isFile() || info.size > MAX_FILE) return { state: "refused" };
+  if (!info?.isFile() || info.size > BigInt(MAX_FILE)) return { state: "refused" };
   return { state: "file", at, info };
 }
 
