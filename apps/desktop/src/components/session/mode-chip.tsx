@@ -1,6 +1,6 @@
 import type { PermissionMode, SettableMode } from "@flightdeck/protocol";
 import { ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +40,7 @@ export function ModeChip(
 ) {
   const { t, mode, rows } = props;
   const [open, setOpen] = useState(false);
+  const chipRef = useRef<HTMLButtonElement>(null);
   const bypass = mode === "bypassPermissions";
   const bypassOff = rows.some((r) => r.blocked === "bypassOff");
   const pick = (next: SettableMode) => {
@@ -53,6 +54,7 @@ export function ModeChip(
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <button
+          ref={chipRef}
           type="button"
           className={cn("mode-chip", bypass && "text-status-error")}
           data-bypass={bypass}
@@ -68,6 +70,9 @@ export function ModeChip(
         side="top"
         align="end"
         className="mode-menu"
+        // Radix puts the focus back on the chip a tick after a pick: a menu opened again by then
+        // stays open (#1004).
+        onFocusOutside={(e) => e.target === chipRef.current && e.preventDefault()}
         onKeyDown={(e) => {
           const row = /^[1-9]$/.test(e.key) ? rows[Number(e.key) - 1] : undefined;
           if (!row) return;
