@@ -18,7 +18,9 @@ export type Action =
   | { gate: { message: string; show?: string } }
   | { loop: { max: number; until: { check: string }; do: InnerAction } }
   | { parallel: InnerAction[] }
-  | { pr: Record<string, never> };
+  | { pr: Record<string, never> }
+  /** Issue #79: raises the findings of an earlier agent step as Backlog cards. */
+  | { cards: { from: string } };
 
 export type Step = { id: string } & Action;
 
