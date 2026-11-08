@@ -5,16 +5,18 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { ExternalSessions } from "../src/central/external.ts";
 import { startReceptor } from "../src/central/receptor.ts";
-import { PLAIN_PATH, RECEPTOR_FILE } from "../src/central/wrapper.ts";
+import { PLAIN_PATH, RECEPTOR_FILE, TERMINAL_LAUNCH_VAR } from "../src/central/wrapper.ts";
 import { runCli } from "../src/main.ts";
+import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { installFakeClaude } from "./fake-claude.ts";
-import { tempDir } from "./helpers.ts";
+import { newManager, tempDir, workspace } from "./helpers.ts";
 
 /** Issue #936: on Windows the channel config goes to a plain path claude can read back. */
 const HOOKS = "hooks-token-0123456789";
@@ -67,19 +69,24 @@ async function launch(
     afterAcl?: (folder: string) => void;
     /** A fake claude already installed (its shim is what the config names). */
     fake?: ReturnType<typeof installFakeClaude>;
+    /** The folder claude runs in (a project the host allows). */
+    cwd?: string;
+    /** The wrapper may reject (an early failure): `launch` then still answers. */
+    mayReject?: boolean;
   } = {},
 ) {
   const acls: Acl[] = [];
   const errors: string[] = [];
   const fake = options.fake ?? installFakeClaude([{ do: "exit", code: 0 }]);
   cleanups.push(fake.restore);
-  await runCli(["claude", "-c"], {
+  const run = runCli(["claude", "-c"], {
     env: { ...process.env, FLIGHTDECK_CONFIG: file, ...options.env },
     log: { log: () => {}, error: (m) => errors.push(m) },
     exit: () => {},
     onSignal: () => {},
     selfCommand: ["C:\\fd\\flightdeckd.exe"],
     ...(options.platform ? { platform: options.platform } : {}),
+    ...(options.cwd ? { cwd: options.cwd } : {}),
     exec: async (cmd) => {
       if (options.aclThrows) throw new Error("icacls is not here");
       acls.push({ cmd, listing: readdirSync(cmd[1] ?? "") });
@@ -87,10 +94,15 @@ async function launch(
       return { code: options.aclCode ?? 0, stdout: "" };
     },
   });
-  const start = fake.events().find((e) => e.type === "start") as unknown as {
-    args: string[];
-    mcpConfig: { mcpServers: Record<string, unknown> } | null;
-  };
+  const [settled] = await Promise.allSettled([run]);
+  if (settled?.status === "rejected" && !options.mayReject) throw settled.reason;
+  const found = fake.events().find((e) => e.type === "start") as unknown as
+    | {
+        args: string[];
+        mcpConfig: { mcpServers: Record<string, unknown> } | null;
+      }
+    | undefined;
+  const start = found ?? { args: [], mcpConfig: null };
   const at = start.args.indexOf("--mcp-config");
   return { start, acls, errors, configPath: at < 0 ? null : (start.args[at + 1] ?? null), fake };
 }
@@ -100,6 +112,7 @@ const launchIdOf = (folder: string) => folder.slice(folder.lastIndexOf("Flightde
 
 const WINDOWS_ENV = (programData: string, over: Record<string, string> = {}) => ({
   ProgramData: programData,
+  SystemRoot: "C:\\Windows",
   USERNAME: "joão",
   USERDOMAIN: "PC",
   ...over,
@@ -136,7 +149,7 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
     ]).toEqual([true, true, ["flightdeck"], false, []]);
     // The folder is restricted to the user before the file with the token is written into it.
     expect(run.acls).toHaveLength(1);
-    expect(run.acls[0]?.cmd.slice(0, 1)).toEqual(["icacls"]);
+    expect(run.acls[0]?.cmd.slice(0, 1)).toEqual(["C:\\Windows\\System32\\icacls.exe"]);
     expect(run.acls[0]?.cmd.slice(2)).toEqual(["/inheritance:r", "/grant:r", "PC\\joão:(OI)(CI)F"]);
     expect(run.acls[0]?.listing).toEqual([]);
   });
@@ -245,5 +258,124 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
         writeFileSync(join(folder, `${launchIdOf(folder)}.json`), "x", { mode: 0o400 }),
     });
     expect([run.configPath, readdirSync(programData)]).toEqual([null, []]);
+  });
+
+  test("a file planted in the new folder before it was restricted: the token is not written into it", async () => {
+    const programData = tempDir();
+    const { file } = host(["João Silva", "data"]);
+    let planted = "";
+    const run = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(programData),
+      // Another user made the config's own name first, with a mode that lets the write in.
+      afterAcl: (folder) => {
+        planted = join(folder, `${launchIdOf(folder)}.json`);
+        writeFileSync(planted, "planted", { mode: 0o666 });
+      },
+    });
+    expect([run.configPath, readFileSync(planted, "utf8")]).toEqual([null, "planted"]);
+  });
+
+  test("anything else found in the folder once it is restricted is refused too", async () => {
+    const programData = tempDir();
+    const { file } = host(["João Silva", "data"]);
+    const run = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(programData),
+      afterAcl: (folder) => writeFileSync(join(folder, "other.txt"), "x"),
+    });
+    expect([
+      run.configPath,
+      run.start.args.includes("--dangerously-load-development-channels"),
+    ]).toEqual([null, false]);
+  });
+
+  test("a folder that is already there is not ours: it is left as it is, and the next base is tried", async () => {
+    const programData = tempDir();
+    const publicFolder = tempDir();
+    const id = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+    const theirs = join(programData, `Flightdeck-${id}`);
+    mkdirSync(theirs);
+    writeFileSync(join(theirs, "keep.txt"), "theirs");
+    const { file } = host(["João Silva", "data"]);
+    const run = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(programData, { PUBLIC: publicFolder, [TERMINAL_LAUNCH_VAR]: id }),
+    });
+    expect([
+      (run.configPath ?? "").startsWith(publicFolder),
+      readdirSync(theirs),
+      readFileSync(join(theirs, "keep.txt"), "utf8"),
+    ]).toEqual([true, ["keep.txt"], "theirs"]);
+  });
+
+  test("a user name that could name another principal is not given the folder", async () => {
+    const { file } = host(["João Silva", "data"]);
+    const names = ["*S-1-1-0", "Everyone:(OI)(CI)F", "a/b", "a;b", "a,b", " "];
+    const runs = await Promise.all(
+      names.map((USERNAME) =>
+        launch(file, { platform: "win32", env: WINDOWS_ENV(tempDir(), { USERNAME }) }),
+      ),
+    );
+    expect([runs.map((r) => r.configPath), runs.map((r) => r.acls.length)]).toEqual([
+      names.map(() => null),
+      names.map(() => 0),
+    ]);
+    const domain = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(tempDir(), { USERDOMAIN: "*S-1-1-0" }),
+    });
+    expect(domain.configPath).toBeNull();
+  });
+
+  test("a base that is not a local folder is passed over: a network share, a relative path, one that climbs", async () => {
+    const { file } = host(["João Silva", "data"]);
+    const publicFolder = tempDir();
+    const bases = ["\\\\server\\share", "//server/share", "relative/dir", "C:rel", "/tmp/a/../b"];
+    const runs = await Promise.all(
+      bases.map((base) =>
+        launch(file, {
+          platform: "win32",
+          env: WINDOWS_ENV(base, { PUBLIC: publicFolder }),
+        }),
+      ),
+    );
+    expect(runs.map((r) => (r.configPath ?? "").startsWith(publicFolder))).toEqual(
+      bases.map(() => true),
+    );
+  });
+
+  test("a failure after the config is written still removes it and its folder", async () => {
+    const programData = tempDir();
+    const { root, project } = workspace();
+    const server = startServer({
+      manager: newManager().manager,
+      knowledgeFeed: async () => ({ text: "index", fed: 1, truncated: false }),
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: "t".repeat(32),
+      allowedRoots: [root],
+    });
+    cleanups.push(() => server.stop());
+    const { file, dataDir } = host(["João Silva", "data"]);
+    writeFileSync(
+      file,
+      JSON.stringify({
+        token: "t".repeat(32),
+        port: server.port,
+        dataDir,
+        hooks: { port: 0, token: HOOKS },
+      }),
+    );
+    // The index goes in a file under `personas`: a file stands there, so writing it fails.
+    writeFileSync(join(dataDir, "personas"), "not a folder");
+    const run = await launch(file, {
+      platform: "win32",
+      env: WINDOWS_ENV(programData),
+      cwd: project,
+      mayReject: true,
+    });
+    expect([run.start.args, readdirSync(programData)]).toEqual([[], []]);
   });
 });
