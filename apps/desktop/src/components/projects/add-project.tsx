@@ -42,7 +42,7 @@ export function AddProject(
 ) {
   const { store, hostId } = props;
   const t = useT();
-  const [open, setOpenState] = useState(props.bare === true);
+  const [openState, setOpenState] = useState(props.bare === true);
   const setOpen = (next: boolean) => {
     setOpenState(next);
     if (!next) props.onClosed?.();
@@ -72,7 +72,7 @@ export function AddProject(
           {props.label ?? t("states.addProject")}
         </Button>
       )}
-      {open && (
+      {openState && (
         <Dialog open onOpenChange={(next) => !next && setOpen(false)}>
           <DialogContent>
             <DialogHeader>
