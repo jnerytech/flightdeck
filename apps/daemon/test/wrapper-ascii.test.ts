@@ -213,7 +213,7 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
       run.configPath,
       run.start.args.includes("--dangerously-load-development-channels"),
       readdirSync(programData),
-      run.errors.join("\n").includes("configuração do canal"),
+      run.errors.join("\n").includes("could not write the channel config"),
     ]).toEqual([null, false, [], true]);
   });
 
@@ -230,7 +230,7 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
       0,
       0,
     ]);
-    expect(noBase.errors.join("\n")).toContain("configuração do canal");
+    expect(noBase.errors.join("\n")).toContain("could not write the channel config");
   });
 
   test("a ProgramData that is not there, or an icacls that cannot run, is no folder: claude opens with neither flag", async () => {

@@ -11,8 +11,12 @@ const DemoHost = z.object({ id: z.string(), name: z.string(), url: z.string(), t
 /** A host the demo runs (scripts/demo-seed.ts), already paired: id, name, address and token. */
 export type DemoHost = z.infer<typeof DemoHost>;
 
-/** The hosts handed to the web entry (`VITE_DEMO_HOSTS`, JSON); none when absent or invalid. */
-export function parseDemoHosts(json: string | undefined): DemoHost[] {
+/**
+ * The hosts handed to the web entry (`VITE_DEMO_HOSTS`, JSON); none when absent or invalid, and none
+ * when the address asks `?hosts=none` (the first-run screen's print, #1052).
+ */
+export function parseDemoHosts(json: string | undefined, search = ""): DemoHost[] {
+  if (new URLSearchParams(search).get("hosts") === "none") return [];
   try {
     return z.array(DemoHost).parse(JSON.parse(json ?? "[]"));
   } catch {

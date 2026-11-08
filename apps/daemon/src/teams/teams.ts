@@ -199,7 +199,7 @@ export class Teams {
 
   private row(id: string): Row {
     const row = this.opts.db.query("SELECT * FROM teams WHERE id = ?").get(id) as Row | null;
-    if (!row) throw notFound(`time ${id} não existe`, "team_not_found", { id });
+    if (!row) throw notFound(`team ${id} does not exist`, "team_not_found", { id });
     return row;
   }
 
@@ -287,7 +287,7 @@ export class Teams {
   status(id: string, asker?: string): TeamStatus {
     const team = this.get(id);
     if (asker !== undefined && !team.members.some((m) => m.sessionId === asker)) {
-      throw invalid(`esta sessão não é do time ${team.name}`, "team_session_foreign", {
+      throw invalid(`this session is not in team ${team.name}`, "team_session_foreign", {
         team: team.name,
       });
     }
@@ -316,7 +316,7 @@ export class Teams {
   private async checkPersona(id: string | null | undefined): Promise<string | null> {
     if (id === null || id === undefined) return null;
     const found = await this.opts.personas?.resolve(id);
-    if (!found) throw bad(`a persona ${id} não existe`, "persona_unknown", { persona: id });
+    if (!found) throw bad(`persona ${id} does not exist`, "persona_unknown", { persona: id });
     return found.id;
   }
 
@@ -382,8 +382,8 @@ export class Teams {
     const project = this.opts.board.getProject(input.projectId);
     const blocked = this.opts.quota?.blocked();
     if (blocked) {
-      const until = blocked.until ? new Date(blocked.until).toISOString() : "o próximo reinício";
-      const message = `a cota do plano está acima do limite até ${until}: crie o time depois, senão ele nasce parado`;
+      const until = blocked.until ? new Date(blocked.until).toISOString() : "the next reset";
+      const message = `the plan quota is over the limit until ${until}: create the team later, or it starts paused`;
       throw blocked.until
         ? invalid(message, "team_quota_until", { until })
         : invalid(message, "team_quota_over");
@@ -505,7 +505,7 @@ export class Teams {
   private open(id: string): Row {
     const row = this.row(id);
     if (row.state === "closed") {
-      throw invalid(`o time ${row.name} está encerrado`, "team_closed", { name: row.name });
+      throw invalid(`team ${row.name} is closed`, "team_closed", { name: row.name });
     }
     return row;
   }
@@ -566,7 +566,7 @@ export class Teams {
     const row = this.row(id);
     if (row.state === "closed") return this.get(id);
     if (!confirm) {
-      throw invalid(`encerrar o time ${row.name} pede confirm: true`, "team_close_confirm", {
+      throw invalid(`closing team ${row.name} needs confirm: true`, "team_close_confirm", {
         name: row.name,
       });
     }
@@ -584,7 +584,7 @@ export class Teams {
   delete(id: string): TeamInfo {
     const row = this.row(id);
     if (row.state !== "closed") {
-      throw invalid(`o time ${row.name} ainda está aberto: encerre-o antes`, "team_delete_open", {
+      throw invalid(`team ${row.name} is still open: close it first`, "team_delete_open", {
         name: row.name,
       });
     }
@@ -593,7 +593,7 @@ export class Teams {
       (m) => m.sessionState === "running" || m.sessionState === "waiting",
     );
     if (working.length > 0) {
-      throw invalid(`o time ${row.name} tem membros trabalhando`, "team_delete_live", {
+      throw invalid(`team ${row.name} has members at work`, "team_delete_live", {
         name: row.name,
         members: working.length,
       });
@@ -620,7 +620,7 @@ export class Teams {
       (m) => m.address === who || m.sessionId === who || m.cardId === who || m.name === who,
     );
     if (!found)
-      throw notFound(`o time não tem o membro ${who}`, "team_member_unknown", { member: who });
+      throw notFound(`the team has no member ${who}`, "team_member_unknown", { member: who });
     return found;
   }
 
@@ -701,7 +701,10 @@ export class Teams {
   private async dropMember(row: Row, who: string, tellCoordinator: (text: string) => void) {
     const target = this.find(this.get(row.id), who);
     if (target.role === "coordinator") {
-      throw invalid("a coordenadora não sai do time: encerre o time", "team_coordinator_stays");
+      throw invalid(
+        "the coordinator does not leave the team: close the team",
+        "team_coordinator_stays",
+      );
     }
     // Its turn is interrupted; the card stays on the board.
     if (target.cardId) await this.opts.board.stopCard(target.cardId);
@@ -742,13 +745,9 @@ export class Teams {
     if (patch.persona) await this.changePersona(row, info, patch.persona);
     if (patch.addWorkers || patch.addMember) {
       if (row.state === "paused") {
-        throw invalid(
-          `o time ${row.name} está pausado: retome antes de acrescentar`,
-          "team_paused",
-          {
-            name: row.name,
-          },
-        );
+        throw invalid(`team ${row.name} is paused: resume it before adding`, "team_paused", {
+          name: row.name,
+        });
       }
     }
     if (patch.addWorkers)

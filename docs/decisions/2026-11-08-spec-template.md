@@ -99,3 +99,15 @@ project's harness (#75). The design is on #78. This record covers slice S-T1.
   either way, so the spec check works the same for every template. A template without
   `{{criteria}}` gets none of the card's criteria: the project chose its own shape. A template with a
   front matter of its own keeps it below the host's, which is the one the check reads.
+
+## Slice S-T3b: the shape of a validation note
+
+- **What it does.** The card's validation note field shows the shape of a note as its placeholder,
+  in the app's language: what was checked, how, the result, and what was not checked.
+- **Why a placeholder.** It is never saved. A prefilled template, or a button that inserts one, could
+  be saved as it is and would meet the `validation` check with nothing validated, as the spec
+  template would have without `draft: true`.
+- **What is left.** A project's own validation template (`.flightdeck/templates/validation.md`, for
+  trusted projects only, as the spec template) needs the host to read it for the app. It also
+  needs the notice that a project template was ignored. Both are left for a later slice, if they
+  are wanted.

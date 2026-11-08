@@ -17,7 +17,7 @@ export function daemonCommand(execPath: string, main: string): string[] {
 function requireAbsolute(command: string[]): void {
   const exe = command[0] ?? "";
   if (!posix.isAbsolute(exe) && !win32.isAbsolute(exe)) {
-    throw new Error(`o serviço precisa de caminho absoluto, recebido: ${exe}`);
+    throw new Error(`the service needs an absolute path, got: ${exe}`);
   }
 }
 
@@ -155,7 +155,7 @@ export interface ServiceResult {
 /** Runs a service command; a non-zero exit is an error. */
 export async function runChecked(ctx: ServiceContext, cmd: string[]): Promise<string> {
   const { code, stdout } = await ctx.exec(cmd);
-  if (code !== 0) throw new Error(`falhou (${code}): ${cmd.join(" ")}`);
+  if (code !== 0) throw new Error(`failed (${code}): ${cmd.join(" ")}`);
   return stdout;
 }
 
@@ -177,7 +177,7 @@ const taskXmlPath = (ctx: ServiceContext) => win32.join(ctx.tempDir, "flightdeck
 
 function requireSupported(ctx: ServiceContext): "linux" | "win32" {
   if (ctx.platform === "linux" || ctx.platform === "win32") return ctx.platform;
-  throw new Error(`instalação como serviço não suportado em ${ctx.platform}`);
+  throw new Error(`installing as a service is not supported on ${ctx.platform}`);
 }
 
 /** Installs the user unit; enabling linger needs sudo, so it is only printed. */
@@ -186,7 +186,7 @@ async function installSystemd(ctx: ServiceContext, config?: string | null): Prom
   const unit = systemdUnit(ctx.command, config);
   if (ctx.dryRun) {
     return {
-      output: [`# ${path}`, unit, "# comandos:", ...SYSTEMD_INSTALL.map(display)],
+      output: [`# ${path}`, unit, "# commands:", ...SYSTEMD_INSTALL.map(display)],
       instructions: [],
     };
   }
@@ -197,11 +197,11 @@ async function installSystemd(ctx: ServiceContext, config?: string | null): Prom
     linger.code === 0 && linger.stdout.trim() === "Linger=yes"
       ? []
       : [
-          "O linger está desligado: o serviço só sobe depois do seu login. Para iniciar no boot, rode:",
+          "Linger is off: the service only starts after you log in. To start at boot, run:",
           `  sudo loginctl enable-linger ${ctx.user}`,
         ];
   return {
-    output: [`unit gravada em ${path}`, "serviço flightdeckd habilitado e iniciado"],
+    output: [`unit written to ${path}`, "flightdeckd service enabled and started"],
     instructions,
   };
 }
@@ -211,11 +211,11 @@ async function installTask(ctx: ServiceContext, config?: string | null): Promise
   const xml = windowsTaskXml(ctx.command, { user: ctx.user, systemRoot: ctx.systemRoot, config });
   const create = windowsTaskCreateArgs(xmlPath);
   if (ctx.dryRun) {
-    return { output: [`# ${xmlPath}`, xml, "# comando:", display(create)], instructions: [] };
+    return { output: [`# ${xmlPath}`, xml, "# command:", display(create)], instructions: [] };
   }
   await ctx.writeFile(xmlPath, xml);
   await runChecked(ctx, create);
-  return { output: [`tarefa ${TASK_NAME} criada para o logon de ${ctx.user}`], instructions: [] };
+  return { output: [`task ${TASK_NAME} created for the logon of ${ctx.user}`], instructions: [] };
 }
 
 /** Installs the service running `ctx.command start`, with `--config <config>` when given. */
@@ -231,14 +231,14 @@ export async function uninstallService(ctx: ServiceContext): Promise<ServiceResu
   const commands = linux ? SYSTEMD_UNINSTALL : [windowsTaskDeleteArgs()];
   if (ctx.dryRun) {
     const remove = linux ? [`rm ${unitPath(ctx)}`] : [];
-    return { output: ["# comandos:", ...commands.map(display), ...remove], instructions: [] };
+    return { output: ["# commands:", ...commands.map(display), ...remove], instructions: [] };
   }
   await runChecked(ctx, commands[0] as string[]);
   if (linux) {
     await ctx.removeFile(unitPath(ctx));
     await runChecked(ctx, commands[1] as string[]);
   }
-  return { output: ["serviço removido"], instructions: [] };
+  return { output: ["service removed"], instructions: [] };
 }
 
 /** Prints what the OS reports; a missing service is not an error here. */
@@ -248,9 +248,10 @@ export async function serviceStatus(ctx: ServiceContext): Promise<ServiceResult>
       ? ["systemctl", "--user", "is-active", "flightdeckd"]
       : windowsTaskQueryArgs();
   const { stdout } = await ctx.exec(cmd);
-  const output = [stdout.trim() || "não instalado"];
+  const output = [stdout.trim() || "not installed"];
   const installed = await serviceCommand(ctx);
-  if (installed) output.push(`config: ${installed.config ?? "padrão (~/.flightdeck/config.json)"}`);
+  if (installed)
+    output.push(`config: ${installed.config ?? "default (~/.flightdeck/config.json)"}`);
   return { output, instructions: [] };
 }
 
@@ -269,13 +270,13 @@ export function resolveServiceClaude(ctx: ServiceContext): {
   if (!path) {
     return {
       path: null,
-      warning: "aviso: claude não encontrado no PATH; defina claude.executablePath na config",
+      warning: "warning: claude not found on the PATH; set claude.executablePath in the config",
     };
   }
   if (ctx.platform === "win32" && !path.toLowerCase().endsWith(".exe")) {
     return {
       path,
-      warning: `aviso: ${path} não é um .exe; o serviço pode não conseguir executá-lo`,
+      warning: `warning: ${path} is not a .exe; the service may not be able to run it`,
     };
   }
   return { path };
