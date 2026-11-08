@@ -235,7 +235,7 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
       });
       render(view);
       const button = turnOn();
-      expect(button !== null).toBe(true);
+      expect(button !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
       await act(async () => void fireEvent.click(button as HTMLElement));
       const dialog = screen.queryByRole("alertdialog");
       expect(calls).toEqual([]);
@@ -258,7 +258,7 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
       });
       render(view);
       const button = turnOn();
-      expect(button !== null).toBe(true);
+      expect(button !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
       await act(async () => void (button && fireEvent.click(button)));
       const dialog = screen.queryByRole("alertdialog");
       const confirm = dialog ? within(dialog).queryByRole("button", { name: "Turn it on" }) : null;

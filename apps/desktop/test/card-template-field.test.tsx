@@ -173,7 +173,7 @@ for (const [lang, t] of [
     test("a template that sets nothing says nothing, and no template picked says nothing", async () => {
       await show(OFFER(), { value: "plain" });
       await settle(() => select() !== null);
-      expect(screen.queryByText(/^(Starts with|Começa com)/) === null).toBe(true);
+      expect(screen.queryByText(/^(Starts with|Começa com)/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
 
     test("templates left out for a mistake are counted", async () => {
@@ -204,7 +204,7 @@ for (const [lang, t] of [
     test("a file that was not used says why, and offers no picker", async () => {
       await show({ templates: [], dropped: 0, ignored: "untrusted" });
       await settle(() => screen.queryByText(t.kanban.templateIgnored.untrusted) !== null);
-      expect(select() === null).toBe(true);
+      expect(select() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
 
     test("a project with no templates shows nothing at all", async () => {
