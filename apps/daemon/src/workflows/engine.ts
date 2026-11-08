@@ -171,6 +171,8 @@ export class WorkflowEngine {
   private readonly checks: CheckRunner;
   private readonly clock: () => number;
   private readonly headOf: (worktree: string) => Promise<string | null>;
+  /** #1266: the runs being resumed right now: a second resume of one is refused. */
+  private readonly resuming = new Set<string>();
   /** Open gates of this process, by `run/step/attempt`: wakes the run when answered. */
   private readonly gates = new Map<string, () => void>();
   private readonly watchers = new Set<(run: WorkflowRun) => void>();
@@ -383,7 +385,11 @@ export class WorkflowEngine {
       reason,
       ...(params ? { params } : {}),
     });
-    if (run.status !== "failed") return no("run_resume_not_failed");
+    if (run.status !== "failed" || this.resuming.has(run.id)) return no("run_resume_not_failed");
+    // What runs is the stored definition: it must still be the one its hash names.
+    if (hashOf(run.definition) !== run.workflow_hash) {
+      return no("run_resume_workflow_changed", { name: run.workflow_name });
+    }
     let card: Card;
     try {
       card = this.host.card(run.card_id);
@@ -422,46 +428,95 @@ export class WorkflowEngine {
         check.params,
       );
     }
+    // Nothing awaited from here to the writes: the run and its card are checked again as they are
+    // now, so a second resume or a start that came in meanwhile cannot run beside this one.
     const run = this.row(runId);
-    const worktree = this.host.card(run.card_id).worktreePath as string;
-    const { n } = this.db
-      .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM run_resumes WHERE run_id = ?")
-      .get(run.id) ?? { n: 0 };
-    this.db
-      .query(
-        "INSERT INTO run_resumes (run_id, n, from_step, reason, head, at) VALUES (?, ?, ?, ?, ?, ?)",
-      )
-      .run(run.id, n + 1, check.from, run.status_reason, run.head_at_end, now());
-    // The failed step runs from scratch, its parallel items (`<id>.<n>`) and attempts with it.
-    const stale = this.db
-      .query<{ step_id: string; attempt: number; status: string }, [string]>(
-        "SELECT step_id, attempt, status FROM step_runs WHERE run_id = ?",
-      )
-      .all(run.id)
-      .filter(
-        (row) =>
-          row.status !== "completed" ||
-          row.step_id === check.from ||
-          row.step_id.startsWith(`${check.from}.`),
+    const card = this.host.card(run.card_id);
+    if (run.status !== "failed" || this.resuming.has(run.id)) {
+      throw new FlightdeckError(
+        "invalid_state",
+        `run ${runId} is no longer failed`,
+        "run_resume_not_failed",
       );
-    for (const row of stale) {
-      this.db
-        .query("DELETE FROM step_runs WHERE run_id = ? AND step_id = ? AND attempt = ?")
-        .run(run.id, row.step_id, row.attempt);
     }
-    this.db
-      .query(
-        `UPDATE workflow_runs SET ended_at = NULL, head_at_end = NULL, status_reason_key = NULL,
-         status_reason_params = NULL WHERE id = ?`,
-      )
-      .run(run.id);
-    this.setStatus(run.id, "queued", null);
-    void (async () => {
-      await this.host.acquire(run.card_id);
-      this.host.place(run.card_id, { type: "workflow", state: "running" });
-      this.begin(run.id, worktree);
+    if (card.discarded || card.queued || !card.worktreePath || card.workflowRunId !== run.id) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the run's card cannot take it",
+        "run_resume_card",
+      );
+    }
+    const worktree = card.worktreePath;
+    const head = run.head_at_end;
+    this.resuming.add(run.id);
+    this.db.transaction(() => {
+      const { n } = this.db
+        .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM run_resumes WHERE run_id = ?")
+        .get(run.id) ?? { n: 0 };
+      this.db
+        .query(
+          "INSERT INTO run_resumes (run_id, n, from_step, reason, head, at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .run(run.id, n + 1, check.from, run.status_reason, head, now());
+      // The failed step runs from scratch, its parallel items (`<id>.<n>`) and attempts with it.
+      const stale = this.db
+        .query<{ step_id: string; attempt: number; status: string }, [string]>(
+          "SELECT step_id, attempt, status FROM step_runs WHERE run_id = ?",
+        )
+        .all(run.id)
+        .filter(
+          (row) =>
+            row.status !== "completed" ||
+            row.step_id === check.from ||
+            row.step_id.startsWith(`${check.from}.`),
+        );
+      for (const row of stale) {
+        this.db
+          .query("DELETE FROM step_runs WHERE run_id = ? AND step_id = ? AND attempt = ?")
+          .run(run.id, row.step_id, row.attempt);
+      }
+      this.db
+        .query(
+          `UPDATE workflow_runs SET ended_at = NULL, head_at_end = NULL, status_reason_key = NULL,
+           status_reason_params = NULL WHERE id = ?`,
+        )
+        .run(run.id);
     })();
+    this.setStatus(run.id, "queued", null);
+    void this.afterSlot(run.id, run.card_id, worktree, head);
     return check;
+  }
+
+  /**
+   * The resumed run got its slot: unless something ended it while it waited, and with the branch
+   * still where it was (it may have moved during the wait), it executes; else the slot goes back.
+   */
+  private async afterSlot(
+    runId: string,
+    cardId: string,
+    worktree: string,
+    head: string | null,
+  ): Promise<void> {
+    try {
+      await this.host.acquire(cardId);
+      if (this.row(runId).status !== "queued") {
+        this.host.release(cardId);
+        return;
+      }
+      if ((await this.headOf(worktree).catch(() => null)) !== head) {
+        this.end(runId, "failed", "the card's branch moved while the run waited");
+        this.setReasonKey(runId, "run_resume_branch_moved", {});
+        this.host.place(cardId, { type: "workflow", state: "waiting" });
+        this.host.release(cardId);
+        return;
+      }
+      this.host.place(cardId, { type: "workflow", state: "running" });
+      this.begin(runId, worktree);
+    } catch (error) {
+      this.end(runId, "failed", reason(error));
+    } finally {
+      this.resuming.delete(runId);
+    }
   }
 
   /** "Parar": interrupts the turns going on; the interrupted step fails the run. */
