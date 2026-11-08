@@ -1463,6 +1463,7 @@ export const ptBR = {
     budgets: "os orçamentos",
     quotaHistory: "o histórico da cota",
     changes: "a revisão de mudanças",
+    sessionCommits: "o commit das mudanças de uma sessão",
     ssh: "os destinos ssh",
     snippets: "os snippets",
     personaSessions: "as personas em sessões abertas",
@@ -1837,6 +1838,29 @@ export const ptBR = {
     harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
     harness_reformat:
       "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
+    changes_commit_confirm: "Confirme o commit antes que ele seja feito.",
+    changes_commit_target:
+      "Só uma sessão iniciada à mão vira commit aqui: um cartão tem o seu próprio Abrir PR.",
+    changes_commit_state:
+      "O repositório está ocupado ({state}): termine ou desfaça isso num terminal e faça o commit de novo.",
+    changes_commit_stale:
+      "Os arquivos mudaram desde que você olhou: confira de novo e faça o commit.",
+    changes_commit_secret:
+      "{file} parece conter um segredo, então nada foi para o commit: tire-o antes.",
+    changes_commit_message_secret:
+      "A mensagem parece conter um segredo, então nada foi para o commit: tire-o antes.",
+    changes_commit_too_large:
+      "{file} é grande demais para procurar segredos: faça o commit você mesmo.",
+    changes_commit_branch_taken: "Já existe um branch {branch}: escolha outro nome.",
+    changes_commit_hook:
+      "O commit foi recusado: {output}. Você está em {branch} com os arquivos como estavam; corrija e faça o commit de novo, ou volte com git checkout {base}.",
+    changes_commit_timeout:
+      "O commit passou do tempo (um hook ou um pedido de assinatura que não terminou). Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
+    changes_commit_hook_withheld:
+      "O commit foi recusado, e o que o hook disse não aparece: parece conter um segredo. Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
+    changes_commit_rewritten:
+      "{files} mudou durante o commit (um hook que formata, ou a sessão ainda escrevendo), então o commit foi desfeito: confira as mudanças de novo e faça o commit.",
+    changes_commit_git: "O git não conseguiu criar o branch ou o commit neste repositório.",
     harness_commit_stale:
       "Os arquivos não estão como a configuração os gravou: aplique a configuração de novo e faça o commit.",
     harness_commit_no_head: "O projeto ainda não tem commit de onde começar um branch.",

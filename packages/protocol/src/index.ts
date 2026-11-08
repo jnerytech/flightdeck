@@ -947,6 +947,11 @@ export const DiffFile = z.object({
    * no counts, and the daemon never reads a new one (issue #509). Absent from an older daemon.
    */
   secret: z.boolean().optional(),
+  /**
+   * #1133: a session's uncommitted file as it is now (sha256 of its bytes, `deleted` when it is
+   * gone): `changes.commit` takes back the digests the person saw, and refuses when one moved.
+   */
+  digest: z.string().optional(),
   hunks: z.array(DiffHunk),
 });
 export type DiffFile = z.infer<typeof DiffFile>;
@@ -1087,8 +1092,23 @@ export const ChangesResult = z.object({
   files: z.array(DiffFile),
   /** A card's commits ahead of and behind its base; `null` for a session. */
   position: z.object({ ahead: z.number().int(), behind: z.number().int() }).nullable(),
+  /**
+   * #1133: the commit hooks a commit of this checkout runs (`pre-commit`, `commit-msg`...), shown
+   * before the person confirms one. Only for a target against `HEAD`.
+   */
+  hooks: z.array(z.string()).optional(),
 });
 export type ChangesResult = z.infer<typeof ChangesResult>;
+
+/** #1133: what `changes.commit` made: the new branch, the one it started from, and the commit. */
+export const ChangesCommitted = z.object({
+  branch: z.string(),
+  /** The branch the checkout was on; null when it was detached. */
+  base: z.string().nullable(),
+  commit: z.string(),
+  files: z.array(z.string()),
+});
+export type ChangesCommitted = z.infer<typeof ChangesCommitted>;
 
 // Phase 14: terminals embedded in the host (a real shell behind a PTY).
 export const TerminalInfo = z.object({
@@ -4612,6 +4632,24 @@ export const Command = z.discriminatedUnion("type", [
     "changes.revert",
     z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
   ),
+  /**
+   * #1133: commits the chosen uncommitted files of a plain session on a new branch, in the person's
+   * own checkout with their hooks. `files` maps each path to the digest `changes.get` gave.
+   */
+  cmd(
+    "changes.commit",
+    z
+      .object({
+        target: ReviewTarget,
+        files: z
+          .record(z.string().min(1).max(4096), z.string().max(128))
+          .refine((files) => Object.keys(files).length >= 1 && Object.keys(files).length <= 500),
+        message: z.string().min(1).max(20_000),
+        branch: z.string().min(1).max(200),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
   cmd(
     "changes.undoRevert",
     z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
@@ -5602,6 +5640,7 @@ export interface CommandResults {
   "review.send": ReviewSent;
   /** Undo with `changes.undoRevert` until `undoUntil`. */
   "changes.revert": { path: string; undoUntil: string };
+  "changes.commit": ChangesCommitted;
   "changes.undoRevert": { path: string };
   /** `hash`: sha256 of the bytes, hex, for `file.write`. */
   "file.read": { path: string; text: string; hash: string; size: number };

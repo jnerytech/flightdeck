@@ -11,6 +11,7 @@ import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { Timers } from "../quota/quota.ts";
+import { commitHooks, withDigests } from "./session-commit.ts";
 
 /** Watches a folder recursively; `filename` is relative to it (`null` when the OS does not say). */
 export type WatchFn = (
@@ -54,6 +55,8 @@ export interface ChangesResult {
   files: DiffFile[];
   /** A card's commits ahead of and behind its base; `null` for a session. */
   position: { ahead: number; behind: number } | null;
+  /** The commit hooks a commit of this checkout runs (#1133); only against `HEAD`. */
+  hooks?: string[];
 }
 
 const DEBOUNCE_MS = 500;
@@ -201,8 +204,19 @@ export class Changes {
 
   async get(target: string): Promise<ChangesResult> {
     const { root, base, branch } = await this.resolve(target);
-    if (base === null)
-      return { target, root, base, files: await workingDiff(root), position: null };
+    // Against `HEAD` (a session): each uncommitted file has its digest, and the hooks a commit runs
+    // are named, for a commit (#1133).
+    if (base === null) {
+      return {
+        target,
+        root,
+        base,
+        files: await withDigests(root, await workingDiff(root)),
+        position: null,
+        // The hooks a commit would run, named before the person confirms one.
+        ...(await commitHooks(root).then((hooks) => (hooks ? { hooks } : {}))),
+      };
+    }
     const { files } = await cardDiff(root, base);
     return {
       target,
