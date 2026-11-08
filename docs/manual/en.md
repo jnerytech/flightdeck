@@ -1095,6 +1095,9 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 - **A validation note and starting without criteria** (#78). A card has a **Validation note** in
   its Details: a line or two on how you checked the work. A project can make a column ask for it
   (a contract with the `validation` check), and the card then says "Needs: a validation note".
+  An empty note shows the shape of a note as a hint, never saved: a trusted project can give its own
+  as `.flightdeck/templates/validation.md` in its checkout (at most 32 KiB), and the card says why
+  when that file is there but was not used.
   **Start** (the card's menu, the Run section of the card, or the Ctrl+K palette) asks first only
   in a project whose In progress contract confirms acceptance criteria and only for a card with
   none (no `- [ ] …` item in its description): **Start anyway** goes on. By default In progress
