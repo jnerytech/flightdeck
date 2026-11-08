@@ -858,8 +858,9 @@ fake OpenCode.
 
 ## Projects
 
-The **Projects** item of the sidebar (between Needs you and Board) lists every project of every
-host as a card: its name, host, base branch, the live sessions, the cards in progress, the ones
+The **Projects** item of the sidebar (between Needs you and Board) lists the projects of the host
+chosen in the top bar's switcher (every host's with **Tabs of all hosts**) as cards, so opening
+one never lands on another host: its name, host, base branch, the live sessions, the cards in progress, the ones
 that need you, the last activity and what it cost over the last seven days. The cost is a dash
 when the host does not report costs. Type in the search box to narrow the list by name, host,
 branch or folder, and use **Sort by** to order it by last activity, name, cost this week or what
@@ -925,7 +926,8 @@ live; the list is the project's, so a session of another project never shows her
   badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
   folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
-- Under **Projects**, each project of an online host lists its **branches**: the main checkout
+- Under **Projects**, each project of the switcher's host (every online host's with **Tabs of all
+  hosts**) lists its **branches**: the main checkout
   (badge **primary**, the base branch) and one line per card that has a worktree, each with a state
   dot, the branch and the base below it. Picking one narrows the board and the Sessions list to
   that checkout (a chip with the branch clears it); picking it again clears it too. Picked from the Sessions list, it narrows the list in place and does not open the board; from anywhere else it opens the project's board. A pick whose branch, project or host is gone does nothing and shows no chip. The tree comes
@@ -2523,6 +2525,12 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - take a member out: its session is stopped, the coordinator is told, and its card stays on the
     board;
   - close the team, with a confirmation.
+- **Deleting a closed team:** a closed team keeps its card until you delete it. Its card's **⋯**
+  menu has **Delete team**: off on an open team (it says "Close the team first"), and on a closed
+  one it asks first, naming the team. What goes is the team record and its card on the Teams page.
+  What stays is every member's session, with its transcript and history, and their board cards:
+  they are only taken out of the team. The host refuses while a member is at work (running, or
+  waiting for an answer); try again once they rest. Every connected app drops the card.
 - **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
   itself. You get a notification, and the row says "paused by the quota". When the window
   restarts, the team resumes and tells you.

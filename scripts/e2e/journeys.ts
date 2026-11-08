@@ -1285,8 +1285,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       throw new Error("o fixado deveria ocupar um dos cinco lugares");
     // The way to all of them.
     await all.click();
+    // The page's title: its subtitle names the switcher's host (#932).
     await c.page
-      .getByText(c.t("projectsOverview.subtitle"), { exact: true })
+      .getByRole("heading", { name: c.t("projectsOverview.title"), exact: true })
       .waitFor({ timeout: WAIT });
   },
 

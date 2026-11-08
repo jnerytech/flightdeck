@@ -11,7 +11,8 @@ export function SessionStatusLine(
   props: Readonly<{
     t: T;
     model: string | undefined;
-    mode: PermissionMode;
+    /** Null while the session has not said its mode. */
+    mode: PermissionMode | null;
     /** The pickers of what the session lets change; the rest shows as text. */
     pickers: { model?: ReactNode; mode?: ReactNode };
     working: boolean;
@@ -27,7 +28,9 @@ export function SessionStatusLine(
       className="session-status"
     >
       {props.pickers.model ?? <span>{props.model ?? t("session.modelDefault")}</span>}
-      {props.pickers.mode ?? <span>{t(`modes.${props.mode}.name`)}</span>}
+      {props.pickers.mode ?? (
+        <span>{props.mode ? t(`modes.${props.mode}.name`) : t("session.modeUnknown")}</span>
+      )}
       {props.cache}
       {props.working && (
         <Loader2

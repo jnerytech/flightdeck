@@ -53,6 +53,8 @@ export interface TeamsOptions {
     setPersona(sessionId: string, persona: string | null): unknown;
     /** Issue #101: the team, role and number a session's name carries. */
     setTeam?(sessionId: string, team: SessionTeam): unknown;
+    /** Issue #934: a session whose team was deleted leaves it. */
+    clearTeam?(sessionId: string): unknown;
   };
   clock?: () => number;
   /** Issue #93: whether the host lets a session run without permission prompts. */
@@ -572,6 +574,38 @@ export class Teams {
     this.save(id, { state: "closed", paused_by: null });
     this.notify(before, `O time "${row.name}" foi encerrado: não há mais tarefas para este time.`);
     return this.changed(id);
+  }
+
+  /**
+   * Deletes a closed team (issue #934): its record goes, its members' sessions leave it, and every
+   * watcher hears. The sessions, their history and the members' cards stay as they are. A member at
+   * work (running, or waiting for an answer) holds it back; one that rests does not.
+   */
+  delete(id: string): TeamInfo {
+    const row = this.row(id);
+    if (row.state !== "closed") {
+      throw invalid(`o time ${row.name} ainda está aberto: encerre-o antes`, "team_delete_open", {
+        name: row.name,
+      });
+    }
+    const info = this.get(id);
+    const working = info.members.filter(
+      (m) => m.sessionState === "running" || m.sessionState === "waiting",
+    );
+    if (working.length > 0) {
+      throw invalid(`o time ${row.name} tem membros trabalhando`, "team_delete_live", {
+        name: row.name,
+        members: working.length,
+      });
+    }
+    this.opts.db.query("DELETE FROM teams WHERE id = ?").run(id);
+    for (const member of info.members) {
+      if (member.sessionId) this.opts.names?.clearTeam?.(member.sessionId);
+      if (member.cardId) this.cardTeams.delete(member.cardId);
+    }
+    for (const listener of this.listeners)
+      listener({ type: "teams.updated", team: info, reason: null });
+    return info;
   }
 
   /** A message from Flightdeck to every member ("mandar a todos"). */

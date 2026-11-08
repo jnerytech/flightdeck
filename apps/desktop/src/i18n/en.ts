@@ -1580,6 +1580,9 @@ export const en: Dictionary = {
     team_close_confirm: "Closing the team {name} needs your confirmation.",
     team_coordinator_stays: "The coordinator does not leave the team: close the team instead.",
     team_closed: "The team {name} is closed.",
+    team_delete_open: "The team {name} is still open: close it first.",
+    team_delete_live:
+      "The team {name} still has {members} member(s) at work: wait until they rest, then delete it.",
     agentcfg_file_missing: "{path} does not exist in this project.",
     agentcfg_path_invalid: "{path} is not a valid path for this kind of file ({kind}).",
     agentcfg_confirm: "Writing the file needs your confirmation.",
@@ -2258,6 +2261,8 @@ export const en: Dictionary = {
     modeLabel: "Permission mode",
     modeChip: "Permission mode: {mode}",
     modeMenuTitle: "Mode",
+    modeUnknown: "Unknown",
+    modeUnknownExplain: "The session has not said its mode yet",
     modeBypassOff: "Turned off on this host",
     modeBypassHow: "Turn it on in the host settings",
     modelChip: "Model: {model}",
@@ -2393,6 +2398,7 @@ export const en: Dictionary = {
     effortDefault: "Default effort",
     create: "Create session",
     needFolder: "This host has no allowed folder.",
+    needPrompt: "Write the first prompt to start in the background.",
     addFolder: "Add a folder on {host}'s page",
     host: "Host",
   },
@@ -3307,6 +3313,11 @@ export const en: Dictionary = {
     close: "Close {name}",
     closeButton: "Close",
     closeMessage: "Close the team {name}? Its sessions are told to stop.",
+    menu: "Actions for {name}",
+    delete: "Delete team",
+    deleteOpen: "Close the team first",
+    deleteMessage:
+      "Delete the team {name}? The team record and its card on this page go. The sessions of its members stay, with their transcripts and history, and so do their board cards: they are only taken out of the team.",
   },
   clients: {
     title: "Clients",
@@ -4215,6 +4226,8 @@ export const en: Dictionary = {
   projectsOverview: {
     title: "Projects",
     subtitle: "Every project of every host, with what is running in it.",
+    subtitleHost: "The projects of {host}, with what is running in them.",
+    hostOffline: "{host} is offline. Its projects show again when it reconnects.",
     search: "Search projects",
     searchPlaceholder: "Name, host, branch or folder",
     sortBy: "Sort by",

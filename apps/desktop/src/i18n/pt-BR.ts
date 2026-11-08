@@ -1576,6 +1576,9 @@ export const ptBR = {
     team_session_foreign: "Esta sessão não faz parte do time {team}.",
     team_close_confirm: "Encerrar o time {name} pede a sua confirmação.",
     team_coordinator_stays: "A coordenadora não sai do time: encerre o time.",
+    team_delete_open: "O time {name} ainda está aberto: encerre-o primeiro.",
+    team_delete_live:
+      "O time {name} ainda tem {members} membro(s) trabalhando: espere até que descansem e exclua depois.",
     team_closed: "O time {name} está encerrado.",
     agentcfg_file_missing: "{path} não existe neste projeto.",
     agentcfg_path_invalid: "{path} não é um caminho válido para este tipo de arquivo ({kind}).",
@@ -2256,6 +2259,8 @@ export const ptBR = {
     modeLabel: "Modo de permissão",
     modeChip: "Modo de permissão: {mode}",
     modeMenuTitle: "Modo",
+    modeUnknown: "Desconhecido",
+    modeUnknownExplain: "A sessão ainda não disse em que modo está",
     modeBypassOff: "Desligado neste host",
     modeBypassHow: "Ligue nas configurações do host",
     modelChip: "Modelo: {model}",
@@ -2392,6 +2397,7 @@ export const ptBR = {
     effortDefault: "Esforço padrão",
     create: "Criar sessão",
     needFolder: "Este host não tem pasta permitida.",
+    needPrompt: "Escreva o primeiro prompt para iniciar em segundo plano.",
     addFolder: "Adicionar uma pasta na página de {host}",
     host: "Host",
   },
@@ -3312,6 +3318,11 @@ export const ptBR = {
     close: "Encerrar {name}",
     closeButton: "Encerrar",
     closeMessage: "Encerrar o time {name}? As sessões recebem o aviso para parar.",
+    menu: "Ações de {name}",
+    delete: "Excluir time",
+    deleteOpen: "Encerre o time primeiro",
+    deleteMessage:
+      "Excluir o time {name}? O registro do time e o card dele nesta página saem. As sessões dos membros ficam, com as transcrições e o histórico, e os cards delas no board também: só deixam de ser do time.",
   },
   clients: {
     title: "Clientes",
@@ -4225,6 +4236,8 @@ export const ptBR = {
   projectsOverview: {
     title: "Projetos",
     subtitle: "Todos os projetos de todos os hosts, com o que está rodando em cada um.",
+    subtitleHost: "Os projetos de {host}, com o que está rodando em cada um.",
+    hostOffline: "{host} está offline. Os projetos dele voltam quando ele reconectar.",
     search: "Buscar projetos",
     searchPlaceholder: "Nome, host, branch ou pasta",
     sortBy: "Ordenar por",
