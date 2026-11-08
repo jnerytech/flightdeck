@@ -76,6 +76,10 @@ export const GATES = {
   ui: "ui.mode",
   updater: "updater",
   updates: "updater",
+  // The three teleport services name one feature.
+  teleport: "teleport",
+  teleportInbox: "teleport",
+  teleportImport: "teleport",
 } as const satisfies Partial<Record<keyof ServerOptions, string>>;
 
 export type GatedOption = keyof typeof GATES;
