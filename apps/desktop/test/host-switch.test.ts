@@ -144,6 +144,22 @@ describe("host-switch: the window says the switch, with a way back", () => {
     });
   });
 
+  // The demo and a deep link open a host's page before any host is known: nothing was left.
+  test("a first navigation, from no host at all, says nothing", () => {
+    const mem = memoryPlatform(false, "en");
+    mem.platform.storage.setItem(
+      HOSTS_KEY,
+      JSON.stringify([{ id: "h1", name: "alfa", url: "ws://x" }]),
+    );
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    cleanups.push(() => store.dispose());
+    store.router.push(project("h1", "p-api"));
+    expect({ host: store.activeHostId(), said: store.getState().notices.length }).toEqual({
+      host: "h1",
+      said: 0,
+    });
+  });
+
   // The e2e journey of #932: after a reload the tabs have no host of their own, and the switcher
   // names the window's host. Opening that host's project switches nothing, so nothing is said.
   test("from no tabs' host, opening the project of the host the switcher names says nothing", async () => {
