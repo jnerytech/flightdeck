@@ -1539,6 +1539,14 @@ export const en: Dictionary = {
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
     spec_template_failed:
       "The spec template could not be written at {path} (a link or a file is in the way): the session started without it.",
+    spec_template_untrusted:
+      "This project has its own spec template, but the project is not trusted, so the built-in one was used. Trust the project to use it.",
+    spec_template_unsafe:
+      "The project's spec template was not used (it is a link, has a second name or is not a plain file): the built-in one was.",
+    spec_template_too_big:
+      "The project's spec template was not used (it is over 32 KiB): the built-in one was.",
+    spec_template_empty:
+      "The project's spec template was not used (it is empty): the built-in one was.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",
     remote_not_github: "The remote {url} is not a GitHub one.",
