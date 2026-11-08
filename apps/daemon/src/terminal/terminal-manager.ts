@@ -451,7 +451,7 @@ export class TerminalManager {
 
   /** The connection is gone: every terminal it was attached to keeps running. */
   detachAll(sink: TerminalSink): void {
-    for (const entry of [...this.entries.values()]) {
+    for (const entry of [...this.entries.values()] /* NOSONAR: release may remove it */) {
       if (entry.clients.has(sink)) this.release(entry.id, sink);
     }
   }
@@ -492,7 +492,7 @@ export class TerminalManager {
   /** Ends every live terminal and forgets them all; returns how many were running. */
   private killAll(): number {
     let ended = 0;
-    for (const entry of [...this.entries.values()]) {
+    for (const entry of [...this.entries.values()] /* NOSONAR: ending may remove it */) {
       this.clearIdle(entry);
       entry.closing = true;
       if (entry.exitCode === null) {
