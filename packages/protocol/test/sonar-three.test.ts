@@ -121,7 +121,7 @@ describe("sonar-three: the password of a curl command is found after -u or --use
     const lone = timed(() => scanner.redact(`curl x -u${" ".repeat(20_000)}`));
     const flags = timed(() => scanner.scan(`x ${"-u y ".repeat(4000)}`));
     expect(gap.value).toEqual([]);
-    expect(lone.value.length).toBe(20_009);
+    expect(lone.value).toHaveLength(20_009);
     expect(flags.value).toEqual([]);
     expect(gap.ms).toBeLessThan(LIMIT_MS);
     expect(lone.ms).toBeLessThan(LIMIT_MS);

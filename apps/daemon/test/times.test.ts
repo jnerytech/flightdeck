@@ -569,7 +569,7 @@ describe("times: deleting a team", () => {
     expect(teams.list().map((t) => t.id)).not.toContain(team.id);
     expect(await failure(() => teams.get(team.id))).toContain("not_found");
     // A watcher is told once, with the team as it was: a second app reloads and drops the card.
-    expect(frames.length).toBe(before + 1);
+    expect(frames).toHaveLength(before + 1);
     expect(frames.at(-1)?.team.id).toBe(team.id);
   });
 
