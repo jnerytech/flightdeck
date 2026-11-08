@@ -1,4 +1,5 @@
-import type { FinishedState } from "../../apps/desktop/src/lib/finished.ts";
+import type { Finish, FinishedState } from "../../apps/desktop/src/lib/finished.ts";
+import { requestLink } from "../../apps/desktop/src/lib/request-link.ts";
 
 /** The request the bell's print answers: the host that holds it and the id the daemon gave it. */
 export interface LiveRequest {
@@ -7,7 +8,7 @@ export interface LiveRequest {
 }
 
 /** The notifications of the bell's print: today in UTC (the prints' zone), and one three days ago. */
-export function demoInbox(lang: string, _request: LiveRequest | null): string {
+export function demoInbox(lang: string, request: LiveRequest | null): string {
   const pt = lang.startsWith("pt");
   const dayStart = new Date().setUTCHours(0, 0, 0, 0);
   const today = (second: number) => new Date(dayStart + second * 1000).toISOString();
@@ -46,6 +47,8 @@ export function demoInbox(lang: string, _request: LiveRequest | null): string {
       host: "alfa",
       ask: pt ? "Quer executar: bun test" : "Wants to run: bun test",
       group: "alfa/web",
+      // With the link the row is the live request: the bell shows its risk and Approve and Deny.
+      ...(request ? { link: requestLink(request.hostId, request.requestId) } : {}),
     }),
     entry("5", today(60), {
       title: pt ? "Card desbloqueado" : "Card unblocked",
@@ -70,10 +73,27 @@ export function demoInbox(lang: string, _request: LiveRequest | null): string {
 
 /** What the Needs you prints start with: two sessions that finished after the last look. */
 export function demoFinished(
-  _hostId: string,
-  _sessions: { done: { id: string; name: string }; failed: { id: string; name: string } },
-  _now: Date,
+  hostId: string,
+  sessions: { done: { id: string; name: string }; failed: { id: string; name: string } },
+  now: Date,
 ): string {
-  const state: FinishedState = { list: [], lastLook: null };
+  const finish = (
+    session: { id: string; name: string },
+    outcome: Finish["outcome"],
+    minutesAgo: number,
+    files: number | null,
+  ): Finish => ({
+    key: `${hostId}/${session.id}`,
+    hostId,
+    sessionId: session.id,
+    name: session.name,
+    outcome,
+    at: new Date(now.getTime() - minutesAgo * 60_000).toISOString(),
+    files,
+  });
+  const state: FinishedState = {
+    list: [finish(sessions.done, "done", 4, 3), finish(sessions.failed, "failed", 11, 1)],
+    lastLook: null,
+  };
   return JSON.stringify(state);
 }

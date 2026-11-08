@@ -37,6 +37,9 @@ export const NARROW_SHOTS: readonly string[] = [
   "projeto-conhecimento",
   "claude-code-preparar",
   "card-fixados",
+  // #1168: the bell with a request to answer, and Needs you with the Finished group.
+  "sino-painel",
+  "precisa-de-voce-terminou",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

@@ -95,6 +95,8 @@ function writeUserConfig(home: string): void {
 /** Ids the prints open screens with. */
 export interface DemoIds {
   waitingSession: string;
+  /** The id the daemon gave the open Bash request of `waitingSession`: the bell print links a row to it (#1168). */
+  waitingRequest: string;
   idleSession: string;
   project: string;
   emptyProject: string;
@@ -890,6 +892,10 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     return list.sessions.find((s) => s.id === sessionId)?.status;
   };
   await until(async () => (await statusOf(bash.sessionId)) === "awaiting_permission", "Bash");
+  const bashRequest = (await until(
+    () => client.requests.get(bash.sessionId),
+    "pedido do Bash",
+  )) as string;
   await until(async () => (await statusOf(ended.sessionId)) === "idle", "sessão antiga");
   await client.call("session.close", { sessionId: ended.sessionId });
 
@@ -1153,6 +1159,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     ],
     ids: {
       waitingSession: bash.sessionId,
+      waitingRequest: bashRequest,
       idleSession: idle.sessionId,
       project: project.id,
       emptyProject: empty.id,
