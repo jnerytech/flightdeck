@@ -4236,6 +4236,8 @@ export const ptBR = {
   projectsOverview: {
     title: "Projetos",
     subtitle: "Todos os projetos de todos os hosts, com o que está rodando em cada um.",
+    subtitleHost: "Os projetos de {host}, com o que está rodando em cada um.",
+    hostOffline: "{host} está offline. Os projetos dele voltam quando ele reconectar.",
     search: "Buscar projetos",
     searchPlaceholder: "Nome, host, branch ou pasta",
     sortBy: "Ordenar por",

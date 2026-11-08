@@ -35,11 +35,13 @@ describe("projetos-nav-ui: the Projects item of the sidebar", () => {
     expect(at(/^Projects/)).toBeLessThan(at(/^Board/));
     await act(async () => void fireEvent.click(item(/^Projects/)));
     // The screens load lazily.
-    await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
+    // Its one host never answers: the page says why it has no projects (#932).
+    const offline = "alfa is offline. Its projects show again when it reconnects.";
+    await waitFor(() => expect(screen.queryByText(offline)).not.toBeNull());
     // A shared screen gets its own pinned tab beside Home.
     expect(names()).toEqual(["home", "all-projects"]);
     expect(screen.queryByRole("heading", { name: "Projects" })).not.toBeNull();
-    expect(screen.queryByText("No projects yet.")).not.toBeNull();
+    expect(screen.queryByText(offline)).not.toBeNull();
     store.dispose();
   });
 

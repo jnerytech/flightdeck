@@ -4226,6 +4226,8 @@ export const en: Dictionary = {
   projectsOverview: {
     title: "Projects",
     subtitle: "Every project of every host, with what is running in it.",
+    subtitleHost: "The projects of {host}, with what is running in them.",
+    hostOffline: "{host} is offline. Its projects show again when it reconnects.",
     search: "Search projects",
     searchPlaceholder: "Name, host, branch or folder",
     sortBy: "Sort by",
