@@ -164,6 +164,7 @@ describe("demo-prints: axe e CI", () => {
       "modo-simples-alcance",
       "layout-medido",
       "board-fit",
+      "bell-approve",
       "teleport-mover",
       "time-novo-alcance",
       "board-arquivos",

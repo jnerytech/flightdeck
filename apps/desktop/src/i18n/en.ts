@@ -2305,6 +2305,8 @@ export const en: Dictionary = {
     gone: "What this was about is gone.",
     dismiss: "Dismiss",
     asks: "Asks: {question}",
+    keys: "A approves · N denies",
+    keysHigh: "Hold the button to approve · N denies",
     runs: "Wants to run: {command}",
     edits: "Wants to change {file}",
     uses: "Wants to use {tool}",
