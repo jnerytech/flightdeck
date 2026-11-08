@@ -33,7 +33,9 @@ export class GithubService {
     const run = opts.gh ?? runGh;
     this.gh = (args) => {
       const started = run(args);
-      const done = () => void this.running.delete(started);
+      const done = () => {
+        this.running.delete(started);
+      };
       this.running.add(started);
       started.then(done, done);
       return started;
