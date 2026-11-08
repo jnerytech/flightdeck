@@ -1,5 +1,5 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test";
-import type { ComponentType } from "react";
+import { type ComponentType, useSyncExternalStore } from "react";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { scaleState, summaryBurst } from "./scale-fixture.ts";
@@ -42,8 +42,10 @@ afterEach(cleanup);
 
 const BURST = 10;
 
+/** The page as the app shows it: it follows the state and, as `App` does, the language. */
 function Page(props: Readonly<{ store: InstanceType<typeof AppStore> }>) {
   const state = useStoreState(props.store);
+  useSyncExternalStore(props.store.i18n.subscribe, () => props.store.i18n.lang);
   return <NeedsYou store={props.store} state={state} go={() => {}} onOpenRequest={() => {}} />;
 }
 
