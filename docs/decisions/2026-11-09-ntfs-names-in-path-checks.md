@@ -12,17 +12,21 @@ name that hid a credential.
 - One helper, `ntfsName(step)` in `apps/daemon/src/ntfs-name.ts`, says what a step is called on the
   disk: lower case, no stream after a colon, no trailing dots or spaces, and the 8.3 short name of a
   dotted folder (`GIT~1`, `CLAUDE~1`, `SSH~1`) turned back into its name (`.git`, `.claude`,
-  `.ssh`).
-- `pathParts` maps every step through it, so `isControl`, `credential` and everything derived from
-  the lists see the same spellings. `isGitDir` in the review code is now `ntfsName(name) === ".git"`.
-- A step of only dots and spaces (`..`) is left alone.
+  `.ssh`). `isGitDir` in the review code is now `ntfsName(name) === ".git"`.
+- `isControl` and `credential` read a path in two ways and refuse it when either matches: as
+  written (a POSIX file `host:8080.key` is one name, and `id_ed2~1` still starts with `id_`), and
+  with each step through `ntfsName`. The first reading is the old behavior, so the second can only
+  add refusals. The security review of the first version (one reading, rewritten steps) found it
+  let `host:8080.key` and `ID_ED2~1` through, which this keeps from happening.
+- A step of only dots and spaces (`..`) is left alone by `ntfsName`.
 
-## Limits and cost
+## Limits
 
-- A short name keeps the first six letters of the name, so a folder with a longer name
-  (`.flightdeck`, `.terraform.d`) is not recognised by its short form. The folders the lists name
-  with more than six letters are rare; if one matters, the list gains an entry for its short form.
-- A step like `readme~1` is read as `.readme` and a step `foo:bar` as `foo`. Both can only make a
-  check refuse or ask more, never allow, and the false positives are rare names.
-- Only the stream and short-name spellings are new here; HFS+ ignorable Unicode stays out (#1034's
-  review: low, macOS only).
+- A short name keeps the first six letters of the name, and `ntfsName` only turns a dotted folder's
+  short name back (`GIT~1` is `.git`). A folder with a longer name (`.flightdeck`, `.terraform.d`),
+  a file (`MCP~1.JSN` for `.mcp.json`, `ENV~1.LOC` for `.env.local`) or a folder with no dot
+  (`WORKFL~1` for `workflows`) is not recognised by its short form. This was so before; short names
+  exist only where a volume generates them.
+- `credentialReadGlobs()` builds plain globs for OpenCode's own matcher and does not cover these
+  spellings; the code paths that call `credential()` do.
+- HFS+ ignorable Unicode stays out (#1034's review: low, macOS only).
