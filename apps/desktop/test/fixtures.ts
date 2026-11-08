@@ -443,7 +443,13 @@ export function daemon(
         startSession: async ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
       })
     : undefined;
-  if (githubService) cleanups.push(() => githubService.loginCancel());
+  if (githubService) {
+    // A `gh` status or login still running when a file ends would be alive in the next one (#954).
+    cleanups.push(async () => {
+      await githubService.loginCancel();
+      await githubService.idle();
+    });
+  }
   const roiSummarizer = options.roi
     ? new RoiSummarizer({
         db: store.db,

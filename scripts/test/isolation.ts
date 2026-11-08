@@ -89,6 +89,10 @@ export function restoreGlobals(snapshot: Snapshot, scope: Scope = globalThis): s
   return leaked;
 }
 
+/** How long a child gets to end by itself after its file: 10 looks, 150 ms apart. */
+const CHILD_GRACE_MS = 150;
+const CHILD_GRACE_TRIES = 10;
+
 /** What nearly every UI file leaves behind and the next one never notices: reset without a word. */
 const ROUTINE = new Set([...SIZE_MEMBERS, "localStorage", "sessionStorage", "document.body"]);
 
@@ -135,17 +139,24 @@ export function installBetweenFiles(
           );
         }
         if (watch && known) {
-          const now = watch.capture();
+          let now = watch.capture();
           const left = newResources(known, now);
           if (previous && left.servers.length > 0) {
             report(
               `isolation: ${previous} left running: ${left.servers.join("; ")} (seen before ${args.path})`,
             );
           }
-          // A child can end on its own a moment later: the line names it, and the run goes on.
-          if (previous && left.children.length > 0) {
-            console.error(
-              `isolation (warning): ${previous} left running: ${left.children.join("; ")} (seen before ${args.path})`,
+          // A child can end on its own a moment later (a git run that was finishing): it gets that
+          // moment, and the one still there after it is a leak that fails the run (#954).
+          let still = left.children;
+          for (let tries = 0; previous && still.length > 0 && tries < CHILD_GRACE_TRIES; tries++) {
+            await Bun.sleep(CHILD_GRACE_MS);
+            now = watch.capture();
+            still = newResources(known, now).children;
+          }
+          if (previous && still.length > 0) {
+            report(
+              `isolation: ${previous} left running: ${still.join("; ")} (seen before ${args.path})`,
             );
           }
           known = now;

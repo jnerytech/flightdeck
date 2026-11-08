@@ -1403,7 +1403,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "github.login.start":
         return ok(command.type, await github().loginStart());
       case "github.login.cancel":
-        github().loginCancel();
+        await github().loginCancel();
         return ok(command.type);
       case "github.logout":
         await github().logout();

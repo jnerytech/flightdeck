@@ -24,11 +24,20 @@ export interface GithubServiceOptions {
 
 export class GithubService {
   private readonly gh: GhRunner;
+  /** The `gh` runs in flight, so a stop or a test can wait for them. */
+  private readonly running = new Set<Promise<unknown>>();
   private readonly github: Github;
   private readonly login: GithubLogin;
 
   constructor(private readonly opts: GithubServiceOptions) {
-    this.gh = opts.gh ?? runGh;
+    const run = opts.gh ?? runGh;
+    this.gh = (args) => {
+      const started = run(args);
+      const done = () => void this.running.delete(started);
+      this.running.add(started);
+      started.then(done, done);
+      return started;
+    };
     this.github = new Github({ gh: this.gh });
     this.login = opts.login ?? new GithubLogin();
   }
@@ -41,8 +50,13 @@ export class GithubService {
     return this.login.start();
   }
 
-  loginCancel(): void {
-    this.login.cancel();
+  /** Settles when every `gh` run started so far has ended: nothing is left running behind a stop. */
+  async idle(): Promise<void> {
+    while (this.running.size > 0) await Promise.allSettled([...this.running]);
+  }
+
+  loginCancel(): Promise<void> {
+    return this.login.cancel();
   }
 
   logout(): Promise<void> {

@@ -159,6 +159,12 @@ test("starts a child and leaves it", () => {
   Bun.spawn(["sleep", "5"], { stdout: "ignore", stderr: "ignore" });
 });
 `;
+  const BRIEF = `
+import { test } from "bun:test";
+test("starts a child that ends by itself in a moment", () => {
+  Bun.spawn(["sleep", "0.4"], { stdout: "ignore", stderr: "ignore" });
+});
+`;
   const PLAIN = `
 import { expect, test } from "bun:test";
 test("does nothing", () => { expect(1).toBe(1); });
@@ -174,14 +180,24 @@ test("does nothing", () => { expect(1).toBe(1); });
     expect(code).not.toBe(0);
   }, 60_000);
 
-  test("a child left alive is named as a warning and does not fail the run", async () => {
+  test("a child left alive fails the run and names the file and the child (#954)", async () => {
     if (!linux) return;
     const dir = realTempDir("fd-leak-child-");
     writeFileSync(join(dir, "a.test.ts"), CHILD);
     writeFileSync(join(dir, "b.test.ts"), PLAIN);
     const { log, code } = await runFiles(dir, ["a.test.ts", "b.test.ts"]);
-    expect(log).toContain("isolation (warning): ");
     expect(log).toContain("a.test.ts left running: child process ");
+    expect(log).not.toContain("isolation (warning)");
+    expect(code).not.toBe(0);
+  }, 60_000);
+
+  test("a child that ends by itself a moment after its file is not a leak", async () => {
+    if (!linux) return;
+    const dir = realTempDir("fd-leak-brief-");
+    writeFileSync(join(dir, "a.test.ts"), BRIEF);
+    writeFileSync(join(dir, "b.test.ts"), PLAIN);
+    const { log, code } = await runFiles(dir, ["a.test.ts", "b.test.ts"]);
+    expect(log).not.toContain("left running");
     expect(code).toBe(0);
   }, 60_000);
 

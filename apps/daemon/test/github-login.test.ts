@@ -66,10 +66,46 @@ describe("github-login: the device flow through gh", () => {
     const gh = fakeGh([WAITING]);
     const logins = login();
     await logins.start();
-    logins.cancel();
+    void logins.cancel();
     expect(await poll(() => !logins.running, 4000)).toBe(true);
     await logins.start();
     expect(gh.calls()).toHaveLength(2);
+  });
+
+  test.skipIf(process.platform === "win32")(
+    "cancel settles only once gh has ended, so a test or a stop leaves nothing running (#954)",
+    async () => {
+      fakeGh([WAITING]);
+      let seen = 0;
+      const logins = login({
+        kill: async (pid) => {
+          seen = pid;
+          process.kill(pid, "SIGKILL");
+        },
+      });
+      await logins.start();
+      await logins.cancel();
+      const alive = (() => {
+        try {
+          process.kill(seen, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      })();
+      expect([seen > 0, alive]).toEqual([true, false]);
+    },
+  );
+
+  test("cancel does not wait forever for a gh that the kill did not end: it falls back to a hard kill", async () => {
+    fakeGh([WAITING]);
+    const logins = login({ kill: async () => {}, exitWaitMs: 100 });
+    await logins.start();
+    let settled = false;
+    void logins.cancel().then(() => {
+      settled = true;
+    });
+    expect(await poll(() => settled, 4000)).toBe(true);
   });
 
   test("cancel ends the run even when a child of gh keeps the pipes open, and the kill reaches the tree", async () => {
@@ -83,7 +119,7 @@ describe("github-login: the device flow through gh", () => {
       },
     });
     await logins.start();
-    logins.cancel();
+    void logins.cancel();
     expect(await poll(() => !logins.running, 4000)).toBe(true);
     expect(killed).toHaveLength(1);
   });
@@ -92,7 +128,7 @@ describe("github-login: the device flow through gh", () => {
     fakeGh([WAITING]);
     const logins = login({ kill: async () => Promise.reject(new Error("no taskkill")) });
     await logins.start();
-    logins.cancel();
+    void logins.cancel();
     expect(await poll(() => !logins.running, 4000)).toBe(true);
   });
 

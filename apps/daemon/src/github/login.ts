@@ -24,12 +24,16 @@ export interface GithubLoginOptions {
   log?: (message: string) => void;
   /** Ends gh and what it started: `taskkill /T` on Windows, the process group elsewhere. */
   kill?: (pid: number) => Promise<void>;
+  /** How long a cancel waits for gh to end after the kill before it kills gh by force. */
+  exitWaitMs?: number;
 }
 
 const CODE_TIMEOUT_MS = 20_000;
 const LOGIN_TIMEOUT_MS = 15 * 60_000;
 /** After gh exits, how long its output may still arrive: a child that kept the pipes must not hold the run. */
 const DRAIN_MS = 500;
+/** How long a cancel waits for gh to end after the kill. */
+const EXIT_WAIT_MS = 5000;
 const DEFAULT_PAGE = "https://github.com/login/device";
 
 const fail = (reason: string, message: string, params?: Record<string, string | number>) =>
@@ -84,14 +88,26 @@ export class GithubLogin {
     return await run.device;
   }
 
-  cancel(): void {
-    this.stop(this.current?.proc);
+  /** Ends the running login; settles once gh has ended, so nothing is left running behind it. */
+  async cancel(): Promise<void> {
+    await this.stop(this.current?.proc);
   }
 
-  /** Ends gh and its children; the process alone when the tree cannot be reached. */
-  private stop(proc: ReturnType<typeof Bun.spawn> | undefined): void {
-    if (!proc) return;
-    void (this.opts.kill ?? killTree)(proc.pid).catch(() => proc.kill());
+  /**
+   * Ends gh and its children (the process alone when the tree cannot be reached) and waits for it to
+   * be gone; a gh the kill did not end is killed by force after `exitWaitMs`, never waited on forever.
+   */
+  private async stop(proc: ReturnType<typeof Bun.spawn> | undefined): Promise<void> {
+    // Already gone: its pid may be somebody else's by now.
+    if (!proc || proc.exitCode !== null) return;
+    await (this.opts.kill ?? killTree)(proc.pid).catch(() => proc.kill());
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const patience = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, this.opts.exitWaitMs ?? EXIT_WAIT_MS);
+    });
+    await Promise.race([proc.exited, patience]);
+    clearTimeout(timer);
+    if (proc.exitCode === null) proc.kill("SIGKILL");
   }
 
   /** Reads gh's output until the code shows up, and ends the run when gh ends or time runs out. */
@@ -101,10 +117,10 @@ export class GithubLogin {
       let found = false;
       const codeTimer = setTimeout(() => {
         reject(fail("login_timeout", "gh printed no one-time code in time"));
-        this.stop(proc);
+        void this.stop(proc);
       }, this.opts.codeTimeoutMs ?? CODE_TIMEOUT_MS);
       const loginTimer = setTimeout(
-        () => this.stop(proc),
+        () => void this.stop(proc),
         this.opts.loginTimeoutMs ?? LOGIN_TIMEOUT_MS,
       );
       const read = async (stream: ReadableStream<Uint8Array>) => {
