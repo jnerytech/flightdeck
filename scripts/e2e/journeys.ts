@@ -15,7 +15,9 @@ import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
   CONTRACT_CARD,
   DANGER_SESSION,
+  DEMO_ACTIVE_TEAM,
   DEMO_CLOSED_TEAM,
+  DEMO_TEAM_REPORT,
   OVERFLOW_VIEWPORTS,
   REACH_VIEWPORTS,
 } from "../lib/e2e-journeys.ts";
@@ -1504,6 +1506,14 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         .click();
       await goal.fill(`Objetivo e2e ${Date.now()}`);
       await inReach(c, `${c.t("teamsUi.create")} a ${size.width}x${size.height}`, create);
+      // Issue #1222: below 640 px the first worker's persona gets the row's whole width, where the
+      // fixed model and permission columns used to leave it a few dozen pixels.
+      if (size.width < 640) {
+        const row = c.page.locator('[data-slot="worker-row"]').first();
+        const persona = c.page.getByLabel(c.t("teamsUi.workerPersona", { n: 1 }), { exact: true });
+        const [rowBox, personaBox] = [await row.boundingBox(), await persona.boundingBox()];
+        expect(personaBox?.width ?? 0).toBeGreaterThanOrEqual((rowBox?.width ?? Infinity) - 1);
+      }
     }
   },
 
@@ -1555,12 +1565,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
-  // Issue #802: three layout claims the unit tests could only pin by class name are measured in
-  // the browser: a reason under a disabled button sits in the flow and not over the next field, the
+  // Issue #802: layout claims the unit tests could only pin by class name are measured in the
+  // browser: the card's Run row (its one button and its menu fit and do not overlap, #1197), the
   // untrusted notice stays small with its link on the text line, and the status bar's items never
   // overlap or run past it at a compact, a medium and a wide window.
   "layout-medido": async (c) => {
-    // 1. The Run row of a card that has not started: its reasons are lines of the row's own box.
+    // 1. The Run row of a card that has not started: its one button and the menu fit the window
+    // and do not overlap, at a phone's, a tablet's and a desktop's width (#1197).
     const title = `Card medido ${Date.now()}`;
     await c.page.setViewportSize({ width: 1280, height: 800 });
     await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
@@ -1570,27 +1581,35 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
     await tile.waitFor({ timeout: WAIT });
     await tile.getByRole("button", { name: title, exact: true }).click();
-    const start = c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true });
-    await start.waitFor({ timeout: WAIT });
-    const reasons = await start.evaluate((button) => {
-      const wrap = button.closest(".field-row-wrap");
-      const row = wrap?.querySelector(".field-row");
-      if (!wrap || !row) return "the Run row has no wrapper";
-      const edge = (el: Element) => el.getBoundingClientRect();
-      const helps = [...wrap.querySelectorAll(".field-help")];
-      if (helps.length < 2) return `expected two reasons under the row, found ${helps.length}`;
-      const next = wrap.nextElementSibling;
-      let above = edge(row).bottom;
-      for (const help of helps) {
-        const box = edge(help);
-        if (box.top < above - 1) return `a reason starts at ${box.top}, above ${above}`;
-        above = box.bottom;
-      }
-      if (edge(wrap).bottom < above - 1) return "the reasons hang out of the row's box";
-      if (next && edge(next).top < above - 1) return "the reasons run over the next block";
-      return null;
-    });
-    if (reasons) throw new Error(`a razão sob o botão desabilitado: ${reasons}`);
+    const run = c.page.locator("[data-slot='card-run']");
+    await run.waitFor({ timeout: WAIT });
+    for (const size of [
+      { width: 390, height: 844 },
+      { width: 640, height: 800 },
+      { width: 1280, height: 800 },
+    ]) {
+      await c.page.setViewportSize(size);
+      const problem = await run.evaluate((box, width) => {
+        const buttons = [...box.querySelectorAll("button")]
+          .map((button) => button.getBoundingClientRect())
+          .filter((rect) => rect.width > 0 && rect.height > 0);
+        if (buttons.length < 2) return `expected the button and the menu, found ${buttons.length}`;
+        for (const rect of buttons) {
+          if (rect.right > width + 1 || rect.left < -1) return "a button is past the window";
+        }
+        for (let a = 0; a < buttons.length; a++) {
+          for (let b = a + 1; b < buttons.length; b++) {
+            const x = buttons[a] as DOMRect;
+            const y = buttons[b] as DOMRect;
+            const across = Math.min(x.right, y.right) - Math.max(x.left, y.left);
+            const down = Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top);
+            if (across > 2 && down > 2) return "two buttons overlap";
+          }
+        }
+        return null;
+      }, size.width);
+      if (problem) throw new Error(`a linha Executar a ${size.width}px: ${problem}`);
+    }
 
     // 2. The untrusted notice of a session: small, and its link is on the text line.
     await c.page.setViewportSize({ width: 1280, height: 800 });
@@ -2080,6 +2099,24 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // The coordinator's session is still there, and open.
     await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
     await c.page.getByLabel(c.t("session.message"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // Issue #1222: the demo's active team lists its members with their last reports, in a
+  // phone-sized window and a desktop one, so what the team did is read on its page.
+  "time-rodando": async (c) => {
+    for (const size of REACH_VIEWPORTS) {
+      await c.page.setViewportSize(size);
+      await open(c, { name: "teams", host: ALFA });
+      const row = c.page.getByRole("listitem", {
+        name: c.t("teamsUi.row", { name: DEMO_ACTIVE_TEAM }),
+      });
+      const report = row.getByText(DEMO_TEAM_REPORT);
+      await report.waitFor({ timeout: WAIT });
+      // The report wraps inside the window: none of it runs past the right edge.
+      await report.scrollIntoViewIfNeeded();
+      const box = await report.boundingBox();
+      expect(box === null ? Infinity : box.x + box.width).toBeLessThanOrEqual(size.width + 0.5);
+    }
   },
 
   "escopo-dados": async (c) => {

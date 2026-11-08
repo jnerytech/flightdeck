@@ -13,6 +13,7 @@ import {
   type ExternalStatus,
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
+  FEATURE_SERVICE_INSTALL,
   type HarnessApplied,
   type HarnessCommitted,
   type HarnessDraft,
@@ -30,6 +31,7 @@ import {
   PROTOCOL_VERSION,
   type ProjectLoad,
   type ProjectTrustState,
+  type ServiceInstallResult,
   type SessionEventOf,
   type SessionLine,
   type SessionStatus,
@@ -248,6 +250,11 @@ export interface ServerOptions {
   fsDirs?: boolean;
   /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
+  /**
+   * #1200: installs this daemon as a service for the next boot or login, refused without confirm;
+   * absent (a daemon not run as its stable binary), the command is refused and not announced.
+   */
+  serviceInstall?: (confirm: boolean) => Promise<ServiceInstallResult>;
   /** Checks the host's dependencies for `deps.check`; absent, the command is refused and not announced. */
   deps?: () => Promise<DepsResult>;
   /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
@@ -466,6 +473,7 @@ function featuresOf(opts: ServerOptions): string[] {
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...when(opts.doctor, "doctor.run"),
+    ...when(opts.serviceInstall, FEATURE_SERVICE_INSTALL),
     ...when(opts.keepAwake, "keepAwake"),
     ...when(opts.quotaPause, "quotaPause"),
     ...when(opts.deps, "depsCheck"),
@@ -1080,6 +1088,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await central().hooksInstall(command.payload.confirm === true));
       case "hooks.uninstall":
         return ok(command.type, await central().hooksUninstall(command.payload.confirm === true));
+      case "service.install":
+        return ok(
+          command.type,
+          await need(opts, "serviceInstall")(command.payload.confirm === true),
+        );
       case "external.list": {
         const { external, meta } = central();
         const sessions = external
@@ -1638,6 +1651,12 @@ export function startServer(opts: ServerOptions): RunningServer {
             command.payload,
           ),
         );
+      case "card.pr.merge": {
+        // It merges on the provider with this computer's gh login: a near connection only.
+        requireVaultTransport(ws.data.origin, "card.pr.merge", opts.log);
+        const { cardId, method, confirm } = command.payload;
+        return ok(command.type, await board().mergePr(cardId, method, confirm === true));
+      }
       case "card.complete": {
         const { cardId, confirm } = command.payload;
         return ok(command.type, await board().completeCard(cardId, confirm === true));

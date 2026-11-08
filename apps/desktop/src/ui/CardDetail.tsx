@@ -1,5 +1,5 @@
 import type { StepRun, WorkflowInfo } from "@flightdeck/protocol";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { CardSyncLog } from "@/components/board/board-sync";
 import { CardAdjustment, CardRuns } from "@/components/card/card-adjustment";
 import { CardArena } from "@/components/card/card-arena";
@@ -17,6 +17,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { projectCards } from "../lib/board.ts";
+import { opensOnChanges } from "../lib/card-next-step.ts";
 import { usd } from "../lib/costs.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -43,7 +44,17 @@ export const CardDetail = memo(function CardDetail(props: {
   const { store, hostId, cardId } = props;
   const state = useStoreSlice(store, CARDDETAIL_KEYS);
   const card = state.cards[sessionKey(hostId, cardId)];
-  const [tab, setTab] = useState<CardTab>("conversation");
+  /** A finished run opens on its changes, once (#1197): at the first paint when the card is known. */
+  const [tab, setTab] = useState<CardTab>(() =>
+    card && opensOnChanges(card) ? "diff" : "conversation",
+  );
+  /** The card the page chose its first tab for; one that arrives later is chosen for in the effect. */
+  const firstTab = useRef<string | null>(card ? cardId : null);
+  useEffect(() => {
+    if (!card || firstTab.current === cardId) return;
+    firstTab.current = cardId;
+    if (opensOnChanges(card)) setTab("diff");
+  }, [card, cardId]);
   const sessionId = card?.sessionId ?? null;
   const host = state.hosts.find((h) => h.id === hostId);
   const has = (feature: string) => hasFeature(host?.hostInfo?.features, feature, false);
@@ -212,12 +223,11 @@ export const CardDetail = memo(function CardDetail(props: {
                   store={store}
                   hostId={hostId}
                   card={card}
-                  workflows={workflows}
                   features={{
-                    personas: withPersonas,
                     bg: has("bg"),
                     watch: withWatch,
                   }}
+                  tab={tab}
                   arenaStart={arena.start}
                   onDiscarded={props.onBack}
                   onShowDiff={() => setTab("diff")}

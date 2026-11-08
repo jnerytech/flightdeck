@@ -95,7 +95,7 @@ export function RecapPanel(
   // room (#232). Once the person opens or folds it, their choice holds.
   // So while a request waits for the person (#488): the request card needs the room.
   const short = useTight();
-  const [chosen, setOpen] = useState<boolean | null>(null);
+  const [chosen, setChosen] = useState<boolean | null>(null);
   const open = chosen ?? (firstSeen && !short);
   useEffect(() => {
     SEEN.add(seenKey);
@@ -116,7 +116,7 @@ export function RecapPanel(
           size="sm"
           className="toggle-start shrink-0"
           aria-expanded={open}
-          onClick={() => setOpen(!open)}
+          onClick={() => setChosen(!open)}
         >
           {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
           {t("recap.region")}

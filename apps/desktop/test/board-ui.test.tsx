@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { must } from "../../daemon/test/helpers.ts";
+import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
@@ -27,6 +28,9 @@ afterEach(async () => {
 
 const settle = waiter(4000);
 
+/** Finalizar… and Descartar sit under the card's menu (#1197). */
+const fromMenu = (title: string, item: string) =>
+  chooseFromCardMenu({ act, fireEvent, screen } as never, `Ações de ${title}`, item);
 const click = async (name: string | RegExp) => {
   // The session's views are tabs; everything else is a button.
   const button = screen.queryByRole("button", { name }) ?? screen.queryByRole("tab", { name });
@@ -480,14 +484,14 @@ describe("board-ui", () => {
     expect(column("Em revisão")).toEqual(["Terminar"]);
 
     await openCard("Terminar");
-    await click("Finalizar…");
+    await fromMenu("Terminar", "Finalizar…");
     await click("Concluir");
     expect(dialog()?.textContent ?? "").toContain("Concluir este card?");
     await click("Cancelar");
     expect(dialog()).toBeNull();
     const id = board.getBoard(board.listProjects()[0]?.id ?? "").columns[3]?.cards[0]?.id ?? "";
     expect(board.getCard(id).column).toBe("review");
-    await click("Finalizar…");
+    await fromMenu("Terminar", "Finalizar…");
     await click("Concluir");
     await click("Concluir card");
     await settle(() => board.getCard(id).worktreePath === null);
@@ -508,13 +512,13 @@ describe("board-ui", () => {
       join(must(board.getCard(discardId ?? "").worktreePath, "worktreePath"), "rascunho.txt"),
       "x\n",
     );
-    await click("Descartar");
+    await fromMenu("Jogar fora", "Descartar");
     await settle(() => (dialog()?.textContent ?? "").includes("não enviadas"));
     expect(dialog()?.textContent ?? "").toContain("Descartar este card?");
     expect(dialog()?.textContent ?? "").toContain("Há alterações não enviadas que serão perdidas.");
     await click("Cancelar");
     expect(board.getCard(discardId ?? "").id).toBe(discardId ?? "");
-    await click("Descartar");
+    await fromMenu("Jogar fora", "Descartar");
     await settle(() => dialog() !== null);
     await click("Descartar card");
     await settle(
@@ -531,7 +535,7 @@ describe("board-ui", () => {
     await openBoard(repo);
     await createCard("Ideia", "faça");
     await openCard("Ideia");
-    await click("Descartar");
+    await fromMenu("Ideia", "Descartar");
     await settle(() => dialog() !== null);
     expect(dialog()?.textContent ?? "").toContain("Descartar este card?");
     expect(dialog()?.textContent ?? "").not.toContain("não enviadas");
@@ -652,9 +656,9 @@ describe("board-ui", () => {
     await settle(() => (screen.queryByRole("log")?.textContent ?? "").includes("mais um [commit]"));
     expect(screen.queryByRole("log")?.textContent ?? "").toContain("mais um [commit]");
     await settle(() => board.getCard(id).sessionStatus === "idle");
-    // The composer's own "Parar" goes away once the screen shows the session idle; the card's stays.
-    await settle(() => screen.queryAllByRole("button", { name: "Parar" }).length === 1);
-    await click("Parar");
+    // "Parar" goes away once the screen shows the session idle: the card leads with Revisar mudanças (#1197).
+    await settle(() => screen.queryAllByRole("button", { name: "Parar" }).length === 0);
+    expect(screen.queryByRole("button", { name: "Revisar mudanças" })).not.toBeNull();
 
     writeFileSync(
       join(must(board.getCard(id).worktreePath, "worktreePath"), "solto.txt"),

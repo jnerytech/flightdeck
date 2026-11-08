@@ -1581,10 +1581,25 @@ html:not(:has([data-slot="status-bar"])) {
   grid-template-columns: minmax(0, 1fr) 7rem 10rem auto;
   align-items: end;
   gap: 0.5rem;
+  /* A narrow window gives the persona its own line, then model and permissions side by side, and
+     Remove under them at the left (#1222): the fixed columns left the persona a few dozen pixels. */
+  @media (width < 40rem) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    & > :first-child {
+      grid-column: 1 / -1;
+    }
+    & > :last-child {
+      justify-self: start;
+    }
+  }
 }
 /* A host that does not take the permission modes has no such column. */
 @utility worker-row-lean {
   grid-template-columns: minmax(0, 1fr) 7rem auto;
+  /* Its columns come after the full row's, so the narrow ones are repeated here (#1222). */
+  @media (width < 40rem) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 @utility row-end-wrap {
   display: flex;

@@ -23,7 +23,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const t = useT();
   const hosts = useStoreSlice(store, ["hosts", "roiRevision"]).hosts;
-  const [, bump] = useState(0);
+  const [tick, setTick] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const settings = store.roi.data();
   const [rate, setRate] = useState(
@@ -48,7 +48,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
     try {
       change();
       setMessage(null);
-      bump((n) => n + 1);
+      setTick((n) => n + 1);
     } catch (error) {
       setMessage(
         error instanceof RoiSettingsError
