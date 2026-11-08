@@ -7,6 +7,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
+import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
 import { type Context, createSession, open, SESSION_WAIT, WAIT, waitFor } from "../journeys.ts";
 import { Given, Then, When } from "./fixtures.ts";
 
@@ -459,4 +460,71 @@ step(Then, "the status says {string} was {string}", async (c, session = "", deci
     .filter({ hasText: `${session}: ${words}` })
     .first()
     .waitFor({ timeout: WAIT });
+});
+
+// Finished in Needs you (#1134): a session whose turn ended while the person was elsewhere.
+/** The row of a request that waits, found by what it asks (a finished turn has the same session name). */
+const waitingRow = (c: Context, session: string) =>
+  c.page.locator(`main ul li button[aria-label*="${session}: Bash"]`);
+const finishedRow = (c: Context, session: string) =>
+  c.page.locator(
+    `main ul li button[aria-label="alfa · ${session}: ${c.t("needsYou.finishedOutcome.done")}"]`,
+  );
+
+step(Then, "no request of {string} is waiting any more", async (c, session = "") =>
+  waitFor(async () => (await waitingRow(c, session).count()) === 0, "the request left the queue"),
+);
+
+step(Then, "the Finished group lists {string} as finished", async (c, session = "") => {
+  await c.page
+    .getByRole("heading", { name: c.t("needsYou.finished"), exact: true })
+    .waitFor({ timeout: SESSION_WAIT });
+  await finishedRow(c, session).waitFor({ timeout: SESSION_WAIT });
+});
+
+step(When, "I choose the finished session {string}", async (c, session = "") =>
+  finishedRow(c, session).click(),
+);
+
+step(
+  Then,
+  "its detail names the session, how it ended, and offers to see the changes",
+  async (c) => {
+    const detail = c.page.locator("main");
+    await detail
+      .getByText(new RegExp(`alfa · ${c.t("needsYou.finishedOutcome.done")} · `))
+      .waitFor({ timeout: SESSION_WAIT });
+    await detail.getByRole("button", { name: c.t("needsYou.seeChanges"), exact: true }).waitFor();
+  },
+);
+
+step(When, "I choose to see the changes", async (c) =>
+  c.page.getByRole("button", { name: c.t("needsYou.seeChanges"), exact: true }).click(),
+);
+
+step(Then, "the session opens on its Changes view", async (c) =>
+  c.page
+    .locator('[role="tab"][aria-selected="true"]', { hasText: c.t(VIEW_LABEL.changes) })
+    .waitFor({ timeout: SESSION_WAIT }),
+);
+
+step(When, "I go back to the queue of what needs me", async (c) =>
+  c.page
+    .getByRole("button", { name: new RegExp(`^${c.t("sidebar.needsYou")}`) })
+    .first()
+    .click(),
+);
+
+step(Then, "the Finished group is gone", async (c) => {
+  // Back on the page (the demo has other requests waiting, so its list is not empty).
+  await c.page
+    .getByRole("heading", { level: 1, name: c.t("sidebar.needsYou") })
+    .waitFor({ timeout: WAIT });
+  await waitFor(
+    async () =>
+      (await c.page
+        .getByRole("heading", { name: c.t("needsYou.finished"), exact: true })
+        .count()) === 0,
+    "the Finished group is gone",
+  );
 });
