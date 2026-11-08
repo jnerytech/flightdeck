@@ -612,4 +612,32 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       count("project.harness.draft"),
     ]).toEqual([true, true, true, "d-claude", 1]);
   });
+
+  test("after Apply the focus is on the outcome, not the page; a refused commit is an alert, focused too (#1090)", async () => {
+    const { view } = setup({
+      features: [...FEATURES, "harnessCommit"],
+      answers: [
+        { ok: true, data: { written: [SETTINGS], digests: { [SETTINGS]: "w" } } },
+        { ok: false, code: "invalid_state", message: "refused", reason: "harness_commit_identity" },
+      ],
+    });
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    await settleMaybe(() => screen.queryByText(/Set up:/) !== null);
+    const focused = () => document.activeElement;
+    const appliedFocus =
+      focused() !== document.body && (focused()?.textContent ?? "").includes("Set up:");
+    await click("Commit on a new branch");
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    await click("Commit on a new branch", true);
+    await settleMaybe(() => screen.queryByText(/Git has no name and email/) !== null);
+    const alert = screen.queryByRole("alert");
+    expect([
+      appliedFocus,
+      (alert?.textContent ?? "").includes("Git has no name and email"),
+      alert !== null && alert.contains(focused()),
+    ]).toEqual([true, true, true]);
+  });
 });
