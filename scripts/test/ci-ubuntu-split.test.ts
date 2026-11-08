@@ -46,7 +46,12 @@ describe("ci-ubuntu-split (#293)", () => {
     for (const gone of ["Smokes", "SonarCloud", "cargo check do app"]) {
       expect(`${gone}: ${suite.steps.some((s) => s.name === gone)}`).toBe(`${gone}: false`);
     }
-    const upload = suite.steps.find((s) => (s.uses ?? "").startsWith("actions/upload-artifact@"));
+    // By its name: the job also keeps the JUnit times of #1003 as an artifact of their own.
+    const upload = suite.steps.find(
+      (s) =>
+        (s.uses ?? "").startsWith("actions/upload-artifact@") &&
+        (s.with as { name?: string } | undefined)?.name === "coverage-lcov",
+    );
     expect(upload?.uses ?? "").toMatch(PINNED);
     // Paths and line counts only, read once by the sonar job: kept a day, not the default 90.
     expect(upload?.with).toEqual({

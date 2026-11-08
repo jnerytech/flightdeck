@@ -58,6 +58,8 @@ const plan = planRelated({
   pyramid,
   // CI has the machine to itself: no machine-wide slot there.
   slot: !process.env.CI,
+  // CI keeps each test's time for the slow-test check (#1003).
+  ...(process.env.FLIGHTDECK_JUNIT ? { junit: process.env.FLIGHTDECK_JUNIT } : {}),
   base: flag >= 0 ? args[flag + 1] : undefined,
   platform: process.platform,
   git: (gitArgs) => {

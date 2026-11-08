@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { parseJsonText } from "../json-text.ts";
 
 /**
  * The env block of Claude Code's settings file (`~/.claude/settings.json`), as strings; empty when
@@ -10,7 +11,7 @@ export async function claudeSettingsEnv(file: string): Promise<Record<string, st
   if (text === null) return {};
   let settings: unknown;
   try {
-    settings = JSON.parse(text);
+    settings = parseJsonText(text);
   } catch {
     return {};
   }

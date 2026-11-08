@@ -27,7 +27,7 @@ export function parsePublicKey(text: string): { keyId: Buffer; key: KeyObject } 
     raw.length !== 42 ||
     raw.toString("latin1", 0, 2) !== "Ed"
   ) {
-    throw new SignatureError("formato de chave pública inválido");
+    throw new SignatureError("invalid public key format");
   }
   const key = createPublicKey({
     key: Buffer.concat([ED25519_SPKI, raw.subarray(10)]),
@@ -48,7 +48,7 @@ function parseSignature(text: string) {
     (algorithm !== "Ed" && algorithm !== "ED") ||
     !trusted.startsWith("trusted comment: ")
   ) {
-    throw new SignatureError("formato de assinatura inválido");
+    throw new SignatureError("invalid signature format");
   }
   return {
     prehashed: algorithm === "ED",
@@ -64,14 +64,14 @@ export function verifyMinisign(data: Uint8Array, signature: string, publicKey: s
   const { keyId, key } = parsePublicKey(publicKey);
   const sig = parseSignature(signature);
   if (!sig.keyId.equals(keyId)) {
-    throw new SignatureError("a assinatura é de outra chave, não da chave do Flightdeck");
+    throw new SignatureError("the signature is from another key, not the Flightdeck key");
   }
   const signed = sig.prehashed ? createHash("blake2b512").update(data).digest() : data;
   if (!verify(null, signed, key, sig.signature)) {
-    throw new SignatureError("a assinatura não confere com o arquivo");
+    throw new SignatureError("the signature does not match the file");
   }
   const comment = Buffer.concat([sig.signature, Buffer.from(sig.trusted)]);
   if (!verify(null, comment, key, sig.global)) {
-    throw new SignatureError("o comentário confiável da assinatura foi alterado");
+    throw new SignatureError("the signature's trusted comment was altered");
   }
 }

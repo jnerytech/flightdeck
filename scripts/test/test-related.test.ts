@@ -293,6 +293,29 @@ describe("planRelated", () => {
     expect(plan.command?.some((arg) => arg.startsWith("--coverage-dir"))).toBe(false);
   });
 
+  test("#1003: with a JUnit path, the run also writes each test's time there; without one, nothing changes", () => {
+    const repo: Record<string, string> = {
+      "apps/daemon/src/a.ts": "export const a = 1;",
+      "apps/daemon/test/a.test.ts": `import "../src/a.ts";`,
+    };
+    const plan = (junit?: string) =>
+      planRelated({
+        platform: "linux",
+        git: fakeGit(["apps/daemon/src/a.ts"], Object.keys(repo)),
+        readFile: (path) => repo[path] ?? "",
+        coverageDir: "/tmp/cov",
+        ...(junit ? { junit } : {}),
+      }).command ?? [];
+    const withJunit = plan("/tmp/junit.xml");
+    expect(
+      withJunit.slice(
+        withJunit.indexOf("--reporter=junit"),
+        withJunit.indexOf("--reporter=junit") + 2,
+      ),
+    ).toEqual(["--reporter=junit", "--reporter-outfile=/tmp/junit.xml"]);
+    expect(plan().some((arg) => arg.startsWith("--reporter"))).toBe(false);
+  });
+
   test("#762: a scripts/ entry file changed in the same diff as its new importer is gated, once", () => {
     const repo: Record<string, string> = {
       "scripts/entry.ts": "export const names = 1;",

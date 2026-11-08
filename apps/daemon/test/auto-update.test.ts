@@ -121,7 +121,7 @@ describe("auto-update: the daemon applies a newer version by itself, only when t
     const t = setup();
     t.state.applyError = new FlightdeckError(
       "update_verification_failed",
-      "o sha256 do arquivo baixado não confere com o manifesto: /home/dev/.flightdeck/updates/x",
+      "the sha256 of the downloaded file does not match the manifest: /home/dev/.flightdeck/updates/x",
       "update_signature_failed",
     );
     await t.auto.tick();
@@ -133,7 +133,7 @@ describe("auto-update: the daemon applies a newer version by itself, only when t
       reason: "update_signature_failed",
       at: "2026-11-06T14:02:00.000Z",
     });
-    expect(t.lines.join("\n")).toContain("o sha256 do arquivo baixado");
+    expect(t.lines.join("\n")).toContain("the sha256 of the downloaded file");
     // Looking again does not download the same thing over and over.
     await t.auto.tick();
     expect(t.applied).toEqual(["0.38.0"]);
