@@ -57,10 +57,10 @@ describe("host-version: the sidebar tooltip follows the version across a reconne
     act(() => {
       fireEvent.focus(button);
     });
-    expect(tooltip() === null).toBe(true);
-    expect(button.getAttribute("aria-describedby") === null).toBe(true);
+    expect(tooltip() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+    expect(button.getAttribute("aria-describedby")).toBeNull();
     view.rerender(row("flightdeckd 0.37.0"));
-    expect(screen.queryByRole("button", { name: "alfa" }) === button).toBe(true);
+    expect(screen.queryByRole("button", { name: "alfa" }) === button).toBe(true); // NOSONAR: toBe would print the DOM node on failure
   });
 
   test("with a version, focusing the button shows it; the version leaving takes the tooltip away at once, and coming back does not reopen it", () => {
@@ -71,9 +71,9 @@ describe("host-version: the sidebar tooltip follows the version across a reconne
     });
     expect(tooltip()?.textContent ?? "").toContain("flightdeckd 0.37.0");
     view.rerender(row(null));
-    expect(tooltip() === null).toBe(true);
-    expect(button.getAttribute("aria-describedby") === null).toBe(true);
+    expect(tooltip() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+    expect(button.getAttribute("aria-describedby")).toBeNull();
     view.rerender(row("flightdeckd 0.37.1"));
-    expect(tooltip() === null).toBe(true);
+    expect(tooltip() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 });

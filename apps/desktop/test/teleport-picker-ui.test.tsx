@@ -71,7 +71,7 @@ const picker = () => screen.queryByRole("dialog", { name: "Choose folder" });
 const inPicker = (name: string | RegExp) =>
   within(picker() as HTMLElement).queryByRole("button", { name });
 const press = async (name: string | RegExp) => {
-  await waitFor(() => expect(inPicker(name) !== null).toBe(true));
+  await waitFor(() => expect(inPicker(name) !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
   await act(async () => {
     fireEvent.click(inPicker(name) as HTMLElement);
   });
@@ -80,14 +80,14 @@ const press = async (name: string | RegExp) => {
 describe("teleport-picker-ui: the repository on the target is picked from its folders (#100)", () => {
   test("Browse opens the target's folders, and the folder chosen fills the field", async () => {
     const { beta } = await setup();
-    await waitFor(() => expect(browse() !== null).toBe(true));
+    await waitFor(() => expect(browse() !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
     await act(async () => {
       fireEvent.click(browse() as HTMLElement);
     });
-    await waitFor(() => expect(picker() !== null).toBe(true));
+    await waitFor(() => expect(picker() !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
     await press(new RegExp(`^${basename(beta.root)}`));
     await press("app");
-    await waitFor(() => expect(inPicker("Choose this folder") !== null).toBe(true));
+    await waitFor(() => expect(inPicker("Choose this folder") !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
     await press("Choose this folder");
     await waitFor(() => expect(picker()).toBeNull());
     expect((repoBox() as HTMLInputElement).value).toBe(join(beta.root, "app"));
@@ -98,11 +98,11 @@ describe("teleport-picker-ui: the repository on the target is picked from its fo
     await act(async () => {
       fireEvent.change(repoBox(), { target: { value: "/typed/app" } });
     });
-    await waitFor(() => expect(browse() !== null).toBe(true));
+    await waitFor(() => expect(browse() !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
     await act(async () => {
       fireEvent.click(browse() as HTMLElement);
     });
-    await waitFor(() => expect(picker() !== null).toBe(true));
+    await waitFor(() => expect(picker() !== null).toBe(true)); // NOSONAR: not.toBeNull on a DOM element inside waitFor formats the DOM tree on each retry (docs/TDD.md)
     await act(async () => {
       fireEvent.keyDown(picker() as HTMLElement, { key: "Escape" });
     });
