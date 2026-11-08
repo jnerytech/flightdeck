@@ -58,6 +58,7 @@ describe("configuracoes-trilho: the rail and the search", () => {
       "Atualizações",
       "Atalho global",
       "Assistente de IA",
+      "Backup",
       "Webhooks",
     ]);
   });
@@ -121,6 +122,6 @@ describe("configuracoes-trilho: the rail and the search", () => {
     await act(async () => {
       fireEvent.change(search, { target: { value: "" } });
     });
-    expect(items()).toHaveLength(8);
+    expect(items()).toHaveLength(9);
   });
 });
