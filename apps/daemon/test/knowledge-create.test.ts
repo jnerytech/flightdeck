@@ -74,6 +74,27 @@ describe("knowledge-create: a document from a template (#1039)", () => {
     ]);
   });
 
+  test("a PRD named like a Windows device gets a suffix so the file is a real one", async () => {
+    const root = project();
+    const paths = [
+      (await createKnowledgeDoc(root, "prd", "CON")).path,
+      (await createKnowledgeDoc(root, "prd", "nul")).path,
+      (await createKnowledgeDoc(root, "prd", "Com1")).path,
+      (await createKnowledgeDoc(root, "prd", "lpt9")).path,
+      (await createKnowledgeDoc(root, "prd", "console")).path,
+    ];
+    expect(paths).toEqual([
+      "docs/prd/con-doc.md",
+      "docs/prd/nul-doc.md",
+      "docs/prd/com1-doc.md",
+      "docs/prd/lpt9-doc.md",
+      "docs/prd/console.md",
+    ]);
+    expect(readdirSync(join(root, "docs/prd")).sort()).toEqual(
+      ["con-doc.md", "com1-doc.md", "console.md", "lpt9-doc.md", "nul-doc.md"].sort(),
+    );
+  });
+
   test("a title with no letter or digit is refused and nothing is written", async () => {
     const root = project();
     const reasons = [
