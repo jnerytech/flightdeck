@@ -15,7 +15,7 @@ import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from 
 import { launchFirst } from "./lib/browser.ts";
 import { DEMO_CARD_TEMPLATE } from "./lib/demo-card-templates.ts";
 import { demoFinished, demoInbox } from "./lib/demo-seeds.ts";
-import { DEMO_TEAM_REPORT } from "./lib/e2e-journeys.ts";
+import { DEMO_PR_CARD, DEMO_PR_URL, DEMO_TEAM_REPORT } from "./lib/e2e-journeys.ts";
 import {
   type Finding,
   GAP_BOXES,
@@ -800,6 +800,19 @@ function shots(ids: DemoIds): Shot[] {
           .getByLabel(/^(From a template|A partir de um modelo)$/)
           .selectOption({ label: DEMO_CARD_TEMPLATE });
         await dialog.getByText(/^(Starts with|Começa com): /).waitFor();
+      },
+    },
+    {
+      // #1244: Merge PR on the card with an open PR asks first: the PR, its checks, how to merge.
+      name: "card-merge-pr",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        await page
+          .locator(`li[aria-label$="${DEMO_PR_CARD}"]`)
+          .getByRole("button", { name: DEMO_PR_CARD, exact: true })
+          .click();
+        await page.getByRole("button", { name: /^(Merge PR|Fazer merge do PR)$/ }).click();
+        await page.getByRole("alertdialog").getByText(DEMO_PR_URL, { exact: true }).waitFor();
       },
     },
     {

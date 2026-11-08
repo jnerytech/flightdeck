@@ -83,7 +83,8 @@ export function Field(
   const errorId = props.error ? `${id}-error` : undefined;
   const described = [helpId, errorId].filter(Boolean).join(" ");
   return (
-    <div className={cn("flex flex-col gap-1 text-sm", props.className)}>
+    // min-w-0: in a row, the box shrinks below its control, which then keeps to it (#1244).
+    <div className={cn("flex min-w-0 flex-col gap-1 text-sm", props.className)}>
       <label htmlFor={id}>{props.label}</label>
       {props.children({
         id,
@@ -121,7 +122,8 @@ export function NativeSelect({
       className={cn(
         "rounded-md border border-input bg-background px-2 outline-none focus-visible:ring-2 focus-visible:ring-ring",
         compact ? "h-8 text-xs" : "h-9 text-sm",
-        inline ? "w-auto" : "w-full",
+        // Inline sizes to its options, up to its box: a long option is cut, never the row widened.
+        inline ? "w-auto max-w-full" : "w-full",
         className,
       )}
       {...props}

@@ -5,6 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { formatPairingLink } from "@flightdeck/protocol";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
@@ -198,7 +199,7 @@ step(
 // What a scenario makes for itself: the card it created, the project folder it added.
 const made = new WeakMap<
   Context,
-  { card?: string; project?: string; entry?: string; counts?: number[] }
+  { card?: string; project?: string; entry?: string; counts?: number[]; guard?: string }
 >();
 const mine = (c: Context) => {
   const state = made.get(c) ?? {};
@@ -942,6 +943,78 @@ step(
   },
 );
 
+// Add a host: the first-run guide is on the page when a host exists too, and a pairing link fills the form (issue #1199).
+step(When, "I open the Add a host page", async (c) => open(c, { name: "add-host" }));
+
+step(Then, "the page lists the first steps with copy buttons for setup and doctor", async (c) => {
+  const steps = c.page.getByRole("list", { name: c.t("welcome.stepsLabel"), exact: true });
+  await steps.waitFor({ timeout: WAIT });
+  const count = await steps.getByRole("listitem").count();
+  if (count !== 4) throw new Error(`the guide has ${count} steps, not 4`);
+  for (const command of ["flightdeckd setup", "flightdeckd doctor"]) {
+    await c.page
+      .getByRole("button", { name: c.t("welcome.copy", { command }), exact: true })
+      .waitFor({ timeout: WAIT });
+  }
+});
+
+/** The fold around the four manual fields, found by its summary. */
+const manualFold = (c: Context) =>
+  c.page.locator("details", { has: c.page.getByText(c.t("hostForm.byHand"), { exact: true }) });
+
+step(
+  Then,
+  "the address and token fields are folded away and the pairing link is in view",
+  async (c) => {
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).waitFor({ timeout: WAIT });
+    const open = await manualFold(c).evaluate((details) => (details as HTMLDetailsElement).open);
+    if (open) throw new Error("the manual fields are open before anything was typed");
+  },
+);
+
+step(When, "I paste a pairing link named {string}", async (c, name = "") => {
+  const link = formatPairingLink({ address: "100.64.0.9", port: 7421, name, token: "abc" });
+  await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).fill(link);
+});
+
+step(Then, "the manual fields open with the name {string}", async (c, name = "") => {
+  await waitFor(
+    () => manualFold(c).evaluate((details) => (details as HTMLDetailsElement).open),
+    "the manual fields open",
+  );
+  const field = c.page.getByLabel(c.t("hostForm.name"), { exact: true });
+  await waitFor(async () => (await field.inputValue()) === name, "the name is filled");
+});
+
+// Start at boot: a host run from source (the demo) shows the command to run by hand and no Turn it on (issue #1200).
+/** The command the Service row gives to run by hand: a command, not UI text. */
+const SERVICE_COMMAND = "flightdeckd service install";
+const serviceRow = (c: Context) =>
+  c.page.getByRole("listitem", { name: c.t("hostDeps.names.service"), exact: true });
+
+step(When, "I open the health of host {string}", async (c) =>
+  open(c, { name: "host", host: ALFA }),
+);
+
+step(Then, "the Service row says it is missing and shows the command to run by hand", async (c) => {
+  const row = serviceRow(c);
+  await row.getByText(c.t("hostDeps.state.missing"), { exact: true }).waitFor({ timeout: WAIT });
+  await row.getByText(SERVICE_COMMAND, { exact: true }).waitFor({ timeout: WAIT });
+});
+
+step(
+  Then,
+  "the app does not offer Turn it on, because this host does not run the installed binary",
+  async (c) => {
+    const row = serviceRow(c);
+    await row.waitFor({ timeout: WAIT });
+    const offered = await row
+      .getByRole("button", { name: c.t("hostHealth.service.turnOn"), exact: true })
+      .count();
+    if (offered > 0) throw new Error("Turn it on is offered on a host that runs from source");
+  },
+);
+
 // A card leads with its next step as one primary button; the rest waits in its menu (issue #1197).
 step(When, "I open that card", async (c) => {
   await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
@@ -1050,4 +1123,65 @@ step(Then, "the second run of the card completes", async (c) => {
   await c.page
     .getByRole("button", { name: c.t("runUi.again.action"), exact: true })
     .waitFor({ state: "detached", timeout: WAIT });
+});
+
+// The quota in the status bar opens both windows of a host and the guard "new cards wait from N%" (issue #1218).
+const quotaPanel = (c: Context) =>
+  c.page.getByRole("dialog", { name: c.t("quota.popover.label"), exact: true });
+const guardSelect = (c: Context, host: string) =>
+  quotaPanel(c).getByLabel(c.t("quota.guard.labelFor", { host }), { exact: true });
+
+step(Given, "I am on the queue of what needs me", async (c) => open(c, { name: "needs-you" }));
+
+step(When, "I press the quota in the status bar", async (c) => {
+  await c.page.locator('[data-slot="status-bar"] .status-quota').first().click({ timeout: WAIT });
+  await quotaPanel(c).waitFor({ timeout: WAIT });
+});
+
+step(
+  Then,
+  "the panel shows the 5 hours and 7 days windows of host {string}",
+  async (c, host = "") => {
+    for (const window of ["five_hour", "seven_day"] as const) {
+      const label = c.t("quota.meter", { window: c.t(`quota.windows.${window}`), host });
+      await quotaPanel(c).getByLabel(label, { exact: true }).waitFor({ timeout: WAIT });
+    }
+  },
+);
+
+step(
+  When,
+  "I make new cards wait from {string} on host {string}",
+  async (c, percent = "", host = "") => {
+    const select = guardSelect(c, host);
+    mine(c).guard = await select.inputValue();
+    await select.selectOption({ label: percent });
+  },
+);
+
+step(Then, "the guard of host {string} reads {string}", async (c, host = "", percent = "") => {
+  await waitFor(
+    () =>
+      guardSelect(c, host).evaluate(
+        (select, wanted) =>
+          (select as HTMLSelectElement).selectedOptions[0]?.textContent === wanted,
+        percent,
+      ),
+    `the guard reads ${percent}`,
+  );
+});
+
+step(When, "I reload the app and open the quota again", async (c) => {
+  await open(c, { name: "needs-you" });
+  await c.page.locator('[data-slot="status-bar"] .status-quota').first().click({ timeout: WAIT });
+  await quotaPanel(c).waitFor({ timeout: WAIT });
+});
+
+step(Then, "I put the guard of host {string} back to what it was", async (c, host = "") => {
+  const before = mine(c).guard ?? "";
+  await guardSelect(c, host).selectOption(before);
+  await waitFor(
+    async () => (await guardSelect(c, host).inputValue()) === before,
+    "the guard is back",
+  );
 });

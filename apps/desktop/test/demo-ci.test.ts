@@ -176,6 +176,8 @@ describe("demo-prints: axe e CI", () => {
       "time-apagar",
       // Issue #1222: the demo's active team lists its members' last reports.
       "time-rodando",
+      // Issue #1244: Merge PR on a card asks first, and GitHub's refusal is said in place.
+      "merge-pr-recusa",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

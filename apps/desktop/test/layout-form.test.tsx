@@ -146,6 +146,16 @@ describe("form-layout: Field", () => {
     expect(host.getAttribute("aria-invalid")).toBeNull();
     expect(host.getAttribute("aria-describedby")).toBeNull();
   });
+
+  // #1244: a card's "Add a blocker" select, sized to its longest card title, pushed its row past
+  // the card at a narrow window. In a row, a field's box shrinks below what it holds.
+  test("in a row, the field's box may shrink below its control's width", () => {
+    const { container } = render(
+      <Field label="Bloqueio">{(control) => <input {...control} />}</Field>,
+    );
+    const box = container.firstElementChild as HTMLElement;
+    expect(box.className.split(" ")).toContain("min-w-0");
+  });
 });
 
 describe("form-layout: a disabled primary button says why", () => {
@@ -241,6 +251,11 @@ describe("form-layout: NativeSelect", () => {
     expect(classes).toContain("w-auto");
     expect(classes).not.toContain("w-full");
     expect(classes).toContain("h-9");
+  });
+
+  test("inline never grows past its box: a long option is cut, not the row widened (#1244)", () => {
+    expect(classesOf({ inline: true })).toContain("max-w-full");
+    expect(classesOf({ inline: true, compact: true })).toContain("max-w-full");
   });
 
   test("compact is the toolbar height and text, and still fills the row alone", () => {

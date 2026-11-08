@@ -772,6 +772,51 @@ export const ptBR = {
       },
     },
   },
+  backupAll: {
+    title: "Backup de tudo",
+    intro:
+      "Um arquivo cifrado com as configurações, personas, snippets, hosts (com os tokens) e o cofre. Só a frase-senha que você escolher abre o arquivo.",
+    exportTitle: "Fazer backup",
+    passphrase: "Frase-senha",
+    confirm: "Confirmar frase-senha",
+    passphraseHelp: "Pelo menos 12 caracteres. Sem ela o backup não abre.",
+    export: "Fazer backup agora",
+    exportNeeds: "Digite a frase-senha e repita-a.",
+    saved: "Backup salvo, onde você escolheu. Guarde a frase-senha: sem ela o backup não abre.",
+    importTitle: "Restaurar um backup",
+    filePassphrase: "Frase-senha do arquivo",
+    read: "Ler backup",
+    readNeeds: "Digite a frase-senha do arquivo.",
+    kinds: {
+      settings: "Configurações",
+      personas: "Personas",
+      snippets: "Snippets",
+      hosts: "Hosts",
+      vault: "Cofre",
+    },
+    line: "{kind}: {added} novos, {same} iguais, {conflicting} diferentes",
+    conflictList: "Diferentes aqui",
+    newHosts: "Hosts novos",
+    choiceLegend: "Quando for diferente",
+    nothingToRestore: "Nada aqui é novo. Escolha substituir uma diferença para restaurar.",
+    keep: "Manter o que está aqui",
+    replace: "Substituir pelo backup",
+    restore: "Restaurar",
+    replaceMessage: "Substituir {names} pelo que está no backup? O que está aqui se perde.",
+    replaceConfirm: "Substituir",
+    result:
+      "Restaurado: {added} novos, {overwritten} substituídos, {skipped} mantidos. Feche e abra o Flightdeck de novo para usar.",
+    error: {
+      "short-passphrase": "A frase-senha precisa ter pelo menos 12 caracteres.",
+      mismatch: "As frases-senha não são iguais.",
+      unreadable:
+        "Não foi possível ler o arquivo. Confira a frase-senha; um arquivo alterado também é recusado.",
+      failed: "A restauração falhou e nada foi alterado.",
+      unexpected: "Algo deu errado. Nada foi alterado.",
+      "too-big":
+        "Este backup é grande demais para ser restaurado depois (mais de 1 MiB), então não foi salvo. Remova personas ou snippets grandes e tente de novo.",
+    },
+  },
   approval: {
     label: "Pedido de {tool}",
     title: "Permissão para",
@@ -3516,6 +3561,13 @@ export const ptBR = {
     coordinator: "coordenadora",
     worker: "executora",
     lastReport: "Último relato",
+    outcome: "Resultado",
+    outcomeDone: "Concluído",
+    outcomeProgress: "Em andamento",
+    reportDone: "A coordenadora relatou o objetivo concluído.",
+    branch: "Branch: {branch}",
+    changedOne: "1 arquivo alterado",
+    changedMany: "{n} arquivos alterados",
     pause: "Pausar {name}",
     pauseButton: "Pausar",
     resume: "Retomar {name}",
@@ -4276,6 +4328,7 @@ export const ptBR = {
     budgets: "Orçamentos",
     watch: "Vigiar e corrigir PRs",
     messaging: "Mensagens entre sessões",
+    backup: "Backup",
     words: {
       appearance:
         "tema escuro claro sistema densidade lista fonte tamanho terminal idioma inglês português",
@@ -4288,6 +4341,8 @@ export const ptBR = {
       watch: "vigiar pull request pr ci corrigir checks",
       messaging: "mensagens conversas regras agentes",
       webhooks: "webhook url avisar eventos http",
+      backup:
+        "backup restaurar exportar importar arquivo cifrado frase-senha cofre hosts personas snippets",
       assistant:
         "varinha mágica ia assistente melhorar escrever provedor anthropic openrouter claude chave api modelo",
     },

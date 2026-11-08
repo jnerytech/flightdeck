@@ -31,6 +31,8 @@ import {
   DANGER_SESSION,
   DEMO_ACTIVE_TEAM,
   DEMO_CLOSED_TEAM,
+  DEMO_PR_CARD,
+  DEMO_PR_URL,
   DEMO_TEAM_REPORT,
 } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
@@ -478,6 +480,9 @@ async function host(work: string, name: string): Promise<HostRun> {
     { command: "start", config, runtime: "fake" },
     { ...process.env },
     quiet,
+    // The health check asks the machine's service manager; the demo says what no machine can change
+    // (issue #1200): the service is not installed, and linger is on, so every run reads the same.
+    { serviceInstalled: async () => false, linger: async () => "on" },
   );
   const client = await Client.open(daemon.url, token);
   return {
@@ -639,10 +644,38 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     createdAt: "2026-10-01T10:00:00Z",
     authorAssociation: "MEMBER",
   };
+  // Issue #1244: the open PR of the In review card. It stays open with its build passing; a merge is
+  // held for a review, so Merge PR asks first and the card says why, run after run.
+  const build = [{ name: "build", status: "COMPLETED", conclusion: "SUCCESS" }];
   const gh = installFakeCli("gh", [
     { args: ["api", "user"], stdout: "eu\n" },
     { args: ["issue", "list"], stdout: JSON.stringify([issue]) },
     { args: ["issue", "view", "7"], stdout: JSON.stringify(issue) },
+    {
+      args: ["pr", "view", DEMO_PR_URL, "state,statusCheckRollup"],
+      stdout: JSON.stringify({ state: "OPEN", statusCheckRollup: build }),
+    },
+    {
+      args: ["pr", "view", DEMO_PR_URL, "mergeStateStatus,reviewDecision,statusCheckRollup"],
+      stdout: JSON.stringify({
+        mergeStateStatus: "BLOCKED",
+        reviewDecision: "REVIEW_REQUIRED",
+        statusCheckRollup: build,
+      }),
+    },
+    {
+      args: ["pr", "view", DEMO_PR_URL, "mergeable"],
+      stdout: JSON.stringify({ mergeable: "MERGEABLE" }),
+    },
+    {
+      args: ["pr", "checks", DEMO_PR_URL],
+      stdout: JSON.stringify([{ name: "build", bucket: "pass", link: "" }]),
+    },
+    {
+      args: ["pr", "merge", DEMO_PR_URL],
+      code: 1,
+      stderr: "X Pull request #42 is not mergeable: the base branch policy prohibits the merge.\n",
+    },
   ]);
 
   // A `claude` for the Plugins page (phase 26), before any daemon: one installed plugin whose hook
@@ -770,12 +803,20 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   const gated = await card("Revisar o fluxo de login", "Faça o plano e peça aprovação.");
   await client.call("card.start", { cardId: gated.id, workflow: "feature" });
   // Created in Review: a person's move there would ask for a PR (issue #78), and the demo has none.
-  await client.call("card.create", {
+  const inReview = await client.call<{ id: string }>("card.create", {
     projectId: project.id,
-    title: "Revisar mensagens de erro",
+    title: DEMO_PR_CARD,
     description: "Padronize os textos.",
     column: "review",
   });
+  // Issue #1244: its PR is open on GitHub (the fake gh above), so the card offers Merge PR. It is
+  // written as a PR the host opened is (`createPr`), without pushing a branch.
+  await client.call("project.update", { projectId: project.id, prProvider: "github" });
+  const prs = new Database(join(alfa.dataDir, "flightdeck.db"));
+  prs
+    .query("UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = 'passing' WHERE id = ?")
+    .run(DEMO_PR_URL, inReview.id);
+  prs.close();
   const waiting = await card("Aguardando o time de design", "Espere o layout.");
   // Phase 31: a chain of three cards: the schema, the API that needs it, the screen that needs the API.
   const schema = await card("Definir o esquema do carrinho", "Tabelas e índices.");

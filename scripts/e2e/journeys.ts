@@ -17,6 +17,8 @@ import {
   DANGER_SESSION,
   DEMO_ACTIVE_TEAM,
   DEMO_CLOSED_TEAM,
+  DEMO_PR_CARD,
+  DEMO_PR_URL,
   DEMO_TEAM_REPORT,
   OVERFLOW_VIEWPORTS,
   REACH_VIEWPORTS,
@@ -2129,6 +2131,30 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       const box = await report.boundingBox();
       expect(box === null ? Infinity : box.x + box.width).toBeLessThanOrEqual(size.width + 0.5);
     }
+  },
+
+  // Issue #1244: Merge PR on the demo's card with an open PR asks first, with the PR and how to
+  // merge it; GitHub (the demo's fake gh) holds it for a review, and the card says so in place with
+  // a link to the PR. Nothing is merged, so the next language and repeat find the same PR.
+  "merge-pr-recusa": async (c) => {
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title: DEMO_PR_CARD })}"]`);
+    await tile.getByRole("button", { name: DEMO_PR_CARD, exact: true }).click();
+    const mergePr = c.page.getByRole("button", { name: c.t("cardMergePr.action"), exact: true });
+    await mergePr.click();
+    const dialog = c.page.getByRole("alertdialog");
+    await dialog.getByText(DEMO_PR_URL, { exact: true }).waitFor({ timeout: WAIT });
+    await dialog.getByLabel(c.t("cardMergePr.how"), { exact: true }).selectOption("squash");
+    await dialog.getByRole("button", { name: c.t("cardMergePr.action"), exact: true }).click();
+    const refusal = c.page.getByRole("alert").filter({
+      hasText: c.t("daemonRefusal.card_pr_review_required"),
+    });
+    await refusal.waitFor({ timeout: WAIT });
+    await refusal
+      .getByRole("link", { name: c.t("cardMergePr.openPr"), exact: true })
+      .waitFor({ timeout: WAIT });
+    // The PR is still open: the card offers Merge PR again.
+    await mergePr.waitFor({ timeout: WAIT });
   },
 
   "escopo-dados": async (c) => {
