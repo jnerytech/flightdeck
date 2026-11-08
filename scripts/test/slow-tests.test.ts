@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   FILE_LIMIT_S,
+  missingReport,
   parseJunit,
   type SlowAllowlist,
   slowVerdict,
@@ -69,6 +70,35 @@ describe("slow-tests (#1003)", () => {
         "apps/a.test.ts > board & cards > moves a card: 6.5 s (#1009 deletes it)",
       ],
     });
+  });
+
+  test("#1022 review: a test or file whose time cannot be read fails, never reads as 0 s", () => {
+    const broken = parseJunit(
+      [
+        '<testsuite name="apps/c.test.ts" file="apps/c.test.ts" time="">',
+        '  <testcase name="no time" file="apps/c.test.ts" />',
+        '  <testcase name="odd time" time="soon" file="apps/c.test.ts" />',
+        "</testsuite>",
+      ].join("\n"),
+    );
+    expect(slowVerdict(broken, { tests: {}, files: {} }).problems).toEqual([
+      "apps/c.test.ts: the report gives no time for the file",
+      "apps/c.test.ts > no time: the report gives no time",
+      "apps/c.test.ts > odd time: the report gives no time",
+    ]);
+  });
+
+  test("#1022 review: a missing report fails when the test step passed, and is left to that step when it failed", () => {
+    expect(missingReport("success", "/t/j.xml")).toEqual({
+      code: 1,
+      line: "slow-tests: the test step passed but left no JUnit report at /t/j.xml",
+    });
+    for (const outcome of ["failure", "cancelled", undefined]) {
+      expect(missingReport(outcome, "/t/j.xml")).toEqual({
+        code: 0,
+        line: "slow-tests: no JUnit report at /t/j.xml; the test step did not pass, and says why",
+      });
+    }
   });
 
   test("every allowlist entry names a test file and says why it is there", () => {

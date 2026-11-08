@@ -17,12 +17,16 @@ const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "
 };
 const steps = ci.jobs["test-suite"]?.steps ?? [];
 const step = (name: string) => steps.find((s) => s.name === name);
+const related = () => step("Testes da seleção (pirâmide)");
 
 describe("ci-pyramid (#309)", () => {
   test("#1003: after the PR's run, the slow-test check reads its JUnit times, and the report is kept", () => {
     const check = step("Testes lentos (#1003)");
     expect(check?.if).toBe("always() && needs.quick.outputs.base != ''");
     expect(check?.run).toBe('bun run scripts/slow-tests.ts "$RUNNER_TEMP/junit.xml"');
+    // A report missing after a passing test step is a failure, not a pass (#1022 review).
+    expect(check?.env).toEqual({ TESTS_OUTCOME: "${{ steps.related.outcome }}" });
+    expect((related() as { id?: string } | undefined)?.id).toBe("related");
     const kept = steps.find((s) => s.name === "Tempos dos testes (JUnit)") as
       | (Step & { with?: Record<string, string> })
       | undefined;

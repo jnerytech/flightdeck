@@ -82,3 +82,11 @@ export function slowVerdict(
   }
   return verdict;
 }
+
+/** #1022 review: what a missing report means, from the outcome of the test step that writes it. */
+export function missingReport(
+  _outcome: string | undefined,
+  _path: string,
+): { code: number; line: string } {
+  return { code: 0, line: "" };
+}
