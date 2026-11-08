@@ -7,6 +7,7 @@ import {
   AutoApproveSettings,
   BoardColumn as BoardColumnSchema,
   type BoardResult,
+  type CardTemplates,
   ColumnContract,
   type ContractOverrides,
   contractOf,
@@ -48,6 +49,7 @@ import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
+import { parseCardTemplates } from "./card-templates.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
@@ -283,6 +285,28 @@ function pinnedDocsOf(stored: string | null): string[] {
   }
 }
 
+/** A spec path a card is given must be a relative Markdown path inside the worktree. */
+function judgeSpecPath(path: string | null | undefined): void {
+  if (typeof path === "string" && specPathProblem(path) !== null) {
+    throw new FlightdeckError(
+      "bad_request",
+      "the spec path must be a relative path to a Markdown file inside the worktree",
+      "spec_path_invalid",
+    );
+  }
+}
+
+/** Pinned documents a card is given: Markdown files in the library's folders, at most 10. */
+function judgePins(pins: string[]): void {
+  if (pins.length > PINNED_DOCS_MAX || pins.some((doc) => pinnedDocProblem(doc) !== null)) {
+    throw new FlightdeckError(
+      "bad_request",
+      "a pinned document must be a Markdown file in the project's docs folders, and a card pins at most 10",
+      "pinned_doc_invalid",
+    );
+  }
+}
+
 /** The auto-start as the cards table keeps it. */
 const autoStartOf = (autoStart: { workflow: string | null } | null | undefined) =>
   autoStart ? JSON.stringify(autoStart) : null;
@@ -312,6 +336,8 @@ interface CardRow {
   validation_note: string | null;
   spec_path: string | null;
   pinned_docs: string | null;
+  start_workflow: string | null;
+  start_persona: string | null;
   spec_checked_path: string | null;
   spec_found: number;
   spec_heading: string | null;
@@ -744,6 +770,8 @@ export class Board {
       validationNote: row.validation_note,
       specPath: row.spec_path,
       pinnedDocs: pinnedDocsOf(row.pinned_docs),
+      startWorkflow: row.start_workflow,
+      startPersona: row.start_persona,
       specState:
         row.spec_checked_path === null
           ? null
@@ -768,6 +796,51 @@ export class Board {
     };
   }
 
+  /**
+   * Issue #1201: the project's card templates (`.flightdeck/templates/cards.json`, trusted projects
+   * only, read from the trusted checkout): the ones offered, how many entries were left out, and
+   * why a file that is there was not used.
+   */
+  async cardTemplates(projectId: string): Promise<CardTemplates> {
+    const project = this.getProject(projectId);
+    const found = await this.templateFor(project.path, "cards", true);
+    if (found.ignored !== null) return { templates: [], dropped: 0, ignored: found.ignored };
+    if (found.body === null) return { templates: [], dropped: 0, ignored: null };
+    const { templates, dropped, invalid } = parseCardTemplates(found.body);
+    return { templates, dropped, ignored: invalid ? "invalid" : null };
+  }
+
+  /**
+   * A new card, filled from one of the project's templates when `templateId` names one: its
+   * workflow, persona, pins and spec file, and its text when the person typed none. A template the
+   * project does not offer (or does not trust) refuses the card.
+   */
+  async createCardFrom(
+    projectId: string,
+    input: Parameters<Board["createCard"]>[1] & { templateId?: string },
+  ): Promise<Card> {
+    const { templateId, ...rest } = input;
+    if (templateId === undefined) return this.createCard(projectId, rest);
+    const template = (await this.cardTemplates(projectId)).templates.find(
+      (candidate) => candidate.id === templateId,
+    );
+    if (!template) {
+      throw new FlightdeckError(
+        "bad_request",
+        `the project offers no card template ${templateId}`,
+        "card_template_unknown",
+      );
+    }
+    return this.createCard(projectId, {
+      ...rest,
+      description: rest.description.trim() ? rest.description : template.description,
+      specPath: template.spec,
+      pinnedDocs: template.pins,
+      startWorkflow: template.workflow,
+      startPersona: template.persona,
+    });
+  }
+
   /** A new card goes to the end of the column it is born in: the Backlog unless it says another. */
   createCard(
     projectId: string,
@@ -784,6 +857,11 @@ export class Board {
       blockedBy?: string[];
       unblockWhen?: UnblockWhen;
       autoStart?: { workflow: string | null } | null;
+      /** Issue #1201: what a card template fills in; the spec path and the pins are judged as an edit's are. */
+      specPath?: string | null;
+      pinnedDocs?: string[];
+      startWorkflow?: string | null;
+      startPersona?: string | null;
       /** An arena variant: the arena's card, and what makes it different. */
       arenaOf?: string;
       variant?: {
@@ -798,6 +876,9 @@ export class Board {
     },
   ): Card {
     this.getProject(projectId);
+    judgeSpecPath(input.specPath);
+    const pins = [...new Set(input.pinnedDocs ?? [])];
+    judgePins(pins);
     const blockedBy = input.blockedBy ?? [];
     this.checkBlockers(null, projectId, blockedBy);
     const column = input.column ?? "backlog";
@@ -812,8 +893,8 @@ export class Board {
       .query(
         `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
            issue_external, arena_of, variant, unblock_when, auto_start, created_at, updated_at,
-           source_key)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           source_key, spec_path, pinned_docs, start_workflow, start_persona)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -831,6 +912,10 @@ export class Board {
         at,
         at,
         input.sourceKey ?? null,
+        input.specPath ?? null,
+        pins.length > 0 ? JSON.stringify(pins) : null,
+        input.startWorkflow ?? null,
+        input.startPersona ?? null,
       );
     this.storeBlockers(id, blockedBy);
     this.noteWaiting(id);
@@ -1066,26 +1151,11 @@ export class Board {
     if (patch.blockedBy) this.checkBlockers(id, card.projectId, patch.blockedBy);
     const specPath = patch.specPath === undefined ? card.specPath : patch.specPath;
     // Only a path that comes in the patch is judged: one stored earlier does not block an edit.
-    if (typeof patch.specPath === "string" && specPathProblem(patch.specPath) !== null) {
-      throw new FlightdeckError(
-        "bad_request",
-        "the spec path must be a relative path to a Markdown file inside the worktree",
-        "spec_path_invalid",
-      );
-    }
+    judgeSpecPath(patch.specPath);
     const pinned =
       patch.pinnedDocs === undefined ? card.pinnedDocs : [...new Set(patch.pinnedDocs)];
     // Only pins that come in the patch are judged: ones stored earlier do not block an edit.
-    if (
-      patch.pinnedDocs !== undefined &&
-      (pinned.length > PINNED_DOCS_MAX || pinned.some((doc) => pinnedDocProblem(doc) !== null))
-    ) {
-      throw new FlightdeckError(
-        "bad_request",
-        "a pinned document must be a Markdown file in the project's docs folders, and a card pins at most 10",
-        "pinned_doc_invalid",
-      );
-    }
+    if (patch.pinnedDocs !== undefined) judgePins(pinned);
     this.db
       .query(
         `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, validation_note = ?,

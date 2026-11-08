@@ -31,6 +31,7 @@ export const DAEMON_REASONS = [
   "team_delete_live",
   "spec_path_invalid",
   "pinned_doc_invalid",
+  "card_template_unknown",
   "findings_missing",
   "findings_invalid",
   "contract_invalid",
@@ -583,6 +584,7 @@ export const DAEMON_FEATURES = [
   "harnessDraft",
   "harnessTemplates",
   "keepAwake",
+  "quotaPause",
   "autoUpdate",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];

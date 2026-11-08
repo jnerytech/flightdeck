@@ -1,5 +1,5 @@
 import type { StepRun, WorkflowInfo } from "@flightdeck/protocol";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { CardSyncLog } from "@/components/board/board-sync";
 import { CardAdjustment, CardRuns } from "@/components/card/card-adjustment";
 import { CardArena } from "@/components/card/card-arena";
@@ -8,6 +8,7 @@ import { CardPins } from "@/components/card/card-pins";
 import { CardRunForm } from "@/components/card/card-run-form";
 import { CardHeaderActions, type CardTab, CardWork } from "@/components/card/card-work";
 import { PostMortem } from "@/components/card/post-mortem";
+import { RunAgain } from "@/components/card/run-again";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
@@ -17,6 +18,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { projectCards } from "../lib/board.ts";
+import { opensOnChanges } from "../lib/card-next-step.ts";
 import { usd } from "../lib/costs.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -38,12 +40,24 @@ export const CardDetail = memo(function CardDetail(props: {
   onBack(): void;
   /** Opens another card of the project (the post-mortem that was just started). */
   onOpenCard(cardId: string): void;
+  /** Opens the project's Workflows page (issue #1219: a failed run whose file is the problem). */
+  onOpenWorkflows(project: { id: string; name: string }): void;
 }) {
   const t = useT();
   const { store, hostId, cardId } = props;
   const state = useStoreSlice(store, CARDDETAIL_KEYS);
   const card = state.cards[sessionKey(hostId, cardId)];
-  const [tab, setTab] = useState<CardTab>("conversation");
+  /** A finished run opens on its changes, once (#1197): at the first paint when the card is known. */
+  const [tab, setTab] = useState<CardTab>(() =>
+    card && opensOnChanges(card) ? "diff" : "conversation",
+  );
+  /** The card the page chose its first tab for; one that arrives later is chosen for in the effect. */
+  const firstTab = useRef<string | null>(card ? cardId : null);
+  useEffect(() => {
+    if (!card || firstTab.current === cardId) return;
+    firstTab.current = cardId;
+    if (opensOnChanges(card)) setTab("diff");
+  }, [card, cardId]);
   const sessionId = card?.sessionId ?? null;
   const host = state.hosts.find((h) => h.id === hostId);
   const has = (feature: string) => hasFeature(host?.hostInfo?.features, feature, false);
@@ -63,8 +77,10 @@ export const CardDetail = memo(function CardDetail(props: {
   const run = runId ? state.runs[sessionKey(hostId, runId)] : undefined;
   /** Step opened from the timeline: its conversation or its check output. */
   const [opened, setOpened] = useState<{ stepId: string; attempt: number } | null>(null);
-  /** Workflows the card can start with: trusted and valid on the project's base branch. */
-  const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
+  /** Every workflow of the project's base branch, as the host reads it. */
+  const [allWorkflows, setAllWorkflows] = useState<WorkflowInfo[]>([]);
+  /** The ones the card can start with: trusted and valid. */
+  const workflows = allWorkflows.filter((w) => w.trusted && w.errors.length === 0);
   /** The host has answered `workflow.list`: until then an empty list means nothing. */
   const [workflowsKnown, setWorkflowsKnown] = useState(false);
   const projectId = card?.projectId ?? "";
@@ -94,7 +110,7 @@ export const CardDetail = memo(function CardDetail(props: {
     // The project is known once the card is (a direct route loads it).
     if (!projectId) return;
     void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
-      setWorkflows((result?.workflows ?? []).filter((w) => w.trusted && w.errors.length === 0));
+      setAllWorkflows(result?.workflows ?? []);
       setWorkflowsKnown(result !== null);
     });
   }, [store, hostId, projectId]);
@@ -162,7 +178,7 @@ export const CardDetail = memo(function CardDetail(props: {
           data-split={chatShown}
           aria-label={chatShown ? t("cardUi.infoPane") : undefined}
           // biome-ignore lint/a11y/noNoninteractiveTabindex: a pane that scrolls takes focus, so the keyboard reaches it
-          tabIndex={chatShown ? 0 : undefined}
+          tabIndex={chatShown ? 0 : undefined} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
           className="card-info"
         >
           {card.notice && (
@@ -212,12 +228,11 @@ export const CardDetail = memo(function CardDetail(props: {
                   store={store}
                   hostId={hostId}
                   card={card}
-                  workflows={workflows}
                   features={{
-                    personas: withPersonas,
                     bg: has("bg"),
                     watch: withWatch,
                   }}
+                  tab={tab}
                   arenaStart={arena.start}
                   onDiscarded={props.onBack}
                   onShowDiff={() => setTab("diff")}
@@ -272,6 +287,23 @@ export const CardDetail = memo(function CardDetail(props: {
               formatTime={(iso) => store.formatTime(iso)}
               costUsd={runCost}
               onOpenStep={openStep}
+              action={
+                <RunAgain
+                  store={store}
+                  hostId={hostId}
+                  cardId={cardId}
+                  run={run}
+                  workflow={allWorkflows.find((w) => w.name === run.workflowName)}
+                  known={workflowsKnown}
+                  onOpenWorkflows={() =>
+                    props.onOpenWorkflows({
+                      id: card.projectId,
+                      name:
+                        state.projects[hostId]?.find((p) => p.id === card.projectId)?.name ?? "",
+                    })
+                  }
+                />
+              }
             />
           )}
           {withSync && card.externalUrl && (

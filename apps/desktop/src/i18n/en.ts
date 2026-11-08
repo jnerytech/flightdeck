@@ -1529,6 +1529,7 @@ export const en: Dictionary = {
     harnessDraft: "drafting a CLAUDE.md with Claude",
     harnessTemplates: "sharing the Claude Code setup as a template",
     keepAwake: "keeping the computer awake",
+    quotaPause: "the quota guard for new cards",
     autoUpdate: "automatic host updates",
   },
   daemonRefusal: {
@@ -1573,6 +1574,8 @@ export const en: Dictionary = {
       "The reply of step {step} is not a valid list of findings ({where}), so no card was created.",
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
+    card_template_unknown:
+      "This project offers no card template with that name: pick another or make a blank card.",
     pinned_doc_invalid:
       "A pinned document must be a Markdown file in the project's docs (decisions, adr, rfc, prd or specs), and a card pins at most 10.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
@@ -3914,9 +3917,6 @@ export const en: Dictionary = {
   },
   cardUi: {
     noIssueLink: "This issue has no link we can open",
-    needWorktree: "Start the card before opening its PR",
-    notRunning: "The card is not running",
-    prAlreadyOpen: "The PR is already open",
     notFound: "Card not found.",
     cost: "Card cost",
     back: "Back to the board",
@@ -3972,6 +3972,8 @@ export const en: Dictionary = {
     start: "Start",
     stop: "Stop",
     openPr: "Open PR",
+    reviewChanges: "Review changes",
+    startWith: "Start with a workflow or persona…",
     complete: "Complete",
     finish: "Finish…",
     finishTitle: "Finish this card",
@@ -4007,6 +4009,16 @@ export const en: Dictionary = {
     noSession: "No session yet.",
   },
   runUi: {
+    again: {
+      action: "Run again",
+      loading: "Checking the workflow file…",
+      missing: "The workflow {name} is not on the base branch any more.",
+      untrusted:
+        "The workflow {name} changed since you trusted it: review and trust it again before it runs.",
+      invalid: "The workflow {name} has errors: fix the file and commit it.",
+      openWorkflows: "Open Workflows",
+      started: "Started again.",
+    },
     budget: "Budget",
     gate: "Gate {step}",
     gateNote: "Gate note",

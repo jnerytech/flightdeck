@@ -1521,6 +1521,7 @@ export const ptBR = {
     harnessDraft: "o rascunho de um CLAUDE.md com o Claude",
     harnessTemplates: "o compartilhamento da configuração do Claude Code como modelo",
     keepAwake: "a função de manter o computador acordado",
+    quotaPause: "a trava da cota para cartões novos",
     autoUpdate: "atualização automática do host",
   },
   daemonRefusal: {
@@ -1565,6 +1566,8 @@ export const ptBR = {
       "A resposta da etapa {step} não é uma lista de achados válida ({where}), então nenhum card foi criado.",
     spec_path_invalid:
       "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
+    card_template_unknown:
+      "Este projeto não oferece um modelo de card com esse nome: escolha outro ou crie um card em branco.",
     pinned_doc_invalid:
       "Um documento fixado deve ser um arquivo Markdown da pasta docs do projeto (decisions, adr, rfc, prd ou specs), e um card fixa no máximo 10.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
@@ -3922,9 +3925,6 @@ export const ptBR = {
   },
   cardUi: {
     noIssueLink: "Esta issue não tem link para abrir",
-    needWorktree: "Inicie o card antes de abrir o PR",
-    notRunning: "O card não está rodando",
-    prAlreadyOpen: "O PR já está aberto",
     notFound: "Card não encontrado.",
     cost: "Custo do card",
     back: "Voltar ao board",
@@ -3982,6 +3982,8 @@ export const ptBR = {
     start: "Iniciar",
     stop: "Parar",
     openPr: "Abrir PR",
+    reviewChanges: "Revisar mudanças",
+    startWith: "Iniciar com workflow ou persona…",
     complete: "Concluir",
     finish: "Finalizar…",
     finishTitle: "Finalizar este card",
@@ -4018,6 +4020,16 @@ export const ptBR = {
     noSession: "Sem sessão ainda.",
   },
   runUi: {
+    again: {
+      action: "Executar de novo",
+      loading: "Conferindo o arquivo do workflow…",
+      missing: "O workflow {name} não está mais na branch base.",
+      untrusted:
+        "O workflow {name} mudou desde que você confiou nele: revise e confie de novo antes de executá-lo.",
+      invalid: "O workflow {name} tem erros: corrija o arquivo e faça o commit.",
+      openWorkflows: "Abrir Workflows",
+      started: "Executando de novo.",
+    },
     budget: "Orçamento",
     gate: "Gate {step}",
     gateNote: "Nota do gate",

@@ -1290,6 +1290,12 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
   `git status` is clean. Otherwise the card warns and the worktree stays.
 - **Discard:** Discard (with confirmation, and a warning if there are unpushed changes) removes
   the worktree and the local branch.
+- **The card page leads with one button:** its Run panel shows what comes next. **Start** for a card
+  that has not run, **Stop** while it runs, **Review changes** once a run is done (it shows the
+  card's Changes), then **Open PR**. The rest is under the **⋯** menu next to it: **Start with a
+  workflow or persona…** (the same dialog as the board's **Start card**), **Start**, **Start in the
+  background**, **Stop**, **Open PR**, **Finish…** and **Discard**. A card whose run is done opens
+  on **Changes**.
 - **Edit and delete:** the card's **⋯** menu has **Edit…**, which opens the card with its title ready
   to change (the card page also edits the description and, with ROI on, the estimate), and
   **Delete…**, which names the card and asks first. Delete is only for a card that never started
@@ -1667,6 +1673,16 @@ last 30 days), or an open card has the same title, case and spacing aside. A run
 cards; the step reports how many it raised, how many a card already covered and how many were over
 the cap. The cards are marked as the agent's text, show the external seal, and keep automatic
 approval off, since what an agent reads in a repository can be written by anyone.
+
+### Running a failed run again
+
+A workflow run that failed, or ended because the card was stopped, shows **Run again** under its
+reason on the card. It starts the card again with the workflow of that name as the file is now
+(not as it was when the run began) and the same inputs, on the card's own branch, with the
+column's default persona, and the earlier run stays in the card's history. It is off, with the reason next to it and
+**Open Workflows** to the project's Workflows page, when the file is the problem: the workflow
+changed since you trusted it, it has errors, or it is not on the base branch any more. If the host
+refuses the start, the refusal shows in place.
 
 ### Templates
 

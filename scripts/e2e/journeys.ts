@@ -1506,14 +1506,26 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         .click();
       await goal.fill(`Objetivo e2e ${Date.now()}`);
       await inReach(c, `${c.t("teamsUi.create")} a ${size.width}x${size.height}`, create);
-      // Issue #1222: below 640 px the first worker's persona gets the row's whole width, where the
-      // fixed model and permission columns used to leave it a few dozen pixels.
-      if (size.width < 640) {
-        const row = c.page.locator('[data-slot="worker-row"]').first();
-        const persona = c.page.getByLabel(c.t("teamsUi.workerPersona", { n: 1 }), { exact: true });
-        const [rowBox, personaBox] = [await row.boundingBox(), await persona.boundingBox()];
-        expect(personaBox?.width ?? 0).toBeGreaterThanOrEqual((rowBox?.width ?? Infinity) - 1);
-      }
+      // Issue #1222: at every width the first worker's persona gets the row's whole width, and the
+      // model's label stays on one line, where a fixed 7 rem column wrapped it even at 1280.
+      const row = c.page.locator('[data-slot="worker-row"]').first();
+      const persona = c.page.getByLabel(c.t("teamsUi.workerPersona", { n: 1 }), { exact: true });
+      const model = row.getByText(c.t("teamsUi.workerModel", { n: 1 }), { exact: true });
+      const [rowBox, personaBox, modelBox] = [
+        await row.boundingBox(),
+        await persona.boundingBox(),
+        await model.boundingBox(),
+      ];
+      // A line-height of "normal" reads as NaN: about 1.2 times the font size then.
+      const lineHeight = await model.evaluate((el) => {
+        const style = getComputedStyle(el);
+        const set = Number.parseFloat(style.lineHeight);
+        return Number.isNaN(set) ? Number.parseFloat(style.fontSize) * 1.2 : set;
+      });
+      expect([
+        (personaBox?.width ?? 0) >= (rowBox?.width ?? Infinity) - 1,
+        (modelBox?.height ?? Infinity) < lineHeight * 1.5,
+      ]).toEqual([true, true]);
     }
   },
 
@@ -1565,12 +1577,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
-  // Issue #802: three layout claims the unit tests could only pin by class name are measured in
-  // the browser: a reason under a disabled button sits in the flow and not over the next field, the
+  // Issue #802: layout claims the unit tests could only pin by class name are measured in the
+  // browser: the card's Run row (its one button and its menu fit and do not overlap, #1197), the
   // untrusted notice stays small with its link on the text line, and the status bar's items never
   // overlap or run past it at a compact, a medium and a wide window.
   "layout-medido": async (c) => {
-    // 1. The Run row of a card that has not started: its reasons are lines of the row's own box.
+    // 1. The Run row of a card that has not started: its one button and the menu fit the window
+    // and do not overlap, at a phone's, a tablet's and a desktop's width (#1197).
     const title = `Card medido ${Date.now()}`;
     await c.page.setViewportSize({ width: 1280, height: 800 });
     await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
@@ -1580,27 +1593,35 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
     await tile.waitFor({ timeout: WAIT });
     await tile.getByRole("button", { name: title, exact: true }).click();
-    const start = c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true });
-    await start.waitFor({ timeout: WAIT });
-    const reasons = await start.evaluate((button) => {
-      const wrap = button.closest(".field-row-wrap");
-      const row = wrap?.querySelector(".field-row");
-      if (!wrap || !row) return "the Run row has no wrapper";
-      const edge = (el: Element) => el.getBoundingClientRect();
-      const helps = [...wrap.querySelectorAll(".field-help")];
-      if (helps.length < 2) return `expected two reasons under the row, found ${helps.length}`;
-      const next = wrap.nextElementSibling;
-      let above = edge(row).bottom;
-      for (const help of helps) {
-        const box = edge(help);
-        if (box.top < above - 1) return `a reason starts at ${box.top}, above ${above}`;
-        above = box.bottom;
-      }
-      if (edge(wrap).bottom < above - 1) return "the reasons hang out of the row's box";
-      if (next && edge(next).top < above - 1) return "the reasons run over the next block";
-      return null;
-    });
-    if (reasons) throw new Error(`a razão sob o botão desabilitado: ${reasons}`);
+    const run = c.page.locator("[data-slot='card-run']");
+    await run.waitFor({ timeout: WAIT });
+    for (const size of [
+      { width: 390, height: 844 },
+      { width: 640, height: 800 },
+      { width: 1280, height: 800 },
+    ]) {
+      await c.page.setViewportSize(size);
+      const problem = await run.evaluate((box, width) => {
+        const buttons = [...box.querySelectorAll("button")]
+          .map((button) => button.getBoundingClientRect())
+          .filter((rect) => rect.width > 0 && rect.height > 0);
+        if (buttons.length < 2) return `expected the button and the menu, found ${buttons.length}`;
+        for (const rect of buttons) {
+          if (rect.right > width + 1 || rect.left < -1) return "a button is past the window";
+        }
+        for (let a = 0; a < buttons.length; a++) {
+          for (let b = a + 1; b < buttons.length; b++) {
+            const x = buttons[a] as DOMRect;
+            const y = buttons[b] as DOMRect;
+            const across = Math.min(x.right, y.right) - Math.max(x.left, y.left);
+            const down = Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top);
+            if (across > 2 && down > 2) return "two buttons overlap";
+          }
+        }
+        return null;
+      }, size.width);
+      if (problem) throw new Error(`a linha Executar a ${size.width}px: ${problem}`);
+    }
 
     // 2. The untrusted notice of a session: small, and its link is on the text line.
     await c.page.setViewportSize({ width: 1280, height: 800 });

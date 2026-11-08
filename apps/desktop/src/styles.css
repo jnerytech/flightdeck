@@ -1575,30 +1575,20 @@ html:not(:has([data-slot="status-bar"])) {
   align-items: center;
   gap: 0.5rem;
 }
-/* Issue #93: a worker row of the new-team form: persona | model | permissions | remove, in columns of the same width in every row. */
+/* Issue #93: a worker row of the new-team form, in the same columns in every row. The form is at
+   most about 560 px wide, so the row is two even columns at every width (#1222): the persona on its
+   own line, then model and permissions side by side (model and Remove on a host with no permission
+   modes), and Remove at the left. Fixed 7 and 10 rem columns wrapped the model's label even at 1280. */
 @utility worker-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 7rem 10rem auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: end;
   gap: 0.5rem;
-  /* A narrow window gives the persona its own line, then model and permissions side by side, and
-     Remove under them at the left (#1222): the fixed columns left the persona a few dozen pixels. */
-  @media (width < 40rem) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    & > :first-child {
-      grid-column: 1 / -1;
-    }
-    & > :last-child {
-      justify-self: start;
-    }
+  & > :first-child {
+    grid-column: 1 / -1;
   }
-}
-/* A host that does not take the permission modes has no such column. */
-@utility worker-row-lean {
-  grid-template-columns: minmax(0, 1fr) 7rem auto;
-  /* Its columns come after the full row's, so the narrow ones are repeated here (#1222). */
-  @media (width < 40rem) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  & > :last-child {
+    justify-self: start;
   }
 }
 @utility row-end-wrap {

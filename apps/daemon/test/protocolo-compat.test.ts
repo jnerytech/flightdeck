@@ -113,7 +113,15 @@ describe("protocolo-compat", () => {
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
         (name) => !BASELINE_FEATURES.includes(name),
       ),
-    ).toEqual(["workflows", "workflowTemplateAdd", "rules", "arena", "deps", "cardPins"]);
+    ).toEqual([
+      "workflows",
+      "workflowTemplateAdd",
+      "rules",
+      "arena",
+      "deps",
+      "cardPins",
+      "cardTemplates",
+    ]);
     const custom = new FrameClient(serve({ features: ["central", "maintenance"] }).url);
     cleanups.push(() => custom.close());
     await custom.request("hello", { token: TOKEN, client: "t" });

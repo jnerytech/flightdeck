@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
@@ -104,6 +105,12 @@ describe("workflows-ui", () => {
     await act(async () => {
       fireEvent.click(open as HTMLElement);
     });
+    // The workflow is chosen in the start dialog, under the card's menu (#1197).
+    await chooseFromCardMenu(
+      { act, fireEvent, screen } as never,
+      "Ações de Somar",
+      "Iniciar com workflow ou persona…",
+    );
     await settle(
       () => (screen.queryByLabelText("Workflow") as HTMLSelectElement | null)?.options.length === 2,
     );
@@ -115,7 +122,13 @@ describe("workflows-ui", () => {
     expect(screen.queryByLabelText("Input task")).toBeNull();
     await change("Workflow", "plan");
     await change("Input task", "dois números");
-    await click("Iniciar");
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("dialog", { name: "Iniciar card" })).getByRole("button", {
+          name: "Iniciar",
+        }),
+      );
+    });
     await settle(() => board.getCard(card.id).workflowRunId !== null);
     const runId = board.getCard(card.id).workflowRunId ?? "";
     expect(runId).not.toBe("");
