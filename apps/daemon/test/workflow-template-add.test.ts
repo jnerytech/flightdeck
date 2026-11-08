@@ -181,7 +181,7 @@ describe("adding a workflow template from the app (#1221)", () => {
       now: AT,
     });
     expect(maybe(repo, "rev-parse", `${BRANCH}^`)).toBe(pushed);
-    expect(maybe(remote, "cat-file", "-t", git(repo, "rev-parse", "main"))).toBe(null);
+    expect(maybe(remote, "cat-file", "-t", git(repo, "rev-parse", "main"))).toBeNull();
   });
 
   test("a second add in the same minute finds its branch taken and opens no second PR", async () => {
@@ -196,6 +196,6 @@ describe("adding a workflow template from the app (#1221)", () => {
       "resolved",
       "workflow_template_branch_taken",
     ]);
-    expect(created.length).toBe(1);
+    expect(created).toHaveLength(1);
   });
 });

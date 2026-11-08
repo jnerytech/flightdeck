@@ -278,7 +278,7 @@ for (const [lang, dict] of [
       const beta = guardOf(popover, dict, "beta");
       expect(alfa).not.toBeNull();
       expect(beta).not.toBeNull();
-      expect(alfa === beta).toBe(false);
+      expect(alfa === beta).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
       await act(async () => {
         fireEvent.change(beta as HTMLElement, { target: { value: "0.6" } });
       });

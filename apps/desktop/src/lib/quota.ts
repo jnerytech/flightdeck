@@ -24,6 +24,17 @@ export function projectionText(
   return t("quota.projection.holds", { time: formatTime(projection.resetsAt ?? "") });
 }
 
+/**
+ * A host on a subscription: its plan reports windows, or its account is signed in with Claude
+ * (an API key or a third-party provider has no plan window, and its cost is what is charged).
+ */
+export function onSubscription(
+  quota: QuotaState | undefined,
+  account: Pick<AccountState, "status"> | undefined,
+): boolean {
+  return (quota?.windows.length ?? 0) > 0 || account?.status === "signed_in";
+}
+
 /** The two windows the app shows for every host, in order. */
 export const SHOWN = ["five_hour", "seven_day"];
 

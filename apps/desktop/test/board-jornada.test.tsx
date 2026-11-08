@@ -153,7 +153,7 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     await createCard("Login");
     await openCard("Login");
     expect(screen.queryByRole("button", { name: "Iniciar" })).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Parar" }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Parar" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Finalizar… explains the three ways to Done; Mover para Concluído only moves the card", async () => {
