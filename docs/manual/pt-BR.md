@@ -1392,7 +1392,7 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   - a revisão vai para a sessão gerenciada, para a sessão do card ou para o canal de uma sessão do
     terminal aberta com `flightdeckd claude`. Uma sessão que não recebe mensagens ganha o texto
     copiado, e os comentários contam como enviados;
-  - numa sessão, **Revisar na caixa de mensagem** põe a mesma revisão na caixa de mensagem da
+  - numa sessão aberta pelo Flightdeck, **Revisar na caixa de mensagem** põe a mesma revisão na caixa de mensagem da
     sessão, depois do que você já tinha digitado, e abre a conversa: edite e envie por lá. Os
     rascunhos continuam rascunhos (só **Enviar revisão** os marca como enviados), então use um
     ou outro;

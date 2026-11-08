@@ -254,7 +254,7 @@ export function SessionTabs(
             store={props.store}
             hostId={props.hostId}
             target={`session:${props.claudeSessionId}`}
-            {...(viewKey
+            {...(viewKey && props.reviewToComposer
               ? {
                   onCompose: (text: string) => {
                     props.store.fillComposer(viewKey, text);

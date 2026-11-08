@@ -204,6 +204,8 @@ function ManagedSession(
         ? { terminal: { session: sessionId } }
         : {})}
       claudeSessionId={claudeId}
+      // This page's message box takes a review handed over from Changes.
+      reviewToComposer
       // Phase 39: these tabs read Claude Code's transcript, and OpenCode sessions stay out of messaging.
       enabled={!opencode && hasFeature(host?.hostInfo?.features, "review", false)}
       messagingId={

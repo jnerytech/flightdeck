@@ -52,6 +52,15 @@ export function ChangesPanel(
   const [selection, setSelection] = useState<Selection | null>(null);
   const [body, setBody] = useState("");
   const commentBox = useRef<HTMLTextAreaElement>(null);
+  /** The line button that started the comment, to give the focus back when the box closes. */
+  const picker = useRef<HTMLElement | null>(null);
+  const closeComposer = () => {
+    setSelection(null);
+    setBody("");
+    const back = picker.current;
+    picker.current = null;
+    if (back?.isConnected) back.focus();
+  };
   // Picking a line is the start of a comment: the box takes the focus, so the keys go on from there.
   useEffect(() => {
     if (selection) commentBox.current?.focus();
@@ -94,6 +103,9 @@ export function ChangesPanel(
   }, [store, until]);
 
   const onPick = (path: string, side: ReviewComment["side"], line: number, extend: boolean) => {
+    if (!selection && document.activeElement instanceof HTMLElement) {
+      picker.current = document.activeElement;
+    }
     setSelection((current) => select(current, path, side, line, extend));
   };
 
@@ -108,8 +120,7 @@ export function ChangesPanel(
       body: body.trim(),
     });
     if (!added) return;
-    setSelection(null);
-    setBody("");
+    closeComposer();
     await loadComments();
   };
 
@@ -172,8 +183,7 @@ export function ChangesPanel(
           } else if (e.key === "Escape") {
             e.preventDefault();
             e.stopPropagation();
-            setSelection(null);
-            setBody("");
+            closeComposer();
           }
         }}
       />
@@ -181,7 +191,7 @@ export function ChangesPanel(
         <Button type="button" size="sm" onClick={() => void addComment()}>
           {t("changes.addComment")}
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => setSelection(null)}>
+        <Button type="button" variant="outline" size="sm" onClick={closeComposer}>
           {t("common.cancel")}
         </Button>
       </div>

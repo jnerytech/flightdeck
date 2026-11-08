@@ -9,8 +9,9 @@ sending the drafts as one review already existed (phase 11, `ReviewComments`, th
   button, so Enter or Space picks it.
 - **Affordance.** The line-number button swaps its number for a Comment mark on hover and on
   keyboard focus, and carries the label as its title.
-- **Review in the message box.** A second action beside **Send review**, for a session target only
-  (a card has its own message flow): the app builds the same message the daemon would send and puts it
+- **Review in the message box.** A second action beside **Send review**, for a managed session's
+  page only (a card has its own message flow, and a terminal session's page has a message box of its
+  own that does not take a fill; both keep the direct send): the app builds the same message the daemon would send and puts it
   in the session's message box after what was typed, then opens the Conversation view. The builder
   moved from the daemon to `packages/protocol/src/review-message.ts` so both sides share one format
   and one test; the daemon's `review.send` is unchanged on the wire.
@@ -18,5 +19,7 @@ sending the drafts as one review already existed (phase 11, `ReviewComments`, th
   know when, or whether, the person sends it, so nothing is marked sent. Marking them sent without a
   send would lose them if the text is discarded; the cost is that using both actions sends the
   review twice. The manual says to use one or the other.
+- **Closing the comment box** (Esc, Cancel or adding the comment) gives the focus back to the line
+  button that opened it, so the keyboard flow does not restart from the top of the page.
 - **The fill is a store field**, `composerFill` by session key, taken once by the session page (it
   survives the Changes view replacing the Conversation, which unmounts the message box).

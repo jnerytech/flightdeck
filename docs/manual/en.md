@@ -1385,7 +1385,7 @@ conversation. It is where you check what the agent did and send it back what to 
   - the review goes to the managed session, to the card's session or to the channel of a terminal
     session started with `flightdeckd claude`. A session that takes no messages gets the text
     copied instead, and the comments count as sent;
-  - in a session, **Review in the message box** puts the same review in the session's message box
+  - in a session started from Flightdeck, **Review in the message box** puts the same review in the session's message box
     instead, after what you had typed, and opens the conversation: edit it and send it there. The
     drafts stay as drafts (they are only marked sent by **Send review**), so use one or the
     other;

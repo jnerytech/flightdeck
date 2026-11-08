@@ -95,8 +95,10 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
     const { store } = mount("pc/a", true);
     withDraft(store);
     await clickTab(1);
-    await settle(() =>
-      within(document.body).queryByRole("button", { name: /message box|caixa de mensagem/ }),
+    await settle(
+      () =>
+        within(document.body).queryByRole("button", { name: /message box|caixa de mensagem/ }) !==
+        null,
     );
     await act(async () => {
       fireEvent.click(
@@ -112,8 +114,10 @@ describe("session-tabs-ui: the views of a session page (issue #107)", () => {
     const { store } = mount("pc/a", false);
     withDraft(store);
     await clickTab(1);
-    await settle(() =>
-      within(document.body).queryByRole("button", { name: /^(Send review|Enviar revisão)/ }),
+    await settle(
+      () =>
+        within(document.body).queryByRole("button", { name: /^(Send review|Enviar revisão)/ }) !==
+        null,
     );
     expect(
       within(document.body).queryByRole("button", { name: /message box|caixa de mensagem/ }) ===
