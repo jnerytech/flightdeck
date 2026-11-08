@@ -3790,6 +3790,13 @@ export const en: Dictionary = {
     saveValidation: "Save validation note",
     validationShape:
       "What was checked:\nHow (commands, steps, data):\nResult:\nWhat was not checked:",
+    validationIgnored: {
+      untrusted: "The project's validation note template was not used: the project is not trusted.",
+      unsafe:
+        "The project's validation note template was not used: it is a link or has more than one name.",
+      too_big: "The project's validation note template was not used: it is over 32 KiB.",
+      empty: "The project's validation note template was not used: it is empty.",
+    },
     specFile: "Spec file",
     saveSpec: "Save spec file",
     specPathInvalid: "Use a path to a Markdown file inside the worktree, like specs/name.md.",
@@ -4395,6 +4402,9 @@ export const en: Dictionary = {
         commitMessage:
           "The setup's files go on a new branch Flightdeck names, with your git name and email. They are committed whole: changes you made to them before the setup are in the commit too. Your checkout keeps them as changes on your current branch.",
         commitFiles: "Files to commit",
+        draft: "Draft with Claude",
+        drafted:
+          "Drafted by Claude from the project's commands and file names. Read it before you apply: it becomes the instructions your sessions follow.",
         committed: "Committed on {branch}. Push it when you are ready.",
       },
     },

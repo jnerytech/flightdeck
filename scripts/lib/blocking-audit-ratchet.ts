@@ -24,7 +24,7 @@ export const ASYNC_INLINE_ALLOWED: string[] = [];
 
 /** The async commands whose body never calls `spawn_blocking`: they still block a runtime worker. */
 export function asyncCommandsInline(rust: string): string[] {
-  return [...rust.matchAll(/#\[tauri::command[^\]]*\]\s*async\s+fn\s+(\w+)[\s\S]*?\n\}\n/g)]
+  return [...rust.matchAll(/#\[tauri::command[^\]]*\]\s*async\s+fn\s+(\w+)[\s\S]*?\n\}\n/g)] // NOSONAR: the Rust sources of the repo, read by a ratchet
     .filter((match) => !match[0].includes("spawn_blocking"))
     .map((match) => match[1] as string);
 }

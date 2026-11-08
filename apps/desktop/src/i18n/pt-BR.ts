@@ -3796,6 +3796,14 @@ export const ptBR = {
     saveValidation: "Salvar nota de validação",
     validationShape:
       "O que foi verificado:\nComo (comandos, passos, dados):\nResultado:\nO que não foi verificado:",
+    validationIgnored: {
+      untrusted:
+        "O modelo de nota de validação do projeto não foi usado: o projeto não é confiável.",
+      unsafe:
+        "O modelo de nota de validação do projeto não foi usado: é um link ou tem mais de um nome.",
+      too_big: "O modelo de nota de validação do projeto não foi usado: passa de 32 KiB.",
+      empty: "O modelo de nota de validação do projeto não foi usado: está vazio.",
+    },
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
     specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",
@@ -4400,6 +4408,9 @@ export const ptBR = {
         commitMessage:
           "Os arquivos da configuração vão para um branch novo que o Flightdeck nomeia, com o seu nome e e-mail do git. O commit é do arquivo inteiro: mudanças que você fez neles antes da configuração vão junto. O seu checkout continua com eles como mudanças no branch atual.",
         commitFiles: "Arquivos do commit",
+        draft: "Rascunhar com o Claude",
+        drafted:
+          "Rascunhado pelo Claude a partir dos comandos e nomes de arquivos do projeto. Leia antes de aplicar: vira as instruções que as suas sessões seguem.",
         committed: "Commit feito em {branch}. Faça o push quando quiser.",
       },
     },

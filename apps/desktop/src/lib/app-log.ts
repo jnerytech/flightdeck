@@ -176,10 +176,40 @@ const FRAME_CHARS = 100;
 const frame = (name: string, where: string): string =>
   `${name} (${where.replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]*\//i, "")})`.slice(0, FRAME_CHARS);
 
+/**
+ * The place of a V8 frame, from what follows `(` or `at`: text with no parenthesis, then at most one
+ * `)` and nothing but white space after it. Without the `)` the trailing white space is not part of
+ * it (unless that is all there is: its first character stays, as the pattern this replaced kept it).
+ */
+function placeOf(rest: string): string | null {
+  if (rest === "" || rest.includes("(")) return null;
+  const close = rest.indexOf(")");
+  if (close === -1) return rest.trimEnd() || rest.slice(0, 1);
+  if (close === 0 || rest.slice(close + 1).trim() !== "") return null;
+  return rest.slice(0, close);
+}
+
+/** A V8 frame line (`at Wi (https://host/assets/index.js:40:1200)`), read in one pass. */
+function v8Frame(line: string): { name: string | undefined; where: string } | null {
+  const at = /^\s*at\s+/y;
+  if (!at.test(line)) return null;
+  const rest = line.slice(at.lastIndex);
+  const token = /^\S+/.exec(rest)?.[0];
+  if (token !== undefined) {
+    const opening = /^\s+\(/.exec(rest.slice(token.length));
+    const inside = opening ? placeOf(rest.slice(token.length + opening[0].length)) : null;
+    if (inside !== null) return { name: token, where: inside };
+  }
+  // The pattern gave back the last white space of `at  ` to the place when that was all that fit.
+  const gaveBack = /\s\s$/.test(line.slice(0, at.lastIndex));
+  const where = placeOf(rest) ?? (gaveBack ? placeOf(line.slice(at.lastIndex - 1)) : null);
+  return where === null ? null : { name: undefined, where };
+}
+
 /** A frame from a V8 line (`at Wi (https://host/assets/index.js:40:1200)`) or a JavaScriptCore one (`Wi@https://host/assets/index.js:40:1200`). */
 function frameOf(line: string): string | null {
-  const v8 = /^\s*at\s+(?:(\S+)\s+\()?([^()]+?)\)?\s*$/.exec(line);
-  if (v8) return frame(v8[1] ?? "<anonymous>", v8[2] ?? "");
+  const v8 = v8Frame(line);
+  if (v8) return frame(v8.name ?? "<anonymous>", v8.where);
   const jsc = /^([^@\s]*)@(.+)$/.exec(line.trim());
   return jsc ? frame(jsc[1] || "<anonymous>", jsc[2] ?? "") : null;
 }

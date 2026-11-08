@@ -44,7 +44,7 @@ function ipv4Public(octets: number[]): boolean {
 /** The eight 16-bit groups of an IPv6 address; the dotted tail of a mapped IPv4 becomes two groups. */
 function groupsOf(address: string): number[] {
   let text = address;
-  const tail = /(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(text);
+  const tail = /(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(text); // NOSONAR: a validated IP address (isIP), 45 chars at most
   if (tail) {
     const [, a, b, c, d] = tail.map(Number) as [number, number, number, number, number];
     text = `${text.slice(0, tail.index)}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
