@@ -117,6 +117,20 @@ describe("team-report: the coordinator's outcome of the team (#1220)", () => {
     ]);
   });
 
+  test("a final report repeated tells the watchers once; a closed team takes no report", async () => {
+    const { teams, team, coordinator } = await boot();
+    const frames: TeamsUpdatedFrame[] = [];
+    cleanups.push(teams.watch((frame) => frames.push(frame)));
+    teams.report(team.id, coordinator, "Done.", true);
+    teams.report(team.id, coordinator, "Done, as I said.", true);
+    teams.close(team.id, true);
+    expect([
+      frames.filter((frame) => frame.event === "report_done").length,
+      await refused(() => teams.report(team.id, coordinator, "One more thing.", true)),
+      teams.status(team.id).outcome?.text,
+    ]).toEqual([1, "team_closed", "Done, as I said."]);
+  });
+
   test("a worker or a session outside the team cannot write it, and nothing is kept", async () => {
     const { teams, team, worker } = await boot();
     expect([
