@@ -187,18 +187,21 @@ describe("card-spec-template-project: a trusted project's own spec template (#78
     expect(link.reason).toBe("spec_template_unsafe");
   });
 
-  test.skipIf(!posix)("a link on the way to an untrusted template is not followed: what it points at is not told", async () => {
-    // Two worktrees whose `.flightdeck` is a link, to a folder with a template and to one without.
-    const linked = async (withTemplate: boolean) => {
-      const outside = tempDir("fd-spec-template-folder-");
-      mkdirSync(join(outside, "templates"), { recursive: true });
-      if (withTemplate) writeFileSync(join(outside, "templates", "spec.md"), OURS);
-      const worktree = tempDir("fd-spec-template-worktree-");
-      symlinkSync(outside, join(worktree, ".flightdeck"));
-      return untrustedTemplate(worktree);
-    };
-    expect(await linked(true)).toBe(await linked(false));
-  });
+  test.skipIf(!posix)(
+    "a link on the way to an untrusted template is not followed: what it points at is not told",
+    async () => {
+      // Two worktrees whose `.flightdeck` is a link, to a folder with a template and to one without.
+      const linked = async (withTemplate: boolean) => {
+        const outside = tempDir("fd-spec-template-folder-");
+        mkdirSync(join(outside, "templates"), { recursive: true });
+        if (withTemplate) writeFileSync(join(outside, "templates", "spec.md"), OURS);
+        const worktree = tempDir("fd-spec-template-worktree-");
+        symlinkSync(outside, join(worktree, ".flightdeck"));
+        return untrustedTemplate(worktree);
+      };
+      expect(await linked(true)).toBe(await linked(false));
+    },
+  );
 
   test("a trust check that fails says nothing about the template: it was never looked for", async () => {
     const failed = await run({
