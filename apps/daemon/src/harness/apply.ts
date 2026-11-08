@@ -23,6 +23,7 @@ import {
   SETTINGS,
   walk,
 } from "./preview.ts";
+import type { TemplateMarkdown } from "./templates-store.ts";
 
 type Settings = NonNullable<HarnessPreview["settings"]>;
 
@@ -41,6 +42,8 @@ export interface ApplyOptions {
   fs?: ApplyFs;
   /** The drafts the host holds (#75, G1): a file whose digest is a held draft's is that draft. */
   drafts?: Pick<HarnessDrafts, "held">;
+  /** A host template's Markdown, read again for this apply (#75, T1b): it replaces the fixed files. */
+  template?: TemplateMarkdown;
 }
 
 const diskFs: ApplyFs = { open: (path, flags) => open(path, flags) };
@@ -173,6 +176,7 @@ export async function applyHarness(
         return opened.look;
       },
       drafted,
+      options.template ?? null,
     );
     // Everything is checked before anything is written.
     if (!sameDigests(digestsOf(plan.preview), digests)) throw stale();

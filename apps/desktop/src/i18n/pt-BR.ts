@@ -1839,6 +1839,8 @@ export const ptBR = {
       "O git não conseguiu fazer o commit ou o branch da configuração neste repositório.",
     harness_commit_ignored:
       "{file} é ignorado pelo git neste projeto, então não foi para o commit: faça o commit você mesmo se quiser.",
+    harness_commit_withheld:
+      "{file} poderia rodar um comando ou dar uma permissão ao carregar, então não foi para o commit: faça o commit você mesmo se quiser.",
     harness_draft_exists: "O projeto já tem um CLAUDE.md: um rascunho só cria um.",
     harness_draft_failed: "O modelo não respondeu com um CLAUDE.md: tente de novo.",
     harness_draft_secret: "O rascunho tinha um segredo, então foi descartado: tente de novo.",
@@ -1848,6 +1850,7 @@ export const ptBR = {
     harness_template_taken: "Já existe um modelo chamado {id} neste host: escolha outro nome.",
     harness_template_title_secret:
       "O título do modelo contém um segredo, então nada foi compartilhado.",
+    harness_template_missing: "Não há mais um modelo {id} neste host: escolha outro.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
