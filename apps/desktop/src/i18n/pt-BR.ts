@@ -3773,6 +3773,8 @@ export const ptBR = {
       "Os arquivos marcados vão para um commit num branch novo, no checkout desta sessão. Nada é enviado ainda.",
     files: "Arquivos",
     tooLarge: "Grande demais para commitar por aqui.",
+    secret:
+      "O app não faz commit deste arquivo, porque ele pode ter um segredo: faça o commit num terminal se ele deve ir.",
     needs: "Marque ao menos um arquivo e preencha o branch e a mensagem.",
     nothing: "Nenhum arquivo daqui pode ser commitado pelo app.",
     branch: "Branch novo",

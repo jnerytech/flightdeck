@@ -9,6 +9,15 @@ export function committable(file: DiffFile): boolean {
   return file.digest !== undefined && file.digest !== TOO_LARGE;
 }
 
+/**
+ * Why the app does not commit `file`: over the size limit, or no digest at all (a file that may
+ * hold a credential is never read, #509); null when it does.
+ */
+export function whyNot(file: DiffFile): "tooLarge" | "secret" | null {
+  if (file.digest === TOO_LARGE) return "tooLarge";
+  return file.digest === undefined ? "secret" : null;
+}
+
 /** `Update a.txt` → `update-a-txt`: a branch name's last part. */
 function slug(text: string): string {
   return text

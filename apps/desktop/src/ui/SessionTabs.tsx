@@ -266,6 +266,7 @@ export function SessionTabs(
               : {})}
             extra={(changes, refresh) => (
               <SessionFinish
+                key={changes.target}
                 store={props.store}
                 hostId={props.hostId}
                 target={changes.target}

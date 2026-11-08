@@ -17,14 +17,17 @@ import {
   draftPr,
   recallCommit,
   rememberCommit,
+  whyNot,
 } from "@/lib/session-finish";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 /** The hooks a commit runs, in a line: none set, or not known. */
 function hooksText(t: ReturnType<typeof useT>, hooks: string[] | undefined): string {
   if (hooks === undefined) return t("sessionFinish.hooksUnknown");
-  if (hooks.length === 0) return t("sessionFinish.noHooks");
-  return t("sessionFinish.hooks", { hooks: hooks.join(", ") });
+  // A commit runs no `pre-push`: that one is named where the push is confirmed.
+  const commitHooks = hooks.filter((hook) => hook !== "pre-push");
+  if (commitHooks.length === 0) return t("sessionFinish.noHooks");
+  return t("sessionFinish.hooks", { hooks: commitHooks.join(", ") });
 }
 
 /** What the person is about to commit: the files ticked, the new branch and the message. */
@@ -111,9 +114,12 @@ export function SessionFinish(
       .hostRequest(hostId, "changes.pr", { target, title, body, remote, confirm: true })
       .finally(() => setBusy(false));
     if (!result.ok) {
+      // The dialog comes back with what the person wrote, and why under it.
       setOutcome(refusalText(result.code, result.message, t, result));
+      setPr({ title, body });
       return;
     }
+    setOutcome(null);
     store.success(t("sessionFinish.prOpened", { url: result.data.url }));
   };
 
@@ -150,7 +156,7 @@ export function SessionFinish(
           </ActionButton>
         )}
       </Inline>
-      {outcome && !form && <InlineNotice tone="error">{outcome}</InlineNotice>}
+      {outcome && !form && !pr && <InlineNotice tone="error">{outcome}</InlineNotice>}
       {form && (
         <ConfirmDialog
           message={t("sessionFinish.commitMessage")}
@@ -180,7 +186,7 @@ export function SessionFinish(
                     </CheckField>
                     {!committable(file) && (
                       <p id={reasonId(file.path)} className="text-muted-foreground text-xs">
-                        {t("sessionFinish.tooLarge")}
+                        {t(`sessionFinish.${whyNot(file) ?? "secret"}`)}
                       </p>
                     )}
                   </Stack>
@@ -225,6 +231,7 @@ export function SessionFinish(
           onCancel={() => setPr(null)}
           onConfirm={openPr}
         >
+          {outcome && <InlineNotice tone="error">{outcome}</InlineNotice>}
           <p className="text-sm">
             {[
               t("sessionFinish.pushes", { branch: made.branch, remote }),

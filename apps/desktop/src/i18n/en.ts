@@ -3766,6 +3766,8 @@ export const en: Dictionary = {
       "The files you tick are committed on a new branch, in this session's checkout. Nothing is pushed yet.",
     files: "Files",
     tooLarge: "Too large to commit from here.",
+    secret:
+      "The app does not commit this file, since it may hold a secret: commit it from a terminal if it should go.",
     needs: "Tick at least one file, and fill in the branch and the message.",
     nothing: "No file here can be committed from the app.",
     branch: "New branch",
