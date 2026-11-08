@@ -2973,6 +2973,17 @@ export const en: Dictionary = {
     passing: "checks passing",
     failing: "checks failing",
   },
+  cardMergePr: {
+    action: "Merge PR",
+    message:
+      "Merge this card's pull request. The card moves to Done once GitHub has merged it. Branch rules and required checks still apply.",
+    pr: "Pull request",
+    how: "How to merge",
+    merge: "Merge commit",
+    squash: "Squash and merge",
+    openPr: "Open the PR",
+    done: "The PR was merged.",
+  },
   teleportUi: {
     menu: "Move to another host…",
     title: "Move to another host",
