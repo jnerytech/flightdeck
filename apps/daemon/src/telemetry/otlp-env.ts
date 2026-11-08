@@ -2,6 +2,7 @@ import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 import { byCodeUnit } from "@flightdeck/protocol";
 import { writeFileAtomic } from "../atomic-write.ts";
+import { layoutLike, parseJsonText } from "../json-text.ts";
 
 /** The settings an exporter needs to reach the daemon's OTLP receiver. */
 export interface TelemetryTarget {
@@ -48,16 +49,18 @@ type Settings = Record<string, unknown> & { env?: Record<string, string> };
 
 async function readSettings(file: string): Promise<Settings | null> {
   try {
-    return JSON.parse(await readFile(file, "utf8")) as Settings;
+    return parseJsonText(await readFile(file, "utf8")) as Settings;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   }
 }
 
+/** Written in the layout the file has (its BOM, indent and line endings): only the env changes. */
 async function writeSettings(file: string, settings: Settings): Promise<void> {
   await mkdir(dirname(file), { recursive: true });
-  await writeFileAtomic(file, `${JSON.stringify(settings, null, 2)}\n`);
+  const before = await readFile(file, "utf8").catch(() => null);
+  await writeFileAtomic(file, layoutLike(before, settings));
 }
 
 /** The exporter in `env` is Flightdeck's own: a loopback endpoint with a bearer header. */

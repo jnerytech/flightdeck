@@ -8,12 +8,12 @@ import { type FileHandle, open, realpath } from "node:fs/promises";
 import type { HarnessApplied, HarnessPreview } from "@flightdeck/protocol";
 import { createInside } from "../create-inside.ts";
 import { FlightdeckError } from "../errors.ts";
+import { layoutLike } from "../json-text.ts";
 import { samePath } from "../paths.ts";
 import {
   type Current,
   fileLook,
   type Look,
-  layoutLike,
   MAX_FILE,
   orNull,
   type PreviewPart,
