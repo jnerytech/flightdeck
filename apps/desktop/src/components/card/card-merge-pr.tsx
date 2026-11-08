@@ -67,27 +67,29 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
 
   return (
     <>
-      <div
-        role="status"
-        ref={said}
-        tabIndex={-1}
-        className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
-      >
-        {merged && <p className="text-sm">{t("cardMergePr.done")}</p>}
-      </div>
-      <div
-        role="alert"
-        ref={refusedBox}
-        tabIndex={-1}
-        className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
-      >
-        {refused && (
+      {merged && (
+        <div
+          role="status"
+          ref={said}
+          tabIndex={-1}
+          className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <p className="text-sm">{t("cardMergePr.done")}</p>
+        </div>
+      )}
+      {refused && (
+        <div
+          role="alert"
+          ref={refusedBox}
+          tabIndex={-1}
+          className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+        >
           <Stack gap={1}>
             <p className="text-sm">{refused.text}</p>
             {refused.url && <PrLink store={store} url={refused.url} />}
           </Stack>
-        )}
-      </div>
+        </div>
+      )}
       {props.open && (
         <ConfirmDialog
           message={t("cardMergePr.message")}
