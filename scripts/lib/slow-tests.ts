@@ -30,7 +30,21 @@ const ENTITIES: Record<string, string> = {
 /** An attribute of a tag's text, with its XML entities read. */
 function attribute(attrs: string, name: string): string {
   const raw = new RegExp(`\\b${name}="([^"]*)"`).exec(attrs)?.[1] ?? "";
-  return raw.replace(/&(amp|lt|gt|quot|apos);/g, (_, entity: string) => ENTITIES[entity] ?? "");
+  return raw.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (whole, entity: string) => {
+    if (entity.startsWith("#")) {
+      const code =
+        entity[1]?.toLowerCase() === "x"
+          ? Number.parseInt(entity.slice(2), 16)
+          : Number(entity.slice(1));
+      return code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+    }
+    return ENTITIES[entity] ?? whole;
+  });
+}
+
+/** A file name as the allowlist keys it: with `/`, whatever the runner's system writes. */
+function slashed(path: string): string {
+  return path.replaceAll("\\", "/");
 }
 
 /** A tag's time in seconds; NaN when the report gives none, so the verdict never reads it as 0. */
@@ -47,7 +61,8 @@ export function parseJunit(xml: string): JunitTimes {
   for (const [, close, tag, attrs = "", selfClosing] of xml.matchAll(TAG)) {
     if (tag === "testsuite" && close) suites.pop();
     else if (tag === "testsuite" && !selfClosing) {
-      const name = attribute(attrs, "name");
+      const name =
+        suites.length === 0 ? slashed(attribute(attrs, "name")) : attribute(attrs, "name");
       if (suites.length === 0) {
         times.files.push({ file: name, seconds: seconds(attrs) });
       }
@@ -105,15 +120,76 @@ export function missingReport(
       };
 }
 
-/** #1022 review: the check's output and exit code, stale allowlist entries warned about. */
+/** The entries no longer needed: under their limit now, or gone from a file that ran. */
+function staleEntries(times: JunitTimes, allow: SlowAllowlist): string[] {
+  const stale: string[] = [];
+  const files = new Map(times.files.map((f) => [f.file, f.seconds]));
+  const tests = new Map(times.tests.map((t) => [t.id, t.seconds]));
+  for (const file of Object.keys(allow.files)) {
+    const took = files.get(file);
+    if (took !== undefined && took <= FILE_LIMIT_S) {
+      stale.push(`${file}: ${took.toFixed(1)} s now, under the ${FILE_LIMIT_S} s limit`);
+    }
+  }
+  for (const id of Object.keys(allow.tests)) {
+    const took = tests.get(id);
+    // A PR's run holds only some files: an entry says nothing when its file did not run.
+    if (took !== undefined && took <= TEST_LIMIT_S) {
+      stale.push(`${id}: ${took.toFixed(1)} s now, under the ${TEST_LIMIT_S} s limit`);
+    } else if (took === undefined && files.has(id.split(" > ")[0] ?? "")) {
+      stale.push(`${id}: its file ran without it`);
+    }
+  }
+  return stale.map((line) => `slow-tests: stale allowlist entry ${line}`);
+}
+
+/**
+ * #1022 review: the check's output and exit code. Stale entries are warned about, never failed;
+ * a failure lists the slowest tests of the run and names runner noise near a limit.
+ * Tests with the same title in one describe share an id, so one entry covers them all.
+ */
 export function slowReport(
-  _times: JunitTimes,
-  _allow: SlowAllowlist,
+  times: JunitTimes,
+  allow: SlowAllowlist,
 ): { code: number; lines: string[] } {
-  return { code: 0, lines: [] };
+  const { problems, allowed } = slowVerdict(times, allow);
+  const lines = [
+    ...allowed.map((line) => `slow-tests: allowed ${line}`),
+    ...staleEntries(times, allow),
+  ];
+  if (problems.length === 0) {
+    lines.push(
+      `slow-tests: ${times.tests.length} test(s) in ${times.files.length} file(s), none too slow`,
+    );
+    return { code: 0, lines };
+  }
+  const slowest = [...times.tests]
+    .filter((t) => Number.isFinite(t.seconds))
+    .sort((a, b) => b.seconds - a.seconds)
+    .slice(0, 5);
+  lines.push(
+    `slow-tests: ${problems.length} too slow (#1003):`,
+    ...problems.map((problem) => `  - ${problem}`),
+    "The slowest tests of this run:",
+    ...slowest.map((t) => `  ${t.seconds.toFixed(1)} s  ${t.id}`),
+    "Make it faster, or delete it when a faster test checks the same thing (docs/TDD.md). A test fd-qa is still cutting goes in slow-tests-allowlist.json, with its issue. Within 10% of a limit it may be runner noise: rerun the job once before cutting it.",
+  );
+  return { code: 1, lines };
 }
 
 /** #1022 review: the allowlist from its file's text, or the named reason it is unusable. */
-export function readAllowlist(_text: string): SlowAllowlist | string {
-  return "";
+export function readAllowlist(text: string): SlowAllowlist | string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return "slow-tests: slow-tests-allowlist.json is not valid JSON";
+  }
+  const { tests, files } = (parsed ?? {}) as Partial<SlowAllowlist>;
+  const isMap = (value: unknown) =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
+  if (!isMap(tests) || !isMap(files)) {
+    return "slow-tests: slow-tests-allowlist.json needs a tests and a files map";
+  }
+  return { tests, files } as SlowAllowlist;
 }
