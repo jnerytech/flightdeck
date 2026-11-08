@@ -180,15 +180,18 @@ const DRAFTS: readonly Draft[] = [TECH_DEBT_SCAN, ALERT_FIXER, POST_MORTEM];
  */
 export function workflowTemplates(testCommand: string | null): WorkflowTemplate[] {
   const plain = testCommand !== null && PLAIN_COMMAND.test(testCommand);
-  return DRAFTS.map((draft) => ({
-    id: draft.id,
-    title: draft.title,
-    description: draft.description,
-    limits: draft.limits,
-    persona: draft.persona,
-    inputs: draft.inputs,
-    path: `${WORKFLOWS_DIR}/${draft.id}.yaml`,
-    yaml: draft.yaml(plain ? testCommand : draft.hasCheck ? PLACEHOLDER : null),
-    checkFilled: draft.hasCheck ? plain : null,
-  }));
+  return DRAFTS.map((draft) => {
+    const unfilled = draft.hasCheck ? PLACEHOLDER : null;
+    return {
+      id: draft.id,
+      title: draft.title,
+      description: draft.description,
+      limits: draft.limits,
+      persona: draft.persona,
+      inputs: draft.inputs,
+      path: `${WORKFLOWS_DIR}/${draft.id}.yaml`,
+      yaml: draft.yaml(plain ? testCommand : unfilled),
+      checkFilled: draft.hasCheck ? plain : null,
+    };
+  });
 }

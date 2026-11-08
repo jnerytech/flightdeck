@@ -17,6 +17,8 @@ const ALLOWED = [
   "Backlog",
   "main",
   "ended",
+  // #1132: the hub's state for a session that stopped on an error (the `error:` key of its table).
+  "failed",
   // The products' own names, and a refusal reason code (the screen translates it, it is not shown as is).
   "Fable 5.1",
   "Opus 5.5",

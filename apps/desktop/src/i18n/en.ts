@@ -1036,6 +1036,7 @@ export const en: Dictionary = {
     filterLabel: "Filter sessions",
     toggleProject: "Show or hide {name}",
     countChip: "{live} live of {total} sessions",
+    countShort: "{live} of {total} active",
     noHost: "No host yet",
     noOnlineHost: "No host is online",
     addHost: "Add a host",
@@ -1060,6 +1061,7 @@ export const en: Dictionary = {
       needs_you: "Needs you",
       idle: "Idle",
       ended: "Ended",
+      failed: "Failed",
     },
     stateDots: {
       running: "running",
@@ -1067,6 +1069,19 @@ export const en: Dictionary = {
       idle: "idle",
       asleep: "asleep",
       ended: "ended",
+      failed: "failed",
+    },
+    /** Issue #1132: the word under a session's title in the list. */
+    rowWord: {
+      running: "Working",
+      needs_you: "Waiting for you",
+      idle: "Idle",
+      ended: "Ended",
+      failed: "Failed",
+    },
+    rowDetail: {
+      waitingTool: "wants to run {tool}",
+      runningTool: "running {tool}",
     },
     asleep: "Asleep",
     sleepNow: "Sleep now",
@@ -2649,6 +2664,8 @@ export const en: Dictionary = {
     commentText: "Comment text",
     saveComment: "Save comment",
     send: "Send review ({n})",
+    compose: "Review in the message box ({n})",
+    composed: "The review is in the message box.",
     sentVia: {
       session: "Review sent to the session.",
       card: "Review sent to the card.",

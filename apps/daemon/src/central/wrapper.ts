@@ -192,7 +192,10 @@ async function restrictedFolder(opts: RunClaudeOptions, folder: string, user: st
   if (made.status !== "fulfilled") return false;
   let restricted = false;
   try {
-    const system = win32.join(opts.env.SystemRoot ?? opts.env.windir ?? "C:\\Windows", "System32");
+    const system = win32.join(
+      opts.env.SystemRoot ?? opts.env.windir ?? String.raw`C:\Windows`,
+      "System32",
+    );
     const acl = [win32.join(system, "icacls.exe"), folder, "/inheritance:r", "/grant:r"];
     const done = await (opts.exec ?? spawnExec)([...acl, `${user}:(OI)(CI)F`]);
     restricted = done.code === 0 && (await readdir(folder)).length === 0;

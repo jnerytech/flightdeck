@@ -49,7 +49,7 @@ function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
 
 /** Polls an async check until it holds. */
 async function until<T>(
-  check: () => Promise<T | null | undefined | false>,
+  check: () => T | null | undefined | false | Promise<T | null | undefined | false>,
   what: string,
 ): Promise<T> {
   const deadline = Date.now() + TIMEOUT_MS;
@@ -375,7 +375,7 @@ async function run(work: string): Promise<void> {
     if (rules.paused.length !== 1)
       throw new Error(`o par devia estar pausado: ${JSON.stringify(rules)}`);
     const alert = await until(
-      async () => a.client.frames.find((f) => f.type === "messaging.alert"),
+      () => a.client.frames.find((f) => f.type === "messaging.alert"),
       "o alerta do laço",
     );
     if (alert.type !== "messaging.alert") throw new Error("alerta inesperado");

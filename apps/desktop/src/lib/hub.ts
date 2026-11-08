@@ -6,7 +6,7 @@ import type {
   SessionPersona,
   SessionStatus,
 } from "@flightdeck/protocol";
-import { type T, translator } from "../i18n/index.ts";
+import { type Key, type T, translator } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
 import { rowTitle } from "./hub-title.ts";
 import { basename } from "./paths.ts";
@@ -15,7 +15,12 @@ import { sessionLabel } from "./session-label.ts";
 const PT = translator("pt-BR");
 
 export type HubOrigin = "flightdeck" | "terminal" | "history" | "background";
-export type HubState = "running" | "needs_you" | "idle" | "ended";
+export type HubState = "running" | "needs_you" | "idle" | "ended" | "failed";
+
+/** A session that is over: ended on purpose or failed (#1132). It is not live, and folds into the earlier ones. */
+export function isOver(state: HubState): boolean {
+  return state === "ended" || state === "failed";
+}
 
 /** One line of the Sessões screen, whatever the session's origin. */
 export interface HubRow {
@@ -69,7 +74,7 @@ export const DEFAULT_HUB_FILTER: HubFilter = {
 };
 
 const ORIGINS: readonly string[] = ["", "flightdeck", "terminal", "history", "background"];
-const STATES: readonly string[] = ["", "running", "needs_you", "idle", "ended"];
+const STATES: readonly string[] = ["", "running", "needs_you", "idle", "ended", "failed"];
 
 /** The hub's kept filter as stored, or nothing when it is not a JSON object. */
 function storedFilter(storage: { getItem(key: string): string | null }): Record<string, unknown> {
@@ -167,7 +172,8 @@ const MANAGED: Record<SessionStatus, HubState> = {
   awaiting_permission: "needs_you",
   idle: "idle",
   ended: "ended",
-  error: "ended",
+  // A session that stopped on an error failed: it is not one closed on purpose (#1132).
+  error: "failed",
 };
 
 const EXTERNAL: Record<ExternalStatus, HubState> = {
@@ -210,7 +216,7 @@ const BACKGROUND: Record<string, HubState> = {
   working: "running",
   blocked: "needs_you",
   done: "idle",
-  failed: "ended",
+  failed: "failed",
   stopped: "ended",
 };
 
@@ -514,6 +520,24 @@ function idleFor(ms: number, t: T): string {
   return t("line.hours", { n: Math.floor(minutes / 60) });
 }
 
+/**
+ * Issue #1132: what a row says it is doing, under its title: a state word and one detail (the
+ * tool it runs or waits on, or how long ago it finished, ended or failed).
+ */
+export function rowStatus(row: HubRow, nowMs: number, t: T = PT): { word: string; detail: string } {
+  const word = t(`hub.rowWord.${row.state}` as Key);
+  const tool = row.summary?.tool ?? null;
+  if (row.state === "needs_you") {
+    return { word, detail: tool ? t("hub.rowDetail.waitingTool", { tool }) : "" };
+  }
+  if (row.state === "running") {
+    return { word, detail: tool ? t("hub.rowDetail.runningTool", { tool }) : "" };
+  }
+  // Finished, ended or failed: how long ago, from the line or the row's last activity.
+  const since = row.summary?.since ?? row.lastActivity;
+  return { word, detail: idleFor(nowMs - Date.parse(since), t) };
+}
+
 /** What every row of a group shares (shown once, in its header); null where the rows differ. */
 export function sharedMeta(rows: HubRow[]): {
   hostName: string | null;
@@ -587,7 +611,7 @@ export function hubView(
 ): HubGroupView[] {
   return groups.map((group) => {
     // A pinned session is one the person wants close: it stays with the live ones.
-    const isEarlier = (r: HubRow) => !r.pinned && (r.origin === "history" || r.state === "ended");
+    const isEarlier = (r: HubRow) => !r.pinned && (r.origin === "history" || isOver(r.state));
     const earlier = group.rows
       .filter(isEarlier)
       .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));

@@ -13,7 +13,7 @@ const LINES = 50;
  * message when something broke (versions, hosts, the last redacted log lines). Hidden where the
  * app has no file system (a browser, the demo).
  */
-export function DiagnosticsPanel(props: { store: AppStore }) {
+export function DiagnosticsPanel(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const t = useT();
   const logs = store.platformLogs();

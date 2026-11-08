@@ -1,4 +1,4 @@
-import type { KnowledgeEntry, KnowledgeIndexResult } from "@flightdeck/protocol";
+import { byCodeUnit, type KnowledgeEntry, type KnowledgeIndexResult } from "@flightdeck/protocol";
 
 /**
  * Issue #76: the index of a project's library that a session is given in its system prompt. Only
@@ -32,8 +32,7 @@ const INVISIBLE = /(?:\p{Cf}|\p{Co}|\p{Cn}|\p{Variation_Selector})+/gu;
 const PLAIN_PATH = /^docs\/(?:decisions|adr|rfc|prd|specs)(?:\/[A-Za-z0-9._ -]+)+\.md$/i;
 
 const bytes = (text: string) => Buffer.byteLength(text);
-const byPath = (a: KnowledgeEntry, b: KnowledgeEntry) =>
-  a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+const byPath = (a: KnowledgeEntry, b: KnowledgeEntry) => byCodeUnit(a.path, b.path);
 
 /** The title as one plain line of at most `TITLE_MAX` characters. */
 function oneLine(title: string): string {
