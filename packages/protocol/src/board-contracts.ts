@@ -47,6 +47,37 @@ export const ValidationTemplate = z.object({
 });
 export type ValidationTemplate = z.infer<typeof ValidationTemplate>;
 
+/** The most card templates a project offers, and the most one file is read for. */
+export const CARD_TEMPLATES_MAX = 12;
+
+/**
+ * One card template of a project (issue #1201, `.flightdeck/templates/cards.json`): what a new card
+ * starts with. `description` is the template's text with its criteria as `- [ ]` items.
+ */
+export const CardTemplate = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  /** The workflow and persona the card is meant to start with, by name; `null`: the default. */
+  workflow: z.string().nullable(),
+  persona: z.string().nullable(),
+  /** The library documents pinned to the card, and the spec file it names. */
+  pins: z.array(z.string()),
+  spec: z.string().nullable(),
+});
+export type CardTemplate = z.infer<typeof CardTemplate>;
+
+/**
+ * A project's card templates: the ones offered, how many entries of the file were left out for a
+ * mistake, and why a file that is there was not used at all.
+ */
+export const CardTemplates = z.object({
+  templates: z.array(CardTemplate),
+  dropped: z.number().int().min(0),
+  ignored: z.enum(["untrusted", "unsafe", "too_big", "empty", "invalid"]).nullable(),
+});
+export type CardTemplates = z.infer<typeof CardTemplates>;
+
 export type ContractOverrides = Partial<Record<BoardColumn, ColumnContract>>;
 
 /**
