@@ -1260,6 +1260,15 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "harness.templates.delete": {
         if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
+        // It deletes files on the host: a near connection, and only once the person confirmed.
+        requireVaultTransport(ws.data.origin, "harness.templates.delete", opts.log);
+        if (command.payload.confirm !== true) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "deleting a template needs confirm: true",
+            "harness_confirm",
+          );
+        }
         return ok(command.type, await opts.harnessTemplates.remove(command.payload.id));
       }
       case "project.harness.draft": {
