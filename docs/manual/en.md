@@ -966,6 +966,10 @@ live; the list is the project's, so a session of another project never shows her
   The project's name folds its branches (the arrow keys left and right fold and unfold it); the fold
   is remembered on this computer, and a folded project that holds the picked branch shows a check
   on its name.
+  In the narrow icon rail, which has no room for the tree, the **Projects** icon opens it in a panel
+  beside the rail (the same tree, with **All projects (N)** always at its end): picking a branch or
+  that link closes the panel, Esc or pressing the icon again closes it too, and the focus goes back
+  to the icon. With no project to list, the icon opens the Projects page as before.
   The tree lists at most 5 projects: the ones you **pinned** (the pin on a project's row), then the
   most recently active, and always the project of the picked branch. Below them, **All projects (N)**
   opens the Projects page. With more than 5 projects a **Filter projects** field narrows the list by

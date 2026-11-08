@@ -131,6 +131,19 @@ describe("rail-flyout-ui: the Projects icon of the collapsed rail opens the proj
     expect(railButton("Projects").getAttribute("aria-expanded")).toBe("false");
   });
 
+  test("pressing the icon again closes it and does not reopen it", async () => {
+    setup();
+    await open("Projects");
+    expect(await isOpen("Projects")).toBe(true);
+    // A real press is a pointer down and then a click.
+    await act(async () => {
+      fireEvent.pointerDown(railButton("Projects"));
+      fireEvent.click(railButton("Projects"));
+    });
+    expect(await isClosed("Projects")).toBe(true);
+    expect(railButton("Projects").getAttribute("aria-expanded")).toBe("false");
+  });
+
   test("with no project to list, the icon goes straight to the Projects page", async () => {
     const { went } = setup({ projects: [] });
     expect(railButton("Projects").getAttribute("aria-haspopup")).toBeNull();

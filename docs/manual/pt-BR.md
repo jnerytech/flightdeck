@@ -962,6 +962,10 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   (e **Mostrar menos**) para o resto; o branch escolhido sempre aparece. O nome do projeto dobra
   seus branches (as setas esquerda e direita dobram e desdobram); a dobra é lembrada neste
   computador, e um projeto dobrado que guarda o branch escolhido mostra uma marca no nome.
+  No trilho estreito de ícones, que não tem espaço para a árvore, o ícone de **Projetos** a abre num
+  painel ao lado do trilho (a mesma árvore, com **Todos os projetos (N)** sempre no fim): escolher um
+  branch ou esse link fecha o painel, Esc ou apertar o ícone de novo também fecha, e o foco volta para
+  o ícone. Sem nenhum projeto para listar, o ícone abre a página de Projetos como antes.
   A árvore lista no máximo 5 projetos: os que você **fixou** (o alfinete na linha do projeto), depois
   os de atividade mais recente, e sempre o projeto do branch escolhido. Abaixo deles, **Todos os
   projetos (N)** abre a página de Projetos. Com mais de 5 projetos, um campo **Filtrar projetos**
