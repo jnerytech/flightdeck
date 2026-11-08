@@ -628,4 +628,73 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
       count("project.harness.draft"),
     ]).toEqual([true, true, true, "d-claude", 1]);
   });
+
+  test("after Apply the focus is on the outcome, not the page; a refused commit is an alert, focused too (#1090)", async () => {
+    const { view } = setup({
+      features: [...FEATURES, "harnessCommit"],
+      answers: [
+        { ok: true, data: { written: [SETTINGS], digests: { [SETTINGS]: "w" } } },
+        { ok: false, code: "invalid_state", message: "refused", reason: "harness_commit_identity" },
+      ],
+    });
+    render(view);
+    await listing();
+    await open();
+    await click("Apply the setup", true);
+    await settleMaybe(() => screen.queryByText(/Set up:/) !== null);
+    const focused = () => document.activeElement;
+    const appliedFocus =
+      focused() !== document.body && (focused()?.textContent ?? "").includes("Set up:");
+    await click("Commit on a new branch");
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    await click("Commit on a new branch", true);
+    await settleMaybe(() => screen.queryByText(/Git has no name and email/) !== null);
+    const alert = screen.queryByRole("alert");
+    expect([
+      appliedFocus,
+      (alert?.textContent ?? "").includes("Git has no name and email"),
+      alert !== null && alert.contains(focused()),
+    ]).toEqual([true, true, true]);
+  });
+
+  test("each outcome takes the focus in its own region: a done apply and commit in the status, a stale apply in the alert", async () => {
+    const run = async (answers: Answer[], commit: boolean) => {
+      const { view } = setup({ features: [...FEATURES, "harnessCommit"], answers });
+      render(view);
+      await listing();
+      await open();
+      await click("Apply the setup", true);
+      await settleMaybe(() => document.activeElement !== document.body);
+      if (commit) {
+        await settleMaybe(() => button("Commit on a new branch") !== null);
+        await click("Commit on a new branch");
+        await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+        await click("Commit on a new branch", true);
+        await settleMaybe(() => screen.queryByText(/Committed on/) !== null);
+      }
+      const role = document.activeElement?.getAttribute("role") ?? null;
+      const live = document.activeElement?.getAttribute("aria-live") ?? null;
+      cleanup();
+      return [role, live];
+    };
+    const applied = await run(
+      [{ ok: true, data: { written: [SETTINGS], digests: { [SETTINGS]: "w" } } }],
+      false,
+    );
+    const committed = await run(
+      [
+        { ok: true, data: { written: [SETTINGS], digests: { [SETTINGS]: "w" } } },
+        { ok: true, data: { branch: "flightdeck/claude-setup-x", commit: "c", files: [SETTINGS] } },
+      ],
+      true,
+    );
+    const stale = await run(
+      [{ ok: false, code: "invalid_state", message: "refused", reason: "harness_stale" }],
+      false,
+    );
+    // The regions stay live: if the focus were lost, the outcome would still be read.
+    expect(applied).toEqual(["status", null]);
+    expect(committed).toEqual(["status", null]);
+    expect(stale).toEqual(["alert", null]);
+  });
 });

@@ -1,5 +1,5 @@
 import { HARNESS_PREVIEW_PARTS, type HarnessPreview } from "@flightdeck/protocol";
-import { memo, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Stack } from "@/components/layout/stack";
 import { refusalText } from "@/i18n/errors";
@@ -133,7 +133,22 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   const parts = [...HARNESS_PREVIEW_PARTS];
   const [shown, setShown] = useState<HarnessPreview | null>(null);
   const [ticked, setTicked] = useState(false);
-  const [outcome, setOutcome] = useState<{ text: string; again: boolean } | null>(null);
+  const [outcome, setOutcome] = useState<{
+    text: string;
+    again: boolean;
+    /** A refusal: said as an alert. */
+    refused?: boolean;
+  } | null>(null);
+  // #1090: Apply and Commit close their dialog, and the button they came from is busy or gone; the
+  // focus goes to what they answered, not to the page, and the regions that say it stay mounted.
+  const said = useRef<HTMLDivElement>(null);
+  const refusedBox = useRef<HTMLDivElement>(null);
+  const focusOutcome = useRef(false);
+  useEffect(() => {
+    if (!focusOutcome.current || outcome === null) return;
+    focusOutcome.current = false;
+    (outcome.refused ? refusedBox : said).current?.focus();
+  }, [outcome]);
   // What the last apply wrote, with the digests a commit must send back (#75, C1).
   const [wrote, setWrote] = useState<{ files: string[]; digests: Record<string, string> } | null>(
     null,
@@ -184,10 +199,16 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     if (!result.ok) {
       setWrote(null);
       const again = PREVIEW_AGAIN.has(result.reason ?? "");
-      setOutcome({ text: refusalText(result.code, result.message, t, result), again });
+      focusOutcome.current = true;
+      setOutcome({
+        text: refusalText(result.code, result.message, t, result),
+        again,
+        refused: true,
+      });
       return;
     }
     const files = result.data.written.join(", ");
+    focusOutcome.current = true;
     setOutcome({ text: t("projectPage.harness.setup.done", { files }), again: false });
     const digests = result.data.digests;
     // Nothing written, nothing to commit.
@@ -211,10 +232,16 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     if (!result.ok) {
       // A stale refusal will not pass on a retry: the files must be applied again first.
       if (result.reason === "harness_commit_stale") setWrote(null);
-      setOutcome({ text: refusalText(result.code, result.message, t, result), again: false });
+      focusOutcome.current = true;
+      setOutcome({
+        text: refusalText(result.code, result.message, t, result),
+        again: false,
+        refused: true,
+      });
       return;
     }
     setWrote(null);
+    focusOutcome.current = true;
     setOutcome({
       text: t("projectPage.harness.setup.committed", { branch: result.data.branch }),
       again: false,
@@ -262,29 +289,37 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
           {t("projectPage.harness.setup.action")}
         </ActionButton>
       </div>
-      {outcome && (
-        <div role="status">
-          <Stack gap={1}>
-            <p className="text-sm">{outcome.text}</p>
-            {outcome.again && (
-              <div>
-                <ActionButton variant="outline" pending={busy} onClick={() => void preview()}>
-                  {t("projectPage.harness.setup.again")}
-                </ActionButton>
-              </div>
-            )}
-            {props.canCommit && wrote && (
-              <div>
-                <ActionButton
-                  variant="outline"
-                  pending={busy}
-                  onClick={() => setAskingCommit(true)}
-                >
-                  {t("projectPage.harness.setup.commit")}
-                </ActionButton>
-              </div>
-            )}
-          </Stack>
+      {/* Mounted before anything is said, so a screen reader reads what fills them, and live even
+          though the outcome also takes the focus: a focus lost (a remount, a dialog handing it
+          back) must not leave the outcome unsaid. Some readers may say it twice. */}
+      <div
+        role="status"
+        ref={said}
+        tabIndex={-1}
+        className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        {outcome && !outcome.refused && <p className="text-sm">{outcome.text}</p>}
+      </div>
+      <div
+        role="alert"
+        ref={refusedBox}
+        tabIndex={-1}
+        className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        {outcome?.refused && <p className="text-sm">{outcome.text}</p>}
+      </div>
+      {outcome?.again && (
+        <div>
+          <ActionButton variant="outline" pending={busy} onClick={() => void preview()}>
+            {t("projectPage.harness.setup.again")}
+          </ActionButton>
+        </div>
+      )}
+      {outcome && props.canCommit && wrote && (
+        <div>
+          <ActionButton variant="outline" pending={busy} onClick={() => setAskingCommit(true)}>
+            {t("projectPage.harness.setup.commit")}
+          </ActionButton>
         </div>
       )}
       {askingCommit && wrote && (
