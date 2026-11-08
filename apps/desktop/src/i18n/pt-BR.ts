@@ -4007,6 +4007,15 @@ export const ptBR = {
     noSession: "Sem sessão ainda.",
   },
   runUi: {
+    again: {
+      action: "Executar de novo",
+      loading: "Conferindo o arquivo do workflow…",
+      missing: "O workflow {name} não está mais na branch base.",
+      untrusted:
+        "O workflow {name} mudou desde que você confiou nele: revise e confie de novo antes de executá-lo.",
+      invalid: "O workflow {name} tem erros: corrija o arquivo e faça o commit.",
+      openWorkflows: "Abrir Workflows",
+    },
     budget: "Orçamento",
     gate: "Gate {step}",
     gateNote: "Nota do gate",

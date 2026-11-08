@@ -71,9 +71,13 @@ export type RunAgainState =
  * errors. `workflow` is the host's current word on that file; `known` is false until it answered.
  */
 export function runAgain(
-  _run: Pick<WorkflowRun, "status">,
-  _workflow: Pick<WorkflowInfo, "trusted" | "errors"> | undefined,
-  _known: boolean,
+  run: Pick<WorkflowRun, "status">,
+  workflow: Pick<WorkflowInfo, "trusted" | "errors"> | undefined,
+  known: boolean,
 ): RunAgainState {
-  return { show: false };
+  if (run.status !== "failed") return { show: false };
+  if (!known) return { show: true, off: "loading" };
+  if (!workflow) return { show: true, off: "missing" };
+  if (workflow.errors.length > 0) return { show: true, off: "invalid" };
+  return { show: true, off: workflow.trusted ? null : "untrusted" };
 }

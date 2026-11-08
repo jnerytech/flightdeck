@@ -999,6 +999,14 @@ function routeScreen(props: ScreenProps): ReactNode {
           onOpenCard={(cardId) =>
             go({ name: "card", host: route.host, projectId: route.projectId, cardId })
           }
+          onOpenWorkflows={(project) =>
+            go({
+              name: "workflows",
+              host: route.host,
+              projectId: project.id,
+              projectName: project.name,
+            })
+          }
         />
       );
     case "agent":

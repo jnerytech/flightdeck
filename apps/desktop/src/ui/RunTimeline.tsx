@@ -117,6 +117,7 @@ export function RunTimeline(
           </InlineNotice>
         )
       )}
+      {props.action}
       <BudgetMeter run={run} />
       <ol aria-label={t("runUi.steps")} className="flex flex-col gap-1 text-sm">
         {run.steps.map((step) => {

@@ -3997,6 +3997,15 @@ export const en: Dictionary = {
     noSession: "No session yet.",
   },
   runUi: {
+    again: {
+      action: "Run again",
+      loading: "Checking the workflow file…",
+      missing: "The workflow {name} is not on the base branch any more.",
+      untrusted:
+        "The workflow {name} changed since you trusted it: review and trust it again before it runs.",
+      invalid: "The workflow {name} has errors: fix the file and commit it.",
+      openWorkflows: "Open Workflows",
+    },
     budget: "Budget",
     gate: "Gate {step}",
     gateNote: "Gate note",
