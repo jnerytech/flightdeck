@@ -20,6 +20,21 @@ const FOLDERS = ["../src/updates", "../src/plugins", "../src/runenv"];
 const PORTUGUESE =
   /\b(informe|inválid[oa]|não|desligado|indisponível|pede|alvo|ou|erro interno|um dos dois|podem|neste|sessão|lançamento|demais|repetid[oa]|recusou|recusado|gerenciador|parado|porta|nome|valor|arquivos?|falhou|devolveu|respondeu|baixar|obrigatório|campo|código|raiz)\b|[ãõçáéíóúâêô]/i;
 
+/**
+ * Daemon text the app shows to the person as it is, not through the dictionaries: translating it
+ * changed what they see, so it stays Portuguese until it gets a refusal code and a dictionary entry.
+ * One fragment per string, per file; the detector above still covers every other string.
+ */
+const SHOWN_TO_THE_PERSON: Array<{ file: string; fragment: string }> = [
+  { file: "plugins/inventory.ts", fragment: ": caminho fora do plugin: " },
+  {
+    file: "plugins/plugins.ts",
+    fragment: "é diferente do que foi mostrado; o plugin foi removido",
+  },
+  { file: "runenv/config.ts", fragment: "precisa ser uma lista de textos" },
+  { file: "runenv/manager.ts", fragment: "o setup falhou (código " },
+];
+
 /** The quoted strings on the code lines of a file (comment lines left out); templates only on request. */
 function strings(source: string, templates = false): Array<{ line: number; text: string }> {
   const found: Array<{ line: number; text: string }> = [];
@@ -50,6 +65,10 @@ describe("refusal-english: the raw text of a refusal is English (#940)", () => {
       for await (const name of new Bun.Glob("*.ts").scan(dir)) {
         const source = await Bun.file(`${dir}${name}`).text();
         for (const { line, text } of strings(source, true)) {
+          const shown = SHOWN_TO_THE_PERSON.some(
+            (item) => `${folder}/${name}`.endsWith(`/${item.file}`) && text.includes(item.fragment),
+          );
+          if (shown) continue;
           if (PORTUGUESE.test(text)) portuguese.push(`${folder}/${name}:${line}: ${text}`);
         }
       }

@@ -502,7 +502,7 @@ export class Plugins {
     await this.record("rollback", found.id, confirmHash);
     return {
       outcome: "rolled-back",
-      message: `the installed content of ${found.id} differs from what was shown; the plugin was removed (${undone.outcome})`,
+      message: `o conteúdo instalado de ${found.id} é diferente do que foi mostrado; o plugin foi removido (${undone.outcome})`,
     };
   }
 

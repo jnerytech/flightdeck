@@ -126,7 +126,7 @@ describe("run-execucao: o setup", () => {
     await until(() => s.status("card-a") === "failed");
     const state = s.manager.state("card-a");
     expect(state.setup).toBe("failed");
-    expect(state.error).toBe("the setup failed (code 3)");
+    expect(state.error).toBe("o setup falhou (código 3)");
     expect(s.of("serve")).toHaveLength(0);
     await s.manager.start("card-a");
     expect(s.of("prepare")).toHaveLength(2);

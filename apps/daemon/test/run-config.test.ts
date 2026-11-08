@@ -77,10 +77,10 @@ describe("run-config: o esquema", () => {
 
   test("o comando é uma lista de textos: um texto só (que iria a um shell) é recusado", () => {
     expect(errorsOf('run:\n  - name: a\n    cmd: "bun run dev"\n')).toEqual([
-      "run.0.cmd: must be a list of strings",
+      "run.0.cmd: precisa ser uma lista de textos",
     ]);
     expect(errorsOf('setup: "bun install"\nrun:\n  - name: a\n    cmd: ["x"]\n')).toEqual([
-      "setup: must be a list of strings",
+      "setup: precisa ser uma lista de textos",
     ]);
     expect(errorsOf("run:\n  - name: a\n    cmd: []\n")).toEqual([
       "run.0.cmd: needs at least one item",
@@ -224,7 +224,7 @@ describe("run-config: confiança pelo hash", () => {
   test("um arquivo com erros mostra os erros, não se confia nele e não roda", async () => {
     const { configs, project } = await projectWith('run:\n  - name: a\n    cmd: "x"\n');
     const info = await configs.info(project);
-    expect(info.errors).toEqual(["run.0.cmd: must be a list of strings"]);
+    expect(info.errors).toEqual(["run.0.cmd: precisa ser uma lista de textos"]);
     expect(info.config).toBeNull();
     await expect(configs.trust(project, info.hash ?? "")).rejects.toThrow("validation errors");
     await expect(configs.resolve(project)).rejects.toThrow("validation errors");

@@ -231,7 +231,7 @@ describe("plugins: o inventário", () => {
     expect(inventory.attention).toBe(false);
     expect(inventory.skills).toEqual([]);
     expect(inventory.problems).toEqual([
-      "hooks: path outside the plugin: ../../outside/hooks.json",
+      "hooks: caminho fora do plugin: ../../outside/hooks.json",
     ]);
   });
 
@@ -910,7 +910,7 @@ describe("plugins: pela CLI", () => {
     const hash = await hashOf(marketplace, "deploy-tools");
     const result = await plugins.install({ plugin: "deploy-tools@acme", confirmHash: hash });
     expect(result.outcome).toBe("rolled-back");
-    expect(result.message).toContain("differs from what was shown");
+    expect(result.message).toContain("diferente");
     expect(changes(fake)).toEqual([
       "plugin install deploy-tools@acme --scope user --json",
       "plugin uninstall deploy-tools@acme --scope user --json",

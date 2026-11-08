@@ -270,7 +270,7 @@ export class RunManager {
     if (code !== 0) {
       entry.setup = "failed";
       entry.status = "failed";
-      entry.error = `the setup failed (code ${code})`;
+      entry.error = `o setup falhou (código ${code})`;
       this.emit(entry);
       return;
     }

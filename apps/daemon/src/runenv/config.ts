@@ -57,7 +57,7 @@ export interface RunConfigInfo {
 
 const text = z.string().min(1, "cannot be empty");
 const argv = z
-  .array(text, { error: "must be a list of strings" })
+  .array(text, { error: "precisa ser uma lista de textos" })
   .min(1, "needs at least one item");
 
 const ProcessSchema = z.strictObject({

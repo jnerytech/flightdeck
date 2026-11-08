@@ -114,7 +114,7 @@ async function inside(reading: Reading, key: string, rel: string): Promise<strin
   const target = resolve(reading.root, rel);
   const real = await realpath(target).catch(() => target);
   if (!isInside(reading.root, real)) {
-    reading.problems.push(`${key}: path outside the plugin: ${rel}`);
+    reading.problems.push(`${key}: caminho fora do plugin: ${rel}`);
     return null;
   }
   return (await exists(real)) ? real : null;
