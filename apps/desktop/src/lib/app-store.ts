@@ -435,6 +435,8 @@ export type HostCommandType = Extract<
   | "host.keepAwake"
   | `project.trust.${string}`
   | "knowledge.list"
+  | "knowledge.feed"
+  | "knowledge.setFeed"
   | "host.updates.set"
   | `ssh.${string}`
   | `snippets.${string}`

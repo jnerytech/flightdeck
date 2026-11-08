@@ -4171,6 +4171,17 @@ export const ptBR = {
       empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
       truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
       failed: "Não foi possível ler os documentos neste host.",
+      feed: {
+        on: "As sessões que o Flightdeck inicia aqui recebem um índice dos documentos válidos.",
+        onUntrusted:
+          "Ligado, mas este projeto não é confiável, então as sessões não recebem o índice.",
+        off: "Desligado: as sessões daqui não recebem o índice.",
+        offBy:
+          "Desligado por {path}, uma pasta acima deste projeto, na configuração do host. Ligue lá.",
+        turnOff: "Desligar",
+        turnOn: "Ligar",
+        failed: "Não foi possível ler ou mudar o interruptor do índice neste host.",
+      },
     },
     harness: {
       title: "Configuração do Claude Code",

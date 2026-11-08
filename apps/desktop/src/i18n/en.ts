@@ -4168,6 +4168,16 @@ export const en: Dictionary = {
       empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
       truncated: "The list is cut: only the first documents are shown.",
       failed: "The documents could not be read from this host.",
+      feed: {
+        on: "Sessions that Flightdeck starts here are given an index of the valid documents.",
+        onUntrusted: "On, but this project is not trusted, so sessions are not given the index.",
+        off: "Off: sessions here are not given the index.",
+        offBy:
+          "Off through {path}, a folder above this project, in the host's config. Switch it on there.",
+        turnOff: "Turn off",
+        turnOn: "Turn on",
+        failed: "The index switch could not be read or changed on this host.",
+      },
     },
     harness: {
       title: "Claude Code setup",

@@ -142,7 +142,12 @@ export function ProjectPage(
         />
       )}
       {hasFeature(host?.hostInfo?.features, "knowledge", false) && (
-        <KnowledgePanel store={store} hostId={hostId} path={project.path} />
+        <KnowledgePanel
+          store={store}
+          hostId={hostId}
+          path={project.path}
+          feed={hasFeature(host?.hostInfo?.features, "knowledgeFeed", false)}
+        />
       )}
       <SessionTiles
         store={store}

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Key } from "@/i18n";
 import type { AppStore } from "@/lib/app-store";
+import { KnowledgeFeedSwitch } from "./knowledge-feed-switch";
 
 type Status = KnowledgeEntry["status"];
 const STATUSES: readonly Status[] = ["valid", "transitional", "obsolete", "unclassified"];
@@ -14,7 +15,9 @@ const STATUSES: readonly Status[] = ["valid", "transitional", "obsolete", "uncla
  * has (issue #76). Read only; the status is always written out, not only coloured. Hidden by its
  * caller on a host that does not announce `knowledge`.
  */
-export function KnowledgePanel(props: Readonly<{ store: AppStore; hostId: string; path: string }>) {
+export function KnowledgePanel(
+  props: Readonly<{ store: AppStore; hostId: string; path: string; feed?: boolean }>,
+) {
   const { store, hostId, path } = props;
   const { t } = store.i18n;
   const [loaded, setLoaded] = useState<KnowledgeListResult | "failed" | null>(null);
@@ -45,6 +48,7 @@ export function KnowledgePanel(props: Readonly<{ store: AppStore; hostId: string
   return (
     <Panel title={title} label={title}>
       <p className="text-muted-foreground text-sm">{t("projectPage.knowledge.hint")}</p>
+      {props.feed && <KnowledgeFeedSwitch store={store} hostId={hostId} path={path} />}
       {loaded.entries.length === 0 ? (
         <p className="text-sm">{t("projectPage.knowledge.empty")}</p>
       ) : (
