@@ -188,7 +188,7 @@ step(
 );
 
 // What a scenario makes for itself: the card it created, the project folder it added.
-const made = new WeakMap<Context, { card?: string; project?: string }>();
+const made = new WeakMap<Context, { card?: string; project?: string; entry?: string }>();
 const mine = (c: Context) => {
   const state = made.get(c) ?? {};
   made.set(c, state);
@@ -366,5 +366,95 @@ step(Then, "the setup says it was committed on a branch", async (c) => {
   await c.page
     .getByRole("status")
     .filter({ hasText: pattern(committed) })
+    .waitFor({ timeout: WAIT });
+});
+
+// The bell: a request that waits is answered in its row, without opening its session.
+const bell = (c: Context) => c.page.getByRole("dialog");
+const bellRequest = (c: Context, session: string) =>
+  bell(c).getByRole("group", { name: new RegExp(session) });
+
+step(Given, "the bell holds the request of {string}", async (c, session = "") => {
+  // The web demo sends no notification: the request is put in the bell by hand.
+  await open(c, { name: "needs-you" });
+  await request(c, session).first().click({ timeout: SESSION_WAIT });
+  const card = c.page.locator("fieldset[data-request-id]").first();
+  await card.waitFor({ timeout: WAIT });
+  const requestId = (await card.getAttribute("data-request-id")) ?? "";
+  const link = `flightdeck://request?${new URLSearchParams({ host: ALFA, request: requestId })}`;
+  const entry = `bell-${Date.now().toString(36)}`;
+  mine(c).entry = entry;
+  const seed = JSON.stringify([
+    {
+      id: entry,
+      at: new Date().toISOString(),
+      title: dictionary(c).inbox.title,
+      body: "",
+      link,
+      subject: session,
+      host: "alfa",
+      ask: dictionary(c).inbox.runs.replace("{command}", "ls"),
+      read: false,
+    },
+  ]);
+  await c.page.evaluate((value) => localStorage.setItem("flightdeck.inbox", value), seed);
+});
+
+step(When, "I open the bell at a phone's width", async (c) => {
+  await c.page.setViewportSize({ width: 390, height: 800 });
+  await open(c, { name: "hub" });
+  await c.page.getByRole("button", { name: new RegExp(`^${c.t("inbox.bell")}`) }).click();
+  await bell(c).waitFor({ timeout: WAIT });
+});
+
+step(
+  Then,
+  "the request of {string} shows its risk and the buttons Approve and Deny",
+  async (c, session = "") => {
+    const row = bellRequest(c, session);
+    await row.waitFor({ timeout: SESSION_WAIT });
+    await row.getByText(c.t("approval.risk.medium"), { exact: true }).waitFor({ timeout: WAIT });
+    await row.getByRole("button", { name: c.t("approval.approve"), exact: true }).waitFor();
+    await row.getByRole("button", { name: c.t("approval.deny"), exact: true }).waitFor();
+  },
+);
+
+step(Then, "the request row fits inside the panel", async (c) => {
+  const fits = await bell(c).evaluate((box) => {
+    const edge = box.getBoundingClientRect().right;
+    const past = [...box.querySelectorAll<HTMLElement>(".inbox-request > *")].filter(
+      (el) => el.getBoundingClientRect().right > edge + 1,
+    );
+    return box.scrollWidth <= box.clientWidth + 1 && past.length === 0;
+  });
+  if (!fits) throw new Error("the request row runs past the bell panel at 390 px");
+});
+
+step(When, "I approve the request of {string} from the bell", async (c, session = "") =>
+  bellRequest(c, session)
+    .getByRole("button", { name: c.t("approval.approve"), exact: true })
+    .click(),
+);
+
+step(
+  When,
+  "I press the key {string} on the title of that request in the bell",
+  async (c, key = "") => {
+    const title = bell(c).locator(`[data-entry="${mine(c).entry}"] .inbox-pick`);
+    await title.focus();
+    await c.page.keyboard.press(key);
+  },
+);
+
+step(Then, "the request of {string} leaves the bell", async (c, session = "") =>
+  waitFor(async () => (await bellRequest(c, session).count()) === 0, "the request left the bell"),
+);
+
+step(Then, "the status says {string} was {string}", async (c, session = "", decision = "") => {
+  const words = c.t(`approval.resolved.${decision === "approved" ? "allow" : "deny"}`);
+  await c.page
+    .getByRole("status")
+    .filter({ hasText: `${session}: ${words}` })
+    .first()
     .waitFor({ timeout: WAIT });
 });
