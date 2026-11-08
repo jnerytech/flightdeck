@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
+import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -312,60 +313,62 @@ export function NewSessionForm(
           />
           {t("newSession.moreOptions")}
         </Button>
-        <div id={optionsId} hidden={!more} className="flex flex-col gap-4">
-          {hasOpenCode && (
-            <Field label={t("newSession.agent")}>
+        <div id={optionsId} hidden={!more}>
+          <Stack gap={4}>
+            {hasOpenCode && (
+              <Field label={t("newSession.agent")}>
+                {(control) => (
+                  <NativeSelect
+                    {...control}
+                    value={runtime}
+                    onChange={(e) => chooseRuntime(e.target.value as Runtime)}
+                  >
+                    <option value="claude">{t("newSession.agentClaude")}</option>
+                    <option value="opencode">{t("newSession.agentOpenCode")}</option>
+                  </NativeSelect>
+                )}
+              </Field>
+            )}
+            <Field label={t("newSession.subfolder")}>
               {(control) => (
-                <NativeSelect
+                <Input
                   {...control}
-                  value={runtime}
-                  onChange={(e) => chooseRuntime(e.target.value as Runtime)}
-                >
-                  <option value="claude">{t("newSession.agentClaude")}</option>
-                  <option value="opencode">{t("newSession.agentOpenCode")}</option>
-                </NativeSelect>
+                  value={sub}
+                  onChange={(e) => setSub(e.target.value)}
+                  placeholder={t("newSession.optional")}
+                />
               )}
             </Field>
-          )}
-          <Field label={t("newSession.subfolder")}>
-            {(control) => (
-              <Input
-                {...control}
-                value={sub}
-                onChange={(e) => setSub(e.target.value)}
-                placeholder={t("newSession.optional")}
-              />
-            )}
-          </Field>
-          <Field label={t("newSession.name")}>
-            {(control) => (
-              <Input
-                {...control}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("newSession.optional")}
-              />
-            )}
-          </Field>
-          {opencode && (
-            <Field label={t("newSession.effort")}>
+            <Field label={t("newSession.name")}>
               {(control) => (
-                <NativeSelect
+                <Input
                   {...control}
-                  value={effort}
-                  onChange={(e) => setEffort(e.target.value as EffortLevel | "")}
-                >
-                  <option value="">{t("newSession.effortDefault")}</option>
-                  {EFFORTS.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </NativeSelect>
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("newSession.optional")}
+                />
               )}
             </Field>
-          )}
-          {!opencode && props.extra}
+            {opencode && (
+              <Field label={t("newSession.effort")}>
+                {(control) => (
+                  <NativeSelect
+                    {...control}
+                    value={effort}
+                    onChange={(e) => setEffort(e.target.value as EffortLevel | "")}
+                  >
+                    <option value="">{t("newSession.effortDefault")}</option>
+                    {EFFORTS.map((level) => (
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+              </Field>
+            )}
+            {!opencode && props.extra}
+          </Stack>
         </div>
         {asking && (
           <ConfirmDialog
