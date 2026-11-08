@@ -212,7 +212,20 @@ const ALLOWED_TOOLS = [
 ];
 
 /** What a sample may never do, even when an allowed pattern matches it. */
-const DENIED_TOOLS = ["Bash(git push *)", "Bash(git remote *)", "Bash(git * --output*)"];
+export const DENIED_TOOLS = [
+  "Bash(git push *)",
+  "Bash(git remote *)",
+  "Bash(git * --output*)",
+  // `git diff <path> <path>` with a path outside the clone compares the files (an implied
+  // --no-index), which would read what Read(~/**) denies (#986 security review).
+  "Bash(git * --no-index*)",
+  "Bash(git diff /*)",
+  "Bash(git diff * /*)",
+  "Bash(git diff ~*)",
+  "Bash(git diff * ~*)",
+  "Bash(git diff ../*)",
+  "Bash(git diff *../*)",
+];
 
 /** The path without its trailing slashes and backslashes (a regex on a long run of them is quadratic). */
 function trimSeparators(path: string): string {

@@ -3,7 +3,7 @@
  * commits one known-bad UI change per case in a throwaway clone, runs the agent headless on it,
  * and these deterministic checks read its report. No model grades a model here.
  */
-import { type EvalOptions, homeDenials } from "./harness-eval.ts";
+import { DENIED_TOOLS, type EvalOptions, homeDenials } from "./harness-eval.ts";
 
 /** What the agent's report must name for a case to pass; null: a clean change, no high finding. */
 export interface UxExpect {
@@ -166,26 +166,38 @@ export function gradeReport(expect: UxExpect | null, report: string): boolean {
   });
 }
 
-/** The prompt of one review: the worktree is the clone, the base the commit before the case. */
-export function reviewPrompt(base: string, _diff: string): string {
+/**
+ * The prompt of one review: the worktree is the clone, the base the commit before the case, and
+ * the diff is in the prompt, so the review needs no git (#986 security review).
+ */
+export function reviewPrompt(base: string, diff: string): string {
   return [
-    `Review the UI change of this worktree against the base ${base}.`,
+    `Review the UI change of this worktree against the base ${base}. Its diff is below: do not run git.`,
     "Report as your Output section says.",
-  ].join(" ");
+    "",
+    "```diff",
+    diff.trimEnd(),
+    "```",
+  ].join("\n");
 }
 
-/** The tools a review may use: reading the clone, read-only git and the area tests. */
+/** The checks a review may run: the four the agent names, each with no flag of its own. */
+const REVIEW_CHECKS = [
+  "apps/desktop/test/textos.test.tsx",
+  "apps/desktop/test/i18n-missing.test.ts",
+  "apps/desktop/test/layout-ratchet.test.ts",
+  "apps/desktop/test/state-selectors-ratchet.test.ts",
+];
+
+/** The tools a review may use: reading the clone and the four checks. */
 const REVIEW_TOOLS = [
   "Read(./**)",
-  "Bash(git log *)",
-  "Bash(git show *)",
-  "Bash(git diff *)",
-  "Bash(bun --config=bunfig.area.toml test *)",
+  ...REVIEW_CHECKS.map((file) => `Bash(bun --config=bunfig.area.toml test ${file})`),
 ];
 
 /**
- * The `claude -p` arguments of one review: the session is the `ux-reviewer` agent, with no Edit
- * or Write, and the home folder denied when the clone is outside it.
+ * The `claude -p` arguments of one review: the session is the `ux-reviewer` agent, with no Edit,
+ * Write or git, and the home folder denied when the clone is outside it.
  */
 export function reviewArgs(
   prompt: string,
@@ -211,8 +223,9 @@ export function reviewArgs(
     "Edit",
     "Write",
     "NotebookEdit",
-    "Bash(git push *)",
-    "Bash(git remote *)",
+    // No git at all: `git diff <path> <path>` reads any file, and `--output` writes one.
+    "Bash(git *)",
+    ...DENIED_TOOLS,
     ...homeDenials(places),
   ];
 }
