@@ -881,6 +881,12 @@ export const en: Dictionary = {
     resizeValue: "{n} px",
     countOne: "1 card",
     countMany: "{n} cards",
+    /** The board's keys, said by each card's title (#1198). */
+    keysHint:
+      "Arrows move between the cards, Enter opens one, S starts it and M shows its actions.",
+    /** A narrow board shows one column at a time, picked here (#1198). */
+    columns: "Columns",
+    showColumn: "{column}, {count}",
     countOfMany: "{shown} of {total} cards",
     noMatches: "No matches",
     quickAdd: "New card in {column}",
@@ -4117,6 +4123,7 @@ export const en: Dictionary = {
       views: "Session views",
       lists: "Lists",
       approvals: "Approvals",
+      board: "Board",
     },
     palette: "Open the command palette",
     toggleMode: "Switch between simple mode and the full app",
@@ -4143,6 +4150,9 @@ export const en: Dictionary = {
     approve: "Approve the request",
     deny: "Deny the request",
     dismiss: "Close the request",
+    boardMove: "Move between the board's cards",
+    boardStart: "Start the focused card",
+    boardActions: "Show the focused card's actions",
   },
   sidebarGroups: {
     main: "Main",

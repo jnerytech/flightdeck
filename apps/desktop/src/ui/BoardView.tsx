@@ -13,12 +13,21 @@ import {
   MoreHorizontal,
   Plus,
 } from "lucide-react";
-import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type KeyboardEvent,
+  memo,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { BoardNotice } from "@/components/board/board-notice";
 import { BoardStatus } from "@/components/board/board-status";
 import { BoardSyncControl } from "@/components/board/board-sync";
 import { BulkDiscardDialog, hasStartedWork } from "@/components/board/bulk-discard-dialog";
 import { ColumnHandle } from "@/components/board/column-handle";
+import { ColumnSwitcher } from "@/components/board/column-switcher";
 import { ContractDialog } from "@/components/board/contract-dialog";
 import { NeedsBadge, needsText } from "@/components/board/needs-badge";
 import { SelectionBar, SelectionSlot } from "@/components/board/selection-bar";
@@ -63,6 +72,7 @@ import {
 } from "../lib/board.ts";
 import { askAbout, dragNeeds, type Lacking, missingFor } from "../lib/board-contracts.ts";
 import { boardFiles } from "../lib/board-files.ts";
+import { type BoardKeyAction, boardKey } from "../lib/board-keys.ts";
 import {
   answerOf,
   type BulkRefusal,
@@ -81,6 +91,7 @@ import {
 import { cardStartBlock } from "../lib/card-start-block.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
+import { CHORD_TIMEOUT_MS } from "../lib/shortcuts.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -144,10 +155,20 @@ function CardTile(
     /** Ctrl-click and the menu: adds or takes out. Shift-click: the range from the anchor. */
     onToggleSelect(): void;
     onRangeSelect(): void;
+    /** The board's one Tab stop (#1198): the other cards are reached with the arrows. */
+    tabbable: boolean;
+    /** The id of the line that says the board's keys. */
+    hintId: string;
+    onFocus(): void;
+    /** What a key on the card's title does; the board moves the focus itself. */
+    onKey(e: KeyboardEvent<HTMLButtonElement>): BoardKeyAction;
   }>,
 ) {
   const t = useT();
   const { card } = props;
+  /** The card's menu, opened by its ⋯ or by `m` (#1198). */
+  const [menuOpen, setMenuOpen] = useState(false);
+  const titleRef = useRef<HTMLButtonElement>(null);
   /** The workflow (when its run is known) and the branch, when there are any. */
   const meta = [props.workflow, card.branch].filter(Boolean).join(" · ");
   /** What its column asks and it lacks (issue #78): said on the card, whether or not it was asked. */
@@ -184,9 +205,21 @@ function CardTile(
             />
           )}
           <button
+            ref={titleRef}
             type="button"
             data-card-open
+            tabIndex={props.tabbable ? 0 : -1}
+            aria-describedby={props.hintId}
+            aria-keyshortcuts="S M"
             className="min-w-0 text-left font-medium"
+            onFocus={props.onFocus}
+            onKeyDown={(e) => {
+              const action = props.onKey(e);
+              if (!action) return;
+              e.preventDefault();
+              if (action.kind === "start" && props.startOff === null) props.onStart();
+              if (action.kind === "menu") setMenuOpen(true);
+            }}
             onClick={(e) => {
               // A modified click selects (the tile handles it); only a plain one opens.
               if (!e.ctrlKey && !e.metaKey && !e.shiftKey) props.onOpen();
@@ -196,18 +229,27 @@ function CardTile(
           </button>
           {props.selected && <span className="sr-only">{props.labels.selected}</span>}
         </span>
-        <DropdownMenu>
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
+            {/* Not a Tab stop (#1198): `m` on the card opens it, so the board stays one stop. */}
             <Button
               variant="ghost"
               size="icon"
               className="size-6"
+              tabIndex={-1}
               aria-label={props.labels.actions}
             >
               <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
+          <DropdownMenuContent
+            onCloseAutoFocus={(e) => {
+              // Back to the card's title, the board's Tab stop, unless a move took the card away.
+              if (!titleRef.current?.isConnected) return;
+              e.preventDefault();
+              titleRef.current.focus();
+            }}
+          >
             <DropdownMenuItem disabled={props.startOff !== null} onSelect={props.onStart}>
               {props.startOff ? `${props.labels.start} · ${props.startOff}` : props.labels.start}
             </DropdownMenuItem>
@@ -328,6 +370,13 @@ export const BoardView = memo(function BoardView(props: {
   const [issuesOpen, setIssuesOpen] = useState(false);
   /** The selected cards (Ctrl-click), the last one picked (the anchor of a Shift range) and what a bulk action left to say. */
   const [picked, setPicked] = useState<string[]>([]);
+  /** #1198: the card the board's Tab stop is on, and the column a narrow board shows. */
+  const [focusedCard, setFocusedCard] = useState<string | null>(null);
+  const [shownColumn, setShownColumn] = useState<BoardColumn | null>(null);
+  /** A card to focus once its column shows; the last key, to leave `g s` to the go-to chord. */
+  const pendingFocus = useRef<string | null>(null);
+  const lastKey = useRef({ key: "", at: 0 });
+  const hintId = useId();
   const anchor = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [discardingMany, setDiscardingMany] = useState(false);
@@ -587,6 +636,45 @@ export const BoardView = memo(function BoardView(props: {
   // Until the person picks a width, the columns share what the window gives them (#1030).
   const boardPx = useWidth(boardRef);
   const width = chosen ? chosenWidth : fitColumnWidth(boardPx, COLUMNS.length, COLUMN_GAP);
+  // #1198: under 40rem (the board's own snap breakpoint) a narrow board shows one column at a time.
+  const switcher = boardPx > 0 && boardPx < 640;
+  const shownIds = COLUMNS.map(({ id }) =>
+    shown.filter((card) => card.column === id).map((card) => card.id),
+  );
+  const showing: BoardColumn =
+    shownColumn ?? COLUMNS.find((_, i) => (shownIds[i]?.length ?? 0) > 0)?.id ?? "backlog";
+  const visible = switcher
+    ? (shownIds[COLUMNS.findIndex(({ id }) => id === showing)] ?? [])
+    : boardOrder;
+  /** The board's one Tab stop: the card last focused while it shows, else the first one shown. */
+  const stop = focusedCard !== null && visible.includes(focusedCard) ? focusedCard : visible[0];
+  const titleOf = (cardId: string) =>
+    boardRef.current?.querySelector<HTMLElement>(`li[data-card="${cardId}"] [data-card-open]`);
+  /** Focuses a card, showing its column first on a narrow board. */
+  const focusCard = (cardId: string) => {
+    const column = all.find((card) => card.id === cardId)?.column;
+    if (switcher && column && column !== showing) {
+      pendingFocus.current = cardId;
+      setShownColumn(column);
+      return;
+    }
+    titleOf(cardId)?.focus();
+  };
+  useEffect(() => {
+    const cardId = pendingFocus.current;
+    if (cardId === null) return;
+    pendingFocus.current = null;
+    titleOf(cardId)?.focus();
+  });
+  /** A key on a card's title: the arrows move the focus here, `s` and `m` are the card's. */
+  const keyOn = (cardId: string) => (e: KeyboardEvent<HTMLButtonElement>) => {
+    const now = Date.now();
+    const afterG = lastKey.current.key === "g" && now - lastKey.current.at < CHORD_TIMEOUT_MS;
+    lastKey.current = { key: e.key, at: now };
+    const action = boardKey(shownIds, cardId, e, afterG);
+    if (action?.kind === "focus") focusCard(action.cardId);
+    return action;
+  };
   useEffect(() => {
     const wanted = refocus.current;
     if (!wanted) return;
@@ -594,6 +682,11 @@ export const BoardView = memo(function BoardView(props: {
     if (!card) return;
     const index = columnOf(card.column).findIndex((other) => other.id === card.id);
     if (card.column === wanted.column && index === wanted.index) return;
+    // A narrow board follows the moved card to its column, then focuses it there.
+    if (switcher && card.column !== showing) {
+      setShownColumn(card.column);
+      return;
+    }
     refocus.current = null;
     boardRef.current
       ?.querySelector<HTMLElement>(`li[data-card="${card.id}"] [data-card-open]`)
@@ -731,6 +824,26 @@ export const BoardView = memo(function BoardView(props: {
             onDismiss={() => setNotice(null)}
           />
         )}
+        <p id={hintId} className="sr-only">
+          {t("board.keysHint")}
+        </p>
+        {switcher && all.length > 0 && (
+          <ColumnSwitcher
+            label={t("board.columns")}
+            shown={showing}
+            onShow={setShownColumn}
+            columns={COLUMNS.map(({ id }, i) => {
+              const title = t(`kanban.columns.${id}` as Key);
+              const count = shownIds[i]?.length ?? 0;
+              return {
+                id,
+                title,
+                count,
+                name: t("board.showColumn", { column: title, count: countLabel(t, count) }),
+              };
+            })}
+          />
+        )}
         <div ref={splitRef} className="board-split" data-narrow={narrow || undefined}>
           {/* biome-ignore lint/a11y/noStaticElementInteractions: Esc clears the selection from any card inside the board */}
           <div
@@ -739,7 +852,7 @@ export const BoardView = memo(function BoardView(props: {
             hidden={narrow && filesShown}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
             tabIndex={0}
-            style={{ gridAutoColumns: `${width}px` }}
+            style={{ gridAutoColumns: switcher ? "minmax(0, 1fr)" : `${width}px` }}
             className="grid min-h-48 flex-1 grid-flow-col gap-3 overflow-x-auto pb-2 @max-[40rem]:snap-x @max-[40rem]:snap-mandatory"
             onKeyDown={(e) => {
               // Only the board's own Esc: one that closes a card's menu is the menu's.
@@ -754,6 +867,7 @@ export const BoardView = memo(function BoardView(props: {
               return (
                 <section
                   key={id}
+                  hidden={switcher && id !== showing}
                   aria-label={t(`kanban.columns.${id}` as Key)}
                   aria-describedby={asking.length > 0 ? `needs-${id}` : undefined}
                   data-column={id}
@@ -828,6 +942,10 @@ export const BoardView = memo(function BoardView(props: {
                           selected={selection.includes(card.id)}
                           onToggleSelect={() => select(card)}
                           onRangeSelect={() => selectRange(card)}
+                          tabbable={card.id === stop}
+                          hintId={hintId}
+                          onFocus={() => setFocusedCard(card.id)}
+                          onKey={keyOn(card.id)}
                           onDragStart={() => {
                             dragging.current = card.id;
                             draggingMany.current =
@@ -873,14 +991,16 @@ export const BoardView = memo(function BoardView(props: {
                     <Plus aria-hidden="true" />
                     {t("kanban.newCard")}
                   </Button>
-                  <ColumnHandle
-                    t={t}
-                    width={width}
-                    index={COLUMNS.findIndex((column) => column.id === id) + 1}
-                    last={id === COLUMNS[COLUMNS.length - 1]?.id}
-                    onChange={(next) => store.boardWidth.set(next, false)}
-                    onCommit={() => store.boardWidth.persist()}
-                  />
+                  {!switcher && (
+                    <ColumnHandle
+                      t={t}
+                      width={width}
+                      index={COLUMNS.findIndex((column) => column.id === id) + 1}
+                      last={id === COLUMNS[COLUMNS.length - 1]?.id}
+                      onChange={(next) => store.boardWidth.set(next, false)}
+                      onCommit={() => store.boardWidth.persist()}
+                    />
+                  )}
                 </section>
               );
             })}
