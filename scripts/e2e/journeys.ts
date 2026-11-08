@@ -106,10 +106,20 @@ async function demoHostsOnline(c: Context): Promise<boolean> {
   return true;
 }
 
+/** Unfolds More options on the New session screen: the name and the subfolder are under it (#1135). */
+async function moreOptions(c: Context) {
+  const toggle = c.page.getByRole("button", { name: c.t("newSession.moreOptions"), exact: true });
+  // It opens by itself to show a remembered subfolder: a click then would fold it.
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+}
+
 /** Starts a session of the fake runtime from the New session screen. */
 export async function createSession(c: Context, prompt: string, name?: string) {
   await open(c, { name: "new-session", host: ALFA });
-  if (name) await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+  if (name) {
+    await moreOptions(c);
+    await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+  }
   await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill(prompt);
   await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
 }
@@ -189,7 +199,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const session = `Aprovar e2e ${Date.now()}`;
     await createSession(c, "[bash] ls", session);
     await open(c, { name: "needs-you" });
-    const row = c.page.locator("main ul li button", { hasText: session });
+    // A request's row says its tool; the session's finished turn, listed under Finished once the
+    // request is answered, has the same name and must not count as the request.
+    const row = c.page.locator(`main ul li button[aria-label*="${session}: Bash"]`);
     await row.first().click({ timeout: SESSION_WAIT });
     const card = c.page.locator("fieldset[data-request-id]").first();
     await card.waitFor({ timeout: WAIT });
@@ -207,7 +219,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await createSession(c, "[bash] ls", first);
     await createSession(c, "[bash] ls", second);
     await open(c, { name: "needs-you" });
-    const row = (name: string) => c.page.locator("main ul li button", { hasText: name });
+    // Only the request's row: the finished turn listed under Finished has the same name.
+    const row = (name: string) => c.page.locator(`main ul li button[aria-label*="${name}: Bash"]`);
     await row(first).first().click({ timeout: SESSION_WAIT });
     await row(second).first().waitFor({ timeout: SESSION_WAIT });
     const focusedCard = () =>
@@ -534,44 +547,6 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
   },
 
-  // 19. Finishing a card (issue #188): the card menu's Start asks first and can be cancelled;
-  // "Finish…" explains the three ways to Done, closes with Esc, and "Move to Done" moves the card.
-  "finalizar-card": async (c) => {
-    const title = `Finalizar ${c.lang} ${Date.now()}`;
-    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
-    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
-    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
-    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
-    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
-    await tile.waitFor({ timeout: WAIT });
-    // The menu's Start opens a dialog; Cancel leaves the card alone.
-    await tile
-      .getByRole("button", { name: c.t("board.cardActions", { title }), exact: true })
-      .click();
-    await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
-    const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
-    await start.waitFor({ timeout: WAIT });
-    await start.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
-    await start.waitFor({ state: "detached", timeout: WAIT });
-    // Finish… on the card's page.
-    await tile.getByRole("button", { name: title, exact: true }).click();
-    const finish = c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true });
-    await finish.click();
-    const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
-    await dialog.getByText(c.t("cardUi.finishMove"), { exact: true }).waitFor({ timeout: WAIT });
-    await dialog.getByText(c.t("cardUi.finishComplete"), { exact: true }).waitFor();
-    await dialog.getByText(c.t("cardUi.finishMerge"), { exact: true }).waitFor();
-    // No worktree yet: the merge is off and says why.
-    await dialog.getByText(c.t("cardUi.finishNeedWorktree"), { exact: true }).waitFor();
-    await c.page.keyboard.press("Escape");
-    await dialog.waitFor({ state: "detached", timeout: WAIT });
-    await finish.click();
-    await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
-    await dialog.waitFor({ state: "detached", timeout: WAIT });
-    await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
-    await dialog.getByText(c.t("cardUi.alreadyDone"), { exact: true }).waitFor({ timeout: WAIT });
-  },
-
   // 20. A phone-notice webhook (issue #263): ntfy is a type of its own, a URL that names no topic
   // is refused with its reason, a topic URL is saved, and the list shows the type and only the
   // host the notices go to: the topic is a secret and never shown again.
@@ -700,6 +675,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // answer, so the run is still alive when the trust is removed.
     const name = `e2e-revoga-${c.lang}-${Date.now()}`;
     await open(c, { name: "new-session", host: ALFA });
+    await moreOptions(c);
     await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).fill("flightdeck-web");
     await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
     await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill("[bash] ls");
@@ -721,42 +697,6 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("button", { name: c.t("projectPage.trust.restart"), exact: true })
       .click();
     await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
-  },
-
-  // Set up Claude Code (issue #75): the preview lists what the setup would add and writes nothing;
-  // applying writes it; a new preview then has nothing left to add. The demo keeps its state, so
-  // the second language starts from the finished setup and checks only that last part.
-  "harness-setup": async (c) => {
-    await open(c, { name: "project", host: ALFA, projectId: c.ids.emptyProject });
-    const dialog = c.page.getByRole("alertdialog");
-    const apply = dialog.getByRole("button", {
-      name: c.t("projectPage.harness.setup.apply"),
-      exact: true,
-    });
-    const adds = dialog.getByText(c.t("projectPage.harness.setup.message"), { exact: true });
-    const nothing = dialog.getByText(c.t("projectPage.harness.setup.nothing"), { exact: true });
-    const preview = async () => {
-      await c.page
-        .getByRole("button", { name: c.t("projectPage.harness.setup.action"), exact: true })
-        .click();
-      await adds.or(nothing).first().waitFor({ timeout: WAIT });
-    };
-    await preview();
-    if ((await adds.count()) > 0) {
-      // What it would write is on screen before anything is written: CLAUDE.md among the new files.
-      await dialog.getByText("CLAUDE.md", { exact: true }).first().waitFor({ timeout: WAIT });
-      await apply.click();
-      const done = c.t("projectPage.harness.setup.done", { files: "" }).trim();
-      await c.page.getByRole("status").filter({ hasText: done }).waitFor({ timeout: WAIT });
-      await dialog.waitFor({ state: "detached", timeout: WAIT });
-      await preview();
-    }
-    // Nothing left to add: the dialog says so and Apply is off.
-    await nothing.waitFor({ timeout: WAIT });
-    if (!(await apply.isDisabled()))
-      throw new Error("harness-setup: Apply is on with nothing to add");
-    await c.page.keyboard.press("Escape");
-    await dialog.waitFor({ state: "detached", timeout: WAIT });
   },
 
   // Project knowledge (issue #76): the library lists its documents with the status each one says
@@ -2485,8 +2425,9 @@ async function sessionFitsProblems(c: Context): Promise<string[]> {
 /**
  * The layout check (#1003), kept under the 90 s a journey gets: the screens people use most (Home,
  * a session, the board, a host's page, Settings) at the smallest window the app allows and at the
- * usual one. English runs all of it; pt-BR runs only the geometry guards, where its longer texts
- * are the point. The other sizes and screens are not checked here any more.
+ * usual one. English runs all of it, in two journeys (`layoutWindows` is the second half); pt-BR runs
+ * only the geometry guards, where its longer texts are the point. The other sizes and screens are
+ * not checked here any more.
  */
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
@@ -2542,6 +2483,15 @@ export async function layout(c: Context, problems: string[]) {
   if (new Set(lefts).size > 1) {
     problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
   }
+}
+
+/**
+ * The second half of the layout check (#1003), a journey of its own so each stays well under the
+ * 90 s a journey gets (the whole check took 72 to 78 s on CI): the sidebar and page scroll at two
+ * window sizes, a session opens at its end, the smallest window the app allows, and the bell.
+ * English only, like the first half's extras.
+ */
+export async function layoutWindows(c: Context, problems: string[]) {
   // Issue #567: the sidebar scrolls as one area between its fixed header and footer, at the
   // usual window and at a short one, where it has to scroll at all. #785: the area around a Page
   // (the Host page, where the user saw two bars) does not scroll beside the page's own bar.

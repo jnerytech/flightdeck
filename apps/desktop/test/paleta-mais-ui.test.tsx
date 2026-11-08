@@ -230,7 +230,12 @@ describe("paleta-mais-ui: the create row (issue #147)", () => {
   test("text that matches nothing offers a card, last; choosing it hands over the target", async () => {
     const { went } = open(world(), { name: "board", host: "h1", projectId: "p-api" });
     await type("Write the docs");
-    expect(labels().at(-1)).toBe("Create card “Write the docs” in api");
+    // The session to start in the project (issue #1135) comes just before the card.
+    expect(labels().slice(-2)).toEqual([
+      "Start in api: Write the docs",
+      "Create card “Write the docs” in api",
+    ]);
+    await key("ArrowDown");
     await key("ArrowDown");
     await key("Enter");
     expect(went).toEqual([

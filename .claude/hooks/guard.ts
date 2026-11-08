@@ -25,6 +25,8 @@ import {
   pushWaitCheck,
   slotViolation,
   testEditViolation,
+  weakAssertViolation,
+  weakerEscape,
   withBudget,
 } from "../../scripts/lib/claude-hooks.ts";
 import { logHook } from "./log.ts";
@@ -89,16 +91,23 @@ if (typeof command === "string") {
 if (typeof filePath === "string") {
   const root = checkoutRoot(filePath, ROOT);
   if (root) block("generated", generatedViolation(relative(root, resolve(ROOT, filePath))));
-  block(
-    "test-marker",
-    testEditViolation(String(input?.tool_name), input.tool_input, (path) => {
+  // Read once for the three test-edit checks (#1143 review).
+  const cache = new Map<string, string | null>();
+  const readTest = (path: string) => {
+    if (!cache.has(path)) {
       try {
-        return readFileSync(resolve(ROOT, path), "utf8");
+        cache.set(path, readFileSync(resolve(ROOT, path), "utf8"));
       } catch {
-        return null;
+        cache.set(path, null);
       }
-    }),
-  );
+    }
+    return cache.get(path) ?? null;
+  };
+  block("test-marker", testEditViolation(String(input?.tool_name), input.tool_input, readTest));
+  block("weak-assert", weakAssertViolation(String(input?.tool_name), input.tool_input, readTest));
+  // #1141: a reviewed `// weaker: <why>` swap passes; harness:stats lists it among the waivers.
+  const why = weakerEscape(String(input?.tool_name), input.tool_input, readTest);
+  if (why) logHook("guard", "weak-assert", "waived", { detail: why });
 }
 // The run's age is only for the log: its git calls, like every gh call, start only in the first 6 s
 // of the hook, so each ends inside the hook's 10 s (approximately: gh 3 s, git 2 s; #826 review).

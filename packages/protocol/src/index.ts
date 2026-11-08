@@ -3210,6 +3210,14 @@ export const HARNESS_PREVIEW_PARTS = [
   "permissions",
 ] as const;
 
+/** #75, slice T1: a host harness template's id, which is its folder's name: lower case, no dot or slash. */
+export const HARNESS_TEMPLATE_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
+/** #75, slice T1b: the most digests a harness apply or commit takes: a template's 16 files and the settings. */
+export const HARNESS_DIGESTS_MAX = 17;
+const harnessDigests = z
+  .record(z.string().max(256), z.string().max(128))
+  .refine((digests) => Object.keys(digests).length <= HARNESS_DIGESTS_MAX);
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -3285,6 +3293,8 @@ export const Command = z.discriminatedUnion("type", [
       .object({
         path: z.string().min(1).max(4096),
         parts: z.array(z.enum(HARNESS_PREVIEW_PARTS)).min(1).max(HARNESS_PREVIEW_PARTS.length),
+        /** #75, slice T1b: a host template's Markdown instead of the fixed files. */
+        template: z.string().regex(HARNESS_TEMPLATE_ID).optional(),
       })
       .strict(),
   ),
@@ -3327,9 +3337,7 @@ export const Command = z.discriminatedUnion("type", [
     z
       .object({
         path: z.string().min(1).max(4096),
-        digests: z
-          .record(z.string().max(256), z.string().max(128))
-          .refine((digests) => Object.keys(digests).length <= HARNESS_PREVIEW_PARTS.length),
+        digests: harnessDigests,
         confirm: z.boolean().optional(),
       })
       .strict(),
@@ -3345,12 +3353,12 @@ export const Command = z.discriminatedUnion("type", [
       .object({
         path: z.string().min(1).max(4096),
         parts: z.array(z.enum(HARNESS_PREVIEW_PARTS)).min(1).max(HARNESS_PREVIEW_PARTS.length),
-        digests: z
-          .record(z.string().max(256), z.string().max(128))
-          .refine((digests) => Object.keys(digests).length <= HARNESS_PREVIEW_PARTS.length),
+        digests: harnessDigests,
         confirm: z.boolean().optional(),
         /** The person accepted the settings being rewritten with another layout (the preview's `reformats`). */
         reformat: z.boolean().optional(),
+        /** #75, slice T1b: a host template's Markdown instead of the fixed files. */
+        template: z.string().regex(HARNESS_TEMPLATE_ID).optional(),
       })
       .strict(),
   ),
@@ -5067,6 +5075,19 @@ export const HarnessPreview = z.object({
   /** A new file, whole; `digest` is the sha256 of `content`. */
   files: z.array(z.object({ path: z.string(), content: z.string(), digest: z.string() })),
   unreadable: z.array(z.string()),
+  /**
+   * #75, slice T1b: a template's files not proposed, by project path: front matter that could run a
+   * command or grant a permission, a secret, an import from outside the project, or a command a skill
+   * runs as it loads (`` !`cmd` ``). Only with a template.
+   */
+  withheld: z
+    .array(
+      z.object({
+        path: z.string(),
+        reason: z.enum(["frontmatter", "secret", "import", "command"]),
+      }),
+    )
+    .optional(),
 });
 export type HarnessPreview = z.infer<typeof HarnessPreview>;
 

@@ -18,7 +18,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   fail), `security-reviewer` (spawns, paths, secrets, pairing) and `ux-reviewer` (a UI change's
   literals, missing keys, focus, keyboard, layout and axe; `bun run scripts/ux-review-eval.ts` measures
   it on planted bad changes, real quota, #983), all read-only; hooks that block wide `git add`, edits of
-  generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot` (a platform `skipIf` passes), commits
+  generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot` (a platform `skipIf` passes) or swap a strict
+  assertion for a weak one (`// weaker: <why>` on the line lets a reviewed swap through, #1141), commits
   that break `type(scope): text` or the TDD order, heavy runs outside the slot, a worker's full
   coverage run (#674), and a push (or a `bun run pr -- update`) that would cancel the branch's PR run while it is still green (#741:
   younger than 20 minutes with no failed job, or GitHub unread twice; `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push

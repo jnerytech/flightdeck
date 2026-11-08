@@ -1002,6 +1002,12 @@ export const ptBR = {
     gateTool: "etapa “{step}” do workflow",
     gateRow: "A etapa “{step}” do workflow espera sua aprovação",
     release: "Soltar o par",
+    finished: "Concluídas",
+    finishedOutcome: { done: "Concluída", failed: "Falhou", ended: "Encerrada" },
+    finishedFilesOne: "1 arquivo alterado",
+    finishedFilesMany: "{n} arquivos alterados",
+    finishedNoFiles: "Nenhum arquivo alterado",
+    seeChanges: "Ver as alterações",
   },
   projectTree: {
     more: "mais {n}",
@@ -1184,6 +1190,9 @@ export const ptBR = {
     sectionClients: "Clientes",
     sectionRecent: "Recentes",
     sectionCreate: "Criar",
+    sectionStart: "Iniciar",
+    startIn: "Iniciar em {project}: {text}",
+    startDetail: "Nova sessão",
     createCard: "Criar card “{title}” em {project}",
     createCardIssue: "Criar card da issue {issue} em {project}",
     createDetail: "Card novo",
@@ -1873,6 +1882,8 @@ export const ptBR = {
       "O git não conseguiu fazer o commit ou o branch da configuração neste repositório.",
     harness_commit_ignored:
       "{file} é ignorado pelo git neste projeto, então não foi para o commit: faça o commit você mesmo se quiser.",
+    harness_commit_withheld:
+      "{file} poderia rodar um comando ou dar uma permissão ao carregar, então não foi para o commit: faça o commit você mesmo se quiser.",
     harness_draft_exists: "O projeto já tem um CLAUDE.md: um rascunho só cria um.",
     harness_draft_failed: "O modelo não respondeu com um CLAUDE.md: tente de novo.",
     harness_draft_secret: "O rascunho tinha um segredo, então foi descartado: tente de novo.",
@@ -1882,6 +1893,7 @@ export const ptBR = {
     harness_template_taken: "Já existe um modelo chamado {id} neste host: escolha outro nome.",
     harness_template_title_secret:
       "O título do modelo contém um segredo, então nada foi compartilhado.",
+    harness_template_missing: "Não há mais um modelo {id} neste host: escolha outro.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
@@ -2332,6 +2344,8 @@ export const ptBR = {
     gone: "O que isto citava não existe mais.",
     dismiss: "Descartar",
     asks: "Pergunta: {question}",
+    keys: "A aprova · N nega",
+    keysHigh: "Segure o botão para aprovar · N nega",
     runs: "Quer executar: {command}",
     edits: "Quer alterar {file}",
     uses: "Quer usar {tool}",
@@ -2496,6 +2510,7 @@ export const ptBR = {
     needPrompt: "Escreva o primeiro prompt para iniciar em segundo plano.",
     addFolder: "Adicionar uma pasta na página de {host}",
     host: "Host",
+    moreOptions: "Mais opções",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {
@@ -2660,7 +2675,9 @@ export const ptBR = {
     sessionLast: "última em {when}",
     sessionSpan: "de {from} a {to}",
     sessionFiles: "Arquivos que a sessão escreveu",
-    sessionFilesNone: "A sessão ainda não escreveu arquivos.",
+    sessionFilesTitle: "Arquivos que a sessão editou direto (Write, Edit)",
+    sessionFilesNone:
+      "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
     bashNote: "Mudanças feitas pelo Bash não entram.",
   },
   cardReview: {

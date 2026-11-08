@@ -323,7 +323,7 @@ export function SimpleApp(
             onPickFolder={() => store.pickFolder()}
             notifications={props.notifyUpdates}
             onNotifications={(enabled) => {
-              void store.setNotifyUpdates(enabled);
+              void store.setNotifyUpdates(enabled); // NOSONAR: the promise is deliberately not awaited; void says so
             }}
             canSwitch={mode.canSwitch}
             onShowEverything={() => toFull()}

@@ -59,22 +59,24 @@ describe("resources-procfs: the Linux /proc reader (issue #154)", () => {
     expect(parseStat("garbage")).toBeNull();
   });
 
-  test("the reader lists the numeric entries, reads a process and its folder, and the uptime", async () => {
-    // The reader is for a Linux /proc, and these tests build it with symlinks a Windows runner may not make.
-    if (process.platform === "win32") return;
-    const { root, add } = fakeRoot();
-    add(10, stat(10, "bash", 1, 1, 1, 100, 10), "/work/api");
-    add(11, stat(11, "claude", 10, 5, 5, 200, 50));
-    mkdirSync(join(root, "self"));
-    const reader = procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 });
-    expect((await reader.pids()).sort()).toEqual([10, 11]);
-    expect(await reader.stat(11)).toMatchObject({ name: "claude", ppid: 10, cpuTicks: 10 });
-    expect(await reader.cwd(10)).toBe("/work/api");
-    expect(await reader.cwd(11)).toBeNull();
-    expect(await reader.stat(999)).toBeNull();
-    expect(await reader.uptimeSec()).toBeCloseTo(12345.67);
-    expect([reader.pageSize, reader.ticksPerSecond]).toEqual([4096, 100]);
-  });
+  test.skipIf(process.platform === "win32")(
+    "the reader lists the numeric entries, reads a process and its folder, and the uptime",
+    async () => {
+      // The reader is for a Linux /proc, and these tests build it with symlinks a Windows runner may not make.
+      const { root, add } = fakeRoot();
+      add(10, stat(10, "bash", 1, 1, 1, 100, 10), "/work/api");
+      add(11, stat(11, "claude", 10, 5, 5, 200, 50));
+      mkdirSync(join(root, "self"));
+      const reader = procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 });
+      expect((await reader.pids()).sort()).toEqual([10, 11]);
+      expect(await reader.stat(11)).toMatchObject({ name: "claude", ppid: 10, cpuTicks: 10 });
+      expect(await reader.cwd(10)).toBe("/work/api");
+      expect(await reader.cwd(11)).toBeNull();
+      expect(await reader.stat(999)).toBeNull();
+      expect(await reader.uptimeSec()).toBeCloseTo(12345.67);
+      expect([reader.pageSize, reader.ticksPerSecond]).toEqual([4096, 100]);
+    },
+  );
 
   test("the reader has nothing to read a command line or an environment with", () => {
     const reader = procfsReader({ root: "/nonexistent", pageSize: 4096, ticksPerSecond: 100 });
@@ -96,53 +98,57 @@ describe("resources-procfs: the Linux /proc reader (issue #154)", () => {
 });
 
 describe("resources-procfs: nothing that holds arguments or secrets is opened (F6)", () => {
-  test("a process with a readable command line and environment shows none of it in a snapshot", async () => {
-    // The reader is for a Linux /proc, and these tests build it with symlinks a Windows runner may not make.
-    if (process.platform === "win32") return;
-    const { root, add } = fakeRoot();
-    add(100, stat(100, "flightdeckd", 1, 0, 0, 0, 10));
-    add(200, stat(200, "claude", 100, 5, 5, 1, 50), "/work/x");
-    add(201, stat(201, "bash", 200, 1, 1, 2, 5));
-    const { Resources } = await import("../src/resources/resources.ts");
-    const resources = new Resources({
-      proc: procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 }),
-      ownPid: 100,
-      sessions: () => [
-        {
-          id: "s",
-          name: "s",
-          cwd: "/work/x",
-          createdAt: "2026-11-05T10:00:00Z",
-          updatedAt: "2026-11-05T10:00:00Z",
-          active: true,
-        },
-      ],
-      terminals: () => [],
-      memory: () => ({ totalBytes: 1, freeBytes: 1 }),
-      disk: async () => null,
-      loadPercent: () => null,
-      kill: () => {},
-    });
-    const text = JSON.stringify(await resources.snapshot());
-    expect(text).toContain("claude");
-    expect(text).not.toContain("SECRET");
-    expect(text).not.toContain("api-key");
-    expect(text).not.toContain("TOKEN");
-  });
+  test.skipIf(process.platform === "win32")(
+    "a process with a readable command line and environment shows none of it in a snapshot",
+    async () => {
+      // The reader is for a Linux /proc, and these tests build it with symlinks a Windows runner may not make.
+      const { root, add } = fakeRoot();
+      add(100, stat(100, "flightdeckd", 1, 0, 0, 0, 10));
+      add(200, stat(200, "claude", 100, 5, 5, 1, 50), "/work/x");
+      add(201, stat(201, "bash", 200, 1, 1, 2, 5));
+      const { Resources } = await import("../src/resources/resources.ts");
+      const resources = new Resources({
+        proc: procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 }),
+        ownPid: 100,
+        sessions: () => [
+          {
+            id: "s",
+            name: "s",
+            cwd: "/work/x",
+            createdAt: "2026-11-05T10:00:00Z",
+            updatedAt: "2026-11-05T10:00:00Z",
+            active: true,
+          },
+        ],
+        terminals: () => [],
+        memory: () => ({ totalBytes: 1, freeBytes: 1 }),
+        disk: async () => null,
+        loadPercent: () => null,
+        kill: () => {},
+      });
+      const text = JSON.stringify(await resources.snapshot());
+      expect(text).toContain("claude");
+      expect(text).not.toContain("SECRET");
+      expect(text).not.toContain("api-key");
+      expect(text).not.toContain("TOKEN");
+    },
+  );
 
-  test("with the command line and environment unreadable (folders), stat and the folder still work", async () => {
-    // The reader is for a Linux /proc, and these tests build it with symlinks a Windows runner may not make.
-    if (process.platform === "win32") return;
-    const { root, add } = fakeRoot();
-    add(300, stat(300, "claude", 1, 1, 1, 1, 7), "/work/y");
-    for (const trap of ["cmdline", "environ"]) {
-      rmSync(join(root, "300", trap));
-      mkdirSync(join(root, "300", trap));
-    }
-    const reader = procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 });
-    expect(await reader.stat(300)).toMatchObject({ name: "claude", rssPages: 7 });
-    expect(await reader.cwd(300)).toBe("/work/y");
-  });
+  test.skipIf(process.platform === "win32")(
+    "with the command line and environment unreadable (folders), stat and the folder still work",
+    async () => {
+      // The reader is for a Linux /proc, and these tests build it with symlinks a Windows runner may not make.
+      const { root, add } = fakeRoot();
+      add(300, stat(300, "claude", 1, 1, 1, 1, 7), "/work/y");
+      for (const trap of ["cmdline", "environ"]) {
+        rmSync(join(root, "300", trap));
+        mkdirSync(join(root, "300", trap));
+      }
+      const reader = procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 });
+      expect(await reader.stat(300)).toMatchObject({ name: "claude", rssPages: 7 });
+      expect(await reader.cwd(300)).toBe("/work/y");
+    },
+  );
 
   test("a stat line with no usable pid is nothing", () => {
     expect(parseStat(stat(0, "x", 1, 1, 1, 1, 1))).toBeNull();

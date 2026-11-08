@@ -6,6 +6,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
 import { auditBase, FORBIDDEN_MARKERS, parseCommits, uncommentedOffLinux } from "./tdd-audit.ts";
+import { assertionCounts, weakensAssertions } from "./weak-assert.ts";
 
 /** git options that take their value as the next word (`git -C <dir> add`). */
 const GIT_OPTIONS_WITH_VALUE = new Set([
@@ -179,11 +180,9 @@ export function testEditViolation(
   input: Record<string, unknown>,
   readFile: (path: string) => string | null,
 ): string | null {
-  const file = input.file_path;
-  if (typeof file !== "string" || !TEST_FILE.test(file)) return null;
-  const [before, after] =
-    tool === "Write" ? [readFile(file) ?? "", input.content] : [input.old_string, input.new_string];
-  if (typeof before !== "string" || typeof after !== "string") return null;
+  const edit = testEditTexts(tool, input, readFile);
+  if (!edit) return null;
+  const { file, before, after } = edit;
   const added = TEST_MARKERS.find(
     ({ pattern }) => [...after.matchAll(pattern)].length > [...before.matchAll(pattern)].length,
   );
@@ -195,6 +194,53 @@ export function testEditViolation(
     return `Adding a skip to ${file} is blocked: a flaky test is deleted, never skipped (#1003); when it is the only check of a business flow, replace it with a fast deterministic test. A test that cannot run on a platform uses skipIf(<the platform condition>), with the reason in a comment (docs/TDD.md).`;
   }
   return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, test.todo or first-run toMatchSnapshot, and no .skip: a flaky test is deleted, never skipped (#1003). Write the assertion with a hand-written literal (docs/TDD.md).`;
+}
+
+/**
+ * Why an Edit or Write of a test file is blocked for weakening an assertion (#1141): within the
+ * edit, strict matchers go down and weak ones go up (`weakensAssertions`).
+ */
+export function weakAssertViolation(
+  tool: string,
+  input: Record<string, unknown>,
+  readFile: (path: string) => string | null,
+): string | null {
+  const edit = testEditTexts(tool, input, readFile);
+  if (!edit || !weakensAssertions(edit.before, edit.after)) return null;
+  return `Editing ${edit.file} weakens an assertion: a strict matcher (toBe, toEqual, toContain, toMatch…) became a weak one (toBeDefined, toBeTruthy, not.toBeNull…). Keep the strict check; when the weaker one is right, put "// weaker: <why>" on its line, and the hook logs it (docs/TDD.md, #1141).`;
+}
+
+/** The reason of a `// weaker: <why>` line the edit adds, for the hook log's waivers; else null. */
+export function weakerEscape(
+  tool: string,
+  input: Record<string, unknown>,
+  readFile: (path: string) => string | null,
+): string | null {
+  const edit = testEditTexts(tool, input, readFile);
+  if (!edit) return null;
+  if (assertionCounts(edit.after).escaped <= assertionCounts(edit.before).escaped) return null;
+  // Logged only when the escape let the edit through (#1143 review): without it, it would block.
+  const unescaped = edit.after.replace(/\/\/ weaker: [^\r\n]*/g, "");
+  if (!weakensAssertions(edit.before, unescaped)) return null;
+  const old = new Set(edit.before.split(/\r?\n/));
+  const added = edit.after.split(/\r?\n/).filter((line) => !old.has(line));
+  const reason = added.map((line) => /\/\/ weaker: (\S.*)$/.exec(line)?.[1]).find(Boolean);
+  // Cut, so a long comment never fills the hook log (security review).
+  return reason ? reason.trim().slice(0, 200) : null;
+}
+
+/** The test file an Edit or Write touches, with its text before and after; null for any other file. */
+function testEditTexts(
+  tool: string,
+  input: Record<string, unknown>,
+  readFile: (path: string) => string | null,
+): { file: string; before: string; after: string } | null {
+  const file = input.file_path;
+  if (typeof file !== "string" || !TEST_FILE.test(file)) return null;
+  const [before, after] =
+    tool === "Write" ? [readFile(file) ?? "", input.content] : [input.old_string, input.new_string];
+  if (typeof before !== "string" || typeof after !== "string") return null;
+  return { file, before, after };
 }
 
 export interface CommitGateDeps {

@@ -127,7 +127,11 @@ const RISK_TONE: Record<RiskLevel, string> = {
   high: "border-status-error text-status-error",
 };
 
-function RiskSeal({ risk, reason, t }: Readonly<{ risk: RiskLevel; reason?: string; t: T }>) {
+export function RiskSeal({
+  risk,
+  reason,
+  t,
+}: Readonly<{ risk: RiskLevel; reason?: string; t: T }>) {
   return (
     <span
       data-risk={risk}

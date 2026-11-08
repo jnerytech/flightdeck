@@ -36,14 +36,20 @@ const PATHS = new RegExp(
   "g",
 );
 /** What the sentence around a path adds after it: a full stop, a comma, a closing bracket. */
-const TRAILING = /[.,;)\]}]+$/;
+const TRAILING = new Set([".", ",", ";", ")", "]", "}"]);
+/** The text without the sentence marks at its end (a loop: a pattern with `+$` backtracks on a long run). */
+function withoutTrailing(text: string): string {
+  let end = text.length;
+  while (end > 0 && TRAILING.has(text.charAt(end - 1))) end--;
+  return text.slice(0, end);
+}
 const LINE_AND_COLUMN = /(?::\d+){1,2}$/;
 
 /** The file paths in one line of output, left to right. */
 export function findPaths(line: string): FoundPath[] {
   const found: FoundPath[] = [];
   for (const match of line.matchAll(PATHS)) {
-    const text = match[0].replace(TRAILING, "");
+    const text = withoutTrailing(match[0]);
     const path = text.replace(LINE_AND_COLUMN, "");
     if (path === "") continue;
     const [line, column] = text.slice(path.length).split(":").slice(1).map(Number);
