@@ -1621,6 +1621,14 @@ Três workflows já vêm com o Flightdeck, para trabalho recorrente:
 Os dois param em uma aprovação antes de enviar qualquer coisa e têm um orçamento de turnos e de
 minutos. Com o pull request aberto, vale para ele o limite de rodadas do Vigiar PRs.
 
+**Post-mortem de um card que falhou.** Um card que parou com um problema, ou cuja execução de
+workflow falhou, mostra **Redigir um post-mortem** no detalhe. Abre os fatos que o Flightdeck tem do
+incidente: o card, o problema, os passos que falharam na execução e o resumo da sessão. São linhas
+simples, cortadas e limpas, que você pode ler e editar. **Iniciar o post-mortem** cria um card novo,
+"Post-mortem: <título>", e o inicia com o workflow Rascunho de post-mortem e esse texto; o card que
+falhou não é mexido. O botão fica desligado, com um aviso, quando o projeto ainda não adicionou esse
+workflow.
+
 Um modelo é um arquivo, e o Flightdeck não grava nada no seu repositório. Na tela **Workflows**,
 **Adicionar de um modelo** lista os modelos. Abra um para ler o arquivo, use **Copiar o arquivo**,
 faça commit em `.flightdeck/workflows/` na branch base e **confie** nele na mesma tela, como em
