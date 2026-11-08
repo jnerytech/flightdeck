@@ -3826,6 +3826,15 @@ export class AppStore {
     );
   }
 
+  /**
+   * Sets the guard "new cards wait from N%" on a host (`null` turns it off); the host's answer is its
+   * new quota state. A refusal goes to the banner and leaves the guard as it was.
+   */
+  async setQuotaPause(hostId: string, pauseAt: number | null): Promise<void> {
+    const state = await this.hostCommand(hostId, "quota.setPauseAt", { pauseAt });
+    if (state) this.onQuota(hostId, state);
+  }
+
   /** A discarded card leaves; any other replaces what the app had. */
   /** Crossing `pauseAt` (and 95%, and the plan's refusal) notifies once per account, window and reset. */
   private onQuota(hostId: string, state: QuotaState): void {

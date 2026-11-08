@@ -1336,7 +1336,6 @@ export const ptBR = {
         "Cartões novos esperam a partir de {pct}%. Este host não deixa mudar pelo app: atualize o flightdeckd.",
       readOnlyOff:
         "A trava está desligada. Este host não deixa mudar pelo app: atualize o flightdeckd.",
-      failed: "Não foi possível mudar a trava em {host}.",
     },
     popover: {
       label: "Cota do plano dos hosts",

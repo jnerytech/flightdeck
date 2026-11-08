@@ -153,7 +153,8 @@ for (const [lang, dict] of [
         name: dict.quota.region.replace("{host}", "alfa"),
       });
       expect(card).not.toBeNull();
-      await settle(() => within(card as HTMLElement).queryByText(/90%/) !== null);
+      const notice = dict.quota.hotNotice.replace("{host}", "alfa").replace("{pct}", "90");
+      await settle(() => within(card as HTMLElement).queryByText(notice) !== null);
       const guard = guardOf(card as HTMLElement, dict);
       expect(guard?.value).toBe("0.9");
       await act(async () => {

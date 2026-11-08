@@ -11,11 +11,12 @@ import {
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
+import { QuotaDetail } from "@/components/shell/quota-detail";
 import { Meter } from "@/components/status/meter";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import type { Key, T } from "@/i18n/index";
-import type { AppState } from "@/lib/app-store";
+import type { AppState, AppStore } from "@/lib/app-store";
 import { type QuotaGlance, quotaGlance } from "@/lib/quota-glance";
 import type { Route } from "@/lib/router";
 import { hostsRoute, type StatusBarSummary, statusBarSummary } from "@/lib/status-bar";
@@ -61,9 +62,12 @@ export function QuotaGlanceButton(
     glance: QuotaGlance | null;
     hostName: string;
     onOpen(hostId: string): void;
+    /** What pressing it opens (issue #1218): without it, the button opens the host. */
+    detail?: (close: () => void) => ReactNode;
   }>,
 ) {
   const { t, glance } = props;
+  const [open, setOpen] = useState(false);
   if (!glance) return null;
   const window = t(`account.windows.${glance.window}` as Key);
   const vars = {
@@ -74,28 +78,42 @@ export function QuotaGlanceButton(
     remaining: glance.remaining,
   };
   const name = glance.remaining ? t("shell.quotaLabel", vars) : t("shell.quotaLabelNoReset", vars);
+  const button = (
+    <button
+      type="button"
+      aria-label={name}
+      data-level={glance.level}
+      className="status-item status-quota"
+      {...(props.detail ? {} : { onClick: () => props.onOpen(glance.hostId) })}
+    >
+      {glance.level !== "ok" && <CircleAlert aria-hidden="true" data-mark="" />}
+      <span className="status-quota-window">{window}</span>
+      <Meter
+        label={window}
+        value={Math.min(glance.percent, 100)}
+        max={100}
+        hot={glance.level === "reached"}
+        className="status-meter"
+      />
+      <span>{glance.percent}%</span>
+      {glance.remaining && <span className="status-quota-reset">{glance.remaining}</span>}
+    </button>
+  );
+  if (!props.detail) return <IconTip label={name}>{button}</IconTip>;
   return (
-    <IconTip label={name}>
-      <button
-        type="button"
-        aria-label={name}
-        data-level={glance.level}
-        className="status-item status-quota"
-        onClick={() => props.onOpen(glance.hostId)}
+    <Popover open={open} onOpenChange={setOpen}>
+      <IconTip label={name}>
+        <PopoverTrigger asChild>{button}</PopoverTrigger>
+      </IconTip>
+      <PopoverContent
+        side="top"
+        align="start"
+        aria-label={t("quota.popover.label")}
+        className="max-h-[70vh] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto"
       >
-        {glance.level !== "ok" && <CircleAlert aria-hidden="true" data-mark="" />}
-        <span className="status-quota-window">{window}</span>
-        <Meter
-          label={window}
-          value={Math.min(glance.percent, 100)}
-          max={100}
-          hot={glance.level === "reached"}
-          className="status-meter"
-        />
-        <span>{glance.percent}%</span>
-        {glance.remaining && <span className="status-quota-reset">{glance.remaining}</span>}
-      </button>
-    </IconTip>
+        {props.detail(() => setOpen(false))}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -108,6 +126,8 @@ export function StatusBar(
   props: Readonly<{
     t: T;
     quota: { glance: QuotaGlance; hostName: string } | null;
+    /** What the quota opens when pressed: the hosts' windows and their guard (issue #1218). */
+    quotaDetail?: (close: () => void) => ReactNode;
     refreshing: boolean;
     summary: StatusBarSummary;
     onRefreshQuota(): void;
@@ -168,6 +188,7 @@ export function StatusBar(
               glance={props.quota.glance}
               hostName={props.quota.hostName}
               onOpen={props.onOpenQuota}
+              {...(props.quotaDetail ? { detail: props.quotaDetail } : {})}
             />
             {!compact && (
               <IconTip label={refreshName}>
@@ -265,12 +286,14 @@ export function StatusBarSlot(
     refreshing: boolean;
     /** The host in view, which the hosts item opens when every host is online. */
     currentHostId?: string | null;
+    /** With the store, pressing the quota opens its windows and the guard (issue #1218). */
+    store?: AppStore;
     onRefreshQuota(): void;
     onOpenTerminals(): void;
     go(route: Route): void;
   }>,
 ) {
-  const { state, go } = props;
+  const { state, go, store } = props;
   const online = state.hosts.filter((host) => host.status === "online");
   const glance = quotaGlance(
     state.quota,
@@ -283,6 +306,13 @@ export function StatusBarSlot(
     <StatusBar
       t={props.t}
       quota={glance ? { glance, hostName: quotaHost?.name ?? "" } : null}
+      {...(store && glance
+        ? {
+            quotaDetail: (close: () => void) => (
+              <QuotaDetail store={store} hostId={glance.hostId} onClose={close} />
+            ),
+          }
+        : {})}
       refreshing={props.refreshing}
       summary={statusBarSummary(state, props.terminalTabs)}
       onRefreshQuota={props.onRefreshQuota}

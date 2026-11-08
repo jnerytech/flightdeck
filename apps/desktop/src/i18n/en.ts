@@ -1341,7 +1341,6 @@ export const en: Dictionary = {
       readOnly:
         "New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
       readOnlyOff: "The guard is off. This host cannot change it from the app: update flightdeckd.",
-      failed: "Could not change the guard on {host}.",
     },
     popover: {
       label: "Plan quota of the hosts",
