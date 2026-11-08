@@ -200,6 +200,7 @@ const REASONS = [
   "changes_commit_state",
   "changes_commit_stale",
   "changes_commit_secret",
+  "changes_commit_message_secret",
   "changes_commit_too_large",
   "changes_commit_branch_taken",
   "changes_commit_hook",

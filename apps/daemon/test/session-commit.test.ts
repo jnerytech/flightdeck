@@ -251,7 +251,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       branchOf(repo),
       existsSync(join(repo, ".git", "refs", "heads", "work", "one")),
     ]).toEqual([
-      { reason: "changes_commit_secret", field: "message" },
+      "changes_commit_message_secret",
       { reason: "changes_commit_secret", file: "c.txt" },
       { reason: "changes_commit_secret", file: ".env" },
       { reason: "changes_commit_branch_taken", branch: "work/taken" },
