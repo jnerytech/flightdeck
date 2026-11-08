@@ -67,6 +67,17 @@ const click = (el: Element) =>
   act(async () => {
     fireEvent.click(el);
   });
+/** Start in the background is under the card's menu (#1197). */
+const startInBackground = async () => {
+  await act(async () => {
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Actions for Cart screen" }), {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+  });
+  await click(await screen.findByRole("menuitem", { name: "Start in the background" }));
+};
 
 describe("card-page-ask-ui: the validation note on the card page", () => {
   test("it is a labelled field whose Save sends the trimmed note, and empty text clears it", async () => {
@@ -173,7 +184,7 @@ describe("card-page-ask-ui: Start asks only where In progress confirms criteria"
   test("Start in the background follows the same rule", async () => {
     const w = setup({ projects: [ASKING] });
     form(w);
-    await click(screen.getByRole("button", { name: "Start in the background" }));
+    await startInBackground();
     expect(ask()).not.toBeNull();
     expect(w.background).toEqual([]);
     await click(within(ask() as HTMLElement).getByRole("button", { name: "Start anyway" }));
@@ -184,7 +195,7 @@ describe("card-page-ask-ui: Start asks only where In progress confirms criteria"
   test("by default Start in the background asks nothing", async () => {
     const w = setup();
     form(w);
-    await click(screen.getByRole("button", { name: "Start in the background" }));
+    await startInBackground();
     expect(ask() === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
     await settle(() => w.background.length === 1);
   });

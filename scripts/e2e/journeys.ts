@@ -1555,44 +1555,12 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
-  // Issue #802: three layout claims the unit tests could only pin by class name are measured in
-  // the browser: a reason under a disabled button sits in the flow and not over the next field, the
-  // untrusted notice stays small with its link on the text line, and the status bar's items never
-  // overlap or run past it at a compact, a medium and a wide window.
+  // Issue #802: two layout claims the unit tests could only pin by class name are measured in the
+  // browser: the untrusted notice stays small with its link on the text line, and the status bar's
+  // items never overlap or run past it at a compact, a medium and a wide window. (The card's Run
+  // row no longer has disabled buttons with reasons: it leads with one button, #1197.)
   "layout-medido": async (c) => {
-    // 1. The Run row of a card that has not started: its reasons are lines of the row's own box.
-    const title = `Card medido ${Date.now()}`;
-    await c.page.setViewportSize({ width: 1280, height: 800 });
-    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
-    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
-    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
-    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
-    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
-    await tile.waitFor({ timeout: WAIT });
-    await tile.getByRole("button", { name: title, exact: true }).click();
-    const start = c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true });
-    await start.waitFor({ timeout: WAIT });
-    const reasons = await start.evaluate((button) => {
-      const wrap = button.closest(".field-row-wrap");
-      const row = wrap?.querySelector(".field-row");
-      if (!wrap || !row) return "the Run row has no wrapper";
-      const edge = (el: Element) => el.getBoundingClientRect();
-      const helps = [...wrap.querySelectorAll(".field-help")];
-      if (helps.length < 2) return `expected two reasons under the row, found ${helps.length}`;
-      const next = wrap.nextElementSibling;
-      let above = edge(row).bottom;
-      for (const help of helps) {
-        const box = edge(help);
-        if (box.top < above - 1) return `a reason starts at ${box.top}, above ${above}`;
-        above = box.bottom;
-      }
-      if (edge(wrap).bottom < above - 1) return "the reasons hang out of the row's box";
-      if (next && edge(next).top < above - 1) return "the reasons run over the next block";
-      return null;
-    });
-    if (reasons) throw new Error(`a razão sob o botão desabilitado: ${reasons}`);
-
-    // 2. The untrusted notice of a session: small, and its link is on the text line.
+    // 1. The untrusted notice of a session: small, and its link is on the text line.
     await c.page.setViewportSize({ width: 1280, height: 800 });
     await open(c, { name: "session", host: ALFA, id: c.ids.waitingSession });
     const review = c.page.getByRole("button", {
@@ -1609,7 +1577,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     if (notice.link >= 30) throw new Error(`o link do aviso tem ${notice.link}px: cresceu`);
     if (notice.height > 72) throw new Error(`o aviso tem ${notice.height}px de altura`);
 
-    // 3. The status bar at three widths: nothing overlaps and nothing runs past the bar.
+    // 2. The status bar at three widths: nothing overlaps and nothing runs past the bar.
     for (const width of [500, 800, 1280]) {
       await c.page.setViewportSize({ width, height: 800 });
       await open(c, { name: "hub" });

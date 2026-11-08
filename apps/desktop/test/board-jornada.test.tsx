@@ -1,3 +1,4 @@
+import { chooseFromCardMenu } from "./card-menu.ts";
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -26,6 +27,9 @@ afterEach(async () => {
 
 const settle = waiter(4000);
 
+/** Finalizar… sits under the card's menu (#1197). */
+const finish = () =>
+  chooseFromCardMenu({ act, fireEvent, screen } as never, "Ações de Login", "Finalizar…");
 const click = async (name: string | RegExp) => {
   const button = screen.queryByRole("button", { name });
   expect(button).not.toBeNull();
@@ -143,14 +147,13 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     expect(toastButtons("Abrir").length).toBeGreaterThan(0);
   });
 
-  test("Parar is off, and says the card is not running, until the card has been started", async () => {
+  test("a card that has not started leads with Iniciar and has no Parar (#1197)", async () => {
     const { repo } = await setup();
     await openBoard(repo);
     await createCard("Login");
     await openCard("Login");
-    const stop = () => screen.queryByRole("button", { name: "Parar" }) as HTMLButtonElement | null;
-    expect(stop()?.disabled).toBe(true);
-    expect(screen.queryByText("O card não está rodando")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Iniciar" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Parar" }) === null).toBe(true);
   });
 
   test("Finalizar… explains the three ways to Done; Mover para Concluído only moves the card", async () => {
@@ -158,7 +161,7 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     await openBoard(repo);
     await createCard("Login");
     await openCard("Login");
-    await click("Finalizar…");
+    await finish();
     const dialog = screen.queryByRole("dialog") as HTMLElement;
     expect(dialog).not.toBeNull();
     const text = dialog.textContent ?? "";
@@ -211,7 +214,7 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     await openBoard(repo);
     await createCard("Login");
     await openCard("Login");
-    await click("Finalizar…");
+    await finish();
     await act(async () => {
       fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     });
@@ -220,14 +223,14 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
       .getBoard(board.listProjects()[0]?.id ?? "")
       .columns.flatMap((c) => c.cards)[0]?.id;
     expect(board.getCard(id ?? "").column).toBe("backlog");
-    await click("Finalizar…");
+    await finish();
     await act(async () => {
       fireEvent.click(
         within(screen.getByRole("dialog")).getByRole("button", { name: "Mover para Concluído" }),
       );
     });
     await settle(() => board.getCard(id ?? "").column === "done");
-    await click("Finalizar…");
+    await finish();
     const move = within(screen.getByRole("dialog")).getByRole("button", {
       name: "Mover para Concluído",
     }) as HTMLButtonElement;
@@ -236,21 +239,16 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
   });
 
   test("Revisar e mesclar, with a worktree, opens the changes of the card", async () => {
-    const { repo } = await setup();
+    const { repo, board } = await setup();
     await openBoard(repo);
     await createCard("Login");
     await openCard("Login");
     await click("Iniciar");
-    await settle(
-      () =>
-        (screen.queryByRole("button", { name: "Finalizar…" }) as HTMLButtonElement | null) !== null,
-    );
     // The worktree appears once the card has started.
-    await settle(() => {
-      const open = screen.queryByRole("button", { name: "Abrir PR" }) as HTMLButtonElement | null;
-      return open !== null && !open.disabled;
-    });
-    await click("Finalizar…");
+    const cardOf = () =>
+      board.getBoard(board.listProjects()[0]?.id ?? "").columns.flatMap((c) => c.cards)[0];
+    await settle(() => (cardOf()?.worktreePath ?? null) !== null);
+    await finish();
     await act(async () => {
       fireEvent.click(
         within(screen.getByRole("dialog")).getByRole("button", { name: "Revisar e mesclar" }),
