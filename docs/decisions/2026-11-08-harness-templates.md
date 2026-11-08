@@ -34,6 +34,11 @@ listing.
   - A project with nothing to share refuses with `harness_template_empty`.
 - **The listing.** `harness.templates.list` gives each template's id, title, file names and size,
   never content.
+- **The title** is scanned too, since every client can list it. A broken `template.json` costs its
+  template's title (the id stands in), never the whole list.
+- **Frontmatter, for T1b.** An agent's or a skill's front matter can name `hooks` or `mcpServers`,
+  which run commands. T1a only stores the text. Using a template in another project (T1b) must
+  strip or flag those keys, or show them before the apply.
 - **Guards.** The feature `harnessTemplates`. Export only over a near connection: it reads a
   project's instructions into a store every project on the host can use.
 

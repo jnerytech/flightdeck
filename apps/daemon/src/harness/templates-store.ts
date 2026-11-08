@@ -66,6 +66,12 @@ export class HarnessTemplates {
   /** Copies the Markdown harness of the project at `root` into a new template `id`. */
   async export(root: string, id: string, title: string): Promise<HarnessTemplateInfo> {
     if (!ID.test(id)) throw refuse("harness_template_id", `${id} is not a template id`);
+    // The title is listed to every client: no secret in it either.
+    if (this.scanner.scan(title).length > 0) {
+      throw refuse("harness_template_secret", "the title holds a secret: nothing was shared", {
+        file: "title",
+      });
+    }
     const files: Array<[string, string]> = [];
     for (const [name, from] of await parts(root, ".claude/")) {
       // CLAUDE.md is at the project's top, not under .claude.
@@ -98,7 +104,8 @@ export class HarnessTemplates {
       for (const [name, text] of files) {
         if (!(await createInside(at, name, text))) throw new Error(`${name} could not be written`);
       }
-      await createInside(at, META, `${JSON.stringify({ id, title }, null, 2)}\n`);
+      const meta = `${JSON.stringify({ id, title }, null, 2)}\n`;
+      if (!(await createInside(at, META, meta))) throw new Error(`${META} could not be written`);
     } catch (error) {
       // All or nothing: a template half written is no template.
       await rm(at, { recursive: true, force: true });
@@ -115,7 +122,8 @@ export class HarnessTemplates {
       const at = join(this.dir, id);
       const meta = await readInside(at, META, MAX_FILE);
       if (meta === null) continue;
-      const title = (JSON.parse(meta) as { title?: unknown }).title;
+      // A broken meta costs its title, never the whole list.
+      const title = titleOf(meta);
       const files: Array<[string, string]> = [];
       for (const [name] of await parts(at, "")) {
         const text = await readInside(at, name, MAX_FILE);
@@ -124,6 +132,14 @@ export class HarnessTemplates {
       out.push(info(id, typeof title === "string" ? title : id, files));
     }
     return out;
+  }
+}
+
+function titleOf(meta: string): unknown {
+  try {
+    return (JSON.parse(meta) as { title?: unknown } | null)?.title;
+  } catch {
+    return undefined;
   }
 }
 
