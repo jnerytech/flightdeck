@@ -264,6 +264,19 @@ export class HarnessTemplates {
     return unvetted(part, text);
   }
 
+  /** Deletes template `id`: its folder and what is in it, nothing outside the templates folder. */
+  async remove(id: string): Promise<{ id: string }> {
+    if (!ID.test(id)) throw refuse("harness_template_id", `${id} is not a template id`);
+    // Only a real folder of the store, with its template.json: a link is never followed out.
+    const at = (await folderInside(this.dir, id)) ?? "";
+    if (at === "" || (await readInside(at, META, MAX_FILE)) === null) {
+      throw refuse("harness_template_missing", `there is no template ${id}`, { id });
+    }
+    // rm does not follow a link inside the folder: it removes the link, not its target.
+    await rm(at, { recursive: true, force: true });
+    return { id };
+  }
+
   /** The templates on this host: names and sizes, never content. */
   async list(): Promise<HarnessTemplateInfo[]> {
     const ids = (await readdir(this.dir).catch(() => [] as string[])).filter((id) => ID.test(id));

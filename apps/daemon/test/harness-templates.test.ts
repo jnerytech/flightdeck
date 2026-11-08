@@ -167,6 +167,122 @@ describe("harness-templates: a project's Markdown harness shared as a host templ
     },
   );
 
+  test("deleting a template removes its folder and no other template", async () => {
+    const { dir, templates } = store();
+    await templates.export(project(SHOP), "shop", "Shop");
+    await templates.export(project(SHOP), "keep", "Keep");
+    expect(await templates.remove("shop")).toEqual({ id: "shop" });
+    expect([existsSync(join(dir, "shop")), existsSync(join(dir, "keep", "CLAUDE.md"))]).toEqual([
+      false,
+      true,
+    ]);
+    expect((await templates.list()).map((t) => t.id)).toEqual(["keep"]);
+  });
+
+  test("an id outside the rule, a missing template and a folder with no template.json are refused, and nothing goes", async () => {
+    const { dir, templates } = store();
+    await templates.export(project(SHOP), "shop", "Shop");
+    mkdirSync(join(dir, "bare"));
+    writeFileSync(join(dir, "bare", "CLAUDE.md"), "# Bare\n");
+    expect([
+      await outcome(templates.remove("../shop")),
+      await outcome(templates.remove("Shop")),
+      await outcome(templates.remove("nothing")),
+      await outcome(templates.remove("bare")),
+    ]).toEqual([
+      "harness_template_id",
+      "harness_template_id",
+      "harness_template_missing",
+      "harness_template_missing",
+    ]);
+    expect([
+      existsSync(join(dir, "shop", "CLAUDE.md")),
+      existsSync(join(dir, "bare", "CLAUDE.md")),
+    ]).toEqual([true, true]);
+  });
+
+  test.skipIf(!posix)(
+    "a template that is a link leaves the templates folder untouched: the target stays",
+    async () => {
+      const { dir, templates } = store();
+      await templates.export(project(SHOP), "shop", "Shop");
+      const outside = tempDir("fd-harness-tpl-target-");
+      writeFileSync(join(outside, "template.json"), "{}");
+      writeFileSync(join(outside, "CLAUDE.md"), "# Outside\n");
+      symlinkSync(outside, join(dir, "linked"));
+      expect(await outcome(templates.remove("linked"))).toBe("harness_template_missing");
+      expect([existsSync(join(outside, "CLAUDE.md")), existsSync(join(dir, "shop"))]).toEqual([
+        true,
+        true,
+      ]);
+    },
+  );
+
+  test.skipIf(!posix)("a link inside a template is removed with it, never followed", async () => {
+    const { dir, templates } = store();
+    await templates.export(project(SHOP), "shop", "Shop");
+    const outside = tempDir("fd-harness-tpl-target-");
+    writeFileSync(join(outside, "keep.md"), "# Keep\n");
+    symlinkSync(outside, join(dir, "shop", "agents-link"));
+    await templates.remove("shop");
+    expect([existsSync(join(dir, "shop")), existsSync(join(outside, "keep.md"))]).toEqual([
+      false,
+      true,
+    ]);
+  });
+
+  test("the server deletes a template over a near connection once confirmed, and for no other", async () => {
+    const { templates } = store();
+    await templates.export(project(SHOP), "shop", "Shop");
+    const { manager } = newManager();
+    const base = {
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: "harness-templates-token-0123456789",
+      allowedRoots: [],
+      allowedNetworks: ["0.0.0.0/0", "::/0"],
+    };
+    const servers = [
+      startServer({ ...base, harnessTemplates: templates, peerOf: () => "8.8.8.8" }),
+      startServer(base),
+      startServer({ ...base, harnessTemplates: templates }),
+    ];
+    const clients = servers.map((server) => new FrameClient(server.url));
+    try {
+      for (const client of clients)
+        await client.request("hello", { token: base.token, client: "t" });
+      const [far, off, near] = clients as [FrameClient, FrameClient, FrameClient];
+      const remove = async (client: FrameClient, payload: Record<string, unknown>) => {
+        const ack = await client.request("harness.templates.delete", payload);
+        const error = ack.error as { reason?: string } | undefined;
+        return ack.ok === true ? (ack.data as { id?: string }).id : (error?.reason ?? null);
+      };
+      const left = async () => (await templates.list()).map((t) => t.id);
+      expect([
+        await remove(far, { id: "shop", confirm: true }),
+        await remove(off, { id: "shop", confirm: true }),
+        await remove(near, { id: "shop" }),
+        await remove(near, { id: "shop", confirm: false }),
+        (await left()).length,
+        await remove(near, { id: "shop", confirm: true }),
+        (await left()).length,
+      ]).toEqual([
+        "transport_refused",
+        "feature_off",
+        "harness_confirm",
+        "harness_confirm",
+        1,
+        "shop",
+        0,
+      ]);
+    } finally {
+      for (const client of clients) client.close();
+      for (const server of servers) await server.stop();
+    }
+  });
+
   test("the server shares over a near connection, inside the allowed roots only, and lists for any", async () => {
     const root = project(SHOP);
     const { templates } = store();
