@@ -39,6 +39,13 @@ describe("weak-assert (#1141)", () => {
         `expect(x).not${m("toBeNull")};`,
       ),
     ).toBe(false);
+    // Replay after the #1143 review (#943): instanceof in the subject is a comparison too.
+    expect(
+      weakensAssertions(
+        `expect(error instanceof AcpError)${m("toBe", "true")};`,
+        `expect(error)${m("toBeInstanceOf", "AcpError")};`,
+      ),
+    ).toBe(false);
     // #1143 review: on a plain subject, toBe(false) is strict, and toBeFalsy() weaker.
     expect(
       weakensAssertions(`expect(ok)${m("toBe", "false")};`, `expect(ok)${m("toBeFalsy")};`),
