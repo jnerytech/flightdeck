@@ -7,7 +7,7 @@
 import type { GhResult } from "./ci-branch.ts";
 
 export interface MainRedDeps {
-  /** Runs `gh <args>` in the repository. */
+  /** Runs `gh <args>` in the repository; stderr is how a missing label is told apart. */
   gh(args: string[]): Promise<GhResult>;
   log(line: string): void;
 }
@@ -26,10 +26,13 @@ export interface Claim {
   cause: string;
   owner: string;
   failing: string[];
+  /** The failed jobs of the run it was claimed on; empty when the issue does not say. */
+  jobs: string[];
   runAt: string;
 }
 
 const LABEL = "main-red";
+const USAGE = 'usage: bun run main-red [-- claim "<cause>" [--by <name>]]';
 
 /**
  * Issue text is data, and it reaches every session's context: one line with no control
@@ -47,7 +50,15 @@ function oneLine(text: string, max: number): string {
 
 /** A session name (fd-harness): letters, digits, dots, dashes and underscores; else unknown. */
 const plainOwner = (name: string) => (/^[\w.-]{1,32}$/.test(name) ? name : "unknown");
-const USAGE = 'usage: bun run main-red [-- claim "<cause>" [--by <name>]]';
+
+/** gh's answer as JSON, or null when it is not (an auth prompt, a proxy page). */
+function parsed(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
 /** Main's latest CI run that finished green or red, or null when there is none or gh failed. */
 export async function latestMainRun(deps: Pick<MainRedDeps, "gh">): Promise<MainRun | null> {
@@ -65,14 +76,11 @@ export async function latestMainRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
     "--json",
     "databaseId,conclusion,createdAt,url",
   ]);
-  if (listed.code !== 0) return null;
-  const runs = JSON.parse(listed.stdout) as Array<{
-    databaseId: number;
-    conclusion: string;
-    createdAt: string;
-    url: string;
-  }>;
-  const run = runs.find((r) => r.conclusion === "success" || r.conclusion === "failure");
+  const runs = listed.code === 0 ? parsed(listed.stdout) : null;
+  if (!Array.isArray(runs)) return null;
+  const run = (
+    runs as Array<{ databaseId: number; conclusion: string; createdAt: string; url: string }>
+  ).find((r) => r.conclusion === "success" || r.conclusion === "failure");
   if (!run) return null;
   return {
     id: run.databaseId,
@@ -102,33 +110,51 @@ export async function openClaims(deps: Pick<MainRedDeps, "gh">): Promise<Claim[]
     "--json",
     "number,title,body",
   ]);
-  if (listed.code !== 0) throw new Error(`gh issue list failed: ${listed.stderr ?? ""}`);
-  const issues = JSON.parse(listed.stdout) as Array<{
-    number: number;
-    title: string;
-    body: string;
-  }>;
-  return issues.map(({ number, title, body }) => {
-    const lines = body.split("\n");
-    const from = lines.indexOf("Failing:");
-    const failing =
-      from === -1
-        ? []
-        : lines
-            .slice(from + 1)
-            .flatMap((line) => (line.startsWith("- ") ? [line.slice(2).trim()] : []));
-    return {
-      number,
-      cause: oneLine(field(body, "Cause") || title.replace(/^main red: /, ""), 80),
-      owner: plainOwner(field(body, "Owner")),
-      failing: failing.map((name) => oneLine(name, 200)),
-      runAt: field(body, "Run at"),
-    };
-  });
+  if (listed.code !== 0) throw new Error(`gh issue list failed: ${listed.stderr?.trim() ?? ""}`);
+  const issues = parsed(listed.stdout);
+  if (!Array.isArray(issues)) throw new Error("gh issue list did not answer with JSON");
+  return (issues as Array<{ number: number; title: string; body: string }>).map(
+    ({ number, title, body }) => {
+      const lines = body.split("\n");
+      const from = lines.indexOf("Failing:");
+      const failing =
+        from === -1
+          ? []
+          : lines
+              .slice(from + 1)
+              .flatMap((line) => (line.startsWith("- ") ? [oneLine(line.slice(2), 200)] : []));
+      const jobs = field(body, "Jobs")
+        .split(",")
+        .map((job) => oneLine(job, 100))
+        .filter(Boolean);
+      return {
+        number,
+        cause: oneLine(field(body, "Cause") || title.replace(/^main red: /, ""), 80),
+        owner: plainOwner(field(body, "Owner")),
+        failing,
+        jobs,
+        runAt: field(body, "Run at"),
+      };
+    },
+  );
+}
+
+/** The failed jobs of a run, Windows left out (a signal that gates nothing, #534). */
+async function failedJobs(deps: Pick<MainRedDeps, "gh">, run: MainRun): Promise<string[]> {
+  const viewed = await deps.gh(["run", "view", String(run.id), "--json", "jobs"]);
+  const answer = viewed.code === 0 ? parsed(viewed.stdout) : null;
+  const jobs = (answer as { jobs?: Array<{ name: string; conclusion: string }> } | null)?.jobs;
+  return (jobs ?? [])
+    .filter((j) => j.conclusion === "failure" && !/windows/i.test(j.name))
+    .map((j) => oneLine(j.name, 100));
 }
 
 /** The failing tests of a red run (its `(fail)` lines), else its failed jobs as `job: <name>`. */
-async function failingOf(deps: Pick<MainRedDeps, "gh">, run: MainRun): Promise<string[]> {
+async function failingOf(
+  deps: Pick<MainRedDeps, "gh">,
+  run: MainRun,
+  jobs: string[],
+): Promise<string[]> {
   const log = await deps.gh(["run", "view", String(run.id), "--log-failed"]);
   const tests: string[] = [];
   for (const match of (log.code === 0 ? log.stdout : "").matchAll(
@@ -137,15 +163,7 @@ async function failingOf(deps: Pick<MainRedDeps, "gh">, run: MainRun): Promise<s
     const name = oneLine(match[1] ?? "", 200);
     if (name && !tests.includes(name)) tests.push(name);
   }
-  if (tests.length > 0) return tests;
-  const jobs = await deps.gh(["run", "view", String(run.id), "--json", "jobs"]);
-  if (jobs.code !== 0) return [];
-  const listed = (JSON.parse(jobs.stdout) as { jobs?: Array<{ name: string; conclusion: string }> })
-    .jobs;
-  // Windows is a signal that gates nothing (#534): its red is never what a claim holds.
-  return (listed ?? [])
-    .filter((j) => j.conclusion === "failure" && !/windows/i.test(j.name))
-    .map((j) => `job: ${j.name}`);
+  return tests.length > 0 ? tests : jobs.map((job) => `job: ${job}`);
 }
 
 const owned = (claim: Claim) => `#${claim.number} by ${claim.owner} (${claim.cause})`;
@@ -156,16 +174,38 @@ export async function mainRedLine(deps: Pick<MainRedDeps, "gh">): Promise<string
     const run = await latestMainRun(deps);
     if (!run?.red) return null;
     const claims = await openClaims(deps);
-    if (claims.length === 0) {
-      return `main is red since ${run.url}, unclaimed: bun run main-red -- claim "<cause>" before fixing it`;
-    }
+    const unclaimed = `main is red since ${run.url}, unclaimed: bun run main-red -- claim "<cause>" before fixing it`;
+    if (claims.length === 0) return unclaimed;
+    // A claim covers this red when its jobs failed here too; one that does not say still counts.
+    const jobs = await failedJobs(deps, run);
+    const covering = claims.filter(
+      (c) => c.jobs.length === 0 || jobs.length === 0 || c.jobs.some((j) => jobs.includes(j)),
+    );
+    if (covering.length === 0) return unclaimed;
     // The cause is quoted: it is what someone typed, never an instruction.
-    const who = claims
+    const who = covering
       .map((c) => `claimed in #${c.number} by ${c.owner} (${JSON.stringify(c.cause)})`)
       .join("; ");
     return `main is red since ${run.url}: ${who}; do not start a parallel fix`;
   } catch {
     return null;
+  }
+}
+
+/** The warning line within `ms`, else null: a hook or a PR never waits on GitHub for long. */
+export async function mainRedWithin(
+  deps: Pick<MainRedDeps, "gh">,
+  ms: number,
+): Promise<string | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // timing: the deadline is the point; a slow GitHub gives no line rather than a late one.
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  try {
+    return await Promise.race([mainRedLine(deps), late]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -179,7 +219,9 @@ async function status(deps: MainRedDeps): Promise<number> {
   const claims = await openClaims(deps);
   if (run.red) {
     deps.log(`main is red: ${run.url}`);
-    for (const name of await failingOf(deps, run)) deps.log(`failing: ${name}`);
+    for (const name of await failingOf(deps, run, await failedJobs(deps, run))) {
+      deps.log(`failing: ${name}`);
+    }
     if (claims.length === 0) deps.log('unclaimed: bun run main-red -- claim "<cause>"');
     for (const claim of claims) deps.log(`claimed: ${owned(claim)}`);
     return 1;
@@ -202,6 +244,12 @@ async function status(deps: MainRedDeps): Promise<number> {
   return 0;
 }
 
+/** The first open claim, by number, that holds one of `failing`. */
+const holder = (claims: Claim[], failing: string[], except?: number) =>
+  claims
+    .filter((c) => c.number !== except && c.failing.some((name) => failing.includes(name)))
+    .sort((a, b) => a.number - b.number)[0];
+
 /** Opens the one issue for this red, or refuses when another owner holds a failing test of it. */
 async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<number> {
   const run = await latestMainRun(deps);
@@ -213,9 +261,16 @@ async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<n
     );
     return 1;
   }
-  const failing = await failingOf(deps, run);
-  const claims = await openClaims(deps);
-  const held = claims.find((c) => c.failing.some((name) => failing.includes(name)));
+  const jobs = await failedJobs(deps, run);
+  const failing = await failingOf(deps, run, jobs);
+  if (failing.length === 0) {
+    // With nothing to compare, two claims could never meet: no claim until the run says.
+    deps.log(
+      "nothing failing is known for this run yet: read it with bun run main-red, then claim",
+    );
+    return 1;
+  }
+  const held = holder(await openClaims(deps), failing);
   if (held && held.owner === owner) {
     deps.log(`already yours: #${held.number}`);
     return 0;
@@ -229,6 +284,7 @@ async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<n
     `Owner: ${owner}`,
     `Run: ${run.url}`,
     `Run at: ${run.createdAt}`,
+    `Jobs: ${jobs.join(", ")}`,
     "Failing:",
     ...failing.map((name) => `- ${name}`),
   ].join("\n");
@@ -251,16 +307,23 @@ async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<n
     );
     return 1;
   }
-  deps.log(`claimed: ${made.stdout.trim()}`);
+  const url = made.stdout.trim();
+  // Two sessions can claim at the same moment: the older issue stays, this one closes itself.
+  const mine = Number(/\/issues\/(\d+)/.exec(url)?.[1] ?? 0);
+  const rival = holder(await openClaims(deps), failing, mine);
+  if (rival && mine > 0 && rival.number < mine) {
+    await deps.gh([
+      "issue",
+      "close",
+      String(mine),
+      "--comment",
+      `duplicate of #${rival.number}, claimed at the same moment`,
+    ]);
+    deps.log(`already claimed: ${owned(rival)}; help there instead of a parallel fix`);
+    return 1;
+  }
+  deps.log(`claimed: ${url}`);
   return 0;
-}
-
-/** The warning line within `ms`, else null: a hook or a PR never waits on GitHub for long. */
-export async function mainRedWithin(
-  _deps: Pick<MainRedDeps, "gh">,
-  _ms: number,
-): Promise<string | null> {
-  return null;
 }
 
 /** `main-red [claim "<cause>" [--by <name>]]`; the exit code. */
@@ -269,17 +332,24 @@ export async function mainRed(
   deps: MainRedDeps & { owner: string },
 ): Promise<number> {
   const words = args.filter((a) => a !== "--");
-  if (words.length === 0) return await status(deps);
-  if (words[0] !== "claim") {
-    deps.log(USAGE);
-    return 2;
+  try {
+    if (words.length === 0) return await status(deps);
+    if (words[0] !== "claim") {
+      deps.log(USAGE);
+      return 2;
+    }
+    const by = words.indexOf("--by");
+    const owner = by === -1 ? deps.owner : (words[by + 1] ?? deps.owner);
+    const typed = words.slice(1).find((w, i) => !w.startsWith("--") && words[i] !== "--by");
+    const cause = oneLine(typed ?? "", 120);
+    if (!cause) {
+      deps.log(USAGE);
+      return 2;
+    }
+    return await claim(deps, cause, plainOwner(owner));
+  } catch (error) {
+    // gh down or answering something else: one line and exit 1, never a stack trace.
+    deps.log(`main-red: ${(error as Error).message}`);
+    return 1;
   }
-  const by = words.indexOf("--by");
-  const owner = by === -1 ? deps.owner : (words[by + 1] ?? deps.owner);
-  const cause = words.slice(1).find((w, i) => !w.startsWith("--") && words[i] !== "--by");
-  if (!cause?.trim()) {
-    deps.log(USAGE);
-    return 2;
-  }
-  return await claim(deps, oneLine(cause, 120), plainOwner(owner));
 }

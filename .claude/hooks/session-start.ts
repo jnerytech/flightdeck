@@ -9,7 +9,8 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mainRedLine } from "../../scripts/lib/main-red.ts";
+import { runCommand } from "../../apps/daemon/src/board/command.ts";
+import { mainRedWithin } from "../../scripts/lib/main-red.ts";
 import { gatherFacts, sessionContext } from "../../scripts/lib/session-context.ts";
 
 try {
@@ -28,13 +29,15 @@ try {
     const proc = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 2000 });
     return proc.status === 0 ? proc.stdout : null;
   };
-  // #1246: a red main and its claim; 3 s per gh call, and nothing is said when gh cannot answer.
+  // The local facts first: a slow GitHub never costs the branch, TDD and slot lines.
+  const facts = gatherFacts(git, lock, Date.now());
+  // #1246: a red main and its claim, within one 3 s deadline; nothing when gh cannot answer.
   const gh = async (args: string[]) => {
-    const proc = spawnSync("gh", args, { cwd, encoding: "utf8", timeout: 3000 });
-    return { code: proc.status ?? 1, stdout: proc.stdout ?? "", stderr: proc.stderr ?? "" };
+    const ran = await runCommand(["gh", ...args], cwd, undefined, 3000);
+    return { code: ran.timedOut ? 124 : ran.code, stdout: ran.stdout, stderr: ran.stderr };
   };
-  const mainRed = await mainRedLine({ gh });
-  const text = sessionContext(source, { ...gatherFacts(git, lock, Date.now()), mainRed });
+  const mainRed = await mainRedWithin({ gh }, 3000);
+  const text = sessionContext(source, { ...facts, mainRed });
   if (text) {
     console.log(
       JSON.stringify({
