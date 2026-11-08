@@ -4509,6 +4509,16 @@ export const en: Dictionary = {
         secrets: "a check on secret files",
       },
       setup: {
+        startFrom: "Start from",
+        builtIn: "Flightdeck's own files",
+        withheld: "Left out of the template",
+        withheldLine: "{path}: {why}",
+        withheldWhy: {
+          frontmatter: "its front matter could run a command or grant a permission",
+          secret: "it holds a secret",
+          import: "it imports a file from outside the project",
+          command: "it runs a command as it loads",
+        },
         action: "Set up Claude Code",
         apply: "Apply the setup",
         message:

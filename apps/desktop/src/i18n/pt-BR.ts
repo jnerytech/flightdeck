@@ -4516,6 +4516,16 @@ export const ptBR = {
         secrets: "uma verificação de arquivos de segredo",
       },
       setup: {
+        startFrom: "Partir de",
+        builtIn: "Arquivos do próprio Flightdeck",
+        withheld: "Deixado de fora do modelo",
+        withheldLine: "{path}: {why}",
+        withheldWhy: {
+          frontmatter: "o cabeçalho dela poderia executar um comando ou conceder uma permissão",
+          secret: "ela contém um segredo",
+          import: "ela importa um arquivo de fora do projeto",
+          command: "ela executa um comando ao carregar",
+        },
         action: "Configurar o Claude Code",
         apply: "Aplicar a configuração",
         message:

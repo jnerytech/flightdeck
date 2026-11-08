@@ -1,6 +1,11 @@
-import { HARNESS_PREVIEW_PARTS, type HarnessPreview } from "@flightdeck/protocol";
+import {
+  HARNESS_PREVIEW_PARTS,
+  type HarnessPreview,
+  type HarnessTemplateInfo,
+} from "@flightdeck/protocol";
 import { memo, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
@@ -24,6 +29,8 @@ export interface HarnessSetupProps {
   canCommit?: boolean;
   /** The host can draft a CLAUDE.md with its model (#75, G1). */
   canDraft?: boolean;
+  /** The host keeps setup templates: the dialog can start from one (#75, T2). */
+  canTemplates?: boolean;
 }
 
 /** One titled list in the dialog; nothing when the list is empty. */
@@ -115,6 +122,15 @@ function Details(
         items={preview.settings?.conflicts ?? []}
       />
       <Group title={t("projectPage.harness.setup.unreadable")} items={preview.unreadable} />
+      <Group
+        title={t("projectPage.harness.setup.withheld")}
+        items={(preview.withheld ?? []).map((file) =>
+          t("projectPage.harness.setup.withheldLine", {
+            path: file.path,
+            why: t(`projectPage.harness.setup.withheldWhy.${file.reason}`),
+          }),
+        )}
+      />
       {!trusted && hooks.length + deny.length > 0 && (
         <p className="text-sm text-status-needs-you">{t("projectPage.harness.setup.untrusted")}</p>
       )}
@@ -162,6 +178,20 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   const [draftRefusal, setDraftRefusal] = useState<string | null>(null);
   // Apply is under way: no second preview may start, or its apply would race this one.
   const [busy, setBusy] = useState(false);
+  // The host's templates (#75, T2): "" is the fixed files; a template's id is its Markdown instead.
+  const [templates, setTemplates] = useState<HarnessTemplateInfo[]>([]);
+  const [template, setTemplate] = useState("");
+  useEffect(() => {
+    if (!props.canTemplates) return;
+    let current = true;
+    void store.hostCommand(hostId, "harness.templates.list", {}).then((got) => {
+      if (current && got) setTemplates(got.templates);
+    });
+    return () => {
+      current = false;
+    };
+  }, [store, hostId, props.canTemplates]);
+  const fromTemplate = template === "" ? {} : { template };
 
   /** The preview on screen is gone (a new one, Cancel, an apply): a draft under way is for none. */
   const leavePreview = () => {
@@ -179,7 +209,11 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     // What an older apply wrote is not what the next one will: no commit of it.
     setWrote(null);
     setTicked(false);
-    const got = await store.hostCommand(hostId, "project.harness.preview", { path, parts });
+    const got = await store.hostCommand(hostId, "project.harness.preview", {
+      path,
+      parts,
+      ...fromTemplate,
+    });
     if (got) setShown(got);
   };
 
@@ -194,6 +228,7 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
         digests: previewDigests(seen),
         confirm: true,
         ...(reformat ? { reformat: true } : {}),
+        ...fromTemplate,
       })
       .finally(() => setBusy(false));
     if (!result.ok) {
@@ -284,6 +319,24 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   const tick = shown !== null && needsReformat(shown);
   return (
     <Stack gap={2}>
+      {templates.length > 0 && (
+        <Field label={t("projectPage.harness.setup.startFrom")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={template}
+              onChange={(event) => setTemplate(event.target.value)}
+            >
+              <option value="">{t("projectPage.harness.setup.builtIn")}</option>
+              {templates.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.title}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      )}
       <div>
         <ActionButton variant="outline" pending={busy} onClick={() => void preview()}>
           {t("projectPage.harness.setup.action")}
@@ -353,7 +406,8 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
               trusted={trusted}
               t={t}
               draft={{
-                offered: props.canDraft === true,
+                // A template brings its own Markdown: the host's draft would replace a file it chose.
+                offered: props.canDraft === true && template === "",
                 busy: drafting,
                 drafted,
                 refusal: draftRefusal,
