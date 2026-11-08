@@ -90,7 +90,18 @@ export class SessionPrs {
     // The commit goes out with every ancestor `origin` lacks: only the one the person saw may.
     // git-arg: the commit is the daemon's own, from `rev-parse`.
     const outgoing = await git(root, "rev-list", commit, "--not", "--remotes=origin");
-    if (outgoing.code !== 0 || outgoing.stdout.trim() !== commit) {
+    // git-arg: the branch went through assertBranchName.
+    const tracked = await git(
+      root,
+      "rev-parse",
+      "--verify",
+      "--quiet",
+      `refs/remotes/origin/${branch}`,
+    );
+    // Nothing outgoing is a retry only when this branch already holds the commit on origin (the
+    // push went out, the PR did not open): the push then changes nothing.
+    const retry = outgoing.stdout.trim() === "" && tracked.stdout.trim() === commit;
+    if (outgoing.code !== 0 || (outgoing.stdout.trim() !== commit && !retry)) {
       throw refuse(
         "changes_pr_ahead",
         `${base} has commits that are not on origin: they would go out with the PR`,

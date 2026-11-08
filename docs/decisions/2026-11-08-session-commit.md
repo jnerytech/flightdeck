@@ -98,7 +98,9 @@ branch of the checkout.
   The push sends that commit by its id, so a branch moved during the push changes nothing.
 - **Nothing unseen goes along.** A commit pushed by its id takes every ancestor `origin` lacks. When
   the base has commits that are not on `origin` (`rev-list <commit> --not --remotes=origin` lists
-  more than the app's commit), it refuses (`changes_pr_ahead`).
+  more than the app's commit), it refuses (`changes_pr_ahead`). The tracking refs it reads are
+  session-writable: the check guards against a mistake, not a hostile session, which can already
+  push anything itself (the same class as below).
 - **Where the push goes.** `changes.get` shows `origin`'s push address as git resolves it
   (`pushurl` and `pushInsteadOf` included), with any user, password, query and fragment taken out.
   The confirm sends it back, and an address changed since refuses (`changes_pr_remote`). A failed
@@ -154,6 +156,7 @@ branch of the checkout.
   above covers them. `remote.origin.receivepack` and `core.hooksPath` belong to the same class of
   session-writable settings and are not listed one by one.
 - When the provider fails after the push, the branch stays on `origin`. A retry pushes the same
-  commit again, which changes nothing, and opens the PR.
+  commit again, which changes nothing, and opens the PR: nothing outgoing passes the check above
+  only when `origin/<branch>` already holds the app's commit.
 - After a failed hook, the new branch stays there with no commit of its own. A retry needs another
   name, and the app (slice A) drafts a new one.
