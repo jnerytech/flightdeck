@@ -189,4 +189,14 @@ describe("card-templates-board: createCard judges what it stores (#1201)", () =>
       0,
     ]);
   });
+
+  test("a card made with the same pin twice keeps it once", async () => {
+    const { board, projectId } = await project();
+    const card = board.createCard(projectId, {
+      title: "x",
+      description: "",
+      pinnedDocs: ["docs/adr/0001-style.md", "docs/adr/0001-style.md"],
+    });
+    expect(card.pinnedDocs).toEqual(["docs/adr/0001-style.md"]);
+  });
 });
