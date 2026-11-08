@@ -4379,6 +4379,11 @@ export const en: Dictionary = {
           "Rewrite .claude/settings.json with a new layout. Spacing changes, and a repeated key or a very large number may be rewritten.",
         done: "Set up: {files}",
         again: "Preview again",
+        commit: "Commit on a new branch",
+        commitMessage:
+          "The setup's files go on a new branch Flightdeck names, with your git name and email. They are committed whole: changes you made to them before the setup are in the commit too. Your checkout keeps them as changes on your current branch.",
+        commitFiles: "Files to commit",
+        committed: "Committed on {branch}. Push it when you are ready.",
       },
     },
     trust: {
