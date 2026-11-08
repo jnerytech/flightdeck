@@ -1868,6 +1868,8 @@ export const en: Dictionary = {
       "This branch was not made by a commit from the app, so its base is not known: open its PR from a terminal.",
     changes_pr_remote:
       "Where the push goes changed since you looked: check it again, then open the PR.",
+    changes_pr_moved:
+      "The branch moved since the app's commit (other commits, or another point), so only a terminal opens its PR.",
     changes_commit_rewritten:
       "{files} changed while being committed (a hook that formats, or the session still writing), so the commit was undone: look at the changes again, then commit.",
     changes_commit_git: "Git could not make the branch or the commit in this repository.",

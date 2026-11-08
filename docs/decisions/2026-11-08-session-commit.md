@@ -84,7 +84,7 @@ branch of the checkout.
 
 ## The PR (slice D2)
 
-- `changes.pr {target, title, body, confirm}` pushes the session's current branch to `origin` with
+- `changes.pr {target, title, body, remote, confirm}` pushes the session's current branch to `origin` with
   its upstream and opens its PR, near only and confirmed (`changes_pr_confirm`).
 - One core does this for a card and a session (`board/publish-pr.ts`). The title and body are
   scanned (`pr_secret`, `pr_title_secret`), then the branch is pushed, then the provider opens the
@@ -93,11 +93,16 @@ branch of the checkout.
   the branch that commit started from (kept in memory). Any other branch refuses
   (`changes_pr_base`): one made by hand, one after a restart, or the base itself. The remote's
   default (`origin/HEAD`) never stands in, since the session can point it anywhere.
+- **Only the commit the app made.** The commit's id is kept with its base. A branch whose tip is no
+  longer that commit refuses (`changes_pr_moved`): the session added to it, reset it, or remade it.
+  The push sends that commit by its id, so a branch moved during the push changes nothing.
 - **Where the push goes.** `changes.get` shows `origin`'s push address as git resolves it
-  (`pushurl` and `pushInsteadOf` included), with any user and password taken out. The confirm sends
-  it back, and an address changed since refuses (`changes_pr_remote`).
-- **The push.** It names the whole ref on both sides (`refs/heads/<b>:refs/heads/<b>`), so no
-  `push.default`, upstream or refspec setting redirects it. It has a time limit (120 s) and no
+  (`pushurl` and `pushInsteadOf` included), with any user, password, query and fragment taken out.
+  The confirm sends it back, and an address changed since refuses (`changes_pr_remote`). A failed
+  push's message goes through the same cut, since git quotes the address (it keeps a query).
+- **The push.** It names the whole ref (`<commit>:refs/heads/<b>`), so no `push.default`, upstream
+  or refspec setting redirects it. `--no-recurse-submodules --no-follow-tags` keep a submodule or a
+  tag the person never saw from going along. The upstream is set after the push. It has a time limit (120 s) and no
   prompt (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`). The `pre-push` hook runs, as it would
   for the person's own push, and `changes.get` names it with the commit's hooks.
 - **Content.** Only the title and description are scanned at this step. The content was scanned
@@ -134,5 +139,11 @@ branch of the checkout.
   - It read neither config includes, nor worktree config, nor a linked worktree's common folder.
   - Its list of settings that run programs was a deny-list, which a new setting passes unseen.
   - A check that cannot hold reads as a guarantee, which is worse than an honest notice.
+- **Accepted for the push (low).** The address check and the push are two git runs: a session that
+  changes `origin` between them pushes elsewhere. The comparison also ignores a user in the
+  address. Pinning the push to the checked address would put its credentials on the command line,
+  and the same session can already push anything as the same user. `core.sshCommand` and
+  `credential.helper` run at the push, as for the person's own `git push`, and the hook notice
+  above covers them.
 - After a failed hook, the new branch stays there with no commit of its own. A retry needs another
   name, and the app (slice A) drafts a new one.

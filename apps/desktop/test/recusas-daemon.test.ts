@@ -211,6 +211,7 @@ const REASONS = [
   "changes_pr_detached",
   "changes_pr_base",
   "changes_pr_remote",
+  "changes_pr_moved",
   "changes_commit_timeout",
   "changes_commit_hook_withheld",
   "changes_commit_rewritten",

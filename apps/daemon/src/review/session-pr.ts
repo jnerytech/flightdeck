@@ -6,7 +6,7 @@
 import type { ChangesPrOpened, PrProviderKind, SecretScanner } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { type PrProvider, prProvider } from "../board/pr.ts";
-import { assertNoSecretInPr, publishPr } from "../board/publish-pr.ts";
+import { assertNoSecretInPr, publishPr, withoutCredentials } from "../board/publish-pr.ts";
 import { assertBranchName } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { Changes } from "./changes.ts";
@@ -15,7 +15,7 @@ import type { SessionCommits } from "./session-commit.ts";
 export interface SessionPrDeps {
   changes: Pick<Changes, "resolve">;
   /** The base each new branch started from, when this daemon made it. */
-  commits: Pick<SessionCommits, "baseOf">;
+  commits: Pick<SessionCommits, "baseOf" | "commitOf">;
   /** The host's scanner: the title and the description go public. */
   scanner: Pick<SecretScanner, "scan">;
   /** Whether `root` is a card's worktree: a card opens its own PR. */
@@ -75,6 +75,16 @@ export class SessionPrs {
         `the checkout is on ${base}: commit on a new branch first`,
       );
     }
+    // Only the commit the person made: the session can move the branch after it, or remake it.
+    const commit = this.deps.commits.commitOf(root, branch);
+    // git-arg: the branch went through assertBranchName.
+    const tip = await git(root, "rev-parse", "--verify", "--quiet", `refs/heads/${branch}`);
+    if (commit === null || tip.code !== 0 || tip.stdout.trim() !== commit) {
+      throw refuse(
+        "changes_pr_moved",
+        "the branch moved since the app's commit: open its PR from a terminal",
+      );
+    }
     // Where the push goes, as the person saw it: the session can change `origin` in between.
     if ((await pushAddress(root)) !== input.remote) {
       throw refuse("changes_pr_remote", "the push address changed since it was shown: look again");
@@ -86,6 +96,7 @@ export class SessionPrs {
       title: input.title,
       body: input.body,
       provider,
+      commit,
     });
     return { url, branch, base };
   }
@@ -93,10 +104,11 @@ export class SessionPrs {
 
 /**
  * Where a push to `origin` goes, as git resolves it (`pushurl` and `pushInsteadOf` included), with
- * any user and password taken out of the address: shown to every client of `changes.get`.
+ * any user, password, query and fragment taken out of the address: shown to every client of
+ * `changes.get`.
  */
 export async function pushAddress(root: string): Promise<string | null> {
   const found = await git(root, "remote", "get-url", "--push", "origin");
   if (found.code !== 0) return null;
-  return found.stdout.trim().replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@]*@/i, "$1");
+  return withoutCredentials(found.stdout.trim());
 }
