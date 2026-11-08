@@ -199,7 +199,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const session = `Aprovar e2e ${Date.now()}`;
     await createSession(c, "[bash] ls", session);
     await open(c, { name: "needs-you" });
-    const row = c.page.locator("main ul li button", { hasText: session });
+    // A request's row says its tool; the session's finished turn, listed under Finished once the
+    // request is answered, has the same name and must not count as the request.
+    const row = c.page.locator(`main ul li button[aria-label*="${session}: Bash"]`);
     await row.first().click({ timeout: SESSION_WAIT });
     const card = c.page.locator("fieldset[data-request-id]").first();
     await card.waitFor({ timeout: WAIT });
@@ -217,7 +219,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await createSession(c, "[bash] ls", first);
     await createSession(c, "[bash] ls", second);
     await open(c, { name: "needs-you" });
-    const row = (name: string) => c.page.locator("main ul li button", { hasText: name });
+    // Only the request's row: the finished turn listed under Finished has the same name.
+    const row = (name: string) => c.page.locator(`main ul li button[aria-label*="${name}: Bash"]`);
     await row(first).first().click({ timeout: SESSION_WAIT });
     await row(second).first().waitFor({ timeout: SESSION_WAIT });
     const focusedCard = () =>

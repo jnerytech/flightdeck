@@ -1002,6 +1002,12 @@ export const ptBR = {
     gateTool: "etapa “{step}” do workflow",
     gateRow: "A etapa “{step}” do workflow espera sua aprovação",
     release: "Soltar o par",
+    finished: "Concluídas",
+    finishedOutcome: { done: "Concluída", failed: "Falhou", ended: "Encerrada" },
+    finishedFilesOne: "1 arquivo alterado",
+    finishedFilesMany: "{n} arquivos alterados",
+    finishedNoFiles: "Nenhum arquivo alterado",
+    seeChanges: "Ver as alterações",
   },
   projectTree: {
     more: "mais {n}",

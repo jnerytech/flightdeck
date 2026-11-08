@@ -106,6 +106,14 @@ import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
+import {
+  type Finish,
+  finishOutcome,
+  loadFinished,
+  recordFinish,
+  saveFinished,
+  withFiles,
+} from "./finished.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
@@ -289,6 +297,10 @@ export interface AppState {
   settings: Settings;
   /** The notifications the app sent, newest first, kept for the notification center. */
   inbox: InboxEntry[];
+  /** The sessions that finished, newest first; Needs you lists those after the last look. */
+  finished: Finish[];
+  /** When the person last looked at Needs you (ISO), `null` before the first look. */
+  finishedLook: string | null;
   /** Last global history search, `null` before the first one. */
   search: SearchState | null;
   searchOpen: boolean;
@@ -1116,6 +1128,8 @@ export class AppStore {
       clientBudgets: [],
       notices: [],
       inbox: [],
+      finished: [],
+      finishedLook: null,
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null, ready: null },
       // Defaults: close to tray on, start with Windows off.
@@ -1309,6 +1323,8 @@ export class AppStore {
 
   async init(): Promise<void> {
     this.update({ inbox: loadInbox(this.platform.storage) });
+    const kept = loadFinished(this.platform.storage);
+    this.update({ finished: kept.list, finishedLook: kept.lastLook });
     this.syncBadge();
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
@@ -1610,6 +1626,60 @@ export class AppStore {
     )
       this.openRequest(item);
     else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+  }
+
+  /** The person looked at Needs you: what finished before now is no longer new. */
+  finishedSeen(): void {
+    this.setFinished(this.state.finished, new Date(this.now()).toISOString());
+  }
+
+  private setFinished(list: Finish[], lastLook: string | null): void {
+    this.update({ finished: list, finishedLook: lastLook });
+    saveFinished(this.platform.storage, { list, lastLook });
+  }
+
+  /** A turn, a failure or an end is a finish for Needs you, unless the person watched it happen. */
+  private recordFinished(
+    hostId: string,
+    prev: SidebarSession | undefined,
+    next: SidebarSession,
+  ): void {
+    const outcome = finishOutcome(prev?.status, next.status);
+    if (!outcome) return;
+    const key = sessionKey(hostId, next.id);
+    if (this.platform.isFocused() && this.shownSessions().has(key)) return;
+    const at = new Date(this.now()).toISOString();
+    const finish: Finish = {
+      key,
+      hostId,
+      sessionId: next.id,
+      name: next.name ?? basename(next.cwd),
+      outcome,
+      at,
+      files: null,
+    };
+    this.setFinished(recordFinish(this.state.finished, finish), this.state.finishedLook);
+    void this.countFinishedFiles(hostId, next.id, key, at);
+  }
+
+  /** Asks the host how many files the session changed; a host that cannot say leaves it unknown. */
+  private async countFinishedFiles(
+    hostId: string,
+    sessionId: string,
+    key: string,
+    at: string,
+  ): Promise<void> {
+    // The host reads `session:<id>` as the Claude session id, which the app learns with the session.
+    const claudeId =
+      this.state.sessions[key]?.claudeSessionId ??
+      this.state.hub[hostId]?.managed.find((s) => s.id === sessionId)?.claudeSessionId;
+    if (!claudeId) return;
+    const result = await this.hostRequest(hostId, "changes.get", {
+      target: `session:${claudeId}`,
+    });
+    if (!result.ok) return;
+    const files = result.data.files.length;
+    this.setFinished(withFiles(this.state.finished, key, at, files), this.state.finishedLook);
   }
 
   /** Sends an OS notification and keeps it in the notification center. */
@@ -3496,6 +3566,7 @@ export class AppStore {
     }
     this.webhookFeed.managed({ id: hostId, name: host.name }, prev, next);
     this.tellAboutSummary(hostId, host.name, prev, next);
+    this.recordFinished(hostId, prev, next);
   }
 
   /** What a changed summary tells the person: the notifications it raises, or folds into its team's. */

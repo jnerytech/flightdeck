@@ -1003,6 +1003,12 @@ export const en: Dictionary = {
     gateTool: "workflow step “{step}”",
     gateRow: "Workflow step “{step}” waits for your approval",
     release: "Free the pair",
+    finished: "Finished",
+    finishedOutcome: { done: "Finished", failed: "Failed", ended: "Ended" },
+    finishedFilesOne: "1 file changed",
+    finishedFilesMany: "{n} files changed",
+    finishedNoFiles: "No files changed",
+    seeChanges: "See the changes",
   },
   projectTree: {
     list: "Branches of {name}",
