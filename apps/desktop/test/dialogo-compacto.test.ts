@@ -75,7 +75,9 @@ describe("dialogo-compacto: below 640 px a dialog is a full-screen sheet", () =>
   // #1271: a Form's own buttons (FormActions) are the sheet's footer too. New action's stopped
   // mid-sheet, under its fields, with the bottom of the sheet empty.
   test("a form's own buttons rest on the sheet's bottom edge, and the fields scroll clear of them", () => {
-    const actions = compactRule('[data-slot="dialog-content"] > form > :has(> [data-slot="form-actions"])');
+    const actions = compactRule(
+      '[data-slot="dialog-content"] > form > :has(> [data-slot="form-actions"])',
+    );
     for (const declaration of [
       "position: sticky",
       "bottom: -1.5rem",
