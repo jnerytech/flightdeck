@@ -63,7 +63,10 @@ async function namesIn(root: string, rel: string): Promise<string[]> {
 async function parts(root: string, prefix: string): Promise<Array<[string, string]>> {
   const found: Array<[string, string]> = [["CLAUDE.md", "CLAUDE.md"]];
   for (const name of await namesIn(root, `${prefix}agents`)) {
-    if (name.endsWith(".md")) found.push([`agents/${name}`, `${prefix}agents/${name}`]);
+    // The agent's name is the file's without `.md`: `x..md` is `x.`, as a commit reads it.
+    if (name.endsWith(".md") && plainName(name.slice(0, -3))) {
+      found.push([`agents/${name}`, `${prefix}agents/${name}`]);
+    }
   }
   for (const name of await namesIn(root, `${prefix}skills`)) {
     found.push([`skills/${name}/SKILL.md`, `${prefix}skills/${name}/SKILL.md`]);
@@ -136,10 +139,10 @@ function plainFrontmatter(text: string): boolean {
 }
 
 /**
- * A shell command a skill or a command runs as it loads: `!` then a backtick, inline, or a fenced
- * block opened with `!`. Withheld wherever it is, CLAUDE.md included: no file of a template runs one.
+ * A shell command a skill or a command runs as it loads: `!` then a backtick, inline, or a fence of
+ * any length opened with `!`, wherever it starts. Withheld anywhere, CLAUDE.md included.
  */
-const RUNS_COMMAND = /!`|^[ \t]*(?:```|~~~)!/m;
+const RUNS_COMMAND = /!`|(?:`{3,}|~{3,})!/;
 
 /**
  * An `@` import (as CLAUDE.md has) of a file outside the project: from the home folder, an absolute
@@ -151,6 +154,18 @@ function importsOutside(text: string): boolean {
     if (target.split(/[/\\]/).includes("..")) return true;
   }
   return false;
+}
+
+/**
+ * Why a Markdown part would not be proposed from a template, the secret scan aside: it runs a
+ * command as it loads, imports a file from outside the project, or (an agent or a skill) its front
+ * matter is not plain. A commit of the setup vets an agent or a skill the same way.
+ */
+export function unvetted(part: MarkdownPart, text: string): Exclude<Withheld, "secret"> | null {
+  if (RUNS_COMMAND.test(text)) return "command";
+  if (importsOutside(text)) return "import";
+  if (part !== "claudeMd" && !plainFrontmatter(text)) return "frontmatter";
+  return null;
 }
 
 /** The part a template file belongs to, by its path in the template. */
@@ -244,10 +259,7 @@ export class HarnessTemplates {
   /** Why a template file is not proposed, or null when it may be. */
   private withheld(part: MarkdownPart, text: string): Withheld | null {
     if (this.scanner.scan(text).length > 0) return "secret";
-    if (RUNS_COMMAND.test(text)) return "command";
-    if (importsOutside(text)) return "import";
-    if (part !== "claudeMd" && !plainFrontmatter(text)) return "frontmatter";
-    return null;
+    return unvetted(part, text);
   }
 
   /** The templates on this host: names and sizes, never content. */

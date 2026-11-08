@@ -1839,6 +1839,8 @@ export const en: Dictionary = {
     harness_commit_git: "Git could not make the setup's commit or branch in this repository.",
     harness_commit_ignored:
       "{file} is ignored by git in this project, so it was not committed: commit it yourself if you mean to.",
+    harness_commit_withheld:
+      "{file} could run a command or grant a permission when it loads, so it was not committed: commit it yourself if you mean to.",
     harness_draft_exists: "The project already has a CLAUDE.md: a draft only creates one.",
     harness_draft_failed: "The model did not answer with a CLAUDE.md: try again.",
     harness_draft_secret: "The draft held a secret, so it was dropped: try again.",
@@ -1847,6 +1849,7 @@ export const en: Dictionary = {
     harness_template_empty: "The project has no CLAUDE.md, agent or skill to share.",
     harness_template_taken: "A template named {id} is already on this host: pick another name.",
     harness_template_title_secret: "The template's title holds a secret, so nothing was shared.",
+    harness_template_missing: "There is no template {id} on this host any more: pick another.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",

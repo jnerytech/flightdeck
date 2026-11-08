@@ -17,7 +17,7 @@ import { samePath } from "../paths.ts";
 import { SAFE, TIMEOUT_MS } from "../teleport/git.ts";
 import { whichOnPath } from "../which.ts";
 import { MAX_FILE, SETTINGS } from "./preview.ts";
-import { plainName } from "./templates-store.ts";
+import { plainName, unvetted } from "./templates-store.ts";
 
 export interface CommitDeps {
   /** The host's scanner (the vault's values among them): a commit is one push from public. */
@@ -134,6 +134,15 @@ export async function commitHarness(
       throw refuse("harness_commit_secret", `${name} holds a secret: it is not committed`, {
         file: name,
       });
+    }
+    // An agent or a skill on disk may never have come through a setup: vetted as a template's is.
+    const part = name.startsWith(".claude/agents/") ? "agents" : "skills";
+    if (name.startsWith(".claude/") && name !== SETTINGS && unvetted(part, text) !== null) {
+      throw refuse(
+        "harness_commit_withheld",
+        `${name} could run a command or grant a permission: it is not committed`,
+        { file: name },
+      );
     }
   }
   const head = await git(path, ["rev-parse", "--verify", "-q", "HEAD^{commit}"]);
