@@ -50,8 +50,7 @@ export function defineJourneys(lang: Lang): void {
     }
 
     test("layout", async ({ page }) => {
-      // Eleven screens at four window sizes, each with a settle wait: far more than one journey.
-      test.setTimeout(1_200_000);
+      // Under the 90 s every journey gets (#1003): the check is trimmed to fit, not given more time.
       const { url, ids } = demo();
       const problems: string[] = [];
       await layout({ page, url, lang, ids, repeat: 0, t: translator(lang) }, problems);
