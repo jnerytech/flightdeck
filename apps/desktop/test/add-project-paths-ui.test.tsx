@@ -16,7 +16,7 @@ const ROOT = "/srv/git";
 const LONG = [
   `${ROOT}/web/.flightdeck/worktrees/fd-login-fix`,
   `${ROOT}/web/.flightdeck/worktrees/fd-cart-total`,
-];
+] as const;
 
 function setup(language: "en" | "pt-BR") {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
