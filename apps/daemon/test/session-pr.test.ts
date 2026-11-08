@@ -1,5 +1,5 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type PrProviderKind, SecretScanner } from "@flightdeck/protocol";
 import type { CreatePr } from "../src/board/pr.ts";
@@ -25,7 +25,12 @@ const TOKEN = "session-pr-token-0123456789abcdefgh";
 const URL = "https://github.com/acme/app/pull/7";
 
 function setup(
-  options: { vault?: string[]; cardWorktree?: boolean; provider?: PrProviderKind | null } = {},
+  options: {
+    vault?: string[];
+    cardWorktree?: boolean;
+    provider?: PrProviderKind | null;
+    pushTimeoutMs?: number;
+  } = {},
 ) {
   const ctx = newManager();
   const { repo, remote } = gitRepoWithOrigin();
@@ -56,6 +61,7 @@ function setup(
     isCardWorktree,
     projectProvider: () => (options.provider === undefined ? null : options.provider),
     prProvider: (kind) => (kind === "none" ? null : provider),
+    ...(options.pushTimeoutMs === undefined ? {} : { pushTimeoutMs: options.pushTimeoutMs }),
   });
   return { ctx, repo, remote, changes, commits, prs, created };
 }
@@ -70,6 +76,13 @@ async function committed(made: ReturnType<typeof setup>, branch: string) {
     message: "Add a note",
     branch,
   });
+}
+
+/** A `pre-push` hook in the checkout running `script`. */
+function prePush(repo: string, script: string) {
+  const hook = join(repo, ".git", "hooks", "pre-push");
+  writeFileSync(hook, `#!/bin/sh\n${script}\n`);
+  chmodSync(hook, 0o755);
 }
 
 /** Whether the bare `origin` has `branch`. */
@@ -230,6 +243,48 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
       said.includes("127.0.0.1"),
       ["ana", "p@ss", "ss@", "t0ken", "frag"].filter((leak) => said.includes(leak)),
     ]).toEqual(["https://127.0.0.1:1/app.git", true, []]);
+  });
+
+  test("a base with commits not on origin refuses: they would go out with the PR unseen", async () => {
+    const made = setup();
+    writeFileSync(join(made.repo, "local.txt"), "never pushed\n");
+    git(made.repo, "add", "--", "local.txt");
+    git(made.repo, "commit", "-q", "-m", "Local only");
+    await committed(made, "work/ahead");
+    const done = await outcome(
+      made.prs.open(TARGET, { title: "t", body: "b", remote: await seenRemote(made) }),
+    );
+    expect([done, pushed(made.remote, "work/ahead"), made.created]).toEqual([
+      "changes_pr_ahead",
+      false,
+      [],
+    ]);
+  });
+
+  test("a push that runs past its limit says so, and a failed push's output with a secret is withheld", async () => {
+    const vault = ["k3y-in-the-vault"];
+    const slow = setup({ pushTimeoutMs: 300 });
+    await committed(slow, "work/slow");
+    prePush(slow.repo, "sleep 5");
+    const leaky = setup({ vault });
+    await committed(leaky, "work/leaky");
+    prePush(leaky.repo, "echo 'token k3y-in-the-vault' >&2; exit 1");
+    let said = "";
+    const withheld = await (async () => {
+      try {
+        await leaky.prs.open(TARGET, { title: "t", body: "b", remote: await seenRemote(leaky) });
+        return "ok";
+      } catch (error) {
+        said = JSON.stringify([String(error), (error as { details?: unknown }).details]);
+        return (error as { reason?: string }).reason ?? "";
+      }
+    })();
+    expect([
+      await outcome(slow.prs.open(TARGET, { title: "t", body: "b", remote: await seenRemote(slow) })),
+      withheld,
+      said.includes("k3y-in-the-vault"),
+      [slow, leaky].flatMap((made) => made.created),
+    ]).toEqual(["pr_push_timeout", "pr_push_withheld", false, []]);
   });
 
   test("the base is never pushed, nor a detached checkout, nor a secret; a card opens its own PR", async () => {
