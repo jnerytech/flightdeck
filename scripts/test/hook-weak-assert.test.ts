@@ -41,14 +41,22 @@ describe("hook: a weakened assertion (#1141)", () => {
 
   test("an added // weaker: line gives its reason for the log; an old one or none gives null", () => {
     const escaped = `expect(id)${m("toBeDefined")}; // weaker: ids are random since #12`;
-    expect(weakerEscape("Edit", edit("", escaped), none)).toBe("ids are random since #12");
+    const strict = `expect(id)${m("toBe", '"abc"')};`;
+    expect(weakerEscape("Edit", edit(strict, escaped), none)).toBe("ids are random since #12");
+    // #1143 review: a waiver is logged only for an edit the escape let through.
+    expect(weakerEscape("Edit", edit("", escaped), none)).toBeNull();
+    expect(weakerEscape("Edit", edit(strict, `${escaped}\r\n`), none)).toBe(
+      "ids are random since #12",
+    );
     expect(weakerEscape("Edit", edit(escaped, `${escaped}\nconst a = 1;`), none)).toBeNull();
     expect(weakerEscape("Edit", edit("", `expect(a)${m("toBe", "1")};`), none)).toBeNull();
   });
 
   test("security review: the reason logged is cut to 200 characters", () => {
     const long = `expect(id)${m("toBeDefined")}; // weaker: ${"x".repeat(500)}`;
-    expect(weakerEscape("Edit", edit("", long), none)?.length).toBe(200);
+    expect(weakerEscape("Edit", edit(`expect(id)${m("toBe", "1")};`, long), none)?.length).toBe(
+      200,
+    );
   });
 
   test("harness:stats lists the escapes as waivers of the weak-assert rule", () => {
@@ -60,6 +68,8 @@ describe("hook: a weakened assertion (#1141)", () => {
       ms: 3,
       detail: "ids are random since #12",
     });
-    expect(summarizeHookLog(line)).toContain("weak-assert");
+    const out = summarizeHookLog(line);
+    expect(out).toMatch(/waivers by rule:\n {2}weak-assert +1/);
+    expect(out).not.toContain("blocks by rule:");
   });
 });

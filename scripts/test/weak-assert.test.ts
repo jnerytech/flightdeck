@@ -39,16 +39,49 @@ describe("weak-assert (#1141)", () => {
         `expect(x).not${m("toBeNull")};`,
       ),
     ).toBe(false);
+    // #1143 review: on a plain subject, toBe(false) is strict, and toBeFalsy() weaker.
     expect(
       weakensAssertions(`expect(ok)${m("toBe", "false")};`, `expect(ok)${m("toBeFalsy")};`),
-    ).toBe(false);
+    ).toBe(true);
     // Security review: a comma or spaces before the `)` read the same, and a long run of spaces
     // with no `)` is still a strict matcher.
-    expect(assertionCounts(`expect(a)${m("toBe", "true ,")};`).strict).toBe(0);
+    expect(assertionCounts(`expect(a === b)${m("toBe", "true ,")};`).strict).toBe(0);
     expect(assertionCounts(`expect(a).toBe(true${" ".repeat(50)}`).strict).toBe(1);
     // The formatter's line break after `toBe(` changes nothing.
     const wrapped = `expect(x !== null)${m("toBe", "\n      true,\n    ")};`;
     expect(weakensAssertions(wrapped, `expect(x).not${m("toBeNull")};`)).toBe(false);
+  });
+
+  test("#1143 review: a swap on one subject weakens even when the edit adds a strict check elsewhere", () => {
+    expect(
+      weakensAssertions(
+        `expect(id)${m("toBe", '"abc"')};`,
+        `expect(id)${m("toBeDefined")};\nexpect(n)${m("toBe", "1")};`,
+      ),
+    ).toBe(true);
+    // A paren inside a string does not end the subject.
+    expect(
+      weakensAssertions(`expect(f("("))${m("toBe", "1")};`, `expect(f("("))${m("toBeDefined")};`),
+    ).toBe(true);
+  });
+
+  test("#1143 review: an empty toThrow, expect.any, an empty toMatchObject and the like are weak", () => {
+    const pairs: [string, string][] = [
+      [`expect(run)${m("toThrow", '"no repo"')};`, `expect(run)${m("toThrow")};`],
+      [`expect(v)${m("toEqual", '"x"')};`, `expect(v)${m("toEqual", "expect.any(String)")};`],
+      [`expect(v)${m("toEqual", "{ a: 1 }")};`, `expect(v)${m("toMatchObject", "{}")};`],
+      [`expect(n)${m("toBe", "1")};`, `expect(n)${m("toBeGreaterThan", "0")};`],
+      [`expect(f)${m("toHaveBeenCalledWith", "1")};`, `expect(f)${m("toHaveBeenCalled")};`],
+      [`expect(e)${m("toEqual", "err")};`, `expect(e)${m("toBeInstanceOf", "Error")};`],
+    ];
+    for (const [before, after] of pairs) {
+      expect(`${after}: ${weakensAssertions(before, after)}`).toBe(`${after}: true`);
+    }
+  });
+
+  test("#1143 review: a CRLF file reads the same, escape included", () => {
+    const text = `expect(a)${m("toBeDefined")}; // weaker: the id is random\r\nexpect(b)${m("toBe", "1")};\r\n`;
+    expect(assertionCounts(text)).toEqual({ strict: 1, weak: 0, escaped: 1 });
   });
 
   test("deleting a test, adding one, or a stricter swap does not weaken", () => {
