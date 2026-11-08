@@ -281,10 +281,10 @@ describe("hub-ui", () => {
   });
 
   // #1132: the row says in words what the session is doing (the dot alone did not), and the
-  // group's count says what it counts. In the compact row (the default) a live session's word takes
-  // the time's place, the time kept in its tooltip; a past session keeps its time. The row's
-  // summary carries the word and its detail.
-  test("each live row shows its state word where the time was, and the group's count reads 'N de M ativas'", async () => {
+  // group's count says what it counts. In the compact row (the default) a working or waiting
+  // session's word takes the time's place, the time kept in its tooltip; an idle or past session
+  // keeps its time, which is what it says best. The row's summary carries the word and its detail.
+  test("a working or waiting row shows its state word where the time was, and the group's count reads 'N de M ativas'", async () => {
     await setup();
     const word = (title: string) =>
       item(title)?.querySelector('[data-slot="row-word"]')?.textContent ?? null;
@@ -297,11 +297,12 @@ describe("hub-ui", () => {
       word("repo-ask"),
       word("repo-run"),
       word("Gerenciada"),
+      item("Gerenciada")?.querySelector("time") !== null,
       summary("repo-ask").startsWith("Esperando você"),
       word("Do histórico"),
       item("Do histórico")?.querySelector("time") !== null,
       chips.length > 0 && chips.every((text) => /^\d+ de \d+ ativas$/.test(text)),
-    ]).toEqual(["Esperando você", "Trabalhando", "Ociosa", true, null, true, true]);
+    ]).toEqual(["Esperando você", "Trabalhando", null, true, true, null, true, true]);
   });
 
   test("as ações ficam num menu no fim da linha, sem ícones soltos: renomear, fixar, arquivar e copiar o comando", async () => {
