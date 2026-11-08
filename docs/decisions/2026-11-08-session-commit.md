@@ -33,15 +33,26 @@ branch of the checkout.
     check (`changes_commit_too_large`).
   - A branch name that `git check-ref-format` refuses (`branch_invalid`), or one already there
     (`changes_commit_branch_taken`).
+- **The bytes checked are the bytes committed.**
+  - Each chosen file is read once, through a handle that does not follow a link: those bytes are
+    hashed against the digest the person saw, and scanned. A link is its text.
+  - After the commit, git hashes the same bytes with the path's own filters, and the commit must
+    hold exactly those. A session still writing may change a file between the check and git's read.
+    If one did, the commit is undone (the branch back on the commit it started from, the index as
+    it was), and the refusal is `changes_commit_stale`.
 - **A failing hook.**
   - The person stays on the new branch, with their files untouched and their index put back from a
     copy taken before.
   - The refusal `changes_commit_hook` carries the end of what git and the hook said (2,000
-    characters at most, withheld when the scanner flags it), the branch, and the base to switch back
-    to.
+    characters at most), the branch, and the base to switch back to. The output is scanned whole
+    before it is cut, so a cut cannot split a secret past the scanner, and it is withheld when the
+    scanner flags it.
+  - The index is put back through a new file renamed into place, so a link left where the index was
+    is replaced, not followed.
 - **Git as the person runs it.**
   - `GIT_TERMINAL_PROMPT=0`, so no credential prompt waits.
-  - `GIT_LITERAL_PATHSPECS=1`, so a path is never a pattern.
+  - `GIT_LITERAL_PATHSPECS=1`, so a path is never a pattern. The hooks inherit it, which changes how
+    a hook's own git commands read patterns; that is the price of literal paths.
   - Every call has a time limit (120 s), which stops a hook or a gpg prompt that never ends.
   - The message goes on stdin, and paths follow `--`.
 - **Guards.** A near connection only, and `confirm: true` (`changes_commit_confirm`).
@@ -63,5 +74,9 @@ branch of the checkout.
 - The daemon runs the repository's hooks, which are code from the project. It does so only on a
   confirmed request from a near connection, and they are the same hooks the person's own `git commit`
   would run.
+- A session can write `.git/hooks`, `core.hooksPath` or `.git/config` itself. A hook it wrote runs as
+  the daemon's user, outside the session's own permissions, and the person does not see its text.
+  The confirm in the app (slice A) says the repository's git hooks run. Refusing a hook that changed
+  since the session started is left for later.
 - After a failed hook, the new branch stays there with no commit of its own. A retry needs another
   name, and the app (slice A) drafts a new one.

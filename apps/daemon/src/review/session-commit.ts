@@ -7,8 +7,8 @@
  * See docs/decisions/2026-11-08-session-commit.md.
  */
 import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { copyFile, lstat, mkdtemp, readFile, readlink, rm } from "node:fs/promises";
+import { constants, createReadStream } from "node:fs";
+import { copyFile, lstat, mkdtemp, open, readlink, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -32,6 +32,8 @@ export interface SessionCommitDeps {
   isCardWorktree: (root: string) => boolean;
   /** How long one git call (a hook included) may run; 120 s when absent. */
   timeoutMs?: number;
+  /** Runs after the files are checked, before git reads them: a seam for a test that changes one. */
+  afterCheck?: () => Promise<void>;
 }
 
 export interface SessionCommitInput {
@@ -46,6 +48,8 @@ const TIMEOUT_MS = 120_000;
 const MAX_SCAN = 8 * 1024 * 1024;
 /** The end of a failed hook's output that the refusal carries. */
 const MAX_OUTPUT = 2000;
+/** Not defined on Windows: there the lstat before the open stands alone. */
+const NO_FOLLOW = constants.O_NOFOLLOW ?? 0;
 
 /** Git as the person runs it (their hooks too), with no prompt and paths taken as written. */
 const ENV = { GIT_TERMINAL_PROMPT: "0", GIT_LITERAL_PATHSPECS: "1" };
@@ -81,6 +85,29 @@ export async function withDigests(root: string, files: DiffFile[]): Promise<Diff
     out.push(read ? { ...file, digest: await fileDigest(root, file.path) } : file);
   });
   return out;
+}
+
+/**
+ * A chosen file's bytes as they are now, read once through a handle that does not follow a link
+ * and is sized by that handle: a link's text, null when the file is gone, or too large to read.
+ */
+async function bytesOf(
+  root: string,
+  path: string,
+): Promise<{ data: Buffer; link: boolean } | null | "too large"> {
+  const full = join(root, path);
+  const info = await lstat(full).catch(() => null);
+  if (info === null) return null;
+  if (info.isSymbolicLink()) return { data: Buffer.from(await readlink(full), "utf8"), link: true };
+  const handle = await open(full, constants.O_RDONLY | NO_FOLLOW);
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile()) return { data: Buffer.alloc(0), link: false };
+    if (stat.size > MAX_SCAN) return "too large";
+    return { data: await handle.readFile(), link: false };
+  } finally {
+    await handle.close();
+  }
 }
 
 /** Which operation is half done in the checkout, if any: a commit now would mix into it. */
@@ -153,7 +180,8 @@ export class SessionCommits {
     const chosen = await this.chosen(target, input.files);
     const paths = [...new Set(chosen.flatMap((file) => [file.path, file.oldPath ?? []].flat()))];
     await this.noOtherStaged(root, paths);
-    await this.noSecretIn(root, chosen);
+    const expected = await this.checked(root, chosen, input.files);
+    await this.deps.afterCheck?.();
     const taken = await this.git(root, [
       "show-ref",
       "--verify",
@@ -167,7 +195,7 @@ export class SessionCommits {
     }
     const head = await this.git(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
     const base = head.code === 0 ? head.stdout.trim() : null;
-    const commit = await this.onNewBranch(root, branch, base, paths, input.message);
+    const commit = await this.onNewBranch(root, branch, base, paths, input.message, expected);
     this.bases.set(`${root}\0${branch}`, base);
     return {
       branch,
@@ -220,18 +248,31 @@ export class SessionCommits {
     }
   }
 
-  /** Each chosen file's content through the scanner, as a commit is one push from public. */
-  private async noSecretIn(root: string, chosen: DiffFile[]): Promise<void> {
+  /**
+   * Each chosen file read once: the bytes hashed against what the person saw are the bytes scanned,
+   * and the ones the commit must hold (null for a deleted file). A link is its text, never followed.
+   */
+  private async checked(
+    root: string,
+    chosen: DiffFile[],
+    sent: Readonly<Record<string, string>>,
+  ): Promise<Map<string, Buffer | null>> {
+    const out = new Map<string, Buffer | null>();
     for (const file of chosen) {
-      const full = join(root, file.path);
-      const info = await lstat(full).catch(() => null);
-      if (info === null || !info.isFile()) continue;
-      if (info.size > MAX_SCAN) {
+      const bytes = await bytesOf(root, file.path);
+      if (bytes === "too large") {
         throw refuse("changes_commit_too_large", `${file.path} is too large to check for secrets`, {
           file: file.path,
         });
       }
-      if (this.deps.scanner.scan(await readFile(full, "utf8")).length > 0) {
+      const digest =
+        bytes === null
+          ? "deleted"
+          : createHash("sha256")
+              .update(bytes.link ? `link\0${bytes.data.toString("utf8")}` : bytes.data)
+              .digest("hex");
+      if (digest !== sent[file.path]) throw stale();
+      if (bytes !== null && this.deps.scanner.scan(bytes.data.toString("utf8")).length > 0) {
         throw refuse(
           "changes_commit_secret",
           `${file.path} holds a secret: nothing was committed`,
@@ -240,7 +281,34 @@ export class SessionCommits {
           },
         );
       }
+      out.set(file.path, bytes?.data ?? null);
     }
+    return out;
+  }
+
+  /**
+   * Whether the commit holds exactly the bytes checked: a session still writing may have changed a
+   * file between the check and git's read. Each is hashed by git with the path's own filters.
+   */
+  private async holds(
+    root: string,
+    expected: Map<string, Buffer | null>,
+    scratch: string,
+  ): Promise<boolean> {
+    for (const [path, data] of expected) {
+      const committed = await this.git(root, ["rev-parse", "--verify", "--quiet", `HEAD:${path}`]);
+      if (data === null) {
+        if (committed.code === 0) return false;
+        continue;
+      }
+      const file = join(scratch, "blob");
+      await writeFile(file, data);
+      const link = (await lstat(join(root, path)).catch(() => null))?.isSymbolicLink() === true;
+      const filters = link ? ["--no-filters"] : [`--path=${path}`];
+      const hashed = await this.git(root, ["hash-object", ...filters, "--", file]);
+      if (committed.code !== 0 || hashed.stdout.trim() !== committed.stdout.trim()) return false;
+    }
+    return true;
   }
 
   /**
@@ -253,6 +321,7 @@ export class SessionCommits {
     base: string | null,
     paths: string[],
     message: string,
+    expected: Map<string, Buffer | null>,
   ): Promise<string> {
     const index = resolve(root, await this.must(root, ["rev-parse", "--git-path", "index"]));
     const keep = await mkdtemp(join(tmpdir(), "fd-commit-index-"));
@@ -283,14 +352,28 @@ export class SessionCommits {
         added === null || added.code === 0
           ? await this.git(root, ["commit", "-q", "-F", "-", "--", ...paths], message)
           : added;
+      const putBack = async () => {
+        // Through a new file renamed in place: a link put where the index was is replaced, not followed.
+        if (!hadIndex) return rm(index, { force: true });
+        const next = `${index}.fd-restore`;
+        await copyFile(copy, next);
+        await rename(next, index);
+      };
       if (made.code !== 0 || made.timedOut) {
-        if (hadIndex) await copyFile(copy, index);
-        else await rm(index, { force: true });
+        await putBack();
         throw refuse(
           "changes_commit_hook",
           "the commit was refused: you are on the new branch, with your files as they were",
           { output: this.outputOf(made), branch, base: base ?? "" },
         );
+      }
+      if (!(await this.holds(root, expected, keep))) {
+        // Undone: the branch back on the commit it started from, the index as it was.
+        const parent = await this.git(root, ["rev-parse", "--verify", "--quiet", "HEAD~1"]);
+        if (parent.code === 0) await this.must(root, ["reset", "-q", "--soft", "HEAD~1"]);
+        else await this.must(root, ["update-ref", "-d", "HEAD"]);
+        await putBack();
+        throw stale();
       }
       return await this.must(root, ["rev-parse", "HEAD"]);
     } finally {
@@ -301,9 +384,10 @@ export class SessionCommits {
   /** What git and the hooks said, its end only, and never a secret. */
   private outputOf(result: CommandResult): string {
     if (result.timedOut) return "the commit ran out of time";
-    const said = `${result.stderr}\n${result.stdout}`.trim().slice(-MAX_OUTPUT);
+    // Scanned whole, then cut: a cut could split a secret and hide it from the scanner.
+    const said = `${result.stderr}\n${result.stdout}`.trim();
     return this.deps.scanner.scan(said).length > 0
       ? "(what the hook said is not shown: it looks like it holds a secret)"
-      : said;
+      : said.slice(-MAX_OUTPUT);
   }
 }
