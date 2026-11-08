@@ -3271,6 +3271,7 @@ export class AppStore {
       onSubscribed: (sessionId, result) => this.onSubscribed(config.id, sessionId, result),
       onPing: () => this.setLatency(config.id, conn.latencyMs),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
+      onSummaries: (summaries) => this.onSummaries(config.id, summaries),
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),
       onVaultRequest: (request) => void this.onVaultRequest(config, request),
@@ -3561,32 +3562,58 @@ export class AppStore {
 
   /** Sidebar, queue, tray and notifications all come from `session.summary`. */
   private onSummary(hostId: string, summary: SessionEventOf<"session.summary">): void {
+    this.onSummaries(hostId, [summary]);
+  }
+
+  /**
+   * A host's summaries, in order, as one change of its sessions (#1191): the snapshot of a host
+   * with hundreds of sessions renders the app once, not once per session. What each one tells the
+   * person (unread, notifications, finished) still follows each in turn.
+   */
+  private onSummaries(hostId: string, summaries: SessionEventOf<"session.summary">[]): void {
     const host = this.state.hosts.find((h) => h.id === hostId);
-    if (!host) return;
-    const next: SidebarSession = {
-      id: summary.sessionId,
-      name: summary.name,
-      cwd: summary.cwd,
-      status: summary.status,
-      pendingPermissions: summary.pendingPermissions,
-      updatedAt: summary.updatedAt,
-      ...(summary.runtime ? { runtime: summary.runtime } : {}),
-      ...(summary.trustStale ? { trustStale: true } : {}),
-    };
-    const prev = host.sessions.find((s) => s.id === next.id);
-    this.updateHost(hostId, (h) => ({
-      ...h,
-      sessions: prev ? h.sessions.map((s) => (s.id === next.id ? next : s)) : [...h.sessions, next],
-    }));
-    const replied =
-      (prev?.status === "running" || prev?.status === "starting") && next.status === "idle";
-    const key = sessionKey(hostId, next.id);
-    if (replied && !this.shownSessions().has(key)) {
-      this.update({ unread: { ...this.state.unread, [key]: true } });
+    if (!host || summaries.length === 0) return;
+    const sessions = [...host.sessions];
+    const at = new Map(sessions.map((session, i) => [session.id, i]));
+    const changes: Array<{ prev: SidebarSession | undefined; next: SidebarSession }> = [];
+    for (const summary of summaries) {
+      const next: SidebarSession = {
+        id: summary.sessionId,
+        name: summary.name,
+        cwd: summary.cwd,
+        status: summary.status,
+        pendingPermissions: summary.pendingPermissions,
+        updatedAt: summary.updatedAt,
+        ...(summary.runtime ? { runtime: summary.runtime } : {}),
+        ...(summary.trustStale ? { trustStale: true } : {}),
+      };
+      const i = at.get(next.id);
+      const prev = i === undefined ? undefined : sessions[i];
+      if (i === undefined) {
+        at.set(next.id, sessions.length);
+        sessions.push(next);
+      } else {
+        sessions[i] = next;
+      }
+      changes.push({ prev, next });
     }
-    this.webhookFeed.managed({ id: hostId, name: host.name }, prev, next);
-    this.tellAboutSummary(hostId, host.name, prev, next);
-    this.recordFinished(hostId, prev, next);
+    this.updateHost(hostId, (h) => ({ ...h, sessions }));
+    const unread = changes.flatMap(({ prev, next }) => {
+      const replied =
+        (prev?.status === "running" || prev?.status === "starting") && next.status === "idle";
+      const key = sessionKey(hostId, next.id);
+      return replied && !this.shownSessions().has(key) ? [key] : [];
+    });
+    if (unread.length > 0) {
+      this.update({
+        unread: { ...this.state.unread, ...Object.fromEntries(unread.map((key) => [key, true])) },
+      });
+    }
+    for (const { prev, next } of changes) {
+      this.webhookFeed.managed({ id: hostId, name: host.name }, prev, next);
+      this.tellAboutSummary(hostId, host.name, prev, next);
+      this.recordFinished(hostId, prev, next);
+    }
   }
 
   /** What a changed summary tells the person: the notifications it raises, or folds into its team's. */
