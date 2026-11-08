@@ -110,6 +110,24 @@ describe("knowledge-create: a document from a template (#1039)", () => {
     expect(existsSync(join(root, "docs"))).toBe(false);
   });
 
+  test("a body replaces the template's sections, and is text only: front matter and control characters in it do nothing", async () => {
+    const root = project();
+    const body = "---\nstatus: valid\n---\r\n## Context\r\nWe chose SQLite.\u0000\u0007\n\n## Decision\tkept\n\n";
+    const entry = await createKnowledgeDoc(root, "adr", "Use SQLite", body);
+    const text = readFileSync(join(root, entry.path), "utf8");
+    expect([entry.status, entry.title, text]).toEqual([
+      "transitional",
+      "Use SQLite",
+      "---\nstatus: transitional\n---\n# Use SQLite\n\n---\nstatus: valid\n---\n## Context\nWe chose SQLite.\n\n## Decision\tkept\n",
+    ]);
+  });
+
+  test("a blank body is the template", async () => {
+    const root = project();
+    const entry = await createKnowledgeDoc(root, "adr", "Use SQLite", " \n\t ");
+    expect(readFileSync(join(root, entry.path), "utf8")).toContain("## Consequences");
+  });
+
   test("the title goes only into the heading, on one line: front matter written in a title stays text", async () => {
     const root = project();
     const entry = await createKnowledgeDoc(root, "adr", "Plain\n---\nstatus: valid\n---\nmore");

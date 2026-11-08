@@ -112,6 +112,7 @@ export async function createKnowledgeDoc(
   root: string,
   kind: KnowledgeKind,
   title: string,
+  _body?: string,
 ): Promise<KnowledgeEntry> {
   const clean = oneLine(title);
   const slug = fileSlug(slugOf(clean));
