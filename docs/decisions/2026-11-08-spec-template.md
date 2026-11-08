@@ -108,10 +108,23 @@ project's harness (#75). The design is on #78. This record covers slice S-T1.
   name or not a plain file), `spec_template_too_big` (over 32 KiB) and `spec_template_empty`.
   A project with no template says nothing. The run starts with the built-in template either way.
 - **Untrusted projects.** The host does not read their checkout. It only looks whether the card's
-  worktree carries the template (`lstat` of the name, which follows no link and reads nothing), so a
-  template that is not committed to the branch is not noticed.
+  worktree carries the template (a walk that follows no link on the way and reads nothing, so it
+  cannot tell what lies behind a link), so a template that is not committed to the branch is not
+  noticed. A failed trust check, or a spec that was already there, gives no notice.
 - **Why the notice is a refusal reason.** The card's notice already carries a reason the app
   translates (`spec_template_failed`); one reason per cause keeps the text out of the host and the
   words in the dictionaries.
 - **Still open.** The project's own validation template (`.flightdeck/templates/validation.md`),
-  which waits for the validation placeholder (#1054).
+  which builds on the validation placeholder (#1054, merged).
+
+## Slice S-T3b: the shape of a validation note
+
+- **What it does.** The card's validation note field shows the shape of a note as its placeholder,
+  in the app's language: what was checked, how, the result, and what was not checked.
+- **Why a placeholder.** It is never saved. A prefilled template, or a button that inserts one, could
+  be saved as it is and would meet the `validation` check with nothing validated, as the spec
+  template would have without `draft: true`.
+- **What is left.** A project's own validation template (`.flightdeck/templates/validation.md`, for
+  trusted projects only, as the spec template) needs the host to read it for the app. It also
+  needs the notice that a project template was ignored. Both are left for a later slice, if they
+  are wanted.
