@@ -6,6 +6,7 @@ import { Page } from "@/components/layout/page";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { WorkflowTemplates } from "@/components/workflows/workflow-templates";
 import { useT } from "@/i18n/context";
 import { workflowIssueText } from "@/i18n/errors";
 import type { T } from "../i18n/index.ts";
@@ -58,6 +59,7 @@ export function WorkflowsPage(
     <Page
       title={t("workflowsUi.title", { project: props.projectName })}
       subtitle={t("workflowsUi.subtitle")}
+      actions={<WorkflowTemplates store={store} hostId={hostId} projectId={projectId} />}
     >
       {failed && <InlineNotice tone="error">{t("workflowsUi.failed")}</InlineNotice>}
       {!failed && workflows === null && <LoadingState label={t("workflowsUi.loading")} />}
