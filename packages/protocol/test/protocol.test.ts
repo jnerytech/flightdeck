@@ -583,6 +583,13 @@ const validCommands: Record<CommandType, unknown> = {
   "review.remove": { id: "r" },
   "review.send": { target: "session:s" },
   "changes.revert": { target: "card:k", path: "a.ts", confirm: true },
+  "changes.commit": {
+    target: "session:s",
+    files: { "a.ts": "d" },
+    message: "m",
+    branch: "work/a",
+    confirm: true,
+  },
   "changes.undoRevert": { target: "card:k", path: "a.ts", confirm: true },
   "file.read": { target: "session:s", path: "a.ts" },
   "file.list": { target: "session:s", dir: "" },
