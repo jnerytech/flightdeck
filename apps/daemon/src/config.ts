@@ -270,6 +270,7 @@ export async function loadConfig(path: string = defaultConfigPath()): Promise<Co
     ...config,
     dataDir: resolve(expandHome(config.dataDir)),
     allowedRoots: config.allowedRoots.map((r) => resolve(expandHome(r))),
+    knowledge: { feedOff: config.knowledge.feedOff.map((r) => resolve(expandHome(r))) },
     history: {
       roots: config.history.roots.map((r) => resolve(expandHome(r))),
       // Compared with the transcripts' cwd as written, so only `~` is expanded.

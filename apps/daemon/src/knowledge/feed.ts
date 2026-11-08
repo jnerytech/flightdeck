@@ -21,9 +21,15 @@ const HEADER =
 const omitted = (count: number) =>
   `\n${count} more documents are not listed (the index is capped).\n`;
 
-/** A line break or control character, in a title or a path (U+0085, U+2028 and U+2029 end lines too). */
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching them is the point
-const CONTROL = /[\u0000-\u001f\u007f\u0085\u2028\u2029]+/g;
+/** Line breaks and control characters (U+0085, U+2028 and U+2029 end lines too): a space in a title. */
+const BREAKS = /[\p{Cc}\p{Zl}\p{Zp}]+/gu;
+/**
+ * What a reader does not see but a model reads: bidi and zero width marks, the tag characters
+ * that spell text invisibly, other format, private and unassigned code points, variation selectors.
+ */
+const INVISIBLE = /(?:\p{Cf}|\p{Co}|\p{Cn}|\p{Variation_Selector})+/gu;
+/** A path in one of the library folders, in plain characters: no colon, quote, backtick or hidden mark. */
+const PLAIN_PATH = /^docs\/(?:decisions|adr|rfc|prd|specs)(?:\/[A-Za-z0-9._ -]+)+\.md$/i;
 
 const bytes = (text: string) => Buffer.byteLength(text);
 const byPath = (a: KnowledgeEntry, b: KnowledgeEntry) =>
@@ -31,7 +37,7 @@ const byPath = (a: KnowledgeEntry, b: KnowledgeEntry) =>
 
 /** The title as one plain line of at most `TITLE_MAX` characters. */
 function oneLine(title: string): string {
-  const plain = title.replace(CONTROL, " ").replace(/\s+/g, " ").trim();
+  const plain = title.replace(INVISIBLE, "").replace(BREAKS, " ").replace(/\s+/g, " ").trim();
   return Array.from(plain).slice(0, TITLE_MAX).join("") || "(untitled)";
 }
 
@@ -41,9 +47,7 @@ export function feedIndex(
 ): KnowledgeFeed {
   const named = (status: KnowledgeEntry["status"]) =>
     entries
-      .filter(
-        (e) => e.status === status && e.path.length <= PATH_MAX && e.path.search(CONTROL) === -1,
-      )
+      .filter((e) => e.status === status && e.path.length <= PATH_MAX && PLAIN_PATH.test(e.path))
       .sort(byPath);
   const eligible = [...named("valid"), ...named("transitional")];
   const lines: string[] = [];

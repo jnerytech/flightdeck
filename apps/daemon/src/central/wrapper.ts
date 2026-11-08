@@ -264,9 +264,10 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   const dir = join(opts.config.dataDir, "personas");
   const files: string[] = [];
   const write = async (name: string, content: string) => {
-    await mkdir(dir, { recursive: true });
+    // Only the owner reads them: a persona's body and the library's index are not for other users.
+    await mkdir(dir, { recursive: true, mode: 0o700 });
     const file = join(dir, name);
-    await writeFile(file, content);
+    await writeFile(file, content, { mode: 0o600 });
     files.push(file);
     return file;
   };

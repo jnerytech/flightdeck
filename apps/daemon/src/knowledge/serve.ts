@@ -22,12 +22,13 @@ export function knowledgeFeedFor(
   deps: KnowledgeFeedDeps,
 ): (path: string) => Promise<KnowledgeIndexResult> {
   return async (path) => {
-    // A folder is one place under its real name and the one it was given by.
-    const here = await rootNames([path]);
-    const off = await rootNames(deps.off());
-    if (off.some((folder) => here.some((name) => isInside(folder, name)))) return nothing();
     const { trusted, configRoot } = await deps.trust(path);
     if (!trusted) return nothing();
+    // A folder is one place under its real name and the one it was given by. The checkout a
+    // worktree is read from counts too: a worktree can lie outside the project it belongs to.
+    const where = await rootNames(configRoot ? [path, configRoot] : [path]);
+    const off = await rootNames(deps.off());
+    if (off.some((folder) => where.some((name) => isInside(folder, name)))) return nothing();
     return feedIndex((await listKnowledge(configRoot ?? path)).entries);
   };
 }
