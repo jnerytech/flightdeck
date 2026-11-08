@@ -44,7 +44,7 @@ const type = async (label: string, value: string) => {
 
 /** One host with a repository whose library holds an ADR, already online. */
 async function setup() {
-  const d = makeDaemon(cleanups);
+  const d = makeDaemon(cleanups, { knowledge: true });
   const repo = join(d.root, "repo");
   mkdirSync(join(repo, "docs/adr"), { recursive: true });
   git(repo, "init", "-q", "-b", "main");
@@ -98,13 +98,16 @@ describe("card-pins-ui-card: pinning from the card's detail", () => {
     await act(async () => {
       fireEvent.change(pick() as HTMLElement, { target: { value: "docs/adr/0001-sqlite.md" } });
     });
-    await settle(() => panel()?.textContent?.includes("Usar SQLite") === true);
+    await settle(() => panel()?.querySelector("li")?.textContent?.includes("Usar SQLite") === true);
     const kept = Object.values(store.getState().cards).find((card) => card.title === "Fixar");
     expect(kept?.pinnedDocs).toEqual(["docs/adr/0001-sqlite.md"]);
   });
 
   test("a host that does not announce cardPins shows no such panel", async () => {
     const { repo, store } = await setup();
+    await openNewCard(repo);
+    await settle(() => panel() !== null);
+    expect(panel()).not.toBeNull();
     const bare = store.getState().hosts.map((h) =>
       h.hostInfo
         ? {
@@ -119,7 +122,7 @@ describe("card-pins-ui-card: pinning from the card's detail", () => {
     await act(async () => {
       (store as unknown as { update(patch: object): void }).update({ hosts: bare });
     });
-    await openNewCard(repo);
+    await settle(() => panel() === null);
     expect(panel()).toBeNull();
   });
 });

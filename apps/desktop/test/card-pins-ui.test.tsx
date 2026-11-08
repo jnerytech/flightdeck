@@ -86,8 +86,8 @@ describe("card-pins-ui: the documents pinned to a card (#76)", () => {
     await waitFor(() => expect(within(region()).queryByText("Use the outbox")).not.toBeNull());
     const list = within(region()).getAllByRole("listitem");
     expect(list.map((li) => li.textContent)).toEqual([
-      `Use the outbox${OUTBOX}Transitional`,
-      "docs/adr/9999-gone.mddocs/adr/9999-gone.mdnot in the project's library",
+      `Use the outbox${OUTBOX}TransitionalUnpin`,
+      "docs/adr/9999-gone.mdnot in the project's libraryUnpin",
     ]);
   });
 

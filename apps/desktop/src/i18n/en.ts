@@ -3750,6 +3750,7 @@ export const en: Dictionary = {
       pick: "Pin a document",
       pickPlaceholder: "Choose a document…",
       unpin: "Unpin {path}",
+      unpinShort: "Unpin",
       unlisted: "not in the project's library",
       full: "A card pins at most {max} documents.",
       failed: "Could not save the pinned documents: {why}",

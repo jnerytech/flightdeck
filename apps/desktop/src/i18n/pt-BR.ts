@@ -3756,6 +3756,7 @@ export const ptBR = {
       pick: "Fixar um documento",
       pickPlaceholder: "Escolha um documento…",
       unpin: "Desafixar {path}",
+      unpinShort: "Desafixar",
       unlisted: "fora da biblioteca do projeto",
       full: "Um card fixa no máximo {max} documentos.",
       failed: "Não foi possível salvar os documentos fixados: {why}",

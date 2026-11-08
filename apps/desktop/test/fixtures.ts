@@ -32,6 +32,7 @@ import type { GhRunner } from "../../daemon/src/github/gh.ts";
 import { GithubService } from "../../daemon/src/github/service.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Issues } from "../../daemon/src/issues/issues.ts";
+import { listKnowledge } from "../../daemon/src/knowledge/list.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
 import { ProjectMemory } from "../../daemon/src/memory/memory.ts";
 import { AutoApprover } from "../../daemon/src/permissions/auto-approve.ts";
@@ -130,6 +131,8 @@ export function daemon(
     quotaHistory?: (db: EventStore["db"]) => QuotaHistory;
     /** The built-in templates and what tasks made (phase 33), in this daemon's root. */
     simple?: boolean;
+    /** The project's library of documents is served (issue #76). */
+    knowledge?: boolean;
     /** The host's default mode and lock (phase 33), kept in this daemon's memory. */
     ui?: { mode: "full" | "simple"; locked: boolean };
     /** The review of changes (phase 11: `changes.*`, `review.*`, `file.*`, `files.sessions`); on unless `false`. */
@@ -531,6 +534,7 @@ export function daemon(
             tasks: new TaskTracker({ dir: join(root, `tasks-${++taskDirs}`) }),
           }
         : {}),
+      ...(options.knowledge ? { knowledge: listKnowledge } : {}),
       ...(githubService ? { github: githubService } : {}),
       ...(boardSyncService ? { boardsync: boardSyncService } : {}),
       ...(roiSummarizer ? { roi: roiSummarizer } : {}),
