@@ -131,6 +131,7 @@ export function ExternalView(
           hostId={hostId}
           claudeSessionId={id}
           {...(session?.lastEventAt ? { stamp: session.lastEventAt } : {})}
+          {...(session?.cwd ? { libraryPath: session.cwd } : {})}
         />
       </RecapSlot>
       {requests.length > 0 && (

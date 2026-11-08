@@ -377,6 +377,10 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   project (an ADR or RFC is numbered, `0004-<title>.md`; a PRD is `<title>.md`), as a draft with
   `status: transitional`, and is left uncommitted. It never replaces a file that is there, and it
   is refused when `docs/<kind>` is a link or lies outside the project.
+  **Draft ADR**, in a session's summary, starts a decision record from what the session did: the
+  summary is the first text, the assistant's wand can write an ADR (Context, Decision,
+  Consequences) from it, you edit it and give it a title, and **Save as ADR** writes it to
+  `docs/adr` of the project as a draft, uncommitted, the same way as above.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
@@ -1101,7 +1105,13 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   says what the host found ("Spec found: <first heading>" or "No spec file at <path>") and **Check
   again** looks once more; a move to a column that asks for it looks at the file first. The host
   checks only that the file is there (a plain, non-empty file, not a link, inside the worktree) and
-  reads its first heading: it never reads or sends the rest.
+  reads its first heading: it never reads or sends the rest. When a card starts for the first time
+  and its project asks for a spec, the host writes one from a template, as a draft
+  (`draft: true`, which keeps the spec check unmet until it is completed). A trusted project can
+  supply its own template as `.flightdeck/templates/spec.md` in its checkout (`{{title}}` and
+  `{{criteria}}` are filled in); when a template is there but cannot be used, the built-in one is
+  written and the card says why: the project is not trusted, the file is a link or has a second
+  name, is over 32 KiB, or is empty. The notice never quotes the template.
 - **Pinned documents** (#76). On a host with a project library, the card page has a **Pinned
   documents** panel: choose a document of the library (ADRs, RFCs, PRDs, specs) to pin it, up to
   10, and **Unpin** takes one off. When the card starts, its first prompt lists each pinned document

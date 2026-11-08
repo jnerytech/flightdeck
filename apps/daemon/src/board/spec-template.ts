@@ -13,7 +13,7 @@ import {
   contractOf,
   specPathProblem,
 } from "@flightdeck/protocol";
-import { createInside, readInside } from "../create-inside.ts";
+import { createInside, readInsideWhy, walkInside } from "../create-inside.ts";
 
 /** The project's TDD skill, as the harness setup writes it (#75). */
 const TDD_SKILL = ".claude/skills/tdd/SKILL.md";
@@ -97,14 +97,36 @@ export async function writeSpec(
 const PROJECT_TEMPLATE = ".flightdeck/templates/spec.md";
 const TEMPLATE_MAX = 32 * 1024;
 
+/** Why a project's template that is there was not used. */
+export type TemplateIgnored = "untrusted" | "unsafe" | "too_big" | "empty";
+
 /**
  * The body a trusted project gives its specs (`.flightdeck/templates/spec.md` under `root`, the
- * trusted checkout), or null: missing, empty, too big, or reached through a link. The host adds the
- * front matter (with `draft: true`) either way.
+ * trusted checkout), or why it gives none: nothing is there (`ignored` null), or it is empty, too
+ * big, or reached through a link or a second name. The host adds the front matter (with
+ * `draft: true`) either way.
  */
-export async function projectTemplate(root: string): Promise<string | null> {
-  const text = await readInside(root, PROJECT_TEMPLATE, TEMPLATE_MAX);
-  return text?.trim() ? text : null;
+export async function projectTemplate(
+  root: string,
+): Promise<{ body: string | null; ignored: TemplateIgnored | null }> {
+  const read = await readInsideWhy(root, PROJECT_TEMPLATE, TEMPLATE_MAX);
+  if ("why" in read) return { body: null, ignored: read.why === "absent" ? null : read.why };
+  return read.text.trim() ? { body: read.text, ignored: null } : { body: null, ignored: "empty" };
+}
+
+/**
+ * For a project that is not trusted: whether its worktree carries a template that is therefore not
+ * read. Only a look at the name (never the text), so an untrusted file stays unread.
+ */
+export async function untrustedTemplate(worktree: string): Promise<boolean> {
+  try {
+    // A link anywhere on the way is refused, not followed: the look never leaves the worktree, so
+    // it cannot tell whether something lies behind a link.
+    const found = await walkInside(await realpath(worktree), PROJECT_TEMPLATE, TEMPLATE_MAX);
+    return found.state !== "absent";
+  } catch {
+    return false;
+  }
 }
 
 /** Whether the worktree has the TDD skill the first prompt can name. */

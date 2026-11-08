@@ -369,6 +369,10 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   `docs/prd` do projeto (ADR e RFC são numerados, `0004-<título>.md`; um PRD é `<título>.md`), como
   rascunho com `status: transitional`, sem commit. Ele nunca substitui um arquivo que já existe, e é
   recusado quando `docs/<tipo>` é um link ou fica fora do projeto.
+  **Rascunhar ADR**, no resumo de uma sessão, começa um registro de decisão a partir do que a
+  sessão fez: o resumo é o primeiro texto, a varinha do assistente pode escrever um ADR (Contexto,
+  Decisão, Consequências) a partir dele, você edita, dá um título e **Salvar como ADR** grava em
+  `docs/adr` do projeto como rascunho, sem commit, do mesmo jeito que acima.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
@@ -1106,7 +1110,13 @@ aparece mascarado e como **Oculto**, e não abre.
   especificação em <caminho>") e **Verificar de novo** olha mais uma vez; um movimento para uma
   coluna que pede isso olha o arquivo antes. O host só confere que o arquivo existe (um arquivo
   comum, não vazio, que não seja um link, dentro do worktree) e lê o primeiro título: nunca lê nem
-  envia o resto.
+  envia o resto. Quando um card começa pela primeira vez e o projeto pede uma especificação, o host
+  escreve uma a partir de um modelo, como rascunho (`draft: true`, que mantém a verificação sem ser
+  atendida até ser completada). Um projeto confiável pode ter o próprio modelo em
+  `.flightdeck/templates/spec.md` no seu checkout (`{{title}}` e `{{criteria}}` são preenchidos);
+  quando há um modelo que não pode ser usado, o embutido é escrito e o card diz o motivo: o projeto
+  não é confiável, o arquivo é um link ou tem um segundo nome, passa de 32 KiB ou está vazio. O aviso
+  nunca cita o modelo.
 - **Documentos fixados** (#76). Num host com a biblioteca do projeto, a página do card tem o painel
   **Documentos fixados**: escolha um documento da biblioteca (ADRs, RFCs, PRDs, specs) para fixá-lo,
   até 10, e **Desafixar** tira um. Quando o card começa, o primeiro prompt lista cada documento

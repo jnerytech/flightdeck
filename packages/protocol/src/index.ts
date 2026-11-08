@@ -988,6 +988,9 @@ export const KnowledgeStatus = z.enum(["valid", "transitional", "obsolete"]);
 export type KnowledgeStatus = z.infer<typeof KnowledgeStatus>;
 export const KnowledgeType = z.enum(["prd", "rfc", "adr", "spec"]);
 /** The kinds of document a template exists for (issue #1039). */
+/** The longest body `knowledge.create` takes, in characters. */
+export const KNOWLEDGE_BODY_MAX = 100_000;
+
 export const KnowledgeKind = z.enum(["adr", "rfc", "prd"]);
 export type KnowledgeKind = z.infer<typeof KnowledgeKind>;
 export type KnowledgeType = z.infer<typeof KnowledgeType>;
@@ -3256,6 +3259,22 @@ export const Command = z.discriminatedUnion("type", [
       .strict(),
   ),
   /**
+   * #75, slice C1: commits what `project.harness.apply` wrote (by its `digests`) on a new branch the
+   * host names, through a temporary index: the person's branch, index and files stay as they are.
+   */
+  cmd(
+    "project.harness.commit",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        digests: z
+          .record(z.string().max(256), z.string().max(128))
+          .refine((digests) => Object.keys(digests).length <= HARNESS_PREVIEW_PARTS.length),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
+  /**
    * #75, slice S4: writes what the preview proposed. The daemon makes the proposals again and never
    * takes content from the app; `digests` (each proposal's, by path) must match them all, else
    * `harness_stale`. Writing hooks lets commands run in sessions: a near connection and `confirm`.
@@ -4587,6 +4606,8 @@ export const Command = z.discriminatedUnion("type", [
         path: z.string().min(1).max(4096),
         kind: KnowledgeKind,
         title: z.string().min(1).max(200),
+        /** The text under the heading instead of the template's sections (an assistant's draft, edited). */
+        body: z.string().max(KNOWLEDGE_BODY_MAX).optional(),
       })
       .strict(),
   ),
@@ -4953,8 +4974,20 @@ export const HarnessPreview = z.object({
 export type HarnessPreview = z.infer<typeof HarnessPreview>;
 
 /** #75, slice S4: the project files `project.harness.apply` wrote, in the preview's order. */
-export const HarnessApplied = z.object({ written: z.array(z.string()) });
+export const HarnessApplied = z.object({
+  written: z.array(z.string()),
+  /** #75, slice C1: the sha256 of each file as written, by path, for `project.harness.commit`. */
+  digests: z.record(z.string(), z.string()).optional(),
+});
 export type HarnessApplied = z.infer<typeof HarnessApplied>;
+
+/** #75, slice C1: the branch made, its commit, and the files it holds. */
+export const HarnessCommitted = z.object({
+  branch: z.string(),
+  commit: z.string(),
+  files: z.array(z.string()),
+});
+export type HarnessCommitted = z.infer<typeof HarnessCommitted>;
 
 /** #75: what a hook command is for, when its command says so. */
 export type HookKind = "format" | "gitAdd" | "secrets";
@@ -5205,6 +5238,7 @@ export interface CommandResults {
   "project.harness.stack": HarnessStack;
   "project.harness.preview": HarnessPreview;
   "project.harness.apply": HarnessApplied;
+  "project.harness.commit": HarnessCommitted;
   "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;

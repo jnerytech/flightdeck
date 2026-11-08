@@ -1,6 +1,7 @@
 import { lstat, realpath } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { FlightdeckError } from "../errors.ts";
+import { ntfsName } from "../ntfs-name.ts";
 import { isInside } from "../paths.ts";
 import { maskedConfig } from "../permissions/mask-config.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
@@ -13,14 +14,7 @@ export const firstStep = (inside: string) => inside.split(/[\\/]/)[0] ?? "";
  * trailing dots or spaces (Windows drops them), with an NTFS stream after a colon
  * (`.git::$INDEX_ALLOCATION` is the folder itself), and as its 8.3 short name (`GIT~1`, issue #1034).
  */
-export const isGitDir = (name: string) => {
-  const colon = name.indexOf(":");
-  const whole = colon < 0 ? name : name.slice(0, colon);
-  let end = whole.length;
-  while (end > 0 && (whole[end - 1] === "." || whole[end - 1] === " ")) end--;
-  const base = whole.slice(0, end).toLowerCase();
-  return base === ".git" || /^git~\d+$/.test(base);
-};
+export const isGitDir = (name: string) => ntfsName(name) === ".git";
 
 /**
  * A file of the review, given relative to the repository: never absolute, never above the root

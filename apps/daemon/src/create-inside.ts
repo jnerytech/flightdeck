@@ -56,7 +56,7 @@ export async function createInside(
 /** Where a walk inside a folder ends: missing, refused, or a plain file at `at` whose `lstat` was `info`. */
 export type Walk =
   | { state: "absent" }
-  | { state: "refused" }
+  | { state: "refused"; big?: true }
   | { state: "file"; at: string; info: BigIntStats };
 
 /**
@@ -75,29 +75,48 @@ export async function walkInside(root: string, name: string, max: number): Promi
     if (info === null) return { state: "absent" };
     if (info.isSymbolicLink()) return { state: "refused" };
   }
-  if (!info?.isFile() || info.size > BigInt(max)) return { state: "refused" };
+  if (!info?.isFile()) return { state: "refused" };
+  if (info.size > BigInt(max)) return { state: "refused", big: true };
   return { state: "file", at, info };
 }
 
+/** Why a read gave nothing: no such file, refused (a link, a second name, not a plain file), over the cap. */
+export type ReadWhy = "absent" | "unsafe" | "too_big";
+
 /**
- * The text of a plain file inside `root` of at most `max` bytes; null when missing or refused. The
- * file must have one name only (a hard link may lie outside), and it is read through a handle that
- * follows no link and must be the very file the walk found, so a swap in between reads nothing.
+ * The text of a plain file inside `root` of at most `max` bytes, or why not. The file must have one
+ * name only (a hard link may lie outside), and it is read through a handle that follows no link and
+ * must be the very file the walk found, so a swap in between reads nothing.
  */
-export async function readInside(root: string, name: string, max: number): Promise<string | null> {
+export async function readInsideWhy(
+  root: string,
+  name: string,
+  max: number,
+): Promise<{ text: string } | { why: ReadWhy }> {
   const found = await walkInside(root, name, max);
-  if (found.state !== "file" || found.info.nlink !== 1n) return null;
+  if (found.state === "absent") return { why: "absent" };
+  if (found.state === "refused") return { why: found.big ? "too_big" : "unsafe" };
+  if (found.info.nlink !== 1n) return { why: "unsafe" };
   const flags = constants.O_RDONLY | NO_FOLLOW | (constants.O_NONBLOCK ?? 0);
   const handle = await orNull(open(found.at, flags));
-  if (handle === null) return null;
+  if (handle === null) return { why: "unsafe" };
   try {
     const info = await handle.stat({ bigint: true });
     const same = info.dev === found.info.dev && info.ino === found.info.ino;
-    if (!same || !info.isFile() || info.nlink !== 1n || info.size > BigInt(max)) return null;
+    if (!same || !info.isFile() || info.nlink !== 1n) return { why: "unsafe" };
+    if (info.size > BigInt(max)) return { why: "too_big" };
     // At most one byte past the cap: a file that grew since the stat is refused, not read whole.
     const { bytesRead, buffer } = await handle.read(Buffer.alloc(max + 1), 0, max + 1, 0);
-    return bytesRead > max ? null : buffer.subarray(0, bytesRead).toString("utf8");
+    return bytesRead > max
+      ? { why: "too_big" }
+      : { text: buffer.subarray(0, bytesRead).toString("utf8") };
   } finally {
     await handle.close();
   }
+}
+
+/** The text of a plain file inside `root` of at most `max` bytes; null when missing or refused. */
+export async function readInside(root: string, name: string, max: number): Promise<string | null> {
+  const read = await readInsideWhy(root, name, max);
+  return "text" in read ? read.text : null;
 }

@@ -67,6 +67,8 @@ import {
   projectTemplate,
   renderSpec,
   specFirstLine,
+  type TemplateIgnored,
+  untrustedTemplate,
   wantsSpec,
   writeSpec,
 } from "./spec-template.ts";
@@ -1617,9 +1619,12 @@ export class Board {
     const path = specExpectedPath(card);
     if (path === null || !wantsSpec(contracts, card.specPath)) return null;
     // A trusted project's own template, from its trusted checkout; anything else gets the built-in.
+    let checked = true;
     const root = this.opts.specTemplateRoot
       ? await this.opts.specTemplateRoot(worktree).catch((error: unknown) => {
-          // The built-in template then, but a trust bug must not go unseen.
+          // The built-in template then, but a trust bug must not go unseen. Trust is unknown, so
+          // the card says nothing about a template.
+          checked = false;
           this.opts.log?.(
             `spec template: trust check failed for ${worktree}, built-in template used: ${String(error)}`,
           );
@@ -1627,7 +1632,12 @@ export class Board {
         })
       : null;
     const template = root ? await projectTemplate(root) : null;
-    const result = await writeSpec(worktree, path, renderSpec(card, template ?? undefined));
+    const ignored: TemplateIgnored | null = root
+      ? (template?.ignored ?? null)
+      : checked && (await untrustedTemplate(worktree))
+        ? "untrusted"
+        : null;
+    const result = await writeSpec(worktree, path, renderSpec(card, template?.body ?? undefined));
     if (result === "failed") {
       // The app says it in its language; the prompt sends the agent to no spec that is not there.
       const why = new FlightdeckError(
@@ -1639,6 +1649,16 @@ export class Board {
       this.setNotice(id, why.message, why);
       this.changed(id);
       return null;
+    }
+    if (ignored && result === "written") {
+      // The built-in template was used; the project's own is named by its reason, never quoted.
+      const why = new FlightdeckError(
+        "invalid_state",
+        `the project's spec template was not used (${ignored})`,
+        `spec_template_${ignored}`,
+      );
+      this.setNotice(id, why.message, why);
+      this.changed(id);
     }
     return specFirstLine(path, await hasTddSkill(worktree));
   }

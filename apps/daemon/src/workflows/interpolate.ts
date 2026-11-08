@@ -1,4 +1,4 @@
-import { REFERENCE } from "./schema.ts";
+import { replaceReferences } from "../references.ts";
 
 /** Interpolated values (and check outputs) longer than this are cut. */
 export const MAX_VALUE = 8 * 1024;
@@ -31,7 +31,7 @@ function resolve(expression: string, context: InterpolationContext): string | un
  * validated before, so a reference without a value is a bug and throws instead of vanishing.
  */
 export function interpolate(template: string, context: InterpolationContext): string {
-  return template.replace(REFERENCE, (raw, expression: string) => {
+  return replaceReferences(template, (raw, expression) => {
     const value = resolve(expression, context);
     if (value === undefined) throw new Error(`referência desconhecida: ${raw}`);
     return value.slice(0, MAX_VALUE);

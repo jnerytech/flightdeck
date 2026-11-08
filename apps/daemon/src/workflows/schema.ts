@@ -1,5 +1,6 @@
 import { PermissionMode, type RuleIssue } from "@flightdeck/protocol";
 import { type core, z } from "zod";
+import { referencesIn } from "../references.ts";
 
 export interface AgentAction {
   prompt: string;
@@ -80,9 +81,6 @@ const describeIssue = (item: RuleIssue) => {
   const text = ENGLISH[item.code]?.((item.params ?? {}) as Record<string, string>) ?? item.code;
   return item.path ? `${item.path}: ${text}` : text;
 };
-
-/** `{{ expression }}` inside prompts and gate texts. */
-export const REFERENCE = /\{\{\s*(.*?)\s*\}\}/g;
 
 const ACTIONS = ["agent", "check", "gate", "loop", "parallel", "pr", "cards"] as const;
 const INNER_ACTIONS = ["agent", "check"] as const;
@@ -236,8 +234,8 @@ function validate(inputs: string[], steps: RawStep[]): RuleIssue[] {
       fail("cards_from_unknown", { step: step.cards.from });
     }
     for (const [template, inLoop] of templatesOf(step, inner)) {
-      for (const [raw, expression] of template.matchAll(REFERENCE)) {
-        if (!known(expression ?? "", { inputs, earlier, inLoop })) {
+      for (const { raw, expression } of referencesIn(template)) {
+        if (!known(expression, { inputs, earlier, inLoop })) {
           fail("reference_unknown", { ref: raw });
         }
       }
