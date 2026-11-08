@@ -6,7 +6,7 @@ import {
   previewRestore,
 } from "../src/lib/backup-bundle.ts";
 import { Vault } from "../src/lib/vault.ts";
-import { BackupError } from "../src/lib/vault-backup.ts";
+import type { BackupError } from "../src/lib/vault-backup.ts";
 
 /**
  * Issue #1241: one encrypted file holds the app's settings, personas, snippets, hosts (with their
@@ -110,9 +110,13 @@ async function filled(): Promise<Profile> {
   return profile;
 }
 
+/**
+ * What a person can see of a profile. The app's storage cannot delete a key, so a key a failed
+ * restore had to undo is empty (or an empty list): that reads as absent everywhere.
+ */
 const snapshot = (profile: Profile) =>
   JSON.stringify([
-    [...profile.storage].sort(),
+    [...profile.storage].filter(([, value]) => value !== "" && value !== "[]").sort(),
     [...profile.tokens].sort(),
     [...profile.keyring].sort(),
   ]);
@@ -131,11 +135,11 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
       .map((s) => s.name)
       .sort();
     expect([
-      preview.hosts.added.sort(),
-      preview.personas.added.sort(),
+      [...preview.hosts.added].sort(),
+      [...preview.personas.added].sort(),
       preview.snippets.added,
-      preview.vault.added.sort(),
-      preview.settings.added.sort(),
+      [...preview.vault.added].sort(),
+      [...preview.settings.added].sort(),
       untouched,
       result,
       fresh.storage.get("flightdeck.theme"),
@@ -230,7 +234,7 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
       preview.settings.conflicting,
       preview.hosts.conflicting,
       preview.vault.conflicting,
-      preview.personas.same.sort(),
+      [...preview.personas.same].sort(),
       skipped.skipped > 0,
       keptTheme,
       keptToken,
@@ -266,5 +270,59 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
       () => true,
     );
     expect([failed, snapshot(target) === before]).toEqual([true, true]);
+  });
+  test("Skip is decided by id: a new item with the same name as a differing one does not carry it in", async () => {
+    const source = newProfile();
+    source.storage.set(
+      "flightdeck.personas",
+      JSON.stringify([persona("p1", "Reviewer"), persona("p3", "Reviewer")]),
+    );
+    const text = await createBackup(source.platform, PASS, PASS, FAST);
+    const target = newProfile();
+    target.storage.set(
+      "flightdeck.personas",
+      JSON.stringify([{ id: "p1", name: "Reviewer", body: "my own words" }]),
+    );
+    const preview = await previewRestore(target.platform, text, PASS);
+    await applyRestore(target.platform, preview, "skip");
+    const kept = JSON.parse(target.storage.get("flightdeck.personas") ?? "[]") as Array<{
+      id: string;
+      body: string;
+    }>;
+    expect(kept.map((p) => [p.id, p.body]).sort()).toEqual([
+      ["p1", "my own words"],
+      ["p3", "be Reviewer"],
+    ]);
+  });
+
+  test("what the person has now decides at the apply, not what the preview saw", async () => {
+    const source = newProfile();
+    source.storage.set("flightdeck.personas", JSON.stringify([persona("p1", "Reviewer")]));
+    const text = await createBackup(source.platform, PASS, PASS, FAST);
+    const target = newProfile();
+    const preview = await previewRestore(target.platform, text, PASS);
+    target.storage.set(
+      "flightdeck.personas",
+      JSON.stringify([{ id: "p1", name: "Reviewer", body: "made after the preview" }]),
+    );
+    await applyRestore(target.platform, preview, "skip");
+    expect(JSON.parse(target.storage.get("flightdeck.personas") ?? "[]")[0].body).toBe(
+      "made after the preview",
+    );
+  });
+
+  test("a preview applies once: a second apply is refused and changes nothing", async () => {
+    const source = await filled();
+    const text = await createBackup(source.platform, PASS, PASS, FAST);
+    const target = newProfile();
+    const preview = await previewRestore(target.platform, text, PASS);
+    await applyRestore(target.platform, preview);
+    target.storage.set("flightdeck.theme", "light");
+    const before = snapshot(target);
+    const code = await applyRestore(target.platform, preview, "overwrite").then(
+      () => "applied",
+      (e: BackupError) => e.code,
+    );
+    expect([code, snapshot(target) === before]).toEqual(["unreadable", true]);
   });
 });
