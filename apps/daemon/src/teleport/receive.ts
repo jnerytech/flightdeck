@@ -167,7 +167,7 @@ export class TeleportInbox {
 
   /** Waits for the packages being removed (a test, and the daemon's stop). */
   async idle(): Promise<void> {
-    await Promise.all([...this.pending]);
+    await Promise.all(this.pending);
   }
 
   /** A manifest the target can take: a safe session id, the parts it knows once each, in size. */

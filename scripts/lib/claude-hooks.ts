@@ -82,7 +82,8 @@ function gitInvocations(command: string): { sub: string; args: string[] }[] {
 
 /** A cluster of short options (`-vA`) that includes one of `letters`. */
 function hasShortFlag(arg: string, letters: string): boolean {
-  return /^-[a-zA-Z]+$/.test(arg) && [...arg.slice(1)].some((letter) => letters.includes(letter));
+  const flags = [...arg.slice(1)]; // NOSONAR: a string spread into its letters, no array cloned
+  return /^-[a-zA-Z]+$/.test(arg) && flags.some((letter) => letters.includes(letter));
 }
 
 /** `git add` of everything at once (`.`, `*`, `--all`, `-A`...). */

@@ -196,7 +196,10 @@ step(
 );
 
 // What a scenario makes for itself: the card it created, the project folder it added.
-const made = new WeakMap<Context, { card?: string; project?: string; entry?: string }>();
+const made = new WeakMap<
+  Context,
+  { card?: string; project?: string; entry?: string; counts?: number[] }
+>();
 const mine = (c: Context) => {
   const state = made.get(c) ?? {};
   made.set(c, state);
@@ -533,6 +536,71 @@ step(Then, "the Finished group is gone", async (c) => {
     "the Finished group is gone",
   );
 });
+
+// The sessions list (#1132): each row says its state in words, and its group counts the active ones.
+step(When, "I open the sessions list", async (c) => open(c, { name: "hub" }));
+
+/** A project group of the list, by its name. */
+const hubGroup = (c: Context, project: string) =>
+  c.page.getByRole("region", { name: c.t("hub.project", { name: project }), exact: true });
+/** The word of a state in the app's language, by the English word a feature uses. */
+const stateWord = (c: Context, word: string) => {
+  const key = Object.entries(en.hub.rowWord).find(([, text]) => text === word)?.[0];
+  if (!key) throw new Error(`no state word "${word}"`);
+  return c.t(`hub.rowWord.${key}` as Parameters<Context["t"]>[0]);
+};
+/** A group with nothing that needs the person starts folded: the scenario unfolds it to read its rows. */
+async function unfold(c: Context, project: string) {
+  const toggle = hubGroup(c, project).getByRole("button", {
+    name: c.t("hub.toggleProject", { name: project }),
+    exact: true,
+  });
+  await toggle.waitFor({ timeout: WAIT });
+  if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+}
+
+step(
+  Given,
+  "a session named {string} waits for approval in a folder of its own",
+  async (c, name = "") => {
+    // A folder of its own is a project group of its own: the row to look at is the only one in it.
+    const folder = unique(c, "list");
+    mkdirSync(join(dirname(c.ids.freshRepo), folder), { recursive: true });
+    mine(c).project = folder;
+    await open(c, { name: "new-session", host: ALFA });
+    await c.page.getByRole("button", { name: c.t("newSession.moreOptions"), exact: true }).click();
+    await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).fill(folder);
+    await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+    await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill("[bash] ls");
+    await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
+    await c.page
+      .getByLabel(c.t("session.message"), { exact: true })
+      .waitFor({ timeout: SESSION_WAIT });
+  },
+);
+
+step(Then, "its project group has a session that says {string}", async (c, word = "") => {
+  const group = mine(c).project ?? "";
+  await hubGroup(c, group).waitFor({ timeout: SESSION_WAIT });
+  await unfold(c, group);
+  await hubGroup(c, group)
+    .locator("li", { hasText: stateWord(c, word) })
+    .first()
+    .waitFor({ timeout: SESSION_WAIT });
+});
+
+step(Then, "that session says which tool it wants to run, {string}", async (c, tool = "") =>
+  hubGroup(c, mine(c).project ?? "")
+    .locator("li", { hasText: c.t("hub.rowDetail.waitingTool", { tool }) })
+    .first()
+    .waitFor({ timeout: WAIT }),
+);
+
+step(Then, "its project group counts its active sessions", async (c) =>
+  hubGroup(c, mine(c).project ?? "")
+    .getByText(pattern(dictionary(c).hub.countShort))
+    .waitFor({ timeout: WAIT }),
+);
 
 // New session, task first (#1135): the task has the focus, the rest is folded, Ctrl+Enter starts it.
 const promptBox = (c: Context) => c.page.getByLabel(c.t("newSession.prompt"), { exact: true });

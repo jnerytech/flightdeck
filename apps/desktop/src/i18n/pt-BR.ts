@@ -2416,6 +2416,13 @@ export const ptBR = {
     end: "Encerrar",
     endMessage: "Encerrar esta sessão? O Claude Code para; dá para retomá-la depois.",
     endConfirm: "Encerrar sessão",
+    endChangesTitle: "Mudanças sem commit",
+    endChangesOne:
+      "Um arquivo no checkout desta sessão não está commitado. Faça o commit antes, ou encerre assim mesmo e deixe como está.",
+    endChangesMany:
+      "{n} arquivos no checkout desta sessão não estão commitados. Faça o commit antes, ou encerre assim mesmo e deixe como estão.",
+    endCommitFirst: "Fazer commit…",
+    endAnyway: "Encerrar assim mesmo",
     pruned: "conversa removida pela retenção",
     earlier: {
       title: "Antes de retomar",
@@ -5199,6 +5206,23 @@ export const ptBR = {
     renameDuplicate: "Já existe um host com esse nome.",
     reconnect: "Reconectar",
     remove: "Remover host",
+  },
+  harnessTemplates: {
+    title: "Modelos de configuração do Claude Code",
+    hint: "Compartilhados da configuração do Claude Code de um projeto. Outro projeto pode partir de um deles.",
+    asking: "Procurando modelos…",
+    loadFailed: "Não foi possível carregar os modelos.",
+    retry: "Tentar de novo",
+    none: "Nenhum modelo ainda. Compartilhe a configuração de um projeto para criar um.",
+    filesOne: "1 arquivo",
+    filesMany: "{n} arquivos",
+    facts: "{files} · {size}",
+    delete: "Apagar",
+    deleteLabel: "Apagar o modelo {title}",
+    confirmMessage: "Apagar o modelo {title}?",
+    confirmWarning: "Os projetos já configurados com ele ficam com os arquivos.",
+    confirmButton: "Apagar modelo",
+    deleted: "Modelo {title} apagado.",
   },
   maintenance: {
     title: "Manutenção",

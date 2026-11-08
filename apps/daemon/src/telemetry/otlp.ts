@@ -309,7 +309,7 @@ export function decodeLogs(contentType: string, body: Uint8Array): OtlpEvent[] {
 
 // ---- receiver ------------------------------------------------------------------------------
 
-const TYPES = ["application/json", "application/x-protobuf"];
+const TYPES = new Set(["application/json", "application/x-protobuf"]);
 
 class TooBig extends Error {}
 
@@ -343,7 +343,7 @@ async function admit(
   }
   if (req.method !== "POST") return new Response("POST only", { status: 405 });
   const contentType = (req.headers.get("content-type") ?? "").split(";")[0]?.trim() ?? "";
-  if (!TYPES.includes(contentType)) return new Response("unsupported type", { status: 415 });
+  if (!TYPES.has(contentType)) return new Response("unsupported type", { status: 415 });
   return { path, contentType };
 }
 

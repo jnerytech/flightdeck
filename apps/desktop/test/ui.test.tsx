@@ -238,7 +238,8 @@ describe("desktop: interface", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Encerrar" }));
     });
-    // Ending a session asks first (phase 10).
+    // Ending a session asks first (phase 10), once the host has said nothing is left uncommitted (#1133).
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeNull());
     await confirmWith("Encerrar sessão");
     await waitFor(() => expect(screen.getByRole("button", { name: "Retomar" })).toBeTruthy());
     await act(async () => {

@@ -351,6 +351,9 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   and keeps the project's `CLAUDE.md`, agents and skills as a template any project on that host can
   start from. Settings (hooks, permissions, MCP servers) are never shared, every file is checked for
   secrets first, and a name already taken is refused.
+- A host's page also lists its **Claude Code setup templates**, the ones shared from a project's setup,
+  with their files and size. **Delete** asks first and removes only that template: the projects set
+  up from it keep their files. It works from this computer or over Tailscale, not from afar.
 - **Project knowledge** lists the project's PRDs, RFCs, ADRs and specs (the Markdown files in
   `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` and `docs/specs`), each with its title, path,
   type and the status it says it has in its front matter (`status: valid`, `transitional` or

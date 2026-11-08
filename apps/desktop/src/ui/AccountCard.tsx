@@ -39,7 +39,7 @@ const PERCENT_COLOR: Partial<Record<QuotaWindow["status"], string>> = {
   rejected: "text-status-error",
 };
 
-const PLANS = ["free", "pro", "max", "ultra", "team", "enterprise"];
+const PLANS = new Set(["free", "pro", "max", "ultra", "team", "enterprise"]);
 
 type Reading = Extract<
   NonNullable<AccountCardProps["state"]>,
@@ -167,7 +167,7 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
           {state.name && <span className="font-medium text-sm">{state.name}</span>}
           {plan && (
             <span className="pill rounded-full border text-xs">
-              {PLANS.includes(plan) ? t(`account.plans.${plan}` as Key) : plan}
+              {PLANS.has(plan) ? t(`account.plans.${plan}` as Key) : plan}
             </span>
           )}
         </div>

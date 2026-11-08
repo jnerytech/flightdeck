@@ -49,7 +49,7 @@ export class BoardSyncLoop {
 
   stop(): void {
     this.stopped = true;
-    for (const projectId of [...this.watched.keys()]) this.unwatch(projectId);
+    for (const projectId of [...this.watched.keys()]) this.unwatch(projectId); // NOSONAR: unwatch deletes from the map being walked
   }
 
   watch(projectId: string): void {

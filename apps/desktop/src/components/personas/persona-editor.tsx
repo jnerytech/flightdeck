@@ -41,6 +41,7 @@ const KNOWN_TOOLS: readonly string[] = [
   "TodoWrite",
   "mcp__flightdeck",
 ];
+const KNOWN_TOOL_SET: ReadonlySet<string> = new Set(KNOWN_TOOLS);
 
 /** Where a persona lives: the app, a project, or (the default) the host. */
 function placeOf(scope: string | undefined): Place {
@@ -129,7 +130,7 @@ export function PersonaEditor(
     </div>
   );
   const toolList = tools;
-  const toolChoices = [...KNOWN_TOOLS, ...tools.filter((tool) => !KNOWN_TOOLS.includes(tool))];
+  const toolChoices = [...KNOWN_TOOLS, ...tools.filter((tool) => !KNOWN_TOOL_SET.has(tool))];
   // The form opens where the person is: its first field takes the focus and it scrolls into view.
   const first = persona === null ? "id" : "name";
   useEffect(() => {

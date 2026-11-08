@@ -51,7 +51,7 @@ export function initialRoute(search: string): Route | null {
   }
 }
 
-const THEMES: readonly ThemeMode[] = ["light", "dark", "system"];
+const THEMES: ReadonlySet<ThemeMode> = new Set<ThemeMode>(["light", "dark", "system"]);
 
 /**
  * `?theme=` and `?lang=` of the demo's address, stored as the user's choices (prints). An address
@@ -63,7 +63,7 @@ export function applyDemoPrefs(storage: Platform["storage"], search: string): vo
   if (params.has("route")) storage.setItem(WORKSPACE_KEY, "null");
   const theme = params.get("theme") as ThemeMode | null;
   const lang = params.get("lang") as Lang | null;
-  if (theme && THEMES.includes(theme)) storage.setItem(THEME_KEY, theme);
+  if (theme && THEMES.has(theme)) storage.setItem(THEME_KEY, theme);
   if (lang && LANGS.includes(lang)) storage.setItem(LANG_KEY, lang);
 }
 

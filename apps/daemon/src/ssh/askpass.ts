@@ -127,7 +127,7 @@ export class AskpassBroker {
         secretRef: ticket.secretRef,
         prompt,
       };
-      for (const watcher of [...this.watchers]) watcher(frame);
+      for (const watcher of [...this.watchers]) watcher(frame); // NOSONAR: a watcher may unsubscribe while called
     });
   }
 

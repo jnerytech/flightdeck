@@ -2416,6 +2416,13 @@ export const en: Dictionary = {
     end: "End",
     endMessage: "End this session? Claude Code stops; you can resume it later.",
     endConfirm: "End session",
+    endChangesTitle: "Uncommitted changes",
+    endChangesOne:
+      "One file in this session's checkout is not committed. Commit it first, or end anyway and leave it as it is.",
+    endChangesMany:
+      "{n} files in this session's checkout are not committed. Commit them first, or end anyway and leave them as they are.",
+    endCommitFirst: "Commit…",
+    endAnyway: "End anyway",
     pruned: "conversation removed by retention",
     earlier: {
       title: "Before resuming",
@@ -5180,6 +5187,23 @@ export const en: Dictionary = {
     renameDuplicate: "Another host already has this name.",
     reconnect: "Reconnect",
     remove: "Remove host",
+  },
+  harnessTemplates: {
+    title: "Claude Code setup templates",
+    hint: "Shared from a project's Claude Code setup. Another project can start from one.",
+    asking: "Looking for templates…",
+    loadFailed: "Could not load the templates.",
+    retry: "Try again",
+    none: "No templates yet. Share a project's setup to make one.",
+    filesOne: "1 file",
+    filesMany: "{n} files",
+    facts: "{files} · {size}",
+    delete: "Delete",
+    deleteLabel: "Delete template {title}",
+    confirmMessage: "Delete the template {title}?",
+    confirmWarning: "Projects already set up from it keep their files.",
+    confirmButton: "Delete template",
+    deleted: "Template {title} deleted.",
   },
   maintenance: {
     title: "Maintenance",

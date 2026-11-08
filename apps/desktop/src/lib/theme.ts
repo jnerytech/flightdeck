@@ -7,7 +7,7 @@ export type Theme = "light" | "dark";
 export const THEME_KEY = "flightdeck.theme";
 export const DARK_QUERY = "(prefers-color-scheme: dark)";
 
-const MODES: readonly ThemeMode[] = ["light", "dark", "system"];
+const MODES: ReadonlySet<ThemeMode> = new Set<ThemeMode>(["light", "dark", "system"]);
 
 /** What the controller touches: the root element's classes and the system's media queries. */
 export interface ThemeEnv {
@@ -50,7 +50,7 @@ export class ThemeController {
     const env = this.env;
     if (!env) return;
     const stored = this.platform.storage.getItem(THEME_KEY) as ThemeMode | null;
-    this.mode = stored && MODES.includes(stored) ? stored : "system";
+    this.mode = stored && MODES.has(stored) ? stored : "system";
     const system = env.matchMedia(DARK_QUERY);
     const onSystem = () => {
       if (this.mode === "system") this.apply();
