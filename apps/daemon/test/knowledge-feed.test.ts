@@ -78,15 +78,15 @@ describe("knowledge-feed: the index a session is given (#76)", () => {
   });
 
   test("a smaller cap is honoured, counted in bytes and not in characters", () => {
-    const { text, truncated } = feedIndex(
+    const { text, fed, truncated } = feedIndex(
       [
         entry("docs/adr/0001-a.md", "valid", "ação ação ação ação ação ação"),
         entry("docs/adr/0002-b.md", "valid", "ação ação ação ação ação ação"),
       ],
-      420,
+      300,
     );
-    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(420);
-    expect(truncated).toBe(true);
+    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(300);
+    expect([fed, truncated]).toEqual([1, true]);
   });
 
   test("a cap too small for even one line gives no text, and says it left them out", () => {
