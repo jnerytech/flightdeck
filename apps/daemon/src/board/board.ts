@@ -62,6 +62,7 @@ import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./p
 import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
+import { hasTddSkill, renderSpec, specFirstLine, wantsSpec, writeSpec } from "./spec-template.ts";
 import type {
   BoardColumn,
   Card,
@@ -291,6 +292,7 @@ interface CardRow {
   spec_checked_path: string | null;
   spec_found: number;
   spec_heading: string | null;
+  spec_draft: number;
   arena_of: string | null;
   variant: string | null;
   unblock_when: UnblockWhen;
@@ -724,6 +726,7 @@ export class Board {
               path: row.spec_checked_path,
               found: row.spec_found === 1,
               heading: row.spec_heading,
+              ...(row.spec_draft === 1 ? { draft: true } : {}),
             },
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
@@ -1081,7 +1084,7 @@ export class Board {
     if (specPath !== card.specPath) {
       this.db
         .query(
-          "UPDATE cards SET spec_checked_path = NULL, spec_found = 0, spec_heading = NULL WHERE id = ?",
+          "UPDATE cards SET spec_checked_path = NULL, spec_found = 0, spec_heading = NULL, spec_draft = 0 WHERE id = ?",
         )
         .run(id);
     }
@@ -1551,8 +1554,11 @@ export class Board {
     await this.closeRuns(id, runId);
     // A workflow run executes its steps instead of sending the description to one session.
     if (this.workflows.has(runId)) return this.workflows.begin(runId, worktree);
+    const specLine = this.firstSession(id, runId)
+      ? await this.startSpec(id, project.contractByColumn, worktree)
+      : null;
     const pins = await pinnedPrompt(worktree, card.pinnedDocs);
-    const prompt = [card.description, pins, project.promptTemplate]
+    const prompt = [card.description, specLine ?? "", pins, project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");
     const { variant } = card;
@@ -1578,6 +1584,46 @@ export class Board {
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.changed(id);
     this.follow(id, sessionId, 0);
+  }
+
+  /**
+   * Issue #78: on a card's first run, when its project asks for a spec, writes the spec from the
+   * template into the new worktree (never over one that is there) and gives the line that sends the
+   * session to it first. A spec that cannot be written is said on the card; the run starts anyway.
+   */
+  private async startSpec(
+    id: string,
+    contracts: ContractOverrides,
+    worktree: string,
+  ): Promise<string | null> {
+    const card = this.getCard(id);
+    const path = specExpectedPath(card);
+    if (path === null || !wantsSpec(contracts, card.specPath)) return null;
+    const result = await writeSpec(worktree, path, renderSpec(card));
+    if (result === "failed") {
+      // The app says it in its language; the prompt sends the agent to no spec that is not there.
+      const why = new FlightdeckError(
+        "invalid_state",
+        `spec template not written: ${path}`,
+        "spec_template_failed",
+        { path },
+      );
+      this.setNotice(id, why.message, why);
+      this.changed(id);
+      return null;
+    }
+    return specFirstLine(path, await hasTddSkill(worktree));
+  }
+
+  /**
+   * No earlier run of the card reached a session: the card's first start, the one a spec template
+   * is for. A first start that failed before its session (a setup script) still counts as first.
+   */
+  private firstSession(id: string, runId: string): boolean {
+    const earlier = this.db
+      .query("SELECT 1 FROM card_runs WHERE card_id = ? AND id <> ? AND session_id IS NOT NULL")
+      .get(id, runId);
+    return earlier === null;
   }
 
   /** Closes the card's sessions and ends its open runs, except `keep` (the one launching). */
@@ -1691,9 +1737,9 @@ export class Board {
     if (JSON.stringify(seen) === JSON.stringify(now.specState)) return now;
     this.db
       .query(
-        "UPDATE cards SET spec_checked_path = ?, spec_found = ?, spec_heading = ? WHERE id = ?",
+        "UPDATE cards SET spec_checked_path = ?, spec_found = ?, spec_heading = ?, spec_draft = ? WHERE id = ?",
       )
-      .run(seen?.path ?? null, seen?.found ? 1 : 0, seen?.heading ?? null, id);
+      .run(seen?.path ?? null, seen?.found ? 1 : 0, seen?.heading ?? null, seen?.draft ? 1 : 0, id);
     return this.changed(id);
   }
 

@@ -369,6 +369,7 @@ const validCommands: Record<CommandType, unknown> = {
   "hooks.uninstall": { confirm: true },
   "workflow.list": { projectId: "p" },
   "workflow.templates": { projectId: "p" },
+  "alert.list": { projectId: "p" },
   "workflow.validate": { projectId: "p", name: "feature" },
   "workflow.trust": { projectId: "p", name: "feature", hash: "abc" },
   "runenv.config": { projectId: "p" },
@@ -691,6 +692,16 @@ describe("protocolo", () => {
       write({ id: "in-1", part: "other", offset: 0, data: "" }),
       write({ id: "in-1", part: "code", offset: 0, data: "A".repeat(200_000) }),
     ]).toEqual([false, false, false, false, false, false]);
+  });
+
+  test("the harness preview takes at least one part, and never mcp, which has no template (#927)", () => {
+    const parse = (parts: string[]) =>
+      Command.safeParse({
+        id: "1",
+        type: "project.harness.preview",
+        payload: { path: "/work/app", parts },
+      }).success;
+    expect([parse([]), parse(["mcp"]), parse(["hooks"])]).toEqual([false, false, true]);
   });
 
   test.each(Object.entries(validCommands))("comando %s válido passa no schema", (type, payload) => {
