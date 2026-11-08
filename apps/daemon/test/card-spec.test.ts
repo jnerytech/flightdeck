@@ -107,39 +107,43 @@ describe("card-spec: what the daemon learns of a spec file", () => {
     }
   });
 
-  test("a symlink never carries a read out of the worktree, or into another file of it", async () => {
-    if (!posix) return;
-    const { root, outside } = folders();
-    writeFileSync(join(outside, "secret.md"), "# Not yours\n");
-    writeFileSync(join(root, "real.md"), "# Real\n");
-    // A link to a file outside, a link to a file inside, and a folder that is a link outside.
-    symlinkSync(join(outside, "secret.md"), join(root, "out-link.md"));
-    symlinkSync(join(root, "real.md"), join(root, "in-link.md"));
-    symlinkSync(outside, join(root, "docs"));
-    expect(await readSpec(root, "out-link.md")).toEqual({ found: false, heading: null });
-    expect(await readSpec(root, "in-link.md")).toEqual({ found: false, heading: null });
-    expect(await readSpec(root, "docs/secret.md")).toEqual({ found: false, heading: null });
-    // A broken or looping link is only missing.
-    symlinkSync(join(root, "gone.md"), join(root, "broken.md"));
-    symlinkSync(join(root, "loop.md"), join(root, "loop.md"));
-    expect(await readSpec(root, "broken.md")).toEqual({ found: false, heading: null });
-    expect(await readSpec(root, "loop.md")).toEqual({ found: false, heading: null });
-  });
+  test.skipIf(!posix)(
+    "a symlink never carries a read out of the worktree, or into another file of it",
+    async () => {
+      const { root, outside } = folders();
+      writeFileSync(join(outside, "secret.md"), "# Not yours\n");
+      writeFileSync(join(root, "real.md"), "# Real\n");
+      // A link to a file outside, a link to a file inside, and a folder that is a link outside.
+      symlinkSync(join(outside, "secret.md"), join(root, "out-link.md"));
+      symlinkSync(join(root, "real.md"), join(root, "in-link.md"));
+      symlinkSync(outside, join(root, "docs"));
+      expect(await readSpec(root, "out-link.md")).toEqual({ found: false, heading: null });
+      expect(await readSpec(root, "in-link.md")).toEqual({ found: false, heading: null });
+      expect(await readSpec(root, "docs/secret.md")).toEqual({ found: false, heading: null });
+      // A broken or looping link is only missing.
+      symlinkSync(join(root, "gone.md"), join(root, "broken.md"));
+      symlinkSync(join(root, "loop.md"), join(root, "loop.md"));
+      expect(await readSpec(root, "broken.md")).toEqual({ found: false, heading: null });
+      expect(await readSpec(root, "loop.md")).toEqual({ found: false, heading: null });
+    },
+  );
 
-  test("a folder swapped for a link between the check and the open is not followed", async () => {
-    if (!posix) return;
-    const { root, outside } = folders();
-    mkdirSync(join(root, "docs"));
-    writeFileSync(join(root, "docs/s.md"), "# Inside\n");
-    writeFileSync(join(outside, "s.md"), "# Outside\n");
-    const swapped = await readSpec(root, "docs/s.md", {
-      beforeOpen: async () => {
-        renameSync(join(root, "docs"), join(root, "docs-away"));
-        symlinkSync(outside, join(root, "docs"));
-      },
-    });
-    expect(swapped).toEqual({ found: false, heading: null });
-  });
+  test.skipIf(!posix)(
+    "a folder swapped for a link between the check and the open is not followed",
+    async () => {
+      const { root, outside } = folders();
+      mkdirSync(join(root, "docs"));
+      writeFileSync(join(root, "docs/s.md"), "# Inside\n");
+      writeFileSync(join(outside, "s.md"), "# Outside\n");
+      const swapped = await readSpec(root, "docs/s.md", {
+        beforeOpen: async () => {
+          renameSync(join(root, "docs"), join(root, "docs-away"));
+          symlinkSync(outside, join(root, "docs"));
+        },
+      });
+      expect(swapped).toEqual({ found: false, heading: null });
+    },
+  );
 
   test("the same file swapped for another one in that gap is not read either", async () => {
     const { root } = folders();
@@ -154,13 +158,15 @@ describe("card-spec: what the daemon learns of a spec file", () => {
     expect(swapped).toEqual({ found: false, heading: null });
   });
 
-  test("a second name for a file outside the worktree (a hard link) is refused", async () => {
-    if (!posix) return;
-    const { root, outside } = folders();
-    writeFileSync(join(outside, "secret.md"), "# Not yours\n");
-    linkSync(join(outside, "secret.md"), join(root, "hard.md"));
-    expect(await readSpec(root, "hard.md")).toEqual({ found: false, heading: null });
-  });
+  test.skipIf(!posix)(
+    "a second name for a file outside the worktree (a hard link) is refused",
+    async () => {
+      const { root, outside } = folders();
+      writeFileSync(join(outside, "secret.md"), "# Not yours\n");
+      linkSync(join(outside, "secret.md"), join(root, "hard.md"));
+      expect(await readSpec(root, "hard.md")).toEqual({ found: false, heading: null });
+    },
+  );
 
   test("a heading carries no invisible or direction-changing character", async () => {
     const { root } = folders();
@@ -177,25 +183,28 @@ describe("card-spec: what the daemon learns of a spec file", () => {
     expect(found.heading).toBe(`a${" ".repeat(8000)}b`.slice(0, 120));
   });
 
-  test("where the system says where a descriptor points, one that points elsewhere, or cannot be asked, is not inside", async () => {
-    if (process.platform !== "linux") return;
-    const { root, outside } = folders();
-    writeFileSync(join(root, "in.md"), "# In\n");
-    writeFileSync(join(outside, "out.md"), "# Out\n");
-    const inside = openSync(join(root, "in.md"), "r");
-    const elsewhere = openSync(join(outside, "out.md"), "r");
-    try {
-      expect(await descriptorInside(root, inside)).toBe(true);
-      expect(await descriptorInside(root, elsewhere)).toBe(false);
-      // A descriptor that does not exist cannot be told apart from one that hides: refused.
-      expect(await descriptorInside(root, 999_999)).toBe(false);
-      // A system with no such folder does not tell where a descriptor points: it is not asked.
-      expect(await descriptorInside(root, elsewhere, join(root, "no-proc-here"))).toBe(true);
-    } finally {
-      closeSync(inside);
-      closeSync(elsewhere);
-    }
-  });
+  // Platform: /proc/self/fd, where the descriptor's path is read from, exists only on Linux.
+  test.skipIf(process.platform !== "linux")(
+    "where the system says where a descriptor points, one that points elsewhere, or cannot be asked, is not inside",
+    async () => {
+      const { root, outside } = folders();
+      writeFileSync(join(root, "in.md"), "# In\n");
+      writeFileSync(join(outside, "out.md"), "# Out\n");
+      const inside = openSync(join(root, "in.md"), "r");
+      const elsewhere = openSync(join(outside, "out.md"), "r");
+      try {
+        expect(await descriptorInside(root, inside)).toBe(true);
+        expect(await descriptorInside(root, elsewhere)).toBe(false);
+        // A descriptor that does not exist cannot be told apart from one that hides: refused.
+        expect(await descriptorInside(root, 999_999)).toBe(false);
+        // A system with no such folder does not tell where a descriptor points: it is not asked.
+        expect(await descriptorInside(root, elsewhere, join(root, "no-proc-here"))).toBe(true);
+      } finally {
+        closeSync(inside);
+        closeSync(elsewhere);
+      }
+    },
+  );
 
   test("a path that went away after the open, or leads to another file, is not the file that was opened", async () => {
     const { root } = folders();
@@ -208,8 +217,7 @@ describe("card-spec: what the daemon learns of a spec file", () => {
     ).toBe(false);
   });
 
-  test("a worktree reached through a link is still the worktree", async () => {
-    if (!posix) return;
+  test.skipIf(!posix)("a worktree reached through a link is still the worktree", async () => {
     const { base, root } = folders();
     writeFileSync(join(root, "ok.md"), "# Fine\n");
     const alias = join(base, "alias");
