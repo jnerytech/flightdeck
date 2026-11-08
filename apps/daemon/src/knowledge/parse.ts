@@ -27,12 +27,18 @@ const FOLDER_TYPES: ReadonlyArray<readonly [string, KnowledgeType]> = [
 ];
 
 /** `(issue #12)` or `(phase 7)` at the end of a heading: the number is the decision's, not its name. */
-const SUFFIX = /\s*\((?:issue #\d+|phase \d+)\)$/;
+const SUFFIX = /\((?:issue #\d+|phase \d+)\)$/;
 /** The longest title and `supersedes` kept: the rest of a document is not for the list. */
 const TITLE_MAX = 200;
 const PATH_MAX = 512;
 /** A heading is cut to this before anything is matched against it: no pattern runs on a long line. */
 const HEADING_READ = 400;
+
+/** The heading cut where its suffix starts (the space before it goes with the caller's trim). */
+const withoutSuffix = (heading: string): string => {
+  const found = SUFFIX.exec(heading);
+  return found ? heading.slice(0, found.index) : heading;
+};
 
 const folderType = (path: string): KnowledgeType | null => {
   const folder = path.split("/").at(-2) ?? "";
@@ -42,11 +48,7 @@ const folderType = (path: string): KnowledgeType | null => {
 /** The first `# ` heading after the front matter, or the file name without `.md`. */
 function titleOf(path: string, body: string): string {
   const line = body.split("\n").find((l) => l.startsWith("# "));
-  const heading = line
-    ?.slice(2, 2 + HEADING_READ)
-    .trim()
-    .replace(SUFFIX, "")
-    .trim();
+  const heading = withoutSuffix(line?.slice(2, 2 + HEADING_READ).trim() ?? "").trim();
   return heading?.slice(0, TITLE_MAX) || (path.split("/").at(-1) ?? path).replace(/\.md$/i, "");
 }
 

@@ -70,6 +70,7 @@ import { previewHarness } from "./harness/preview.ts";
 import { detectStack } from "./harness/stack.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
+import { createKnowledgeDoc } from "./knowledge/create.ts";
 import { listKnowledge } from "./knowledge/list.ts";
 import { knowledgeFeedFor } from "./knowledge/serve.ts";
 import { setKnowledgeStatus } from "./knowledge/status.ts";
@@ -1454,6 +1455,7 @@ export async function startDaemon(
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: listKnowledge,
     knowledgeStatus: setKnowledgeStatus,
+    knowledgeCreate: createKnowledgeDoc,
     knowledgeFeed: knowledgeFeedFor({
       off: () => config.knowledge.feedOff,
       trust: trustForKnowledge,

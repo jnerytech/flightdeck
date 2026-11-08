@@ -129,10 +129,10 @@ function firstHeading(text: string, cut: boolean): string | null {
   if (cut) lines.pop();
   for (const line of lines) {
     // `.` stops at U+2028 and U+2029; a line here ends only at a line feed.
-    const match = /^ {0,3}#{1,6}[ \t]+([^\n]*)$/.exec(line);
-    if (!match) continue;
+    const opener = /^ {0,3}#{1,6}[ \t]+/.exec(line);
+    if (!opener) continue;
     // A tab separates words; the other controls and invisible characters just go.
-    const text = withoutClosing((match[1] ?? "").replace(/\t/g, " ")).replace(
+    const text = withoutClosing(line.slice(opener[0].length).replace(/\t/g, " ")).replace(
       NOT_FOR_A_HEADING,
       "",
     );

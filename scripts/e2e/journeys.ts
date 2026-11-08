@@ -13,6 +13,7 @@ import type { DemoIds } from "../demo-seed.ts";
 import { DEMO_FAKE_KEY } from "../lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
+  CONTRACT_CARD,
   DANGER_SESSION,
   DEMO_CLOSED_TEAM,
   OVERFLOW_VIEWPORTS,
@@ -828,6 +829,62 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("button", { name: c.t("projectPage.knowledge.feed.turnOn"), exact: true })
       .click();
     await on.first().waitFor({ timeout: WAIT });
+  },
+
+  // Stage contracts (issue #78): Review asks for a PR, so moving a card that has none asks first.
+  // Cancel leaves the card where it was; Move anyway moves it, and the card says what it lacked.
+  // The journey puts the card back, as the demo keeps its state.
+  "stage-contract": async (c) => {
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.knowledgeProject });
+    const column = (id: string) => c.page.locator(`[data-column="${id}"]`);
+    const tile = (id: string) =>
+      column(id).locator(`li[aria-label="${c.t("kanban.card", { title: CONTRACT_CARD })}"]`);
+    const moveTo = async (from: string, to: string) => {
+      await tile(from)
+        .getByRole("button", {
+          name: c.t("board.cardActions", { title: CONTRACT_CARD }),
+          exact: true,
+        })
+        .click();
+      await c.page
+        .getByRole("menuitem", {
+          name: c.t("board.moveTo", { column: c.t(`kanban.columns.${to}` as never) }),
+          exact: true,
+        })
+        .click();
+    };
+    // A run that stopped half way left the card in Review: start from the same place anyway.
+    await tile("backlog").or(tile("review")).first().waitFor({ timeout: WAIT });
+    if ((await tile("backlog").count()) === 0) {
+      await moveTo("review", "backlog");
+      await tile("backlog").waitFor({ timeout: WAIT });
+    }
+    const dialog = c.page.getByRole("alertdialog", {
+      name: c.t("board.contract.title", { column: c.t("kanban.columns.review") }),
+    });
+    await moveTo("backlog", "review");
+    await dialog
+      .getByText(c.t("board.contract.needs.pr"), { exact: false })
+      .waitFor({ timeout: WAIT });
+    // Cancel: nothing moved.
+    await dialog.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    if ((await tile("review").count()) !== 0) {
+      throw new Error("stage-contract: Cancel moved the card");
+    }
+    // Move anyway: the card is in Review, and its notice says what it lacked.
+    await moveTo("backlog", "review");
+    await dialog
+      .getByRole("button", { name: c.t("board.contract.moveAnyway"), exact: true })
+      .click();
+    await tile("review").waitFor({ timeout: WAIT });
+    await tile("review")
+      .getByText(c.t("board.contract.needs.pr"), { exact: false })
+      .first()
+      .waitFor({ timeout: WAIT });
+    // Back to the backlog, which asks nothing.
+    await moveTo("review", "backlog");
+    await tile("backlog").waitFor({ timeout: WAIT });
   },
 
   // 25. The Files tab of a session opens a file read only; when the session rewrites it (a second

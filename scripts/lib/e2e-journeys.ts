@@ -21,6 +21,7 @@ export const JOURNEYS: readonly string[] = [
   "update-card",
   "status-bar",
   "trust-revoke",
+  "stage-contract",
   "knowledge-panel",
   "harness-setup",
   "files-viewer",
@@ -93,6 +94,9 @@ export const OVERFLOW_VIEWPORTS: ReadonlyArray<{ width: number; height: number }
   { width: 1024, height: 768 },
   { width: 1919, height: 1080 },
 ];
+
+/** The card the demo keeps in the design-system backlog, with no PR: Review asks for one (issue #78). */
+export const CONTRACT_CARD = "Write the token guide";
 
 /** The name of the demo session that holds the high-risk request (the issue-e-risco journey). */
 export const DANGER_SESSION = "Limpar a pasta build";

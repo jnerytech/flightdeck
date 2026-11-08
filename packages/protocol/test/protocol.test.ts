@@ -592,6 +592,7 @@ const validCommands: Record<CommandType, unknown> = {
     status: "valid",
     expectedHash: "h",
   },
+  "knowledge.create": { path: "/p", kind: "adr", title: "Use SQLite" },
   "knowledge.setFeed": { path: "/p", enabled: false },
   "file.write": { target: "session:s", path: "a.ts", text: "x", expectedHash: "h" },
 };
