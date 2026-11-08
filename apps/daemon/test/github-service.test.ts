@@ -28,7 +28,8 @@ describe("github-service: waiting for the gh runs it started (#954)", () => {
     const waiting = service.idle().then(() => {
       idle = true;
     });
-    await Bun.sleep(20);
+    // One turn of the event loop: a run still in flight must not have let idle settle.
+    await new Promise((resolve) => setImmediate(resolve));
     const before = idle;
     release({ code: 1, stdout: "", stderr: "not logged in" });
     await status;

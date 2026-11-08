@@ -78,10 +78,8 @@ describe("github-login: the device flow through gh", () => {
       fakeGh([WAITING]);
       let seen = 0;
       const logins = login({
-        // A kill that takes a moment, as ending a tree does.
         kill: async (pid) => {
           seen = pid;
-          await Bun.sleep(150);
           process.kill(pid, "SIGKILL");
         },
       });
@@ -98,6 +96,17 @@ describe("github-login: the device flow through gh", () => {
       expect([seen > 0, alive]).toEqual([true, false]);
     },
   );
+
+  test("cancel does not wait forever for a gh that the kill did not end: it falls back to a hard kill", async () => {
+    fakeGh([WAITING]);
+    const logins = login({ kill: async () => {}, exitWaitMs: 100 });
+    await logins.start();
+    let settled = false;
+    void logins.cancel().then(() => {
+      settled = true;
+    });
+    expect(await poll(() => settled, 4000)).toBe(true);
+  });
 
   test("cancel ends the run even when a child of gh keeps the pipes open, and the kill reaches the tree", async () => {
     // A Windows .cmd shim: ending it leaves the bun it started holding stdout and stderr.
