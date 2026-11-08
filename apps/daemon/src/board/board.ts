@@ -642,7 +642,13 @@ export class Board {
         });
         covered.add(finding.key);
         titles.add(sameTitle(finding.title));
-        this.opts.suspendApproval?.(card.id, "card raised from an agent's findings");
+        try {
+          this.opts.suspendApproval?.(card.id, "card raised from an agent's findings");
+        } catch (error) {
+          // A card without its suspension must not stay: the ones before it have theirs.
+          this.removeFromBoard(card.id, "discarded");
+          throw error;
+        }
         raised.created.push(card.id);
       }
     }
@@ -833,6 +839,8 @@ export class Board {
         const variant = this.createCard(card.projectId, {
           title: `${card.title} (${label})`,
           description: card.description,
+          // Third-party or agent text stays marked, and approval stays off, on every variant.
+          issueExternal: card.issueExternal,
           arenaOf: cardId,
           variant: {
             label,
@@ -842,6 +850,9 @@ export class Board {
           },
         });
         made.push(variant.id);
+        if (card.issueExternal) {
+          this.opts.suspendApproval?.(variant.id, "arena variant of a card with outside content");
+        }
         await this.startCard(variant.id, {
           workflow: input.workflow,
           inputs: input.inputs,

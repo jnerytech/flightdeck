@@ -50,7 +50,8 @@ function itemProblem(raw: unknown, n: number): string | Finding {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return at();
   const fields = raw as Record<string, unknown>;
   const extra = Object.keys(fields).find((name) => !FIELDS.has(name));
-  if (extra !== undefined) return at(extra);
+  // The name is the agent's: it is not echoed, so no invisible or endless text reaches a reason.
+  if (extra !== undefined) return at("extra field");
   const { key, title, body = "" } = fields;
   if (typeof key !== "string" || !KEY_PATTERN.test(key)) return at("key");
   if (typeof title !== "string") return at("title");

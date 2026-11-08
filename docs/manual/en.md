@@ -1591,7 +1591,7 @@ approval off, since what an agent reads in a repository can be written by anyone
 
 Three workflows ship with Flightdeck, for recurring work:
 
-- **Tech-debt scan:** reads the repository (read-only, nothing pushed) for TODOs, deprecated APIs
+- **Tech-debt scan:** reads the repository (in plan mode, nothing pushed) for TODOs, deprecated APIs
   and lint or security warnings, and raises the 10 that matter most as Backlog cards. To run it every
   week, add an automation that starts this workflow on a schedule.
 - **Alert fixer:** takes one lint or security alert that you paste in, fixes it on the card's branch

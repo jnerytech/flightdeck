@@ -28,9 +28,9 @@ const TECH_DEBT_SCAN: Draft = {
       "Lê o repositório atrás de TODOs, APIs obsoletas e avisos de lint ou de segurança, e cria o que achar como cards no Backlog, sem repetir o que um card já cobre.",
   },
   limits: {
-    en: "Read-only: it changes no file and pushes nothing. At most 10 new cards per run, within 30 turns and 20 minutes; the rest are counted, not created. The cards are marked as the agent's text, and a reply that is not a valid list creates nothing and fails the run with the reason. To run it every week, add an automation that starts this workflow on a schedule.",
+    en: "It runs in plan mode, so it asks before it runs a command; it changes no file and pushes nothing. At most 10 new cards per run, within 30 turns and 20 minutes; the rest are counted, not created. The cards are marked as the agent's text, and a reply that is not a valid list creates nothing and fails the run with the reason. To run it every week, add an automation that starts this workflow on a schedule.",
     "pt-BR":
-      "Só leitura: não muda arquivo e não envia nada. No máximo 10 cards novos por execução, em até 30 turnos e 20 minutos; o resto é contado, não criado. Os cards vêm marcados como texto do agente, e uma resposta que não seja uma lista válida não cria nada e falha a execução dizendo o motivo. Para rodar toda semana, crie uma automação que inicie este workflow por horário.",
+      "Roda em modo de plano, então pergunta antes de rodar um comando; não muda arquivo e não envia nada. No máximo 10 cards novos por execução, em até 30 turnos e 20 minutos; o resto é contado, não criado. Os cards vêm marcados como texto do agente, e uma resposta que não seja uma lista válida não cria nada e falha a execução dizendo o motivo. Para rodar toda semana, crie uma automação que inicie este workflow por horário.",
   },
   persona: "arquiteto",
   inputs: [],

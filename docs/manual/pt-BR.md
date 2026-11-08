@@ -1599,7 +1599,7 @@ por qualquer pessoa.
 
 Três workflows já vêm com o Flightdeck, para trabalho recorrente:
 
-- **Varredura de dívida técnica:** lê o repositório (só leitura, nada é enviado) atrás de TODOs,
+- **Varredura de dívida técnica:** lê o repositório (em modo de plano, nada é enviado) atrás de TODOs,
   APIs obsoletas e avisos de lint ou de segurança, e cria os 10 que mais importam como cards no
   Backlog. Para rodar toda semana, crie uma automação que inicie este workflow por horário.
 - **Corretor de alertas:** pega um alerta de lint ou de segurança que você cola, corrige na branch
