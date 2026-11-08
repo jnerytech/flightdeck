@@ -2626,9 +2626,9 @@ export const en: Dictionary = {
     sessionLast: "last on {when}",
     sessionSpan: "from {from} to {to}",
     sessionFiles: "Files the session wrote",
-    sessionFilesTitle: "Files the session wrote with its own tools",
+    sessionFilesTitle: "Files the session edited directly (Write, Edit)",
     sessionFilesNone:
-      "None yet. Changes made by commands (Bash) or outside the session show only in the changes above.",
+      "None yet. Changes made by commands (Bash) or outside the session are not listed here.",
     bashNote: "Changes made through Bash do not count.",
   },
   cardReview: {
