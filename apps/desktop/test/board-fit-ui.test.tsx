@@ -132,4 +132,13 @@ describe("board-fit-ui: the columns share the window until the person picks a wi
     expect(handle?.getAttribute("aria-valuenow")).toBe("188");
     restore();
   });
+
+  test("a column's head never wraps: its name gives way, and the count and + stay on its line", async () => {
+    const { restore } = setup();
+    await ready();
+    const heads = [...document.querySelectorAll("[data-slot='board-columns'] .column-head")];
+    expect(heads.length).toBe(5);
+    expect(heads.every((head) => head.classList.contains("flex-nowrap"))).toBe(true);
+    restore();
+  });
 });
