@@ -72,7 +72,7 @@ describe("session-context", () => {
 
   test("a red main is said with its claim, so nobody starts a parallel fix (#1246)", () => {
     const red =
-      "main is red since https://github.com/o/r/actions/runs/7: typecheck (#30, fd-qa); do not start a parallel fix";
+      'main is red since https://github.com/o/r/actions/runs/7: claimed in #30 by fd-qa ("typecheck"); do not start a parallel fix';
     const lines = sessionContext("compact", { ...facts, mainRed: red }).split("\n");
     expect(lines.filter((line) => line.includes("main is red"))).toEqual([`- warning: ${red}`]);
     expect(sessionContext("startup", { ...facts, mainRed: null }).includes("main is red")).toBe(
