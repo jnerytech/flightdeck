@@ -53,7 +53,7 @@ for (const [lang, t] of [
   ["pt-BR", ptBR],
 ] as const) {
   describe(`roi-cartao-acoes (${lang}): the card's hours`, () => {
-    test("the hours field saves through card.update, and an empty field clears it", async () => {
+    test("the hours field saves through card.update, and an empty field clears it", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
       const { d, card } = await openCard(lang, { roi: true });
       await settle(() => screen.queryByLabelText(t.roiUi.cardHours) !== null);
       const field = screen.getByLabelText(t.roiUi.cardHours) as HTMLInputElement;

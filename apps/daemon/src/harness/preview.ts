@@ -145,12 +145,12 @@ export interface Current {
 }
 
 /** The settings proposal, or null when there is nothing to add or report. */
-async function settingsProposal(
+function settingsProposal(
   file: Look,
   parts: readonly PreviewPart[],
   format: string | null,
   unreadable: string[],
-): Promise<{ proposal: Settings; current: Current } | null> {
+): { proposal: Settings; current: Current } | null {
   if (file.state === "refused") {
     unreadable.push(SETTINGS);
     return null;
@@ -208,7 +208,7 @@ export async function planHarness(
   const unreadable: string[] = [];
   const wantsSettings = parts.includes("hooks") || parts.includes("permissions");
   const made = wantsSettings
-    ? await settingsProposal(await readSettings(root), parts, commands.format, unreadable)
+    ? settingsProposal(await readSettings(root), parts, commands.format, unreadable)
     : null;
   const files: HarnessPreview["files"] = [];
   // A template's files are the Markdown parts, and only they: a part it lacks proposes nothing.

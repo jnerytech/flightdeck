@@ -297,6 +297,8 @@ export interface AppState {
   settings: Settings;
   /** The notifications the app sent, newest first, kept for the notification center. */
   inbox: InboxEntry[];
+  /** Text handed to a session's message box that the box has not taken yet, by session key. */
+  composerFill: Record<string, string>;
   /** The sessions that finished, newest first; Needs you lists those after the last look. */
   finished: Finish[];
   /** When the person last looked at Needs you (ISO), `null` before the first look. */
@@ -1128,6 +1130,7 @@ export class AppStore {
       clientBudgets: [],
       notices: [],
       inbox: [],
+      composerFill: {},
       finished: [],
       finishedLook: null,
       hostsLoaded: false,
@@ -1626,6 +1629,22 @@ export class AppStore {
     )
       this.openRequest(item);
     else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+  }
+
+  /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
+  fillComposer(key: string, text: string): void {
+    const waiting = this.state.composerFill[key];
+    this.update({
+      composerFill: { ...this.state.composerFill, [key]: waiting ? `${waiting}\n\n${text}` : text },
+    });
+  }
+
+  /** The text waiting for the session's box, which is now taken; `null` when there is none. */
+  takeComposerFill(key: string): string | null {
+    const { [key]: text, ...rest } = this.state.composerFill;
+    if (text === undefined) return null;
+    this.update({ composerFill: rest });
+    return text;
   }
 
   /** The person looked at Needs you: what finished before now is no longer new. */

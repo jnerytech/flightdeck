@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { realpath } from "node:fs/promises";
 import { relative } from "node:path";
-import { inSequence } from "@flightdeck/protocol";
+import { inSequence, reviewMessage } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
@@ -86,38 +86,6 @@ const toComment = (row: Row, outdated: boolean): ReviewComment => ({
   sentAt: row.sent_at,
   outdated,
 });
-
-/** `linha 4` or `linhas 10–12`. */
-const linesLabel = (start: number, end: number) =>
-  start === end ? `linha ${start}` : `linhas ${start}–${end}`;
-
-const indent = (prefix: string, text: string) =>
-  linesOf(text)
-    .map((line) => `${prefix}${line}`)
-    .join("\n");
-
-/** One numbered item of a review: the file and lines, the quote, then the comment. */
-export interface ReviewItem {
-  path: string;
-  lineStart: number;
-  lineEnd: number;
-  quote: string;
-  body: string;
-}
-
-/** The review as one message, each comment with its file, lines and quote. */
-export function reviewMessage(items: ReviewItem[]): string {
-  return [
-    "Revisão das mudanças:",
-    ...items.map((item, i) =>
-      [
-        `${i + 1}. \`${item.path}\` ${linesLabel(item.lineStart, item.lineEnd)}:`,
-        indent("   > ", item.quote),
-        indent("   ", item.body),
-      ].join("\n"),
-    ),
-  ].join("\n");
-}
 
 /** Where the quote's lines start, at the occurrence nearest to `near`; `null` without one. */
 function anchor(lines: string[], quote: string[], near: number): number | null {

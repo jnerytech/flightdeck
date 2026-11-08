@@ -67,7 +67,7 @@ function parseList(out: string): Array<{ path: string; branch: string | null }> 
 }
 
 /** The branches Flightdeck makes; a worktree on any other branch is somebody else's work. */
-const OWN_BRANCH = /^fd\//;
+const OWN_PREFIX = "fd/";
 
 /**
  * What a build or an install recreates, and only as a folder at the root of the worktree: losing
@@ -176,7 +176,7 @@ function blockersOf(facts: {
     [facts.unpushed > 0, "unpushed"],
     [!facts.baseUsable, "unknown_base"],
     [facts.unknownState, "unknown_state"],
-    [facts.branch === null || !OWN_BRANCH.test(facts.branch), "other_branch"],
+    [facts.branch === null || !facts.branch.startsWith(OWN_PREFIX), "other_branch"],
   ];
   return [
     ...(facts.busy ? [facts.busy] : []),

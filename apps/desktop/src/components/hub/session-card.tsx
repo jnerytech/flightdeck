@@ -11,6 +11,7 @@ export const STATE_TONES: Record<HubState, StateTone> = {
   needs_you: "needs-you",
   idle: "idle",
   ended: "ended",
+  failed: "error",
 };
 
 /**

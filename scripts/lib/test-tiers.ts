@@ -17,8 +17,13 @@ const E2E_FILE = /^scripts\/e2e\/.*\.e2e\.ts$|^scripts\/smoke-[^/]+\.ts$/;
 /** A test's own helper: a module in a test folder that is not a test itself. */
 const HELPER = /(^|\/)test\/[^/]+\.tsx?$/;
 /** What makes a test integration: a process, a server, a socket, real git through a fake CLI. */
-const INTEGRATION =
-  /\bstartDaemon\b|\bstartServer\s*\(|\bBun\.spawn(?:Sync)?\s*\(|\bspawnSync\s*\(|\bspawn\s*\(|\bexecFileSync\s*\(|\bexecSync\s*\(|\binstallFake(?:Cli|Claude)\s*\(|\bFrameClient\b|\bBun\.serve\s*\(|\bnew WebSocket\s*\(|\bcreateServer\s*\(/;
+const INTEGRATION = [
+  /\bstartDaemon\b|\bFrameClient\b/,
+  /\b(?:startServer|spawnSync|spawn|execFileSync|execSync|createServer)\s*\(/,
+  /\bBun\.(?:spawn(?:Sync)?|serve)\s*\(|\bnew WebSocket\s*\(/,
+  /\binstallFake(?:Cli|Claude)\s*\(/,
+];
+const isIntegration = (text: string) => INTEGRATION.some((re) => re.test(text));
 /** What makes a test component: the DOM, registered or through Testing Library. */
 const COMPONENT = /\bregisterDom\s*\(|@testing-library\//;
 
@@ -71,7 +76,7 @@ export function testTiers(sources: Map<string, string>): Record<string, Tier> {
         const inside = body.slice(body.indexOf(name) + name.length);
         if (
           !found.heavy.has(name) &&
-          (INTEGRATION.test(body) || calls(inside, from.heavy) || calls(inside, found.heavy))
+          (isIntegration(body) || calls(inside, from.heavy) || calls(inside, found.heavy))
         ) {
           found.heavy.add(name);
           grew = true;
@@ -96,7 +101,7 @@ export function testTiers(sources: Map<string, string>): Record<string, Tier> {
     if (!TEST_FILE.test(path)) continue;
     const text = code(sources.get(path) ?? "");
     const from = imported(path, text);
-    if (INTEGRATION.test(text) || calls(text, from.heavy)) tiers[path] = "integration";
+    if (isIntegration(text) || calls(text, from.heavy)) tiers[path] = "integration";
     else if (COMPONENT.test(text) || calls(text, from.dom)) tiers[path] = "component";
     else tiers[path] = "unit";
   }

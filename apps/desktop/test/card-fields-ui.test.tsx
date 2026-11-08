@@ -252,7 +252,7 @@ for (const [lang, t] of [
     });
 
     // OpenCode branch review m1: typing the card's text back is no edit any more.
-    test("typing the card's own text back lets the field follow the card again", async () => {
+    test("typing the card's own text back lets the field follow the card again", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
       const { store, hostId, card } = await openByRoute(lang);
       await settle(() => button(t.cardUi.saveDescription) !== null);
       for (const value of ["x", "Sum the items and add the tax."]) {

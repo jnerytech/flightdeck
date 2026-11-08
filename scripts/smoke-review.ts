@@ -42,7 +42,7 @@ const BIN = join(ROOT, "apps/daemon/src/bin.ts");
 let step = "preparar";
 const log = (msg: string) => console.log(`  · ${msg}`);
 
-function until<T>(check: () => Promise<T | Pending>, what: string): Promise<T> {
+function until<T>(check: () => T | Pending | Promise<T | Pending>, what: string): Promise<T> {
   return pollUntil(check, what, { timeoutMs: TIMEOUT_MS, pauseMs: 50 });
 }
 
@@ -218,13 +218,13 @@ async function run(work: string): Promise<void> {
       throw new Error(`revisão enviada: ${JSON.stringify(sent)}`);
     }
     await until(
-      async () => client.said(sessionId, JSON.stringify(expected).slice(1, -1)),
+      () => client.said(sessionId, JSON.stringify(expected).slice(1, -1)),
       "a revisão chegar à sessão do card",
     );
     // The quote has the fake's `[commit]`: it commits once more on this turn, which must end
     // before the merge.
     await until(
-      async () => client.said(sessionId, "Echo: Revisão das mudanças:"),
+      () => client.said(sessionId, "Echo: Revisão das mudanças:"),
       "a resposta do agente",
     );
     await idle(() => true, "o agente terminar o turno da revisão");

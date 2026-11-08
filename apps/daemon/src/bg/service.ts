@@ -94,9 +94,9 @@ export class BgService {
    * The folder the listing gives a session is Claude Code's word, not ours: it is held against the
    * allowed roots before anything is run in it (issue #415). The real path is what is used.
    */
-  private async folderOf(session: BgSession): Promise<string> {
+  private folderOf(session: BgSession): Promise<string> {
     const roots = this.opts.allowedRoots;
-    return roots ? resolveAllowedCwd(session.cwd, roots) : session.cwd;
+    return roots ? resolveAllowedCwd(session.cwd, roots) : Promise.resolve(session.cwd);
   }
 
   /** The session the listing has under `id`, or the refusal the app says in its language. */
