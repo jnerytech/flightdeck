@@ -1695,10 +1695,20 @@ card, "Post-mortem: <title>", and starts it with the Post-mortem draft workflow 
 failed card is not touched. The button is off, with a note, when the project has not added that
 workflow yet.
 
-A template is a file, and Flightdeck writes nothing to your repository. On the **Workflows**
-screen, **Add from a template** lists them. Open one to read its file, then **Copy the file**,
-commit it to `.flightdeck/workflows/` on the base branch, and **Trust** it on the same screen
-like any other workflow. The `check` line of the alert fixer already holds the project's test
+A template is a file. On the **Workflows** screen, **Add from a template** lists them. Open one to
+read its file. Then add it in one of two ways:
+
+- **Add to the project** (a host from this version on). Flightdeck asks first, then commits the file
+  to `.flightdeck/workflows/` on a new branch, `flightdeck/workflow-<template>-<date>`, pushes it
+  and opens a pull request into the base branch, as a card does. **View the pull request** opens
+  it. The base branch and your checkout do not change: your current branch, your index and your
+  unsaved files stay as they are. The commit uses the repository's `user.name` and `user.email`,
+  and the project needs a PR provider. A template whose file is already on the base branch is
+  refused.
+- **Copy the file**, then commit it to `.flightdeck/workflows/` on the base branch yourself.
+
+Either way, once the file is on the base branch, **Trust** it on the same screen like any other
+workflow: it does not run before. The `check` line of the alert fixer already holds the project's test
 command when Flightdeck can tell it (`npm run test`, `cargo test`...). When it cannot, the line
 holds a placeholder that fails on purpose: replace it with your test command before you commit.
 If the clipboard refuses the copy, the dialog says so as an alert: select the text of the file shown

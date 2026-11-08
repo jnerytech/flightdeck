@@ -1706,10 +1706,20 @@ simples, cortadas e limpas, que você pode ler e editar. **Iniciar o post-mortem
 falhou não é mexido. O botão fica desligado, com um aviso, quando o projeto ainda não adicionou esse
 workflow.
 
-Um modelo é um arquivo, e o Flightdeck não grava nada no seu repositório. Na tela **Workflows**,
-**Adicionar de um modelo** lista os modelos. Abra um para ler o arquivo, use **Copiar o arquivo**,
-faça commit em `.flightdeck/workflows/` na branch base e **confie** nele na mesma tela, como em
-qualquer workflow. A linha `check` do corretor de alertas já traz o comando de teste do projeto
+Um modelo é um arquivo. Na tela **Workflows**, **Adicionar de um modelo** lista os modelos. Abra
+um para ler o arquivo. Depois, adicione de um destes dois jeitos:
+
+- **Adicionar ao projeto** (num host a partir desta versão). O Flightdeck pergunta antes, faz o
+  commit do arquivo em `.flightdeck/workflows/` numa branch nova,
+  `flightdeck/workflow-<modelo>-<data>`, envia e abre um pull request para a branch base, como um
+  card faz. **Ver o pull request** abre o PR. A branch base e o seu checkout não mudam: a sua
+  branch atual, o seu índice e os arquivos não salvos ficam como estão. O commit usa o `user.name`
+  e o `user.email` do repositório, e o projeto precisa de um provedor de PR. Um modelo cujo arquivo
+  já está na branch base é recusado.
+- **Copiar o arquivo**, e você mesmo faz commit em `.flightdeck/workflows/` na branch base.
+
+Nos dois casos, quando o arquivo estiver na branch base, **confie** nele na mesma tela, como em
+qualquer workflow: ele não roda antes disso. A linha `check` do corretor de alertas já traz o comando de teste do projeto
 quando o Flightdeck consegue descobrir (`npm run test`, `cargo test`...). Quando não consegue, a
 linha traz um texto provisório que falha de propósito: troque pelo seu comando de teste antes do
 commit.
