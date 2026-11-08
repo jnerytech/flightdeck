@@ -46,6 +46,11 @@ describe("hook: a weakened assertion (#1141)", () => {
     expect(weakerEscape("Edit", edit("", `expect(a)${m("toBe", "1")};`), none)).toBeNull();
   });
 
+  test("security review: the reason logged is cut to 200 characters", () => {
+    const long = `expect(id)${m("toBeDefined")}; // weaker: ${"x".repeat(500)}`;
+    expect(weakerEscape("Edit", edit("", long), none)?.length).toBe(200);
+  });
+
   test("harness:stats lists the escapes as waivers of the weak-assert rule", () => {
     const line = JSON.stringify({
       t: "2026-11-08T00:00:00Z",

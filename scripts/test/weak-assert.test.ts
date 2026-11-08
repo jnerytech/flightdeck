@@ -42,6 +42,10 @@ describe("weak-assert (#1141)", () => {
     expect(
       weakensAssertions(`expect(ok)${m("toBe", "false")};`, `expect(ok)${m("toBeFalsy")};`),
     ).toBe(false);
+    // Security review: a comma or spaces before the `)` read the same, and a long run of spaces
+    // with no `)` is still a strict matcher.
+    expect(assertionCounts(`expect(a)${m("toBe", "true ,")};`).strict).toBe(0);
+    expect(assertionCounts(`expect(a).toBe(true${" ".repeat(50)}`).strict).toBe(1);
     // The formatter's line break after `toBe(` changes nothing.
     const wrapped = `expect(x !== null)${m("toBe", "\n      true,\n    ")};`;
     expect(weakensAssertions(wrapped, `expect(x).not${m("toBeNull")};`)).toBe(false);
