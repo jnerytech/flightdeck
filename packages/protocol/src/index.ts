@@ -4908,8 +4908,9 @@ export const HOOK_KINDS: ReadonlyArray<readonly [HookKind, string, RegExp]> = [
     "PostToolUse",
     // A script named format:check (or -verify, -lint, -ci, -diff) checks; format:write or format-all
     // formats. `black` counts as the command run, or behind a runner (`poetry run`, `python -m`,
-    // `uvx`), never as a word in another command (`echo black`).
-    /\b(biome|prettier|eslint --fix|ruff format|gofmt|go fmt|deno fmt|rustfmt|cargo fmt|dotnet format|(npm|pnpm|yarn|bun) run (format|fmt)(?!\w)(?![:-](check|verify|lint|ci|diff)\b))|(^|[;&|(\n]|(\brun|\bexec|\bnpx|\buvx?|\s-m)\s)\s*black\b/,
+    // `uvx`), never as a word in another command (`echo black`). `[ \t]*`, not `\s*`: a run of
+    // newlines would let each one start a scan of the rest (quadratic on a crafted command).
+    /\b(biome|prettier|eslint --fix|ruff format|gofmt|go fmt|deno fmt|rustfmt|cargo fmt|dotnet format|(npm|pnpm|yarn|bun) run (format|fmt)(?!\w)(?![:-](check|verify|lint|ci|diff)\b))|(^|[;&|(\n]|(\brun|\bexec|\bnpx|\buvx?|\s-m)\s)[ \t]*black\b/,
   ],
   ["gitAdd", "PreToolUse", /\bgit add\b/],
   ["secrets", "PreToolUse", /(\.env\b|credentials|secrets?\b|\.pem\b|id_rsa)/],
