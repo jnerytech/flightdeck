@@ -287,7 +287,6 @@
   "scripts/lib/temp-path-ratchet.ts",
   "scripts/lib/theme-contrast.ts",
   "scripts/lib/typecheck.ts",
-  "scripts/lib/unstable-skip.ts",
   "scripts/lib/visual.ts",
   "scripts/lib/wait-ratchet.ts"
 ]
