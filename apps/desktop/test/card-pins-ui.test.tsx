@@ -123,6 +123,11 @@ describe("card-pins-ui: the documents pinned to a card (#76)", () => {
     await act(async () => {
       fireEvent.change(picker() as HTMLElement, { target: { value: OUTBOX } });
     });
+    const pin = within(region()).queryByRole("button", { name: "Pin" });
+    expect(pin).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(pin as HTMLElement);
+    });
     await act(async () => {
       fireEvent.click(within(region()).getByRole("button", { name: `Unpin ${SQLITE}` }));
     });
@@ -177,4 +182,82 @@ describe("card-pins-ui: the documents pinned to a card (#76)", () => {
     );
     expect(within(pt).queryByRole("button", { name: `Desafixar ${SQLITE}` })).not.toBeNull();
   });
+});
+
+// #1088: in Chromium on Windows, an arrow key on a closed select changes its value and fires
+// change. Pinning on change pinned every document a keyboard-only person arrowed past. The select
+// now only chooses; Pin pins. Focus stays on the picker after Pin and Unpin, and the panel says
+// what changed.
+describe("card-pins-ui: choosing is not pinning, and the keyboard keeps its place (#1088)", () => {
+  for (const [language, names] of [
+    [
+      "en",
+      {
+        region: "Pinned documents",
+        picker: "Pin a document",
+        pin: "Pin",
+        reason: "Choose a document to pin.",
+        pinned: "Pinned: Use the outbox.",
+        unpin: `Unpin ${SQLITE}`,
+        unpinned: "Unpinned: Use SQLite.",
+      },
+    ],
+    [
+      "pt-BR",
+      {
+        region: "Documentos fixados",
+        picker: "Fixar um documento",
+        pin: "Fixar",
+        reason: "Escolha um documento para fixar.",
+        pinned: "Fixado: Use the outbox.",
+        unpin: `Desafixar ${SQLITE}`,
+        unpinned: "Desafixado: Use SQLite.",
+      },
+    ],
+  ] as const) {
+    const panel = () => screen.getByRole("region", { name: names.region });
+    const pick = () =>
+      within(panel()).queryByRole("combobox", { name: names.picker }) as HTMLSelectElement | null;
+    const pinButton = () => within(panel()).queryByRole("button", { name: names.pin });
+
+    test(`${language}: arrowing through the picker pins nothing; Pin is off with its reason until a document is chosen`, async () => {
+      const sent = show({ pins: [SQLITE], language });
+      await waitFor(() => expect((pick()?.options.length ?? 0) > 1).toBe(true));
+      const reason = within(panel()).queryByText(names.reason);
+      expect([
+        pinButton()?.hasAttribute("disabled") ?? null,
+        reason !== null && pinButton()?.getAttribute("aria-describedby") === reason.id,
+      ]).toEqual([true, true]);
+      await act(async () => {
+        fireEvent.change(pick() as HTMLElement, { target: { value: OUTBOX } });
+      });
+      await act(async () => {
+        fireEvent.change(pick() as HTMLElement, { target: { value: OLD } });
+      });
+      expect([updates(sent).length, pinButton()?.hasAttribute("disabled") ?? null]).toEqual([
+        0,
+        false,
+      ]);
+    });
+
+    test(`${language}: Pin pins the chosen one, says so, and leaves the focus on the picker; so does Unpin`, async () => {
+      show({ pins: [SQLITE], language });
+      await waitFor(() => expect((pick()?.options.length ?? 0) > 1).toBe(true));
+      await act(async () => {
+        fireEvent.change(pick() as HTMLElement, { target: { value: OUTBOX } });
+      });
+      expect(pinButton()).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(pinButton() as HTMLElement);
+      });
+      const status = () => within(panel()).queryByRole("status")?.textContent ?? "";
+      await waitFor(() => expect(status()).toBe(names.pinned));
+      expect([document.activeElement === pick(), pick()?.value]).toEqual([true, ""]);
+      await act(async () => {
+        fireEvent.click(within(panel()).getByRole("button", { name: names.unpin }));
+      });
+      await waitFor(() => expect(status()).toBe(names.unpinned));
+      expect(document.activeElement === pick()).toBe(true);
+    });
+  }
 });
