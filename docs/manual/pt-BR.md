@@ -3275,6 +3275,14 @@ terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
   cartão recebe o foco, então A e N funcionam sem um clique antes, e quando um pedido é
   respondido o próximo é escolhido, com quantos restam. Um pedido de risco alto continua sendo
   aprovado só segurando o botão.
+- **Concluídas:** sob os pedidos, o grupo **Concluídas** lista as sessões que terminaram um turno,
+  falharam ou encerraram desde a última vez que você olhou o Precisa de você, da mais nova para a
+  mais antiga, cada uma com como terminou, há quanto tempo e (quando o host responde) quantos
+  arquivos alterou. Escolha uma e **Ver as alterações** abre a sessão na visão Alterações. Sair da
+  tela é o olhar: o grupo fica vazio da próxima vez. Uma sessão que você estava vendo quando
+  terminou não entra, e o grupo não soma no contador da barra lateral, que conta pedidos. A
+  notificação do sistema de um turno concluído ou de uma falha é a que você já tinha: sai uma vez,
+  nunca com o app em foco.
 - **De uma notificação:** o clique abre a sessão com o cartão do pedido em foco: uma tecla
   responde. No sino, a entrada de um pedido já respondido abre a sessão naquele pedido.
 - **Dependências:** a aba Visão geral da página do host tem uma seção **Saúde e dependências** (abaixo) que agrupa o

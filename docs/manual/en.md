@@ -3258,6 +3258,14 @@ second copy anyway** opens it here all the same.
   conversation. The card takes the focus, so A and N work with no click first, and once a
   request is answered the next one is chosen, with how many are left. A high-risk request is
   still approved only by holding the button.
+- **Finished:** under the requests, a **Finished** group lists the sessions that ended a turn,
+  failed or ended since the last time you looked at Needs you, newest first, each with how it
+  finished, how long ago and (once the host answers) how many files it changed. Choose one and
+  **See the changes** opens the session on its Changes view. Leaving the screen is the look: the
+  group is empty the next time. A session you were watching when it finished is not listed, and
+  the group does not add to the sidebar count, which counts requests. The system notification of
+  a finished turn or a failure is the one you already had: it is sent once, never while the app has
+  focus.
 - **From a notification:** clicking it opens the session with the request's card focused: one
   key answers it. In the bell, an entry of a request already answered opens its session at that
   request.
