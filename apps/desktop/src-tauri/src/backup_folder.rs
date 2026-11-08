@@ -13,7 +13,7 @@ const SUFFIX: &str = ".fdbackup";
 pub const MAX_BACKUP_BYTES: usize = 8 * 1024 * 1024;
 
 /// Whether `name` is exactly a backup's file name: no folder part, no other text, and a stamp that
-/// is a real UTC date and time.
+/// is a date and time in range (the month and day are not checked against each other).
 pub fn is_backup_name(name: &str) -> bool {
     let Some(stamp) = name
         .strip_prefix(PREFIX)

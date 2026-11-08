@@ -103,6 +103,9 @@ export async function runScheduledBackup(deps: {
   const at = now;
   if (schedule.folder === "" || !folder) return { status: "skipped", reason: "no-folder", at };
   if (!isDue(schedule, now)) return { status: "idle" };
+  // The folder in the saved schedule is only a copy; the one that counts is the stored pick.
+  if (!(await folder.current().catch(() => null)))
+    return { status: "skipped", reason: "no-folder", at };
   if (!passphrase) return { status: "skipped", reason: "no-passphrase", at };
   const keep = Math.max(1, Math.floor(schedule.keep));
   const name = backupFileName(now);
