@@ -2957,7 +2957,7 @@ In **Settings**, each host with costs has the **Budgets** section:
   - **hold new cards:** at 100%, new cards of that scope wait in the queue with reason
     `budget`. They leave by themselves in the next period or when the limit goes up.
   - Terminal sessions and manual sessions are never held.
-- **Measured in:** on a subscription, **Measured in** also offers a share of the plan's
+- **Measured in:** on a host that reports the plan quota (a subscription), **Measured in** also offers a share of the plan's
   **5-hour window** or **weekly window**, instead of dollars. The limit is then a percentage of
   that window (0.1% to 100%) and the window is the period: the alerts and the hold start again
   when it resets. The host's share is the window's own use; a project's share is that use times the

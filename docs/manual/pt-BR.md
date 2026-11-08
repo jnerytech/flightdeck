@@ -2977,7 +2977,7 @@ Em **Configurações**, cada host com custos tem a seção **Orçamentos**:
   - **segurar cards novos:** em 100%, os cards novos daquele escopo esperam na fila com o
     motivo `budget`. Eles saem sozinhos no período seguinte ou quando o limite sobe.
   - Sessões do terminal e sessões manuais nunca são seguradas.
-- **Medido em:** numa assinatura, **Medido em** também oferece uma parte da **janela de 5 horas**
+- **Medido em:** num host que informa a cota do plano (uma assinatura), **Medido em** também oferece uma parte da **janela de 5 horas**
   ou da **janela semanal** do plano, em vez de dólares. O limite vira um percentual dessa janela
   (de 0,1% a 100%) e a janela é o período: os alertas e a retenção recomeçam quando ela reinicia.
   A parte do host é o uso da própria janela; a de um projeto é esse uso vezes a parte do projeto

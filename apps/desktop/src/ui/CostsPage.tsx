@@ -92,8 +92,6 @@ const COSTSPAGE_KEYS = [
   "clientList",
   "clientOverrides",
   "hostsLoaded",
-  "quota",
-  "account",
 ] as const;
 
 /**
