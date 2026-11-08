@@ -54,7 +54,13 @@ const PREVIEW: HarnessPreview = {
 const FEATURES = ["projectTrust", "harnessPreview", "harnessApply"];
 type Answer =
   | { ok: true; data: unknown }
-  | { ok: false; code: string; message: string; reason?: string };
+  | {
+      ok: false;
+      code: string;
+      message: string;
+      reason?: string;
+      params?: Record<string, string>;
+    };
 
 function setup(
   options: {
@@ -896,8 +902,8 @@ describe("harness-setup-ui: the set-up dialog can start from one of the host's t
     await choose("shop");
     await open();
     await click("Apply the setup", true);
-    const alerted = await settleMaybe(
-      () => screen.queryByRole("alert")?.textContent?.includes("pick another") === true,
+    const alerted = await settleMaybe(() =>
+      screen.queryAllByRole("alert").some((alert) => alert.textContent?.includes("pick another")),
     );
     await settleMaybe(() => startFrom() === null, 3000);
     expect([

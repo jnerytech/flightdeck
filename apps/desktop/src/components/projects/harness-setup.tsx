@@ -3,7 +3,7 @@ import {
   type HarnessPreview,
   type HarnessTemplateInfo,
 } from "@flightdeck/protocol";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
@@ -181,16 +181,17 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   // The host's templates (#75, T2): "" is the fixed files; a template's id is its Markdown instead.
   const [templates, setTemplates] = useState<HarnessTemplateInfo[]>([]);
   const [template, setTemplate] = useState("");
-  useEffect(() => {
+  /** Reads the host's templates again; a chosen one that is no longer there is dropped from the choice. */
+  const readTemplates = useCallback(async () => {
     if (!props.canTemplates) return;
-    let current = true;
-    void store.hostCommand(hostId, "harness.templates.list", {}).then((got) => {
-      if (current && got) setTemplates(got.templates);
-    });
-    return () => {
-      current = false;
-    };
+    const got = await store.hostCommand(hostId, "harness.templates.list", {});
+    if (!got) return;
+    setTemplates(got.templates);
+    setTemplate((chosen) => (got.templates.some((item) => item.id === chosen) ? chosen : ""));
   }, [store, hostId, props.canTemplates]);
+  useEffect(() => {
+    void readTemplates();
+  }, [readTemplates]);
   const fromTemplate = template === "" ? {} : { template };
 
   /** The preview on screen is gone (a new one, Cancel, an apply): a draft under way is for none. */
@@ -215,6 +216,8 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
       ...fromTemplate,
     });
     if (got) setShown(got);
+    // A refused preview of a template that is gone, or one shared meanwhile: the choice follows the host.
+    else if (template !== "") void readTemplates();
   };
 
   const apply = async (seen: HarnessPreview, reformat: boolean) => {
@@ -240,6 +243,7 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
         again,
         refused: true,
       });
+      if (result.reason === "harness_template_missing") void readTemplates();
       return;
     }
     const files = result.data.written.join(", ");
