@@ -282,6 +282,7 @@ export const DAEMON_REASONS = [
   "harness_template_secret",
   "harness_template_empty",
   "harness_template_taken",
+  "harness_template_title_secret",
   "secret_expired",
   "vault_full",
   "vault_action_unknown",

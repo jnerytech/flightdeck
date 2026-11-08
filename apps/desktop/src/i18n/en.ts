@@ -1846,6 +1846,7 @@ export const en: Dictionary = {
     harness_template_secret: "{file} holds a secret, so nothing was shared.",
     harness_template_empty: "The project has no CLAUDE.md, agent or skill to share.",
     harness_template_taken: "A template named {id} is already on this host: pick another name.",
+    harness_template_title_secret: "The template's title holds a secret, so nothing was shared.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",

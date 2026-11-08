@@ -68,9 +68,7 @@ export class HarnessTemplates {
     if (!ID.test(id)) throw refuse("harness_template_id", `${id} is not a template id`);
     // The title is listed to every client: no secret in it either.
     if (this.scanner.scan(title).length > 0) {
-      throw refuse("harness_template_secret", "the title holds a secret: nothing was shared", {
-        file: "title",
-      });
+      throw refuse("harness_template_title_secret", "the title holds a secret: nothing was shared");
     }
     const files: Array<[string, string]> = [];
     for (const [name, from] of await parts(root, ".claude/")) {
@@ -91,15 +89,16 @@ export class HarnessTemplates {
         "the project has no CLAUDE.md, agent or skill to share",
       );
     }
-    await mkdir(this.dir, { recursive: true });
+    // The host's own: no other user of the machine reads a template, or plants one.
+    await mkdir(this.dir, { recursive: true, mode: 0o700 });
     const at = join(this.dir, id);
-    // Not recursive: a template already there is never written over.
-    const made = await mkdir(at).then(
-      () => true,
-      () => false,
-    );
-    if (!made)
+    // Not recursive: a template already there is never written over. Only that is "taken".
+    try {
+      await mkdir(at, { mode: 0o700 });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
       throw refuse("harness_template_taken", `the template ${id} is already there`, { id });
+    }
     try {
       for (const [name, text] of files) {
         if (!(await createInside(at, name, text))) throw new Error(`${name} could not be written`);

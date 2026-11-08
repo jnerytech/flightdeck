@@ -3268,7 +3268,12 @@ export const Command = z.discriminatedUnion("type", [
       .object({
         path: z.string().min(1).max(4096),
         id: z.string().min(1).max(40),
-        title: z.string().min(1).max(80),
+        // Shown in every client's list: words, not blank, no control character or line break.
+        title: z
+          .string()
+          .min(1)
+          .max(80)
+          .refine((title) => title.trim() !== "" && !/\p{Cc}/u.test(title)),
       })
       .strict(),
   ),

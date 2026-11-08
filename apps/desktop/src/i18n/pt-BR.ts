@@ -1845,6 +1845,8 @@ export const ptBR = {
     harness_template_secret: "{file} contém um segredo, então nada foi compartilhado.",
     harness_template_empty: "O projeto não tem CLAUDE.md, agente ou skill para compartilhar.",
     harness_template_taken: "Já existe um modelo chamado {id} neste host: escolha outro nome.",
+    harness_template_title_secret:
+      "O título do modelo contém um segredo, então nada foi compartilhado.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
