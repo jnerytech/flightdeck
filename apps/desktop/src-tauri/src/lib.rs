@@ -146,7 +146,7 @@ fn run_keygen(dir: &std::path::Path, comment: &str) -> Result<GeneratedKey, Stri
 /// is deleted before returning (the private key never stays on disk).
 #[tauri::command]
 async fn vault_generate_key(comment: String) -> Result<GeneratedKey, String> {
-    if comment.chars().any(|c| c.is_control()) {
+    if comment.chars().any(char::is_control) {
         return Err("the key comment has control characters".to_string());
     }
     // A missing or slow `ssh-keygen` must not freeze the window.
@@ -241,7 +241,7 @@ const OPENABLE: &[&str] = &[
 /// Whether a path ends in one of the extensions a result may have, whatever the case.
 fn has_openable_extension(path: &std::path::Path) -> bool {
     path.extension()
-        .and_then(|ext| ext.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .map(|ext| OPENABLE.contains(&ext.to_ascii_lowercase().as_str()))
         .unwrap_or(false)
 }
@@ -564,7 +564,7 @@ fn tail_lines(dir: &std::path::Path, wanted: usize, files: usize) -> Vec<String>
         let take = (wanted - out.len()).min(lines.len());
         let mut chunk: Vec<String> = lines[lines.len() - take..]
             .iter()
-            .map(|l| l.to_string())
+            .map(ToString::to_string)
             .collect();
         chunk.append(&mut out);
         out = chunk;
