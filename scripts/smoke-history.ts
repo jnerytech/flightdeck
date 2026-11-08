@@ -8,6 +8,7 @@ import { appendFileSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "no
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { type Pending, pollUntil } from "./lib/smoke-poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -44,14 +45,8 @@ function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
   ]);
 }
 
-async function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
-  const deadline = Date.now() + TIMEOUT_MS;
-  for (;;) {
-    const value = check();
-    if (value) return value;
-    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20);
-  }
+function until<T>(check: () => T | Pending, what: string): Promise<T> {
+  return pollUntil(check, what, { timeoutMs: TIMEOUT_MS, pauseMs: 20 });
 }
 
 class Client {
@@ -161,11 +156,10 @@ async function run(work: string): Promise<void> {
     let listed = 0;
     const deadline = Date.now() + TIMEOUT_MS;
     while (listed < 2 && Date.now() < deadline) {
-      const { sessions } = await client.call<{ sessions: unknown[] }>("history.list", {
-        limit: 10,
-      });
+      const asking = client.call<{ sessions: unknown[] }>("history.list", { limit: 10 });
+      const { sessions } = await asking; // NOSONAR: a poll, one look per pause
       listed = sessions.length;
-      if (listed < 2) await Bun.sleep(50);
+      if (listed < 2) await Bun.sleep(50); // NOSONAR: a poll, one look per pause
     }
     if (listed !== 2) throw new Error(`esperava 2 sessões indexadas, veio ${listed}`);
     log("dois transcripts indexados");

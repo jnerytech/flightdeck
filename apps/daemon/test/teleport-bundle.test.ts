@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { chmodSync, cpSync, readFileSync } from "node:fs";
+import { cpSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, symlink, utimes, writeFile } from "node:fs/promises";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import { git, gitRepo, gitRepoWithOrigin } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
@@ -110,29 +110,33 @@ describe("teleport-bundle: the person's repository keeps no object of the bundle
 describe("teleport-bundle: the person's repository never holds the bundle's ref or reads a split path (#715)", () => {
   test("the ref and the bundle are made in a repository of the package: every update-ref names its own git dir", async () => {
     const { repo, folder } = await working();
-    // A git that logs what it is asked, then is the real one.
-    const real = Bun.which("git", { PATH: process.env.PATH ?? "" }) ?? "git";
-    const bin = tempDir("fd-log-git-");
-    const log = join(bin, "calls.txt");
-    // On Windows the fake is a git.cmd: a script without an extension is not a program there.
-    const windows = process.platform === "win32";
-    await writeFile(
-      join(bin, windows ? "git.cmd" : "git"),
-      windows
-        ? `@echo off\r\necho %* >> "${log}"\r\n"${real}" %*\r\n`
-        : `#!/bin/sh\nprintf '%s\\n' "$*" >> '${log}'\nexec '${real}' "$@"\n`,
-    );
-    if (!windows) chmodSync(join(bin, "git"), 0o755);
-    const path = process.env.PATH;
-    process.env.PATH = `${bin}${delimiter}${path ?? ""}`;
+    // Git itself says, for each call, which repository it opened (GIT_TRACE_SETUP) and what it ran
+    // (GIT_TRACE): no fake git, which on Windows would have to be a .cmd that Bun refuses to hand
+    // an argument such as `origin/main^{commit}`.
+    const log = join(tempDir("fd-trace-git-"), "trace.txt");
+    const before = [process.env.GIT_TRACE, process.env.GIT_TRACE_SETUP];
+    process.env.GIT_TRACE = log;
+    process.env.GIT_TRACE_SETUP = log;
     try {
       await bundleCode({ cwd: repo, folder, id: "pkg-1", scan: () => [] });
     } finally {
-      process.env.PATH = path;
+      for (const [name, value] of [
+        ["GIT_TRACE", before[0]],
+        ["GIT_TRACE_SETUP", before[1]],
+      ] as const) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
     }
-    const calls = readFileSync(log, "utf8").split("\n").filter(Boolean);
-    const updates = calls.filter((call) => call.includes("update-ref"));
-    expect([updates.length > 0, updates.every((call) => call.includes("--git-dir"))]).toEqual([
+    // The repository each `update-ref` opened: the last `git_dir` git named before it ran.
+    const opened: string[] = [];
+    let dir = "";
+    for (const line of readFileSync(log, "utf8").split("\n")) {
+      const named = /setup: git_dir: (.+)$/.exec(line);
+      if (named) dir = (named[1] ?? "").replaceAll("\\", "/");
+      else if (/trace: built-in: git update-ref/.test(line)) opened.push(dir);
+    }
+    expect([opened.length > 0, opened.every((path) => path.endsWith("/mirror"))]).toEqual([
       true,
       true,
     ]);

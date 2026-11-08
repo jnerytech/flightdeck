@@ -219,6 +219,9 @@ describe("knowledge-create-ui: the form says what each box is and what Create wa
       const visible = Array.from(region()?.querySelectorAll("label") ?? []).map(
         (l) => l.textContent,
       );
+      // The reason is a help line of the row: the button's effect hands it up, and the row shows it
+      // one render after the title box is there.
+      await waitFor(() => expect(inside.queryByText(names.reason)).not.toBeNull());
       const create = inside.queryByRole("button", { name: names.create });
       const reason = inside.queryByText(names.reason);
       expect([

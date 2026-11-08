@@ -65,7 +65,8 @@ function useModels(store: AppStore, provider: AssistantProvider | null) {
 export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   const { store, t } = props;
   const prefs = useSyncExternalStore(store.assistant.subscribe, () => store.assistant.prefs());
-  const keys = useSyncExternalStore(store.assistant.subscribe, () => store.assistant.keys());
+  // Read for the redraw only: the keys saved or removed change what the screen shows.
+  useSyncExternalStore(store.assistant.subscribe, () => store.assistant.keys());
   const { hosts } = useStoreSlice(store, HOSTS_KEYS);
   const apiSupported = store.assistant.supported;
   const [confirming, setConfirming] = useState<{ hostId: string; provider: boolean } | null>(null);
@@ -77,7 +78,6 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
     if (setupNotice) store.assistant.setupShown();
   }, [setupNotice, store]);
   const models = useModels(store, prefs.provider);
-  void keys;
 
   const able = hosts.filter(
     (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "assistant", false),
