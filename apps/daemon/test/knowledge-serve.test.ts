@@ -71,6 +71,17 @@ describe("knowledge-serve: who is given the index (#76)", () => {
     expect(feed.text).not.toContain("From the branch");
   });
 
+  test("a worktree whose trusted checkout is switched off is given nothing, wherever the worktree is", async () => {
+    const main = tempDir("fd-feed-main-");
+    const branch = tempDir("fd-feed-branch-");
+    await put(main, "docs/adr/0001-main.md", front("valid", "# From main\n"));
+    const feed = await knowledgeFeedFor({
+      off: () => [main],
+      trust: async () => ({ trusted: true, configRoot: main }),
+    })(branch);
+    expect(feed).toEqual({ text: "", fed: 0, truncated: false });
+  });
+
   test("a project with no library is given nothing", async () => {
     const feed = await knowledgeFeedFor({ off: () => [], trust: trusted })(tempDir("fd-feed-"));
     expect(feed).toEqual({ text: "", fed: 0, truncated: false });

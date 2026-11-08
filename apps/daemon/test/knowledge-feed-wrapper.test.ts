@@ -85,6 +85,7 @@ async function run(args: string[], host: { file: string; project: string }) {
     args: string[];
     appended: string | null;
     appendedPath: string | null;
+    appendedModes: { file: number; dir: number } | null;
   };
 }
 
@@ -129,5 +130,15 @@ describe("knowledge-feed-wrapper: the terminal's claude is given the index (#76)
     const ownFile = await run(["--append-system-prompt-file=/tmp/mine.md"], host);
     expect([own.appended, ownFile.appended]).toEqual([null, null]);
     expect(own.args).not.toContain("--append-system-prompt-file");
+  });
+
+  test("the file holding the index can be read by its owner only", async () => {
+    const start = await run([], await terminalHost(async () => INDEX));
+    // Windows has no such modes: only the owner's ACL there.
+    const strangers = process.platform === "win32" ? 0 : 0o077;
+    expect([
+      (start.appendedModes?.file ?? 0o777) & strangers,
+      (start.appendedModes?.dir ?? 0o777) & strangers,
+    ]).toEqual([0, 0]);
   });
 });

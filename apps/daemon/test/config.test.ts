@@ -48,6 +48,18 @@ describe("config", () => {
     await expect(loadConfig(file)).rejects.toThrow();
   });
 
+  test("knowledge.feedOff folders expand ~ and are made absolute, as the allowed roots are (#76)", async () => {
+    const file = join(tempDir(), "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ token: "x".repeat(32), knowledge: { feedOff: ["~/private", "/abs/x"] } }),
+    );
+    expect((await loadConfig(file)).knowledge.feedOff).toEqual([
+      join(testHome(), "private"),
+      "/abs/x",
+    ]);
+  });
+
   test("loading and rewriting the config file return promises, so nothing blocks on the disk", async () => {
     const file = join(tempDir(), "async", "config.json");
     const loading = loadConfig(file);

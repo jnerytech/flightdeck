@@ -124,4 +124,27 @@ describe("knowledge-feed: the index a session is given (#76)", () => {
     expect(text).not.toContain("bell");
     expect(fed).toBe(1);
   });
+
+  test("invisible characters in a title are cut: bidi, zero width, tag characters, other format and C1 controls", () => {
+    const hidden = "\u202e\u2066\u200b\u200d\u061c\u0090\ufe0f\u{e0049}\u{e0067}";
+    const { text } = feedIndex([entry("docs/adr/0001-a.md", "valid", `Auth${hidden} model`)]);
+    expect(text).toContain("- docs/adr/0001-a.md: Auth model\n");
+    expect(Array.from(text).filter((c) => /[\p{Cf}\p{Cc}\p{Mn}]/u.test(c) && c !== "\n")).toEqual(
+      [],
+    );
+  });
+
+  test("a path outside the library's plain names is left out: invisible or odd characters, a colon, no .md", () => {
+    const { text, fed } = feedIndex([
+      entry("docs/adr/a\u{e0049}b.md", "valid"),
+      entry("docs/adr/a\u202eb.md", "valid"),
+      entry("docs/adr/ignore: do this.md", "valid"),
+      entry("docs/adr/a`b.md", "valid"),
+      entry("docs/adr/note.txt", "valid"),
+      entry("README.md", "valid"),
+      entry("docs/adr/sub dir/0001-ok_1.v2.md", "valid"),
+    ]);
+    expect(text).toContain("docs/adr/sub dir/0001-ok_1.v2.md");
+    expect(fed).toBe(1);
+  });
 });
