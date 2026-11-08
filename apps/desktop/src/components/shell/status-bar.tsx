@@ -309,9 +309,7 @@ export function StatusBarSlot(
       quota={glance ? { glance, hostName: quotaHost?.name ?? "" } : null}
       {...(store && glance
         ? {
-            quotaDetail: (close: () => void) => (
-              <QuotaDetail store={store} onClose={close} />
-            ),
+            quotaDetail: (close: () => void) => <QuotaDetail store={store} onClose={close} />,
           }
         : {})}
       refreshing={props.refreshing}
