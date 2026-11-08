@@ -353,6 +353,15 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   `obsolete`). A document without a status is **Not classified**. The filters count the documents of
   each status, and a note appears when a valid document points at an obsolete one. It only reads:
   nothing in the project changes. Only the first 500 documents are shown.
+  A session that Flightdeck starts in a **trusted** project (`flightdeckd claude`, "Claude here",
+  background sessions) is also given a short index of those documents in its system prompt: the
+  path and title of each **valid** document, and of each **transitional** one marked as such.
+  Documents without a status and obsolete ones are never given. The index is capped at 4 KiB, and a
+  line says how many documents were left out. The titles are marked as the repository's data, not
+  instructions. A worktree is read from the trusted main folder, not from the branch. A system
+  prompt you pass yourself (`--append-system-prompt`) is left alone, with no index beside it. To
+  turn it off for a project, list its folder in the host's config file:
+  `"knowledge": { "feedOff": ["/path/to/project"] }` (everything inside the folder is off too).
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
   project, and a folder that holds your allowed roots cannot be trusted at all. Background
   sessions follow the same rule as the sessions in the app.
