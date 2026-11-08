@@ -1,6 +1,7 @@
 import type { ReviewComment } from "@flightdeck/protocol";
 import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { Inline } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +14,8 @@ export function ReviewList(
     onUpdate(id: string, body: string): void;
     onRemove(id: string): void;
     onSend(): void;
+    /** Puts the review in the message box instead of sending it; absent where there is none. */
+    onCompose?: () => void;
   }>,
 ) {
   const t = useT();
@@ -91,9 +94,14 @@ export function ReviewList(
         })}
       </ul>
       {drafts > 0 && (
-        <div>
+        <Inline gap={2}>
           <Button onClick={props.onSend}>{t("changes.send", { n: drafts })}</Button>
-        </div>
+          {props.onCompose && (
+            <Button variant="outline" onClick={props.onCompose}>
+              {t("changes.compose", { n: drafts })}
+            </Button>
+          )}
+        </Inline>
       )}
     </section>
   );

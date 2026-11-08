@@ -23,7 +23,7 @@ const KINDS = [
   // C:\a\b or C:/a/b
   String.raw`[A-Za-z]:[\\/](?:${SEG}[\\/])*${SEG}`,
   // /a/b, at least one segment
-  String.raw`/(?:${SEG}/)*${SEG}`,
+  `/(?:${SEG}/)*${SEG}`,
   // ./a or ../a/b
   String.raw`\.{1,2}/(?:${SEG}/)*${SEG}`,
   // a/b.ext: a folder and a file with an extension, so "and/or" and "1/2" are not paths

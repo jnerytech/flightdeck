@@ -33,7 +33,7 @@ describe("icon-tip: a tooltip names an icon-only control, never a native title (
     expect(screen.getByRole("tooltip").textContent).toBe("Sessions");
   });
 
-  test("keyboard focus shows it too", async () => {
+  test("keyboard focus shows it too", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
     render(
       <IconTip label="Sessions">
         <button type="button">S</button>

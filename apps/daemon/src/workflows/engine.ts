@@ -503,8 +503,7 @@ export class WorkflowEngine {
       return { output: await this.loopStep(run, worktree, step.id, step.loop, context) };
     }
     if ("pr" in step) return { output: await this.prStep(run, step.id) };
-    if ("cards" in step)
-      return { output: await this.cardsStep(run, step.id, step.cards.from, context) };
+    if ("cards" in step) return { output: this.cardsStep(run, step.id, step.cards.from, context) };
     if ("parallel" in step) {
       return { outputs: await this.parallelStep(run, worktree, step.id, step.parallel, context) };
     }
@@ -585,12 +584,12 @@ export class WorkflowEngine {
   }
 
   /** Issue #79: raises the findings in the reply of an earlier agent step as Backlog cards. */
-  private async cardsStep(
+  private cardsStep(
     run: RunRow,
     stepId: string,
     from: string,
     context: InterpolationContext,
-  ): Promise<string> {
+  ): string {
     this.db
       .query(
         `INSERT OR IGNORE INTO step_runs (run_id, step_id, attempt, type, status, started_at)
