@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { applyHarness } from "../src/harness/apply.ts";
@@ -79,7 +79,12 @@ describe("harness-commit: the setup is committed on a new branch, nothing else m
       git(root, "rev-parse", "--abbrev-ref", "HEAD"),
       git(root, "status", "--porcelain") === before,
       maybe(root, "log", "-1", "--format=%an <%ae>", branch),
-      maybe(root, "diff", "--quiet", branch, "--", ...done.written) === "",
+      // Each file on the branch is the file as written (the helper trims both the same way).
+      done.written.every(
+        (file) =>
+          maybe(root, "show", `${branch}:${file}`) ===
+          readFileSync(join(root, file), "utf8").trim(),
+      ),
       maybe(root, "rev-parse", `${branch}^`) === git(root, "rev-parse", "main"),
     ]).toEqual([
       branch,
