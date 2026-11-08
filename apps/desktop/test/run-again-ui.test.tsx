@@ -131,8 +131,19 @@ describe("run-again-ui: Run again on a failed run (#1219)", () => {
     render(view);
     await click(button("Run again"));
     await settleMaybe(() => sent.length === 1, 5000);
-    expect(sent).toEqual([
-      ["card.start", { cardId: "c1", workflow: "feature", inputs: { topic: "login" } }],
+    // The button goes once the run starts: the focus moves to what says so, not to the page.
+    const status = await settleMaybe(
+      () => screen.queryByRole("status")?.textContent === "Started again.",
+      3000,
+    );
+    const focused = await settleMaybe(
+      () => document.activeElement === screen.queryByRole("status"),
+      2000,
+    );
+    expect([sent, status, focused]).toEqual([
+      [["card.start", { cardId: "c1", workflow: "feature", inputs: { topic: "login" } }]],
+      true,
+      true,
     ]);
   });
 
@@ -158,9 +169,11 @@ describe("run-again-ui: Run again on a failed run (#1219)", () => {
     expect([
       off?.disabled,
       screen.queryByText(/changed since you trusted it/) !== null,
+      // The reason has its own room: not a floating note over the link under the button.
+      document.querySelector(".action-reason") === null, // NOSONAR: the boolean keeps a DOM node out of the failure diff
       sent.length,
       opened,
-    ]).toEqual([true, true, 0, ["workflows"]]);
+    ]).toEqual([true, true, true, 0, ["workflows"]]);
   });
 
   test("a file with errors, or gone from the base branch, says so", async () => {
