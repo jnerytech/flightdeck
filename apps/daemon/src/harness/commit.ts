@@ -49,7 +49,8 @@ function git(
 ): Promise<CommandResult> {
   // git-arg: every revision here is HEAD, a value git gave, or the host's own branch through refArg.
   return runCommand(
-    [whichOnPath("git") ?? "git", ...SAFE, ...args],
+    // Defence in depth over SAFE: no signing program of the repository either.
+    [whichOnPath("git") ?? "git", ...SAFE, "-c", "commit.gpgsign=false", ...args],
     cwd,
     input,
     TIMEOUT_MS,
