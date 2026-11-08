@@ -118,7 +118,7 @@ describe("sidebar-host-version: a host says its daemon's version in a real toolt
       rerender(view(APP_VERSION));
     });
     expect(before?.isConnected).toBe(true);
-    expect(document.activeElement === before).toBe(true);
+    expect(document.activeElement === before).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("it reads in Portuguese too", async () => {

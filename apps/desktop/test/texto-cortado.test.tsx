@@ -117,15 +117,15 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
     await act(async () => {
       fireEvent.keyDown(columns[2] as HTMLElement, { key: "ArrowLeft" });
     });
-    expect(document.activeElement === columns[1]).toBe(true);
+    expect(document.activeElement === columns[1]).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.keyDown(columns[1] as HTMLElement, { key: "Home" });
     });
-    expect(document.activeElement === columns[0]).toBe(true);
+    expect(document.activeElement === columns[0]).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.keyDown(columns[0] as HTMLElement, { key: "x" });
     });
-    expect(document.activeElement === columns[0]).toBe(true);
+    expect(document.activeElement === columns[0]).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(columns.map((c) => c.tabIndex)).toEqual([0, -1, -1]);
   });
 

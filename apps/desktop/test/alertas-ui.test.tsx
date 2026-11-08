@@ -120,7 +120,7 @@ const click = (el: Element) =>
 const button = (name: string) => screen.queryByRole("button", { name });
 async function press(name: string) {
   const target = button(name);
-  expect(target !== null).toBe(true);
+  expect(target !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   if (target) await click(target);
 }
 const dialog = (name: string) => screen.queryByRole("dialog", { name });
@@ -134,13 +134,13 @@ async function open() {
 describe("Choose an alert (issue #79)", () => {
   test("a host that cannot read alerts gets no button", () => {
     setup({ features: [] });
-    expect(button("Choose an alert") === null).toBe(true);
+    expect(button("Choose an alert") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the button is there with the feature, and the host is asked only when it opens", async () => {
     const { asked } = setup();
-    expect(button("Choose an alert") !== null).toBe(true);
-    expect(asked().length).toBe(0);
+    expect(button("Choose an alert") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(asked()).toHaveLength(0);
     await press("Choose an alert");
     await settleMaybe(() => asked().length === 1);
     expect(asked()).toEqual([["h1", "alert.list", { projectId: "p1" }]]);
@@ -149,31 +149,31 @@ describe("Choose an alert (issue #79)", () => {
   test("each alert shows its severity in words, its title and where it is, in the host's order", async () => {
     setup();
     await open();
-    expect(dialog("Choose an alert") !== null).toBe(true);
+    expect(dialog("Choose an alert") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const items = within(listed() ?? document.body).queryAllByRole("listitem");
-    expect(items.length).toBe(2);
+    expect(items.length).toBe(2); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const first = within(items[0] as HTMLElement);
-    expect(first.queryByText("High") !== null).toBe(true);
-    expect(first.queryByText(CODE.title) !== null).toBe(true);
-    expect(first.queryByText("src/db.ts:41") !== null).toBe(true);
+    expect(first.queryByText("High") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(first.queryByText(CODE.title) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(first.queryByText("src/db.ts:41") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const second = within(items[1] as HTMLElement);
-    expect(second.queryByText("Critical") !== null).toBe(true);
-    expect(second.queryByText("Prototype pollution in lodash") !== null).toBe(true);
-    expect(button(`Use alert ${CODE.title}`) !== null).toBe(true);
+    expect(second.queryByText("Critical") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(second.queryByText("Prototype pollution in lodash") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(button(`Use alert ${CODE.title}`) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("while the host answers, the dialog says it is loading", async () => {
     setup({ alerts: () => new Promise(() => {}) });
     await press("Choose an alert");
-    expect(screen.queryByRole("status", { name: "Loading alerts" }) !== null).toBe(true);
+    expect(screen.queryByRole("status", { name: "Loading alerts" }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a host that does not answer says so", async () => {
     setup({ alerts: async () => null });
     await press("Choose an alert");
     await settleMaybe(() => screen.queryByText(/Could not read the alerts/) !== null);
-    expect(screen.queryByText(/Could not read the alerts/) !== null).toBe(true);
-    expect(listed() === null).toBe(true);
+    expect(screen.queryByText(/Could not read the alerts/) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(listed() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a source that could not be read is said, by name and by reason, beside the others", async () => {
@@ -184,12 +184,12 @@ describe("Choose an alert (issue #79)", () => {
       }),
     });
     await open();
-    expect(
+    const shown2 =
       screen.queryByText(
         "Code scanning: not available for this repository. It may be off, or gh on the host may lack access.",
-      ) !== null,
-    ).toBe(true);
-    expect(button("Use alert Prototype pollution in lodash") !== null).toBe(true);
+      ) !== null;
+    expect(shown2).toBe(true);
+    expect(button("Use alert Prototype pollution in lodash") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("each reason has its own words", async () => {
@@ -204,20 +204,20 @@ describe("Choose an alert (issue #79)", () => {
     });
     await press("Choose an alert");
     await settleMaybe(() => screen.queryByText(/not installed/) !== null);
-    expect(
+    const shown3 =
       screen.queryByText("Code scanning: the GitHub CLI (gh) is not installed on the host.") !==
-        null,
-    ).toBe(true);
-    expect(
-      screen.queryByText("Dependabot: gh on the host is not signed in to an account.") !== null,
-    ).toBe(true);
+      null;
+    expect(shown3).toBe(true);
+    const shown4 =
+      screen.queryByText("Dependabot: gh on the host is not signed in to an account.") !== null;
+    expect(shown4).toBe(true);
   });
 
   test("with no alerts and nothing unreadable, it says there are none", async () => {
     setup({ alerts: async () => ({ alerts: [], unavailable: [] }) });
     await press("Choose an alert");
     await settleMaybe(() => screen.queryByText("No open alerts.") !== null);
-    expect(screen.queryByText("No open alerts.") !== null).toBe(true);
+    expect(screen.queryByText("No open alerts.") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("with no alerts because a source failed, it does not claim there are none", async () => {
@@ -229,8 +229,8 @@ describe("Choose an alert (issue #79)", () => {
     });
     await press("Choose an alert");
     await settleMaybe(() => screen.queryByText("Dependabot: could not be read.") !== null);
-    expect(screen.queryByText("Dependabot: could not be read.") !== null).toBe(true);
-    expect(screen.queryByText("No open alerts.") === null).toBe(true);
+    expect(screen.queryByText("Dependabot: could not be read.") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByText("No open alerts.") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("picking one hands its text over, closes the dialog and gives the focus back", async () => {
@@ -240,20 +240,20 @@ describe("Choose an alert (issue #79)", () => {
     await settleMaybe(() => dialog("Choose an alert") === null);
     expect(picked).toEqual([CODE.text]);
     await settleMaybe(() => document.activeElement === button("Choose an alert"));
-    expect(document.activeElement === button("Choose an alert")).toBe(true);
+    expect(document.activeElement === button("Choose an alert")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Escape closes the dialog and picks nothing", async () => {
     const { picked } = setup();
     await open();
     const shown = dialog("Choose an alert");
-    expect(shown !== null).toBe(true);
+    expect(shown !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.keyDown(shown ?? document.body, { key: "Escape" });
     });
     await settleMaybe(() => dialog("Choose an alert") === null);
     expect(picked).toEqual([]);
-    expect(dialog("Choose an alert") === null).toBe(true);
+    expect(dialog("Choose an alert") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("in Portuguese the button, the dialog and the reasons follow the language", async () => {
@@ -266,14 +266,14 @@ describe("Choose an alert (issue #79)", () => {
     });
     await press("Escolher um alerta");
     await settleMaybe(() => screen.queryByRole("list", { name: "Alertas" }) !== null);
-    expect(dialog("Escolher um alerta") !== null).toBe(true);
-    expect(screen.queryByText("Alto") !== null).toBe(true);
-    expect(
+    expect(dialog("Escolher um alerta") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByText("Alto") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    const shown5 =
       screen.queryByText(
         "Dependabot: indisponível neste repositório. Pode estar desligado, ou o gh do host pode não ter acesso.",
-      ) !== null,
-    ).toBe(true);
-    expect(button(`Usar o alerta ${CODE.title}`) !== null).toBe(true);
+      ) !== null;
+    expect(shown5).toBe(true);
+    expect(button(`Usar o alerta ${CODE.title}`) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });
 
@@ -281,7 +281,7 @@ describe("the alert input of a workflow (issue #79)", () => {
   const chooseWorkflow = async (name: string) => {
     await settleMaybe(() => screen.queryByRole("option", { name }) !== null);
     const select = screen.queryByRole("combobox", { name: "Workflow" });
-    expect(select !== null).toBe(true);
+    expect(select !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     if (select) {
       await act(async () => {
         fireEvent.change(select, { target: { value: name } });
@@ -292,7 +292,7 @@ describe("the alert input of a workflow (issue #79)", () => {
   test("a workflow that asks for an alert gets the button, and picking fills the input", async () => {
     setup({ dialog: true });
     await chooseWorkflow("alert-fixer");
-    expect(button("Choose an alert") !== null).toBe(true);
+    expect(button("Choose an alert") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await open();
     await press(`Use alert ${CODE.title}`);
     await settleMaybe(() => dialog("Choose an alert") === null);
@@ -303,7 +303,7 @@ describe("the alert input of a workflow (issue #79)", () => {
   test("a workflow with other inputs gets no button", async () => {
     setup({ dialog: true, workflows: [{ name: "feature", inputs: ["task"] }] });
     await chooseWorkflow("feature");
-    expect(screen.queryByRole("textbox", { name: "Input task" }) !== null).toBe(true);
-    expect(button("Choose an alert") === null).toBe(true);
+    expect(screen.queryByRole("textbox", { name: "Input task" }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(button("Choose an alert") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

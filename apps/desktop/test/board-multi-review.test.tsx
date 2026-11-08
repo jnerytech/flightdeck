@@ -239,7 +239,7 @@ describe("board-multi-review: Esc clears the selection only from where it belong
     });
     expect(selected()).toEqual(["A"]);
     // The menu itself is gone: its items are not in the page any more.
-    expect(screen.queryAllByRole("menuitem", { name: /Move to/ }).length).toBe(0);
+    expect(screen.queryAllByRole("menuitem", { name: /Move to/ }).length).toBe(0); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Esc on the selection bar clears the selection", async () => {

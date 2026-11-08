@@ -119,7 +119,7 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     await press("Close");
     await press("README.md");
     expect(document.querySelector(".cm-content")?.textContent ?? "").toContain("second line");
-    expect(tokens().length).toBe(0);
+    expect(tokens().length).toBe(0); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("on a host of this computer the file opens in its app or shows in its folder; elsewhere neither is offered", async () => {
@@ -132,7 +132,7 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     // A file the host refused to read offers neither.
     await press("logo.png");
     expect(screen.queryByText("The file logo.png is not text.")).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Open in its app" }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Open in its app" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     cleanup();
     const remote = host(false);
     await show(remote.store);

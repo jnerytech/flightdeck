@@ -73,7 +73,7 @@ for (const [lang, dict] of [
       const button = screen.queryByRole("button", { name });
       expect(button).not.toBeNull();
       expect(button?.getAttribute("data-level")).toBe("near");
-      expect(button?.querySelector("svg[data-mark]") !== null).toBe(true);
+      expect(button?.querySelector("svg[data-mark]") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
 
     test("with no host reporting a quota, nothing shows", () => {

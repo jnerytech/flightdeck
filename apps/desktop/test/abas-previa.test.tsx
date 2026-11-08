@@ -67,7 +67,7 @@ describe("abas-previa", () => {
     const aside = screen.queryByRole("complementary") as HTMLElement;
     const item = () =>
       within(aside).queryAllByRole("button", { name: /^Open host alfa/ })[0] as HTMLElement;
-    expect(item() === undefined).toBe(false);
+    expect(item()).toBeDefined();
     await act(async () => void fireEvent.click(item()));
     expect(store.hostTabs.hostId).toBe("ha");
     expect(store.tabs.active.preview).toBe(true);

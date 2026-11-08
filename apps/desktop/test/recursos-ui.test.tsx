@@ -157,11 +157,11 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
     view.rerender(w.view(false));
     const before = reads(w.asked).length;
     await quietFor(120);
-    expect(reads(w.asked).length).toBe(before);
+    expect(reads(w.asked)).toHaveLength(before);
     cleanup();
     const after = reads(w.asked).length;
     await quietFor(120);
-    expect(reads(w.asked).length).toBe(after);
+    expect(reads(w.asked)).toHaveLength(after);
   });
 
   test("a read that is still going is not asked again by the next tick (F4)", async () => {

@@ -113,7 +113,7 @@ const panelButton = (name: string | RegExp) =>
   within(screen.getByRole("dialog")).queryByRole("button", { name });
 const press = async (name: string | RegExp) => {
   const button = panelButton(name);
-  expect(button === null).toBe(false);
+  expect(button === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
@@ -124,7 +124,7 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
   test("a waiting request shows its risk chip and Approve and Deny; Approve answers it and the row leaves", async () => {
     const { answered } = await setup();
     await open();
-    expect(within(screen.getByRole("dialog")).queryByText("Low risk") === null).toBe(false);
+    expect(within(screen.getByRole("dialog")).queryByText("Low risk") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect([panelButton("Approve") === null, panelButton("Deny") === null]).toEqual([false, false]);
     await press("Approve");
     expect(answered).toEqual([["h", "r1", "allow", { held: false }]]);
@@ -160,9 +160,9 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
   test("a high-risk request is approved by holding the button, never by A", async () => {
     const { answered } = await setup({ pending: [request({ risk: "high" })] });
     await open();
-    expect(within(screen.getByRole("dialog")).queryByText("High risk") === null).toBe(false);
-    expect(panelButton("Approve") === null).toBe(true);
-    expect(panelButton(/Hold to approve/) === null).toBe(false);
+    expect(within(screen.getByRole("dialog")).queryByText("High risk") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(panelButton("Approve") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(panelButton(/Hold to approve/) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.keyDown(panelButton(/Backend tests/) as HTMLElement, { key: "a" });
     });
@@ -201,9 +201,9 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
     await setup({ pending: [], entries: [entry("r1")] });
     await open();
     expect(rowCount()).toBe(1);
-    expect(
-      within(screen.getByRole("dialog")).queryByText("What this was about is gone.") === null,
-    ).toBe(false);
+    const absent =
+      within(screen.getByRole("dialog")).queryByText("What this was about is gone.") === null;
+    expect(absent).toBe(false);
   });
 
   test("while the host is offline its requests stay listed: nothing says they were answered", async () => {
@@ -243,8 +243,8 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
   test("the words on a request row come from the request that waits, not from what was stored", async () => {
     await setup({ entries: [entry("r1", { ask: "Wants to run: rm -rf /" })] });
     const panel = await open();
-    expect(within(panel).queryByText(/npm test/) === null).toBe(false);
-    expect(within(panel).queryByText(/rm -rf/) === null).toBe(true);
+    expect(within(panel).queryByText(/npm test/) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(within(panel).queryByText(/rm -rf/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a key typed through an input method answers nothing", async () => {
@@ -263,7 +263,7 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
     await setup();
     const panel = await open();
     const group = within(panel).queryByRole("group", { name: "Backend tests" });
-    expect(group === null).toBe(false);
+    expect(group === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect([
       within(group as HTMLElement).queryByRole("button", { name: "Approve" }) === null,
       within(group as HTMLElement).queryByRole("button", { name: "Deny" }) === null,
@@ -295,7 +295,7 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
   test("in Portuguese the chip, the buttons and the keys are in Portuguese", async () => {
     const { answered } = await setup({ lang: "pt-BR" });
     await open();
-    expect(within(screen.getByRole("dialog")).queryByText("Risco baixo") === null).toBe(false);
+    expect(within(screen.getByRole("dialog")).queryByText("Risco baixo") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await press("Aprovar");
     expect(answered.map(([, , decision]) => decision)).toEqual(["allow"]);
   });

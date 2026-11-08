@@ -146,7 +146,7 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
     await press();
     // The same words in the same node are not read twice: the note is a new node each time.
     await settleMaybe(() => said() !== null && said() !== first);
-    expect(said() !== first).toBe(true);
+    expect(said()).not.toBe(first);
     // The toast is gone: one event is not said twice.
     expect(store.getState().notices.filter((n) => n.kind === "success")).toEqual([]);
   });
@@ -195,7 +195,7 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
     render(view);
     await listed();
     const button = makeCard("Login screen") as HTMLButtonElement;
-    expect(button === null).toBe(false);
+    expect(button === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     button.focus();
     await act(async () => fireEvent.click(button));
     expect([
@@ -219,12 +219,12 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
       });
     }
     await settleMaybe(() => sent.some(([type]) => type === "card.update"));
-    expect(sent.filter(([type]) => type === "card.create").length).toBe(1);
+    expect(sent.filter(([type]) => type === "card.create")).toHaveLength(1);
   });
 
   test("in Portuguese too", async () => {
     render(setup({ language: "pt-BR" }).view);
     await listed();
-    expect(makeCard("Login screen", "Criar um cartão de Login screen") !== null).toBe(true);
+    expect(makeCard("Login screen", "Criar um cartão de Login screen") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

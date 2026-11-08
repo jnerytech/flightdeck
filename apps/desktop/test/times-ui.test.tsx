@@ -621,7 +621,7 @@ describe("times-ui: the teams of a host", () => {
     await click("Novo time");
     await workerRows(2);
     const rows = [...document.querySelectorAll<HTMLElement>("[data-slot='worker-row']")];
-    expect(rows.length).toBe(2);
+    expect(rows.length).toBe(2); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     for (const item of rows) expect(item.className.split(" ")).toContain("worker-row");
   });
 
@@ -716,7 +716,7 @@ describe("times-ui: the teams of a host", () => {
     const item = row("grade") as HTMLElement;
     expect(item).not.toBeNull();
     const members = [...item.querySelectorAll<HTMLElement>("[data-slot='team-member']")];
-    expect(members.length).toBe(3);
+    expect(members).toHaveLength(3);
     const classes = (el: Element | null | undefined) => el?.className.split(" ") ?? [];
     for (const member of members) {
       // One grid for every row: the name and chips, then a column of the same width on the right.

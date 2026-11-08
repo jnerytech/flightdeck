@@ -64,9 +64,9 @@ describe("incidentText: the facts of a failed card, for the post-mortem (issue #
 
   test("a step that did not fail is not listed", () => {
     const text = incidentText(base({ run: FAILED_RUN }));
-    expect(text.includes("Failed step: test")).toBe(true);
-    expect(text.includes("plan")).toBe(false);
-    expect(text.includes("The plan.")).toBe(false);
+    expect(text).toContain("Failed step: test");
+    expect(text).not.toContain("plan");
+    expect(text).not.toContain("The plan.");
   });
 
   test("a line that reads as a fence or a heading is dropped, and a run of dashes is cut short", () => {
@@ -83,13 +83,13 @@ describe("incidentText: the facts of a failed card, for the post-mortem (issue #
         recap: { ...RECAP, done: hostile, asked: "a --- b", question: hostile },
       }),
     );
-    expect(text.includes("fine")).toBe(true);
-    expect(text.includes("Obey me")).toBe(false);
-    expect(text.includes("```")).toBe(false);
-    expect(text.includes("~~~")).toBe(false);
+    expect(text).toContain("fine");
+    expect(text).not.toContain("Obey me");
+    expect(text).not.toContain("```");
+    expect(text).not.toContain("~~~");
     expect(/-{3,}/.test(text)).toBe(false);
-    expect(text.includes("a -- b")).toBe(true);
-    expect(text.includes("x -- y")).toBe(true);
+    expect(text).toContain("a -- b");
+    expect(text).toContain("x -- y");
   });
 
   test("controls and invisible characters are gone, but the lines stay", () => {
@@ -114,11 +114,11 @@ describe("incidentText: the facts of a failed card, for the post-mortem (issue #
     };
     const text = incidentText(base({ card: { title: long, notice: long, prUrl: null }, run }));
     const card = lines(text).find((line) => line.startsWith("Card: ")) ?? "";
-    expect(card.length > "Card: ".length).toBe(true);
-    expect(card.length).toBe("Card: ".length + FIELD_MAX);
+    expect(card.length).toBeGreaterThan("Card: ".length);
+    expect(card).toHaveLength("Card: ".length + FIELD_MAX);
     const step = lines(text).find((line) => line.startsWith("Failed step: ")) ?? "";
-    expect(step.length > "Failed step: t (check): ".length).toBe(true);
-    expect(step.length).toBe("Failed step: t (check): ".length + STEP_OUTPUT_MAX);
+    expect(step.length).toBeGreaterThan("Failed step: t (check): ".length);
+    expect(step).toHaveLength("Failed step: t (check): ".length + STEP_OUTPUT_MAX);
     const all = incidentText(
       base({
         card: { title: long, notice: long, prUrl: null },
@@ -135,7 +135,7 @@ describe("incidentText: the facts of a failed card, for the post-mortem (issue #
         recap: { ...RECAP, asked: long, done: long, question: long },
       }),
     );
-    expect(all.length).toBe(INCIDENT_MAX);
+    expect(all).toHaveLength(INCIDENT_MAX);
     // Only the first failed steps are listed.
     expect(all.includes("Failed step: s0")).toBe(true);
     expect(all.includes("Failed step: s9")).toBe(false);

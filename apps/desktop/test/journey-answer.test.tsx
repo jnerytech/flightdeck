@@ -76,7 +76,7 @@ describe("journey-answer: a request is answered from where it was announced", ()
     await settle(() => focusedRequest() === item?.requestId, 6000, "the card has the focus");
     await press("a");
     await stays(() => d.manager.pendingPermissions(ids[0] as string).length === 1, 200);
-    expect(d.manager.pendingPermissions(ids[0] as string).length).toBe(1);
+    expect(d.manager.pendingPermissions(ids[0] as string)).toHaveLength(1);
   });
 
   test("Needs you goes on to the next request once one is answered, focused, and says how many are left", async () => {
@@ -121,6 +121,6 @@ describe("journey-answer: a request is answered from where it was announced", ()
       fireEvent.click(screen.queryByRole("button", { name: /^Notificações/ }) as HTMLElement);
     });
     await settle(() => document.querySelector(".inbox-pick") === null);
-    expect(document.querySelector(".inbox-pick") === null).toBe(true);
+    expect(document.querySelector(".inbox-pick") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

@@ -418,7 +418,7 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
     await open();
     await click("Apply the setup", true);
     await settleMaybe(() => screen.queryByText(/Set up:/) !== null);
-    expect(button("Commit on a new branch") !== null).toBe(false);
+    expect(button("Commit on a new branch") !== null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a refused commit says why, in the app's words", async () => {

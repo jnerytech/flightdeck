@@ -97,7 +97,7 @@ const click = (el: Element) =>
 const button = (name: string) => screen.queryByRole("button", { name });
 async function press(name: string) {
   const target = button(name);
-  expect(target !== null).toBe(true);
+  expect(target !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   if (target) await click(target);
 }
 const dialog = (name: string) => screen.queryByRole("dialog", { name });
@@ -112,29 +112,29 @@ async function open() {
 describe("Draft a post-mortem from a failed card (issue #79)", () => {
   test("a card that did not fail has no button", () => {
     setup({ card: { notice: null } });
-    expect(button("Draft a post-mortem") === null).toBe(true);
+    expect(button("Draft a post-mortem") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a card with a problem has the button, and a failed run is enough too", () => {
     setup();
-    expect(button("Draft a post-mortem") !== null).toBe(true);
+    expect(button("Draft a post-mortem") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     cleanup();
     setup({
       card: { notice: null },
       run: { workflowName: "feature", status: "failed", statusReason: null, steps: [] },
     });
-    expect(button("Draft a post-mortem") !== null).toBe(true);
+    expect(button("Draft a post-mortem") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the dialog holds the facts of the card and of its session, ready to read and edit", async () => {
     const { recaps } = setup();
     await open();
-    expect(dialog("Draft a post-mortem") !== null).toBe(true);
+    expect(dialog("Draft a post-mortem") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(recaps).toEqual(["s1"]);
     const text = incident()?.value ?? "";
-    expect(text.includes("Card: Fix the login")).toBe(true);
-    expect(text.includes("Problem on the card: The setup script failed.")).toBe(true);
-    expect(text.includes("Asked: Fix the login bug")).toBe(true);
+    expect(text).toContain("Card: Fix the login");
+    expect(text).toContain("Problem on the card: The setup script failed.");
+    expect(text).toContain("Asked: Fix the login bug");
   });
 
   test("a card with no session still gives the facts it has, and asks for no summary", async () => {
@@ -150,7 +150,7 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
     const { sent, success, opened } = setup();
     await open();
     const field = incident();
-    expect(field !== null).toBe(true);
+    expect(field !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     if (field) {
       await act(async () => {
         fireEvent.change(field, { target: { value: "My edited incident" } });
@@ -166,7 +166,7 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
       ],
     ]);
     await settleMaybe(() => dialog("Draft a post-mortem") === null);
-    expect(dialog("Draft a post-mortem") === null).toBe(true);
+    expect(dialog("Draft a post-mortem") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(success.map((s) => s.text)).toEqual(["Post-mortem started: Post-mortem: Fix the login"]);
     success[0]?.open?.();
     expect(opened).toEqual(["new1"]);
@@ -175,7 +175,7 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
   test("a project without the post-mortem workflow says how to get it, and cannot start", async () => {
     const { sent } = setup({ workflows: [] });
     await open();
-    expect(screen.queryByText(/draft workflow is not set up in this project/i) !== null).toBe(true);
+    expect(screen.queryByText(/draft workflow is not set up in this project/i) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const start = button("Start the post-mortem") as HTMLButtonElement | null;
     expect(start?.disabled).toBe(true);
     expect(sent).toEqual([]);
@@ -195,8 +195,8 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
     await press("Start the post-mortem");
     await settleMaybe(() => sent.length === 2);
     await settleMaybe(() => screen.queryByText(/was made but did not start/) !== null);
-    expect(screen.queryByText(/was made but did not start/) !== null).toBe(true);
-    expect(dialog("Draft a post-mortem") !== null).toBe(true);
+    expect(screen.queryByText(/was made but did not start/) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(dialog("Draft a post-mortem") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await press("Start the post-mortem");
     await settleMaybe(() => sent.length === 3);
     expect(sent.map(([type]) => type)).toEqual(["card.create", "card.start", "card.start"]);
@@ -205,7 +205,7 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
   test("while the project's workflows are not known yet, it neither warns nor starts", async () => {
     const { sent } = setup({ workflows: null });
     await open();
-    expect(screen.queryByText(/workflow is not set up in this project/i) === null).toBe(true);
+    expect(screen.queryByText(/workflow is not set up in this project/i) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const start = button("Start the post-mortem") as HTMLButtonElement | null;
     expect(start?.disabled).toBe(true);
     expect(sent).toEqual([]);
@@ -219,8 +219,8 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
     await settleMaybe(() => sent.length === 1);
     await stays(() => sent.length === 1);
     expect(sent.map(([type]) => type)).toEqual(["card.create"]);
-    expect(dialog("Draft a post-mortem") !== null).toBe(true);
-    expect(before.length > 0).toBe(true);
+    expect(dialog("Draft a post-mortem") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(before.length).toBeGreaterThan(0);
     expect(incident()?.value).toBe(before);
     expect(success).toEqual([]);
   });
@@ -229,22 +229,22 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
     const { sent } = setup();
     await open();
     const shown = dialog("Draft a post-mortem");
-    expect(shown !== null).toBe(true);
+    expect(shown !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.keyDown(shown ?? document.body, { key: "Escape" });
     });
     await settleMaybe(() => dialog("Draft a post-mortem") === null);
     expect(sent).toEqual([]);
     await settleMaybe(() => document.activeElement === button("Draft a post-mortem"));
-    expect(document.activeElement === button("Draft a post-mortem")).toBe(true);
+    expect(document.activeElement === button("Draft a post-mortem")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("in Portuguese the button, the dialog and the notice follow the language", async () => {
     setup({ language: "pt-BR", workflows: [] });
     await press("Redigir um post-mortem");
     await settleMaybe(() => screen.queryByRole("textbox", { name: "Incidente" }) !== null);
-    expect(dialog("Redigir um post-mortem") !== null).toBe(true);
-    expect(screen.queryByText(/não está configurado neste projeto/) !== null).toBe(true);
-    expect(button("Iniciar o post-mortem") !== null).toBe(true);
+    expect(dialog("Redigir um post-mortem") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByText(/não está configurado neste projeto/) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(button("Iniciar o post-mortem") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });
