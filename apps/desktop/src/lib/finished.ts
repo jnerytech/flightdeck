@@ -67,17 +67,20 @@ export function sinceLastLook(list: Finish[], lastLook: string | null): Finish[]
 }
 
 const Stored = z.object({
-  list: z.array(
-    z.object({
-      key: z.string(),
-      hostId: z.string(),
-      sessionId: z.string(),
-      name: z.string(),
-      outcome: z.enum(["done", "failed", "ended"]),
-      at: z.string(),
-      files: z.number().nullable(),
-    }),
-  ),
+  // A stored list is cut to the cap and its texts to a sane length: what is on disk is not trusted.
+  list: z
+    .array(
+      z.object({
+        key: z.string().max(400),
+        hostId: z.string().max(200),
+        sessionId: z.string().max(200),
+        name: z.string().max(400),
+        outcome: z.enum(["done", "failed", "ended"]),
+        at: z.string().max(40),
+        files: z.number().nullable(),
+      }),
+    )
+    .transform((list) => list.slice(0, FINISHED_CAP)),
   lastLook: z.string().nullable(),
 });
 

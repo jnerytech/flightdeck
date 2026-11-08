@@ -1665,8 +1665,13 @@ export class AppStore {
     key: string,
     at: string,
   ): Promise<void> {
+    // The host reads `session:<id>` as the Claude session id, which the app learns with the session.
+    const claudeId =
+      this.state.sessions[key]?.claudeSessionId ??
+      this.state.hub[hostId]?.managed.find((s) => s.id === sessionId)?.claudeSessionId;
+    if (!claudeId) return;
     const result = await this.hostRequest(hostId, "changes.get", {
-      target: `session:${sessionId}`,
+      target: `session:${claudeId}`,
     });
     if (!result.ok) return;
     const files = result.data.files.length;

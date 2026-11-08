@@ -19,5 +19,8 @@ From the ranked proposals of #1126 (round 4 of #168), proposal 4: "Done since yo
   notification per transition and stay quiet while the app has focus, under the notification
   preferences and #933's once rule; this card reuses them. An end is listed but sends nothing:
   it is usually the person's own End.
+- **What is kept.** The list holds host-supplied session names, host ids and times in the app's
+  storage (50 entries at most, cut and length-limited when read back), like the notification
+  bell does. It has no expiry besides the cap.
 - **Not counted** in the sidebar's Needs you number or the taskbar badge: they count requests that
   block a session, and a finish blocks nothing.

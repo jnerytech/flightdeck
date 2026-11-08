@@ -40,6 +40,7 @@ type Entry =
 // items-stretch: a button's own style is align-items: flex-start, which leaves a line no width
 // to cut at (issue #175).
 const ROW_PAD = "px-2 py-1.5";
+const HEADING = `${ROW_PAD} font-medium text-muted-foreground text-xs`;
 const ROW = `flex w-full min-w-0 flex-col items-stretch gap-0.5 rounded-md ${ROW_PAD} text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[active=true]:bg-accent aria-pressed:bg-accent`;
 
 /** The first line of a row: a dot, then the text. A span, since a row is a button. */
@@ -537,9 +538,7 @@ export function NeedsYou(
           <Fragment key={entry.key}>
             {i === firstFinished && (
               <li>
-                <h2 className={`${ROW_PAD} font-medium text-muted-foreground text-xs`}>
-                  {t("needsYou.finished")}
-                </h2>
+                <h2 className={HEADING}>{t("needsYou.finished")}</h2>
               </li>
             )}
             <EntryRow
