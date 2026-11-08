@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { Budget, BudgetInput, QuotaBudgetInput, QuotaState } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError, featureOff } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
 import { localDay } from "../quota/usage.ts";
 import { ulid } from "../ulid.ts";
@@ -104,6 +104,7 @@ export class Budgets {
 
   /** The same for a budget in terms of a quota window: its period is the window. */
   setWindow(input: QuotaBudgetInput): Budget {
+    if (!this.opts.quota) throw featureOff("quotaBudgets");
     return this.save({
       id: input.id,
       scope: input.scope,
@@ -321,10 +322,18 @@ export class Budgets {
    * budget says it is an estimate). No reading of the window: nothing used, nothing alerts.
    */
   private spentShare(row: Row, span: number, limitPct: number) {
-    const reading = this.opts.quota?.state().windows.find((w) => w.window === row.period);
-    const periodKey = reading?.resetsAt ?? "unread";
+    // A reading with no reset has no period to keep the alerts in: it counts as no reading.
+    const reading = this.opts.quota
+      ?.state()
+      .windows.find((w) => w.window === row.period && w.resetsAt !== null);
+    // The reset to the minute: the CLI may round it differently between readings, and that is the
+    // same window, not a new period that would alert again.
+    const reset = reading?.resetsAt
+      ? Math.round(Date.parse(reading.resetsAt) / 60_000) * 60_000
+      : null;
+    const periodKey = reset === null ? "unread" : iso(reset);
     const now = this.now();
-    const from = (reading?.resetsAt ? Date.parse(reading.resetsAt) : now) - span;
+    const from = (reset ?? now) - span;
     const { total, scoped } = this.db
       .query(
         `SELECT TOTAL(cost_usd) AS total,

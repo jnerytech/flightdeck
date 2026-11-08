@@ -93,7 +93,7 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
     read("five_hour", 0.5, 2 * HOUR);
     expect(budgets.blocked("kA")).toBe(true);
     // The window resets: its reading is gone until a new one arrives, and the cards go on.
-    time.advance(2 * HOUR + 1);
+    time.advance(2 * HOUR + 60_000);
     expect(budgets.blocked("kA")).toBe(false);
     read("five_hour", 0.1, 5 * HOUR);
     expect(budgets.blocked("kA")).toBe(false);
