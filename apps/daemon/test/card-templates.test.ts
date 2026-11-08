@@ -90,6 +90,15 @@ describe("card-templates: the text of cards.json as the templates it offers (#12
     expect(parse([])).toEqual({ templates: [], dropped: 0, invalid: false });
   });
 
+  test("a spec path with a line break or a direction mark is a mistake: it goes into a prompt", () => {
+    const seen = parse([
+      entry({ id: "a", spec: "docs/specs/a\u2028b.md" }),
+      entry({ id: "b", spec: "docs/specs/a\u202eb.md" }),
+      entry({ id: "c", spec: "docs/specs/c.md" }),
+    ]);
+    expect([seen.templates.map((t) => t.id), seen.dropped]).toEqual([["c"], 2]);
+  });
+
   test("more than 10 pins is a mistake", () => {
     const pins = Array.from({ length: 11 }, (_, i) => `docs/adr/d${i}.md`);
     expect(parse([entry({ pins })]).dropped).toBe(1);

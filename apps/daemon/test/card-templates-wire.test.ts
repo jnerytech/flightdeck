@@ -16,9 +16,9 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function serve(withBoard = true) {
+async function serve(withBoard = true, trusted = true) {
   const ctx = newBoard({
-    specTemplateRoot: async (cwd, own) => templateRootOf({ trusted: true }, own ? cwd : undefined),
+    specTemplateRoot: async (cwd, own) => templateRootOf({ trusted }, own ? cwd : undefined),
   });
   cleanups.push(() => ctx.board.stop());
   mkdirSync(join(ctx.repo, ".flightdeck", "templates"), { recursive: true });
@@ -83,6 +83,21 @@ describe("card-templates-wire: a project's card templates over the wire (#1201)"
       description: "",
       templateId: "nope",
     });
-    expect(refused.ok).toBe(false);
+    const board = await client.data<{ columns: Array<{ cards: unknown[] }> }>("board.get", {
+      projectId: project.id,
+    });
+    expect([
+      refused.ok,
+      (refused.error as { reason?: string } | undefined)?.reason,
+      board?.columns.flatMap((column) => column.cards).length,
+    ]).toEqual([false, "card_template_unknown", 0]);
+  });
+
+  test("card.templates of an untrusted project says its file was not used", async () => {
+    const { client, project } = await serve(true, false);
+    const listed = await client.data<{ ignored: string | null }>("card.templates", {
+      projectId: project.id,
+    });
+    expect(listed?.ignored).toBe("untrusted");
   });
 });

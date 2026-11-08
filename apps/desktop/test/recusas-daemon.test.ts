@@ -43,6 +43,7 @@ const REASONS = [
   "team_delete_live",
   "spec_path_invalid",
   "pinned_doc_invalid",
+  "card_template_unknown",
   "findings_missing",
   "findings_invalid",
   "card_moved_anyway",
