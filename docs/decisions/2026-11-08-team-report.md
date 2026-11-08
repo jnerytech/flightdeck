@@ -28,7 +28,8 @@ the goal done. It assumed `teams.status()` `lastReport` already holds that. It d
   `event: "report_done"` and `reason: null`. The approval said `reason: "report_done"`, but today's
   app shows `reason` as the notification body, untranslated. An older app would have shown the
   bare word. With an `event` field, the app notifies in the person's language (slice A), and an
-  older app ignores it.
+  older app ignores it. It fires only when the report turns final. A repeated final report (a
+  retry, a second word) updates the outcome but does not notify again.
 - **The instructions (version 2)** gain a step: when the goal is met and integrated, call
   `team_report` with `done: true`; a progress report goes with `done: false`. The step is in
   Portuguese like the rest of that prompt.

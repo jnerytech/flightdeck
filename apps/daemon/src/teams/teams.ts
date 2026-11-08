@@ -312,7 +312,9 @@ export class Teams {
     this.opts.db
       .query("UPDATE teams SET report_text = ?, report_at = ?, report_done = ? WHERE id = ?")
       .run(text, this.now(), done ? 1 : 0, id);
-    this.changed(id, null, done ? "report_done" : undefined);
+    // Told once: a final report repeated (a retry, a second word) does not notify again.
+    const news = done && row.report_done !== 1;
+    this.changed(id, null, news ? "report_done" : undefined);
     return this.status(id);
   }
 
