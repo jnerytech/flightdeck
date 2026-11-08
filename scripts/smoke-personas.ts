@@ -15,6 +15,7 @@ import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
 import { installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { type Pending, pollUntil } from "./lib/smoke-poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -53,14 +54,8 @@ const PACK = [
 let step = "preparar";
 const log = (msg: string) => console.log(`  · ${msg}`);
 
-async function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
-  const deadline = Date.now() + TIMEOUT_MS;
-  for (;;) {
-    const value = check();
-    if (value) return value;
-    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50);
-  }
+function until<T>(check: () => T | Pending, what: string): Promise<T> {
+  return pollUntil(check, what, { timeoutMs: TIMEOUT_MS, pauseMs: 50 });
 }
 
 class Client {
