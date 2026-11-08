@@ -20,8 +20,10 @@ const step = (kind: typeof Given | typeof When | typeof Then, text: string, run:
 };
 
 const ALFA = "demo-alfa";
+// A request's row says its tool; the session's finished turn, listed under Finished once the
+// request is answered, has the same name and must not count as the request.
 const request = (c: Context, session: string) =>
-  c.page.locator("main ul li button", { hasText: session });
+  c.page.locator(`main ul li button[aria-label*="${session}: Bash"]`);
 
 step(Given, "I am on the new session screen of host {string}", async (c) =>
   open(c, { name: "new-session", host: ALFA }),

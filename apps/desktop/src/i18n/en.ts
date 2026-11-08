@@ -2646,6 +2646,8 @@ export const en: Dictionary = {
     commentText: "Comment text",
     saveComment: "Save comment",
     send: "Send review ({n})",
+    compose: "Review in the message box ({n})",
+    composed: "The review is in the message box.",
     sentVia: {
       session: "Review sent to the session.",
       card: "Review sent to the card.",

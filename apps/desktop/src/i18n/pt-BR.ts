@@ -2647,6 +2647,8 @@ export const ptBR = {
     commentText: "Texto do comentário",
     saveComment: "Salvar comentário",
     send: "Enviar revisão ({n})",
+    compose: "Revisar na caixa de mensagem ({n})",
+    composed: "A revisão está na caixa de mensagem.",
     sentVia: {
       session: "Revisão enviada à sessão.",
       card: "Revisão enviada ao card.",
