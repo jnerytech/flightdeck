@@ -590,6 +590,7 @@ const validCommands: Record<CommandType, unknown> = {
     branch: "work/a",
     confirm: true,
   },
+  "changes.pr": { target: "session:s", title: "t", body: "b", confirm: true },
   "changes.undoRevert": { target: "card:k", path: "a.ts", confirm: true },
   "file.read": { target: "session:s", path: "a.ts" },
   "file.list": { target: "session:s", dir: "" },
