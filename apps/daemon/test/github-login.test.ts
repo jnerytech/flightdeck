@@ -72,6 +72,33 @@ describe("github-login: the device flow through gh", () => {
     expect(gh.calls()).toHaveLength(2);
   });
 
+  test.skipIf(process.platform === "win32")(
+    "cancel settles only once gh has ended, so a test or a stop leaves nothing running (#954)",
+    async () => {
+      fakeGh([WAITING]);
+      let seen = 0;
+      const logins = login({
+        // A kill that takes a moment, as ending a tree does.
+        kill: async (pid) => {
+          seen = pid;
+          await Bun.sleep(150);
+          process.kill(pid, "SIGKILL");
+        },
+      });
+      await logins.start();
+      await logins.cancel();
+      const alive = (() => {
+        try {
+          process.kill(seen, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      })();
+      expect([seen > 0, alive]).toEqual([true, false]);
+    },
+  );
+
   test("cancel ends the run even when a child of gh keeps the pipes open, and the kill reaches the tree", async () => {
     // A Windows .cmd shim: ending it leaves the bun it started holding stdout and stderr.
     fakeGh([{ ...WAITING, holdPipesMs: 30_000 }]);
