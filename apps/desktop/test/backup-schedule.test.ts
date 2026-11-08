@@ -99,6 +99,13 @@ describe("backup-schedule: when it is due and what the file is called (#1264)", 
     ]).toEqual([false, true, false, true, false, true, false]);
   });
 
+  test("a last run in the future (the clock moved back) is due again, not never", () => {
+    expect([
+      isDue(schedule({ lastRunAt: NOON + HOUR }), NOON),
+      isDue(schedule({ lastRunAt: NOON + 30 * 24 * HOUR }), NOON),
+    ]).toEqual([true, true]);
+  });
+
   test("the file name is the UTC time, so names sort by age", () => {
     expect([backupFileName(NOON), backupFileName(NOON) < backupFileName(NOON + 1000)]).toEqual([
       "flightdeck-backup-20261108-120000.fdbackup",
