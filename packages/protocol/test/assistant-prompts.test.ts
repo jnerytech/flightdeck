@@ -72,6 +72,7 @@ describe("assistant-prompts", () => {
       "commit.message": ["careful", 700, true, false],
       "pr.title": ["careful", 100, true, true],
       "pr.description": ["careful", 1500, true, false],
+      "adr.draft": ["careful", 1500, false, false],
     });
   });
 
@@ -131,6 +132,11 @@ describe("assistant-prompts", () => {
         run("pr.description", "", { repo }).system,
         "write the description of a pull request from the changes in <diff>.",
         "Markdown: a summary of what changed and why, then a short list of the notable changes by area, and how it was checked only when the context says so. Invent no test result. Keep an existing closing line (Closes #n).",
+      ],
+      "adr.draft": [
+        run("adr.draft", "Asked: pick a database. Done: moved the store to SQLite.").system,
+        "write an architecture decision record (ADR) from the summary of a coding session.",
+        'Markdown with exactly three sections, "## Context", "## Decision" and "## Consequences", in that order and with no title line: what the session started from, what it decided, and what follows from that, good and bad. Use only what the summary says, and write "Not stated in the session." under a section it says nothing about. Keep file paths as they are. A title in <context> names the decision. At most 300 words.',
       ],
     };
     for (const [kind, [actual, task, rules]] of Object.entries(prompts)) {

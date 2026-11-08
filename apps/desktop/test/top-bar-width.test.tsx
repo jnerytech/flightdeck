@@ -112,3 +112,27 @@ for (const [lang, dict] of [
     });
   });
 }
+
+// #1069: on the first run the switcher reads "no host". At 17 characters the pt-BR label filled the
+// switcher's 10rem cap and left the crumbs' fixed slot (crumb-largura) too little: the bar read
+// "Nenhum host ain… · H… › Adicionar h…" at 1280. As long as the English one, it fits.
+describe("top bar with no host (#1069): the switcher's label is as short as the English one", () => {
+  for (const [lang, label] of [
+    ["en", "No host yet"],
+    ["pt-BR", "Nenhum host"],
+  ] as const) {
+    test(`${lang}: the switcher reads and is named "${label}"`, () => {
+      render(
+        <TopBarHost
+          hosts={[]}
+          currentId={null}
+          t={translator(lang)}
+          onChoose={() => {}}
+          onAdd={() => {}}
+        />,
+      );
+      const name = document.querySelector(".top-bar-host-name")?.textContent;
+      expect([name, screen.queryByRole("button", { name: label }) !== null]).toEqual([label, true]);
+    });
+  }
+});

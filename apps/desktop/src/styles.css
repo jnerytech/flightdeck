@@ -1170,6 +1170,14 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 0.5rem;
 }
 
+/* The project tree beside the rail's Projects icon (#689): the sidebar's width, and it scrolls
+   when the tree is taller than the window. */
+@utility rail-flyout {
+  width: 18rem;
+  max-height: min(32rem, var(--radix-popover-content-available-height));
+  overflow-y: auto;
+}
+
 /* The popover that asks for a terminal's persona before it opens (issue #177). */
 @utility terminal-ask {
   display: flex;
@@ -2355,6 +2363,16 @@ html:not(:has([data-slot="status-bar"])) {
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
   line-height: 1.2;
+}
+
+/* #1063: a dialog's footer puts its last button at the dialog's right edge. Hung from the button's
+   left, the reason grew past that edge and was cut; here it hangs from the button's right and grows
+   inward. Only the last one: a button first in the row (the snippet dialog's Run) is at the left
+   edge and keeps hanging from its left. On a phone the footer is a column of full-width buttons. */
+[data-slot="dialog-footer"] > .action-button-box:last-child .action-reason {
+  left: auto;
+  right: 0;
+  text-align: right;
 }
 
 /* Simple mode (phase 33): the question card. */

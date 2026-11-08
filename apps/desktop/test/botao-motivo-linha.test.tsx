@@ -11,6 +11,9 @@ const { ActionButton } = await import("../src/components/feedback/action-button.
 const { FieldRow } = await import("../src/components/layout/form.tsx");
 const { AllowedFolders } = await import("../src/components/hosts/allowed-folders.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
+const { Dialog, DialogContent, DialogFooter, DialogTitle } = await import(
+  "../src/components/ui/dialog.tsx"
+);
 
 afterEach(cleanup);
 
@@ -182,5 +185,46 @@ describe("botao-motivo-linha: allowed folders", () => {
     cleanup();
     setup(async () => "x", "ws://10.0.0.5:7000/v1/ws");
     expect(screen.queryByRole("button", { name: "Escolher pasta…" })).toBeNull();
+  });
+});
+
+// #1063: a dialog's footer puts its last button at the dialog's right edge. Its reason hung from the
+// button's left and grew right, so Add project's "Pick or type a folder." was cut by the dialog at
+// 1280. In a footer the reason hangs from the button's right and grows left, inside the dialog.
+// happy-dom has no layout: this reads the rule, and the projetos-novo print shows the fit.
+describe("botao-motivo-linha: in a dialog's footer the reason grows inward (#1063)", () => {
+  // Only the footer's last button is at the dialog's right edge. A button first in the row (the
+  // snippet dialog's Run, with no terminal) is at its left edge: hung from its right, its reason
+  // would grow past the left edge instead, so it keeps hanging from its left.
+  const RULE =
+    /\[data-slot="dialog-footer"\] > \.action-button-box:last-child \.action-reason \{([^}]*)\}/;
+
+  test("the reason of a footer's last button hangs from its right; a button before it keeps the left", () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Add project</DialogTitle>
+          <DialogFooter>
+            <ActionButton disabled disabledReason="Run needs a folder.">
+              Run
+            </ActionButton>
+            <ActionButton disabled disabledReason="Pick or type a folder.">
+              Add
+            </ActionButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>,
+    );
+    const footer = document.querySelector('[data-slot="dialog-footer"]');
+    const box = (text: string) => screen.queryByText(text)?.parentElement ?? null;
+    const rule = css.match(RULE)?.[1] ?? "";
+    expect([
+      box("Pick or type a folder.") === footer?.lastElementChild,
+      box("Run needs a folder.") === footer?.firstElementChild,
+      /right: 0;/.test(rule),
+      /left: auto;/.test(rule),
+      /text-align: right;/.test(rule),
+      css.includes('[data-slot="dialog-footer"] .action-reason {'),
+    ]).toEqual([true, true, true, true, true, false]);
   });
 });

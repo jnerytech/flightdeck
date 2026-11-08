@@ -3,6 +3,7 @@
  * from the files as they are now, never taken from the app; the app's digests must match every one
  * of them. Settings gain entries and lose nothing. See docs/decisions/2026-11-07-harness-apply.md.
  */
+import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { type FileHandle, open, realpath } from "node:fs/promises";
 import type { HarnessApplied, HarnessPreview } from "@flightdeck/protocol";
@@ -10,6 +11,7 @@ import { createInside } from "../create-inside.ts";
 import { FlightdeckError } from "../errors.ts";
 import { layoutLike } from "../json-text.ts";
 import { samePath } from "../paths.ts";
+import type { HarnessDrafts } from "./draft.ts";
 import {
   type Current,
   fileLook,
@@ -24,6 +26,8 @@ import {
 
 type Settings = NonNullable<HarnessPreview["settings"]>;
 
+const sha256 = (text: string): string => createHash("sha256").update(text, "utf8").digest("hex");
+
 /** Not defined on Windows: there the walk and the handle's identity check stand alone. */
 const NO_FOLLOW = constants.O_NOFOLLOW ?? 0;
 
@@ -35,6 +39,8 @@ export interface ApplyOptions {
   /** The person accepted that writing the settings back changes their layout (`reformats`). */
   reformat?: boolean;
   fs?: ApplyFs;
+  /** The drafts the host holds (#75, G1): a file whose digest is a held draft's is that draft. */
+  drafts?: Pick<HarnessDrafts, "held">;
 }
 
 const diskFs: ApplyFs = { open: (path, flags) => open(path, flags) };
@@ -119,9 +125,12 @@ async function writeSettings(
   current: Current,
   settings: Settings,
   fs: ApplyFs,
-): Promise<void> {
+): Promise<string> {
   const text = layoutLike(current.text, merged(current.parsed, settings));
-  if (handle === null) return create(root, SETTINGS, text, fs);
+  if (handle === null) {
+    await create(root, SETTINGS, text, fs);
+    return text;
+  }
   // Written over the old bytes, then cut to length: never truncated first, so a write that fails
   // leaves something to put back, and the person's bytes (their env included) are put back.
   const bytes = Buffer.from(text, "utf8");
@@ -135,6 +144,7 @@ async function writeSettings(
     await handle.truncate(before.length);
     throw error;
   }
+  return text;
 }
 
 /** Writes the chosen parts into the project at `path`, when `digests` match the proposals now. */
@@ -150,11 +160,20 @@ export async function applyHarness(
   const root = path;
   let handle: FileHandle | null = null;
   try {
-    const plan = await planHarness(root, parts, async (at) => {
-      const opened = await openSettings(at, fs);
-      handle = opened.handle;
-      return opened.look;
-    });
+    const drafted = (name: string) => {
+      const digest = digests[name];
+      return digest && options.drafts ? options.drafts.held(root, name, digest) : null;
+    };
+    const plan = await planHarness(
+      root,
+      parts,
+      async (at) => {
+        const opened = await openSettings(at, fs);
+        handle = opened.handle;
+        return opened.look;
+      },
+      drafted,
+    );
     // Everything is checked before anything is written.
     if (!sameDigests(digestsOf(plan.preview), digests)) throw stale();
     const { settings, files } = plan.preview;
@@ -172,11 +191,15 @@ export async function applyHarness(
     // New files first: one that appeared since the check refuses before the settings change.
     for (const file of files) await create(root, file.path, file.content, fs);
     const written = files.map((file) => file.path);
+    // What each file holds now, as written: a commit of the setup (C1) takes exactly these.
+    const wrote: Record<string, string> = Object.fromEntries(
+      files.map((file) => [file.path, sha256(file.content)]),
+    );
     if (writesSettings && settings && plan.current) {
-      await writeSettings(root, handle, plan.current, settings, fs);
+      wrote[SETTINGS] = sha256(await writeSettings(root, handle, plan.current, settings, fs));
       written.unshift(SETTINGS);
     }
-    return { written };
+    return { written, digests: wrote };
   } finally {
     await (handle as FileHandle | null)?.close();
   }

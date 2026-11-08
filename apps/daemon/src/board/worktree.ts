@@ -38,7 +38,7 @@ export function slugify(title: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .slice(0, 40)
-    .replace(/^-+|-+$/g, "");
+    .replace(/^-+|-+$/g, ""); // NOSONAR: the replace before made every run of other characters one "-", so at most one at each end
   return slug || "card";
 }
 
