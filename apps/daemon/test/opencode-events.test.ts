@@ -99,7 +99,7 @@ describe("opencode-events", () => {
         : [],
     );
     expect(cards).toEqual(["Read", "Glob", "Grep"]);
-    expect(results(turns[2]).length).toBe(3);
+    expect(results(turns[2])).toHaveLength(3);
   });
 
   test("a rejected call fails and the turn ends cancelled, as an error during execution", () => {
