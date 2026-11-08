@@ -12,12 +12,12 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 export { formatBytes };
 
-const TABLES = ["events", "permission_requests", "external_sessions"];
+const TABLES = new Set(["events", "permission_requests", "external_sessions"]);
 
 const describeCounts = (counts: PruneCounts, t: T) =>
   Object.entries(counts)
     .map(([table, n]) => {
-      const label = TABLES.includes(table) ? t(`maintenance.tables.${table}` as Key) : table;
+      const label = TABLES.has(table) ? t(`maintenance.tables.${table}` as Key) : table;
       return `${label} ${n}`;
     })
     .join(", ");

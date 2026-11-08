@@ -206,8 +206,11 @@ export class AutoApprover {
       model: null,
     });
     // Suspended in this session, or in the card whose worktree it works in.
-    const keys = [request.sessionKey, ...(context.cardId ? [`card:${context.cardId}`] : [])];
-    const suspended = this.suspended().find((s) => keys.includes(s.sessionKey));
+    const keys = new Set([
+      request.sessionKey,
+      ...(context.cardId ? [`card:${context.cardId}`] : []),
+    ]);
+    const suspended = this.suspended().find((s) => keys.has(s.sessionKey));
     if (suspended) return rule("ask", `aprovação automática suspensa: ${suspended.reason}`);
     if (request.risk.level === "high") return rule("ask", "risco alto nunca é automático");
     if (request.risk.network) return rule("ask", "acesso à rede nunca é automático");

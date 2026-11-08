@@ -68,9 +68,9 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
 
   const load = useCallback(async () => {
     const found = new Map<string, Row>();
-    const ids = hostKey.split("|");
+    const ids = new Set(hostKey.split("|"));
     await inSequence(store.getState().hosts, async (host) => {
-      if (!ids.includes(host.id)) return;
+      if (!ids.has(host.id)) return;
       const result = await store.hostCommand(host.id, "messages.list", {});
       for (const message of result?.messages ?? []) {
         // A relayed message is on both daemons: the recipient's copy has the final state.
