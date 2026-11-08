@@ -219,6 +219,25 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
     expect(await settleMaybe(() => document.activeElement === title)).toBe(true);
   });
 
+  test("the words on a request row come from the request that waits, not from what was stored", async () => {
+    await setup({ entries: [entry("r1", { ask: "Wants to run: rm -rf /" })] });
+    const panel = await open();
+    expect(within(panel).queryByText(/npm test/) === null).toBe(false);
+    expect(within(panel).queryByText(/rm -rf/) === null).toBe(true);
+  });
+
+  test("a key typed through an input method answers nothing", async () => {
+    const { answered } = await setup();
+    await open();
+    await act(async () => {
+      fireEvent.keyDown(panelButton(/Backend tests/) as HTMLElement, {
+        key: "a",
+        isComposing: true,
+      });
+    });
+    await stays(() => answered.length === 0);
+  });
+
   test("in Portuguese the chip, the buttons and the keys are in Portuguese", async () => {
     const { answered } = await setup({ lang: "pt-BR" });
     await open();
