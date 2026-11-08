@@ -44,7 +44,7 @@ describe("settings-bom: every reader of settings.json reads past a BOM and keeps
     expect([
       done,
       text.startsWith(BOM),
-      text.includes("\r\n    \"model\""),
+      text.includes('\r\n    "model"'),
       parsed(text).model,
       Object.keys(parsed(text).hooks ?? {}).length > 0,
     ]).toEqual(["ok", true, true, "opus", true]);
@@ -60,7 +60,7 @@ describe("settings-bom: every reader of settings.json reads past a BOM and keeps
     expect([
       done,
       text.startsWith(BOM),
-      text.includes("\r\n    \"model\""),
+      text.includes('\r\n    "model"'),
       parsed(text).model,
       typeof parsed(text).env,
     ]).toEqual([true, true, true, "opus", "object"]);
