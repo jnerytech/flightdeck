@@ -1,6 +1,6 @@
-import { chooseFromCardMenu } from "./card-menu.ts";
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../daemon/test/helpers.ts";
+import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";

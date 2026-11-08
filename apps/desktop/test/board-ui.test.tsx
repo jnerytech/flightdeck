@@ -1,9 +1,9 @@
-import { chooseFromCardMenu } from "./card-menu.ts";
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { must } from "../../daemon/test/helpers.ts";
+import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
