@@ -31,7 +31,11 @@ export function KnowledgeFeedSwitch(
     };
   }, [store, hostId, path, received]);
 
-  const problem = failed && <p className="text-sm">{t("projectPage.knowledge.feed.failed")}</p>;
+  const problem = failed && (
+    <p role="alert" className="text-sm">
+      {t("projectPage.knowledge.feed.failed")}
+    </p>
+  );
   if (state === null) return problem || null;
   const own = state.own;
   const change = (enabled: boolean) => {
@@ -47,7 +51,10 @@ export function KnowledgeFeedSwitch(
   }
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <p className="text-sm">{words}</p>
+      {/* A live region from the first draw, so turning the index on or off is read out. */}
+      <p role="status" className="text-sm">
+        {words}
+      </p>
       {(state.on || own) && (
         <Button type="button" size="sm" variant="outline" onClick={() => change(!state.on)}>
           {t(state.on ? "projectPage.knowledge.feed.turnOff" : "projectPage.knowledge.feed.turnOn")}

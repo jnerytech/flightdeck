@@ -366,6 +366,11 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   quando o front matter não é claro o bastante para editar com segurança, ou quando o arquivo passa
   de 1 MB ou não é texto. Só os documentos que a lista mostra podem ser mudados; um link, um nome
   de credencial ou um arquivo fora das pastas da biblioteca não podem.
+  Enquanto a lista carrega o painel avisa; quando o host não consegue lê-la, o painel diz o que
+  conferir (o host está online, a pasta do projeto ainda existe) e **Tentar de novo** lê de novo.
+  **Criar um cartão** de uma spec continua com o foco enquanto o cartão é criado, e o painel então diz
+  qual cartão foi criado, com um botão **Abrir**. Ligar ou desligar o índice, e um interruptor que não
+  pôde ser mudado, são lidos pelos leitores de tela.
   **Novo documento** começa um documento a partir de um modelo: escolha o tipo (ADR, RFC ou PRD),
   digite um título e use **Criar a partir do modelo**. O arquivo vai para `docs/adr`, `docs/rfc` ou
   `docs/prd` do projeto (ADR e RFC são numerados, `0004-<título>.md`; um PRD é `<título>.md`), como

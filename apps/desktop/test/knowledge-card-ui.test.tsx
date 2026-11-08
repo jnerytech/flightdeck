@@ -110,7 +110,7 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
     const said = await settleMaybe(
       () => screen.queryByText("Card made from the spec: Login screen") !== null,
     );
-    const open = screen.queryByRole("button", { name: "Open card" });
+    const open = screen.queryByRole("button", { name: "Open the card Login screen" });
     if (open) await act(async () => fireEvent.click(open));
     expect([
       said,
@@ -150,7 +150,7 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
           "Card made without its spec: Login screen. Open it to set the spec path.",
         ) !== null,
     );
-    const open = screen.queryByRole("button", { name: "Open card" });
+    const open = screen.queryByRole("button", { name: "Open the card Login screen" });
     if (open) await act(async () => fireEvent.click(open));
     // The card is there either way: a second click would only make another.
     expect([said, went]).toEqual([

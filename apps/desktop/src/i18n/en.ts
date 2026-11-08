@@ -4316,6 +4316,7 @@ export const en: Dictionary = {
       makeCard: "Make a card",
       makeCardOf: "Make a card from {title}",
       cardMade: "Card made from the spec: {title}",
+      openMade: "Open the card {title}",
       cardMadeNoSpec: "Card made without its spec: {title}. Open it to set the spec path.",
       referencesObsolete: "Points at an obsolete document: {path}",
       problem: {
@@ -4329,6 +4330,10 @@ export const en: Dictionary = {
       empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
       truncated: "The list is cut: only the first documents are shown.",
       failed: "The documents could not be read from this host.",
+      failedHint:
+        "Check that the host is online and that the project's folder still exists, then try again.",
+      retry: "Try again",
+      loading: "Loading documents",
       create: {
         title: "New document",
         hint: "Starts a document from a template in this project's docs folder, as a draft (transitional). Nothing is committed.",

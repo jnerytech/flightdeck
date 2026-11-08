@@ -4320,6 +4320,7 @@ export const ptBR = {
       makeCard: "Criar um cartão",
       makeCardOf: "Criar um cartão de {title}",
       cardMade: "Cartão criado a partir da spec: {title}",
+      openMade: "Abrir o cartão {title}",
       cardMadeNoSpec: "Cartão criado sem a spec: {title}. Abra-o para definir o caminho da spec.",
       referencesObsolete: "Aponta para um documento obsoleto: {path}",
       problem: {
@@ -4333,6 +4334,10 @@ export const ptBR = {
       empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
       truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
       failed: "Não foi possível ler os documentos neste host.",
+      failedHint:
+        "Confira se o host está online e se a pasta do projeto ainda existe, e tente de novo.",
+      retry: "Tentar de novo",
+      loading: "Carregando os documentos",
       create: {
         title: "Novo documento",
         hint: "Começa um documento a partir de um modelo na pasta docs do projeto, como rascunho (transitório). Nada é commitado.",

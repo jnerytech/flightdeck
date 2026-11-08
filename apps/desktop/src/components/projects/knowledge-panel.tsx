@@ -1,6 +1,8 @@
 import type { KnowledgeEntry, KnowledgeListResult, KnowledgeStatus } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Panel } from "@/components/layout/panel";
+import { LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Key } from "@/i18n";
@@ -37,7 +39,12 @@ export function KnowledgePanel(
   const { t } = store.i18n;
   const [loaded, setLoaded] = useState<KnowledgeListResult | "failed" | null>(null);
   const [filter, setFilter] = useState<Status | "all">("all");
-  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [note, setNote] = useState<{
+    ok: boolean;
+    text: string;
+    title?: string;
+    open?: () => void;
+  } | null>(null);
   // The specs a card is being made from: a second click waits, so it makes no second card. The ref
   // answers at once (two clicks in one tick); the state disables the button.
   const busy = useRef(new Set<string>());
@@ -113,10 +120,13 @@ export function KnowledgePanel(
     });
     const open = props.onOpenCard;
     const key = named ? "projectPage.knowledge.cardMade" : "projectPage.knowledge.cardMadeNoSpec";
-    store.success(
-      t(key, { title: made.title }),
-      open ? { label: t("kanban.openCard"), run: () => open(made.id) } : undefined,
-    );
+    // Said here, where the person pressed the button, with a way to open the card.
+    setNote({
+      ok: true,
+      text: t(key, { title: made.title }),
+      title: made.title,
+      ...(open ? { open: () => open(made.id) } : {}),
+    });
   };
   // The file is written by the host only if it is as the list showed it; a refusal says why, and
   // the list is read again so the next try has what the file is now.
@@ -150,12 +160,31 @@ export function KnowledgePanel(
     reload();
   };
 
-  if (loaded === null) return null;
   const title = t("projectPage.knowledge.title");
+  if (loaded === null) {
+    return (
+      <Panel title={title} label={title}>
+        <LoadingState label={t("projectPage.knowledge.loading")} />
+      </Panel>
+    );
+  }
   if (loaded === "failed") {
     return (
       <Panel title={title} label={title}>
-        <p className="text-sm">{t("projectPage.knowledge.failed")}</p>
+        <InlineNotice tone="error">{t("projectPage.knowledge.failed")}</InlineNotice>
+        <p className="text-sm">{t("projectPage.knowledge.failedHint")}</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="self-start"
+          onClick={() => {
+            setLoaded(null);
+            reload();
+          }}
+        >
+          {t("projectPage.knowledge.retry")}
+        </Button>
       </Panel>
     );
   }
@@ -173,8 +202,27 @@ export function KnowledgePanel(
       {props.create && (
         <KnowledgeCreate store={store} hostId={hostId} path={path} onCreated={reload} />
       )}
-      {note && (
-        <p role={note.ok ? "status" : "alert"} className="text-sm">
+      {/* The live region for what worked stays in the page: one inserted with its text is often not read. */}
+      <div data-slot="knowledge-note" role="status">
+        {note?.ok && (
+          <p className="flex flex-wrap items-center gap-2 text-sm">
+            {note.text}
+            {note.open && note.title !== undefined && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-label={t("projectPage.knowledge.openMade", { title: note.title })}
+                onClick={note.open}
+              >
+                {t("kanban.openCard")}
+              </Button>
+            )}
+          </p>
+        )}
+      </div>
+      {note && !note.ok && (
+        <p role="alert" className="text-sm">
           {note.text}
         </p>
       )}
@@ -265,7 +313,9 @@ export function KnowledgePanel(
                       variant="outline"
                       size="sm"
                       aria-label={t("projectPage.knowledge.makeCardOf", { title: entry.title })}
-                      disabled={making.has(entry.path)}
+                      // Unavailable, not disabled: the button keeps the focus while the card is made.
+                      aria-disabled={making.has(entry.path) || undefined}
+                      className="aria-disabled:opacity-50"
                       onClick={() => void makeCard(entry, props.projectId as string)}
                     >
                       {t("projectPage.knowledge.makeCard")}
