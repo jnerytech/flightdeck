@@ -2332,6 +2332,9 @@ unblocked. A badge on the bell counts the unread ones.
 - A read row has **Mark as unread** (hover or focus it) to come back to it later.
 - The OS notifications are sent as before unless you tune them (below). The center only keeps a
   copy, so one that is never sent (the window had focus) is not in it either.
+- Click the system notification of a request and the app comes forward on that request: its
+  session opens with the focus on it, whether the window was minimized, behind others or in the
+  tray. A notification that is not about a request opens nothing.
 
 ### Tuning notifications
 
