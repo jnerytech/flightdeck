@@ -525,7 +525,8 @@ function idleFor(ms: number, t: T): string {
  * tool it runs or waits on, or how long ago it finished, ended or failed).
  */
 export function rowStatus(row: HubRow, nowMs: number, t: T = PT): { word: string; detail: string } {
-  const word = t(`hub.rowWord.${row.state}` as Key);
+  // An asleep row says so, as its dot does.
+  const word = row.asleep ? t("hub.asleep") : t(`hub.rowWord.${row.state}` as Key);
   const tool = row.summary?.tool ?? null;
   if (row.state === "needs_you") {
     return { word, detail: tool ? t("hub.rowDetail.waitingTool", { tool }) : "" };
@@ -533,6 +534,8 @@ export function rowStatus(row: HubRow, nowMs: number, t: T = PT): { word: string
   if (row.state === "running") {
     return { word, detail: tool ? t("hub.rowDetail.runningTool", { tool }) : "" };
   }
+  // A background session only knows when it started, which is not when it finished.
+  if (row.origin === "background" && row.summary === null) return { word, detail: "" };
   // Finished, ended or failed: how long ago, from the line or the row's last activity.
   const since = row.summary?.since ?? row.lastActivity;
   return { word, detail: idleFor(nowMs - Date.parse(since), t) };
@@ -667,4 +670,9 @@ export function capGroups(
   }
   const total = groups.reduce((sum, group) => sum + group.rows.length, 0);
   return { groups: kept, hidden: Math.max(0, total - limit) };
+}
+
+/** How many of a project's rows are active: the ones that have not ended or failed (#1132). */
+export function activeCount(rows: HubRow[]): number {
+  return rows.filter((r) => !isOver(r.state)).length;
 }

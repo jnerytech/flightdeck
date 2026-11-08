@@ -40,6 +40,7 @@ import { projectLabel, usd } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope, scopeHosts } from "../lib/data-scope.ts";
 import type { Density } from "../lib/density.ts";
 import {
+  activeCount,
   capGroups,
   HUB_ROW_CAP,
   type HubFilter,
@@ -636,7 +637,8 @@ export function SessionsHub(
           const groupView = viewOf(group.key);
           // Two projects with one name tell themselves apart by where they are.
           const label = group.hint ? `${group.name} (${group.hint})` : group.name;
-          const liveCount = groupView?.live.length ?? 0;
+          // Pinned rows stay in the live list after they end or fail; they are not active.
+          const liveCount = activeCount(groupView?.live ?? []);
           // The hosts the project's sessions run on, each one a link to the host page.
           const hostChips = [
             ...new Map((groupView?.group.rows ?? group.rows).map((r) => [r.hostId, r.hostName])),
