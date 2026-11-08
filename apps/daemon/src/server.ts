@@ -520,6 +520,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "deps"),
     // Issue #76: a card pins library documents; the app offers the picker.
     ...when(opts.board, "cardPins"),
+    // Issue #1196: a card merges its open PR (`card.pr.merge`).
+    ...when(opts.board, "cardPrMerge"),
     ...when(opts.issues, "issues"),
     ...when(opts.automations, "automation"),
     ...when(opts.autoApprove, "autoapprove"),
