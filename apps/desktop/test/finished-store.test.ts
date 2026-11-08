@@ -31,6 +31,11 @@ function world(focused = false) {
       },
     ],
   });
+  /** The Claude session id the app knows for each managed session (it comes with the session's events). */
+  const known = (id: string, claudeSessionId: string) =>
+    internals.update({
+      sessions: { ...store.getState().sessions, [`h1/${id}`]: { items: [], claudeSessionId } },
+    });
   const changes = { files: null as number | null, asked: [] as string[] };
   store.hostRequest = (async (_host: string, type: string, payload: { target?: string }) => {
     if (type !== "changes.get") return { ok: false, code: "unknown", message: type };
@@ -49,7 +54,7 @@ function world(focused = false) {
       pendingPermissions: [],
       updatedAt: "2026-11-08T10:00:00Z",
     });
-  return { store, mem, clock, changes, summary };
+  return { store, mem, clock, changes, summary, known };
 }
 
 describe("finished-store: what finished since the last look (issue #1134)", () => {
@@ -85,19 +90,32 @@ describe("finished-store: what finished since the last look (issue #1134)", () =
     expect(outcomes).toEqual({ a: "failed", b: "ended" });
   });
 
-  test("the files it changed are asked of the host once it finished, and shown when known", async () => {
+  test("the files it changed are asked of the host by the session's Claude id, and shown when known", async () => {
+    const w = world();
+    w.changes.files = 3;
+    w.known("s1", "claude-abc");
+    w.summary("s1", "running");
+    w.summary("s1", "idle");
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(w.changes.asked).toEqual(["session:claude-abc"]);
+    expect(w.store.getState().finished[0]?.files).toBe(3);
+  });
+
+  test("a session whose Claude id is not known yet is not asked about", async () => {
     const w = world();
     w.changes.files = 3;
     w.summary("s1", "running");
     w.summary("s1", "idle");
     await Promise.resolve();
     await Promise.resolve();
-    expect(w.changes.asked).toEqual(["session:s1"]);
-    expect(w.store.getState().finished[0]?.files).toBe(3);
+    expect(w.changes.asked).toEqual([]);
+    expect(w.store.getState().finished[0]?.files).toBeNull();
   });
 
   test("a host that cannot say leaves the count unknown", async () => {
     const w = world();
+    w.known("s1", "claude-abc");
     w.summary("s1", "running");
     w.summary("s1", "idle");
     await Promise.resolve();

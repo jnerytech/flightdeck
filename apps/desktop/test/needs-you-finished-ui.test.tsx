@@ -89,6 +89,21 @@ describe("needs-you-finished-ui: the Finished group (issue #1134)", () => {
     expect(store.sessionViews.last("h/s1")).toBe("changes");
   });
 
+  test("J moves to a finished row and Enter opens it", async () => {
+    const store = await open([finish("s2"), finish("s1")], null, "en", false);
+    page(store);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "j" });
+    });
+    expect(document.querySelector("section li button[data-active='true']")?.textContent).toContain(
+      "Docs rewrite",
+    );
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "Enter" });
+    });
+    expect(screen.getByRole("button", { name: "See the changes" })).toBeTruthy();
+  });
+
   test("a count the host could not give says nothing about files", async () => {
     await open([finish("s1", { files: null })]);
     await act(async () => {
