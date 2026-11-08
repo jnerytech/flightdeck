@@ -229,15 +229,20 @@ describe("card-pr-merge: the card merges its open PR, after a confirm (#1196)", 
       stdout: JSON.stringify({ mergeStateStatus: "DIRTY", statusCheckRollup: [] }),
     });
     const unknown = await refusal(
-      "denied for ghp_abcDEF123456 and Bearer abc.def-123 at github.com",
+      "denied for ghp_abcDEF123456 and Bearer abc.def-123 and github_pat_11AAA_xyz via https://me:pw@github.com",
       null,
     );
     expect([
       known.message.includes("SECRET-WORDS"),
       known.params.detail,
-      unknown.message.includes("github.com"),
+      unknown.message.includes("denied"),
       unknown.params.detail,
-    ]).toEqual([false, undefined, false, "denied for [token] and [token] at github.com"]);
+    ]).toEqual([
+      false,
+      undefined,
+      false,
+      "denied for [token] and [token] and [token] via https://[token]@github.com",
+    ]);
   });
 
   test("a poll and a merge asking about the same card at once ask the provider once", async () => {
@@ -274,6 +279,42 @@ describe("card-pr-merge: the card merges its open PR, after a confirm (#1196)", 
     status.resolve({ state: "merged", checks: null });
     await Promise.all([round, merging]);
     expect([whileAsking, ctx.board.getCard(card.id).column]).toEqual([1, "done"]);
+  });
+
+  test("a poll that was already asking before the merge landed does not decide the card: the merge reads again", async () => {
+    const first = Promise.withResolvers<PrStatus>();
+    let asked = 0;
+    const provider: PrProvider = {
+      create: async () => PR_URL,
+      status: () => {
+        asked++;
+        return asked === 1 ? first.promise : Promise.resolve({ state: "merged", checks: null });
+      },
+      url: async () => null,
+      comments: async () => [],
+      health: async () => ({ checks: [], conflicts: false }),
+      buildLog: async () => "",
+      merge: async () => {},
+    };
+    const ctx = newBoard({ prProvider: () => provider });
+    cleanups.push(() => ctx.board.stop());
+    const project = await ctx.board.addProject({
+      path: ctx.repo,
+      prProvider: "github",
+      promptTemplate: "",
+    });
+    const card = ctx.board.createCard(project.id, { title: "Sum", description: "add" });
+    ctx.store.db
+      .query("UPDATE cards SET pr_url = ?, pr_state = 'open', board_column = 'review' WHERE id = ?")
+      .run(PR_URL, card.id);
+    const round = ctx.board.pollPrs();
+    const merging = ctx.board.mergePr(card.id, "merge", true);
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    // The read that began before the merge answers: still open.
+    first.resolve({ state: "open", checks: null });
+    const result = await merging;
+    await round;
+    expect([result.column, result.prState]).toEqual(["done", "merged"]);
   });
 
   test("the server merges over a near connection once confirmed, and refuses a far one", async () => {
