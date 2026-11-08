@@ -27,8 +27,8 @@ export function isRepoWide(source: string): boolean {
 export function scansRealRepo(source: string): boolean {
   for (const match of source.matchAll(LS_FILES)) {
     // The call's own text: up to the end of its statement.
-    const rest = source.slice(match.index);
-    const call = rest.slice(0, rest.indexOf(";") === -1 ? rest.length : rest.indexOf(";"));
+    const end = source.indexOf(";", match.index);
+    const call = source.slice(match.index, end === -1 ? source.length : end);
     const cwd = CWD.exec(call);
     if (!cwd || cwd[1] === "ROOT") return true;
   }
