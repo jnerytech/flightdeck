@@ -8,6 +8,7 @@ import {
   lineRanges,
   loadedTargets,
   WHOLE_SUITE_IGNORED,
+  wholeSuiteCheck,
   wholeSuiteVerdict,
 } from "../lib/related-coverage.ts";
 import { planRelated } from "../lib/test-related.ts";
@@ -125,6 +126,40 @@ describe("related-coverage: the verdict on the changed files", () => {
     expect(belowFull(record("apps/daemon/src/full.ts", [1, 1], [[1, 1]]))).toEqual([]);
   });
 
+  test("#1000 review: the whole suite's report goes before the run, so a run that writes none says so", () => {
+    const ops: string[] = [];
+    const files: Record<string, string> = {};
+    const check = wholeSuiteCheck("coverage/lcov.info", {
+      remove: (path) => {
+        ops.push(`remove ${path}`);
+        delete files[path];
+      },
+      read: (path) => {
+        ops.push(`read ${path}`);
+        return files[path] ?? null;
+      },
+    });
+    expect(ops).toEqual(["remove coverage/lcov.info"]);
+    // The run died before Bun wrote a report: no stale one answers for it.
+    expect(check(1)).toBe(
+      "test:related: the whole suite exited with 1 and left no coverage report",
+    );
+    files["coverage/lcov.info"] = record("apps/daemon/src/low.ts", [1, 1], [[3, 0]]);
+    expect(check(1)).toContain("apps/daemon/src/low.ts: lines 3 not covered");
+    expect(check(0)).toBeNull();
+    // Not a whole-suite run: nothing is removed or read.
+    const none: string[] = [];
+    const idle = wholeSuiteCheck(undefined, {
+      remove: (path) => none.push(path),
+      read: (path) => {
+        none.push(path);
+        return null;
+      },
+    });
+    expect(idle(1)).toBeNull();
+    expect(none).toEqual([]);
+  });
+
   test("#996: a whole suite that exits non-zero names its cause: the files below 100%, or none", () => {
     expect(wholeSuiteVerdict(0, lcov)).toBeNull();
     expect(wholeSuiteVerdict(1, lcov)).toBe(
@@ -135,7 +170,7 @@ describe("related-coverage: the verdict on the changed files", () => {
       ].join("\n"),
     );
     expect(wholeSuiteVerdict(1, record("apps/daemon/src/full.ts", [1, 1], [[1, 1]]))).toBe(
-      "test:related: the whole suite exited with 1 with every file at 100%: a failing test, a file that did not load or the isolation guard stopped it (see above)",
+      "test:related: the whole suite exited with 1 with every file at 100%: a failing test, a file that did not load, the isolation guard or a timeout stopped it (see above)",
     );
     expect(wholeSuiteVerdict(1, null)).toBe(
       "test:related: the whole suite exited with 1 and left no coverage report",

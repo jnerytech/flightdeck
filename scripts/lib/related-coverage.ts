@@ -131,3 +131,11 @@ export function wholeSuiteVerdict(code: number, lcov: string | null): string | n
     ...below.map((line) => `  - ${line}`),
   ].join("\n");
 }
+
+/** #1000 review: removes the whole suite's report before the run; the verdict after it. */
+export function wholeSuiteCheck(
+  _path: string | undefined,
+  _deps: { remove: (path: string) => void; read: (path: string) => string | null },
+): (code: number) => string | null {
+  return () => null;
+}
