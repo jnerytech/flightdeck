@@ -1009,6 +1009,8 @@ export interface KnowledgeFeedState {
   trusted: boolean;
   /** The folder in `knowledge.feedOff` that switches it off; the project itself, or one above it. */
   offBy: string | null;
+  /** `offBy` is the project itself (under any name of it), so the project's own switch can turn it on. */
+  own: boolean;
 }
 
 /** What a session is given of the library: Markdown for its system prompt, empty when it is not given any. */

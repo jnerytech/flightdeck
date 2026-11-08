@@ -14,8 +14,8 @@ setDefaultTimeout(30_000);
 afterEach(cleanup);
 
 /** Issue #76, slice 4: the switch for the documents index, in the project's knowledge panel. */
-const ON: KnowledgeFeedState = { on: true, trusted: true, offBy: null };
-const OFF: KnowledgeFeedState = { on: false, trusted: true, offBy: "/work/api" };
+const ON: KnowledgeFeedState = { on: true, trusted: true, offBy: null, own: false };
+const OFF: KnowledgeFeedState = { on: false, trusted: true, offBy: "/work/api", own: true };
 
 function setup(
   options: {
@@ -92,7 +92,7 @@ describe("knowledge-feed-ui: whether agents are given the index (#76)", () => {
   });
 
   test("a project off through a folder above it names the folder and offers no switch", async () => {
-    render(setup({ state: { on: false, trusted: true, offBy: "/work" } }).view);
+    render(setup({ state: { on: false, trusted: true, offBy: "/work", own: false } }).view);
     await waitFor(() =>
       expect(
         within(panel()).queryByText(
@@ -103,8 +103,18 @@ describe("knowledge-feed-ui: whether agents are given the index (#76)", () => {
     expect(within(panel()).queryAllByRole("button", { name: /^Turn (on|off)$/ })).toHaveLength(0);
   });
 
+  test("a project off through its own folder under another name still offers Turn on", async () => {
+    render(setup({ state: { on: false, trusted: true, offBy: "/real/api", own: true } }).view);
+    await waitFor(() =>
+      expect(
+        within(panel()).queryByText("Off: sessions here are not given the index."),
+      ).not.toBeNull(),
+    );
+    expect(within(panel()).queryByRole("button", { name: "Turn on" })).not.toBeNull();
+  });
+
   test("an untrusted project says it is not given the index even when the switch is on", async () => {
-    render(setup({ state: { on: true, trusted: false, offBy: null } }).view);
+    render(setup({ state: { on: true, trusted: false, offBy: null, own: false } }).view);
     await waitFor(() =>
       expect(
         within(panel()).queryByText(

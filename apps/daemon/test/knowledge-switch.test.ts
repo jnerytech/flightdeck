@@ -30,8 +30,8 @@ describe("knowledge-switch: who has the index switched off (#76)", () => {
     const a = await host([join(project, "..", "other")]).sw.state(project);
     const b = await host([], false).sw.state(project);
     expect([a, b]).toEqual([
-      { on: true, trusted: true, offBy: null },
-      { on: true, trusted: false, offBy: null },
+      { on: true, trusted: true, offBy: null, own: false },
+      { on: true, trusted: false, offBy: null, own: false },
     ]);
   });
 
@@ -43,6 +43,7 @@ describe("knowledge-switch: who has the index switched off (#76)", () => {
     // `app2` starts like `app` and is another folder.
     const sibling = await host([join(parent, "app2")]).sw.state(project);
     expect([own.offBy, above.offBy, sibling.offBy]).toEqual([project, parent, null]);
+    expect([own.own, above.own, sibling.own]).toEqual([true, false, false]);
   });
 
   test("switching off adds the project's folder once, and changes nothing else in the list", async () => {
@@ -110,5 +111,16 @@ describe("knowledge-switch: who has the index switched off (#76)", () => {
     const h = host([link, "/keep/this"]);
     const state = await h.sw.set(project, true);
     expect([h.entries, state.on]).toEqual([["/keep/this"], true]);
+  });
+
+  test("a project reached through a link is still the project itself when its real folder is the entry", async () => {
+    const parent = tempDir("fd-switch-");
+    const real = join(parent, "real");
+    mkdirSync(real);
+    const link = join(parent, "link");
+    symlinkSync(real, link);
+    const viaLink = await host([real]).sw.state(link);
+    const entryIsLink = await host([link]).sw.state(real);
+    expect([viaLink.own, entryIsLink.own]).toEqual([true, true]);
   });
 });

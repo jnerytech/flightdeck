@@ -101,6 +101,6 @@ describe("knowledge-switch-daemon: the switch lives in the host's config (#76)",
     mkdirSync(project, { recursive: true });
     await set(above, false);
     const on = await set(project, true);
-    expect([on?.on, on?.offBy]).toEqual([false, above]);
+    expect([on?.on, on?.offBy, on?.own]).toEqual([false, above, false]);
   });
 });
