@@ -138,6 +138,8 @@ export interface Plan {
    * Windows shards of a PR (#399).
    */
   files?: string[] | "all";
+  /** #996: the whole suite's lcov report, read to say why a failed run failed. */
+  wholeCoverage?: string;
 }
 
 /** The lines of a git command's output; none when git fails. */
@@ -169,6 +171,8 @@ function wholeSuitePlan(
     output: `test:related --pr: the whole suite runs (${why})`,
     command: slot ? ["bun", "run", "slot", "--", ...whole] : whole,
     files: "all",
+    // bunfig.toml's coverageDir and lcov reporter: where the whole suite leaves its report.
+    wholeCoverage: "coverage/lcov.info",
   };
 }
 

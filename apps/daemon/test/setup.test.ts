@@ -337,6 +337,8 @@ describe("setup command", () => {
       env: {},
       log: { log: (m) => out.push(m), error: (m) => out.push(m) },
       exit: (code) => exits.push(code),
+      // #996: the questions go here, never to the run's own stdout.
+      stdout: (text) => out.push(text),
       onSignal: () => {},
       exec: async () => ({ code: 1, stdout: "" }),
       ...(options.selfCommand ? { selfCommand: options.selfCommand(dir) } : {}),
@@ -519,6 +521,9 @@ describe("setup command", () => {
     await h.stop();
     expect(h.exits).toEqual([0]);
     expect((await loadConfig(h.file)).allowedRoots).toEqual([join(h.dir, "project")]);
+    const asked = h.out.filter((line) => line.startsWith("Project folder Flightdeck may start"));
+    expect(asked).toHaveLength(2);
+    expect(h.out.some((line) => line.startsWith("Install the Claude Code hooks"))).toBe(true);
   });
 
   test("input that ends exits 1 with the way out", async () => {
@@ -527,6 +532,9 @@ describe("setup command", () => {
     await h.stop();
     expect(h.exits).toEqual([1]);
     expect(h.out.join("\n")).toContain("--yes --folders");
+    expect(h.out).toContain(
+      "Project folder Flightdeck may start sessions in (empty answer to finish): ",
+    );
   });
 
   test("in WSL the ports the person did not choose are shifted, and written to config.json", async () => {
