@@ -4248,6 +4248,10 @@ export const ptBR = {
       },
       type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
       changed: "Alterado em {date}",
+      makeCard: "Criar um cartão",
+      makeCardOf: "Criar um cartão de {title}",
+      cardMade: "Cartão criado a partir da spec: {title}",
+      cardMadeNoSpec: "Cartão criado sem a spec: {title}. Abra-o para definir o caminho da spec.",
       referencesObsolete: "Aponta para um documento obsoleto: {path}",
       problem: {
         status_unknown:

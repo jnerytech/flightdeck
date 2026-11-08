@@ -4246,6 +4246,10 @@ export const en: Dictionary = {
       },
       type: { prd: "PRD", rfc: "RFC", adr: "ADR", spec: "Spec" },
       changed: "Changed {date}",
+      makeCard: "Make a card",
+      makeCardOf: "Make a card from {title}",
+      cardMade: "Card made from the spec: {title}",
+      cardMadeNoSpec: "Card made without its spec: {title}. Open it to set the spec path.",
       referencesObsolete: "Points at an obsolete document: {path}",
       problem: {
         status_unknown:
