@@ -1886,6 +1886,33 @@ export const WorkflowTemplate = z.object({
 export type WorkflowTemplate = z.infer<typeof WorkflowTemplate>;
 
 /**
+ * Issue #79: an open alert of the project's repository, read by the host with `gh` (code scanning
+ * or Dependabot). `text` is what goes into a workflow's `alert` input: the alert's own words, which
+ * come from a scanner or an advisory and are data, never instructions.
+ */
+export const RepoAlert = z.object({
+  /** `<kind>:<number>`, unique in the list. */
+  id: z.string(),
+  kind: z.enum(["code-scanning", "dependabot"]),
+  number: z.number().int(),
+  severity: z.enum(["critical", "high", "medium", "low", "unknown"]),
+  title: z.string(),
+  /** `path:line` for code scanning, the manifest for Dependabot. */
+  location: z.string().nullable(),
+  /** The alert's page on GitHub; empty when it was not an https link. */
+  url: z.string(),
+  text: z.string(),
+});
+export type RepoAlert = z.infer<typeof RepoAlert>;
+
+/** Why a source of alerts could not be read, said without `gh`'s own text. */
+export const AlertsUnavailable = z.object({
+  kind: z.enum(["code-scanning", "dependabot"]),
+  reason: z.enum(["gh_missing", "not_signed_in", "unavailable", "failed"]),
+});
+export type AlertsUnavailable = z.infer<typeof AlertsUnavailable>;
+
+/**
  * `waiting`: a gate is open. `paused`: budget or loop limit reached. `failed`: a step (or the
  * card's preparation) failed. The last four are final.
  */
@@ -1900,7 +1927,7 @@ export const RunStatus = z.enum([
 ]);
 export type RunStatus = z.infer<typeof RunStatus>;
 
-export const StepType = z.enum(["agent", "check", "gate", "loop", "parallel", "pr"]);
+export const StepType = z.enum(["agent", "check", "gate", "loop", "parallel", "pr", "cards"]);
 export type StepType = z.infer<typeof StepType>;
 
 export const StepStatus = z.enum([
@@ -3928,6 +3955,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("workflow.list", z.object({ projectId: z.string() })),
   /** Issue #79: the workflow templates, with the check line filled from the project's stack. */
   cmd("workflow.templates", z.object({ projectId: z.string() })),
+  /** Issue #79: the open code-scanning and Dependabot alerts of the project's repository, read-only. */
+  cmd("alert.list", z.object({ projectId: z.string() })),
   cmd("workflow.validate", z.object({ projectId: z.string(), name: z.string().min(1) })),
   /** `hash` is the content the user reviewed; a workflow that changed since is refused. */
   cmd(
@@ -4898,16 +4927,25 @@ export type HarnessApplied = z.infer<typeof HarnessApplied>;
 export type HookKind = "format" | "gitAdd" | "secrets";
 
 /**
+ * The formatter commands, one pattern each: the tools that format, a runner's format script, and
+ * black. A script named format:check (or -verify, -lint, -ci, -diff) checks; format:write or
+ * format-all formats. `black` counts as the command run, or behind a runner (`poetry run`,
+ * `python -m`, `uvx`), never as a word in another command (`echo black`). `[ \t]*`, not `\s*`: a
+ * run of newlines would let each one start a scan of the rest (quadratic on a crafted command).
+ */
+const FORMATTERS = [
+  String.raw`\b(biome|prettier|eslint --fix|ruff format|gofmt|go fmt|deno fmt|rustfmt|cargo fmt|dotnet format)`,
+  String.raw`\b(npm|pnpm|yarn|bun) run (format|fmt)(?!\w)(?![:-](check|verify|lint|ci|diff)\b)`,
+  String.raw`(^|[;&|(\n]|(\brun|\bexec|\bnpx|\buvx?|\s-m)\s)[ \t]*black\b`,
+];
+
+/**
  * Commands that show what a hook is for, on the event it acts on: a formatter after a tool runs, a
  * check on `git add` or on secret files before one. The checklist and the preview read hooks with
  * the same list, so a hook the preview proposed is one the checklist then finds.
  */
 export const HOOK_KINDS: ReadonlyArray<readonly [HookKind, string, RegExp]> = [
-  [
-    "format",
-    "PostToolUse",
-    /\b(biome|prettier|eslint --fix|ruff format|black|gofmt|rustfmt|cargo fmt|dotnet format|(npm|pnpm|yarn|bun) run (format|fmt)\b)/,
-  ],
+  ["format", "PostToolUse", new RegExp(FORMATTERS.join("|"))],
   ["gitAdd", "PreToolUse", /\bgit add\b/],
   ["secrets", "PreToolUse", /(\.env\b|credentials|secrets?\b|\.pem\b|id_rsa)/],
 ];
@@ -5280,6 +5318,7 @@ export interface CommandResults {
   "card.spec": Card;
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.templates": { templates: WorkflowTemplate[] };
+  "alert.list": { alerts: RepoAlert[]; unavailable: AlertsUnavailable[] };
   "workflow.validate": WorkflowInfo;
   "workflow.trust": WorkflowInfo;
   "runenv.config": RunConfigInfo;

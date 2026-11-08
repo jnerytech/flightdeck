@@ -1568,6 +1568,7 @@ steps:
 | `loop` | Roda o `check` do `until`. Enquanto ele falhar, roda o `do` (no máximo `max` vezes). Esgotado o `max`, a execução pausa. |
 | `parallel` | Roda os itens ao mesmo tempo, dentro de `maxParallelRuns`. As saídas chegam em `outputs`, na ordem declarada. |
 | `pr` | Faz o push e abre o PR pelo provedor do projeto. |
+| `cards` | `cards: { from: <etapa agent> }` cria cards no Backlog com os achados da resposta dessa etapa. Veja abaixo. |
 
 A interpolação aceita só `{{inputs.*}}`, `{{steps.<id>.output}}` (`outputs` num `parallel`) e
 `{{loop.lastCheck.output|exitCode}}`, este dentro do `do` de um loop. Uma referência
@@ -1587,10 +1588,29 @@ validação e os comandos `check`. **Confiar** mostra esses comandos e pede conf
   execução e que esse conteúdo continua confiado. Qualquer outro comando é recusado sem chegar
   ao shell.
 
+### Criar cards com os achados de um agente
+
+Uma etapa agent pode terminar a resposta com um bloco `json` cercado, uma lista de
+`{ key, title, body }`, e uma etapa `cards` seguinte transforma a lista em cards no Backlog do
+projeto. A etapa lê só o último bloco assim, e é rígida: um campo que não seja `key`, `title` ou
+`body`, uma `key` que não seja um id simples de até 160 caracteres, um `title` de uma linha com até
+160, um `body` de até 4000, um caractere de controle ou invisível, ou mais de 50 itens recusam a
+lista inteira. Nada é criado e a execução falha com o motivo, que diz qual item e qual campo.
+
+Um achado não é criado de novo quando um card do projeto já tem a mesma `key` (ou um concluído nos
+últimos 30 dias), ou um card aberto tem o mesmo título, sem contar maiúsculas e espaços. Cada
+execução cria no máximo 10 cards; a etapa diz quantos criou, quantos um card já cobria e quantos
+passaram do limite. Os cards vêm marcados como texto do agente, mostram o selo externo e mantêm a
+aprovação automática desligada, porque o que um agente lê em um repositório pode ter sido escrito
+por qualquer pessoa.
+
 ### Modelos
 
-Dois workflows já vêm com o Flightdeck, para trabalho recorrente que termina em um pull request:
+Três workflows já vêm com o Flightdeck, para trabalho recorrente:
 
+- **Varredura de dívida técnica:** lê o repositório (em modo de plano, nada é enviado) atrás de TODOs,
+  APIs obsoletas e avisos de lint ou de segurança, e cria os 10 que mais importam como cards no
+  Backlog. Para rodar toda semana, crie uma automação que inicie este workflow por horário.
 - **Corretor de alertas:** pega um alerta de lint ou de segurança que você cola, corrige na branch
   do card com um teste (até 3 tentativas com o seu comando de teste), pergunta a você e abre o
   pull request.
@@ -1600,6 +1620,15 @@ Dois workflows já vêm com o Flightdeck, para trabalho recorrente que termina e
 
 Os dois param em uma aprovação antes de enviar qualquer coisa e têm um orçamento de turnos e de
 minutos. Com o pull request aberto, vale para ele o limite de rodadas do Vigiar PRs.
+
+Para iniciar o corretor de alertas, inicie um card com ele e preencha o campo `alert`. **Escolher um
+alerta**, ao lado do campo, lista os alertas abertos de code scanning e do Dependabot do repositório,
+os mais graves primeiro, lidos pelo host com o próprio `gh` (só leitura; o Flightdeck não guarda token
+do GitHub). Escolher um copia o texto dele para o campo: leia antes de iniciar, porque as palavras de
+um alerta vêm de um scanner ou de um aviso. Uma fonte que não dá para ler (o code scanning está
+desligado, ou o `gh` não tem acesso ou não está conectado) aparece citada ao lado da lista, e a lista
+nunca diz "nenhum alerta aberto" quando uma delas falhou. O botão só aparece quando o host sabe ler
+alertas.
 
 Um modelo é um arquivo, e o Flightdeck não grava nada no seu repositório. Na tela **Workflows**,
 **Adicionar de um modelo** lista os modelos. Abra um para ler o arquivo, use **Copiar o arquivo**,

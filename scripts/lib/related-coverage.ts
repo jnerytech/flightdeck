@@ -1,6 +1,12 @@
-/** The coverage rule of `test:related`: every changed source file is 100% covered by the related tests. */
+/** The coverage rule of `test:related`: every changed source file is at the gate (80%, #1002) from the related tests. */
 
-import { ENTRY_POINTS, hasRuntimeCode, isCoverageSource } from "./coverage-check.ts";
+import {
+  belowGate,
+  COVERAGE_GATE,
+  ENTRY_POINTS,
+  hasRuntimeCode,
+  isCoverageSource,
+} from "./coverage-check.ts";
 
 export { isCoverageSource };
 
@@ -20,7 +26,7 @@ export function coverageTargets(
 export const WHOLE_SUITE_IGNORED = /(?:^|\/)(?:test\/|components\/ui\/|scripts\/demo-seed\.ts$)/;
 
 /**
- * #762: of the files a changed test newly loads, the ones the full suite's 100% gate counts. That
+ * #762: of the files a changed test newly loads, the ones the full suite's coverage gate counts. That
  * gate takes every loaded file outside its ignore patterns, not only the sources of
  * `coverageTargets` (a `scripts/` entry file counts once a test imports it).
  */
@@ -50,7 +56,7 @@ export function lineRanges(lines: readonly number[]): string {
 }
 
 export interface CoverageVerdict {
-  /** One line per target below 100%, naming the uncovered lines. */
+  /** One line per target below the gate, naming the uncovered lines. */
   problems: string[];
   /** The targets whose functions are not all called: the ones `coverage:funcs` can name. */
   functionGaps: string[];
@@ -58,6 +64,8 @@ export interface CoverageVerdict {
 
 interface FileGaps {
   functions: [number, number];
+  /** [hit, found], from the DA lines. */
+  lines: [number, number];
   uncovered: number[];
 }
 
@@ -68,20 +76,26 @@ function readLcov(lcov: string): Map<string, FileGaps> {
   for (const line of lcov.split(/\r?\n/)) {
     const [key, value = ""] = line.split(":", 2) as [string, string?];
     if (key === "SF") {
-      current = { functions: [0, 0], uncovered: [] };
+      current = { functions: [0, 0], lines: [0, 0], uncovered: [] };
       files.set(line.slice(3).replaceAll("\\", "/"), current);
     } else if (current && key === "FNH") current.functions[0] = Number(value);
     else if (current && key === "FNF") current.functions[1] = Number(value);
     else if (current && key === "DA") {
       const [at = "", hits = ""] = line.slice(3).split(",");
+      current.lines[1] += 1;
       if (Number(hits) === 0) current.uncovered.push(Number(at));
+      else current.lines[0] += 1;
     }
   }
   return files;
 }
 
-/** What a file of the report misses ("lines 3-4 not covered; functions 1/2 called"), or "". */
+/**
+ * What a file below the gate misses ("lines 3-4 not covered; functions 1/2 called"); "" for a
+ * file at the gate, whatever lines it leaves uncovered (#1002).
+ */
 function gapsOf(file: FileGaps): string {
+  if (!belowGate(file.functions) && !belowGate(file.lines)) return "";
   const gaps: string[] = [];
   if (file.uncovered.length > 0) gaps.push(`lines ${lineRanges(file.uncovered)} not covered`);
   const [hit, found] = file.functions;
@@ -100,17 +114,17 @@ export function checkChanged(lcov: string, targets: readonly string[]): Coverage
       continue;
     }
     const gaps = gapsOf(file);
-    if (file.functions[0] < file.functions[1]) verdict.functionGaps.push(target);
+    if (belowGate(file.functions)) verdict.functionGaps.push(target);
     if (gaps) verdict.problems.push(`${target}: ${gaps}`);
   }
   return verdict;
 }
 
 /**
- * #996: every file of a whole-suite lcov report below 100%, with what it misses. Bun's
+ * #996: every file of a whole-suite lcov report below the gate, with what it misses. Bun's
  * threshold fails such a run with exit code 1 and no word on which file.
  */
-export function belowFull(lcov: string): string[] {
+export function filesBelowGate(lcov: string): string[] {
   return [...readLcov(lcov)]
     .map(([file, gaps]) => ({ file, gaps: gapsOf(gaps) }))
     .filter(({ gaps }) => gaps !== "")
@@ -122,12 +136,23 @@ export function wholeSuiteVerdict(code: number, lcov: string | null): string | n
   if (code === 0) return null;
   const lead = `test:related: the whole suite exited with ${code}`;
   if (lcov === null) return `${lead} and left no coverage report`;
-  const below = belowFull(lcov);
+  const below = filesBelowGate(lcov);
   if (below.length === 0) {
-    return `${lead} with every file at 100%: a failing test, a file that did not load or the isolation guard stopped it (see above)`;
+    return `${lead} with every file at the ${COVERAGE_GATE}% gate: a failing test, a file that did not load, the isolation guard or a timeout stopped it (see above)`;
   }
   return [
-    `${lead}, and ${below.length} file(s) are below the 100% gate:`,
+    `${lead}, and ${below.length} file(s) are below the ${COVERAGE_GATE}% gate:`,
     ...below.map((line) => `  - ${line}`),
   ].join("\n");
+}
+
+/** #1000 review: removes the whole suite's report before the run; the verdict after it. */
+export function wholeSuiteCheck(
+  path: string | undefined,
+  deps: { remove: (path: string) => void; read: (path: string) => string | null },
+): (code: number) => string | null {
+  if (path === undefined) return () => null;
+  // A run that dies before Bun writes a report must not be judged by an older one.
+  deps.remove(path);
+  return (code) => wholeSuiteVerdict(code, deps.read(path));
 }

@@ -1517,6 +1517,10 @@ html:not(:has([data-slot="status-bar"])) {
   grid-template-columns: minmax(0, 1fr) 14rem;
   align-items: center;
   gap: 0.5rem;
+  /* A narrow window stacks the row: the name and badges get the whole width (#1006). */
+  @media (width < 40rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 @utility member-id {
   display: flex;
@@ -1530,6 +1534,11 @@ html:not(:has([data-slot="status-bar"])) {
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
+  /* Under the name on a narrow window: the actions start at the left and wrap (#1006). */
+  @media (width < 40rem) {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 /* The persona picker keeps one width on the shared field row (#101). */
 @utility persona-field {

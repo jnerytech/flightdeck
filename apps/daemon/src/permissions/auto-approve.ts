@@ -163,6 +163,11 @@ export class AutoApprover {
       .run(sessionKey, reason, new Date().toISOString());
   }
 
+  /** Issue #79: nothing is automatic on a card made from an agent's findings, or on its variants. */
+  suspendCard(cardId: string, reason: string): void {
+    this.suspend(`card:${cardId}`, reason);
+  }
+
   resume(sessionKey: string): void {
     this.opts.db.query("DELETE FROM auto_approve_suspended WHERE session_key = ?").run(sessionKey);
   }

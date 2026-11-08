@@ -40,6 +40,11 @@ export const runsHandlers = {
     const stack = await server.opts.harnessStack?.(project.path).catch(() => null);
     return { templates: workflowTemplates(stack?.commands.test ?? null) };
   },
+  "alert.list": async (payload, { server }) => {
+    if (!server.opts.alerts) throw featureOff("alerts");
+    // The project's own folder: `gh` fills the repo in from its remote.
+    return await server.opts.alerts(server.need("board").getProject(payload.projectId).path);
+  },
   "workflow.validate": async (payload, { server }) => {
     const { projectId, name } = payload;
     return await server.need("board").validateWorkflow(projectId, name);

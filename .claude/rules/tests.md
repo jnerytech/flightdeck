@@ -10,13 +10,15 @@ paths:
 - Red by assertion: a stub with the real signatures returns wrong values (`""`, `[]`, `false`,
   `null`), never `throw`. Run one file with `bun --config=bunfig.area.toml test <file>`.
 - No `.only`, `test.todo`, and no `toMatchSnapshot` on the first run (the guard hook refuses
-  adding them). `test.skipIf(<platform capability>)` is fine. A flaky test that hurts CI may be
-  skipped, on any platform (`test.skip`, `it.skip`, `describe.skip`) or off Ubuntu
-  (`test.skipIf(notLinux)`, `scripts/test/not-linux.ts`), with `// unstable: #<issue> <reason>` on
-  its line or the line above. The fix goes to that open issue. The hook, the TDD audit and the
-  unstable-skip ratchet (at most 10) check the note, and CI's quick job fails once the issue is
-  closed (#494), or on the PR that closes it while the skip is still in (#552). `toContain` on something that
-  may be `undefined` takes `?? ""`.
+  adding them). `test.skipIf(<platform capability>)` is fine. `toContain` on something that may
+  be `undefined` takes `?? ""`.
+- Tests aim at business logic and the important flows: the coverage gate is 80% of each file's
+  lines and functions (#1002), not 100%. Do not write a test only to reach a line.
+- A flaky test is deleted, never skipped. When it is the only check of a business flow, replace it
+  with a fast deterministic one (#1003). The `// unstable: #<issue>` skips left are removed under
+  #1003; until then the hook, the TDD audit and the unstable-skip ratchet still check their notes.
+- Too slow on CI: a test over 5 s, a test file over 60 s, an e2e journey over 90 s. Make it faster,
+  or delete it when it checks nothing a faster test does not.
 - Nothing real: the preload puts a sentinel `claude` first on the PATH and points `HOME` at a
   temporary folder. Other CLIs (`gh`, `az`, `ssh`) are fakes on the test PATH, with a `.cmd` twin
   for Windows. No network.

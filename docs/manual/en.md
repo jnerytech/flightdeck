@@ -1563,6 +1563,7 @@ steps:
 | `loop` | Runs the `check` of `until`. While it fails, runs the `do` (at most `max` times). When `max` is exhausted, the run pauses. |
 | `parallel` | Runs the items at the same time, within `maxParallelRuns`. The outputs arrive in `outputs`, in the declared order. |
 | `pr` | Pushes and opens the PR through the project's provider. |
+| `cards` | `cards: { from: <agent step> }` raises the findings in that step's reply as Backlog cards. See below. |
 
 Interpolation accepts only `{{inputs.*}}`, `{{steps.<id>.output}}` (`outputs` in a `parallel`)
 and `{{loop.lastCheck.output|exitCode}}`, the latter inside a loop's `do`. An unknown reference,
@@ -1581,10 +1582,28 @@ and their `check` commands. **Trust** shows those commands and asks for confirma
 - **Before each check:** the daemon verifies that the command is literally in the run's workflow
   and that this content is still trusted. Any other command is refused before reaching the shell.
 
+### Raising cards from an agent's findings
+
+An agent step can end its reply with a fenced `json` block, a list of `{ key, title, body }`, and
+a later `cards` step turns it into cards in the project's Backlog. The step reads only the last such
+block, and it is strict: a field that is not `key`, `title` or `body`, a `key` that is not a plain
+id of at most 160 characters, a one-line `title` of at most 160, a `body` of at most 4000, a control
+or invisible character, or more than 50 items refuses the whole list. Nothing is created and the run
+fails with the reason, which says which item and field.
+
+A finding is not raised again when a card of the project already has its `key` (or one done in the
+last 30 days), or an open card has the same title, case and spacing aside. A run creates at most 10
+cards; the step reports how many it raised, how many a card already covered and how many were over
+the cap. The cards are marked as the agent's text, show the external seal, and keep automatic
+approval off, since what an agent reads in a repository can be written by anyone.
+
 ### Templates
 
-Two workflows ship with Flightdeck, for recurring work that ends in a pull request:
+Three workflows ship with Flightdeck, for recurring work:
 
+- **Tech-debt scan:** reads the repository (in plan mode, nothing pushed) for TODOs, deprecated APIs
+  and lint or security warnings, and raises the 10 that matter most as Backlog cards. To run it every
+  week, add an automation that starts this workflow on a schedule.
 - **Alert fixer:** takes one lint or security alert that you paste in, fixes it on the card's branch
   with a test (up to 3 attempts against your test command), asks you, then opens the pull request.
 - **Post-mortem draft:** drafts a post-mortem of an incident (summary, impact, timeline, cause,
@@ -1592,6 +1611,14 @@ Two workflows ship with Flightdeck, for recurring work that ends in a pull reque
 
 Both stop at an approval before anything is pushed, and both have a budget of turns and minutes.
 Once the pull request is open, the PR watch's round limit applies to it.
+
+To start the alert fixer, start a card with it and fill the `alert` field. **Choose an alert** beside
+the field lists the repository's open code-scanning and Dependabot alerts, the worst first, read by the
+host with its own `gh` (read-only; Flightdeck holds no GitHub token). Picking one copies its text into
+the field: read it before you start, since an alert's words come from a scanner or an advisory. A
+source that cannot be read (code scanning is off, or `gh` has no access or is not signed in) is named
+beside the list, and the list never says "no open alerts" when one of them failed. The button shows
+only when the host can read alerts.
 
 A template is a file, and Flightdeck writes nothing to your repository. On the **Workflows**
 screen, **Add from a template** lists them. Open one to read its file, then **Copy the file**,

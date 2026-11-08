@@ -1355,12 +1355,13 @@ export const ptBR = {
     input_name_invalid: "Um nome de input usa letras, números, hífens e sublinhados.",
     persona_invalid: "O id da persona não é válido.",
     step_one_action:
-      "Uma etapa precisa de exatamente uma ação: agent, check, gate, loop, parallel ou pr.",
+      "Uma etapa precisa de exatamente uma ação: agent, check, gate, loop, parallel, pr ou cards.",
     step_id_duplicate: "Outra etapa tem esse id.",
     inner_one_action: "{where} precisa de exatamente uma ação: agent ou check.",
     continue_unknown: "continue aponta para uma etapa que não existe: {step}.",
     persona_with_continue: "persona não vale com continue: a sessão dessa etapa já existe.",
     reference_unknown: "Referência desconhecida: {ref}.",
+    cards_from_unknown: "cards.from precisa nomear uma etapa agent anterior, e {step} não é uma.",
   },
   actionIssue: {
     not_object: "A ação precisa ser um bloco de campos.",
@@ -1478,6 +1479,7 @@ export const ptBR = {
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
     harnessStack: "a leitura do stack do projeto",
+    alerts: "a leitura dos alertas do repositório",
     knowledge: "a leitura dos documentos do projeto",
     knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
     knowledgeStatus: "a mudança do status de um documento",
@@ -1519,9 +1521,15 @@ export const ptBR = {
     project_no_issues:
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
     card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",
+    findings_missing:
+      "A resposta da etapa {step} não traz uma lista de achados, então nenhum card foi criado.",
+    findings_invalid:
+      "A resposta da etapa {step} não é uma lista de achados válida ({where}), então nenhum card foi criado.",
     spec_path_invalid:
       "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
+    spec_template_failed:
+      "Não deu para gravar o modelo de spec em {path} (um link ou arquivo está no caminho): a sessão começou sem ele.",
     contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
     remote_not_github: "O remoto {url} não é do GitHub.",
@@ -3835,6 +3843,34 @@ export const ptBR = {
     budgetCost: "Custo estimado",
     budgetLine: "{label}: {shown} de {max}",
     budgetNoLimit: "{label}: {shown} (sem limite)",
+  },
+  alertsUi: {
+    open: "Escolher um alerta",
+    title: "Escolher um alerta",
+    intro:
+      "Alertas abertos de code scanning e do Dependabot deste repositório, os mais graves primeiro. O texto do alerta vai para o campo: leia antes de iniciar.",
+    loading: "Carregando alertas",
+    failed:
+      "Não deu para ler os alertas. O host pode estar offline ou precisar de uma versão mais nova do Flightdeck.",
+    list: "Alertas",
+    use: "Usar o alerta {title}",
+    useShort: "Usar",
+    empty: "Nenhum alerta aberto.",
+    kind: { "code-scanning": "Code scanning", dependabot: "Dependabot" },
+    severity: {
+      critical: "Crítico",
+      high: "Alto",
+      medium: "Médio",
+      low: "Baixo",
+      unknown: "Sem gravidade",
+    },
+    reason: {
+      gh_missing: "{source}: o GitHub CLI (gh) não está instalado no host.",
+      not_signed_in: "{source}: o gh do host não está conectado a uma conta.",
+      unavailable:
+        "{source}: indisponível neste repositório. Pode estar desligado, ou o gh do host pode não ter acesso.",
+      failed: "{source}: não deu para ler.",
+    },
   },
   workflowsUi: {
     title: "Workflows de {project}",

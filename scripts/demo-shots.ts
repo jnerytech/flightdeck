@@ -775,6 +775,93 @@ function shots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(300);
       },
     },
+    // #168: the screens shipped on 2026-11-06 and 07, in both themes and languages, with axe and the
+    // layout guards (the narrow ones in NARROW_SHOTS).
+    {
+      // #931: New project on the Projects page, open.
+      name: "projetos-novo",
+      route: { name: "all-projects" },
+      async prepare(page) {
+        await page.getByRole("button", { name: /^(New project|Novo projeto)$/ }).click();
+        // The page shows the switcher's host (#948): one host opens its form, several ask which first.
+        await page.getByRole("menu").or(page.getByRole("dialog")).first().waitFor();
+      },
+    },
+    {
+      // #934: deleting the demo's closed team asks first.
+      name: "times-apagar",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        await page.getByRole("button", { name: /^(Actions for|Ações de) closed-crew$/ }).click();
+        await page.getByRole("menuitem", { name: /^(Delete team|Excluir time)$/ }).click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
+    {
+      // #76: the project's knowledge panel, scrolled into view on its page.
+      name: "projeto-conhecimento",
+      route: { name: "project", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        const panel = page.getByRole("region", {
+          name: /^(Project knowledge|Conhecimento do projeto)$/,
+        });
+        await panel.waitFor({ timeout: 15_000 });
+        await panel.scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #978: Workflows' "Add from a template", its dialog open.
+      name: "workflows-modelos",
+      route: {
+        name: "workflows",
+        host: ALFA,
+        projectId: ids.project,
+        projectName: ids.projectName,
+      },
+      async prepare(page) {
+        await page
+          .getByRole("button", { name: /^(Add from a template|Adicionar de um modelo)$/ })
+          .click();
+        await page.getByRole("dialog").waitFor();
+      },
+    },
+    {
+      // #78: moving a card to Review without a PR asks first, and says what it lacks.
+      name: "board-contrato",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      async prepare(page) {
+        // The open menu hides the rest of the page, its trigger too: the trigger is found hidden.
+        const actions = page.getByRole("button", {
+          name: /^(Actions for|Ações de) Documentar a API pública$/,
+          includeHidden: true,
+        });
+        await actions.click();
+        const menuId = await actions.getAttribute("aria-controls", { timeout: 5000 });
+        await page
+          .getByRole("menuitem", { name: /^(Move to|Mover para) .*(eview|evisão)/ })
+          .click();
+        await page.getByRole("alertdialog").or(page.getByRole("dialog")).first().waitFor();
+        // #1005: when the confirm shows, the card's actions menu is still on its way out (closed,
+        // its exit animation running, gone some 50 ms later). The print turns animations off,
+        // which drew that closing menu whole under the confirm: the print waits until it is gone.
+        // A menu that stays only shows in the print; it does not end the job.
+        if (menuId) {
+          await page
+            .locator(`[id="${menuId}"]`)
+            .waitFor({ state: "detached", timeout: 5000 })
+            .catch(() => undefined);
+        }
+      },
+    },
+    {
+      // #961: the session's permission mode chip, its menu open.
+      name: "sessao-modo",
+      route: { name: "session", host: ALFA, id: ids.idleSession },
+      async prepare(page) {
+        await page.getByRole("button", { name: /^(Permission mode|Modo de permissão): / }).click();
+        await page.getByRole("menu").waitFor();
+      },
+    },
     {
       name: "erro",
       route: { name: "reader", target: { hostId: ALFA, claudeSessionId: "nao-existe" } },

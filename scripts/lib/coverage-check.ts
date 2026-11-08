@@ -6,6 +6,14 @@ export interface FileCoverage {
 
 const normalize = (path: string) => path.replaceAll("\\", "/");
 
+/** #1002: the share of each source file's lines and functions the tests must run, in percent. */
+export const COVERAGE_GATE = 80;
+
+/** Whether `[hit, found]` is below the gate; nothing to run (found 0) is never below it. */
+export function belowGate([hit, found]: readonly [number, number]): boolean {
+  return hit * 100 < found * COVERAGE_GATE;
+}
+
 /** Process entry points with no logic of their own; see docs/DECISIONS.md. */
 export const ENTRY_POINTS: ReadonlySet<string> = new Set([
   "apps/daemon/src/bin.ts",
@@ -19,7 +27,7 @@ export const VENDOR_UI = "apps/desktop/src/components/ui/";
 
 const SOURCE_PATH = /^(?:(?:packages|apps)\/[^/]+\/src\/.+\.tsx?|scripts\/lib\/.+\.ts)$/;
 
-/** Whether a repository path is a source file the 100% rule covers, as in the full suite. */
+/** Whether a repository path is a source file the coverage gate covers, as in the full suite. */
 export function isCoverageSource(path: string): boolean {
   const file = normalize(path);
   return (
@@ -48,7 +56,7 @@ export function parseLcov(text: string): Map<string, FileCoverage> {
 }
 
 /**
- * Lists every source file that is not fully covered, including files no test ever loads
+ * Lists every source file below the gate (#1002: 80% of its lines and of its functions), including files no test ever loads
  * (`bun test` only reports files that were imported, so those would otherwise slip through).
  */
 export function checkCoverage(
@@ -66,7 +74,7 @@ export function checkCoverage(
     }
     const [fnHit, fnFound] = file.functions;
     const [lnHit, lnFound] = file.lines;
-    if (fnHit < fnFound || lnHit < lnFound) {
+    if (belowGate(file.functions) || belowGate(file.lines)) {
       problems.push(`${source}: funções ${fnHit}/${fnFound}, linhas ${lnHit}/${lnFound}`);
     }
   }

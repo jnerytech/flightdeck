@@ -60,7 +60,8 @@ import { probeVersion } from "./deps/probe.ts";
 import { type OpenCodeState, runDoctor } from "./doctor.ts";
 import { buildChildEnv } from "./env.ts";
 import { type Exec, spawnExec } from "./exec.ts";
-import { runGh } from "./github/gh.ts";
+import { listAlerts } from "./github/alerts.ts";
+import { runGh, runGhIn } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
 import { applyHarness } from "./harness/apply.ts";
 import { previewHarness } from "./harness/preview.ts";
@@ -1006,6 +1007,8 @@ export async function startDaemon(
     cardCost: costs.card.bind(costs),
     // A worktree is removed once no snapshot runs git in it (a busy folder on Windows).
     idle: snapshots.idle.bind(snapshots),
+    // A card raised from an agent's findings keeps automatic approval off (issue #79).
+    suspendApproval: autoApprove.suspendCard.bind(autoApprove),
     ...(config.board.prPollIntervalMs ? { prPollIntervalMs: config.board.prPollIntervalMs } : {}),
     // Changed from the app: kept in the config file, like the rest of the host settings.
     onSettingsChange: ({ maxParallelRuns }) =>
@@ -1443,6 +1446,7 @@ export async function startDaemon(
       },
     },
     harnessStack: detectStack,
+    alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: listKnowledge,
     knowledgeStatus: setKnowledgeStatus,
     knowledgeFeed: knowledgeFeedFor({

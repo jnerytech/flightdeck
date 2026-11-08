@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { checkCoverage, hasRuntimeCode, parseLcov } from "../lib/coverage-check.ts";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { COVERAGE_GATE, checkCoverage, hasRuntimeCode, parseLcov } from "../lib/coverage-check.ts";
 
 const lcov = [
   "TN:",
@@ -28,7 +30,32 @@ describe("cobertura", () => {
     );
   });
 
-  test("aponta arquivos abaixo de 100% e arquivos nunca carregados", () => {
+  test("#1002: the gate is 80% of the lines and 80% of the functions of each file", () => {
+    expect(COVERAGE_GATE).toBe(80);
+    const at = (fn: [number, number], ln: [number, number]) =>
+      checkCoverage(new Map([["apps/daemon/src/x.ts", { functions: fn, lines: ln }]]), [
+        "apps/daemon/src/x.ts",
+      ]);
+    expect(at([4, 5], [8, 10])).toEqual([]);
+    expect(at([0, 0], [0, 0])).toEqual([]);
+    expect(at([4, 5], [7, 10])).toEqual(["apps/daemon/src/x.ts: funções 4/5, linhas 7/10"]);
+    expect(at([3, 5], [10, 10])).toEqual(["apps/daemon/src/x.ts: funções 3/5, linhas 10/10"]);
+  });
+
+  test("#1002: the whole suite's threshold in bunfig.toml is the same 80%", () => {
+    const bunfig = readFileSync(join(import.meta.dir, "../..", "bunfig.toml"), "utf8");
+    // Compared by value, so spacing in the TOML does not matter (#1011 review).
+    const threshold =
+      /coverageThreshold\s*=\s*\{\s*lines\s*=\s*([\d.]+)\s*,\s*functions\s*=\s*([\d.]+)\s*\}/.exec(
+        bunfig,
+      );
+    expect([Number(threshold?.[1]), Number(threshold?.[2])]).toEqual([
+      COVERAGE_GATE / 100,
+      COVERAGE_GATE / 100,
+    ]);
+  });
+
+  test("aponta arquivos abaixo de 80% e arquivos nunca carregados", () => {
     const problems = checkCoverage(parseLcov(lcov), [
       "apps/daemon/src/a.ts",
       "apps/daemon/src/b.ts",
