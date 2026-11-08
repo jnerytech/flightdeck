@@ -879,6 +879,10 @@ export const ptBR = {
     resizeValue: "{n} px",
     countOne: "1 card",
     countMany: "{n} cards",
+    keysHint:
+      "As setas passam de um card a outro, Enter abre, S inicia e M mostra as ações do card.",
+    columns: "Colunas",
+    showColumn: "{column}, {count}",
     countOfMany: "{shown} de {total} cards",
     noMatches: "Nenhuma correspondência",
     quickAdd: "Novo card em {column}",
@@ -4127,6 +4131,7 @@ export const ptBR = {
       views: "Visões da sessão",
       lists: "Listas",
       approvals: "Aprovações",
+      board: "Board",
     },
     palette: "Abrir a paleta de comandos",
     toggleMode: "Alternar entre o modo simples e o app completo",
@@ -4153,6 +4158,9 @@ export const ptBR = {
     approve: "Aprovar o pedido",
     deny: "Negar o pedido",
     dismiss: "Fechar o pedido",
+    boardMove: "Passar de um card a outro no board",
+    boardStart: "Iniciar o card em foco",
+    boardActions: "Mostrar as ações do card em foco",
   },
   sidebarGroups: {
     main: "Principal",
@@ -4529,6 +4537,16 @@ export const ptBR = {
         done: "Compartilhado como o modelo {title} ({files}).",
       },
       setup: {
+        startFrom: "Partir de",
+        builtIn: "Arquivos do próprio Flightdeck",
+        withheld: "Deixado de fora do modelo",
+        withheldLine: "{path}: {why}",
+        withheldWhy: {
+          frontmatter: "o cabeçalho dele poderia executar um comando ou conceder uma permissão",
+          secret: "ele contém um segredo",
+          import: "ele importa um arquivo de fora do projeto",
+          command: "ele executa um comando ao carregar",
+        },
         action: "Configurar o Claude Code",
         apply: "Aplicar a configuração",
         message:
@@ -4862,6 +4880,7 @@ export const ptBR = {
   },
   hostForm: {
     fromLink: "Este link veio de fora do app. Confira os dados antes de salvar.",
+    byHand: "Informar o endereço e o token manualmente",
     link: "Link de pareamento",
     name: "Nome",
     namePlaceholder: "meu pc",

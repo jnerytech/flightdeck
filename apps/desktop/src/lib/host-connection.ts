@@ -22,6 +22,7 @@ import {
   type RuleIssue,
   type RunState,
   type ServerMessage,
+  type SessionEventOf,
   type SessionSubscribeResult,
   type TeamsUpdatedFrame,
   type TerminalData,
@@ -127,6 +128,11 @@ export interface HostConnectionOptions {
   hostId?: string;
   /** Called for every session event received (live or replayed). */
   onEvent(envelope: EventEnvelope): void;
+  /**
+   * #1191: every session's current summary at once, from the ack of `sessions.watch` on a host
+   * that offers it; the live ones still come through `onEvent`.
+   */
+  onSummaries?(summaries: SessionEventOf<"session.summary">[]): void;
   onStatus(status: ConnectionStatus): void;
   /** Subscription acknowledged; events up to `result.session.lastSeq` are replay. */
   onSubscribed(sessionId: string, result: SessionSubscribeResult): void;
@@ -250,7 +256,7 @@ export class HostConnection {
           this.attempt = 0;
           this.retry = null;
           this.setStatus("online");
-          if (this.watching) this.send("sessions.watch", {}).catch(ignore);
+          if (this.watching) this.watchSessions();
           // Daemons before phase 4 answer with an error: nothing to watch there.
           if (this.watchingBoard) this.send("board.watch", {}).catch(ignore);
           if (this.watchingHistory) this.send("history.watch", {}).catch(ignore);
@@ -426,7 +432,21 @@ export class HostConnection {
   watch(): void {
     if (this.watching) return;
     this.watching = true;
-    if (this.status === "online") this.send("sessions.watch", {}).catch(ignore);
+    if (this.status === "online") this.watchSessions();
+  }
+
+  /**
+   * Asks for the summaries: in the ack, all at once, from a host that offers it (#1191), so the
+   * app renders once for a host's sessions and not once for each; else one frame each.
+   */
+  private watchSessions(): void {
+    if (this.info?.features?.includes("watch.snapshot")) {
+      this.send("sessions.watch", { snapshot: "ack" }).then((result) => {
+        if (result?.summaries) this.opts.onSummaries?.(result.summaries);
+      }, ignore);
+      return;
+    }
+    this.send("sessions.watch", {}).catch(ignore);
   }
 
   /** Streams `card.updated` for every card of the host from the next (re)connect on; call it before `connect`. */

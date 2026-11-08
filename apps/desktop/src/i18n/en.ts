@@ -881,6 +881,12 @@ export const en: Dictionary = {
     resizeValue: "{n} px",
     countOne: "1 card",
     countMany: "{n} cards",
+    /** The board's keys, said by each card's title (#1198). */
+    keysHint:
+      "Arrows move between the cards, Enter opens one, S starts it and M shows its actions.",
+    /** A narrow board shows one column at a time, picked here (#1198). */
+    columns: "Columns",
+    showColumn: "{column}, {count}",
     countOfMany: "{shown} of {total} cards",
     noMatches: "No matches",
     quickAdd: "New card in {column}",
@@ -4118,6 +4124,7 @@ export const en: Dictionary = {
       views: "Session views",
       lists: "Lists",
       approvals: "Approvals",
+      board: "Board",
     },
     palette: "Open the command palette",
     toggleMode: "Switch between simple mode and the full app",
@@ -4144,6 +4151,9 @@ export const en: Dictionary = {
     approve: "Approve the request",
     deny: "Deny the request",
     dismiss: "Close the request",
+    boardMove: "Move between the board's cards",
+    boardStart: "Start the focused card",
+    boardActions: "Show the focused card's actions",
   },
   sidebarGroups: {
     main: "Main",
@@ -4522,6 +4532,16 @@ export const en: Dictionary = {
         done: "Shared as the template {title} ({files}).",
       },
       setup: {
+        startFrom: "Start from",
+        builtIn: "Flightdeck's own files",
+        withheld: "Left out of the template",
+        withheldLine: "{path}: {why}",
+        withheldWhy: {
+          frontmatter: "its front matter could run a command or grant a permission",
+          secret: "it holds a secret",
+          import: "it imports a file from outside the project",
+          command: "it runs a command as it loads",
+        },
         action: "Set up Claude Code",
         apply: "Apply the setup",
         message:
@@ -4849,6 +4869,7 @@ export const en: Dictionary = {
   },
   hostForm: {
     fromLink: "This link came from outside the app. Check the details before saving.",
+    byHand: "Enter the address and token by hand",
     link: "Pairing link",
     name: "Name",
     namePlaceholder: "my pc",

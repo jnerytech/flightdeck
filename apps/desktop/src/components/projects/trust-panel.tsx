@@ -205,6 +205,7 @@ export function TrustPanel(
                   onApplied: read,
                   canCommit: props.canCommit === true,
                   canDraft: props.canDraft === true,
+                  canTemplates: props.canShare === true,
                 }
               : null
           }
