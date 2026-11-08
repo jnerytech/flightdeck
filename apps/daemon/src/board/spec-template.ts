@@ -13,7 +13,7 @@ import {
   contractOf,
   specPathProblem,
 } from "@flightdeck/protocol";
-import { createInside, readInsideWhy } from "../create-inside.ts";
+import { createInside, readInsideWhy, walkInside } from "../create-inside.ts";
 
 /** The project's TDD skill, as the harness setup writes it (#75). */
 const TDD_SKILL = ".claude/skills/tdd/SKILL.md";
@@ -119,10 +119,14 @@ export async function projectTemplate(
  * read. Only a look at the name (never the text), so an untrusted file stays unread.
  */
 export async function untrustedTemplate(worktree: string): Promise<boolean> {
-  return lstat(join(worktree, PROJECT_TEMPLATE)).then(
-    () => true,
-    () => false,
-  );
+  try {
+    // A link anywhere on the way is refused, not followed: the look never leaves the worktree, so
+    // it cannot tell whether something lies behind a link.
+    const found = await walkInside(await realpath(worktree), PROJECT_TEMPLATE, TEMPLATE_MAX);
+    return found.state !== "absent";
+  } catch {
+    return false;
+  }
 }
 
 /** Whether the worktree has the TDD skill the first prompt can name. */
