@@ -22,7 +22,7 @@ export interface BoardSyncLoopOptions {
 }
 
 interface Watched {
-  timer: unknown | null;
+  timer: unknown;
   running: Promise<SyncReport | null> | null;
   failures: number;
 }

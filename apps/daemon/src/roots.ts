@@ -20,6 +20,13 @@ export interface PlatformInfo {
   home: string;
 }
 
+/** This machine's platform, environment and home folder. */
+const currentPlatform = (): PlatformInfo => ({
+  platform: process.platform,
+  env: process.env,
+  home: userHome(),
+});
+
 /** Folders of the system itself, and the ones that hold secrets or the user's whole application data. */
 function systemFolders(info: PlatformInfo): string[] {
   const p = info.platform === "win32" ? win32 : posix;
@@ -82,7 +89,7 @@ export async function addAllowedRoot(
   path: string,
   confirm: boolean,
   persist?: (roots: readonly string[]) => void | Promise<void>,
-  platform: PlatformInfo = { platform: process.platform, env: process.env, home: userHome() },
+  platform: PlatformInfo = currentPlatform(),
 ): Promise<string[]> {
   if (!confirm) {
     throw new FlightdeckError(

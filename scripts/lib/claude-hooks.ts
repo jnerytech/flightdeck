@@ -51,16 +51,20 @@ const HEREDOC_START = /<<-?[ \t]*(['"]?)(\w+)\1/;
 function withoutHeredocs(command: string): string {
   const lines = command.split("\n");
   const kept: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
+  let i = 0;
+  while (i < lines.length) {
     const line = lines[i] as string;
     const start = HEREDOC_START.exec(line);
-    const end = start ? lines.findIndex((l, j) => j > i && l.trim() === start[2]) : -1;
+    const at = i;
+    const end = start ? lines.findIndex((l, j) => j > at && l.trim() === start[2]) : -1;
     if (!start || end < 0) {
       kept.push(line);
+      i += 1;
       continue;
     }
     kept.push(line.slice(0, start.index));
-    i = end;
+    // The body and its closing line are data: the scan goes on after them.
+    i = end + 1;
   }
   return kept.join("\n");
 }
@@ -142,7 +146,7 @@ export function gitCommonDir(dir: string): string | null {
   const dotGit = join(dir, ".git");
   if (!existsSync(dotGit)) return null;
   if (statSync(dotGit).isDirectory()) return dotGit;
-  const gitDir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1];
+  const gitDir = /^gitdir:[ \t]*(\S.*)$/m.exec(readFileSync(dotGit, "utf8"))?.[1];
   // A linked worktree's gitdir is <common .git>/worktrees/<name>.
   return gitDir ? resolve(dir, gitDir.trim(), "..", "..") : null;
 }
@@ -260,7 +264,7 @@ export interface CommitGateDeps {
  */
 export function commitViolation(command: string, cwd: string, deps: CommitGateDeps): string | null {
   const commit = findCommit(command, cwd);
-  if (!commit || commit.message === null) return null;
+  if (commit?.message == null) return null;
   if (commit.dir !== null && deps.inProject && !deps.inProject(commit.dir)) return null;
   const subject =
     commit.message
@@ -312,7 +316,7 @@ const COMMIT_TYPES = [
   "revert",
 ];
 const SUBJECT = new RegExp(String.raw`^(${COMMIT_TYPES.join("|")})(?:\(([^)]+)\))?!?: \S`);
-const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n\s*\2[ \t]*(?=\n|\)|$)/g;
+const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n\s*\2[ \t]*(?=\n|\)|$)/g; // NOSONAR: it reads one git commit command a session typed (a few KB), and the commit gate's tests pin its forms
 const WAIVER = /^TDD-Waiver:[ \t]*\S/m;
 /**
  * An issue in parentheses in the subject's text (after `type(scope): `): `(#12)`, `(#12, #13)`,
@@ -339,6 +343,15 @@ function maskCommand(command: string): string {
       // Not spaces (#759): a quoted value stays one word, so `-c x="a b"` cannot shift the subcommand.
       (quoted) => `${quoted[0]}${"_".repeat(quoted.length - 2)}${quoted[0]}`,
     );
+}
+
+/**
+ * What a word means once its quotes are read: `$'...'` and backticks are not read (the word stays
+ * as typed, which nothing matches, #759 review), quoted text loses its quotes, the rest is as is.
+ */
+function wordValue(typed: string, masked: string): string {
+  if (/\$'|`/.test(typed)) return typed;
+  return /["']/.test(masked) ? unquote(typed) : masked;
 }
 
 /** A shell word as the shell reads it, quotes taken out (a `\` escape inside double quotes too). */
@@ -393,7 +406,7 @@ function gitCalls(command: string, cwd: string): GitCall[] {
       // keeps every length, so the same span of the original command is the word as typed.
       // $'...' and `...` are not read: such a word stays as typed, which nothing matches (#759 review).
       const typed = command.slice(at, at + t[0].length);
-      const value = /\$'|`/.test(typed) ? typed : /["']/.test(t[0]) ? unquote(typed) : t[0];
+      const value = wordValue(typed, t[0]);
       return { word: t[0], at, value };
     });
     const word = (i: number) => tokens[i]?.word ?? "";
@@ -783,9 +796,12 @@ export interface PrRun {
   minutes: number;
 }
 
+/** A branch's latest PR run, "none" when it has none, null when GitHub cannot be read. */
+export type PrRunAnswer = PrRun | "none" | null;
+
 export interface PushWaitDeps extends PushGuardDeps {
   /** The branch's latest PR run, read in `dir`: "none" when it has none, null when GitHub cannot be read. */
-  prRun: (branch: string, dir: string) => PrRun | "none" | null;
+  prRun: (branch: string, dir: string) => PrRunAnswer;
   /** Why no lookup could answer (gh missing, no time left), which lets the push go; null holds it. */
   whyUnread?: () => string | null;
 }
@@ -803,11 +819,7 @@ export interface PushWaitPass {
  * the list is empty, null when the list is missing or does not read (#741: GitHub unread); a PR
  * unread leaves the run's age to decide (#945 review).
  */
-export function prRunFrom(
-  runs: string | null,
-  pr: string | null,
-  now: number,
-): PrRun | "none" | null {
+export function prRunFrom(runs: string | null, pr: string | null, now: number): PrRunAnswer {
   try {
     const list = JSON.parse(runs ?? "") as Array<Record<string, unknown>>;
     if (Array.isArray(list) && list.length === 0) return "none";
@@ -853,10 +865,7 @@ export type Gh = (args: string[], dir: string) => string | null;
  * The guard's reader of a branch's latest PR run (#756 review: the gh calls are tested here, not
  * left as glue): `gh run list`, then `gh pr view` only when there is a run.
  */
-export function prRunVia(
-  gh: Gh,
-  now: () => number,
-): (branch: string, dir: string) => PrRun | "none" | null {
+export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: string) => PrRunAnswer {
   return (branch, dir) => {
     // The branch goes as one `--branch=` word, so no name reads as a flag.
     const runs = gh(

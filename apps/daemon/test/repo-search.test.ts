@@ -572,9 +572,9 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
       _limit,
       _timeout,
       _kill,
-      _separator,
-      signal,
+      more,
     ) => {
+      const signal = more?.signal;
       if (cmd.includes("first")) {
         started.resolve();
         await Promise.race([
