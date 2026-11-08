@@ -106,8 +106,9 @@ function assertions(text: string): Assertion[] {
       const args = argsTo === -1 ? "" : text.slice(argsFrom, argsTo - 1);
       const raw = text.slice(open, close - 1);
       const subject = raw.replace(/\s+/g, "");
-      const lineEnd = text.indexOf("\n", argsFrom);
-      const line = text.slice(text.lastIndexOf("\n", at) + 1, lineEnd === -1 ? undefined : lineEnd);
+      // The escape follows the matcher on its line: read at most 500 characters of it, so a
+      // long one-line edit costs the same per assertion (security review).
+      const line = text.slice(argsFrom, argsFrom + 500).split("\n")[0] ?? "";
       const negated = /\.\s*not\b/.test(matcher[0]);
       const kind = kindOf(matcher[2] ?? "", negated, args, raw);
       found.push({ subject, kind, escaped: kind === "weak" && ESCAPE.test(line) });
@@ -140,8 +141,11 @@ export function weakensAssertions(before: string, after: string): boolean {
       .map((a) => a.subject),
   );
   const nowBySubject = new Map<string, Assertion[]>();
-  for (const a of assertions(after))
-    nowBySubject.set(a.subject, [...(nowBySubject.get(a.subject) ?? []), a]);
+  for (const a of assertions(after)) {
+    const list = nowBySubject.get(a.subject);
+    if (list) list.push(a);
+    else nowBySubject.set(a.subject, [a]);
+  }
   for (const subject of strictBefore) {
     const now = nowBySubject.get(subject) ?? [];
     if (now.some((a) => a.kind === "weak" && !a.escaped) && !now.some((a) => a.kind === "strict")) {
