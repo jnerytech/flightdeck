@@ -6,6 +6,7 @@
  */
 import { spawnExec } from "../apps/daemon/src/exec.ts";
 import { runBounded } from "./lib/bounded-run.ts";
+import { mainRedLine } from "./lib/main-red.ts";
 import { prFlow } from "./lib/pr-flow.ts";
 
 process.exit(
@@ -22,6 +23,8 @@ process.exit(
       },
       env: process.env,
       log: (line) => console.log(line),
+      // #1246: a red main and its claim, said before a PR moves.
+      mainRed: () => mainRedLine({ gh: (cmd) => spawnExec(["gh", ...cmd]) }),
     },
   ),
 );
