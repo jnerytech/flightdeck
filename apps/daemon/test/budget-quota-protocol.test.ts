@@ -69,6 +69,8 @@ describe("budget-quota-protocol: the app sets a budget in terms of a plan quota 
     for (const extra of [
       { window: "seven_day", limitPct: 1.5 },
       { window: "seven_day", limitPct: 0 },
+      // So small that the fraction of any use would not be a finite number.
+      { window: "five_hour", limitPct: 1e-9 },
       { window: "seven_day" },
       { window: "five_hour", limitUsd: 5 },
       { window: "day", limitPct: 0.5 },

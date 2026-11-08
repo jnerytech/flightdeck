@@ -150,6 +150,24 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
     expect(budgets.list()[0]?.crossed).toEqual([0.5, 0.8]);
   });
 
+  test("a reading with a utilization that is not a number of the plan never makes the budget non-finite", () => {
+    const { budgets, read } = setup();
+    // The CLI sends `1e999` as Infinity; a project with no entries has a share of zero.
+    read("five_hour", Number.POSITIVE_INFINITY, 2 * HOUR);
+    const project = budgets.setWindow({
+      scope: "project",
+      projectKey: "kA",
+      window: "five_hour",
+      limitPct: 0.5,
+      action: "queue",
+    });
+    expect(Number.isFinite(project.fraction)).toBe(true);
+    expect(Number.isFinite(project.spentPct ?? Number.NaN)).toBe(true);
+    const host = budgets.setWindow(HOST_5H);
+    expect(host.spentPct).toBe(1);
+    expect(host.fraction).toBe(2);
+  });
+
   test("a dollar budget still works beside a window one, and says it is not a share of a window", () => {
     const { budgets } = setup();
     const dollars = budgets.set({ scope: "host", period: "day", limitUsd: 10, action: "notify" });
