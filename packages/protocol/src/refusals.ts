@@ -6,6 +6,8 @@ export const DAEMON_REASONS = [
   "autoapprove_resume_confirm",
   "terminal_enable_confirm",
   "central_confirm",
+  "service_confirm",
+  "service_unsupported",
   "permission_request_closed",
   "hold_required",
   "input_changed",
@@ -495,6 +497,7 @@ export type RefusalParams = Record<string, string | number>;
 /** Every host feature a command can find off: the app names each one in both languages. */
 export const DAEMON_FEATURES = [
   "bypass",
+  "serviceInstall",
   "history",
   "central",
   "vault",

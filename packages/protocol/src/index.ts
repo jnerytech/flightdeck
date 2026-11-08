@@ -4089,6 +4089,8 @@ export const Command = z.discriminatedUnion("type", [
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
   cmd("hooks.uninstall", z.object({ confirm: z.boolean().optional() })),
+  /** #1200: installs the daemon as a service for the next boot or login: only with `confirm: true`. */
+  cmd("service.install", z.object({ confirm: z.boolean().optional() }).strict()),
   cmd("external.message", z.object({ claudeSessionId: z.string(), text: z.string().min(1) })),
   // Phase 6: workflows of a project (read from its base branch) and their runs.
   cmd("workflow.list", z.object({ projectId: z.string() })),
@@ -5220,6 +5222,22 @@ export const BoardResult = z.object({
 });
 export type BoardResult = z.infer<typeof BoardResult>;
 
+/** #1200: the host can install itself as a service from the app (`service.install`). */
+export const FEATURE_SERVICE_INSTALL = "serviceInstall";
+
+/**
+ * #1200: what `service.install` did. The service is enabled for the next boot or login, never
+ * started now: the daemon that answered keeps running.
+ */
+export interface ServiceInstallResult {
+  /** When the service first runs: the next boot (Linux with linger on) or the next login. */
+  startsAt: "boot" | "logon";
+  /** Linux with linger off: until linger is on, the service starts only after a login. */
+  lingerOff: boolean;
+  /** The account a `sudo loginctl enable-linger <user>` line names. */
+  user: string;
+}
+
 export const HooksStatusResult = z.object({
   status: z.enum(["installed", "absent", "outdated"]),
   /** The settings.json the hooks go to. */
@@ -5563,6 +5581,7 @@ export interface CommandResults {
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;
+  "service.install": ServiceInstallResult;
   "card.get": Card;
   "card.spec": Card;
   "card.validationTemplate": ValidationTemplate;

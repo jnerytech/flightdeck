@@ -469,6 +469,7 @@ export type HostCommandType = Extract<
   | `board.${string}`
   | `card.${string}`
   | `hooks.${string}`
+  | "service.install"
   | `external.${string}`
   | "session.meta.set"
   | `workflow.${string}`

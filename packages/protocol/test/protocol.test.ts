@@ -377,6 +377,7 @@ const validCommands: Record<CommandType, unknown> = {
   "autoapprove.resume": { sessionKey: "s1", confirm: true },
   "hooks.status": {},
   "hooks.install": { confirm: true },
+  "service.install": { confirm: true },
   "hooks.uninstall": { confirm: true },
   "workflow.list": { projectId: "p" },
   "workflow.templates": { projectId: "p" },

@@ -1450,6 +1450,7 @@ export const en: Dictionary = {
   },
   daemonFeature: {
     assistant: "the AI assistant",
+    serviceInstall: "starting at boot from the app",
     teleport: "moving a session to another host",
     github: "sign-in with GitHub",
     boardsync: "board sync",
@@ -1539,6 +1540,9 @@ export const en: Dictionary = {
     terminal_enable_confirm:
       "Turning the terminal on gives a full shell on this host: confirm it to go on.",
     central_confirm: "Changing the host's ~/.claude/settings.json needs your confirmation.",
+    service_confirm: "Installing the service on the host needs your confirmation.",
+    service_unsupported:
+      "This host has no service manager that can start flightdeckd at boot ({platform}).",
     permission_request_closed: "The permission request {id} is not open.",
     hold_required: "A high-risk request is approved only by holding the button.",
     input_changed: "A request is approved as it was asked: the answer changes what it runs.",
@@ -4725,7 +4729,7 @@ export const en: Dictionary = {
   budgets: {
     label: "{scope} budget ({period})",
     scopeHost: "host",
-    scopeProject: "of {project}",
+    scopeProject: "{project}",
     day: "day",
     month: "month",
     line: "{label} · {action} · {spent} of {limit} ({percent}%)",
@@ -4920,6 +4924,20 @@ export const en: Dictionary = {
     okHide: "Hide {n} checks with nothing to do",
     optionalAbsent: "Optional · not installed",
     okList: "Working",
+    service: {
+      turnOn: "Turn it on",
+      messageLinux:
+        "Flightdeck will install a user service at ~/.config/systemd/user/flightdeckd.service, so flightdeckd starts at the next boot or login. The daemon running now stays as it is.",
+      messageWindows:
+        "Flightdeck will create the {task} task in the Task Scheduler, so flightdeckd starts at your next login. The daemon running now stays as it is.",
+      noteLabel: "Start at boot",
+      boot: "Start at boot is on: flightdeckd starts with this computer from the next boot. The daemon running now stays as it is.",
+      logon:
+        "Start at boot is on: flightdeckd starts at your next login. The daemon running now stays as it is.",
+      lingerOff:
+        "Linger is off, so flightdeckd waits for a login. To start it at boot, run this in a terminal on the host. The app never runs sudo:",
+      copyLinger: "Copy the linger command",
+    },
   },
   hostDeps: {
     installPage: "Install page",

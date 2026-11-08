@@ -3,7 +3,11 @@ import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
-import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
+import {
+  formatPairingLink,
+  PROTOCOL_VERSION,
+  type ServiceInstallResult,
+} from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Account } from "./account/account.ts";
@@ -152,6 +156,7 @@ import {
   startService,
   uninstallService,
 } from "./service.ts";
+import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { IdleSleeper } from "./sessions/sleeper.ts";
@@ -786,6 +791,8 @@ export async function startDaemon(
     linger?: () => Promise<"on" | "off" | null>;
     /** The machine's service manager, for the probes above when they are not given; the real one when absent. */
     serviceContext?: (dryRun: boolean) => ServiceContext;
+    /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
+    serviceSelf?: string[];
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
     /** What keeps the computer awake (issue #163); the machine's own when absent. */
@@ -1549,6 +1556,12 @@ export async function startDaemon(
       issues,
       startSession: ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
     }),
+    serviceInstall: appServiceInstall(
+      args.config ?? null,
+      configFile,
+      options.serviceContext ?? osServiceContext,
+      options.serviceSelf ?? daemonCommand(process.execPath, Bun.main),
+    ),
     // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
     // folders checked without blocking, and the app's version to compare with its own.
     doctor: (appVersion) =>
@@ -2107,6 +2120,37 @@ async function uninstallInstalledService(
     return;
   }
   for (const line of await removeFromUserPath(ctx, binDir(ctx))) deps.log.log(line);
+}
+
+/**
+ * #1200: `service.install` for a daemon run as its stable binary (the file a service starts);
+ * undefined for any other, so a daemon run from source (the demo, the journeys) never offers it.
+ * The service gets `--config` only when this daemon was started with one, as an absolute path.
+ */
+function appServiceInstall(
+  config: string | null,
+  configFile: string,
+  ctxOf: (dryRun: boolean) => ServiceContext,
+  self: string[],
+): ((confirm: boolean) => Promise<ServiceInstallResult>) | undefined {
+  const base = ctxOf(false);
+  if (!appCanInstallService(self, stableBinPath(base.home, base.platform), base.platform)) {
+    return undefined;
+  }
+  return (confirm) =>
+    installServiceFromApp(
+      {
+        ctx: { ...base, command: self },
+        config: config ? resolve(config) : null,
+        recordClaude: async (executablePath) => {
+          await updateConfigFile(configFile, (raw) => ({
+            ...raw,
+            claude: { ...(raw.claude as object), executablePath },
+          }));
+        },
+      },
+      confirm,
+    );
 }
 
 /** Writes the `claude` the service found into the config (or says it would, in a dry run). */
