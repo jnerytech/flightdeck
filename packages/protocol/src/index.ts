@@ -987,6 +987,9 @@ export const ReviewTarget = z
 export const KnowledgeStatus = z.enum(["valid", "transitional", "obsolete"]);
 export type KnowledgeStatus = z.infer<typeof KnowledgeStatus>;
 export const KnowledgeType = z.enum(["prd", "rfc", "adr", "spec"]);
+/** The kinds of document a template exists for (issue #1039). */
+export const KnowledgeKind = z.enum(["adr", "rfc", "prd"]);
+export type KnowledgeKind = z.infer<typeof KnowledgeKind>;
 export type KnowledgeType = z.infer<typeof KnowledgeType>;
 
 export interface KnowledgeEntry {
@@ -4576,6 +4579,17 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** Issue #1039: a new library document from a template, in the project's folder for its kind; never overwrites. */
+  cmd(
+    "knowledge.create",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        kind: KnowledgeKind,
+        title: z.string().min(1).max(200),
+      })
+      .strict(),
+  ),
   /** Issue #76: switch the index on or off for the project at `path`, in the host's config. */
   cmd(
     "knowledge.setFeed",
@@ -5487,6 +5501,7 @@ export interface CommandResults {
   "knowledge.index": KnowledgeIndexResult;
   "knowledge.feed": KnowledgeFeedState;
   "knowledge.setStatus": KnowledgeEntry;
+  "knowledge.create": KnowledgeEntry;
   "knowledge.setFeed": KnowledgeFeedState;
   "file.write": { path: string; hash: string; size: number };
 }

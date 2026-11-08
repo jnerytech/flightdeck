@@ -1483,6 +1483,7 @@ export const ptBR = {
     knowledge: "a leitura dos documentos do projeto",
     knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
     knowledgeStatus: "a mudança do status de um documento",
+    knowledgeCreate: "a criação de um documento a partir de um modelo",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
     harnessApply: "a aplicação de mudanças na configuração do Claude Code",
     keepAwake: "a função de manter o computador acordado",
@@ -1752,6 +1753,10 @@ export const ptBR = {
       "O arquivo {path} mudou desde que foi aberto: recarregue e aplique a edição de novo.",
     knowledge_frontmatter:
       "O front matter de {path} não pode ser mudado com segurança por aqui: edite o arquivo à mão.",
+    knowledge_title_invalid: "Dê ao documento um título com letras ou dígitos.",
+    knowledge_folder_unsafe:
+      "A pasta deste documento é um link ou fica fora do projeto: nada foi gravado.",
+    knowledge_exists: "Já existe um documento chamado {path}: nada foi sobrescrito.",
     review_revert_confirm: "Confirme o revert para continuar.",
     review_undo_confirm: "Confirme o desfazer para continuar.",
     review_undo_nothing:
