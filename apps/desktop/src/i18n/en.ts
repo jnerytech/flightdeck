@@ -4263,6 +4263,18 @@ export const en: Dictionary = {
       empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
       truncated: "The list is cut: only the first documents are shown.",
       failed: "The documents could not be read from this host.",
+      create: {
+        title: "New document",
+        hint: "Starts a document from a template in this project's docs folder, as a draft (transitional). Nothing is committed.",
+        kind: "Kind",
+        titleLabel: "Title",
+        adr: "Decision record (ADR)",
+        rfc: "Proposal (RFC)",
+        prd: "Product requirements (PRD)",
+        button: "Create from template",
+        created: "Created {path}. The file is in the project's folder and not committed.",
+        failed: "The document could not be created. {why}",
+      },
       setStatus: {
         hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
         label: "Status of {title}",

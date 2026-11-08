@@ -4265,6 +4265,18 @@ export const ptBR = {
       empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
       truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
       failed: "Não foi possível ler os documentos neste host.",
+      create: {
+        title: "Novo documento",
+        hint: "Começa um documento a partir de um modelo na pasta docs do projeto, como rascunho (transitório). Nada é commitado.",
+        kind: "Tipo",
+        titleLabel: "Título",
+        adr: "Registro de decisão (ADR)",
+        rfc: "Proposta (RFC)",
+        prd: "Requisitos do produto (PRD)",
+        button: "Criar a partir do modelo",
+        created: "{path} criado. O arquivo está na pasta do projeto e não foi commitado.",
+        failed: "Não foi possível criar o documento. {why}",
+      },
       setStatus: {
         hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
         label: "Status de {title}",
