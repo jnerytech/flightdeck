@@ -31,9 +31,9 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 
 /** A host on a manual clock with both windows read (the five hours near the guard), and the app online on it. */
-async function online(language: "en" | "pt-BR", features?: string[]) {
+async function online(language: "en" | "pt-BR", features?: string[], pauseAt: number | null = 0.9) {
   const time = manualTime(START);
-  const quota = new Quota({ pauseAt: 0.9, now: time.now, timers: time.timers });
+  const quota = new Quota({ pauseAt, now: time.now, timers: time.timers });
   const d = makeDaemon(cleanups, { quota });
   const server = features ? d.listen(0, undefined, features) : d.listen();
   const mem = memoryPlatform(false, language);
@@ -218,6 +218,31 @@ for (const [lang, dict] of [
       expect(
         within(popover).queryByText(dict.quota.guard.readOnly.replace("{pct}", "90")),
       ).not.toBeNull();
+    });
+
+    test("a host that cannot change the guard says so when the guard is off too", async () => {
+      await online(lang, ["quota", "costs"], null);
+      const popover = await openPopover(dict);
+      expect(guardOf(popover, dict)).toBeNull();
+      expect(within(popover).queryByText(dict.quota.guard.readOnlyOff)).not.toBeNull();
+    });
+
+    test("a guard the config holds outside the list is offered, in its place, and is the one selected", async () => {
+      await online(lang, undefined, 0.85);
+      const popover = await openPopover(dict);
+      const select = guardOf(popover, dict);
+      expect(select?.value).toBe("0.85");
+      const labels = Array.from(select?.options ?? []).map((option) => option.textContent);
+      expect(labels).toEqual([
+        "50%",
+        "60%",
+        "70%",
+        "80%",
+        "85%",
+        "90%",
+        "100%",
+        dict.quota.guard.off,
+      ]);
     });
 
     test("Escape closes the popover and gives the focus back to the quota button", async () => {
