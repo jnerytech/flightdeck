@@ -1029,7 +1029,7 @@ export const en: Dictionary = {
     back: "Back to the list",
     filterLabel: "Filter sessions",
     toggleProject: "Show or hide {name}",
-    countChip: "{live} live of {total} sessions",
+    countChip: "{live} of {total} sessions active",
     countShort: "{live} of {total} active",
     noHost: "No host yet",
     noOnlineHost: "No host is online",

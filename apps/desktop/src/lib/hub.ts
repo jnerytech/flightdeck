@@ -672,7 +672,7 @@ export function capGroups(
   return { groups: kept, hidden: Math.max(0, total - limit) };
 }
 
-/** Review of #1144: how many of a project's rows are active: the ones not ended or failed. */
+/** How many of a project's rows are active: the ones that have not ended or failed (#1132). */
 export function activeCount(rows: HubRow[]): number {
   return rows.filter((r) => !isOver(r.state)).length;
 }
