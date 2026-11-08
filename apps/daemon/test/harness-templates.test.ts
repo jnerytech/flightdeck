@@ -95,6 +95,22 @@ describe("harness-templates: a project's Markdown harness shared as a host templ
     ]).toEqual(["harness_template_taken", "harness_template_empty", "harness_template_id"]);
   });
 
+  test("a title with a secret is refused, and a template whose meta is broken is listed by its id", async () => {
+    const { dir, templates } = store(["k3y-in-the-vault"]);
+    const secretTitle = await outcome(templates.export(project(SHOP), "shop", "k3y-in-the-vault"));
+    await templates.export(project(SHOP), "ok", "Fine");
+    writeFileSync(join(dir, "ok", "template.json"), "{not json");
+    const listed = await outcome(
+      templates.list().then((all) => all.map((t) => `${t.id}:${t.title}`).join()),
+    );
+    const titles = await templates.list().catch(() => []);
+    expect([secretTitle, listed, titles.map((t) => t.title)]).toEqual([
+      "harness_template_secret",
+      "ok:ok",
+      ["ok"],
+    ]);
+  });
+
   test.skipIf(!posix)("a file reached through a link is not shared", async () => {
     const outside = join(tempDir("fd-harness-tpl-out-"), "CLAUDE.md");
     writeFileSync(outside, "# Outside\n");
