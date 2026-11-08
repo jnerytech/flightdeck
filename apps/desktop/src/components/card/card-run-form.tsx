@@ -1,12 +1,14 @@
 import type { Card, WorkflowInfo } from "@flightdeck/protocol";
-import { type ReactNode, useState } from "react";
+import { Fragment, type ReactNode, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
+import { AlertPicker } from "@/components/workflows/alert-picker";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
@@ -117,17 +119,39 @@ export function CardRunForm(
             )}
           </Field>
           {chosen?.inputs.map((name) => (
-            <Field key={name} label={t("cardUi.input", { name })}>
-              {(control) => (
-                <Input
-                  {...control}
-                  placeholder={name}
-                  className="w-48"
-                  value={inputs[name] ?? ""}
-                  onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+            <Fragment key={name}>
+              <Field label={t("cardUi.input", { name })}>
+                {(control) =>
+                  name === "alert" ? (
+                    // The alert is several lines (what, where, why): one line would glue them together.
+                    <Textarea
+                      {...control}
+                      placeholder={name}
+                      rows={4}
+                      className="w-80"
+                      value={inputs[name] ?? ""}
+                      onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+                    />
+                  ) : (
+                    <Input
+                      {...control}
+                      placeholder={name}
+                      className="w-48"
+                      value={inputs[name] ?? ""}
+                      onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+                    />
+                  )
+                }
+              </Field>
+              {name === "alert" && (
+                <AlertPicker
+                  store={store}
+                  hostId={hostId}
+                  projectId={card.projectId}
+                  onPick={(text) => setInputs({ ...inputs, alert: text })}
                 />
               )}
-            </Field>
+            </Fragment>
           ))}
         </div>
         {/* A row of its own reasons: each button that is off says why on its own line (#732). */}

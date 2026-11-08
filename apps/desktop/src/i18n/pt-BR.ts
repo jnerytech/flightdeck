@@ -1479,6 +1479,7 @@ export const ptBR = {
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
     harnessStack: "a leitura do stack do projeto",
+    alerts: "a leitura dos alertas do repositório",
     knowledge: "a leitura dos documentos do projeto",
     knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
     knowledgeStatus: "a mudança do status de um documento",
@@ -3840,6 +3841,34 @@ export const ptBR = {
     budgetCost: "Custo estimado",
     budgetLine: "{label}: {shown} de {max}",
     budgetNoLimit: "{label}: {shown} (sem limite)",
+  },
+  alertsUi: {
+    open: "Escolher um alerta",
+    title: "Escolher um alerta",
+    intro:
+      "Alertas abertos de code scanning e do Dependabot deste repositório, os mais graves primeiro. O texto do alerta vai para o campo: leia antes de iniciar.",
+    loading: "Carregando alertas",
+    failed:
+      "Não deu para ler os alertas. O host pode estar offline ou precisar de uma versão mais nova do Flightdeck.",
+    list: "Alertas",
+    use: "Usar o alerta {title}",
+    useShort: "Usar",
+    empty: "Nenhum alerta aberto.",
+    kind: { "code-scanning": "Code scanning", dependabot: "Dependabot" },
+    severity: {
+      critical: "Crítico",
+      high: "Alto",
+      medium: "Médio",
+      low: "Baixo",
+      unknown: "Sem gravidade",
+    },
+    reason: {
+      gh_missing: "{source}: o GitHub CLI (gh) não está instalado no host.",
+      not_signed_in: "{source}: o gh do host não está conectado a uma conta.",
+      unavailable:
+        "{source}: indisponível neste repositório. Pode estar desligado, ou o gh do host pode não ter acesso.",
+      failed: "{source}: não deu para ler.",
+    },
   },
   workflowsUi: {
     title: "Workflows de {project}",
