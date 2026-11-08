@@ -3633,7 +3633,12 @@ export class AppStore {
     const project = this.sessionProject(hostId, next.cwd);
     const team = this.teamOf.get(key);
     const simple = this.uiMode(hostId).mode === "simple";
-    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names, simple)) {
+    for (const n of summaryNotifications(prev, next, label, focused, {
+      linkFor,
+      t,
+      names,
+      simple,
+    })) {
       const source: NotifySource = {
         event: n.event ?? "other",
         hostId,
@@ -3825,6 +3830,15 @@ export class AppStore {
         ),
       ),
     );
+  }
+
+  /**
+   * Sets the guard "new cards wait from N%" on a host (`null` turns it off); the host's answer is its
+   * new quota state. A refusal goes to the banner and leaves the guard as it was.
+   */
+  async setQuotaPause(hostId: string, pauseAt: number | null): Promise<void> {
+    const state = await this.hostCommand(hostId, "quota.setPauseAt", { pauseAt });
+    if (state) this.onQuota(hostId, state);
   }
 
   /** A discarded card leaves; any other replaces what the app had. */

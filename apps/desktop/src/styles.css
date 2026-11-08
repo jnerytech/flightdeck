@@ -1138,10 +1138,10 @@ html:not(:has([data-slot="status-bar"])) {
   *,
   ::before,
   ::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important; /* NOSONAR: reduced motion must beat every animation and transition a utility or an inline style sets */
+    animation-iteration-count: 1 !important; /* NOSONAR: same reason as the first line */
+    transition-duration: 0.01ms !important; /* NOSONAR: same reason as the first line */
+    scroll-behavior: auto !important; /* NOSONAR: same reason as the first line */
   }
 }
 

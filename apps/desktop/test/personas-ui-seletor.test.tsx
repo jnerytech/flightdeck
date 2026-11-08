@@ -187,6 +187,42 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     });
   });
 
+  test("the Iniciar of a card from a template opens the dialog with its persona already chosen (#1201)", async () => {
+    const opened = await open();
+    const card = opened.d.board.createCard(opened.projectId, {
+      title: "Do modelo",
+      description: "faça",
+      startPersona: "seguranca",
+    });
+    const asked: Array<{ type: string; payload: unknown }> = [];
+    const command = opened.store.hostCommand.bind(opened.store);
+    opened.store.hostCommand = (async (id: string, type: never, payload: never) => {
+      asked.push({ type, payload });
+      return command(id, type, payload);
+    }) as typeof opened.store.hostCommand;
+    await act(async () => {
+      opened.store.router.push({
+        name: "card",
+        host: opened.hostId,
+        projectId: opened.projectId,
+        cardId: card.id,
+      });
+    });
+    await settle(() => screen.queryByRole("button", { name: "Ações de Do modelo" }) !== null);
+    await click("Iniciar");
+    const picker = () =>
+      within(startDialog()).queryByLabelText("Persona do card") as HTMLSelectElement | null;
+    await settle(() => picker()?.value === "host:seguranca");
+    await act(async () => {
+      fireEvent.click(within(startDialog()).getByRole("button", { name: "Iniciar" }));
+    });
+    await uiIdle();
+    expect(asked.find((x) => x.type === "card.start")?.payload).toMatchObject({
+      cardId: card.id,
+      persona: { id: "seguranca", language: "pt-BR" },
+    });
+  });
+
   test("the board menu's Iniciar card shows the picker with the suggestion, and the persona chosen reaches card.start", async () => {
     const { store, hostId, projectId, d } = await open();
     d.board.createCard(projectId, { title: "Do menu", description: "faça" });

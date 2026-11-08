@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertPicker } from "@/components/workflows/alert-picker";
 import { useT } from "@/i18n/context";
+import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
 
 /**
  * "Iniciar card" from the board's card menu: the workflow and the persona the card starts with
@@ -21,7 +23,14 @@ export function CardStartDialog(
   props: Readonly<{
     store: AppStore;
     hostId: string;
-    card: { id: string; projectId: string; title: string };
+    card: {
+      id: string;
+      projectId: string;
+      title: string;
+      /** Issue #1201: what a card template chose. */
+      startWorkflow?: string | null;
+      startPersona?: string | null;
+    };
     onClose(): void;
     /** The card started: the caller tells the person. */
     onStarted(): void;
@@ -30,12 +39,26 @@ export function CardStartDialog(
   const t = useT();
   const { store, hostId, card } = props;
   const host = store.getState().hosts.find((h) => h.id === hostId);
+  /** Issue #1201: until one is picked, the card's own (a template's) workflow, when the project has it. */
+  const [pickedWorkflow, setWorkflow] = useState<string | null>(null);
   const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
-  const [workflow, setWorkflow] = useState("");
+  const workflow =
+    pickedWorkflow ??
+    startWorkflowOf(
+      card,
+      workflows.map((w) => w.name),
+    );
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [picked, setPicked] = useState<string | null>(null);
   const suggested = useSuggestedPersona(store, hostId, "dev");
-  const persona = picked ?? suggested;
+  const hostPersonas = useStoreSlice(store, ["personas"]).personas[hostId];
+  const persona =
+    picked ??
+    startPersonaOf(
+      card,
+      (hostPersonas ?? []).map((p) => p.id),
+    ) ??
+    suggested;
   const chosen = workflows.find((w) => w.name === workflow);
   useEffect(() => {
     void store

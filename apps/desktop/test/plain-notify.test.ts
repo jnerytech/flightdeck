@@ -33,16 +33,7 @@ const asking = (withPlain: boolean) => ({
 describe("plain-notify: the notification of a waiting task", () => {
   test("Given a host in simple mode and a request with its wording, Then the notification says it in the plain sentence", () => {
     expect(
-      summaryNotifications(
-        base,
-        asking(true),
-        "pc · Reports",
-        false,
-        undefined,
-        en,
-        undefined,
-        true,
-      ),
+      summaryNotifications(base, asking(true), "pc · Reports", false, { t: en, simple: true }),
     ).toEqual([
       {
         event: "needs-you",
@@ -51,28 +42,20 @@ describe("plain-notify: the notification of a waiting task", () => {
       },
     ]);
     expect(
-      summaryNotifications(
-        base,
-        asking(true),
-        "pc · Reports",
-        false,
-        undefined,
-        ptBR,
-        undefined,
-        true,
-      )[0]?.body,
+      summaryNotifications(base, asking(true), "pc · Reports", false, { t: ptBR, simple: true })[0]
+        ?.body,
     ).toBe("Criar o arquivo a.md em Reports");
   });
 
   test("Given an older daemon that sent no wording, Then simple mode keeps today's text", () => {
     expect(
-      summaryNotifications(base, asking(false), "pc · s", false, undefined, en, undefined, true),
+      summaryNotifications(base, asking(false), "pc · s", false, { t: en, simple: true }),
     ).toEqual([{ event: "needs-you", title: "pc · s: needs you", body: "Allow Write?" }]);
   });
 
   test("Given a host in full mode, Then the wording is not used", () => {
     expect(
-      summaryNotifications(base, asking(true), "pc · s", false, undefined, en, undefined, false),
+      summaryNotifications(base, asking(true), "pc · s", false, { t: en, simple: false }),
     ).toEqual([{ event: "needs-you", title: "pc · s: needs you", body: "Allow Write?" }]);
   });
 });

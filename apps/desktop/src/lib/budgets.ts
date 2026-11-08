@@ -11,11 +11,7 @@ export const ACTION_LABELS: Record<Budget["action"], string> = {
 const PT = translator("pt-BR");
 
 /** The last folder of a project's key ("/srv/work/web" is "web"); a key that is no path stays. */
-export const projectName = (key: string): string =>
-  key
-    .split(/[\\/]+/)
-    .filter(Boolean)
-    .pop() ?? key;
+export const projectName = (key: string): string => key.split(/[\\/]+/).findLast(Boolean) ?? key;
 
 /** "orçamento do host (dia)". */
 export function budgetLabel(

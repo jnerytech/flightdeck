@@ -59,6 +59,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { AssistField } from "../components/assistant/assist-field.tsx";
 import { CardStartDialog } from "../components/board/card-start-dialog.tsx";
+import { applyTemplate, CardTemplateField } from "../components/board/card-template-field.tsx";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
@@ -354,6 +355,9 @@ export const BoardView = memo(function BoardView(props: {
   const [onlyBlocked, setOnlyBlocked] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  /** Issue #1201: the card template picked in New card, and the text it put in the description. */
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  const [filled, setFilled] = useState<string | null>(null);
   /**
    * Card being dragged. A ref, not state: the drop may come before a re-render. Not in
    * DataTransfer either, which some webviews leave empty.
@@ -714,6 +718,7 @@ export const BoardView = memo(function BoardView(props: {
       projectId,
       title: title.trim(),
       description,
+      ...(templateId === null ? {} : { templateId }),
       ...(createIn === "backlog" ? {} : { column: createIn }),
     });
     // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
@@ -732,6 +737,8 @@ export const BoardView = memo(function BoardView(props: {
     setCreateIn("backlog");
     setTitle("");
     setDescription("");
+    setTemplateId(null);
+    setFilled(null);
   };
 
   const selectedSaid =
@@ -1121,6 +1128,23 @@ export const BoardView = memo(function BoardView(props: {
               void create();
             }}
           >
+            <CardTemplateField
+              store={store}
+              hostId={hostId}
+              projectId={projectId}
+              enabled={hasFeature(
+                state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+                "cardTemplates",
+                false,
+              )}
+              value={templateId}
+              onPick={(picked) => {
+                setTemplateId(picked?.id ?? null);
+                const next = applyTemplate({ description, filled }, picked);
+                setDescription(next.description);
+                setFilled(next.filled);
+              }}
+            />
             <AssistField
               binding={{
                 controller: store.assistant,

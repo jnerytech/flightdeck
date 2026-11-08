@@ -139,6 +139,8 @@ function form(w: ReturnType<typeof setup>, cardOver: object = {}) {
         card={card(cardOver)}
         features={{ bg: true, watch: false }}
         tab="conversation"
+        canMerge={false}
+        onMerge={() => {}}
         arenaStart={null}
         onDiscarded={() => {}}
         onShowDiff={() => {}}

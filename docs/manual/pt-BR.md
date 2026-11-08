@@ -1144,6 +1144,16 @@ aparece mascarado e como **Oculto**, e não abre.
   quando há um modelo que não pode ser usado, o embutido é escrito e o card diz o motivo: o projeto
   não é confiável, o arquivo é um link ou tem um segundo nome, passa de 32 KiB ou está vazio. O aviso
   nunca cita o modelo.
+- **Modelos de card** (#1201). Um projeto confiável pode listar modelos de card em
+  `.flightdeck/templates/cards.json` (até 32 KiB, 12 modelos): cada um tem um `id`, um `name` e,
+  se quiser, `description`, `criteria` (uma lista, escrita como itens `- [ ]`), `workflow`,
+  `persona`, `pins` (documentos da biblioteca) e um arquivo de `spec`. O **Novo card** passa a
+  oferecer **A partir de um modelo**; escolher um preenche a descrição vazia e diz com o que mais o
+  card começa. O card recebe o arquivo de spec e os documentos fixados do modelo, e a página dele
+  abre com o workflow e a persona do modelo já escolhidos, quando o projeto e o host ainda os têm.
+  Um modelo com erro fica de fora e é contado; um arquivo que não pode ser usado (o projeto não é
+  confiável, é um link, é grande demais, está vazio, não é uma lista) é dito no **Novo card** com o
+  motivo.
 - **Documentos fixados** (#76). Num host com a biblioteca do projeto, a página do card tem o painel
   **Documentos fixados**: escolha um documento da biblioteca (ADRs, RFCs, PRDs, specs) para fixá-lo,
   até 10, e **Desafixar** tira um. Quando o card começa, o primeiro prompt lista cada documento
@@ -1298,10 +1308,13 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   remove a worktree e a branch local.
 - **A página do card tem um botão que lidera:** o painel Executar mostra o que vem a seguir.
   **Iniciar** para um card que ainda não rodou, **Parar** enquanto roda, **Revisar mudanças**
-  quando uma execução termina (mostra as Mudanças do card) e depois **Abrir PR**. O resto está no
-  menu **⋯** ao lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do
-  board), **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Finalizar…** e
-  **Descartar**. Um card cuja execução terminou abre em **Mudanças**.
+  quando uma execução termina (mostra as Mudanças do card), depois **Abrir PR** e, com o PR aberto
+  e pronto para merge, **Fazer merge do PR** (a confirmação abaixo; enquanto
+  uma sessão roda, **Parar** lidera e **Fazer merge do PR** espera no menu, e com checks falhando
+  ele não é oferecido). O resto está no menu **⋯** ao
+  lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do board),
+  **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Fazer merge do PR**,
+  **Finalizar…** e **Descartar**. Um card cuja execução terminou abre em **Mudanças**.
 - **Editar e excluir:** o menu **⋯** do card tem **Editar…**, que abre o card com o título pronto
   para mudar (a página do card também edita a descrição e, com o ROI ligado, a estimativa), e
   **Excluir…**, que cita o card e pergunta antes. Excluir vale só para um card que nunca começou
@@ -1734,10 +1747,21 @@ simples, cortadas e limpas, que você pode ler e editar. **Iniciar o post-mortem
 falhou não é mexido. O botão fica desligado, com um aviso, quando o projeto ainda não adicionou esse
 workflow.
 
-Um modelo é um arquivo, e o Flightdeck não grava nada no seu repositório. Na tela **Workflows**,
-**Adicionar de um modelo** lista os modelos. Abra um para ler o arquivo, use **Copiar o arquivo**,
-faça commit em `.flightdeck/workflows/` na branch base e **confie** nele na mesma tela, como em
-qualquer workflow. A linha `check` do corretor de alertas já traz o comando de teste do projeto
+Um modelo é um arquivo. Na tela **Workflows**, **Adicionar de um modelo** lista os modelos. Abra
+um para ler o arquivo. Depois, adicione de um destes dois jeitos:
+
+- **Adicionar ao projeto** (num host a partir desta versão). O Flightdeck pergunta antes, faz o
+  commit do arquivo em `.flightdeck/workflows/` numa branch nova, a partir da cópia da branch
+  base no origin (os seus commits ainda não enviados ficam de fora),
+  `flightdeck/workflow-<modelo>-<data>`, envia e abre um pull request para a branch base, como um
+  card faz. **Ver o pull request** abre o PR. A branch base e o seu checkout não mudam: a sua
+  branch atual, o seu índice e os arquivos não salvos ficam como estão. O commit usa o `user.name`
+  e o `user.email` do repositório, e o projeto precisa de um provedor de PR. Um modelo cujo arquivo
+  já está na branch base é recusado.
+- **Copiar o arquivo**, e você mesmo faz commit em `.flightdeck/workflows/` na branch base.
+
+Nos dois casos, quando o arquivo estiver na branch base, **confie** nele na mesma tela, como em
+qualquer workflow: ele não roda antes disso. A linha `check` do corretor de alertas já traz o comando de teste do projeto
 quando o Flightdeck consegue descobrir (`npm run test`, `cargo test`...). Quando não consegue, a
 linha traz um texto provisório que falha de propósito: troque pelo seu comando de teste antes do
 commit.
@@ -2789,8 +2813,13 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   nome da janela aparece a partir de 1024 px de largura), e um botão **Atualizar o consumo do plano**
   que pergunta aos hosts de novo. A partir de 80% ele ganha uma marca de alerta na cor de "precisa de
   você", e em 100% (ou a partir do `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome
-  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem
-  leitura, nem o medidor nem o botão aparecem.
+  e a dica dizem o nível, o host e o tempo que falta. Clicar nele abre um painel com as duas janelas
+  de cada host online e a hora em que reiniciam. Nele, **Cartões novos esperam a partir de** muda a
+  trava (`quota.pauseAt`) de cada host: de 50% a 100%, ou **Nunca**. Um host com flightdeckd antigo
+  mostra só o texto. **Mostrar o que está rodando** abre a atividade de todas as sessões, e cada
+  host tem o seu link para a página dele. O aviso de cota alta no cartão da conta traz a mesma
+  trava e a mesma ação. Mudar a trava nunca para uma sessão que já está rodando. Sem leitura, nem o
+  medidor nem o botão aparecem.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
 
