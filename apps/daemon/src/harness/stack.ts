@@ -71,10 +71,11 @@ async function python(root: string): Promise<Partial<Commands> | null> {
   const text = await readInside(root, "pyproject.toml");
   if (text === null) return null;
   const ruff = /\bruff\b/.test(text);
+  const black = /\bblack\b/.test(text) ? "black ." : null;
   return {
     test: /\bpytest\b/.test(text) ? "pytest" : null,
     lint: ruff ? "ruff check ." : null,
-    format: ruff ? "ruff format ." : /\bblack\b/.test(text) ? "black ." : null,
+    format: ruff ? "ruff format ." : black,
   };
 }
 

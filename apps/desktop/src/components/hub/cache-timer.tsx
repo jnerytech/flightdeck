@@ -35,7 +35,10 @@ export function CacheTimer(
   if (!view) return null;
   const cold = view.phase === "cold";
   const { minutes, seconds } = spokenParts(view.remainingMs);
-  const unit = (n: number, one: Key, many: Key) => (n > 0 ? t(n === 1 ? one : many, { n }) : "");
+  const unit = (n: number, one: Key, many: Key) => {
+    if (n > 0) return t(n === 1 ? one : many, { n });
+    return "";
+  };
   const spoken = [
     unit(minutes, "cacheTimer.minutesOne", "cacheTimer.minutes"),
     unit(seconds, "cacheTimer.secondsOne", "cacheTimer.seconds"),
