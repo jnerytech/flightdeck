@@ -1,6 +1,6 @@
 import type { WorkflowTemplate, WorkflowTemplateAdded } from "@flightdeck/protocol";
 import { FilePlus2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -157,8 +157,9 @@ function ListedTemplates(
 
 /**
  * Issue #1221: Add to the project, asked first. Idle, asking (the question and its two buttons), or
- * busy while the host commits and opens the PR. The focus goes to the question's answer, and back
- * to Add when the person cancels or the host refuses (the store shows why).
+ * busy while the host commits and opens the PR. The focus goes to the question's answer, stays on it
+ * while busy, moves to View the pull request once it is open, and back to Add when the person
+ * cancels or the host refuses (the store shows why).
  */
 function useTemplateAdd(
   where: Readonly<{ store: AppStore; hostId: string; projectId: string }> | null,
@@ -169,6 +170,7 @@ function useTemplateAdd(
   const [backToAdd, setBackToAdd] = useState(false);
   const addRef = useRef<HTMLButtonElement>(null);
   const goRef = useRef<HTMLButtonElement>(null);
+  const viewRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (phase === "asking") goRef.current?.focus();
     if (phase === "idle" && backToAdd) {
@@ -176,12 +178,16 @@ function useTemplateAdd(
       setBackToAdd(false);
     }
   }, [phase, backToAdd]);
+  useEffect(() => {
+    if (added) viewRef.current?.focus();
+  }, [added]);
   const cancel = () => {
     setPhase("idle");
     setBackToAdd(true);
   };
   const go = async () => {
-    if (!where) return;
+    // Busy keeps the button focused (aria-disabled, not disabled): a second press does nothing.
+    if (!where || phase === "busy") return;
     setPhase("busy");
     const { store, hostId, projectId } = where;
     const payload = { projectId, templateId: template.id, confirm: true };
@@ -190,7 +196,7 @@ function useTemplateAdd(
     setPhase("idle");
     if (!result) setBackToAdd(true);
   };
-  return { phase, added, addRef, goRef, ask: () => setPhase("asking"), cancel, go };
+  return { phase, added, addRef, goRef, viewRef, ask: () => setPhase("asking"), cancel, go };
 }
 
 /** A template opened: its limits, where to commit it, the file itself and how to copy it. */
@@ -209,6 +215,7 @@ function TemplateFile(
   const { template } = props;
   const adding = useTemplateAdd(props.add, template);
   const name = template.title[t.lang];
+  const questionId = useId();
   return (
     <Stack gap={3}>
       <h3 ref={props.headingRef} tabIndex={-1} className="font-semibold text-base outline-none">
@@ -250,15 +257,18 @@ function TemplateFile(
         </Button>
       </Inline>
       {adding.phase !== "idle" && (
-        <fieldset aria-label={t("workflowsUi.templates.addAsk", { name })}>
+        <fieldset aria-label={t("workflowsUi.templates.addAsk", { name })} className="min-w-0">
           <Stack gap={2}>
             <InlineNotice tone="info">
-              {t("workflowsUi.templates.addConfirm", { path: template.path })}
+              <span id={questionId}>
+                {t("workflowsUi.templates.addConfirm", { path: template.path })}
+              </span>
             </InlineNotice>
             <Inline gap={2}>
               <Button
                 ref={adding.goRef}
-                disabled={adding.phase === "busy"}
+                aria-describedby={questionId}
+                aria-disabled={adding.phase === "busy"}
                 onClick={() => void adding.go()}
               >
                 {t(
@@ -288,6 +298,7 @@ function TemplateFile(
       {adding.added && props.add && (
         <Inline gap={2}>
           <Button
+            ref={adding.viewRef}
             variant="outline"
             onClick={() => {
               if (adding.added) props.add?.store.openLink(adding.added.url);
