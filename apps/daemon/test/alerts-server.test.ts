@@ -45,26 +45,28 @@ async function serve(alerts?: (cwd: string) => Promise<AlertList>) {
   cleanups.push(() => server.stop());
   const client = new FrameClient(server.url);
   cleanups.push(() => client.close());
-  const hello = await client.request("hello", { token: TOKEN, client: "t" });
-  return { client, hello, project: ctx.project, repo: ctx.repo };
+  await client.request("hello", { token: TOKEN, client: "t" });
+  const features = async () =>
+    (await client.data<{ features: string[] }>("host.info", {}))?.features ?? [];
+  return { client, features, project: ctx.project, repo: ctx.repo };
 }
 
 describe("alert.list (issue #79)", () => {
   test("answers with the alerts of the project's own folder, and the host announces the feature", async () => {
     const asked: string[] = [];
-    const { client, hello, project, repo } = await serve(async (cwd) => {
+    const { client, features, project, repo } = await serve(async (cwd) => {
       asked.push(cwd);
       return LIST;
     });
-    expect(JSON.stringify(hello).includes('"alerts"')).toBe(true);
+    expect((await features()).includes("alerts")).toBe(true);
     const result = await client.data<AlertList>("alert.list", { projectId: project.id });
     expect(result).toEqual(LIST);
     expect(asked).toEqual([repo]);
   });
 
   test("a host without the reader says so, and does not announce it", async () => {
-    const { client, hello, project } = await serve();
-    expect(JSON.stringify(hello).includes('"alerts"')).toBe(false);
+    const { client, features, project } = await serve();
+    expect((await features()).includes("alerts")).toBe(false);
     const refused = await client.request("alert.list", { projectId: project.id });
     expect(refused).toMatchObject({
       ok: false,

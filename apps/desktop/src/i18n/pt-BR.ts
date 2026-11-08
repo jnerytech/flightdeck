@@ -1478,6 +1478,7 @@ export const ptBR = {
     bg: "sessões em segundo plano",
     projectTrust: "a confiança em projetos",
     harnessStack: "a leitura do stack do projeto",
+    alerts: "a leitura dos alertas do repositório",
     knowledge: "a leitura dos documentos do projeto",
     knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
     knowledgeStatus: "a mudança do status de um documento",

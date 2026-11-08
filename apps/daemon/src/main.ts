@@ -60,7 +60,8 @@ import { probeVersion } from "./deps/probe.ts";
 import { type OpenCodeState, runDoctor } from "./doctor.ts";
 import { buildChildEnv } from "./env.ts";
 import { type Exec, spawnExec } from "./exec.ts";
-import { runGh } from "./github/gh.ts";
+import { listAlerts } from "./github/alerts.ts";
+import { runGh, runGhIn } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
 import { applyHarness } from "./harness/apply.ts";
 import { previewHarness } from "./harness/preview.ts";
@@ -1443,6 +1444,7 @@ export async function startDaemon(
       },
     },
     harnessStack: detectStack,
+    alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: listKnowledge,
     knowledgeStatus: setKnowledgeStatus,
     knowledgeFeed: knowledgeFeedFor({

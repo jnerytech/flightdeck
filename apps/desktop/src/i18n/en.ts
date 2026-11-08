@@ -1481,6 +1481,7 @@ export const en: Dictionary = {
     bg: "background sessions",
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
+    alerts: "reading the repository's alerts",
     knowledge: "reading the project's documents",
     knowledgeFeed: "the switch for the documents index in agents' prompts",
     knowledgeStatus: "changing a document's status",
