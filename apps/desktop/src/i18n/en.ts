@@ -1916,7 +1916,8 @@ export const en: Dictionary = {
     workflow_template_unknown: "This host has no template {id}: open the templates again.",
     workflow_template_exists:
       "{path} is already on {base}: the project has this workflow. Find it on the Workflows page.",
-    workflow_template_no_head: "The base branch has no commit yet to start a branch from.",
+    workflow_template_no_head:
+      "origin has no copy of the base branch yet: push it, then add the template.",
     workflow_template_identity:
       "Git has no name and email for this repository: set user.name and user.email, then add the template.",
     workflow_template_branch_taken: "The branch {branch} is already there: try again in a minute.",

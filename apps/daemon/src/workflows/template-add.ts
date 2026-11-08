@@ -34,7 +34,10 @@ function templateRefusal(
 ): FlightdeckError {
   switch (failure) {
     case "no_head":
-      return refuse("workflow_template_no_head", "the base branch has no commit to start from");
+      return refuse(
+        "workflow_template_no_head",
+        "origin has no copy of the base branch to start from: push it, then add the template",
+      );
     case "identity":
       return refuse(
         "workflow_template_identity",
@@ -90,21 +93,27 @@ export async function addWorkflowTemplate(
     throw refuse("project_no_pr_provider", "the project has no PR provider");
   }
   const base = assertBranchName(project.baseBranch);
-  const start = await commitBase(project.path, base, templateRefusal);
-  // A file the base already has stays as it is: this never replaces a workflow.
-  const listed = await safeGit(project.path, [
-    "ls-tree",
-    "--name-only",
-    start.parent,
-    "--",
-    template.path,
-  ]);
-  if (listed.code !== 0) throw templateRefusal("git", { command: "ls-tree" });
-  if (listed.stdout.trim() !== "") {
-    throw refuse("workflow_template_exists", `${template.path} is already on ${base}`, {
-      path: template.path,
-      base,
-    });
+  // From origin's base, never the local one: a local commit not pushed yet would go up with the
+  // PR. The whole ref name, so a tag named like the branch is never read instead.
+  const start = await commitBase(
+    project.path,
+    refArg(`refs/remotes/origin/${base}`),
+    templateRefusal,
+  );
+  // A file the base already has stays as it is: this never replaces a workflow. Both bases: the
+  // Workflows page reads the local one, and the PR targets origin's.
+  const local = await safeGit(project.path, ["rev-parse", "--verify", "-q", `refs/heads/${base}`]);
+  const tips = [start.parent, ...(local.code === 0 ? [local.stdout.trim()] : [])];
+  for (const tip of tips) {
+    const listing = safeGit(project.path, ["ls-tree", "--name-only", tip, "--", template.path]);
+    const listed = await listing; // NOSONAR: two tips at most, the first that has the file refuses
+    if (listed.code !== 0) throw templateRefusal("git", { command: "ls-tree" });
+    if (listed.stdout.trim() !== "") {
+      throw refuse("workflow_template_exists", `${template.path} is already on ${base}`, {
+        path: template.path,
+        base,
+      });
+    }
   }
   const branch = refArg(branchName(template.id, deps.now?.() ?? new Date()));
   const title = `Add the ${template.title.en} workflow`;

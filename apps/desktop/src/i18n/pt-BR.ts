@@ -1914,7 +1914,8 @@ export const ptBR = {
     workflow_template_unknown: "Este host não tem o modelo {id}: abra os modelos de novo.",
     workflow_template_exists:
       "{path} já está em {base}: o projeto já tem este workflow. Veja na página de Workflows.",
-    workflow_template_no_head: "A branch base ainda não tem commit de onde começar uma branch.",
+    workflow_template_no_head:
+      "O origin ainda não tem a branch base: envie a branch e adicione o modelo.",
     workflow_template_identity:
       "O git não tem nome e e-mail para este repositório: defina user.name e user.email e adicione o modelo.",
     workflow_template_branch_taken: "A branch {branch} já existe: tente de novo em um minuto.",

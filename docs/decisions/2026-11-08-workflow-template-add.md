@@ -17,9 +17,11 @@ new branch without touching the checkout (the harness setup, #75), and opens PRs
   The command carries no file and no path (the schema is strict). An id the host does not have is
   `workflow_template_unknown`.
 - **Never the base branch.** The commit goes on a new branch, `flightdeck/workflow-<id>-<yyyymmdd-hhmm>`
-  (UTC), named by the host through `refArg`, from the tip of the project's base branch (the one the
-  Workflows page reads). The branch is made only if no branch has that name
-  (`workflow_template_branch_taken`). A template whose file the base branch already has is refused
+  (UTC), named by the host through `refArg`, from `refs/remotes/origin/<base>`: never the local base,
+  whose commits not pushed yet would go up with the PR, and never a tag named like the branch.
+  Without that ref the command is refused (`workflow_template_no_head`). The branch is made only if
+  no branch has that name (`workflow_template_branch_taken`). A template whose file origin's base or
+  the local base (the one the Workflows page reads) already has is refused
   (`workflow_template_exists`): this never replaces a workflow.
 - **The person's checkout stays.** The commit is made through a temporary index, as the harness
   setup's is (docs/decisions/2026-11-08-harness-commit.md). That plumbing moved to
@@ -41,6 +43,8 @@ new branch without touching the checkout (the harness setup, #75), and opens PRs
 - **A failed push keeps the local branch.** The branch is made before the push, so a push that
   fails leaves it in the repository. A retry in the same minute is `workflow_template_branch_taken`,
   and the next minute makes a new one. The daemon does not delete branches.
+- **The push runs the repository's own `pre-push` hook and credential helper**, as a card's push
+  does (`publishPr`); only the commit plumbing runs disarmed.
 - **No secret scan of the file.** It is the host's own template plus the project's test command,
   which the repository already holds. A failed push's output is still scanned before it is shown.
 
