@@ -133,6 +133,17 @@ describe("loadFinished and saveFinished", () => {
     expect(loadFinished(storage)).toEqual(state);
   });
 
+  test("a stored list longer than the cap is cut to the newest", () => {
+    const storage = memory();
+    const list = Array.from({ length: FINISHED_CAP + 10 }, (_, i) =>
+      finish(`s${i}`, new Date(Date.UTC(2026, 10, 8, 0, 0, i)).toISOString()),
+    ).reverse();
+    saveFinished(storage, { list, lastLook: null });
+    const loaded = loadFinished(storage).list;
+    expect(loaded).toHaveLength(FINISHED_CAP);
+    expect(loaded[0]?.sessionId).toBe(`s${FINISHED_CAP + 9}`);
+  });
+
   test("nothing saved, or text that is not the list, reads as empty", () => {
     expect(loadFinished(memory())).toEqual({ list: [], lastLook: null });
     const bad = memory();
