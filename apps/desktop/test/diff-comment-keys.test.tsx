@@ -96,3 +96,27 @@ describe("diff-comment-keys: a diff line can be found and commented by keyboard 
     expect(tabStops()).toEqual(["Comment on line 2 of a.ts", "Comment on line 1 of b.ts"]);
   });
 });
+
+// ux-review of #1177: a key with a modifier keeps its own meaning (Alt+Arrow goes back, Ctrl+Home
+// scrolls to the top), and with no file there is nothing to comment, so no hint.
+describe("diff-comment-keys: what the line numbers leave alone (#1177)", () => {
+  test("an arrow with Alt, Ctrl, Meta or Shift does not move between lines", () => {
+    render(view("en", () => {}));
+    const first = screen.getByRole("button", { name: "Comment on line 1 of a.ts" });
+    first.focus();
+    const moved = ["altKey", "ctrlKey", "metaKey", "shiftKey"].map((modifier) => {
+      fireEvent.keyDown(first, { key: "ArrowDown", [modifier]: true });
+      return document.activeElement?.getAttribute("aria-label") ?? "";
+    });
+    expect(moved).toEqual(Array(4).fill("Comment on line 1 of a.ts"));
+  });
+
+  test("with no file there is no hint", () => {
+    render(
+      <TContext.Provider value={translator("en")}>
+        <DiffView files={[]} mode="unified" selection={null} composer={null} onPick={() => {}} />
+      </TContext.Provider>,
+    );
+    expect(screen.queryByText(/Click a line number to comment/) === null).toBe(true);
+  });
+});
