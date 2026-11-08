@@ -46,10 +46,9 @@ export function ModeChip(
     setOpen(false);
     props.onPick(next);
   };
-  // Not modal: a modal menu hides the rest of the page from screen readers, and next to a live
-  // region (the working row) it hides the header, the sidebar and the tab bar one by one with
-  // their controls still focusable (axe's aria-hidden-focus, #168). The menu still takes the
-  // focus, Escape or a click outside closes it.
+  // Not modal (#1004): a modal menu marks the rest of the page aria-hidden while its controls stay
+  // focusable (axe's aria-hidden-focus). The menu still takes the focus and Escape closes it; a
+  // click on another control closes it and reaches that control in the same click.
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>

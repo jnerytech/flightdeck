@@ -82,8 +82,10 @@ export function ModelChip(
     setOpen(false);
     props.onPickEffort(level);
   };
+  // Not modal, like the Mode chip's menu beside it (#1004): a modal menu leaves the page's
+  // controls focusable under aria-hidden.
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
