@@ -111,7 +111,11 @@ export function approvalOf(action: ActionDef): ApprovalMode {
 export { isProd } from "@flightdeck/protocol";
 
 const TAG = /^[\p{L}\p{N}-]{1,32}$/u;
-const APPROVALS: readonly ApprovalMode[] = ["always", "never", "first-per-session"];
+const APPROVALS: ReadonlySet<ApprovalMode> = new Set<ApprovalMode>([
+  "always",
+  "never",
+  "first-per-session",
+]);
 const MAX_TAGS = 8;
 
 type Bad = (code: string, message: string, params?: Record<string, string | number>) => void;
@@ -205,7 +209,7 @@ function checkLimits(raw: Raw, bad: Bad): void {
       max: MAX_TIMEOUT_S,
     });
   }
-  if (!(raw.approval === undefined || APPROVALS.includes(raw.approval as ApprovalMode))) {
+  if (!(raw.approval === undefined || APPROVALS.has(raw.approval as ApprovalMode))) {
     bad("approval_values", "approval is always, never or first-per-session");
   }
 }

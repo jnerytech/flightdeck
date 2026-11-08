@@ -18,9 +18,11 @@ export function MissingToolsCards(
 ) {
   const t = useT();
   const { store } = props;
-  const dismissed = useSyncExternalStore(store.setup.subscribe, () =>
-    store.setup.dismissedTools().join("\n"),
-  ).split("\n");
+  const dismissed = new Set(
+    useSyncExternalStore(store.setup.subscribe, () =>
+      store.setup.dismissedTools().join("\n"),
+    ).split("\n"),
+  );
   const cards = props.hosts
     .filter((host) => host.status === "online")
     .flatMap((host) =>
@@ -30,7 +32,7 @@ export function MissingToolsCards(
         id: `${tool.id}@${host.id}`,
       })),
     )
-    .filter((card) => !dismissed.includes(card.id));
+    .filter((card) => !dismissed.has(card.id));
   return (
     <>
       {cards.map(({ host, tool, id }) => {
