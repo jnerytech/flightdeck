@@ -2259,6 +2259,23 @@ Um segredo só chega a um daemon quando o app o envia, só para um host da lista
 do segredo e só por `localhost` ou Tailscale; o daemon o guarda na memória por no máximo 60
 segundos. Nesta versão nenhuma função do daemon pede segredos ainda, então todo pedido vindo de um
 daemon é negado.
+
+### Backup de tudo
+
+**Configurações > Backup** salva um arquivo cifrado com as configurações, personas, snippets, hosts
+(com os tokens) e o cofre. Digite uma frase-senha (pelo menos 12 caracteres, duas vezes) e use
+**Fazer backup agora**; o diálogo de salvar do sistema pergunta onde. Só essa frase-senha abre o
+arquivo, então guarde-a.
+
+Para **Restaurar um backup**, digite a frase-senha do arquivo e use **Ler backup**; depois escolha o
+arquivo. O Flightdeck mostra, para cada tipo, quantos itens são novos, iguais ou diferentes aqui, e
+lista os diferentes pelo nome. Nada muda até você usar **Restaurar**: uma diferença mantém o que está
+aqui, a não ser que você escolha **Substituir pelo backup**, que pede confirmação. A restauração é
+tudo ou nada: se falhar no meio, tudo volta como estava. Uma frase-senha errada e um arquivo alterado
+são recusados, e nada muda. Feche e abra o Flightdeck de novo para usar as configurações e os hosts
+restaurados. Personas e snippets que um host guarda, ou que vêm de um repositório, não vão no
+arquivo.
+
 ## Ações: o Claude usa um segredo sem vê-lo
 
 Uma **ação** é um comando que você declara, com lugares para segredos do cofre e para parâmetros.

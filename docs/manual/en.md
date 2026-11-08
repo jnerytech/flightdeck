@@ -2246,6 +2246,22 @@ the tags and a description of the secret.
 A secret reaches a daemon only when the app sends it, only to a host in the secret's allowed hosts,
 and only over `localhost` or Tailscale; the daemon keeps it in memory for at most 60 seconds. In
 this version no daemon feature asks for secrets yet, so every request from a daemon is denied.
+
+### Backing up everything
+
+**Settings > Backup** saves one encrypted file with your settings, personas, snippets, hosts (with
+their tokens) and the vault. Type a passphrase (at least 12 characters, twice) and press **Back up
+now**; the system's save dialog asks where. Only that passphrase opens the file, so keep it.
+
+To **Restore a backup**, type the file's passphrase and press **Read backup**, then pick the file.
+Flightdeck shows, for each kind, how many items are new, the same or different here, and lists the
+different ones by name. Nothing changes until you press **Restore**: a difference keeps what is here
+unless you choose **Replace with the backup**, which asks you to confirm. The restore is all or
+nothing: if it fails midway, everything is put back as it was. A wrong passphrase and a changed file
+are both refused, and change nothing. Close and reopen Flightdeck afterwards to use the restored
+settings and hosts. Personas and snippets that a host keeps, or that come from a repository, are not
+in the file.
+
 ## Actions: Claude uses a secret without seeing it
 
 An **action** is a command you declare, with places for vault secrets and for parameters. Claude
