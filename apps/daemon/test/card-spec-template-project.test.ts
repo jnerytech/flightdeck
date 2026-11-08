@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, linkSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { newBoard } from "./board-helpers.ts";
+import { templateRootOf } from "../src/board/spec-template.ts";
+import { git, newBoard } from "./board-helpers.ts";
 import { tempDir, waitFor } from "./helpers.ts";
 
 /**
@@ -20,12 +21,30 @@ async function start(options: {
   template?: string;
   link?: boolean;
   hardLink?: boolean;
+  /** The template committed on the base branch, so the card's worktree (its branch) carries it. */
+  branchTemplate?: string;
+  /** What the trust check does instead of answering. */
+  trustFails?: boolean;
+  log?: string[];
 }) {
   let repo = "";
   const ctx = newBoard({
-    specTemplateRoot: async () => (options.trusted ? repo : null),
+    specTemplateRoot: async () => {
+      if (options.trustFails) throw new Error("trust store unreadable");
+      // As main.ts asks: the trusted checkout of the card's project, never its branch.
+      return templateRootOf(
+        options.trusted ? { trusted: true, configRoot: repo } : { trusted: false },
+      );
+    },
+    log: (line: string) => options.log?.push(line),
   });
   repo = ctx.repo;
+  if (options.branchTemplate !== undefined) {
+    mkdirSync(join(repo, ".flightdeck", "templates"), { recursive: true });
+    writeFileSync(join(repo, TEMPLATE), options.branchTemplate);
+    git(repo, "add", "--", TEMPLATE);
+    git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "template");
+  }
   mkdirSync(join(repo, ".flightdeck", "templates"), { recursive: true });
   if (options.link) {
     const outside = join(tempDir("fd-spec-template-out-"), "spec.md");
@@ -91,6 +110,35 @@ describe("card-spec-template-project: a trusted project's own spec template (#78
   test("a template with a second name (a hard link, which may lie outside) is not read", async () => {
     const text = await start({ trusted: true, hardLink: true });
     expect([text.includes("Our shape."), text.includes("## Out of scope")]).toEqual([false, true]);
+  });
+
+  test("the template comes from the trusted checkout, never from the card's branch", async () => {
+    // The branch carries one template; the trusted checkout has another, not committed.
+    const text = await start({
+      trusted: true,
+      branchTemplate: "# {{title}}\n\nFrom the branch.\n",
+      template: OURS,
+    });
+    expect([text.includes("Our shape."), text.includes("From the branch.")]).toEqual([true, false]);
+  });
+
+  test("the trust gate gives a root only for a trusted project that names its checkout", () => {
+    expect([
+      templateRootOf({ trusted: false }),
+      templateRootOf({ trusted: true, configRoot: "/work/api" }),
+      // No checkout named: never the worktree, whose content is the branch's.
+      templateRootOf({ trusted: true }),
+    ]).toEqual([null, "/work/api", null]);
+  });
+
+  test("a trust check that fails writes the built-in template and says so in the log, without the template", async () => {
+    const log: string[] = [];
+    const text = await start({ trusted: true, template: OURS, trustFails: true, log });
+    expect([
+      text.includes("## Out of scope"),
+      log.some((line) => line.includes("spec template") && line.includes("trust store unreadable")),
+      log.some((line) => line.includes("Our shape.")),
+    ]).toEqual([true, true, false]);
   });
 
   test("a template too big, or empty, falls back to the built-in one", async () => {
