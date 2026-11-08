@@ -15,8 +15,11 @@ const TEMPLATE = ".flightdeck/templates/spec.md";
 const OURS = "# {{title}}\n\nOur shape.\n\n## Criteria\n\n{{criteria}}\n";
 const posix = process.platform !== "win32";
 
-/** Starts a card whose project asks for a spec; `trusted` decides whether the template is read. */
-async function start(options: {
+/**
+ * Starts a card whose project asks for a spec; `trusted` decides whether the template is read.
+ * Gives the spec written and the notice the card was left with.
+ */
+async function run(options: {
   trusted: boolean;
   template?: string;
   link?: boolean;
@@ -73,9 +76,17 @@ async function start(options: {
   }) as typeof ctx.manager.create;
   await ctx.board.startCard(card.id);
   await waitFor(() => prompts[0], { label: "the first prompt" });
-  const spec = join(ctx.board.getCard(card.id).worktreePath ?? "", SPEC);
-  return existsSync(spec) ? readFileSync(spec, "utf8") : "";
+  const made = ctx.board.getCard(card.id);
+  const spec = join(made.worktreePath ?? "", SPEC);
+  return {
+    text: existsSync(spec) ? readFileSync(spec, "utf8") : "",
+    notice: made.notice ?? null,
+    reason: made.noticeReason ?? null,
+  };
 }
+
+/** Just the spec written. */
+const start = async (options: Parameters<typeof run>[0]) => (await run(options)).text;
 
 describe("card-spec-template-project: a trusted project's own spec template (#78)", () => {
   test("a trusted project's template is used, with the draft front matter and the card's criteria", async () => {
@@ -148,5 +159,38 @@ describe("card-spec-template-project: a trusted project's own spec template (#78
       true,
       true,
     ]);
+  });
+
+  test("a template that is ignored is said on the card, with its reason and without its text", async () => {
+    const big = await run({ trusted: true, template: `${OURS}${"x".repeat(40_000)}` });
+    const empty = await run({ trusted: true, template: " \n" });
+    const hard = await run({ trusted: true, hardLink: true });
+    const untrusted = await run({ trusted: false, branchTemplate: OURS });
+    expect([big.reason, empty.reason, hard.reason, untrusted.reason]).toEqual([
+      "spec_template_too_big",
+      "spec_template_empty",
+      "spec_template_unsafe",
+      "spec_template_untrusted",
+    ]);
+    // The run went on with the built-in template, and the notice carries no text of the template.
+    expect([big, empty, hard, untrusted].map((r) => r.text.includes("## Out of scope"))).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect([big, empty, hard, untrusted].some((r) => r.notice?.includes("Our shape."))).toBe(false);
+  });
+
+  test.skipIf(!posix)("a template that is a link is said as unsafe", async () => {
+    const link = await run({ trusted: true, link: true });
+    expect(link.reason).toBe("spec_template_unsafe");
+  });
+
+  test("a template that is used, or none at all, says nothing", async () => {
+    const used = await run({ trusted: true, template: OURS });
+    const none = await run({ trusted: true });
+    const noneUntrusted = await run({ trusted: false });
+    expect([used.reason, none.reason, noneUntrusted.reason]).toEqual([null, null, null]);
   });
 });
