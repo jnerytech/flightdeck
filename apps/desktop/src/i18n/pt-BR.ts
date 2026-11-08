@@ -1355,12 +1355,13 @@ export const ptBR = {
     input_name_invalid: "Um nome de input usa letras, números, hífens e sublinhados.",
     persona_invalid: "O id da persona não é válido.",
     step_one_action:
-      "Uma etapa precisa de exatamente uma ação: agent, check, gate, loop, parallel ou pr.",
+      "Uma etapa precisa de exatamente uma ação: agent, check, gate, loop, parallel, pr ou cards.",
     step_id_duplicate: "Outra etapa tem esse id.",
     inner_one_action: "{where} precisa de exatamente uma ação: agent ou check.",
     continue_unknown: "continue aponta para uma etapa que não existe: {step}.",
     persona_with_continue: "persona não vale com continue: a sessão dessa etapa já existe.",
     reference_unknown: "Referência desconhecida: {ref}.",
+    cards_from_unknown: "cards.from precisa nomear uma etapa agent anterior, e {step} não é uma.",
   },
   actionIssue: {
     not_object: "A ação precisa ser um bloco de campos.",

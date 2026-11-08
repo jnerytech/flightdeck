@@ -1358,13 +1358,16 @@ export const en: Dictionary = {
     parallel_empty: "parallel needs at least one item.",
     input_name_invalid: "An input name takes letters, digits, hyphens and underscores.",
     persona_invalid: "The persona id is not valid.",
-    step_one_action: "A step needs exactly one action: agent, check, gate, loop, parallel or pr.",
+    step_one_action:
+      "A step needs exactly one action: agent, check, gate, loop, parallel, pr or cards.",
     step_id_duplicate: "Another step has this id.",
     inner_one_action: "{where} needs exactly one action: agent or check.",
     continue_unknown: "continue points to a step that does not exist: {step}.",
     persona_with_continue:
       "persona does not apply with continue: that step's session already exists.",
     reference_unknown: "Unknown reference: {ref}.",
+    cards_from_unknown:
+      "cards.from must name an agent step that comes before it, and {step} is not one.",
   },
   actionIssue: {
     not_object: "The action must be a block of fields.",
