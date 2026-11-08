@@ -1,5 +1,5 @@
 import type { Card } from "@flightdeck/protocol";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { refusalText } from "@/i18n/errors";
@@ -46,12 +46,19 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
         text: refusalText(result.code, result.message, t, result),
         url: result.params?.url ?? (url || null),
       });
-      refusedBox.current?.focus();
       return;
     }
     setMerged(true);
-    said.current?.focus();
   };
+
+  // After the render, and a tick later: the closing dialog gives the focus back to its button in a
+  // timeout of its own, which the outcome's box must come after.
+  useEffect(() => {
+    const box = refused ? refusedBox.current : merged ? said.current : null;
+    if (!box) return;
+    const timer = setTimeout(() => box.focus(), 0);
+    return () => clearTimeout(timer);
+  }, [refused, merged]);
 
   return (
     <>
@@ -116,7 +123,7 @@ function PrLink(props: Readonly<{ store: AppStore; url: string; text?: string }>
   return (
     <a
       href={url}
-      className="text-sm underline"
+      className="break-all text-sm underline"
       onClick={(event) => {
         event.preventDefault();
         store.openLink(url);

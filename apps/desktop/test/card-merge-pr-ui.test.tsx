@@ -170,13 +170,15 @@ describe("card-merge-pr-ui: a card merges its open PR from the card (#1196)", ()
     );
     const alert = screen.queryAllByRole("alert").find((box) => (box.textContent ?? "") !== "");
     const link = alert ? within(alert).queryByRole("link", { name: "Open the PR" }) : null;
+    const focused = await settleMaybe(() => document.activeElement === alert, 2000);
     await click(link);
     expect([
       shown,
+      focused,
       alert?.textContent?.includes("Checks are failing or still running"),
       dialog(),
       links,
-    ]).toEqual([true, true, null, [PR_URL]]);
+    ]).toEqual([true, true, true, null, [PR_URL]]);
   });
 
   test("a merged PR says so, and the pt-BR dialog is in Portuguese", async () => {
