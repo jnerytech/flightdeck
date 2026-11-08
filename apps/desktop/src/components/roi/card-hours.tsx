@@ -32,6 +32,10 @@ export function CardHours(props: Readonly<{ store: AppStore; hostId: string; car
             variant="outline"
             disabled={!valid || text === current}
             {...(valid ? {} : { disabledReason: t("roiUi.cardHoursInvalid") })}
+            // #1106: an empty field on a card with no hours says what Save waits for.
+            {...(text.trim() === "" && current === ""
+              ? { disabledReason: t("roiUi.cardHoursEmpty") }
+              : {})}
             onClick={async () => {
               const sent = text;
               const done = await store.hostCommand(hostId, "card.update", {
