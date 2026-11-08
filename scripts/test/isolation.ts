@@ -1,3 +1,5 @@
+import { newResources, type Resources } from "./leak-guard.ts";
+
 /**
  * Shared globals a test file can leave changed for the next one (issue #274): the timers, `Date`,
  * `fetch`, the environment and, once happy-dom is registered, the window size, the browser storage
@@ -112,9 +114,12 @@ export function reportLeak(line: string): void {
 export function installBetweenFiles(
   snapshot: Snapshot,
   report: (line: string) => void = reportLeak,
+  watch?: { capture(): Resources },
 ): void {
   let baseline = snapshot;
   let previous = "";
+  /** What was running when the preload finished; grows as each file's leftovers are reported once. */
+  let known = watch?.capture();
   const hook = "__flightdeckAfterLoad";
   (globalThis as Scope)[hook] = () => {
     baseline = captureGlobals();
@@ -128,6 +133,22 @@ export function installBetweenFiles(
           report(
             `isolation: ${previous} left ${leaked.join(", ")} changed; put back before ${args.path}`,
           );
+        }
+        if (watch && known) {
+          const now = watch.capture();
+          const left = newResources(known, now);
+          if (previous && left.servers.length > 0) {
+            report(
+              `isolation: ${previous} left running: ${left.servers.join("; ")} (seen before ${args.path})`,
+            );
+          }
+          // A child can end on its own a moment later: the line names it, and the run goes on.
+          if (previous && left.children.length > 0) {
+            console.error(
+              `isolation (warning): ${previous} left running: ${left.children.join("; ")} (seen before ${args.path})`,
+            );
+          }
+          known = now;
         }
         previous = args.path;
         const source = await Bun.file(args.path).text();
