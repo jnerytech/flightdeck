@@ -101,7 +101,11 @@ describe("parseFindings (issue #79)", () => {
       expect(refusedAt(parseFindings(reply([item({ title })])))).toBe("item 1, title");
     }
     // A right-to-left override and a zero-width space change what a person reads.
-    for (const title of ["a‮b", "a​b", "a⁦b"]) {
+    for (const title of [
+      `a${String.fromCodePoint(0x202e)}b`,
+      `a${String.fromCodePoint(0x200b)}b`,
+      `a${String.fromCodePoint(0x2066)}b`,
+    ]) {
       expect(refusedAt(parseFindings(reply([item({ title })])))).toBe("item 1, title");
     }
     expect(findings(parseFindings(reply([item({ title: "x".repeat(TITLE_MAX) })]))).length).toBe(1);
@@ -117,7 +121,9 @@ describe("parseFindings (issue #79)", () => {
       "item 1, body",
     );
     expect(refusedAt(parseFindings(reply([item({ body: "bell\u0007" })])))).toBe("item 1, body");
-    expect(refusedAt(parseFindings(reply([item({ body: "a‮b" })])))).toBe("item 1, body");
+    expect(
+      refusedAt(parseFindings(reply([item({ body: `a${String.fromCodePoint(0x202e)}b` })]))),
+    ).toBe("item 1, body");
     const body = "line one\n\tindented\r\nline three";
     expect(findings(parseFindings(reply([item({ body })])))[0]?.body).toBe(body);
     expect(parseFindings(reply([item({ body: "x".repeat(BODY_MAX) })])).ok).toBe(true);
