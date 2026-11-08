@@ -81,8 +81,10 @@ describe("plugins-ui: atualizar, fixar e remover", () => {
     await settle(() => (dialog("Atualizar deploy-tools")?.textContent ?? "").includes("→"));
     await click("Atualizar", "button");
     // The fake leaves the old folder in place, so what was left is not what was shown: it is undone.
-    await settle(() => (dialog("Atualizar deploy-tools")?.textContent ?? "").includes("removido"));
-    expect(dialog("Atualizar deploy-tools")?.textContent).toContain("removido");
+    await settle(() =>
+      (dialog("Atualizar deploy-tools")?.textContent ?? "").includes("was removed"),
+    );
+    expect(dialog("Atualizar deploy-tools")?.textContent).toContain("was removed");
     expect(changes(fake).filter((c) => c.startsWith("plugin update"))).toEqual([
       "plugin update deploy-tools@acme --json",
     ]);
