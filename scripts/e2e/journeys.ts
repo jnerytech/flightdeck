@@ -722,6 +722,78 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
   },
 
+  // Project knowledge (issue #76): the library lists its documents with the status each one says
+  // it has, a filter narrows the list, the status select edits the document and the counts follow,
+  // and the feed switch turns the index for sessions off and on. The demo keeps its state, so the
+  // journey puts the status and the switch back where it found them.
+  "knowledge-panel": async (c) => {
+    await open(c, { name: "project", host: ALFA, projectId: c.ids.knowledgeProject });
+    const panel = c.page.getByRole("region", {
+      name: c.t("projectPage.knowledge.title"),
+      exact: true,
+    });
+    const word = (status: "valid" | "transitional" | "obsolete") =>
+      c.t(`projectPage.knowledge.status.${status}`);
+    const filter = (status: "valid" | "transitional" | "obsolete", n: number) =>
+      panel.getByRole("button", {
+        name: c.t("projectPage.knowledge.filter", { status: word(status), n }),
+        exact: true,
+      });
+    const titles = {
+      valid: "Design tokens come from one file",
+      transitional: "Dark mode for every screen",
+      obsolete: "A fixed twelve column grid",
+    } as const;
+    const listed = (title: string) => panel.getByText(title, { exact: true });
+    for (const title of Object.values(titles)) await listed(title).waitFor({ timeout: WAIT });
+    // A filter keeps the documents of one status.
+    await filter("obsolete", 1).click();
+    await listed(titles.valid).waitFor({ state: "detached", timeout: WAIT });
+    await listed(titles.obsolete).waitFor({ timeout: WAIT });
+    await panel
+      .getByRole("button", {
+        name: c.t("projectPage.knowledge.filter", {
+          status: c.t("projectPage.knowledge.all"),
+          n: 3,
+        }),
+        exact: true,
+      })
+      .click();
+    await listed(titles.valid).waitFor({ timeout: WAIT });
+    // The status changes in the document's file, and the counts follow it.
+    const select = (title: string) =>
+      panel.getByLabel(c.t("projectPage.knowledge.setStatus.label", { title }), { exact: true });
+    await select(titles.obsolete).selectOption({ label: word("valid") });
+    await panel
+      .getByRole("status")
+      .filter({
+        hasText: c.t("projectPage.knowledge.setStatus.changed", {
+          title: titles.obsolete,
+          status: word("valid"),
+        }),
+      })
+      .waitFor({ timeout: WAIT });
+    await filter("valid", 2).waitFor({ timeout: WAIT });
+    await select(titles.obsolete).selectOption({ label: word("obsolete") });
+    await filter("obsolete", 1).waitFor({ timeout: WAIT });
+    // The index for sessions: off, then on again. The demo's project is not trusted, so "on" reads
+    // as the untrusted kind of on.
+    const on = panel
+      .getByText(c.t("projectPage.knowledge.feed.on"), { exact: true })
+      .or(panel.getByText(c.t("projectPage.knowledge.feed.onUntrusted"), { exact: true }));
+    await on.first().waitFor({ timeout: WAIT });
+    await panel
+      .getByRole("button", { name: c.t("projectPage.knowledge.feed.turnOff"), exact: true })
+      .click();
+    await panel
+      .getByText(c.t("projectPage.knowledge.feed.off"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await panel
+      .getByRole("button", { name: c.t("projectPage.knowledge.feed.turnOn"), exact: true })
+      .click();
+    await on.first().waitFor({ timeout: WAIT });
+  },
+
   // 25. The Files tab of a session opens a file read only; when the session rewrites it (a second
   // window sends the message) the open file offers its diff, live, and the diff toggles back (#506).
   // The demo keeps its state: after the first run README.md is already changed, so only a fresh
