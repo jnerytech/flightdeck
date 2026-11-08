@@ -21,6 +21,8 @@ const NUMBER = "w-10 shrink-0 select-none px-1 text-right text-muted-foreground 
 
 /** Arrows, Home and End move between the line numbers of one file's diff (#1177). */
 function moveBetweenLines(e: KeyboardEvent<HTMLButtonElement>) {
+  // A modified key keeps its own meaning: Alt+Arrow goes back, Ctrl+Home scrolls to the top.
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
   const numbers = [
     ...(e.currentTarget
       .closest("table")
@@ -243,7 +245,9 @@ export function DiffView(
       className="flex flex-col gap-4"
     >
       {/* #1177: the comment mark shows only on hover or focus, so the view says how to comment. */}
-      {props.onPick && <p className="text-muted-foreground text-xs">{t("changes.commentHint")}</p>}
+      {props.onPick && props.files.length > 0 && (
+        <p className="text-muted-foreground text-xs">{t("changes.commentHint")}</p>
+      )}
       {props.files.map((file) => (
         <div key={`${file.path}:${file.uncommitted}`} className="flex flex-col gap-2">
           <h4 className="font-medium font-mono text-xs">{file.path}</h4>

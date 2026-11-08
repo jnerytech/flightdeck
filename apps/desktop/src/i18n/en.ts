@@ -2628,7 +2628,7 @@ export const en: Dictionary = {
     showInFolderLabel: "Show {path} in its folder",
     noLines: "No lines to show.",
     commentHint:
-      "Click a line number to comment; Shift+click picks a range. By keyboard: Tab to a file, the arrows move between its lines, Enter comments.",
+      "Click a line number to comment; Shift+click picks a range. Keys: arrows between lines, Enter to comment.",
     commentLine: "Comment on line {line} of {path}",
     commentOldLine: "Comment on old line {line} of {path}",
     composer: "New comment",
