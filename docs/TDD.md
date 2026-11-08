@@ -105,6 +105,14 @@ every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard
   a test file (one that keeps or removes them passes, and so does a `skipIf` for a platform). It
   refuses the same markers `tdd:audit` does, plus the snapshot, which only a run can judge (#169):
   also a `skipIf(true)`, and a skip off Linux with no reason comment on its line or the line above.
+- it refuses an Edit or Write of a test file that weakens an assertion (#1141): within the edit,
+  strict matchers (`toBe(`, `toEqual(`, `toContain(`, `toMatch(`, `toThrow(`, `toHaveLength(`…) go
+  down while weak ones (`toBeTruthy()`, `toBeDefined()`, `toBeFalsy()`, `not.toBeNull()`,
+  `not.toBeUndefined()`, `expect.anything()`) go up. `toBe(true)`/`toBe(false)` count as neither,
+  so `expect(x !== null).toBe(true)` to `expect(x).not.toBeNull()` passes. Deleting a test passes.
+  When the weaker check is right, `// weaker: <why>` on its line lets it through, and
+  `harness:stats` lists it under "waivers by rule". Replayed over the test hunks of 200 merged
+  PRs, it flagged 1 of 892, a real weakening.
 
 For a deliberate exception, end the commit message with a trailer line `TDD-Waiver: <why>` (or
 pass `--trailer "TDD-Waiver: <why>"`). The hook lets the commit through and `tdd:audit` lists it
