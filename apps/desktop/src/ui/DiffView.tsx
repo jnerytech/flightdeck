@@ -153,12 +153,9 @@ function FileDiff(
   const keyOf = (side: ReviewComment["side"], line: number) => `${side}:${line}`;
   const keys = numbers.map((n) => keyOf(n.side, n.line));
   const picked = numbers.find((n) => selected(selection, path, n.side, n.line));
-  const stop =
-    focused !== null && keys.includes(focused)
-      ? focused
-      : picked
-        ? keyOf(picked.side, picked.line)
-        : keys[0];
+  let stop = keys[0];
+  if (focused !== null && keys.includes(focused)) stop = focused;
+  else if (picked) stop = keyOf(picked.side, picked.line);
   const number = (row: LineRow, side: ReviewComment["side"]) => {
     const line = lineOf(row, side);
     const key = keyOf(side, line);
