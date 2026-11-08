@@ -38,7 +38,7 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
   const [refused, setRefused] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
   const refusedBox = useRef<HTMLDivElement>(null);
-  const startedBox = useRef<HTMLParagraphElement>(null);
+  const startedBox = useRef<HTMLOutputElement>(null);
   const reasonId = useId();
   useEffect(() => {
     if (started) startedBox.current?.focus();
@@ -46,9 +46,9 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
   // Once started the button is gone (the new run is not failed): the note takes its place and the focus.
   if (started) {
     return (
-      <p role="status" ref={startedBox} tabIndex={-1} className="text-sm" data-started>
+      <output ref={startedBox} tabIndex={-1} className="block text-sm" data-started>
         {t("runUi.again.started")}
-      </p>
+      </output>
     );
   }
   if (!state.show) return null;
