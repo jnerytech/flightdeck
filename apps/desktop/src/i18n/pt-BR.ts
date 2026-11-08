@@ -2149,6 +2149,7 @@ export const ptBR = {
     commit_message: "Mensagem de commit",
     pr_title: "Título do pull request",
     pr_description: "Descrição do pull request",
+    adr_draft: "Rascunho de registro de decisão (ADR)",
   },
   modelPicker: {
     search: "Buscar modelos",

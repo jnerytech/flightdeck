@@ -2152,6 +2152,7 @@ export const en: Dictionary = {
     commit_message: "Commit message",
     pr_title: "Pull request title",
     pr_description: "Pull request description",
+    adr_draft: "Decision record (ADR) draft",
   },
   modelPicker: {
     search: "Search models",

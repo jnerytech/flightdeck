@@ -52,7 +52,7 @@ export const KIND_SPECS: Record<AssistantKind, KindSpec> = {
   "commit.message": spec("careful", 700, true),
   "pr.title": spec("careful", 100, true, true),
   "pr.description": spec("careful", 1500, true),
-  "adr.draft": spec("quick", 1, false),
+  "adr.draft": spec("careful", 1500, false),
 };
 
 /** The models each profile starts with; OpenRouter's are suggestions the person can change. */
@@ -150,7 +150,11 @@ const PROMPTS: Record<AssistantKind, { improve: string; generate?: string; rules
     rules:
       "Markdown: a summary of what changed and why, then a short list of the notable changes by area, and how it was checked only when the context says so. Invent no test result. Keep an existing closing line (Closes #n).",
   },
-  "adr.draft": { improve: "stub.", rules: "stub." },
+  "adr.draft": {
+    improve: "write an architecture decision record (ADR) from the summary of a coding session.",
+    rules:
+      'Markdown with exactly three sections, "## Context", "## Decision" and "## Consequences", in that order and with no title line: what the session started from, what it decided, and what follows from that, good and bad. Use only what the summary says, and write "Not stated in the session." under a section it says nothing about. Keep file paths as they are. A title in <context> names the decision. At most 300 words.',
+  },
 };
 
 export interface BuildInput {
