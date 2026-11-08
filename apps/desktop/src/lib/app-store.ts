@@ -106,6 +106,7 @@ import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
+import type { Finish } from "./finished.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
@@ -288,6 +289,10 @@ export interface AppState {
   settings: Settings;
   /** The notifications the app sent, newest first, kept for the notification center. */
   inbox: InboxEntry[];
+  /** The sessions that finished, newest first; Needs you lists those after the last look. */
+  finished: Finish[];
+  /** When the person last looked at Needs you (ISO), `null` before the first look. */
+  finishedLook: string | null;
   /** Last global history search, `null` before the first one. */
   search: SearchState | null;
   searchOpen: boolean;
@@ -1114,6 +1119,8 @@ export class AppStore {
       clientBudgets: [],
       notices: [],
       inbox: [],
+      finished: [],
+      finishedLook: null,
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null, ready: null },
       // Defaults: close to tray on, start with Windows off.
@@ -1607,6 +1614,9 @@ export class AppStore {
       this.openRequest(item);
     else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
+
+  /** The person looked at Needs you: what finished before now is no longer new. */
+  finishedSeen(): void {}
 
   /** Sends an OS notification and keeps it in the notification center. */
   private notifyUser(
