@@ -36,9 +36,13 @@ function show(answer: Answer, language: "en" | "pt-BR" = "en") {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const sent: Array<[string, unknown]> = [];
+  store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
+    sent.push([type, payload]);
+    return { ok: true, data: answer };
+  }) as never;
   store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
-    return type === "card.validationTemplate" ? answer : null;
+    return null;
   }) as never;
   const view = (
     <TContext.Provider value={store.i18n.t}>

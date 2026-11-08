@@ -47,6 +47,10 @@ function setup(options: { projects?: never[] } = {}) {
     return {};
   }) as never;
   store.hostRequest = (async (hostId: string, type: string, payload: unknown) => {
+    // The project's validation template (#1058) is its own ask, covered by its own test.
+    if (type === "card.validationTemplate") {
+      return { ok: true, data: { text: null, ignored: null } };
+    }
     requests.push([hostId, type, payload]);
     return { ok: true, data: {} };
   }) as never;
