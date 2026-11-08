@@ -227,6 +227,10 @@ function mcpCandidates(toolName: string, input: Record<string, unknown>): Candid
     : [["medium", "ferramenta MCP"]];
 }
 
+/** A shell tool's `command` that is there but is not text: nothing in it can be judged. */
+const oddCommand = (input: Record<string, unknown>) =>
+  input.command !== undefined && input.command !== null && typeof input.command !== "string";
+
 export class RiskClassifier {
   private readonly extra: RegExp[];
 
@@ -260,7 +264,11 @@ export class RiskClassifier {
 
   private candidates(toolName: string, input: Record<string, unknown>, cwd: string): Candidate[] {
     const text = (key: string) => (typeof input[key] === "string" ? (input[key] as string) : "");
-    if (SHELL_TOOLS.has(toolName)) return this.shell(text("command"), cwd);
+    if (SHELL_TOOLS.has(toolName)) {
+      // A shell tool's command that is there but not text cannot be read, so a person decides.
+      if (oddCommand(input)) return [["high", "the command is not text"]];
+      return this.shell(text("command"), cwd);
+    }
     if (toolName === "TodoWrite") return [["low", "lista de tarefas"]];
     const fields = READ_TOOLS[toolName];
     if (fields) return this.readCandidates(toolName, fields, text, cwd);
@@ -317,7 +325,10 @@ export class RiskClassifier {
       return true;
     }
     if (!SHELL_TOOLS.has(toolName)) return false;
-    return segments(String(input.command ?? "")).some((segment) => {
+    // A command that is not text fails closed, as its level does (`candidates`).
+    if (oddCommand(input)) return true;
+    const command = typeof input.command === "string" ? input.command : "";
+    return segments(command).some((segment) => {
       const { prog, args } = invocation(segment);
       const sub = prog === "git" ? gitCommand(args).sub : "";
       return NETWORK_PROGRAMS.has(prog) || ["push", "pull", "fetch", "clone"].includes(sub);

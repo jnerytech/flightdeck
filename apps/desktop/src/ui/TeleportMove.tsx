@@ -61,6 +61,18 @@ function RepoField(
   );
 }
 
+/** The repository field of the dialog, for the host the person picked as the target. */
+const repoFieldFor =
+  (store: AppStore, hosts: HostView[]) =>
+  (hostId: string, value: string, onChange: (path: string) => void) => (
+    <RepoField
+      store={store}
+      host={hosts.find((h) => h.id === hostId)}
+      value={value}
+      onChange={onChange}
+    />
+  );
+
 export const TeleportMove = memo(function TeleportMove(
   props: Readonly<{ store: AppStore; hostId: string; sessionId: string; onClose(): void }>,
 ) {
@@ -80,14 +92,7 @@ export const TeleportMove = memo(function TeleportMove(
   return (
     <TeleportDialog
       targets={targets}
-      repoField={(hostId, value, onChange) => (
-        <RepoField
-          store={store}
-          host={state.hosts.find((h) => h.id === hostId)}
-          value={value}
-          onChange={onChange}
-        />
-      )}
+      repoField={repoFieldFor(store, state.hosts)}
       run={(args) =>
         store.moveSession(props.hostId, props.sessionId, args).then(
           (outcome) => {
