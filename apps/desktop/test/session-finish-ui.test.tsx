@@ -109,10 +109,13 @@ const NAMES = {
     openPr: "Open PR",
     hooks: "These hooks run: pre-commit, pre-push.",
     others: "Other programs your git settings name may also run.",
-    tooLarge: "big.bin is too large to commit from here.",
+    tooLarge: "Too large to commit from here.",
+    files: "Files",
+    needs: "Tick at least one file, and fill in the branch and the message.",
+    nothing: "No file here can be committed from the app.",
     message: "Update a.txt",
     branch: "session/update-a-txt",
-    pushes: `Pushes session/update-a-txt to ${REMOTE}. The pre-push hook runs.`,
+    pushes: `session/update-a-txt will be pushed to ${REMOTE}. The pre-push hook runs.`,
     body: "Files:\n- a.txt",
     confirmPr: "Open the PR with this text",
     noRemote: "This checkout has no origin to push to.",
@@ -127,10 +130,13 @@ const NAMES = {
     openPr: "Abrir PR",
     hooks: "Estes hooks rodam: pre-commit, pre-push.",
     others: "Outros programas que as configurações do git indicam também podem rodar.",
-    tooLarge: "big.bin é grande demais para o commit por aqui.",
+    tooLarge: "Grande demais para commitar por aqui.",
+    files: "Arquivos",
+    needs: "Marque ao menos um arquivo e preencha o branch e a mensagem.",
+    nothing: "Nenhum arquivo daqui pode ser commitado pelo app.",
     message: "Atualiza a.txt",
     branch: "session/atualiza-a-txt",
-    pushes: `Envia session/atualiza-a-txt para ${REMOTE}. O hook pre-push roda.`,
+    pushes: `session/atualiza-a-txt será enviado para ${REMOTE}. O hook pre-push roda.`,
     body: "Arquivos:\n- a.txt",
     confirmPr: "Abrir o PR com este texto",
     noRemote: "Este checkout não tem um origin para o push.",
@@ -158,11 +164,12 @@ describe("session-finish-ui: a plain session's commit on a new branch, then its 
       expect([
         a?.getAttribute("aria-checked") ?? String(a?.checked),
         big?.hasAttribute("disabled") ?? big?.disabled,
-        screen.queryByText(n.tooLarge) !== null,
+        document.getElementById(big?.getAttribute("aria-describedby") ?? "")?.textContent,
+        screen.queryByRole("group", { name: n.files }) !== null,
         screen.queryByText(n.hooks) !== null,
         screen.queryByText(n.others) !== null,
         (branch as HTMLInputElement | null)?.value,
-      ]).toEqual(["true", true, true, true, true, n.branch]);
+      ]).toEqual(["true", true, n.tooLarge, true, true, true, n.branch]);
       await press(
         within(screen.queryByRole("alertdialog") as HTMLElement).queryByRole("button", {
           name: n.commit,
@@ -223,8 +230,15 @@ describe("session-finish-ui: a plain session's commit on a new branch, then its 
       }) as HTMLTextAreaElement;
       const drafted = message?.value;
       const branch = screen.queryByRole("textbox", { name: n.branchLabel }) as HTMLInputElement;
+      const tick = (path: string) =>
+        fireEvent.click(screen.queryByRole("checkbox", { name: path }) as HTMLElement);
       await act(async () => {
-        fireEvent.click(screen.queryByRole("checkbox", { name: "b.txt" }) as HTMLElement);
+        tick("b.txt");
+        tick("a.txt");
+      });
+      const needs = screen.queryByText(n.needs) !== null;
+      await act(async () => {
+        tick("a.txt");
         fireEvent.change(branch, { target: { value: "session/mine" } });
         fireEvent.change(message, { target: { value: "Fix the note" } });
       });
@@ -234,14 +248,20 @@ describe("session-finish-ui: a plain session's commit on a new branch, then its 
           name: n.commit,
         }),
       );
+      const kept = screen.queryByRole("textbox", {
+        name: n.branchLabel,
+      }) as HTMLInputElement | null;
       expect([
         drafted,
+        needs,
         noHooks,
         sent,
         screen.queryByRole("alert")?.textContent?.includes(n.taken) ?? false,
+        kept?.value,
         screen.queryByRole("button", { name: n.openPr }) === null,
       ]).toEqual([
         n.many,
+        true,
         true,
         [
           [
@@ -255,6 +275,18 @@ describe("session-finish-ui: a plain session's commit on a new branch, then its 
             },
           ],
         ],
+        true,
+        "session/mine",
+        true,
+      ]);
+    });
+
+    test(`${lang}: with nothing the app can commit, the button stays off and says why`, async () => {
+      const seen = changes();
+      seen.files = seen.files.filter((file) => file.path === "big.bin");
+      setup(lang, `session:${lang}-4`, seen);
+      const commit = screen.queryByRole("button", { name: n.commit });
+      expect([commit?.hasAttribute("disabled"), screen.queryByText(n.nothing) !== null]).toEqual([
         true,
         true,
       ]);
