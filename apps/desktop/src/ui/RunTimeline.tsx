@@ -1,5 +1,5 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { ApprovalActions } from "@/components/approval/approval-actions";
 import { GateText } from "@/components/approval/gate-text";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -87,6 +87,8 @@ export function RunTimeline(
     onRespond?(step: StepRun, decision: "approve" | "reject", note: string): unknown;
     /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
     costUsd?: number | null;
+    /** What the person can do with the run (issue #1219: Run again), under the run's reason. */
+    action?: ReactNode;
   }>,
 ) {
   const t = useT();

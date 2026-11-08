@@ -1,4 +1,4 @@
-import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
+import type { StepRun, WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
 import { type T, translator } from "../i18n/index.ts";
 
 const PT = translator("pt-BR");
@@ -58,4 +58,22 @@ export function budgetLines(run: WorkflowRun, t: T = PT): BudgetLine[] {
       `US$ ${budget.maxCostUsd?.toFixed(2)}`,
     ),
   ];
+}
+
+/** What a failed run offers (issue #1219): "Run again", or why it cannot be offered now. */
+export type RunAgainState =
+  | { show: false }
+  | { show: true; off: null | "loading" | "missing" | "untrusted" | "invalid" };
+
+/**
+ * A failed run (a stopped one ends failed too) can run again with the same workflow and inputs
+ * unless the file is the problem: gone from the base branch, changed since it was trusted, or with
+ * errors. `workflow` is the host's current word on that file; `known` is false until it answered.
+ */
+export function runAgain(
+  _run: Pick<WorkflowRun, "status">,
+  _workflow: Pick<WorkflowInfo, "trusted" | "errors"> | undefined,
+  _known: boolean,
+): RunAgainState {
+  return { show: false };
 }
