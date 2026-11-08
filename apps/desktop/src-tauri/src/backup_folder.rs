@@ -12,32 +12,108 @@ const SUFFIX: &str = ".fdbackup";
 pub const MAX_BACKUP_BYTES: usize = 8 * 1024 * 1024;
 
 /// Whether `name` is exactly a backup's file name: no folder part, no other text.
-pub fn is_backup_name(_name: &str) -> bool {
-    false
+pub fn is_backup_name(name: &str) -> bool {
+    let Some(stamp) = name
+        .strip_prefix(PREFIX)
+        .and_then(|rest| rest.strip_suffix(SUFFIX))
+    else {
+        return false;
+    };
+    // YYYYMMDD-HHMMSS, ASCII digits only: a separator or a dot cannot hide in it.
+    let bytes = stamp.as_bytes();
+    bytes.len() == 15
+        && bytes
+            .iter()
+            .enumerate()
+            .all(|(i, b)| if i == 8 { *b == b'-' } else { b.is_ascii_digit() })
 }
 
 /// An absolute folder that exists. Nothing is created.
-fn checked_dir(_dir: &str) -> Result<PathBuf, String> {
-    Err("not implemented".to_string())
+fn checked_dir(dir: &str) -> Result<PathBuf, String> {
+    let path = Path::new(dir);
+    if !path.is_absolute() {
+        return Err("the backup folder must be an absolute path".to_string());
+    }
+    if path.components().any(|part| matches!(part, std::path::Component::ParentDir)) {
+        return Err("the backup folder cannot contain ..".to_string());
+    }
+    if !std::fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false) {
+        return Err("the backup folder does not exist".to_string());
+    }
+    Ok(path.to_path_buf())
 }
 
-/// Writes `text` as the backup `name` in `dir`; an existing file is never replaced.
-pub fn write_backup(_dir: &str, _name: &str, _text: &str) -> Result<(), String> {
+fn checked_name(name: &str) -> Result<(), String> {
+    if is_backup_name(name) {
+        Ok(())
+    } else {
+        Err("that is not the name of a backup".to_string())
+    }
+}
+
+/// Writes `text` as the backup `name` in `dir`; an existing file is never replaced. The text goes
+/// to a temporary file first and is renamed, so a crash leaves no half-written backup.
+pub fn write_backup(dir: &str, name: &str, text: &str) -> Result<(), String> {
+    use std::io::Write;
+    checked_name(name)?;
+    if text.len() > MAX_BACKUP_BYTES {
+        return Err("the backup is too big".to_string());
+    }
+    let dir = checked_dir(dir)?;
+    let target = dir.join(name);
+    // symlink_metadata does not follow a link: a link named like a backup counts as taken.
+    if std::fs::symlink_metadata(&target).is_ok() {
+        return Err("a backup with that name already exists".to_string());
+    }
+    let part = dir.join(format!("{name}.part"));
+    let written = (|| {
+        // create_new fails on anything already there, a link included.
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&part)?; // NOSONAR: runs on the blocking pool, on a name this module built
+        file.write_all(text.as_bytes())?;
+        file.sync_all()?;
+        std::fs::rename(&part, &target)
+    })();
+    if let Err(error) = written {
+        let _ = std::fs::remove_file(&part);
+        return Err(error.to_string());
+    }
     Ok(())
 }
 
 /// The backups in `dir`, by name, oldest first; anything else in the folder is not listed.
-pub fn list_backups(_dir: &str) -> Result<Vec<String>, String> {
-    Ok(vec!["x".to_string()])
+pub fn list_backups(dir: &str) -> Result<Vec<String>, String> {
+    let dir = checked_dir(dir)?;
+    let mut names = Vec::new();
+    for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let Some(name) = entry.file_name().to_str().map(str::to_string) else {
+            continue;
+        };
+        // DirEntry::file_type does not follow a link, so a link or a folder is skipped.
+        let is_file = entry.file_type().map(|t| t.is_file()).unwrap_or(false);
+        if is_file && is_backup_name(&name) {
+            names.push(name);
+        }
+    }
+    names.sort();
+    Ok(names)
 }
 
 /// Removes the backup `name` from `dir`: a regular file named like a backup, and nothing else.
-pub fn remove_backup(_dir: &str, _name: &str) -> Result<(), String> {
-    Ok(())
+pub fn remove_backup(dir: &str, name: &str) -> Result<(), String> {
+    checked_name(name)?;
+    let target = checked_dir(dir)?.join(name);
+    let is_file = std::fs::symlink_metadata(&target)
+        .map(|m| m.file_type().is_file())
+        .unwrap_or(false);
+    if !is_file {
+        return Err("only a backup file can be removed".to_string());
+    }
+    std::fs::remove_file(&target).map_err(|e| e.to_string())
 }
-
-#[allow(dead_code)]
-fn unused(_: &Path) {}
 
 #[cfg(test)]
 mod tests {

@@ -4,6 +4,7 @@
 //! deep links, opener).
 
 mod assistant;
+mod backup_folder;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -1030,6 +1031,24 @@ async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     .await
 }
 
+/// Writes a scheduled backup into the backup folder (issue #1264); the module checks the name and the folder.
+#[tauri::command]
+async fn backup_folder_write(dir: String, name: String, text: String) -> Result<(), String> {
+    spawn_blocking_result(move || backup_folder::write_backup(&dir, &name, &text)).await
+}
+
+/// The backups in the backup folder, oldest first.
+#[tauri::command]
+async fn backup_folder_list(dir: String) -> Result<Vec<String>, String> {
+    spawn_blocking_result(move || backup_folder::list_backups(&dir)).await
+}
+
+/// Removes one old backup from the backup folder; nothing named otherwise.
+#[tauri::command]
+async fn backup_folder_remove(dir: String, name: String) -> Result<(), String> {
+    spawn_blocking_result(move || backup_folder::remove_backup(&dir, &name)).await
+}
+
 /// Deletes the file `vault_pick_file` returned last, and nothing else.
 #[tauri::command]
 async fn vault_remove_file(path: String, state: State<'_, PickedFile>) -> Result<(), String> {
@@ -1430,6 +1449,9 @@ pub fn run() {
             vault_generate_key,
             vault_pick_file,
             pick_folder,
+            backup_folder_write,
+            backup_folder_list,
+            backup_folder_remove,
             open_result,
             append_log,
             read_log_tail,
