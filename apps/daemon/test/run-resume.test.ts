@@ -27,14 +27,19 @@ const YAML = [
   "    check: fd-check d",
 ].join("\n");
 
-/** a, b and d pass; c fails the first time and passes after. */
-function scripted() {
+/**
+ * a, b and d pass; c fails the first time and passes after. With `hold`, the second run of c
+ * waits for it: the resumed run stays going while the test acts.
+ */
+function scripted(hold?: Promise<void>) {
   const calls: string[] = [];
   const runner: CheckRunner = {
     run: async (command) => {
       calls.push(command);
       const name = command.split(" ").at(-1) ?? "";
-      const failing = name === "c" && calls.filter((call) => call === command).length === 1;
+      const runs = calls.filter((call) => call === command).length;
+      if (hold && name === "c" && runs === 2) await hold;
+      const failing = name === "c" && runs === 1;
       return failing
         ? { exitCode: 1, output: "c broke" }
         : { exitCode: 0, output: name.toUpperCase() };
@@ -43,8 +48,8 @@ function scripted() {
   return { calls, runner };
 }
 
-async function failedAtC() {
-  const { calls, runner } = scripted();
+async function failedAtC(hold?: Promise<void>) {
+  const { calls, runner } = scripted(hold);
   const made = await workflowCard(YAML, { board: { checks: runner } });
   await made.start();
   const failed = await made.runWhen((run) => run.status === "failed");
@@ -162,23 +167,24 @@ describe("run-resume: a failed run resumes from its failed step (#1266)", () => 
         "UPDATE workflow_runs SET definition = replace(definition, 'fd-check d', 'fd-check evil') WHERE id = ?",
       )
       .run(tampered.runId);
-    const twice = await failedAtC();
+    let release = () => {};
+    const twice = await failedAtC(new Promise<void>((done) => (release = done)));
     const both = await Promise.all([
       refusal(() => twice.board.resumeRun(twice.runId, true)),
       refusal(() => twice.board.resumeRun(twice.runId, true)),
     ]);
+    // The resumed run is going (c held): a start now is refused, then c is let go.
+    await twice.runWhen((run) =>
+      run.steps.some((step) => step.stepId === "c" && step.status === "running"),
+    );
     const started = await refusal(() => twice.start());
+    release();
     await twice.runWhen((run) => run.status === "completed");
     expect([
       (await tampered.board.resumeRun(tampered.runId, false)).reason,
       both.filter((outcome) => outcome === "ok").length,
       started,
       twice.calls.map((call) => call.split(" ").at(-1)),
-    ]).toEqual([
-      "run_resume_workflow_changed",
-      1,
-      "card_queued",
-      ["a", "b", "c", "c", "d"],
-    ]);
+    ]).toEqual(["run_resume_workflow_changed", 1, "card_queued", ["a", "b", "c", "c", "d"]]);
   });
 });
