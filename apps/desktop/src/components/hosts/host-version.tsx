@@ -1,5 +1,5 @@
 import { CircleAlert } from "lucide-react";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { T } from "@/i18n/index";
 
@@ -21,9 +21,14 @@ export function hostVersionText(
  * the row's place, and the keyboard focus on the old one would be lost.
  */
 export function HostVersionTip(props: Readonly<{ text: string | null; children: ReactElement }>) {
+  // Always controlled (issue #938): `open` switching between a boolean and nothing, as the version
+  // left and came back with a reconnect, made Radix switch kinds and keep a stale open state.
+  const [open, setOpen] = useState(false);
+  // With no version there is nothing to show: a tooltip open when it left does not return with it.
+  if (!props.text && open) setOpen(false);
   return (
     <TooltipProvider delayDuration={400}>
-      <Tooltip {...(props.text ? {} : { open: false })}>
+      <Tooltip open={props.text ? open : false} onOpenChange={setOpen}>
         <TooltipTrigger asChild>{props.children}</TooltipTrigger>
         {props.text && (
           <TooltipContent side="right" sideOffset={4}>

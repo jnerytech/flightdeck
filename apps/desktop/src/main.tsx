@@ -1,6 +1,6 @@
 // Browser entry point: wires the Tauri platform into the app; all logic is covered elsewhere.
 import { createRoot } from "react-dom/client";
-import { installGlobalLog } from "./lib/app-log.ts";
+import { installGlobalLog, reactRootErrorHandlers } from "./lib/app-log.ts";
 import { AppStore } from "./lib/app-store.ts";
 import { tauriPlatform } from "./platform/tauri/index.ts";
 import { App } from "./ui/App.tsx";
@@ -15,6 +15,12 @@ installGlobalLog(
       window.removeEventListener(type, listener as EventListener),
   },
   store.appLog,
+  console,
+  // Only the route's name is logged with a React error: where the person was, nothing they typed.
+  () => store.router.current.name,
 );
 
-createRoot(document.getElementById("root") as HTMLElement).render(<App store={store} />);
+createRoot(
+  document.getElementById("root") as HTMLElement,
+  reactRootErrorHandlers(store.appLog, () => store.router.current.name),
+).render(<App store={store} />);
