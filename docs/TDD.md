@@ -304,8 +304,11 @@ em vez de depender de cuidado.
 - CI starts with a quick job (#272): typecheck, lint, the TDD audit and every ratchet test, in
   minutes. The heavy jobs need it. A new ratchet's test file ends in
   `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
-  The quick job also runs `scripts/test/md-links.test.ts` (#1068): a doc link or a doc path named
-  in code that leads nowhere fails the PR that adds it, whatever files it changed.
+  The quick job also runs every test marked with a `// repo-wide` comment line (#1068, #1108): a
+  test that scans the whole repository (md-links, sort-compare, md-size, sonar-coverage…) checks
+  files it does not import, so a PR's run would pick it only by chance, and a PR could merge green
+  and turn main red. A test that runs `git ls-files` on the repository root carries the marker;
+  `repo-wide.test.ts` fails one that does not (a temp repo or a faked git is not checked).
 - Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub
   then merges the PR with a merge commit, never a squash, once the main ruleset's required checks
   are green on its HEAD, behind `main` or not (#305: the ruleset is not strict, so a merge no

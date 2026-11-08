@@ -10,6 +10,8 @@ import {
   testInclusionsOf,
 } from "../lib/sonar-project.ts";
 
+// repo-wide (#1108): reads every tracked source file, so CI's quick job runs it on every PR.
+
 const ROOT = resolve(import.meta.dir, "../..");
 const properties = readFileSync(resolve(ROOT, "sonar-project.properties"), "utf8");
 const tracked = Bun.spawnSync(["git", "ls-files", "apps", "packages", "scripts"], {

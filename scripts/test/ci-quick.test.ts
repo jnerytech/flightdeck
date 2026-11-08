@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { quickTests } from "../lib/ci-quick.ts";
 
@@ -45,15 +45,18 @@ describe("ci-quick", () => {
 
   test("the quick tests are every ratchet and the protocol surface, in order (#272)", () => {
     expect(
-      quickTests([
-        "scripts/test/wait-ratchet.test.ts",
-        "apps/desktop/test/layout-ratchet.test.ts",
-        "scripts/test/protocol-surface.test.ts",
-        "scripts/test/ci-quick.test.ts",
-        "scripts/lib/wait-ratchet.ts",
-        "scripts/test/perf-baseline.test.ts",
-        "apps/desktop/test/x-ratchet.test.tsx",
-      ]),
+      quickTests(
+        [
+          "scripts/test/wait-ratchet.test.ts",
+          "apps/desktop/test/layout-ratchet.test.ts",
+          "scripts/test/protocol-surface.test.ts",
+          "scripts/test/ci-quick.test.ts",
+          "scripts/lib/wait-ratchet.ts",
+          "scripts/test/perf-baseline.test.ts",
+          "apps/desktop/test/x-ratchet.test.tsx",
+        ],
+        () => "",
+      ),
     ).toEqual([
       "apps/desktop/test/layout-ratchet.test.ts",
       "apps/desktop/test/x-ratchet.test.tsx",
@@ -63,15 +66,37 @@ describe("ci-quick", () => {
   });
 
   test("#1068: md-links runs in the quick job, so the PR that names a missing doc fails, whatever it changed", () => {
-    expect(
-      quickTests([
-        "scripts/test/md-size.test.ts",
-        "scripts/test/md-links.test.ts",
-        "scripts/lib/md-links.ts",
-        "apps/desktop/test/md-links.test.ts",
-      ]),
-    ).toEqual(["scripts/test/md-links.test.ts"]);
-    expect(existsSync(join(ROOT, "scripts/test/md-links.test.ts"))).toBe(true);
+    // #1108: it runs there through its // repo-wide marker, as every scan of the whole repo does.
+    const real = (path: string) => readFileSync(join(ROOT, path), "utf8");
+    expect(quickTests(["scripts/test/md-links.test.ts", "scripts/lib/md-links.ts"], real)).toEqual([
+      "scripts/test/md-links.test.ts",
+    ]);
+    expect(quickTests(["scripts/test/md-links.test.ts"], () => "")).toEqual([]);
+    // #1114 review: a file that cannot be read is not marked, and the job does not crash on it.
+    const missing = () => {
+      throw new Error("ENOENT");
+    };
+    let picked: string[];
+    try {
+      picked = quickTests(["scripts/test/gone.test.ts", "scripts/test/a-ratchet.test.ts"], missing);
+    } catch {
+      picked = ["the read error stopped the job"];
+    }
+    expect(picked).toEqual(["scripts/test/a-ratchet.test.ts"]);
+  });
+
+  test("#1108: a test marked // repo-wide runs in the quick job, wherever it is and whatever its name", () => {
+    const sources: Record<string, string> = {
+      "scripts/test/sort-compare.test.ts": `// repo-${"wide"} (#1108): scans the code\n`,
+      "apps/daemon/test/home.test.ts": `  // repo-${"wide"}: reads apps/daemon/src\n`,
+      "scripts/test/plain.test.ts": `const a = "// repo-${"wide"}";\n`,
+      "scripts/test/wait-ratchet.test.ts": "",
+    };
+    expect(quickTests(Object.keys(sources), (path) => sources[path] ?? "")).toEqual([
+      "apps/daemon/test/home.test.ts",
+      "scripts/test/sort-compare.test.ts",
+      "scripts/test/wait-ratchet.test.ts",
+    ]);
   });
 
   test("a quick job runs typecheck, lint, the TDD audit and the ratchet tests (#272), no local Sonar (#283)", () => {

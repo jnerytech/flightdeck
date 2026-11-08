@@ -15,6 +15,8 @@ import {
 } from "../lib/shard-gate.ts";
 import { importsOf } from "../lib/test-related.ts";
 
+// repo-wide (#1108): reads the tracked file list, so CI's quick job runs it on every PR.
+
 /** One file's record as Bun writes it: function counts, then one DA line per executable line. */
 const record = (path: string, fn: [number, number], lines: Array<[number, number]>) =>
   [

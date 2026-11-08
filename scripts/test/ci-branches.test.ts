@@ -3,6 +3,8 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+// repo-wide (#1108): reads every tracked test file, so CI's quick job runs it on every PR.
+
 /**
  * #260 (GitHub Flow): one trigger per kind of branch. A branch with an open PR runs on
  * `pull_request`, main on `push`, and a branch with no PR yet by hand (`workflow_dispatch`, which
