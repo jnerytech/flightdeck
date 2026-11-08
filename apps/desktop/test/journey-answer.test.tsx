@@ -90,7 +90,7 @@ describe("journey-answer: a request is answered from where it was announced", ()
     expect(document.body.textContent ?? "").toContain("Resta 1");
   });
 
-  test("the bell's entry of a request already answered opens its session at that request", async () => {
+  test("the bell's entry of a request that waits opens its session at that request", async () => {
     const { store, ids } = await waiting(["Respondida"]);
     const [item] = needsYou(store.getState());
     const hostId = item?.hostId ?? "";
@@ -100,8 +100,6 @@ describe("journey-answer: a request is answered from where it was announced", ()
       id: ids[0] as string,
       focus: item?.requestId as string,
     });
-    await store.respondTo(hostId, item?.requestId ?? "", "deny");
-    await settle(() => needsYou(store.getState()).length === 0);
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: /^Notificações/ }) as HTMLElement);
     });
@@ -112,5 +110,17 @@ describe("journey-answer: a request is answered from where it was announced", ()
     });
     await settle(() => screen.queryByRole("heading", { name: "Respondida" }) !== null);
     expect(screen.queryByRole("heading", { name: "Respondida" })).not.toBeNull();
+  });
+
+  test("the bell's entry of a request already answered leaves the bell (#1131)", async () => {
+    const { store } = await waiting(["Respondida"]);
+    const [item] = needsYou(store.getState());
+    await store.respondTo(item?.hostId ?? "", item?.requestId ?? "", "deny");
+    await settle(() => needsYou(store.getState()).length === 0);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: /^Notificações/ }) as HTMLElement);
+    });
+    await settle(() => document.querySelector(".inbox-pick") === null);
+    expect(document.querySelector(".inbox-pick") === null).toBe(true);
   });
 });
