@@ -103,3 +103,112 @@ describe("refusal-english: mcp, the vault rules, messaging, issues and automatio
     expect(hits.map((h) => h.text)).toEqual(["a sessão terminou", "sessão s1 não encontrada"]);
   });
 });
+
+/**
+ * Issue #957 (english-msgs3): the refusal, log and error text of the teams, the service commands,
+ * the session names, the messaging policy, the board and the claude wrapper is English.
+ */
+const MSGS3_FILES = [
+  "teams/teams.ts",
+  "service.ts",
+  "names/names.ts",
+  "names/format.ts",
+  "names/track.ts",
+  "messaging/policy.ts",
+  "board/board.ts",
+  "central/wrapper.ts",
+];
+
+/** The Portuguese words of the earlier detector, plus the ones these files used. */
+const MSGS3_PORTUGUESE = new RegExp(
+  `${MSGS2_PORTUGUESE.source}|\\b(cota|serviço|executora|coordenadora|canal|aviso|fora do ar|membros?|ficou|apague|depois|remova|aberto|comentou|alterações|pendentes|removida|passou|encerr\\w+|gravad\\w+|instalad\\w+|habilitad\\w+|criad\\w+|pausad\\w+)\\b`,
+  "i",
+);
+
+/**
+ * Text that reaches the person or an agent as it is, not through a dictionary refusal reason:
+ * the card notices and run reasons the board stores and the app shows, the team notices the agents
+ * read, the pause reasons of the OS notification and the member names the board shows. Translating it changes what they see (the
+ * same call as #957's first slice), so it stays until it gets a refusal code and a dictionary
+ * entry. One fragment per string, per file; the detector still covers every other string.
+ */
+const MSGS3_SHOWN: Record<string, string[]> = {
+  "teams/teams.ts": [
+    "resume: ",
+    " · executora ",
+    " · coordenadora",
+    "a cota do plano passou do limite",
+    "a cota do plano reiniciou",
+    "foi encerrado: não há mais",
+    "modo de permissão ",
+    ", com ",
+    "Você saiu do time",
+    "saiu do time.",
+    "O objetivo do time mudou",
+    "Os comandos de verificação do time",
+  ],
+  "board/board.ts": [
+    "worktree com alterações pendentes",
+    "Trabalhe somente nesta worktree",
+    "com mensagens descritivas",
+    "arquivo do .worktreeinclude",
+    "arquivos do .worktreeinclude",
+    ": passou do limite de ",
+    "execução encerrada com o card",
+    "card parado antes de começar",
+    "regra não gravada no ",
+    "a pasta da worktree ficou em",
+    "ficou (",
+    "PR aberto",
+  ],
+};
+
+const SRC = new URL("../src/", import.meta.url).pathname;
+
+/** What the detector flags in a file once the text that is shown as it is has been left out. */
+async function portugueseIn(file: string): Promise<string[]> {
+  const kept = MSGS3_SHOWN[file] ?? [];
+  const source = await Bun.file(`${SRC}${file}`).text();
+  return quoted(source)
+    .filter(({ text }) => MSGS3_PORTUGUESE.test(text))
+    .filter(({ text }) => !kept.some((fragment) => text.includes(fragment)))
+    .map(({ line, text }) => `${file}:${line}: ${text}`);
+}
+
+describe("refusal-english: teams, service, names, messaging policy, board and wrapper (#957)", () => {
+  test.each(MSGS3_FILES)("%s has no Portuguese refusal, log or error text", async (file) => {
+    expect(await portugueseIn(file)).toEqual([]);
+  });
+
+  test("every fragment kept in Portuguese is still in its file", async () => {
+    const gone: string[] = [];
+    for (const [file, fragments] of Object.entries(MSGS3_SHOWN)) {
+      const source = await Bun.file(`${SRC}${file}`).text();
+      for (const fragment of fragments) {
+        if (!source.includes(fragment)) gone.push(`${file}: ${fragment}`);
+      }
+    }
+    expect(gone).toEqual([]);
+  });
+
+  test("the words of the old refusals are caught, and their English wording passes", () => {
+    const old = [
+      "time t1 não existe",
+      "o serviço precisa de caminho absoluto",
+      "o nome não pode ficar em branco",
+      "flightdeckd: daemon do Flightdeck fora do ar",
+      "unit gravada em path",
+      "a coordenadora não sai do time: encerre o time",
+    ];
+    const fresh = [
+      "team t1 does not exist",
+      "the service needs an absolute path",
+      "the name cannot be blank",
+      "flightdeckd: the Flightdeck daemon is down",
+      "unit written to path",
+      "the coordinator does not leave the team: close the team",
+    ];
+    expect(old.filter((text) => !MSGS3_PORTUGUESE.test(text))).toEqual([]);
+    expect(fresh.filter((text) => MSGS3_PORTUGUESE.test(text))).toEqual([]);
+  });
+});
