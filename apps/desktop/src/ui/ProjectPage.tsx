@@ -147,6 +147,7 @@ export function ProjectPage(
           hostId={hostId}
           path={project.path}
           feed={hasFeature(host?.hostInfo?.features, "knowledgeFeed", false)}
+          status={hasFeature(host?.hostInfo?.features, "knowledgeStatus", false)}
         />
       )}
       <SessionTiles

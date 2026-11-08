@@ -4174,6 +4174,13 @@ export const ptBR = {
       empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
       truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
       failed: "Não foi possível ler os documentos neste host.",
+      setStatus: {
+        hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
+        label: "Status de {title}",
+        changed:
+          "{title} agora está {status}. O arquivo foi mudado na pasta do projeto e não foi commitado.",
+        failed: "Não foi possível mudar o status. {why}",
+      },
       feed: {
         on: "As sessões que o Flightdeck inicia aqui recebem um índice dos documentos válidos.",
         onUntrusted:

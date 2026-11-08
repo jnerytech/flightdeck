@@ -4171,6 +4171,13 @@ export const en: Dictionary = {
       empty: "No documents in docs/decisions, docs/adr, docs/rfc, docs/prd or docs/specs.",
       truncated: "The list is cut: only the first documents are shown.",
       failed: "The documents could not be read from this host.",
+      setStatus: {
+        hint: "Changing a status edits the document's file in this project's folder. Nothing is committed: review the change with git.",
+        label: "Status of {title}",
+        changed:
+          "{title} is now {status}. The file is changed in the project's folder and not committed.",
+        failed: "The status could not be changed. {why}",
+      },
       feed: {
         on: "Sessions that Flightdeck starts here are given an index of the valid documents.",
         onUntrusted: "On, but this project is not trusted, so sessions are not given the index.",
