@@ -28,7 +28,9 @@ import {
   acoesActions,
   CONTRACT_CARD,
   DANGER_SESSION,
+  DEMO_ACTIVE_TEAM,
   DEMO_CLOSED_TEAM,
+  DEMO_TEAM_REPORT,
 } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
@@ -933,6 +935,82 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       INSTRUCTIONS_VERSION,
       new Date().toISOString(),
     );
+
+  // An active team at work (issue #1222): its page shows each member's last report. Its members are
+  // a session and cards the demo already has, so no other screen's counts change, and the host acts
+  // on an active team only when the quota crosses its limit.
+  const diffSession = await until(async () => {
+    const board = await client.call<{
+      columns: Array<{ cards: Array<{ id: string; sessionId: string | null }> }>;
+    }>("board.get", { projectId: project.id });
+    return board.columns.flatMap((c) => c.cards).find((c) => c.id === diff.id)?.sessionId;
+  }, "sessão do card do carrinho");
+  const activeTeam = ulid();
+  const crew = [
+    {
+      name: "coordenadora",
+      role: "coordinator",
+      persona: null,
+      cardId: null,
+      sessionId: longTitle.sessionId,
+    },
+    {
+      name: "executora-1",
+      role: "worker",
+      persona: null,
+      cardId: diff.id,
+      sessionId: diffSession,
+      number: 1,
+    },
+    {
+      name: "executora-2",
+      role: "worker",
+      persona: null,
+      cardId: finished[1] as string,
+      sessionId: null,
+      number: 2,
+    },
+  ];
+  teams
+    .query(
+      `INSERT INTO teams (id, name, project_id, goal, coordinator, members, checks, state,
+                          paused_by, instructions_version, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, '[]', 'active', NULL, ?, ?)`,
+    )
+    .run(
+      activeTeam,
+      DEMO_ACTIVE_TEAM,
+      project.id,
+      "Corrigir o total do carrinho.",
+      longTitle.sessionId,
+      JSON.stringify(crew),
+      INSTRUCTIONS_VERSION,
+      new Date().toISOString(),
+    );
+  // The reports: what the first worker told the coordinator, and the coordinator's answer.
+  const reports: Array<[string, string, string]> = [
+    [diffSession, longTitle.sessionId, DEMO_TEAM_REPORT],
+    [longTitle.sessionId, diffSession, "Revise o arredondamento e abra o PR."],
+  ];
+  for (const [at, [from, to, text]] of reports.entries()) {
+    const sent = Date.now() - (reports.length - at) * 60_000;
+    teams
+      .query(
+        `INSERT INTO session_messages (id, from_session, from_host, to_session, to_host, text,
+                                       status, created_at, created_ms, delivered_at, team_id, kind)
+         VALUES (?, ?, 'alfa', ?, 'alfa', ?, 'delivered', ?, ?, ?, ?, 'session')`,
+      )
+      .run(
+        ulid(),
+        from,
+        to,
+        text,
+        new Date(sent).toISOString(),
+        sent,
+        new Date(sent).toISOString(),
+        activeTeam,
+      );
+  }
   teams.close();
 
   // A long conversation (a code block in the first message, then twenty-four turns) whose summary
