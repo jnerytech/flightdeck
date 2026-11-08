@@ -21,6 +21,7 @@ import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
 import { ulid } from "../apps/daemon/src/ulid.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
+import { demoCardTemplates } from "./lib/demo-card-templates.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
 import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo-teleport.ts";
@@ -736,13 +737,23 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     repo(
       join(alfa.projects, name),
       name === "design-system"
-        ? { "README.md": `# ${name}\n`, ...KNOWLEDGE_DOCS }
+        ? {
+            "README.md": `# ${name}\n`,
+            ...KNOWLEDGE_DOCS,
+            // Issue #1249: a card template, so New card's template picker has a print.
+            ".flightdeck/templates/cards.json": demoCardTemplates(),
+          }
         : { "README.md": `# ${name}\n` },
     );
     const adding = client.call<{ id: string }>("project.add", { path: join(alfa.projects, name) });
     const added = await adding; // NOSONAR: projects are added in this order; the sidebar lists them as registered
     projectIds[name] = added.id;
   }
+  // The host reads a project's card templates only when the project is trusted (#1201).
+  await client.call("project.trust.set", {
+    path: join(alfa.projects, "design-system"),
+    trusted: true,
+  });
   // Issue #78: a card with no PR in a project whose board asks for one before Review.
   const contractCard = await client.call<{ id: string }>("card.create", {
     projectId: projectIds["design-system"],

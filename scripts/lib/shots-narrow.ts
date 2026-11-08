@@ -38,6 +38,7 @@ export const NARROW_SHOTS: readonly string[] = [
   "host-novo",
   // #168, round 3: the surfaces shipped on 2026-11-07 and 08.
   "projeto-conhecimento",
+  "card-novo-modelo",
   "claude-code-preparar",
   "card-fixados",
 ];
