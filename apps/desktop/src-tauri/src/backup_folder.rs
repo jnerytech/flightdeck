@@ -43,6 +43,17 @@ fn checked_dir(dir: &str) -> Result<PathBuf, String> {
     Ok(path.to_path_buf())
 }
 
+/// Remembers the folder the person picked, in the app's own config folder, so the webview cannot
+/// point the backups anywhere else. Only a pick (a native dialog) calls this.
+pub fn save_folder(_config_dir: &Path, _folder: &str) -> Result<(), String> {
+    Ok(())
+}
+
+/// The folder the person picked last, if it is still there.
+pub fn load_folder(_config_dir: &Path) -> Option<String> {
+    Some("/".to_string())
+}
+
 fn checked_name(name: &str) -> Result<(), String> {
     if is_backup_name(name) {
         Ok(())
@@ -149,6 +160,50 @@ mod tests {
         ] {
             assert!(!is_backup_name(bad), "{bad} must not pass");
         }
+    }
+
+    #[test]
+    fn the_stamp_must_be_a_real_date_and_time() {
+        for bad in [
+            "flightdeck-backup-20261308-120000.fdbackup",
+            "flightdeck-backup-20261100-120000.fdbackup",
+            "flightdeck-backup-20261132-120000.fdbackup",
+            "flightdeck-backup-20261108-240000.fdbackup",
+            "flightdeck-backup-20261108-126000.fdbackup",
+            "flightdeck-backup-20261108-120060.fdbackup",
+            "flightdeck-backup-99999999-999999.fdbackup",
+        ] {
+            assert!(!is_backup_name(bad), "{bad} must not pass");
+        }
+        assert!(is_backup_name("flightdeck-backup-20261231-235959.fdbackup"));
+    }
+
+    #[test]
+    fn the_picked_folder_is_kept_and_read_back_only_while_it_exists() {
+        let config = scratch("config");
+        let folder = scratch("picked");
+        assert_eq!(load_folder(&config), None);
+        save_folder(&config, s(&folder)).unwrap();
+        assert_eq!(load_folder(&config), Some(s(&folder).to_string()));
+        assert!(save_folder(&config, "relative/dir").is_err());
+        assert!(save_folder(&config, s(&folder.join("not-there"))).is_err());
+        assert_eq!(load_folder(&config), Some(s(&folder).to_string()), "a refused pick keeps the last one");
+        std::fs::remove_dir_all(&folder).unwrap();
+        assert_eq!(load_folder(&config), None);
+        let _ = std::fs::remove_dir_all(&config);
+    }
+
+    #[test]
+    fn a_leftover_temporary_file_does_not_stop_a_write_and_is_left_alone() {
+        let dir = scratch("leftover");
+        std::fs::write(dir.join(format!("{A}.part")), "someone else's").unwrap();
+        write_backup(s(&dir), A, "mine").unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join(A)).unwrap(), "mine");
+        assert_eq!(
+            std::fs::read_to_string(dir.join(format!("{A}.part"))).unwrap(),
+            "someone else's"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

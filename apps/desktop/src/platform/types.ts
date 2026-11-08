@@ -206,9 +206,13 @@ export interface Platform {
    * Absent in a browser, which has no file system.
    */
   backupFolder?: {
-    write(dir: string, name: string, text: string): Promise<void>;
-    list(dir: string): Promise<string[]>;
-    remove(dir: string, name: string): Promise<void>;
+    /** The system's folder dialog; the folder it gives is the only one the other calls use. */
+    pick(): Promise<string | null>;
+    /** The folder picked last, if it is still there. */
+    current(): Promise<string | null>;
+    write(name: string, text: string): Promise<void>;
+    list(): Promise<string[]>;
+    remove(name: string): Promise<void>;
   };
   /** Saves `text` through the system's save dialog; `false` when the user cancels. */
   saveFile(name: string, text: string): Promise<boolean>;

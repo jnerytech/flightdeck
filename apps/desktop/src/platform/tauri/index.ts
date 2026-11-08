@@ -99,9 +99,11 @@ export function tauriPlatform(
     },
     pickFolder: () => call<string | null>("pick_folder"),
     backupFolder: {
-      write: (dir, name, text) => call("backup_folder_write", { dir, name, text }),
-      list: (dir) => call<string[]>("backup_folder_list", { dir }),
-      remove: (dir, name) => call("backup_folder_remove", { dir, name }),
+      pick: () => call<string | null>("backup_folder_pick"),
+      current: () => call<string | null>("backup_folder_current"),
+      write: (name, text) => call("backup_folder_write", { name, text }),
+      list: () => call<string[]>("backup_folder_list"),
+      remove: (name) => call("backup_folder_remove", { name }),
     },
     async notify(notification) {
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";

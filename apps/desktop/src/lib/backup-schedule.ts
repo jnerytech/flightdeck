@@ -27,7 +27,14 @@ export type BackupFolder = NonNullable<Platform["backupFolder"]>;
 export type SkipReason = "no-folder" | "no-passphrase" | "failed";
 
 export type RunReport =
-  | { status: "done"; name: string; kept: number; removed: number; at: number }
+  | {
+      status: "done";
+      name: string;
+      kept: number;
+      removed: number;
+      prune: "ok" | "failed";
+      at: number;
+    }
   | { status: "skipped"; reason: SkipReason; at: number }
   | { status: "idle" };
 
@@ -99,14 +106,21 @@ export async function runScheduledBackup(deps: {
   const name = backupFileName(now);
   try {
     const text = await createBackup(platform, passphrase, passphrase, deps.options);
-    await folder.write(schedule.folder, name, text);
+    await folder.write(name, text);
     // Only names that look like a backup are ever considered, whatever the folder lists.
-    const mine = (await folder.list(schedule.folder))
+    const mine = (await folder.list())
       .filter((one) => NAME.test(one))
       .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     const stale = mine.slice(0, Math.max(0, mine.length - keep));
-    for (const old of stale) await folder.remove(schedule.folder, old);
-    return { status: "done", name, kept: mine.length - stale.length, removed: stale.length, at };
+    for (const old of stale) await folder.remove(old);
+    return {
+      status: "done",
+      name,
+      kept: mine.length - stale.length,
+      removed: stale.length,
+      prune: "ok",
+      at,
+    };
   } catch {
     return { status: "skipped", reason: "failed", at };
   }

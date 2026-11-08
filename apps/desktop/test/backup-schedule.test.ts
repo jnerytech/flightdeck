@@ -62,12 +62,14 @@ function fakeFolder(initial: string[], options: { failWrite?: boolean } = {}) {
   const files = new Map<string, string>(initial.map((name) => [name, "old"]));
   const pattern = /^flightdeck-backup-\d{8}-\d{6}\.fdbackup$/;
   const folder: BackupFolder = {
-    write: async (_dir, name, text) => {
+    pick: async () => "/backups",
+    current: async () => "/backups",
+    write: async (name, text) => {
       if (options.failWrite) throw new Error("disk full");
       files.set(name, text);
     },
     list: async () => [...files.keys()].filter((name) => pattern.test(name)),
-    remove: async (_dir, name) => {
+    remove: async (name) => {
       files.delete(name);
     },
   };
@@ -149,12 +151,52 @@ describe("backup-schedule: a run (#1264)", () => {
       text.includes("dark"),
       preview?.settings.added,
     ]).toEqual([
-      { status: "done", name, kept: 3, removed: 3, at: NOON },
+      { status: "done", name, kept: 3, removed: 3, prune: "ok", at: NOON },
       ["flightdeck-backup-20261108-120000.fdbackup", named(4), named(5), "notes.txt"].sort(),
       true,
       false,
       ["theme"],
     ]);
+  });
+
+  test("the file just written is never the one pruned, even beside a backup dated later", async () => {
+    const later = "flightdeck-backup-99991231-235959.fdbackup";
+    const { folder, files } = fakeFolder([named(1), later]);
+    const report = await runScheduledBackup({
+      platform: platformWith(),
+      folder,
+      schedule: schedule({ keep: 1 }),
+      passphrase: PASS,
+      now: NOON,
+      options: FAST,
+    });
+    const name = backupFileName(NOON);
+    expect([report.status === "done" && report.removed, [...files.keys()]]).toEqual([2, [name]]);
+  });
+
+  test("a backup that was written but could not be pruned is reported as done, not as a failure", async () => {
+    const { folder, files } = fakeFolder([named(1)]);
+    folder.list = async () => {
+      throw new Error("folder went away");
+    };
+    const report = await runScheduledBackup({
+      platform: platformWith(),
+      folder,
+      schedule: schedule({ keep: 1 }),
+      passphrase: PASS,
+      now: NOON,
+      options: FAST,
+    });
+    expect([report.status === "done" && report.prune, files.has(backupFileName(NOON))]).toEqual([
+      "failed",
+      true,
+    ]);
+  });
+
+  test("a schedule saves only its own four fields", () => {
+    const { storage } = platformWith();
+    saveSchedule(storage, { ...schedule(), passphrase: PASS } as BackupSchedule);
+    expect(storage.getItem("flightdeck.backupSchedule")?.includes(PASS)).toBe(false);
   });
 
   test("a keep below one never empties the folder", async () => {
