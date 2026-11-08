@@ -174,6 +174,11 @@ export interface EvalOptions {
   keep: boolean;
 }
 
+/** Why the evals refuse to run on this platform, or null. */
+export function evalPlatformRefusal(_platform: string): string | null {
+  return null;
+}
+
 /** The options from `argv`, or the reason they are refused. */
 export function evalOptions(argv: string[]): EvalOptions | string {
   const option = (name: string, fallback: string) => {

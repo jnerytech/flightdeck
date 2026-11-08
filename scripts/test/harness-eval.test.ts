@@ -4,6 +4,7 @@ import {
   type EvalRunner,
   type EvalTask,
   evalOptions,
+  evalPlatformRefusal,
   grade,
   parseStream,
   prepareClone,
@@ -164,6 +165,14 @@ describe("harness-eval", () => {
 });
 
 describe("harness-eval: the CLI's options", () => {
+  test("#986 review: the evals refuse Windows, where their git deny patterns and paths do not hold", () => {
+    expect(evalPlatformRefusal("win32")).toBe(
+      "the evals run on Linux and macOS only: on Windows their git deny patterns miss backslash paths",
+    );
+    expect(evalPlatformRefusal("linux")).toBeNull();
+    expect(evalPlatformRefusal("darwin")).toBeNull();
+  });
+
   test("defaults to 3 samples, a $1 budget, sonnet, and no --keep", () => {
     expect(evalOptions([])).toEqual({ samples: 3, budget: "1", model: "sonnet", keep: false });
     expect(evalOptions(["--samples", "2", "--budget", "0.5", "--model", "opus", "--keep"])).toEqual(

@@ -96,6 +96,13 @@ describe("ux-review-eval (#983)", () => {
       gradeReport(missing, "| pt-BR.ts | `evalDraft.save` is missing | high | en.ts:5 |"),
     ).toBe(true);
     expect(gradeReport(missing, "| en.ts:5 | `evalDraft.save` reads well | low | - |")).toBe(false);
+    // #986 review: naming the key and pt-BR is not enough; the line says the key is missing.
+    expect(
+      gradeReport(missing, "| en.ts:5 | `evalDraft.save` reads well in pt-BR | low | - |"),
+    ).toBe(false);
+    expect(gradeReport(missing, "- `evalDraft.save` is in en.ts but not in pt-BR.ts (high)")).toBe(
+      true,
+    );
     const focus = byName("no-focus").expect;
     expect(gradeReport(focus, "- FilterChip.tsx:13: outline-none with no Focus-visible ring")).toBe(
       true,
@@ -106,6 +113,16 @@ describe("ux-review-eval (#983)", () => {
     expect(gradeReport(null, "| en.ts:3 | key order | low | x |\n**accept**")).toBe(true);
     expect(gradeReport(null, "| en.ts:3 | a literal | **High** | x |")).toBe(false);
     expect(gradeReport(null, "  ")).toBe(false);
+    // #986 review: a high in backticks or with words after it is still a high.
+    expect(gradeReport(null, "| File:line |\n| en.ts:3 | a literal | `high` | x |")).toBe(false);
+    expect(gradeReport(null, "| File:line |\n| en.ts:3 | a literal | High (blocks) | x |")).toBe(
+      false,
+    );
+    // An error, a quota message or a refusal is no review: it has no verdict and no table.
+    expect(gradeReport(null, "Credit balance is too low")).toBe(false);
+    expect(
+      gradeReport(null, "| File:line | Finding | Severity | Evidence |\n|---|---|---|---|"),
+    ).toBe(true);
   });
 
   test("the report is the result event's text of the stream", () => {
