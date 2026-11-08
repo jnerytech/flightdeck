@@ -125,7 +125,10 @@ export function ChangesPanel(
   };
 
   const send = async () => {
-    const sent = await store.hostCommand(hostId, "review.send", { target });
+    const sent = await store.hostCommand(hostId, "review.send", {
+      target,
+      language: t.lang,
+    });
     if (!sent) return;
     store.success(t(`changes.sentVia.${sent.via}`));
     if (sent.via === "copy") await store.copyText(sent.text);
@@ -322,7 +325,12 @@ export function ChangesPanel(
           {...(props.onCompose
             ? {
                 onCompose: () =>
-                  props.onCompose?.(reviewMessage(comments.filter((c) => c.state === "draft"))),
+                  props.onCompose?.(
+                    reviewMessage(
+                      comments.filter((c) => c.state === "draft"),
+                      t.lang,
+                    ),
+                  ),
               }
             : {})}
         />
