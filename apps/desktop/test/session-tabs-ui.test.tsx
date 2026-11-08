@@ -18,7 +18,15 @@ afterEach(async () => {
 
 const NAMES = ["Conversa", "Mudanças", "Arquivos", "Tempo", "Rastro", "Mensagens"];
 
-function mount(viewKey = "pc/a") {
+const CHANGES = {
+  target: "session:claude-1",
+  root: "/work/api",
+  base: null,
+  position: null,
+  files: [],
+};
+
+function mount(viewKey = "pc/a", composes = false) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   // The views' panels ask a host that is not there: they only need to not get in the way.
@@ -34,6 +42,7 @@ function mount(viewKey = "pc/a") {
       trace
       files
       viewKey={key}
+      {...(composes ? { reviewToComposer: true } : {})}
     >
       <textarea aria-label="caixa" />
     </SessionTabs>
@@ -60,7 +69,62 @@ const press = async (target: Element, init: KeyboardEventInit) => {
   });
 };
 
+/** A host that has one draft comment in the session's review. */
+function withDraft(store: InstanceType<typeof AppStore>) {
+  const draft = {
+    id: "c1",
+    target: "session:claude-1",
+    path: "app.ts",
+    side: "new",
+    lineStart: 2,
+    lineEnd: 2,
+    quote: "return total;",
+    body: "use total",
+    state: "draft",
+    createdAt: "2026-11-08T10:00:00Z",
+    sentAt: null,
+    outdated: false,
+  };
+  store.hostRequest = (async () => ({ ok: true, data: CHANGES })) as never;
+  store.hostCommand = (async (_host: string, type: string) =>
+    type === "review.list" ? { comments: [draft] } : null) as never;
+}
+
 describe("session-tabs-ui: the views of a session page (issue #107)", () => {
+  test("a managed session's Changes can hand the review to the message box, and opens the conversation (#1146)", async () => {
+    const { store } = mount("pc/a", true);
+    withDraft(store);
+    await clickTab(1);
+    await settle(
+      () =>
+        within(document.body).queryByRole("button", { name: /message box|caixa de mensagem/ }) !==
+        null,
+    );
+    await act(async () => {
+      fireEvent.click(
+        within(document.body).getByRole("button", { name: /message box|caixa de mensagem/ }),
+      );
+    });
+    expect(selected()).toEqual(["Conversa"]);
+    expect(within(document.body).queryByRole("tabpanel", { name: "Conversa" }) !== null).toBe(true);
+    expect(store.getState().composerFill["pc/a"]).toContain("`app.ts` linha 2");
+  });
+
+  test("a page that has no message box to fill keeps only the direct send (#1146)", async () => {
+    const { store } = mount("pc/a", false);
+    withDraft(store);
+    await clickTab(1);
+    await settle(
+      () =>
+        within(document.body).queryByRole("button", { name: /^(Send review|Enviar revisão)/ }) !==
+        null,
+    );
+    expect(
+      within(document.body).queryByRole("button", { name: /message box|caixa de mensagem/ }) ===
+        null,
+    ).toBe(true);
+  });
+
   test("the views are one tablist, one tab is selected and only it is in the tab order", () => {
     mount();
     expect(within(document.body).queryAllByRole("tablist")).toHaveLength(1);

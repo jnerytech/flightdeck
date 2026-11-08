@@ -1,0 +1,177 @@
+import { describe, expect, test } from "bun:test";
+import { translator } from "../src/i18n/index.ts";
+import {
+  activeCount,
+  type HubGroup,
+  type HubRow,
+  hubRows,
+  hubView,
+  loadHubFilter,
+  rowStatus,
+} from "../src/lib/hub.ts";
+
+/**
+ * Issue #1132: each row of the sessions list says what the session is doing: a state word and one
+ * detail, from the session's own line. A daemon `error` and a background `failed` are Failed, not
+ * Ended like a session closed on purpose.
+ */
+const NOW = Date.parse("2026-11-08T12:00:00.000Z");
+const row = (over: Partial<HubRow>): HubRow => ({
+  key: "h/m/s1",
+  hostId: "h",
+  hostName: "alfa",
+  origin: "flightdeck",
+  claudeSessionId: "c1",
+  sessionId: "s1",
+  title: "Tests",
+  cwd: "/w",
+  projectKey: "p",
+  state: "idle",
+  controllable: false,
+  lastActivity: "2026-11-08T11:57:00.000Z",
+  pinned: false,
+  archived: false,
+  summary: null,
+  persona: null,
+  ...over,
+});
+const line = (state: "running" | "waiting" | "idle" | "ended", tool: string | null) => ({
+  request: "Fix the cart",
+  state,
+  tool,
+  since: "2026-11-08T11:57:00.000Z",
+});
+
+describe("hub-row-state: a daemon error and a failed background session are Failed (#1132)", () => {
+  test("they map to failed, while a session closed on purpose stays ended", () => {
+    const state = {
+      hosts: [{ id: "h", name: "alfa", sessions: [] }],
+      hub: {
+        h: {
+          managed: [
+            { id: "s1", claudeSessionId: "c1", cwd: "/w", status: "error", updatedAt: "x" },
+            { id: "s2", claudeSessionId: "c2", cwd: "/w", status: "ended", updatedAt: "x" },
+          ],
+          history: [],
+        },
+      },
+      meta: {},
+      externals: {},
+      names: {},
+      background: {
+        h: {
+          sessions: [
+            { id: "b1", claudeSessionId: null, cwd: "/w", state: "failed", startedAt: null },
+          ],
+        },
+      },
+    } as never;
+    const states = Object.fromEntries(hubRows(state).map((r) => [r.key, r.state]));
+    expect(states).toEqual({ "h/m/s1": "failed", "h/m/s2": "ended", "h/b/b1": "failed" });
+  });
+});
+
+describe("hub-row-state: each row's word and detail (#1132)", () => {
+  for (const [language, expected] of [
+    [
+      "en",
+      [
+        ["Waiting for you", "wants to run Bash"],
+        ["Working", "running Edit"],
+        ["Working", ""],
+        ["Idle", "3 min ago"],
+        ["Ended", "3 min ago"],
+        ["Failed", "3 min ago"],
+      ],
+    ],
+    [
+      "pt-BR",
+      [
+        ["Esperando você", "quer rodar Bash"],
+        ["Trabalhando", "rodando Edit"],
+        ["Trabalhando", ""],
+        ["Ociosa", "há 3 min"],
+        ["Encerrada", "há 3 min"],
+        ["Falhou", "há 3 min"],
+      ],
+    ],
+  ] as const) {
+    test(`${language}: waiting, running, finished, ended and failed rows say so`, () => {
+      const t = translator(language);
+      const said = [
+        row({ state: "needs_you", summary: line("waiting", "Bash") }),
+        row({ state: "running", summary: line("running", "Edit") }),
+        row({ state: "running", summary: null }),
+        row({ state: "idle", summary: line("idle", null) }),
+        row({ state: "ended", summary: line("ended", null) }),
+        row({ state: "failed" as HubRow["state"], summary: null }),
+      ].map((r) => {
+        const { word, detail } = rowStatus(r, NOW, t);
+        return [word, detail];
+      });
+      expect(said).toEqual(expected.map((pair) => [...pair]));
+    });
+  }
+});
+
+// ux-review of #1132: a failed session is over, like an ended one: it folds into the earlier
+// sessions and is not counted as active, and a kept Failed filter survives a reload.
+describe("hub-row-state: a failed session is over, like an ended one (#1132)", () => {
+  test("it goes to the earlier sessions, not the live ones", () => {
+    const group = {
+      key: "g",
+      foldKey: "g",
+      name: "api",
+      rows: [
+        row({ key: "a", state: "running" }),
+        row({ key: "b", state: "failed" as HubRow["state"] }),
+        row({ key: "c", state: "ended" }),
+      ],
+    } as unknown as HubGroup;
+    const [view] = hubView([group], { g: true }, {}, false);
+    expect([view?.live.map((r) => r.key), view?.earlier.map((r) => r.key).sort()]).toEqual([
+      ["a"],
+      ["b", "c"],
+    ]);
+  });
+
+  test("a kept Failed filter comes back on reload", () => {
+    const storage = { getItem: () => JSON.stringify({ state: "failed" }) };
+    expect(loadHubFilter(storage).state).toBe("failed");
+  });
+});
+
+// Review of #1144: the word, the detail and the project's count must agree with the rest of the
+// row. An asleep row says Asleep (its dot does), a background session has no end time to count
+// from, and a pinned row that ended or failed is not active.
+describe("hub-row-state: the row's word, detail and count tell the truth (#1132)", () => {
+  for (const [language, asleep] of [
+    ["en", "Asleep"],
+    ["pt-BR", "Dormindo"],
+  ] as const) {
+    test(`${language}: an asleep row says ${asleep}, not Idle`, () => {
+      const said = rowStatus(row({ state: "idle", asleep: true }), NOW, translator(language));
+      expect(said.word).toBe(asleep);
+    });
+  }
+
+  test("a background row that failed shows no time: it would count from its start", () => {
+    const background = row({
+      origin: "background",
+      state: "failed" as HubRow["state"],
+      summary: null,
+      lastActivity: "2026-11-08T11:00:00.000Z",
+    });
+    expect(rowStatus(background, NOW, translator("en"))).toEqual({ word: "Failed", detail: "" });
+  });
+
+  test("a project's active count leaves out the pinned rows that ended or failed", () => {
+    const rows = [
+      row({ key: "a", state: "running" }),
+      row({ key: "b", state: "idle" }),
+      row({ key: "c", state: "ended", pinned: true }),
+      row({ key: "d", state: "failed" as HubRow["state"], pinned: true }),
+    ];
+    expect(activeCount(rows)).toBe(2);
+  });
+});

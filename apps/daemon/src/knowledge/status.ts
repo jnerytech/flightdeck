@@ -25,7 +25,7 @@ const QUOTED = /(?<![^\n])["']status["'][ \t]*:/;
 /** A top-level `status:` line, from its key to the end of the line. */
 const KEY = /(?<![^\n])status[ \t]*:[^\r\n]*(?=\r?\n|$)/g;
 /** Such a line holding one plain word, maybe quoted, maybe with a comment: the only shape rewritten. */
-const PLAIN = /^(status[ \t]*:[ \t]*)(?:"[A-Za-z]+"|'[A-Za-z]+'|[A-Za-z]+)([ \t]*(?:#[^\r\n]*)?)$/;
+const PLAIN = /^(status[ \t]*:[ \t]*)(["'])?[A-Za-z]+\2([ \t]*(?:#[^\r\n]*)?)$/;
 
 /** The text with its front matter saying `status`, or `null` when the front matter is not clear. */
 export function withStatus(text: string, status: KnowledgeStatus): string | null {
@@ -48,7 +48,7 @@ export function withStatus(text: string, status: KnowledgeStatus): string | null
     const line = PLAIN.exec(key[0]);
     if (!line) return null;
     const at = key.index;
-    changed = `${inner.slice(0, at)}${line[1]}${status}${line[2]}${inner.slice(at + key[0].length)}`;
+    changed = `${inner.slice(0, at)}${line[1]}${status}${line[3]}${inner.slice(at + key[0].length)}`;
   }
   return `${bom}---${eol}${changed}${closing}${plain.slice(whole.length)}`;
 }

@@ -637,7 +637,12 @@ describe("mudancas-ui", () => {
     await openSession(ctx);
     await openChanges();
     await settle(() => files().includes("novo.txt"));
-    expect(screen.queryByText("A sessão ainda não escreveu arquivos.")).not.toBeNull();
+    // #1128: the empty line no longer says nothing was written; it says where other changes are.
+    expect(
+      screen.queryByText(
+        "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
+      ),
+    ).not.toBeNull();
     await click("Sessões que mexeram em novo.txt");
     await settle(() => screen.queryByRole("list", { name: "Sessões que mexeram aqui" }) !== null);
     expect(text("Sessões que mexeram aqui")).toContain(

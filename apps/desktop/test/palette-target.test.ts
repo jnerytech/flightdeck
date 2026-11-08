@@ -10,7 +10,14 @@ type Route = Parameters<Parameters<typeof runPaletteTarget>[2]["go"]>[0];
 
 /** A store that writes down what it was asked, and a view that does the same. */
 function recorder(
-  opts: { embedded?: boolean; link?: Route | null; answers?: Record<string, unknown> } = {},
+  opts: {
+    embedded?: boolean;
+    link?: Route | null;
+    answers?: Record<string, unknown>;
+    persona?: string;
+    ref?: unknown;
+    prefs?: { mode: string; model: string };
+  } = {},
 ) {
   const calls: string[] = [];
   const store = {
@@ -33,6 +40,13 @@ function recorder(
       return Promise.resolve(opts.answers?.[type] ?? null);
     },
     decideOldest: (decision: string, key: string) => void calls.push(`decide ${decision} ${key}`),
+    createSession: (host: string, payload: unknown) => {
+      calls.push(`create ${host} ${JSON.stringify(payload)}`);
+      return Promise.resolve("s1");
+    },
+    newSessionPrefs: { value: opts.prefs ?? { mode: "default", model: "", folders: {} } },
+    clientScope: () => ({ defaultPersona: () => opts.persona ?? "" }),
+    personaRef: () => opts.ref ?? null,
     getState: () => ({ cards: {}, projects: {} }),
   } as unknown as Store;
   const ui = (lang = "pt-BR") => ({
@@ -136,5 +150,39 @@ describe("palette-target: what a palette entry does in place", () => {
     const r = recorder();
     run(r.store, { kind: "costs" }, r.ui());
     expect(r.calls).toEqual(['go {"name":"costs"}']);
+  });
+});
+
+describe("palette-target: Start in <project> (issue #1135)", () => {
+  const target = {
+    kind: "start-session",
+    hostId: "h1",
+    cwd: "/work/api",
+    prompt: "fix it",
+  } as const;
+
+  test("a session starts in the project's folder with the text as its prompt, in the default mode", () => {
+    const { calls, store, ui } = recorder();
+    run(store, target, ui());
+    expect(calls).toEqual([
+      'create h1 {"cwd":"/work/api","prompt":"fix it","permissionMode":"default"}',
+    ]);
+  });
+
+  test("it starts in the mode and the model the New session form last used", () => {
+    const { calls, store, ui } = recorder({ prefs: { mode: "plan", model: "opus" } });
+    run(store, target, ui());
+    expect(calls).toEqual([
+      'create h1 {"cwd":"/work/api","prompt":"fix it","permissionMode":"plan","model":"opus"}',
+    ]);
+  });
+
+  test("the client's default persona for that folder goes with it, as on the form", () => {
+    const ref = { kind: "host", id: "arq" };
+    const { calls, store, ui } = recorder({ persona: "host:arq", ref });
+    run(store, target, ui());
+    expect(calls).toEqual([
+      `create h1 {"cwd":"/work/api","prompt":"fix it","permissionMode":"default","persona":${JSON.stringify(ref)}}`,
+    ]);
   });
 });

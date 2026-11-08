@@ -44,11 +44,8 @@ export function ProjectsOverview(
   const switcher = useSwitcherHosts(store, state.hosts);
   const shownHosts = switcher.map((host) => host.id);
   /** The one host the page shows, if one: the route's, else the switcher's. */
-  const one = props.host
-    ? state.hosts.find((host) => host.id === props.host)
-    : switcher.length === 1
-      ? switcher[0]
-      : undefined;
+  const onlySwitched = switcher.length === 1 ? switcher[0] : undefined;
+  const one = props.host ? state.hosts.find((host) => host.id === props.host) : onlySwitched;
   const scoped = props.host
     ? cards.filter((card) => card.hostId === props.host)
     : cards.filter((card) => shownHosts.includes(card.hostId));

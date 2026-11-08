@@ -9,7 +9,7 @@
 import { test } from "@playwright/test";
 import { type Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import { JOURNEYS, VIEWPORTS } from "../lib/e2e-journeys.ts";
-import { type Context, journeys, layout } from "./journeys.ts";
+import { type Context, journeys, layout, layoutAbas, layoutWindows } from "./journeys.ts";
 
 /** The demo's address and ids, which the global setup put in the environment. */
 function demo() {
@@ -36,7 +36,7 @@ export function defineJourneys(lang: Lang): void {
     });
 
     for (const name of JOURNEYS) {
-      test(name, async ({ page }, info) => {
+      test(name, async ({ page }, info) /* NOSONAR: the journey asserts */ => {
         const { url, ids } = demo();
         await (journeys[name] as (c: Context) => Promise<void>)({
           page,
@@ -49,7 +49,7 @@ export function defineJourneys(lang: Lang): void {
       });
     }
 
-    test("layout", async ({ page }) => {
+    test("layout", async ({ page }) /* NOSONAR: layout() asserts */ => {
       // Under the 90 s every journey gets (#1003): the check is trimmed to fit, not given more time.
       const { url, ids } = demo();
       const problems: string[] = [];
@@ -58,5 +58,31 @@ export function defineJourneys(lang: Lang): void {
         throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
       }
     });
+
+    // The crowded-tabs part of the layout check, in English only: a journey of its own, so no
+    // layout journey comes near 90 s (the whole check took 72 to 78 s on CI).
+    if (lang === "en") {
+      test("layout-abas", async ({ page }) => {
+        const { url, ids } = demo();
+        const problems: string[] = [];
+        await layoutAbas({ page, url, lang, ids, repeat: 0, t: translator(lang) }, problems);
+        if (problems.length > 0) {
+          throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
+        }
+      });
+    }
+
+    // The second half of the layout check, in English only: a journey of its own, so each stays
+    // well under 90 s (together they took 72 to 78 s on CI).
+    if (lang === "en") {
+      test("layout-janelas", async ({ page }) => {
+        const { url, ids } = demo();
+        const problems: string[] = [];
+        await layoutWindows({ page, url, lang, ids, repeat: 0, t: translator(lang) }, problems);
+        if (problems.length > 0) {
+          throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
+        }
+      });
+    }
   });
 }

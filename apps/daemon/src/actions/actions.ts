@@ -593,8 +593,9 @@ export class Actions {
     const all = [...this.appActions(projectId, project.path), ...versioned.found, ...host];
     const seen = new Set<string>();
     const found = all.filter((f) => !seen.has(f.action.name) && seen.add(f.action.name));
+    found.sort((a, b) => a.action.name.localeCompare(b.action.name));
     return {
-      found: found.sort((a, b) => a.action.name.localeCompare(b.action.name)),
+      found,
       errors: versioned.errors,
       issues: versioned.issues,
     };

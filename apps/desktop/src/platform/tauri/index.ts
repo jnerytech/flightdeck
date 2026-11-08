@@ -5,6 +5,7 @@ import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import {
   isPermissionGranted,
+  onAction,
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
@@ -12,6 +13,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { badgeRgba } from "../../lib/badge-icon.ts";
+import { parseRequestLink } from "../../lib/request-link.ts";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
 import type { GeneratedKey, PickedFile, Platform, TrayAction } from "../types.ts";
 
@@ -47,6 +49,25 @@ export function tauriPlatform(
   let pending: Update | null = null;
   /** The update `updater.download` fetched already (issue #280), installed without a second download. */
   let downloaded: Update | null = null;
+  /** The deep-link handlers a click on a request notification is handed to (issue #1131). */
+  const clickHandlers = new Set<(url: string) => void>();
+  /**
+   * The one listener for clicks on our notifications. The plugin reports a click only for a
+   * notification shown while a listener existed, so `notify` waits for it. Only a request link of
+   * ours is followed: anything else a click carries opens nothing.
+   */
+  let clicks: Promise<unknown> | null = null;
+  const listenForClicks = () => {
+    clicks ??= onAction((event) => {
+      const link = event.notification?.extra?.link;
+      if (event.actionId !== "tap" || typeof link !== "string" || !parseRequestLink(link)) return;
+      void call("focus_main");
+      for (const handler of clickHandlers) handler(link);
+    }).catch(() => {
+      clicks = null;
+    });
+    return clicks;
+  };
   return {
     assistant: {
       supported: true,
@@ -79,9 +100,15 @@ export function tauriPlatform(
     pickFolder: () => call<string | null>("pick_folder"),
     async notify(notification) {
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";
-      // The desktop plugin reports no clicks, so the link has nowhere to go (docs/DECISIONS.md).
-      if (granted) sendNotification({ title: notification.title, body: notification.body });
-      return granted;
+      if (!granted) return false;
+      const { link } = notification;
+      if (link) await listenForClicks();
+      sendNotification({
+        title: notification.title,
+        body: notification.body,
+        ...(link ? { extra: { link } } : {}),
+      });
+      return true;
     },
     isFocused: () => win.document.hasFocus(),
     openExternal: (url) => openUrl(url),
@@ -101,8 +128,11 @@ export function tauriPlatform(
       };
       void getCurrent().then(deliver);
       const unlisten = onOpenUrl(deliver);
+      const click = (url: string) => deliver([url]);
+      clickHandlers.add(click);
       return () => {
         stopped = true;
+        clickHandlers.delete(click);
         void unlisten.then((stop) => stop());
       };
     },

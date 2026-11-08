@@ -437,10 +437,8 @@ export class SessionManager {
       );
     }
     let live = this.live.get(sessionId);
-    if (!live) {
-      // Idle session left by a previous daemon process: reattach lazily.
-      live = this.startRun(sessionId, session.claudeSessionId ?? undefined);
-    }
+    // Idle session left by a previous daemon process: reattach lazily.
+    live ??= this.startRun(sessionId, session.claudeSessionId ?? undefined);
     if (session.status === "idle") {
       this.deliver(sessionId, text, images);
       return { queued: false };

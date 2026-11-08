@@ -37,7 +37,7 @@ export function themeBlocksProblem(css: string): string | null {
   const roots = topLevelBlocks(css, ":root");
   if (roots.length === 0) return "no top-level :root block";
   if (roots.length > 1) {
-    return `${roots.length} top-level :root blocks (lines ${roots.slice(0, -1).join(", ")} and ${roots[roots.length - 1]}): a later one overrides .dark`;
+    return `${roots.length} top-level :root blocks (lines ${roots.slice(0, -1).join(", ")} and ${roots.at(-1)}): a later one overrides .dark`;
   }
   const dark = topLevelBlocks(css, ".dark");
   return dark.some((line) => line > (roots[0] as number))

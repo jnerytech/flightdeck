@@ -1,10 +1,9 @@
 /** Issue #100: what the parts of a teleport share: the size limit and the count of secret lines. */
 
 import type { TeleportManifest } from "@flightdeck/protocol";
-import { TELEPORT_PART_MAX_BYTES } from "@flightdeck/protocol";
 
 /** The largest part (a transcript, a code bundle) a teleport takes. */
-export const TELEPORT_MAX_BYTES = TELEPORT_PART_MAX_BYTES;
+export { TELEPORT_PART_MAX_BYTES as TELEPORT_MAX_BYTES } from "@flightdeck/protocol";
 
 /** Two counts of secret lines as one: the lines add up, the kinds are each named once. */
 export function addSecrets(

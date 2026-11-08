@@ -159,7 +159,7 @@ for (const [lang, t] of [
       expect(screen.queryByText(t.roiUi.noRate)).toBeNull();
     });
 
-    test("it leads with delivered against cost: planned and unplanned, and the cost per item against the period before", async () => {
+    test("it leads with delivered against cost: planned and unplanned, and the cost per item against the period before", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
       await roiPage(lang, {
         usage: [...USAGE, ["2026-09-20", 10, 10]],
         done: [
@@ -203,7 +203,7 @@ for (const [lang, t] of [
       expect(screen.queryByText(plural(t.roiUi.noEstimate, 2))).not.toBeNull();
     });
 
-    test("the rework is shown next to the ratio", async () => {
+    test("the rework is shown next to the ratio", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
       await roiPage(lang, {
         usage: USAGE,
         done: [{ ...(SHOP[0] as Delivered), fixRounds: 2, fixCostUsd: 1.5 }, ...SHOP.slice(1)],
@@ -216,7 +216,7 @@ for (const [lang, t] of [
       );
     });
 
-    test("nothing delivered still shows the cost", async () => {
+    test("nothing delivered still shows the cost", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
       await roiPage(lang, { usage: [["2026-10-12", 6, 10]] });
       await settle(
         () => screen.queryByText(t.roiUi.headline.none.replace("{cost}", "6.00")) !== null,

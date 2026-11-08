@@ -21,7 +21,7 @@ import {
   sessionKey,
 } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
-import type { HubRow } from "../lib/hub.ts";
+import { type HubRow, isOver } from "../lib/hub.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
 import { basename, holdsFolder } from "../lib/paths.ts";
@@ -108,7 +108,7 @@ function hostToWait(route: Route): string | null {
 export function rowRoute(row: HubRow): Route {
   const id = row.claudeSessionId as string;
   if (row.sessionId) return { name: "session", host: row.hostId, id: row.sessionId };
-  if (row.origin === "terminal" && row.state !== "ended") {
+  if (row.origin === "terminal" && !isOver(row.state)) {
     return { name: "external", host: row.hostId, claudeSessionId: id };
   }
   // A background session: its screen when the host knows its Claude session, else the hub.
@@ -204,6 +204,8 @@ function ManagedSession(
         ? { terminal: { session: sessionId } }
         : {})}
       claudeSessionId={claudeId}
+      // This page's message box takes a review handed over from Changes.
+      reviewToComposer
       // Phase 39: these tabs read Claude Code's transcript, and OpenCode sessions stay out of messaging.
       enabled={!opencode && hasFeature(host?.hostInfo?.features, "review", false)}
       messagingId={
@@ -221,6 +223,8 @@ function ManagedSession(
           : {})}
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
         scrollKey={sessionKey(hostId, sessionId)}
+        composerFill={state.composerFill[sessionKey(hostId, sessionId)] ?? null}
+        onComposerFilled={() => store.takeComposerFill(sessionKey(hostId, sessionId))}
         session={session}
         actions={store}
         cache={
@@ -1124,6 +1128,7 @@ function NewSession(
       {...(props.prompt ? { prompt: props.prompt } : {})}
       onFolder={setCwd}
       promptRequired={background}
+      extraSet={background || persona !== ""}
       extra={
         <>
           {personas && (

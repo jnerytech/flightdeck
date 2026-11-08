@@ -6,6 +6,7 @@ const invokes: Array<[string, unknown]> = [];
 const opened: string[] = [];
 let granted = true;
 const sent: unknown[] = [];
+let actionHandler: ((event: unknown) => void) | null = null;
 let deepLinkHandler: ((urls: string[]) => void) | null = null;
 let unlistened = 0;
 let autostartOn = false;
@@ -26,6 +27,11 @@ mock.module("@tauri-apps/plugin-notification", () => ({
   isPermissionGranted: async () => granted,
   requestPermission: async () => "denied",
   sendNotification: (n: unknown) => sent.push(n),
+  // A click on a notification, as the plugin reports it (desktop: `tap` is the notification itself).
+  onAction: async (handler: (event: unknown) => void) => {
+    actionHandler = handler;
+    return { unregister: async () => {} };
+  },
 }));
 mock.module("@tauri-apps/plugin-opener", () => ({
   openUrl: async (url: string) => {
@@ -295,6 +301,34 @@ describe("platform", () => {
     stop();
     await Bun.sleep(5);
     expect(unlistened).toBe(1);
+  });
+
+  test("tauri: a click on a request notification brings the window and opens that request, any other click opens nothing (#1131)", async () => {
+    const before = granted;
+    granted = true;
+    sent.length = 0;
+    invokes.length = 0;
+    const platform = tauriPlatform(fakeWindow().win);
+    const received: string[] = [];
+    const stop = platform.onDeepLink((url) => received.push(url));
+    const link = "flightdeck://request?host=h1&request=r1";
+    await platform.notify({ title: "a", body: "b", link });
+    expect(sent).toEqual([{ title: "a", body: "b", extra: { link } }]);
+    const click = (actionId: string, extra: Record<string, unknown>) =>
+      actionHandler?.({ actionId, notification: { extra } });
+    click("tap", { link });
+    expect(received.filter((url) => url === link)).toEqual([link]);
+    expect(invokes.filter(([command]) => command === "focus_main").length).toBe(1);
+    // Not the notification itself, no link, a pairing link: nothing opens, nothing comes forward.
+    click("dismiss", { link });
+    click("tap", {});
+    click("tap", { link: "flightdeck://pc:7420?token=abc" });
+    click("tap", { link: 42 });
+    expect(received.filter((url) => url === link)).toEqual([link]);
+    expect(received.includes("flightdeck://pc:7420?token=abc")).toBe(false);
+    expect(invokes.filter(([command]) => command === "focus_main").length).toBe(1);
+    stop();
+    granted = before;
   });
 
   test("web: copiar texto, trazer a janela; sem atalho global no navegador", async () => {

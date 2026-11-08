@@ -1,5 +1,4 @@
-import type * as React from "react";
-import { type ReactNode, useEffect } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect } from "react";
 import { Stack } from "@/components/layout/stack";
 import type { T } from "@/i18n/index";
 import { useWand, type WandBinding } from "./use-wand.ts";
@@ -7,7 +6,7 @@ import { WandButton, WandPanel } from "./wand-controls.tsx";
 
 /** What a field takes from its wand: the keys it must hand over. */
 export interface AssistControl {
-  onKeyDown(event: React.KeyboardEvent): void;
+  onKeyDown(event: ReactKeyboardEvent): void;
 }
 
 /**

@@ -33,7 +33,7 @@ function parseV6(text: string): bigint | null {
   const rest = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
   const missing = 8 - head.length - rest.length;
   if (halves.length === 1 ? missing !== 0 : missing < 1) return null;
-  groups = [...head, ...Array<string>(halves.length === 2 ? missing : 0).fill("0"), ...rest];
+  groups = [...head, ...new Array<string>(halves.length === 2 ? missing : 0).fill("0"), ...rest];
   let value = 0n;
   for (const group of groups) {
     if (!/^[0-9a-f]{1,4}$/i.test(group)) return null;

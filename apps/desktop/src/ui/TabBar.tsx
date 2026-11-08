@@ -385,11 +385,10 @@ export function TabBar(
             const hostName = tabHost
               ? (state.hosts.find((h) => h.id === tabHost)?.name ?? tabHost)
               : undefined;
+            const pinnedName = tab.pinned ? pinnedLabel : undefined;
             const ariaLabel = hostName
               ? t("tabs.named", { title: pinnedLabel, host: hostName })
-              : tab.pinned
-                ? pinnedLabel
-                : undefined;
+              : pinnedName;
             const group = groupOf(tab);
             const startsGroup = group !== undefined && group.tabs.tabs[0] === tab;
             return (

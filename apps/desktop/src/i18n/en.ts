@@ -1003,6 +1003,12 @@ export const en: Dictionary = {
     gateTool: "workflow step “{step}”",
     gateRow: "Workflow step “{step}” waits for your approval",
     release: "Free the pair",
+    finished: "Finished",
+    finishedOutcome: { done: "Finished", failed: "Failed", ended: "Ended" },
+    finishedFilesOne: "1 file changed",
+    finishedFilesMany: "{n} files changed",
+    finishedNoFiles: "No files changed",
+    seeChanges: "See the changes",
   },
   projectTree: {
     list: "Branches of {name}",
@@ -1029,7 +1035,8 @@ export const en: Dictionary = {
     back: "Back to the list",
     filterLabel: "Filter sessions",
     toggleProject: "Show or hide {name}",
-    countChip: "{live} live of {total} sessions",
+    countChip: "{live} of {total} sessions active",
+    countShort: "{live} of {total} active",
     noHost: "No host yet",
     noOnlineHost: "No host is online",
     addHost: "Add a host",
@@ -1054,6 +1061,7 @@ export const en: Dictionary = {
       needs_you: "Needs you",
       idle: "Idle",
       ended: "Ended",
+      failed: "Failed",
     },
     stateDots: {
       running: "running",
@@ -1061,6 +1069,19 @@ export const en: Dictionary = {
       idle: "idle",
       asleep: "asleep",
       ended: "ended",
+      failed: "failed",
+    },
+    /** Issue #1132: the word under a session's title in the list. */
+    rowWord: {
+      running: "Working",
+      needs_you: "Waiting for you",
+      idle: "Idle",
+      ended: "Ended",
+      failed: "Failed",
+    },
+    rowDetail: {
+      waitingTool: "wants to run {tool}",
+      runningTool: "running {tool}",
     },
     asleep: "Asleep",
     sleepNow: "Sleep now",
@@ -1185,6 +1206,9 @@ export const en: Dictionary = {
     sectionClients: "Clients",
     sectionRecent: "Recent",
     sectionCreate: "Create",
+    sectionStart: "Start",
+    startIn: "Start in {project}: {text}",
+    startDetail: "New session",
     createCard: "Create card “{title}” in {project}",
     createCardIssue: "Create card from issue {issue} in {project}",
     createDetail: "New card",
@@ -1459,6 +1483,8 @@ export const en: Dictionary = {
     budgets: "budgets",
     quotaHistory: "the quota history",
     changes: "change review",
+    sessionCommits: "committing a session's changes",
+    sessionPrs: "opening a session's PR",
     ssh: "ssh destinations",
     snippets: "snippets",
     personaSessions: "personas in open sessions",
@@ -1830,6 +1856,40 @@ export const en: Dictionary = {
     harness_confirm: "Changing the Claude Code setup needs your confirmation.",
     harness_reformat:
       "Writing the settings back would change their layout, and may rewrite some values: confirm that too, or edit the file by hand.",
+    changes_commit_confirm: "Confirm the commit before it is made.",
+    changes_commit_target:
+      "Only a session started by hand is committed here: a card has its own Open PR.",
+    changes_commit_state:
+      "The repository is busy ({state}): finish or undo it in a terminal, then commit again.",
+    changes_commit_stale: "The files changed since you looked: check them again, then commit.",
+    changes_commit_secret:
+      "{file} looks like it holds a secret, so nothing was committed: take it out first.",
+    changes_commit_message_secret:
+      "The message looks like it holds a secret, so nothing was committed: take it out first.",
+    changes_commit_too_large: "{file} is too large to check for secrets: commit it yourself.",
+    changes_commit_branch_taken: "There is already a branch {branch}: pick another name.",
+    changes_commit_hook:
+      "The commit was refused: {output}. You are on {branch} with your files as they were; fix it and commit again, or go back with git checkout {base}.",
+    changes_commit_timeout:
+      "The commit ran out of time (a hook or a signing prompt that never ended). You are on {branch} with your files as they were; go back with git checkout {base}.",
+    changes_commit_hook_withheld:
+      "The commit was refused, and what the hook said is not shown: it looks like it holds a secret. You are on {branch} with your files as they were; go back with git checkout {base}.",
+    changes_pr_confirm: "Confirm the PR before it is opened.",
+    changes_pr_target:
+      "Only a session started by hand opens its PR here: a card has its own Open PR.",
+    changes_pr_on_base: "The checkout is on the base branch: commit on a new branch first.",
+    changes_pr_detached: "The checkout is on no branch: commit on a new branch first.",
+    changes_pr_base:
+      "This branch was not made by a commit from the app, so its base is not known: open its PR from a terminal.",
+    changes_pr_remote:
+      "Where the push goes changed since you looked: check it again, then open the PR.",
+    changes_pr_ahead:
+      "The base branch has commits that are not on origin yet, and they would go out with this PR: push them first, or open the PR from a terminal.",
+    changes_pr_moved:
+      "The branch moved since the app's commit (other commits, or another point), so only a terminal opens its PR.",
+    changes_commit_rewritten:
+      "{files} changed while being committed (a hook that formats, or the session still writing), so the commit was undone: look at the changes again, then commit.",
+    changes_commit_git: "Git could not make the branch or the commit in this repository.",
     harness_commit_stale:
       "The files are not as the setup wrote them: apply the setup again, then commit.",
     harness_commit_no_head: "The project has no commit yet to start a branch from.",
@@ -1906,6 +1966,10 @@ export const en: Dictionary = {
       "The description looks like it has a secret ({found}): take it out before opening the PR.",
     pr_title_secret:
       "The title looks like it has a secret ({found}): take it out before opening the PR.",
+    pr_push_timeout:
+      "The push took too long and was stopped, so no PR was opened: try again, or push from a terminal.",
+    pr_push_withheld:
+      "The push failed, and its output looks like it has a secret ({found}), so it is not shown: push from a terminal to see it.",
     merge_message_secret:
       "The merge message looks like it has a secret ({found}): take it out before merging.",
     project_no_pr_provider: "The project has no PR provider.",
@@ -2302,6 +2366,8 @@ export const en: Dictionary = {
     gone: "What this was about is gone.",
     dismiss: "Dismiss",
     asks: "Asks: {question}",
+    keys: "A approves · N denies",
+    keysHigh: "Hold the button to approve · N denies",
     runs: "Wants to run: {command}",
     edits: "Wants to change {file}",
     uses: "Wants to use {tool}",
@@ -2465,6 +2531,7 @@ export const en: Dictionary = {
     needPrompt: "Write the first prompt to start in the background.",
     addFolder: "Add a folder on {host}'s page",
     host: "Host",
+    moreOptions: "More options",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {
@@ -2597,6 +2664,8 @@ export const en: Dictionary = {
     commentText: "Comment text",
     saveComment: "Save comment",
     send: "Send review ({n})",
+    compose: "Review in the message box ({n})",
+    composed: "The review is in the message box.",
     sentVia: {
       session: "Review sent to the session.",
       card: "Review sent to the card.",
@@ -2629,7 +2698,9 @@ export const en: Dictionary = {
     sessionLast: "last on {when}",
     sessionSpan: "from {from} to {to}",
     sessionFiles: "Files the session wrote",
-    sessionFilesNone: "The session has not written any file yet.",
+    sessionFilesTitle: "Files the session edited directly (Write, Edit)",
+    sessionFilesNone:
+      "None yet. Changes made by commands (Bash) or outside the session are not listed here.",
     bashNote: "Changes made through Bash do not count.",
   },
   cardReview: {

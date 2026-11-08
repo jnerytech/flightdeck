@@ -35,7 +35,7 @@ export function githubSlug(heading: string): string {
   return unlink(heading)
     .toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, "")
-    .replace(/ /g, "-");
+    .replaceAll(" ", "-");
 }
 
 /** The lines of a Markdown file outside fenced code blocks, with their 1-based numbers. */

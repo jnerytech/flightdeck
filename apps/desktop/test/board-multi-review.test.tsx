@@ -515,7 +515,7 @@ describe("board-multi-review: small gaps the coverage gate found", () => {
     expect(widthOf()).toBe(before);
   });
 
-  test("the notice goes away when it is dismissed", async () => {
+  test("the notice goes away when it is dismissed", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
     const w = setup({ refuse: { A: { message: "no" } } });
     await ready();
     await ctrl("A");

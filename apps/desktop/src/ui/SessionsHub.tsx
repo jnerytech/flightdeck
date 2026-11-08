@@ -40,6 +40,7 @@ import { projectLabel, usd } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope, scopeHosts } from "../lib/data-scope.ts";
 import type { Density } from "../lib/density.ts";
 import {
+  activeCount,
   capGroups,
   HUB_ROW_CAP,
   type HubFilter,
@@ -51,6 +52,7 @@ import {
   hubRows,
   hubView,
   isSearching,
+  rowStatus,
   sessionLineText,
   sharedMeta,
 } from "../lib/hub.ts";
@@ -485,6 +487,7 @@ export function SessionsHub(
             <option value="needs_you">{t("hub.states.needs_you")}</option>
             <option value="idle">{t("hub.states.idle")}</option>
             <option value="ended">{t("hub.states.ended")}</option>
+            <option value="failed">{t("hub.states.failed")}</option>
           </NativeSelect>
           {personas.length > 0 && (
             <NativeSelect
@@ -634,7 +637,8 @@ export function SessionsHub(
           const groupView = viewOf(group.key);
           // Two projects with one name tell themselves apart by where they are.
           const label = group.hint ? `${group.name} (${group.hint})` : group.name;
-          const liveCount = groupView?.live.length ?? 0;
+          // Pinned rows stay in the live list after they end or fail; they are not active.
+          const liveCount = activeCount(groupView?.live ?? []);
           // The hosts the project's sessions run on, each one a link to the host page.
           const hostChips = [
             ...new Map((groupView?.group.rows ?? group.rows).map((r) => [r.hostId, r.hostName])),
@@ -673,6 +677,10 @@ export function SessionsHub(
                   live={liveCount}
                   total={groupView?.total ?? group.rows.length}
                   label={t("hub.countChip", {
+                    live: liveCount,
+                    total: groupView?.total ?? group.rows.length,
+                  })}
+                  text={t("hub.countShort", {
                     live: liveCount,
                     total: groupView?.total ?? group.rows.length,
                   })}
@@ -728,6 +736,21 @@ export function SessionsHub(
                     {group.rows.map((row) => {
                       const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
                       const line = sessionLineText(row.summary, store.now(), t);
+                      const said = rowStatus(row, store.now(), t);
+                      // #1132: the row's state in words. A working or waiting row in the compact
+                      // list shows the word where its time was (the time stays in the tooltip):
+                      // the row has no room for one more item. An idle or past row keeps its time,
+                      // which says more there. The summary carries the word and its detail.
+                      const showWord =
+                        props.density === "compact" &&
+                        row.origin !== "history" &&
+                        (row.state === "running" || row.state === "needs_you");
+                      const summaryText = [
+                        [said.word, said.detail].filter(Boolean).join(" · "),
+                        line,
+                      ]
+                        .filter(Boolean)
+                        .join(" — ");
                       // What the whole group shares is in its header; the row keeps what differs.
                       const rowMeta = [
                         shared.origin === null && row.origin !== "terminal"
@@ -759,7 +782,7 @@ export function SessionsHub(
                                   setCursor(listed.findIndex((r) => r.key === row.key));
                                   props.onOpen(row);
                                 }}
-                                className="min-w-0 flex-1 truncate text-left font-medium text-sm"
+                                className="row-title min-w-0 flex-1 truncate text-left font-medium text-sm"
                               >
                                 {row.title}
                               </button>
@@ -809,14 +832,29 @@ export function SessionsHub(
                             </output>
                           )}
                           {cacheOf(row)}
-                          {row.lastActivity && (
-                            <time
-                              dateTime={new Date(row.lastActivity).toISOString()}
-                              title={store.formatDateTime(row.lastActivity)}
-                              className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                          {showWord ? (
+                            <span
+                              data-slot="row-word"
+                              title={[
+                                said.word,
+                                row.lastActivity && store.formatDateTime(row.lastActivity),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                              className="row-word"
                             >
-                              {store.formatWhen(row.lastActivity)}
-                            </time>
+                              {said.word}
+                            </span>
+                          ) : (
+                            row.lastActivity && (
+                              <time
+                                dateTime={new Date(row.lastActivity).toISOString()}
+                                title={store.formatDateTime(row.lastActivity)}
+                                className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                              >
+                                {store.formatWhen(row.lastActivity)}
+                              </time>
+                            )
                           )}
                           {rowActions(row)}
                           <span
@@ -826,7 +864,7 @@ export function SessionsHub(
                               props.density === "compact" ? "sr-only" : "basis-full pl-4",
                             )}
                           >
-                            {line}
+                            {summaryText}
                           </span>
                         </li>
                       );

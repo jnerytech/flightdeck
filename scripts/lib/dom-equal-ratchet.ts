@@ -95,7 +95,7 @@ function parts(code: string): string[] {
     }
     at++;
   }
-  out.push(text.slice(start, text.length - 1));
+  out.push(text.slice(start, -1));
   return out
     .map((part) => (text.startsWith("{") ? part.replace(OBJECT_KEY, "") : part))
     .filter((part) => part.trim() !== "")

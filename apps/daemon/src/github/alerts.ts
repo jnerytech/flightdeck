@@ -101,7 +101,8 @@ function codeScanning(raw: unknown): RepoAlert | null {
   const where = record(record(alert.most_recent_instance)?.location);
   const path = clean(where?.path, 300);
   const line = integer(where?.start_line);
-  const location = path === "" ? null : line === null ? path : `${path}:${line}`;
+  const withLine = line === null ? path : `${path}:${line}`;
+  const location = path === "" ? null : withLine;
   const id = clean(rule.id, 100);
   const url = linkOf(alert.html_url);
   const message = clean(record(record(alert.most_recent_instance)?.message)?.text, TEXT_MAX, true);
@@ -127,6 +128,7 @@ function dependabot(raw: unknown): RepoAlert | null {
   const name = clean(record(dependency?.package)?.name, 100);
   const url = linkOf(alert.html_url);
   const detail = clean(advisory.description, TEXT_MAX, true);
+  const inManifest = manifest ? ` (${manifest})` : "";
   return entry(
     "dependabot",
     number,
@@ -134,9 +136,7 @@ function dependabot(raw: unknown): RepoAlert | null {
     title,
     manifest || null,
     url,
-    [name && `Package: ${name}${manifest ? ` (${manifest})` : ""}`, url, detail].map(
-      (line) => line || "",
-    ),
+    [name && `Package: ${name}${inManifest}`, url, detail].map((line) => line || ""),
   );
 }
 

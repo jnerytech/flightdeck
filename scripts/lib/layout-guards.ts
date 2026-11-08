@@ -337,7 +337,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   /** Whether this box itself is clipped away on purpose (the sr-only pattern). */
   const clippedAway = (el: Element) => {
     const style = getComputedStyle(el);
-    const clip = style.getPropertyValue("clip").replace(/px/g, "");
+    const clip = style.getPropertyValue("clip").replaceAll("px", "");
     return (
       style.getPropertyValue("clip-path") === "inset(50%)" ||
       /^rect\(0[ ,]+0[ ,]+0[ ,]+0\)$/.test(clip)

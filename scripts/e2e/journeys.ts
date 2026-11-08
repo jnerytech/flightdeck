@@ -106,10 +106,20 @@ async function demoHostsOnline(c: Context): Promise<boolean> {
   return true;
 }
 
+/** Unfolds More options on the New session screen: the name and the subfolder are under it (#1135). */
+async function moreOptions(c: Context) {
+  const toggle = c.page.getByRole("button", { name: c.t("newSession.moreOptions"), exact: true });
+  // It opens by itself to show a remembered subfolder: a click then would fold it.
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+}
+
 /** Starts a session of the fake runtime from the New session screen. */
 export async function createSession(c: Context, prompt: string, name?: string) {
   await open(c, { name: "new-session", host: ALFA });
-  if (name) await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+  if (name) {
+    await moreOptions(c);
+    await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+  }
   await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill(prompt);
   await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
 }
@@ -189,7 +199,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const session = `Aprovar e2e ${Date.now()}`;
     await createSession(c, "[bash] ls", session);
     await open(c, { name: "needs-you" });
-    const row = c.page.locator("main ul li button", { hasText: session });
+    // A request's row says its tool; the session's finished turn, listed under Finished once the
+    // request is answered, has the same name and must not count as the request.
+    const row = c.page.locator(`main ul li button[aria-label*="${session}: Bash"]`);
     await row.first().click({ timeout: SESSION_WAIT });
     const card = c.page.locator("fieldset[data-request-id]").first();
     await card.waitFor({ timeout: WAIT });
@@ -207,7 +219,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await createSession(c, "[bash] ls", first);
     await createSession(c, "[bash] ls", second);
     await open(c, { name: "needs-you" });
-    const row = (name: string) => c.page.locator("main ul li button", { hasText: name });
+    // Only the request's row: the finished turn listed under Finished has the same name.
+    const row = (name: string) => c.page.locator(`main ul li button[aria-label*="${name}: Bash"]`);
     await row(first).first().click({ timeout: SESSION_WAIT });
     await row(second).first().waitFor({ timeout: SESSION_WAIT });
     const focusedCard = () =>
@@ -662,6 +675,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // answer, so the run is still alive when the trust is removed.
     const name = `e2e-revoga-${c.lang}-${Date.now()}`;
     await open(c, { name: "new-session", host: ALFA });
+    await moreOptions(c);
     await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).fill("flightdeck-web");
     await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
     await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill("[bash] ls");
@@ -2409,10 +2423,11 @@ async function sessionFitsProblems(c: Context): Promise<string[]> {
 }
 
 /**
- * The layout check (#1003), kept under the 90 s a journey gets: the screens people use most (Home,
- * a session, the board, a host's page, Settings) at the smallest window the app allows and at the
- * usual one. English runs all of it; pt-BR runs only the geometry guards, where its longer texts
- * are the point. The other sizes and screens are not checked here any more.
+ * The layout check (#1003), kept under the 90 s a journey gets: the geometry guards of the screens
+ * people use most (Home, a session, the board, a host's page, Settings) at the smallest window the
+ * app allows and at the usual one, in both languages (pt-BR's longer texts are the point). English
+ * has two journeys more, `layoutAbas` (12 tabs, tab widths) and `layoutWindows` (scroll, the
+ * smallest window, the bell). The other sizes and screens are not checked here any more.
  */
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
@@ -2425,7 +2440,20 @@ export async function layout(c: Context, problems: string[]) {
   // The geometry guards (issue #192) name what they find by data-slot path; the heuristic rules fail
   // only when new against the baseline.
   await geometryGuards(c, screens, problems);
-  if (c.lang === "pt-BR") return;
+}
+
+/**
+ * The crowded-tabs part of the layout check (#1003), a journey of its own so none of the three
+ * layout journeys comes near the 90 s a journey gets: 12 tabs and a long worktree path at the
+ * smallest and the largest window, the tab widths and list, the active tab, and where the tab
+ * strip starts. English only. (`layout` holds the geometry guards, `layoutWindows` the scroll
+ * and window checks.)
+ */
+export async function layoutAbas(c: Context, problems: string[]) {
+  const screens: Array<[string, Route]> = [
+    ["host", { name: "host", host: ALFA }],
+    ["configuracoes", { name: "settings" }],
+  ];
   const smallest = OVERFLOW_VIEWPORTS[0] as { width: number; height: number };
   const largest = OVERFLOW_VIEWPORTS[OVERFLOW_VIEWPORTS.length - 1] as typeof smallest;
   // Issue #103: with 12 tabs and a long worktree path, a screen does not scroll the page sideways.
@@ -2468,6 +2496,15 @@ export async function layout(c: Context, problems: string[]) {
   if (new Set(lefts).size > 1) {
     problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
   }
+}
+
+/**
+ * The second half of the layout check (#1003), a journey of its own so each stays well under the
+ * 90 s a journey gets (the whole check took 72 to 78 s on CI): the sidebar and page scroll at two
+ * window sizes, a session opens at its end, the smallest window the app allows, and the bell.
+ * English only, like the first half's extras.
+ */
+export async function layoutWindows(c: Context, problems: string[]) {
   // Issue #567: the sidebar scrolls as one area between its fixed header and footer, at the
   // usual window and at a short one, where it has to scroll at all. #785: the area around a Page
   // (the Host page, where the user saw two bars) does not scroll beside the page's own bar.

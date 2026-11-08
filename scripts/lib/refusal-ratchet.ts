@@ -151,7 +151,7 @@ export function refusalCounts(dir: string, root: string): Record<string, number>
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const path = resolve(current, entry.name);
       if (entry.isDirectory()) walk(path);
-      else if (/\.ts$/.test(entry.name)) {
+      else if (entry.name.endsWith(".ts")) {
         const n = reasonlessRefusals(readFileSync(path, "utf8"));
         if (n > 0) counts[relative(root, path).replaceAll("\\", "/")] = n;
       }

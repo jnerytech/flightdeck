@@ -63,7 +63,7 @@ function cellColumns(line: XtermBufferLine): number[] {
     const cell = line.getCell(x);
     if (!cell || cell.getWidth() === 0) continue;
     const chars = cell.getChars() || " ";
-    for (let unit = 0; unit < chars.length; unit++) columns.push(x);
+    for (let unit = 0; unit < chars.length; unit++) columns.push(x); // NOSONAR: one column per UTF-16 unit; for...of would walk code points
   }
   return columns;
 }

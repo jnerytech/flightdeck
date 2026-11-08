@@ -1002,6 +1002,12 @@ export const ptBR = {
     gateTool: "etapa “{step}” do workflow",
     gateRow: "A etapa “{step}” do workflow espera sua aprovação",
     release: "Soltar o par",
+    finished: "Concluídas",
+    finishedOutcome: { done: "Concluída", failed: "Falhou", ended: "Encerrada" },
+    finishedFilesOne: "1 arquivo alterado",
+    finishedFilesMany: "{n} arquivos alterados",
+    finishedNoFiles: "Nenhum arquivo alterado",
+    seeChanges: "Ver as alterações",
   },
   projectTree: {
     more: "mais {n}",
@@ -1030,7 +1036,8 @@ export const ptBR = {
     projectFilter: "Projeto: {name}",
     clearProjectFilter: "Limpar o filtro de projeto",
     toggleProject: "Mostrar ou esconder {name}",
-    countChip: "{live} ao vivo de {total} sessões",
+    countChip: "{live} de {total} sessões ativas",
+    countShort: "{live} de {total} ativas",
     noHost: "Nenhum host ainda",
     noOnlineHost: "Nenhum host online",
     addHost: "Adicionar um host",
@@ -1053,6 +1060,7 @@ export const ptBR = {
       needs_you: "Precisa de você",
       idle: "Ociosa",
       ended: "Encerrada",
+      failed: "Falhou",
     },
     asleep: "Dormindo",
     sleepNow: "Dormir agora",
@@ -1062,6 +1070,18 @@ export const ptBR = {
       needs_you: "precisa de você",
       idle: "ociosa",
       ended: "encerrada",
+      failed: "falhou",
+    },
+    rowWord: {
+      running: "Trabalhando",
+      needs_you: "Esperando você",
+      idle: "Ociosa",
+      ended: "Encerrada",
+      failed: "Falhou",
+    },
+    rowDetail: {
+      waitingTool: "quer rodar {tool}",
+      runningTool: "rodando {tool}",
     },
     origins: {
       flightdeck: "Flightdeck",
@@ -1184,6 +1204,9 @@ export const ptBR = {
     sectionClients: "Clientes",
     sectionRecent: "Recentes",
     sectionCreate: "Criar",
+    sectionStart: "Iniciar",
+    startIn: "Iniciar em {project}: {text}",
+    startDetail: "Nova sessão",
     createCard: "Criar card “{title}” em {project}",
     createCardIssue: "Criar card da issue {issue} em {project}",
     createDetail: "Card novo",
@@ -1454,6 +1477,8 @@ export const ptBR = {
     budgets: "os orçamentos",
     quotaHistory: "o histórico da cota",
     changes: "a revisão de mudanças",
+    sessionCommits: "o commit das mudanças de uma sessão",
+    sessionPrs: "a abertura do PR de uma sessão",
     ssh: "os destinos ssh",
     snippets: "os snippets",
     personaSessions: "as personas em sessões abertas",
@@ -1828,6 +1853,42 @@ export const ptBR = {
     harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
     harness_reformat:
       "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
+    changes_commit_confirm: "Confirme o commit antes que ele seja feito.",
+    changes_commit_target:
+      "Só uma sessão iniciada à mão vira commit aqui: um cartão tem o seu próprio Abrir PR.",
+    changes_commit_state:
+      "O repositório está ocupado ({state}): termine ou desfaça isso num terminal e faça o commit de novo.",
+    changes_commit_stale:
+      "Os arquivos mudaram desde que você olhou: confira de novo e faça o commit.",
+    changes_commit_secret:
+      "{file} parece conter um segredo, então nada foi para o commit: tire-o antes.",
+    changes_commit_message_secret:
+      "A mensagem parece conter um segredo, então nada foi para o commit: tire-o antes.",
+    changes_commit_too_large:
+      "{file} é grande demais para procurar segredos: faça o commit você mesmo.",
+    changes_commit_branch_taken: "Já existe um branch {branch}: escolha outro nome.",
+    changes_commit_hook:
+      "O commit foi recusado: {output}. Você está em {branch} com os arquivos como estavam; corrija e faça o commit de novo, ou volte com git checkout {base}.",
+    changes_commit_timeout:
+      "O commit passou do tempo (um hook ou um pedido de assinatura que não terminou). Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
+    changes_commit_hook_withheld:
+      "O commit foi recusado, e o que o hook disse não aparece: parece conter um segredo. Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
+    changes_pr_confirm: "Confirme o PR antes que ele seja aberto.",
+    changes_pr_target:
+      "Só uma sessão iniciada à mão abre o seu PR aqui: um cartão tem o seu próprio Abrir PR.",
+    changes_pr_on_base: "O checkout está no branch base: faça o commit num branch novo antes.",
+    changes_pr_detached:
+      "O checkout não está em nenhum branch: faça o commit num branch novo antes.",
+    changes_pr_base:
+      "Este branch não veio de um commit do app, então a base dele não é conhecida: abra o PR num terminal.",
+    changes_pr_remote: "O destino do push mudou desde que você olhou: confira de novo e abra o PR.",
+    changes_pr_ahead:
+      "O branch base tem commits que ainda não estão no origin, e eles iriam junto com este PR: faça o push deles antes ou abra o PR num terminal.",
+    changes_pr_moved:
+      "O branch mudou desde o commit do app (outros commits ou outro ponto), então o PR dele só abre num terminal.",
+    changes_commit_rewritten:
+      "{files} mudou durante o commit (um hook que formata, ou a sessão ainda escrevendo), então o commit foi desfeito: confira as mudanças de novo e faça o commit.",
+    changes_commit_git: "O git não conseguiu criar o branch ou o commit neste repositório.",
     harness_commit_stale:
       "Os arquivos não estão como a configuração os gravou: aplique a configuração de novo e faça o commit.",
     harness_commit_no_head: "O projeto ainda não tem commit de onde começar um branch.",
@@ -1904,6 +1965,10 @@ export const ptBR = {
     card_no_worktree: "O card ainda não tem worktree.",
     pr_secret: "A descrição parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_title_secret: "O título parece ter um segredo ({found}): tire-o antes de abrir o PR.",
+    pr_push_timeout:
+      "O push demorou demais e foi interrompido, então nenhum PR foi aberto: tente de novo ou faça o push num terminal.",
+    pr_push_withheld:
+      "O push falhou, e a saída dele parece ter um segredo ({found}), então ela não aparece: faça o push num terminal para vê-la.",
     merge_message_secret:
       "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider: "O projeto não tem provedor de PR.",
@@ -2301,6 +2366,8 @@ export const ptBR = {
     gone: "O que isto citava não existe mais.",
     dismiss: "Descartar",
     asks: "Pergunta: {question}",
+    keys: "A aprova · N nega",
+    keysHigh: "Segure o botão para aprovar · N nega",
     runs: "Quer executar: {command}",
     edits: "Quer alterar {file}",
     uses: "Quer usar {tool}",
@@ -2465,6 +2532,7 @@ export const ptBR = {
     needPrompt: "Escreva o primeiro prompt para iniciar em segundo plano.",
     addFolder: "Adicionar uma pasta na página de {host}",
     host: "Host",
+    moreOptions: "Mais opções",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {
@@ -2597,6 +2665,8 @@ export const ptBR = {
     commentText: "Texto do comentário",
     saveComment: "Salvar comentário",
     send: "Enviar revisão ({n})",
+    compose: "Revisar na caixa de mensagem ({n})",
+    composed: "A revisão está na caixa de mensagem.",
     sentVia: {
       session: "Revisão enviada à sessão.",
       card: "Revisão enviada ao card.",
@@ -2629,7 +2699,9 @@ export const ptBR = {
     sessionLast: "última em {when}",
     sessionSpan: "de {from} a {to}",
     sessionFiles: "Arquivos que a sessão escreveu",
-    sessionFilesNone: "A sessão ainda não escreveu arquivos.",
+    sessionFilesTitle: "Arquivos que a sessão editou direto (Write, Edit)",
+    sessionFilesNone:
+      "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
     bashNote: "Mudanças feitas pelo Bash não entram.",
   },
   cardReview: {

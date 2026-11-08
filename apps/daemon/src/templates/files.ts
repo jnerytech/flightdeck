@@ -21,8 +21,16 @@ export function serializeTemplate(template: Template): string {
     `planFirst: ${template.planFirst}`,
   ];
   if (template.outputFolder) lines.push(`outputFolder: ${JSON.stringify(template.outputFolder)}`);
-  lines.push(`fields: ${JSON.stringify(template.fields)}`, "---");
-  lines.push("# en", template.prompt.en, "", "# pt-BR", template.prompt["pt-BR"], "");
+  lines.push(
+    `fields: ${JSON.stringify(template.fields)}`,
+    "---",
+    "# en",
+    template.prompt.en,
+    "",
+    "# pt-BR",
+    template.prompt["pt-BR"],
+    "",
+  );
   return lines.join("\n");
 }
 
@@ -34,7 +42,7 @@ function promptsOf(body: string): { en: string; "pt-BR": string } {
     .slice(1)
     .reduce<string[][]>((pairs, piece, index) => {
       if (index % 2 === 0) pairs.push([piece]);
-      else pairs[pairs.length - 1]?.push(piece);
+      else pairs.at(-1)?.push(piece);
       return pairs;
     }, [])) {
     sections[part[0] as string] = (part[1] ?? "").trim();
