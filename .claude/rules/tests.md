@@ -10,9 +10,10 @@ paths:
 - Red by assertion: a stub with the real signatures returns wrong values (`""`, `[]`, `false`,
   `null`), never `throw`. Run one file with `bun --config=bunfig.area.toml test <file>`.
 - No `.only`, `test.todo`, and no `toMatchSnapshot` on the first run (the guard hook refuses
-  adding them). Never swap a strict matcher for a weak one (`toBe(x)` to `toBeDefined()`): the hook
-  refuses it, and a reviewed swap carries `// weaker: <why>` on its line (#1141). `test.skipIf(<platform capability>)` is fine. `toContain` on something that may
+  adding them). `test.skipIf(<platform capability>)` is fine. `toContain` on something that may
   be `undefined` takes `?? ""`.
+- Never swap a strict matcher for a weak one (`toBe(x)` to `toBeDefined()`): the hook refuses it,
+  and a reviewed swap carries `// weaker: <why>` on its line (#1141).
 - Tests aim at business logic and the important flows: the coverage gate is 80% of each file's
   lines and functions (#1002), not 100%. Do not write a test only to reach a line.
 - A test that scans the whole repository (`git ls-files` on the root) carries a `// repo-wide`

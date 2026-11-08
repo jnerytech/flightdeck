@@ -105,14 +105,21 @@ every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard
   a test file (one that keeps or removes them passes, and so does a `skipIf` for a platform). It
   refuses the same markers `tdd:audit` does, plus the snapshot, which only a run can judge (#169):
   also a `skipIf(true)`, and a skip off Linux with no reason comment on its line or the line above.
-- it refuses an Edit or Write of a test file that weakens an assertion (#1141): within the edit,
-  strict matchers (`toBe(`, `toEqual(`, `toContain(`, `toMatch(`, `toThrow(`, `toHaveLength(`…) go
-  down while weak ones (`toBeTruthy()`, `toBeDefined()`, `toBeFalsy()`, `not.toBeNull()`,
-  `not.toBeUndefined()`, `expect.anything()`) go up. `toBe(true)`/`toBe(false)` count as neither,
-  so `expect(x !== null).toBe(true)` to `expect(x).not.toBeNull()` passes. Deleting a test passes.
-  When the weaker check is right, `// weaker: <why>` on its line lets it through, and
-  `harness:stats` lists it under "waivers by rule". Replayed over the test hunks of 200 merged
-  PRs, it flagged 1 of 892, a real weakening.
+- it refuses an Edit or Write of a test file that weakens an assertion (#1141). It reads each
+  `expect(subject)` and its matcher. An edit weakens when strict matchers go down while weak
+  ones go up, or when a subject that had a strict matcher keeps only a weak one, even if the edit
+  adds a strict check elsewhere. Strict matchers are `toBe(`, `toEqual(`, `toStrictEqual(`,
+  `toContain(`, `toMatch(`, `toMatchObject(`, `toThrow(<what>)`, `toHaveLength(` and
+  `toHaveBeenCalledWith(`. Weak ones are `toBeTruthy()`, `toBeDefined()`, `toBeFalsy()`,
+  `not.toBeNull()`, `not.toBeUndefined()`, an empty `toThrow()`, `toBeInstanceOf(`,
+  `toHaveBeenCalled()`, `toBeGreaterThan(0)`, and an argument of `expect.anything()`,
+  `expect.any(…)` or `{}`. `toBe(true)`/`toBe(false)` is strict, unless its subject is a
+  comparison or a type test, so `expect(x !== null).toBe(true)` to `expect(x).not.toBeNull()`
+  passes. Deleting a test passes. When the weaker check is right, `// weaker: <why>` on its line
+  lets it through, and `harness:stats` lists it under "waivers by rule". Replayed over the test
+  hunks of 200 merged PRs, it flagged 1 of 851, a real weakening (#877). Its limit: it judges one
+  edit at a time, so deleting a strict check in one edit and adding a weak one in the next passes.
+  Review and the test-quality-reviewer agent still cover that.
 
 For a deliberate exception, end the commit message with a trailer line `TDD-Waiver: <why>` (or
 pass `--trailer "TDD-Waiver: <why>"`). The hook lets the commit through and `tdd:audit` lists it
