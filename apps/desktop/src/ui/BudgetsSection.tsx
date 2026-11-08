@@ -185,7 +185,7 @@ export function BudgetsSection(
                                 limitPct:
                                   budget.limitPct === null
                                     ? ""
-                                    : String(Math.round(budget.limitPct * 1000) / 10),
+                                    : String(Number((budget.limitPct * 100).toPrecision(12))),
                                 action: budget.action,
                               })
                             }
