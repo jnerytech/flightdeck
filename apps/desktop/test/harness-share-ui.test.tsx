@@ -50,7 +50,7 @@ function setup(
   options: {
     language?: "en" | "pt-BR";
     answer?: Answer;
-    then?: Array<Answer | Promise<Answer>>;
+    afterwards?: Array<Answer | Promise<Answer>>;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -58,7 +58,7 @@ function setup(
   });
   store.i18n.start();
   const sent: Array<[string, unknown]> = [];
-  const later = [...(options.then ?? [])];
+  const later = [...(options.afterwards ?? [])];
   store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
     const next = sent.length > 1 ? later.shift() : undefined;
@@ -160,7 +160,7 @@ describe("harness-share-ui: the setup card shares the project's Markdown as a ho
 
   test("an older answer is gone when the next attempt starts", async () => {
     // The second answer never comes: what is on screen meanwhile is what the next attempt left.
-    const { view, sent } = setup({ then: [new Promise<Answer>(() => {})] });
+    const { view, sent } = setup({ afterwards: [new Promise<Answer>(() => {})] });
     render(view);
     await open("Share as template");
     await type("Template name", "Shop setup");
