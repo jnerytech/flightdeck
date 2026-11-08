@@ -93,8 +93,10 @@ async function filesAsWritten(
   const names = Object.keys(digests);
   if (names.length === 0 || names.some((name) => !setupFile(name))) throw stale();
   const files: Array<[string, string]> = [];
-  for (const name of names) {
-    const text = await readInside(root, name, MAX_FILE);
+  // Plain reads of different files: together, then judged one by one (every miss is the same refusal).
+  const texts = await Promise.all(names.map((name) => readInside(root, name, MAX_FILE)));
+  for (const [i, name] of names.entries()) {
+    const text = texts[i] ?? null;
     if (text === null || sha256(text) !== digests[name]) throw stale();
     files.push([name, text]);
   }
@@ -154,7 +156,8 @@ export async function commitHarness(
   const at = prefix.stdout.trim();
   // A file the person keeps out of git (local-only settings) is never committed for them.
   for (const [name] of files) {
-    const ignored = (await git(path, ["check-ignore", "-q", "--", name])).code;
+    const checking = git(path, ["check-ignore", "-q", "--", name]);
+    const ignored = (await checking).code; // NOSONAR: one git at a time, and the first ignored file is the one named
     if (ignored === 0) {
       throw refuse(
         "harness_commit_ignored",
@@ -177,9 +180,11 @@ export async function commitHarness(
     await must(path, ["read-tree", parent], index);
     for (const [name, text] of files) {
       // From the bytes checked, with no clean filter of the repository (one can run a command).
-      const blob = await must(path, ["hash-object", "-w", "--no-filters", "--stdin"], {}, text);
+      const hashing = must(path, ["hash-object", "-w", "--no-filters", "--stdin"], {}, text);
+      const blob = await hashing; // NOSONAR: each file is added to the one index in turn
       // A file HEAD has as executable stays so; anything else is a plain file.
-      const known = await must(path, ["ls-files", "-s", "--", name], index);
+      const listing = must(path, ["ls-files", "-s", "--", name], index);
+      const known = await listing; // NOSONAR: the index is read and then written file by file
       const mode = known.startsWith("100755 ") ? "100755" : "100644";
       await must(
         path,
