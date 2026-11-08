@@ -29,8 +29,8 @@ afterEach(async () => {
 type TheStore = InstanceType<typeof AppStore>;
 
 /** A host with terminals, a managed session in its project, and the app on that session's page. */
-async function onSessionPage() {
-  const d = makeDaemon(cleanups, { terminals: true });
+async function onSessionPage(terminals: true | "off" = true) {
+  const d = makeDaemon(cleanups, { terminals });
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, {
     baseDelayMs: 10,
     maxDelayMs: 20,
@@ -272,6 +272,32 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
       store.closeTab(area as never, sessionTab?.id as string);
     });
     await waitFor(async () => expect(await live(store, hostId)).toHaveLength(0));
+  });
+
+  // #937: a host whose terminal is off offers no Terminal view, so nothing asks and nothing is
+  // refused; turning it on (the host page's button: the setting, then the host's info again) shows
+  // the view on the page already open, with no reload.
+  test("a host with the terminal off has no Terminal view until it is turned on, then the view opens a shell", async () => {
+    const { store, hostId } = await onSessionPage("off");
+    // The views bar is up (the session has its other views): the Terminal would be in it by now.
+    await settle(() => tab("Mudanças") !== null);
+    const before = tab("Terminal") !== null;
+    await act(async () => {
+      await store.hostCommand(hostId, "terminal.settings", { enabled: true, confirm: true });
+      await store.reloadHostInfo(hostId);
+    });
+    await settle(() => tab("Terminal") !== null);
+    await clickTab("Terminal");
+    await settle(() => screen.queryByText("Ao vivo") !== null);
+    expect({
+      before,
+      toasts: store.getState().notices.length,
+      live: (await live(store, hostId)).length,
+    }).toEqual({
+      before: false,
+      toasts: 0,
+      live: 1,
+    });
   });
 
   test("a host that does not announce shells for sessions has no Terminal view", async () => {
