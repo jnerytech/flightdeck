@@ -16,7 +16,7 @@ describe("card-templates: the text of cards.json as the templates it offers (#12
         criteria: ["a test fails first", "the fix is small"],
         workflow: "fix",
         persona: "reviewer",
-        pins: ["docs/guide.md"],
+        pins: ["docs/adr/0001-style.md"],
         spec: "docs/specs/bug.md",
       }),
     ]);
@@ -28,7 +28,7 @@ describe("card-templates: the text of cards.json as the templates it offers (#12
           description: "Fix it.\n\n- [ ] a test fails first\n- [ ] the fix is small",
           workflow: "fix",
           persona: "reviewer",
-          pins: ["docs/guide.md"],
+          pins: ["docs/adr/0001-style.md"],
           spec: "docs/specs/bug.md",
         },
       ],
@@ -91,7 +91,7 @@ describe("card-templates: the text of cards.json as the templates it offers (#12
   });
 
   test("more than 10 pins is a mistake", () => {
-    const pins = Array.from({ length: 11 }, (_, i) => `docs/d${i}.md`);
+    const pins = Array.from({ length: 11 }, (_, i) => `docs/adr/d${i}.md`);
     expect(parse([entry({ pins })]).dropped).toBe(1);
   });
 });
