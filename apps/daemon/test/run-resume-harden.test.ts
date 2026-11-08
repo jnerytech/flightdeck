@@ -56,7 +56,9 @@ async function waitingAfterRestart(moveBranch: boolean) {
   const head = host.store.db
     .query<{ head_at_end: string }, [string]>("SELECT head_at_end FROM workflow_runs WHERE id = ?")
     .get(host.runId)?.head_at_end;
-  // As `resume` leaves it before its slot comes: the resume recorded, the run queued.
+  // As `resume` leaves it before its slot comes: the resume recorded, the failed step's rows gone,
+  // the run queued.
+  host.store.db.query("DELETE FROM step_runs WHERE run_id = ? AND step_id = 'b'").run(host.runId);
   host.store.db
     .query(
       "INSERT INTO run_resumes (run_id, n, from_step, reason, head, at) VALUES (?, 1, 'b', 'b broke', ?, ?)",
@@ -109,7 +111,7 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
       )
       .get(host.runId)?.head_at_end;
     expect([
-      failed?.statusReasonKey,
+      failed?.reasonKey,
       kept === head,
       (await host.board.resumeRun(host.runId, false)).reason,
     ]).toEqual(["run_resume_branch_moved", true, "run_resume_branch_moved"]);
