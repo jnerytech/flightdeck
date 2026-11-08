@@ -21,9 +21,15 @@ const TOKEN = "harness-commit-token-0123456789ab";
 const posix = process.platform !== "win32";
 
 /** A repository with one commit, a person's identity, and a Bun project to set up. */
-function repo(options: { identity?: boolean; commit?: boolean } = {}) {
+function repo(
+  options: { identity?: boolean; commit?: boolean; files?: Record<string, string> } = {},
+) {
   const root = tempDir("fd-harness-commit-");
   git(root, "init", "-q", "-b", "main");
+  for (const [name, text] of Object.entries(options.files ?? {})) {
+    mkdirSync(join(root, name, ".."), { recursive: true });
+    writeFileSync(join(root, name), text);
+  }
   if (options.identity ?? true) {
     git(root, "config", "user.name", "Ana");
     git(root, "config", "user.email", "ana@example.com");
@@ -34,7 +40,7 @@ function repo(options: { identity?: boolean; commit?: boolean } = {}) {
   );
   writeFileSync(join(root, "bun.lock"), "");
   if (options.commit ?? true) {
-    git(root, "add", "--", "package.json", "bun.lock");
+    git(root, "add", "--", "package.json", "bun.lock", ...Object.keys(options.files ?? {}));
     git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "start");
   }
   return root;
@@ -229,5 +235,63 @@ describe("harness-commit: the setup is committed on a new branch, nothing else m
       for (const client of clients) client.close();
       for (const server of servers) await server.stop();
     }
+  });
+
+  test("a project in a folder of a larger repository commits its files at their place in it", async () => {
+    const top = repo();
+    const app = join(top, "sub", "app");
+    mkdirSync(app, { recursive: true });
+    writeFileSync(
+      join(app, "package.json"),
+      JSON.stringify({ scripts: { format: "biome format ." } }),
+    );
+    writeFileSync(join(app, "bun.lock"), "");
+    const done = await applied(app);
+    const made = await outcome(
+      commitHarness(app, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    const branch = "flightdeck/claude-setup-20261108-1405";
+    expect([
+      made,
+      maybe(top, "cat-file", "-e", `${branch}:sub/app/.claude/settings.json`),
+      maybe(top, "cat-file", "-e", `${branch}:.claude/settings.json`),
+    ]).toEqual(["ok", "", null]);
+  });
+
+  test("a setup file the person ignores in git is refused, never committed for them", async () => {
+    const root = repo({ files: { ".gitignore": "CLAUDE.md\n" } });
+    const done = await applied(root);
+    const made = await outcome(
+      commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    expect([made, git(root, "branch", "--list", "flightdeck/*")]).toEqual([
+      "harness_commit_ignored",
+      "",
+    ]);
+  });
+
+  test("a branch that cannot be made for another reason than its name being taken says so", async () => {
+    const root = repo();
+    // A branch named `flightdeck` keeps `flightdeck/...` from being made: not a taken name.
+    git(root, "branch", "flightdeck");
+    const done = await applied(root);
+    const made = await outcome(
+      commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    expect(made).toBe("harness_commit_git");
+  });
+
+  test("a token in the settings' env, kept by the merge, keeps the commit from being made", async () => {
+    const token = `ghp_${"a1B2c3D4e5".repeat(4)}`;
+    const root = repo({
+      files: {
+        ".claude/settings.json": `${JSON.stringify({ env: { GITHUB_TOKEN: token } }, null, 2)}\n`,
+      },
+    });
+    const done = await applied(root);
+    const made = await outcome(
+      commitHarness(root, done.digests ?? {}, { scanner: scanner(), now: AT }),
+    );
+    expect(made).toBe("harness_commit_secret");
   });
 });
