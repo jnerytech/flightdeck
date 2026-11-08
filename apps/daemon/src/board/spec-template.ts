@@ -132,3 +132,12 @@ export function specFirstLine(path: string, skill: boolean): string {
 export function toSlashes(path: string, platform: string): string {
   return platform === "win32" ? path.replaceAll("\\", "/") : path;
 }
+
+/**
+ * The folder a project's spec template may be read from: the trusted checkout `sessionTrust` names,
+ * or null for an untrusted project. A card runs in a worktree, so the checkout is always named; when
+ * it is not, null, never the worktree, whose content is the branch's.
+ */
+export function templateRootOf(trust: { trusted: boolean; configRoot?: string }): string | null {
+  return trust.trusted && trust.configRoot ? trust.configRoot : null;
+}

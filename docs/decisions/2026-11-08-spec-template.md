@@ -78,8 +78,9 @@ project's harness (#75). The design is on #78. This record covers slice S-T1.
 ## Slice S-T3a: a trusted project's own template
 
 - **Where it comes from.** `.flightdeck/templates/spec.md` in the project, read from the trusted
-  checkout: the folder `sessionTrust` names. For a worktree that is its main checkout, never the
-  branch, as #196 reads a worktree's configuration.
+  checkout: the folder `sessionTrust` names (`templateRootOf`). For a worktree that is its main
+  checkout, never the branch, as #196 reads a worktree's configuration. When no checkout is named,
+  no template is read: the worktree's own copy is the branch's.
 - **When it is read.** Only for a trusted project. For an untrusted one the built-in template is
   written: the first prompt sends the agent to the spec, so an untrusted template would reach the
   agent before the person trusted the project, as its CLAUDE.md would.
@@ -88,7 +89,13 @@ project's harness (#75). The design is on #78. This record covers slice S-T1.
   - a link anywhere on the way is refused;
   - only a plain file is read, of at most 32 KiB;
   - an empty file is ignored.
-  - Any of these falls back to the built-in template without a notice.
+  - The file must have one name only, and it is read through a handle that follows no link and
+    must be the file the walk found, at most one byte past the cap.
+  - Any of these falls back to the built-in template. A trust check that fails also falls back, and
+    goes to the daemon's log (never the template's text). The card shows no notice yet: that is new
+    text in both languages, planned with the validation note template.
 - **What it gives.** It gives the body only, with the same `{{title}}` and `{{criteria}}`
   placeholders filled in one pass. The host adds the front matter (`card`, `title`, `draft: true`)
-  either way, so the spec check works the same for every template.
+  either way, so the spec check works the same for every template. A template without
+  `{{criteria}}` gets none of the card's criteria: the project chose its own shape. A template with a
+  front matter of its own keeps it below the host's, which is the one the check reads.

@@ -94,7 +94,9 @@ export async function readInside(root: string, name: string, max: number): Promi
     const info = await handle.stat({ bigint: true });
     const same = info.dev === found.info.dev && info.ino === found.info.ino;
     if (!same || !info.isFile() || info.nlink !== 1n || info.size > BigInt(max)) return null;
-    return await orNull(handle.readFile("utf8"));
+    // At most one byte past the cap: a file that grew since the stat is refused, not read whole.
+    const { bytesRead, buffer } = await handle.read(Buffer.alloc(max + 1), 0, max + 1, 0);
+    return bytesRead > max ? null : buffer.subarray(0, bytesRead).toString("utf8");
   } finally {
     await handle.close();
   }

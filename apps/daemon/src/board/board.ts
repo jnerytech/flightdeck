@@ -152,6 +152,8 @@ export interface BoardOptions {
    * agent before the person trusted it.
    */
   specTemplateRoot?: (worktree: string) => Promise<string | null>;
+  /** Lines for the daemon's log (no card content goes there). */
+  log?: (line: string) => void;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
   idle?: () => Promise<void>;
   /** Issue #79: keeps automatic approval off a card made from an agent's findings. */
@@ -352,7 +354,7 @@ function skippedNotice(left: number, limit: number): string {
   const files =
     left === 1
       ? "1 arquivo do .worktreeinclude não copiado"
-      : `${left} arquivos do .worktreeinclude não copiados`;
+      : left + " arquivos do .worktreeinclude não copiados";
   return `${files}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
 }
 
@@ -1616,7 +1618,13 @@ export class Board {
     if (path === null || !wantsSpec(contracts, card.specPath)) return null;
     // A trusted project's own template, from its trusted checkout; anything else gets the built-in.
     const root = this.opts.specTemplateRoot
-      ? await this.opts.specTemplateRoot(worktree).catch(() => null)
+      ? await this.opts.specTemplateRoot(worktree).catch((error: unknown) => {
+          // The built-in template then, but a trust bug must not go unseen.
+          this.opts.log?.(
+            `spec template: trust check failed for ${worktree}, built-in template used: ${String(error)}`,
+          );
+          return null;
+        })
       : null;
     const template = root ? await projectTemplate(root) : null;
     const result = await writeSpec(worktree, path, renderSpec(card, template ?? undefined));

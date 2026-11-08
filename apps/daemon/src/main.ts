@@ -17,6 +17,7 @@ import { assistantService } from "./assistant/factory.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
+import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
 import { BoardSyncLoop } from "./boardsync/loop.ts";
@@ -996,10 +997,8 @@ export async function startDaemon(
     folderLocks,
     preparePersonas: prepare,
     // Issue #78: a card's spec template comes from a trusted project's trusted checkout only.
-    specTemplateRoot: async (worktree) => {
-      const trust = await trustForKnowledge(worktree);
-      return trust.trusted ? (trust.configRoot ?? worktree) : null;
-    },
+    specTemplateRoot: async (worktree) => templateRootOf(await trustForKnowledge(worktree)),
+    log: (line) => logger.log(line),
     db: store.db,
     manager,
     quota,
