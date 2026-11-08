@@ -146,8 +146,16 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   // Apply is under way: no second preview may start, or its apply would race this one.
   const [busy, setBusy] = useState(false);
 
-  const preview = async () => {
+  /** The preview on screen is gone (a new one, Cancel, an apply): a draft under way is for none. */
+  const leavePreview = () => {
     previewRound.current += 1;
+    setDrafting(false);
+    setDrafted(false);
+    setDraftRefusal(null);
+  };
+
+  const preview = async () => {
+    leavePreview();
     setOutcome(null);
     setDrafted(false);
     setDraftRefusal(null);
@@ -159,6 +167,7 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   };
 
   const apply = async (seen: HarnessPreview, reformat: boolean) => {
+    leavePreview();
     setShown(null);
     setBusy(true);
     const result = await store
@@ -219,7 +228,10 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     setDraftRefusal(null);
     const result = await store
       .hostRequest(hostId, "project.harness.draft", { path, part: "claudeMd" })
-      .finally(() => setDrafting(false));
+      .finally(() => {
+        // An old draft's end must not free the button of a newer preview's draft.
+        if (round === previewRound.current) setDrafting(false);
+      });
     if (round !== previewRound.current) return;
     if (!result.ok) {
       setDraftRefusal(refusalText(result.code, result.message, t, result));
@@ -289,8 +301,12 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
             nothing ? "projectPage.harness.setup.nothing" : "projectPage.harness.setup.message",
           )}
           confirmLabel={t("projectPage.harness.setup.apply")}
-          confirmDisabled={nothing || (tick && !ticked)}
-          onCancel={() => setShown(null)}
+          // A draft under way would replace the file being applied: wait for it.
+          confirmDisabled={nothing || (tick && !ticked) || drafting}
+          onCancel={() => {
+            leavePreview();
+            setShown(null);
+          }}
           onConfirm={() => void apply(shown, tick && ticked)}
         >
           {/* A long preview scrolls, so Apply and Cancel stay in sight on a small window. */}
