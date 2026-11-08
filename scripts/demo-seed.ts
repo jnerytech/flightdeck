@@ -38,6 +38,8 @@ import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
+/** The PR the fake gh opens for a workflow template added from the app (issue #1221). */
+const DEMO_TEMPLATE_PR_URL = "https://github.com/acme/flightdeck-web/pull/301";
 const FIXTURES = join(ROOT, "apps/daemon/test/fixtures/history");
 
 /** The terminal session that waits for a high-risk Bash (the e2e journey opens it by name). */
@@ -646,36 +648,46 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // Issue #1244: the open PR of the In review card. It stays open with its build passing; a merge is
   // held for a review, so Merge PR asks first and the card says why, run after run.
   const build = [{ name: "build", status: "COMPLETED", conclusion: "SUCCESS" }];
-  const gh = installFakeCli("gh", [
-    { args: ["api", "user"], stdout: "eu\n" },
-    { args: ["issue", "list"], stdout: JSON.stringify([issue]) },
-    { args: ["issue", "view", "7"], stdout: JSON.stringify(issue) },
-    {
-      args: ["pr", "view", DEMO_PR_URL, "state,statusCheckRollup"],
-      stdout: JSON.stringify({ state: "OPEN", statusCheckRollup: build }),
-    },
-    {
-      args: ["pr", "view", DEMO_PR_URL, "mergeStateStatus,reviewDecision,statusCheckRollup"],
-      stdout: JSON.stringify({
-        mergeStateStatus: "BLOCKED",
-        reviewDecision: "REVIEW_REQUIRED",
-        statusCheckRollup: build,
-      }),
-    },
-    {
-      args: ["pr", "view", DEMO_PR_URL, "mergeable"],
-      stdout: JSON.stringify({ mergeable: "MERGEABLE" }),
-    },
-    {
-      args: ["pr", "checks", DEMO_PR_URL],
-      stdout: JSON.stringify([{ name: "build", bucket: "pass", link: "" }]),
-    },
-    {
-      args: ["pr", "merge", DEMO_PR_URL],
-      code: 1,
-      stderr: "X Pull request #42 is not mergeable: the base branch policy prohibits the merge.\n",
-    },
-  ]);
+  const gh = installFakeCli(
+    "gh",
+    [
+      { args: ["api", "user"], stdout: "eu\n" },
+      { args: ["issue", "list"], stdout: JSON.stringify([issue]) },
+      { args: ["issue", "view", "7"], stdout: JSON.stringify(issue) },
+      // Issue #1221: a workflow template added from the app opens its PR through the CLI. The branch
+      // has no PR yet (`pr view <branch>` finds none), so the create answers with the PR's URL.
+      { args: ["pr", "create"], stdout: `Creating pull request\n${DEMO_TEMPLATE_PR_URL}\n` },
+      {
+        args: ["pr", "view", DEMO_PR_URL, "state,statusCheckRollup"],
+        stdout: JSON.stringify({ state: "OPEN", statusCheckRollup: build }),
+      },
+      {
+        args: ["pr", "view", DEMO_PR_URL, "mergeStateStatus,reviewDecision,statusCheckRollup"],
+        stdout: JSON.stringify({
+          mergeStateStatus: "BLOCKED",
+          reviewDecision: "REVIEW_REQUIRED",
+          statusCheckRollup: build,
+        }),
+      },
+      {
+        args: ["pr", "view", DEMO_PR_URL, "mergeable"],
+        stdout: JSON.stringify({ mergeable: "MERGEABLE" }),
+      },
+      {
+        args: ["pr", "checks", DEMO_PR_URL],
+        stdout: JSON.stringify([{ name: "build", bucket: "pass", link: "" }]),
+      },
+      {
+        args: ["pr", "merge", DEMO_PR_URL],
+        code: 1,
+        stderr:
+          "X Pull request #42 is not mergeable: the base branch policy prohibits the merge.\n",
+      },
+    ],
+    process.env,
+    // The PR body of a workflow template holds quotes and angle brackets: the demo is not a Windows shim.
+    { rejectCmdChars: false },
+  );
 
   // A `claude` for the Plugins page (phase 26), before any daemon: one installed plugin whose hook
   // listens on PreToolUse, and one the marketplace offers. The real CLI is never run.
