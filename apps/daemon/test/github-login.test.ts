@@ -66,7 +66,7 @@ describe("github-login: the device flow through gh", () => {
     const gh = fakeGh([WAITING]);
     const logins = login();
     await logins.start();
-    logins.cancel();
+    void logins.cancel();
     expect(await poll(() => !logins.running, 4000)).toBe(true);
     await logins.start();
     expect(gh.calls()).toHaveLength(2);
@@ -119,7 +119,7 @@ describe("github-login: the device flow through gh", () => {
       },
     });
     await logins.start();
-    logins.cancel();
+    void logins.cancel();
     expect(await poll(() => !logins.running, 4000)).toBe(true);
     expect(killed).toHaveLength(1);
   });
@@ -128,7 +128,7 @@ describe("github-login: the device flow through gh", () => {
     fakeGh([WAITING]);
     const logins = login({ kill: async () => Promise.reject(new Error("no taskkill")) });
     await logins.start();
-    logins.cancel();
+    void logins.cancel();
     expect(await poll(() => !logins.running, 4000)).toBe(true);
   });
 
