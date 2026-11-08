@@ -197,6 +197,14 @@ describe("shard-gate: the merged 80% gate (#296, #1002)", () => {
     ).toEqual([
       "pack.md: the shards' function counts cannot tell whether every function ran; run the suite whole",
     ]);
+    // #1011 review: the best shard alone already reaches the 80% gate, so no count is in doubt.
+    expect(
+      run([
+        [4, 5],
+        [4, 5],
+        [0, 5],
+      ]),
+    ).toEqual([]);
   });
 
   test("shards that disagree on a file's lines or functions never pass", () => {
