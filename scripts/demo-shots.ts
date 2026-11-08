@@ -777,6 +777,25 @@ function shots(ids: DemoIds): Shot[] {
     },
     // #168: the screens shipped on 2026-11-06 and 07, in both themes and languages, with axe and the
     // layout guards (the narrow ones in NARROW_SHOTS).
+    // #1052: the onboarding journey as a new person meets it: the first run (no host stored yet) and
+    // Add host once a host exists. Both wait for their title, so a print never shows the screen before.
+    {
+      name: "primeira-execucao",
+      route: { name: "add-host" },
+      query: { hosts: "none" },
+      async prepare(page) {
+        await page
+          .getByRole("heading", { name: /^(Connect your first host|Conecte seu primeiro host)$/ })
+          .waitFor();
+      },
+    },
+    {
+      name: "host-novo",
+      route: { name: "add-host" },
+      async prepare(page) {
+        await page.getByRole("heading", { name: /^(Add a host|Adicionar um host)$/ }).waitFor();
+      },
+    },
     {
       // #931: New project on the Projects page, open.
       name: "projetos-novo",
