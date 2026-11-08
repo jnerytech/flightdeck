@@ -103,7 +103,7 @@ describe("quota-pause-at: the guard 'new cards wait from N%' is a host setting t
       { pauseAt: 1.5 },
       { pauseAt: -0.1 },
       { pauseAt: "0.8" },
-      { pauseAt: Number.NaN },
+      { pauseAt: true },
       {},
     ]) {
       const ack = await client.request("quota.setPauseAt", payload);

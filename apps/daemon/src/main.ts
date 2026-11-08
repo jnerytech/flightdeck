@@ -1471,6 +1471,17 @@ export async function startDaemon(
         }));
       },
     },
+    quotaPause: {
+      set: async (pauseAt) => {
+        // The file first: when it cannot be written the guard stays as it was, for the client and the daemon.
+        await updateConfigFile(configFile, (raw) => ({
+          ...raw,
+          quota: { ...(raw.quota as object | undefined), pauseAt },
+        }));
+        config.quota.pauseAt = pauseAt;
+        quota.setPauseAt(pauseAt);
+      },
+    },
     keepAwake: {
       status: () => keepAwake.status(),
       set: async (enabled) => {

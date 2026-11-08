@@ -4103,6 +4103,8 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 7 (track B).
   cmd("quota.get", z.object({}).strict()),
   cmd("quota.watch", z.object({}).strict()),
+  /** The guard "new cards wait from N%": 0 to 1, `null` turns it off. Answers with the new state. */
+  cmd("quota.setPauseAt", z.object({ pauseAt: z.number().min(0).max(1).nullable() }).strict()),
   cmd("account.get", z.object({}).strict()),
   cmd("account.watch", z.object({}).strict()),
   cmd("account.unwatch", z.object({}).strict()),
@@ -5567,6 +5569,7 @@ export interface CommandResults {
   "gate.respond": WorkflowRun;
   "quota.get": QuotaState;
   "quota.watch": undefined;
+  "quota.setPauseAt": QuotaState;
   "account.get": AccountState;
   "account.watch": undefined;
   "account.unwatch": undefined;
