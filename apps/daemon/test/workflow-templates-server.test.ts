@@ -52,6 +52,7 @@ describe("workflow.templates (issue #79)", () => {
       projectId: project.id,
     });
     expect(result?.templates.map((template) => template.id)).toEqual([
+      "tech-debt-scan",
       "alert-fixer",
       "post-mortem",
     ]);
@@ -75,7 +76,7 @@ describe("workflow.templates (issue #79)", () => {
     const result = await client.data<{ templates: WorkflowTemplate[] }>("workflow.templates", {
       projectId: project.id,
     });
-    expect(result?.templates.length).toBe(2);
+    expect(result?.templates.length).toBe(3);
     expect(fixerCheck(result?.templates)?.checkFilled).toBe(false);
   });
 

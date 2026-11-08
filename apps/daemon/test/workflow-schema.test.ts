@@ -78,10 +78,10 @@ describe("workflow-schema", () => {
 
   test("etapa precisa de exatamente uma ação, inclusive dentro de loop e parallel", () => {
     expect(errorsOf("  - id: a\n    check: lint\n    pr: {}")).toEqual([
-      "steps.0 (a): the step needs exactly one action (agent, check, gate, loop, parallel or pr)",
+      "steps.0 (a): the step needs exactly one action (agent, check, gate, loop, parallel, pr or cards)",
     ]);
     expect(errorsOf("  - id: a")).toEqual([
-      "steps.0 (a): the step needs exactly one action (agent, check, gate, loop, parallel or pr)",
+      "steps.0 (a): the step needs exactly one action (agent, check, gate, loop, parallel, pr or cards)",
     ]);
     expect(errorsOf("  - id: a\n    parallel: [{}]")).toEqual([
       "steps.0 (a): parallel.0: needs exactly one action (agent or check)",

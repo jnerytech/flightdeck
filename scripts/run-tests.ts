@@ -1,4 +1,4 @@
-// `bun run test`: the whole suite with the platform's timeout, then the 100% coverage check.
+// `bun run test`: the whole suite with the platform's timeout, then the coverage check (80% per file, #1002).
 import { testArgs } from "./test/timeout.ts";
 
 const run = async (args: string[]) =>

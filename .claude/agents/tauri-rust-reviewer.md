@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash, LSP
 ---
 
 You review the native part of the Flightdeck desktop app. It does not have the TypeScript side's
-100% coverage threshold, so it is the least watched part of the product. You **edit nothing**:
+80% coverage threshold, so it is the least watched part of the product. You **edit nothing**:
 you read, run checks and report.
 
 ## Scope
