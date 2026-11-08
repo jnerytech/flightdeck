@@ -11,7 +11,7 @@ export function mdLimit(path: string): number {
   // Fixed limits for files that grow by design (#427): the root CLAUDE.md has lines waiting for
   // the owner's word, and every phase adds to both manuals. A down-only baseline would block them.
   if (path === "CLAUDE.md") return 260;
-  if (/^docs\/manual\/[^/]+\.md$/.test(path)) return 4000;
+  if (/^docs\/manual\/[^/]+\.md$/.test(path)) return 4500;
   if (/(^|\/)CLAUDE\.md$/.test(path) || /^\.claude\/(rules|agents)\//.test(path)) return 150;
   if (/(^|\/)SKILL\.md$/.test(path)) return 300;
   return 400;

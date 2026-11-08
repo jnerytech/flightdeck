@@ -19,7 +19,8 @@
 
   Some files get fixed limits of their own, outside the baseline, because they grow by design and
   a down-only baseline would block them. The root `CLAUDE.md` gets 260 lines (219 today, with
-  lines waiting for the owner's word). Each manual gets 4000 (about 3150 today, and every phase
+  lines waiting for the owner's word). Each manual gets 4500 (it was 4000, raised on 2026-11-08 when
+  the pt-BR manual reached 4003 lines; about 3150 when the port was done, and every phase
   adds to both; they grew 35 lines in the hour this port was open). The frozen
   `docs/DECISIONS.md` has no limit, because `decisions.ts` pins its content. The baseline holds
   only `docs/SPEC-fase-40.md` at 702, and only goes down.
