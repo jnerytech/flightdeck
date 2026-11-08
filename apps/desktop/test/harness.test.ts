@@ -126,7 +126,24 @@ describe("harness: a project's Claude Code setup as a checklist (#75)", () => {
       hooks(["black ."]),
       hooks(["cd api && black ."]),
       hooks(["echo black"]),
-    ]).toEqual([[], [], ["format"], ["format"], ["format"], ["format"], []]);
+      // A runner or `-m` in front of black still runs it; a script that formats under another suffix formats.
+      hooks(["poetry run black ."]),
+      hooks(["python -m black ."]),
+      hooks(["bun run format:write"]),
+      hooks(["npm run format-all"]),
+    ]).toEqual([
+      [],
+      [],
+      ["format"],
+      ["format"],
+      ["format"],
+      ["format"],
+      [],
+      ["format"],
+      ["format"],
+      ["format"],
+      ["format"],
+    ]);
   });
 
   test("permissions count what the project denies too, and a host older than deny rules counts none (#75)", () => {
