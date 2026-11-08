@@ -411,3 +411,45 @@ describe("modo-chip: a mode the session reports moves the chip (#935)", () => {
     ]).toEqual(["Permission mode: Plan", "false", "true"]);
   });
 });
+
+describe("modo-chip: a pick the host refuses (#935)", () => {
+  test("the chip goes back to the session's mode, and a pick the host took stays", async () => {
+    const t = translator("en");
+    const answers = [false, true];
+    render(
+      <TContext.Provider value={t}>
+        <SessionView
+          title="refactor"
+          t={t}
+          scrollKey="h/s1"
+          session={{ ...emptySession(), status: "idle", permissionMode: "default" }}
+          actions={{
+            send: async () => {},
+            interrupt: async () => {},
+            close: async () => {},
+            resume: async () => {},
+            respond: async () => {},
+            setMode: async () => answers.shift() ?? true,
+          }}
+          settings
+          runtime="claude"
+        />
+      </TContext.Provider>,
+    );
+    await open();
+    await click(row(/^Plan/));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const refused = chip()?.textContent ?? "";
+    await open();
+    await click(row(/^Plan/));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect([refused.includes("Default"), chip()?.textContent?.includes("Plan")]).toEqual([
+      true,
+      true,
+    ]);
+  });
+});
