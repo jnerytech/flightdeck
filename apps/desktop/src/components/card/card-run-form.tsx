@@ -102,7 +102,7 @@ export function CardRunForm(
     return undefined;
   };
 
-  const step = nextStep(card, { tab: props.tab, canMerge: false });
+  const step = nextStep(card, { tab: props.tab, canMerge: props.canMerge });
   const running = cardStartBlock(card) !== null;
   /** A session that is still there (even idle) or a card that waits: Stop has something to stop. */
   const alive =
@@ -128,7 +128,11 @@ export function CardRunForm(
       variant: "default" as const,
       run: () => openPr(),
     },
-    "merge-pr": null,
+    "merge-pr": {
+      label: t("cardMergePr.action"),
+      variant: "default" as const,
+      run: () => props.onMerge(),
+    },
     none: null,
   }[step ?? "none"];
   const canOpenPr = Boolean(card.worktreePath) && !card.prUrl;
@@ -183,6 +187,11 @@ export function CardRunForm(
               )}
               {step !== "stop" && alive && (
                 <DropdownMenuItem onSelect={() => void stop()}>{t("cardUi.stop")}</DropdownMenuItem>
+              )}
+              {step !== "merge-pr" && props.canMerge && (
+                <DropdownMenuItem onSelect={() => props.onMerge()}>
+                  {t("cardMergePr.action")}
+                </DropdownMenuItem>
               )}
               {step !== "open-pr" && canOpenPr && (
                 <DropdownMenuItem onSelect={() => void openPr()}>
