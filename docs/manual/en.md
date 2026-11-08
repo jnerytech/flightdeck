@@ -1667,8 +1667,9 @@ approval off, since what an agent reads in a repository can be written by anyone
 ### Running a failed run again
 
 A workflow run that failed, or ended because the card was stopped, shows **Run again** under its
-reason on the card. It starts the card again with the same workflow and inputs, on the card's own
-branch, and the earlier run stays in the card's history. It is off, with the reason next to it and
+reason on the card. It starts the card again with the workflow of that name as the file is now
+(not as it was when the run began) and the same inputs, on the card's own branch, with the
+column's default persona, and the earlier run stays in the card's history. It is off, with the reason next to it and
 **Open Workflows** to the project's Workflows page, when the file is the problem: the workflow
 changed since you trusted it, it has errors, or it is not on the base branch any more. If the host
 refuses the start, the refusal shows in place.

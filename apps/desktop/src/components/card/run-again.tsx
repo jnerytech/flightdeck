@@ -27,6 +27,11 @@ export interface RunAgainProps {
  * the Workflows page. A refusal of the host shows here, not in the banner.
  */
 export function RunAgain(props: Readonly<RunAgainProps>) {
+  // Keyed by the run: the next failed run of the card starts with a clean state, not the last one's note.
+  return <RunAgainOf key={props.run.id} {...props} />;
+}
+
+function RunAgainOf(props: Readonly<RunAgainProps>) {
   const { store, hostId, cardId, run } = props;
   const { t } = store.i18n;
   const state = runAgain(run, props.workflow, props.known);

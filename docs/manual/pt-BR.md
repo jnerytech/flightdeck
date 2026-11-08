@@ -1675,8 +1675,9 @@ por qualquer pessoa.
 ### Executar de novo uma execução que falhou
 
 Uma execução de workflow que falhou, ou que terminou porque o card foi parado, mostra **Executar de
-novo** abaixo do motivo, no card. Ela inicia o card de novo com o mesmo workflow e as mesmas
-entradas, na branch do próprio card, e a execução anterior continua no histórico do card. O botão
+novo** abaixo do motivo, no card. Ela inicia o card de novo com o workflow de mesmo nome como o arquivo está agora
+(não como estava quando a execução começou) e as mesmas entradas, na branch do próprio card, com a
+persona padrão da coluna, e a execução anterior continua no histórico do card. O botão
 fica desligado, com o motivo ao lado e **Abrir Workflows** para a página de Workflows do projeto,
 quando o problema é o arquivo: o workflow mudou desde que você confiou nele, tem erros, ou não está
 mais na branch base. Se o host recusar o início, a recusa aparece no próprio lugar.
