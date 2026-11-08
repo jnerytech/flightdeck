@@ -225,7 +225,7 @@ describe("regras-padroes: o risco alto sobe para ask", () => {
   test("allow com risco high vira ask a cada uso, com o botão segurado", () => {
     const verdict = evaluate([rule({ id: "livre" })], use({ risk: "high" }), env());
     expect(verdict).toMatchObject({ decision: "ask", once: false, needsHold: true });
-    expect(verdict.reason).toContain("risco alto");
+    expect(verdict.reason).toContain("high risk");
   });
 
   test("ask uma vez por sessão com risco high vira a cada uso; deny continua deny; medium e low não mudam", () => {

@@ -43,7 +43,7 @@ describe("mensagens-regras: quem pode falar com quem", () => {
     });
     const other = access(a, party({ id: "s2", projectKey: "github.com/acme/outro" }), policy());
     expect(other).toMatchObject({ ok: false });
-    expect((other as { reason: string }).reason).toContain("projeto");
+    expect((other as { reason: string }).reason).toContain("same project");
     // The same team talks across projects.
     expect(
       access(
@@ -69,7 +69,7 @@ describe("mensagens-regras: quem pode falar com quem", () => {
   test("uma sessão não manda para si mesma", () => {
     const result = access(party(), party(), policy());
     expect(result).toMatchObject({ ok: false });
-    expect((result as { reason: string }).reason).toContain("si mesma");
+    expect((result as { reason: string }).reason).toContain("itself");
   });
 
   test("uma exceção libera o par, num sentido ou nos dois, por sessão, projeto, time ou host", () => {
@@ -128,8 +128,8 @@ describe("mensagens-regras: tamanho", () => {
     // 'é' takes two bytes: 16384 of them fit, one more does not.
     expect(sizeError("é".repeat(16384))).toBeNull();
     expect(sizeError("é".repeat(16385))).toContain("32 KB");
-    expect(sizeError("")).toContain("vazia");
-    expect(sizeError("   \n")).toContain("vazia");
+    expect(sizeError("")).toContain("empty");
+    expect(sizeError("   \n")).toContain("empty");
   });
 });
 
@@ -161,7 +161,7 @@ describe("mensagens-regras: limites", () => {
     });
     const refused = limits("pc/s1", "pc/s2", history({ fromA: 10, fromB: 10 }), NOW, policy());
     expect(refused).toMatchObject({ ok: false, kind: "pair" });
-    expect((refused as { reason: string }).reason).toContain("20 por hora");
+    expect((refused as { reason: string }).reason).toContain("20 per hour");
     const h = history();
     limits("pc/s1", "pc/s2", h, NOW, policy());
     expect(h.calls).toContainEqual(["pair", NOW - HOUR]);
@@ -172,7 +172,7 @@ describe("mensagens-regras: limites", () => {
     expect(limits("pc/s1", "pc/s2", history({ sent: 99 }), NOW, policy())).toEqual({ ok: true });
     const refused = limits("pc/s1", "pc/s2", history({ sent: 100 }), NOW, policy());
     expect(refused).toMatchObject({ ok: false, kind: "session" });
-    expect((refused as { reason: string }).reason).toContain("100 por hora");
+    expect((refused as { reason: string }).reason).toContain("100 per hour");
   });
 
   test("laço: mais de 10 mensagens em 10 minutos, indo e voltando, pausa o par", () => {
@@ -184,7 +184,7 @@ describe("mensagens-regras: limites", () => {
     // 10 so far: the 11th makes more than 10.
     const looping = limits("pc/s1", "pc/s2", loopy(5, 5), NOW, policy());
     expect(looping).toMatchObject({ ok: false, kind: "loop" });
-    expect((looping as { reason: string }).reason).toContain("laço");
+    expect((looping as { reason: string }).reason).toContain("loop");
     expect(limits("pc/s1", "pc/s2", loopy(5, 4), NOW, policy())).toEqual({ ok: true });
     // Ten in one direction only is a flood for the hourly limit, not a back and forth.
     expect(limits("pc/s1", "pc/s2", loopy(10, 0), NOW, policy())).toEqual({ ok: true });
@@ -228,7 +228,7 @@ describe("mensagens-regras: validar a política", () => {
     expect(good.policy).toMatchObject({ perPairPerHour: 5, loopMinutes: 3 });
     expect(good.policy.exceptions).toHaveLength(1);
     const errorsOf = (raw: unknown) => validatePolicy(raw).errors.join(" | ");
-    expect(errorsOf("regras")).toContain("objeto");
+    expect(errorsOf("regras")).toContain("object");
     expect(errorsOf({ perPairPerHour: 0 })).toContain("perPairPerHour");
     expect(errorsOf({ loopMinutes: 1.5 })).toContain("loopMinutes");
     expect(errorsOf({ exceptions: "tudo" })).toContain("exceptions");
@@ -243,7 +243,7 @@ describe("mensagens-regras: validar a política", () => {
           { id: "e", from: {}, to: {} },
         ],
       }),
-    ).toContain("repetido");
+    ).toContain("repeated");
     expect(errorsOf({ extra: 1 })).toContain("extra");
     // With errors the default policy comes back, not half of the wrong one.
     expect(validatePolicy({ perPairPerHour: -1 }).policy).toEqual(DEFAULT_POLICY);
@@ -253,7 +253,7 @@ describe("mensagens-regras: validar a política", () => {
 describe("mensagens-regras: mais validações", () => {
   test("uma exceção que não é um objeto e um bothWays que não é verdadeiro ou falso são erros", () => {
     const errorsOf = (raw: unknown) => validatePolicy(raw).errors.join(" | ");
-    expect(errorsOf({ exceptions: ["tudo"] })).toContain("objeto");
+    expect(errorsOf({ exceptions: ["tudo"] })).toContain("object");
     expect(errorsOf({ exceptions: [{ id: "e", from: {}, to: {}, bothWays: "sim" }] })).toContain(
       "bothWays",
     );

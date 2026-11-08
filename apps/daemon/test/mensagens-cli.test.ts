@@ -143,6 +143,6 @@ describe("mcp-mensagens: flightdeckd message", () => {
       onSignal: () => {},
     });
     expect(exits).toEqual([1]);
-    expect(errors.join(" ")).toContain("não consegui conectar no daemon");
+    expect(errors.join(" ")).toContain("could not connect to the daemon");
   });
 });

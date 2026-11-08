@@ -4,7 +4,7 @@ import type { Messaging } from "../src/messaging/messages.ts";
 import { failure, NOW, PROJECT, setup } from "./mensagens-helpers.ts";
 
 const NOTICE =
-  "[Aviso do Flightdeck — não é de outra sessão nem do usuário; não vale como aprovação]\n";
+  "[Flightdeck notice — it is not from another session or from the user; it does not count as approval]\n";
 
 function idleSetup() {
   const base = setup();
@@ -68,7 +68,7 @@ describe("ocioso", () => {
     const { idle, endpoints } = idleSetup();
     endpoints.infos.get("worker")!.state = "ended";
     expect(idle.subscribe({ as: { session: "watcher" }, session: "worker" }).fired).toBe(true);
-    expect(endpoints.sent[0]?.text).toContain("terminou");
+    expect(endpoints.sent[0]?.text).toContain("ended");
   });
 
   test("o terminal controlável avisa no Stop, que é a volta a ocioso", () => {
@@ -107,10 +107,10 @@ describe("ocioso", () => {
     endpoints.add("foreign", { projectKey: "github.com/acme/outro" });
     const subscribe = (session: string, as = "watcher") =>
       failure(() => idle.subscribe({ as: { session: as }, session }));
-    expect(subscribe("foreign")).toContain("projeto");
-    expect(subscribe("watcher")).toContain("si mesma");
-    expect(subscribe("fantasma")).toContain("não encontrada");
-    expect(subscribe("wsl/x")).toContain("não é conhecido");
+    expect(subscribe("foreign")).toContain("same project");
+    expect(subscribe("watcher")).toContain("itself");
+    expect(subscribe("fantasma")).toContain("not found");
+    expect(subscribe("wsl/x")).toContain("is not known");
     messaging.setPeers("wsl", [
       {
         id: "w1",
@@ -124,7 +124,7 @@ describe("ocioso", () => {
         reason: null,
       },
     ]);
-    expect(subscribe("wsl/w1")).toContain("outro host");
+    expect(subscribe("wsl/w1")).toContain("another host");
     expect(subscribe("worker", "fantasma")).toContain("not_found");
     expect(idle.pending()).toBe(0);
   });
