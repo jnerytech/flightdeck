@@ -2472,11 +2472,11 @@ async function sessionFitsProblems(c: Context): Promise<string[]> {
 }
 
 /**
- * The layout check (#1003), kept under the 90 s a journey gets: the screens people use most (Home,
- * a session, the board, a host's page, Settings) at the smallest window the app allows and at the
- * usual one. English runs all of it, in two journeys (`layoutWindows` is the second half); pt-BR runs
- * only the geometry guards, where its longer texts are the point. The other sizes and screens are
- * not checked here any more.
+ * The layout check (#1003), kept under the 90 s a journey gets: the geometry guards of the screens
+ * people use most (Home, a session, the board, a host's page, Settings) at the smallest window the
+ * app allows and at the usual one, in both languages (pt-BR's longer texts are the point). English
+ * has two journeys more, `layoutAbas` (12 tabs, tab widths) and `layoutWindows` (scroll, the
+ * smallest window, the bell). The other sizes and screens are not checked here any more.
  */
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
@@ -2489,7 +2489,20 @@ export async function layout(c: Context, problems: string[]) {
   // The geometry guards (issue #192) name what they find by data-slot path; the heuristic rules fail
   // only when new against the baseline.
   await geometryGuards(c, screens, problems);
-  if (c.lang === "pt-BR") return;
+}
+
+/**
+ * The crowded-tabs part of the layout check (#1003), a journey of its own so none of the three
+ * layout journeys comes near the 90 s a journey gets: 12 tabs and a long worktree path at the
+ * smallest and the largest window, the tab widths and list, the active tab, and where the tab
+ * strip starts. English only. (`layout` holds the geometry guards, `layoutWindows` the scroll
+ * and window checks.)
+ */
+export async function layoutAbas(c: Context, problems: string[]) {
+  const screens: Array<[string, Route]> = [
+    ["host", { name: "host", host: ALFA }],
+    ["configuracoes", { name: "settings" }],
+  ];
   const smallest = OVERFLOW_VIEWPORTS[0] as { width: number; height: number };
   const largest = OVERFLOW_VIEWPORTS[OVERFLOW_VIEWPORTS.length - 1] as typeof smallest;
   // Issue #103: with 12 tabs and a long worktree path, a screen does not scroll the page sideways.
