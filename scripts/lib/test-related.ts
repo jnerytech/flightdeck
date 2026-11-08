@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { testArgs } from "../test/timeout.ts";
+import { COVERAGE_GATE } from "./coverage-check.ts";
 import { coverageTargets, loadedTargets } from "./related-coverage.ts";
 import { SLOT_TEST_FILES } from "./slot.ts";
 import { auditBase } from "./tdd-audit.ts";
@@ -113,13 +114,13 @@ export interface PlanDeps {
   coverageDir?: string;
   /** `--fast`: only the tests that import a changed file directly (the transitive set runs in CI). */
   fast?: boolean;
-  /** `--tier unit,component`: only the tests of these tiers (#261); the 100% gate stays in CI. */
+  /** `--tier unit,component`: only the tests of these tiers (#261); the coverage gate stays in CI. */
   tiers?: string[];
   /** A test file's tier (lib/test-tiers.ts); undefined for a file it does not classify. */
   tierOf?: (path: string) => string | undefined;
   /**
    * `--pr` (#309): every unit and component test, plus the related tests of the other tiers, with
-   * the per-changed-file 100% gate. The full suite runs on main and nightly.
+   * the per-changed-file coverage gate. The full suite runs on main and nightly.
    */
   pyramid?: boolean;
   /** False keeps a big run out of the machine-wide slot (CI has the machine to itself). */
@@ -131,7 +132,7 @@ export interface Plan {
   output: string;
   /** The command to run, or `null` when there is nothing to run. */
   command: string[] | null;
-  /** The changed source files the run must cover at 100%; only when coverage was asked for. */
+  /** The changed source files the run must cover at the gate; only when coverage was asked for. */
   targets?: string[];
   /**
    * The test files the run holds, or "all" when the whole suite runs: what `--list` writes for the
@@ -228,7 +229,7 @@ function runCommand(
 ): string[] {
   const run = [
     "bun",
-    // The area config turns coverage off; the related one turns it on without the 100% gate.
+    // The area config turns coverage off; the related one turns it on without the threshold.
     coverageDir ? "--config=bunfig.related.toml" : "--config=bunfig.area.toml",
     ...testArgs(platform, [
       ...(coverageDir ? [`--coverage-dir=${coverageDir}`] : []),
@@ -269,7 +270,7 @@ export function planRelated({
   pyramid = false,
   slot = true,
 }: PlanDeps): Plan {
-  // A run of some tiers covers only part of a file: the 100% gate is the full run's (CI).
+  // A run of some tiers covers only part of a file: the coverage gate is the full run's (CI).
   const coverageDir = tiers ? undefined : asked;
   const ref = baseRef(base, git);
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
@@ -291,7 +292,9 @@ export function planRelated({
     ? newImports(changed, sources, (path) => git(["show", `${at}:${path}`]))
     : [];
   for (const path of added) {
-    warnings.push(`${path}: newly imported by a changed test, so it is held to 100% too (#762)`);
+    warnings.push(
+      `${path}: newly imported by a changed test, so it is held to the ${COVERAGE_GATE}% gate too (#762)`,
+    );
   }
   const byChange = selectRelated(changed, sources, { direct: fast });
   const seen = new Set(byChange.map((r) => r.path));

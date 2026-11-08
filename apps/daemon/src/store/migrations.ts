@@ -931,4 +931,9 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE external_sessions ADD COLUMN permission_mode TEXT;
   `,
+  // Issue #79: the stable key of the finding a card was raised from, so a scan does not raise it again.
+  `
+  ALTER TABLE cards ADD COLUMN source_key TEXT;
+  CREATE INDEX cards_source_key ON cards (project_id, source_key);
+  `,
 ];

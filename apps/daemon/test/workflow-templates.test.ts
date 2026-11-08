@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { LocalizedText, WorkflowTemplate } from "@flightdeck/protocol";
 import { PACK_IDS } from "../src/personas/pack.ts";
+import { parseFindings } from "../src/workflows/findings.ts";
 import { checkCommands, parseWorkflow, type Step } from "../src/workflows/schema.ts";
 import { workflowTemplates } from "../src/workflows/templates.ts";
 
@@ -18,8 +19,12 @@ const agentPersonas = (steps: Step[]) =>
   steps.flatMap((step) => ("agent" in step ? [step.agent.persona] : []));
 
 describe("workflow templates (issue #79)", () => {
-  test("ships the alert fixer and the post-mortem draft, in that order", () => {
-    expect(all.map((template) => template.id)).toEqual(["alert-fixer", "post-mortem"]);
+  test("ships the tech-debt scan, the alert fixer and the post-mortem draft, in that order", () => {
+    expect(all.map((template) => template.id)).toEqual([
+      "tech-debt-scan",
+      "alert-fixer",
+      "post-mortem",
+    ]);
   });
 
   test("each template has the protocol's shape, with both languages", () => {
@@ -59,13 +64,26 @@ describe("workflow templates (issue #79)", () => {
   });
 
   test("a push always waits for approval: a gate comes before every pr step", () => {
-    expect(all.length > 0).toBe(true);
-    for (const template of all) {
-      const kinds = stepsOf(template.yaml).map((step) => ("gate" in step ? "gate" : "other"));
-      const pr = stepsOf(template.yaml).findIndex((step) => "pr" in step);
-      expect(pr > 0).toBe(true);
-      expect(kinds[pr - 1]).toBe("gate");
+    const pushing = all.filter((template) => stepsOf(template.yaml).some((step) => "pr" in step));
+    expect(pushing.map((template) => template.id)).toEqual(["alert-fixer", "post-mortem"]);
+    for (const template of pushing) {
+      const steps = stepsOf(template.yaml);
+      const pr = steps.findIndex((step) => "pr" in step);
+      expect(pr > 0 && "gate" in (steps[pr - 1] ?? {})).toBe(true);
     }
+  });
+
+  test("the tech-debt scan reads only, pushes nothing and raises its findings as cards", () => {
+    const scan = byId("tech-debt-scan");
+    expect(scan?.persona).toBe("arquiteto");
+    expect(scan?.inputs).toEqual([]);
+    expect(scan?.checkFilled).toBeNull();
+    const steps = stepsOf(scan?.yaml ?? "");
+    expect(steps.map((step) => step.id)).toEqual(["scan", "raise"]);
+    const [first, second] = steps;
+    expect(first && "agent" in first ? first.agent.permissionMode : "").toBe("plan");
+    expect(second && "cards" in second ? second.cards.from : "").toBe("scan");
+    expect(steps.some((step) => "pr" in step || "check" in step)).toBe(false);
   });
 
   test("each file sets a budget of turns and minutes, and fans no agents out", () => {
@@ -76,6 +94,21 @@ describe("workflow templates (issue #79)", () => {
       expect(typeof parsed?.budget.maxMinutes).toBe("number");
       expect(stepsOf(template.yaml).some((step) => "parallel" in step)).toBe(false);
     }
+  });
+
+  test("the scan's limits do not promise more than plan mode gives", () => {
+    const scan = byId("tech-debt-scan");
+    expect(scan?.limits.en.includes("plan mode")).toBe(true);
+    expect(scan?.limits["pt-BR"].includes("modo de plano")).toBe(true);
+    expect(scan?.limits.en.toLowerCase().includes("read-only")).toBe(false);
+    expect(scan?.limits["pt-BR"].toLowerCase().includes("só leitura")).toBe(false);
+  });
+
+  test("the example block in the scan's prompt is itself a valid list of findings", () => {
+    const first = stepsOf(byId("tech-debt-scan")?.yaml ?? "")[0];
+    const prompt = first && "agent" in first ? first.agent.prompt : "";
+    const read = parseFindings(prompt);
+    expect(read.ok && read.findings.length).toBe(1);
   });
 
   test("the alert fixer takes the alert, tries at most 3 times, then asks before it pushes", () => {

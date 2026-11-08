@@ -398,7 +398,7 @@ describe("planRelated", () => {
       "./scripts/test/narrow.test.ts",
     ]);
     expect(plan.output).toContain(
-      "scripts/entry.ts: newly imported by a changed test, so it is held to 100% too (#762)",
+      "scripts/entry.ts: newly imported by a changed test, so it is held to the 80% gate too (#762)",
     );
     // Without the coverage gate there is nothing to hold it to, and git is not asked.
     calls.length = 0;

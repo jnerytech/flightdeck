@@ -1927,7 +1927,7 @@ export const RunStatus = z.enum([
 ]);
 export type RunStatus = z.infer<typeof RunStatus>;
 
-export const StepType = z.enum(["agent", "check", "gate", "loop", "parallel", "pr"]);
+export const StepType = z.enum(["agent", "check", "gate", "loop", "parallel", "pr", "cards"]);
 export type StepType = z.infer<typeof StepType>;
 
 export const StepStatus = z.enum([

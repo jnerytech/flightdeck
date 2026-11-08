@@ -1268,7 +1268,7 @@ export class AppStore {
   private setLatency(hostId: string, latencyMs: number | null): void {
     if (this.getLatency(hostId) === latencyMs) return;
     this.latencies.set(hostId, latencyMs);
-    for (const listener of [...this.latencyListeners]) listener();
+    for (const listener of [...this.latencyListeners]) listener(); // NOSONAR: a listener may subscribe or unsubscribe while it runs: this pass goes over a copy
   }
 
   /** How the hub draws its sessions: lines or cards. */
@@ -3455,11 +3455,22 @@ export class AppStore {
       this.update({ unread: { ...this.state.unread, [key]: true } });
     }
     this.webhookFeed.managed({ id: hostId, name: host.name }, prev, next);
-    const label = `${host.name} · ${next.name ?? basename(next.cwd)}`;
+    this.tellAboutSummary(hostId, host.name, prev, next);
+  }
+
+  /** What a changed summary tells the person: the notifications it raises, or folds into its team's. */
+  private tellAboutSummary(
+    hostId: string,
+    hostName: string,
+    prev: SidebarSession | undefined,
+    next: SidebarSession,
+  ): void {
+    const key = sessionKey(hostId, next.id);
+    const label = `${hostName} · ${next.name ?? basename(next.cwd)}`;
     const linkFor = (requestId: string) => requestLink(hostId, requestId);
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
-    const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
+    const names = { subject: next.name ?? basename(next.cwd), host: hostName, group: key };
     const project = this.sessionProject(hostId, next.cwd);
     const team = this.teamOf.get(key);
     const simple = this.uiMode(hostId).mode === "simple";
