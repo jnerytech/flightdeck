@@ -12,6 +12,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { demoToast } = await import("../src/demo/boot.ts");
+const { Composer } = await import("../src/components/session/parts.tsx");
 
 const CSS = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
 const cleanups: Array<() => unknown> = [];
@@ -19,6 +20,7 @@ afterEach(async () => {
   cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
   document.documentElement.style.removeProperty("--update-card-lift");
+  document.documentElement.style.removeProperty("--composer-clear");
 });
 
 /** A store whose updater finds and downloads `available` (the update card then shows). */
@@ -59,7 +61,7 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
     expect(CSS).toContain("--corner-bottom: calc(var(--status-bar-height) + 0.75rem);");
     expect(CSS).toContain('html:not(:has([data-slot="status-bar"])) {\n  --corner-bottom: 24px;');
     expect(CSS).toContain(
-      "--toast-bottom: calc(var(--corner-bottom) + var(--update-card-lift, 0px));",
+      "--toast-bottom: max(calc(var(--corner-bottom) + var(--update-card-lift, 0px)), var(--composer-clear, 0px));",
     );
     expect(CSS).toContain("bottom: var(--corner-bottom);");
     expect(CSS).not.toContain("bottom: calc(var(--status-bar-height, 0rem) + 0.75rem);");
@@ -78,6 +80,25 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
     });
     await settle(() => screen.queryByRole("region", { name: "Update available" }) === null);
     expect(lift()).toBe("");
+  });
+
+  // #994: on a session page the corner is the message box: a toast covered Send, and on a phone the
+  // whole box and the mode chip. While a message box shows, the toasts sit above it.
+  test("while a message box shows, it lifts the toasts above its top; with two, above the higher; gone, no more", async () => {
+    const clear = () => document.documentElement.style.getPropertyValue("--composer-clear");
+    const both = render(
+      <>
+        <Composer>one</Composer>
+        <Composer>two</Composer>
+      </>,
+    );
+    expect(clear()).toMatch(/^calc\(\d+px \+ 0\.75rem\)$/);
+    both.unmount();
+    expect(clear()).toBe("");
+    const one = render(<Composer>one</Composer>);
+    expect(clear()).toMatch(/^calc\(\d+px \+ 0\.75rem\)$/);
+    one.unmount();
+    expect(clear()).toBe("");
   });
 
   test("in the demo, the prints' event shows one toast in the page's language, each time it is sent", () => {
