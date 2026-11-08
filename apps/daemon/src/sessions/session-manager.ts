@@ -49,7 +49,7 @@ export const RESTART_REASON = "daemon_restarted";
 /** The request cut at 200 characters, never in the middle of an emoji. */
 function cutRequest(text: string): string {
   const cut = text.slice(0, 200);
-  const last = cut.charCodeAt(cut.length - 1);
+  const last = cut.codePointAt(cut.length - 1) ?? 0;
   return last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut;
 }
 /** What daemons before the code wrote: rows left by them are still offered. */
