@@ -8,6 +8,8 @@ import { isInside } from "../paths.ts";
 export interface SpecFound {
   found: boolean;
   heading: string | null;
+  /** Only when the front matter says `draft: true`: the one value read from it (#78). */
+  draft?: true;
 }
 
 const NOTHING: SpecFound = { found: false, heading: null };
@@ -61,8 +63,9 @@ export async function readSpec(
       // Where the system cannot say where the descriptor points, the path says it once more,
       // after the open: it must still be inside and still be the file that was opened.
       if (!(await stillThere(realRoot, target, opened))) return NOTHING;
-      const text = buffer.subarray(0, bytesRead);
-      return { found: true, heading: firstHeading(text, bytesRead === LOOKED_AT) };
+      const { draft, body } = frontMatter(buffer.subarray(0, bytesRead).toString("utf8"));
+      const heading = firstHeading(body, bytesRead === LOOKED_AT);
+      return draft ? { found: true, heading, draft: true } : { found: true, heading };
     } finally {
       await handle.close();
     }
@@ -104,9 +107,24 @@ export async function stillThere(
 /** What a heading must not carry: controls, invisible and direction-changing characters, breaks. */
 const NOT_FOR_A_HEADING = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
 
+/**
+ * A front matter block (`---` lines at the very start): whether it says `draft: true` (as YAML
+ * writes it: any case, quoted or not), and the text after it, where the heading is looked for.
+ * Nothing else of it is kept. A block that does not close within what was read counts as a draft:
+ * the check fails closed.
+ */
+function frontMatter(text: string): { draft: boolean; body: string } {
+  const block = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+  if (!block) return { draft: /^\uFEFF?---\r?\n/.test(text), body: text };
+  return {
+    draft: /^draft:[ \t]*(["']?)true\1[ \t]*\r?$/im.test(block[1] ?? ""),
+    body: text.slice(block[0].length),
+  };
+}
+
 /** The first ATX heading of the start of a file, plain text of at most 120 characters. */
-function firstHeading(bytes: Buffer, cut: boolean): string | null {
-  const lines = bytes.toString("utf8").split(/\r?\n/);
+function firstHeading(text: string, cut: boolean): string | null {
+  const lines = text.split(/\r?\n/);
   // A start that ended mid-line has a last line that may be half a heading.
   if (cut) lines.pop();
   for (const line of lines) {

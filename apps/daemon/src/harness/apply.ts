@@ -4,9 +4,9 @@
  * of them. Settings gain entries and lose nothing. See docs/decisions/2026-11-07-harness-apply.md.
  */
 import { constants } from "node:fs";
-import { type FileHandle, lstat, mkdir, open, realpath } from "node:fs/promises";
-import { join } from "node:path";
+import { type FileHandle, open, realpath } from "node:fs/promises";
 import type { HarnessApplied, HarnessPreview } from "@flightdeck/protocol";
+import { createInside } from "../create-inside.ts";
 import { FlightdeckError } from "../errors.ts";
 import { samePath } from "../paths.ts";
 import {
@@ -108,30 +108,9 @@ function merged(current: Record<string, unknown>, settings: Settings): Record<st
   return out;
 }
 
-/**
- * Creates a new file at `name`, which must still be missing: each folder on the way is made or
- * found as a real folder (a link there is refused), and the file is opened only if it does not exist.
- */
+/** A new file at `name`, which must still be missing; anything else is a project that changed. */
 async function create(root: string, name: string, content: string, fs: ApplyFs): Promise<void> {
-  const names = name.split("/");
-  let at = root;
-  for (const segment of names.slice(0, -1)) {
-    at = join(at, segment);
-    await orNull(mkdir(at));
-    const info = await orNull(lstat(at));
-    if (info === null || !info.isDirectory()) throw stale();
-  }
-  const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | NO_FOLLOW;
-  const handle = await orNull(fs.open(join(at, names.at(-1) as string), flags));
-  if (handle === null) throw stale();
-  try {
-    // A folder on the way swapped for a link since the loop: the new file is not where the path says.
-    // It is still empty, and was made by this call (O_EXCL), so nothing of the person's is touched.
-    if (!samePath((await orNull(realpath(at))) ?? "", at)) throw stale();
-    await handle.writeFile(content);
-  } finally {
-    await handle.close();
-  }
+  if (!(await createInside(root, name, content, fs.open))) throw stale();
 }
 
 async function writeSettings(

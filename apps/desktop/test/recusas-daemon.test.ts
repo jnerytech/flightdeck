@@ -45,6 +45,7 @@ const REASONS = [
   "findings_missing",
   "findings_invalid",
   "card_moved_anyway",
+  "spec_template_failed",
   "contract_invalid",
   "cwd_missing",
   "cwd_outside_roots",
