@@ -5,7 +5,7 @@ import { LocalEndpoints } from "../src/messaging/endpoints.ts";
 import { Messaging } from "../src/messaging/messages.ts";
 import { startServer } from "../src/server.ts";
 import { Teams } from "../src/teams/teams.ts";
-import { newBoard } from "./board-helpers.ts";
+import { cardWhen, newBoard } from "./board-helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 setDefaultTimeout(30_000);
@@ -19,7 +19,21 @@ afterEach(async () => {
 
 async function boot() {
   const ctx = newBoard({}, 1);
-  cleanups.push(() => ctx.board.stop());
+  // A team's cards are started on creation and go on preparing their worktrees (a git run) after
+  // `create` returns: wait for every run to have its session or to have ended, so no git is left
+  // running into the next test file (#954).
+  cleanups.push(async () => {
+    const cards = ctx.board.getBoard(project.id).columns.flatMap((column) => column.cards);
+    const prepared = await Promise.all(
+      cards.map((card) =>
+        cardWhen(ctx.board, card.id, (now) =>
+          now.runs.every((run) => run.sessionId !== null || run.endedAt !== null),
+        ),
+      ),
+    );
+    ctx.board.stop();
+    expect(prepared.every((card) => card !== null)).toBe(true);
+  });
   const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
   const endpoints = new LocalEndpoints({
     manager: ctx.manager,

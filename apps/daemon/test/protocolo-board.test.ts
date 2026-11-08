@@ -40,7 +40,11 @@ async function connect(url: string): Promise<FrameClient> {
 
 function serve() {
   const ctx = newBoard({ prPollIntervalMs: 30 });
-  cleanups.push(() => ctx.board.stop());
+  cleanups.push(async () => {
+    ctx.board.stop();
+    // A poll round in flight would leave its fake gh running into the next test file (#954).
+    await ctx.board.idle();
+  });
   const server = startServer({
     manager: ctx.manager,
     board: ctx.board,
