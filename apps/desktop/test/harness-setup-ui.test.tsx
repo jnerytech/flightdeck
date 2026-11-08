@@ -492,4 +492,67 @@ describe("harness-setup-ui: the project page sets up Claude Code after the perso
     await settleMaybe(() => screen.queryByRole("alertdialog") === null);
     expect([offered, button("Commit on a new branch") !== null]).toEqual([true, false]);
   });
+
+  test("Draft with Claude puts the host's draft in place of the CLAUDE.md template, and apply sends its digest (#75 G1)", async () => {
+    const draft = {
+      path: "CLAUDE.md",
+      content: "# Drafted shop\n\nRun `bun run test`.\n",
+      digest: "d-draft",
+    };
+    const { view, sent } = setup({
+      features: [...FEATURES, "harnessDraft"],
+      answers: [
+        { ok: true, data: draft },
+        { ok: true, data: { written: ["CLAUDE.md"], digests: { "CLAUDE.md": "w" } } },
+      ],
+    });
+    render(view);
+    await listing();
+    await open();
+    const offered = await click("Draft with Claude", true);
+    const shown = await settleMaybe(() => dialogText().includes("# Drafted shop"));
+    const said = dialogText().includes("Read it before you apply");
+    // Without a draft, the queued answers are not the apply's.
+    if (offered) await click("Apply the setup", true);
+    await settleMaybe(() => sent.some(([type]) => type === "project.harness.apply"));
+    const applied = sent.find(([type]) => type === "project.harness.apply")?.[1] as
+      | { digests?: Record<string, string> }
+      | undefined;
+    expect([
+      offered,
+      sent.find(([type]) => type === "project.harness.draft")?.[1],
+      shown,
+      said,
+      applied?.digests?.["CLAUDE.md"],
+      applied?.digests?.[SETTINGS],
+    ]).toEqual([
+      true,
+      { path: "/work/api", part: "claudeMd" },
+      true,
+      true,
+      "d-draft",
+      "d-settings",
+    ]);
+  });
+
+  test("a draft the host refuses says why and keeps the template; a host without drafts offers none", async () => {
+    const refused = setup({
+      features: [...FEATURES, "harnessDraft"],
+      answers: [
+        { ok: false, code: "invalid_state", message: "refused", reason: "harness_draft_failed" },
+      ],
+    });
+    render(refused.view);
+    await listing();
+    await open();
+    await click("Draft with Claude", true);
+    const said = await settleMaybe(() => dialogText().includes("did not answer with a CLAUDE.md"));
+    const kept = dialogText().includes("# Project notes");
+    cleanup();
+    const older = setup();
+    render(older.view);
+    await listing();
+    await open();
+    expect([said, kept, button("Draft with Claude") !== null]).toEqual([true, true, false]);
+  });
 });
