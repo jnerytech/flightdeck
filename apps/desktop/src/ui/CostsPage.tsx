@@ -33,7 +33,7 @@ import {
   projectLabel,
   usd,
 } from "../lib/costs.ts";
-import { mergeHostCsv } from "../lib/costs-csv.ts";
+import { exportCosts } from "../lib/costs-export.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../lib/data-scope.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -260,27 +260,7 @@ export const CostsPage = memo(function CostsPage(props: {
     const { [name]: _old, ...rest } = filters;
     setFilters(value ? { ...rest, [name]: value } : rest);
   };
-  const exportCsv = async () => {
-    if (!acrossHosts) {
-      const file = await store.hostCommand(hostId, "costs.export", filter);
-      if (file) await store.saveFile(file.filename, file.csv);
-      return;
-    }
-    // Every host, one file with the host as its first column; a host that does not answer is left out.
-    const answers = await Promise.allSettled(
-      hosts.map(async (h) => ({
-        host: h.name,
-        file: await store.hostCommand(h.id, "costs.export", filter),
-      })),
-    );
-    const files = answers.flatMap((answer) => {
-      if (answer.status !== "fulfilled" || !answer.value.file) return [];
-      return [{ host: answer.value.host, ...answer.value.file }];
-    });
-    const csv = mergeHostCsv(files);
-    const first = files[0];
-    if (first && csv !== "") await store.saveFile(first.filename, csv);
-  };
+  const exportCsv = () => exportCosts(store, { acrossHosts, hostId, hosts }, filter);
   const byDay = summary?.byDay ?? [];
   // The same session can come from two hosts: each row needs a key of its own.
   const topKeys = uniqueKeys((summary?.topSessions ?? []).map((s) => s.claudeSessionId));
