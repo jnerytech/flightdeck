@@ -102,22 +102,26 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
   });
 
   test("the card is made with the spec's title and names the spec, then says so with a way to open it", async () => {
-    const { view, sent, store } = setup();
+    const { view, sent, store, went } = setup();
     render(view);
     await listed();
     const button = makeCard("Login screen");
     if (button) await act(async () => fireEvent.click(button));
-    const named = await settleMaybe(() => sent.some(([type]) => type === "card.update"));
+    const named = await settleMaybe(() => store.getState().notices.length > 0);
+    const notice = store.getState().notices.at(-1);
+    if (notice?.link) notice.link.run();
     expect([
       named,
       sent.find(([type]) => type === "card.create")?.[1],
       sent.find(([type]) => type === "card.update")?.[1],
-      store.getState().notices.at(-1)?.text ?? null,
+      notice?.text ?? null,
+      went,
     ]).toEqual([
       true,
       { projectId: "p1", title: "Login screen", description: "" },
       { cardId: "c9", specPath: "docs/specs/login.md" },
       "Card made from the spec: Login screen",
+      [{ name: "card", host: "h1", projectId: "p1", cardId: "c9" }],
     ]);
   });
 
@@ -131,16 +135,20 @@ describe("knowledge-card-ui: a spec in the documents becomes a card that names i
     expect([created, sent.some(([type]) => type === "card.update")]).toEqual([true, false]);
   });
 
-  test("a card the host would not name after the spec says no success", async () => {
-    const { view, sent, store } = setup({ refuseName: true });
+  test("a card the host would not point at the spec is said as made without it, with a way to open it", async () => {
+    const { view, store, went } = setup({ refuseName: true });
     render(view);
     await listed();
     const button = makeCard("Login screen");
     if (button) await act(async () => fireEvent.click(button));
-    const tried = await settleMaybe(() => sent.some(([type]) => type === "card.update"));
-    expect([tried, store.getState().notices.some((n) => n.kind === "success")]).toEqual([
+    const said = await settleMaybe(() => store.getState().notices.length > 0);
+    const notice = store.getState().notices.find((n) => n.kind === "success");
+    if (notice?.link) notice.link.run();
+    // The card is there either way: a second click would only make another.
+    expect([said, notice?.text, went]).toEqual([
       true,
-      false,
+      "Card made without its spec: Login screen. Open it to set the spec path.",
+      [{ name: "card", host: "h1", projectId: "p1", cardId: "c9" }],
     ]);
   });
 
