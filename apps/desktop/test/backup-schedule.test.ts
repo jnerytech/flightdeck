@@ -174,6 +174,27 @@ describe("backup-schedule: a run (#1264)", () => {
     expect([report.status === "done" && report.removed, [...files.keys()]]).toEqual([2, [name]]);
   });
 
+  test("a prune that fails halfway still counts the backups it removed", async () => {
+    const { folder, files } = fakeFolder([named(1), named(2), named(3)]);
+    const remove = folder.remove;
+    folder.remove = async (name) => {
+      if (name === named(2)) throw new Error("locked");
+      await remove(name);
+    };
+    const report = await runScheduledBackup({
+      platform: platformWith(),
+      folder,
+      schedule: schedule({ keep: 1 }),
+      passphrase: PASS,
+      now: NOON,
+      options: FAST,
+    });
+    expect([
+      report.status === "done" && [report.prune, report.removed],
+      files.has(named(1)),
+    ]).toEqual([["failed", 1], false]);
+  });
+
   test("a backup that was written but could not be pruned is reported as done, not as a failure", async () => {
     const { folder, files } = fakeFolder([named(1)]);
     folder.list = async () => {

@@ -223,6 +223,18 @@ mod tests {
     }
 
     #[test]
+    fn a_picked_folder_with_a_space_at_its_end_is_read_back_as_itself() {
+        let config = scratch("config-space");
+        let parent = scratch("picked-space");
+        let spaced = parent.join("backups ");
+        std::fs::create_dir_all(&spaced).unwrap();
+        save_folder(&config, s(&spaced)).unwrap();
+        assert_eq!(load_folder(&config), Some(s(&spaced).to_string()));
+        let _ = std::fs::remove_dir_all(&config);
+        let _ = std::fs::remove_dir_all(&parent);
+    }
+
+    #[test]
     fn a_leftover_temporary_file_does_not_stop_a_write_and_is_left_alone() {
         let dir = scratch("leftover");
         std::fs::write(dir.join(format!("{A}.part")), "someone else's").unwrap();
