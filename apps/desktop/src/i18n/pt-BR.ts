@@ -4896,7 +4896,7 @@ export const ptBR = {
       logon:
         "Iniciar no boot está ligado: o flightdeckd inicia no seu próximo login. O daemon que está rodando agora continua como está.",
       lingerOff:
-        "O linger está desligado, então ele espera um login. Para iniciar no boot, rode isto num terminal do host. O app nunca roda sudo:",
+        "O linger está desligado, então o flightdeckd espera um login. Para iniciar no boot, rode isto num terminal do host. O app nunca roda sudo:",
       copyLinger: "Copiar o comando do linger",
     },
   },

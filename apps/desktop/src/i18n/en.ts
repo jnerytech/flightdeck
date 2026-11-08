@@ -4883,7 +4883,7 @@ export const en: Dictionary = {
       logon:
         "Start at boot is on: flightdeckd starts at your next login. The daemon running now stays as it is.",
       lingerOff:
-        "Linger is off, so it waits for a login. To start it at boot, run this in a terminal on the host. The app never runs sudo:",
+        "Linger is off, so flightdeckd waits for a login. To start it at boot, run this in a terminal on the host. The app never runs sudo:",
       copyLinger: "Copy the linger command",
     },
   },
