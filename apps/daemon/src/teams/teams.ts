@@ -167,6 +167,14 @@ const RESUME_USER = "resume: o time voltou a trabalhar. Continue de onde parou."
 const RESUME_QUOTA =
   "resume: a janela da cota do plano reiniciou e o time voltou a trabalhar. Continue de onde parou.";
 
+/** What a worker is started with beyond the team's own setup; read only, so one copy serves every call. */
+interface WorkerSpec {
+  readonly persona: string | null;
+  readonly model: string | null;
+  readonly permission: PermissionMode | null;
+}
+const NO_SPEC: WorkerSpec = { persona: null, model: null, permission: null };
+
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
   private readonly unsubscribe: Array<() => void> = [];
@@ -655,11 +663,7 @@ export class Teams {
     count: number,
     coordinator: TeamMember | undefined,
     tellCoordinator: (text: string) => void,
-    spec: { persona: string | null; model: string | null; permission: PermissionMode | null } = {
-      persona: null,
-      model: null,
-      permission: null,
-    },
+    spec: WorkerSpec = NO_SPEC,
   ) {
     const members = this.stored(this.row(row.id));
     const taken = members.flatMap((m) => numberOf(m) ?? []);
