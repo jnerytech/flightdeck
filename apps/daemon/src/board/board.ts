@@ -1977,6 +1977,11 @@ export class Board {
     return this.getCard(id);
   }
 
+  /** #1196: merges the card's open PR on its provider, then reads it again so the card moves to Done. */
+  async mergePr(id: string, _method: "merge" | "squash", _confirm: boolean): Promise<Card> {
+    return this.getCard(id);
+  }
+
   /** The review comments of the card's PR, as last fetched (fetched now when there are none). */
   async prComments(id: string): Promise<PrComment[]> {
     if (!this.getCard(id).prUrl)

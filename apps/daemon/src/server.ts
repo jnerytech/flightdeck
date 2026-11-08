@@ -1632,6 +1632,10 @@ export function startServer(opts: ServerOptions): RunningServer {
             command.payload,
           ),
         );
+      case "card.pr.merge": {
+        const { cardId, method, confirm } = command.payload;
+        return ok(command.type, await board().mergePr(cardId, method, confirm === true));
+      }
       case "card.complete": {
         const { cardId, confirm } = command.payload;
         return ok(command.type, await board().completeCard(cardId, confirm === true));

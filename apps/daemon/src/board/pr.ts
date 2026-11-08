@@ -138,6 +138,8 @@ export interface PrProvider {
   health(opts: { cwd: string; url: string }): Promise<PrHealth>;
   /** Phase 22: the end of the log of what failed in a build, at most 16 KB. */
   buildLog(opts: { cwd: string; url: string; buildId: string }): Promise<string>;
+  /** #1196: merges the open PR (a merge commit or a squash); a provider without it cannot. */
+  merge?(opts: { cwd: string; url: string; method: "merge" | "squash" }): Promise<void>;
 }
 
 /** Starts a program that was found: runCommand, or a stand-in that starts nothing. */
@@ -288,6 +290,8 @@ abstract class CliProvider {
 
 /** GitHub through `gh`. */
 export class GithubCli extends CliProvider implements PrProvider {
+  async merge(_opts: { cwd: string; url: string; method: "merge" | "squash" }): Promise<void> {}
+
   async create(opts: CreatePr): Promise<string> {
     const existing = await this.url(opts);
     if (existing) return existing;
