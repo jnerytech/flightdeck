@@ -33,6 +33,7 @@ import type {
   PersonaRef,
   PlainInfo,
   Project,
+  QuotaBudgetInput,
   QuotaState,
   ReleaseNote,
   RiskLevel,
@@ -86,7 +87,7 @@ import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
-import { budgetLabel } from "./budgets.ts";
+import { budgetLabel, budgetLimitText, estimateNote, share } from "./budgets.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
@@ -3897,6 +3898,12 @@ export class AppStore {
     if (budget) this.keepBudget(hostId, budget, false);
   }
 
+  /** The same for a budget in terms of a plan quota window (issue #1248). */
+  async setQuotaBudget(hostId: string, input: QuotaBudgetInput): Promise<void> {
+    const budget = await this.hostCommand(hostId, "budget.setQuota", input);
+    if (budget) this.keepBudget(hostId, budget, false);
+  }
+
   /** Terminals opened from a ssh destino, by `hostId/terminalId`, for the badge of their screen. */
   readonly sshTerminals = new Map<string, { name: string; tags: string[] }>();
 
@@ -5194,16 +5201,18 @@ export class AppStore {
       { id: hostId, name: host.name },
       budgetLabel(update.budget, this.i18n.t),
       Math.round(update.threshold * 100),
-      usd(update.budget.limitUsd),
+      budgetLimitText(update.budget, this.i18n.t),
     );
+    const window = update.budget.limitPct !== null;
     this.notifyUser(
       {
         title: this.i18n.t("messages.budgetTitle"),
-        body: this.i18n.t("messages.budgetBody", {
+        body: this.i18n.t(window ? "messages.budgetBodyQuota" : "messages.budgetBody", {
           host: host.name,
           label: budgetLabel(update.budget, this.i18n.t),
           percent: Math.round(update.threshold * 100),
-          limit: usd(update.budget.limitUsd),
+          limit: window ? share(update.budget.limitPct ?? 0) : usd(update.budget.limitUsd),
+          estimate: estimateNote(update.budget, this.i18n.t),
         }),
       },
       {

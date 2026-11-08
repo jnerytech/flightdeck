@@ -37,6 +37,7 @@ import { exportCosts } from "../lib/costs-export.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../lib/data-scope.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
+import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
 import { QuotaCharts } from "./QuotaCharts.tsx";
 import { TimingBreakdown } from "./TimingBreakdown.tsx";
 
@@ -453,6 +454,8 @@ export const CostsPage = memo(function CostsPage(props: {
             </Button>
           </InlineNotice>
         )}
+        {/* On a subscription the plan quota leads: the dollars are an estimate that is not charged. */}
+        <CostsQuotaLead store={props.store} hostIds={hostIds} />
         {hosts.length === 0 && (
           <EmptyState
             icon={Coins}
