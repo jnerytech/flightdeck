@@ -62,8 +62,7 @@ describe("git-limited: a capped git read with a time limit (#100)", () => {
       ["-c", "alias.hang=!sleep 3", "hang"],
       10_000,
       undefined,
-      undefined,
-      controller.signal,
+      { signal: controller.signal },
     );
     controller.abort();
     const result = await running;
@@ -84,8 +83,7 @@ describe("git-limited: a capped git read with a time limit (#100)", () => {
       async () => {
         throw new Error("the process was already gone");
       },
-      undefined,
-      controller.signal,
+      { signal: controller.signal },
     );
     controller.abort();
     expect((await running).aborted).toBe(true);
@@ -101,8 +99,7 @@ describe("git-limited: a capped git read with a time limit (#100)", () => {
       ["-c", "alias.hang=!sleep 3", "hang"],
       10_000,
       undefined,
-      undefined,
-      controller.signal,
+      { signal: controller.signal },
     );
     expect([result.aborted, Date.now() - started < 2_500]).toEqual([true, true]);
   });

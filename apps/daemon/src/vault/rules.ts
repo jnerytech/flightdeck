@@ -438,7 +438,7 @@ export function evaluate(rules: readonly Rule[], ctx: UseContext, env: RulesEnv)
   if (ctx.purpose === "run_with_secret" && (out.decision === "allow" || out.once)) {
     raise("run_with_secret asks for your approval at every use");
   }
-  const prod = ctx.tags.some(isProdTag);
+  const prod = ctx.tags.some((tag) => isProdTag(tag));
   if (prod) {
     if (out.decision === "allow" && !inWindow) raise("prod asks for your approval at every use");
     // A rule may say once per session; prod still asks at every use, so a session approval
