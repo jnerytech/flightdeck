@@ -9,7 +9,7 @@
 import { test } from "@playwright/test";
 import { type Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import { JOURNEYS, VIEWPORTS } from "../lib/e2e-journeys.ts";
-import { type Context, journeys, layout } from "./journeys.ts";
+import { type Context, journeys, layout, layoutWindows } from "./journeys.ts";
 
 /** The demo's address and ids, which the global setup put in the environment. */
 function demo() {
@@ -58,5 +58,18 @@ export function defineJourneys(lang: Lang): void {
         throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
       }
     });
+
+    // The second half of the layout check, in English only: a journey of its own, so each stays
+    // well under 90 s (together they took 72 to 78 s on CI).
+    if (lang === "en") {
+      test("layout-janelas", async ({ page }) => {
+        const { url, ids } = demo();
+        const problems: string[] = [];
+        await layoutWindows({ page, url, lang, ids, repeat: 0, t: translator(lang) }, problems);
+        if (problems.length > 0) {
+          throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
+        }
+      });
+    }
   });
 }

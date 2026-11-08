@@ -106,10 +106,20 @@ async function demoHostsOnline(c: Context): Promise<boolean> {
   return true;
 }
 
+/** Unfolds More options on the New session screen: the name and the subfolder are under it (#1135). */
+async function moreOptions(c: Context) {
+  const toggle = c.page.getByRole("button", { name: c.t("newSession.moreOptions"), exact: true });
+  // It opens by itself to show a remembered subfolder: a click then would fold it.
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+}
+
 /** Starts a session of the fake runtime from the New session screen. */
 export async function createSession(c: Context, prompt: string, name?: string) {
   await open(c, { name: "new-session", host: ALFA });
-  if (name) await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+  if (name) {
+    await moreOptions(c);
+    await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+  }
   await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill(prompt);
   await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
 }
@@ -189,7 +199,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const session = `Aprovar e2e ${Date.now()}`;
     await createSession(c, "[bash] ls", session);
     await open(c, { name: "needs-you" });
-    const row = c.page.locator("main ul li button", { hasText: session });
+    // A request's row says its tool; the session's finished turn, listed under Finished once the
+    // request is answered, has the same name and must not count as the request.
+    const row = c.page.locator(`main ul li button[aria-label*="${session}: Bash"]`);
     await row.first().click({ timeout: SESSION_WAIT });
     const card = c.page.locator("fieldset[data-request-id]").first();
     await card.waitFor({ timeout: WAIT });
@@ -207,7 +219,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await createSession(c, "[bash] ls", first);
     await createSession(c, "[bash] ls", second);
     await open(c, { name: "needs-you" });
-    const row = (name: string) => c.page.locator("main ul li button", { hasText: name });
+    // Only the request's row: the finished turn listed under Finished has the same name.
+    const row = (name: string) => c.page.locator(`main ul li button[aria-label*="${name}: Bash"]`);
     await row(first).first().click({ timeout: SESSION_WAIT });
     await row(second).first().waitFor({ timeout: SESSION_WAIT });
     const focusedCard = () =>
@@ -662,6 +675,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // answer, so the run is still alive when the trust is removed.
     const name = `e2e-revoga-${c.lang}-${Date.now()}`;
     await open(c, { name: "new-session", host: ALFA });
+    await moreOptions(c);
     await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).fill("flightdeck-web");
     await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
     await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill("[bash] ls");
@@ -1626,6 +1640,55 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
+  // Issue #1131: a request is answered from the bell, in its row, at a phone's width too. The
+  // session's own request is put in the bell by hand (the web demo sends no notification), then
+  // answered there, and its row is gone from the bell.
+  "bell-approve": async (c) => {
+    const session = `Sino e2e ${Date.now()}`;
+    await createSession(c, "[bash] ls", session);
+    await open(c, { name: "needs-you" });
+    await c.page
+      .locator("main ul li button", { hasText: session })
+      .first()
+      .click({ timeout: SESSION_WAIT });
+    const card = c.page.locator("fieldset[data-request-id]").first();
+    await card.waitFor({ timeout: WAIT });
+    const requestId = await card.getAttribute("data-request-id");
+    const link = `flightdeck://request?${new URLSearchParams({ host: ALFA, request: requestId ?? "" })}`;
+    const seed = JSON.stringify([
+      {
+        id: "bell-approve",
+        at: new Date().toISOString(),
+        title: "Precisa de você",
+        body: "",
+        link,
+        subject: session,
+        host: "alfa",
+        ask: "Quer executar: ls",
+        read: false,
+      },
+    ]);
+    await c.page.evaluate((value) => localStorage.setItem("flightdeck.inbox", value), seed);
+    await c.page.setViewportSize({ width: 390, height: 800 });
+    await open(c, { name: "hub" });
+    await c.page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
+    const dialog = c.page.getByRole("dialog");
+    await dialog.waitFor({ timeout: WAIT });
+    const group = dialog.getByRole("group", { name: new RegExp(session) });
+    await group.waitFor({ timeout: SESSION_WAIT });
+    // The row fits the panel: no sideways scroll and nothing past its right edge.
+    const fits = await dialog.evaluate((box) => {
+      const edge = box.getBoundingClientRect().right;
+      const past = [...box.querySelectorAll<HTMLElement>(".inbox-request > *")].filter(
+        (el) => el.getBoundingClientRect().right > edge + 1,
+      );
+      return box.scrollWidth <= box.clientWidth + 1 && past.length === 0;
+    });
+    if (!fits) throw new Error("a linha do pedido passa do painel do sino a 390 px");
+    await group.getByRole("button", { name: c.t("approval.approve"), exact: true }).click();
+    await waitFor(async () => (await group.count()) === 0, "o pedido saiu do sino");
+  },
+
   // Issues #1030 and #1031: at the usual window the board fills its width with all five columns
   // (none cut at the right edge, no head running past its column), and the Return on cost card is
   // one short row, so the columns start right under it.
@@ -2411,8 +2474,9 @@ async function sessionFitsProblems(c: Context): Promise<string[]> {
 /**
  * The layout check (#1003), kept under the 90 s a journey gets: the screens people use most (Home,
  * a session, the board, a host's page, Settings) at the smallest window the app allows and at the
- * usual one. English runs all of it; pt-BR runs only the geometry guards, where its longer texts
- * are the point. The other sizes and screens are not checked here any more.
+ * usual one. English runs all of it, in two journeys (`layoutWindows` is the second half); pt-BR runs
+ * only the geometry guards, where its longer texts are the point. The other sizes and screens are
+ * not checked here any more.
  */
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
@@ -2468,6 +2532,15 @@ export async function layout(c: Context, problems: string[]) {
   if (new Set(lefts).size > 1) {
     problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
   }
+}
+
+/**
+ * The second half of the layout check (#1003), a journey of its own so each stays well under the
+ * 90 s a journey gets (the whole check took 72 to 78 s on CI): the sidebar and page scroll at two
+ * window sizes, a session opens at its end, the smallest window the app allows, and the bell.
+ * English only, like the first half's extras.
+ */
+export async function layoutWindows(c: Context, problems: string[]) {
   // Issue #567: the sidebar scrolls as one area between its fixed header and footer, at the
   // usual window and at a short one, where it has to scroll at all. #785: the area around a Page
   // (the Host page, where the user saw two bars) does not scroll beside the page's own bar.

@@ -1153,6 +1153,18 @@ aparece mascarado e como **Oculto**, e não abre.
 - **Card novo numa coluna.** O botão **Novo card** no fim de uma coluna cria o card ali (aparece ao
   passar o mouse e ao focar, e sempre numa tela sem ponteiro).
 
+### Iniciar uma sessão pela tarefa
+
+**Nova sessão** abre em **Primeiro prompt**, com o cursor nele: escreva a tarefa e aperte **Criar
+sessão** (ou **Ctrl+Enter**). A pasta, o modo de permissão e o modelo começam como a última sessão
+daquele host os usou (**Bypass permissions** nunca: ele pergunta toda vez). O agente, a subpasta, o
+nome, o esforço e a persona ficam em **Mais opções**, que abre sozinho para mostrar uma subpasta
+lembrada.
+
+Na paleta **Ctrl+K**, uma frase digitada com um projeto no escopo oferece **Iniciar em <projeto>:
+<texto>**: **Enter** inicia uma sessão na pasta desse projeto com o texto como primeiro prompt, no
+mesmo modo e modelo, e a abre.
+
 ### Escolher uma pasta
 
 **Nova sessão** e o formulário do projeto têm um botão **Procurar…** ao lado da pasta. Ele abre
@@ -2312,6 +2324,13 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   time e o host, e diz o que pede em palavras ("Pergunta: qual banco usar?"), não o nome da
   ferramenta. Os pedidos repetidos de uma sessão viram uma linha só com a contagem ("3 vezes").
   Uma linha cujo card ou pedido não existe mais avisa e tem **Descartar**.
+- Um pedido que ainda espera é respondido na própria linha: o selo de risco, depois **Aprovar** e
+  **Negar** (com a linha focada, **A** aprova e **N** nega, como em Precisa de você). Um pedido de
+  risco alto é aprovado segurando o botão, nunca por uma tecla. Uma pergunta, um plano, um portão de
+  workflow e um pedido de segredo não têm botões: clique na linha para abri-lo. Um pedido respondido
+  sai do sino, também o respondido em outro lugar (com o host offline a linha fica, pois nada diz que
+  foi respondido). Depois de uma resposta o foco vai para a linha que ocupou o lugar, ou para o título
+  do painel.
 - Passe o mouse numa linha (ou foque nela) para ver o controle **Marcar como lida**: ele marca
   aquela linha e não abre nada.
 - Clique numa entrada para marcar só ela como lida e abrir a tela dela (um pedido abre no card dele;
@@ -3281,6 +3300,14 @@ terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
   cartão recebe o foco, então A e N funcionam sem um clique antes, e quando um pedido é
   respondido o próximo é escolhido, com quantos restam. Um pedido de risco alto continua sendo
   aprovado só segurando o botão.
+- **Concluídas:** sob os pedidos, o grupo **Concluídas** lista as sessões que terminaram um turno,
+  falharam ou encerraram desde a última vez que você olhou o Precisa de você, da mais nova para a
+  mais antiga, cada uma com como terminou, há quanto tempo e (quando o host responde) quantos
+  arquivos alterou. Escolha uma e **Ver as alterações** abre a sessão na visão Alterações. Sair da
+  tela é o olhar: o grupo fica vazio da próxima vez. Uma sessão que você estava vendo quando
+  terminou não entra, e o grupo não soma no contador da barra lateral, que conta pedidos. A
+  notificação do sistema de um turno concluído ou de uma falha é a que você já tinha: sai uma vez,
+  nunca com o app em foco.
 - **De uma notificação:** o clique abre a sessão com o cartão do pedido em foco: uma tecla
   responde. No sino, a entrada de um pedido já respondido abre a sessão naquele pedido.
 - **Dependências:** a aba Visão geral da página do host tem uma seção **Saúde e dependências** (abaixo) que agrupa o

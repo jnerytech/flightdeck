@@ -1148,6 +1148,18 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 - **New card in a column.** The **New card** button at the bottom of a column creates the card
   there (it appears on hover and on focus, and always on a screen without a pointer).
 
+### Starting a session from the task
+
+**New session** opens on **First prompt**, with the cursor in it: write the task and press
+**Create session** (or **Ctrl+Enter**). The folder, the permission mode and the model start as the
+last session on that host used them (**Bypass permissions** never does: it asks every time). The
+agent, subfolder, name, effort and persona are under **More options**, which opens by itself to
+show a remembered subfolder.
+
+In the **Ctrl+K** palette, a sentence typed with one project in scope offers **Start in <project>:
+<text>**: **Enter** starts a session in that project's folder with the text as its first prompt,
+in the same mode and model, and opens it.
+
 ### Choosing a folder
 
 **New session** and the project form have a **Browse…** button next to the folder. It opens a
@@ -2305,6 +2317,12 @@ unblocked. A badge on the bell counts the unread ones.
   and says what it asks in words ("Asks: which DB to use?"), not the tool's name. A session's
   repeated requests become one row with a count ("3 times"). A row whose card or request is gone
   says so and has **Dismiss**.
+- A request that still waits is answered from its row: its risk chip, then **Approve** and **Deny**
+  (with the row focused, **A** approves and **N** denies, as in Needs you). A high-risk request is
+  approved by holding the button, never by a key. A question, a plan, a workflow gate and a request
+  for a secret have no buttons: click the row to open it. An answered request leaves the bell, also
+  one answered somewhere else (while its host is offline the row stays, since nothing says it was
+  answered). After an answer the focus goes to the row that took its place, or to the panel's title.
 - Hover a row (or focus it) for a small **Mark as read** control: it marks that row and opens
   nothing.
 - Click an entry to mark just it read and open its screen (a request opens on its card; a quota alert
@@ -3264,6 +3282,14 @@ second copy anyway** opens it here all the same.
   conversation. The card takes the focus, so A and N work with no click first, and once a
   request is answered the next one is chosen, with how many are left. A high-risk request is
   still approved only by holding the button.
+- **Finished:** under the requests, a **Finished** group lists the sessions that ended a turn,
+  failed or ended since the last time you looked at Needs you, newest first, each with how it
+  finished, how long ago and (once the host answers) how many files it changed. Choose one and
+  **See the changes** opens the session on its Changes view. Leaving the screen is the look: the
+  group is empty the next time. A session you were watching when it finished is not listed, and
+  the group does not add to the sidebar count, which counts requests. The system notification of
+  a finished turn or a failure is the one you already had: it is sent once, never while the app has
+  focus.
 - **From a notification:** clicking it opens the session with the request's card focused: one
   key answers it. In the bell, an entry of a request already answered opens its session at that
   request.

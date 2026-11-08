@@ -1002,6 +1002,12 @@ export const ptBR = {
     gateTool: "etapa “{step}” do workflow",
     gateRow: "A etapa “{step}” do workflow espera sua aprovação",
     release: "Soltar o par",
+    finished: "Concluídas",
+    finishedOutcome: { done: "Concluída", failed: "Falhou", ended: "Encerrada" },
+    finishedFilesOne: "1 arquivo alterado",
+    finishedFilesMany: "{n} arquivos alterados",
+    finishedNoFiles: "Nenhum arquivo alterado",
+    seeChanges: "Ver as alterações",
   },
   projectTree: {
     more: "mais {n}",
@@ -1184,6 +1190,9 @@ export const ptBR = {
     sectionClients: "Clientes",
     sectionRecent: "Recentes",
     sectionCreate: "Criar",
+    sectionStart: "Iniciar",
+    startIn: "Iniciar em {project}: {text}",
+    startDetail: "Nova sessão",
     createCard: "Criar card “{title}” em {project}",
     createCardIssue: "Criar card da issue {issue} em {project}",
     createDetail: "Card novo",
@@ -2301,6 +2310,8 @@ export const ptBR = {
     gone: "O que isto citava não existe mais.",
     dismiss: "Descartar",
     asks: "Pergunta: {question}",
+    keys: "A aprova · N nega",
+    keysHigh: "Segure o botão para aprovar · N nega",
     runs: "Quer executar: {command}",
     edits: "Quer alterar {file}",
     uses: "Quer usar {tool}",
@@ -2465,6 +2476,7 @@ export const ptBR = {
     needPrompt: "Escreva o primeiro prompt para iniciar em segundo plano.",
     addFolder: "Adicionar uma pasta na página de {host}",
     host: "Host",
+    moreOptions: "Mais opções",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {
@@ -2631,7 +2643,9 @@ export const ptBR = {
     sessionLast: "última em {when}",
     sessionSpan: "de {from} a {to}",
     sessionFiles: "Arquivos que a sessão escreveu",
-    sessionFilesNone: "A sessão ainda não escreveu arquivos.",
+    sessionFilesTitle: "Arquivos que a sessão editou direto (Write, Edit)",
+    sessionFilesNone:
+      "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
     bashNote: "Mudanças feitas pelo Bash não entram.",
   },
   cardReview: {

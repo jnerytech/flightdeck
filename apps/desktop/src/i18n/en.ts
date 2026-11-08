@@ -1003,6 +1003,12 @@ export const en: Dictionary = {
     gateTool: "workflow step “{step}”",
     gateRow: "Workflow step “{step}” waits for your approval",
     release: "Free the pair",
+    finished: "Finished",
+    finishedOutcome: { done: "Finished", failed: "Failed", ended: "Ended" },
+    finishedFilesOne: "1 file changed",
+    finishedFilesMany: "{n} files changed",
+    finishedNoFiles: "No files changed",
+    seeChanges: "See the changes",
   },
   projectTree: {
     list: "Branches of {name}",
@@ -1185,6 +1191,9 @@ export const en: Dictionary = {
     sectionClients: "Clients",
     sectionRecent: "Recent",
     sectionCreate: "Create",
+    sectionStart: "Start",
+    startIn: "Start in {project}: {text}",
+    startDetail: "New session",
     createCard: "Create card “{title}” in {project}",
     createCardIssue: "Create card from issue {issue} in {project}",
     createDetail: "New card",
@@ -2302,6 +2311,8 @@ export const en: Dictionary = {
     gone: "What this was about is gone.",
     dismiss: "Dismiss",
     asks: "Asks: {question}",
+    keys: "A approves · N denies",
+    keysHigh: "Hold the button to approve · N denies",
     runs: "Wants to run: {command}",
     edits: "Wants to change {file}",
     uses: "Wants to use {tool}",
@@ -2465,6 +2476,7 @@ export const en: Dictionary = {
     needPrompt: "Write the first prompt to start in the background.",
     addFolder: "Add a folder on {host}'s page",
     host: "Host",
+    moreOptions: "More options",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {
@@ -2631,7 +2643,9 @@ export const en: Dictionary = {
     sessionLast: "last on {when}",
     sessionSpan: "from {from} to {to}",
     sessionFiles: "Files the session wrote",
-    sessionFilesNone: "The session has not written any file yet.",
+    sessionFilesTitle: "Files the session edited directly (Write, Edit)",
+    sessionFilesNone:
+      "None yet. Changes made by commands (Bash) or outside the session are not listed here.",
     bashNote: "Changes made through Bash do not count.",
   },
   cardReview: {

@@ -1128,6 +1128,7 @@ function NewSession(
       {...(props.prompt ? { prompt: props.prompt } : {})}
       onFolder={setCwd}
       promptRequired={background}
+      extraSet={background || persona !== ""}
       extra={
         <>
           {personas && (

@@ -106,6 +106,14 @@ import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
+import {
+  type Finish,
+  finishOutcome,
+  loadFinished,
+  recordFinish,
+  saveFinished,
+  withFiles,
+} from "./finished.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
@@ -144,6 +152,7 @@ import {
 } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
+import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import {
   type AboutNotification,
@@ -290,6 +299,10 @@ export interface AppState {
   inbox: InboxEntry[];
   /** Text handed to a session's message box that the box has not taken yet, by session key. */
   composerFill: Record<string, string>;
+  /** The sessions that finished, newest first; Needs you lists those after the last look. */
+  finished: Finish[];
+  /** When the person last looked at Needs you (ISO), `null` before the first look. */
+  finishedLook: string | null;
   /** Last global history search, `null` before the first one. */
   search: SearchState | null;
   searchOpen: boolean;
@@ -1063,6 +1076,7 @@ export class AppStore {
     this.sidebarFold = new SidebarFoldController(platform.storage);
     this.dataScope = new DataScopeController(platform.storage);
     this.shellPrefs = new ShellPrefs(platform.storage);
+    this.newSessionPrefs = new NewSessionPrefs(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
@@ -1117,6 +1131,8 @@ export class AppStore {
       notices: [],
       inbox: [],
       composerFill: {},
+      finished: [],
+      finishedLook: null,
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null, ready: null },
       // Defaults: close to tray on, start with Windows off.
@@ -1165,6 +1181,8 @@ export class AppStore {
   readonly projectKeys = new ProjectKeys();
   /** What the shell hides: the New and Beta badges, What's new (issue #282). */
   readonly shellPrefs: ShellPrefs;
+  /** What the New session form starts from: the last mode, model and folder (issue #1135). */
+  readonly newSessionPrefs: NewSessionPrefs;
   /** The board columns' width, one for all, kept across starts (issue #161). */
   readonly boardWidth: BoardWidth;
   /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */
@@ -1308,6 +1326,8 @@ export class AppStore {
 
   async init(): Promise<void> {
     this.update({ inbox: loadInbox(this.platform.storage) });
+    const kept = loadFinished(this.platform.storage);
+    this.update({ finished: kept.list, finishedLook: kept.lastLook });
     this.syncBadge();
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
@@ -1627,6 +1647,60 @@ export class AppStore {
     return text;
   }
 
+  /** The person looked at Needs you: what finished before now is no longer new. */
+  finishedSeen(): void {
+    this.setFinished(this.state.finished, new Date(this.now()).toISOString());
+  }
+
+  private setFinished(list: Finish[], lastLook: string | null): void {
+    this.update({ finished: list, finishedLook: lastLook });
+    saveFinished(this.platform.storage, { list, lastLook });
+  }
+
+  /** A turn, a failure or an end is a finish for Needs you, unless the person watched it happen. */
+  private recordFinished(
+    hostId: string,
+    prev: SidebarSession | undefined,
+    next: SidebarSession,
+  ): void {
+    const outcome = finishOutcome(prev?.status, next.status);
+    if (!outcome) return;
+    const key = sessionKey(hostId, next.id);
+    if (this.platform.isFocused() && this.shownSessions().has(key)) return;
+    const at = new Date(this.now()).toISOString();
+    const finish: Finish = {
+      key,
+      hostId,
+      sessionId: next.id,
+      name: next.name ?? basename(next.cwd),
+      outcome,
+      at,
+      files: null,
+    };
+    this.setFinished(recordFinish(this.state.finished, finish), this.state.finishedLook);
+    void this.countFinishedFiles(hostId, next.id, key, at);
+  }
+
+  /** Asks the host how many files the session changed; a host that cannot say leaves it unknown. */
+  private async countFinishedFiles(
+    hostId: string,
+    sessionId: string,
+    key: string,
+    at: string,
+  ): Promise<void> {
+    // The host reads `session:<id>` as the Claude session id, which the app learns with the session.
+    const claudeId =
+      this.state.sessions[key]?.claudeSessionId ??
+      this.state.hub[hostId]?.managed.find((s) => s.id === sessionId)?.claudeSessionId;
+    if (!claudeId) return;
+    const result = await this.hostRequest(hostId, "changes.get", {
+      target: `session:${claudeId}`,
+    });
+    if (!result.ok) return;
+    const files = result.data.files.length;
+    this.setFinished(withFiles(this.state.finished, key, at, files), this.state.finishedLook);
+  }
+
   /** Sends an OS notification and keeps it in the notification center. */
   private notifyUser(
     notification: AboutNotification,
@@ -1656,9 +1730,44 @@ export class AppStore {
     if (decision.sound && prefs.sound.mode !== "off") this.soundPlayer();
   }
 
+  /** The requests waiting now, and every one this run has seen waiting (`host/request`). */
+  private waiting = new Set<string>();
+  private everWaiting = new Set<string>();
+
+  /** Remembers what waits, so a request that stops waiting is known to have been answered. */
+  private rememberWaiting(): void {
+    const now = new Set(needsYou(this.state).map((i) => `${i.hostId}/${i.requestId}`));
+    let changed = now.size !== this.waiting.size;
+    for (const key of now) {
+      this.everWaiting.add(key);
+      if (!this.waiting.has(key)) changed = true;
+    }
+    this.waiting = now;
+    // The bell hides an answered request, so its count and the taskbar badge change with it.
+    if (changed) this.syncBadge();
+  }
+
+  /**
+   * Whether a request this run saw waiting is answered: it no longer waits and its host is up to say
+   * so. One never seen waiting (answered while the app was closed) is not claimed to be answered.
+   */
+  requestAnswered(hostId: string, requestId: string): boolean {
+    const key = `${hostId}/${requestId}`;
+    if (!this.everWaiting.has(key) || this.waiting.has(key)) return false;
+    return this.state.hosts.find((h) => h.id === hostId)?.status === "online";
+  }
+
+  /** The bell's entries: a request answered since it was sent is not among them. */
+  visibleInbox(): InboxEntry[] {
+    return this.state.inbox.filter((entry) => {
+      const request = entry.link ? parseRequestLink(entry.link) : null;
+      return !(request && this.requestAnswered(request.hostId, request.requestId));
+    });
+  }
+
   /** The bell's unread count as a taskbar badge, told only when it changes. */
   private syncBadge(): void {
-    const count = unreadRows(this.state.inbox, new Date(this.now()));
+    const count = unreadRows(this.visibleInbox(), new Date(this.now()));
     if (count === this.badgeShown) return;
     this.badgeShown = count;
     // A taskbar that cannot show it is not worth a toast: the bell has the same count.
@@ -3476,6 +3585,7 @@ export class AppStore {
     }
     this.webhookFeed.managed({ id: hostId, name: host.name }, prev, next);
     this.tellAboutSummary(hostId, host.name, prev, next);
+    this.recordFinished(hostId, prev, next);
   }
 
   /** What a changed summary tells the person: the notifications it raises, or folds into its team's. */
@@ -5037,6 +5147,7 @@ export class AppStore {
 
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
+    if (patch.hosts || patch.externalRequests) this.rememberWaiting();
     if (patch.secrets) void this.rememberVaultValues();
     if (patch.hosts || patch.uiChoices) this.syncTray();
     if (
