@@ -999,6 +999,16 @@ export interface KnowledgeListResult {
   truncated: boolean;
 }
 
+/** Whether sessions in a project are given the library's index, and why not. */
+export interface KnowledgeFeedState {
+  /** Not switched off: the project, or a folder above it, is not in the host's `knowledge.feedOff`. */
+  on: boolean;
+  /** The project is trusted. An untrusted project is not given the index, on or off. */
+  trusted: boolean;
+  /** The folder in `knowledge.feedOff` that switches it off; the project itself, or one above it. */
+  offBy: string | null;
+}
+
 /** What a session is given of the library: Markdown for its system prompt, empty when it is not given any. */
 export interface KnowledgeIndexResult {
   text: string;
@@ -4452,6 +4462,13 @@ export const Command = z.discriminatedUnion("type", [
   cmd("knowledge.list", z.object({ path: z.string().min(1).max(4096) }).strict()),
   /** Issue #76: the index of the project's current documents that a session is given in its system prompt. */
   cmd("knowledge.index", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** Issue #76: whether sessions in the project at `path` are given that index. */
+  cmd("knowledge.feed", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** Issue #76: switch the index on or off for the project at `path`, in the host's config. */
+  cmd(
+    "knowledge.setFeed",
+    z.object({ path: z.string().min(1).max(4096), enabled: z.boolean() }).strict(),
+  ),
   /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
   cmd(
     "file.write",
@@ -5337,6 +5354,8 @@ export interface CommandResults {
   "file.search": FileSearchResult;
   "knowledge.list": KnowledgeListResult;
   "knowledge.index": KnowledgeIndexResult;
+  "knowledge.feed": KnowledgeFeedState;
+  "knowledge.setFeed": KnowledgeFeedState;
   "file.write": { path: string; hash: string; size: number };
 }
 

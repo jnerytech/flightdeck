@@ -58,6 +58,7 @@ import type { PreviewPart } from "./harness/preview.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
+import type { KnowledgeSwitch } from "./knowledge/switch.ts";
 import type { FileLog } from "./logs/file-log.ts";
 import { logPathFor, tailForOrigin } from "./logs/serve.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
@@ -181,6 +182,8 @@ export interface ServerOptions {
   knowledge?: (path: string) => Promise<KnowledgeListResult>;
   /** #76: the index of the project's current documents for a session's system prompt. */
   knowledgeFeed?: (path: string) => Promise<KnowledgeIndexResult>;
+  /** #76: whether sessions in a project are given that index, and the person's switch for it. */
+  knowledgeFeedSwitch?: KnowledgeSwitch;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (path: string, parts: readonly PreviewPart[]) => Promise<HarnessPreview>;
   projectTrust?: {
@@ -416,6 +419,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.harnessStack, "harnessStack"),
     // Issue #76: the project's library of documents, with their lifecycle status.
     ...when(opts.knowledge, "knowledge"),
+    ...when(opts.knowledgeFeedSwitch, "knowledgeFeed"),
     ...when(opts.harnessPreview, "harnessPreview"),
     ...when(opts.findProjects, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
@@ -1141,6 +1145,16 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.knowledgeFeed) throw featureOff("knowledge");
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.knowledgeFeed(path));
+      }
+      case "knowledge.feed": {
+        if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeFeedSwitch.state(path));
+      }
+      case "knowledge.setFeed": {
+        if (!opts.knowledgeFeedSwitch) throw featureOff("knowledgeFeed");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.knowledgeFeedSwitch.set(path, command.payload.enabled));
       }
       case "project.harness.stack": {
         if (!opts.harnessStack) throw featureOff("harnessStack");

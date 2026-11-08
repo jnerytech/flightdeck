@@ -500,6 +500,7 @@ export const DAEMON_FEATURES = [
   "projectTrust",
   "harnessStack",
   "knowledge",
+  "knowledgeFeed",
   "harnessPreview",
   "keepAwake",
   "autoUpdate",
